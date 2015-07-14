@@ -89,6 +89,7 @@ pub mod test;
 
 pub mod driver;
 pub mod pretty;
+pub mod target_features;
 
 
 const BUG_REPORT_URL: &'static str =
@@ -136,7 +137,8 @@ pub fn run_compiler<'a>(args: &[String],
     if sess.unstable_options() {
         sess.opts.show_span = matches.opt_str("show-span");
     }
-    let cfg = config::build_configuration(&sess);
+    let mut cfg = config::build_configuration(&sess);
+    target_features::add_configuration(&mut cfg, &sess);
 
     do_or_return!(callbacks.late_callback(&matches, &sess, &input, &odir, &ofile));
 
