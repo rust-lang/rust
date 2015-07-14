@@ -56,10 +56,6 @@ NATIVE_DEPS_rust_builtin_$(1) := rust_builtin.c \
 NATIVE_DEPS_rustrt_native_$(1) := \
 			rust_try.ll
 
-ifeq ($(1),le32-unknown-nacl)
-NATIVE_DEPS_rustrt_native_$(1) += crtbegin.bc crti.bc
-endif
-
 NATIVE_DEPS_rust_test_helpers_$(1) := rust_test_helpers.c
 
 ifneq ($$(RUNTIME_DISABLE_ASM_$(1)), 1)
