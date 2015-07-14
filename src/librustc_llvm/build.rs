@@ -29,7 +29,7 @@ fn generate_llvmdeps() {
     let llvm_components = "x86 arm aarch64 mips powerpc ipo bitreader \
                            bitwriter linker asmparser mcjit interpreter \
                            instrumentation";
-    Command::new("python")
+    Command::new("python2")
         .arg(&script)
         .arg(&dest)
         .arg(llvm_components)
