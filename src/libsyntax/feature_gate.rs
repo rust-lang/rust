@@ -37,6 +37,7 @@ use visit::Visitor;
 use parse::token::{self, InternedString};
 
 use std::ascii::AsciiExt;
+use std::cmp;
 
 // If you change this list without updating src/doc/reference.md, @cmr will be sad
 // Don't ever remove anything from this list; set them to 'Removed'.
@@ -180,6 +181,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // allow `repr(simd)`, and importing the various simd intrinsics
     ("simd_basics", "1.3.0", Active),
+
+    // Allows cfg(target_feature = "...").
+    ("cfg_target_feature", "1.3.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -327,6 +331,59 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("recursion_limit", CrateLevel),
 ];
 
+macro_rules! cfg_fn {
+    (|$x: ident| $e: expr) => {{
+        fn f($x: &Features) -> bool {
+            $e
+        }
+        f as fn(&Features) -> bool
+    }}
+}
+// cfg(...)'s that are feature gated
+const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)] = &[
+    // (name in cfg, feature, function to check if the feature is enabled)
+    ("target_feature", "cfg_target_feature", cfg_fn!(|x| x.cfg_target_feature)),
+];
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct GatedCfg {
+    span: Span,
+    index: usize,
+}
+impl Ord for GatedCfg {
+    fn cmp(&self, other: &GatedCfg) -> cmp::Ordering {
+        (self.span.lo.0, self.span.hi.0, self.index)
+            .cmp(&(other.span.lo.0, other.span.hi.0, other.index))
+    }
+}
+impl PartialOrd for GatedCfg {
+    fn partial_cmp(&self, other: &GatedCfg) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl GatedCfg {
+    pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
+        let name = cfg.name();
+        GATED_CFGS.iter()
+                  .position(|info| info.0 == name)
+                  .map(|idx| {
+                      GatedCfg {
+                          span: cfg.span,
+                          index: idx
+                      }
+                  })
+    }
+    pub fn check_and_emit(&self, diagnostic: &SpanHandler, features: &Features) {
+        let (cfg, feature, has_feature) = GATED_CFGS[self.index];
+        if !has_feature(features) {
+            let explain = format!("`cfg({})` is experimental and subject to change", cfg);
+            emit_feature_err(diagnostic, feature, self.span, &explain);
+        }
+    }
+}
+
+
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum AttributeType {
     /// Normal, builtin attribute that is consumed
@@ -373,6 +430,7 @@ pub struct Features {
     pub static_recursion: bool,
     pub default_type_parameter_fallback: bool,
     pub type_macros: bool,
+    pub cfg_target_feature: bool,
 }
 
 impl Features {
@@ -401,6 +459,7 @@ impl Features {
             static_recursion: false,
             default_type_parameter_fallback: false,
             type_macros: false,
+            cfg_target_feature: false,
         }
     }
 }
@@ -920,6 +979,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         static_recursion: cx.has_feature("static_recursion"),
         default_type_parameter_fallback: cx.has_feature("default_type_parameter_fallback"),
         type_macros: cx.has_feature("type_macros"),
+        cfg_target_feature: cx.has_feature("cfg_target_feature"),
     }
 }
 
