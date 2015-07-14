@@ -43,7 +43,7 @@
 // gdb-command:whatis f64
 // gdb-check:type = f64
 // gdb-command:whatis fnptr
-// gdb-check:type = void (*)(void)
+// gdb-check:type = [...] (*)([...])
 // gdb-command:info functions _yyy
 // gdb-check:[...]![...]_yyy([...]);
 // gdb-command:continue
