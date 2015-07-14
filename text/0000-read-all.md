@@ -91,6 +91,88 @@ fn read_exact(&mut self, buf: &mut [u8]) -> Result<()> {
 }
 ```
 
+The detailed semantics of `read_exact` are as follows: `read_exact`
+reads exactly the number of bytes needed to completely fill its `buf`
+parameter. If that's not possible due to an "end of file" condition
+(that is, the `read` method would return 0 even when passed a buffer
+with at least one byte), it returns an `ErrorKind::UnexpectedEOF` error.
+
+On success, the read pointer is advanced by the number of bytes read, as
+if the `read` method had been called repeatedly to fill the buffer. On
+any failure (including an `ErrorKind::UnexpectedEOF`), the read pointer
+might have been advanced by any number between zero and the number of
+bytes requested (inclusive), and the contents of its `buf` parameter
+should be treated as garbage (any part of it might or might not have
+been overwritten by unspecified data).
+
+Even if the failure was an `ErrorKind::UnexpectedEOF`, the read pointer
+might have been advanced by a number of bytes less than the number of
+bytes which could be read before reaching an "end of file" condition.
+
+The `read_exact` method will never return an `ErrorKind::Interrupted`
+error, similar to the `read_to_end` method.
+
+Similar to the `read` method, no guarantees are provided about the
+contents of `buf` when this function is called; implementations cannot
+rely on any property of the contents of `buf` being true. It is
+recommended that implementations only write data to `buf` instead of
+reading its contents.
+
+# About ErrorKind::Interrupted
+
+Whether or not `read_exact` can return an `ErrorKind::Interrupted` error
+is orthogonal to its semantics. One could imagine an alternative design
+where `read_exact` could return an `ErrorKind::Interrupted` error.
+
+The reason `read_exact` should deal with `ErrorKind::Interrupted` itself
+is its non-idempotence. On failure, it might have already partially
+advanced its read pointer an unknown number of bytes, which means it
+can't be easily retried after an `ErrorKind::Interrupted` error.
+
+One could argue that it could return an `ErrorKind::Interrupted` error
+if it's interrupted before the read pointer is advanced. But that
+introduces a non-orthogonality in the design, where it might either
+return or retry depending on whether it was interrupted at the beginning
+or in the middle. Therefore, the cleanest semantics is to always retry.
+
+There's precedent for this choice in the `read_to_end` method. Users who
+need finer control should use the `read` method directly.
+
+# About the read pointer
+
+This RFC proposes a `read_exact` function where the read pointer
+(conceptually, what would be returned by `Seek::seek` if the stream was
+seekable) is unspecified on failure: it might not have advanced at all,
+have advanced in full, or advanced partially.
+
+Two possible alternatives could be considered: never advance the read
+pointer on failure, or always advance the read pointer to the "point of
+error" (in the case of `ErrorKind::UnexpectedEOF`, to the end of the
+stream).
+
+Never advancing the read pointer on failure would make it impossible to
+have a default implementation (which calls `read` in a loop), unless the
+stream was seekable. It would also impose extra costs (like creating a
+temporary buffer) to allow "seeking back" for non-seekable streams.
+
+Always advancing the read pointer to the end on failure is possible; it
+happens without any extra code in the default implementation. However,
+it can introduce extra costs in optimized implementations. For instance,
+the implementation given above for `&[u8]` would need a few more
+instructions in the error case. Some implementations (for instance,
+reading from a compressed stream) might have a larger extra cost.
+
+The utility of always advancing the read pointer to the end is
+questionable; for non-seekable streams, there's not much that can be
+done on an "end of file" condition, so most users would discard the
+stream in both an "end of file" and an `ErrorKind::UnexpectedEOF`
+situation. For seekable streams, it's easy to seek back, but most users
+would treat an `ErrorKind::UnexpectedEOF` as a "corrupted file" and
+discard the stream anyways.
+
+Users who need finer control should use the `read` method directly, or
+when available use the `Seek` trait.
+
 # Naming
 
 It's unfortunate that `write_all` used `WriteZero` for its `ErrorKind`;
