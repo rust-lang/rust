@@ -49,6 +49,7 @@ putenv('HOST_RPATH_DIR', os.path.abspath(sys.argv[9]))
 putenv('TARGET_RPATH_DIR', os.path.abspath(sys.argv[10]))
 putenv('RUST_BUILD_STAGE', sys.argv[11])
 putenv('S', os.path.abspath(sys.argv[12]))
+putenv('RUSTFLAGS', sys.argv[13])
 putenv('PYTHON', sys.executable)
 
 if filt not in sys.argv[1]:
