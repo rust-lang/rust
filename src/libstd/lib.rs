@@ -150,9 +150,9 @@
 //!
 //! `str`, a UTF-8 string slice, is a primitive type, and the standard
 //! library defines [many methods for it](primitive.str.html). Rust
-//! `str`s are typically accessed as immutable references: `&mut
-//! str`. Use the owned `String` type defined in
-//! [`string`](string/index.html) for building and mutating strings.
+//! `str`s are typically accessed as immutable references: `&str`. Use
+//! the owned `String` type defined in [`string`](string/index.html)
+//! for building and mutating strings.
 //!
 //! For converting to strings use the [`format!`](fmt/index.html)
 //! macro, and for converting from strings use the
