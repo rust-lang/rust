@@ -324,11 +324,11 @@ not necessarily just everything LLVM understands. There are other
 non-SIMD features that might have `target_feature`s set too, such as
 `popcnt` and `rdrnd` on x86/x86-64.)
 
-With a `cfg_if_else!` macro that expands to the first `cfg` that is
-satisfied (ala [@alexcrichton's cascade][cascade]), code might look
+With a `cfg_if!` macro that expands to the first `cfg` that is
+satisfied (ala [@alexcrichton's `cfg-if`][cfg-if]), code might look
 like:
 
-[cascade]: https://github.com/alexcrichton/backtrace-rs/blob/03703031babfa87cbe2c723ad6752131819dc554/src/macros.rs
+[cfg-if]: https://crates.io/crates/cfg-if
 
 ```rust
 cfg_if_else! {
