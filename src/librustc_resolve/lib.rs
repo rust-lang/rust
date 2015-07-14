@@ -116,249 +116,237 @@ mod record_exports;
 mod build_reduced_graph;
 mod resolve_imports;
 
-pub enum ResolutionError<'b, 'a:'b, 'tcx:'a> {
+pub enum ResolutionError<'b> {
     /// error E0401: can't use type parameters from outer function
-    TypeParametersFromOuterFunction(&'b Resolver<'a, 'tcx>, syntax::codemap::Span),
+    TypeParametersFromOuterFunction,
     /// error E0402: cannot use an outer type parameter in this context
-    OuterTypeParameterContext(&'b Resolver<'a, 'tcx>, syntax::codemap::Span),
+    OuterTypeParameterContext,
     /// error E0403: the name is already used for a type parameter in this type parameter list
-    NameAlreadyUsedInTypeParameterList(&'b Resolver<'a, 'tcx>, syntax::codemap::Span,
-                                       syntax::ast::Name),
+    NameAlreadyUsedInTypeParameterList(syntax::ast::Name),
     /// error E0404: is not a trait
-    IsNotATrait(&'b Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str),
+    IsNotATrait(&'b str),
     /// error E0405: use of undeclared trait name
-    UndeclaredTraitName(&'b Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str),
+    UndeclaredTraitName(&'b str),
     /// error E0406: undeclared associated type
-    UndeclaredAssociatedType(&'b Resolver<'a, 'tcx>, syntax::codemap::Span),
+    UndeclaredAssociatedType,
     /// error E0407: method is not a member of trait
-    MethodNotMemberOfTrait(&'b Resolver<'a, 'tcx>, syntax::codemap::Span, syntax::ast::Name,
-                           &'b str),
+    MethodNotMemberOfTrait(syntax::ast::Name, &'b str),
     /// error E0408: variable `{}` from pattern #1 is not bound in pattern
-    VariableNotBoundInPattern(&'b Resolver<'a, 'tcx>, syntax::codemap::Span, syntax::ast::Name,
-                              usize),
+    VariableNotBoundInPattern(syntax::ast::Name, usize),
     /// error E0409: variable is bound with different mode in pattern #{} than in pattern #1
-    VariableBoundWithDifferentMode(&'b Resolver<'a, 'tcx>, syntax::codemap::Span,
-                                   syntax::ast::Name, usize),
+    VariableBoundWithDifferentMode(syntax::ast::Name, usize),
     /// error E0410: variable from pattern is not bound in pattern #1
-    VariableNotBoundInParentPattern(&'b Resolver<'a, 'tcx>, syntax::codemap::Span,
-                                    syntax::ast::Name, usize),
+    VariableNotBoundInParentPattern(syntax::ast::Name, usize),
     /// error E0411: use of `Self` outside of an impl or trait
-    SelfUsedOutsideImplOrTrait(&'b Resolver<'a, 'tcx>, syntax::codemap::Span),
+    SelfUsedOutsideImplOrTrait,
     /// error E0412: use of undeclared
-    UseOfUndeclared(&'b Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str, &'b str),
+    UseOfUndeclared(&'b str, &'b str),
     /// error E0413: declaration shadows an enum variant or unit-like struct in scope
-    DeclarationShadowsEnumVariantOrUnitLikeStruct(&'b Resolver<'a, 'tcx>, syntax::codemap::Span,
-                                                  syntax::ast::Name),
+    DeclarationShadowsEnumVariantOrUnitLikeStruct(syntax::ast::Name),
     /// error E0414: only irrefutable patterns allowed here
-    OnlyIrrefutablePatternsAllowedHere(&'b Resolver<'a, 'tcx>, syntax::codemap::Span),
+    OnlyIrrefutablePatternsAllowedHere,
     /// error E0415: identifier is bound more than once in this parameter list
-    IdentifierBoundMoreThanOnceInParameterList(&'b Resolver<'a, 'tcx>, syntax::codemap::Span,
-                                               &'b str),
+    IdentifierBoundMoreThanOnceInParameterList(&'b str),
     /// error E0416: identifier is bound more than once in the same pattern
-    IdentifierBoundMoreThanOnceInSamePattern(&'b Resolver<'a, 'tcx>, syntax::codemap::Span,
-                                             &'b str),
+    IdentifierBoundMoreThanOnceInSamePattern(&'b str),
     /// error E0417: static variables cannot be referenced in a pattern
-    StaticVariableReference(&'b Resolver<'a, 'tcx>, syntax::codemap::Span),
+    StaticVariableReference,
     /// error E0418: is not an enum variant, struct or const
-    NotAnEnumVariantStructOrConst(&'b Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str),
+    NotAnEnumVariantStructOrConst(&'b str),
     /// error E0419: unresolved enum variant, struct or const
-    UnresolvedEnumVariantStructOrConst(&'b Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str),
+    UnresolvedEnumVariantStructOrConst(&'b str),
     /// error E0420: is not an associated const
-    NotAnAssociatedConst(&'b Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str),
+    NotAnAssociatedConst(&'b str),
     /// error E0421: unresolved associated const
-    UnresolvedAssociatedConst(&'b Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str),
+    UnresolvedAssociatedConst(&'b str),
     /// error E0422: does not name a struct
-    DoesNotNameAStruct(&'b Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str),
+    DoesNotNameAStruct(&'b str),
     /// error E0423: is a struct variant name, but this expression uses it like a function name
-    StructVariantUsedAsFunction(&'a Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str),
+    StructVariantUsedAsFunction(&'b str),
     /// error E0424: `self` is not available in a static method
-    SelfNotAvailableInStaticMethod(&'a Resolver<'a, 'tcx>, syntax::codemap::Span),
+    SelfNotAvailableInStaticMethod,
     /// error E0425: unresolved name
-    UnresolvedName(&'a Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str, &'b str),
+    UnresolvedName(&'b str, &'b str),
     /// error E0426: use of undeclared label
-    UndeclaredLabel(&'a Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str),
+    UndeclaredLabel(&'b str),
     /// error E0427: cannot use `ref` binding mode with ...
-    CannotUseRefBindingModeWith(&'a Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str),
+    CannotUseRefBindingModeWith(&'b str),
     /// error E0428: duplicate definition
-    DuplicateDefinition(&'a Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str, &'b str),
+    DuplicateDefinition(&'b str, &'b str),
     /// error E0429: `self` imports are only allowed within a { } list
-    SelfImportsOnlyAllowedWithin(&'a Resolver<'a, 'tcx>, syntax::codemap::Span),
+    SelfImportsOnlyAllowedWithin,
     /// error E0430: `self` import can only appear once in the list
-    SelfImportCanOnlyAppearOnceInTheList(&'a Resolver<'a, 'tcx>, syntax::codemap::Span),
+    SelfImportCanOnlyAppearOnceInTheList,
     /// error E0431: `self` import can only appear in an import list with a non-empty prefix
-    SelfImportOnlyInImportListWithNonEmptyPrefix(&'a Resolver<'a, 'tcx>, syntax::codemap::Span),
+    SelfImportOnlyInImportListWithNonEmptyPrefix,
     /// error E0432: unresolved import
-    UnresolvedImport(&'b Resolver<'a, 'tcx>, syntax::codemap::Span,
-                     Option<(&'b str, Option<&'b str>)>),
+    UnresolvedImport(Option<(&'b str, Option<&'b str>)>),
     /// error E0433: failed to resolve
-    FailedToResolve(&'b Resolver<'a, 'tcx>, syntax::codemap::Span, &'b str),
+    FailedToResolve(&'b str),
     /// error E0434: can't capture dynamic environment in a fn item
-    CannotCaptureDynamicEnvironmentInFnItem(&'b Resolver<'a, 'tcx>, syntax::codemap::Span),
+    CannotCaptureDynamicEnvironmentInFnItem,
     /// error E0435: attempt to use a non-constant value in a constant
-    AttemptToUseNonConstantValueInConstant(&'b Resolver<'a, 'tcx>, syntax::codemap::Span),
+    AttemptToUseNonConstantValueInConstant,
 }
 
-fn resolve_error<'b, 'a:'b, 'tcx:'a>(resolution_error: &ResolutionError<'b, 'a, 'tcx>) {
+fn resolve_error<'b, 'a:'b, 'tcx:'a>(resolver: &'b Resolver<'a, 'tcx>, span: syntax::codemap::Span,
+                                     resolution_error: &ResolutionError<'b>) {
     match resolution_error {
-        &ResolutionError::TypeParametersFromOuterFunction(resolver, span) => {
+        &ResolutionError::TypeParametersFromOuterFunction => {
             resolve_err!(resolver, span, E0401, "can't use type parameters from \
                                                  outer function; try using a local \
                                                  type parameter instead");
         },
-        &ResolutionError::OuterTypeParameterContext(resolver, span) => {
+        &ResolutionError::OuterTypeParameterContext => {
             resolve_err!(resolver, span, E0402,
                          "cannot use an outer type parameter in this context");
         },
-        &ResolutionError::NameAlreadyUsedInTypeParameterList(resolver, span, name) => {
+        &ResolutionError::NameAlreadyUsedInTypeParameterList(name) => {
             resolve_err!(resolver, span, E0403,
                          "the name `{}` is already used for a type \
                           parameter in this type parameter list", name);
         },
-        &ResolutionError::IsNotATrait(resolver, span, name) => {
+        &ResolutionError::IsNotATrait(name) => {
             resolve_err!(resolver, span, E0404,
                          "`{}` is not a trait",
                          name);
         },
-        &ResolutionError::UndeclaredTraitName(resolver, span, name) => {
+        &ResolutionError::UndeclaredTraitName(name) => {
             resolve_err!(resolver, span, E0405,
                          "use of undeclared trait name `{}`",
                          name);
         },
-        &ResolutionError::UndeclaredAssociatedType(resolver, span) => {
+        &ResolutionError::UndeclaredAssociatedType => {
             resolve_err!(resolver, span, E0406, "undeclared associated type");
         },
-        &ResolutionError::MethodNotMemberOfTrait(resolver, span, method, trait_) => {
+        &ResolutionError::MethodNotMemberOfTrait(method, trait_) => {
             resolve_err!(resolver, span, E0407,
                          "method `{}` is not a member of trait `{}`",
                          method,
                          trait_);
         },
-        &ResolutionError::VariableNotBoundInPattern(resolver, span, variable_name,
-                                                    pattern_number) => {
+        &ResolutionError::VariableNotBoundInPattern(variable_name, pattern_number) => {
             resolve_err!(resolver, span, E0408,
                          "variable `{}` from pattern #1 is not bound in pattern #{}",
                          variable_name,
                          pattern_number);
         },
-        &ResolutionError::VariableBoundWithDifferentMode(resolver, span, variable_name,
-                                                         pattern_number) => {
+        &ResolutionError::VariableBoundWithDifferentMode(variable_name, pattern_number) => {
             resolve_err!(resolver, span, E0409,
                          "variable `{}` is bound with different \
                          mode in pattern #{} than in pattern #1",
                          variable_name,
                          pattern_number);
         },
-        &ResolutionError::VariableNotBoundInParentPattern(resolver, span, variable_name,
-                                                          pattern_number) => {
+        &ResolutionError::VariableNotBoundInParentPattern(variable_name, pattern_number) => {
             resolve_err!(resolver, span, E0410,
                          "variable `{}` from pattern #{} is not bound in pattern #1",
                          variable_name,
                          pattern_number);
         },
-        &ResolutionError::SelfUsedOutsideImplOrTrait(resolver, span) => {
+        &ResolutionError::SelfUsedOutsideImplOrTrait => {
             resolve_err!(resolver, span, E0411, "use of `Self` outside of an impl or trait");
         },
-        &ResolutionError::UseOfUndeclared(resolver, span, kind, name) => {
+        &ResolutionError::UseOfUndeclared(kind, name) => {
             resolve_err!(resolver, span, E0412,
                          "use of undeclared {} `{}`",
                          kind,
                          name);
         },
-        &ResolutionError::DeclarationShadowsEnumVariantOrUnitLikeStruct(resolver, span, name) => {
+        &ResolutionError::DeclarationShadowsEnumVariantOrUnitLikeStruct(name) => {
             resolve_err!(resolver, span, E0413,
                          "declaration of `{}` shadows an enum variant or unit-like struct in \
                           scope",
                          name);
         },
-        &ResolutionError::OnlyIrrefutablePatternsAllowedHere(resolver, span) => {
+        &ResolutionError::OnlyIrrefutablePatternsAllowedHere => {
             resolve_err!(resolver, span, E0414, "only irrefutable patterns allowed here");
         },
-        &ResolutionError::IdentifierBoundMoreThanOnceInParameterList(resolver, span,
-                                                                     identifier) => {
+        &ResolutionError::IdentifierBoundMoreThanOnceInParameterList(identifier) => {
             resolve_err!(resolver, span, E0415,
                          "identifier `{}` is bound more than once in this parameter list",
                          identifier);
         },
-        &ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(resolver, span, identifier) => {
+        &ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(identifier) => {
             resolve_err!(resolver, span, E0416,
                          "identifier `{}` is bound more than once in the same pattern",
                          identifier);
         },
-        &ResolutionError::StaticVariableReference(resolver, span) => {
+        &ResolutionError::StaticVariableReference => {
             resolve_err!(resolver, span, E0417, "static variables cannot be \
                                                  referenced in a pattern, \
                                                  use a `const` instead");
         },
-        &ResolutionError::NotAnEnumVariantStructOrConst(resolver, span, name) => {
+        &ResolutionError::NotAnEnumVariantStructOrConst(name) => {
             resolve_err!(resolver, span, E0418,
                          "`{}` is not an enum variant, struct or const",
                          name);
         },
-        &ResolutionError::UnresolvedEnumVariantStructOrConst(resolver, span, name) => {
+        &ResolutionError::UnresolvedEnumVariantStructOrConst(name) => {
             resolve_err!(resolver, span, E0419,
                          "unresolved enum variant, struct or const `{}`",
                          name);
         },
-        &ResolutionError::NotAnAssociatedConst(resolver, span, name) => {
+        &ResolutionError::NotAnAssociatedConst(name) => {
             resolve_err!(resolver, span, E0420,
                          "`{}` is not an associated const",
                          name);
         },
-        &ResolutionError::UnresolvedAssociatedConst(resolver, span, name) => {
+        &ResolutionError::UnresolvedAssociatedConst(name) => {
             resolve_err!(resolver, span, E0421,
                          "unresolved associated const `{}`",
                          name);
         },
-        &ResolutionError::DoesNotNameAStruct(resolver, span, name) => {
+        &ResolutionError::DoesNotNameAStruct(name) => {
             resolve_err!(resolver, span, E0422, "`{}` does not name a structure", name);
         },
-        &ResolutionError::StructVariantUsedAsFunction(resolver, span, path_name) => {
+        &ResolutionError::StructVariantUsedAsFunction(path_name) => {
             resolve_err!(resolver, span, E0423,
                          "`{}` is a struct variant name, but \
                           this expression \
                           uses it like a function name",
                           path_name);
         },
-        &ResolutionError::SelfNotAvailableInStaticMethod(resolver, span) => {
+        &ResolutionError::SelfNotAvailableInStaticMethod => {
             resolve_err!(resolver, span, E0424, "`self` is not available in a static method. \
                                                  Maybe a `self` argument is missing?");
         },
-        &ResolutionError::UnresolvedName(resolver, span, path, name) => {
+        &ResolutionError::UnresolvedName(path, name) => {
             resolve_err!(resolver, span, E0425,
                          "unresolved name `{}`{}",
                          path,
                          name);
         },
-        &ResolutionError::UndeclaredLabel(resolver, span, name) => {
+        &ResolutionError::UndeclaredLabel(name) => {
             resolve_err!(resolver, span, E0426,
                          "use of undeclared label `{}`",
                          name);
         },
-        &ResolutionError::CannotUseRefBindingModeWith(resolver, span, descr) => {
+        &ResolutionError::CannotUseRefBindingModeWith(descr) => {
             resolve_err!(resolver, span, E0427,
                          "cannot use `ref` binding mode with {}",
                          descr);
         },
-        &ResolutionError::DuplicateDefinition(resolver, span, namespace, name) => {
+        &ResolutionError::DuplicateDefinition(namespace, name) => {
             resolve_err!(resolver, span, E0428,
                          "duplicate definition of {} `{}`",
                          namespace,
                          name);
         },
-        &ResolutionError::SelfImportsOnlyAllowedWithin(resolver, span) => {
+        &ResolutionError::SelfImportsOnlyAllowedWithin => {
             resolve_err!(resolver, span, E0429, "{}",
                          "`self` imports are only allowed within a { } list");
         },
-        &ResolutionError::SelfImportCanOnlyAppearOnceInTheList(resolver, span) => {
+        &ResolutionError::SelfImportCanOnlyAppearOnceInTheList => {
             resolve_err!(resolver, span, E0430,
                          "`self` import can only appear once in the list");
         },
-        &ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix(resolver, span) => {
+        &ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix => {
             resolve_err!(resolver, span, E0431,
                          "`self` import can only appear in an import list with a \
                           non-empty prefix");
         }
-        &ResolutionError::UnresolvedImport(resolver, span, name) => {
+        &ResolutionError::UnresolvedImport(name) => {
             let msg = match name {
                 Some((n, Some(p))) => format!("unresolved import `{}`{}", n, p),
                 Some((n, None)) => format!("unresolved import (maybe you meant `{}::*`?)", n),
@@ -366,15 +354,15 @@ fn resolve_error<'b, 'a:'b, 'tcx:'a>(resolution_error: &ResolutionError<'b, 'a, 
             };
             resolve_err!(resolver, span, E0432, "{}", msg);
         },
-        &ResolutionError::FailedToResolve(resolver, span, msg) => {
+        &ResolutionError::FailedToResolve(msg) => {
             resolve_err!(resolver, span, E0433, "failed to resolve. {}", msg);
         },
-        &ResolutionError::CannotCaptureDynamicEnvironmentInFnItem(resolver, span) => {
+        &ResolutionError::CannotCaptureDynamicEnvironmentInFnItem => {
             resolve_err!(resolver, span, E0434, "{}",
                          "can't capture dynamic environment in a fn item; \
                           use the || { ... } closure form instead");
         },
-        &ResolutionError::AttemptToUseNonConstantValueInConstant(resolver, span) =>{
+        &ResolutionError::AttemptToUseNonConstantValueInConstant =>{
             resolve_err!(resolver, span, E0435,
                          "attempt to use a non-constant value in a constant");
         },
@@ -1575,7 +1563,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                               PathSearch,
                                               true) {
                 Failed(Some((span, msg))) => {
-                    resolve_error(&ResolutionError::FailedToResolve(self, span, &*msg));
+                    resolve_error(self, span, &ResolutionError::FailedToResolve(&*msg));
                 },
                 Failed(None) => (), // Continue up the search chain.
                 Indeterminate => {
@@ -1833,13 +1821,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                          .span_to_snippet((*imports)[index].span)
                          .unwrap();
             if sn.contains("::") {
-                resolve_error(&ResolutionError::UnresolvedImport(self,
-                                                                 (*imports)[index].span,
-                                                                 None));
+                resolve_error(self,
+                              (*imports)[index].span,
+                              &ResolutionError::UnresolvedImport(None));
             } else {
-                resolve_error(&ResolutionError::UnresolvedImport(self,
-                                                                 (*imports)[index].span,
-                                                                 Some((&*sn, None))));
+                resolve_error(self,
+                              (*imports)[index].span,
+                              &ResolutionError::UnresolvedImport(Some((&*sn, None))));
             }
         }
 
@@ -1966,18 +1954,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // named function item. This is not allowed, so we
                             // report an error.
                             resolve_error(
-                                &ResolutionError::CannotCaptureDynamicEnvironmentInFnItem(
-                                    self,
-                                    span)
+                                self,
+                                span,
+                                &ResolutionError::CannotCaptureDynamicEnvironmentInFnItem
                             );
                             return None;
                         }
                         ConstantItemRibKind => {
                             // Still doesn't deal with upvars
                             resolve_error(
-                                &ResolutionError::AttemptToUseNonConstantValueInConstant(
-                                    self,
-                                    span)
+                                self,
+                                span,
+                                &ResolutionError::AttemptToUseNonConstantValueInConstant
                             );
                             return None;
                         }
@@ -1994,13 +1982,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // This was an attempt to use a type parameter outside
                             // its scope.
 
-                            resolve_error(&ResolutionError::TypeParametersFromOuterFunction(self,
-                                                                                            span));
+                            resolve_error(self,
+                                          span,
+                                          &ResolutionError::TypeParametersFromOuterFunction);
                             return None;
                         }
                         ConstantItemRibKind => {
                             // see #9186
-                            resolve_error(&ResolutionError::OuterTypeParameterContext(self, span));
+                            resolve_error(self, span, &ResolutionError::OuterTypeParameterContext);
                             return None;
                         }
                     }
@@ -2198,10 +2187,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     debug!("with_type_parameter_rib: {}", type_parameter.id);
 
                     if seen_bindings.contains(&name) {
-                        resolve_error(&ResolutionError::NameAlreadyUsedInTypeParameterList(
-                                                            self,
-                                                            type_parameter.span,
-                                                            name));
+                        resolve_error(self,
+                                      type_parameter.span,
+                                      &ResolutionError::NameAlreadyUsedInTypeParameterList(
+                                        name)
+                        );
                     }
                     seen_bindings.insert(name);
 
@@ -2288,9 +2278,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 debug!("(resolving trait) found trait def: {:?}", path_res);
                 Ok(path_res)
             } else {
-                resolve_error(&ResolutionError::IsNotATrait(self, trait_path.span,
-                                                            &*path_names_to_string(trait_path,
-                                                                                 path_depth))
+                resolve_error(self,
+                              trait_path.span,
+                              &ResolutionError::IsNotATrait(&*path_names_to_string(trait_path,
+                                                                                   path_depth))
                              );
 
                 // If it's a typedef, give a note
@@ -2301,10 +2292,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 Err(())
             }
         } else {
-            resolve_error(&ResolutionError::UndeclaredTraitName(self,
-                                                                trait_path.span,
-                                                                &*path_names_to_string(trait_path,
-                                                                                     path_depth)));
+            resolve_error(self,
+                          trait_path.span,
+                          &ResolutionError::UndeclaredTraitName(
+                            &*path_names_to_string(trait_path, path_depth))
+                         );
             Err(())
         }
     }
@@ -2322,8 +2314,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if let Some(PathResolution { base_def: DefTyParam(..), .. }) = path_res {
                         self.record_def(eq_pred.id, path_res.unwrap());
                     } else {
-                        resolve_error(&ResolutionError::UndeclaredAssociatedType(self,
-                                                                                 eq_pred.span));
+                        resolve_error(self,
+                                      eq_pred.span,
+                                      &ResolutionError::UndeclaredAssociatedType);
                     }
                 }
             }
@@ -2448,9 +2441,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if let Some((did, ref trait_ref)) = self.current_trait_ref {
             if !self.trait_item_map.contains_key(&(name, did)) {
                 let path_str = path_names_to_string(&trait_ref.path, 0);
-                resolve_error(&ResolutionError::MethodNotMemberOfTrait(self,
-                                                                       span,
-                                                                       name,
+                resolve_error(self,
+                              span,
+                              &ResolutionError::MethodNotMemberOfTrait(name,
                                                                        &*path_str));
             }
         }
@@ -2498,18 +2491,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             for (&key, &binding_0) in &map_0 {
                 match map_i.get(&key) {
                   None => {
-                    resolve_error(&ResolutionError::VariableNotBoundInPattern(self,
-                                                                              p.span,
-                                                                              key,
+                    resolve_error(self,
+                                  p.span,
+                                  &ResolutionError::VariableNotBoundInPattern(key,
                                                                               i + 1));
                   }
                   Some(binding_i) => {
                     if binding_0.binding_mode != binding_i.binding_mode {
-                        resolve_error(&ResolutionError::VariableBoundWithDifferentMode(
-                                                                        self,
-                                                                        binding_i.span,
-                                                                        key,
-                                                                        i + 1)
+                        resolve_error(self,
+                                      binding_i.span,
+                                      &ResolutionError::VariableBoundWithDifferentMode(key,
+                                                                                       i + 1)
                                      );
                     }
                   }
@@ -2518,9 +2510,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             for (&key, &binding) in &map_i {
                 if !map_0.contains_key(&key) {
-                    resolve_error(&ResolutionError::VariableNotBoundInParentPattern(self,
-                                                                                    binding.span,
-                                                                                    key,
+                    resolve_error(self,
+                                  binding.span,
+                                  &ResolutionError::VariableNotBoundInParentPattern(key,
                                                                                     i + 1));
                 }
             }
@@ -2635,12 +2627,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             maybe_qself.is_none() &&
                             path.segments[0].identifier.name == self_type_name;
                         if is_invalid_self_type_name {
-                            resolve_error(&ResolutionError::SelfUsedOutsideImplOrTrait(self,
-                                                                                       ty.span));
+                            resolve_error(self,
+                                          ty.span,
+                                          &ResolutionError::SelfUsedOutsideImplOrTrait);
                         } else {
-                            resolve_error(&ResolutionError::UseOfUndeclared(
-                                                                    self,
-                                                                    ty.span,
+                            resolve_error(self,
+                                          ty.span,
+                                          &ResolutionError::UseOfUndeclared(
                                                                     kind,
                                                                     &*path_names_to_string(path,
                                                                                            0))
@@ -2697,9 +2690,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         FoundStructOrEnumVariant(..) => {
                             resolve_error(
+                                self,
+                                pattern.span,
                                 &ResolutionError::DeclarationShadowsEnumVariantOrUnitLikeStruct(
-                                    self,
-                                    pattern.span,
                                     renamed)
                             );
                         }
@@ -2720,9 +2713,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         FoundConst(..) => {
                             resolve_error(
-                                &ResolutionError::OnlyIrrefutablePatternsAllowedHere(
-                                    self,
-                                    pattern.span)
+                                self,
+                                pattern.span,
+                                &ResolutionError::OnlyIrrefutablePatternsAllowedHere
                             );
                         }
                         BareIdentifierPatternUnresolved => {
@@ -2756,9 +2749,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 // Forbid duplicate bindings in the same
                                 // parameter list.
                                 resolve_error(
+                                    self,
+                                    pattern.span,
                                     &ResolutionError::IdentifierBoundMoreThanOnceInParameterList(
-                                        self,
-                                        pattern.span,
                                         &*token::get_ident(ident))
                                 );
                             } else if bindings_list.get(&renamed) ==
@@ -2766,9 +2759,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 // Then this is a duplicate variable in the
                                 // same disjunction, which is an error.
                                 resolve_error(
+                                    self,
+                                    pattern.span,
                                     &ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(
-                                        self,
-                                        pattern.span,
                                         &*token::get_ident(ident))
                                 );
                             }
@@ -2801,8 +2794,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 self.record_def(pattern.id, path_res);
                             }
                             DefStatic(..) => {
-                                resolve_error(&ResolutionError::StaticVariableReference(&self,
-                                              path.span));
+                                resolve_error(&self,
+                                              path.span,
+                                              &ResolutionError::StaticVariableReference);
                             }
                             _ => {
                                 // If anything ends up here entirely resolved,
@@ -2811,9 +2805,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 // be a `T::CONST` that typeck will resolve.
                                 if path_res.depth == 0 {
                                     resolve_error(
+                                        self,
+                                        path.span,
                                         &ResolutionError::NotAnEnumVariantStructOrConst(
-                                            self,
-                                            path.span,
                                             &*token::get_ident(
                                                 path.segments.last().unwrap().identifier)
                                             )
@@ -2829,9 +2823,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                     } else {
                         resolve_error(
+                            self,
+                            path.span,
                             &ResolutionError::UnresolvedEnumVariantStructOrConst(
-                                self,
-                                path.span,
                                 &*token::get_ident(path.segments.last().unwrap().identifier))
                         );
                     }
@@ -2866,9 +2860,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             }
                             _ => {
                                 resolve_error(
+                                    self,
+                                    path.span,
                                     &ResolutionError::NotAnAssociatedConst(
-                                        self,
-                                        path.span,
                                         &*token::get_ident(
                                             path.segments.last().unwrap().identifier)
                                     )
@@ -2877,9 +2871,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                     } else {
                         resolve_error(
+                            self,
+                            path.span,
                             &ResolutionError::UnresolvedAssociatedConst(
-                                self,
-                                path.span,
                                 &*token::get_ident(path.segments.last().unwrap().identifier)
                             )
                         );
@@ -2895,11 +2889,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         result => {
                             debug!("(resolving pattern) didn't find struct \
                                     def: {:?}", result);
-                            resolve_error(&ResolutionError::DoesNotNameAStruct(
-                                                                self,
-                                                                path.span,
-                                                                &*path_names_to_string(path, 0))
-                                         );
+                            resolve_error(
+                                self,
+                                path.span,
+                                &ResolutionError::DoesNotNameAStruct(
+                                    &*path_names_to_string(path, 0))
+                            );
                         }
                     }
                     visit::walk_path(self, path);
@@ -2945,8 +2940,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 return FoundConst(def, LastMod(AllPublic));
                             }
                             DefStatic(..) => {
-                                resolve_error(&ResolutionError::StaticVariableReference(self,
-                                                                                        span));
+                                resolve_error(self,
+                                              span,
+                                              &ResolutionError::StaticVariableReference);
                                 return BareIdentifierPatternUnresolved;
                             }
                             _ => {
@@ -2963,7 +2959,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Failed(err) => {
                 match err {
                     Some((span, msg)) => {
-                        resolve_error(&ResolutionError::FailedToResolve(self, span, &*msg));
+                        resolve_error(self, span, &ResolutionError::FailedToResolve(&*msg));
                     }
                     None => ()
                 }
@@ -3192,7 +3188,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 };
 
-                resolve_error(&ResolutionError::FailedToResolve(self, span, &*msg));
+                resolve_error(self, span, &ResolutionError::FailedToResolve(&*msg));
                 return None;
             }
             Indeterminate => panic!("indeterminate unexpected"),
@@ -3251,7 +3247,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 };
 
-                resolve_error(&ResolutionError::FailedToResolve(self, span, &*msg));
+                resolve_error(self, span, &ResolutionError::FailedToResolve(&*msg));
                 return None;
             }
 
@@ -3347,7 +3343,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                          failed to resolve {}", name);
 
                 if let Some((span, msg)) = err {
-                    resolve_error(&ResolutionError::FailedToResolve(self, span, &*msg))
+                    resolve_error(self, span, &ResolutionError::FailedToResolve(&*msg))
                 }
 
                 return None;
@@ -3550,9 +3546,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     if let DefVariant(_, _, true) = path_res.base_def {
                         let path_name = path_names_to_string(path, 0);
 
-                        resolve_error(&ResolutionError::StructVariantUsedAsFunction(self,
-                                                                                    expr.span,
-                                                                                    &*path_name));
+                        resolve_error(self,
+                                      expr.span,
+                                      &ResolutionError::StructVariantUsedAsFunction(&*path_name));
 
                         let msg = format!("did you mean to write: \
                                            `{} {{ /* fields */ }}`?",
@@ -3589,9 +3585,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     match type_res.map(|r| r.base_def) {
                         Some(DefTy(struct_id, _))
                             if self.structs.contains_key(&struct_id) => {
-                                resolve_error(&ResolutionError::StructVariantUsedAsFunction(self,
-                                                                                    expr.span,
-                                                                                    &*path_name));
+                                resolve_error(
+                                    self,
+                                    expr.span,
+                                    &ResolutionError::StructVariantUsedAsFunction(
+                                        &*path_name)
+                                );
 
                                 let msg = format!("did you mean to write: \
                                                      `{} {{ /* fields */ }}`?",
@@ -3619,9 +3618,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             if method_scope &&
                                &token::get_name(special_names::self_)[..] == path_name {
                                 resolve_error(
-                                    &ResolutionError::SelfNotAvailableInStaticMethod(
-                                        self,
-                                        expr.span)
+                                    self,
+                                    expr.span,
+                                    &ResolutionError::SelfNotAvailableInStaticMethod
                                 );
                             } else {
                                 let last_name = path.segments.last().unwrap().identifier.name;
@@ -3646,9 +3645,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     msg = format!(". Did you mean {}?", msg)
                                 }
 
-                                resolve_error(&ResolutionError::UnresolvedName(self,
-                                                                               expr.span,
-                                                                               &*path_name,
+                                resolve_error(self,
+                                              expr.span,
+                                              &ResolutionError::UnresolvedName(&*path_name,
                                                                                &*msg));
                             }
                         }
@@ -3667,9 +3666,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     None => {
                         debug!("(resolving expression) didn't find struct def",);
 
-                        resolve_error(&ResolutionError::DoesNotNameAStruct(
-                                                                self,
-                                                                path.span,
+                        resolve_error(self,
+                                      path.span,
+                                      &ResolutionError::DoesNotNameAStruct(
                                                                 &*path_names_to_string(path, 0))
                                      );
                     }
@@ -3696,9 +3695,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let renamed = mtwt::resolve(label);
                 match self.search_label(renamed) {
                     None => {
-                        resolve_error(&ResolutionError::UndeclaredLabel(self,
-                                                                        expr.span,
-                                                                        &*token::get_ident(label)))
+                        resolve_error(self,
+                                      expr.span,
+                                      &ResolutionError::UndeclaredLabel(&*token::get_ident(label)))
                     }
                     Some(DlDef(def @ DefLabel(_))) => {
                         // Since this def is a label, it is never read.
@@ -3844,9 +3843,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match pat_binding_mode {
             BindByValue(_) => {}
             BindByRef(..) => {
-                resolve_error(&ResolutionError::CannotUseRefBindingModeWith(self,
-                                                                            pat.span,
-                                                                            descr));
+                resolve_error(self,
+                              pat.span,
+                              &ResolutionError::CannotUseRefBindingModeWith(descr));
             }
         }
     }
