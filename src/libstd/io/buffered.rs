@@ -18,7 +18,6 @@ use cmp;
 use error;
 use fmt;
 use io::{self, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom};
-use ptr;
 
 /// The `BufReader` struct adds buffering to any reader.
 ///
@@ -308,14 +307,8 @@ impl<W: Write> BufWriter<W> {
             }
         }
         if written > 0 {
-            // NB: would be better expressed as .remove(0..n) if it existed
-            unsafe {
-                ptr::copy(self.buf.as_ptr().offset(written as isize),
-                          self.buf.as_mut_ptr(),
-                          len - written);
-            }
+            self.buf.drain(..written);
         }
-        self.buf.truncate(len - written);
         ret
     }
 
