@@ -20,6 +20,18 @@ def cmd_out(cmdline):
     p = subprocess.Popen(cmdline, stdout=subprocess.PIPE)
     return scrub(p.communicate()[0].strip())
 
+def gdb_version():
+    try:
+        return cmd_out(["gdb", "--version"]).split('\n')[0]
+    except:
+        return ""
+
+def lldb_version():
+    try:
+        return cmd_out(["lldb", "--version"]).split('\n')[0]
+    except:
+        return ""
+
 def scrape_rustc_host_triple():
     output = cmd_out(["rustc", "-Vv"]).split()
     return output[output.index("host:")+1]
@@ -211,14 +223,19 @@ def run_compiletests(rust_root, target, llvm_bin_dir, verbose):
                     ("compile-fail", "compile-fail"),
                     ("compile-fail", "compile-fail-fulldeps"),
                     ("parse-fail", "parse-fail"),
-                    ("pretty", "pretty"),
-                    ("debuginfo-gdb", "debuginfo")] # TODO: detect gdb/lldb
+                    ("pretty", "pretty")]
+    gdb_ver = gdb_version()
+    lldb_ver = lldb_version()
+    if gdb_ver:
+        tests_to_run.append(("debuginfo-gdb", "debuginfo"))
+    if lldb_ver:
+        tests_to_run.append(("debuginfo-lldb", "debuginfo"))
     args = [ctest_exe, "--compile-lib-path", lib_dir,
             "--run-lib-path", rustlib_dir, "--rustc-path", rustc_path,
             "--rustdoc-path", rustdoc_path, "--llvm-bin-path", llvm_bin_dir,
             "--aux-base", aux_base, "--stage-id", stage_id,
             "--target", target, "--host", host, "--python", sys.executable,
-            "--gdb-version", "", "--lldb-version=", "",
+            "--gdb-version", gdb_ver, "--lldb-version=", lldb_ver,
             "--android-cross-path", "", "--adb-path", "", "--adb-test-dir", "",
             "--host-rustcflags", rust_flags, "--target-rustcflags", rust_flags,
             "--lldb-python-dir", ""]
