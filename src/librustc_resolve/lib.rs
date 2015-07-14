@@ -1546,9 +1546,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // We're out of luck.
-        debug!("(resolving name in module) failed to resolve `{}`",
-               &token::get_name(name));
-        return Failed(None);
+        return match name_search_type {
+            ImportSearch => {
+                // In this case, it is possible that we simply chocked on a not-yet-resolved import
+                // (mostly due to globs), thus we do not want to conclude too early that the
+                // resolve is failed. The main resolve_import loop will stop us anyway if it is
+                // indeed unresolved.
+                debug!("(resolving name in module) failed to resolve `{}` for now, bailing out.",
+                       &token::get_name(name));
+                Indeterminate
+            },
+            PathSearch => {
+                debug!("(resolving name in module) failed to resolve `{}`",
+                       &token::get_name(name));
+                Failed(None)
+            }
+        };
     }
 
     fn report_unresolved_imports(&mut self, module_: Rc<Module>) {
