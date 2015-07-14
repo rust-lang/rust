@@ -51,7 +51,7 @@ receivers, see below). If there is an impl for some type `U` and `T` coerces to
 following will not type check, even though it is OK to coerce `t` to `&T` and
 there is an impl for `&T`:
 
-```rust
+```rust,ignore
 trait Trait {}
 
 fn foo<X: Trait>(t: X) {}

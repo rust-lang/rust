@@ -10,8 +10,8 @@ types or lifetimes are logically associated with a struct, but not actually
 part of a field. This most commonly occurs with lifetimes. For instance, the `Iter`
 for `&'a [T]` is (approximately) defined as follows:
 
-```rust
-pub struct Iter<'a, T: 'a> {
+```rust,ignore
+struct Iter<'a, T: 'a> {
     ptr: *const T,
     end: *const T,
 }
@@ -33,7 +33,9 @@ Iter logically contains `&'a T`, so this is exactly what we tell
 the PhantomData to simulate:
 
 ```
-pub struct Iter<'a, T: 'a> {
+use std::marker;
+
+struct Iter<'a, T: 'a> {
     ptr: *const T,
     end: *const T,
     _marker: marker::PhantomData<&'a T>,
@@ -68,6 +70,8 @@ tell dropck that we *do* own values of type T, and may call destructors of that
 type, we must add extra PhantomData:
 
 ```
+use std::marker;
+
 struct Vec<T> {
     data: *const T, // *const for covariance!
     len: usize,
@@ -115,7 +119,7 @@ println!("{} {} {} {}", a, b, c, c2);
 However borrowck doesn't understand arrays or slices in any way, so this doesn't
 work:
 
-```rust
+```rust,ignore
 let x = [1, 2, 3];
 let a = &mut x[0];
 let b = &mut x[1];
@@ -144,7 +148,7 @@ left of the index, and one for everything to the right. Intuitively we know this
 is safe because the slices don't alias. However the implementation requires some
 unsafety:
 
-```rust
+```rust,ignore
 fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
     unsafe {
         let self2: &mut [T] = mem::transmute_copy(&self);
@@ -189,8 +193,8 @@ Whether it's raw pointers, or safely composing on top of *another* IterMut.
 
 For instance, VecDeque's IterMut:
 
-```rust
-pub struct IterMut<'a, T:'a> {
+```rust,ignore
+struct IterMut<'a, T:'a> {
     // The whole backing array. Some of these indices are initialized!
     ring: &'a mut [T],
     tail: usize,

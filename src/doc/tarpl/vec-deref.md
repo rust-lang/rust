@@ -9,7 +9,7 @@ conditions.
 
 All we need is `slice::from_raw_parts`.
 
-```rust
+```rust,ignore
 use std::ops::Deref;
 
 impl<T> Deref for Vec<T> {
@@ -24,7 +24,7 @@ impl<T> Deref for Vec<T> {
 
 And let's do DerefMut too:
 
-```rust
+```rust,ignore
 use std::ops::DerefMut;
 
 impl<T> DerefMut for Vec<T> {

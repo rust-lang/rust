@@ -4,7 +4,7 @@ Like C, all stack variables in Rust are uninitialized until a value is
 explicitly assigned to them. Unlike C, Rust statically prevents you from ever
 reading them until you do:
 
-```rust
+```rust,ignore
 fn main() {
     let x: i32;
     println!("{}", x);
@@ -39,7 +39,7 @@ fn main() {
 
 but this doesn't:
 
-```rust
+```rust,ignore
 fn main() {
     let x: i32;
     if true {

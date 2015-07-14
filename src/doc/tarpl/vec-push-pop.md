@@ -17,7 +17,7 @@ target address with the bits of the value we provide. No evaluation involved.
 For `push`, if the old len (before push was called) is 0, then we want to write
 to the 0th index. So we should offset by the old len.
 
-```rust
+```rust,ignore
 pub fn push(&mut self, elem: T) {
     if self.len == self.cap { self.grow(); }
 
@@ -41,7 +41,7 @@ of T there.
 For `pop`, if the old len is 1, we want to read out of the 0th index. So we
 should offset by the *new* len.
 
-```rust
+```rust,ignore
 pub fn pop(&mut self) -> Option<T> {
     if self.len == 0 {
         None

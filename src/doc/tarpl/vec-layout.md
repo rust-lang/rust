@@ -4,11 +4,13 @@ First off, we need to come up with the struct layout. Naively we want this
 design:
 
 ```rust
-struct Vec<T> {
+pub struct Vec<T> {
     ptr: *mut T,
     cap: usize,
     len: usize,
 }
+
+# fn main() {}
 ```
 
 And indeed this would compile. Unfortunately, it would be incorrect. The compiler
@@ -32,6 +34,8 @@ pub struct Vec<T> {
     cap: usize,
     len: usize,
 }
+
+# fn main() {}
 ```
 
 As a recap, Unique is a wrapper around a raw pointer that declares that:

@@ -51,7 +51,7 @@ impl<T> RawValIter<T> {
 
 And IntoIter becomes the following:
 
-```
+```rust,ignore
 pub struct IntoIter<T> {
     _buf: RawVec<T>, // we don't actually care about this. Just need it to live.
     iter: RawValIter<T>,
@@ -96,7 +96,7 @@ We also take a slice to simplify Drain initialization.
 
 Alright, now Drain is really easy:
 
-```rust
+```rust,ignore
 use std::marker::PhantomData;
 
 pub struct Drain<'a, T: 'a> {
@@ -174,7 +174,7 @@ overflow for zero-sized types.
 Due to our current architecture, all this means is writing 3 guards, one in each
 method of RawVec.
 
-```rust
+```rust,ignore
 impl<T> RawVec<T> {
     fn new() -> Self {
         unsafe {
@@ -194,7 +194,7 @@ impl<T> RawVec<T> {
             // 0, getting to here necessarily means the Vec is overfull.
             assert!(elem_size != 0, "capacity overflow");
 
-            let align = mem::min_align_of::<T>();
+            let align = mem::align_of::<T>();
 
             let (new_cap, ptr) = if self.cap == 0 {
                 let ptr = heap::allocate(elem_size, align);
@@ -223,7 +223,7 @@ impl<T> Drop for RawVec<T> {
 
         // don't free zero-sized allocations, as they were never allocated.
         if self.cap != 0 && elem_size != 0 {
-            let align = mem::min_align_of::<T>();
+            let align = mem::align_of::<T>();
 
             let num_bytes = elem_size * self.cap;
             unsafe {
@@ -247,7 +247,7 @@ initialize `start` and `end` as the same value, and our iterators will yield
 nothing. The current solution to this is to cast the pointers to integers,
 increment, and then cast them back:
 
-```
+```rust,ignore
 impl<T> RawValIter<T> {
     unsafe fn new(slice: &[T]) -> Self {
         RawValIter {
@@ -270,7 +270,7 @@ Also, our size_hint computation code will divide by 0 for ZSTs. Since we'll
 basically be treating the two pointers as if they point to bytes, we'll just
 map size 0 to divide by 1.
 
-```
+```rust,ignore
 impl<T> Iterator for RawValIter<T> {
     type Item = T;
     fn next(&mut self) -> Option<T> {

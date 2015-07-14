@@ -3,7 +3,7 @@
 What the language *does* provide is full-blown automatic destructors through the
 `Drop` trait, which provides the following method:
 
-```rust
+```rust,ignore
 fn drop(&mut self);
 ```
 
@@ -23,13 +23,22 @@ this is totally fine.
 For instance, a custom implementation of `Box` might write `Drop` like this:
 
 ```rust
-struct Box<T>{ ptr: *mut T }
+#![feature(heap_api, core_intrinsics, unique)]
+
+use std::rt::heap;
+use std::ptr::Unique;
+use std::intrinsics::drop_in_place;
+use std::mem;
+
+struct Box<T>{ ptr: Unique<T> }
 
 impl<T> Drop for Box<T> {
     fn drop(&mut self) {
         unsafe {
-            (*self.ptr).drop();
-            heap::deallocate(self.ptr);
+            drop_in_place(*self.ptr);
+            heap::deallocate((*self.ptr) as *mut u8,
+                             mem::size_of::<T>(),
+                             mem::align_of::<T>());
         }
     }
 }
@@ -42,25 +51,36 @@ after-free the `ptr` because the Box is immediately marked as uninitialized.
 However this wouldn't work:
 
 ```rust
-struct Box<T>{ ptr: *mut T }
+#![feature(heap_api, core_intrinsics, unique)]
+
+use std::rt::heap;
+use std::ptr::Unique;
+use std::intrinsics::drop_in_place;
+use std::mem;
+
+struct Box<T>{ ptr: Unique<T> }
 
 impl<T> Drop for Box<T> {
     fn drop(&mut self) {
         unsafe {
-            (*self.ptr).drop();
-            heap::deallocate(self.ptr);
+            drop_in_place(*self.ptr);
+            heap::deallocate((*self.ptr) as *mut u8,
+                             mem::size_of::<T>(),
+                             mem::align_of::<T>());
         }
     }
 }
 
-struct SuperBox<T> { box: Box<T> }
+struct SuperBox<T> { my_box: Box<T> }
 
 impl<T> Drop for SuperBox<T> {
     fn drop(&mut self) {
         unsafe {
             // Hyper-optimized: deallocate the box's contents for it
             // without `drop`ing the contents
-            heap::deallocate(self.box.ptr);
+            heap::deallocate((*self.my_box.ptr) as *mut u8,
+                             mem::size_of::<T>(),
+                             mem::align_of::<T>());
         }
     }
 }
@@ -106,18 +126,27 @@ The classic safe solution to overriding recursive drop and allowing moving out
 of Self during `drop` is to use an Option:
 
 ```rust
-struct Box<T>{ ptr: *mut T }
+#![feature(heap_api, core_intrinsics, unique)]
+
+use std::rt::heap;
+use std::ptr::Unique;
+use std::intrinsics::drop_in_place;
+use std::mem;
+
+struct Box<T>{ ptr: Unique<T> }
 
 impl<T> Drop for Box<T> {
     fn drop(&mut self) {
         unsafe {
-            (*self.ptr).drop();
-            heap::deallocate(self.ptr);
+            drop_in_place(*self.ptr);
+            heap::deallocate((*self.ptr) as *mut u8,
+                             mem::size_of::<T>(),
+                             mem::align_of::<T>());
         }
     }
 }
 
-struct SuperBox<T> { box: Option<Box<T>> }
+struct SuperBox<T> { my_box: Option<Box<T>> }
 
 impl<T> Drop for SuperBox<T> {
     fn drop(&mut self) {
@@ -125,7 +154,11 @@ impl<T> Drop for SuperBox<T> {
             // Hyper-optimized: deallocate the box's contents for it
             // without `drop`ing the contents. Need to set the `box`
             // field as `None` to prevent Rust from trying to Drop it.
-            heap::deallocate(self.box.take().unwrap().ptr);
+            let my_box = self.my_box.take().unwrap();
+            heap::deallocate((*my_box.ptr) as *mut u8,
+                             mem::size_of::<T>(),
+                             mem::align_of::<T>());
+            mem::forget(my_box);
         }
     }
 }

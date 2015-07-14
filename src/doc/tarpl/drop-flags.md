@@ -31,6 +31,7 @@ And even branched code where all branches have the same behaviour with respect
 to initialization:
 
 ```rust
+# let condition = true;
 let mut x = Box::new(0);    // x was uninit; just overwrite.
 if condition {
     drop(x)                 // x gets moved out; make x uninit.
@@ -45,6 +46,7 @@ x = Box::new(0);            // x was uninit; just overwrite.
 However code like this *requires* runtime information to correctly Drop:
 
 ```rust
+# let condition = true;
 let x;
 if condition {
     x = Box::new(0);        // x was uninit; just overwrite.
@@ -56,6 +58,7 @@ if condition {
 Of course, in this case it's trivial to retrieve static drop semantics:
 
 ```rust
+# let condition = true;
 if condition {
     let x = Box::new(0);
     println!("{}", x);

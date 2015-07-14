@@ -68,7 +68,7 @@ unwinding-safe! Easy!
 
 Now consider the following:
 
-```
+```rust,ignore
 let mut vec = vec![Box::new(0); 4];
 
 {
@@ -118,7 +118,7 @@ Nope.
 
 Let's consider a simplified implementation of Rc:
 
-```rust
+```rust,ignore
 struct Rc<T> {
     ptr: *mut RcBox<T>,
 }
@@ -183,7 +183,7 @@ in memory.
 The thread::scoped API intends to allow threads to be spawned that reference
 data on the stack without any synchronization over that data. Usage looked like:
 
-```rust
+```rust,ignore
 let mut data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 {
     let guards = vec![];
@@ -211,7 +211,7 @@ let mut data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 In principle, this totally works! Rust's ownership system perfectly ensures it!
 ...except it relies on a destructor being called to be safe.
 
-```
+```rust,ignore
 let mut data = Box::new(0);
 {
     let guard = thread::scoped(|| {
