@@ -89,7 +89,7 @@ def build_llvm(rust_root, target, force_rebuild, is_release, is_assert):
         profile = "Debug"
     if is_assert:
         profile += "+Asserts"
-    print "Building LLVM for target " + target + " profile " + profile + ":"
+    print("Building LLVM for target " + target + " profile " + profile + ":")
     src_dir = os.path.join(rust_root, "src", "llvm")
     build_dir = llvm_build_dir(rust_root, target)
     # create build dir
@@ -103,7 +103,7 @@ def build_llvm(rust_root, target, force_rebuild, is_release, is_assert):
                                                    is_release, is_assert)
     stamp_file = os.path.join(build_artifacts_dir, "llvm.built.for.rust")
     if os.path.isfile(stamp_file) and not force_rebuild:
-        print "Skipped. Use --rebuild-llvm to override."
+        print("Skipped. Use --rebuild-llvm to override.")
         return                  # no need to build llvm here.
     ncpu = multiprocessing.cpu_count()
     # build llvm
@@ -114,7 +114,7 @@ def build_llvm(rust_root, target, force_rebuild, is_release, is_assert):
         ret = build_llvm_autotools(src_dir, build_dir, target,
                                    ncpu, is_release, is_assert)
     if ret != 0:
-        print "Build failed."
+        print("Build failed.")
         exit(ret)
     # make a note so that we don't rebuild llvm
     with open(stamp_file, "w") as f:
@@ -132,5 +132,5 @@ def get_llvm_bin_dir(rust_root, target, external_llvm_root):
         fwin = os.path.join(bin_dir, "llc.exe")
         if os.path.isfile(f) or os.path.isfile(fwin):
             return bin_dir
-    print "Path " + llvm_root + " does not contain valid LLVM build."
+    print("Path " + llvm_root + " does not contain valid LLVM build.")
     exit(1)

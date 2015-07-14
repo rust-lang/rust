@@ -71,9 +71,9 @@ def build_driver_crate(rust_root, target, is_release, verbose):
         args.append("--verbose")
     ret = subprocess.call(args)
     if ret == 0:
-        print "Build succeeded."
+        print("Build succeeded.")
     else:
-        print "Build failed."
+        print("Build failed.")
         exit(ret)
 
 # build_dir refers to the <rust-root>/target directory
@@ -112,29 +112,29 @@ def copy_rust_dist(build_dir, dest_dir, host, targets, is_release):
 # for now we only build libstd (and all dependencies) docs
 # docs are built by the stage1 compiler
 def build_rust_docs(rust_root, target, verbose):
-    print "Building docs:"
+    print("Building docs:")
     args = ["cargo", "doc", "--target", target, "--manifest-path",
             os.path.join(rust_root, "src", "libstd", "Cargo.toml")]
     if verbose:
         args.append("--verbose")
     ret = subprocess.call(args)
     if ret == 0:
-        print "Cargo doc succeeded."
+        print("Cargo doc succeeded.")
     else:
-        print "Cargo doc failed."
+        print("Cargo doc failed.")
         exit(ret)
     build_rustbook(rust_root, verbose)
 
 # the rustbook crate is built by the stage1 compiler, as a native exe.
 def build_rustbook(rust_root, verbose):
-    print "Building The Rust Programming Language book:"
+    print("Building The Rust Programming Language book:")
     args = ["cargo", "build", "--manifest-path",
             os.path.join(rust_root, "src", "rustbook", "Cargo.toml")]
     if verbose:
         args.append("--verbose")
     ret = subprocess.call(args)
     if ret != 0:
-        print "Building rustbook failed."
+        print("Building rustbook failed.")
         exit(ret)
     rustbook_exe = os.path.join(rust_root, "target", "debug", "rustbook")
     doc_dest = os.path.join(rust_root, "target", "doc")
@@ -147,13 +147,13 @@ def build_rustbook(rust_root, verbose):
     style_dest = os.path.join(doc_dest, "style")
     ret2 = subprocess.call([rustbook_exe, "build", style_src, style_dest])
     if ret1 == 0 and ret2 == 0:
-        print "Done."
+        print("Done.")
     else:
-        print "Rustbook failed."
+        print("Rustbook failed.")
         exit(1)
 
 def run_test_for_crate(rust_root, crate, target, verbose):
-    print "Running " + crate + " tests:"
+    print("Running " + crate + " tests:")
     args = ["cargo", "test", "--target", target, "--manifest-path",
             os.path.join(rust_root, "src", crate, "Cargo.toml")]
     if verbose:
@@ -171,20 +171,20 @@ def run_crate_tests(rust_root, target, verbose):
     clean_build_dirs(rust_root, target, "debug")
     for crate in crates_to_test:
         if run_test_for_crate(rust_root, crate, target, verbose) != 0:
-            print "Tests in crate " + crate + " failed."
+            print("Tests in crate " + crate + " failed.")
 
 # the compiletest crate is built by the stage1 compiler, as a native exe
 def run_compiletests(rust_root, target, llvm_bin_dir, verbose):
-    print "Building compiletest:"
+    print("Building compiletest:")
     args = ["cargo", "build", "--manifest-path",
             os.path.join(rust_root, "src", "compiletest", "Cargo.toml")]
     if verbose:
         args.append("--verbose")
     ret = subprocess.call(args)
     if ret == 0:
-        print "Done."
+        print("Done.")
     else:
-        print "Building compiletest failed."
+        print("Building compiletest failed.")
         exit(ret)
     target_dir = os.path.join(rust_root, "target")
     ctest_exe = os.path.join(target_dir, "debug", "compiletest")
@@ -236,18 +236,18 @@ def run_compiletests(rust_root, target, llvm_bin_dir, verbose):
                              "--mode", test[0], "--logfile", log_file]
         ret = subprocess.call(final_args)
         if ret != 0:
-            print "Compiler test " + test[1] + " failed."
+            print("Compiler test " + test[1] + " failed.")
 
 def build_stage1_rust(rust_root, build,
                       external_llvm_root, is_release, verbose):
-    print "Building stage1 compiler:"
+    print("Building stage1 compiler:")
     set_env_vars(rust_root, build, external_llvm_root)
     build_driver_crate(rust_root, build, is_release, verbose)
-    print "Copying stage1 compiler to target/stage1:"
+    print("Copying stage1 compiler to target/stage1:")
     build_dir = os.path.join(rust_root, "target")
     dest_dir = os.path.join(build_dir, "stage1")
     copy_rust_dist(build_dir, dest_dir, build, [build], is_release)
-    print "Done."
+    print("Done.")
 
 def clean_build_dirs(rust_root, build, profile):
     dir1 = os.path.join(rust_root, "target", profile)
@@ -282,15 +282,15 @@ def build_stage2_rust(rust_root, build, host, targets,
     stage1_dir = os.path.join(build_dir, "stage1")
     switch_rustc(stage1_dir, build)
     for target in targets:
-        print "Building stage2 compiler for target " + target + ":"
+        print("Building stage2 compiler for target " + target + ":")
         set_env_vars(rust_root, target, external_llvm_root)
         build_driver_crate(rust_root, target, is_release, verbose)
     set_env_vars(rust_root, host, llvm_root)
     build_rust_docs(rust_root, host, verbose = verbose)
-    print "Copying stage2 compiler to target/stage2:"
+    print("Copying stage2 compiler to target/stage2:")
     dest_dir = os.path.join(build_dir, "stage2")
     copy_rust_dist(build_dir, dest_dir, host, targets, is_release)
-    print "Done."
+    print("Done.")
 
 
 # main function
@@ -346,17 +346,17 @@ is_assert = args.enable_llvm_assertions
 release_channel = args.release_channel
 
 if release_channel not in ["dev", "nightly", "beta", "stable"]:
-    print "Release channel must be one of 'dev', 'nightly', 'beta', 'stable'"
+    print("Release channel must be one of 'dev', 'nightly', 'beta', 'stable'")
     exit(1)
 elif release_channel == "nightly":
-    print "Nightly builds always have LLVM assertions on."
+    print("Nightly builds always have LLVM assertions on.")
     is_assert = True
-print "Building Rust for release channel " + release_channel + ":"
+print("Building Rust for release channel " + release_channel + ":")
 set_release_channel(release_channel)
 
 # build LLVM
 if llvm_root and ((build != host) or targets.len() > 1):
-    print "--llvm-root is only allowed for native builds."
+    print("--llvm-root is only allowed for native builds.")
     exit(1)
 if not llvm_root:
     force_rebuild = args.rebuild_llvm
@@ -373,7 +373,7 @@ if is_release:
 else:
     profile = "debug"
 if not args.run_tests_only:
-    print "Building Rust with " + profile + " profile:"
+    print("Building Rust with " + profile + " profile:")
     if not args.no_bootstrap:
         build_stage1_rust(rust_root, build, llvm_root,
                           is_release = is_release, verbose = verbose)
