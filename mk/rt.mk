@@ -77,7 +77,7 @@ endif
 
 RT_OUTPUT_DIR_$(1) := $(1)/rt
 
-ifneq ($(1), le32-unknown-nacl)
+ifneq ($$(LLVM_HAS_TARGETMACHINE_$(1)),0)
 else
 # le32-unknown-nacl doesn't have a target machine, so llc chokes.
 # Fortunately, PNaCl object files are just bitcode.
