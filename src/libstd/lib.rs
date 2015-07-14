@@ -14,7 +14,7 @@
 //! software, a set of minimal and battle-tested shared abstractions
 //! for the [broader Rust ecosystem](https://crates.io). It offers
 //! core types (e.g. [`Vec`](vec/index.html)
-//! and[`Option`](option/index.html)), library-defined [operations on
+//! and [`Option`](option/index.html)), library-defined [operations on
 //! language primitives](#primitive) (e.g. [`u32`](u32/index.html) and
 //! [`str`](str/index.html)), [standard macros](#macros),
 //! [I/O](io/index.html) and [multithreading](thread/index.html), among
@@ -32,17 +32,11 @@
 //! [book-crate-root]: ../book/crates-and-modules.html#basic-terminology:-crates-and-modules
 //! [book-use]: ../book/crates-and-modules.html#importing-modules-with-use
 //!
-//! Furthermore, the standard library defines [The Rust
-//! Prelude](prelude/index.html), a small collection of items, mostly
-//! traits, that are imported into every module and through trait
-//! resolution provide Rust with much of its *standard flavor*.
-//!
 //! # How to read this documentation
 //!
 //! If you already know the name of what you are looking for the
 //! fastest way to find it is to use the <a href="#"
-//! onclick="document.getElementsByName('search')[0].focus();">search
-//! bar</a> at the top of the page.
+//! onclick="focusSearchBar();">search bar</a> at the top of the page.
 //!
 //! Otherwise, you may want to jump to one of these useful sections:
 //!
@@ -52,10 +46,10 @@
 //! * [The Rust Prelude](prelude/index.html)
 //!
 //! If this is your first time, the documentation for the standard
-//! library is written to be casually perused and clicking on
-//! interesting things should generally lead you to interesting
-//! places. Still, there are important bits you don't want to miss, so
-//! read on for a tour of the standard library and its documentation.
+//! library is written to be casually perused. Clicking on interesting
+//! things should generally lead you to interesting places. Still,
+//! there are important bits you don't want to miss, so read on for a
+//! tour of the standard library and its documentation!
 //!
 //! Once you are familiar with the contents of the standard library
 //! you may begin to find the verbosity of the prose distracting. At
@@ -81,7 +75,7 @@
 //! includes an overview of the module along with examples, and are
 //! a smart place to start familiarizing yourself with the library.
 //!
-//! Secondly, implicit methods on [primitive
+//! Second, implicit methods on [primitive
 //! types](../book/primitive-types.html) are documented here. This can
 //! be a source of confusion for two reasons:
 //!
@@ -109,17 +103,17 @@
 //! primitive types are documented on their own pages will bring you a
 //! deep inner wisdom. Embrace it now before proceeding.*
 //!
-//! Thirdly, the standard library defines [The Rust
+//! Third, the standard library defines [The Rust
 //! Prelude](prelude/index.html), a small collection of items - mostly
-//! traits - that are imported into every module. The traits in the
-//! prelude are pervasive, making the prelude documentation a good
-//! entry point to learning about the library.
+//! traits - that are imported into every module of every crate. The
+//! traits in the prelude are pervasive, making the prelude
+//! documentation a good entry point to learning about the library.
 //!
-//! And lastly, the standard library exports a number of standard
+//! And finally, the standard library exports a number of standard
 //! macros, and [lists them on this page](#macros) (technically, not
 //! all of the standard macros are defined by the standard library -
 //! some are defined by the compiler - but they are documented here
-//! the same).  Like the prelude, the standard macros are imported by
+//! the same). Like the prelude, the standard macros are imported by
 //! default into all crates.
 //!
 //! # A Tour of The Rust Standard Library
@@ -136,18 +130,28 @@
 //! [`Iterator`](iter/trait.Iterator.html), which works with the `for`
 //! loop to access collections.
 //!
-//! The common container type, `Vec`, a growable vector backed by an
-//! array, lives in the [`vec`](vec/index.html) module. Contiguous,
-//! unsized regions of memory, `[T]`, commonly called "slices", and
-//! their borrowed versions, `&[T]`, commonly called "borrowed
-//! slices", are primitive types [with many implicit
-//! methods](primitive.slice.html) defined by the standard library.
+//! The standard library exposes 3 common ways to deal with contiguous
+//! regions of memory:
+//! 
+//! * [`Vec<T>`](vec/index.html) - A heap-allocated *vector* that is
+//! resizable at runtime.
+//! * [`[T; n]`](primitive.array.html) - An inline *array* with a
+//! fixed size at compile time.
+//! * [`[T]`](primitive.slice.html) - A dynamically sized *slice* into
+//! any other kind of contiguous storage, whether heap-allocated or
+//! not.
 //!
-//! `str`, a UTF-8 string, is a primitive type, and the standard
-//! library defines [many methods for it](primitive.str.html).
-//! Rust `str`s are immutable; use the owned `String` type
-//! defined in [`string`](string/index.html) for building and mutating
-//! strings.
+//! Slices can only be handled through some kind of *pointer*, and as
+//! such come in many flavours such as:
+//!
+//! * `&[T]` - *shared slice*
+//! * `&mut [T]` - *mutable slice*
+//! * [`Box<[T]>`](boxed/index.html) - *owned slice*
+//!    
+//! `str`, a UTF-8 string slice, is a primitive type, and the standard
+//! library defines [many methods for it](primitive.str.html).  Rust
+//! `str`s are immutable; use the owned `String` type defined in
+//! [`string`](string/index.html) for building and mutating strings.
 //!
 //! For converting to strings use the [`format!`](fmt/index.html)
 //! macro, and for converting from strings use the

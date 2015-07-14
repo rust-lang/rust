@@ -951,3 +951,8 @@
     }());
 
 }());
+
+// Sets the focus on the search bar at the top of the page
+function focusSearchBar() {
+    document.getElementsByName('search')[0].focus();
+}
