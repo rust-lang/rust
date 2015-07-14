@@ -335,6 +335,33 @@ This error indicates that an attempt was made to divide by zero (or take the
 remainder of a zero divisor) in a static or constant expression.
 "##,
 
+E0038: r##"
+It is not allowed to create a trait object value for a trait that is not object
+safe.  Traits are object safe only if all these conditions are met:
+
+ - the trait does not have `Self: Sized` as a bound, to enforce the abstraction
+   of an unknown underlying implementation with potentially arbitrary size
+   ("the trait cannot require that `Self : Sized`"),
+
+ - any supertrait predicates bounding the trait do not have `Self` ("the trait
+   cannot use `Self` as a type parameter in the supertrait listing"), and
+
+ - all methods defined by the trait have a receiver; methods must accept `self`
+   (or some variation thereof) as exactly the first argument, and stopping trait
+   objects from enforcing the existence of static methods ("method `...` has no
+   receiver"),
+
+ - no method defined references `Self` anywhere except on the receiver ("method
+   `...` references the `Self` type in its arguments or return type"), and
+
+ - no method defined has generic type parameters ("method `...` has generic type
+   parameters").
+
+See [RFC 255] for more details on object safety for trait objects.
+
+[RFC 255]: https://github.com/rust-lang/rfcs/blob/master/text/0255-object-safety.md
+"##,
+
 E0079: r##"
 Enum variants which contain no data can be given a custom integer
 representation. This error indicates that the value provided is not an
@@ -1203,7 +1230,6 @@ contain references (with a maximum lifetime of `'a`).
 register_diagnostics! {
     E0017,
     E0022,
-    E0038,
 //  E0134,
 //  E0135,
     E0136,
