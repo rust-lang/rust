@@ -532,7 +532,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ref_id: def.def_id(),
                 })
             }
-            def::DefStruct(def_id) | def::DefTy(def_id, _) => {
+            def::DefStruct(def_id) |
+            def::DefTy(def_id, _) |
+            def::DefTrait(def_id) |
+            def::DefTyParam(_, _, def_id, _) => {
                 Data::TypeRefData(TypeRefData {
                     span: sub_span.unwrap(),
                     ref_id: def_id,
