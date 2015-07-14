@@ -30,6 +30,8 @@
 	* [Destructors](destructors.md)
 	* [Leaking](leaking.md)
 * [Unwinding](unwinding.md)
+	* [Exception Safety](exception-safety.md)
+	* [Poisoning](poisoning.md)
 * [Concurrency](concurrency.md)
 	* [Races](races.md)
 	* [Send and Sync](send-and-sync.md)
