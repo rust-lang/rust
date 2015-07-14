@@ -163,9 +163,14 @@ pub struct MethodCallData {
 
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
-    pub fn new(tcx: &'l ty::ctxt<'tcx>,
-               span_utils: SpanUtils<'l>)
-               -> SaveContext<'l, 'tcx> {
+    pub fn new(tcx: &'l ty::ctxt<'tcx>) -> SaveContext <'l, 'tcx> {
+        let span_utils = SpanUtils::new(&tcx.sess);
+        SaveContext::from_span_utils(tcx, span_utils)
+    }
+
+    pub fn from_span_utils(tcx: &'l ty::ctxt<'tcx>,
+                           span_utils: SpanUtils<'l>)
+                           -> SaveContext<'l, 'tcx> {
         SaveContext {
             tcx: tcx,
             span_utils: span_utils,
