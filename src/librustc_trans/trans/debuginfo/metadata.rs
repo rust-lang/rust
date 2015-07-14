@@ -813,8 +813,14 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         ty::TyClosure(def_id, substs) => {
             let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
-            let sig = infcx.closure_type(def_id, substs).sig;
-            subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)
+            let upvars = infcx.closure_upvars(def_id, substs).unwrap();
+            let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
+
+            prepare_tuple_metadata(cx,
+                                   t,
+                                   &upvar_types[..],
+                                   unique_type_id,
+                                   usage_site_span).finalize(cx)
         }
         ty::TyStruct(def_id, substs) => {
             prepare_struct_metadata(cx,
