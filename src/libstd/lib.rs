@@ -132,7 +132,7 @@
 //!
 //! The standard library exposes 3 common ways to deal with contiguous
 //! regions of memory:
-//! 
+//!
 //! * [`Vec<T>`](vec/index.html) - A heap-allocated *vector* that is
 //! resizable at runtime.
 //! * [`[T; n]`](primitive.array.html) - An inline *array* with a
@@ -147,10 +147,11 @@
 //! * `&[T]` - *shared slice*
 //! * `&mut [T]` - *mutable slice*
 //! * [`Box<[T]>`](boxed/index.html) - *owned slice*
-//!    
+//!
 //! `str`, a UTF-8 string slice, is a primitive type, and the standard
-//! library defines [many methods for it](primitive.str.html).  Rust
-//! `str`s are immutable; use the owned `String` type defined in
+//! library defines [many methods for it](primitive.str.html). Rust
+//! `str`s are typically accessed as immutable references: `&mut
+//! str`. Use the owned `String` type defined in
 //! [`string`](string/index.html) for building and mutating strings.
 //!
 //! For converting to strings use the [`format!`](fmt/index.html)
