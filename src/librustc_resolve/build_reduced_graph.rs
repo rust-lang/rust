@@ -26,6 +26,7 @@ use ParentLink::{self, ModuleParentLink, BlockParentLink};
 use Resolver;
 use resolve_imports::Shadowable;
 use TypeNsDef;
+use {resolve_error, ResolutionError};
 
 use self::DuplicateCheckingMode::*;
 use self::NamespaceError::*;
@@ -208,12 +209,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     // Return an error here by looking up the namespace that
                     // had the duplicate.
                     let ns = ns.unwrap();
-                    ::resolve_error(
+                    resolve_error(
                         self,
                         sp,
-                        &::ResolutionError::DuplicateDefinition(
+                        ResolutionError::DuplicateDefinition(
                             namespace_error_to_string(duplicate_type),
-                            &*token::get_name(name))
+                            name)
                     );
                     {
                         let r = child.span_for_namespace(ns);
@@ -307,9 +308,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                             full_path.segments.last().unwrap().identifier.name;
                         if &token::get_name(source_name)[..] == "mod" ||
                            &token::get_name(source_name)[..] == "self" {
-                            ::resolve_error(self,
+                            resolve_error(self,
                                             view_path.span,
-                                            &::ResolutionError::SelfImportsOnlyAllowedWithin
+                                            ResolutionError::SelfImportsOnlyAllowedWithin
                             );
                         }
 
@@ -330,10 +331,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                             _ => None
                         }).collect::<Vec<Span>>();
                         if mod_spans.len() > 1 {
-                            ::resolve_error(
+                            resolve_error(
                                 self,
                                 mod_spans[0],
-                                &::ResolutionError::SelfImportCanOnlyAppearOnceInTheList
+                                ResolutionError::SelfImportCanOnlyAppearOnceInTheList
                             );
                             for other_span in mod_spans.iter().skip(1) {
                                 self.session.span_note(*other_span,
@@ -349,10 +350,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                     let name = match module_path.last() {
                                         Some(name) => *name,
                                         None => {
-                                            ::resolve_error(
+                                            resolve_error(
                                                 self,
                                                 source_item.span,
-                                                &::ResolutionError::
+                                                ResolutionError::
                                                 SelfImportOnlyInImportListWithNonEmptyPrefix
                                             );
                                             continue;

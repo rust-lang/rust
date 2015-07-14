@@ -22,6 +22,7 @@ use ResolveResult;
 use Resolver;
 use UseLexicalScopeFlag;
 use {names_to_string, module_to_string};
+use {resolve_error, ResolutionError};
 
 use build_reduced_graph;
 
@@ -272,9 +273,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         Some((span, msg)) => (span, format!(". {}", msg)),
                         None => (import_directive.span, String::new())
                     };
-                    ::resolve_error(self.resolver,
+                    resolve_error(self.resolver,
                                     span,
-                                    &::ResolutionError::UnresolvedImport(
+                                    ResolutionError::UnresolvedImport(
                                                 Some((&*import_path_to_string(
                                                         &import_directive.module_path,
                                                         import_directive.subclass),
