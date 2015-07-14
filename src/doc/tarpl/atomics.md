@@ -2,21 +2,22 @@
 
 Rust pretty blatantly just inherits C11's memory model for atomics. This is not
 due this model being particularly excellent or easy to understand. Indeed, this
-model is quite complex and known to have [several flaws][C11-busted]. Rather,
-it is a pragmatic concession to the fact that *everyone* is pretty bad at modeling
+model is quite complex and known to have [several flaws][C11-busted]. Rather, it
+is a pragmatic concession to the fact that *everyone* is pretty bad at modeling
 atomics. At very least, we can benefit from existing tooling and research around
 C.
 
 Trying to fully explain the model in this book is fairly hopeless. It's defined
-in terms of madness-inducing causality graphs that require a full book to properly
-understand in a practical way. If you want all the nitty-gritty details, you
-should check out [C's specification (Section 7.17)][C11-model]. Still, we'll try
-to cover the basics and some of the problems Rust developers face.
+in terms of madness-inducing causality graphs that require a full book to
+properly understand in a practical way. If you want all the nitty-gritty
+details, you should check out [C's specification (Section 7.17)][C11-model].
+Still, we'll try to cover the basics and some of the problems Rust developers
+face.
 
-The C11 memory model is fundamentally about trying to bridge the gap between
-the semantics we want, the optimizations compilers want, and the inconsistent
-chaos our hardware wants. *We* would like to just write programs and have them
-do exactly what we said but, you know, *fast*. Wouldn't that be great?
+The C11 memory model is fundamentally about trying to bridge the gap between the
+semantics we want, the optimizations compilers want, and the inconsistent chaos
+our hardware wants. *We* would like to just write programs and have them do
+exactly what we said but, you know, *fast*. Wouldn't that be great?
 
 
 
@@ -41,13 +42,14 @@ x = 2;
 y = 3;
 ```
 
-This has inverted the order of events *and* completely eliminated one event. From
-a single-threaded perspective this is completely unobservable: after all the
-statements have executed we are in exactly the same state. But if our program is
-multi-threaded, we may have been relying on `x` to *actually* be assigned to 1 before
-`y` was assigned. We would *really* like the compiler to be able to make these kinds
-of optimizations, because they can seriously improve performance. On the other hand,
-we'd really like to be able to depend on our program *doing the thing we said*.
+This has inverted the order of events *and* completely eliminated one event.
+From a single-threaded perspective this is completely unobservable: after all
+the statements have executed we are in exactly the same state. But if our
+program is multi-threaded, we may have been relying on `x` to *actually* be
+assigned to 1 before `y` was assigned. We would *really* like the compiler to be
+able to make these kinds of optimizations, because they can seriously improve
+performance. On the other hand, we'd really like to be able to depend on our
+program *doing the thing we said*.
 
 
 
@@ -55,19 +57,20 @@ we'd really like to be able to depend on our program *doing the thing we said*.
 # Hardware Reordering
 
 On the other hand, even if the compiler totally understood what we wanted and
-respected our wishes, our *hardware* might instead get us in trouble. Trouble comes
-from CPUs in the form of memory hierarchies. There is indeed a global shared memory
-space somewhere in your hardware, but from the perspective of each CPU core it is
-*so very far away* and *so very slow*. Each CPU would rather work with its local
-cache of the data and only go through all the *anguish* of talking to shared
-memory *only* when it doesn't actually have that memory in cache.
+respected our wishes, our *hardware* might instead get us in trouble. Trouble
+comes from CPUs in the form of memory hierarchies. There is indeed a global
+shared memory space somewhere in your hardware, but from the perspective of each
+CPU core it is *so very far away* and *so very slow*. Each CPU would rather work
+with its local cache of the data and only go through all the *anguish* of
+talking to shared memory *only* when it doesn't actually have that memory in
+cache.
 
 After all, that's the whole *point* of the cache, right? If every read from the
 cache had to run back to shared memory to double check that it hadn't changed,
 what would the point be? The end result is that the hardware doesn't guarantee
-that events that occur in the same order on *one* thread, occur in the same order
-on *another* thread. To guarantee this, we must issue special instructions to
-the CPU telling it to be a bit less smart.
+that events that occur in the same order on *one* thread, occur in the same
+order on *another* thread. To guarantee this, we must issue special instructions
+to the CPU telling it to be a bit less smart.
 
 For instance, say we convince the compiler to emit this logic:
 
@@ -82,27 +85,27 @@ x = 1;              y *= 2;
 
 Ideally this program has 2 possible final states:
 
-* `y = 3`: (thread 2 did the check before thread 1 completed)
-* `y = 6`: (thread 2 did the check after thread 1 completed)
+* `y = 3`: (thread 2 did the check before thread 1 completed) y = 6`: (thread 2
+* `did the check after thread 1 completed)
 
 However there's a third potential state that the hardware enables:
 
 * `y = 2`: (thread 2 saw `x = 2`, but not `y = 3`, and then overwrote `y = 3`)
 
 It's worth noting that different kinds of CPU provide different guarantees. It
-is common to seperate hardware into two categories: strongly-ordered and weakly-
-ordered. Most notably x86/64 provides strong ordering guarantees, while ARM and
-provides weak ordering guarantees. This has two consequences for
-concurrent programming:
+is common to separate hardware into two categories: strongly-ordered and weakly-
+ordered. Most notably x86/64 provides strong ordering guarantees, while ARM
+provides weak ordering guarantees. This has two consequences for concurrent
+programming:
 
 * Asking for stronger guarantees on strongly-ordered hardware may be cheap or
   even *free* because they already provide strong guarantees unconditionally.
   Weaker guarantees may only yield performance wins on weakly-ordered hardware.
 
-* Asking for guarantees that are *too* weak on strongly-ordered hardware
-  is more likely to *happen* to work, even though your program is strictly
-  incorrect. If possible, concurrent algorithms should be tested on
-  weakly-ordered hardware.
+* Asking for guarantees that are *too* weak on strongly-ordered hardware   is
+  more likely to *happen* to work, even though your program is strictly
+  incorrect. If possible, concurrent algorithms should be tested on   weakly-
+  ordered hardware.
 
 
 
@@ -110,58 +113,54 @@ concurrent programming:
 
 # Data Accesses
 
-The C11 memory model attempts to bridge the gap by allowing us to talk about
-the *causality* of our program. Generally, this is by establishing a
-*happens before* relationships between parts of the program and the threads
-that are running them. This gives the hardware and compiler room to optimize the
-program more aggressively where a strict happens-before relationship isn't
-established, but forces them to be more careful where one *is* established.
-The way we communicate these relationships are through *data accesses* and
-*atomic accesses*.
+The C11 memory model attempts to bridge the gap by allowing us to talk about the
+*causality* of our program. Generally, this is by establishing a *happens
+before* relationships between parts of the program and the threads that are
+running them. This gives the hardware and compiler room to optimize the program
+more aggressively where a strict happens-before relationship isn't established,
+but forces them to be more careful where one *is* established. The way we
+communicate these relationships are through *data accesses* and *atomic
+accesses*.
 
 Data accesses are the bread-and-butter of the programming world. They are
 fundamentally unsynchronized and compilers are free to aggressively optimize
-them. In particular, data accesses are free to be reordered by the compiler
-on the assumption that the program is single-threaded. The hardware is also free
-to propagate the changes made in data accesses to other threads
-as lazily and inconsistently as it wants. Mostly critically, data accesses are
-how data races happen. Data accesses are very friendly to the hardware and
-compiler, but as we've seen they offer *awful* semantics to try to
-write synchronized code with. Actually, that's too weak. *It is literally
-impossible to write correct synchronized code using only data accesses*.
+them. In particular, data accesses are free to be reordered by the compiler on
+the assumption that the program is single-threaded. The hardware is also free to
+propagate the changes made in data accesses to other threads as lazily and
+inconsistently as it wants. Mostly critically, data accesses are how data races
+happen. Data accesses are very friendly to the hardware and compiler, but as
+we've seen they offer *awful* semantics to try to write synchronized code with.
+Actually, that's too weak. *It is literally impossible to write correct
+synchronized code using only data accesses*.
 
 Atomic accesses are how we tell the hardware and compiler that our program is
-multi-threaded. Each atomic access can be marked with
-an *ordering* that specifies what kind of relationship it establishes with
-other accesses. In practice, this boils down to telling the compiler and hardware
-certain things they *can't* do. For the compiler, this largely revolves
-around re-ordering of instructions. For the hardware, this largely revolves
-around how writes are propagated to other threads. The set of orderings Rust
-exposes are:
+multi-threaded. Each atomic access can be marked with an *ordering* that
+specifies what kind of relationship it establishes with other accesses. In
+practice, this boils down to telling the compiler and hardware certain things
+they *can't* do. For the compiler, this largely revolves around re-ordering of
+instructions. For the hardware, this largely revolves around how writes are
+propagated to other threads. The set of orderings Rust exposes are:
 
-* Sequentially Consistent (SeqCst)
-* Release
-* Acquire
-* Relaxed
+* Sequentially Consistent (SeqCst) Release Acquire Relaxed
 
 (Note: We explicitly do not expose the C11 *consume* ordering)
 
-TODO: negative reasoning vs positive reasoning?
-TODO: "can't forget to synchronize"
+TODO: negative reasoning vs positive reasoning? TODO: "can't forget to
+synchronize"
 
 
 
 # Sequentially Consistent
 
 Sequentially Consistent is the most powerful of all, implying the restrictions
-of all other orderings. Intuitively, a sequentially consistent operation *cannot*
-be reordered: all accesses on one thread that happen before and after it *stay*
-before and after it. A data-race-free program that uses only sequentially consistent
-atomics and data accesses has the very nice property that there is a single global
-execution of the program's instructions that all threads agree on. This execution
-is also particularly nice to reason about: it's just an interleaving of each thread's
-individual executions. This *does not* hold if you start using the weaker atomic
-orderings.
+of all other orderings. Intuitively, a sequentially consistent operation
+*cannot* be reordered: all accesses on one thread that happen before and after a
+SeqCst access *stay* before and after it. A data-race-free program that uses
+only sequentially consistent atomics and data accesses has the very nice
+property that there is a single global execution of the program's instructions
+that all threads agree on. This execution is also particularly nice to reason
+about: it's just an interleaving of each thread's individual executions. This
+*does not* hold if you start using the weaker atomic orderings.
 
 The relative developer-friendliness of sequential consistency doesn't come for
 free. Even on strongly-ordered platforms sequential consistency involves
@@ -173,26 +172,26 @@ confident about the other memory orders. Having your program run a bit slower
 than it needs to is certainly better than it running incorrectly! It's also
 *mechanically* trivial to downgrade atomic operations to have a weaker
 consistency later on. Just change `SeqCst` to e.g. `Relaxed` and you're done! Of
-course, proving that this transformation is *correct* is whole other matter.
+course, proving that this transformation is *correct* is a whole other matter.
 
 
 
 
 # Acquire-Release
 
-Acquire and Release are largely intended to be paired. Their names hint at
-their use case: they're perfectly suited for acquiring and releasing locks,
-and ensuring that critical sections don't overlap.
+Acquire and Release are largely intended to be paired. Their names hint at their
+use case: they're perfectly suited for acquiring and releasing locks, and
+ensuring that critical sections don't overlap.
 
 Intuitively, an acquire access ensures that every access after it *stays* after
 it. However operations that occur before an acquire are free to be reordered to
 occur after it. Similarly, a release access ensures that every access before it
-*stays* before it. However operations that occur after a release are free to
-be reordered to occur before it.
+*stays* before it. However operations that occur after a release are free to be
+reordered to occur before it.
 
 When thread A releases a location in memory and then thread B subsequently
 acquires *the same* location in memory, causality is established. Every write
-that happened *before* A's release will be observed by B *after* it's release.
+that happened *before* A's release will be observed by B *after* its release.
 However no causality is established with any other threads. Similarly, no
 causality is established if A and B access *different* locations in memory.
 
