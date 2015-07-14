@@ -149,9 +149,9 @@ impl Ipv4Addr {
     /// - 203.0.113.0/24 (TEST-NET-3)
     pub fn is_documentation(&self) -> bool {
         match(self.octets()[0], self.octets()[1], self.octets()[2], self.octets()[3]) {
-            (192, _, 2, _) => true,
+            (192, 0, 2, _) => true,
             (198, 51, 100, _) => true,
-            (203, _, 113, _) => true,
+            (203, 0, 113, _) => true,
             _ => false
         }
     }
@@ -694,11 +694,15 @@ mod tests {
         check(&[127, 1, 2, 3],       false, true,  false, false, false, false,    false,  false);
         check(&[172, 31, 254, 253],  false, false, true,  false, false, false,    false,  false);
         check(&[169, 254, 253, 242], false, false, false, true,  false, false,    false,  false);
+        check(&[192, 0, 2, 183],     false, false, false, false, false, false,    false,  true);
+        check(&[192, 1, 2, 183],     false, false, false, false, true,  false,    false,  false);
         check(&[192, 168, 254, 253], false, false, true,  false, false, false,    false,  false);
+        check(&[198, 51, 100, 0],    false, false, false, false, false, false,    false,  true);
+        check(&[203, 0, 113, 0],     false, false, false, false, false, false,    false,  true);
+        check(&[203, 2, 113, 0],     false, false, false, false, true,  false,    false,  false);
         check(&[224, 0, 0, 0],       false, false, false, false, true,  true,     false,  false);
         check(&[239, 255, 255, 255], false, false, false, false, true,  true,     false,  false);
-        check(&[255, 255, 255, 255], false, false, false, false, false, false,    true,  false);
-        check(&[198, 51, 100, 0],    false, false, false, false, false, false,    false,  true);
+        check(&[255, 255, 255, 255], false, false, false, false, false, false,    true,   false);
     }
 
     #[test]
