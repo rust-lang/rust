@@ -40,11 +40,14 @@
 #![allow(non_camel_case_types)]
 #![allow(missing_docs)]
 
+#[cfg(all(target_os = "nacl", target_arch = "le32"))]
+use {cmp, ops};
+
 macro_rules! pnacl_abi_workaround_arithmetic (
     ($ty:ident) => {
         #[cfg(all(target_os = "nacl", target_arch = "le32"))]
         impl cmp::PartialEq for $ty {
-            fn eq(self, rhs: $ty) -> bool {
+            fn eq(&self, rhs: &$ty) -> bool {
                 self.0 == rhs.0 && self.1 == rhs.1
             }
         }
@@ -109,24 +112,17 @@ macro_rules! pnacl_abi_workaround_bit (
             }
         }
         #[cfg(all(target_os = "nacl", target_arch = "le32"))]
-        impl ops::Shl for $ty {
+        impl ops::Shl<$ty> for $ty {
             type Output = $ty;
             fn shl(self, rhs: $ty) -> $ty {
                 $ty(self.0 << rhs.0, self.1 << rhs.1)
             }
         }
         #[cfg(all(target_os = "nacl", target_arch = "le32"))]
-        impl ops::Shr for $ty {
+        impl ops::Shr<$ty> for $ty {
             type Output = $ty;
             fn shr(self, rhs: $ty) -> $ty {
                 $ty(self.0 >> rhs.0, self.1 >> rhs.1)
-            }
-        }
-        #[cfg(all(target_os = "nacl", target_arch = "le32"))]
-        impl ops::Neg for $ty {
-            type Output = $ty;
-            fn neg(self) -> $ty {
-                $ty(-self.0, -self.1)
             }
         }
         #[cfg(all(target_os = "nacl", target_arch = "le32"))]
@@ -220,5 +216,4 @@ pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
 #[repr(C)]
 pub struct f64x2(pub f64, pub f64);
 pnacl_abi_workaround_arithmetic!(f64x2);
-pnacl_abi_workaround_bit!(f64x2);
 pnacl_abi_workaround_signed!(f64x2);
