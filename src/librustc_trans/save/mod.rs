@@ -548,13 +548,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     let ti = self.tcx.impl_or_trait_item(decl_id);
                     match provenence {
                         def::FromTrait(def_id) => {
-                            Some(self.tcx.trait_items(def_id)
-                                    .iter()
-                                    .find(|mr| {
-                                        mr.name() == ti.name()
-                                    })
-                                    .unwrap()
-                                    .def_id())
+                            self.tcx.trait_items(def_id)
+                                .iter()
+                                .find(|mr| {
+                                    mr.name() == ti.name() && self.trait_method_has_body(mr)
+                                })
+                                .map(|mr| mr.def_id())
                         }
                         def::FromImpl(def_id) => {
                             let impl_items = self.tcx.impl_items.borrow();
@@ -591,6 +590,20 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                                   up path in `{}`: `{:?}`",
                                                  self.span_utils.snippet(path.span),
                                                  def)),
+        }
+    }
+
+    fn trait_method_has_body(&self, mr: &ty::ImplOrTraitItem) -> bool {
+        let def_id = mr.def_id();
+        if def_id.krate != ast::LOCAL_CRATE {
+            return false;
+        }
+
+        let trait_item = self.tcx.map.expect_trait_item(def_id.node);
+        if let ast::TraitItem_::MethodTraitItem(_, Some(_)) = trait_item.node {
+            true
+        } else {
+            false
         }
     }
 
