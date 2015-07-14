@@ -90,8 +90,9 @@ def build_driver_crate(rust_root, target, is_release, verbose):
         print("Build failed.")
         exit(ret)
 
-# build_dir refers to the <rust-root>/target directory
-def copy_rust_dist(build_dir, dest_dir, host, targets, is_release):
+def copy_rust_dist(rust_root, stage, host, targets, is_release):
+    build_dir = os.path.join(rust_root, "target")
+    dest_dir = os.path.join(build_dir, stage)
     if is_release:
         profile = "release"
     else:
@@ -257,27 +258,35 @@ def run_compiletests(rust_root, target, llvm_bin_dir, verbose):
         if ret != 0:
             print("Compiler test " + test[1] + " failed.")
 
-def build_stage1_rust(rust_root, build,
-                      external_llvm_root, is_release, verbose):
-    print("Building stage1 compiler:")
-    set_env_vars(rust_root, build, external_llvm_root)
-    build_driver_crate(rust_root, build, is_release, verbose)
-    print("Copying stage1 compiler to target/stage1:")
-    build_dir = os.path.join(rust_root, "target")
-    dest_dir = os.path.join(build_dir, "stage1")
-    copy_rust_dist(build_dir, dest_dir, build, [build], is_release)
+def build_rust_stage(rust_root, build, host, targets, stage,
+                     external_llvm_root, is_release, verbose):
+    if stage != "stage2":
+        compiler_host = build
+        targets_to_build = [build]
+    else:
+        compiler_host = host
+        targets_to_build = targets
+    for target in targets_to_build:
+        print("Building " + stage + " compiler for target " + target + ":")
+        set_env_vars(rust_root, target, external_llvm_root)
+        build_driver_crate(rust_root, target, is_release, verbose)
+    print("Copying " + stage + " compiler to target/" + stage + ":")
+    copy_rust_dist(rust_root, stage, compiler_host,
+                   targets_to_build, is_release)
+    switch_rustc(stage, compiler_host)
     print("Done.")
 
-def clean_build_dirs(rust_root, build, profile):
+def clean_build_dirs(rust_root, target, profile):
     dir1 = os.path.join(rust_root, "target", profile)
-    dir2 = os.path.join(rust_root, "target", build, profile)
+    dir2 = os.path.join(rust_root, "target", target, profile)
     shutil.rmtree(dir1, ignore_errors = True)
     shutil.rmtree(dir2, ignore_errors = True)
 
-# switch to the rustc in the specified sysroot
-def switch_rustc(sysroot, host):
+# switch to the stagei rustc
+def switch_rustc(stage, compiler_host):
+    sysroot = os.path.join(rust_root, "target", stage)
     bin_dir = os.path.join(sysroot, "bin")
-    if "windows" in host:
+    if "windows" in compiler_host:
         lib_dir = bin_dir
         rustc = "rustc.exe"
         rustdoc = "rustdoc.exe"
@@ -287,30 +296,13 @@ def switch_rustc(sysroot, host):
         rustdoc = "rustdoc"
     os.environ["RUSTC"] = os.path.join(bin_dir, rustc)
     os.environ["RUSTDOC"] = os.path.join(bin_dir, rustdoc)
-    rustlib_dir = os.path.join(lib_dir, "rustlib", host, "lib")
-    if "windows" in host:
+    rustlib_dir = os.path.join(lib_dir, "rustlib", compiler_host, "lib")
+    if "windows" in compiler_host:
         os.environ["PATH"] += os.pathsep + rustlib_dir
-    elif "darwin" in host:
+    elif "darwin" in compiler_host:
         os.environ["DYLD_LIBRARY_PATH"] = rustlib_dir
     else:
         os.environ["LD_LIBRARY_PATH"] = rustlib_dir
-
-def build_stage2_rust(rust_root, build, host, targets,
-                      external_llvm_root, is_release, verbose):
-    build_dir = os.path.join(rust_root, "target")
-    stage1_dir = os.path.join(build_dir, "stage1")
-    switch_rustc(stage1_dir, build)
-    for target in targets:
-        print("Building stage2 compiler for target " + target + ":")
-        set_env_vars(rust_root, target, external_llvm_root)
-        build_driver_crate(rust_root, target, is_release, verbose)
-    set_env_vars(rust_root, host, llvm_root)
-    build_rust_docs(rust_root, host, verbose = verbose)
-    print("Copying stage2 compiler to target/stage2:")
-    dest_dir = os.path.join(build_dir, "stage2")
-    copy_rust_dist(build_dir, dest_dir, host, targets, is_release)
-    print("Done.")
-
 
 # main function
 
@@ -394,17 +386,19 @@ else:
 if not args.run_tests_only:
     print("Building Rust with " + profile + " profile:")
     if not args.no_bootstrap:
-        build_stage1_rust(rust_root, build, llvm_root,
-                          is_release = is_release, verbose = verbose)
-        clean_build_dirs(rust_root, build, profile)
-    build_stage2_rust(rust_root, build, host, targets, llvm_root,
-                      is_release = is_release, verbose = verbose)
-
-# we only run tests for native builds
-if host == build:
+        stages_to_build = ["stage0", "stage1", "stage2"]
+    else:
+        stages_to_build = ["stage2"]
+    for stage in stages_to_build:
+        build_rust_stage(rust_root, build, host, targets, stage, llvm_root,
+                         is_release = is_release, verbose = verbose)
+        if stage != "stage2":
+            clean_build_dirs(rust_root, build, profile)
     set_env_vars(rust_root, host, llvm_root)
-    stage2_dir = os.path.join(rust_root, "target", "stage2")
-    switch_rustc(stage2_dir, host)
+    build_rust_docs(rust_root, host, verbose = verbose)
+
+# we only run stage2 tests for native builds
+if host == build:
     llvm_bin_dir = build_llvm.get_llvm_bin_dir(rust_root, target, llvm_root)
     run_compiletests(rust_root, host, llvm_bin_dir, verbose = verbose)
     run_crate_tests(rust_root, host, verbose = verbose)
