@@ -28,7 +28,7 @@ the FFI boundary.
 
 * **The [drop flag][] will still be added**
 
-* This is equivalent to one of `repr(u\*)` (see the next section) for enums. The
+* This is equivalent to one of `repr(u*)` (see the next section) for enums. The
   chosen size is the default enum size for the target platform's C ABI. Note that
   enum representation in C is undefined, and this may be incorrect when the C
   code is compiled with certain flags.
