@@ -138,7 +138,7 @@ This has no semantic consequences, but is probably a more useful notion when
 verifying the soundness of a construct.)
 
 That's it. Super simple right? Except for the fact that it took us two pages
-to define all of the terms in that defintion. You know: Super. Simple.
+to define all of the terms in that definition. You know: Super. Simple.
 
 Actually it's a bit more complicated than that. In addition to references,
 Rust has *raw pointers*: `*const T` and `*mut T`. Raw pointers have no inherent

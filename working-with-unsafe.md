@@ -44,7 +44,7 @@ Trickier than that is when we get into actual statefulness. Consider a simple
 implementation of `Vec`:
 
 ```rust
-// Note this defintion is insufficient. See the section on lifetimes.
+// Note this definition is insufficient. See the section on lifetimes.
 pub struct Vec<T> {
     ptr: *mut T,
     len: usize,
