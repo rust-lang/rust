@@ -441,10 +441,10 @@ define DEF_TEST_CRATE_RULES_le32-unknown-nacl
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
-	@$$(call E, run: rust_pnacl_trans $$<)
+	@$$(call E, run: pnacl-translate $$<)
 	$$(Q)$$(RPATH_VAR$(1)_T_$(2)_H_$(3)) \
-		$$(HBIN$(1)_H_$(3))/rust_pnacl_trans$$(X_$(3)) \
-		--cross-path=$$(CFG_NACL_CROSS_PATH) $$< \
+		$$(CFG_PNACL_TOOLCHAIN)/bin/pnacl-translate \
+		--allow-llvm-bitcode-input $$< \
 		-o $$<.nexe
 	@$$(call E, run: $$<.nexe)
 	$$(Q)$$(CFG_NACL_CROSS_PATH)/tools/sel_ldr.py -- $$<.nexe
