@@ -997,14 +997,11 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
 /// Get a field's type.
 pub fn trans_field_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                                   discr: Disr, ix: usize) -> Ty<'tcx> {
-    // Note: if this ever needs to generate conditionals (e.g., if we
-    // decide to do some kind of cdr-coding-like non-unique repr
-    // someday), it will need to return a possibly-new bcx as well.
     match *r {
         CEnum(..) => {
             bcx.ccx().sess().bug("element access in C-like enum")
         }
-        Univariant(ref st, _dtor) => {
+        Univariant(ref st, _) => {
             assert_eq!(discr, 0);
             st.fields[ix]
         }

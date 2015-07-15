@@ -17,9 +17,8 @@
 //! ```
 //! for arm in arms {
 //!     for pat in arm.pats {
-//!         if pat_matches_discriminant && guard_succeeded {
-//!             run_body;
-//!             return;
+//!         if matches_pattern(pat) && guard_succeeded(arm.guard) {
+//!             return arm.body;
 //!         }
 //!     }
 //! }
@@ -198,6 +197,10 @@ fn extract_variant_args<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }).collect()
 }
 
+
+/// Helper for converting from the ValueRef that we pass around in the match
+/// code, which is always an lvalue, into a Datum. Eventually we should just
+/// pass around a Datum and be done with it. 
 fn match_datum<'tcx>(val: ValueRef, left_ty: Ty<'tcx>) -> Datum<'tcx, Lvalue> {
     Datum::new(val, left_ty, Lvalue)
 }
@@ -316,18 +319,18 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     }
 }
 
+fn def_for_pat(tcx: &ty::ctxt, pat_id: ast::NodeId) -> def::Def {
+    tcx.def_map.borrow().get(&pat_id).unwrap().full_def()
+}
+
 fn disr_for_pat(tcx: &ty::ctxt, pat_id: ast::NodeId) -> Disr {
-    let def = tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
+    let def = def_for_pat(tcx, pat_id);
     if let def::DefVariant(enum_id, var_id, _) = def {
         let vinfo = tcx.enum_variant_with_id(enum_id, var_id);
         vinfo.disr_val
     } else {
         0
     }
-}
-
-fn def_for_ident_id(bcx: Block, pat_id: ast::NodeId) -> Option<def::Def> {
-    bcx.tcx().def_map.borrow().get(&pat_id).map(|d| d.full_def())
 }
 
 fn compile_enum_variant<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
@@ -364,17 +367,17 @@ fn compile_pattern<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             bcx = compile_pattern(bcx, discr_datum, &inner, failure_dest, pat_bindings);
         }
         ast::PatIdent(_, ref ident, None) => {
-            match def_for_ident_id(bcx, pat.id) {
-                Some(def::DefConst(..)) | Some(def::DefAssociatedConst(..)) =>
+             match def_for_pat(bcx.tcx(), pat.id) {
+                def::DefConst(..) | def::DefAssociatedConst(..) =>
                     bcx.tcx().sess.span_bug(pat.span, "const pattern should've \
                                                        been rewritten"),
-                Some(def::DefVariant(_, _, _)) => {
+                def::DefVariant(_, _, _) => {
                     let repr = adt::represent_node(bcx, pat.id);
                     let disr = disr_for_pat(bcx.tcx(), pat.id);
                     // Check variant.
                     bcx = compile_enum_variant(bcx, discr_datum, &repr, disr, failure_dest);
                 }
-                Some(def::DefStruct(_)) => {
+                def::DefStruct(_) => {
                     // Irrefutable
                 }
                 _ => {
@@ -426,7 +429,8 @@ fn compile_pattern<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         Store(bcx, info, expr::get_len(bcx, scratch.val));
                         field_datum = Datum::new(scratch.val, scratch.ty, Lvalue);
                     }
-                    bcx = compile_pattern(bcx, field_datum, &field_pat.node.pat, failure_dest, pat_bindings);
+                    bcx = compile_pattern(bcx, field_datum, &field_pat.node.pat,
+                                          failure_dest, pat_bindings);
                 }
             });
         }

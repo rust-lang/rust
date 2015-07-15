@@ -17,9 +17,9 @@ struct IoError {
 fn main() {
     let e: Result<u8, _> = Err(IoError{ kind: IoErrorKind::XXX, detail: None });
     match e {
-        Ok(_) => true,
-        Err(ref e) if e.kind == IoErrorKind::BrokenPipe => return,
-        Err(IoError { kind: IoErrorKind::BrokenPipe, ..}) => return,
-        Err(err) => panic!(err)
+        Ok(_) => panic!(),
+        Err(ref e) if e.kind == IoErrorKind::BrokenPipe => panic!(),
+        Err(IoError { kind: IoErrorKind::BrokenPipe, ..}) => panic!(),
+        Err(err) => return
     };
 }
