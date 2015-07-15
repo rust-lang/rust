@@ -1,0 +1,15 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "collectionstest"
+version = "0.0.0"
+
+[lib]
+name = "collectionstest"
+path = "lib.rs"
+
+[dev-dependencies]
+std = { path = "../libstd" }
+log = { path = "../liblog" }
+test = { path = "../libtest" }
+collections = { path = "../libcollections" }
+rustc_unicode = { path = "../librustc_unicode" }

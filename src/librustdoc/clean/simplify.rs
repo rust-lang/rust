@@ -17,11 +17,15 @@
 //! for functions and such is simply a list of predicates. One example of this
 //! is that the AST predicate of:
 //!
+//! ```rust,ignore
 //!     where T: Trait<Foo=Bar>
+//! ```
 //!
 //! is encoded as:
 //!
+//! ```rust,ignore
 //!     where T: Trait, <T as Trait>::Foo = Bar
+//! ```
 //!
 //! This module attempts to reconstruct the original where and/or parameter
 //! bounds by special casing scenarios such as these. Fun!

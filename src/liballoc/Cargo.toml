@@ -1,0 +1,26 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "alloc"
+version = "0.0.0"
+build = "build.rs"
+
+[lib]
+name = "alloc"
+path = "lib.rs"
+
+[dependencies]
+core = { path = "../libcore" }
+libc = { path = "../liblibc" }
+
+[build-dependencies]
+build_helper = { path = "../build_helper" }
+
+[dev-dependencies]
+std = { path = "../libstd" }
+log = { path = "../liblog" }
+test = { path = "../libtest" }
+
+[features]
+jemalloc = []
+debug-jemalloc = ["jemalloc"]
+default = []	# by default, we enable jemalloc for non-windows targets

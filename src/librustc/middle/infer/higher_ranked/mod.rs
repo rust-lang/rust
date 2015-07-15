@@ -404,7 +404,7 @@ impl<'a,'tcx> InferCtxtExt for InferCtxt<'a,'tcx> {
          * `sub_free_bound_false_infer`.  In this test, we want to
          * know whether
          *
-         * ```rust
+         * ```rust,ignore
          * fn(_#0t) <: for<'a> fn(&'a int)
          * ```
          *
@@ -596,9 +596,11 @@ pub fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
 /// As a brief example, consider the obligation `for<'a> Fn(&'a int)
 /// -> &'a int`, and the impl:
 ///
+/// ```rust,ignore
 ///     impl<A,R> Fn<A,R> for SomethingOrOther
 ///         where A : Clone
 ///     { ... }
+/// ```
 ///
 /// Here we will have replaced `'a` with a skolemized region
 /// `'0`. This means that our substitution will be `{A=>&'0

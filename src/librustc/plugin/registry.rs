@@ -79,7 +79,7 @@ impl<'a> Registry<'a> {
     ///
     /// These are specified inside the `plugin` crate attribute as
     ///
-    /// ```no_run
+    /// ```rust,ignore
     /// #![plugin(my_plugin_name(... args ...))]
     /// ```
     pub fn args<'b>(&'b self) -> &'b Vec<P<ast::MetaItem>> {

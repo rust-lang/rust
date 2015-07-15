@@ -56,7 +56,7 @@
 #![feature(vec_push_all)]
 #![feature(vecmap)]
 
-#![allow(deprecated)]
+#![allow(unused_features, unused_imports, dead_code, deprecated)]
 
 #[macro_use] extern crate log;
 
@@ -64,7 +64,7 @@ extern crate collections;
 extern crate test;
 extern crate rustc_unicode;
 
-#[cfg(test)] #[macro_use] mod bench;
+#[macro_use] mod bench;
 
 mod binary_heap;
 mod bit;

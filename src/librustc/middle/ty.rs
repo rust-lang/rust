@@ -566,7 +566,7 @@ pub enum AutoAdjustment<'tcx> {
 /// sized struct to a dyncamically sized one. E.g., &[i32; 4] -> &[i32] is
 /// represented by:
 ///
-/// ```
+/// ```rust,ignore
 /// AutoDerefRef {
 ///     autoderefs: 1,          // &[i32; 4] -> [i32; 4]
 ///     autoref: Some(AutoPtr), // [i32] -> &[i32]
@@ -587,7 +587,7 @@ pub enum AutoAdjustment<'tcx> {
 /// case this is analogous to transformating a struct. E.g., Box<[i32; 4]> ->
 /// Box<[i32]> is represented by:
 ///
-/// ```
+/// ```rust,ignore
 /// AutoDerefRef {
 ///     autoderefs: 0,
 ///     autoref: None,
@@ -1462,6 +1462,7 @@ pub struct ParamTy {
 /// regions (and perhaps later types) in a higher-ranked setting. In
 /// particular, imagine a type like this:
 ///
+/// ```{.text}
 ///     for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
 ///     ^          ^            |        |         |
 ///     |          |            |        |         |
@@ -1470,6 +1471,7 @@ pub struct ParamTy {
 ///     +--------------------------------+ 2       |
 ///     |                                          |
 ///     +------------------------------------------+ 1
+/// ```
 ///
 /// In this type, there are two binders (the outer fn and the inner
 /// fn). We need to be able to determine, for any given region, which
@@ -1845,7 +1847,9 @@ impl<'tcx> TraitTy<'tcx> {
 /// A complete reference to a trait. These take numerous guises in syntax,
 /// but perhaps the most recognizable form is in a where clause:
 ///
+/// ```rust,ignore
 ///     T : Foo<U>
+/// ```
 ///
 /// This would be represented by a trait-reference where the def-id is the
 /// def-id for the trait `Foo` and the substs defines `T` as parameter 0 in the
@@ -2623,7 +2627,9 @@ impl<'tcx> Predicate<'tcx> {
 ///
 /// Example:
 ///
+/// ```rust,ignore
 ///     struct Foo<T,U:Bar<T>> { ... }
+/// ```
 ///
 /// Here, the `GenericPredicates` for `Foo` would contain a list of bounds like
 /// `[[], [U:Bar<T>]]`.  Now if there were some particular reference

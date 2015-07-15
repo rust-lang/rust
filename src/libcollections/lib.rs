@@ -28,7 +28,7 @@
        test(no_crate_inject))]
 
 #![allow(trivial_casts)]
-#![cfg_attr(test, allow(deprecated))] // rand
+#![cfg_attr(test, allow(deprecated, unused_features, dead_code))] // rand
 
 #![feature(alloc)]
 #![feature(box_patterns)]

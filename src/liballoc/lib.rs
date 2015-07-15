@@ -90,6 +90,7 @@
 #![feature(unsize)]
 
 #![cfg_attr(test, feature(test, alloc, rustc_private, box_raw))]
+#![cfg_attr(test, allow(deprecated, unused_features, unused_imports))]
 #![cfg_attr(all(not(feature = "external_funcs"), not(feature = "external_crate")),
             feature(libc))]
 
@@ -100,7 +101,6 @@ extern crate core;
 extern crate libc;
 
 // Allow testing this library
-
 #[cfg(test)] #[macro_use] extern crate std;
 #[cfg(test)] #[macro_use] extern crate log;
 

@@ -1,0 +1,23 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_llvm"
+version = "0.0.0"
+build = "build.rs"
+
+[lib]
+name = "rustc_llvm"
+path = "lib.rs"
+crate-type = ["dylib", "rlib"]
+
+[dependencies]
+libc = { path = "../liblibc" }
+rustc_bitflags = { path = "../librustc_bitflags" }
+std = { path = "../libstd" }
+
+[features]
+static-libstdcpp = []
+cargo = []
+default = ["cargo"]
+
+[build-dependencies]
+build_helper = { path = "../build_helper" }

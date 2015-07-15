@@ -192,7 +192,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// or it may be relative to some bound that is in scope (case B).
 ///
 ///
-/// ```
+/// ```rust,ignore
 /// impl<T:Clone> Clone<T> for Option<T> { ... } // Impl_1
 /// impl<T:Clone> Clone<T> for Box<T> { ... }    // Impl_2
 /// impl Clone for int { ... }             // Impl_3

@@ -1,0 +1,16 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "coretest"
+version = "0.0.0"
+
+[lib]
+name = "coretest"
+path = "lib.rs"
+
+[dev-dependencies]
+core = { path = "../libcore" }
+test = { path = "../libtest" }
+libc = { path = "../liblibc" }
+rustc_unicode = { path = "../librustc_unicode" }
+rand = { path = "../librand" }
+std = { path = "../libstd" }

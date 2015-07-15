@@ -1,0 +1,17 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "driver"
+version = "0.0.0"
+
+[[bin]]
+name = "rustc"
+path = "rustc.rs"
+
+[[bin]]
+name = "rustdoc"
+path = "rustdoc.rs"
+
+[dependencies]
+rustc_driver = { path = "../librustc_driver" }
+std = { path = "../libstd" }
+rustdoc = { path = "../librustdoc" }

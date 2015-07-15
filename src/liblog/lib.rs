@@ -13,6 +13,7 @@
 //! # Examples
 //!
 //! ```
+//! #![feature(rustc_private)]
 //! #[macro_use] extern crate log;
 //!
 //! fn main() {

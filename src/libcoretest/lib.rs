@@ -25,11 +25,9 @@
 #![feature(iter_arith)]
 #![feature(iter_arith)]
 #![feature(iter_cmp)]
-#![feature(iter_empty)]
 #![feature(iter_idx)]
 #![feature(iter_iterate)]
 #![feature(iter_min_max)]
-#![feature(iter_once)]
 #![feature(iter_order)]
 #![feature(iter_unfold)]
 #![feature(libc)]
@@ -47,6 +45,8 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
+
+#![allow(dead_code, unused_imports, deprecated, unused_features)]
 
 extern crate core;
 extern crate test;

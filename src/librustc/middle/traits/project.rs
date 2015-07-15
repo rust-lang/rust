@@ -69,7 +69,9 @@ struct ProjectionTyCandidateSet<'tcx> {
 
 /// Evaluates constraints of the form:
 ///
+/// ```rust,ignore
 ///     for<...> <T as Trait>::U == V
+/// ```
 ///
 /// If successful, this may result in additional obligations.
 pub fn poly_project_and_unify_type<'cx,'tcx>(
@@ -102,7 +104,9 @@ pub fn poly_project_and_unify_type<'cx,'tcx>(
 
 /// Evaluates constraints of the form:
 ///
+/// ```rust,ignore
 ///     <T as Trait>::U == V
+/// ```
 ///
 /// If successful, this may result in additional obligations.
 fn project_and_unify_type<'cx,'tcx>(
@@ -548,7 +552,7 @@ fn assemble_candidates_from_param_env<'cx,'tcx>(
 /// In the case of a nested projection like <<A as Foo>::FooT as Bar>::BarT, we may find
 /// that the definition of `Foo` has some clues:
 ///
-/// ```
+/// ```rust,ignore
 /// trait Foo {
 ///     type FooT : Bar<BarT=i32>
 /// }
@@ -701,7 +705,7 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
             // This case tell us nothing about the value of an
             // associated type. Consider:
             //
-            // ```
+            // ```rust,ignore
             // trait SomeTrait { type Foo; }
             // fn foo<T:SomeTrait>(...) { }
             // ```
@@ -713,7 +717,7 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
             //
             // But wait, you say! What about an example like this:
             //
-            // ```
+            // ```rust,ignore
             // fn bar<T:SomeTrait<Foo=usize>>(...) { ... }
             // ```
             //
