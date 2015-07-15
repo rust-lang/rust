@@ -75,6 +75,15 @@ enum TargetLint {
 
     /// Temporary renaming, used for easing migration pain; see #16545
     Renamed(String, LintId),
+
+    /// Lint with this name existed previously, but has been removed/deprecated.
+    /// The string argument is the reason for removal.
+    Removed(String),
+}
+
+enum FindLintError {
+    NotFound,
+    Removed
 }
 
 impl LintStore {
@@ -166,12 +175,16 @@ impl LintStore {
         self.by_name.insert(old_name.to_string(), Renamed(new_name.to_string(), target));
     }
 
+    pub fn register_removed(&mut self, name: &str, reason: &str) {
+        self.by_name.insert(name.into(), Removed(reason.into()));
+    }
+
     #[allow(unused_variables)]
     fn find_lint(&self, lint_name: &str, sess: &Session, span: Option<Span>)
-                 -> Option<LintId>
+                 -> Result<LintId, FindLintError>
     {
         match self.by_name.get(lint_name) {
-            Some(&Id(lint_id)) => Some(lint_id),
+            Some(&Id(lint_id)) => Ok(lint_id),
             Some(&Renamed(ref new_name, lint_id)) => {
                 let warning = format!("lint {} has been renamed to {}",
                                       lint_name, new_name);
@@ -179,17 +192,25 @@ impl LintStore {
                     Some(span) => sess.span_warn(span, &warning[..]),
                     None => sess.warn(&warning[..]),
                 };
-                Some(lint_id)
-            }
-            None => None
+                Ok(lint_id)
+            },
+            Some(&Removed(ref reason)) => {
+                let warning = format!("lint {} has been removed: {}", lint_name, reason);
+                match span {
+                    Some(span) => sess.span_warn(span, &warning[..]),
+                    None => sess.warn(&warning[..])
+                }
+                Err(FindLintError::Removed)
+            },
+            None => Err(FindLintError::NotFound)
         }
     }
 
     pub fn process_command_line(&mut self, sess: &Session) {
         for &(ref lint_name, level) in &sess.opts.lint_opts {
             match self.find_lint(&lint_name[..], sess, None) {
-                Some(lint_id) => self.set_level(lint_id, (level, CommandLine)),
-                None => {
+                Ok(lint_id) => self.set_level(lint_id, (level, CommandLine)),
+                Err(_) => {
                     match self.lint_groups.iter().map(|(&x, pair)| (x, pair.0.clone()))
                                                  .collect::<FnvHashMap<&'static str,
                                                                        Vec<LintId>>>()
@@ -398,8 +419,8 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                 }
                 Ok((lint_name, level, span)) => {
                     match self.lints.find_lint(&lint_name, &self.tcx.sess, Some(span)) {
-                        Some(lint_id) => vec![(lint_id, level, span)],
-                        None => {
+                        Ok(lint_id) => vec![(lint_id, level, span)],
+                        Err(FindLintError::NotFound) => {
                             match self.lints.lint_groups.get(&lint_name[..]) {
                                 Some(&(ref v, _)) => v.iter()
                                                       .map(|lint_id: &LintId|
@@ -412,7 +433,8 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                                     continue;
                                 }
                             }
-                        }
+                        },
+                        Err(FindLintError::Removed) => { continue; }
                     }
                 }
             };
