@@ -10,7 +10,7 @@
 
 extern crate toml;
 
-use {NewlineStyle, BraceStyle, ReturnIndent};
+use {NewlineStyle, BraceStyle, ReturnIndent, StructLitStyle};
 use lists::SeparatorTactic;
 use issues::ReportTactic;
 
@@ -26,6 +26,7 @@ pub struct Config {
     pub fn_args_paren_newline: bool,
     pub struct_trailing_comma: SeparatorTactic,
     pub struct_lit_trailing_comma: SeparatorTactic,
+    pub struct_lit_style: StructLitStyle,
     pub enum_trailing_comma: bool,
     pub report_todo: ReportTactic,
     pub report_fixme: ReportTactic,
@@ -35,6 +36,14 @@ pub struct Config {
 impl Config {
     pub fn from_toml(toml: &str) -> Config {
         let parsed = toml.parse().unwrap();
-        toml::decode(parsed).unwrap()
+        match toml::decode(parsed) {
+            Some(decoded) => decoded,
+            None => {
+                println!("Decoding config file failed. Config:\n{}", toml);
+                let parsed: toml::Value = toml.parse().unwrap();
+                println!("\n\nParsed:\n{:?}", parsed);
+                panic!();
+            }
+        }
     }
 }

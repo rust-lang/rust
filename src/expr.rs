@@ -11,6 +11,7 @@
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
 use string::{StringFormat, rewrite_string};
+use StructLitStyle;
 use utils::{span_after, make_indent};
 use visitor::FmtVisitor;
 
@@ -188,8 +189,15 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
 
     let path_str = pprust::path_to_string(path);
     // Foo { a: Foo } - indent is +3, width is -5.
-    let indent = offset + path_str.len() + 3;
-    let budget = width - (path_str.len() + 5);
+    let (indent, budget) = match context.config.struct_lit_style {
+        StructLitStyle::VisualIndent => {
+            (offset + path_str.len() + 3, width - (path_str.len() + 5))
+        }
+        StructLitStyle::BlockIndent => {
+            let indent = context.block_indent + context.config.tab_spaces;
+            (indent, width - indent)
+        }
+    };
 
     let field_iter = fields.into_iter().map(StructLitField::Regular)
                            .chain(base.into_iter().map(StructLitField::Base));
@@ -243,12 +251,18 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                v_width: budget,
                                ends_with_newline: true, };
     let fields_str = write_list(&items, &fmt);
-    Some(format!("{} {{ {} }}", path_str, fields_str))
 
-    // FIXME if the usual multi-line layout is too wide, we should fall back to
-    // Foo {
-    //     a: ...,
-    // }
+    match context.config.struct_lit_style {
+        StructLitStyle::BlockIndent if fields_str.contains('\n') => {
+            let inner_indent = make_indent(context.block_indent + context.config.tab_spaces);
+            let outer_indent = make_indent(context.block_indent);
+            Some(format!("{} {{\n{}{}\n{}}}", path_str, inner_indent, fields_str, outer_indent))
+        }
+        _ => Some(format!("{} {{ {} }}", path_str, fields_str)),
+    }
+
+    // FIXME if context.config.struct_lit_style == VisualIndent, but we run out
+    // of space, we should fall back to BlockIndent.
 }
 
 fn rewrite_field(context: &RewriteContext,
