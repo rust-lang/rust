@@ -73,16 +73,15 @@ def set_env_vars(rust_root, target, external_llvm_root):
     os.environ["CARGO_TARGET_DIR"] = os.path.join(rust_root, "target")
     os.environ["CFG_LLVM_ROOT"] = llvm_root
 
-# build the src/driver crate, which is the root package for the compiler
-# (including rustdoc)
-def build_driver_crate(rust_root, target, is_release, verbose):
-    args = ["cargo", "build", "--manifest-path",
+def build_rust_exe(rust_root, target, exe_name, is_release, verbose):
+    args = ["cargo", "rustc", "--bin", exe_name, "--manifest-path",
             os.path.join(rust_root, "src", "driver", "Cargo.toml")]
     args.extend(["--target", target])
     if is_release:
         args.append("--release")
     if verbose:
         args.append("--verbose")
+    args.extend(["--", "-C", "prefer-dynamic"])
     ret = subprocess.call(args)
     if ret == 0:
         print("Build succeeded.")
@@ -110,7 +109,8 @@ def copy_rust_dist(rust_root, stage, host, targets, is_release):
     os.makedirs(bin_dir)
     host_build_dir = os.path.join(build_dir, host, profile)
     shutil.copy2(os.path.join(host_build_dir, rustc), bin_dir)
-    shutil.copy2(os.path.join(host_build_dir, rustdoc), bin_dir)
+    if stage == "stage2":
+        shutil.copy2(os.path.join(host_build_dir, rustdoc), bin_dir)
     for target in targets:
         target_build_dir = os.path.join(build_dir, target, profile)
         target_lib_dir = os.path.join(lib_dir, "rustlib", target, "lib")
@@ -263,13 +263,16 @@ def build_rust_stage(rust_root, build, host, targets, stage,
     if stage != "stage2":
         compiler_host = build
         targets_to_build = [build]
+        exes_to_build = ["rustc"]
     else:
         compiler_host = host
         targets_to_build = targets
+        exes_to_build = ["rustc", "rustdoc"]
     for target in targets_to_build:
         print("Building " + stage + " compiler for target " + target + ":")
         set_env_vars(rust_root, target, external_llvm_root)
-        build_driver_crate(rust_root, target, is_release, verbose)
+        for exe_name in exes_to_build:
+            build_rust_exe(rust_root, target, exe_name, is_release, verbose)
     print("Copying " + stage + " compiler to target/" + stage + ":")
     copy_rust_dist(rust_root, stage, compiler_host,
                    targets_to_build, is_release)
