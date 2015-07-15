@@ -63,6 +63,7 @@ use owned_slice::OwnedSlice;
 use parse::token::{InternedString, str_to_ident};
 use parse::token;
 use parse::lexer;
+use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use print::pprust;
 use ptr::P;
 
@@ -1079,7 +1080,12 @@ pub enum TokenTree {
 impl TokenTree {
     pub fn len(&self) -> usize {
         match *self {
-            TtToken(_, token::DocComment(_)) => 2,
+            TtToken(_, token::DocComment(name)) => {
+                match doc_comment_style(name.as_str()) {
+                    AttrOuter => 2,
+                    AttrInner => 3
+                }
+            }
             TtToken(_, token::SpecialVarNt(..)) => 2,
             TtToken(_, token::MatchNt(..)) => 3,
             TtDelimited(_, ref delimed) => {
@@ -1097,14 +1103,20 @@ impl TokenTree {
             (&TtToken(sp, token::DocComment(_)), 0) => {
                 TtToken(sp, token::Pound)
             }
-            (&TtToken(sp, token::DocComment(name)), 1) => {
+            (&TtToken(sp, token::DocComment(name)), 1)
+            if doc_comment_style(name.as_str()) == AttrInner => {
+                TtToken(sp, token::Not)
+            }
+            (&TtToken(sp, token::DocComment(name)), _) => {
+                let stripped = strip_doc_comment_decoration(name.as_str());
                 TtDelimited(sp, Rc::new(Delimited {
                     delim: token::Bracket,
                     open_span: sp,
                     tts: vec![TtToken(sp, token::Ident(token::str_to_ident("doc"),
                                                        token::Plain)),
                               TtToken(sp, token::Eq),
-                              TtToken(sp, token::Literal(token::StrRaw(name, 0), None))],
+                              TtToken(sp, token::Literal(
+                                  token::StrRaw(token::intern(&stripped), 0), None))],
                     close_span: sp,
                 }))
             }
