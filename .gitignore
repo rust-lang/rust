@@ -95,7 +95,5 @@ version.ml
 version.texi
 *.racertmp
 Cargo.lock
-/src/*/target
-/src/*/tmp
-/target/
+target
 !/src/librustc_back/target
