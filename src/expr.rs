@@ -12,11 +12,13 @@ use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
 use string::{StringFormat, rewrite_string};
 use utils::{span_after, make_indent};
+use visitor::FmtVisitor;
 
 use syntax::{ast, ptr};
-use syntax::codemap::{Pos, Span, BytePos};
+use syntax::codemap::{Pos, Span, BytePos, mk_sp};
 use syntax::parse::token;
 use syntax::print::pprust;
+use syntax::visit::Visitor;
 
 impl Rewrite for ast::Expr {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
@@ -53,8 +55,35 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprTup(ref items) => {
                 rewrite_tuple_lit(context, items, self.span, width, offset)
             }
+            ast::Expr_::ExprLoop(ref block, _) => {
+                // FIXME: this drops any comment between "loop" and the block.
+                // TODO: format label
+                block.rewrite(context, width, offset).map(|result| {
+                    format!("loop {}", result)
+                })
+            }
             _ => context.codemap.span_to_snippet(self.span).ok()
         }
+    }
+}
+
+impl Rewrite for ast::Block {
+    fn rewrite(&self, context: &RewriteContext, _: usize, _: usize) -> Option<String> {
+        let mut visitor = FmtVisitor::from_codemap(context.codemap, context.config);
+        visitor.last_pos = self.span.lo;
+        visitor.block_indent = context.block_indent;
+
+        visitor.visit_block(self);
+
+        // Push text between last block item and end of block
+        let snippet = visitor.snippet(mk_sp(visitor.last_pos, self.span.hi));
+        visitor.changes.push_str_span(self.span, &snippet);
+
+        // Stringify visitor
+        let file_name = context.codemap.span_to_filename(self.span);
+        let string_buffer = visitor.changes.get(&file_name);
+
+        Some(string_buffer.to_string())
     }
 }
 

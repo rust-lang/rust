@@ -28,4 +28,5 @@ pub trait Rewrite {
 pub struct RewriteContext<'a> {
     pub codemap: &'a CodeMap,
     pub config: &'a Config,
+    pub block_indent: usize,
 }
