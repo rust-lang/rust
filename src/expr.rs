@@ -239,7 +239,13 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                      width: usize,
                      offset: usize)
                      -> Option<String> {
+    debug!("rewrite_tuple_lit: width: {}, offset: {}", width, offset);
     let indent = offset + 1;
+    // In case of length 1, need a trailing comma
+    if items.len() == 1 {
+        // 3 = "(" + ",)"
+        return items[0].rewrite(context, width - 3, indent).map(|s| format!("({},)", s));
+    }
 
     let items = itemize_list(context.codemap,
                              Vec::new(),
@@ -249,23 +255,16 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                              |item| item.span.lo,
                              |item| item.span.hi,
                              |item| item.rewrite(context,
-                                                 context.config.max_width - indent - 2,
+                                                 context.config.max_width - indent - 1,
                                                  indent)
                                         .unwrap_or(context.codemap.span_to_snippet(item.span)
                                                                   .unwrap()),
                              span.lo + BytePos(1), // Remove parens
                              span.hi - BytePos(1));
 
-    // In case of length 1, need a trailing comma
-    let trailing_separator_tactic = if items.len() == 1 {
-        SeparatorTactic::Always
-    } else {
-        SeparatorTactic::Never
-    };
-
     let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
                                separator: ",",
-                               trailing_separator: trailing_separator_tactic,
+                               trailing_separator: SeparatorTactic::Never,
                                indent: indent,
                                h_width: width - 2,
                                v_width: width - 2,
