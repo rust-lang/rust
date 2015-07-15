@@ -15,10 +15,3 @@ path = "rustdoc.rs"
 rustc_driver = { path = "../librustc_driver" }
 std = { path = "../libstd" }
 rustdoc = { path = "../librustdoc" }
-
-[profile.release]
-opt-level = 3
-lto = true
-
-[profile.dev]
-opt-level = 1
