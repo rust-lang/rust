@@ -13,7 +13,6 @@
 
 use std::process::Command;
 use std::path::{Path, PathBuf};
-use cc::Triple;
 use config::Config;
 
 /// Provides paths to the LLVM tools and libraries
@@ -42,7 +41,7 @@ impl LLVMTools {
         self.llvm_build_artifacts_dir.join("lib")
     }
 
-    pub fn llc_cmd(&self, target : &Triple, src : &Path, obj : &Path)
+    pub fn llc_cmd(&self, target : &str, src : &Path, obj : &Path)
                    -> Command {
         let mut cmd = Command::new(&self.path_to_llc());
         cmd.arg("-filetype=obj")

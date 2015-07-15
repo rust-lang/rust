@@ -2,7 +2,7 @@ extern crate build_helper;
 
 use std::path::PathBuf;
 use std::process::Command;
-use build_helper::{Config, Run, Triple, build_static_lib};
+use build_helper::{Config, Run, build_static_lib};
 
 fn main() {
     build_rt_libraries();
@@ -22,7 +22,7 @@ struct RtLib {
     inc_dirs : Vec<&'static str>
 }
 
-fn runtime_libraries(target : &Triple) -> Vec<RtLib> {
+fn runtime_libraries(target : &str) -> Vec<RtLib> {
     vec![
         RtLib {
             name : "rust_builtin",
@@ -35,7 +35,7 @@ fn runtime_libraries(target : &Triple) -> Vec<RtLib> {
             needed : true,
             src_files : {
                 let mut v = vec!["rt/rust_try.ll"];
-                if target.is_linux() {
+                if target.contains("linux") {
                     v.push("rt/arch/{arch}/record_sp.S");
                 }
                 v
@@ -44,13 +44,13 @@ fn runtime_libraries(target : &Triple) -> Vec<RtLib> {
         },
         RtLib {
             name : "morestack",
-            needed : !target.is_windows(),
+            needed : !target.contains("windows"),
             src_files : vec!["rt/arch/{arch}/morestack.S"],
             inc_dirs : vec![],
         },
         RtLib {
             name : "compiler-rt",
-            needed : !target.is_msvc(), // FIXME: Fix MSVC build for compiler-rt
+            needed : !target.contains("msvc"), // FIXME: Fix MSVC build for compiler-rt
             src_files : vec!["compiler-rt/lib/builtins",
                              "compiler-rt/lib/builtins/{arch}"],
             inc_dirs : vec!["compiler-rt/lib/builtins",
@@ -59,16 +59,24 @@ fn runtime_libraries(target : &Triple) -> Vec<RtLib> {
         ]
 }
 
-fn parse_dir(s : &str, tgt : &Triple) -> PathBuf {
-    let arch = if tgt.is_i686() {
+pub fn arch(triple : &str) -> &str {
+    triple.split('-').nth(0).expect("invalid target triple")
+}
+
+pub fn os(triple : &str) -> &str {
+    triple.split('-').nth(2).expect("invalid target triple")
+}
+
+fn parse_dir(s : &str, tgt : &str) -> PathBuf {
+    let arch = if tgt.contains("i686") {
         "i386"
     } else {
-        tgt.arch()
+        arch(tgt)
     };
-    let os = if tgt.is_windows() {
+    let os = if tgt.contains("windows") {
         "win"
     } else {
-        tgt.os()
+        os(tgt)
     };
     PathBuf::from(s).iter().map(|d| {
         if d == "{arch}" {
@@ -105,7 +113,7 @@ fn build_rt_libraries() {
 
 fn build_backtrace() {
     let cfg = Config::new();
-    if !cfg.target().is_linux() {
+    if !cfg.target().contains("linux") {
         return
     }
 

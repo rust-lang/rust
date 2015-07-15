@@ -14,139 +14,39 @@
 //! will select the appropriate one based on the build configuration
 //! and the platform.
 
-use std::fmt;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 use llvm::LLVMTools;
 use config::Config;
 use run::Run;
 
-/// Specify a target triple, in the format `arch-vendor-os-abi`.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Triple {
-    triple : String
-}
-
-impl Triple {
-    pub fn new(triple : &str) -> Result<Triple, String> {
-        let v : Vec<&str>= triple.split('-').map(|s| s).collect();
-        if v.len() < 3 {
-            Err(format!("Invalid target triple {}.", triple))
-        } else {
-            Ok(Triple { triple : triple.into() })
-        }
-    }
-
-    pub fn arch(&self) -> &str {
-        self.triple.split('-').nth(0).unwrap()
-    }
-
-    pub fn os(&self) -> &str {
-        self.triple.split('-').nth(2).unwrap()
-    }
-
-    pub fn abi(&self) -> Option<&str> {
-        self.triple.split('-').nth(3)
-    }
-
-    pub fn is_i686(&self) -> bool {
-        self.arch() == "i686"
-    }
-
-    pub fn is_x86_64(&self) -> bool {
-        self.arch() == "x86_64"
-    }
-
-    pub fn is_aarch64(&self) -> bool {
-        self.arch() == "aarch64"
-    }
-
-    pub fn is_windows(&self) -> bool {
-        self.os() == "windows"
-    }
-
-    pub fn is_mingw(&self) -> bool {
-        self.is_windows() && self.abi() == Some("gnu")
-    }
-
-    pub fn is_msvc(&self) -> bool {
-        self.abi() == Some("msvc")
-    }
-
-    pub fn is_linux(&self) -> bool {
-        self.os() == "linux"
-    }
-
-    pub fn is_ios(&self) -> bool {
-        self.os() == "ios"
-    }
-
-    pub fn is_android(&self) -> bool {
-        self.os() == "android"
-    }
-
-    pub fn is_darwin(&self) -> bool {
-        self.os() == "darwin"
-    }
-
-    /// Append the extension for the executables in this platform
-    pub fn with_exe_ext(&self, name : &str) -> String {
-        if self.is_windows() {
-            format!("{}.exe", name)
-        } else {
-            format!("{}", name)
-        }
-    }
-
-    /// Append the extension for the static libraries in this platform
-    pub fn with_lib_ext(&self, name : &str) -> String {
-        if self.is_msvc() {
-            format!("{}.lib", name)
-        } else {
-            format!("lib{}.a", name)
-        }
-    }
-
-    /// Get the file extension for the dynamic libraries in this platform.
-    pub fn dylib_ext(&self) -> &'static str {
-        if self.is_windows() {
-            "dll"
-        } else if self.is_darwin() {
-            "dylib"
-        } else {
-            "so"
-        }
+/// Append the extension for the executables in this platform
+pub fn with_exe_ext(triple : &str, name : &str) -> String {
+    if triple.contains("windows") {
+        format!("{}.exe", name)
+    } else {
+        format!("{}", name)
     }
 }
 
-impl fmt::Display for Triple {
-    fn fmt(&self, f : &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&self.triple)
+/// Append the extension for the static libraries in this platform
+pub fn with_lib_ext(triple : &str, name : &str) -> String {
+    if triple.contains("msvc") {
+        format!("{}.lib", name)
+    } else {
+        format!("lib{}.a", name)
     }
 }
 
-impl AsRef<OsStr> for Triple {
-    fn as_ref(&self) -> &OsStr {
-        &OsStr::new(&self.triple)
-    }
-}
-
-impl AsRef<Path> for Triple {
-    fn as_ref(&self) -> &Path {
-        &Path::new(&self.triple)
-    }
-}
-
-impl<'a> From<&'a Triple> for &'a str {
-    fn from(t : &'a Triple) -> &'a str {
-        &t.triple
-    }
-}
-
-impl<'a> From<&'a Triple> for String {
-    fn from(t : &'a Triple) -> String {
-        t.triple.clone()
+/// Get the file extension for the dynamic libraries in this platform.
+pub fn dylib_ext(triple : &str) -> &'static str {
+    if triple.contains("windows") {
+        "dll"
+    } else if triple.contains("darwin") {
+        "dylib"
+    } else {
+        "so"
     }
 }
 
@@ -263,7 +163,7 @@ impl StaticLib {
         }
 
         let output = self.build_dir
-            .join(self.toolchain.target_triple().with_lib_ext(out_lib));
+            .join(with_lib_ext(self.toolchain.target_triple(), out_lib));
         self.toolchain.ar_cmd(&objects, &output).run();
         println!("cargo:rustc-link-search=native={}", self.build_dir.display());
         if self.with_llvm {
@@ -294,7 +194,7 @@ impl StaticLib {
 /// Define the abstract interface that a toolchain implemenation
 /// should support.
 pub trait Toolchain {
-    fn target_triple(&self) -> &Triple;
+    fn target_triple(&self) -> &str;
     fn cc_cmd(&self, src_file : &Path, obj_file : &Path,
               inc_dirs : &[PathBuf]) -> Command;
     fn cxx_cmd(&self, src_file : &Path, obj_file : &Path,
@@ -304,44 +204,44 @@ pub trait Toolchain {
 
 /// Gnu-flavoured toolchain. Support both gcc and clang.
 pub struct GccishToolchain {
-    target_triple : Triple,
+    target_triple : String,
     pub cc_cmd : String,
     cxx_cmd : String,
     pub ar_cmd : String
 }
 
 impl GccishToolchain {
-    pub fn new(target : &Triple) -> GccishToolchain {
-        if target.is_darwin() {
+    pub fn new(target : &str) -> GccishToolchain {
+        if target.contains("darwin") {
             GccishToolchain::clang(target)
-        } else if target.is_mingw() {
+        } else if target.contains("windows") && target.contains("gnu") {
             GccishToolchain::native_gcc(target)
         } else {
             GccishToolchain::cross_gcc(target)
         }
     }
 
-    fn cross_gcc(triple : &Triple) -> GccishToolchain {
+    fn cross_gcc(triple : &str) -> GccishToolchain {
         GccishToolchain {
-            target_triple : triple.clone(),
+            target_triple : triple.into(),
             cc_cmd : format!("{}-gcc", triple),
             cxx_cmd : format!("{}-g++", triple),
             ar_cmd : "ar".into()
         }
     }
 
-    fn native_gcc(triple : &Triple) -> GccishToolchain {
+    fn native_gcc(triple : &str) -> GccishToolchain {
         GccishToolchain {
-            target_triple : triple.clone(),
+            target_triple : triple.into(),
             cc_cmd : "gcc".into(),
             cxx_cmd : "g++".into(),
             ar_cmd : "ar".into()
         }
     }
 
-    fn clang(triple : &Triple) -> GccishToolchain {
+    fn clang(triple : &str) -> GccishToolchain {
         GccishToolchain {
-            target_triple : triple.clone(),
+            target_triple : triple.into(),
             cc_cmd : "clang".into(),
             cxx_cmd : "clang++".into(),
             ar_cmd : "ar".into()
@@ -352,26 +252,26 @@ impl GccishToolchain {
         let target = self.target_triple();
         let mut cflags = vec!["-ffunction-sections", "-fdata-sections"];
 
-        if target.is_aarch64() {
+        if target.contains("aarch64") {
             cflags.push("-D__aarch64__");
         }
 
-        if target.is_android() {
+        if target.contains("android") {
             cflags.push("-DANDROID");
             cflags.push("-D__ANDROID__");
         }
 
-        if target.is_windows() {
+        if target.contains("windows") {
             cflags.push("-mwin32");
         }
 
-        if target.is_i686() {
+        if target.contains("i686") {
             cflags.push("-m32");
-        } else if target.is_x86_64() {
+        } else if target.contains("x86_64") {
             cflags.push("-m64");
         }
 
-        if !target.is_i686() {
+        if !target.contains("i686") {
             cflags.push("-fPIC");
         }
 
@@ -384,7 +284,7 @@ impl GccishToolchain {
 
         let target = self.target_triple();
 
-        if target.is_darwin() {
+        if target.contains("darwin") {
             // for some reason clang on darwin doesn't seem to define this
             cmd.arg("-DCHAR_BIT=8");
         }
@@ -399,7 +299,7 @@ impl GccishToolchain {
 }
 
 impl Toolchain for GccishToolchain {
-    fn target_triple(&self) -> &Triple {
+    fn target_triple(&self) -> &str {
         &self.target_triple
     }
 
@@ -429,19 +329,19 @@ impl Toolchain for GccishToolchain {
 
 /// MSVC toolchain
 struct MsvcToolchain {
-    target_triple : Triple
+    target_triple : String
 }
 
 impl MsvcToolchain {
-    fn new(triple : &Triple) -> MsvcToolchain {
+    fn new(triple : &str) -> MsvcToolchain {
         MsvcToolchain {
-            target_triple : triple.clone()
+            target_triple : triple.into()
         }
     }
 }
 
 impl Toolchain for MsvcToolchain {
-    fn target_triple(&self) -> &Triple {
+    fn target_triple(&self) -> &str {
         &self.target_triple
     }
 
@@ -484,7 +384,7 @@ impl Toolchain for MsvcToolchain {
 
 pub fn build_static_lib(cfg : &Config) -> StaticLib {
     let target = cfg.target();
-    let toolchain : Box<Toolchain> = if target.is_msvc() {
+    let toolchain : Box<Toolchain> = if target.contains("msvc") {
         Box::new(MsvcToolchain::new(target))
     } else {
         Box::new(GccishToolchain::new(target))

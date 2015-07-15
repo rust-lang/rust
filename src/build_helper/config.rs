@@ -1,7 +1,6 @@
 use std::env;
 use std::path::{Path, PathBuf};
 use std::fs::PathExt;
-use cc::Triple;
 
 /// Collect the environment variables passed to the build script.
 /// Note: To determine the root directory of the rust source repo we simply
@@ -11,8 +10,8 @@ pub struct Config {
     manifest_dir : PathBuf,
     out_dir : PathBuf,
     llvm_root : PathBuf,
-    target : Triple,
-    host : Triple,
+    target : String,
+    host : String,
     njobs : u8,
     profile : String
 }
@@ -24,10 +23,8 @@ impl Config {
         let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR"));
         let llvm_root = PathBuf::from(env::var("CFG_LLVM_ROOT")
                                       .expect("CFG_LLVM_ROOT"));
-        let target = Triple::new(&env::var("TARGET").expect("TARGET"))
-            .expect("target triple");
-        let host = Triple::new(&env::var("HOST").expect("HOST"))
-            .expect("host triple");
+        let target = env::var("TARGET").expect("TARGET");
+        let host = env::var("HOST").expect("HOST");
         let njobs : u8 = env::var("NUM_JOBS").expect("NUM_JOBS")
             .parse().expect("parse NUM_JOBS");
         let profile = env::var("PROFILE").expect("PROFILE");
@@ -74,12 +71,12 @@ impl Config {
     }
 
     /// Target triple being compiled for
-    pub fn target(&self) -> &Triple {
+    pub fn target(&self) -> &str {
         &self.target
     }
 
     /// Host triple of the rustc compiler
-    pub fn host(&self) -> &Triple {
+    pub fn host(&self) -> &str {
         &self.host
     }
 

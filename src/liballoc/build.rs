@@ -28,7 +28,7 @@ fn build_jemalloc() {
     // We ignore jemalloc on windows for the time-being, as `bash` is not
     // universally available on Windows.
     let build_jemalloc =
-        cfg!(feature = "jemalloc") || !cfg.target().is_windows();
+        cfg!(feature = "jemalloc") || !cfg.target().contains("windows");
     if !build_jemalloc {
         return
     }
@@ -42,13 +42,13 @@ fn build_jemalloc() {
     let mut cmd = Command::new("sh");
     cmd.arg(&src_dir.join("configure"));
     cmd.current_dir(&build_dir);
-    if target.is_mingw() {
+    if target.contains("windows") && target.contains("gnu") {
         // This isn't necessarily a desired option, but it's harmless and
         // works around what appears to be a mingw-w64 bug.
         //
         // https://sourceforge.net/p/mingw-w64/bugs/395/
         cmd.arg("--enable-lazy-lock");
-    } else if target.is_ios() || target.is_android() {
+    } else if target.contains("ios") || target.contains("android") {
         cmd.arg("--disable-tls");
     }
 
@@ -68,7 +68,7 @@ fn build_jemalloc() {
     cmd.arg(format!("--host={}", target));
 
     let gcc = GccishToolchain::new(target);
-    let cflags = gcc.cflags().connect(" ");
+    let cflags = gcc.cflags().join(" ");
     cmd.arg(format!("CC={}", gcc.cc_cmd));
     cmd.arg(format!("AR={}", gcc.ar_cmd));
     cmd.arg(format!("RANLIB={} s", gcc.ar_cmd));
