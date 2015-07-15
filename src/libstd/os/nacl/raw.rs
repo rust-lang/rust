@@ -12,35 +12,36 @@
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
 
-pub type time_t = i32;
-pub type off_t = i32;
-pub type dev_t = u64;
-pub type ino_t = u32;
-pub type pid_t = i32;
-pub type uid_t = u32;
-pub type gid_t = u32;
-pub type mode_t = u32;
-pub type nlink_t = u32;
-pub type blksize_t = i32;
-pub type blkcnt_t = i32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type time_t = i32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type off_t = i32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type dev_t = u64;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type ino_t = u32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type pid_t = i32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type uid_t = u32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type gid_t = u32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type mode_t = u32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type nlink_t = u32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = i32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = i32;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[stable(feature = "raw_ext", since = "1.1.0")]
 pub struct stat {
-    pub st_dev: dev_t,
-    pub st_ino: ino_t,
-    pub st_mode: mode_t,
-    pub st_nlink: nlink_t,
-    pub st_uid: uid_t,
-    pub st_gid: gid_t,
-    pub st_rdev: dev_t,
-    pub st_size: off_t,
-    pub st_blksize: blksize_t,
-    pub st_blocks: blkcnt_t,
-    pub st_atime: time_t,
-    pub st_atime_nsec: i64,
-    pub st_mtime: time_t,
-    pub st_mtime_nsec: i64,
-    pub st_ctime: time_t,
-    pub st_ctime_nsec: i64,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_dev: dev_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_ino: ino_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_mode: mode_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_nlink: nlink_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_uid: uid_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_gid: gid_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_rdev: dev_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_size: off_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_blksize: blksize_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_blocks: blkcnt_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_atime: time_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_atime_nsec: i64,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_mtime: time_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_mtime_nsec: i64,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_ctime: time_t,
+    #[stable(feature = "raw_ext", since = "1.1.0")] pub st_ctime_nsec: i64,
 }
