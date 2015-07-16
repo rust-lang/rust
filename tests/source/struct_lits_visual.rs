@@ -1,3 +1,5 @@
+// rustfmt-config: visual_struct_lits.toml
+
 // Struct literal expressions.
 
 fn main() {
@@ -8,9 +10,7 @@ fn main() {
 
     Foo { a: foo() /* comment*/, /* comment*/ b: bar(), ..something };
 
-    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar(), };
-
-    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar(), };
+    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar(), };
 
     Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo {
         // Comment

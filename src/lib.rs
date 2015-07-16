@@ -111,6 +111,19 @@ pub enum ReturnIndent {
 
 impl_enum_decodable!(ReturnIndent, WithArgs, WithWhereClause);
 
+// How to stle a struct literal.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum StructLitStyle {
+    // First line on the same line as the opening brace, all lines aligned with
+    // the first line.
+    VisualIndent,
+    // First line is on a new line and all lines align with block indent.
+    BlockIndent,
+    // FIXME Maybe we should also have an option to align types.
+}
+
+impl_enum_decodable!(StructLitStyle, VisualIndent, BlockIndent);
+
 enum ErrorKind {
     // Line has exceeded character limit
     LineOverflow,

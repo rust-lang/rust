@@ -11,6 +11,7 @@
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
 use string::{StringFormat, rewrite_string};
+use StructLitStyle;
 use utils::{span_after, make_indent};
 use visitor::FmtVisitor;
 
@@ -100,13 +101,15 @@ fn rewrite_string_lit(context: &RewriteContext,
     if l_loc.line == r_loc.line && r_loc.col.to_usize() <= context.config.max_width {
         return context.codemap.span_to_snippet(span).ok();
     }
-    let fmt = StringFormat { opener: "\"",
-                             closer: "\"",
-                             line_start: " ",
-                             line_end: "\\",
-                             width: width,
-                             offset: offset,
-                             trim_end: false, };
+    let fmt = StringFormat {
+        opener: "\"",
+        closer: "\"",
+        line_start: " ",
+        line_end: "\\",
+        width: width,
+        offset: offset,
+        trim_end: false,
+    };
 
     Some(rewrite_string(&s.escape_default(), &fmt))
 }
@@ -146,13 +149,15 @@ fn rewrite_call(context: &RewriteContext,
                              callee.span.hi + BytePos(1),
                              span.hi);
 
-    let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
-                               separator: ",",
-                               trailing_separator: SeparatorTactic::Never,
-                               indent: offset,
-                               h_width: remaining_width,
-                               v_width: remaining_width,
-                               ends_with_newline: true, };
+    let fmt = ListFormatting {
+        tactic: ListTactic::HorizontalVertical,
+        separator: ",",
+        trailing_separator: SeparatorTactic::Never,
+        indent: offset,
+        h_width: remaining_width,
+        v_width: remaining_width,
+        ends_with_newline: true,
+    };
 
     Some(format!("{}({})", callee_str, write_list(&items, &fmt)))
 }
@@ -187,9 +192,19 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     }
 
     let path_str = pprust::path_to_string(path);
-    // Foo { a: Foo } - indent is +3, width is -5.
-    let indent = offset + path_str.len() + 3;
-    let budget = width - (path_str.len() + 5);
+    let (indent, h_budget, v_budget) = match context.config.struct_lit_style {
+        StructLitStyle::VisualIndent => {
+            // Foo { a: Foo } - indent is +3, width is -5.
+            let budget = width - (path_str.len() + 5);
+            (offset + path_str.len() + 3, budget, budget)
+        }
+        StructLitStyle::BlockIndent => {
+            // If we are all on one line, then we'll ignore the indent, and we
+            // have a smaller budget.
+            let indent = context.block_indent + context.config.tab_spaces;
+            (indent, width - (path_str.len() + 5), width - indent)
+        }
+    };
 
     let field_iter = fields.into_iter().map(StructLitField::Regular)
                            .chain(base.into_iter().map(StructLitField::Base));
@@ -215,13 +230,13 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              |item| {
                                  match *item {
                                      StructLitField::Regular(ref field) => {
-                                         rewrite_field(context, &field, budget, indent)
+                                         rewrite_field(context, &field, h_budget, indent)
                                             .unwrap_or(context.codemap.span_to_snippet(field.span)
                                                                       .unwrap())
                                      },
                                      StructLitField::Base(ref expr) => {
                                          // 2 = ..
-                                         expr.rewrite(context, budget - 2, indent + 2)
+                                         expr.rewrite(context, h_budget - 2, indent + 2)
                                              .map(|s| format!("..{}", s))
                                              .unwrap_or(context.codemap.span_to_snippet(expr.span)
                                                                        .unwrap())
@@ -231,24 +246,32 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              span_after(span, "{", context.codemap),
                              span.hi);
 
-    let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
-                               separator: ",",
-                               trailing_separator: if base.is_some() {
+    let fmt = ListFormatting {
+        tactic: ListTactic::HorizontalVertical,
+        separator: ",",
+        trailing_separator: if base.is_some() {
             SeparatorTactic::Never
         } else {
             context.config.struct_lit_trailing_comma
         },
-                               indent: indent,
-                               h_width: budget,
-                               v_width: budget,
-                               ends_with_newline: true, };
+        indent: indent,
+        h_width: h_budget,
+        v_width: v_budget,
+        ends_with_newline: true,
+    };
     let fields_str = write_list(&items, &fmt);
-    Some(format!("{} {{ {} }}", path_str, fields_str))
 
-    // FIXME if the usual multi-line layout is too wide, we should fall back to
-    // Foo {
-    //     a: ...,
-    // }
+    match context.config.struct_lit_style {
+        StructLitStyle::BlockIndent if fields_str.contains('\n') => {
+            let inner_indent = make_indent(context.block_indent + context.config.tab_spaces);
+            let outer_indent = make_indent(context.block_indent);
+            Some(format!("{} {{\n{}{}\n{}}}", path_str, inner_indent, fields_str, outer_indent))
+        }
+        _ => Some(format!("{} {{ {} }}", path_str, fields_str)),
+    }
+
+    // FIXME if context.config.struct_lit_style == VisualIndent, but we run out
+    // of space, we should fall back to BlockIndent.
 }
 
 fn rewrite_field(context: &RewriteContext,
@@ -291,13 +314,15 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                              span.lo + BytePos(1), // Remove parens
                              span.hi - BytePos(1));
 
-    let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
-                               separator: ",",
-                               trailing_separator: SeparatorTactic::Never,
-                               indent: indent,
-                               h_width: width - 2,
-                               v_width: width - 2,
-                               ends_with_newline: true, };
+    let fmt = ListFormatting {
+        tactic: ListTactic::HorizontalVertical,
+        separator: ",",
+        trailing_separator: SeparatorTactic::Never,
+        indent: indent,
+        h_width: width - 2,
+        v_width: width - 2,
+        ends_with_newline: true,
+    };
 
     Some(format!("({})", write_list(&items, &fmt)))
 }
