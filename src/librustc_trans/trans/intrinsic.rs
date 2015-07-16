@@ -11,6 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use arena::TypedArena;
+use intrinsics::{self, Intrinsic};
 use llvm;
 use llvm::{SequentiallyConsistent, Acquire, Release, AtomicXchg, ValueRef, TypeKind};
 use middle::subst;
@@ -905,7 +906,41 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
         }
 
-        (_, _) => ccx.sess().span_bug(foreign_item.span, "unknown intrinsic")
+        (_, _) => {
+            match Intrinsic::find(tcx, &name) {
+                None => ccx.sess().span_bug(foreign_item.span, "unknown intrinsic"),
+                Some(intr) => {
+                    fn ty_to_type(ccx: &CrateContext, t: &intrinsics::Type) -> Type {
+                        use intrinsics::Type::*;
+                        match *t {
+                            Integer(x) => Type::ix(ccx, x as u64),
+                            Float(x) => {
+                                match x {
+                                    32 => Type::f32(ccx),
+                                    64 => Type::f64(ccx),
+                                    _ => unreachable!()
+                                }
+                            }
+                            Pointer(_) => unimplemented!(),
+                            Vector(ref t, length) => Type::vector(&ty_to_type(ccx, t),
+                                                                  length as u64)
+                        }
+                    }
+
+                    let inputs = intr.inputs.iter().map(|t| ty_to_type(ccx, t)).collect::<Vec<_>>();
+                    let outputs = ty_to_type(ccx, &intr.output);
+                    match intr.definition {
+                        intrinsics::IntrinsicDef::Named(name) => {
+                            let f = declare::declare_cfn(ccx,
+                                                         name,
+                                                         Type::func(&inputs, &outputs),
+                                                         tcx.mk_nil());
+                            Call(bcx, f, &llargs, None, call_debug_location)
+                        }
+                    }
+                }
+            }
+        }
     };
 
     if val_ty(llval) != Type::void(ccx) &&
