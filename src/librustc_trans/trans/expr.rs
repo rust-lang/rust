@@ -1146,8 +1146,14 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 SaveIn(lldest) => closure::Dest::SaveIn(bcx, lldest),
                 Ignore => closure::Dest::Ignore(bcx.ccx())
             };
-            closure::trans_closure_expr(dest, decl, body, expr.id, bcx.fcx.param_substs)
-                .unwrap_or(bcx)
+            let substs = match expr_ty(bcx, expr).sty {
+                ty::TyClosure(_, ref substs) => substs,
+                ref t =>
+                    bcx.tcx().sess.span_bug(
+                        expr.span,
+                        &format!("closure expr without closure type: {:?}", t)),
+            };
+            closure::trans_closure_expr(dest, decl, body, expr.id, substs).unwrap_or(bcx)
         }
         ast::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {
