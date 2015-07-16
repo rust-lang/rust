@@ -32,7 +32,7 @@ use trans;
 use trans::monomorphize;
 use middle::ty::Ty;
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
-use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
+use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
 
 use libc::c_uint;
 use std::cell::{Cell, RefCell};
@@ -41,6 +41,7 @@ use std::ptr;
 use std::rc::Rc;
 use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap, ast_util};
+use syntax::attr::IntType;
 use syntax::parse::token::{self, special_idents};
 
 pub mod gdb;
@@ -73,7 +74,7 @@ pub struct CrateDebugContext<'tcx> {
     builder: DIBuilderRef,
     current_debug_location: Cell<InternalDebugLocation>,
     created_files: RefCell<FnvHashMap<String, DIFile>>,
-    created_enum_disr_types: RefCell<DefIdMap<DIType>>,
+    created_enum_disr_types: RefCell<FnvHashMap<(ast::DefId, IntType), DIType>>,
 
     type_map: RefCell<TypeMap<'tcx>>,
     namespace_map: RefCell<FnvHashMap<Vec<ast::Name>, Rc<NamespaceTreeNode>>>,
@@ -94,7 +95,7 @@ impl<'tcx> CrateDebugContext<'tcx> {
             builder: builder,
             current_debug_location: Cell::new(InternalDebugLocation::UnknownLocation),
             created_files: RefCell::new(FnvHashMap()),
-            created_enum_disr_types: RefCell::new(DefIdMap()),
+            created_enum_disr_types: RefCell::new(FnvHashMap()),
             type_map: RefCell::new(TypeMap::new()),
             namespace_map: RefCell::new(FnvHashMap()),
             composite_types_completed: RefCell::new(FnvHashSet()),
