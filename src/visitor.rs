@@ -380,7 +380,9 @@ impl<'a> FmtVisitor<'a> {
             }
             Some(open_brace) => {
                 debug!("FmtVisitor::format_mod: internal mod");
-                debug!("... open_brace: {}, str: {:?}", open_brace, self.codemap.span_to_snippet(s));
+                debug!("... open_brace: {}, str: {:?}",
+                       open_brace,
+                       self.codemap.span_to_snippet(s));
                 // Format everything until opening brace
                 // TODO Shoud rewrite properly
                 self.format_missing(s.lo + BytePos(open_brace as u32));
