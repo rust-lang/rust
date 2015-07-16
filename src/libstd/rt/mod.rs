@@ -96,7 +96,7 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
         // own fault handlers if we hit it.
         sys_common::stack::record_os_managed_stack_bounds(my_stack_bottom,
                                                           my_stack_top);
-        sys::thread::guard::init();
+        let main_guard = sys::thread::guard::init();
         sys::stack_overflow::init();
 
         // Next, set up the current Thread with the guard information we just
@@ -104,7 +104,7 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
         // but we just do this to name the main thread and to give it correct
         // info about the stack bounds.
         let thread: Thread = NewThread::new(Some("<main>".to_string()));
-        thread_info::set(sys::thread::guard::main(), thread);
+        thread_info::set(main_guard, thread);
 
         // By default, some platforms will send a *signal* when a EPIPE error
         // would otherwise be delivered. This runtime doesn't install a SIGPIPE
