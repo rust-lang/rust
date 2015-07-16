@@ -132,7 +132,7 @@ pub fn main() {
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
         let s = env::args().collect::<Vec<_>>();
         main_args(&s)
-    }).unwrap().join().unwrap();
+    }).unwrap().join().unwrap_or(101);
     process::exit(res as i32);
 }
 
@@ -273,7 +273,6 @@ pub fn main_args(args: &[String]) -> isize {
                                                  !matches.opt_present("markdown-no-toc")),
         (false, false) => {}
     }
-
     let out = match acquire_input(input, externs, &matches) {
         Ok(out) => out,
         Err(s) => {
@@ -375,12 +374,12 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     info!("starting to run rustc");
 
     let (tx, rx) = channel();
-    std::thread::spawn(move || {
+    rustc_driver::monitor(move || {
         use rustc::session::config::Input;
 
         tx.send(core::run_core(paths, cfgs, externs, Input::File(cr),
                                triple)).unwrap();
-    }).join().map_err(|_| "rustc failed").unwrap();
+    });
     let (mut krate, analysis) = rx.recv().unwrap();
     info!("finished with rustc");
     let mut analysis = Some(analysis);
