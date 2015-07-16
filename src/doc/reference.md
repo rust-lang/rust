@@ -343,10 +343,10 @@ The type of an _unsuffixed_ integer literal is determined by type inference:
 * If an integer type can be _uniquely_ determined from the surrounding
   program context, the unsuffixed integer literal has that type.
 
-* If the program context underconstrains the type, it defaults to the
+* If the program context under-constrains the type, it defaults to the
   signed 32-bit integer `i32`.
 
-* If the program context overconstrains the type, it is considered a
+* If the program context over-constrains the type, it is considered a
   static type error.
 
 Examples of integer literals of various forms:
@@ -382,9 +382,9 @@ type inference:
   surrounding program context, the unsuffixed floating-point literal
   has that type.
 
-* If the program context underconstrains the type, it defaults to `f64`.
+* If the program context under-constrains the type, it defaults to `f64`.
 
-* If the program context overconstrains the type, it is considered a
+* If the program context over-constrains the type, it is considered a
   static type error.
 
 Examples of floating-point literals of various forms:
@@ -1292,7 +1292,7 @@ All access to a static is safe, but there are a number of restrictions on
 statics:
 
 * Statics may not contain any destructors.
-* The types of static values must ascribe to `Sync` to allow threadsafe access.
+* The types of static values must ascribe to `Sync` to allow thread-safe access.
 * Statics may not refer to other statics by value, only by reference.
 * Constants cannot refer to statics.
 
@@ -1694,7 +1694,7 @@ explain, here's a few use cases and what they would entail:
 * A crate needs a global available "helper module" to itself, but it doesn't
   want to expose the helper module as a public API. To accomplish this, the
   root of the crate's hierarchy would have a private module which then
-  internally has a "public api". Because the entire crate is a descendant of
+  internally has a "public API". Because the entire crate is a descendant of
   the root, then the entire local crate can access this private module through
   the second case.
 
@@ -3987,7 +3987,7 @@ In general, `--crate-type=bin` or `--crate-type=lib` should be sufficient for
 all compilation needs, and the other options are just available if more
 fine-grained control is desired over the output format of a Rust crate.
 
-# Appendix: Rationales and design tradeoffs
+# Appendix: Rationales and design trade-offs
 
 *TODO*.
 
@@ -3997,7 +3997,7 @@ Rust is not a particularly original language, with design elements coming from
 a wide range of sources. Some of these are listed below (including elements
 that have since been removed):
 
-* SML, OCaml: algebraic datatypes, pattern matching, type inference,
+* SML, OCaml: algebraic data types, pattern matching, type inference,
   semicolon statement separation
 * C++: references, RAII, smart pointers, move semantics, monomorphisation,
   memory model
