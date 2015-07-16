@@ -56,7 +56,7 @@ TARGET_CRATES := libc std flate arena term \
 		 alloc_system
 RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
-                rustc_data_structures
+                rustc_data_structures rustc_platform_intrinsics
 HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
 TOOLS := compiletest rustdoc rustc rustbook error-index-generator
 
@@ -74,7 +74,7 @@ DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_bo
 		     rustc_trans rustc_privacy rustc_lint
 
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
-	                log syntax serialize rustc_llvm
+	                log syntax serialize rustc_llvm rustc_platform_intrinsics
 DEPS_rustc_typeck := rustc syntax
 DEPS_rustc_borrowck := rustc log graphviz syntax
 DEPS_rustc_resolve := rustc log syntax
@@ -83,6 +83,7 @@ DEPS_rustc_lint := rustc log syntax
 DEPS_rustc := syntax flate arena serialize getopts rbml \
               log graphviz rustc_llvm rustc_back rustc_data_structures
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
+DEPS_rustc_platform_intrinsics := rustc rustc_llvm
 DEPS_rustc_back := std syntax rustc_llvm flate log libc
 DEPS_rustc_data_structures := std log serialize
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \

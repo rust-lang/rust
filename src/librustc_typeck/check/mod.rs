@@ -5378,6 +5378,12 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                 (0, vec![tcx.mk_fn(None, fn_ty), mut_u8], mut_u8)
             }
 
+            name if name.starts_with("x86_") ||
+                    name.starts_with("arm_") ||
+                    name.starts_with("aarch64_") => {
+                // FIXME: skip checking these for now
+                return
+            }
             ref other => {
                 span_err!(tcx.sess, it.span, E0093,
                     "unrecognized intrinsic function: `{}`", *other);
