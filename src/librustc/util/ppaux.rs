@@ -662,7 +662,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyTrait(ref data) => write!(f, "{}", data),
             ty::TyProjection(ref data) => write!(f, "{}", data),
             TyStr => write!(f, "str"),
-            TyClosure(ref did, substs) => ty::tls::with(|tcx| {
+            TyClosure(ref did, substs, _) => ty::tls::with(|tcx| {
                 try!(write!(f, "[closure"));
                 let closure_tys = &tcx.tables.borrow().closure_tys;
                 try!(closure_tys.get(did).map(|cty| &cty.sig).and_then(|sig| {

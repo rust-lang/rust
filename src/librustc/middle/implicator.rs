@@ -96,7 +96,8 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                 // No borrowed content reachable here.
             }
 
-            ty::TyClosure(def_id, substs) => {
+            ty::TyClosure(def_id, substs, _) => {
+                // TODO remove RegionSubClosure
                 let &(r_a, opt_ty) = self.stack.last().unwrap();
                 self.out.push(Implication::RegionSubClosure(opt_ty, r_a, def_id, substs));
             }

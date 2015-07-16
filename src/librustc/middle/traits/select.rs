@@ -201,7 +201,7 @@ enum SelectionCandidate<'tcx> {
 
     /// Implementation of a `Fn`-family trait by one of the
     /// anonymous types generated for a `||` expression.
-    ClosureCandidate(/* closure */ ast::DefId, Substs<'tcx>),
+    ClosureCandidate(/* closure */ ast::DefId, &'tcx Substs<'tcx>, &'tcx Vec<Ty<'tcx>>),
 
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int)->int`)
@@ -348,7 +348,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // lifetimes can appear inside the self-type.
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let (closure_def_id, substs) = match self_ty.sty {
-            ty::TyClosure(id, ref substs) => (id, substs.clone()),
+            ty::TyClosure(id, ref substs, _) => (id, substs.clone()),
             _ => { return; }
         };
         assert!(!substs.has_escaping_regions());
@@ -1142,8 +1142,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
-        let (closure_def_id, substs) = match self_ty.sty {
-            ty::TyClosure(id, substs) => (id, substs),
+        let (closure_def_id, substs, upvar_tys) = match self_ty.sty {
+            ty::TyClosure(id, substs, ref upvar_tys) => (id, substs, upvar_tys),
             ty::TyInfer(ty::TyVar(_)) => {
                 debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
@@ -1161,8 +1161,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Some(closure_kind) => {
                 debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
                 if closure_kind.extends(kind) {
-                    candidates.vec.push(ClosureCandidate(closure_def_id,
-                                                         substs.clone()));
+                    candidates.vec.push(ClosureCandidate(closure_def_id, substs, upvar_tys));
                 }
             }
             None => {
@@ -1704,7 +1703,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
             ty::TyTuple(ref tys) => ok_if(tys.clone()),
 
-            ty::TyClosure(def_id, substs) => {
+            ty::TyClosure(def_id, substs, _) => {
                 // FIXME -- This case is tricky. In the case of by-ref
                 // closures particularly, we need the results of
                 // inference to decide how to reflect the type of each
@@ -1730,6 +1729,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     return ok_if(Vec::new());
                 }
 
+                // TODO
                 match self.infcx.closure_upvars(def_id, substs) {
                     Some(upvars) => ok_if(upvars.iter().map(|c| c.ty).collect()),
                     None => {
@@ -1865,9 +1865,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Some(tys.clone())
             }
 
-            ty::TyClosure(def_id, substs) => {
+            ty::TyClosure(def_id, substs, _) => {
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
 
+                // TODO
                 match self.infcx.closure_upvars(def_id, substs) {
                     Some(upvars) => {
                         Some(upvars.iter().map(|c| c.ty).collect())
@@ -2014,9 +2015,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(VtableImpl(vtable_impl))
             }
 
-            ClosureCandidate(closure_def_id, substs) => {
+            ClosureCandidate(closure_def_id, substs, upvar_tys) => {
                 let vtable_closure =
-                    try!(self.confirm_closure_candidate(obligation, closure_def_id, &substs));
+                    try!(self.confirm_closure_candidate(obligation, closure_def_id,
+                                                        &substs, upvar_tys));
                 Ok(VtableClosure(vtable_closure))
             }
 
@@ -2365,7 +2367,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_closure_candidate(&mut self,
                                  obligation: &TraitObligation<'tcx>,
                                  closure_def_id: ast::DefId,
-                                 substs: &Substs<'tcx>)
+                                 substs: &Substs<'tcx>,
+                                 upvar_tys: &'tcx Vec<Ty<'tcx>>)
                                  -> Result<VtableClosureData<'tcx, PredicateObligation<'tcx>>,
                                            SelectionError<'tcx>>
     {
@@ -2391,6 +2394,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(VtableClosureData {
             closure_def_id: closure_def_id,
             substs: substs.clone(),
+            upvar_tys: upvar_tys.clone(),
             nested: obligations
         })
     }

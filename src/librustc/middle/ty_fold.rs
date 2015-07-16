@@ -450,6 +450,7 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableClosureDa
             closure_def_id: self.closure_def_id,
             substs: self.substs.fold_with(folder),
             nested: self.nested.fold_with(folder),
+            upvar_tys: self.upvar_tys.fold_with(folder),
         }
     }
 }
@@ -602,9 +603,10 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
             let substs = substs.fold_with(this);
             ty::TyStruct(did, this.tcx().mk_substs(substs))
         }
-        ty::TyClosure(did, ref substs) => {
+        ty::TyClosure(did, ref substs, ref tys) => {
             let s = substs.fold_with(this);
-            ty::TyClosure(did, this.tcx().mk_substs(s))
+            let tys = tys.fold_with(this);
+            ty::TyClosure(did, this.tcx().mk_substs(s), tys)
         }
         ty::TyProjection(ref data) => {
             ty::TyProjection(data.fold_with(this))

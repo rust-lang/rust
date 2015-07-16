@@ -60,8 +60,18 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         abi::RustCall,
         expected_sig);
 
-    let closure_type = fcx.ccx.tcx.mk_closure(expr_def_id,
-        fcx.ccx.tcx.mk_substs(fcx.inh.infcx.parameter_environment.free_substs.clone()));
+    let freevar_tys =
+        fcx.tcx().with_freevars(expr.id, |fv| {
+            fv.iter()
+              .map(|_| fcx.tcx().types.bool) // TODO
+              .collect()
+        });
+
+    let closure_type =
+        fcx.ccx.tcx.mk_closure(
+            expr_def_id,
+            fcx.ccx.tcx.mk_substs(fcx.inh.infcx.parameter_environment.free_substs.clone()),
+            freevar_tys);
 
     fcx.write_ty(expr.id, closure_type);
 

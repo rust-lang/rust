@@ -564,8 +564,13 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
           assert_eq!(next(st), '[');
           let did = parse_def_(st, ClosureSource, conv);
           let substs = parse_substs_(st, conv);
+          let mut tys = vec![];
+          while peek(st) != '.' {
+              tys.push(parse_ty_(st, conv));
+          }
+          assert_eq!(next(st), '.');
           assert_eq!(next(st), ']');
-          return st.tcx.mk_closure(did, st.tcx.mk_substs(substs));
+          return st.tcx.mk_closure(did, st.tcx.mk_substs(substs), tys);
       }
       'P' => {
           assert_eq!(next(st), '[');
