@@ -1139,14 +1139,31 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         trait_def.associated_type_names.contains(&assoc_name)
     }
 
-    fn ty_infer(&self, ty_param_def: Option<ty::TypeParameterDef<'tcx>>, span: Span) -> Ty<'tcx> {
-        let default = ty_param_def.and_then(|t|
-            t.default.map(|ty| type_variable::Default {
-                ty: ty,
+    fn ty_infer(&self,
+                ty_param_def: Option<ty::TypeParameterDef<'tcx>>,
+                substs: Option<&mut subst::Substs<'tcx>>,
+                space: Option<subst::ParamSpace>,
+                span: Span) -> Ty<'tcx> {
+        // Grab the default doing subsitution
+        let default = ty_param_def.and_then(|def| {
+            let definition_span = self.tcx()
+                                      .map
+                                      .opt_span(def.def_id.node);
+
+            def.default.map(|ty| type_variable::Default {
+                ty: ty.subst_spanned(self.tcx(), substs.as_ref().unwrap(), Some(span)),
                 origin_span: span,
-                definition_span: span
-        }));
-        self.infcx().next_ty_var_with_default(default)
+                definition_span: definition_span.unwrap_or(codemap::DUMMY_SP)
+            })
+        });
+
+        let ty_var = self.infcx().next_ty_var_with_default(default);
+
+        // Finally we add the type variable to the substs
+        match substs {
+            None => ty_var,
+            Some(substs) => { substs.types.push(space.unwrap(), ty_var); ty_var }
+        }
     }
 
     fn projected_ty_from_poly_trait_ref(&self,
@@ -1829,10 +1846,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // a unification failure and then report an error for each.
                 for (conflict, default) in conflicts {
                     let conflicting_default =
-                        self.find_conflicting_default(
-                            &unbound_tyvars,
-                            &default_map,
-                            conflict).unwrap_or(type_variable::Default {
+                        self.find_conflicting_default(&unbound_tyvars, &default_map, conflict)
+                            .unwrap_or(type_variable::Default {
                                 ty: self.infcx().next_ty_var(),
                                 origin_span: codemap::DUMMY_SP,
                                 definition_span: codemap::DUMMY_SP
@@ -1871,36 +1886,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // We also run this inside snapshot that never commits so we can do error
         // reporting for more then one conflict.
-        //let _ = self.infcx().commit_if_ok(|_: &infer::CombinedSnapshot| {
-            for ty in &unbound_tyvars {
-                if self.infcx().type_var_diverges(ty) {
-                    demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
-                } else {
-                    match self.infcx().type_is_unconstrained_numeric(ty) {
-                        UnconstrainedInt => {
-                            demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
-                        },
-                        UnconstrainedFloat => {
-                            demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
-                        },
-                        Neither => {
-                            if let Some(default) = default_map.get(ty) {
-                                let default = default.clone();
-                                match infer::mk_eqty(self.infcx(), false,
-                                                     infer::Misc(default.origin_span),
-                                                     ty, default.ty) {
-                                    Ok(()) => {}
-                                    Err(_) => {
-                                        result = Some(default);
-                                    }
+        for ty in &unbound_tyvars {
+            if self.infcx().type_var_diverges(ty) {
+                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+            } else {
+                match self.infcx().type_is_unconstrained_numeric(ty) {
+                    UnconstrainedInt => {
+                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
+                    },
+                    UnconstrainedFloat => {
+                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
+                    },
+                    Neither => {
+                        if let Some(default) = default_map.get(ty) {
+                            let default = default.clone();
+                            match infer::mk_eqty(self.infcx(), false,
+                                                 infer::Misc(default.origin_span),
+                                                 ty, default.ty) {
+                                Ok(()) => {}
+                                Err(_) => {
+                                    result = Some(default);
                                 }
                             }
                         }
                     }
                 }
             }
-            // let result: Result<(), ()> = Err(()); result
-        //});
+        }
 
         return result;
     }
@@ -4613,7 +4625,6 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
         }
     }
-
     if let Some(self_ty) = opt_self_ty {
         if type_defs.len(subst::SelfSpace) == 1 {
             substs.types.push(subst::SelfSpace, self_ty);
@@ -4839,6 +4850,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // Nothing specified at all: supply inference variables for
         // everything.
         if provided_len == 0 && !(require_type_space && space == subst::TypeSpace) {
+            substs.types.replace(space, Vec::new());
             fcx.infcx().type_vars_for_defs(span, space, substs, &desired[..]);
             return;
         }

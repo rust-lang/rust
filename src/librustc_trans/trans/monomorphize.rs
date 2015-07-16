@@ -266,6 +266,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Ugh -- but this ensures any new variants won't be forgotten
         ast_map::NodeForeignItem(..) |
         ast_map::NodeLifetime(..) |
+        ast_map::NodeTyParam(..) |
         ast_map::NodeExpr(..) |
         ast_map::NodeStmt(..) |
         ast_map::NodeArg(..) |

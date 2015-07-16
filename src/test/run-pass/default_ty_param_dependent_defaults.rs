@@ -11,8 +11,8 @@
 
 use std::marker::PhantomData;
 
-struct Foo<T,U=T> { data: PhantomData<(T, U)> }
+struct Foo<T,U=T> { t: T, data: PhantomData<U> }
 
 fn main() {
-    let foo = Foo { data: PhantomData };
+    let foo = Foo { t: 'a', data: PhantomData };
 }
