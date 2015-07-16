@@ -202,12 +202,52 @@ http://doc.rust-lang.org/reference.html#types
 }
 
 register_diagnostics! {
-    E0157,
-    E0153,
+    E0153, // called no where
+    E0157, // called from no where
     E0253, // not directly importable
     E0254, // import conflicts with imported crate in this module
     E0257,
     E0258,
     E0364, // item is private
-    E0365  // item is private
+    E0365, // item is private
+    E0401, // can't use type parameters from outer function
+    E0402, // cannot use an outer type parameter in this context
+    E0403, // the name `{}` is already used
+    E0404, // is not a trait
+    E0405, // use of undeclared trait name
+    E0406, // undeclared associated type
+    E0407, // method is not a member of trait
+    E0408, // variable from pattern #1 is not bound in pattern #
+    E0409, // variable is bound with different mode in pattern # than in
+           // pattern #1
+    E0410, // variable from pattern is not bound in pattern 1
+    E0411, // use of `Self` outside of an impl or trait
+    E0412, // use of undeclared
+    E0413, // declaration of shadows an enum variant or unit-like struct in
+           // scope
+    E0414, // only irrefutable patterns allowed here
+    E0415, // identifier is bound more than once in this parameter list
+    E0416, // identifier is bound more than once in the same pattern
+    E0417, // static variables cannot be referenced in a pattern, use a
+           // `const` instead
+    E0418, // is not an enum variant, struct or const
+    E0419, // unresolved enum variant, struct or const
+    E0420, // is not an associated const
+    E0421, // unresolved associated const
+    E0422, // does not name a structure
+    E0423, // is a struct variant name, but this expression uses it like a
+           // function name
+    E0424, // `self` is not available in a static method.
+    E0425, // unresolved name
+    E0426, // use of undeclared label
+    E0427, // cannot use `ref` binding mode with ...
+    E0428, // duplicate definition of ...
+    E0429, // `self` imports are only allowed within a { } list
+    E0430, // `self` import can only appear once in the list
+    E0431, // `self` import can only appear in an import list with a non-empty
+           // prefix
+    E0432, // unresolved import
+    E0433, // failed to resolve
+    E0434, // can't capture dynamic environment in a fn item
+    E0435  // attempt to use a non-constant value in a constant
 }
