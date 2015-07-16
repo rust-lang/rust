@@ -701,6 +701,9 @@
             // Push and pop states are used to add search results to the browser
             // history.
             if (browserSupportsHistoryApi()) {
+                // Store the previous <title> so we can revert back to it later.
+                var previousTitle = $(document).prop("title");
+
                 $(window).on('popstate', function(e) {
                     var params = getQueryStringParams();
                     // When browsing back from search results the main page
@@ -709,6 +712,9 @@
                         $('#main.content').removeClass('hidden');
                         $('#search.content').addClass('hidden');
                     }
+                    // Revert to the previous title manually since the History
+                    // API ignores the title parameter.
+                    $(document).prop("title", previousTitle);
                     // When browsing forward to search results the previous
                     // search will be repeated, so the currentResults are
                     // cleared to ensure the search is successful.
