@@ -2134,6 +2134,10 @@ extern {
                                     Name: *const c_char,
                                     Child: ArchiveChildRef) -> RustArchiveMemberRef;
     pub fn LLVMRustArchiveMemberFree(Member: RustArchiveMemberRef);
+
+    pub fn LLVMRustSetDataLayoutFromTargetMachine(M: ModuleRef,
+                                                  TM: TargetMachineRef);
+    pub fn LLVMRustGetModuleDataLayout(M: ModuleRef) -> TargetDataRef;
 }
 
 // LLVM requires symbols from this library, but apparently they're not printed

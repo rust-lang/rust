@@ -2666,6 +2666,8 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
                 // cannot proceed despite the Once not running more than once.
                 POISONED = true;
             }
+
+            ::back::write::configure_llvm(&tcx.sess);
         });
 
         if POISONED {
