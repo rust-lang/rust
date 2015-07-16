@@ -10,7 +10,7 @@
 
 //! Windows-specific primitives
 
-#[stable(feature = "raw_ext", since = "1.1.0")]
+#![stable(feature = "raw_ext", since = "1.1.0")]
 
 use os::raw::c_void;
 
