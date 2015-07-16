@@ -24,8 +24,8 @@ use ffi::OsString;
 use io::{self, SeekFrom, Seek, Read, Write};
 use path::{Path, PathBuf};
 use sys::fs as fs_imp;
-use sys_common::{AsInnerMut, FromInner, AsInner};
 use sys_common::io::read_to_end_uninitialized;
+use sys_common::{AsInnerMut, FromInner, AsInner, IntoInner};
 use vec::Vec;
 
 /// A reference to an open file on the filesystem.
@@ -315,6 +315,11 @@ impl AsInner<fs_imp::File> for File {
 impl FromInner<fs_imp::File> for File {
     fn from_inner(f: fs_imp::File) -> File {
         File { inner: f }
+    }
+}
+impl IntoInner<fs_imp::File> for File {
+    fn into_inner(self) -> fs_imp::File {
+        self.inner
     }
 }
 

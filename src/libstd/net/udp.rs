@@ -17,7 +17,7 @@ use fmt;
 use io::{self, Error, ErrorKind};
 use net::{ToSocketAddrs, SocketAddr, IpAddr};
 use sys_common::net as net_imp;
-use sys_common::{AsInner, FromInner};
+use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
 
 /// A User Datagram Protocol socket.
@@ -172,6 +172,10 @@ impl AsInner<net_imp::UdpSocket> for UdpSocket {
 
 impl FromInner<net_imp::UdpSocket> for UdpSocket {
     fn from_inner(inner: net_imp::UdpSocket) -> UdpSocket { UdpSocket(inner) }
+}
+
+impl IntoInner<net_imp::UdpSocket> for UdpSocket {
+    fn into_inner(self) -> net_imp::UdpSocket { self.0 }
 }
 
 impl fmt::Debug for UdpSocket {
