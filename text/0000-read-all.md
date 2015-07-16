@@ -60,7 +60,7 @@ Aditionally, a default implementation of this method is provided:
 
 ``` rust
 fn read_exact(&mut self, mut buf: &mut [u8]) -> Result<()> {
-    while buf.len() > 0 {
+    while !buf.is_empty() {
         match self.read(buf) {
             Ok(0) => break,
             Ok(n) => { let tmp = buf; buf = &mut tmp[n..]; }
@@ -68,7 +68,7 @@ fn read_exact(&mut self, mut buf: &mut [u8]) -> Result<()> {
             Err(e) => return Err(e),
         }
     }
-    if buf.len() > 0 {
+    if !buf.is_empty() {
         Err(Error::new(ErrorKind::UnexpectedEOF, "failed to fill whole buffer"))
     } else {
         Ok(())
