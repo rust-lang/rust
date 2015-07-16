@@ -56,11 +56,24 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprTup(ref items) => {
                 rewrite_tuple_lit(context, items, self.span, width, offset)
             }
-            ast::Expr_::ExprLoop(ref block, _) => {
+            ast::Expr_::ExprWhile(ref subexpr, ref block, label) => {
+                let label_string = rewrite_label(label);
+                // 6 = "while "
+                // 2 = " {"
+                let expr_width = width - 6 - 2 - label_string.len();
+                let expr_offset = offset + 6 + label_string.len();
+
+                subexpr.rewrite(context, expr_width, expr_offset).and_then(|expr_string| {
+                    // FIXME: this drops any comment between "loop" and the block.
+                    block.rewrite(context, width, offset).map(|result| {
+                        format!("{}while {} {}", rewrite_label(label), expr_string, result)
+                    })
+                })
+            }
+            ast::Expr_::ExprLoop(ref block, label) => {
                 // FIXME: this drops any comment between "loop" and the block.
-                // TODO: format label
                 block.rewrite(context, width, offset).map(|result| {
-                    format!("loop {}", result)
+                    format!("{}loop {}", rewrite_label(label), result)
                 })
             }
             _ => context.codemap.span_to_snippet(self.span).ok()
@@ -85,6 +98,13 @@ impl Rewrite for ast::Block {
         let string_buffer = visitor.changes.get(&file_name);
 
         Some(string_buffer.to_string())
+    }
+}
+
+fn rewrite_label(label: Option<ast::Ident>) -> String {
+    match label {
+        Some(ident) => format!("{}: ", ident.as_str()),
+        None => "".to_owned()
     }
 }
 
