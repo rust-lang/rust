@@ -15,13 +15,6 @@ pub fn target() -> Target {
     base.cpu = "x86-64".to_string();
 
     Target {
-        // This is currently in sync with the specification for
-        // x86_64-pc-windows-gnu but there's a comment in that file questioning
-        // whether this is valid or not. Sounds like the two should stay in sync
-        // at least for now.
-        data_layout: "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
-                      f32:32:32-f64:64:64-v64:64:64-v128:128:128-a:0:64-\
-                      s0:64:64-f80:128:128-n8:16:32:64-S128".to_string(),
         llvm_target: "x86_64-pc-windows-msvc".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "64".to_string(),
