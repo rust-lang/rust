@@ -269,6 +269,7 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(ptr: *mut T, length: usize,
                                  capacity: usize) -> Vec<T> {
+        debug_assert!(capacity >= length);
         Vec {
             ptr: Unique::new(ptr),
             len: length,
