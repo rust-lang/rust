@@ -18,7 +18,7 @@ impl LintPass for EtaPass {
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
         if let ExprClosure(_, ref decl, ref blk) = expr.node {
-            if blk.stmts.len() != 0 {
+            if !blk.stmts.is_empty() {
                 // || {foo(); bar()}; can't be reduced here
                 return;
             }

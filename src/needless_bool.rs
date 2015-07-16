@@ -10,6 +10,7 @@ use syntax::ast::*;
 use syntax::ast_util::{is_comparison_binop, binop_to_string};
 use syntax::ptr::P;
 use syntax::codemap::Span;
+use utils::de_p;
 
 declare_lint! {
     pub NEEDLESS_BOOL,
@@ -28,10 +29,18 @@ impl LintPass for NeedlessBool {
     fn check_expr(&mut self, cx: &Context, e: &Expr) {
         if let ExprIf(_, ref then_block, Option::Some(ref else_expr)) = e.node {
 			match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
-				(Option::Some(true), Option::Some(true)) => { cx.span_lint(NEEDLESS_BOOL, e.span, "your if-then-else expression will always return true"); },
-				(Option::Some(true), Option::Some(false)) => { cx.span_lint(NEEDLESS_BOOL, e.span, "you can reduce your if-statement to its predicate"); },
-				(Option::Some(false), Option::Some(true)) => { cx.span_lint(NEEDLESS_BOOL, e.span, "you can reduce your if-statement to '!' + your predicate"); },
-				(Option::Some(false), Option::Some(false)) => { cx.span_lint(NEEDLESS_BOOL, e.span, "your if-then-else expression will always return false"); },
+				(Option::Some(true), Option::Some(true)) => { 
+					cx.span_lint(NEEDLESS_BOOL, e.span, 
+						"your if-then-else expression will always return true"); },
+				(Option::Some(true), Option::Some(false)) => { 
+					cx.span_lint(NEEDLESS_BOOL, e.span, 
+						"you can reduce your if-statement to its predicate"); },
+				(Option::Some(false), Option::Some(true)) => { 
+					cx.span_lint(NEEDLESS_BOOL, e.span, 
+						"you can reduce your if-statement to '!' + your predicate"); },
+				(Option::Some(false), Option::Some(false)) => { 
+					cx.span_lint(NEEDLESS_BOOL, e.span, 
+						"your if-then-else expression will always return false"); },
 				_ => ()
 			}
 		}
@@ -39,7 +48,9 @@ impl LintPass for NeedlessBool {
 }
 
 fn fetch_bool_block(block: &Block) -> Option<bool> {
-	if block.stmts.is_empty() { block.expr.as_ref().and_then(|e| fetch_bool_expr(e)) } else { Option::None }
+	if block.stmts.is_empty() { 
+		block.expr.as_ref().map(de_p).and_then(fetch_bool_expr)
+	} else { Option::None }
 }
 	
 fn fetch_bool_expr(expr: &Expr) -> Option<bool> {
