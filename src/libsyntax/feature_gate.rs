@@ -136,6 +136,10 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     // switch to Accepted; see RFC 320)
     ("unsafe_no_drop_flag", "1.0.0", None, Active),
 
+    // Allows using the unsafe_destructor_blind_to_params attribute
+    // (Needs an RFC link)
+    ("unsafe_destructor_blind_to_params", "1.3.0", Some(28498), Active),
+
     // Allows the use of custom attributes; RFC 572
     ("custom_attribute", "1.0.0", None, Active),
 
@@ -339,6 +343,11 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("unsafe_no_drop_flag", Whitelisted, Gated("unsafe_no_drop_flag",
                                                "unsafe_no_drop_flag has unstable semantics \
                                                 and may be removed in the future")),
+    ("unsafe_destructor_blind_to_params",
+     Normal,
+     Gated("unsafe_destructor_blind_to_params",
+           "unsafe_destructor_blind_to_params has unstable semantics \
+            and may be removed in the future")),
     ("unwind", Whitelisted, Gated("unwind_attributes", "#[unwind] is experimental")),
 
     // used in resolve

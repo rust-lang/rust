@@ -217,19 +217,16 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 ///
 /// ----
 ///
-/// The Drop Check Rule is the following:
+/// The simplified (*) Drop Check Rule is the following:
 ///
 /// Let `v` be some value (either temporary or named) and 'a be some
 /// lifetime (scope). If the type of `v` owns data of type `D`, where
 ///
-/// * (1.) `D` has a lifetime- or type-parametric Drop implementation, and
-/// * (2.) the structure of `D` can reach a reference of type `&'a _`, and
-/// * (3.) either:
-///   * (A.) the Drop impl for `D` instantiates `D` at 'a directly,
-///          i.e. `D<'a>`, or,
-///   * (B.) the Drop impl for `D` has some type parameter with a
-///          trait bound `T` where `T` is a trait that has at least
-///          one method,
+/// * (1.) `D` has a lifetime- or type-parametric Drop implementation,
+///        (where that `Drop` implementation does not opt-out of
+///         this check via the `unsafe_destructor_blind_to_params`
+///         attribute), and
+/// * (2.) the structure of `D` can reach a reference of type `&'a _`,
 ///
 /// then 'a must strictly outlive the scope of v.
 ///
@@ -237,6 +234,35 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 ///
 /// This function is meant to by applied to the type for every
 /// expression in the program.
+///
+/// ----
+///
+/// (*) The qualifier "simplified" is attached to the above
+/// definition of the Drop Check Rule, because it is a simplification
+/// of the original Drop Check rule, which attempted to prove that
+/// some `Drop` implementations could not possibly access data even if
+/// it was technically reachable, due to parametricity.
+///
+/// However, (1.) parametricity on its own turned out to be a
+/// necessary but insufficient condition, and (2.)  future changes to
+/// the language are expected to make it impossible to ensure that a
+/// `Drop` implementation is actually parametric with respect to any
+/// particular type parameter. (In particular, impl specialization is
+/// expected to break the needed parametricity property beyond
+/// repair.)
+///
+/// Therefore we have scaled back Drop-Check to a more conservative
+/// rule that does not attempt to deduce whether a `Drop`
+/// implementation could not possible access data of a given lifetime;
+/// instead Drop-Check now simply assumes that if a destructor has
+/// access (direct or indirect) to a lifetime parameter, then that
+/// lifetime must be forced to outlive that destructor's dynamic
+/// extent. We then provide the `unsafe_destructor_blind_to_params`
+/// attribute as a way for destructor implementations to opt-out of
+/// this conservative assumption (and thus assume the obligation of
+/// ensuring that they do not access data nor invoke methods of
+/// values that have been previously dropped).
+///
 pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                                          typ: ty::Ty<'tcx>,
                                                          span: Span,
@@ -356,13 +382,18 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
     // borrowed data reachable via `typ` must outlive the parent
     // of `scope`. This is handled below.
     //
-    // However, there is an important special case: by
-    // parametricity, any generic type parameters have *no* trait
-    // bounds in the Drop impl can not be used in any way (apart
-    // from being dropped), and thus we can treat data borrowed
-    // via such type parameters remains unreachable.
+    // However, there is an important special case: for any Drop
+    // impl that is tagged as "blind" to their parameters,
+    // we assume that data borrowed via such type parameters
+    // remains unreachable via that Drop impl.
     //
-    // For example, consider `impl<T> Drop for Vec<T> { ... }`,
+    // For example, consider:
+    //
+    // ```rust
+    // #[unsafe_destructor_blind_to_params]
+    // impl<T> Drop for Vec<T> { ... }
+    // ```
+    //
     // which does have to be able to drop instances of `T`, but
     // otherwise cannot read data from `T`.
     //
@@ -370,16 +401,6 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
     // unbounded type parameter `T`, we must resume the recursive
     // analysis on `T` (since it would be ignored by
     // type_must_outlive).
-    //
-    // FIXME (pnkfelix): Long term, we could be smart and actually
-    // feed which generic parameters can be ignored *into* `fn
-    // type_must_outlive` (or some generalization thereof). But
-    // for the short term, it probably covers most cases of
-    // interest to just special case Drop impls where: (1.) there
-    // are no generic lifetime parameters and (2.)  *all* generic
-    // type parameters are unbounded.  If both conditions hold, we
-    // simply skip the `type_must_outlive` call entirely (but
-    // resume the recursive checking of the type-substructure).
     if has_dtor_of_interest(tcx, ty) {
         debug!("iterate_over_potentially_unsafe_regions_in_type \
                 {}ty: {} - is a dtorck type!",

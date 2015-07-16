@@ -578,6 +578,16 @@ impl<'tcx> ty::ctxt<'tcx> {
         });
         let generics = adt.type_scheme(self).generics;
 
+        // RFC 1238: if the destructor method is tagged with the
+        // attribute `unsafe_destructor_blind_to_params`, then the
+        // compiler is being instructed to *assume* that the
+        // destructor will not access borrowed data via a type
+        // parameter, even if such data is otherwise reachable.
+        if self.has_attr(dtor_method, "unsafe_destructor_blind_to_params") {
+            debug!("typ: {:?} assumed blind and thus is dtorck-safe", adt);
+            return false;
+        }
+
         // In `impl<'a> Drop ...`, we automatically assume
         // `'a` is meaningful and thus represents a bound
         // through which we could reach borrowed data.
@@ -588,6 +598,14 @@ impl<'tcx> ty::ctxt<'tcx> {
         // actually used (something like `where 'a: ?Live`).
         if generics.has_region_params(subst::TypeSpace) {
             debug!("typ: {:?} has interesting dtor due to region params",
+                   adt);
+            return true;
+        }
+
+        // RFC 1238: *any* type parameter at all makes this a dtor of
+        // interest (i.e. cannot-assume-parametricity from RFC 1238.)
+        if generics.has_type_params(subst::TypeSpace) {
+            debug!("typ: {:?} has interesting dtor due to type params",
                    adt);
             return true;
         }

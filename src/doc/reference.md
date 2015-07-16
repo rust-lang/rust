@@ -2022,6 +2022,20 @@ macro scope.
 - `simd` - on certain tuple structs, derive the arithmetic operators, which
   lower to the target's SIMD instructions, if any; the `simd` feature gate
   is necessary to use this attribute.
+- `unsafe_destructor_blind_to_params` - on `Drop::drop` method, asserts that the
+  destructor code (and all potential specializations of that code) will
+  never attempt to read from nor write to any references with lifetimes
+  that come in via generic parameters. This is a constraint we cannot
+  currently express via the type system, and therefore we rely on the
+  programmer to assert that it holds. Adding this to a Drop impl causes
+  the associated destructor to be considered "uninteresting" by the
+  Drop-Check rule, and thus it can help sidestep data ordering
+  constraints that would otherwise be introduced by the Drop-Check
+  rule. Such sidestepping of the constraints, if done incorrectly, can
+  lead to undefined behavior (in the form of reading or writing to data
+  outside of its dynamic extent), and thus this attribute has the word
+  "unsafe" in its name. To use this, the
+  `unsafe_destructor_blind_to_params` feature gate must be enabled.
 - `unsafe_no_drop_flag` - on structs, remove the flag that prevents
   destructors from being run twice. Destructors might be run multiple times on
   the same object with this attribute. To use this, the `unsafe_no_drop_flag` feature
