@@ -143,10 +143,10 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
-        ty::TyClosure(def, substs, ref tys) => {
+        ty::TyClosure(def, ref substs) => {
             mywrite!(w, "k[{}|", (cx.ds)(def));
-            enc_substs(w, cx, substs);
-            for ty in tys {
+            enc_substs(w, cx, &substs.func_substs);
+            for ty in &substs.upvar_tys {
                 enc_ty(w, cx, ty);
             }
             mywrite!(w, ".");

@@ -1374,17 +1374,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn closure_type(&self,
-                    def_id: ast::DefId,
-                    substs: &subst::Substs<'tcx>)
-                    -> ty::ClosureTy<'tcx>
+                        def_id: ast::DefId,
+                        substs: &ty::ClosureSubsts<'tcx>)
+                        -> ty::ClosureTy<'tcx>
     {
-
         let closure_ty = self.tables
                              .borrow()
                              .closure_tys
                              .get(&def_id)
                              .unwrap()
-                             .subst(self.tcx, substs);
+                             .subst(self.tcx, &substs.func_substs);
 
         if self.normalize {
             normalize_associated_type(&self.tcx, &closure_ty)
@@ -1395,7 +1394,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn closure_upvars(&self,
                           def_id: ast::DefId,
-                          substs: &Substs<'tcx>)
+                          substs: &ty::ClosureSubsts<'tcx>)
                           -> Option<Vec<ty::ClosureUpvar<'tcx>>>
     {
         let result = ty::ctxt::closure_upvars(self, def_id, substs);

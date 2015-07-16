@@ -89,7 +89,6 @@ use middle::free_region::FreeRegionMap;
 use middle::implicator;
 use middle::mem_categorization as mc;
 use middle::region::CodeExtent;
-use middle::subst::Substs;
 use middle::traits;
 use middle::ty::{self, ReScope, Ty, MethodCall, HasTypeFlags};
 use middle::infer::{self, GenericKind};
@@ -1444,7 +1443,7 @@ fn closure_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                   origin: infer::SubregionOrigin<'tcx>,
                                   region: ty::Region,
                                   def_id: ast::DefId,
-                                  substs: &'tcx Substs<'tcx>) {
+                                  substs: &'tcx ty::ClosureSubsts<'tcx>) {
     debug!("closure_must_outlive(region={:?}, def_id={:?}, substs={:?})",
            region, def_id, substs);
 

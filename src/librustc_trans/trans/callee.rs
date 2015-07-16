@@ -32,7 +32,6 @@ use trans::build::*;
 use trans::callee;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
-use trans::closure;
 use trans::common::{self, Block, Result, NodeIdAndSpan, ExprId, CrateContext,
                     ExprOrMethodCall, FunctionContext, MethodCallKey};
 use trans::consts;
@@ -445,12 +444,6 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
             }
         }
     };
-
-    // If this is a closure, redirect to it.
-    match closure::get_or_create_declaration_if_closure(ccx, def_id, substs) {
-        None => {}
-        Some(llfn) => return llfn,
-    }
 
     // Check whether this fn has an inlined copy and, if so, redirect
     // def_id to the local id of the inlined copy.

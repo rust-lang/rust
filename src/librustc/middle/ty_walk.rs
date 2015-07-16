@@ -91,9 +91,9 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
         ty::TyStruct(_, ref substs) => {
             push_reversed(stack, substs.types.as_slice());
         }
-        ty::TyClosure(_, ref substs, ref tys) => {
-            push_reversed(stack, substs.types.as_slice());
-            push_reversed(stack, tys);
+        ty::TyClosure(_, ref substs) => {
+            push_reversed(stack, substs.func_substs.types.as_slice());
+            push_reversed(stack, &substs.upvar_tys);
         }
         ty::TyTuple(ref ts) => {
             push_reversed(stack, ts);

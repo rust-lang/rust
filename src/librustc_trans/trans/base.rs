@@ -470,7 +470,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
               }
           })
       }
-      ty::TyClosure(def_id, substs, _) => { // TODO
+      ty::TyClosure(def_id, ref substs) => { // TODO
           let repr = adt::represent_type(cx.ccx(), t);
           let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
           let upvars = infcx.closure_upvars(def_id, substs).unwrap();

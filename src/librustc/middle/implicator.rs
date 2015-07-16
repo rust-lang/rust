@@ -28,7 +28,7 @@ use util::nodemap::FnvHashSet;
 pub enum Implication<'tcx> {
     RegionSubRegion(Option<Ty<'tcx>>, ty::Region, ty::Region),
     RegionSubGeneric(Option<Ty<'tcx>>, ty::Region, GenericKind<'tcx>),
-    RegionSubClosure(Option<Ty<'tcx>>, ty::Region, ast::DefId, &'tcx Substs<'tcx>),
+    RegionSubClosure(Option<Ty<'tcx>>, ty::Region, ast::DefId, &'tcx ty::ClosureSubsts<'tcx>),
     Predicate(ast::DefId, ty::Predicate<'tcx>),
 }
 
@@ -96,7 +96,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                 // No borrowed content reachable here.
             }
 
-            ty::TyClosure(def_id, substs, _) => {
+            ty::TyClosure(def_id, ref substs) => {
                 // TODO remove RegionSubClosure
                 let &(r_a, opt_ty) = self.stack.last().unwrap();
                 self.out.push(Implication::RegionSubClosure(opt_ty, r_a, def_id, substs));

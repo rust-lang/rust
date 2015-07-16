@@ -662,11 +662,14 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyTrait(ref data) => write!(f, "{}", data),
             ty::TyProjection(ref data) => write!(f, "{}", data),
             TyStr => write!(f, "str"),
-            TyClosure(ref did, substs, _) => ty::tls::with(|tcx| {
+            TyClosure(ref did, ref substs) => ty::tls::with(|tcx| {
                 try!(write!(f, "[closure"));
+
+                // TODO consider changing this to print out the upvar types instead
+
                 let closure_tys = &tcx.tables.borrow().closure_tys;
                 try!(closure_tys.get(did).map(|cty| &cty.sig).and_then(|sig| {
-                    tcx.lift(&substs).map(|substs| sig.subst(tcx, substs))
+                    tcx.lift(&substs.func_substs).map(|substs| sig.subst(tcx, substs))
                 }).map(|sig| {
                     fn_sig(f, &sig.0.inputs, false, sig.0.output)
                 }).unwrap_or_else(|| {
