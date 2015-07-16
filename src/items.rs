@@ -467,8 +467,9 @@ impl<'a> FmtVisitor<'a> {
 
                     // Make sure we do not exceed column limit
                     // 4 = " = ,"
-                    assert!(self.config.max_width >= vis.len() + name.len() + expr_snippet.len() + 4,
-                            "Enum variant exceeded column limit");
+                    assert!(
+                        self.config.max_width >= vis.len() + name.len() + expr_snippet.len() + 4,
+                        "Enum variant exceeded column limit");
                 }
 
                 result
@@ -768,7 +769,8 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    // TODO we farm this out, but this could spill over the column limit, so we ought to handle it properly
+    // TODO we farm this out, but this could spill over the column limit, so we
+    // ought to handle it properly.
     fn rewrite_fn_input(&self, arg: &ast::Arg) -> String {
         format!("{}: {}",
                 pprust::pat_to_string(&arg.pat),

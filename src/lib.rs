@@ -125,13 +125,13 @@ impl fmt::Display for ErrorKind {
         match *self {
             ErrorKind::LineOverflow => {
                 write!(fmt, "line exceeded maximum length")
-            },
+            }
             ErrorKind::TrailingWhitespace => {
                 write!(fmt, "left behind trailing whitespace")
-            },
+            }
             ErrorKind::BadIssue(issue) => {
                 write!(fmt, "found {}", issue)
-            },
+            }
         }
     }
 }
@@ -140,6 +140,24 @@ impl fmt::Display for ErrorKind {
 struct FormattingError {
     line: u32,
     kind: ErrorKind,
+}
+
+impl FormattingError {
+    fn msg_prefix(&self) -> &str {
+        match self.kind {
+            ErrorKind::LineOverflow |
+            ErrorKind::TrailingWhitespace => "Rustfmt failed at",
+            ErrorKind::BadIssue(_) => "WARNING:",
+        }
+    }
+
+    fn msg_suffix(&self) -> &str {
+        match self.kind {
+            ErrorKind::LineOverflow |
+            ErrorKind::TrailingWhitespace => "(sorry)",
+            ErrorKind::BadIssue(_) => "",
+        }
+    }
 }
 
 struct FormatReport {
@@ -153,10 +171,12 @@ impl fmt::Display for FormatReport {
         for (file, errors) in self.file_error_map.iter() {
             for error in errors {
                 try!(write!(fmt,
-                            "Rustfmt failed at {}:{}: {} (sorry)\n",
+                            "{} {}:{}: {} {}\n",
+                            error.msg_prefix(),
                             file,
                             error.line,
-                            error.kind));
+                            error.kind,
+                            error.msg_suffix()));
             }
         }
         Ok(())

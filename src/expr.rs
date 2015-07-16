@@ -315,7 +315,9 @@ fn rewrite_binary_op(context: &RewriteContext,
 
     // 1 = space between lhs expr and operator
     let mut result =
-        try_opt!(lhs.rewrite(context, context.config.max_width - offset - 1 - operator_str.len(), offset));
+        try_opt!(lhs.rewrite(context,
+                             context.config.max_width - offset - 1 - operator_str.len(),
+                             offset));
 
     result.push(' ');
     result.push_str(&operator_str);
