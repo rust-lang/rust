@@ -24,7 +24,7 @@
 #endif
 
 #if !defined(__APPLE__)
-.type MORESTACK,%function
+func MORESTACK
 #endif
 
 // FIXME(AARCH64): this might not be perfectly right but works for now
@@ -33,3 +33,7 @@ MORESTACK:
 	bl STACK_EXHAUSTED
 	// the above function ensures that it never returns
 	.cfi_endproc
+
+#if !defined(__APPLE__)
+endfunc MORESTACK
+#endif
