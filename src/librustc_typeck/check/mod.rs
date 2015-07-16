@@ -110,6 +110,7 @@ use util::lev_distance::lev_distance;
 
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::HashSet;
+use std::iter;
 use std::mem::replace;
 use std::slice;
 use syntax::{self, abi, attr};
@@ -5091,6 +5092,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
 
     let tcx = ccx.tcx;
     let name = it.ident.name.as_str();
+    let mut infer_ctxt = None;
     let (n_tps, inputs, output) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic not correct format");
@@ -5338,7 +5340,28 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "discriminant_value" => (1, vec![
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
                                                                   ty::BrAnon(0))),
-                                    param(ccx, 0))], tcx.types.u64),
+                                   param(ccx, 0))], tcx.types.u64),
+            "simd_eq" | "simd_ne" | "simd_lt" | "simd_le" | "simd_gt" | "simd_ge" => {
+                (2, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 1))
+            }
+            name if name.starts_with("simd_shuffle") => {
+                match name["simd_shuffle".len()..].parse() {
+                    Ok(n) => {
+                        let mut params = vec![param(ccx, 0), param(ccx, 0)];
+                        params.extend(iter::repeat(tcx.types.u32).take(n));
+
+                        let ictxt = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
+                        let ret = ictxt.next_ty_var();
+                        infer_ctxt = Some(ictxt);
+                        (2, params, ret)
+                    }
+                    Err(_) => {
+                        span_err!(tcx.sess, it.span, E0439,
+                                  "invalid `simd_shuffle`, needs length: `{}`", name);
+                        return
+                    }
+                }
+            }
 
             "try" => {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
@@ -5381,7 +5404,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
              i_n_tps, n_tps);
     } else {
         require_same_types(tcx,
-                           None,
+                           infer_ctxt.as_ref(),
                            false,
                            it.span,
                            i_ty.ty,

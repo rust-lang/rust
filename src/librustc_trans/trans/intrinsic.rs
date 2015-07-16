@@ -800,7 +800,15 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 _ => C_null(llret_ty)
             }
         }
-
+        (_, name) if name.starts_with("simd_") => {
+            generic_simd_intrinsic(bcx, name,
+                                   substs,
+                                   callee_ty,
+                                   &llargs,
+                                   ret_ty, llret_ty,
+                                   call_debug_location,
+                                   call_info)
+        }
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
         (_, name) if name.starts_with("atomic_") => {
@@ -1262,4 +1270,126 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let rust_try = f(tcx.mk_fn(None, try_fn_ty), output);
     *ccx.rust_try_fn().borrow_mut() = Some(rust_try);
     return rust_try
+}
+
+fn generic_simd_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                      name: &str,
+                                      _substs: subst::Substs<'tcx>,
+                                      callee_ty: Ty<'tcx>,
+                                      llargs: &[ValueRef],
+                                      ret_ty: Ty<'tcx>,
+                                      llret_ty: Type,
+                                      call_debug_location: DebugLoc,
+                                      call_info: NodeIdAndSpan) -> ValueRef {
+    let tcx = bcx.tcx();
+    let arg_tys = match callee_ty.sty {
+        ty::TyBareFn(_, ref f) => {
+            bcx.tcx().erase_late_bound_regions(&f.sig.inputs())
+        }
+        _ => unreachable!()
+    };
+
+    let comparison = match name {
+        "simd_eq" => Some(ast::BiEq),
+        "simd_ne" => Some(ast::BiNe),
+        "simd_lt" => Some(ast::BiLt),
+        "simd_le" => Some(ast::BiLe),
+        "simd_gt" => Some(ast::BiGt),
+        "simd_ge" => Some(ast::BiGe),
+        _ => None
+    };
+
+    macro_rules! require {
+        ($cond: expr, $($fmt: tt)*) => {
+            if !$cond {
+                bcx.sess().span_err(call_info.span, &format!($($fmt)*));
+                return C_null(llret_ty)
+            }
+        }
+    }
+
+    if let Some(cmp_op) = comparison {
+        assert_eq!(arg_tys.len(), 2);
+        // we need nominal equality here, not LLVM (structural)
+        // equality
+        require!(arg_tys[0] == arg_tys[1],
+                 "SIMD comparison intrinsic monomorphised with different input types");
+        require!(arg_tys[0].is_simd(tcx),
+                 "SIMD comparison intrinsic monomorphised for non-SIMD argument type");
+        require!(ret_ty.is_simd(tcx),
+                 "SIMD comparison intrinsic monomorphised for non-SIMD return type");
+
+        let in_len = arg_tys[0].simd_size(tcx);
+        let out_len = ret_ty.simd_size(tcx);
+        require!(in_len == out_len,
+                 "SIMD comparison intrinsic monomorphised for non-SIMD argument type");
+        require!(llret_ty.element_type().kind() == llvm::Integer,
+                 "SIMD comparison intrinsic monomorphised with non-integer return");
+
+        return compare_simd_types(bcx,
+                                  llargs[0],
+                                  llargs[1],
+                                  arg_tys[0].simd_type(tcx),
+                                  llret_ty,
+                                  cmp_op,
+                                  call_debug_location)
+    }
+
+    if name.starts_with("simd_shuffle") {
+        let n: usize = match name["simd_shuffle".len()..].parse() {
+            Ok(n) => n,
+            Err(_) => tcx.sess.span_bug(call_info.span,
+                                          "bad `simd_shuffle` instruction only caught in trans?")
+        };
+        assert_eq!(llargs.len(), 2 + n);
+
+        require!(arg_tys[0] == arg_tys[1],
+                 "SIMD shuffle intrinsic monomorphised with different input types");
+        require!(ret_ty.is_simd(tcx),
+                 "SIMD shuffle intrinsic monomorphised for non-SIMD return type");
+
+        let in_len = arg_tys[0].simd_size(tcx);
+        let out_len = ret_ty.simd_size(tcx);
+        require!(out_len == n,
+                 "SIMD shuffle intrinsic monomorphised with return type of length {} (expected {})",
+                 out_len, n);
+        require!(arg_tys[0].simd_type(tcx) == ret_ty.simd_type(tcx),
+                 "SIMD shuffle intrinsic monomorphised with different \
+                  input and return element types");
+
+        let total_len = in_len as u64 * 2;
+
+        let indices: Option<Vec<_>> = llargs[2..]
+            .iter()
+            .enumerate()
+            .map(|(i, val)| {
+                let arg_idx = i + 2;
+                let c = const_to_opt_uint(*val);
+                match c {
+                    None => {
+                        bcx.sess().span_err(call_info.span,
+                                            &format!("SIMD shuffle intrinsic argument #{} \
+                                                      is not a constant",
+                                                     arg_idx));
+                        None
+                    }
+                    Some(idx) if idx >= total_len => {
+                        bcx.sess().span_err(call_info.span,
+                                            &format!("SIMD shuffle intrinsic argument #{} \
+                                                      is out of bounds (limit {})",
+                                                     arg_idx, total_len));
+                        None
+                    }
+                    Some(idx) => Some(C_i32(bcx.ccx(), idx as i32)),
+                }
+            })
+            .collect();
+        let indices = match indices {
+            Some(i) => i,
+            None => return C_null(llret_ty)
+        };
+
+        return ShuffleVector(bcx, llargs[0], llargs[1], C_vector(&indices))
+    }
+    C_null(llret_ty)
 }
