@@ -202,8 +202,8 @@ pub trait CompilerCalls<'a> {
     // be called straight after options have been parsed but before anything
     // else (e.g., selecting input and output).
     fn early_callback(&mut self,
-                      &getopts::Matches,
-                      &diagnostics::registry::Registry)
+                      _: &getopts::Matches,
+                      _: &diagnostics::registry::Registry)
                       -> Compilation {
         Compilation::Continue
     }
@@ -212,11 +212,11 @@ pub trait CompilerCalls<'a> {
     // be called just before actual compilation starts (and before build_controller
     // is called), after all arguments etc. have been completely handled.
     fn late_callback(&mut self,
-                     &getopts::Matches,
-                     &Session,
-                     &Input,
-                     &Option<PathBuf>,
-                     &Option<PathBuf>)
+                     _: &getopts::Matches,
+                     _: &Session,
+                     _: &Input,
+                     _: &Option<PathBuf>,
+                     _: &Option<PathBuf>)
                      -> Compilation {
         Compilation::Continue
     }
@@ -235,11 +235,11 @@ pub trait CompilerCalls<'a> {
     // emitting error messages. Returning None will cause compilation to stop
     // at this point.
     fn no_input(&mut self,
-                &getopts::Matches,
-                &config::Options,
-                &Option<PathBuf>,
-                &Option<PathBuf>,
-                &diagnostics::registry::Registry)
+                _: &getopts::Matches,
+                _: &config::Options,
+                _: &Option<PathBuf>,
+                _: &Option<PathBuf>,
+                _: &diagnostics::registry::Registry)
                 -> Option<(Input, Option<PathBuf>)> {
         None
     }
