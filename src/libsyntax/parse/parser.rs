@@ -2099,28 +2099,32 @@ impl<'a> Parser<'a> {
                     return self.parse_if_expr();
                 }
                 if try!(self.eat_keyword(keywords::For) ){
-                    return self.parse_for_expr(None);
+                    let lo = self.last_span.lo;
+                    return self.parse_for_expr(None, lo);
                 }
                 if try!(self.eat_keyword(keywords::While) ){
-                    return self.parse_while_expr(None);
+                    let lo = self.last_span.lo;
+                    return self.parse_while_expr(None, lo);
                 }
                 if self.token.is_lifetime() {
                     let lifetime = self.get_lifetime();
+                    let lo = self.span.lo;
                     try!(self.bump());
                     try!(self.expect(&token::Colon));
                     if try!(self.eat_keyword(keywords::While) ){
-                        return self.parse_while_expr(Some(lifetime))
+                        return self.parse_while_expr(Some(lifetime), lo)
                     }
                     if try!(self.eat_keyword(keywords::For) ){
-                        return self.parse_for_expr(Some(lifetime))
+                        return self.parse_for_expr(Some(lifetime), lo)
                     }
                     if try!(self.eat_keyword(keywords::Loop) ){
-                        return self.parse_loop_expr(Some(lifetime))
+                        return self.parse_loop_expr(Some(lifetime), lo)
                     }
                     return Err(self.fatal("expected `while`, `for`, or `loop` after a label"))
                 }
                 if try!(self.eat_keyword(keywords::Loop) ){
-                    return self.parse_loop_expr(None);
+                    let lo = self.last_span.lo;
+                    return self.parse_loop_expr(None, lo);
                 }
                 if try!(self.eat_keyword(keywords::Continue) ){
                     let lo = self.span.lo;
@@ -2892,48 +2896,48 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a 'for' .. 'in' expression ('for' token already eaten)
-    pub fn parse_for_expr(&mut self, opt_ident: Option<ast::Ident>) -> PResult<P<Expr>> {
+    pub fn parse_for_expr(&mut self, opt_ident: Option<ast::Ident>,
+                          span_lo: BytePos) -> PResult<P<Expr>> {
         // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
 
-        let lo = self.last_span.lo;
         let pat = try!(self.parse_pat_nopanic());
         try!(self.expect_keyword(keywords::In));
         let expr = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
         let loop_block = try!(self.parse_block());
         let hi = self.last_span.hi;
 
-        Ok(self.mk_expr(lo, hi, ExprForLoop(pat, expr, loop_block, opt_ident)))
+        Ok(self.mk_expr(span_lo, hi, ExprForLoop(pat, expr, loop_block, opt_ident)))
     }
 
     /// Parse a 'while' or 'while let' expression ('while' token already eaten)
-    pub fn parse_while_expr(&mut self, opt_ident: Option<ast::Ident>) -> PResult<P<Expr>> {
+    pub fn parse_while_expr(&mut self, opt_ident: Option<ast::Ident>,
+                            span_lo: BytePos) -> PResult<P<Expr>> {
         if self.token.is_keyword(keywords::Let) {
-            return self.parse_while_let_expr(opt_ident);
+            return self.parse_while_let_expr(opt_ident, span_lo);
         }
-        let lo = self.last_span.lo;
         let cond = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
         let body = try!(self.parse_block());
         let hi = body.span.hi;
-        return Ok(self.mk_expr(lo, hi, ExprWhile(cond, body, opt_ident)));
+        return Ok(self.mk_expr(span_lo, hi, ExprWhile(cond, body, opt_ident)));
     }
 
     /// Parse a 'while let' expression ('while' token already eaten)
-    pub fn parse_while_let_expr(&mut self, opt_ident: Option<ast::Ident>) -> PResult<P<Expr>> {
-        let lo = self.last_span.lo;
+    pub fn parse_while_let_expr(&mut self, opt_ident: Option<ast::Ident>,
+                                span_lo: BytePos) -> PResult<P<Expr>> {
         try!(self.expect_keyword(keywords::Let));
         let pat = try!(self.parse_pat_nopanic());
         try!(self.expect(&token::Eq));
         let expr = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
         let body = try!(self.parse_block());
         let hi = body.span.hi;
-        return Ok(self.mk_expr(lo, hi, ExprWhileLet(pat, expr, body, opt_ident)));
+        return Ok(self.mk_expr(span_lo, hi, ExprWhileLet(pat, expr, body, opt_ident)));
     }
 
-    pub fn parse_loop_expr(&mut self, opt_ident: Option<ast::Ident>) -> PResult<P<Expr>> {
-        let lo = self.last_span.lo;
+    pub fn parse_loop_expr(&mut self, opt_ident: Option<ast::Ident>,
+                           span_lo: BytePos) -> PResult<P<Expr>> {
         let body = try!(self.parse_block());
         let hi = body.span.hi;
-        Ok(self.mk_expr(lo, hi, ExprLoop(body, opt_ident)))
+        Ok(self.mk_expr(span_lo, hi, ExprLoop(body, opt_ident)))
     }
 
     fn parse_match_expr(&mut self) -> PResult<P<Expr>> {
