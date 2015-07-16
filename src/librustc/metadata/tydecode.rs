@@ -833,6 +833,7 @@ fn parse_type_param_def_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
     assert_eq!(next(st), '|');
     let index = parse_u32(st);
     assert_eq!(next(st), '|');
+    let default_def_id = parse_def_(st, NominalType, conv);
     let default = parse_opt(st, |st| parse_ty_(st, conv));
     let object_lifetime_default = parse_object_lifetime_default(st, conv);
 
@@ -841,6 +842,7 @@ fn parse_type_param_def_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
         def_id: def_id,
         space: space,
         index: index,
+        default_def_id: default_def_id,
         default: default,
         object_lifetime_default: object_lifetime_default,
     }

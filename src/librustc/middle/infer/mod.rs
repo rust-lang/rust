@@ -40,7 +40,6 @@ use syntax::codemap;
 use syntax::codemap::{Span, DUMMY_SP};
 use util::nodemap::{FnvHashMap, NodeMap};
 
-use ast_map;
 use self::combine::CombineFields;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::error_reporting::ErrorReporting;
@@ -658,6 +657,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// must be attached to the variable when created, if it is created
     /// without a default, this will return None.
     ///
+    /// This code does not apply to integral or floating point variables,
+    /// only to use declared defaults.
+    ///
     /// See `new_ty_var_with_default` to create a type variable with a default.
     /// See `type_variable::Default` for details about what a default entails.
     pub fn default(&self, ty: Ty<'tcx>) -> Option<type_variable::Default<'tcx>> {
@@ -1055,31 +1057,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                               substs: &mut Substs<'tcx>,
                               defs: &[ty::TypeParameterDef<'tcx>]) {
 
-        // This doesn't work ...
-        fn definition_span<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: ast::DefId) -> Span {
-            let parent = tcx.map.get_parent(def_id.node);
-            debug!("definition_span def_id={:?} parent={:?} node={:?} parent_node={:?}",
-                def_id, parent, tcx.map.find(def_id.node), tcx.map.find(parent));
-            match tcx.map.find(parent) {
-                None => DUMMY_SP,
-                Some(ref node) => match *node {
-                    ast_map::NodeItem(ref item) => item.span,
-                    ast_map::NodeForeignItem(ref item) => item.span,
-                    ast_map::NodeTraitItem(ref item) => item.span,
-                    ast_map::NodeImplItem(ref item) => item.span,
-                    _ => DUMMY_SP
-                }
-            }
-        }
-
         let mut vars = Vec::with_capacity(defs.len());
 
         for def in defs.iter() {
-            let default = def.default.subst_spanned(self.tcx, substs, Some(span)).map(|default| {
+            let default = def.default.map(|default| {
+                let definition_span = self.tcx.map.opt_span(def.def_id.node);
                 type_variable::Default {
-                    ty: default,
+                    ty: default.subst_spanned(self.tcx, substs, Some(span)),
                     origin_span: span,
-                    definition_span: definition_span(self.tcx, def.def_id)
+                    definition_span: definition_span.unwrap_or(DUMMY_SP)
                 }
             });
 

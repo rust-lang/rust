@@ -404,7 +404,11 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
         }
     }
 
-    fn ty_infer(&self, _default: Option<ty::TypeParameterDef<'tcx>>, span: Span) -> Ty<'tcx> {
+        fn ty_infer(&self,
+                    _ty_param_def: Option<ty::TypeParameterDef<'tcx>>,
+                    _substs: Option<&mut Substs<'tcx>>,
+                    _space: Option<ParamSpace>,
+                    span: Span) -> Ty<'tcx> {
         span_err!(self.tcx().sess, span, E0121,
                   "the type placeholder `_` is not allowed within types on item signatures");
         self.tcx().types.err
@@ -1648,6 +1652,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         index: 0,
         name: special_idents::type_self.name,
         def_id: local_def(param_id),
+        default_def_id: local_def(param_id),
         default: None,
         object_lifetime_default: ty::ObjectLifetimeDefault::BaseDefault,
     };
@@ -1921,6 +1926,8 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         index: index,
         name: param.ident.name,
         def_id: local_def(param.id),
+        // what do I return? should this be an option as well
+        default_def_id: local_def(param.default.as_ref().map(|d| d.id).unwrap_or(param.id)),
         default: default,
         object_lifetime_default: object_lifetime_default,
     };
