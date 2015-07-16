@@ -22,7 +22,7 @@ use std::str;
 
 use libc;
 use llvm::archive_ro::{ArchiveRO, Child};
-use llvm;
+use llvm::{self, ArchiveKind};
 use rustc::metadata::loader::METADATA_FILENAME;
 use rustc::session::Session;
 use rustc_back::tempdir::TempDir;
@@ -208,26 +208,32 @@ impl<'a> ArchiveBuilder<'a> {
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
     pub fn build(&mut self) {
-        let res = if self.using_llvm() {
-            self.build_with_llvm()
-        } else {
-            self.build_with_ar_cmd()
+        let res = match self.llvm_archive_kind() {
+            Some(kind) => self.build_with_llvm(kind),
+            None => self.build_with_ar_cmd(),
         };
         if let Err(e) = res {
             self.config.sess.fatal(&format!("failed to build archive: {}", e));
         }
     }
 
-    pub fn using_llvm(&self) -> bool {
+    pub fn llvm_archive_kind(&self) -> Option<ArchiveKind> {
         if unsafe { llvm::LLVMVersionMinor() < 7 } {
-            return false
+            return None
         }
 
         // Currently LLVM only supports writing archives in the 'gnu' format.
         match &self.config.sess.target.target.options.archive_format[..] {
-            "gnu" => true,
-            _ => false,
+            "gnu" => Some(ArchiveKind::K_GNU),
+            "mips64" => Some(ArchiveKind::K_MIPS64),
+            "bsd" => Some(ArchiveKind::K_BSD),
+            "coff" => Some(ArchiveKind::K_COFF),
+            _ => None,
         }
+    }
+
+    pub fn using_llvm(&self) -> bool {
+        self.llvm_archive_kind().is_some()
     }
 
     fn build_with_ar_cmd(&mut self) -> io::Result<()> {
@@ -425,7 +431,7 @@ impl<'a> ArchiveBuilder<'a> {
         }
     }
 
-    fn build_with_llvm(&mut self) -> io::Result<()> {
+    fn build_with_llvm(&mut self, kind: ArchiveKind) -> io::Result<()> {
         let mut archives = Vec::new();
         let mut strings = Vec::new();
         let mut members = Vec::new();
@@ -482,7 +488,8 @@ impl<'a> ArchiveBuilder<'a> {
             let r = llvm::LLVMRustWriteArchive(dst.as_ptr(),
                                                members.len() as libc::size_t,
                                                members.as_ptr(),
-                                               self.should_update_symbols);
+                                               self.should_update_symbols,
+                                               kind);
             let ret = if r != 0 {
                 let err = llvm::LLVMRustGetLastError();
                 let msg = if err.is_null() {
