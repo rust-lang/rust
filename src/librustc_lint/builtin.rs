@@ -2529,7 +2529,7 @@ impl LintPass for DropWithReprExtern {
             match dtor_self_type.sty {
                 ty::TyEnum(self_type_did, _) |
                 ty::TyStruct(self_type_did, _) |
-                ty::TyClosure(self_type_did, _) => {
+                ty::TyClosure(self_type_did, _, _) => {
                     let hints = ctx.tcx.lookup_repr_hints(self_type_did);
                     if hints.iter().any(|attr| *attr == attr::ReprExtern) &&
                         ctx.tcx.ty_dtor(self_type_did).has_drop_flag() {

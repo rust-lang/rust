@@ -584,7 +584,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
           def::DefUpvar(var_id, fn_node_id) => {
               let ty = try!(self.node_ty(fn_node_id));
               match ty.sty {
-                  ty::TyClosure(closure_id, _) => {
+                  ty::TyClosure(closure_id, _, _) => {
                       match self.typer.closure_kind(closure_id) {
                           Some(kind) => {
                               self.cat_upvar(id, span, var_id, fn_node_id, kind)

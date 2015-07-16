@@ -12,6 +12,7 @@ use arena::TypedArena;
 use back::link::{self, mangle_internal_name_by_path_and_seq};
 use llvm::{ValueRef, get_params};
 use middle::infer;
+use middle::ty::Ty;
 use trans::adt;
 use trans::attributes;
 use trans::base::*;
@@ -142,7 +143,7 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
     // duplicate declarations
     let function_type = erase_regions(ccx.tcx(), &function_type);
     let params = match function_type.sty {
-        ty::TyClosure(_, substs) => &substs.types,
+        ty::TyClosure(_, substs, _) => &substs.types,
         _ => unreachable!()
     };
     let mono_id = MonoId {
@@ -269,6 +270,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
 pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                                       closure_def_id: ast::DefId,
                                       substs: Substs<'tcx>,
+                                      upvar_tys: Vec<Ty<'tcx>>,
                                       node: ExprOrMethodCall,
                                       param_substs: &'tcx Substs<'tcx>,
                                       trait_closure_kind: ty::ClosureKind)
@@ -288,6 +290,7 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     trans_closure_adapter_shim(ccx,
                                closure_def_id,
                                substs,
+                               upvar_tys,
                                closure_kind,
                                trait_closure_kind,
                                llfn)
@@ -297,6 +300,7 @@ fn trans_closure_adapter_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
     closure_def_id: ast::DefId,
     substs: Substs<'tcx>,
+    upvar_tys: Vec<Ty<'tcx>>,
     llfn_closure_kind: ty::ClosureKind,
     trait_closure_kind: ty::ClosureKind,
     llfn: ValueRef)
@@ -335,7 +339,7 @@ fn trans_closure_adapter_shim<'a, 'tcx>(
             //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
             //
             // These are both the same at trans time.
-            trans_fn_once_adapter_shim(ccx, closure_def_id, substs, llfn)
+            trans_fn_once_adapter_shim(ccx, closure_def_id, substs, upvar_tys, llfn)
         }
         _ => {
             tcx.sess.bug(&format!("trans_closure_adapter_shim: cannot convert {:?} to {:?}",
@@ -349,6 +353,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
     closure_def_id: ast::DefId,
     substs: Substs<'tcx>,
+    upvar_tys: Vec<Ty<'tcx>>,
     llreffn: ValueRef)
     -> ValueRef
 {
@@ -363,7 +368,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Find a version of the closure type. Substitute static for the
     // region since it doesn't really matter.
     let substs = tcx.mk_substs(substs);
-    let closure_ty = tcx.mk_closure(closure_def_id, substs);
+    let closure_ty = tcx.mk_closure(closure_def_id, substs, upvar_tys);
     let ref_closure_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), closure_ty);
 
     // Make a version with the type of by-ref closure.

@@ -1767,7 +1767,7 @@ pub enum TypeVariants<'tcx> {
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
-    TyClosure(DefId, &'tcx Substs<'tcx>),
+    TyClosure(DefId, &'tcx Substs<'tcx>, Vec<Ty<'tcx>>),
 
     /// A tuple type.  For example, `(i32, bool)`.
     TyTuple(Vec<Ty<'tcx>>),
@@ -3214,10 +3214,11 @@ impl FlagComputation {
                 }
             }
 
-            &TyClosure(_, substs) => {
+            &TyClosure(_, substs, ref tys) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_LOCAL_NAMES);
                 self.add_substs(substs);
+                self.add_tys(tys);
             }
 
             &TyInfer(_) => {
@@ -3659,9 +3660,12 @@ impl<'tcx> ctxt<'tcx> {
         self.mk_ty(TyStruct(struct_id, substs))
     }
 
-    pub fn mk_closure(&self, closure_id: ast::DefId, substs: &'tcx Substs<'tcx>)
+    pub fn mk_closure(&self,
+                      closure_id: ast::DefId,
+                      substs: &'tcx Substs<'tcx>,
+                      tys: Vec<Ty<'tcx>>)
                       -> Ty<'tcx> {
-        self.mk_ty(TyClosure(closure_id, substs))
+        self.mk_ty(TyClosure(closure_id, substs, tys))
     }
 
     pub fn mk_var(&self, v: TyVid) -> Ty<'tcx> {
@@ -3928,7 +3932,7 @@ impl<'tcx> TyS<'tcx> {
             TyTrait(ref tt) => Some(tt.principal_def_id()),
             TyStruct(id, _) |
             TyEnum(id, _) |
-            TyClosure(id, _) => Some(id),
+            TyClosure(id, _, _) => Some(id),
             _ => None
         }
     }
@@ -4146,7 +4150,7 @@ impl<'tcx> TyS<'tcx> {
                     apply_lang_items(cx, did, res)
                 }
 
-                TyClosure(did, substs) => {
+                TyClosure(did, substs, _) => {
                     let param_env = cx.empty_parameter_environment();
                     let infcx = infer::new_infer_ctxt(cx, &cx.tables, Some(param_env), false);
                     let upvars = infcx.closure_upvars(did, substs).unwrap();
@@ -6378,7 +6382,7 @@ impl<'tcx> ctxt<'tcx> {
                     }
                     TyInfer(_) => unreachable!(),
                     TyError => byte!(21),
-                    TyClosure(d, _) => {
+                    TyClosure(d, _, _) => {
                         byte!(22);
                         did(state, d);
                     }

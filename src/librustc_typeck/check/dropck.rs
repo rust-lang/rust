@@ -42,7 +42,7 @@ pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: ast::DefId) -> Result<(), 
     match dtor_self_type.sty {
         ty::TyEnum(self_type_did, self_to_impl_substs) |
         ty::TyStruct(self_type_did, self_to_impl_substs) |
-        ty::TyClosure(self_type_did, self_to_impl_substs) => {
+        ty::TyClosure(self_type_did, self_to_impl_substs, _) => {
             try!(ensure_drop_params_and_item_params_correspond(tcx,
                                                                drop_impl_did,
                                                                dtor_generics,

@@ -48,6 +48,12 @@ pub trait TypeRelation<'a,'tcx> : Sized {
         Relate::relate(self, a, b)
     }
 
+    /// Relete elements of two slices pairwise.
+    fn relate_zip<T:Relate<'a,'tcx>>(&mut self, a: &[T], b: &[T]) -> RelateResult<'tcx, Vec<T>> {
+        assert_eq!(a.len(), b.len());
+        a.iter().zip(b).map(|(a, b)| self.relate(a, b)).collect()
+    }
+
     /// Switch variance for the purpose of relating `a` and `b`.
     fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
                                                variance: ty::Variance,
@@ -500,15 +506,16 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             Ok(tcx.mk_struct(a_id, tcx.mk_substs(substs)))
         }
 
-        (&ty::TyClosure(a_id, a_substs),
-         &ty::TyClosure(b_id, b_substs))
+        (&ty::TyClosure(a_id, a_substs, ref a_tys),
+         &ty::TyClosure(b_id, b_substs, ref b_tys))
             if a_id == b_id =>
         {
             // All TyClosure types with the same id represent
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
             let substs = try!(relate_substs(relation, None, a_substs, b_substs));
-            Ok(tcx.mk_closure(a_id, tcx.mk_substs(substs)))
+            let tys = try!(relation.relate_zip(a_tys, b_tys));
+            Ok(tcx.mk_closure(a_id, tcx.mk_substs(substs), tys))
         }
 
         (&ty::TyBox(a_inner), &ty::TyBox(b_inner)) =>

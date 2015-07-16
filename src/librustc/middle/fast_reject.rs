@@ -76,7 +76,7 @@ pub fn simplify_type(tcx: &ty::ctxt,
                 Err(msg) => tcx.sess.fatal(&msg),
             }
         }
-        ty::TyClosure(def_id, _) => {
+        ty::TyClosure(def_id, _, _) => {
             Some(ClosureSimplifiedType(def_id))
         }
         ty::TyTuple(ref tys) => {

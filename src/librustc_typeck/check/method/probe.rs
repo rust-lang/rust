@@ -288,7 +288,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             }
             ty::TyEnum(did, _) |
             ty::TyStruct(did, _) |
-            ty::TyClosure(did, _) => {
+            ty::TyClosure(did, _, _) => {
                 self.assemble_inherent_impl_candidates_for_type(did);
             }
             ty::TyBox(_) => {
@@ -711,7 +711,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let steps = self.steps.clone();
         for step in steps.iter() {
             let closure_def_id = match step.self_ty.sty {
-                ty::TyClosure(a, _) => a,
+                ty::TyClosure(a, _, _) => a,
                 _ => continue,
             };
 
