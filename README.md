@@ -86,5 +86,12 @@ You can add options  to `allow`/`warn`/`deny`:
 
 *`deny` produces error instead of warnings*
 
+To have cargo compile your crate with clippy without needing `#![plugin(clippy)]` 
+in your code, you can use:
+
+```
+cargo rustc -- -L /path/to/clippy_so -Z extra-plugins=clippy
+```
+
 ##License
 Licensed under [MPL](https://www.mozilla.org/MPL/2.0/). If you're having issues with the license, let me know and I'll try to change it to something more permissive.

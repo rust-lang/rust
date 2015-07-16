@@ -36,8 +36,8 @@ impl LintPass for MiscPass {
             if arms.len() == 2 {
                 if arms[0].guard.is_none() && arms[1].pats.len() == 1 {
                     match arms[1].body.node {
-                        ExprTup(ref v) if v.len() == 0 && arms[1].guard.is_none() => (),
-                        ExprBlock(ref b) if b.stmts.len() == 0 && arms[1].guard.is_none() => (),
+                        ExprTup(ref v) if v.is_empty() && arms[1].guard.is_none() => (),
+                        ExprBlock(ref b) if b.stmts.is_empty() && arms[1].guard.is_none() => (),
                          _ => return
                     }
                     // In some cases, an exhaustive match is preferred to catch situations when

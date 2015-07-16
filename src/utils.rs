@@ -1,6 +1,7 @@
 use rustc::lint::Context;
 use syntax::ast::{DefId, Name, Path};
 use syntax::codemap::{ExpnInfo, Span};
+use syntax::ptr::P;
 use rustc::middle::ty;
 use std::borrow::{Cow, IntoCow};
 use std::convert::From;
@@ -48,3 +49,6 @@ pub fn match_path(path: &Path, segments: &[&str]) -> bool {
 pub fn snippet<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, str> {
 	cx.sess().codemap().span_to_snippet(span).map(From::from).unwrap_or(Cow::Borrowed(default))
 }
+
+/// dereference a P<T> and return a ref on the result
+pub fn de_p<T>(p: &P<T>) -> &T { &*p }

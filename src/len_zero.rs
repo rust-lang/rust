@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use syntax::ptr::P;
 use rustc::lint::{Context, LintPass, LintArray, Lint};
 use rustc::util::nodemap::DefIdMap;
-use rustc::middle::ty::{self, TypeVariants, mt, MethodTraitItemId, ImplOrTraitItemId};
+use rustc::middle::ty::{self, TypeVariants, TypeAndMut, MethodTraitItemId, ImplOrTraitItemId};
 use rustc::middle::def::{DefTy, DefStruct, DefTrait};
 use syntax::codemap::{Span, Spanned};
 use syntax::ast::*;
