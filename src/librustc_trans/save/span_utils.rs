@@ -28,6 +28,13 @@ pub struct SpanUtils<'a> {
 }
 
 impl<'a> SpanUtils<'a> {
+    pub fn new(sess: &'a Session) -> SpanUtils<'a> {
+        SpanUtils {
+            sess: sess,
+            err_count: Cell::new(0)
+        }
+    }
+
     // Standard string for extents/location.
     pub fn extent_str(&self, span: Span) -> String {
         let lo_loc = self.sess.codemap().lookup_char_pos(span.lo);
