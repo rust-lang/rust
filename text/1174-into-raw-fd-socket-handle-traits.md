@@ -1,7 +1,7 @@
 - Feature Name: into-raw-fd-socket-handle-traits
 - Start Date: 2015-06-24
-- RFC PR:
-- Rust Issue:
+- RFC PR: [rust-lang/rfcs#1174](https://github.com/rust-lang/rfcs/pull/1174)
+- Rust Issue: [rust-lang/rust#27062](https://github.com/rust-lang/rust/issues/27062)
 
 # Summary
 
