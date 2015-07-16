@@ -3661,47 +3661,71 @@ sites are:
 
 * `let` statements where an explicit type is given.
 
-    In `let _: U = e;`, `e` is coerced to have type `U`.
+   For example, `128` is coerced to have type `i8` in the following:
+
+   ```rust
+   let _: i8 = 128;
+   ```
 
 * `static` and `const` statements (similar to `let` statements).
 
-* arguments for function calls.
+* Arguments for function calls
 
-    The value being coerced is the
-    actual parameter and it is coerced to the type of the formal parameter. For
-    example, let `foo` be defined as `fn foo(x: U) { ... }` and call it as
-    `foo(e);`. Then `e` is coerced to have type `U`;
+  The value being coerced is the actual parameter, and it is coerced to
+  the type of the formal parameter.
 
-* instantiations of struct or variant fields.
+  For example, `128` is coerced to have type `i8` in the following:
 
-    Assume we have a `struct
-    Foo { x: U }` and instantiate it as `Foo { x: e }`. Then `e` is coerced to
-    have type `U`.
+  ```rust
+  fn bar(_: i8) { }
 
-* function results (either the final line of a block if it is not semicolon
-terminated or any expression in a `return` statement).
+  fn main() {
+     bar(128);
+  }
+  ```
 
-    In `fn foo() -> U { e }`, `e` is coerced to to have type `U`.
+* Instantiations of struct or variant fields
+
+  For example, `128` is coerced to have type `i8` in the following:
+
+  ```rust
+  struct Foo { x: i8 }
+
+  fn main() {
+      Foo { x: 128 };
+  }
+  ```
+
+* Function results, either the final line of a block if it is not
+  semicolon-terminated or any expression in a `return` statement
+
+  For example, `128` is coerced to have type `i8` in the following:
+
+  ```rust
+  fn foo() -> i8 {
+      128
+  }
+  ```
 
 If the expression in one of these coercion sites is a coercion-propagating
 expression, then the relevant sub-expressions in that expression are also
 coercion sites. Propagation recurses from these new coercion sites.
 Propagating expressions and their relevant sub-expressions are:
 
-* array literals, where the array has type `[U; n]`. Each sub-expression in
+* Array literals, where the array has type `[U; n]`. Each sub-expression in
 the array literal is a coercion site for coercion to type `U`.
 
-* array literals with repeating syntax, where the array has type `[U; n]`. The
+* Array literals with repeating syntax, where the array has type `[U; n]`. The
 repeated sub-expression is a coercion site for coercion to type `U`.
 
-* tuples, where a tuple is a coercion site to type `(U_0, U_1, ..., U_n)`.
+* Tuples, where a tuple is a coercion site to type `(U_0, U_1, ..., U_n)`.
 Each sub-expression is a coercion site to the respective type, e.g. the
 zeroth sub-expression is a coercion site to type `U_0`.
 
-* parenthesised sub-expressions (`(e)`). If the expression has type `U`, then
+* Parenthesised sub-expressions (`(e)`): if the expression has type `U`, then
 the sub-expression is a coercion site to `U`.
 
-* blocks. If a block has type `U`, then the last expression in the block (if
+* Blocks: if a block has type `U`, then the last expression in the block (if
 it is not semicolon-terminated) is a coercion site to `U`. This includes
 blocks which are part of control flow statements, such as `if`/`else`, if
 the block has a known type.
@@ -3710,45 +3734,46 @@ the block has a known type.
 
 Coercion is allowed between the following types:
 
-* `T` to `U` if `T` is a subtype of `U` (*reflexive case*).
+* `T` to `U` if `T` is a subtype of `U` (*reflexive case*)
 
 * `T_1` to `T_3` where `T_1` coerces to `T_2` and `T_2` coerces to `T_3`
-(*transitive case*).
+(*transitive case*)
 
     Note that this is not fully supported yet
 
-* `&mut T` to `&T`.
+* `&mut T` to `&T`
 
-* `*mut T` to `*const T`.
+* `*mut T` to `*const T`
 
-* `&T` to `*const T`.
+* `&T` to `*const T`
 
-* `&mut T` to `*mut T`.
+* `&mut T` to `*mut T`
 
 * `&T` to `&U` if `T` implements `Deref<Target = U>`. For example:
 
-```rust
-use std::ops::Deref;
+  ```rust
+  use std::ops::Deref;
 
-struct CharContainer {
-    value: char
-}
+  struct CharContainer {
+      value: char
+  }
 
-impl Deref for CharContainer {
-    type Target = char;
+  impl Deref for CharContainer {
+      type Target = char;
 
-    fn deref<'a>(&'a self) -> &'a char {
-        &self.value
-    }
-}
+      fn deref<'a>(&'a self) -> &'a char {
+          &self.value
+      }
+  }
 
-fn foo(arg: &char) {}
+  fn foo(arg: &char) {}
 
-fn main() {
-    let x = &mut CharContainer { value: 'y' };
-    foo(x); //&mut CharContainer is coerced to &char.
-}
-```
+  fn main() {
+      let x = &mut CharContainer { value: 'y' };
+      foo(x); //&mut CharContainer is coerced to &char.
+  }
+  ```
+
 * `&mut T` to `&mut U` if `T` implements `DerefMut<Target = U>`.
 
 * TyCtor(`T`) to TyCtor(coerce_inner(`T`)), where TyCtor(`T`) is one of
