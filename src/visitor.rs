@@ -38,9 +38,11 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                self.codemap.lookup_char_pos(ex.span.hi));
         self.format_missing(ex.span.lo);
         let offset = self.changes.cur_offset_span(ex.span);
-        let context = RewriteContext { codemap: self.codemap,
-                                       config: self.config,
-                                       block_indent: self.block_indent, };
+        let context = RewriteContext {
+            codemap: self.codemap,
+            config: self.config,
+            block_indent: self.block_indent,
+        };
         let rewrite = ex.rewrite(&context, self.config.max_width - offset, offset);
 
         if let Some(new_str) = rewrite {
@@ -284,11 +286,13 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
 impl<'a> FmtVisitor<'a> {
     pub fn from_codemap<'b>(codemap: &'b CodeMap, config: &'b Config) -> FmtVisitor<'b> {
-        FmtVisitor { codemap: codemap,
-                     changes: ChangeSet::from_codemap(codemap),
-                     last_pos: BytePos(0),
-                     block_indent: 0,
-                     config: config, }
+        FmtVisitor {
+            codemap: codemap,
+            changes: ChangeSet::from_codemap(codemap),
+            last_pos: BytePos(0),
+            block_indent: 0,
+            config: config,
+        }
     }
 
     pub fn snippet(&self, span: Span) -> String {

@@ -101,13 +101,15 @@ fn rewrite_string_lit(context: &RewriteContext,
     if l_loc.line == r_loc.line && r_loc.col.to_usize() <= context.config.max_width {
         return context.codemap.span_to_snippet(span).ok();
     }
-    let fmt = StringFormat { opener: "\"",
-                             closer: "\"",
-                             line_start: " ",
-                             line_end: "\\",
-                             width: width,
-                             offset: offset,
-                             trim_end: false, };
+    let fmt = StringFormat {
+        opener: "\"",
+        closer: "\"",
+        line_start: " ",
+        line_end: "\\",
+        width: width,
+        offset: offset,
+        trim_end: false,
+    };
 
     Some(rewrite_string(&s.escape_default(), &fmt))
 }
@@ -147,13 +149,15 @@ fn rewrite_call(context: &RewriteContext,
                              callee.span.hi + BytePos(1),
                              span.hi);
 
-    let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
-                               separator: ",",
-                               trailing_separator: SeparatorTactic::Never,
-                               indent: offset,
-                               h_width: remaining_width,
-                               v_width: remaining_width,
-                               ends_with_newline: true, };
+    let fmt = ListFormatting {
+        tactic: ListTactic::HorizontalVertical,
+        separator: ",",
+        trailing_separator: SeparatorTactic::Never,
+        indent: offset,
+        h_width: remaining_width,
+        v_width: remaining_width,
+        ends_with_newline: true,
+    };
 
     Some(format!("{}({})", callee_str, write_list(&items, &fmt)))
 }
@@ -239,17 +243,19 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              span_after(span, "{", context.codemap),
                              span.hi);
 
-    let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
-                               separator: ",",
-                               trailing_separator: if base.is_some() {
+    let fmt = ListFormatting {
+        tactic: ListTactic::HorizontalVertical,
+        separator: ",",
+        trailing_separator: if base.is_some() {
             SeparatorTactic::Never
         } else {
             context.config.struct_lit_trailing_comma
         },
-                               indent: indent,
-                               h_width: budget,
-                               v_width: budget,
-                               ends_with_newline: true, };
+        indent: indent,
+        h_width: budget,
+        v_width: budget,
+        ends_with_newline: true,
+    };
     let fields_str = write_list(&items, &fmt);
 
     match context.config.struct_lit_style {
@@ -305,13 +311,15 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                              span.lo + BytePos(1), // Remove parens
                              span.hi - BytePos(1));
 
-    let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
-                               separator: ",",
-                               trailing_separator: SeparatorTactic::Never,
-                               indent: indent,
-                               h_width: width - 2,
-                               v_width: width - 2,
-                               ends_with_newline: true, };
+    let fmt = ListFormatting {
+        tactic: ListTactic::HorizontalVertical,
+        separator: ",",
+        trailing_separator: SeparatorTactic::Never,
+        indent: indent,
+        h_width: width - 2,
+        v_width: width - 2,
+        ends_with_newline: true,
+    };
 
     Some(format!("({})", write_list(&items, &fmt)))
 }

@@ -35,9 +35,11 @@ pub struct ChangeSet<'a> {
 impl<'a> ChangeSet<'a> {
     // Create a new ChangeSet for a given libsyntax CodeMap.
     pub fn from_codemap(codemap: &'a CodeMap) -> ChangeSet<'a> {
-        let mut result = ChangeSet { file_map: HashMap::new(),
-                                     codemap: codemap,
-                                     file_spans: Vec::with_capacity(codemap.files.borrow().len()), };
+        let mut result = ChangeSet {
+            file_map: HashMap::new(),
+            codemap: codemap,
+            file_spans: Vec::with_capacity(codemap.files.borrow().len()),
+        };
 
         for f in codemap.files.borrow().iter() {
             // Use the length of the file as a heuristic for how much space we

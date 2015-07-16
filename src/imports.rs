@@ -71,13 +71,15 @@ impl<'a> FmtVisitor<'a> {
         let remaining_line_budget = one_line_budget.checked_sub(used_width).unwrap_or(0);
         let remaining_multi_budget = multi_line_budget.checked_sub(used_width).unwrap_or(0);
 
-        let fmt = ListFormatting { tactic: ListTactic::Mixed,
-                                   separator: ",",
-                                   trailing_separator: SeparatorTactic::Never,
-                                   indent: block_indent + indent,
-                                   h_width: remaining_line_budget,
-                                   v_width: remaining_multi_budget,
-                                   ends_with_newline: true, };
+        let fmt = ListFormatting {
+            tactic: ListTactic::Mixed,
+            separator: ",",
+            trailing_separator: SeparatorTactic::Never,
+            indent: block_indent + indent,
+            h_width: remaining_line_budget,
+            v_width: remaining_multi_budget,
+            ends_with_newline: true,
+        };
 
         let mut items = itemize_list(self.codemap,
                                      vec![ListItem::from_str("")], /* Dummy value, explanation

@@ -96,9 +96,11 @@ pub struct BadIssueSeeker {
 
 impl BadIssueSeeker {
     pub fn new(report_todo: ReportTactic, report_fixme: ReportTactic) -> BadIssueSeeker {
-        BadIssueSeeker { state: Seeking::Issue { todo_idx: 0, fixme_idx: 0 },
-                         report_todo: report_todo,
-                         report_fixme: report_fixme, }
+        BadIssueSeeker {
+            state: Seeking::Issue { todo_idx: 0, fixme_idx: 0 },
+            report_todo: report_todo,
+            report_fixme: report_fixme,
+        }
     }
 
     // Check whether or not the current char is conclusive evidence for an

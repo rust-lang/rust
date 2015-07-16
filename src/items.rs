@@ -305,13 +305,15 @@ impl<'a> FmtVisitor<'a> {
             item.item = arg;
         }
 
-        let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
-                                   separator: ",",
-                                   trailing_separator: SeparatorTactic::Never,
-                                   indent: arg_indent,
-                                   h_width: one_line_budget,
-                                   v_width: multi_line_budget,
-                                   ends_with_newline: true, };
+        let fmt = ListFormatting {
+            tactic: ListTactic::HorizontalVertical,
+            separator: ",",
+            trailing_separator: SeparatorTactic::Never,
+            indent: arg_indent,
+            h_width: one_line_budget,
+            v_width: multi_line_budget,
+            ends_with_newline: true,
+        };
 
         write_list(&arg_items, &fmt)
     }
@@ -566,13 +568,15 @@ impl<'a> FmtVisitor<'a> {
 
         // 1 = ,
         let budget = self.config.ideal_width - offset + self.config.tab_spaces - 1;
-        let fmt = ListFormatting { tactic: tactic,
-                                   separator: ",",
-                                   trailing_separator: self.config.struct_trailing_comma,
-                                   indent: offset + self.config.tab_spaces,
-                                   h_width: self.config.max_width,
-                                   v_width: budget,
-                                   ends_with_newline: false, };
+        let fmt = ListFormatting {
+            tactic: tactic,
+            separator: ",",
+            trailing_separator: self.config.struct_trailing_comma,
+            indent: offset + self.config.tab_spaces,
+            h_width: self.config.max_width,
+            v_width: budget,
+            ends_with_newline: false,
+        };
 
         result.push_str(&write_list(&items, &fmt));
 
@@ -707,13 +711,15 @@ impl<'a> FmtVisitor<'a> {
             item.item = ty;
         }
 
-        let fmt = ListFormatting { tactic: ListTactic::HorizontalVertical,
-                                   separator: ",",
-                                   trailing_separator: SeparatorTactic::Never,
-                                   indent: offset + 1,
-                                   h_width: budget,
-                                   v_width: budget,
-                                   ends_with_newline: true, };
+        let fmt = ListFormatting {
+            tactic: ListTactic::HorizontalVertical,
+            separator: ",",
+            trailing_separator: SeparatorTactic::Never,
+            indent: offset + 1,
+            h_width: budget,
+            v_width: budget,
+            ends_with_newline: true,
+        };
         result.push_str(&write_list(&items, &fmt));
 
         result.push('>');
@@ -748,13 +754,15 @@ impl<'a> FmtVisitor<'a> {
                                  span_end);
 
         let budget = self.config.ideal_width + self.config.leeway - indent - 10;
-        let fmt = ListFormatting { tactic: ListTactic::Vertical,
-                                   separator: ",",
-                                   trailing_separator: SeparatorTactic::Never,
-                                   indent: indent + 10,
-                                   h_width: budget,
-                                   v_width: budget,
-                                   ends_with_newline: true, };
+        let fmt = ListFormatting {
+            tactic: ListTactic::Vertical,
+            separator: ",",
+            trailing_separator: SeparatorTactic::Never,
+            indent: indent + 10,
+            h_width: budget,
+            v_width: budget,
+            ends_with_newline: true,
+        };
         result.push_str(&write_list(&items, &fmt));
 
         result
