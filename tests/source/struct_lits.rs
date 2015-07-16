@@ -8,7 +8,9 @@ fn main() {
 
     Foo { a: foo() /* comment*/, /* comment*/ b: bar(), ..something };
 
-    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar(), };
+    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar(), };
+
+    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar(), };
 
     Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo {
         // Comment

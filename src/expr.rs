@@ -192,14 +192,17 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     }
 
     let path_str = pprust::path_to_string(path);
-    // Foo { a: Foo } - indent is +3, width is -5.
-    let (indent, budget) = match context.config.struct_lit_style {
+    let (indent, h_budget, v_budget) = match context.config.struct_lit_style {
         StructLitStyle::VisualIndent => {
-            (offset + path_str.len() + 3, width - (path_str.len() + 5))
+            // Foo { a: Foo } - indent is +3, width is -5.
+            let budget = width - (path_str.len() + 5);
+            (offset + path_str.len() + 3, budget, budget)
         }
         StructLitStyle::BlockIndent => {
+            // If we are all on one line, then we'll ignore the indent, and we
+            // have a smaller budget.
             let indent = context.block_indent + context.config.tab_spaces;
-            (indent, width - indent)
+            (indent, width - (path_str.len() + 5), width - indent)
         }
     };
 
@@ -227,13 +230,13 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              |item| {
                                  match *item {
                                      StructLitField::Regular(ref field) => {
-                                         rewrite_field(context, &field, budget, indent)
+                                         rewrite_field(context, &field, h_budget, indent)
                                             .unwrap_or(context.codemap.span_to_snippet(field.span)
                                                                       .unwrap())
                                      },
                                      StructLitField::Base(ref expr) => {
                                          // 2 = ..
-                                         expr.rewrite(context, budget - 2, indent + 2)
+                                         expr.rewrite(context, h_budget - 2, indent + 2)
                                              .map(|s| format!("..{}", s))
                                              .unwrap_or(context.codemap.span_to_snippet(expr.span)
                                                                        .unwrap())
@@ -252,8 +255,8 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
             context.config.struct_lit_trailing_comma
         },
         indent: indent,
-        h_width: budget,
-        v_width: budget,
+        h_width: h_budget,
+        v_width: v_budget,
         ends_with_newline: true,
     };
     let fields_str = write_list(&items, &fmt);
