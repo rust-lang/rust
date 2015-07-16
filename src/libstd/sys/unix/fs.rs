@@ -331,6 +331,8 @@ impl File {
     }
 
     pub fn fd(&self) -> &FileDesc { &self.0 }
+
+    pub fn into_fd(self) -> FileDesc { self.0 }
 }
 
 impl DirBuilder {

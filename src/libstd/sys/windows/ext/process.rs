@@ -12,10 +12,10 @@
 
 #![stable(feature = "process_extensions", since = "1.2.0")]
 
-use os::windows::io::{FromRawHandle, RawHandle, AsRawHandle};
+use os::windows::io::{FromRawHandle, RawHandle, AsRawHandle, IntoRawHandle};
 use process;
 use sys;
-use sys_common::{AsInner, FromInner};
+use sys_common::{AsInner, FromInner, IntoInner};
 
 #[stable(feature = "process_extensions", since = "1.2.0")]
 impl FromRawHandle for process::Stdio {
@@ -29,6 +29,12 @@ impl FromRawHandle for process::Stdio {
 impl AsRawHandle for process::Child {
     fn as_raw_handle(&self) -> RawHandle {
         self.as_inner().handle().raw() as *mut _
+    }
+}
+
+impl IntoRawHandle for process::Child {
+    fn into_raw_handle(self) -> RawHandle {
+        self.into_inner().into_handle().into_raw() as *mut _
     }
 }
 
@@ -50,5 +56,23 @@ impl AsRawHandle for process::ChildStdout {
 impl AsRawHandle for process::ChildStderr {
     fn as_raw_handle(&self) -> RawHandle {
         self.as_inner().handle().raw() as *mut _
+    }
+}
+
+impl IntoRawHandle for process::ChildStdin {
+    fn into_raw_handle(self) -> RawHandle {
+        self.into_inner().into_handle().into_raw() as *mut _
+    }
+}
+
+impl IntoRawHandle for process::ChildStdout {
+    fn into_raw_handle(self) -> RawHandle {
+        self.into_inner().into_handle().into_raw() as *mut _
+    }
+}
+
+impl IntoRawHandle for process::ChildStderr {
+    fn into_raw_handle(self) -> RawHandle {
+        self.into_inner().into_handle().into_raw() as *mut _
     }
 }

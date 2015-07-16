@@ -16,7 +16,7 @@ use fs;
 use net;
 use os::raw;
 use sys;
-use sys_common::{self, AsInner, FromInner};
+use sys_common::{self, AsInner, FromInner, IntoInner};
 
 /// Raw file descriptors.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -59,6 +59,18 @@ pub trait FromRawFd {
     unsafe fn from_raw_fd(fd: RawFd) -> Self;
 }
 
+/// A trait to express the ability to consume an object and acquire ownership of
+/// its raw file descriptor.
+#[unstable(feature = "into_raw_os", reason = "recently added API")]
+pub trait IntoRawFd {
+    /// Consumes this object, returning the raw underlying file descriptor.
+    ///
+    /// This function **transfers ownership** of the underlying file descriptor
+    /// to the caller. Callers are then the unique owners of the file descriptor
+    /// and must close the descriptor once it's no longer needed.
+    fn into_raw_fd(self) -> RawFd;
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawFd for fs::File {
     fn as_raw_fd(&self) -> RawFd {
@@ -69,6 +81,11 @@ impl AsRawFd for fs::File {
 impl FromRawFd for fs::File {
     unsafe fn from_raw_fd(fd: RawFd) -> fs::File {
         fs::File::from_inner(sys::fs::File::from_inner(fd))
+    }
+}
+impl IntoRawFd for fs::File {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_fd().into_raw()
     }
 }
 
@@ -104,5 +121,21 @@ impl FromRawFd for net::UdpSocket {
     unsafe fn from_raw_fd(fd: RawFd) -> net::UdpSocket {
         let socket = sys::net::Socket::from_inner(fd);
         net::UdpSocket::from_inner(sys_common::net::UdpSocket::from_inner(socket))
+    }
+}
+
+impl IntoRawFd for net::TcpStream {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_socket().into_inner()
+    }
+}
+impl IntoRawFd for net::TcpListener {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_socket().into_inner()
+    }
+}
+impl IntoRawFd for net::UdpSocket {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_socket().into_inner()
     }
 }

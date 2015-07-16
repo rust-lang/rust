@@ -13,7 +13,7 @@
 use fs;
 use os::windows::raw;
 use net;
-use sys_common::{self, AsInner, FromInner};
+use sys_common::{self, AsInner, FromInner, IntoInner};
 use sys;
 
 /// Raw HANDLEs.
@@ -50,6 +50,18 @@ pub trait FromRawHandle {
     unsafe fn from_raw_handle(handle: RawHandle) -> Self;
 }
 
+/// A trait to express the ability to consume an object and acquire ownership of
+/// its raw `HANDLE`.
+#[unstable(feature = "into_raw_os", reason = "recently added API")]
+pub trait IntoRawHandle {
+    /// Consumes this object, returning the raw underlying handle.
+    ///
+    /// This function **transfers ownership** of the underlying handle to the
+    /// caller. Callers are then the unique owners of the handle and must close
+    /// it once it's no longer needed.
+    fn into_raw_handle(self) -> RawHandle;
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawHandle for fs::File {
     fn as_raw_handle(&self) -> RawHandle {
@@ -62,6 +74,12 @@ impl FromRawHandle for fs::File {
     unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {
         let handle = handle as ::libc::HANDLE;
         fs::File::from_inner(sys::fs::File::from_inner(handle))
+    }
+}
+
+impl IntoRawHandle for fs::File {
+    fn into_raw_handle(self) -> RawHandle {
+        self.into_inner().into_handle().into_raw() as *mut _
     }
 }
 
@@ -88,6 +106,18 @@ pub trait FromRawSocket {
     /// unsafety in code that relies on it being true.
     #[stable(feature = "from_raw_os", since = "1.1.0")]
     unsafe fn from_raw_socket(sock: RawSocket) -> Self;
+}
+
+/// A trait to express the ability to consume an object and acquire ownership of
+/// its raw `SOCKET`.
+#[unstable(feature = "into_raw_os", reason = "recently added API")]
+pub trait IntoRawSocket {
+    /// Consumes this object, returning the raw underlying socket.
+    ///
+    /// This function **transfers ownership** of the underlying socket to the
+    /// caller. Callers are then the unique owners of the socket and must close
+    /// it once it's no longer needed.
+    fn into_raw_socket(self) -> RawSocket;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -128,5 +158,23 @@ impl FromRawSocket for net::UdpSocket {
     unsafe fn from_raw_socket(sock: RawSocket) -> net::UdpSocket {
         let sock = sys::net::Socket::from_inner(sock);
         net::UdpSocket::from_inner(sys_common::net::UdpSocket::from_inner(sock))
+    }
+}
+
+impl IntoRawSocket for net::TcpStream {
+    fn into_raw_socket(self) -> RawSocket {
+        self.into_inner().into_socket().into_inner()
+    }
+}
+
+impl IntoRawSocket for net::TcpListener {
+    fn into_raw_socket(self) -> RawSocket {
+        self.into_inner().into_socket().into_inner()
+    }
+}
+
+impl IntoRawSocket for net::UdpSocket {
+    fn into_raw_socket(self) -> RawSocket {
+        self.into_inner().into_socket().into_inner()
     }
 }
