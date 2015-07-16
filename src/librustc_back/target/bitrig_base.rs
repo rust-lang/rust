@@ -22,6 +22,7 @@ pub fn opts() -> TargetOptions {
         position_independent_executables: true,
         pre_link_args: vec!(
         ),
+        archive_format: "bsd".to_string(),
 
         .. Default::default()
     }

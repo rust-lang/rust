@@ -18,6 +18,7 @@ pub fn opts() -> TargetOptions {
         executables: true,
         morestack: true,
         has_rpath: true,
+        archive_format: "bsd".to_string(),
 
         .. Default::default()
     }
