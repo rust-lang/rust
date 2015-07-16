@@ -18,7 +18,7 @@ use thread::Thread;
 use thread::LocalKeyState;
 
 struct ThreadInfo {
-    stack_guard: usize,
+    stack_guard: Option<usize>,
     thread: Thread,
 }
 
@@ -33,7 +33,7 @@ impl ThreadInfo {
         THREAD_INFO.with(move |c| {
             if c.borrow().is_none() {
                 *c.borrow_mut() = Some(ThreadInfo {
-                    stack_guard: 0,
+                    stack_guard: None,
                     thread: NewThread::new(None),
                 })
             }
@@ -47,10 +47,10 @@ pub fn current_thread() -> Option<Thread> {
 }
 
 pub fn stack_guard() -> Option<usize> {
-    ThreadInfo::with(|info| info.stack_guard)
+    ThreadInfo::with(|info| info.stack_guard).and_then(|o| o)
 }
 
-pub fn set(stack_guard: usize, thread: Thread) {
+pub fn set(stack_guard: Option<usize>, thread: Thread) {
     THREAD_INFO.with(|c| assert!(c.borrow().is_none()));
     THREAD_INFO.with(move |c| *c.borrow_mut() = Some(ThreadInfo{
         stack_guard: stack_guard,
