@@ -10,12 +10,19 @@ function attribute.
 
 # Motivation
 
-Some systems programming tasks require that machine state not be modified at all
-on function entry so it can be preserved- particularly in interrupt handlers.
-For example, x86\_64 preserves only the stack pointer, flags register, and
-instruction pointer on interrupt entry. To avoid corrupting program state, the
-interrupt handler must save the registers which might be modified before handing
-control to compiler-generated code. Consider a contrived interrupt handler:
+Some systems programming tasks require that the programmer have complete control
+over function stack layout and interpretation, generally in cases where the
+compiler lacks support for a specific use case. While these cases can be
+addressed by building the requisite code with external tools and linking with
+Rust, it is advantageous to allow the Rust compiler to drive the entire process,
+particularly in that code may be generated via monomorphization or macro
+expansion.
+
+When writing interrupt handlers for example, most systems require additional
+state be saved beyond the usual ABI requirements.  To avoid corrupting program
+state, the interrupt handler must save the registers which might be modified
+before handing control to compiler-generated code. Consider a contrived
+interrupt handler for x86\_64:
 
 ```rust
 unsafe fn isr_nop() {
@@ -47,14 +54,25 @@ stack layout for any given function are not predictable (and may change with
 compiler version or optimization settings), attempting to predict the stack
 layout to sidestep this issue is infeasible.
 
-In other languages (particularly C), "naked" functions omit the prologue and
-epilogue (represented by the modifications to `rsp` in the above example) to
-allow the programmer complete control over stack layout. This makes the
-availability of stack space for compiler use unpredictable, usually implying
-that the body of such a function must consist entirely of inline assembly
-statements (such as a jump or call to another function).
+When interacting with FFIs that are not natively supported by the compiler,
+a similar situation arises where the programmer knows the expected calling
+convention and can implement a translation between the foreign ABI and one
+supported by the compiler.
 
-The [LLVM language
+Support for naked functions also allows programmers to write functions that
+would otherwise be unsafe, such as the following snippet which returns the
+address of its caller when called with the C ABI on x86.
+
+```
+    mov 4(%ebp), %eax
+    ret
+```
+
+---
+
+Because the compiler depends on a function prologue and epilogue to maintain
+storage for local variable bindings, it is generally unsafe to write anything
+but inline assembly inside a naked function.  The [LLVM language
 reference](http://llvm.org/docs/LangRef.html#function-attributes) describes this
 feature as having "very system-specific consequences", which the programmer must
 be aware of.
@@ -64,23 +82,83 @@ be aware of.
 Add a new function attribute to the language, `#[naked]`, indicating the
 function should have prologue/epilogue emission disabled.
 
-For example, the following construct could be assumed not to generate extra code
-on entry to `isr_caller` which might violate the programmer's assumptions, while
-allowing the compiler to generate the function definition as usual:
+Because the calling convention of a naked function is not guaranteed to match
+any calling convention the compiler is compatible with, calls to naked functions
+from within Rust code are forbidden unless the function is also declared with
+a well-defined ABI.
+
+The function `call_foo` in the following code block is an error because the
+default (Rust) ABI is unspecified and as such a programmer can never write code
+in `foo` which is compatible:
 
 ```rust
 #[naked]
-unsafe fn isr_caller() {
-    asm!("push %rax
-          call other_function
-          pop %rax
-          iretq" :::: "volatile");
-    core::intrinsics::unreachable();
+fn foo() { }
+
+fn call_foo() {
+    foo();
+}
+```
+
+The following variant is not an error because the C calling convention is
+well-defined and it is thus possible for the programmer to write a conforming
+function:
+
+```rust
+#[naked]
+extern "C" fn foo() { }
+
+fn call_foo() {
+    foo();
+}
+```
+
+---
+
+The current support for `extern` functions in `rustc` generates a minimum of two
+basic blocks for any function declared in Rust code with a non-default calling
+convention: a trampoline which translates the declared calling convention to the
+Rust convention, and a Rust ABI version of the function containing the actual
+implementation. Calls to the function from Rust code call the Rust ABI version
+directly.
+
+For naked functions, it is impossible for the compiler to generate a Rust ABI
+version of the function because the implementation may depend on the calling
+convention. In cases where calling a naked function from Rust is permitted, the
+compiler must be able to use the target calling convention directly rather than
+call the same function with the Rust convention.
+
+---
+
+The following example illustrates the possible use of a naked function for
+implementation of an interrupt service routine on 32-bit x86.
+
+```rust
+use std::intrinsics;
+use std::sync::atomic::{self, AtomicUsize, Ordering};
+
+#[naked]
+#[cfg(target_arch="x86")]
+unsafe fn isr_3() {
+    asm!("pushad
+          call increment_breakpoint_count
+          popad
+          iretd" :::: "volatile");
+    intrinsics::unreachable();
 }
 
-#[no_mangle]
-pub fn other_function() {
+static bp_count: AtomicUsize = ATOMIC_USIZE_INIT;
 
+#[no_mangle]
+pub fn increment_breakpoint_count() {
+    bp_count.fetch_add(1, Ordering::Relaxed);
+}
+
+fn register_isr(vector: u8, handler: fn() -> ()) { /* ... */ }
+
+fn main() {
+    register_isr(3, isr_3);
+    // ...
 }
 ```
 
@@ -93,22 +171,16 @@ considered.
 # Alternatives
 
 Do nothing. The required functionality for the use case outlined can be
-implemented outside Rust code (such as with a small amount of externally-built
-assembly) and merely linked in as needed.
-
-Add a new calling convention (`extern "interrupt" fn ...`) which is defined to
-do any necessary state saving for interrupt service routines. This permits more
-efficient code to be generated for the motivating example (omitting a 'call'
-instruction which is necessary for any non-trivial ISR), but may not be
-appropriate for other situations that might call for a naked function.
-Implementation of additional calling conventions like this in the current
-`rustc` would involve significant modification to LLVM to support it (whereas
-the proof-of-concept patch for `#[naked]` is less than 10 lines of code).
+implemented outside Rust code and linked in as needed. Support for additional
+calling conventions could be added to the compiler as needed, or emulated with
+external libraries such as `libffi`.
 
 # Unresolved questions
 
 It is easy to quietly generate wrong code in naked functions, such as by causing
 the compiler to allocate stack space for temporaries where none were
-anticipated. It may be desirable to allow the `#[naked]` attribute on `unsafe`
-functions only, reinforcing the need for extreme care in the use of this
-feature.
+anticipated. It may be desirable to require that all statements inside naked
+functions be inside `unsafe` blocks (either by declaring the function `unsafe`
+or including `unsafe { }` in the function body) to reinforce the need for
+extreme care in the use of this feature. Requiring that the function always be
+marked `unsafe` is not desirable because its external API may be safe.
