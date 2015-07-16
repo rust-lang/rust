@@ -200,7 +200,7 @@ fn extract_variant_args<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Helper for converting from the ValueRef that we pass around in the match
 /// code, which is always an lvalue, into a Datum. Eventually we should just
-/// pass around a Datum and be done with it. 
+/// pass around a Datum and be done with it.
 fn match_datum<'tcx>(val: ValueRef, left_ty: Ty<'tcx>) -> Datum<'tcx, Lvalue> {
     Datum::new(val, left_ty, Lvalue)
 }
