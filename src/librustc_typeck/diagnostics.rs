@@ -1689,7 +1689,8 @@ unsafe impl Bar for Foo { }
 "##,
 
 E0201: r##"
-It is an error to define an associated function more than once.
+It is an error to define two associated items (like methods, associated types,
+associated functions, etc.) with the same identifier.
 
 For example:
 
@@ -1698,20 +1699,24 @@ struct Foo(u8);
 
 impl Foo {
     fn bar(&self) -> bool { self.0 > 5 }
-
-    // error: duplicate associated function
-    fn bar() {}
+    fn bar() {} // error: duplicate associated function
 }
 
 trait Baz {
+    type Quux;
     fn baz(&self) -> bool;
 }
 
 impl Baz for Foo {
+    type Quux = u32;
+
     fn baz(&self) -> bool { true }
 
     // error: duplicate method
     fn baz(&self) -> bool { self.0 > 5 }
+
+    // error: duplicate associated type
+    type Quux = u32;
 }
 ```
 "##,
