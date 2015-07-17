@@ -972,16 +972,16 @@ Updates to the borrow checker in a future version of Rust may remove this
 restriction, but for now patterns must be rewritten without sub-bindings.
 
 ```
-// Code like this...
-match Some(5) {
-    ref op_num @ Some(num) => ...
+// Before.
+match Some("hi".to_string()) {
+    ref op_string_ref @ Some(ref s) => ...
     None => ...
 }
 
 // After.
 match Some("hi".to_string()) {
     Some(ref s) => {
-        let op_string_ref = &Some(&s);
+        let op_string_ref = &Some(s);
         ...
     }
     None => ...

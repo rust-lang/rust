@@ -1,7 +1,9 @@
-# Use something that's not 'ruby' so we don't set up things like
-# RVM/bundler/ruby and whatnot. Right now 'rust' as a language actually
-# downloads a rust/cargo snapshot, which we don't really want for building rust.
+# ccache support is disabled unless your language is a C-derivative. However
+# `language: C` unconditionally sets `CC=compiler`. If we just set it in our
+# `env` it will be overwritten by the default (gcc 4.6).
 language: c
+compiler: /usr/bin/gcc-4.7
+cache: ccache
 sudo: false
 
 # The test suite is in general way too stressful for travis, especially in
@@ -9,12 +11,28 @@ sudo: false
 # back to only build the stage1 compiler and run a subset of tests, but this
 # didn't end up panning out very well.
 #
-# As a result, we're just using travis to run `make tidy` now. It'll help
-# everyone find out about their trailing spaces early on!
+# As a result, we're just using travis to run `make tidy` and *only* build
+# stage1 but *not* test it for now (a strict subset of the bootstrap). This will
+# catch "obvious" errors like style or not even compiling.
+#
+# We need gcc4.7 or higher to build LLVM, and travis (well, Ubuntu 12.04)
+# currently ships with 4.6. Gotta download our own.
 before_script:
-  - ./configure --llvm-root=path/to/nowhere
+  - ./configure --enable-ccache
 script:
   - make tidy
+  - make rustc-stage1 -j4
+
+env:
+  - CXX=/usr/bin/g++-4.7
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-4.7
+    - g++-4.7
 
 # Real testing happens on http://buildbot.rust-lang.org/
 #

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Monster {
-    damage: isize
+pub struct C<AType: A> {a:AType}
+
+pub trait A {
+    type B = C<Self::anything_here_kills_it>;
+    //~^ ERROR: associated type `anything_here_kills_it` not found for `Self`
 }
 
-
-fn main() {
-    let _m = Monster(); //~ ERROR `Monster` is a struct variant name, but
-    //~^ HELP did you mean to write: `Monster { /* fields */ }`?
-}
+fn main() {}

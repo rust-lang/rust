@@ -1031,15 +1031,12 @@ fi
 
 if [ ! -z "$CFG_ENABLE_CCACHE" ]
 then
-    if [ -z "$CC" ]
+    if [ -z "$CFG_CCACHE" ]
     then
-        if [ -z "$CFG_CCACHE" ]
-        then
-            err "ccache requested but not found"
-        fi
-
-        CFG_CC="ccache $CFG_CC"
+        err "ccache requested but not found"
     fi
+
+    CFG_CC="ccache $CFG_CC"
 fi
 
 if [ -z "$CC" -a -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
@@ -1528,11 +1525,26 @@ do
 
             (*)
             msg "inferring LLVM_CXX/CC from CXX/CC = $CXX/$CC"
-            LLVM_CXX_32="$CXX"
-            LLVM_CC_32="$CC"
+            if [ ! -z "$CFG_ENABLE_CCACHE" ]
+            then
+                if [ -z "$CFG_CCACHE" ]
+                then
+                    err "ccache requested but not found"
+                fi
 
-            LLVM_CXX_64="$CXX"
-            LLVM_CC_64="$CC"
+                LLVM_CXX_32="ccache $CXX"
+                LLVM_CC_32="ccache $CC"
+
+                LLVM_CXX_64="ccache $CXX"
+                LLVM_CC_64="ccache $CC"
+            else
+                LLVM_CXX_32="$CXX"
+                LLVM_CC_32="$CC"
+
+                LLVM_CXX_64="$CXX"
+                LLVM_CC_64="$CC"
+            fi
+
             ;;
         esac
 

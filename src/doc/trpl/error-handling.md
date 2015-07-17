@@ -50,6 +50,8 @@ is very wrong. Wrong enough that we can't continue with things in the current
 state. Another example is using the `unreachable!()` macro:
 
 ```rust,ignore
+use Event::NewRelease;
+
 enum Event {
     NewRelease,
 }
@@ -71,7 +73,7 @@ fn descriptive_probability(event: Event) -> &'static str {
 }
 
 fn main() {
-    std::io::println(descriptive_probability(NewRelease));
+    println!("{}", descriptive_probability(NewRelease));
 }
 ```
 

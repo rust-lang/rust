@@ -163,9 +163,14 @@ pub struct MethodCallData {
 
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
-    pub fn new(tcx: &'l ty::ctxt<'tcx>,
-               span_utils: SpanUtils<'l>)
-               -> SaveContext<'l, 'tcx> {
+    pub fn new(tcx: &'l ty::ctxt<'tcx>) -> SaveContext <'l, 'tcx> {
+        let span_utils = SpanUtils::new(&tcx.sess);
+        SaveContext::from_span_utils(tcx, span_utils)
+    }
+
+    pub fn from_span_utils(tcx: &'l ty::ctxt<'tcx>,
+                           span_utils: SpanUtils<'l>)
+                           -> SaveContext<'l, 'tcx> {
         SaveContext {
             tcx: tcx,
             span_utils: span_utils,
@@ -527,7 +532,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ref_id: def.def_id(),
                 })
             }
-            def::DefStruct(def_id) | def::DefTy(def_id, _) => {
+            def::DefStruct(def_id) |
+            def::DefTy(def_id, _) |
+            def::DefTrait(def_id) |
+            def::DefTyParam(_, _, def_id, _) => {
                 Data::TypeRefData(TypeRefData {
                     span: sub_span.unwrap(),
                     ref_id: def_id,
@@ -540,13 +548,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     let ti = self.tcx.impl_or_trait_item(decl_id);
                     match provenence {
                         def::FromTrait(def_id) => {
-                            Some(self.tcx.trait_items(def_id)
-                                    .iter()
-                                    .find(|mr| {
-                                        mr.name() == ti.name()
-                                    })
-                                    .unwrap()
-                                    .def_id())
+                            self.tcx.trait_items(def_id)
+                                .iter()
+                                .find(|mr| {
+                                    mr.name() == ti.name() && self.trait_method_has_body(mr)
+                                })
+                                .map(|mr| mr.def_id())
                         }
                         def::FromImpl(def_id) => {
                             let impl_items = self.tcx.impl_items.borrow();
@@ -583,6 +590,20 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                                   up path in `{}`: `{:?}`",
                                                  self.span_utils.snippet(path.span),
                                                  def)),
+        }
+    }
+
+    fn trait_method_has_body(&self, mr: &ty::ImplOrTraitItem) -> bool {
+        let def_id = mr.def_id();
+        if def_id.krate != ast::LOCAL_CRATE {
+            return false;
+        }
+
+        let trait_item = self.tcx.map.expect_trait_item(def_id.node);
+        if let ast::TraitItem_::MethodTraitItem(_, Some(_)) = trait_item.node {
+            true
+        } else {
+            false
         }
     }
 
@@ -753,6 +774,6 @@ fn escape(s: String) -> String {
 
 // If the expression is a macro expansion or other generated code, run screaming
 // and don't index.
-fn generated_code(span: Span) -> bool {
+pub fn generated_code(span: Span) -> bool {
     span.expn_id != NO_EXPANSION || span  == DUMMY_SP
 }

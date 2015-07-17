@@ -35,7 +35,6 @@ use session::Session;
 use middle::def;
 use middle::ty::{self, Ty};
 
-use std::cell::Cell;
 use std::fs::File;
 use std::path::Path;
 
@@ -76,14 +75,11 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     pub fn new(tcx: &'l ty::ctxt<'tcx>,
                analysis: &'l ty::CrateAnalysis,
                output_file: Box<File>) -> DumpCsvVisitor<'l, 'tcx> {
-        let span_utils = SpanUtils {
-            sess: &tcx.sess,
-            err_count: Cell::new(0)
-        };
+        let span_utils = SpanUtils::new(&tcx.sess);
         DumpCsvVisitor {
             sess: &tcx.sess,
             tcx: tcx,
-            save_ctxt: SaveContext::new(tcx, span_utils.clone()),
+            save_ctxt: SaveContext::from_span_utils(tcx, span_utils.clone()),
             analysis: analysis,
             span: span_utils.clone(),
             fmt: FmtStrs::new(box Recorder {
