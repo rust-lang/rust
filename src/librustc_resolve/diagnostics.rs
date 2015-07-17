@@ -94,37 +94,32 @@ mod bar {
 "##,
 
 E0254: r##"
-This error indicates that an imported symbol resolved to an already imported
-symbol.
+This error indicates that a `use` declaration added a symbol to the current
+namespace that conflicts with a symbol added by an `extern crate` declaration.
 
 An example of this error:
 
-```
-// crate foo
-pub use foo::bar;
-pub mod foo; // note that there's a `pub` here
-```
+There's an external crate and it, also, can have no exports as foo.rs:
 
 ```
-// other program
+#![crate_type="lib"]
+```
+
+On the client code, bar.rs:
+
+```
 extern crate foo;
 
-use foo::*; // error, `foo::*` tries to bind `foo::foo` to `foo`
-```
+use inner_mod::foo; // error, both of these `use` declarations add a symbol
+use another_mod::foo; // that conflicts with the external crate's symbol.
 
-Or yet:
+mod inner_mod {
+	pub mod foo { }
+}
 
-```
-// crate foo
-pub use foo::bar;
-mod foo; // note that there's no `pub` here
-```
-
-```
-// other program
-extern crate foo;
-
-use foo::{self,bar}; // error, `use`ing `self` tries to bind `foo::foo` to `foo`
+mod another_mod {
+	pub type foo = i32;
+}
 ```
 "##,
 
