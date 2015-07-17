@@ -747,17 +747,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
            rcvr_ty_generics,
            rcvr_ty_predicates);
 
-    let tcx = ccx.tcx;
-    let mut seen_methods = FnvHashSet();
-    for (sig, id, ident, vis, span) in methods {
-        if !seen_methods.insert(ident.name) {
-            let fn_desc = match sig.explicit_self.node {
-                ast::SelfStatic => "associated function",
-                _               => "method",
-            };
-            span_err!(tcx.sess, span, E0201, "duplicate {}", fn_desc);
-        }
-
+    for (sig, id, ident, vis, _span) in methods {
         convert_method(ccx,
                        container,
                        sig,
@@ -859,7 +849,30 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             };
 
             // Convert all the associated consts.
+            // Also, check if there are any duplicate associated items
+            let mut seen_type_items = FnvHashSet();
+            let mut seen_value_items = FnvHashSet();
+
             for impl_item in impl_items {
+                let seen_items = match impl_item.node {
+                    ast::TypeImplItem(_) => &mut seen_type_items,
+                    _                    => &mut seen_value_items,
+                };
+                if !seen_items.insert(impl_item.ident.name) {
+                    let desc = match impl_item.node {
+                        ast::ConstImplItem(_, _) => "associated constant",
+                        ast::TypeImplItem(_) => "associated type",
+                        ast::MethodImplItem(ref sig, _) =>
+                            match sig.explicit_self.node {
+                                ast::SelfStatic => "associated function",
+                                _ => "method",
+                            },
+                        _ => "associated item",
+                    };
+
+                    span_err!(tcx.sess, impl_item.span, E0201, "duplicate {}", desc);
+                }
+
                 if let ast::ConstImplItem(ref ty, ref expr) = impl_item.node {
                     let ty = ccx.icx(&ty_predicates)
                                 .to_ty(&ExplicitRscope, &*ty);
