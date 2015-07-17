@@ -274,6 +274,21 @@ on this topic:
 http://doc.rust-lang.org/reference.html#use-declarations
 "##
 
+E0403: r##"
+Some type parameters have the same name. Example of erroneous code:
+
+```
+fn foo<T, T>(s: T, u: T) {} // error: the name `T` is already used for a type
+                            //        parameter in this type parameter list
+```
+
+Please verify you didn't mispell the type parameters. Example:
+
+```
+fn foo<T, Y>(s: T, u: Y) {}
+```
+"##
+
 }
 
 register_diagnostics! {
@@ -284,7 +299,6 @@ register_diagnostics! {
     E0258,
     E0401, // can't use type parameters from outer function
     E0402, // cannot use an outer type parameter in this context
-    E0403, // the name `{}` is already used
     E0404, // is not a trait
     E0405, // use of undeclared trait name
     E0406, // undeclared associated type
