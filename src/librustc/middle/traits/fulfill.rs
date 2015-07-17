@@ -430,8 +430,8 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                                     obligation.clone(),
                                     CodeSelectionError(Unimplemented)))
                         }
-                        // Otherwise, we have something of the form `for<'a> T: 'a`, which
-                        // we can treat as `T: 'static`.
+                        // Otherwise, we have something of the form
+                        // `for<'a> T: 'a where 'a not in T`, which we can treat as `T: 'static`.
                         Some(t_a) => {
                             register_region_obligation(t_a, ty::ReStatic,
                                                        obligation.cause.clone(),
