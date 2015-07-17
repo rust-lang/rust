@@ -21,8 +21,7 @@ Fundamentally, however, Cargo is a ubiquitous tool among the Rust community and
 implementing `cargo install` would facilitate sharing Rust code among its
 developers.  Simple tasks like installing a new cargo subcommand, installing an
 editor plugin, etc, would be just a `cargo install` away. Cargo can manage
-dependencies, versions, updates, etc, itself to make the process as seamless as
-possible.
+dependencies and versions itself to make the process as seamless as possible.
 
 Put another way, enabling easily sharing code is one of Cargo's fundamental
 design goals, and expanding into binaries is simply an extension of Cargo's core
@@ -43,7 +42,6 @@ Installing new crates:
 
 Managing installed crates:
     cargo install [options] --list
-    cargo install [options] --update [SPEC | --all]
 
 Options:
     -h, --help              Print this message
@@ -76,9 +74,7 @@ crate has multiple binaries, the `--bin` argument can selectively install only
 one of them, and if you'd rather install examples the `--example` argument can
 be used as well.
 
-The `--list` option will list all installed packages (and their versions). The
-`--update` option will update either the crate specified or all installed
-crates.
+The `--list` option will list all installed packages (and their versions).
 ```
 
 ## Installing Crates
@@ -162,31 +158,9 @@ binaries belong to which package.
 
 If Cargo gives access to installing packages, it should surely provide the
 ability to manage what's installed! The first part of this is just discovering
-what's installed, and this is provided via `cargo install --list`. A more
-interesting aspect is the `cargo install --update` command.
+what's installed, and this is provided via `cargo install --list`.
 
-#### Updating Crates
-
-Once a crate is installed new versions can be released or perhaps the build
-configuration wants to be tweaked, so Cargo will provide the ability to update
-crates in-place. By default *something* needs to be specified to the `--update`
-flag, either a specific crate that's been installed or the `--all` flag to
-update all crates. Because multiple crates of the same name can come from
-different sources, the argument to the `--update` flag will be a package id
-specification instead of just the name of a crate.
-
-When updating a crate, it will first attempt to update the source code for the
-crate. For crates.io sources this means that it will download the most recent
-version. For git sources it means the git repo will be updated, but the same
-branch/tag will be used (if original specified when installed). Git sources
-installed via `--rev` won't be updated.
-
-After the source code has been updated, the crate will be rebuilt according to
-the flags specified on the command line. This will override the flags that were
-previously used to install a crate, for example activated features are not
-remembered.
-
-#### Removing Crates
+## Removing Crates
 
 To remove an installed crate, another subcommand will be added to Cargo:
 
