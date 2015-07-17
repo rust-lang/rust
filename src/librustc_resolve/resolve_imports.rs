@@ -451,7 +451,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     if !pub_err && directive.is_public && !child_name_bindings.is_public(TypeNS) {
                         let msg = format!("`{}` is private, and cannot be reexported",
                                           token::get_name(source));
-                        let note_msg = format!("Consider declaring module {} as `pub mod`",
+                        let note_msg = format!("Consider declaring module `{}` as a `pub mod`",
                                                token::get_name(source));
                         span_err!(self.resolver.session, directive.span, E0365, "{}", &msg);
                         self.resolver.session.span_note(directive.span, &note_msg);
