@@ -10,8 +10,6 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
-use llvm::TargetData;
-use llvm::mk_target_data;
 use metadata::common::LinkMeta;
 use middle::def::ExportMap;
 use middle::traits;
@@ -83,7 +81,6 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
-    td: TargetData,
     tn: TypeNames,
     externs: RefCell<ExternMap>,
     item_vals: RefCell<NodeMap<ValueRef>>,
@@ -226,9 +223,15 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
-    let data_layout = sess.target.target.data_layout.as_bytes();
-    let data_layout = CString::new(data_layout).unwrap();
-    llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
+    let custom_data_layout = &sess.target.target.options.data_layout[..];
+    if custom_data_layout.len() > 0 {
+        let data_layout = CString::new(custom_data_layout).unwrap();
+        llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
+    } else {
+        let tm = ::back::write::create_target_machine(sess);
+        llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
+        llvm::LLVMRustDisposeTargetMachine(tm);
+    }
 
     let llvm_target = sess.target.target.llvm_target.as_bytes();
     let llvm_target = CString::new(llvm_target).unwrap();
@@ -419,13 +422,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
         unsafe {
             let (llcx, llmod) = create_context_and_module(&shared.tcx.sess, name);
 
-            let td = mk_target_data(&shared.tcx
-                                          .sess
-                                          .target
-                                          .target
-                                          .data_layout
-                                          );
-
             let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
                 Some(debuginfo::CrateDebugContext::new(llmod))
             } else {
@@ -435,7 +431,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
             let mut local_ccx = LocalCrateContext {
                 llmod: llmod,
                 llcx: llcx,
-                td: td,
                 tn: TypeNames::new(),
                 externs: RefCell::new(FnvHashMap()),
                 item_vals: RefCell::new(NodeMap()),
@@ -581,8 +576,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.llcx
     }
 
-    pub fn td<'a>(&'a self) -> &'a TargetData {
-        &self.local.td
+    pub fn td(&self) -> llvm::TargetDataRef {
+        unsafe { llvm::LLVMRustGetModuleDataLayout(self.llmod()) }
     }
 
     pub fn tn<'a>(&'a self) -> &'a TypeNames {

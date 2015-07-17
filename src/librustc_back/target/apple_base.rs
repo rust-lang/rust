@@ -23,6 +23,7 @@ pub fn opts() -> TargetOptions {
         has_rpath: true,
         dll_prefix: "lib".to_string(),
         dll_suffix: ".dylib".to_string(),
+        archive_format: "bsd".to_string(),
         pre_link_args: Vec::new(),
         .. Default::default()
     }
