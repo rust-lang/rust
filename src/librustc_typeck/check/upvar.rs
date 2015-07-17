@@ -183,9 +183,8 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
          * Analysis starting point.
          */
 
-        self.visit_block(body);
+        debug!("analyze_closure(id={:?}, body.id={:?})", id, body.id);
 
-        debug!("analyzing closure `{}` with fn body id `{}`", id, body.id);
 
         let mut euv = euv::ExprUseVisitor::new(self, self.fcx.infcx());
         euv.walk_fn(decl, body);
@@ -485,8 +484,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'tcx> {
                 // ignore nested fn items
             }
             visit::FkFnBlock => {
-                self.analyze_closure(id, decl, body);
                 visit::walk_fn(self, fn_kind, decl, body, span);
+                self.analyze_closure(id, span, decl, body);
             }
         }
     }
