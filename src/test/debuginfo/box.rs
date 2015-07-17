@@ -32,11 +32,17 @@
 
 #![allow(unused_variables)]
 #![feature(box_syntax)]
+#![feature(placement_in_syntax)]
+// both needed for HEAP use for some reason
+#![feature(core, alloc)]
 #![omit_gdb_pretty_printer_section]
 
+use std::boxed::HEAP;
+
 fn main() {
-    let a = box 1;
-    let b = box() (2, 3.5f64);
+    let a: Box<_> = box 1;
+    // FIXME (#22181): Put in the new placement-in syntax once that lands.
+    let b = box (HEAP) { (2, 3.5f64) };
 
     zzz(); // #break
 }

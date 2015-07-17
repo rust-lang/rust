@@ -35,10 +35,9 @@ impl<A:Clone> Invokable<A> for Invoker<A> {
 }
 
 fn f<A:Clone + 'static>(a: A, b: u16) -> Box<Invokable<A>+'static> {
-    box Invoker {
-        a: a,
-        b: b,
-    } as (Box<Invokable<A>+'static>)
+    let b: Box<_> = box Invoker { a: a, b: b, };
+    // FIXME(22450): workaround pretty-printer deficiency via parens.
+    b as (Box<Invokable<A>+'static>)
 }
 
 pub fn main() {

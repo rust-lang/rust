@@ -262,12 +262,12 @@ impl AttrBuilder {
     }
 
     pub fn arg<'a, T: AttrHelper + 'static>(&'a mut self, idx: usize, a: T) -> &'a mut AttrBuilder {
-        self.attrs.push((idx, box a as Box<AttrHelper+'static>));
+        self.attrs.push((idx, Box::new(a) as Box<AttrHelper+'static>));
         self
     }
 
     pub fn ret<'a, T: AttrHelper + 'static>(&'a mut self, a: T) -> &'a mut AttrBuilder {
-        self.attrs.push((ReturnIndex as usize, box a as Box<AttrHelper+'static>));
+        self.attrs.push((ReturnIndex as usize, Box::new(a) as Box<AttrHelper+'static>));
         self
     }
 

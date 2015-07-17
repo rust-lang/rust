@@ -21,7 +21,7 @@
 // Test that cleanup scope for temporaries created in a match
 // arm is confined to the match arm itself.
 
-// pretty-expanded FIXME #23616
+// no-pretty-expanded FIXME #26067
 
 #![allow(unknown_features)]
 #![feature(box_syntax, os)]

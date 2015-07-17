@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 // Verifies all possible restrictions for statics values.
 
 #![feature(box_syntax)]
@@ -99,7 +101,20 @@ static STATIC10: UnsafeStruct = UnsafeStruct;
 struct MyOwned;
 
 static STATIC11: Box<MyOwned> = box MyOwned;
-//~^ ERROR allocations are not allowed in statics
+//~^ ERROR statics are not allowed to have destructors
+//~| ERROR statics are not allowed to have destructors
+//~| ERROR statics are not allowed to have destructors
+//~| ERROR blocks in statics are limited to items and tail expressions
+//~| ERROR blocks in statics are limited to items and tail expressions
+//~| ERROR blocks in statics are limited to items and tail expressions
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR paths in statics may only refer to constants or functions
+//~| ERROR paths in statics may only refer to constants or functions
+//~| ERROR paths in statics may only refer to constants or functions
+//~| ERROR references in statics may only refer to immutable values
 
 // The following examples test that mutable structs are just forbidden
 // to have types with destructors
@@ -121,13 +136,69 @@ static mut STATIC14: SafeStruct = SafeStruct {
 };
 
 static STATIC15: &'static [Box<MyOwned>] = &[
-    box MyOwned, //~ ERROR allocations are not allowed in statics
-    box MyOwned, //~ ERROR allocations are not allowed in statics
+    box MyOwned,
+    //~^ ERROR statics are not allowed to have destructors
+    //~| ERROR statics are not allowed to have destructors
+    //~| ERROR statics are not allowed to have destructors
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR references in statics may only refer to immutable values
+    box MyOwned,
+    //~^ ERROR statics are not allowed to have destructors
+    //~| ERROR statics are not allowed to have destructors
+    //~| ERROR statics are not allowed to have destructors
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR references in statics may only refer to immutable values
 ];
 
 static STATIC16: (&'static Box<MyOwned>, &'static Box<MyOwned>) = (
-    &box MyOwned, //~ ERROR allocations are not allowed in statics
-    &box MyOwned, //~ ERROR allocations are not allowed in statics
+    &box MyOwned,
+    //~^ ERROR statics are not allowed to have destructors
+    //~| ERROR statics are not allowed to have destructors
+    //~| ERROR statics are not allowed to have destructors
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR references in statics may only refer to immutable values
+    &box MyOwned,
+    //~^ ERROR statics are not allowed to have destructors
+    //~| ERROR statics are not allowed to have destructors
+    //~| ERROR statics are not allowed to have destructors
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR references in statics may only refer to immutable values
 );
 
 static mut STATIC17: SafeEnum = SafeEnum::Variant1;
@@ -135,9 +206,35 @@ static mut STATIC17: SafeEnum = SafeEnum::Variant1;
 
 static STATIC19: Box<isize> =
     box 3;
-//~^ ERROR allocations are not allowed in statics
+//~^ ERROR statics are not allowed to have destructors
+//~| ERROR statics are not allowed to have destructors
+//~| ERROR statics are not allowed to have destructors
+//~| ERROR blocks in statics are limited to items and tail expressions
+//~| ERROR blocks in statics are limited to items and tail expressions
+//~| ERROR blocks in statics are limited to items and tail expressions
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+//~| ERROR paths in statics may only refer to constants or functions
+//~| ERROR paths in statics may only refer to constants or functions
+//~| ERROR paths in statics may only refer to constants or functions
+//~| ERROR references in statics may only refer to immutable values
 
 pub fn main() {
     let y = { static x: Box<isize> = box 3; x };
-    //~^ ERROR allocations are not allowed in statics
+    //~^ ERROR statics are not allowed to have destructors
+    //~| ERROR statics are not allowed to have destructors
+    //~| ERROR statics are not allowed to have destructors
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR blocks in statics are limited to items and tail expressions
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR function calls in statics are limited to constant functions, struct and enum constructors
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR paths in statics may only refer to constants or functions
+    //~| ERROR references in statics may only refer to immutable values
 }

@@ -18,8 +18,10 @@ trait X { }
 
 impl<'a, T> X for B<'a, T> {}
 
+fn id<T>(x: T) -> T { x }
+
 fn f<'a, T:'static, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
-    box B(&*v) as Box<X> //~ ERROR `*v` does not live long enough
+    id::<Box<_>>(box B(&*v)) as Box<X> //~ ERROR `*v` does not live long enough
 }
 
 fn main() {}

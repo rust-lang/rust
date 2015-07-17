@@ -369,7 +369,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     fn schedule_lifetime_end(&self,
                              cleanup_scope: ScopeId,
                              val: ValueRef) {
-        let drop = box LifetimeEnd {
+        let drop: Box<_> = box LifetimeEnd {
             ptr: val,
         };
 
@@ -386,7 +386,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                          val: ValueRef,
                          ty: Ty<'tcx>) {
         if !self.type_needs_drop(ty) { return; }
-        let drop = box DropValue {
+        let drop: Box<_> = box DropValue {
             is_immediate: false,
             val: val,
             ty: ty,
@@ -411,7 +411,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                                   ty: Ty<'tcx>) {
         if !self.type_needs_drop(ty) { return; }
 
-        let drop = box DropValue {
+        let drop: Box<_> = box DropValue {
             is_immediate: false,
             val: val,
             ty: ty,
@@ -442,7 +442,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         // is just an optimization, so sound to be conservative.
         if !self.type_needs_drop(ty) { return; }
 
-        let drop = box DropValue {
+        let drop: Box<_> = box DropValue {
             is_immediate: false,
             val: val,
             ty: ty,
@@ -467,7 +467,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                                ty: Ty<'tcx>) {
 
         if !self.type_needs_drop(ty) { return; }
-        let drop = box DropValue {
+        let drop: Box<_> = box DropValue {
             is_immediate: true,
             val: val,
             ty: ty,
@@ -491,7 +491,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                            val: ValueRef,
                            heap: Heap,
                            content_ty: Ty<'tcx>) {
-        let drop = box FreeValue { ptr: val, heap: heap, content_ty: content_ty };
+        let drop: Box<_> = box FreeValue { ptr: val, heap: heap, content_ty: content_ty };
 
         debug!("schedule_free_value({:?}, val={}, heap={:?})",
                cleanup_scope,

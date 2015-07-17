@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// no-pretty-expanded FIXME #26067
 
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
 #![allow(warnings)]
 #![feature(box_syntax, box_heap)]
+#![feature(placement_in_syntax)]
 
 // Tests that the new `box` syntax works with unique pointers.
 
@@ -26,8 +27,9 @@ struct Structure {
 }
 
 pub fn main() {
-    let x: Box<isize> = box(HEAP) 2;
+    // FIXME (#22181) put back when new placement-in syntax is supported
+    // let x: Box<isize> = in HEAP { 2 };
     let y: Box<isize> = box 2;
-    let b: Box<isize> = box()(1 + 2);
-    let c = box()(3 + 4);
+    let b: Box<isize> = box () (1 + 2);
+    let c: Box<_> = box () (3 + 4);
 }

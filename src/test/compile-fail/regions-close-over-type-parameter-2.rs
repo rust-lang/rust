@@ -21,7 +21,8 @@ impl<A> Foo for A {
 }
 
 fn repeater3<'a,A:'a>(v: A) -> Box<Foo+'a> {
-    box v as Box<Foo+'a>
+    let b: Box<_> = box v;
+    b as Box<Foo+'a>
 }
 
 fn main() {

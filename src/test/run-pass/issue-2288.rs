@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// no-pretty-expanded FIXME #26067
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
@@ -40,6 +40,7 @@ fn f<A>(x: Box<clam<A>>, a: A) {
 pub fn main() {
 
   let c = foo(42);
-  let d: Box<clam<isize>> = box c as Box<clam<isize>>;
+  let b: Box<_> = box c;
+  let d: Box<clam<isize>> = b as Box<clam<isize>>;
   f(d, c.x);
 }

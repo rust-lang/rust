@@ -967,7 +967,7 @@ mod tests {
     #[test]
     fn test_try_panic_message_any() {
         match thread::spawn(move|| {
-            panic!(box 413u16 as Box<Any + Send>);
+            panic!(Box::new(413u16) as Box<Any + Send>);
         }).join() {
             Err(e) => {
                 type T = Box<Any + Send>;

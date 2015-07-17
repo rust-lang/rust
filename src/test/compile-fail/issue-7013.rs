@@ -33,6 +33,7 @@ struct A {
 }
 
 fn main() {
-    let a = A {v: box B{v: None} as Box<Foo+Send>};
+    let b: Box<_> = box B{v: None};
+    let a = A {v: b as Box<Foo+Send>};
     //~^ ERROR the trait `core::marker::Send` is not implemented
 }

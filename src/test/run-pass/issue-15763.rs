@@ -87,12 +87,16 @@ fn main() {
     assert_eq!(cc().unwrap(), 3);
     assert_eq!(dd().unwrap(), 3);
 
-    let i = box 32isize as Box<A>;
+    let b: Box<isize> = box 32isize;
+    let i = b as Box<A>;
     assert_eq!(i.aaa(), 3);
-    let i = box 32isize as Box<A>;
+    let b: Box<isize> = box 32isize;
+    let i = b as Box<A>;
     assert_eq!(i.bbb(), 3);
-    let i = box 32isize as Box<A>;
+    let b: Box<isize> = box 32isize;
+    let i = b as Box<A>;
     assert_eq!(i.ccc().unwrap(), 3);
-    let i = box 32isize as Box<A>;
+    let b: Box<isize> = box 32isize;
+    let i = b as Box<A>;
     assert_eq!(i.ddd().unwrap(), 3);
 }

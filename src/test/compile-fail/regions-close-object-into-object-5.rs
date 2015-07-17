@@ -22,8 +22,10 @@ trait X { fn foo(&self) {} }
 
 impl<'a, T> X for B<'a, T> {}
 
+fn id<T>(x: T) -> T { x }
+
 fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
-    box B(&*v) as Box<X> //~ ERROR the parameter type `T` may not live long enough
+    id::<Box<_>>(box B(&*v)) as Box<X> //~ ERROR the parameter type `T` may not live long enough
         //~^ ERROR the parameter type `T` may not live long enough
 }
 

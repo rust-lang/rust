@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// no-pretty-expanded FIXME #26067
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
@@ -19,7 +19,9 @@ trait hax {
 impl<A> hax for A { }
 
 fn perform_hax<T: 'static>(x: Box<T>) -> Box<hax+'static> {
-    box x as Box<hax+'static>
+    let b: Box<_> = box x;
+    // FIXME(22450): workaround pretty-printer deficiency via parens.
+    b as Box<hax+'static>
 }
 
 fn deadcode() {

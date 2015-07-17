@@ -16,8 +16,10 @@ struct B<'a, T>(&'a (A<T>+'a));
 trait X { }
 impl<'a, T> X for B<'a, T> {}
 
+fn id<T>(x: T) -> T { x }
+
 fn g<'a, T: 'static>(v: Box<A<T>+'a>) -> Box<X+'static> {
-    box B(&*v) as Box<X> //~ ERROR cannot infer
+    id::<Box<_>>(box B(&*v)) as Box<X> //~ ERROR cannot infer
 }
 
 fn main() { }

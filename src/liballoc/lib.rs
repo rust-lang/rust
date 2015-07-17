@@ -70,6 +70,9 @@
        test(no_crate_inject))]
 #![no_std]
 
+// SNAP ba0e1cd
+#![allow(unused_features)] // for placement_in_syntax
+
 #![feature(allocator)]
 #![feature(box_syntax)]
 #![feature(coerce_unsized)]
@@ -84,6 +87,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(raw)]
 #![feature(staged_api)]
+#![feature(placement_in_syntax)]
 #![feature(unboxed_closures)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]

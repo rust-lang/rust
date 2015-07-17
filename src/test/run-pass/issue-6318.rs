@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// no-pretty-expanded FIXME #26067
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
@@ -26,7 +26,8 @@ pub struct Struct;
 impl Foo for Struct {}
 
 pub fn main() {
-    match Thing::A(box Struct as Box<Foo+'static>) {
+    let b: Box<_> = box Struct;
+    match Thing::A(b as Box<Foo+'static>) {
         Thing::A(_a) => 0,
     };
 }

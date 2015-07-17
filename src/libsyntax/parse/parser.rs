@@ -53,7 +53,7 @@ use ast::{TtDelimited, TtSequence, TtToken};
 use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
 use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr};
-use ast::{TyRptr, TyTup, TyU32, TyVec, UnUniq};
+use ast::{TyRptr, TyTup, TyU32, TyVec};
 use ast::{TypeImplItem, TypeTraitItem};
 use ast::{UnnamedField, UnsafeBlock};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
@@ -2646,10 +2646,7 @@ impl<'a> Parser<'a> {
             // Otherwise, we use the unique pointer default.
             let subexpression = try!(self.parse_prefix_expr());
             hi = subexpression.span.hi;
-            // FIXME (pnkfelix): After working out kinks with box
-            // desugaring, should be `ExprBox(None, subexpression)`
-            // instead.
-            ex = self.mk_unary(UnUniq, subexpression);
+            ex = ExprBox(None, subexpression);
           }
           _ => return self.parse_dot_or_call_expr()
         }

@@ -381,13 +381,13 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         }
 
         if sess.opts.debugging_opts.save_analysis {
-            control.after_analysis.callback = box |state| {
+            control.after_analysis.callback = Box::new(|state| {
                 time(state.session.time_passes(),
                      "save analysis", (),
                      |_| save::process_crate(state.tcx.unwrap(),
                                              state.analysis.unwrap(),
                                              state.out_dir));
-            };
+            });
             control.make_glob_map = resolve::MakeGlobMap::Yes;
         }
 
@@ -806,7 +806,7 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.spawn(move || { io::set_panic(box err); f() }).unwrap().join() {
+    match cfg.spawn(move || { io::set_panic(Box::new(err)); f() }).unwrap().join() {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic
@@ -842,7 +842,7 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
             // Panic so the process returns a failure code, but don't pollute the
             // output with some unnecessary panic messages, we've already
             // printed everything that we needed to.
-            io::set_panic(box io::sink());
+            io::set_panic(Box::new(io::sink()));
             panic!();
         }
     }

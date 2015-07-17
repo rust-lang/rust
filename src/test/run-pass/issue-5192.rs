@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// no-pretty-expanded FIXME #26067
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
@@ -46,5 +46,6 @@ impl Scheduler {
 }
 
 pub fn main() {
-    let _sched = Scheduler::new(box UvEventLoop::new() as Box<EventLoop>);
+    let b: Box<_> = box UvEventLoop::new();
+    let _sched = Scheduler::new(b as Box<EventLoop>);
 }

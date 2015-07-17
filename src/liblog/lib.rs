@@ -307,7 +307,8 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
     let mut logger: Box<Logger + Send> = LOCAL_LOGGER.with(|s| {
         s.borrow_mut().take()
     }).unwrap_or_else(|| {
-        box DefaultLogger { handle: io::stderr() }
+        let b: Box<DefaultLogger> = box DefaultLogger { handle: io::stderr() };
+        b
     });
     logger.log(&LogRecord {
         level: LogLevel(level),

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![allow(unknown_features)]
-#![feature(box_syntax)]
-
-trait double {
-    fn double(self: Box<Self>) -> usize;
-}
-
-impl double for usize {
-    fn double(self: Box<usize>) -> usize { *self * 2 }
-}
-
-pub fn main() {
-    let b: Box<usize> = box 3usize;
-    let x: Box<_> = box() (b as Box<double>);
-    assert_eq!(x.double(), 6);
+fn main() {
+    let c = push_unsafe!('c'); //~ ERROR push/pop_unsafe macros are experimental
+    let c = pop_unsafe!('c'); //~ ERROR push/pop_unsafe macros are experimental
 }

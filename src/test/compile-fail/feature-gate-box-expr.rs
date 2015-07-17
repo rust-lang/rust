@@ -11,12 +11,16 @@
 fn main() {
     use std::boxed::HEAP;
 
-    let x = box 'c'; //~ ERROR box expression syntax is experimental
+    let x: Box<_> = box 'c'; //~ ERROR box expression syntax is experimental
     println!("x: {}", x);
 
-    let x = box () 'c'; //~ ERROR box expression syntax is experimental
+    let x: Box<_> = box () 'c'; //~ ERROR box expression syntax is experimental
     println!("x: {}", x);
 
-    let x = box (HEAP) 'c'; //~ ERROR box expression syntax is experimental
+    let x: Box<_> = box (HEAP) 'c'; //~ ERROR placement-in expression syntax is experimental
     println!("x: {}", x);
+
+    // FIXME (#22181) put back when new placement-in syntax is supported
+    // let x = in HEAP { 'c' };
+    // println!("x: {}", x);
 }

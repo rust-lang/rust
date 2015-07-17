@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// no-pretty-expanded FIXME #26067
 
 #![allow(unknown_features)]
 #![feature(box_syntax, io)]
@@ -20,6 +20,7 @@ fn f(wr: &mut Write) {
 }
 
 fn main() {
-    let mut wr = box io::stdout() as Box<Write>;
+    let b: Box<_> = box io::stdout();
+    let mut wr = b as Box<Write>;
     f(&mut wr);
 }

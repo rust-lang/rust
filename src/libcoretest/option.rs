@@ -234,7 +234,7 @@ fn test_collect() {
 
     // test that it does not take more elements than it needs
     let mut functions: [Box<Fn() -> Option<()>>; 3] =
-        [box || Some(()), box || None, box || panic!()];
+        [Box::new(|| Some(())), Box::new(|| None), Box::new(|| panic!())];
 
     let v: Option<Vec<()>> = functions.iter_mut().map(|f| (*f)()).collect();
 

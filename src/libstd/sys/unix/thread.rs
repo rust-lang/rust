@@ -38,7 +38,7 @@ unsafe impl Sync for Thread {}
 impl Thread {
     pub unsafe fn new<'a>(stack: usize, p: Box<FnBox() + 'a>)
                           -> io::Result<Thread> {
-        let p = box p;
+        let p = Box::new(p);
         let mut native: libc::pthread_t = mem::zeroed();
         let mut attr: libc::pthread_attr_t = mem::zeroed();
         assert_eq!(pthread_attr_init(&mut attr), 0);

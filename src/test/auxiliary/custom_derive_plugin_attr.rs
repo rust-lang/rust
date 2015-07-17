@@ -11,7 +11,6 @@
 // force-host
 
 #![feature(plugin_registrar)]
-#![feature(box_syntax)]
 #![feature(rustc_private)]
 
 extern crate syntax;
@@ -33,7 +32,7 @@ use rustc::plugin::Registry;
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_syntax_extension(
         token::intern("derive_TotalSum"),
-        MultiDecorator(box expand));
+        MultiDecorator(Box::new(expand)));
 }
 
 fn expand(cx: &mut ExtCtxt,

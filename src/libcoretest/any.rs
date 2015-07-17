@@ -35,7 +35,9 @@ fn any_referenced() {
 
 #[test]
 fn any_owning() {
-    let (a, b, c) = (box 5_usize as Box<Any>, box TEST as Box<Any>, box Test as Box<Any>);
+    let (a, b, c) = (Box::new(5_usize) as Box<Any>,
+                     Box::new(TEST) as Box<Any>,
+                     Box::new(Test) as Box<Any>);
 
     assert!(a.is::<usize>());
     assert!(!b.is::<usize>());

@@ -27,7 +27,7 @@ impl Foo<isize> for S {
 }
 
 pub fn main() {
-    let x = box S { x: 1 };
+    let x: Box<S> = box S { x: 1 };
     let y = x as Box<Foo<isize>>;
     assert_eq!(y.get(), 1);
 }

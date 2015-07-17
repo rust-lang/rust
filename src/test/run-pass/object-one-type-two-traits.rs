@@ -35,7 +35,8 @@ fn is<T:Any>(x: &Any) -> bool {
 }
 
 fn main() {
-    let x = box 22isize as Box<Wrap>;
+    let b: Box<_> = box 22isize;
+    let x = b as Box<Wrap>;
     println!("x={}", x.get());
     let y = x.wrap();
 }
