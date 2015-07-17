@@ -24,7 +24,7 @@ pub type RelateResult<'tcx, T> = Result<T, ty::TypeError<'tcx>>;
 
 #[derive(Clone, Debug)]
 pub enum Cause {
-    ExistentialRegionBound(bool), // if true, this is a default, else explicit
+    ExistentialRegionBound, // relating an existential region bound
 }
 
 pub trait TypeRelation<'a,'tcx> : Sized {
@@ -42,13 +42,6 @@ pub trait TypeRelation<'a,'tcx> : Sized {
     {
         f(self)
     }
-
-    /// Hack for deciding whether the lifetime bound defaults change
-    /// will be a breaking change or not. The bools indicate whether
-    /// `a`/`b` have a default that will change to `'static`; the
-    /// result is true if this will potentially affect the affect of
-    /// relating `a` and `b`.
-    fn will_change(&mut self, a: bool, b: bool) -> bool;
 
     /// Generic relation routine suitable for most anything.
     fn relate<T:Relate<'a,'tcx>>(&mut self, a: &T, b: &T) -> RelateResult<'tcx, T> {
@@ -384,12 +377,9 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ExistentialBounds<'tcx> {
                  -> RelateResult<'tcx, ty::ExistentialBounds<'tcx>>
         where R: TypeRelation<'a,'tcx>
     {
-        let will_change = relation.will_change(a.region_bound_will_change,
-                                               b.region_bound_will_change);
-
         let r =
             try!(relation.with_cause(
-                Cause::ExistentialRegionBound(will_change),
+                Cause::ExistentialRegionBound,
                 |relation| relation.relate_with_variance(ty::Contravariant,
                                                          &a.region_bound,
                                                          &b.region_bound)));
@@ -397,8 +387,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ExistentialBounds<'tcx> {
         let pb = try!(relation.relate(&a.projection_bounds, &b.projection_bounds));
         Ok(ty::ExistentialBounds { region_bound: r,
                                    builtin_bounds: nb,
-                                   projection_bounds: pb,
-                                   region_bound_will_change: will_change })
+                                   projection_bounds: pb })
     }
 }
 

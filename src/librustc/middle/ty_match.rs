@@ -42,11 +42,6 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
     fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.tcx }
     fn a_is_expected(&self) -> bool { true } // irrelevant
 
-    fn will_change(&mut self, _: bool, _: bool) -> bool {
-        // we're ignoring regions in this code
-        false
-    }
-
     fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
                                                _: ty::Variance,
                                                a: &T,
