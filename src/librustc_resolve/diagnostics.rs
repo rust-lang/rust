@@ -282,10 +282,41 @@ fn foo<T, T>(s: T, u: T) {} // error: the name `T` is already used for a type
                             //        parameter in this type parameter list
 ```
 
-Please verify you didn't mispell the type parameters. Example:
+Please verify that none of the type params are misspelled, and rename any
+clashing parameters. Example:
 
 ```
-fn foo<T, Y>(s: T, u: Y) {}
+fn foo<T, Y>(s: T, u: Y) {} // ok!
+```
+"##,
+
+E0405: r##"
+You tried to implement an undefined trait on an object. Example of
+erroneous code:
+
+```
+struct Foo;
+
+impl SomeTrait for Foo {} // error: use of undeclared trait name `SomeTrait`
+```
+
+Please verify that the name of the trait wasn't misspelled and ensure that it
+was imported. Example:
+
+```
+// solution 1:
+use some_file::SomeTrait;
+
+// solution 2:
+trait SomeTrait {
+    // some functions
+}
+
+struct Foo;
+
+impl SomeTrait for Foo { // ok!
+    // implements functions
+}
 ```
 "##
 
@@ -300,7 +331,6 @@ register_diagnostics! {
     E0401, // can't use type parameters from outer function
     E0402, // cannot use an outer type parameter in this context
     E0404, // is not a trait
-    E0405, // use of undeclared trait name
     E0406, // undeclared associated type
     E0407, // method is not a member of trait
     E0408, // variable from pattern #1 is not bound in pattern #
