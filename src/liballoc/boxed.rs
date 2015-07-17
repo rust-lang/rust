@@ -62,7 +62,7 @@ use core::hash::{self, Hash};
 use core::marker::Unsize;
 use core::mem;
 use core::ops::{CoerceUnsized, Deref, DerefMut};
-use core::ptr::{Unique};
+use core::ptr::Unique;
 use core::raw::{TraitObject};
 
 /// A value that represents the heap. This is the default place that the `box`
