@@ -317,8 +317,7 @@ impl Foo for Bar { // ok!
 "##,
 
 E0405: r##"
-You tried to implement an undefined trait on an object. Example of
-erroneous code:
+A non-trait was implemented. Example of erroneous code:
 
 ```
 struct Foo;
@@ -344,7 +343,42 @@ impl SomeTrait for Foo { // ok!
     // implements functions
 }
 ```
-"##
+"##,
+
+E0407: r##"
+A definition of a method not in the implemented trait was given. Example of
+erroneous code:
+
+```
+trait Foo {
+    fn a();
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn a() {}
+    fn b() {} // error: method `b` is not a member of trait `Foo`
+}
+```
+
+Please verify you didn't mispelled the method name and you used the good
+trait. Example:
+
+```
+trait Foo {
+    fn a();
+    fn b();
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn a() {}
+    fn b() {} // ok!
+}
+```
+"##,
 
 }
 
@@ -357,7 +391,6 @@ register_diagnostics! {
     E0401, // can't use type parameters from outer function
     E0402, // cannot use an outer type parameter in this context
     E0406, // undeclared associated type
-    E0407, // method is not a member of trait
     E0408, // variable from pattern #1 is not bound in pattern #
     E0409, // variable is bound with different mode in pattern # than in
            // pattern #1
