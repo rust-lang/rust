@@ -290,6 +290,32 @@ fn foo<T, Y>(s: T, u: Y) {} // ok!
 ```
 "##,
 
+E0404: r##"
+You tried to implement a non-trait object on an object. Example of erroneous
+code:
+
+```
+struct Foo;
+struct Bar;
+
+impl Foo for Bar {} // error: `Foo` is not a trait
+```
+
+Please verify you didn't mispelled the trait's name or used the wrong object.
+Example:
+
+```
+trait Foo {
+    // some functions
+}
+struct Bar;
+
+impl Foo for Bar { // ok!
+    // functions implementation
+}
+```
+"##,
+
 E0405: r##"
 You tried to implement an undefined trait on an object. Example of
 erroneous code:
@@ -330,7 +356,6 @@ register_diagnostics! {
     E0258,
     E0401, // can't use type parameters from outer function
     E0402, // cannot use an outer type parameter in this context
-    E0404, // is not a trait
     E0406, // undeclared associated type
     E0407, // method is not a member of trait
     E0408, // variable from pattern #1 is not bound in pattern #
