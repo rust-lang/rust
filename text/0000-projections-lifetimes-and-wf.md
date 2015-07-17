@@ -8,7 +8,7 @@
 Type system changes to address the outlives relation with respect to
 projections, and to better enforce that all types are well-formed
 (meaning that they respect their declared bounds). The current
-implementation can be both unsound ([#24662]), inconvenient
+implementation can be both unsound ([#24622]), inconvenient
 ([#23442]), and surprising ([#21748], [#25692]). The changes are as follows:
 
 - Simplify the outlives relation to be syntactically based.
@@ -147,12 +147,12 @@ being [adapted] to cover associated type projections like
 still lead to [annoying errors in some situations][#23442]. Finding a
 better solution has been on the agenda for some time.
 
-Simultaneously, we realized in [#24662] that the compiler had a bug
+Simultaneously, we realized in [#24622] that the compiler had a bug
 that caused it erroneously assume that every projection like `I::Item`
 outlived the current function body, just as it assumes that type
 parameters like `I` outlive the current function body. **This bug can
 lead to unsound behavior.** Unfortunately, simply implementing the
-naive fix for #24662 exacerbates the shortcomings of the current rules
+naive fix for #24622 exacerbates the shortcomings of the current rules
 for projections, causing widespread compilation failures in all sorts
 of reasonable and obviously correct code.
 
@@ -855,7 +855,7 @@ regions, so probably yes.
 [RFC 447]: https://github.com/rust-lang/rfcs/blob/master/text/0447-no-unused-impl-parameters.md
 [#21748]: https://github.com/rust-lang/rust/issues/21748
 [#23442]: https://github.com/rust-lang/rust/issues/23442
-[#24662]: https://github.com/rust-lang/rust/issues/24622
+[#24622]: https://github.com/rust-lang/rust/issues/24622
 [#22436]: https://github.com/rust-lang/rust/pull/22436
 [#22246]: https://github.com/rust-lang/rust/issues/22246
 [#25860]: https://github.com/rust-lang/rust/issues/25860
