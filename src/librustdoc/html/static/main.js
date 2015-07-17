@@ -115,7 +115,7 @@
         case "s":
         case "S":
             ev.preventDefault();
-            $(".search-input").focus();
+            focusSearchBar()
             break;
 
         case "?":
@@ -960,5 +960,5 @@
 
 // Sets the focus on the search bar at the top of the page
 function focusSearchBar() {
-    document.getElementsByName('search')[0].focus();
+    $('.search-input').focus();
 }
