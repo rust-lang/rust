@@ -17,7 +17,6 @@ use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
 use expr::rewrite_assign_rhs;
 use comment::FindUncommented;
 use visitor::FmtVisitor;
-
 use rewrite::Rewrite;
 use config::Config;
 
@@ -699,7 +698,11 @@ impl<'a> FmtVisitor<'a> {
         let typ = pprust::ty_to_string(&field.node.ty);
 
         let indent = self.block_indent + self.config.tab_spaces;
-        let mut attr_str = self.rewrite_attrs(&field.node.attrs, indent);
+        let mut attr_str = field.node.attrs
+                                     .rewrite(&self.get_context(),
+                                              self.config.max_width - indent,
+                                              indent)
+                                     .unwrap();
         if !attr_str.is_empty() {
             attr_str.push('\n');
             attr_str.push_str(&make_indent(indent));

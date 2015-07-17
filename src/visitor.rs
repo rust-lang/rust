@@ -17,6 +17,7 @@ use strings::string_buffer::StringBuffer;
 use utils;
 use config::Config;
 use rewrite::{Rewrite, RewriteContext};
+use comment::rewrite_comment;
 
 pub struct FmtVisitor<'a> {
     pub codemap: &'a CodeMap,
@@ -293,46 +294,15 @@ impl<'a> FmtVisitor<'a> {
         if utils::contains_skip(attrs) {
             true
         } else {
-            let rewrite = self.rewrite_attrs(attrs, self.block_indent);
+            let rewrite = attrs.rewrite(&self.get_context(),
+                                        self.config.max_width - self.block_indent,
+                                        self.block_indent)
+                               .unwrap();
             self.buffer.push_str(&rewrite);
             let last = attrs.last().unwrap();
             self.last_pos = last.span.hi;
             false
         }
-    }
-
-    pub fn rewrite_attrs(&self, attrs: &[ast::Attribute], indent: usize) -> String {
-        let mut result = String::new();
-        let indent = utils::make_indent(indent);
-
-        for (i, a) in attrs.iter().enumerate() {
-            let a_str = self.snippet(a.span);
-
-            if i > 0 {
-                let comment = self.snippet(codemap::mk_sp(attrs[i-1].span.hi, a.span.lo));
-                // This particular horror show is to preserve line breaks in between doc
-                // comments. An alternative would be to force such line breaks to start
-                // with the usual doc comment token.
-                let multi_line = a_str.starts_with("//") && comment.matches('\n').count() > 1;
-                let comment = comment.trim();
-                if !comment.is_empty() {
-                    result.push_str(&indent);
-                    result.push_str(comment);
-                    result.push('\n');
-                } else if multi_line {
-                    result.push('\n');
-                }
-                result.push_str(&indent);
-            }
-
-            result.push_str(&a_str);
-
-            if i < attrs.len() - 1 {
-                result.push('\n');
-            }
-        }
-
-        result
     }
 
     fn format_mod(&mut self, m: &ast::Mod, s: Span, ident: ast::Ident) {
@@ -400,5 +370,48 @@ impl<'a> FmtVisitor<'a> {
             config: self.config,
             block_indent: self.block_indent,
         }
+    }
+}
+
+impl<'a> Rewrite for [ast::Attribute] {
+    fn rewrite(&self, context: &RewriteContext, _: usize, offset: usize) -> Option<String> {
+        let mut result = String::new();
+        if self.is_empty() {
+            return Some(result);
+        }
+        let indent = utils::make_indent(offset);
+
+        for (i, a) in self.iter().enumerate() {
+            let a_str = context.snippet(a.span);
+
+            if i > 0 {
+                let comment = context.snippet(codemap::mk_sp(self[i-1].span.hi, a.span.lo));
+                // This particular horror show is to preserve line breaks in between doc
+                // comments. An alternative would be to force such line breaks to start
+                // with the usual doc comment token.
+                let multi_line = a_str.starts_with("//") && comment.matches('\n').count() > 1;
+                let comment = comment.trim();
+                if !comment.is_empty() {
+                    let comment = rewrite_comment(comment,
+                                                  false,
+                                                  context.config.max_width - offset,
+                                                  offset);
+                    result.push_str(&indent);
+                    result.push_str(&comment);
+                    result.push('\n');
+                } else if multi_line {
+                    result.push('\n');
+                }
+                result.push_str(&indent);
+            }
+
+            result.push_str(&a_str);
+
+            if i < self.len() - 1 {
+                result.push('\n');
+            }
+        }
+
+        Some(result)
     }
 }

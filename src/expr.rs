@@ -31,7 +31,7 @@ impl Rewrite for ast::Expr {
                     ast::Lit_::LitStr(ref is, ast::StrStyle::CookedStr) => {
                         rewrite_string_lit(context, &is, l.span, width, offset)
                     }
-                    _ => context.codemap.span_to_snippet(self.span).ok(),
+                    _ => Some(context.snippet(self.span)),
                 }
             }
             ast::Expr_::ExprCall(ref callee, ref args) => {
@@ -137,7 +137,7 @@ impl Rewrite for ast::Expr {
             _ => {
                 // We do not format these expressions yet, but they should still
                 // satisfy our width restrictions.
-                let snippet = context.codemap.span_to_snippet(self.span).unwrap();
+                let snippet = context.snippet(self.span);
 
                 {
                     let mut lines = snippet.lines();
@@ -243,7 +243,7 @@ fn rewrite_closure(capture: ast::CaptureClause,
 
 impl Rewrite for ast::Block {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
-        let user_str = context.codemap.span_to_snippet(self.span).unwrap();
+        let user_str = context.snippet(self.span);
         if user_str == "{}" && width >= 2 {
             return Some(user_str);
         }
@@ -254,7 +254,7 @@ impl Rewrite for ast::Block {
         let prefix = match self.rules {
             ast::BlockCheckMode::PushUnsafeBlock(..) |
             ast::BlockCheckMode::UnsafeBlock(..) => {
-                let snippet = try_opt!(context.codemap.span_to_snippet(self.span).ok());
+                let snippet = context.snippet(self.span);
                 let open_pos = try_opt!(snippet.find_uncommented("{"));
                 visitor.last_pos = self.span.lo + BytePos(open_pos as u32);
 
@@ -289,7 +289,7 @@ impl Rewrite for ast::Block {
 // FIXME(#18): implement pattern formatting
 impl Rewrite for ast::Pat {
     fn rewrite(&self, context: &RewriteContext, _: usize, _: usize) -> Option<String> {
-        context.codemap.span_to_snippet(self.span).ok()
+        Some(context.snippet(self.span))
     }
 }
 
@@ -547,11 +547,9 @@ fn rewrite_match(context: &RewriteContext,
     for (i, arm) in arms.iter().enumerate() {
         // Make sure we get the stuff between arms.
         let missed_str = if i == 0 {
-            context.codemap.span_to_snippet(mk_sp(open_brace_pos + BytePos(1),
-                                                  arm_start_pos(arm))).unwrap()
+            context.snippet(mk_sp(open_brace_pos + BytePos(1), arm_start_pos(arm)))
         } else {
-            context.codemap.span_to_snippet(mk_sp(arm_end_pos(&arms[i-1]),
-                                                  arm_start_pos(arm))).unwrap()
+            context.snippet(mk_sp(arm_end_pos(&arms[i-1]), arm_start_pos(arm)))
         };
         let missed_str = match missed_str.find_uncommented(",") {
             Some(n) => &missed_str[n+1..],
@@ -582,8 +580,7 @@ fn rewrite_match(context: &RewriteContext,
             result.push_str(arm_str);
         } else {
             // We couldn't format the arm, just reproduce the source.
-            let snippet = context.codemap.span_to_snippet(mk_sp(arm_start_pos(arm),
-                                                                arm_end_pos(arm))).unwrap();
+            let snippet = context.snippet(mk_sp(arm_start_pos(arm), arm_end_pos(arm)));
             result.push_str(&snippet);
         }
     }
@@ -626,8 +623,7 @@ impl Rewrite for ast::Arm {
             attr_visitor.last_pos = attrs[0].span.lo;
             if attr_visitor.visit_attrs(attrs) {
                 // Attributes included a skip instruction.
-                let snippet = context.codemap.span_to_snippet(mk_sp(attrs[0].span.lo,
-                                                                    body.span.hi)).unwrap();
+                let snippet = context.snippet(mk_sp(attrs[0].span.lo, body.span.hi));
                 return Some(snippet);
             }
             attr_visitor.format_missing(pats[0].span.lo);
@@ -652,7 +648,7 @@ impl Rewrite for ast::Arm {
             // If the patterns were previously stacked, keep them stacked.
             // FIXME should be an option.
             let pat_span = mk_sp(pats[0].span.lo, pats[pats.len() - 1].span.hi);
-            let pat_str = context.codemap.span_to_snippet(pat_span).unwrap();
+            let pat_str = context.snippet(pat_span);
             vertical = pat_str.find('\n').is_some();
         }
 
@@ -831,7 +827,7 @@ fn rewrite_string_lit(context: &RewriteContext,
     let l_loc = context.codemap.lookup_char_pos(span.lo);
     let r_loc = context.codemap.lookup_char_pos(span.hi);
     if l_loc.line == r_loc.line && r_loc.col.to_usize() <= context.config.max_width {
-        return context.codemap.span_to_snippet(span).ok();
+        return Some(context.snippet(span));
     }
     let fmt = StringFormat {
         opener: "\"",
@@ -880,7 +876,7 @@ fn rewrite_call(context: &RewriteContext,
                              // Take old span when rewrite fails.
                              |item| {
                                  item.rewrite(inner_context, remaining_width, offset)
-                                     .unwrap_or(context.codemap.span_to_snippet(item.span).unwrap())
+                                     .unwrap_or(context.snippet(item.span))
                              },
                              callee.span.hi + BytePos(1),
                              span.hi);
@@ -977,15 +973,13 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                  match *item {
                                      StructLitField::Regular(ref field) => {
                                          rewrite_field(inner_context, &field, h_budget, indent)
-                                            .unwrap_or(context.codemap.span_to_snippet(field.span)
-                                                                      .unwrap())
+                                            .unwrap_or(context.snippet(field.span))
                                      }
                                      StructLitField::Base(ref expr) => {
                                          // 2 = ..
                                          expr.rewrite(inner_context, h_budget - 2, indent + 2)
                                              .map(|s| format!("..{}", s))
-                                             .unwrap_or(context.codemap.span_to_snippet(expr.span)
-                                                                       .unwrap())
+                                             .unwrap_or(context.snippet(expr.span))
                                      }
                                  }
                              },
@@ -1053,7 +1047,7 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                              |item| {
                                  let inner_width = context.config.max_width - indent - 1;
                                  item.rewrite(context, inner_width, indent)
-                                     .unwrap_or(context.codemap.span_to_snippet(item.span).unwrap())
+                                     .unwrap_or(context.snippet(item.span))
                              },
                              span.lo + BytePos(1), // Remove parens
                              span.hi - BytePos(1));
@@ -1072,7 +1066,7 @@ fn rewrite_binary_op(context: &RewriteContext,
                      -> Option<String> {
     // FIXME: format comments between operands and operator
 
-    let operator_str = context.codemap.span_to_snippet(op.span).unwrap();
+    let operator_str = context.snippet(op.span);
 
     // Get "full width" rhs and see if it fits on the current line. This
     // usually works fairly well since it tends to place operands of
@@ -1150,7 +1144,7 @@ fn rewrite_assignment(context: &RewriteContext,
                       offset: usize)
                       -> Option<String> {
     let operator_str = match op {
-        Some(op) => context.codemap.span_to_snippet(op.span).unwrap(),
+        Some(op) => context.snippet(op.span),
         None => "=".to_owned(),
     };
 

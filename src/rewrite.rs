@@ -10,7 +10,7 @@
 
 // A generic trait to abstract the rewriting of an element (of the AST).
 
-use syntax::codemap::CodeMap;
+use syntax::codemap::{CodeMap, Span};
 
 use config::Config;
 
@@ -38,5 +38,9 @@ impl<'a> RewriteContext<'a> {
             config: self.config,
             block_indent: self.block_indent + self.config.tab_spaces,
         }
+    }
+
+    pub fn snippet(&self, span: Span) -> String {
+        self.codemap.span_to_snippet(span).unwrap()
     }
 }
