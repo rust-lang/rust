@@ -73,5 +73,8 @@ macro_rules! register_diagnostics {
 macro_rules! register_long_diagnostics {
     ($($code:tt: $description:tt),*) => (
         $(register_diagnostic! { $code, $description })*
+    );
+    ($($code:tt: $description:tt),*,) => (
+        $(register_diagnostic! { $code, $description })*
     )
 }
