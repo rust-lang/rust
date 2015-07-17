@@ -250,11 +250,10 @@ that our tests are entirely left out of a normal build.
 
 The second change is the `use` declaration. Because we're in an inner module,
 we need to bring our test function into scope. This can be annoying if you have
-a large module, and so this is a common use of the `glob` feature. Let's change
-our `src/lib.rs` to make use of it:
+a large module, and so this is a common use of globs. Let's change our
+`src/lib.rs` to make use of it:
 
 ```rust,ignore
-
 pub fn add_two(a: i32) -> i32 {
     a + 2
 }
