@@ -23,8 +23,8 @@ mod Foo {
     pub use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
 
     mod Foo2 {
-        pub use syntax::ast::{self, ItemForeignMod, ItemImpl, ItemMac, ItemMod,
-                              ItemStatic, ItemDefaultImpl};
+        pub use syntax::ast::{self, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic,
+                              ItemDefaultImpl};
     }
 }
 

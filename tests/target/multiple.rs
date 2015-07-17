@@ -14,10 +14,9 @@ extern crate foo;
 extern crate foo;
 
 use std::cell::*;
-use std::{self, any, ascii, borrow, boxed, char, borrow, boxed, char, borrow,
-          borrow, boxed, char, borrow, boxed, char, borrow, boxed, char,
-          borrow, boxed, char, borrow, boxed, char, borrow, boxed, char,
-          borrow, boxed, char, borrow, boxed, char};
+use std::{self, any, ascii, borrow, boxed, char, borrow, boxed, char, borrow, borrow, boxed, char,
+          borrow, boxed, char, borrow, boxed, char, borrow, boxed, char, borrow, boxed, char,
+          borrow, boxed, char, borrow, boxed, char, borrow, boxed, char};
 
 mod doc;
 mod other;
