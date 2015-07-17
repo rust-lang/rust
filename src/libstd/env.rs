@@ -11,7 +11,7 @@
 //! Inspection and manipulation of the process's environment.
 //!
 //! This module contains methods to inspect various aspects such as
-//! environment varibles, process arguments, the current directory, and various
+//! environment variables, process arguments, the current directory, and various
 //! other important directories.
 
 #![stable(feature = "env", since = "1.0.0")]
