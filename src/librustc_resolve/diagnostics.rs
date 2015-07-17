@@ -114,11 +114,11 @@ use inner_mod::foo; // error, both of these `use` declarations add a symbol
 use another_mod::foo; // that conflicts with the external crate's symbol.
 
 mod inner_mod {
-	pub mod foo { }
+    pub mod foo { }
 }
 
 mod another_mod {
-	pub type foo = i32;
+    pub type foo = i32;
 }
 ```
 "##,
