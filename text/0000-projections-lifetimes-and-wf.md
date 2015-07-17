@@ -767,7 +767,7 @@ for WF in an empty environment.
 
 **Struct/enum declarations.** In a struct/enum declaration, we should
 check that all field types are WF, given the bounds and where-clauses
-from the struct declaration.
+from the struct declaration. Also check that where-clauses are well-formed.
 
 **Function items.** For function items, the environment consists of
 all the where-clauses from the fn, as well as implied bounds derived
@@ -791,6 +791,7 @@ bounds derived from its header. Example: Given an impl like
 T`). This environment is used as the starting point for checking the
 items:
 
+- Where-clauses declared on the trait must be WF.
 - Associated types must be WF in the trait environment.
 - The types of associated constants must be WF in the trait environment.
 - Associated fns are checked just like regular function items, but
@@ -798,11 +799,13 @@ items:
 
 **Inherent impls.** In an inherent impl, we can assume that the self
 type is well-formed, but otherwise check the methods as if they were
-normal functions.
+normal functions. We must check that all items are well-formed, along with
+the where clauses declared on the impl.
 
 **Trait declarations.** Trait declarations (and defaults) are checked
 in the same fashion as impls, except that there are no implied bounds
-from the impl header.
+from the impl header. We must check that all items are well-formed,
+along with the where clauses declared on the trait.
 
 **Type aliases.** Type aliases are currently not checked for WF, since
 they are considered transparent to type-checking. It's not clear that
@@ -840,7 +843,19 @@ I'm not aware of any appealing alternatives.
 
 # Unresolved questions
 
-For trait object fragments, should we check WF conditions when we can?
+**Best policy for type aliases.** The current policy is not to check
+type aliases, since they are transparent to type-checking, and hence
+their expansion can be checked instead. This is coherent, though
+somewhat confusing in terms of the interaction with projections, since
+we frequently cannot resolve projections without at least minimal
+bounds (i.e., `type IteratorAndItem<T:Iterator> = (T::Item,
+T)`). Still, full-checking of WF on type aliases seems to just mean
+more annotation with little benefit. It might be nice to keep the
+current policy and later, if/when we adopt a more full notion of
+implied bounds, rationalize it by saying that the suitable bounds for
+a type alias are implied by its expansion.
+
+**For trait object fragments, should we check WF conditions when we can?**
 For example, if you have:
 
 ```rust
