@@ -59,31 +59,24 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::prelude::*;
-
+use alloc::raw_vec::RawVec;
 use alloc::boxed::Box;
-use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
-use core::cmp::max;
+use alloc::heap::EMPTY;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
-use core::intrinsics::{arith_offset, assume};
+use core::intrinsics::{arith_offset, assume, drop_in_place};
 use core::iter::FromIterator;
 use core::marker::PhantomData;
 use core::mem;
 use core::ops::{Index, IndexMut, Deref};
 use core::ops;
 use core::ptr;
-use core::ptr::Unique;
 use core::slice;
-use core::isize;
-use core::usize;
 
 use borrow::{Cow, IntoCow};
 
 use super::range::RangeArgument;
-
-// FIXME- fix places which assume the max vector allowed has memory usize::MAX.
-const MAX_MEMORY_SIZE: usize = isize::MAX as usize;
 
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///
@@ -152,9 +145,8 @@ const MAX_MEMORY_SIZE: usize = isize::MAX as usize;
 #[unsafe_no_drop_flag]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
-    ptr: Unique<T>,
+    buf: RawVec<T>,
     len: usize,
-    cap: usize,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,11 +166,7 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Vec<T> {
-        // We want ptr to never be NULL so instead we set it to some arbitrary
-        // non-null value which is fine since we never call deallocate on the ptr
-        // if cap is 0. The reason for this is because the pointer of a slice
-        // being NULL would break the null pointer optimization for enums.
-        unsafe { Vec::from_raw_parts(EMPTY as *mut T, 0, 0) }
+        Vec { buf: RawVec::new(), len: 0 }
     }
 
     /// Constructs a new, empty `Vec<T>` with the specified capacity.
@@ -209,17 +197,7 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> Vec<T> {
-        if mem::size_of::<T>() == 0 {
-            unsafe { Vec::from_raw_parts(EMPTY as *mut T, 0, usize::MAX) }
-        } else if capacity == 0 {
-            Vec::new()
-        } else {
-            let size = capacity.checked_mul(mem::size_of::<T>())
-                               .expect("capacity overflow");
-            let ptr = unsafe { allocate(size, mem::align_of::<T>()) };
-            if ptr.is_null() { ::alloc::oom() }
-            unsafe { Vec::from_raw_parts(ptr as *mut T, 0, capacity) }
-        }
+        Vec { buf: RawVec::with_capacity(capacity), len: 0 }
     }
 
     /// Creates a `Vec<T>` directly from the raw components of another vector.
@@ -271,9 +249,8 @@ impl<T> Vec<T> {
     pub unsafe fn from_raw_parts(ptr: *mut T, length: usize,
                                  capacity: usize) -> Vec<T> {
         Vec {
-            ptr: Unique::new(ptr),
+            buf: RawVec::from_raw_parts(ptr, capacity),
             len: length,
-            cap: capacity,
         }
     }
 
@@ -307,7 +284,7 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
-        self.cap
+        self.buf.cap()
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted
@@ -327,17 +304,7 @@ impl<T> Vec<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
-        if self.cap - self.len < additional {
-            const ERR_MSG: &'static str  = "Vec::reserve: `isize` overflow";
-
-            let new_min_cap = self.len.checked_add(additional).expect(ERR_MSG);
-            if new_min_cap > MAX_MEMORY_SIZE { panic!(ERR_MSG) }
-            self.grow_capacity(match new_min_cap.checked_next_power_of_two() {
-                Some(x) if x > MAX_MEMORY_SIZE => MAX_MEMORY_SIZE,
-                None => MAX_MEMORY_SIZE,
-                Some(x) => x,
-            });
-        }
+        self.buf.reserve(self.len, additional);
     }
 
     /// Reserves the minimum capacity for exactly `additional` more elements to
@@ -361,12 +328,7 @@ impl<T> Vec<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
-        if self.cap - self.len < additional {
-            match self.len.checked_add(additional) {
-                None => panic!("Vec::reserve: `usize` overflow"),
-                Some(new_cap) => self.grow_capacity(new_cap)
-            }
-        }
+        self.buf.reserve_exact(self.len, additional);
     }
 
     /// Shrinks the capacity of the vector as much as possible.
@@ -385,28 +347,7 @@ impl<T> Vec<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
-        if mem::size_of::<T>() == 0 { return }
-
-        if self.len == 0 {
-            if self.cap != 0 {
-                unsafe {
-                    dealloc(*self.ptr, self.cap)
-                }
-                self.cap = 0;
-            }
-        } else if self.cap != self.len {
-            unsafe {
-                // Overflow check is unnecessary as the vector is already at
-                // least this large.
-                let ptr = reallocate(*self.ptr as *mut u8,
-                                     self.cap * mem::size_of::<T>(),
-                                     self.len * mem::size_of::<T>(),
-                                     mem::align_of::<T>()) as *mut T;
-                if ptr.is_null() { ::alloc::oom() }
-                self.ptr = Unique::new(ptr);
-            }
-            self.cap = self.len;
-        }
+        self.buf.shrink_to_fit(self.len);
     }
 
     /// Converts the vector into Box<[T]>.
@@ -416,11 +357,11 @@ impl<T> Vec<T> {
     /// `shrink_to_fit()`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_boxed_slice(mut self) -> Box<[T]> {
-        self.shrink_to_fit();
         unsafe {
-            let xs: Box<[T]> = Box::from_raw(&mut *self);
+            self.shrink_to_fit();
+            let buf = ptr::read(&self.buf);
             mem::forget(self);
-            xs
+            buf.into_box()
         }
     }
 
@@ -537,8 +478,9 @@ impl<T> Vec<T> {
     pub fn insert(&mut self, index: usize, element: T) {
         let len = self.len();
         assert!(index <= len);
+
         // space for the new element
-        self.reserve(1);
+        if len == self.buf.cap() { self.buf.double(); }
 
         unsafe { // infallible
             // The spot to put the new value
@@ -546,10 +488,10 @@ impl<T> Vec<T> {
                 let p = self.as_mut_ptr().offset(index as isize);
                 // Shift everything over to make space. (Duplicating the
                 // `index`th element into two consecutive places.)
-                ptr::copy(&*p, p.offset(1), len - index);
+                ptr::copy(p, p.offset(1), len - index);
                 // Write it in, overwriting the first copy of the `index`th
                 // element.
-                ptr::write(&mut *p, element);
+                ptr::write(p, element);
             }
             self.set_len(len + 1);
         }
@@ -583,7 +525,7 @@ impl<T> Vec<T> {
                 ret = ptr::read(ptr);
 
                 // Shift everything down to fill in that spot.
-                ptr::copy(&*ptr.offset(1), ptr, len - index - 1);
+                ptr::copy(ptr.offset(1), ptr, len - index - 1);
             }
             self.set_len(len - 1);
             ret
@@ -639,38 +581,12 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, value: T) {
-        #[cold]
-        #[inline(never)]
-        fn resize<T>(vec: &mut Vec<T>) {
-            let old_size = vec.cap * mem::size_of::<T>();
-            if old_size >= MAX_MEMORY_SIZE { panic!("capacity overflow") }
-            let mut size = max(old_size, 2 * mem::size_of::<T>()) * 2;
-            if old_size > size || size > MAX_MEMORY_SIZE {
-                size = MAX_MEMORY_SIZE;
-            }
-            unsafe {
-                let ptr = alloc_or_realloc(*vec.ptr, old_size, size);
-                if ptr.is_null() { ::alloc::oom() }
-                vec.ptr = Unique::new(ptr);
-            }
-            vec.cap = max(vec.cap, 2) * 2;
-        }
-
-        if mem::size_of::<T>() == 0 {
-            // zero-size types consume no memory, so we can't rely on the
-            // address space running out
-            self.len = self.len.checked_add(1).expect("length overflow");
-            mem::forget(value);
-            return
-        }
-
-        if self.len == self.cap {
-            resize(self);
-        }
-
+        // This will panic or abort if we would allocate > isize::MAX bytes
+        // or if the length increment would overflow for zero-sized types.
+        if self.len == self.buf.cap() { self.buf.double(); }
         unsafe {
-            let end = (*self.ptr).offset(self.len as isize);
-            ptr::write(&mut *end, value);
+            let end = self.as_mut_ptr().offset(self.len as isize);
+            ptr::write(end, value);
             self.len += 1;
         }
     }
@@ -717,13 +633,6 @@ impl<T> Vec<T> {
     #[unstable(feature = "append",
                reason = "new API, waiting for dust to settle")]
     pub fn append(&mut self, other: &mut Self) {
-        if mem::size_of::<T>() == 0 {
-            // zero-size types consume no memory, so we can't rely on the
-            // address space running out
-            self.len = self.len.checked_add(other.len()).expect("length overflow");
-            unsafe { other.set_len(0) }
-            return;
-        }
         self.reserve(other.len());
         let len = self.len();
         unsafe {
@@ -1275,46 +1184,6 @@ impl<T: PartialEq> Vec<T> {
 // Internal methods and functions
 ////////////////////////////////////////////////////////////////////////////////
 
-impl<T> Vec<T> {
-    /// Reserves capacity for exactly `capacity` elements in the given vector.
-    ///
-    /// If the capacity for `self` is already equal to or greater than the
-    /// requested capacity, then no action is taken.
-    fn grow_capacity(&mut self, capacity: usize) {
-        if mem::size_of::<T>() == 0 { return }
-
-        if capacity > self.cap {
-            let size = capacity.checked_mul(mem::size_of::<T>())
-                               .expect("capacity overflow");
-            unsafe {
-                let ptr = alloc_or_realloc(*self.ptr, self.cap * mem::size_of::<T>(), size);
-                if ptr.is_null() { ::alloc::oom() }
-                self.ptr = Unique::new(ptr);
-            }
-            self.cap = capacity;
-        }
-    }
-}
-
-// FIXME: #13996: need a way to mark the return value as `noalias`
-#[inline(never)]
-unsafe fn alloc_or_realloc<T>(ptr: *mut T, old_size: usize, size: usize) -> *mut T {
-    if old_size == 0 {
-        allocate(size, mem::align_of::<T>()) as *mut T
-    } else {
-        reallocate(ptr as *mut u8, old_size, size, mem::align_of::<T>()) as *mut T
-    }
-}
-
-#[inline]
-unsafe fn dealloc<T>(ptr: *mut T, len: usize) {
-    if mem::size_of::<T>() != 0 {
-        deallocate(ptr as *mut u8,
-                   len * mem::size_of::<T>(),
-                   mem::align_of::<T>())
-    }
-}
-
 #[doc(hidden)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
@@ -1464,7 +1333,7 @@ impl<T> ops::Deref for Vec<T> {
 
     fn deref(&self) -> &[T] {
         unsafe {
-            let p = *self.ptr;
+            let p = self.buf.ptr();
             assume(p != 0 as *mut T);
             slice::from_raw_parts(p, self.len)
         }
@@ -1475,7 +1344,7 @@ impl<T> ops::Deref for Vec<T> {
 impl<T> ops::DerefMut for Vec<T> {
     fn deref_mut(&mut self) -> &mut [T] {
         unsafe {
-            let ptr = *self.ptr;
+            let ptr = self.buf.ptr();
             assume(!ptr.is_null());
             slice::from_raw_parts_mut(ptr, self.len)
         }
@@ -1529,19 +1398,19 @@ impl<T> IntoIterator for Vec<T> {
     /// }
     /// ```
     #[inline]
-    fn into_iter(self) -> IntoIter<T> {
+    fn into_iter(mut self) -> IntoIter<T> {
         unsafe {
-            let ptr = *self.ptr;
+            let ptr = self.as_mut_ptr();
             assume(!ptr.is_null());
-            let cap = self.cap;
             let begin = ptr as *const T;
             let end = if mem::size_of::<T>() == 0 {
                 arith_offset(ptr as *const i8, self.len() as isize) as *const T
             } else {
                 ptr.offset(self.len() as isize) as *const T
             };
+            let buf = ptr::read(&self.buf);
             mem::forget(self);
-            IntoIter { allocation: ptr, cap: cap, ptr: begin, end: end }
+            IntoIter { buf: buf, ptr: begin, end: end }
         }
     }
 }
@@ -1653,16 +1522,16 @@ impl<T: Ord> Ord for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
-        // This is (and should always remain) a no-op if the fields are
-        // zeroed (when moving out, because of #[unsafe_no_drop_flag]).
-        if self.cap != 0 && self.cap != mem::POST_DROP_USIZE {
-            unsafe {
-                for x in self.iter() {
-                    ptr::read(x);
-                }
-                dealloc(*self.ptr, self.cap)
+        // NOTE: this is currently abusing the fact that ZSTs can't impl Drop.
+        // Or rather, that impl'ing Drop makes them not zero-sized. This is
+        // OK because exactly when this stops being a valid assumption, we
+        // don't need unsafe_no_drop_flag shenanigans anymore.
+        if self.buf.unsafe_no_drop_flag_needs_drop() {
+            for x in self.iter_mut() {
+                unsafe { drop_in_place(x); }
             }
         }
+        // RawVec handles deallocation
     }
 }
 
@@ -1746,8 +1615,7 @@ impl<'a, T> IntoCow<'a, [T]> for &'a [T] where T: Clone {
 /// An iterator that moves out of a vector.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
-    allocation: *mut T, // the block of memory allocated for the vector
-    cap: usize, // the capacity of the vector
+    buf: RawVec<T>,
     ptr: *const T,
     end: *const T
 }
@@ -1762,9 +1630,9 @@ impl<T> IntoIter<T> {
     pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
             for _x in self.by_ref() { }
-            let IntoIter { allocation, cap, ptr: _ptr, end: _end } = self;
+            let buf = ptr::read(&self.buf);
             mem::forget(self);
-            Vec::from_raw_parts(allocation, 0, cap)
+            Vec { buf: buf, len: 0 }
         }
     }
 }
@@ -1842,12 +1710,9 @@ impl<T> ExactSizeIterator for IntoIter<T> {}
 impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
-        if self.cap != 0 {
-            for _x in self.by_ref() {}
-            unsafe {
-                dealloc(self.allocation, self.cap);
-            }
-        }
+        for _x in self.by_ref() {}
+
+        // RawVec handles deallocation
     }
 }
 
@@ -1920,73 +1785,6 @@ impl<'a, T> Drop for Drain<'a, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
-
-////////////////////////////////////////////////////////////////////////////////
-// Conversion from &[T] to &Vec<T>
-////////////////////////////////////////////////////////////////////////////////
-
-/// Wrapper type providing a `&Vec<T>` reference via `Deref`.
-#[unstable(feature = "collections")]
-#[deprecated(since = "1.2.0",
-             reason = "replaced with deref coercions or Borrow")]
-pub struct DerefVec<'a, T:'a> {
-    x: Vec<T>,
-    l: PhantomData<&'a T>,
-}
-
-#[unstable(feature = "collections")]
-#[deprecated(since = "1.2.0",
-             reason = "replaced with deref coercions or Borrow")]
-#[allow(deprecated)]
-impl<'a, T> Deref for DerefVec<'a, T> {
-    type Target = Vec<T>;
-
-    fn deref<'b>(&'b self) -> &'b Vec<T> {
-        &self.x
-    }
-}
-
-// Prevent the inner `Vec<T>` from attempting to deallocate memory.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.2.0",
-             reason = "replaced with deref coercions or Borrow")]
-#[allow(deprecated)]
-impl<'a, T> Drop for DerefVec<'a, T> {
-    fn drop(&mut self) {
-        self.x.len = 0;
-        self.x.cap = 0;
-    }
-}
-
-/// Converts a slice to a wrapper type providing a `&Vec<T>` reference.
-///
-/// # Examples
-///
-/// ```
-/// # #![feature(collections)]
-/// use std::vec::as_vec;
-///
-/// // Let's pretend we have a function that requires `&Vec<i32>`
-/// fn vec_consumer(s: &Vec<i32>) {
-///     assert_eq!(s, &[1, 2, 3]);
-/// }
-///
-/// // Provide a `&Vec<i32>` from a `&[i32]` without allocating
-/// let values = [1, 2, 3];
-/// vec_consumer(&as_vec(&values));
-/// ```
-#[unstable(feature = "collections")]
-#[deprecated(since = "1.2.0",
-             reason = "replaced with deref coercions or Borrow")]
-#[allow(deprecated)]
-pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
-    unsafe {
-        DerefVec {
-            x: Vec::from_raw_parts(x.as_ptr() as *mut T, x.len(), x.len()),
-            l: PhantomData,
-        }
-    }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Partial vec, used for map_in_place

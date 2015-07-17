@@ -55,12 +55,10 @@ SLICE_FIELD_NAME_LENGTH = "length"
 SLICE_FIELD_NAMES = [SLICE_FIELD_NAME_DATA_PTR, SLICE_FIELD_NAME_LENGTH]
 
 # std::Vec<> related constants
-STD_VEC_FIELD_NAME_DATA_PTR = "ptr"
 STD_VEC_FIELD_NAME_LENGTH = "len"
-STD_VEC_FIELD_NAME_CAPACITY = "cap"
-STD_VEC_FIELD_NAMES = [STD_VEC_FIELD_NAME_DATA_PTR,
-                       STD_VEC_FIELD_NAME_LENGTH,
-                       STD_VEC_FIELD_NAME_CAPACITY]
+STD_VEC_FIELD_NAME_BUF = "buf"
+STD_VEC_FIELD_NAMES = [STD_VEC_FIELD_NAME_BUF,
+                       STD_VEC_FIELD_NAME_LENGTH]
 
 # std::String related constants
 STD_STRING_FIELD_NAMES = ["vec"]
@@ -302,13 +300,13 @@ def get_discriminant_value_as_integer(enum_val):
 def extract_length_ptr_and_cap_from_std_vec(vec_val):
     assert vec_val.type.get_type_kind() == TYPE_KIND_STD_VEC
     length_field_index = STD_VEC_FIELD_NAMES.index(STD_VEC_FIELD_NAME_LENGTH)
-    ptr_field_index = STD_VEC_FIELD_NAMES.index(STD_VEC_FIELD_NAME_DATA_PTR)
-    cap_field_index = STD_VEC_FIELD_NAMES.index(STD_VEC_FIELD_NAME_CAPACITY)
+    buf_field_index = STD_VEC_FIELD_NAMES.index(STD_VEC_FIELD_NAME_BUF)
 
     length = vec_val.get_child_at_index(length_field_index).as_integer()
-    vec_ptr_val = vec_val.get_child_at_index(ptr_field_index)
-    capacity = vec_val.get_child_at_index(cap_field_index).as_integer()
+    buf = vec_val.get_child_at_index(buf_field_index)
 
+    vec_ptr_val = buf.get_child_at_index(0)
+    capacity = buf.get_child_at_index(1).as_integer()
     unique_ptr_val = vec_ptr_val.get_child_at_index(0)
     data_ptr = unique_ptr_val.get_child_at_index(0)
     assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR

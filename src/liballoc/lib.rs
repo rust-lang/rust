@@ -88,6 +88,7 @@
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(unsize)]
+#![feature(core_slice_ext)]
 
 #![cfg_attr(test, feature(test, alloc, rustc_private, box_raw))]
 #![cfg_attr(all(not(feature = "external_funcs"), not(feature = "external_crate")),
@@ -122,6 +123,7 @@ mod boxed { pub use std::boxed::{Box, HEAP}; }
 mod boxed_test;
 pub mod arc;
 pub mod rc;
+pub mod raw_vec;
 
 /// Common out-of-memory routine
 #[cold]
