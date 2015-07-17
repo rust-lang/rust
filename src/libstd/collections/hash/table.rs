@@ -999,6 +999,7 @@ impl<K: Clone, V: Clone> Clone for RawTable<K, V> {
 }
 
 impl<K, V> Drop for RawTable<K, V> {
+    #[unsafe_destructor_blind_to_params]
     fn drop(&mut self) {
         if self.capacity == 0 || self.capacity == mem::POST_DROP_USIZE {
             return;
