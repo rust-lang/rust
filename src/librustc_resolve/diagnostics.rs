@@ -272,7 +272,7 @@ See the 'Use Declarations' section of the reference for more information
 on this topic:
 
 http://doc.rust-lang.org/reference.html#use-declarations
-"##
+"##,
 
 E0403: r##"
 Some type parameters have the same name. Example of erroneous code:
@@ -282,7 +282,7 @@ fn foo<T, T>(s: T, u: T) {} // error: the name `T` is already used for a type
                             //        parameter in this type parameter list
 ```
 
-Please verify that none of the type params are misspelled, and rename any
+Please verify that none of the type parameterss are misspelled, and rename any
 clashing parameters. Example:
 
 ```
@@ -291,8 +291,8 @@ fn foo<T, Y>(s: T, u: Y) {} // ok!
 "##,
 
 E0404: r##"
-You tried to implement a non-trait object on an object. Example of erroneous
-code:
+You tried to implement something which was not a trait on an object. Example of
+erroneous code:
 
 ```
 struct Foo;
@@ -301,8 +301,8 @@ struct Bar;
 impl Foo for Bar {} // error: `Foo` is not a trait
 ```
 
-Please verify you didn't mispelled the trait's name or used the wrong object.
-Example:
+Please verify that you didn't misspell the trait's name or otherwise use the
+wrong identifier. Example:
 
 ```
 trait Foo {
@@ -317,7 +317,7 @@ impl Foo for Bar { // ok!
 "##,
 
 E0405: r##"
-A non-trait was implemented. Example of erroneous code:
+An unknown trait was implemented. Example of erroneous code:
 
 ```
 struct Foo;
@@ -346,8 +346,8 @@ impl SomeTrait for Foo { // ok!
 "##,
 
 E0407: r##"
-A definition of a method not in the implemented trait was given. Example of
-erroneous code:
+A definition of a method not in the implemented trait was given in a trait
+implementation. Example of erroneous code:
 
 ```
 trait Foo {
@@ -362,8 +362,8 @@ impl Foo for Bar {
 }
 ```
 
-Please verify you didn't mispelled the method name and you used the good
-trait. Example:
+Please verify you didn't misspell the method name and you used the correct
+trait. First example:
 
 ```
 trait Foo {
@@ -378,6 +378,24 @@ impl Foo for Bar {
     fn b() {} // ok!
 }
 ```
+
+Second example:
+
+```
+trait Foo {
+    fn a();
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn a() {}
+}
+
+impl Bar {
+    fn b() {}
+}
+```
 "##,
 
 E0428: r##"
@@ -389,13 +407,24 @@ struct Bar;
 struct Bar; // error: duplicate definition of value `Bar`
 ```
 
-Please verify you didn't mispelled the type/module's name or remove the
+Please verify you didn't misspell the type/module's name or remove/rename the
 duplicated one. Example:
 
 ```
 struct Bar;
 struct Bar2; // ok!
 ```
+"##,
+
+E0433: r##"
+Invalid import. Example of erroneous code:
+
+```
+use something_which_doesnt_exist;
+// error: unresolved import `something_which_doesnt_exist`
+```
+
+Please verify you didn't misspell the import's name.
 "##,
 
 }
@@ -438,7 +467,6 @@ register_diagnostics! {
     E0431, // `self` import can only appear in an import list with a non-empty
            // prefix
     E0432, // unresolved import
-    E0433, // failed to resolve
     E0434, // can't capture dynamic environment in a fn item
     E0435, // attempt to use a non-constant value in a constant
     E0437, // type is not a member of trait
