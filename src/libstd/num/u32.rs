@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for unsigned 32-bits integers (`u32` type)
+//! The 32-bit unsigned integer type
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "u32")]
