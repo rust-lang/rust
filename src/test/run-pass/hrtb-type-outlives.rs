@@ -34,10 +34,7 @@ impl<'a,X> Foo<&'a isize> for SomeStruct<X>
 }
 
 fn one() {
-    // In fact there is no good reason for this to be an error, but
-    // whatever, I'm mostly concerned it doesn't ICE right now:
     want_foo::<SomeStruct<usize>>();
-    //~^ ERROR requirement `for<'a> usize : 'a` is not satisfied
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -53,7 +50,6 @@ impl<'a,X:'a> Foo<&'a isize> for AnotherStruct<X>
 
 fn two() {
     want_foo::<AnotherStruct<usize>>();
-    //~^ ERROR requirement `for<'a> usize : 'a` is not satisfied
 }
 
 fn main() { }
