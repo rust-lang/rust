@@ -26,16 +26,16 @@ impl<'a> FmtVisitor<'a> {
                 if bound_lifetimes.len() > 0 {
                     format!("for<{}> {}: {}",
                             bound_lifetimes.iter().map(|l| self.rewrite_lifetime_def(l))
-                                .collect::<Vec<_>>().connect(", "),
+                                .collect::<Vec<_>>().join(", "),
                             pprust::ty_to_string(bounded_ty),
                             bounds.iter().map(|b| self.rewrite_ty_bound(b))
-                                .collect::<Vec<_>>().connect(" + "))
+                                .collect::<Vec<_>>().join(" + "))
 
                 } else {
                     format!("{}: {}",
                             pprust::ty_to_string(bounded_ty),
                             bounds.iter().map(|b| self.rewrite_ty_bound(b))
-                                .collect::<Vec<_>>().connect(" + "))
+                                .collect::<Vec<_>>().join(" + "))
                 }
             }
             &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
@@ -44,7 +44,7 @@ impl<'a> FmtVisitor<'a> {
                 format!("{}: {}",
                         pprust::lifetime_to_string(lifetime),
                         bounds.iter().map(|l| pprust::lifetime_to_string(l))
-                            .collect::<Vec<_>>().connect(" + "))
+                            .collect::<Vec<_>>().join(" + "))
             }
             &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
                 format!("{} = {}", pprust::path_to_string(path), pprust::ty_to_string(ty))
@@ -60,7 +60,7 @@ impl<'a> FmtVisitor<'a> {
         format!("{}: {}",
                 pprust::lifetime_to_string(&lifetime.lifetime),
                 lifetime.bounds.iter().map(|l| pprust::lifetime_to_string(l))
-                    .collect::<Vec<_>>().connect(" + "))
+                    .collect::<Vec<_>>().join(" + "))
     }
 
     pub fn rewrite_ty_bound(&self, bound: &ast::TyParamBound) -> String {
@@ -83,7 +83,7 @@ impl<'a> FmtVisitor<'a> {
         if ty_param.bounds.len() > 0 {
             result.push_str(": ");
             result.push_str(&ty_param.bounds.iter().map(|b| self.rewrite_ty_bound(b))
-                                .collect::<Vec<_>>().connect(" + "));
+                                .collect::<Vec<_>>().join(" + "));
         }
         if let Some(ref def) = ty_param.default {
             result.push_str(" = ");
@@ -97,7 +97,7 @@ impl<'a> FmtVisitor<'a> {
         if t.bound_lifetimes.len() > 0 {
             format!("for<{}> {}",
                     t.bound_lifetimes.iter().map(|l| self.rewrite_lifetime_def(l))
-                        .collect::<Vec<_>>().connect(", "),
+                        .collect::<Vec<_>>().join(", "),
                     pprust::path_to_string(&t.trait_ref.path))
 
         } else {

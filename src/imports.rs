@@ -109,7 +109,7 @@ impl<'a> FmtVisitor<'a> {
         let first_index = if has_self { 0 } else { 1 };
 
         if self.config.reorder_imports {
-            items.tail_mut().sort_by(|a, b| a.item.cmp(&b.item));
+            items[1..].sort_by(|a, b| a.item.cmp(&b.item));
         }
 
         let list = write_list(&items[first_index..], &fmt);
