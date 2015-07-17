@@ -4247,12 +4247,8 @@ impl<'tcx> TyS<'tcx> {
                     apply_lang_items(cx, did, res)
                 }
 
-                TyClosure(did, ref substs) => {
-                    // TODO
-                    let param_env = cx.empty_parameter_environment();
-                    let infcx = infer::new_infer_ctxt(cx, &cx.tables, Some(param_env), false);
-                    let upvars = infcx.closure_upvars(did, substs).unwrap();
-                    TypeContents::union(&upvars, |f| tc_ty(cx, &f.ty, cache))
+                TyClosure(_, ref substs) => {
+                    TypeContents::union(&substs.upvar_tys, |ty| tc_ty(cx, &ty, cache))
                 }
 
                 TyTuple(ref tys) => {
@@ -6005,62 +6001,6 @@ impl<'tcx> ctxt<'tcx> {
             }
         }
         (a, b)
-    }
-
-    // Returns a list of `ClosureUpvar`s for each upvar.
-    pub fn closure_upvars<'a>(typer: &infer::InferCtxt<'a, 'tcx>,
-                              closure_id: ast::DefId,
-                              substs: &ClosureSubsts<'tcx>)
-                              -> Option<Vec<ClosureUpvar<'tcx>>>
-    {
-        // Presently an unboxed closure type cannot "escape" out of a
-        // function, so we will only encounter ones that originated in the
-        // local crate or were inlined into it along with some function.
-        // This may change if abstract return types of some sort are
-        // implemented.
-        assert!(closure_id.krate == ast::LOCAL_CRATE);
-        let tcx = typer.tcx;
-        match tcx.freevars.borrow().get(&closure_id.node) {
-            None => Some(vec![]),
-            Some(ref freevars) => {
-                freevars.iter()
-                        .map(|freevar| {
-                            let freevar_def_id = freevar.def.def_id();
-                            let freevar_ty = match typer.node_ty(freevar_def_id.node) {
-                                Ok(t) => { t }
-                                Err(()) => { return None; }
-                            };
-                            let freevar_ty = freevar_ty.subst(tcx, &substs.func_substs);
-
-                            let upvar_id = ty::UpvarId {
-                                var_id: freevar_def_id.node,
-                                closure_expr_id: closure_id.node
-                            };
-
-                            typer.upvar_capture(upvar_id).map(|capture| {
-                                let freevar_ref_ty = match capture {
-                                    UpvarCapture::ByValue => {
-                                        freevar_ty
-                                    }
-                                    UpvarCapture::ByRef(borrow) => {
-                                        tcx.mk_ref(tcx.mk_region(borrow.region),
-                                            ty::TypeAndMut {
-                                                ty: freevar_ty,
-                                                mutbl: borrow.kind.to_mutbl_lossy(),
-                                            })
-                                    }
-                                };
-
-                                ClosureUpvar {
-                                    def: freevar.def,
-                                    span: freevar.span,
-                                    ty: freevar_ref_ty,
-                                }
-                            })
-                        })
-                        .collect()
-            }
-        }
     }
 
     // Returns the repeat count for a repeating vector expression.

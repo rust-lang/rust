@@ -1399,20 +1399,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             closure_ty
         }
     }
-
-    pub fn closure_upvars(&self,
-                          def_id: ast::DefId,
-                          substs: &ty::ClosureSubsts<'tcx>)
-                          -> Option<Vec<ty::ClosureUpvar<'tcx>>>
-    {
-        let result = ty::ctxt::closure_upvars(self, def_id, substs);
-
-        if self.normalize {
-            normalize_associated_type(&self.tcx, &result)
-        } else {
-            result
-        }
-    }
 }
 
 impl<'tcx> TypeTrace<'tcx> {

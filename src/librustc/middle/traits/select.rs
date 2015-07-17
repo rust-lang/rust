@@ -1284,22 +1284,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     candidates.ambiguous = true;
                 }
                 _ => {
-                    if self.constituent_types_for_ty(self_ty).is_some() {
-                        candidates.vec.push(DefaultImplCandidate(def_id.clone()))
-                    } else {
-                        // We don't yet know what the constituent
-                        // types are. So call it ambiguous for now,
-                        // though this is a bit stronger than
-                        // necessary: that is, we know that the
-                        // defaulted impl applies, but we can't
-                        // process the confirmation step without
-                        // knowing the constituent types. (Anyway, in
-                        // the particular case of defaulted impls, it
-                        // doesn't really matter much either way,
-                        // since we won't be aiding inference by
-                        // processing the confirmation step.)
-                        candidates.ambiguous = true;
-                    }
+                    candidates.vec.push(DefaultImplCandidate(def_id.clone()))
                 }
             }
         }
@@ -1729,14 +1714,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     return ok_if(Vec::new());
                 }
 
-                // TODO
-                match self.infcx.closure_upvars(def_id, substs) {
-                    Some(upvars) => ok_if(upvars.iter().map(|c| c.ty).collect()),
-                    None => {
-                        debug!("assemble_builtin_bound_candidates: no upvar types available yet");
-                        Ok(AmbiguousBuiltin)
-                    }
-                }
+                ok_if(substs.upvar_tys.clone())
             }
 
             ty::TyStruct(def_id, substs) => {
@@ -1819,7 +1797,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Bar<i32> where struct Bar<T> { x: T, y: u32 } -> [i32, u32]
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
-    fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Option<Vec<Ty<'tcx>>> {
+    fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
         match t.sty {
             ty::TyUint(_) |
             ty::TyInt(_) |
@@ -1831,7 +1809,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyInfer(ty::IntVar(_)) |
             ty::TyInfer(ty::FloatVar(_)) |
             ty::TyChar => {
-                Some(Vec::new())
+                Vec::new()
             }
 
             ty::TyTrait(..) |
@@ -1848,56 +1826,56 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::TyBox(referent_ty) => {  // Box<T>
-                Some(vec![referent_ty])
+                vec![referent_ty]
             }
 
             ty::TyRawPtr(ty::TypeAndMut { ty: element_ty, ..}) |
             ty::TyRef(_, ty::TypeAndMut { ty: element_ty, ..}) => {
-                Some(vec![element_ty])
+                vec![element_ty]
             },
 
             ty::TyArray(element_ty, _) | ty::TySlice(element_ty) => {
-                Some(vec![element_ty])
+                vec![element_ty]
             }
 
             ty::TyTuple(ref tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-                Some(tys.clone())
+                tys.clone()
             }
 
             ty::TyClosure(def_id, ref substs) => {
+                // FIXME(#27086). We are invariant w/r/t our
+                // substs.func_substs, but we don't see them as
+                // constituent types; this seems RIGHT but also like
+                // something that a normal type couldn't simulate. Is
+                // this just a gap with the way that PhantomData and
+                // OIBIT interact? That is, there is no way to say
+                // "make me invariant with respect to this TYPE, but
+                // do not act as though I can reach it"
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
-
-                // TODO
-                match self.infcx.closure_upvars(def_id, substs) {
-                    Some(upvars) => {
-                        Some(upvars.iter().map(|c| c.ty).collect())
-                    }
-                    None => {
-                        None
-                    }
-                }
+                substs.upvar_tys.clone()
             }
 
             // for `PhantomData<T>`, we pass `T`
             ty::TyStruct(def_id, substs)
                 if Some(def_id) == self.tcx().lang_items.phantom_data() =>
             {
-                Some(substs.types.get_slice(TypeSpace).to_vec())
+                substs.types.get_slice(TypeSpace).to_vec()
             }
 
             ty::TyStruct(def_id, substs) => {
-                Some(self.tcx().struct_fields(def_id, substs).iter()
-                     .map(|f| f.mt.ty)
-                     .collect())
+                self.tcx().struct_fields(def_id, substs)
+                          .iter()
+                          .map(|f| f.mt.ty)
+                          .collect()
             }
 
             ty::TyEnum(def_id, substs) => {
-                Some(self.tcx().substd_enum_variants(def_id, substs)
-                     .iter()
-                     .flat_map(|variant| &variant.args)
-                     .map(|&ty| ty)
-                     .collect())
+                self.tcx().substd_enum_variants(def_id, substs)
+                          .iter()
+                          .flat_map(|variant| &variant.args)
+                          .map(|&ty| ty)
+                          .collect()
             }
         }
     }
@@ -2147,15 +2125,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // binder is moved below
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
-        match self.constituent_types_for_ty(self_ty) {
-            Some(types) => self.vtable_default_impl(obligation, trait_def_id, ty::Binder(types)),
-            None => {
-                self.tcx().sess.bug(
-                    &format!(
-                        "asked to confirm default implementation for ambiguous type: {:?}",
-                        self_ty));
-            }
-        }
+        let types = self.constituent_types_for_ty(self_ty);
+        self.vtable_default_impl(obligation, trait_def_id, ty::Binder(types))
     }
 
     fn confirm_default_impl_object_candidate(&mut self,
