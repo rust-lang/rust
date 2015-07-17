@@ -1476,8 +1476,10 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             prim_ty_to_ty(tcx, base_segments, prim_ty)
         }
         _ => {
+            let node = def.def_id().node;
             span_err!(tcx.sess, span, E0248,
-                      "found value name used as a type: {:?}", *def);
+                      "found value `{}` used as a type",
+                      tcx.map.path_to_string(node));
             return this.tcx().types.err;
         }
     }
