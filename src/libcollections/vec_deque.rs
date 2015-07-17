@@ -946,7 +946,7 @@ impl<T> VecDeque<T> {
     /// let mut buf = VecDeque::new();
     /// buf.push_back(10);
     /// buf.push_back(12);
-    /// buf.insert(1,11);
+    /// buf.insert(1, 11);
     /// assert_eq!(Some(&11), buf.get(1));
     /// ```
     pub fn insert(&mut self, i: usize, t: T) {
