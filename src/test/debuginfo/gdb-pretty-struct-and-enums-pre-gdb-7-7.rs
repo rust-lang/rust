@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This test uses only GDB Python API features which should be available in
-// older versions of GDB too. A more extensive test can be found in
-// gdb-pretty-struct-and-enums.rs
-
 // ignore-bitrig
 // ignore-windows failing on win32 bot
 // ignore-freebsd: gdb package too new

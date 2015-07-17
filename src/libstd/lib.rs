@@ -10,29 +10,116 @@
 
 //! # The Rust Standard Library
 //!
-//! The Rust Standard Library provides the essential runtime
-//! functionality for building portable Rust software.
+//! The Rust Standard Library is the foundation of portable Rust
+//! software, a set of minimal and battle-tested shared abstractions
+//! for the [broader Rust ecosystem](https://crates.io). It offers
+//! core types (e.g. [`Vec`](vec/index.html)
+//! and [`Option`](option/index.html)), library-defined [operations on
+//! language primitives](#primitive) (e.g. [`u32`](u32/index.html) and
+//! [`str`](str/index.html)), [standard macros](#macros),
+//! [I/O](io/index.html) and [multithreading](thread/index.html), among
+//! [many other lovely
+//! things](#what-is-in-the-standard-library-documentation?).
 //!
-//! The Rust Standard Library is available to all Rust crates by
-//! default, just as if contained an `extern crate std` import at the
-//! crate root. Therefore the standard library can be accessed in
-//! `use` statements through the path `std`, as in `use std::thread`,
-//! or in expressions through the absolute path `::std`, as in
-//! `::std::thread::sleep_ms(100)`.
+//! `std` is available to all Rust crates by default, just as if each
+//! one contained an `extern crate std` import at the [crate
+//! root][book-crate-root]. Therefore the standard library can be
+//! accessed in [`use`][book-use] statements through the path `std`,
+//! as in [`use std::env`](env/index.html), or in expressions
+//! through the absolute path `::std`, as in
+//! [`::std::env::args()`](env/fn.args.html).
 //!
-//! Furthermore, the standard library defines [The Rust
-//! Prelude](prelude/index.html), a small collection of items, mostly
-//! traits, that are imported into and available in every module.
+//! [book-crate-root]: ../book/crates-and-modules.html#basic-terminology:-crates-and-modules
+//! [book-use]: ../book/crates-and-modules.html#importing-modules-with-use
 //!
-//! ## What is in the standard library
+//! # How to read this documentation
 //!
-//! The standard library is a set of minimal, battle-tested
-//! core types and shared abstractions for the [broader Rust
-//! ecosystem](https://crates.io) to build on.
+//! If you already know the name of what you are looking for the
+//! fastest way to find it is to use the <a href="#"
+//! onclick="focusSearchBar();">search bar</a> at the top of the page.
 //!
-//! The [primitive types](#primitives), though not defined in the
-//! standard library, are documented here, as are the predefined
-//! [macros](#macros).
+//! Otherwise, you may want to jump to one of these useful sections:
+//!
+//! * [`std::*` modules](#modules)
+//! * [Primitive types](#primitives)
+//! * [Standard macros](#macros)
+//! * [The Rust Prelude](prelude/index.html)
+//!
+//! If this is your first time, the documentation for the standard
+//! library is written to be casually perused. Clicking on interesting
+//! things should generally lead you to interesting places. Still,
+//! there are important bits you don't want to miss, so read on for a
+//! tour of the standard library and its documentation!
+//!
+//! Once you are familiar with the contents of the standard library
+//! you may begin to find the verbosity of the prose distracting. At
+//! this stage in your development you may want to press the **[-]**
+//! button near the top of the page to collapse it into a more
+//! skimmable view.
+//!
+//! While you are looking at that **[-]** button also notice the
+//! **[src]** button. Rust's API documentation comes with the source
+//! code and you are encouraged to read it. The standard library
+//! source is generally high quality and a peek behind the curtains is
+//! often enlightening.
+//!
+//! # What is in the standard library documentation?
+//!
+//! Lots of stuff. Well, broadly four things actually.
+//!
+//! First of all, The Rust Standard Library is divided into a number
+//! of focused modules, [all listed further down this page](#modules).
+//! These modules are the bedrock upon which all of Rust is forged,
+//! and they have mighty names like [`std::slice`](slice/index.html)
+//! and [`std::cmp`](cmp/index.html). Modules' documentation typically
+//! includes an overview of the module along with examples, and are
+//! a smart place to start familiarizing yourself with the library.
+//!
+//! Second, implicit methods on [primitive
+//! types](../book/primitive-types.html) are documented here. This can
+//! be a source of confusion for two reasons:
+//!
+//! 1. While primitives are implemented by the compiler, the standard
+//!    library implements methods directly on the primitive types (and
+//!    it is the only library that does so), which are [documented in
+//!    the section on primitives](#primitives).
+//! 2. The standard library exports many modules *with the same name
+//!    as primitive types*. These define additional items related
+//!    to the primitive type, but not the all-important methods.
+//!
+//! So for example there is a [page for the primitive type
+//! `i32`](primitive.i32.html) that lists all the methods that can be
+//! called on 32-bit integers (mega useful), and there is a [page for
+//! the module `std::i32`](i32/index.html) that documents the constant
+//! values `MIN` and `MAX` (rarely useful).
+//!
+//! Note the documentation for the primitives
+//! [`str`](primitive.str.html) and [`[T]`](primitive.slice.html)
+//! (also called 'slice'). Many method calls on
+//! [`String`](string/struct.String.html) and
+//! [`Vec`](vec/struct.Vec.html) are actually calls to methods on
+//! `str` and `[T]` respectively, via [deref
+//! coercions](../book/deref-coercions.html). *Accepting that
+//! primitive types are documented on their own pages will bring you a
+//! deep inner wisdom. Embrace it now before proceeding.*
+//!
+//! Third, the standard library defines [The Rust
+//! Prelude](prelude/index.html), a small collection of items - mostly
+//! traits - that are imported into every module of every crate. The
+//! traits in the prelude are pervasive, making the prelude
+//! documentation a good entry point to learning about the library.
+//!
+//! And finally, the standard library exports a number of standard
+//! macros, and [lists them on this page](#macros) (technically, not
+//! all of the standard macros are defined by the standard library -
+//! some are defined by the compiler - but they are documented here
+//! the same). Like the prelude, the standard macros are imported by
+//! default into all crates.
+//!
+//! # A Tour of The Rust Standard Library
+//!
+//! The rest of this crate documentation is dedicated to pointing
+//! out notable features of The Rust Standard Library.
 //!
 //! ## Containers and collections
 //!
@@ -43,17 +130,29 @@
 //! [`Iterator`](iter/trait.Iterator.html), which works with the `for`
 //! loop to access collections.
 //!
-//! The common container type, `Vec`, a growable vector backed by an array,
-//! lives in the [`vec`](vec/index.html) module. Contiguous, unsized regions
-//! of memory, `[T]`, commonly called "slices", and their borrowed versions,
-//! `&[T]`, commonly called "borrowed slices", are built-in types for which the
-//! [`slice`](slice/index.html) module defines many methods.
+//! The standard library exposes 3 common ways to deal with contiguous
+//! regions of memory:
 //!
-//! `&str`, a UTF-8 string, is a built-in type, and the standard library
-//! defines methods for it on a variety of traits in the
-//! [`str`](str/index.html) module. Rust strings are immutable;
-//! use the `String` type defined in [`string`](string/index.html)
-//! for a mutable string builder.
+//! * [`Vec<T>`](vec/index.html) - A heap-allocated *vector* that is
+//! resizable at runtime.
+//! * [`[T; n]`](primitive.array.html) - An inline *array* with a
+//! fixed size at compile time.
+//! * [`[T]`](primitive.slice.html) - A dynamically sized *slice* into
+//! any other kind of contiguous storage, whether heap-allocated or
+//! not.
+//!
+//! Slices can only be handled through some kind of *pointer*, and as
+//! such come in many flavours such as:
+//!
+//! * `&[T]` - *shared slice*
+//! * `&mut [T]` - *mutable slice*
+//! * [`Box<[T]>`](boxed/index.html) - *owned slice*
+//!
+//! `str`, a UTF-8 string slice, is a primitive type, and the standard
+//! library defines [many methods for it](primitive.str.html). Rust
+//! `str`s are typically accessed as immutable references: `&str`. Use
+//! the owned `String` type defined in [`string`](string/index.html)
+//! for building and mutating strings.
 //!
 //! For converting to strings use the [`format!`](fmt/index.html)
 //! macro, and for converting from strings use the
@@ -88,6 +187,7 @@
 //! [`atomic`](sync/atomic/index.html) and
 //! [`mpsc`](sync/mpsc/index.html), which contains the channel types
 //! for message passing.
+//!
 
 // Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
 #![cfg_attr(stage0, feature(custom_attribute))]

@@ -28,6 +28,9 @@ Breaking Changes
   in, and the same value reported by clang's
   `alignof`. [`mem::min_align_of`] is deprecated. This is not known to
   break real code.
+* [The `#[packed]` attribute is no longer silently accepted by the
+  compiler][packed]. This attribute did nothing and code that
+  mentioned it likely did not work as intended.
 
 Language
 --------
@@ -140,7 +143,7 @@ Misc
 [fat]: https://github.com/rust-lang/rust/pull/26411
 [dst]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
 [parcodegen]: https://github.com/rust-lang/rust/pull/26018
-
+[packed]: https://github.com/rust-lang/rust/pull/25541
 
 Version 1.1.0 (June 2015)
 =========================

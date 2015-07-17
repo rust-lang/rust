@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Monster {
-    damage: isize
-}
-
-
 fn main() {
-    let _m = Monster(); //~ ERROR `Monster` is a struct variant name, but
-    //~^ HELP did you mean to write: `Monster { /* fields */ }`?
+    enum Foo { A { x: u32 } }
+    let orig = Foo::A { x: 5 };
+    Foo::A { x: 6, ..orig };
+    //~^ ERROR functional record update syntax requires a struct
 }

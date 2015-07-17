@@ -3426,6 +3426,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let def = lookup_full_def(tcx, path.span, id);
         let struct_id = match def {
             def::DefVariant(enum_id, variant_id, true) => {
+                if let &Some(ref base_expr) = base_expr {
+                    span_err!(tcx.sess, base_expr.span, E0436,
+                              "functional record update syntax requires a struct");
+                    fcx.write_error(base_expr.id);
+                }
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
                                           variant_id, &fields[..]);
                 enum_id

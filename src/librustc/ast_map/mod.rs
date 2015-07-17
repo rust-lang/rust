@@ -411,6 +411,13 @@ impl<'ast> Map<'ast> {
         }
     }
 
+    pub fn expect_trait_item(&self, id: NodeId) -> &'ast TraitItem {
+        match self.find(id) {
+            Some(NodeTraitItem(item)) => item,
+            _ => panic!("expected trait item, found {}", self.node_to_string(id))
+        }
+    }
+
     pub fn expect_struct(&self, id: NodeId) -> &'ast StructDef {
         match self.find(id) {
             Some(NodeItem(i)) => {
