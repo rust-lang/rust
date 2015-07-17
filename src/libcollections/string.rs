@@ -979,7 +979,6 @@ impl ops::Index<ops::RangeFull> for String {
     }
 }
 
-#[cfg(not(stage0))]
 #[stable(feature = "derefmut_for_string", since = "1.2.0")]
 impl ops::IndexMut<ops::Range<usize>> for String {
     #[inline]
@@ -987,7 +986,6 @@ impl ops::IndexMut<ops::Range<usize>> for String {
         &mut self[..][index]
     }
 }
-#[cfg(not(stage0))]
 #[stable(feature = "derefmut_for_string", since = "1.2.0")]
 impl ops::IndexMut<ops::RangeTo<usize>> for String {
     #[inline]
@@ -995,7 +993,6 @@ impl ops::IndexMut<ops::RangeTo<usize>> for String {
         &mut self[..][index]
     }
 }
-#[cfg(not(stage0))]
 #[stable(feature = "derefmut_for_string", since = "1.2.0")]
 impl ops::IndexMut<ops::RangeFrom<usize>> for String {
     #[inline]
