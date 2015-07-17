@@ -675,6 +675,7 @@ fragment is WF if its components are WF:
 
     WfObjectFragment:
       ∀i. R, r.. ⊢ Pi
+      TraitId is object safe
       --------------------------------------------------
       R ⊢ for<r..> TraitId<P1..Pn>
       
