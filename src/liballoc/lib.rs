@@ -135,20 +135,3 @@ pub fn oom() -> ! {
     //                allocate.
     unsafe { core::intrinsics::abort() }
 }
-
-// FIXME(#14344): When linking liballoc with libstd, this library will be linked
-//                as an rlib (it only exists as an rlib). It turns out that an
-//                optimized standard library doesn't actually use *any* symbols
-//                from this library. Everything is inlined and optimized away.
-//                This means that linkers will actually omit the object for this
-//                file, even though it may be needed in the future.
-//
-//                To get around this for now, we define a dummy symbol which
-//                will never get inlined so the stdlib can call it. The stdlib's
-//                reference to this symbol will cause this library's object file
-//                to get linked in to libstd successfully (the linker won't
-//                optimize it out).
-#[doc(hidden)]
-#[unstable(feature = "issue_14344_fixme")]
-#[cfg(stage0)]
-pub fn fixme_14344_be_sure_to_link_to_collections() {}
