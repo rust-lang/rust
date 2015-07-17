@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for 32-bits floats (`f32` type)
+//! The 32-bit floating point type
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A fixed-size array is denoted `[T; N]` for the element type `T` and
-//! the compile time constant size `N`. The size must be zero or positive.
+//! A fixed-size array, denoted `[T; N]`, for the element type, `T`, and
+//! the non-negative compile time constant size, `N`.
 //!
 //! Arrays values are created either with an explicit expression that lists
 //! each element: `[x, y, z]` or a repeat expression: `[x; N]`. The repeat

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Character manipulation (`char` type, Unicode Scalar Value)
+//! A Unicode scalar value
 //!
 //! This module provides the `CharExt` trait, as well as its
 //! implementation for the primitive `char` type, in order to allow

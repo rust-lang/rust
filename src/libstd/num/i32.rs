@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for signed 32-bits integers (`i32` type)
+//! The 32-bit signed integer type
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "i32")]

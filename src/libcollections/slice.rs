@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utilities for slice manipulation
+//! A dynamically-sized view into a contiguous sequence, `[T]`.
 //!
 //! The `slice` module contains useful code to help work with slice values.
 //! Slices are a view into a block of memory represented as a pointer and a

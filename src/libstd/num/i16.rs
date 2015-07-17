@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for signed 16-bits integers (`i16` type)
+//! The 16-bit signed integer type
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "i16")]

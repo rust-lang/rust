@@ -10,7 +10,7 @@
 
 // FIXME: talk about offset, copy_memory, copy_nonoverlapping_memory
 
-//! Operations on raw pointers, `*const T`, and `*mut T`.
+//! Raw, unsafe pointers, `*const T`, and `*mut T`
 //!
 //! Working with raw pointers in Rust is uncommon,
 //! typically limited to a few patterns.

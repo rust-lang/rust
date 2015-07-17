@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unicode string manipulation (the `str` type).
+//! Unicode string slices
 //!
 //! Rust's `str` type is one of the core primitive types of the language. `&str`
 //! is the borrowed string type. This type of string can only be created from
