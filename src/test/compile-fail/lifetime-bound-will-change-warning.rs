@@ -10,8 +10,8 @@
 
 // aux-build:lifetime_bound_will_change_warning_lib.rs
 
-// Test that we get suitable warnings when lifetime bound change will
-// cause breakage.
+// Test that various corner cases cause an error. These are tests
+// that used to pass before we tweaked object defaults.
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
@@ -41,12 +41,12 @@ fn test1cc<'a>(x: &'a Box<Fn()+'a>) {
 
 fn test2<'a>(x: &'a Box<Fn()+'a>) {
     // but ref_obj will not, so warn.
-    ref_obj(x) //~ WARNING this code may fail to compile in Rust 1.3
+    ref_obj(x) //~ ERROR mismatched types
 }
 
 fn test2cc<'a>(x: &'a Box<Fn()+'a>) {
     // same as test2, but cross crate
-    lib::ref_obj(x) //~ WARNING this code may fail to compile in Rust 1.3
+    lib::ref_obj(x) //~ ERROR mismatched types
 }
 
 fn test3<'a>(x: &'a Box<Fn()+'static>) {
@@ -60,5 +60,5 @@ fn test3cc<'a>(x: &'a Box<Fn()+'static>) {
 }
 
 #[rustc_error]
-fn main() { //~ ERROR compilation successful
+fn main() {
 }

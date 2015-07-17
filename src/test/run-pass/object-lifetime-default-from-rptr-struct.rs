@@ -36,9 +36,7 @@ fn b<'a>(t: &'a MyBox<Test>, mut ss: SomeStruct<'a>) {
     ss.u = t;
 }
 
-fn c<'a>(t: &'a MyBox<Test+'a>, mut ss: SomeStruct<'a>) {
-    ss.t = t;
-}
+// see also compile-fail/object-lifetime-default-from-rptr-box-error.rs
 
 fn d<'a>(t: &'a MyBox<Test+'a>, mut ss: SomeStruct<'a>) {
     ss.u = t;

@@ -2040,23 +2040,22 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
                                       principal_trait_ref,
                                       builtin_bounds);
 
-    let (region_bound, will_change) = match region_bound {
-        Some(r) => (r, false),
+    let region_bound = match region_bound {
+        Some(r) => r,
         None => {
             match rscope.object_lifetime_default(span) {
-                Some(r) => (r, rscope.object_lifetime_default_will_change_in_1_3()),
+                Some(r) => r,
                 None => {
                     span_err!(this.tcx().sess, span, E0228,
                               "the lifetime bound for this object type cannot be deduced \
                                from context; please supply an explicit bound");
-                    (ty::ReStatic, false)
+                    ty::ReStatic
                 }
             }
         }
     };
 
-    debug!("region_bound: {:?} will_change: {:?}",
-           region_bound, will_change);
+    debug!("region_bound: {:?}", region_bound);
 
     ty::sort_bounds_list(&mut projection_bounds);
 
@@ -2064,7 +2063,6 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
         region_bound: region_bound,
         builtin_bounds: builtin_bounds,
         projection_bounds: projection_bounds,
-        region_bound_will_change: will_change,
     }
 }
 

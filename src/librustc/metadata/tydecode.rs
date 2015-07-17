@@ -887,16 +887,9 @@ fn parse_existential_bounds_<'a,'tcx, F>(st: &mut PState<'a,'tcx>,
         }
     }
 
-    let region_bound_will_change = match next(st) {
-        'y' => true,
-        'n' => false,
-        c => panic!("parse_ty: expected y/n not '{}'", c)
-    };
-
     return ty::ExistentialBounds { region_bound: region_bound,
                                    builtin_bounds: builtin_bounds,
-                                   projection_bounds: projection_bounds,
-                                   region_bound_will_change: region_bound_will_change };
+                                   projection_bounds: projection_bounds };
 }
 
 fn parse_builtin_bounds<F>(st: &mut PState, mut _conv: F) -> ty::BuiltinBounds where

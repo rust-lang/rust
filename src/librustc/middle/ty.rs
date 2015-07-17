@@ -1989,11 +1989,6 @@ pub struct ExistentialBounds<'tcx> {
     pub region_bound: ty::Region,
     pub builtin_bounds: BuiltinBounds,
     pub projection_bounds: Vec<PolyProjectionPredicate<'tcx>>,
-
-    // If true, this TyTrait used a "default bound" in the surface
-    // syntax.  This makes no difference to the type system but is
-    // handy for error reporting.
-    pub region_bound_will_change: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]

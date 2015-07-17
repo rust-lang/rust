@@ -34,13 +34,11 @@ fn load0<'a>(ss: &'a Box<SomeTrait>) -> Box<SomeTrait> {
     //
     // Under new rules the result is:
     //
-    // for<'a> fn(&'a Box<SomeTrait+'a>) -> Box<SomeTrait+'static>
+    // for<'a> fn(&'a Box<SomeTrait+'static>) -> Box<SomeTrait+'static>
     //
-    // Therefore, we get a type error attempting to return `deref(ss)`
-    // since `SomeTrait+'a <: SomeTrait+'static` does not hold.
+    // Therefore, no type error.
 
     deref(ss)
-        //~^ ERROR cannot infer
 }
 
 fn load1(ss: &SomeTrait) -> &SomeTrait {
