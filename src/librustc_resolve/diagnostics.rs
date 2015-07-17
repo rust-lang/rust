@@ -380,6 +380,24 @@ impl Foo for Bar {
 ```
 "##,
 
+E0428: r##"
+A type or module has been defined more than once. Example of erroneous
+code:
+
+```
+struct Bar;
+struct Bar; // error: duplicate definition of value `Bar`
+```
+
+Please verify you didn't mispelled the type/module's name or remove the
+duplicated one. Example:
+
+```
+struct Bar;
+struct Bar2; // ok!
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -415,7 +433,6 @@ register_diagnostics! {
     E0425, // unresolved name
     E0426, // use of undeclared label
     E0427, // cannot use `ref` binding mode with ...
-    E0428, // duplicate definition of ...
     E0429, // `self` imports are only allowed within a { } list
     E0430, // `self` import can only appear once in the list
     E0431, // `self` import can only appear in an import list with a non-empty
