@@ -452,6 +452,15 @@ pub enum DiagnosticKind {
     DK_OptimizationFailure,
 }
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub enum ArchiveKind {
+    K_GNU,
+    K_MIPS64,
+    K_BSD,
+    K_COFF,
+}
+
 // Opaque pointer types
 #[allow(missing_copy_implementations)]
 pub enum Module_opaque {}
@@ -1136,12 +1145,13 @@ extern {
                            Catch: BasicBlockRef,
                            Name: *const c_char)
                            -> ValueRef;
-    pub fn LLVMBuildLandingPad(B: BuilderRef,
-                               Ty: TypeRef,
-                               PersFn: ValueRef,
-                               NumClauses: c_uint,
-                               Name: *const c_char)
-                               -> ValueRef;
+    pub fn LLVMRustBuildLandingPad(B: BuilderRef,
+                                   Ty: TypeRef,
+                                   PersFn: ValueRef,
+                                   NumClauses: c_uint,
+                                   Name: *const c_char,
+                                   F: ValueRef)
+                                   -> ValueRef;
     pub fn LLVMBuildResume(B: BuilderRef, Exn: ValueRef) -> ValueRef;
     pub fn LLVMBuildUnreachable(B: BuilderRef) -> ValueRef;
 
@@ -2118,11 +2128,16 @@ extern {
     pub fn LLVMRustWriteArchive(Dst: *const c_char,
                                 NumMembers: size_t,
                                 Members: *const RustArchiveMemberRef,
-                                WriteSymbtab: bool) -> c_int;
+                                WriteSymbtab: bool,
+                                Kind: ArchiveKind) -> c_int;
     pub fn LLVMRustArchiveMemberNew(Filename: *const c_char,
                                     Name: *const c_char,
                                     Child: ArchiveChildRef) -> RustArchiveMemberRef;
     pub fn LLVMRustArchiveMemberFree(Member: RustArchiveMemberRef);
+
+    pub fn LLVMRustSetDataLayoutFromTargetMachine(M: ModuleRef,
+                                                  TM: TargetMachineRef);
+    pub fn LLVMRustGetModuleDataLayout(M: ModuleRef) -> TargetDataRef;
 }
 
 // LLVM requires symbols from this library, but apparently they're not printed

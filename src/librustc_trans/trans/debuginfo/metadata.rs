@@ -1606,13 +1606,10 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         .collect();
 
     let discriminant_type_metadata = |inttype| {
-        // We can reuse the type of the discriminant for all monomorphized
-        // instances of an enum because it doesn't depend on any type
-        // parameters. The def_id, uniquely identifying the enum's polytype acts
-        // as key in this cache.
+        let disr_type_key = (enum_def_id, inttype);
         let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
                                                                  .borrow()
-                                                                 .get(&enum_def_id).cloned();
+                                                                 .get(&disr_type_key).cloned();
         match cached_discriminant_type_metadata {
             Some(discriminant_type_metadata) => discriminant_type_metadata,
             None => {
@@ -1641,7 +1638,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
                 debug_context(cx).created_enum_disr_types
                                  .borrow_mut()
-                                 .insert(enum_def_id, discriminant_type_metadata);
+                                 .insert(disr_type_key, discriminant_type_metadata);
 
                 discriminant_type_metadata
             }

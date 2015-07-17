@@ -21,7 +21,9 @@
 ;
 ; See also: src/libstd/rt/unwind/seh.rs
 
-define i8* @rust_try(void (i8*)* %f, i8* %env) {
+define i8* @rust_try(void (i8*)* %f, i8* %env)
+    personality i8* bitcast (i32 (...)* @__C_specific_handler to i8*)
+{
     invoke void %f(i8* %env)
         to label %normal
         unwind label %catch
@@ -58,8 +60,8 @@ normal:
 ; but apparently LLVM chokes on this, so we do the more complicated thing to
 ; placate it.
 catch:
-    %vals = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__C_specific_handler to i8*)
-        catch i8* bitcast (i32 (i8*, i8*)* @__rust_try_filter to i8*)
+    %vals = landingpad { i8*, i32 }
+              catch i8* bitcast (i32 (i8*, i8*)* @__rust_try_filter to i8*)
     %ehptr = extractvalue { i8*, i32 } %vals, 0
     %sel = extractvalue { i8*, i32 } %vals, 1
     %filter_sel = call i32 @llvm.eh.typeid.for(i8* bitcast (i32 (i8*, i8*)* @__rust_try_filter to i8*))

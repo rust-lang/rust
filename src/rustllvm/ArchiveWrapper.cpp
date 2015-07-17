@@ -120,7 +120,17 @@ LLVMRustArchiveChildName(const Archive::Child *child, size_t *size) {
 
 extern "C" const char*
 LLVMRustArchiveChildData(Archive::Child *child, size_t *size) {
-    StringRef buf = child->getBuffer();
+    StringRef buf;
+#if LLVM_VERSION_MINOR >= 7
+    ErrorOr<StringRef> buf_or_err = child->getBuffer();
+    if (buf_or_err.getError()) {
+      LLVMRustSetLastError(buf_or_err.getError().message().c_str());
+      return NULL;
+    }
+    buf = buf_or_err.get();
+#else
+    buf = child->getBuffer();
+#endif
     *size = buf.size();
     return buf.data();
 }
@@ -144,7 +154,8 @@ extern "C" int
 LLVMRustWriteArchive(char *Dst,
                      size_t NumMembers,
                      const LLVMRustArchiveMember **NewMembers,
-                     bool WriteSymbtab) {
+                     bool WriteSymbtab,
+                     Archive::Kind Kind) {
 #if LLVM_VERSION_MINOR >= 7
   std::vector<NewArchiveIterator> Members;
 
@@ -157,7 +168,7 @@ LLVMRustWriteArchive(char *Dst,
       Members.push_back(NewArchiveIterator(Member->child, Member->name));
     }
   }
-  auto pair = writeArchive(Dst, Members, WriteSymbtab);
+  auto pair = writeArchive(Dst, Members, WriteSymbtab, Kind, false);
   if (!pair.second)
     return 0;
   LLVMRustSetLastError(pair.second.message().c_str());

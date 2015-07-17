@@ -13,7 +13,6 @@ use super::apple_ios_base::{opts, Arch};
 
 pub fn target() -> Target {
     Target {
-        data_layout: "e-p:32:32-f64:32:64-v64:32:64-v128:32:128-a:0:32-n32-S32".to_string(),
         llvm_target: "armv7s-apple-ios".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),

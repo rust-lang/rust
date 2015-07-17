@@ -24,7 +24,6 @@ pub fn target() -> Target {
     options.pre_link_args.push("-shared-libgcc".to_string());
 
     Target {
-        data_layout: "e-p:32:32-f64:64:64-i64:64:64-f80:32:32-n8:16:32".to_string(),
         llvm_target: "i686-pc-windows-gnu".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
