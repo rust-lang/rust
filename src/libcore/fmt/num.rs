@@ -20,18 +20,25 @@ use fmt;
 use num::Zero;
 use ops::{Div, Rem, Sub};
 use str;
+use slice;
+use ptr;
+use mem;
 
 #[doc(hidden)]
 trait Int: Zero + PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
            Sub<Output=Self> + Copy {
     fn from_u8(u: u8) -> Self;
     fn to_u8(&self) -> u8;
+    fn to_u32(&self) -> u32;
+    fn to_u64(&self) -> u64;
 }
 
 macro_rules! doit {
     ($($t:ident)*) => ($(impl Int for $t {
         fn from_u8(u: u8) -> $t { u as $t }
         fn to_u8(&self) -> u8 { *self as u8 }
+        fn to_u32(&self) -> u32 { *self as u32 }
+        fn to_u64(&self) -> u64 { *self as u64 }
     })*)
 }
 doit! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
@@ -188,6 +195,7 @@ macro_rules! radix_fmt {
         }
     }
 }
+
 macro_rules! int_base {
     ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -209,9 +217,9 @@ macro_rules! debug {
         }
     }
 }
+
 macro_rules! integer {
     ($Int:ident, $Uint:ident) => {
-        int_base! { Display  for $Int as $Int   -> Decimal }
         int_base! { Binary   for $Int as $Uint  -> Binary }
         int_base! { Octal    for $Int as $Uint  -> Octal }
         int_base! { LowerHex for $Int as $Uint  -> LowerHex }
@@ -219,7 +227,6 @@ macro_rules! integer {
         radix_fmt! { $Int as $Int, fmt_int }
         debug! { $Int }
 
-        int_base! { Display  for $Uint as $Uint -> Decimal }
         int_base! { Binary   for $Uint as $Uint -> Binary }
         int_base! { Octal    for $Uint as $Uint -> Octal }
         int_base! { LowerHex for $Uint as $Uint -> LowerHex }
@@ -233,3 +240,80 @@ integer! { i8, u8 }
 integer! { i16, u16 }
 integer! { i32, u32 }
 integer! { i64, u64 }
+
+const DEC_DIGITS_LUT: &'static[u8] =
+    b"0001020304050607080910111213141516171819\
+      2021222324252627282930313233343536373839\
+      4041424344454647484950515253545556575859\
+      6061626364656667686970717273747576777879\
+      8081828384858687888990919293949596979899";
+
+macro_rules! impl_Display {
+    ($($t:ident),*: $conv_fn:ident) => ($(
+    impl fmt::Display for $t {
+        #[allow(unused_comparisons)]
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            let is_positive = *self >= 0;
+            let mut n = if is_positive {
+                self.$conv_fn()
+            } else {
+                // convert the negative num to positive by summing 1 to it's 2 complement
+                (!self.$conv_fn()).wrapping_add(1)
+            };
+            let mut buf: [u8; 20] = unsafe { mem::uninitialized() };
+            let mut curr = buf.len() as isize;
+            let buf_ptr = buf.as_mut_ptr();
+            let lut_ptr = DEC_DIGITS_LUT.as_ptr();
+
+            unsafe {
+                // eagerly decode 4 characters at a time
+                if <$t>::max_value() as u64 >= 10000 {
+                    while n >= 10000 {
+                        let rem = (n % 10000) as isize;
+                        n /= 10000;
+
+                        let d1 = (rem / 100) << 1;
+                        let d2 = (rem % 100) << 1;
+                        curr -= 4;
+                        ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                        ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
+                    }
+                }
+
+                // if we reach here numbers are <= 9999, so at most 4 chars long
+                let mut n = n as isize; // possibly reduce 64bit math
+
+                // decode 2 more chars, if > 2 chars
+                if n >= 100 {
+                    let d1 = (n % 100) << 1;
+                    n /= 100;
+                    curr -= 2;
+                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                }
+
+                // decode last 1 or 2 chars
+                if n < 10 {
+                    curr -= 1;
+                    *buf_ptr.offset(curr) = (n as u8) + 48;
+                } else {
+                    let d1 = n << 1;
+                    curr -= 2;
+                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                }
+            }
+
+            let buf_slice = unsafe {
+                str::from_utf8_unchecked(
+                    slice::from_raw_parts(buf_ptr.offset(curr), buf.len() - curr as usize))
+            };
+            f.pad_integral(is_positive, "", buf_slice)
+        }
+    })*);
+}
+
+impl_Display!(i8, u8, i16, u16, i32, u32: to_u32);
+impl_Display!(i64, u64: to_u64);
+#[cfg(target_pointer_width = "32")]
+impl_Display!(isize, usize: to_u32);
+#[cfg(target_pointer_width = "64")]
+impl_Display!(isize, usize: to_u64);
