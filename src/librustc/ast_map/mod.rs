@@ -498,9 +498,8 @@ impl<'ast> Map<'ast> {
     {
         let parent = self.get_parent(id);
         let parent = match self.find_entry(id) {
-            Some(EntryForeignItem(..)) | Some(EntryVariant(..)) => {
-                // Anonymous extern items, enum variants and struct ctors
-                // go in the parent scope.
+            Some(EntryForeignItem(..)) => {
+                // Anonymous extern items go in the parent scope.
                 self.get_parent(parent)
             }
             // But tuple struct ctors don't have names, so use the path of its
