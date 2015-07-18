@@ -409,12 +409,19 @@ pub fn parse(sess: &ParseSess,
                             top_elts: Tt(TtSequence(sp, seq)),
                         }));
                     }
-                    TtToken(_, MatchNt(..)) => {
-                        // Built-in nonterminals never start with these tokens,
-                        // so we can eliminate them from consideration.
-                        match tok {
-                            token::CloseDelim(_) => {},
-                            _ => bb_eis.push(ei),
+                    TtToken(_, MatchNt(_, name, _, _)) => {
+                        if token::get_ident(name) == "ident" {
+                            match tok {
+                                token::Ident(..) => bb_eis.push(ei),
+                                _ =>  {}
+                            }
+                        } else {
+                            // Built-in nonterminals never start with these tokens,
+                            // so we can eliminate them from consideration.
+                            match tok {
+                                token::CloseDelim(_) => {},
+                                _ => bb_eis.push(ei),
+                            }
                         }
                     }
                     TtToken(sp, SubstNt(..)) => {
