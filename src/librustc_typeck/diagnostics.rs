@@ -2139,9 +2139,9 @@ enum Foo<T> {
 }
 ```
 
-This error may also commonly be found when working with unsafe code.  For
+This error may also commonly be found when working with unsafe code. For
 example, when using raw pointers one may wish to specify the lifetime for
-which the pointed-at data is valid.  An initial attempt (below) causes this
+which the pointed-at data is valid. An initial attempt (below) causes this
 error:
 
 ```
@@ -2151,8 +2151,8 @@ struct Foo<'a, T> {
 ```
 
 We want to express the constraint that Foo should not outlive `'a`, because
-the data pointed to by `T` is only valid for that lifetime.  The problem is
-that there are no actual uses of `'a`.  It's possible to work around this
+the data pointed to by `T` is only valid for that lifetime. The problem is
+that there are no actual uses of `'a`. It's possible to work around this
 by adding a PhantomData type to the struct, using it to tell the compiler
 to act as if the struct contained a borrowed reference `&'a T`:
 
@@ -2165,8 +2165,8 @@ struct Foo<'a, T: 'a> {
 }
 ```
 
-PhantomData can also be used to express information about unused type parameters.
-You can read more about it in the API documentation:
+PhantomData can also be used to express information about unused type
+parameters. You can read more about it in the API documentation:
 
 https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 "##
