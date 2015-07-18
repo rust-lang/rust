@@ -123,6 +123,10 @@ pub enum ResolutionError<'a> {
     UndeclaredAssociatedType,
     /// error E0407: method is not a member of trait
     MethodNotMemberOfTrait(Name, &'a str),
+    /// error E0437: type is not a member of trait
+    TypeNotMemberOfTrait(Name, &'a str),
+    /// error E0438: const is not a member of trait
+    ConstNotMemberOfTrait(Name, &'a str),
     /// error E0408: variable `{}` from pattern #1 is not bound in pattern
     VariableNotBoundInPattern(Name, usize),
     /// error E0409: variable is bound with different mode in pattern #{} than in pattern #1
@@ -218,6 +222,18 @@ fn resolve_error<'b, 'a:'b, 'tcx:'a>(resolver: &'b Resolver<'a, 'tcx>, span: syn
             span_err!(resolver.session, span, E0407,
                          "method `{}` is not a member of trait `{}`",
                          method,
+                         trait_);
+        },
+        ResolutionError::TypeNotMemberOfTrait(type_, trait_) => {
+            span_err!(resolver.session, span, E0437,
+                         "type `{}` is not a member of trait `{}`",
+                         type_,
+                         trait_);
+        },
+        ResolutionError::ConstNotMemberOfTrait(const_, trait_) => {
+            span_err!(resolver.session, span, E0438,
+                         "const `{}` is not a member of trait `{}`",
+                         const_,
                          trait_);
         },
         ResolutionError::VariableNotBoundInPattern(variable_name, pattern_number) => {
@@ -2385,10 +2401,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         for impl_item in impl_items {
                             match impl_item.node {
                                 ConstImplItem(..) => {
-                                    // If this is a trait impl, ensure the method
+                                    // If this is a trait impl, ensure the const
                                     // exists in trait
                                     this.check_trait_item(impl_item.ident.name,
-                                                          impl_item.span);
+                                                          impl_item.span,
+                                        |n, s| ResolutionError::ConstNotMemberOfTrait(n, s));
                                     this.with_constant_rib(|this| {
                                         visit::walk_impl_item(this, impl_item);
                                     });
@@ -2397,7 +2414,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     // If this is a trait impl, ensure the method
                                     // exists in trait
                                     this.check_trait_item(impl_item.ident.name,
-                                                          impl_item.span);
+                                                          impl_item.span,
+                                        |n, s| ResolutionError::MethodNotMemberOfTrait(n, s));
 
                                     // We also need a new scope for the method-
                                     // specific type parameters.
@@ -2410,10 +2428,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     });
                                 }
                                 TypeImplItem(ref ty) => {
-                                    // If this is a trait impl, ensure the method
+                                    // If this is a trait impl, ensure the type
                                     // exists in trait
                                     this.check_trait_item(impl_item.ident.name,
-                                                          impl_item.span);
+                                                          impl_item.span,
+                                        |n, s| ResolutionError::TypeNotMemberOfTrait(n, s));
 
                                     this.visit_ty(ty);
                                 }
@@ -2426,15 +2445,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         });
     }
 
-    fn check_trait_item(&self, name: Name, span: Span) {
+    fn check_trait_item<F>(&self, name: Name, span: Span, err: F)
+        where F: FnOnce(Name, &str) -> ResolutionError {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
         if let Some((did, ref trait_ref)) = self.current_trait_ref {
             if !self.trait_item_map.contains_key(&(name, did)) {
                 let path_str = path_names_to_string(&trait_ref.path, 0);
                 resolve_error(self,
                               span,
-                              ResolutionError::MethodNotMemberOfTrait(name,
-                                                                       &*path_str));
+                              err(name, &*path_str));
             }
         }
     }
