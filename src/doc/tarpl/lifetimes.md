@@ -66,11 +66,7 @@ let y = &x;
 z = y;
 ```
 
-The borrow checker always tries to minimize the extent of a lifetime, so it will
-likely desugar to something like the following:
-
 ```rust,ignore
-// NOTE: `'a: {` and `foo = &'b x` is not valid syntax!
 'a: {
     let x: i32 = 0;
     'b: {
@@ -191,8 +187,6 @@ println!("{}", x);
         'c: {
             // Temporary scope because we don't need the
             // &mut to last any longer.
-
-            // NOTE: Vec::push is not valid syntax
             Vec::push(&'c mut data, 4);
         }
         println!("{}", x);
