@@ -100,10 +100,10 @@ trying to import a function from a trait. An example of this error:
 ```
 mod foo {
     pub trait MyTrait {
-        fn doSomething();
+        fn do_something();
     }
 }
-use foo::MyTrait::doSomething;
+use foo::MyTrait::do_something;
 ```
 
 In general, it's not legal to directly import methods belonging to a
