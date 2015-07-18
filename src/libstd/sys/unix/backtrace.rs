@@ -107,8 +107,6 @@ use sys_common::backtrace::*;
 #[cfg(all(target_os = "ios", target_arch = "arm"))]
 #[inline(never)]
 pub fn write(w: &mut Write) -> io::Result<()> {
-    use result;
-
     extern {
         fn backtrace(buf: *mut *mut libc::c_void,
                      sz: libc::c_int) -> libc::c_int;
@@ -127,10 +125,10 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE as libc::c_int) as usize};
 
     // skipping the first one as it is write itself
-    let iter = (1..cnt).map(|i| {
-        print(w, i as isize, buf[i], buf[i])
-    });
-    result::fold(iter, (), |_, _| ())
+    for i in 1..cnt {
+        try!(print(w, i as isize, buf[i], buf[i]))
+    }
+    Ok(())
 }
 
 #[cfg(not(all(target_os = "ios", target_arch = "arm")))]
