@@ -63,7 +63,7 @@ context.
 Rust largely understands that any operation that produces or stores a ZST can be
 reduced to a no-op. For instance, a `HashSet<T>` can be effeciently implemented
 as a thin wrapper around `HashMap<T, ()>` because all the operations `HashMap`
-normally does to store and retrieve keys will be completely stripped in
+normally does to store and retrieve values will be completely stripped in
 monomorphization.
 
 Similarly `Result<(), ()>` and `Option<()>` are effectively just fancy `bool`s.
