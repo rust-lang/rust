@@ -815,6 +815,12 @@ This error indicates that the compiler found multiple functions with the
 point into a Rust program.
 "##,
 
+E0138: r##"
+This error indicates that the compiler found multiple functions with the
+`#[start]` attribute. This is an error because there must be a unique entry
+point into a Rust program.
+"##,
+
 E0152: r##"
 Lang items are already implemented in the standard library. Unless you are
 writing a free-standing application (e.g. a kernel), you do not need to provide
@@ -1602,7 +1608,6 @@ register_diagnostics! {
     // E0006 // merged with E0005
 //  E0134,
 //  E0135,
-    E0138,
     E0139,
     E0264, // unknown external lang item
     E0269, // not all control paths return a value
