@@ -821,6 +821,70 @@ This error indicates that the compiler found multiple functions with the
 point into a Rust program.
 "##,
 
+// FIXME link this to the relevant turpl chapters for instilling fear of the
+//       transmute gods in the user
+E0139: r##"
+There are various restrictions on transmuting between types in Rust; for example
+types being transmuted must have the same size. To apply all these restrictions,
+the compiler must know the exact types that may be transmuted. When type
+parameters are involved, this cannot always be done.
+
+So, for example, the following is not allowed:
+
+```
+struct Foo<T>(Vec<T>)
+
+fn foo<T>(x: Vec<T>) {
+    // we are transmuting between Vec<T> and Foo<T> here
+    let y: Foo<T> = unsafe { transmute(x) };
+    // do something with y
+}
+```
+
+In this specific case there's a good chance that the transmute is harmless (but
+this is not guaranteed by Rust). However, when alignment and enum optimizations
+come into the picture, it's quite likely that the sizes may or may not match
+with different type parameter substitutions. It's not possible to check this for
+_all_ possible types, so `transmute()` simply only accepts types without any
+unsubstituted type parameters.
+
+If you need this, there's a good chance you're doing something wrong. Keep in
+mind that Rust doesn't guarantee much about the layout of different structs
+(even two structs with identical declarations may have different layouts). If
+there is a solution that avoids the transmute entirely, try it instead.
+
+If it's possible, hand-monomorphize the code by writing the function for each
+possible type substitution. It's possible to use traits to do this cleanly,
+for example:
+
+```
+trait MyTransmutableType {
+    fn transmute(Vec<Self>) -> Foo<Self>
+}
+
+impl MyTransmutableType for u8 {
+    fn transmute(x: Foo<u8>) -> Vec<u8> {
+        transmute(x)
+    }
+}
+impl MyTransmutableType for String {
+    fn transmute(x: Foo<String>) -> Vec<String> {
+        transmute(x)
+    }
+}
+// ... more impls for the types you intend to transmute
+
+fn foo<T: MyTransmutableType>(x: Vec<T>) {
+    let y: Foo<T> = <T as MyTransmutableType>::transmute(x);
+    // do something with y
+}
+```
+
+Each impl will be checked for a size match in the transmute as usual, and since
+there are no unbound type parameters involved, this should compile unless there
+is a size mismatch in one of the impls.
+"##,
+
 E0152: r##"
 Lang items are already implemented in the standard library. Unless you are
 writing a free-standing application (e.g. a kernel), you do not need to provide
@@ -1608,7 +1672,6 @@ register_diagnostics! {
     // E0006 // merged with E0005
 //  E0134,
 //  E0135,
-    E0139,
     E0264, // unknown external lang item
     E0269, // not all control paths return a value
     E0270, // computation may converge in a function marked as diverging
