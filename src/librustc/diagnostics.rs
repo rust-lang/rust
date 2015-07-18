@@ -803,6 +803,12 @@ fn main() {
 See also https://doc.rust-lang.org/book/unsafe.html
 "##,
 
+// This shouldn't really ever trigger since the repeated value error comes first
+E0136: r##"
+A binary can only have one entry point, and by default that entry point is the
+function `main()`. If there are multiple such functions, please rename one.
+"##,
+
 E0137: r##"
 This error indicates that the compiler found multiple functions with the
 `#[main]` attribute. This is an error because there must be a unique entry
@@ -1596,7 +1602,6 @@ register_diagnostics! {
     // E0006 // merged with E0005
 //  E0134,
 //  E0135,
-    E0136,
     E0138,
     E0139,
     E0264, // unknown external lang item
