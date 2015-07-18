@@ -93,6 +93,23 @@ mod bar {
 ```
 "##,
 
+E0253: r##"
+Attempt was made to import an unimportable value.  This can happen when
+trying to import a function from a trait.  An example of this error:
+
+```
+mod foo {
+    pub trait MyTrait {
+        fn doSomething();
+    }
+}
+use foo::MyTrait::doSomething;
+```
+
+In general, it's not legal to directly import functions from a crate or
+concrete type.
+"##,
+
 E0255: r##"
 You can't import a value whose name is the same as another value defined in the
 module.
@@ -262,7 +279,6 @@ http://doc.rust-lang.org/reference.html#use-declarations
 register_diagnostics! {
     E0153, // called no where
     E0157, // called from no where
-    E0253, // not directly importable
     E0254, // import conflicts with imported crate in this module
     E0257,
     E0258,
