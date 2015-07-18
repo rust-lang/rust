@@ -94,8 +94,8 @@ mod bar {
 "##,
 
 E0253: r##"
-Attempt was made to import an unimportable value.  This can happen when
-trying to import a function from a trait.  An example of this error:
+Attempt was made to import an unimportable value. This can happen when
+trying to import a function from a trait. An example of this error:
 
 ```
 mod foo {
@@ -106,8 +106,8 @@ mod foo {
 use foo::MyTrait::doSomething;
 ```
 
-In general, it's not legal to directly import functions from a crate or
-concrete type.
+In general, it's not legal to directly import methods belonging to a
+trait or concrete type.
 "##,
 
 E0255: r##"
