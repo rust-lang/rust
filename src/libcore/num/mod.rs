@@ -24,6 +24,7 @@ use mem::size_of;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
 use str::{FromStr, StrExt};
+use slice::SliceExt;
 
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///
@@ -1448,19 +1449,30 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32)
                                          -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;
     use self::ParseIntError as PIE;
+
     assert!(radix >= 2 && radix <= 36,
            "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
            radix);
 
+    if src.is_empty() {
+        return Err(PIE { kind: Empty });
+    }
+
     let is_signed_ty = T::from_u32(0) > T::min_value();
 
-    match src.slice_shift_char() {
-        Some(('-', "")) => Err(PIE { kind: Empty }),
-        Some(('-', src)) if is_signed_ty => {
+    // all valid digits are ascii, so we will just iterate over the utf8 bytes
+    // and cast them to chars. .to_digit() will safely return None for anything
+    // other than a valid ascii digit for a the given radix, including the first-byte
+    // of multi-byte sequences
+    let src = src.as_bytes();
+
+    match (src[0], &src[1..])  {
+        (b'-', digits) if digits.is_empty() => Err(PIE { kind: Empty }),
+        (b'-', digits) if is_signed_ty => {
             // The number is negative
             let mut result = T::from_u32(0);
-            for c in src.chars() {
-                let x = match c.to_digit(radix) {
+            for &c in digits {
+                let x = match (c as char).to_digit(radix) {
                     Some(x) => x,
                     None => return Err(PIE { kind: InvalidDigit }),
                 };
@@ -1475,11 +1487,14 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32)
             }
             Ok(result)
         },
-        Some((_, _)) => {
+        (c, digits) => {
             // The number is signed
-            let mut result = T::from_u32(0);
-            for c in src.chars() {
-                let x = match c.to_digit(radix) {
+            let mut result = match (c as char).to_digit(radix) {
+                Some(x) => T::from_u32(x),
+                None => return Err(PIE { kind: InvalidDigit }),
+            };
+            for &c in digits {
+                let x = match (c as char).to_digit(radix) {
                     Some(x) => x,
                     None => return Err(PIE { kind: InvalidDigit }),
                 };
@@ -1493,8 +1508,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32)
                 };
             }
             Ok(result)
-        },
-        None => Err(ParseIntError { kind: Empty }),
+        }
     }
 }
 
