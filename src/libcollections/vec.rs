@@ -231,6 +231,7 @@ impl<T> Vec<T> {
     ///
     /// * `ptr` needs to have been previously allocated via `String`/`Vec<T>`
     ///   (at least, it's highly likely to be incorrect if it wasn't).
+    /// * `length` needs to be the length that less than or equal to `capacity`.
     /// * `capacity` needs to be the capacity that the pointer was allocated with.
     ///
     /// Violating these may cause problems like corrupting the allocator's
