@@ -35,7 +35,6 @@ pub fn opts() -> TargetOptions {
     TargetOptions {
         // OSX has -dead_strip, which doesn't rely on ffunction_sections
         function_sections: false,
-        linker: "cc".to_string(),
         dynamic_linking: true,
         executables: true,
         is_like_osx: true,
