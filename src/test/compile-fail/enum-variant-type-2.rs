@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -14,6 +14,6 @@ enum Foo {
     Bar
 }
 
-fn foo(x: Foo::Bar) {} //~ERROR found value name used as a type
+fn foo(x: Foo::Bar) {} //~ERROR found value `Foo::Bar` used as a type
 
 fn main() {}
