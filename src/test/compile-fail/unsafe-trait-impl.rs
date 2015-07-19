@@ -16,7 +16,9 @@ trait Foo {
 
 impl Foo for u32 {
     fn len(&self) -> u32 { *self }
-    //~^ ERROR incompatible type for trait: expected unsafe fn, found normal fn
+    //~^ ERROR method `len` has an incompatible type for trait
+    //~| expected unsafe fn,
+    //~| found normal fn
 }
 
 fn main() { }

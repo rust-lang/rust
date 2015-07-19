@@ -16,7 +16,9 @@ trait Mumbo {
 impl Mumbo for usize {
     // Cannot have a larger effect than the trait:
     unsafe fn jumbo(&self, x: &usize) { *self + *x; }
-    //~^ ERROR expected normal fn, found unsafe fn
+    //~^ ERROR method `jumbo` has an incompatible type for trait
+    //~| expected normal fn,
+    //~| found unsafe fn
 }
 
 fn main() {}
