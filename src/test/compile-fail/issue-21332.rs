@@ -8,19 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts)]
+struct S;
 
-trait Foo {
-    const BAR: u32;
-}
-
-struct SignedBar;
-
-impl Foo for SignedBar {
-    const BAR: i32 = -1;
-    //~^ ERROR implemented const `BAR` has an incompatible type for trait
-    //~| expected u32,
-    //~| found i32 [E0326]
+impl Iterator for S {
+    type Item = i32;
+    fn next(&mut self) -> Result<i32, i32> { Ok(7) }
+    //~^ ERROR method `next` has an incompatible type for trait
+    //~| expected enum `core::option::Option`
+    //~|    found enum `core::result::Result` [E0053]
 }
 
 fn main() {}

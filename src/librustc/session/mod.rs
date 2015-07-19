@@ -301,7 +301,8 @@ fn split_msg_into_multilines(msg: &str) -> Option<String> {
         !msg.contains("if and else have incompatible types") &&
         !msg.contains("if may be missing an else clause") &&
         !msg.contains("match arms have incompatible types") &&
-        !msg.contains("structure constructor specifies a structure of type") {
+        !msg.contains("structure constructor specifies a structure of type") &&
+        !msg.contains("has an incompatible type for trait") {
             return None
     }
     let first = msg.match_indices("expected").filter(|s| {
