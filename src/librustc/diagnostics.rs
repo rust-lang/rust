@@ -1002,6 +1002,14 @@ you prefer them unqualified, you can import the variants into scope:
 use Method::*;
 enum Method { GET, POST }
 ```
+
+If you want others to be able to import variants from your module directly, use
+`pub use`:
+
+```
+pub use Method::*;
+enum Method { GET, POST }
+```
 "##,
 
 E0261: r##"
