@@ -573,8 +573,8 @@ implementation if the function is called with unparametrized substitutions
 (i.e., substitutions where none of the substituted types are themselves
 parametrized).
 
-However, with trait objects we have to make a table containing _every object
-that implements the trait_. Now, if it has type parameters, we need to add
+However, with trait objects we have to make a table containing _every_ object
+that implements the trait. Now, if it has type parameters, we need to add
 implementations for every type that implements the trait, and there could
 theoretically be an infinite number of types.
 
@@ -609,9 +609,9 @@ fn call_foo(thing: Box<Trait>) {
 ```
 
 we don't just need to create a table of all implementations of all methods of
-`Trait`, we need to create a table of all implementations of `foo()`, _for each
-different type fed to `foo()`_. In this case this turns out to be (10 types
-implementing `Trait`)*(3 types being fed to `foo()`) = 30 implementations!
+`Trait`, we need to create such a table, for each different type fed to
+`foo()`. In this case this turns out to be (10 types implementing `Trait`)*(3
+types being fed to `foo()`) = 30 implementations!
 
 With real world traits these numbers can grow drastically.
 
@@ -684,10 +684,10 @@ If the trait `Foo` was deriving from something like `Super<String>` or
 `Super<T>` (where `Foo` itself is `Foo<T>`), this is okay, because given a type
 `get_a()` will definitely return an object of that type.
 
-However, if it derives from `Super<Self>`, the method `get_a()` would return an
-object of unknown type when called on the function, _even though `Super` is
-object safe_. `Self` type parameters let us make object safe traits no longer
-safe, so they are forbidden when specifying supertraits.
+However, if it derives from `Super<Self>`, even though `Super` is object safe,
+the method `get_a()` would return an object of unknown type when called on the
+function. `Self` type parameters let us make object safe traits no longer safe,
+so they are forbidden when specifying supertraits.
 
 There's no easy fix for this, generally code will need to be refactored so that
 you no longer need to derive from `Super<Self>`.
@@ -695,8 +695,8 @@ you no longer need to derive from `Super<Self>`.
 
 E0079: r##"
 Enum variants which contain no data can be given a custom integer
-representation. This error indicates that the value provided is not an
-integer literal and is therefore invalid.
+representation. This error indicates that the value provided is not an integer
+literal and is therefore invalid.
 
 For example, in the following code,
 
@@ -708,8 +708,8 @@ enum Foo {
 
 we try to set the representation to a string.
 
-There's no general fix for this; if you can work with an integer
-then just set it to one:
+There's no general fix for this; if you can work with an integer then just set
+it to one:
 
 ```
 enum Foo {
@@ -717,9 +717,8 @@ enum Foo {
 }
 ```
 
-however if you actually wanted a mapping between variants
-and non-integer objects, it may be preferable to use a method with
-a match instead:
+however if you actually wanted a mapping between variants and non-integer
+objects, it may be preferable to use a method with a match instead:
 
 ```
 enum Foo { Q }
@@ -1156,6 +1155,73 @@ It is advisable to find out what the unhandled cases are and check for them,
 returning an appropriate value or panicking if necessary.
 "##,
 
+E0270: r##"
+Rust lets you define functions which are known to never return, i.e. are
+"diverging", by marking its return type as `!`.
+
+For example, the following functions never return:
+
+```
+fn foo() -> ! {
+    loop {}
+}
+
+fn bar() -> ! {
+    foo() // foo() is diverging, so this will diverge too
+}
+
+fn baz() -> ! {
+    panic!(); // this macro internally expands to a call to a diverging function
+}
+
+```
+
+Such functions can be used in a place where a value is expected without
+returning a value of that type,  for instance:
+
+```
+let y = match x {
+    1 => 1,
+    2 => 4,
+    _ => foo() // diverging function called here
+};
+println!("{}", y)
+```
+
+If the third arm of the match block is reached, since `foo()` doesn't ever
+return control to the match block, it is fine to use it in a place where an
+integer was expected. The `match` block will never finish executing, and any
+point where `y` (like the print statement) is needed will not be reached.
+
+However, if we had a diverging function that actually does finish execution
+
+```
+fn foo() -> {
+    loop {break;}
+}
+```
+
+then we would have an unknown value for `y` in the following code:
+
+```
+let y = match x {
+    1 => 1,
+    2 => 4,
+    _ => foo()
+};
+println!("{}", y);
+```
+
+In the previous example, the print statement was never reached when the wildcard
+match arm was hit, so we were okay with `foo()` not returning an integer that we
+could set to `y`. But in this example, `foo()` actually does return control, so
+the print statement will be executed with an uninitialized value.
+
+Obviously we cannot have functions which are allowed to be used in such
+positions and yet can return control. So, if you are defining a function that
+returns `!`, make sure that there is no way for it to actually finish executing.
+"##,
+
 E0271: r##"
 This is because of a type mismatch between the associated type of some
 trait (e.g. `T::Bar`, where `T` implements `trait Quux { type Bar; }`)
@@ -1290,6 +1356,11 @@ for v in &vs {
     }
 }
 ```
+"##,
+
+E0272: r##"
+
+The `#[rustc_on_unimplemented]` attribute lets you specify
 "##,
 
 E0277: r##"
@@ -1716,7 +1787,6 @@ register_diagnostics! {
 //  E0134,
 //  E0135,
     E0264, // unknown external lang item
-    E0270, // computation may converge in a function marked as diverging
     E0272, // rustc_on_unimplemented attribute refers to non-existent type parameter
     E0273, // rustc_on_unimplemented must have named format arguments
     E0274, // rustc_on_unimplemented must have a value
