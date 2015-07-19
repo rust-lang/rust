@@ -1121,6 +1121,41 @@ fn some_func() {
 ```
 "##,
 
+E0269: r##"
+Functions must eventually return a value of their return type. For example, in
+the following function
+
+```
+fn foo(x: u8) -> u8 {
+    if x > 0 {
+        x // alternatively, `return x`
+    }
+    // nothing here
+}
+```
+
+if the condition is true, the value `x` is returned, but if the condition is
+false, control exits the `if` block and reaches a place where nothing is being
+returned. All possible control paths must eventually return a `u8`, which is not
+happening here.
+
+An easy fix for this in a complicated function is to specify a default return
+value, if possible:
+
+```
+fn foo(x: u8) -> u8 {
+    if x > 0 {
+        x // alternatively, `return x`
+    }
+    // lots of other if branches
+    0 // return 0 if all else fails
+}
+```
+
+It is advisable to find out what the unhandled cases are and check for them,
+returning an appropriate value or panicking if necessary.
+"##,
+
 E0271: r##"
 This is because of a type mismatch between the associated type of some
 trait (e.g. `T::Bar`, where `T` implements `trait Quux { type Bar; }`)
@@ -1681,7 +1716,6 @@ register_diagnostics! {
 //  E0134,
 //  E0135,
     E0264, // unknown external lang item
-    E0269, // not all control paths return a value
     E0270, // computation may converge in a function marked as diverging
     E0272, // rustc_on_unimplemented attribute refers to non-existent type parameter
     E0273, // rustc_on_unimplemented must have named format arguments
