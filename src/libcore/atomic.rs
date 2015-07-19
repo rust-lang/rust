@@ -78,6 +78,7 @@ use intrinsics;
 use cell::UnsafeCell;
 
 use default::Default;
+use fmt;
 
 /// A boolean type which can be safely shared between threads.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1087,5 +1088,25 @@ pub fn fence(order: Ordering) {
             SeqCst  => intrinsics::atomic_fence(),
             Relaxed => panic!("there is no such thing as a relaxed fence")
         }
+    }
+}
+
+macro_rules! impl_Debug {
+    ($($t:ident)*) => ($(
+        #[stable(feature = "atomic_debug", since = "1.3.0")]
+        impl fmt::Debug for $t {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.debug_tuple(stringify!($t)).field(&self.load(Ordering::SeqCst)).finish()
+            }
+        }
+    )*);
+}
+
+impl_Debug!{ AtomicUsize AtomicIsize AtomicBool }
+
+#[stable(feature = "atomic_debug", since = "1.3.0")]
+impl<T> fmt::Debug for AtomicPtr<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("AtomicPtr").field(&self.load(Ordering::SeqCst)).finish()
     }
 }
