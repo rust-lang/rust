@@ -199,7 +199,13 @@ equality.
 
 [PartialEq]: ../core/cmp/trait.PartialEq.html
 
+Here we defined a new struct `Rectangle` that accepts numbers of any
+precision—really, objects of pretty much any type—as long as they can be
+compared for equality. Could we do the same for our `HasArea` structs, `Square`
+and `Circle`? Yes, but they need multiplication, and to work with that we need
+to know more about [operator traits][operators-and-overloading].
 
+[operators-and-overloading]: operators-and-overloading.html
 
 # Rules for implementing traits
 

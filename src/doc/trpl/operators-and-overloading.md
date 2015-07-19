@@ -81,3 +81,55 @@ will let you do this:
 let p: Point = // ...
 let x: f64 = p + 2i32;
 ```
+
+# Using operator traits in generic structs
+
+Now that we know how operator traits are defined, we can define our `HasArea`
+trait and `Square` struct from the [traits chapter][traits] more generically:
+
+[traits]: traits.html
+
+```rust
+use std::ops::Mul;
+
+trait HasArea<T> {
+    fn area(&self) -> T;
+}
+
+struct Square<T> {
+    x: T,
+    y: T,
+    side: T,
+}
+
+impl<T> HasArea<T> for Square<T>
+        where T: Mul<Output=T> + Copy {
+    fn area(&self) -> T {
+        self.side * self.side
+    }
+}
+
+fn main() {
+    let s = Square {
+        x: 0.0f64,
+        y: 0.0f64,
+        side: 12.0f64,
+    };
+
+    println!("Area of s: {}", s.area());
+}
+```
+
+For `HasArea` and `Square`, we just declare a type parameter `T` and replace
+`f64` with it. The `impl` needs more involved modifications:
+
+```ignore
+impl<T> HasArea<T> for Square<T>
+        where T: Mul<Output=T> + Copy { ... }
+```
+
+The `area` method requires that we can multiply the sides, so we declare that
+type `T` must implement `std::ops::Mul`. Like `Add`, mentioned above, `Mul`
+itself takes an `Output` parameter: since we know that numbers don't change
+type when multiplied, we also set it to `T`. `T` must also support copying, so
+Rust doesn't try to move `self.side` into the return value.
