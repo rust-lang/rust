@@ -13,5 +13,22 @@ fn foo() -> bool {
                                                          trivial_value);
     (((((((((aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
              a + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-             aaaaa)))))))))
+             aaaaa)))))))));
+
+    if 1 + 2 > 0 {
+        let result = 5;
+        result
+    } else {
+        4
+    };
+
+    if cond() {
+        something();
+    } else if different_cond() {
+        something_else();
+    } else {
+        // Check subformatting
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    }
 }

@@ -24,7 +24,9 @@ pub fn span_after(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
 
 #[inline]
 pub fn prev_char(s: &str, mut i: usize) -> usize {
-    if i == 0 { return 0; }
+    if i == 0 {
+        return 0;
+    }
 
     i -= 1;
     while !s.is_char_boundary(i) {
@@ -35,7 +37,9 @@ pub fn prev_char(s: &str, mut i: usize) -> usize {
 
 #[inline]
 pub fn next_char(s: &str, mut i: usize) -> usize {
-    if i >= s.len() { return s.len(); }
+    if i >= s.len() {
+        return s.len();
+    }
 
     while !s.is_char_boundary(i) {
         i += 1;

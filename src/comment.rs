@@ -17,9 +17,11 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
     let s = orig.trim();
 
     // Edge case: block comments. Let's not trim their lines (for now).
-    let opener = if block_style { "/* " } else { "// " };
-    let closer = if block_style { " */" } else { "" };
-    let line_start = if block_style { " * " } else { "// " };
+    let (opener, closer, line_start) = if block_style {
+        ("/* ", " */", " * ")
+    } else {
+        ("// ", "", "// ")
+    };
 
     let max_chars = width.checked_sub(closer.len()).unwrap_or(1)
                          .checked_sub(opener.len()).unwrap_or(1);

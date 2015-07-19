@@ -70,7 +70,11 @@ impl fmt::Display for Issue {
             IssueType::Todo => "TODO",
             IssueType::Fixme => "FIXME",
         };
-        let details = if self.missing_number { " without issue number" } else { "" };
+        let details = if self.missing_number {
+            " without issue number"
+        } else {
+            ""
+        };
 
         write!(fmt, "{}{}", msg, details)
     }
@@ -177,7 +181,7 @@ impl BadIssueSeeker {
                       issue: Issue,
                       mut part: NumberPart)
                       -> IssueClassification {
-        if ! issue.missing_number || c == '\n' {
+        if !issue.missing_number || c == '\n' {
             return IssueClassification::Bad(issue);
         } else if c == ')' {
             return if let NumberPart::CloseParen = part {
