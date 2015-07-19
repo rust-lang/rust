@@ -46,7 +46,7 @@ use metadata::csearch;
 use middle;
 use middle::cast;
 use middle::check_const;
-use middle::const_eval::{self, ConstVal};
+use middle::const_eval::{self, ConstVal, ErrKind};
 use middle::def::{self, DefMap, ExportMap};
 use middle::dependency_format;
 use middle::fast_reject;
@@ -6182,11 +6182,13 @@ impl<'tcx> ctxt<'tcx> {
                         ..
                     }) if segments.len() == 1 =>
                         format!("found variable"),
-                    _ => format!("{}", err.description()),
+                    _ => match err.kind {
+                        ErrKind::MiscCatchAll => format!("but found {}", err.description()),
+                        _ => format!("but {}", err.description())
+                    }
                 };
                 span_err!(self.sess, count_expr.span, E0307,
-                    "{}, expected constant integer for repeat count",
-                    err_msg);
+                    "expected constant integer for repeat count, {}", err_msg);
             }
         }
         0
