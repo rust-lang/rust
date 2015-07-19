@@ -95,7 +95,7 @@ mod bar {
 
 E0253: r##"
 Attempt was made to import an unimportable value. This can happen when
-trying to import a function from a trait. An example of this error:
+trying to import a method from a trait. An example of this error:
 
 ```
 mod foo {
