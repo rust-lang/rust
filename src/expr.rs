@@ -84,6 +84,16 @@ impl Rewrite for ast::Expr {
                                 cond,
                                 if_block,
                                 else_block.as_ref().map(|e| &**e),
+                                None,
+                                width,
+                                offset)
+            }
+            ast::Expr_::ExprIfLet(ref pat, ref cond, ref if_block, ref else_block) => {
+                rewrite_if_else(context,
+                                cond,
+                                if_block,
+                                else_block.as_ref().map(|e| &**e),
+                                Some(pat),
                                 width,
                                 offset)
             }
@@ -112,9 +122,16 @@ impl Rewrite for ast::Block {
     }
 }
 
+// TODO(#18): implement pattern formatting
+impl Rewrite for ast::Pat {
+    fn rewrite(&self, context: &RewriteContext, _: usize, _: usize) -> Option<String> {
+        context.codemap.span_to_snippet(self.span).ok()
+    }
+}
+
 fn rewrite_label(label: Option<ast::Ident>) -> String {
     match label {
-        Some(ident) => format!("{}: ", ident.as_str()),
+        Some(ident) => format!("{}: ", ident),
         None => "".to_owned()
     }
 }
@@ -123,23 +140,43 @@ fn rewrite_if_else(context: &RewriteContext,
                    cond: &ast::Expr,
                    if_block: &ast::Block,
                    else_block: Option<&ast::Expr>,
+                   pat: Option<&ast::Pat>,
                    width: usize,
                    offset: usize)
                    -> Option<String> {
     // FIXME: missing comments between control statements and blocks
-    let cond_string = try_opt!(cond.rewrite(context, width - 3 - 2, offset + 3));
-    let if_block_string = try_opt!(if_block.rewrite(context, width, offset));
+    // 3 = "if ", 2 = " {"
+    let pat_string = match pat {
+        Some(pat) => {
+            // 7 = "let ".len() + " = ".len()
+            // 4 = "let ".len()
+            let pat_string = try_opt!(pat.rewrite(context, width - 3 - 2 - 7, offset + 3 + 4));
+            format!("let {} = ", pat_string)
+        }
+        None => String::new()
+    };
 
-    match else_block {
-        Some(else_block) => {
-            else_block.rewrite(context, width, offset).map(|else_block_string| {
-                format!("if {} {} else {}", cond_string, if_block_string, else_block_string)
-            })
-        }
-        None => {
-            Some(format!("if {} {}", cond_string, if_block_string))
-        }
+    // Consider only the last line of the pat string
+    let extra_offset = match pat_string.rfind('\n') {
+        // 1 for newline character
+        Some(idx) => pat_string.len() - idx - 1 - offset,
+        None => 3 + pat_string.len()
+    };
+
+    let cond_string = try_opt!(cond.rewrite(context,
+                                            width - extra_offset - 2,
+                                            offset + extra_offset));
+    let if_block_string = try_opt!(if_block.rewrite(context, width, offset));
+    let mut result = format!("if {}{} {}", pat_string, cond_string, if_block_string);
+
+    if let Some(else_block) = else_block {
+        let else_block_string = try_opt!(else_block.rewrite(context, width, offset));
+
+        result.push_str(" else ");
+        result.push_str(&else_block_string);
     }
+
+    Some(result)
 }
 
 fn rewrite_string_lit(context: &RewriteContext,

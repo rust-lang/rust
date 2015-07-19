@@ -16,6 +16,20 @@ some_ridiculously_loooooooooooooooooooooong_function(10000 * 30000000000 + 40000
 
      if  1  + 2 > 0  { let result = 5; result } else { 4};
 
+    if  let   Some(x)  =  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa {
+        // Nothing
+    }
+
+    if  let   Some(x)  =  (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) {}
+
+    if let (some_very_large,
+            tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1
+        + 2 + 3 {
+    }
+
+    if let (some_very_large,
+            tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1111 + 2222 {}
+
     if cond() {
         something();
     } else  if different_cond() {
