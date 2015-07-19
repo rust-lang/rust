@@ -56,21 +56,45 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprTup(ref items) => {
                 rewrite_tuple_lit(context, items, self.span, width, offset)
             }
-            ast::Expr_::ExprWhile(ref subexpr, ref block, label) => {
-                let label_string = rewrite_label(label);
-                // 6 = "while "
-                // 2 = " {"
-                let expr_width = width - 6 - 2 - label_string.len();
-                let expr_offset = offset + 6 + label_string.len();
-
-                subexpr.rewrite(context, expr_width, expr_offset).and_then(|expr_string| {
-                    // FIXME: this drops any comment between "loop" and the block.
-                    block.rewrite(context, width, offset).map(|result| {
-                        format!("{}while {} {}", rewrite_label(label), expr_string, result)
-                    })
-                })
+            ast::Expr_::ExprWhile(ref cond, ref block, label) => {
+                rewrite_loop(context,
+                             cond,
+                             block,
+                             label,
+                             None,
+                             "while ",
+                             "let ",
+                             " = ",
+                             width,
+                             offset)
+            }
+            ast::Expr_::ExprWhileLet(ref pat, ref cond, ref block, label) => {
+                rewrite_loop(context,
+                             cond,
+                             block,
+                             label,
+                             Some(pat),
+                             "while ",
+                             "let ",
+                             " = ",
+                             width,
+                             offset)
+            }
+            ast::Expr_::ExprForLoop(ref pat, ref cond, ref block, label) => {
+                rewrite_loop(context,
+                             cond,
+                             block,
+                             label,
+                             Some(pat),
+                             "for ",
+                             "",
+                             " in ",
+                             width,
+                             offset)
             }
             ast::Expr_::ExprLoop(ref block, label) => {
+                // Of all the loops, this is the only one that does not use
+                // rewrite_loop!
                 // FIXME: this drops any comment between "loop" and the block.
                 block.rewrite(context, width, offset).map(|result| {
                     format!("{}loop {}", rewrite_label(label), result)
@@ -96,6 +120,14 @@ impl Rewrite for ast::Expr {
                                 Some(pat),
                                 width,
                                 offset)
+            }
+            // We reformat it ourselves because rustc gives us a bad span for ranges
+            ast::Expr_::ExprRange(ref left, ref right) => {
+                rewrite_range(context,
+                              left.as_ref().map(|e| &**e),
+                              right.as_ref().map(|e| &**e),
+                              width,
+                              offset)
             }
             _ => context.codemap.span_to_snippet(self.span).ok()
         }
@@ -136,6 +168,61 @@ fn rewrite_label(label: Option<ast::Ident>) -> String {
     }
 }
 
+// FIXME: this doesn't play well with line breaks
+fn rewrite_range(context: &RewriteContext,
+                 left: Option<&ast::Expr>,
+                 right: Option<&ast::Expr>,
+                 width: usize,
+                 offset: usize)
+                 -> Option<String> {
+    let left_string = match left {
+        // 2 = ..
+        Some(expr) => try_opt!(expr.rewrite(context, width - 2, offset)),
+        None => String::new()
+    };
+
+    let right_string = match right {
+        Some(expr) => {
+            // 2 = ..
+            let max_width = (width - 2).checked_sub(left_string.len()).unwrap_or(0);
+            try_opt!(expr.rewrite(context, max_width, offset + 2 + left_string.len()))
+        }
+        None => String::new()
+    };
+
+    Some(format!("{}..{}", left_string, right_string))
+}
+
+fn rewrite_loop(context: &RewriteContext,
+                cond: &ast::Expr,
+                block: &ast::Block,
+                label: Option<ast::Ident>,
+                pat: Option<&ast::Pat>,
+                keyword: &str,
+                matcher: &str, // FIXME: think of better identifiers
+                connector: &str,
+                width: usize,
+                offset: usize)
+                -> Option<String> {
+    let label_string = rewrite_label(label);
+    // 2 = " {"
+    let inner_width = width - keyword.len() - 2 - label_string.len();
+    let inner_offset = offset + keyword.len() + label_string.len();
+
+    let pat_expr_string = try_opt!(rewrite_pat_expr(context,
+                                                    pat,
+                                                    cond,
+                                                    matcher,
+                                                    connector,
+                                                    inner_width,
+                                                    inner_offset));
+
+    // FIXME: this drops any comment between "loop" and the block.
+    block.rewrite(context, width, offset).map(|result| {
+        format!("{}{}{} {}", label_string, keyword, pat_expr_string, result)
+    })
+}
+
 fn rewrite_if_else(context: &RewriteContext,
                    cond: &ast::Expr,
                    if_block: &ast::Block,
@@ -144,30 +231,17 @@ fn rewrite_if_else(context: &RewriteContext,
                    width: usize,
                    offset: usize)
                    -> Option<String> {
-    // FIXME: missing comments between control statements and blocks
     // 3 = "if ", 2 = " {"
-    let pat_string = match pat {
-        Some(pat) => {
-            // 7 = "let ".len() + " = ".len()
-            // 4 = "let ".len()
-            let pat_string = try_opt!(pat.rewrite(context, width - 3 - 2 - 7, offset + 3 + 4));
-            format!("let {} = ", pat_string)
-        }
-        None => String::new()
-    };
+    let pat_expr_string = try_opt!(rewrite_pat_expr(context,
+                                                    pat,
+                                                    cond,
+                                                    "let ",
+                                                    " = ",
+                                                    width - 3 - 2,
+                                                    offset + 3));
 
-    // Consider only the last line of the pat string
-    let extra_offset = match pat_string.rfind('\n') {
-        // 1 for newline character
-        Some(idx) => pat_string.len() - idx - 1 - offset,
-        None => 3 + pat_string.len()
-    };
-
-    let cond_string = try_opt!(cond.rewrite(context,
-                                            width - extra_offset - 2,
-                                            offset + extra_offset));
     let if_block_string = try_opt!(if_block.rewrite(context, width, offset));
-    let mut result = format!("if {}{} {}", pat_string, cond_string, if_block_string);
+    let mut result = format!("if {} {}", pat_expr_string, if_block_string);
 
     if let Some(else_block) = else_block {
         let else_block_string = try_opt!(else_block.rewrite(context, width, offset));
@@ -175,6 +249,40 @@ fn rewrite_if_else(context: &RewriteContext,
         result.push_str(" else ");
         result.push_str(&else_block_string);
     }
+
+    Some(result)
+}
+
+fn rewrite_pat_expr(context: &RewriteContext,
+                    pat: Option<&ast::Pat>,
+                    expr: &ast::Expr,
+                    matcher: &str,
+                    connector: &str,
+                    width: usize,
+                    offset: usize)
+                    -> Option<String> {
+    let mut result = match pat {
+        Some(pat) => {
+            let pat_string = try_opt!(pat.rewrite(context,
+                                                  width - connector.len() - matcher.len(),
+                                                  offset + matcher.len()));
+            format!("{}{}{}", matcher, pat_string, connector)
+        }
+        None => String::new()
+    };
+
+    // Consider only the last line of the pat string
+    let extra_offset = match result.rfind('\n') {
+        // 1 for newline character
+        Some(idx) => result.len() - idx - 1 - offset,
+        None => result.len()
+    };
+
+    let expr_string = try_opt!(expr.rewrite(context,
+                                            width - extra_offset,
+                                            offset + extra_offset));
+
+    result.push_str(&expr_string);
 
     Some(result)
 }

@@ -13,4 +13,13 @@ let x = loop { do_forever(); };
 
    while aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb {
    }
+
+    'b: for xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx in some_iter(arg1, arg2) {
+        // do smth
+    }
+
+    while let  Some(i) =     x.find('s')
+    {
+        x.update();
+    }
 }

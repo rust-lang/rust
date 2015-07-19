@@ -136,7 +136,11 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
         let first = i == 0;
         let last = i == items.len() - 1;
         let separate = !last || trailing_separator;
-        let item_sep_len = if separate { sep_len } else { 0 };
+        let item_sep_len = if separate {
+            sep_len
+        } else {
+            0
+        };
         let item_width = item.item.len() + item_sep_len;
 
         match tactic {
@@ -208,8 +212,7 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
             let comment = item.post_comment.as_ref().unwrap();
             // Use block-style only for the last item or multiline comments.
             let block_style = formatting.ends_with_newline && last ||
-                              comment.trim().contains('\n') ||
-                              comment.trim().len() > width;
+                              comment.trim().contains('\n') || comment.trim().len() > width;
 
             let formatted_comment = rewrite_comment(comment, block_style, width, offset);
 
