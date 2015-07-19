@@ -152,6 +152,57 @@ We get a compile-time error:
 error: the trait `HasArea` is not implemented for the type `_` [E0277]
 ```
 
+## Traits bounds for generic structs
+
+Trait constraints also can apply to implementations for generic structs.  Just
+append the constraint when you declare type parameters. Here is a new type
+type `Rectangle<T>` and its operation `is_square()`:
+
+```rust
+struct Rectangle<T> {
+    x: T,
+    y: T,
+    width: T,
+    height: T,
+}
+
+impl<T: PartialEq> Rectangle<T> {
+    fn is_square(&self) -> bool {
+        self.width == self.height
+    }
+}
+
+fn main() {
+    let mut r = Rectangle {
+        x: 0,
+        y: 0,
+        width: 47,
+        height: 47,
+    };
+
+    assert!(r.is_square());
+
+    r.height = 42;
+    assert!(!r.is_square());
+}
+```
+
+`is_square()` needs to check that the sides are equal, so the sides must be of
+a type that implements the [`core::cmp::PartialEq`][PartialEq] trait:
+
+```ignore
+impl<T: PartialEq> Rectangle<T> { ... }
+```
+
+Now, a rectangle can be defined in terms of any type that can be compared for
+equality.
+
+[PartialEq]: ../core/cmp/trait.PartialEq.html
+
+
+
+# Rules for implementing traits
+
 So far, we’ve only added trait implementations to structs, but you can
 implement a trait for any type. So technically, we _could_ implement `HasArea`
 for `i32`:
