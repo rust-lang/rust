@@ -117,7 +117,14 @@ mod tests {
     }
 
     #[test]
-    fn test_int_from_minus_sign() {
-        assert_eq!("-".parse::<i32>().ok(), None);
+    fn test_invalid() {
+        assert_eq!("--129".parse::<i8>().ok(), None);
+        assert_eq!("Съешь".parse::<u8>().ok(), None);
+    }
+
+    #[test]
+    fn test_empty() {
+        assert_eq!("-".parse::<i8>().ok(), None);
+        assert_eq!("".parse::<u8>().ok(), None);
     }
 }
