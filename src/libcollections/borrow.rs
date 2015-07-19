@@ -215,7 +215,7 @@ impl<'a, B: ?Sized> Clone for Cow<'a, B> where B: ToOwned {
 impl<'a, B: ?Sized> Cow<'a, B> where B: ToOwned {
     /// Acquires a mutable reference to the owned form of the data.
     ///
-    /// Copies the data if it is not already owned.
+    /// Clones the data if it is not already owned.
     ///
     /// # Examples
     ///
@@ -241,7 +241,7 @@ impl<'a, B: ?Sized> Cow<'a, B> where B: ToOwned {
 
     /// Extracts the owned data.
     ///
-    /// Copies the data if it is not already owned.
+    /// Clones the data if it is not already owned.
     ///
     /// # Examples
     ///
