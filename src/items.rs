@@ -289,10 +289,10 @@ impl<'a> FmtVisitor<'a> {
 
             arg_items = itemize_list(self.codemap,
                                      arg_items,
-                                     args[min_args-1..].iter(),
+                                     args[min_args-1..].iter().cloned(),
                                      ",",
                                      ")",
-                                     |arg| arg.pat.span.lo,
+                                     span_lo_for_arg,
                                      |arg| arg.ty.span.hi,
                                      |_| String::new(),
                                      comment_span_start,
@@ -780,9 +780,29 @@ impl<'a> FmtVisitor<'a> {
     // TODO we farm this out, but this could spill over the column limit, so we
     // ought to handle it properly.
     fn rewrite_fn_input(&self, arg: &ast::Arg) -> String {
-        format!("{}: {}",
-                pprust::pat_to_string(&arg.pat),
-                pprust::ty_to_string(&arg.ty))
+        if is_named_arg(arg) {
+            format!("{}: {}",
+                    pprust::pat_to_string(&arg.pat),
+                    pprust::ty_to_string(&arg.ty))
+        } else {
+            pprust::ty_to_string(&arg.ty)
+        }
+    }
+}
+
+fn span_lo_for_arg(arg: &ast::Arg) -> BytePos {
+    if is_named_arg(arg) {
+        arg.pat.span.lo
+    } else {
+        arg.ty.span.lo
+    }
+}
+
+fn is_named_arg(arg: &ast::Arg) -> bool {
+    if let ast::Pat_::PatIdent(_, ident, _) = arg.pat.node {
+        ident.node != token::special_idents::invalid
+    } else {
+        true
     }
 }
 
