@@ -26,12 +26,12 @@ impl Rewrite for ast::ViewPath {
         match self.node {
             ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
                 Some(rewrite_use_list(width,
-                                 offset,
-                                 path,
-                                 path_list,
-                                 self.span,
-                                 context.codemap,
-                                 context.config).unwrap_or("".to_owned()))
+                                      offset,
+                                      path,
+                                      path_list,
+                                      self.span,
+                                      context.codemap,
+                                      context.config).unwrap_or("".to_owned()))
             }
             ast::ViewPath_::ViewPathGlob(_) => {
                 // FIXME convert to list?
