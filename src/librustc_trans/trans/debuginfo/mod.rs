@@ -18,7 +18,8 @@ use self::utils::{DIB, span_start, assert_type_for_node_id, contains_nodebug_att
                   create_DIArray, is_node_local_to_unit};
 use self::namespace::{namespace_for_item, NamespaceTreeNode};
 use self::type_names::compute_debuginfo_type_name;
-use self::metadata::{type_metadata, file_metadata, scope_metadata, TypeMap, compile_unit_metadata};
+use self::metadata::{type_metadata, diverging_type_metadata};
+use self::metadata::{file_metadata, scope_metadata, TypeMap, compile_unit_metadata};
 use self::source_loc::InternalDebugLocation;
 
 use llvm;
@@ -29,8 +30,8 @@ use middle::subst::{self, Substs};
 use rustc::ast_map;
 use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
 use trans;
-use trans::monomorphize;
-use middle::ty::Ty;
+use trans::{monomorphize, type_of};
+use middle::ty::{self, Ty};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
 
@@ -40,7 +41,7 @@ use std::ffi::CString;
 use std::ptr;
 use std::rc::Rc;
 use syntax::codemap::{Span, Pos};
-use syntax::{ast, codemap, ast_util};
+use syntax::{abi, ast, codemap, ast_util};
 use syntax::attr::IntType;
 use syntax::parse::token::{self, special_idents};
 
@@ -325,7 +326,6 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let function_type_metadata = unsafe {
         let fn_signature = get_function_signature(cx,
                                                   fn_ast_id,
-                                                  &*fn_decl,
                                                   param_substs,
                                                   span);
         llvm::LLVMDIBuilderCreateSubroutineType(DIB(cx), file_metadata, fn_signature)
@@ -402,35 +402,49 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     fn get_function_signature<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                         fn_ast_id: ast::NodeId,
-                                        fn_decl: &ast::FnDecl,
                                         param_substs: &Substs<'tcx>,
                                         error_reporting_span: Span) -> DIArray {
         if cx.sess().opts.debuginfo == LimitedDebugInfo {
             return create_DIArray(DIB(cx), &[]);
         }
 
-        let mut signature = Vec::with_capacity(fn_decl.inputs.len() + 1);
-
         // Return type -- llvm::DIBuilder wants this at index 0
         assert_type_for_node_id(cx, fn_ast_id, error_reporting_span);
-        let return_type = cx.tcx().node_id_to_type(fn_ast_id);
-        let return_type = monomorphize::apply_param_substs(cx.tcx(),
-                                                           param_substs,
-                                                           &return_type);
-        if return_type.is_nil() {
-            signature.push(ptr::null_mut())
+        let fn_type = cx.tcx().node_id_to_type(fn_ast_id);
+
+        let (sig, abi) = match fn_type.sty {
+            ty::TyBareFn(_, ref barefnty) => {
+                (cx.tcx().erase_late_bound_regions(&barefnty.sig), barefnty.abi)
+            }
+            ty::TyClosure(def_id, substs) => {
+                let closure_type = cx.tcx().closure_type(def_id, substs);
+                (cx.tcx().erase_late_bound_regions(&closure_type.sig), closure_type.abi)
+            }
+
+            _ => cx.sess().bug("get_function_metdata: Expected a function type!")
+        };
+        let sig = monomorphize::apply_param_substs(cx.tcx(), param_substs, &sig);
+
+        let mut signature = Vec::with_capacity(sig.inputs.len() + 1);
+
+        // Return type -- llvm::DIBuilder wants this at index 0
+        signature.push(match sig.output {
+            ty::FnConverging(ret_ty) => match ret_ty.sty {
+                ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
+                _ => type_metadata(cx, ret_ty, codemap::DUMMY_SP)
+            },
+            ty::FnDiverging => diverging_type_metadata(cx)
+        });
+
+        let inputs = &if abi == abi::RustCall {
+            type_of::untuple_arguments(cx, &sig.inputs)
         } else {
-            signature.push(type_metadata(cx, return_type, codemap::DUMMY_SP));
-        }
+            sig.inputs
+        };
 
         // Arguments types
-        for arg in &fn_decl.inputs {
-            assert_type_for_node_id(cx, arg.pat.id, arg.pat.span);
-            let arg_type = cx.tcx().node_id_to_type(arg.pat.id);
-            let arg_type = monomorphize::apply_param_substs(cx.tcx(),
-                                                            param_substs,
-                                                            &arg_type);
-            signature.push(type_metadata(cx, arg_type, codemap::DUMMY_SP));
+        for &argument_type in inputs {
+            signature.push(type_metadata(cx, argument_type, codemap::DUMMY_SP));
         }
 
         return create_DIArray(DIB(cx), &signature[..]);
