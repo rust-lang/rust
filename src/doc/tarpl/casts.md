@@ -9,7 +9,9 @@ using the `as` keyword: `expr as Type`.
 True casts generally revolve around raw pointers and the primitive numeric
 types. Even though they're dangerous, these casts are *infallible* at runtime.
 If a cast triggers some subtle corner case no indication will be given that
-this occurred. The cast will simply succeed.
+this occurred. The cast will simply succeed. That said, casts must be valid
+at the type level, or else they will be prevented statically. For instance,
+`7u8 as bool` will not compile.
 
 That said, casts aren't `unsafe` because they generally can't violate memory
 safety *on their own*. For instance, converting an integer to a raw pointer can
