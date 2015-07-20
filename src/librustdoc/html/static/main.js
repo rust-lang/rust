@@ -105,6 +105,7 @@
             if (!$("#help").hasClass("hidden")) {
                 ev.preventDefault();
                 $("#help").addClass("hidden");
+                $("body").removeClass("blur");
             } else if (!$("#search").hasClass("hidden")) {
                 ev.preventDefault();
                 $("#search").addClass("hidden");
@@ -115,13 +116,14 @@
         case "s":
         case "S":
             ev.preventDefault();
-            focusSearchBar()
+            focusSearchBar();
             break;
 
         case "?":
             if (ev.shiftKey && $("#help").hasClass("hidden")) {
                 ev.preventDefault();
                 $("#help").removeClass("hidden");
+                $("body").addClass("blur");
             }
             break;
         }
@@ -130,8 +132,9 @@
     $(document).on("keypress", handleShortcut);
     $(document).on("keydown", handleShortcut);
     $(document).on("click", function(ev) {
-        if (!$(ev.target).closest("#help").length) {
+        if (!$(e.target).closest("#help > div").length) {
             $("#help").addClass("hidden");
+            $("body").removeClass("blur");
         }
     });
 
