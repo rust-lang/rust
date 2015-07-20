@@ -33,7 +33,7 @@ pub fn opts() -> TargetOptions {
     }).unwrap_or((10, 7));
 
     TargetOptions {
-        // OSX has -dead_strip, which doesn't rely on ffunction_sections
+        // OSX has -dead_strip, which doesn't rely on function_sections
         function_sections: false,
         dynamic_linking: true,
         executables: true,
