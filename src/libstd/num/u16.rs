@@ -9,9 +9,10 @@
 // except according to those terms.
 
 //! The 16-bit unsigned integer type
+//!
+//! *[See also the `u16` primitive type](../primitive.u16.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "u16")]
 
 pub use core::u16::{BITS, BYTES, MIN, MAX};
 

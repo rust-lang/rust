@@ -9,9 +9,10 @@
 // except according to those terms.
 
 //! The 64-bit unsigned integer type
+//!
+//! *[See also the `u64` primitive type](../primitive.u64.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "u64")]
 
 pub use core::u64::{BITS, BYTES, MIN, MAX};
 

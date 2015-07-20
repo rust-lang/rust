@@ -9,9 +9,10 @@
 // except according to those terms.
 
 //! The pointer-sized signed integer type
+//!
+//! *[See also the `isize` primitive type](../primitive.isize.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "isize")]
 
 pub use core::isize::{BITS, BYTES, MIN, MAX};
 

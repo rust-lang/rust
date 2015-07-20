@@ -9,9 +9,10 @@
 // except according to those terms.
 
 //! The 16-bit signed integer type
+//!
+//! *[See also the `i16` primitive type](../primitive.i16.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "i16")]
 
 pub use core::i16::{BITS, BYTES, MIN, MAX};
 

@@ -9,9 +9,10 @@
 // except according to those terms.
 
 //! The 8-bit unsigned integer type
+//!
+//! *[See also the `u8` primitive type](../primitive.u8.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "u8")]
 
 pub use core::u8::{BITS, BYTES, MIN, MAX};
 

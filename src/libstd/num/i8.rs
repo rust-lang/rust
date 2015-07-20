@@ -9,9 +9,10 @@
 // except according to those terms.
 
 //! The 8-bit signed integer type
+//!
+//! *[See also the `i8` primitive type](../primitive.i8.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "i8")]
 
 pub use core::i8::{BITS, BYTES, MIN, MAX};
 

@@ -12,7 +12,6 @@
 //!
 //! For more details, see std::str
 
-#![doc(primitive = "str")]
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use self::pattern::Pattern;
