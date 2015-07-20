@@ -869,7 +869,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 // is the scope `s_id`.  Otherwise, as we do not know
                 // big the free region is precisely, the GLB is undefined.
                 let fr_scope = fr.scope.to_code_extent();
-                if self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id) == fr_scope {
+                if self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id) == fr_scope ||
+                        free_regions.is_static(fr) {
                     Ok(s)
                 } else {
                     Err(TypeError::RegionsNoOverlap(b, a))
