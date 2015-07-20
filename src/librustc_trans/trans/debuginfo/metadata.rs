@@ -796,12 +796,31 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
         }
         ty::TyBareFn(_, ref barefnty) => {
-            subroutine_type_metadata(cx, unique_type_id, &barefnty.sig, usage_site_span)
+            let fn_metadata = subroutine_type_metadata(cx,
+                                                       unique_type_id,
+                                                       &barefnty.sig,
+                                                       usage_site_span).metadata;
+            match debug_context(cx).type_map
+                                   .borrow()
+                                   .find_metadata_for_unique_id(unique_type_id) {
+                Some(metadata) => return metadata,
+                None => { /* proceed normally */ }
+            };
+
+            // This is actually a function pointer, so wrap it in pointer DI
+            MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
+
         }
         ty::TyClosure(def_id, substs) => {
             let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
-            let sig = infcx.closure_type(def_id, substs).sig;
-            subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)
+            let upvars = infcx.closure_upvars(def_id, substs).unwrap();
+            let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
+
+            prepare_tuple_metadata(cx,
+                                   t,
+                                   &upvar_types[..],
+                                   unique_type_id,
+                                   usage_site_span).finalize(cx)
         }
         ty::TyStruct(def_id, substs) => {
             prepare_struct_metadata(cx,
@@ -920,7 +939,7 @@ pub fn scope_metadata(fcx: &FunctionContext,
     }
 }
 
-fn diverging_type_metadata(cx: &CrateContext) -> DIType {
+pub fn diverging_type_metadata(cx: &CrateContext) -> DIType {
     unsafe {
         llvm::LLVMDIBuilderCreateBasicType(
             DIB(cx),
