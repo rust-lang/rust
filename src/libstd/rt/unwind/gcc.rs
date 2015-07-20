@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(private_no_mangle_fns)]
+
 use prelude::v1::*;
 
 use any::Any;
-use libc::c_void;
 use rt::libunwind as uw;
 
 struct Exception {
@@ -41,7 +42,7 @@ pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
     }
 }
 
-pub unsafe fn cleanup(ptr: *mut c_void) -> Box<Any + Send + 'static> {
+pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send + 'static> {
     let my_ep = ptr as *mut Exception;
     rtdebug!("caught {}", (*my_ep).uwe.exception_class);
     let cause = (*my_ep).cause.take();
@@ -89,7 +90,7 @@ pub mod eabi {
     use rt::libunwind as uw;
     use libc::c_int;
 
-    extern "C" {
+    extern {
         fn __gcc_personality_v0(version: c_int,
                                 actions: uw::_Unwind_Action,
                                 exception_class: uw::_Unwind_Exception_Class,
@@ -98,9 +99,8 @@ pub mod eabi {
             -> uw::_Unwind_Reason_Code;
     }
 
-    #[lang="eh_personality"]
-    #[no_mangle] // referenced from rust_try.ll
-    #[allow(private_no_mangle_fns)]
+    #[lang = "eh_personality"]
+    #[no_mangle]
     extern fn rust_eh_personality(
         version: c_int,
         actions: uw::_Unwind_Action,
@@ -115,8 +115,9 @@ pub mod eabi {
         }
     }
 
-    #[no_mangle] // referenced from rust_try.ll
-    pub extern "C" fn rust_eh_personality_catch(
+    #[cfg_attr(not(stage0), lang = "eh_personality_catch")]
+    #[no_mangle]
+    pub extern fn rust_eh_personality_catch(
         _version: c_int,
         actions: uw::_Unwind_Action,
         _exception_class: uw::_Unwind_Exception_Class,
@@ -142,7 +143,7 @@ pub mod eabi {
     use rt::libunwind as uw;
     use libc::c_int;
 
-    extern "C" {
+    extern {
         fn __gcc_personality_sj0(version: c_int,
                                 actions: uw::_Unwind_Action,
                                 exception_class: uw::_Unwind_Exception_Class,
@@ -151,9 +152,9 @@ pub mod eabi {
             -> uw::_Unwind_Reason_Code;
     }
 
-    #[lang="eh_personality"]
-    #[no_mangle] // referenced from rust_try.ll
-    pub extern "C" fn rust_eh_personality(
+    #[lang = "eh_personality"]
+    #[no_mangle]
+    pub extern fn rust_eh_personality(
         version: c_int,
         actions: uw::_Unwind_Action,
         exception_class: uw::_Unwind_Exception_Class,
@@ -167,8 +168,9 @@ pub mod eabi {
         }
     }
 
-    #[no_mangle] // referenced from rust_try.ll
-    pub extern "C" fn rust_eh_personality_catch(
+    #[cfg_attr(not(stage0), lang = "eh_personality_catch")]
+    #[no_mangle]
+    pub extern fn rust_eh_personality_catch(
         _version: c_int,
         actions: uw::_Unwind_Action,
         _exception_class: uw::_Unwind_Exception_Class,
@@ -196,17 +198,16 @@ pub mod eabi {
     use rt::libunwind as uw;
     use libc::c_int;
 
-    extern "C" {
+    extern {
         fn __gcc_personality_v0(state: uw::_Unwind_State,
                                 ue_header: *mut uw::_Unwind_Exception,
                                 context: *mut uw::_Unwind_Context)
             -> uw::_Unwind_Reason_Code;
     }
 
-    #[lang="eh_personality"]
-    #[no_mangle] // referenced from rust_try.ll
-    #[allow(private_no_mangle_fns)]
-    extern "C" fn rust_eh_personality(
+    #[lang = "eh_personality"]
+    #[no_mangle]
+    extern fn rust_eh_personality(
         state: uw::_Unwind_State,
         ue_header: *mut uw::_Unwind_Exception,
         context: *mut uw::_Unwind_Context
@@ -217,8 +218,9 @@ pub mod eabi {
         }
     }
 
-    #[no_mangle] // referenced from rust_try.ll
-    pub extern "C" fn rust_eh_personality_catch(
+    #[cfg_attr(not(stage0), lang = "eh_personality_catch")]
+    #[no_mangle]
+    pub extern fn rust_eh_personality_catch(
         state: uw::_Unwind_State,
         _ue_header: *mut uw::_Unwind_Exception,
         _context: *mut uw::_Unwind_Context
@@ -266,7 +268,7 @@ pub mod eabi {
     }
 
     type _Unwind_Personality_Fn =
-        extern "C" fn(
+        extern fn(
             version: c_int,
             actions: uw::_Unwind_Action,
             exception_class: uw::_Unwind_Exception_Class,
@@ -274,7 +276,7 @@ pub mod eabi {
             context: *mut uw::_Unwind_Context
         ) -> uw::_Unwind_Reason_Code;
 
-    extern "C" {
+    extern {
         fn __gcc_personality_seh0(
             exceptionRecord: *mut EXCEPTION_RECORD,
             establisherFrame: *mut c_void,
@@ -291,10 +293,9 @@ pub mod eabi {
         ) -> EXCEPTION_DISPOSITION;
     }
 
-    #[lang="eh_personality"]
-    #[no_mangle] // referenced from rust_try.ll
-    #[allow(private_no_mangle_fns)]
-    extern "C" fn rust_eh_personality(
+    #[lang = "eh_personality"]
+    #[no_mangle]
+    extern fn rust_eh_personality(
         exceptionRecord: *mut EXCEPTION_RECORD,
         establisherFrame: *mut c_void,
         contextRecord: *mut CONTEXT,
@@ -307,15 +308,16 @@ pub mod eabi {
         }
     }
 
-    #[no_mangle] // referenced from rust_try.ll
-    pub extern "C" fn rust_eh_personality_catch(
+    #[cfg_attr(not(stage0), lang = "eh_personality_catch")]
+    #[no_mangle]
+    pub extern fn rust_eh_personality_catch(
         exceptionRecord: *mut EXCEPTION_RECORD,
         establisherFrame: *mut c_void,
         contextRecord: *mut CONTEXT,
         dispatcherContext: *mut DISPATCHER_CONTEXT
     ) -> EXCEPTION_DISPOSITION
     {
-        extern "C" fn inner(
+        extern fn inner(
                 _version: c_int,
                 actions: uw::_Unwind_Action,
                 _exception_class: uw::_Unwind_Exception_Class,

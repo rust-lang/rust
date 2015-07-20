@@ -602,4 +602,10 @@ extern "rust-intrinsic" {
     /// Returns the value of the discriminant for the variant in 'v',
     /// cast to a `u64`; if `T` has no discriminant, returns 0.
     pub fn discriminant_value<T>(v: &T) -> u64;
+
+    /// Rust's "try catch" construct which invokes the function pointer `f` with
+    /// the data pointer `data`, returning the exception payload if an exception
+    /// is thrown (aka the thread panics).
+    #[cfg(not(stage0))]
+    pub fn try(f: fn(*mut u8), data: *mut u8) -> *mut u8;
 }

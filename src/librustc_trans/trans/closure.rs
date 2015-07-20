@@ -163,11 +163,10 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
 
-    // Currently there’s only a single user of get_or_create_declaration_if_closure and it
-    // unconditionally defines the function, therefore we use define_* here.
-    let llfn = declare::define_internal_rust_fn(ccx, &symbol[..], function_type).unwrap_or_else(||{
-        ccx.sess().bug(&format!("symbol `{}` already defined", symbol));
-    });
+    // Currently there’s only a single user of
+    // get_or_create_declaration_if_closure and it unconditionally defines the
+    // function, therefore we use define_* here.
+    let llfn = declare::define_internal_rust_fn(ccx, &symbol[..], function_type);
 
     // set an inline hint for all closures
     attributes::inline(llfn, attributes::InlineAttr::Hint);
@@ -388,11 +387,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Create the by-value helper.
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, llonce_fn_ty, "once_shim");
-    let lloncefn = declare::define_internal_rust_fn(ccx, &function_name[..], llonce_fn_ty)
-        .unwrap_or_else(||{
-            ccx.sess().bug(&format!("symbol `{}` already defined", function_name));
-        });
-
+    let lloncefn = declare::define_internal_rust_fn(ccx, &function_name,
+                                                    llonce_fn_ty);
     let sig = tcx.erase_late_bound_regions(&llonce_bare_fn_ty.sig);
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();

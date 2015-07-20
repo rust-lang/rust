@@ -134,7 +134,7 @@ pub enum DLLStorageClassTypes {
 }
 
 bitflags! {
-    flags Attribute : u32 {
+    flags Attribute : u64 {
         const ZExt            = 1 << 0,
         const SExt            = 1 << 1,
         const NoReturn        = 1 << 2,
@@ -161,6 +161,7 @@ bitflags! {
         const ReturnsTwice    = 1 << 29,
         const UWTable         = 1 << 30,
         const NonLazyBind     = 1 << 31,
+        const OptimizeNone    = 1 << 42,
     }
 }
 
@@ -2193,7 +2194,8 @@ pub fn ConstFCmp(pred: RealPredicate, v1: ValueRef, v2: ValueRef) -> ValueRef {
 
 pub fn SetFunctionAttribute(fn_: ValueRef, attr: Attribute) {
     unsafe {
-        LLVMAddFunctionAttribute(fn_, FunctionIndex as c_uint, attr.bits() as uint64_t)
+        LLVMAddFunctionAttribute(fn_, FunctionIndex as c_uint,
+                                 attr.bits() as uint64_t)
     }
 }
 

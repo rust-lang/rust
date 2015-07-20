@@ -937,6 +937,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn add_clause(&self, landing_pad: ValueRef, clause: ValueRef) {
+        unsafe {
+            llvm::LLVMAddClause(landing_pad, clause);
+        }
+    }
+
     pub fn set_cleanup(&self, landing_pad: ValueRef) {
         self.count_insn("setcleanup");
         unsafe {

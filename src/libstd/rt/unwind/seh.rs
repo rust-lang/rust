@@ -102,7 +102,7 @@ pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
     rtabort!("could not unwind stack");
 }
 
-pub unsafe fn cleanup(ptr: *mut c_void) -> Box<Any + Send + 'static> {
+pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send + 'static> {
     // The `ptr` here actually corresponds to the code of the exception, and our
     // real data is stored in our thread local.
     rtassert!(ptr as DWORD == RUST_PANIC);
@@ -135,8 +135,9 @@ fn rust_eh_personality() {
 // to ensure that it's code is RUST_PANIC, which was set by the call to
 // `RaiseException` above in the `panic` function.
 #[no_mangle]
+#[lang = "msvc_try_filter"]
 pub extern fn __rust_try_filter(eh_ptrs: *mut EXCEPTION_POINTERS,
-                                _rbp: *mut c_void) -> i32 {
+                                _rbp: *mut u8) -> i32 {
     unsafe {
         ((*(*eh_ptrs).ExceptionRecord).ExceptionCode == RUST_PANIC) as i32
     }
