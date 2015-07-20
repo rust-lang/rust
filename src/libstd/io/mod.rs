@@ -1167,7 +1167,10 @@ pub trait BufRead: Read {
 
 /// A `Write` adaptor which will write data to multiple locations.
 ///
-/// For more information, see `Write::broadcast`.
+/// This struct is generally created by calling [`broadcast()`][broadcast] on a
+/// writer. Please see the documentation of `broadcast()` for more details.
+///
+/// [broadcast]: trait.Write.html#method.broadcast
 #[unstable(feature = "io", reason = "awaiting stability of Write::broadcast")]
 pub struct Broadcast<T, U> {
     first: T,
@@ -1213,7 +1216,10 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
 
 /// Reader adaptor which limits the bytes read from an underlying reader.
 ///
-/// For more information, see `Read::take`.
+/// This struct is generally created by calling [`take()`][take] on a reader.
+/// Please see the documentation of `take()` for more details.
+///
+/// [take]: trait.Read.html#method.take
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Take<T> {
     inner: T,
