@@ -5453,7 +5453,8 @@ impl<'tcx> ctxt<'tcx> {
                                              expected.ty,
                                              found.ty));
 
-                match (expected.def_id.krate == ast::LOCAL_CRATE, self.map.opt_span(expected.def_id.node)) {
+                match (expected.def_id.krate == ast::LOCAL_CRATE,
+                       self.map.opt_span(expected.def_id.node)) {
                     (true, Some(span)) => {
                         self.sess.span_note(span,
                                             &format!("a default was defined here..."));
@@ -5464,15 +5465,17 @@ impl<'tcx> ctxt<'tcx> {
                                         .map(|p| p.to_string())
                                         .collect::<Vec<_>>();
                         self.sess.note(
-                            &format!("a default is defined on `{}`", 
+                            &format!("a default is defined on `{}`",
                                      elems.join("::")));
                     }
                 }
 
-                self.sess.span_note(expected.origin_span,
-                                    &format!("...that was applied to an unconstrained type variable here"));
+                self.sess.span_note(
+                    expected.origin_span,
+                    &format!("...that was applied to an unconstrained type variable here"));
 
-                match (found.def_id.krate == ast::LOCAL_CRATE, self.map.opt_span(found.def_id.node)) {
+                match (found.def_id.krate == ast::LOCAL_CRATE,
+                       self.map.opt_span(found.def_id.node)) {
                     (true, Some(span)) => {
                         self.sess.span_note(span,
                                             &format!("a second default was defined here..."));
@@ -5488,8 +5491,9 @@ impl<'tcx> ctxt<'tcx> {
                     }
                 }
 
-                self.sess.span_note(found.origin_span,
-                                    &format!("...that also applies to the same type variable here"));
+                self.sess.span_note(
+                    found.origin_span,
+                    &format!("...that also applies to the same type variable here"));
             }
             _ => {}
         }

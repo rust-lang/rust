@@ -190,7 +190,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 type_parameter_defs);
         }
     }
-    
+
     let trait_ref = ty::TraitRef::new(trait_def_id, fcx.tcx().mk_substs(substs));
 
     // Construct an obligation
