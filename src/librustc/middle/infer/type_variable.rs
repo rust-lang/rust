@@ -12,6 +12,7 @@ pub use self::RelationDir::*;
 use self::TypeVariableValue::*;
 use self::UndoEntry::*;
 use middle::ty::{self, Ty};
+use syntax::ast::DefId;
 use syntax::codemap::Span;
 
 use std::cmp::min;
@@ -45,7 +46,7 @@ pub struct Default<'tcx> {
     /// The span where the default was incurred
     pub origin_span: Span,
     /// The definition that the default originates from
-    pub definition_span: Span
+    pub def_id: DefId
 }
 
 pub struct Snapshot {

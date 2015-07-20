@@ -1647,12 +1647,14 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // the node id for the Self type parameter.
     let param_id = trait_id;
 
+    let parent = ccx.tcx.map.get_parent(param_id);
+
     let def = ty::TypeParameterDef {
         space: SelfSpace,
         index: 0,
         name: special_idents::type_self.name,
         def_id: local_def(param_id),
-        default_def_id: local_def(param_id),
+        default_def_id: local_def(parent),
         default: None,
         object_lifetime_default: ty::ObjectLifetimeDefault::BaseDefault,
     };
@@ -1921,13 +1923,15 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         compute_object_lifetime_default(ccx, param.id,
                                         &param.bounds, &ast_generics.where_clause);
 
+    let parent = tcx.map.get_parent(param.id);
+
     let def = ty::TypeParameterDef {
         space: space,
         index: index,
         name: param.ident.name,
         def_id: local_def(param.id),
         // what do I return? should this be an option as well
-        default_def_id: local_def(param.default.as_ref().map(|d| d.id).unwrap_or(param.id)),
+        default_def_id: local_def(parent),
         default: default,
         object_lifetime_default: object_lifetime_default,
     };

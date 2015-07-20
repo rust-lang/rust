@@ -1061,11 +1061,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         for def in defs.iter() {
             let default = def.default.map(|default| {
-                let definition_span = self.tcx.map.opt_span(def.def_id.node);
                 type_variable::Default {
                     ty: default.subst_spanned(self.tcx, substs, Some(span)),
                     origin_span: span,
-                    definition_span: definition_span.unwrap_or(DUMMY_SP)
+                    def_id: def.default_def_id
                 }
             });
 

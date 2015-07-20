@@ -79,6 +79,7 @@ use std::ops;
 use std::rc::Rc;
 use std::vec::IntoIter;
 use collections::enum_set::{self, EnumSet, CLike};
+use collections::slice::SliceConcatExt;
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
@@ -5448,17 +5449,47 @@ impl<'tcx> ctxt<'tcx> {
                 let expected = values.expected;
                 let found = values.found;
                 self.sess.span_note(sp,
-                    &format!("conflicting type parameter defaults {} and {}",
-                             expected.ty,
-                             found.ty));
-                self.sess.span_note(expected.definition_span,
-                    &format!("a default was defined here..."));
+                                    &format!("conflicting type parameter defaults `{}` and `{}`",
+                                             expected.ty,
+                                             found.ty));
+
+                match (expected.def_id.krate == ast::LOCAL_CRATE, self.map.opt_span(expected.def_id.node)) {
+                    (true, Some(span)) => {
+                        self.sess.span_note(span,
+                                            &format!("a default was defined here..."));
+                    }
+                    (_, _) => {
+                        let elems = csearch::get_item_path(self, expected.def_id)
+                                        .into_iter()
+                                        .map(|p| p.to_string())
+                                        .collect::<Vec<_>>();
+                        self.sess.note(
+                            &format!("a default is defined on `{}`", 
+                                     elems.join("::")));
+                    }
+                }
+
                 self.sess.span_note(expected.origin_span,
-                    &format!("...that was applied to an unconstrained type variable here"));
-                self.sess.span_note(found.definition_span,
-                    &format!("a second default was defined here..."));
+                                    &format!("...that was applied to an unconstrained type variable here"));
+
+                match (found.def_id.krate == ast::LOCAL_CRATE, self.map.opt_span(found.def_id.node)) {
+                    (true, Some(span)) => {
+                        self.sess.span_note(span,
+                                            &format!("a second default was defined here..."));
+                    }
+                    (_, _) => {
+                        let elems = csearch::get_item_path(self, found.def_id)
+                                        .into_iter()
+                                        .map(|p| p.to_string())
+                                        .collect::<Vec<_>>();
+
+                        self.sess.note(
+                            &format!("a second default is defined on `{}`", elems.join(" ")));
+                    }
+                }
+
                 self.sess.span_note(found.origin_span,
-                    &format!("...that also applies to the same type variable here"));
+                                    &format!("...that also applies to the same type variable here"));
             }
             _ => {}
         }
