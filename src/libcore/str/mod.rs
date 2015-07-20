@@ -636,10 +636,10 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        #[doc="Created with the method `.split()`."]
+        /// Created with the method `.split()`.
         struct Split;
     reverse:
-        #[doc="Created with the method `.rsplit()`."]
+        /// Created with the method `.rsplit()`.
         struct RSplit;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -650,10 +650,10 @@ generate_pattern_iterators! {
 
 generate_pattern_iterators! {
     forward:
-        #[doc="Created with the method `.split_terminator()`."]
+        /// Created with the method `.split_terminator()`.
         struct SplitTerminator;
     reverse:
-        #[doc="Created with the method `.rsplit_terminator()`."]
+        /// Created with the method `.rsplit_terminator()`.
         struct RSplitTerminator;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -696,10 +696,10 @@ impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        #[doc="Created with the method `.splitn()`."]
+        /// Created with the method `.splitn()`.
         struct SplitN;
     reverse:
-        #[doc="Created with the method `.rsplitn()`."]
+        /// Created with the method `.rsplitn()`.
         struct RSplitN;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -730,10 +730,10 @@ impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        #[doc="Created with the method `.match_indices()`."]
+        /// Created with the method `.match_indices()`.
         struct MatchIndices;
     reverse:
-        #[doc="Created with the method `.rmatch_indices()`."]
+        /// Created with the method `.rmatch_indices()`.
         struct RMatchIndices;
     stability:
         #[unstable(feature = "str_match_indices",
@@ -771,10 +771,10 @@ impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        #[doc="Created with the method `.matches()`."]
+        /// Created with the method `.matches()`.
         struct Matches;
     reverse:
-        #[doc="Created with the method `.rmatches()`."]
+        /// Created with the method `.rmatches()`.
         struct RMatches;
     stability:
         #[stable(feature = "str_matches", since = "1.2.0")]
