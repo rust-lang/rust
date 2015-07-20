@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use arena::TypedArena;
-use back::abi;
 use back::link;
 use llvm::{ValueRef, get_params};
 use metadata::csearch;
@@ -438,6 +437,8 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let self_datum = unpack_datum!(
         bcx, expr::trans(bcx, self_expr));
 
+    let self_ty = self_datum.ty.pointee_type(bcx.tcx());
+
     let llval = if bcx.fcx.type_needs_drop(self_datum.ty) {
         let self_datum = unpack_datum!(
             bcx, self_datum.to_rvalue_datum(bcx, "trait_callee"));
@@ -456,8 +457,8 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         self_datum.val
     };
 
-    let llself = Load(bcx, GEPi(bcx, llval, &[0, abi::FAT_PTR_ADDR]));
-    let llvtable = Load(bcx, GEPi(bcx, llval, &[0, abi::FAT_PTR_EXTRA]));
+    let llself = load_addr(bcx, llval);
+    let llvtable = load_extra(bcx, llval, self_ty);
     trans_trait_callee_from_llval(bcx, opaque_fn_ty, vtable_index, llself, llvtable)
 }
 

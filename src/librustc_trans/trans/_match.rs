@@ -188,7 +188,6 @@ pub use self::TransBindingMode::*;
 use self::Opt::*;
 use self::FailureHandler::*;
 
-use back::abi;
 use llvm::{ValueRef, BasicBlockRef};
 use middle::check_match::StaticInliner;
 use middle::check_match;
@@ -678,9 +677,8 @@ fn bind_subslice_pat(bcx: Block,
     let slice_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReStatic),
                                          bcx.tcx().mk_slice(unit_ty));
     let scratch = rvalue_scratch_datum(bcx, slice_ty, "");
-    Store(bcx, slice_begin,
-          GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
-    Store(bcx, slice_len, GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_EXTRA]));
+    store_addr(bcx, slice_begin, scratch.val);
+    store_extra(bcx, slice_len, scratch.val);
     scratch.val
 }
 
@@ -833,10 +831,11 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                            None,
                            &format!("comparison of `{}`", rhs_t),
                            StrEqFnLangItem);
-        let lhs_data = Load(cx, expr::get_dataptr(cx, lhs));
-        let lhs_len = Load(cx, expr::get_len(cx, lhs));
-        let rhs_data = Load(cx, expr::get_dataptr(cx, rhs));
-        let rhs_len = Load(cx, expr::get_len(cx, rhs));
+        let str_ty = cx.tcx().mk_str();
+        let lhs_data = load_addr(cx, lhs);
+        let lhs_len = load_extra(cx, lhs, str_ty);
+        let rhs_data = load_addr(cx, rhs);
+        let rhs_len = load_extra(cx, rhs, str_ty);
         callee::trans_lang_call(cx, did, &[lhs_data, lhs_len, rhs_data, rhs_len], None, debug_loc)
     }
 
@@ -857,15 +856,15 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                     let ty_str_slice = cx.tcx().mk_static_str();
 
                     let rhs_str = alloc_ty(cx, ty_str_slice, "rhs_str");
-                    Store(cx, GEPi(cx, rhs, &[0, 0]), expr::get_dataptr(cx, rhs_str));
-                    Store(cx, C_uint(cx.ccx(), pat_len), expr::get_len(cx, rhs_str));
+                    store_addr(cx, GEPi(cx, rhs, &[0, 0]), rhs_str);
+                    store_extra(cx, C_uint(cx.ccx(), pat_len), rhs_str);
 
                     let lhs_str;
                     if val_ty(lhs) == val_ty(rhs) {
                         // Both the discriminant and the pattern are thin pointers
                         lhs_str = alloc_ty(cx, ty_str_slice, "lhs_str");
-                        Store(cx, GEPi(cx, lhs, &[0, 0]), expr::get_dataptr(cx, lhs_str));
-                        Store(cx, C_uint(cx.ccx(), pat_len), expr::get_len(cx, lhs_str));
+                        store_addr(cx, GEPi(cx, lhs, &[0, 0]), lhs_str);
+                        store_extra(cx, C_uint(cx.ccx(), pat_len), lhs_str);
                     }
                     else {
                         // The discriminant is a fat pointer
@@ -1016,7 +1015,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let binfo = *data.bindings_map.get(ident).unwrap();
                 call_lifetime_start(bcx, binfo.llmatch);
                 if binfo.trmode == TrByRef && type_is_fat_ptr(bcx.tcx(), binfo.ty) {
-                    expr::copy_fat_ptr(bcx, *value_ptr, binfo.llmatch);
+                    expr::copy_fat_ptr(bcx, *value_ptr, binfo.llmatch, binfo.ty);
                 }
                 else {
                     Store(bcx, *value_ptr, binfo.llmatch);
@@ -1080,7 +1079,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             // the last field specially: instead of simply passing a
             // ValueRef pointing to that field, as with all the others,
             // we skip it and instead construct a 'fat ptr' below.
-            (arg_count - 1, Load(bcx, expr::get_dataptr(bcx, val)))
+            (arg_count - 1, load_addr(bcx, val))
         };
         let mut field_vals: Vec<ValueRef> = (0..arg_count).map(|ix|
             adt::trans_field_ptr(bcx, &*repr, struct_val, 0, ix)
@@ -1099,9 +1098,9 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 let llty = type_of::type_of(bcx.ccx(), unsized_ty);
                 let scratch = alloca_no_lifetime(bcx, llty, "__struct_field_fat_ptr");
                 let data = adt::trans_field_ptr(bcx, &*repr, struct_val, 0, arg_count);
-                let len = Load(bcx, expr::get_len(bcx, val));
-                Store(bcx, data, expr::get_dataptr(bcx, scratch));
-                Store(bcx, len, expr::get_len(bcx, scratch));
+                let len = load_extra(bcx, val, left_ty);
+                store_addr(bcx, data, scratch);
+                store_extra(bcx, len, scratch);
                 field_vals.push(scratch);
             }
             _ => {}
@@ -1681,7 +1680,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 // By ref binding: the value of the variable
                                 // is the pointer `val` itself or fat pointer referenced by `val`
                                 if type_is_fat_ptr(bcx.tcx(), ty) {
-                                    expr::copy_fat_ptr(bcx, val, llval);
+                                    expr::copy_fat_ptr(bcx, val, llval, ty);
                                 }
                                 else {
                                     Store(bcx, val, llval);

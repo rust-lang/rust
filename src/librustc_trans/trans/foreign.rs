@@ -22,7 +22,6 @@ use trans::cabi;
 use trans::common::*;
 use trans::debuginfo::DebugLoc;
 use trans::declare;
-use trans::expr;
 use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
@@ -298,8 +297,8 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              type_of::type_of(ccx, passed_arg_tys[i]),
                              "__arg");
             if type_is_fat_ptr(ccx.tcx(), passed_arg_tys[i]) {
-                Store(bcx, llargs_rust[i + offset], expr::get_dataptr(bcx, scratch));
-                Store(bcx, llargs_rust[i + offset + 1], expr::get_len(bcx, scratch));
+                base::store_addr(bcx, llargs_rust[i + offset], scratch);
+                base::store_extra(bcx, llargs_rust[i + offset + 1], scratch);
                 offset += 1;
             } else {
                 base::store_ty(bcx, llarg_rust, scratch, passed_arg_tys[i]);

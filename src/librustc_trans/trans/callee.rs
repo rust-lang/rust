@@ -1123,8 +1123,9 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("--- trans_arg_datum passing {}", bcx.val_to_string(val));
 
     if common::type_is_fat_ptr(bcx.tcx(), formal_arg_ty) {
-        llargs.push(Load(bcx, expr::get_dataptr(bcx, val)));
-        llargs.push(Load(bcx, expr::get_len(bcx, val)));
+        let ty = formal_arg_ty.pointee_type(bcx.tcx());
+        llargs.push(load_addr(bcx, val));
+        llargs.push(load_extra(bcx, val, ty));
     } else {
         llargs.push(val);
     }

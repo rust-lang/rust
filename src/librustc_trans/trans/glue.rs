@@ -13,7 +13,6 @@
 // Code relating to drop glue.
 
 
-use back::abi;
 use back::link::*;
 use llvm;
 use llvm::{ValueRef, get_param};
@@ -374,7 +373,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let (_, bcx) = if type_is_sized(bcx.tcx(), t) {
         invoke(bcx, dtor_addr, &[v0], dtor_ty, DebugLoc::None)
     } else {
-        let args = [Load(bcx, expr::get_dataptr(bcx, v0)), Load(bcx, expr::get_len(bcx, v0))];
+        let args = [load_addr(bcx, v0), load_extra(bcx, v0, t)];
         invoke(bcx, dtor_addr, &args, dtor_ty, DebugLoc::None)
     };
 
@@ -465,15 +464,13 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
             // a safe-guard, assert TyBox not used with TyContents.
             assert!(!skip_dtor);
             if !type_is_sized(bcx.tcx(), content_ty) {
-                let llval = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-                let llbox = Load(bcx, llval);
+                let llbox = load_addr(bcx, v0);
                 let llbox_as_usize = PtrToInt(bcx, llbox, Type::int(bcx.ccx()));
                 let drop_flag_not_dropped_already =
                     ICmp(bcx, llvm::IntNE, llbox_as_usize, dropped_pattern, DebugLoc::None);
                 with_cond(bcx, drop_flag_not_dropped_already, |bcx| {
                     let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
-                    let info = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
-                    let info = Load(bcx, info);
+                    let info = load_extra(bcx, v0, content_ty);
                     let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
 
                     // `Box<ZeroSizeType>` does not allocate.
@@ -531,12 +528,11 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
             // versus without calling Drop::drop. Assert caller is
             // okay with always calling the Drop impl, if any.
             assert!(!skip_dtor);
-            let data_ptr = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-            let vtable_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]));
+            let vtable_ptr = load_extra(bcx, v0, t);
             let dtor = Load(bcx, vtable_ptr);
             Call(bcx,
                  dtor,
-                 &[PointerCast(bcx, Load(bcx, data_ptr), Type::i8p(bcx.ccx()))],
+                 &[PointerCast(bcx, load_addr(bcx, v0), Type::i8p(bcx.ccx()))],
                  None,
                  DebugLoc::None);
             bcx

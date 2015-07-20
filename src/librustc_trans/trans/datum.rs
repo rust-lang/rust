@@ -94,7 +94,6 @@ pub use self::RvalueMode::*;
 
 use llvm::ValueRef;
 use trans::base::*;
-use trans::build::Load;
 use trans::common::*;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
@@ -524,7 +523,7 @@ impl<'tcx> Datum<'tcx, Lvalue> {
         let val = if type_is_sized(bcx.tcx(), self.ty) {
             gep(self.val)
         } else {
-            gep(Load(bcx, expr::get_dataptr(bcx, self.val)))
+            gep(load_addr(bcx, self.val))
         };
         Datum {
             val: val,
