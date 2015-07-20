@@ -269,6 +269,27 @@ pub struct BufWriter<W: Write> {
 /// An error returned by `into_inner` which combines an error that
 /// happened while writing out the buffer, and the buffered writer object
 /// which may be used to recover from the condition.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::io::BufWriter;
+/// use std::net::TcpStream;
+///
+/// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+///
+/// // do stuff with the stream
+///
+/// // we want to get our `TcpStream` back, so let's try:
+///
+/// let stream = match stream.into_inner() {
+///     Ok(s) => s,
+///     Err(e) => {
+///         // Here, e is an IntoInnerError
+///         panic!("An error occurred");
+///     }
+/// };
+/// ```
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoInnerError<W>(W, Error);
@@ -384,9 +405,34 @@ impl<W: Write> Drop for BufWriter<W> {
 }
 
 impl<W> IntoInnerError<W> {
-    /// Returns the error which caused the call to `into_inner` to fail.
+    /// Returns the error which caused the call to `into_inner()` to fail.
     ///
     /// This error was returned when attempting to write the internal buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io::BufWriter;
+    /// use std::net::TcpStream;
+    ///
+    /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    ///
+    /// // do stuff with the stream
+    ///
+    /// // we want to get our `TcpStream` back, so let's try:
+    ///
+    /// let stream = match stream.into_inner() {
+    ///     Ok(s) => s,
+    ///     Err(e) => {
+    ///         // Here, e is an IntoInnerError, let's log the inner error.
+    ///         //
+    ///         // We'll just 'log' to stdout for this example.
+    ///         println!("{}", e.error());
+    ///
+    ///         panic!("An unexpected error occurred.");
+    ///     }
+    /// };
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn error(&self) -> &Error { &self.1 }
 
@@ -394,6 +440,32 @@ impl<W> IntoInnerError<W> {
     ///
     /// The returned object can be used for error recovery, such as
     /// re-inspecting the buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io::BufWriter;
+    /// use std::net::TcpStream;
+    ///
+    /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    ///
+    /// // do stuff with the stream
+    ///
+    /// // we want to get our `TcpStream` back, so let's try:
+    ///
+    /// let stream = match stream.into_inner() {
+    ///     Ok(s) => s,
+    ///     Err(e) => {
+    ///         // Here, e is a IntoInnerError, let's re-examine the buffer:
+    ///         let buffer = e.into_inner();
+    ///
+    ///         // do stuff to try to recover
+    ///
+    ///         // afterwards, let's just return the stream
+    ///         buffer.into_inner().unwrap()
+    ///     }
+    /// };
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> W { self.0 }
 }
