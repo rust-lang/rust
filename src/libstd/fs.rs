@@ -22,10 +22,12 @@ use core::prelude::*;
 use fmt;
 use ffi::OsString;
 use io::{self, SeekFrom, Seek, Read, Write};
+use io::SeekFrom::Current;
 use path::{Path, PathBuf};
 use sys::fs as fs_imp;
 use sys_common::{AsInnerMut, FromInner, AsInner};
-use sys_common::io::read_to_end_uninitialized;
+use sys_common::io::read_to_end_uninitialized_hint;
+use cmp::min;
 use vec::Vec;
 
 /// A reference to an open file on the filesystem.
@@ -330,7 +332,19 @@ impl Read for File {
         self.inner.read(buf)
     }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        unsafe { read_to_end_uninitialized(self, buf) }
+        let total_size = try!(self.metadata()).len();
+        let cur_pos = try!(self.seek(Current(0))) as u64;
+
+        // size isn't guaranteed to stay static, so we need to check
+        // we deal with the possibility that cur_pos > size!
+        let size =
+            if cur_pos > total_size {
+                0usize
+            } else {
+                min((total_size - cur_pos) as usize, usize::max_value())
+            };
+
+        unsafe { read_to_end_uninitialized_hint(self, buf, size) }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
