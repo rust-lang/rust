@@ -228,6 +228,665 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
+// Rust's macro system is so attrocious at being generic over mutability
+// that I instead opted to generate the following 12 functions
+// with string formatting.
+//
+// Because the high-level logic is identical, I'll describe it here.
+//
+//
+//
+// # min (max):
+//
+// This is the easiest. While you're not in a leaf, just follow the first (last)
+// edge. Once you're in a leaf, grab the first (last) entry.
+//
+//
+//
+// # le (ge)
+//
+// This is the second easiest. Use the normal node search infrastructure to
+// try to find an exact match. If there's an exact match, great! Return it.
+// Otherwise the node will tell us to go down some edge. We then know that
+// `previous_key < search_key < next_key`, and everything in the subtree we're
+// supposed to go down is strictly between `previous_key` and `next_key`.
+//
+// We want to record the previous (next) entry as the new record for closest
+// to our search key. However there is an important corner case: if the edge
+// is the first (last) in the node, there is *no* previous (next) entry. This
+// means that in fact this node contains no entries that are smaller (bigger)
+// than the search key. If this is the case, we simply don't update the record.
+//
+// Regardless, we unconditionally follow the edge we were supposed to. If we
+// don't find an exact match in a leaf, then we just return whatever the record
+// was. If we never found a record then our key is smaller (larger) than all
+// other keys, and the answer is None.
+//
+//
+//
+// # lt (gt)
+//
+// This is the most complicated. The exact same logic from le (ge) applies in
+// the GoDown case. However in the Found case we need to do something *way* more
+// complicated. There are two cases: whether we found an exact match in an
+// internal or leaf node.
+//
+// To understand the leaf case, recall that all the elements in one leaf are
+// direct successors/predecessors. So if we find an exact match in a leaf, the
+// previous (next) element in the leaf is by definition the predecessor (sucessor)
+// of our search key. However similar to the the leq (geq) case, if the exact
+// match is the first (last) entry in the leaf, then we just defer to the record.
+//
+// The internal case is relatively simple. Just GoDown the previous (next) edge.
+// We *should not* update the record, as neither bound around the edge is a
+// valid response to the query. One is obvious: we explicitly don't want the exact
+// match. Even though the other *is* the closest valid answer we've yet seen,
+// we know we'll find a closer element because *every* element in the subtree
+// is a closer element, and the subtree isn't empty because we're an internal
+// node. In fact at this point we could fast-path by performing the max (min)
+// algorithm on the subtree. We don't currently bother to do this.
+//
+//
+//
+// # The code generator:
+//
+/*
+fn main() {
+    fn min_max(min: bool, mutable: bool) {
+        let (name, side) = if min {
+            ("min", "first")
+        } else {
+            ("max", "last")
+        };
+
+        let (muta, muta_ext, muta_desc) = if mutable {
+            ("mut ", "_mut", " mutably")
+        } else {
+            ("", "", "")
+        };
+
+        println!(r###"
+    /// Gets the {name}imum key-value pair in the map{muta_desc}.
+    pub fn {name}{muta_ext}(&{muta}self) -> Option<(&K, &{muta}V)> {{
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut cur_node = &{muta}self.root;
+        loop {{
+            let node = cur_node;
+            if node.is_leaf() {{
+                let (keys, vals) = node.as_slices{muta_ext}();
+                return match (keys.{side}{muta_ext}(), vals.{side}{muta_ext}()) {{
+                    (Some(key), Some(val)) => Some((&*key, val)),
+                    _ => None,
+                }};
+            }} else {{
+                cur_node = node.edges{muta_ext}().{side}{muta_ext}().unwrap();
+            }}
+        }}
+    }}
+        "###,
+        name = name,
+        side = side,
+        muta = muta,
+        muta_ext = muta_ext,
+        muta_desc = muta_desc,
+        );
+    }
+
+    fn l_g(lt: bool, mutable: bool) {
+        let (lg, dir, side, dir_desc) = if lt {
+            ("l", "left", "first", "less")
+        } else {
+            ("g", "right", "last", "greater")
+        };
+
+        let (muta, muta_ext, muta_desc) = if mutable {
+            ("mut ", "_mut", " mutably")
+        } else {
+            ("", "", "")
+        };
+
+        println!(r###"
+    /// Gets the closest key-value pair to `key` that is {dir_desc} than or equal to it{muta_desc}.
+    pub fn get_{lg}e{muta_ext}<Q: ?Sized>(&{muta}self, key: &Q) -> Option<(&K, &{muta}V)>
+    where K: Borrow<Q>, Q: Ord {{
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut temp_node = &{muta}self.root;
+        let mut best = None;
+        loop {{
+            let cur_node = temp_node;
+            match Node::search(cur_node, key) {{
+                Found(handle) => {{
+                    let (k, v) = handle.into_kv{muta_ext}();
+                    return Some((&*k, v));
+                }}
+                GoDown(mut handle) => {{
+                    if !handle.is_{side}() {{ best = Some(handle.as_raw()) }}
+                    match handle.force() {{
+                        Leaf(_) => {{
+                            return best.map(|{muta}raw_handle| unsafe {{
+                                let {muta}handle = raw_handle.from_raw{muta_ext}();
+                                let (k, v) = handle.{dir}_kv{muta_ext}().into_kv{muta_ext}();
+                                // easiest way to unbound the lifetimes
+                                mem::transmute((&*k, v))
+                            }})
+                        }},
+                        Internal(internal_handle) => {{
+                            temp_node = internal_handle.into_edge{muta_ext}();
+                            continue;
+                        }}
+                    }}
+                }}
+            }}
+        }}
+    }}
+
+    /// Gets the closest key-value pair to `key` that is {dir_desc} than it{muta_desc}.
+    pub fn get_{lg}t{muta_ext}<Q: ?Sized>(&{muta}self, key: &Q) -> Option<(&K, &{muta}V)>
+    where K: Borrow<Q>, Q: Ord {{
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut temp_node = &{muta}self.root;
+        let mut best: Option<node::Handle<*mut Node<K, V>, _, _>> = None;
+        loop {{
+            let cur_node = temp_node;
+            match Node::search(cur_node, key) {{
+                Found(handle) => match handle.force() {{
+                    Leaf(leaf_handle) => {{
+                        let {muta}next = leaf_handle.into_{dir}_edge{muta_ext}();
+                        return if next.is_{side}() {{
+                            best.map(|{muta}raw_handle| unsafe {{
+                                let {muta}handle = raw_handle.from_raw{muta_ext}();
+                                let (k, v) = handle.{dir}_kv{muta_ext}().into_kv{muta_ext}();
+                                // easiest way to unbound the lifetimes
+                                mem::transmute((&*k, v))
+                            }})
+                        }} else {{
+                            unsafe {{
+                                let (k, v) = next.{dir}_kv{muta_ext}().into_kv{muta_ext}();
+                                mem::transmute(Some((&*k, v)))
+                            }}
+                        }};
+                    }},
+                    Internal(internal_handle) => {{
+                        temp_node = internal_handle.into_{dir}_edge{muta_ext}()
+                                                   .into_edge{muta_ext}();
+                        continue;
+                    }}
+                }},
+                GoDown(mut handle) => {{
+                    if !handle.is_{side}() {{ best = Some(handle.as_raw()) }}
+                    match handle.force() {{
+                        Leaf(_) => {{
+                            return best.map(|{muta}raw_handle| unsafe {{
+                                let {muta}handle = raw_handle.from_raw{muta_ext}();
+                                let (k, v) = handle.{dir}_kv{muta_ext}().into_kv{muta_ext}();
+                                // easiest way to unbound the lifetime from the raw_handle
+                                mem::transmute((&*k, v))
+                            }})
+                        }},
+                        Internal(internal_handle) => {{
+                            temp_node = internal_handle.into_edge{muta_ext}();
+                            continue;
+                        }}
+                    }}
+                }}
+            }}
+        }}
+    }}
+        "###,
+        lg = lg,
+        dir = dir,
+        side = side,
+        muta = muta,
+        muta_ext = muta_ext,
+        muta_desc = muta_desc,
+        dir_desc = dir_desc,
+        );
+    }
+
+    min_max(true, false);
+    min_max(false, false);
+
+    l_g(true, false);
+    l_g(false, false);
+
+    min_max(true, true);
+    min_max(false, true);
+
+    l_g(true, true);
+    l_g(false, true);
+}
+*/
+
+
+
+
+    /// Gets the minimum key-value pair in the map.
+    pub fn min(&self) -> Option<(&K, &V)> {
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut cur_node = &self.root;
+        loop {
+            let node = cur_node;
+            if node.is_leaf() {
+                let (keys, vals) = node.as_slices();
+                return match (keys.first(), vals.first()) {
+                    (Some(key), Some(val)) => Some((&*key, val)),
+                    _ => None,
+                };
+            } else {
+                cur_node = node.edges().first().unwrap();
+            }
+        }
+    }
+
+
+    /// Gets the maximum key-value pair in the map.
+    pub fn max(&self) -> Option<(&K, &V)> {
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut cur_node = &self.root;
+        loop {
+            let node = cur_node;
+            if node.is_leaf() {
+                let (keys, vals) = node.as_slices();
+                return match (keys.last(), vals.last()) {
+                    (Some(key), Some(val)) => Some((&*key, val)),
+                    _ => None,
+                };
+            } else {
+                cur_node = node.edges().last().unwrap();
+            }
+        }
+    }
+
+
+    /// Gets the closest key-value pair to `key` that is less than or equal to it.
+    pub fn get_le<Q: ?Sized>(&self, key: &Q) -> Option<(&K, &V)>
+    where K: Borrow<Q>, Q: Ord {
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut temp_node = &self.root;
+        let mut best = None;
+        loop {
+            let cur_node = temp_node;
+            match Node::search(cur_node, key) {
+                Found(handle) => {
+                    let (k, v) = handle.into_kv();
+                    return Some((&*k, v));
+                }
+                GoDown(mut handle) => {
+                    if !handle.is_first() { best = Some(handle.as_raw()) }
+                    match handle.force() {
+                        Leaf(_) => {
+                            return best.map(|raw_handle| unsafe {
+                                let handle = raw_handle.from_raw();
+                                let (k, v) = handle.left_kv().into_kv();
+                                // easiest way to unbound the lifetimes
+                                mem::transmute((&*k, v))
+                            })
+                        },
+                        Internal(internal_handle) => {
+                            temp_node = internal_handle.into_edge();
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Gets the closest key-value pair to `key` that is less than it.
+    pub fn get_lt<Q: ?Sized>(&self, key: &Q) -> Option<(&K, &V)>
+    where K: Borrow<Q>, Q: Ord {
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut temp_node = &self.root;
+        let mut best: Option<node::Handle<*mut Node<K, V>, _, _>> = None;
+        loop {
+            let cur_node = temp_node;
+            match Node::search(cur_node, key) {
+                Found(handle) => match handle.force() {
+                    Leaf(leaf_handle) => {
+                        let next = leaf_handle.into_left_edge();
+                        return if next.is_first() {
+                            best.map(|raw_handle| unsafe {
+                                let handle = raw_handle.from_raw();
+                                let (k, v) = handle.left_kv().into_kv();
+                                // easiest way to unbound the lifetimes
+                                mem::transmute((&*k, v))
+                            })
+                        } else {
+                            unsafe {
+                                let (k, v) = next.left_kv().into_kv();
+                                mem::transmute(Some((&*k, v)))
+                            }
+                        };
+                    },
+                    Internal(internal_handle) => {
+                        temp_node = internal_handle.into_left_edge()
+                                                   .into_edge();
+                        continue;
+                    }
+                },
+                GoDown(mut handle) => {
+                    if !handle.is_first() { best = Some(handle.as_raw()) }
+                    match handle.force() {
+                        Leaf(_) => {
+                            return best.map(|raw_handle| unsafe {
+                                let handle = raw_handle.from_raw();
+                                let (k, v) = handle.left_kv().into_kv();
+                                // easiest way to unbound the lifetime from the raw_handle
+                                mem::transmute((&*k, v))
+                            })
+                        },
+                        Internal(internal_handle) => {
+                            temp_node = internal_handle.into_edge();
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    /// Gets the closest key-value pair to `key` that is greater than or equal to it.
+    pub fn get_ge<Q: ?Sized>(&self, key: &Q) -> Option<(&K, &V)>
+    where K: Borrow<Q>, Q: Ord {
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut temp_node = &self.root;
+        let mut best = None;
+        loop {
+            let cur_node = temp_node;
+            match Node::search(cur_node, key) {
+                Found(handle) => {
+                    let (k, v) = handle.into_kv();
+                    return Some((&*k, v));
+                }
+                GoDown(mut handle) => {
+                    if !handle.is_last() { best = Some(handle.as_raw()) }
+                    match handle.force() {
+                        Leaf(_) => {
+                            return best.map(|raw_handle| unsafe {
+                                let handle = raw_handle.from_raw();
+                                let (k, v) = handle.right_kv().into_kv();
+                                // easiest way to unbound the lifetimes
+                                mem::transmute((&*k, v))
+                            })
+                        },
+                        Internal(internal_handle) => {
+                            temp_node = internal_handle.into_edge();
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Gets the closest key-value pair to `key` that is greater than it.
+    pub fn get_gt<Q: ?Sized>(&self, key: &Q) -> Option<(&K, &V)>
+    where K: Borrow<Q>, Q: Ord {
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut temp_node = &self.root;
+        let mut best: Option<node::Handle<*mut Node<K, V>, _, _>> = None;
+        loop {
+            let cur_node = temp_node;
+            match Node::search(cur_node, key) {
+                Found(handle) => match handle.force() {
+                    Leaf(leaf_handle) => {
+                        let next = leaf_handle.into_right_edge();
+                        return if next.is_last() {
+                            best.map(|raw_handle| unsafe {
+                                let handle = raw_handle.from_raw();
+                                let (k, v) = handle.right_kv().into_kv();
+                                // easiest way to unbound the lifetimes
+                                mem::transmute((&*k, v))
+                            })
+                        } else {
+                            unsafe {
+                                let (k, v) = next.right_kv().into_kv();
+                                mem::transmute(Some((&*k, v)))
+                            }
+                        };
+                    },
+                    Internal(internal_handle) => {
+                        temp_node = internal_handle.into_right_edge()
+                                                   .into_edge();
+                        continue;
+                    }
+                },
+                GoDown(mut handle) => {
+                    if !handle.is_last() { best = Some(handle.as_raw()) }
+                    match handle.force() {
+                        Leaf(_) => {
+                            return best.map(|raw_handle| unsafe {
+                                let handle = raw_handle.from_raw();
+                                let (k, v) = handle.right_kv().into_kv();
+                                // easiest way to unbound the lifetime from the raw_handle
+                                mem::transmute((&*k, v))
+                            })
+                        },
+                        Internal(internal_handle) => {
+                            temp_node = internal_handle.into_edge();
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    /// Gets the minimum key-value pair in the map mutably.
+    pub fn min_mut(&mut self) -> Option<(&K, &mut V)> {
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut cur_node = &mut self.root;
+        loop {
+            let node = cur_node;
+            if node.is_leaf() {
+                let (keys, vals) = node.as_slices_mut();
+                return match (keys.first_mut(), vals.first_mut()) {
+                    (Some(key), Some(val)) => Some((&*key, val)),
+                    _ => None,
+                };
+            } else {
+                cur_node = node.edges_mut().first_mut().unwrap();
+            }
+        }
+    }
+
+
+    /// Gets the maximum key-value pair in the map mutably.
+    pub fn max_mut(&mut self) -> Option<(&K, &mut V)> {
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut cur_node = &mut self.root;
+        loop {
+            let node = cur_node;
+            if node.is_leaf() {
+                let (keys, vals) = node.as_slices_mut();
+                return match (keys.last_mut(), vals.last_mut()) {
+                    (Some(key), Some(val)) => Some((&*key, val)),
+                    _ => None,
+                };
+            } else {
+                cur_node = node.edges_mut().last_mut().unwrap();
+            }
+        }
+    }
+
+
+    /// Gets the closest key-value pair to `key` that is less than or equal to it mutably.
+    pub fn get_le_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<(&K, &mut V)>
+    where K: Borrow<Q>, Q: Ord {
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut temp_node = &mut self.root;
+        let mut best = None;
+        loop {
+            let cur_node = temp_node;
+            match Node::search(cur_node, key) {
+                Found(handle) => {
+                    let (k, v) = handle.into_kv_mut();
+                    return Some((&*k, v));
+                }
+                GoDown(mut handle) => {
+                    if !handle.is_first() { best = Some(handle.as_raw()) }
+                    match handle.force() {
+                        Leaf(_) => {
+                            return best.map(|mut raw_handle| unsafe {
+                                let mut handle = raw_handle.from_raw_mut();
+                                let (k, v) = handle.left_kv_mut().into_kv_mut();
+                                // easiest way to unbound the lifetimes
+                                mem::transmute((&*k, v))
+                            })
+                        },
+                        Internal(internal_handle) => {
+                            temp_node = internal_handle.into_edge_mut();
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Gets the closest key-value pair to `key` that is less than it mutably.
+    pub fn get_lt_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<(&K, &mut V)>
+    where K: Borrow<Q>, Q: Ord {
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut temp_node = &mut self.root;
+        let mut best: Option<node::Handle<*mut Node<K, V>, _, _>> = None;
+        loop {
+            let cur_node = temp_node;
+            match Node::search(cur_node, key) {
+                Found(handle) => match handle.force() {
+                    Leaf(leaf_handle) => {
+                        let mut next = leaf_handle.into_left_edge_mut();
+                        return if next.is_first() {
+                            best.map(|mut raw_handle| unsafe {
+                                let mut handle = raw_handle.from_raw_mut();
+                                let (k, v) = handle.left_kv_mut().into_kv_mut();
+                                // easiest way to unbound the lifetimes
+                                mem::transmute((&*k, v))
+                            })
+                        } else {
+                            unsafe {
+                                let (k, v) = next.left_kv_mut().into_kv_mut();
+                                mem::transmute(Some((&*k, v)))
+                            }
+                        };
+                    },
+                    Internal(internal_handle) => {
+                        temp_node = internal_handle.into_left_edge_mut()
+                                                   .into_edge_mut();
+                        continue;
+                    }
+                },
+                GoDown(mut handle) => {
+                    if !handle.is_first() { best = Some(handle.as_raw()) }
+                    match handle.force() {
+                        Leaf(_) => {
+                            return best.map(|mut raw_handle| unsafe {
+                                let mut handle = raw_handle.from_raw_mut();
+                                let (k, v) = handle.left_kv_mut().into_kv_mut();
+                                // easiest way to unbound the lifetime from the raw_handle
+                                mem::transmute((&*k, v))
+                            })
+                        },
+                        Internal(internal_handle) => {
+                            temp_node = internal_handle.into_edge_mut();
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    /// Gets the closest key-value pair to `key` that is greater than or equal to it mutably.
+    pub fn get_ge_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<(&K, &mut V)>
+    where K: Borrow<Q>, Q: Ord {
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut temp_node = &mut self.root;
+        let mut best = None;
+        loop {
+            let cur_node = temp_node;
+            match Node::search(cur_node, key) {
+                Found(handle) => {
+                    let (k, v) = handle.into_kv_mut();
+                    return Some((&*k, v));
+                }
+                GoDown(mut handle) => {
+                    if !handle.is_last() { best = Some(handle.as_raw()) }
+                    match handle.force() {
+                        Leaf(_) => {
+                            return best.map(|mut raw_handle| unsafe {
+                                let mut handle = raw_handle.from_raw_mut();
+                                let (k, v) = handle.right_kv_mut().into_kv_mut();
+                                // easiest way to unbound the lifetimes
+                                mem::transmute((&*k, v))
+                            })
+                        },
+                        Internal(internal_handle) => {
+                            temp_node = internal_handle.into_edge_mut();
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Gets the closest key-value pair to `key` that is greater than it mutably.
+    pub fn get_gt_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<(&K, &mut V)>
+    where K: Borrow<Q>, Q: Ord {
+        // !!!!!! ~~~~~ WARNING: THIS IS GENERATED CODE - DO NOT EDIT ~~~~~ !!!!!
+        let mut temp_node = &mut self.root;
+        let mut best: Option<node::Handle<*mut Node<K, V>, _, _>> = None;
+        loop {
+            let cur_node = temp_node;
+            match Node::search(cur_node, key) {
+                Found(handle) => match handle.force() {
+                    Leaf(leaf_handle) => {
+                        let mut next = leaf_handle.into_right_edge_mut();
+                        return if next.is_last() {
+                            best.map(|mut raw_handle| unsafe {
+                                let mut handle = raw_handle.from_raw_mut();
+                                let (k, v) = handle.right_kv_mut().into_kv_mut();
+                                // easiest way to unbound the lifetimes
+                                mem::transmute((&*k, v))
+                            })
+                        } else {
+                            unsafe {
+                                let (k, v) = next.right_kv_mut().into_kv_mut();
+                                mem::transmute(Some((&*k, v)))
+                            }
+                        };
+                    },
+                    Internal(internal_handle) => {
+                        temp_node = internal_handle.into_right_edge_mut()
+                                                   .into_edge_mut();
+                        continue;
+                    }
+                },
+                GoDown(mut handle) => {
+                    if !handle.is_last() { best = Some(handle.as_raw()) }
+                    match handle.force() {
+                        Leaf(_) => {
+                            return best.map(|mut raw_handle| unsafe {
+                                let mut handle = raw_handle.from_raw_mut();
+                                let (k, v) = handle.right_kv_mut().into_kv_mut();
+                                // easiest way to unbound the lifetime from the raw_handle
+                                mem::transmute((&*k, v))
+                            })
+                        },
+                        Internal(internal_handle) => {
+                            temp_node = internal_handle.into_edge_mut();
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// Returns true if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
@@ -795,7 +1454,7 @@ mod stack {
                                 },
                                 Internal(kv_handle) => {
                                     // This node is internal, go deeper
-                                    let mut handle = kv_handle.into_left_edge();
+                                    let mut handle = kv_handle.into_left_edge_mut();
                                     self.stack.push(handle.as_raw());
                                     temp_node = handle.into_edge_mut();
                                 }

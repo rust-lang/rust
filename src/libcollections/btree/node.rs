@@ -618,14 +618,14 @@ impl<K, V, NodeRef: Deref<Target=Node<K, V>>, Type, NodeType> Handle<NodeRef, Ty
 }
 
 impl<K, V, NodeRef, Type, NodeType> Handle<NodeRef, Type, NodeType> where
-    NodeRef: Deref<Target=Node<K, V>> + DerefMut,
+    NodeRef: Deref<Target=Node<K, V>>,
 {
     /// Converts a handle into one that stores the same information using a raw pointer. This can
     /// be useful in conjunction with `from_raw` when the type system is insufficient for
     /// determining the lifetimes of the nodes.
     pub fn as_raw(&mut self) -> Handle<*mut Node<K, V>, Type, NodeType> {
         Handle {
-            node: &mut *self.node as *mut _,
+            node: (&*self.node) as *const _ as *mut _,
             index: self.index,
             marker: PhantomData,
         }
@@ -636,7 +636,7 @@ impl<K, V, Type, NodeType> Handle<*mut Node<K, V>, Type, NodeType> {
     /// Converts from a handle stored with a raw pointer, which isn't directly usable, to a handle
     /// stored with a reference. This is an unsafe inverse of `as_raw`, and together they allow
     /// unsafely extending the lifetime of the reference to the `Node`.
-    pub unsafe fn from_raw<'a>(&'a self) -> Handle<&'a Node<K, V>, Type, NodeType> {
+    pub unsafe fn from_raw(&self) -> Handle<&Node<K, V>, Type, NodeType> {
         Handle {
             node: &*self.node,
             index: self.index,
@@ -647,7 +647,7 @@ impl<K, V, Type, NodeType> Handle<*mut Node<K, V>, Type, NodeType> {
     /// Converts from a handle stored with a raw pointer, which isn't directly usable, to a handle
     /// stored with a mutable reference. This is an unsafe inverse of `as_raw`, and together they
     /// allow unsafely extending the lifetime of the reference to the `Node`.
-    pub unsafe fn from_raw_mut<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, Type, NodeType> {
+    pub unsafe fn from_raw_mut(&mut self) -> Handle<&mut Node<K, V>, Type, NodeType> {
         Handle {
             node: &mut *self.node,
             index: self.index,
@@ -812,9 +812,9 @@ impl<K, V, NodeRef> Handle<NodeRef, handle::Edge, handle::Internal> where
     unsafe fn handle_underflow_to_left(&mut self) {
         let left_len = self.node.edges()[self.index - 1].len();
         if left_len > min_load_from_capacity(self.node.capacity()) {
-            self.left_kv().steal_rightward();
+            self.left_kv_mut().steal_rightward();
         } else {
-            self.left_kv().merge_children();
+            self.left_kv_mut().merge_children();
         }
     }
 
@@ -823,9 +823,9 @@ impl<K, V, NodeRef> Handle<NodeRef, handle::Edge, handle::Internal> where
     unsafe fn handle_underflow_to_right(&mut self) {
         let right_len = self.node.edges()[self.index + 1].len();
         if right_len > min_load_from_capacity(self.node.capacity()) {
-            self.right_kv().steal_leftward();
+            self.right_kv_mut().steal_leftward();
         } else {
-            self.right_kv().merge_children();
+            self.right_kv_mut().merge_children();
         }
     }
 }
@@ -836,7 +836,7 @@ impl<K, V, NodeRef, NodeType> Handle<NodeRef, handle::Edge, NodeType> where
     /// Gets the handle pointing to the key/value pair just to the left of the pointed-to edge.
     /// This is unsafe because the handle might point to the first edge in the node, which has no
     /// pair to its left.
-    unsafe fn left_kv<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, handle::KV, NodeType> {
+    pub unsafe fn left_kv_mut(&mut self) -> Handle<&mut Node<K, V>, handle::KV, NodeType> {
         Handle {
             node: &mut *self.node,
             index: self.index - 1,
@@ -847,9 +847,46 @@ impl<K, V, NodeRef, NodeType> Handle<NodeRef, handle::Edge, NodeType> where
     /// Gets the handle pointing to the key/value pair just to the right of the pointed-to edge.
     /// This is unsafe because the handle might point to the last edge in the node, which has no
     /// pair to its right.
-    unsafe fn right_kv<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, handle::KV, NodeType> {
+    pub unsafe fn right_kv_mut(&mut self) -> Handle<&mut Node<K, V>, handle::KV, NodeType> {
         Handle {
             node: &mut *self.node,
+            index: self.index,
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<K, V, NodeRef, NodeType> Handle<NodeRef, handle::Edge, NodeType> where
+    NodeRef: Deref<Target=Node<K, V>> {
+    /// Returns whether this is the first edge in the node.
+    /// Useful for determining if you found *any* key leq the search key
+    pub fn is_first(&self) -> bool {
+        self.index == 0
+    }
+
+    /// Returns whether this is the first edge in the node.
+    /// Useful for determining if you found *any* key geq the search key
+    pub fn is_last(&self) -> bool {
+        self.index == self.node.len()
+    }
+
+    /// Gets the handle pointing to the key/value pair just to the left of the pointed-to edge.
+    /// This is unsafe because the handle might point to the first edge in the node, which has no
+    /// pair to its left.
+    pub unsafe fn left_kv(&self) -> Handle<&Node<K, V>, handle::KV, NodeType> {
+        Handle {
+            node: &*self.node,
+            index: self.index - 1,
+            marker: PhantomData,
+        }
+    }
+
+    /// Gets the handle pointing to the key/value pair just to the right of the pointed-to edge.
+    /// This is unsafe because the handle might point to the last edge in the node, which has no
+    /// pair to its right.
+    pub unsafe fn right_kv(&self) -> Handle<&Node<K, V>, handle::KV, NodeType> {
+        Handle {
+            node: &*self.node,
             index: self.index,
             marker: PhantomData,
         }
@@ -869,6 +906,28 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a Node<K, V>, handle::KV, NodeType> {
             )
         }
     }
+
+    /// Converts this handle into one pointing at the edge immediately to the left of the key/value
+    /// pair pointed-to by this handle. This is useful because it returns a reference with a larger
+    /// lifetime than `&self`.
+    pub fn into_left_edge(self) -> Handle<&'a Node<K, V>, handle::Edge, NodeType> {
+        Handle {
+            node: &*self.node,
+            index: self.index,
+            marker: PhantomData,
+        }
+    }
+
+    /// Converts this handle into one pointing at the edge immediately to the left of the key/value
+    /// pair pointed-to by this handle. This is useful because it returns a reference with a larger
+    /// lifetime than `&self`.
+    pub fn into_right_edge(self) -> Handle<&'a Node<K, V>, handle::Edge, NodeType> {
+        Handle {
+            node: &*self.node,
+            index: self.index + 1,
+            marker: PhantomData,
+        }
+    }
 }
 
 impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a mut Node<K, V>, handle::KV, NodeType> {
@@ -885,13 +944,24 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a mut Node<K, V>, handle::KV, NodeType
         }
     }
 
-    /// Convert this handle into one pointing at the edge immediately to the left of the key/value
-    /// pair pointed-to by this handle. This is useful because it returns a reference with larger
-    /// lifetime than `left_edge`.
-    pub fn into_left_edge(self) -> Handle<&'a mut Node<K, V>, handle::Edge, NodeType> {
+    /// Converts this handle into one pointing at the edge immediately to the left of the key/value
+    /// pair pointed-to by this handle. This is useful because it returns a reference with a larger
+    /// lifetime than `&self`.
+    pub fn into_left_edge_mut(self) -> Handle<&'a mut Node<K, V>, handle::Edge, NodeType> {
         Handle {
             node: &mut *self.node,
             index: self.index,
+            marker: PhantomData,
+        }
+    }
+
+    /// Converts this handle into one pointing at the edge immediately to the left of the key/value
+    /// pair pointed-to by this handle. This is useful because it returns a reference with a larger
+    /// lifetime than `&self`.
+    pub fn into_right_edge_mut(self) -> Handle<&'a mut Node<K, V>, handle::Edge, NodeType> {
+        Handle {
+            node: &mut *self.node,
+            index: self.index + 1,
             marker: PhantomData,
         }
     }
