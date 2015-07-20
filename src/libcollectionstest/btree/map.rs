@@ -76,6 +76,81 @@ fn test_basic_small() {
 }
 
 #[test]
+fn test_query() {
+    // NOTE: shouldn't need to test mutable variants because they're
+    // generated from the same template and deviate only in mutability
+    // annotations. However incorrect implementations *may* result from Node's
+    // mut and non-mut impls drifting.
+
+    let size = 10000;
+    let gap = 4;
+    let min = gap;
+    let max = (size - 1) * gap;
+
+    let mut map = BTreeMap::new();
+
+    assert_eq!(map.min(), None);
+    assert_eq!(map.max(), None);
+    assert_eq!(map.get_lt(&0), None);
+    assert_eq!(map.get_gt(&0), None);
+    assert_eq!(map.get_le(&0), None);
+    assert_eq!(map.get_ge(&0), None);
+
+    // linear insertions make degenerate trees, but we shouldn't care since all
+    // large trees are structurally similar for these tests.
+    for i in 1 .. size {
+        // times 10 to make gaps
+        map.insert(i * gap, i * gap);
+    }
+
+    assert_eq!(map.min(), Some((&min, &min)));
+    assert_eq!(map.max(), Some((&max, &max)));
+
+
+    // less exists checks
+    for i in min + 1 .. max + gap {
+        // gap = 4
+        // input: 5  6  7  8  9  10 11 12
+        // <=     4  4  4  8  8  8  8  12
+        // <      4  4  4  4  8  8  8  8
+        let le = i / gap * gap;
+        let lt = (i - 1) / gap * gap;
+        assert_eq!(map.get_lt(&i), Some((&lt, &lt)));
+        assert_eq!(map.get_le(&i), Some((&le, &le)));
+    }
+
+    // greater exists checks
+    for i in min - gap .. max - 1 {
+        // gap = 4
+        // input: 4  5  6  7  8  9  10 11
+        // >=     4  8  8  8  8  12 12 12  (same as < but +4)
+        // >      8  8  8  8  12 12 12 12  (same as <= but +4)
+        let ge = (i - 1) / gap * gap + gap;
+        let gt = i / gap * gap +  gap;
+        assert_eq!(map.get_gt(&i), Some((&gt, &gt)));
+        assert_eq!(map.get_ge(&i), Some((&ge, &ge)));
+    }
+
+    // less doesn't exist checks
+    for i in 0 .. min {
+        assert_eq!(map.get_lt(&i), None);
+        assert_eq!(map.get_le(&i), None);
+    }
+
+    // greater doesn't exist checks
+    for i in max + 1 .. max + gap  {
+        assert_eq!(map.get_gt(&i), None);
+        assert_eq!(map.get_ge(&i), None);
+    }
+
+    // special cases:
+    assert_eq!(map.get_lt(&min), None);
+    assert_eq!(map.get_le(&min), Some((&min, &min)));
+    assert_eq!(map.get_gt(&max), None);
+    assert_eq!(map.get_ge(&max), Some((&max, &max)));
+}
+
+#[test]
 fn test_iter() {
     let size = 10000;
 
@@ -297,20 +372,121 @@ fn test_extend_ref() {
 mod bench {
     use std::collections::BTreeMap;
     use std::__rand::{Rng, thread_rng};
+    use std::collections::Bound::{Included, Excluded, Unbounded};
 
     use test::{Bencher, black_box};
 
+    fn get<'a, K: Ord, V>(map: &'a BTreeMap<K, V>, key: &K) -> Option<&'a V> {
+        map.get(key)
+    }
+
+    fn get_lt<'a, K: Ord, V>(map: &'a BTreeMap<K, V>, key: &K) -> Option<(&'a K, &'a V)> {
+        map.get_lt(key)
+    }
+    fn get_le<'a, K: Ord, V>(map: &'a BTreeMap<K, V>, key: &K) -> Option<(&'a K, &'a V)> {
+        map.get_le(key)
+    }
+    fn get_gt<'a, K: Ord, V>(map: &'a BTreeMap<K, V>, key: &K) -> Option<(&'a K, &'a V)> {
+        map.get_gt(key)
+    }
+    fn get_ge<'a, K: Ord, V>(map: &'a BTreeMap<K, V>, key: &K) -> Option<(&'a K, &'a V)> {
+        map.get_ge(key)
+    }
+
+    fn get_lt_range<'a, K: Ord, V>(map: &'a BTreeMap<K, V>, key: &K) -> Option<(&'a K, &'a V)> {
+        map.range(Unbounded, Excluded(key)).next_back()
+    }
+    fn get_le_range<'a, K: Ord, V>(map: &'a BTreeMap<K, V>, key: &K) -> Option<(&'a K, &'a V)> {
+        map.range(Unbounded, Included(key)).next_back()
+    }
+    fn get_gt_range<'a, K: Ord, V>(map: &'a BTreeMap<K, V>, key: &K) -> Option<(&'a K, &'a V)> {
+        map.range(Excluded(key), Unbounded).next()
+    }
+    fn get_ge_range<'a, K: Ord, V>(map: &'a BTreeMap<K, V>, key: &K) -> Option<(&'a K, &'a V)> {
+        map.range(Included(key), Unbounded).next()
+    }
+
+
     map_insert_rand_bench!{insert_rand_100,    100,    BTreeMap}
-    map_insert_rand_bench!{insert_rand_10_000, 10_000, BTreeMap}
+    map_insert_rand_bench!{insert_rand_10000, 10_000, BTreeMap}
 
     map_insert_seq_bench!{insert_seq_100,    100,    BTreeMap}
-    map_insert_seq_bench!{insert_seq_10_000, 10_000, BTreeMap}
+    map_insert_seq_bench!{insert_seq_10000, 10_000, BTreeMap}
 
-    map_find_rand_bench!{find_rand_100,    100,    BTreeMap}
-    map_find_rand_bench!{find_rand_10_000, 10_000, BTreeMap}
 
-    map_find_seq_bench!{find_seq_100,    100,    BTreeMap}
-    map_find_seq_bench!{find_seq_10_000, 10_000, BTreeMap}
+
+    map_find_rand_bench!{get_rand_100_eq,    100,    BTreeMap, get}
+    map_find_rand_bench!{get_rand_10000_eq, 10_000, BTreeMap, get}
+
+    map_find_seq_bench!{get_seq_100_eq,    100,    BTreeMap, get}
+    map_find_seq_bench!{get_seq_10000_eq, 10_000, BTreeMap, get}
+
+
+
+
+    map_find_rand_bench!{get_rand_100_lt,    100,    BTreeMap, get_lt}
+    map_find_rand_bench!{get_rand_10000_lt, 10_000, BTreeMap, get_lt}
+
+    map_find_seq_bench!{get_seq_100_lt,    100,    BTreeMap, get_lt}
+    map_find_seq_bench!{get_seq_10000_lt, 10_000, BTreeMap, get_lt}
+
+
+
+    map_find_rand_bench!{get_rand_100_le,    100,    BTreeMap, get_le}
+    map_find_rand_bench!{get_rand_10000_le, 10_000, BTreeMap, get_le}
+
+    map_find_seq_bench!{get_seq_100_le,    100,    BTreeMap, get_le}
+    map_find_seq_bench!{get_seq_10000_le, 10_000, BTreeMap, get_le}
+
+
+
+    map_find_rand_bench!{get_rand_100_gt,    100,    BTreeMap, get_gt}
+    map_find_rand_bench!{get_rand_10000_gt, 10_000, BTreeMap, get_gt}
+
+    map_find_seq_bench!{get_seq_100_gt,    100,    BTreeMap, get_gt}
+    map_find_seq_bench!{get_seq_10000_gt, 10_000, BTreeMap, get_gt}
+
+
+
+    map_find_rand_bench!{get_rand_100_ge,    100,    BTreeMap, get_ge}
+    map_find_rand_bench!{get_rand_10000_ge, 10_000, BTreeMap, get_ge}
+
+    map_find_seq_bench!{get_seq_100_ge,    100,    BTreeMap, get_ge}
+    map_find_seq_bench!{get_seq_10000_ge, 10_000, BTreeMap, get_ge}
+
+
+
+
+    map_find_rand_bench!{get_rand_100_lt_range,    100,    BTreeMap, get_lt_range}
+    map_find_rand_bench!{get_rand_10000_lt_range, 10_000, BTreeMap, get_lt_range}
+
+    map_find_seq_bench!{get_seq_100_lt_range,    100,    BTreeMap, get_lt_range}
+    map_find_seq_bench!{get_seq_10000_lt_range, 10_000, BTreeMap, get_lt_range}
+
+
+
+    map_find_rand_bench!{get_rand_100_le_range,    100,    BTreeMap, get_le_range}
+    map_find_rand_bench!{get_rand_10000_le_range, 10_000, BTreeMap, get_le_range}
+
+    map_find_seq_bench!{get_seq_100_le_range,    100,    BTreeMap, get_le_range}
+    map_find_seq_bench!{get_seq_10000_le_range, 10_000, BTreeMap, get_le_range}
+
+
+
+    map_find_rand_bench!{get_rand_100_gt_range,    100,    BTreeMap, get_gt_range}
+    map_find_rand_bench!{get_rand_10000_gt_range, 10_000, BTreeMap, get_gt_range}
+
+    map_find_seq_bench!{get_seq_100_gt_range,    100,    BTreeMap, get_gt_range}
+    map_find_seq_bench!{get_seq_10000_gt_range, 10_000, BTreeMap, get_gt_range}
+
+
+
+    map_find_rand_bench!{get_rand_100_ge_range,    100,    BTreeMap, get_ge_range}
+    map_find_rand_bench!{get_rand_10000_ge_range, 10_000, BTreeMap, get_ge_range}
+
+    map_find_seq_bench!{get_seq_100_ge_range,    100,    BTreeMap, get_ge_range}
+    map_find_seq_bench!{get_seq_10000_ge_range, 10_000, BTreeMap, get_ge_range}
+
 
     fn bench_iter(b: &mut Bencher, size: i32) {
         let mut map = BTreeMap::<i32, i32>::new();
@@ -327,18 +503,86 @@ mod bench {
         });
     }
 
+    fn bench_iter_with_queries_forward(b: &mut Bencher, size: i32) {
+        let mut map = BTreeMap::<i32, i32>::new();
+        let mut rng = thread_rng();
+
+        for _ in 0..size {
+            map.insert(rng.gen(), rng.gen());
+        }
+
+        b.iter(|| {
+            let entry = map.min().unwrap();
+            black_box(entry);
+            let mut min = entry.0;
+            while let Some(entry) = map.get_gt(min) {
+                black_box(entry);
+                min = entry.0;
+            }
+        });
+    }
+
+    fn bench_iter_with_queries_backward(b: &mut Bencher, size: i32) {
+        let mut map = BTreeMap::<i32, i32>::new();
+        let mut rng = thread_rng();
+
+        for _ in 0..size {
+            map.insert(rng.gen(), rng.gen());
+        }
+
+        b.iter(|| {
+            let entry = map.max().unwrap();
+            black_box(entry);
+            let mut max = entry.0;
+            while let Some(entry) = map.get_lt(max) {
+                black_box(entry);
+                max = entry.0;
+            }
+        });
+    }
+
     #[bench]
-    pub fn iter_20(b: &mut Bencher) {
+    pub fn iter_20_plain(b: &mut Bencher) {
         bench_iter(b, 20);
     }
 
     #[bench]
-    pub fn iter_1000(b: &mut Bencher) {
+    pub fn iter_1000_plain(b: &mut Bencher) {
         bench_iter(b, 1000);
     }
 
     #[bench]
-    pub fn iter_100000(b: &mut Bencher) {
+    pub fn iter_100000_plain(b: &mut Bencher) {
         bench_iter(b, 100000);
+    }
+
+    #[bench]
+    pub fn iter_20_with_queries_forward(b: &mut Bencher) {
+        bench_iter_with_queries_forward(b, 20);
+    }
+
+    #[bench]
+    pub fn iter_1000_with_queries_forward(b: &mut Bencher) {
+        bench_iter_with_queries_forward(b, 1000);
+    }
+
+    #[bench]
+    pub fn iter_100000_with_queries_forward(b: &mut Bencher) {
+        bench_iter_with_queries_forward(b, 100000);
+    }
+
+    #[bench]
+    pub fn iter_20_with_queries_backward(b: &mut Bencher) {
+        bench_iter_with_queries_backward(b, 20);
+    }
+
+    #[bench]
+    pub fn iter_1000_with_queries_backward(b: &mut Bencher) {
+        bench_iter_with_queries_backward(b, 1000);
+    }
+
+    #[bench]
+    pub fn iter_100000_with_queries_backward(b: &mut Bencher) {
+        bench_iter_with_queries_backward(b, 100000);
     }
 }
