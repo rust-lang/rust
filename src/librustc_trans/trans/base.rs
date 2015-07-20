@@ -979,7 +979,9 @@ pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              t: Ty<'tcx>) {
     let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
-    if t.is_structural() {
+    if common::type_is_fat_ptr(bcx.tcx(), t) {
+        expr::copy_fat_ptr(bcx, src, dst, t);
+    } else if t.is_structural() {
         let llty = type_of::type_of(ccx, t);
         let llsz = llsize_of(ccx, llty);
         let llalign = type_of::align_of(ccx, t);
