@@ -8,6 +8,9 @@ untouched. For now we'll only implement the "basic" full-range version.
 use std::marker::PhantomData;
 
 struct Drain<'a, T: 'a> {
+    // Need to bound the lifetime here, so we do it with `&'a mut Vec<T>`
+    // because that's semantically what we contain. We're "just" calling
+    // `pop()` and `remove(0)`.
     vec: PhantomData<&'a mut Vec<T>>
     start: *const T,
     end: *const T,
