@@ -47,7 +47,7 @@ discriminant.
 On non-C-like enums, this will inhibit certain optimizations like the null-
 pointer optimization.
 
-These reprs have no affect on a struct.
+These reprs have no effect on a struct.
 
 
 
