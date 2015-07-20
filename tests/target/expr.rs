@@ -15,6 +15,20 @@ fn foo() -> bool {
              a + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
              aaaaa)))))))));
 
+    {
+        for _ in 0..10 {
+        }
+    }
+
+    {
+        {
+            {
+                {
+                }
+            }
+        }
+    }
+
     if 1 + 2 > 0 {
         let result = 5;
         result
@@ -39,6 +53,10 @@ fn foo() -> bool {
                                                                                          2222 {
     }
 
+    if let (some_very_large, tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) =
+           1 + 2 + 3 {
+    }
+
     if cond() {
         something();
     } else if different_cond() {
@@ -48,4 +66,30 @@ fn foo() -> bool {
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
         aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     }
+}
+
+fn bar() {
+    let range = (111111111 + 333333333333333333 + 1111 + 400000000000000000)..(2222 +
+                                                                               2333333333333333);
+
+    let another_range = 5..some_func(a, b /* comment */);
+
+    for _ in 1.. {
+        call_forever();
+    }
+
+    syntactically_correct(loop {
+            sup('?');
+        },
+                          if cond {
+            0
+        } else {
+            1
+        });
+
+    let third = ..10;
+    let infi_range = ..;
+    let foo = 1..;
+    let bar = 5;
+    let nonsense = (10..0)..(0..10);
 }

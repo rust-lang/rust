@@ -50,9 +50,8 @@ use visitor::FmtVisitor;
 use config::Config;
 
 #[macro_use]
-mod config;
-#[macro_use]
 mod utils;
+pub mod config;
 mod changes;
 mod visitor;
 mod items;

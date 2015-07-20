@@ -123,10 +123,10 @@ impl<'a> FmtVisitor<'a> {
         let list = write_list(&items[first_index..], &fmt);
 
         Some(if path_str.len() == 0 {
-            format!("{}use {{{}}};", vis, list)
-        } else {
-            format!("{}use {}::{{{}}};", vis, path_str, list)
-        })
+                format!("{}use {{{}}};", vis, list)
+            } else {
+                format!("{}use {}::{{{}}};", vis, path_str, list)
+            })
     }
 }
 

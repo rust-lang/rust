@@ -22,6 +22,8 @@ fn main() {
     Foo { a:Bar,
           b:foo() };
 
+    Quux { x: if cond { bar(); }, y: baz() };
+
     A { 
     // Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec a diam lectus. Sed sit amet ipsum mauris. Maecenas congue ligula ac quam viverra nec consectetur ante hendrerit. Donec et mollis dolor.
     first: item(),
@@ -36,4 +38,13 @@ fn main() {
                *              /|\   \
                *             o o o   o */
               graph: G, }
+}
+
+fn matcher() {
+    TagTerminatedByteMatcher {
+        matcher: ByteMatcher {
+        pattern: b"<HTML",
+        mask: b"\xFF\xDF\xDF\xDF\xDF\xFF",
+    },
+    };
 }
