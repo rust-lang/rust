@@ -1,16 +1,16 @@
 % Coercions
 
 Types can implicitly be coerced to change in certain contexts. These changes are
-generally just *weakening* of types, largely focused around pointers and lifetimes.
-They mostly exist to make Rust "just work" in more cases, and are largely harmless.
+generally just *weakening* of types, largely focused around pointers and
+lifetimes. They mostly exist to make Rust "just work" in more cases, and are
+largely harmless.
 
 Here's all the kinds of coercion:
 
-
 Coercion is allowed between the following types:
 
-* Subtyping: `T` to `U` if `T` is a [subtype][] of `U`
-* Transitivity: `T_1` to `T_3` where `T_1` coerces to `T_2` and `T_2` coerces to `T_3`
+* Transitivity: `T_1` to `T_3` where `T_1` coerces to `T_2` and `T_2` coerces to
+  `T_3`
 * Pointer Weakening:
     * `&mut T` to `&T`
     * `*mut T` to `*const T`
@@ -68,5 +68,3 @@ fn main() {
 <anon>:10     foo(t);
               ^~~
 ```
-
-[subtype]: subtyping.html
