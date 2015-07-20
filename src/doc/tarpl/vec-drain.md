@@ -2,7 +2,7 @@
 
 Let's move on to Drain. Drain is largely the same as IntoIter, except that
 instead of consuming the Vec, it borrows the Vec and leaves its allocation
-free. For now we'll only implement the "basic" full-range version.
+untouched. For now we'll only implement the "basic" full-range version.
 
 ```rust,ignore
 use std::marker::PhantomData;
@@ -38,6 +38,9 @@ impl<T> RawValIter<T> {
         RawValIter {
             start: slice.as_ptr(),
             end: if slice.len() == 0 {
+                // if `len = 0`, then this is not actually allocated memory.
+                // Need to avoid offsetting because that will give wrong
+                // information to LLVM via GEP.
                 slice.as_ptr()
             } else {
                 slice.as_ptr().offset(slice.len() as isize)
@@ -137,5 +140,7 @@ impl<T> Vec<T> {
 }
 ```
 
+For more details on the `mem::forget` problem, see the
+[section on leaks][leaks].
 
-
+[leaks]: leaking.html

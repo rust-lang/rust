@@ -46,7 +46,7 @@ Okay, now we can write growing. Roughly, we want to have this logic:
 if cap == 0:
     allocate()
     cap = 1
-else
+else:
     reallocate
     cap *= 2
 ```
