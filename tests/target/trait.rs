@@ -18,3 +18,7 @@ trait Foo {
     fn read(&mut self, x: BufReader<R> /* Used to be MemReader */)
         where R: Read;
 }
+
+pub trait WriteMessage {
+    fn write_message(&mut self, &FrontendMessage) -> io::Result<()>;
+}
