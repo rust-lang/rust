@@ -259,7 +259,7 @@ So why do this? AFAICS there are 3 main reasons
     enough that @reem has written a package for it
     [here](https://github.com/reem/rust-void) where it is named `Void`. I've also
     invented it independently for my own projects and probably other people
-    have aswell. However `!` can be extended logically to cover all the above
+    have as well. However `!` can be extended logically to cover all the above
     use cases. Doing so would standardise the concept and prevent different
     people reimplementing it under different names.
 
