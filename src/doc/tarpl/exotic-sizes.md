@@ -95,10 +95,9 @@ actually possible to communicate this at the type level by returning a
 knowing that it's *statically impossible* for this value to be an `Err`, as
 this would require providing a value of type Void.
 
-In principle, Rust can do some interesting analysees and optimizations based
+In principle, Rust can do some interesting analyses and optimizations based
 on this fact. For instance, `Result<T, Void>` could be represented as just `T`,
-because the Err case doesn't actually exist. Also in principle the following
-could compile:
+because the Err case doesn't actually exist. The following *could* also compile:
 
 ```rust,ignore
 enum Void {}
@@ -111,3 +110,9 @@ let Ok(num) = res;
 
 But neither of these tricks work today, so all Void types get you today is
 the ability to be confident that certain situations are statically impossible.
+
+One final subtle detail about empty types is that raw pointers to them are
+actually valid to construct, but dereferencing them is Undefined Behaviour
+because that doesn't actually make sense. That is, you could model C's `void *`
+type with `*const Void`, but this doesn't necessarily gain anything over using
+e.g. `*const ()`, which *is* safe to randomly dereference.
