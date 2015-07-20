@@ -23,7 +23,7 @@ use path;
 use sync::mpsc::{channel, Receiver};
 use sys::pipe::{self, AnonPipe};
 use sys::process as imp;
-use sys_common::{AsInner, AsInnerMut, FromInner};
+use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use thread;
 
 /// Representation of a running or exited child process.
@@ -71,6 +71,10 @@ impl AsInner<imp::Process> for Child {
     fn as_inner(&self) -> &imp::Process { &self.handle }
 }
 
+impl IntoInner<imp::Process> for Child {
+    fn into_inner(self) -> imp::Process { self.handle }
+}
+
 /// A handle to a child procesess's stdin
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
@@ -92,6 +96,10 @@ impl AsInner<AnonPipe> for ChildStdin {
     fn as_inner(&self) -> &AnonPipe { &self.inner }
 }
 
+impl IntoInner<AnonPipe> for ChildStdin {
+    fn into_inner(self) -> AnonPipe { self.inner }
+}
+
 /// A handle to a child procesess's stdout
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
@@ -109,6 +117,10 @@ impl AsInner<AnonPipe> for ChildStdout {
     fn as_inner(&self) -> &AnonPipe { &self.inner }
 }
 
+impl IntoInner<AnonPipe> for ChildStdout {
+    fn into_inner(self) -> AnonPipe { self.inner }
+}
+
 /// A handle to a child procesess's stderr
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
@@ -124,6 +136,10 @@ impl Read for ChildStderr {
 
 impl AsInner<AnonPipe> for ChildStderr {
     fn as_inner(&self) -> &AnonPipe { &self.inner }
+}
+
+impl IntoInner<AnonPipe> for ChildStderr {
+    fn into_inner(self) -> AnonPipe { self.inner }
 }
 
 /// The `Command` type acts as a process builder, providing fine-grained control

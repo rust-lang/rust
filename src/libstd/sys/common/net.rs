@@ -184,6 +184,8 @@ impl TcpStream {
 
     pub fn socket(&self) -> &Socket { &self.inner }
 
+    pub fn into_socket(self) -> Socket { self.inner }
+
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         setsockopt(&self.inner, libc::IPPROTO_TCP, libc::TCP_NODELAY,
                    nodelay as c_int)
@@ -336,6 +338,8 @@ impl TcpListener {
 
     pub fn socket(&self) -> &Socket { &self.inner }
 
+    pub fn into_socket(self) -> Socket { self.inner }
+
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {
             libc::getsockname(*self.inner.as_inner(), buf, len)
@@ -395,6 +399,8 @@ impl UdpSocket {
     }
 
     pub fn socket(&self) -> &Socket { &self.inner }
+
+    pub fn into_socket(self) -> Socket { self.inner }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {

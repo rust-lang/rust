@@ -17,9 +17,9 @@ use io::prelude::*;
 use fmt;
 use io;
 use net::{ToSocketAddrs, SocketAddr, Shutdown};
-use sys_common::net as net_imp;
-use sys_common::{AsInner, FromInner};
 use sys_common::io::read_to_end_uninitialized;
+use sys_common::net as net_imp;
+use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
 
 /// A structure which represents a TCP stream between a local socket and a
@@ -220,6 +220,10 @@ impl FromInner<net_imp::TcpStream> for TcpStream {
     fn from_inner(inner: net_imp::TcpStream) -> TcpStream { TcpStream(inner) }
 }
 
+impl IntoInner<net_imp::TcpStream> for TcpStream {
+    fn into_inner(self) -> net_imp::TcpStream { self.0 }
+}
+
 impl fmt::Debug for TcpStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
@@ -296,6 +300,10 @@ impl FromInner<net_imp::TcpListener> for TcpListener {
     fn from_inner(inner: net_imp::TcpListener) -> TcpListener {
         TcpListener(inner)
     }
+}
+
+impl IntoInner<net_imp::TcpListener> for TcpListener {
+    fn into_inner(self) -> net_imp::TcpListener { self.0 }
 }
 
 impl fmt::Debug for TcpListener {
