@@ -120,7 +120,8 @@ extern "C" void LLVMAddDereferenceableCallSiteAttr(LLVMValueRef Instr, unsigned 
                                                          idx, B)));
 }
 
-extern "C" void LLVMAddFunctionAttribute(LLVMValueRef Fn, unsigned index, uint64_t Val) {
+extern "C" void LLVMAddFunctionAttribute(LLVMValueRef Fn, unsigned index,
+                                         uint64_t Val) {
   Function *A = unwrap<Function>(Fn);
   AttrBuilder B;
   B.addRawValue(Val);

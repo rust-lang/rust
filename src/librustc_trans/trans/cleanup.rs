@@ -122,11 +122,9 @@ pub use self::Heap::*;
 use llvm::{BasicBlockRef, ValueRef};
 use trans::base;
 use trans::build;
-use trans::callee;
 use trans::common;
-use trans::common::{Block, FunctionContext, ExprId, NodeIdAndSpan};
+use trans::common::{Block, FunctionContext, NodeIdAndSpan};
 use trans::debuginfo::{DebugLoc, ToDebugLoc};
-use trans::declare;
 use trans::glue;
 use middle::region;
 use trans::type_::Type;
@@ -833,53 +831,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                                     &[Type::i8p(self.ccx), Type::i32(self.ccx)],
                                     false);
 
-        // The exception handling personality function.
-        //
-        // If our compilation unit has the `eh_personality` lang item somewhere
-        // within it, then we just need to translate that. Otherwise, we're
-        // building an rlib which will depend on some upstream implementation of
-        // this function, so we just codegen a generic reference to it. We don't
-        // specify any of the types for the function, we just make it a symbol
-        // that LLVM can later use.
-        //
-        // Note that MSVC is a little special here in that we don't use the
-        // `eh_personality` lang item at all. Currently LLVM has support for
-        // both Dwarf and SEH unwind mechanisms for MSVC targets and uses the
-        // *name of the personality function* to decide what kind of unwind side
-        // tables/landing pads to emit. It looks like Dwarf is used by default,
-        // injecting a dependency on the `_Unwind_Resume` symbol for resuming
-        // an "exception", but for MSVC we want to force SEH. This means that we
-        // can't actually have the personality function be our standard
-        // `rust_eh_personality` function, but rather we wired it up to the
-        // CRT's custom personality function, which forces LLVM to consider
-        // landing pads as "landing pads for SEH".
-        let target = &self.ccx.sess().target.target;
-        let llpersonality = match pad_bcx.tcx().lang_items.eh_personality() {
-            Some(def_id) if !target.options.is_like_msvc => {
-                callee::trans_fn_ref(pad_bcx.ccx(), def_id, ExprId(0),
-                                     pad_bcx.fcx.param_substs).val
-            }
-            _ => {
-                let mut personality = self.ccx.eh_personality().borrow_mut();
-                match *personality {
-                    Some(llpersonality) => llpersonality,
-                    None => {
-                        let name = if !target.options.is_like_msvc {
-                            "rust_eh_personality"
-                        } else if target.arch == "x86" {
-                            "_except_handler3"
-                        } else {
-                            "__C_specific_handler"
-                        };
-                        let fty = Type::variadic_func(&[], &Type::i32(self.ccx));
-                        let f = declare::declare_cfn(self.ccx, name, fty,
-                                                     self.ccx.tcx().types.i32);
-                        *personality = Some(f);
-                        f
-                    }
-                }
-            }
-        };
+        let llpersonality = pad_bcx.fcx.eh_personality();
 
         // The only landing pad clause will be 'cleanup'
         let llretval = build::LandingPad(pad_bcx, llretty, llpersonality, 1);

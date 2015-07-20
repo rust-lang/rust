@@ -54,15 +54,6 @@ NATIVE_DEPS_miniz_$(1) = miniz.c
 NATIVE_DEPS_rust_builtin_$(1) := rust_builtin.c \
 			rust_android_dummy.c
 NATIVE_DEPS_rustrt_native_$(1) := arch/$$(HOST_$(1))/record_sp.S
-ifeq ($$(findstring msvc,$(1)),msvc)
-ifeq ($$(findstring i686,$(1)),i686)
-NATIVE_DEPS_rustrt_native_$(1) += rust_try_msvc_32.ll
-else
-NATIVE_DEPS_rustrt_native_$(1) += rust_try_msvc_64.ll
-endif
-else
-NATIVE_DEPS_rustrt_native_$(1) += rust_try.ll
-endif
 NATIVE_DEPS_rust_test_helpers_$(1) := rust_test_helpers.c
 NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 
@@ -75,14 +66,6 @@ NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 # common rules used to build files for various targets.
 
 RT_OUTPUT_DIR_$(1) := $(1)/rt
-
-$$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.ll $$(MKFILE_DEPS) \
-	    $$(LLVM_CONFIG_$$(CFG_BUILD))
-	@mkdir -p $$(@D)
-	@$$(call E, compile: $$@)
-	$$(Q)$$(LLC_$$(CFG_BUILD)) $$(CFG_LLC_FLAGS_$(1)) \
-	    -filetype=obj -mtriple=$$(CFG_LLVM_TARGET_$(1)) \
-	    -relocation-model=pic -o $$@ $$<
 
 $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.c $$(MKFILE_DEPS)
 	@mkdir -p $$(@D)
@@ -122,7 +105,6 @@ define THIRD_PARTY_LIB
 OBJS_$(2)_$(1) := $$(NATIVE_DEPS_$(2)_$(1):%=$$(RT_OUTPUT_DIR_$(1))/%)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.c=.o)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.cpp=.o)
-OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.ll=.o)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.S=.o)
 NATIVE_$(2)_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),$(2))
 $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1)): $$(OBJS_$(2)_$(1))
