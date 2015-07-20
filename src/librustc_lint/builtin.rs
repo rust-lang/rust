@@ -53,7 +53,7 @@ use syntax::{abi, ast};
 use syntax::ast_util::{self, is_shift_binop, local_def};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
-use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType, emit_feature_err};
+use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
 use syntax::parse::token;
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ptr::P;
@@ -382,11 +382,13 @@ impl LintPass for TypeLimits {
 
         fn check_unsigned_negation_feature(cx: &Context, span: Span) {
             if !cx.sess().features.borrow().negate_unsigned {
-                emit_feature_err(
-                    &cx.sess().parse_sess.span_diagnostic,
-                    "negate_unsigned",
-                    span,
-                    "unary negation of unsigned integers may be removed in the future");
+                // FIXME(#27141): change this to syntax::feature_gate::emit_feature_err…
+                cx.sess().span_warn(span,
+                    "unary negation of unsigned integers will be feature gated in the future");
+                // …and remove following two expressions.
+                if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some() { return; }
+                cx.sess().fileline_help(span, "add #![feature(negate_unsigned)] to the \
+                                               crate attributes to enable the gate in advance");
             }
         }
     }
