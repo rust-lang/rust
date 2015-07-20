@@ -5,14 +5,14 @@
 
 # Summary
 
-Add item-recovery methods to the set types in `std`. Add key-recovery methods to the map types in
-`std` in order to facilitate this.
+Add element-recovery methods to the set types in `std`. Add key-recovery methods to the map types
+in `std` in order to facilitate this.
 
 # Motivation
 
 Sets are sometimes used as a cache keyed on a certain property of a type, but programs may need to
 access the type's other properties for efficiency or functionailty. The sets in `std` do not expose
-their items (by reference or by value), making this use-case impossible.
+their elements (by reference or by value), making this use-case impossible.
 
 Consider the following example:
 
@@ -74,27 +74,27 @@ fn main() {
     // replaced copper with zinc
     // ```
     //
-    // However, `HashSet` does not expose its items via its `{contains, insert, remove}` methods,
-    // instead providing only a boolean indicator of the item's presence in the set, preventing us
-    // from implementing the desired functionality.
+    // However, `HashSet` does not expose its elements via its `{contains, insert, remove}`
+    // methods,  instead providing only a boolean indicator of the elements's presence in the set,
+    // preventing us from implementing the desired functionality.
 }
 ```
 
 # Detailed design
 
-Add the following item-recovery methods to `std::collections::{BTreeSet, HashSet}`:
+Add the following element-recovery methods to `std::collections::{BTreeSet, HashSet}`:
 
 ```rust
 impl<T> Set<T> {
-    // Like `contains`, but returns a reference to the item if the set contains it.
-    fn item<Q: ?Sized>(&self, item: &Q) -> Option<&T>;
+    // Like `contains`, but returns a reference to the element if the set contains it.
+    fn element<Q: ?Sized>(&self, element: &Q) -> Option<&T>;
 
-    // Like `remove`, but returns the item if the set contained it.
-    fn remove_item<Q: ?Sized>(&mut self, item: &Q) -> Option<T>;
+    // Like `remove`, but returns the element if the set contained it.
+    fn remove_element<Q: ?Sized>(&mut self, element: &Q) -> Option<T>;
 
-    // Like `insert`, but replaces the item with the given one and returns the previous item if the
-    // set contained it.
-    fn replace(&mut self, item: T) -> Option<T>;
+    // Like `insert`, but replaces the element with the given one and returns the previous element
+    // if the set contained it.
+    fn replace(&mut self, element: T) -> Option<T>;
 }
 ```
 
@@ -118,8 +118,7 @@ impl<K, V> Map<K, V> {
 }
 ```
 
-For completion, add the following key-recovery methods to
-`std::collections::{btree_map, hash_map}::OccupiedEntry`:
+Add the following key-recovery methods to `std::collections::{btree_map, hash_map}::OccupiedEntry`:
 
 ```rust
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
@@ -137,24 +136,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
 }
 ```
 
-# Drawbacks
-
-This complicates the collection APIs.
-
-The distinction between `insert` and `replace` may be confusing. It would be more consistent to
-call `Set::replace` `Set::insert_item` and `Map::replace` `Map::insert_key_value`, but `BTreeMap`
-and `HashMap` do not replace equivalent keys in their `insert` methods, so rather than have
-`insert` and `insert_key_value` behave differently in that respect, `replace` is used instead.
-
-# Alternatives
-
-Do nothing.
-
-# Unresolved questions
-
-Are these the best method names?
-
-Should `std::collections::{btree_map, hash_map}::VacantEntry` provide methods like
+Add the following key-recovery methods to `std::collections::{btree_map, hash_map}::VacantEntry`:
 
 ```rust
 impl<'a, K, V> VacantEntry<'a, K, V> {
@@ -168,6 +150,23 @@ impl<'a, K, V> VacantEntry<'a, K, V> {
     fn into_key(self) -> K;
 }
 ```
+
+# Drawbacks
+
+This complicates the collection APIs.
+
+The distinction between `insert` and `replace` may be confusing. It would be more consistent to
+call `Set::replace` `Set::insert_element` and `Map::replace` `Map::insert_key_value`, but
+`BTreeMap` and `HashMap` do not replace equivalent keys in their `insert` methods, so rather than
+have `insert` and `insert_key_value` behave differently in that respect, `replace` is used instead.
+
+# Alternatives
+
+Do nothing.
+
+# Unresolved questions
+
+Are these the best method names?
 
 Should `{BTreeMap, HashMap}::insert` be changed to replace equivalent keys? This could break code
 relying on the old behavior, and would add an additional inconsistency to `OccupiedEntry::insert`.
