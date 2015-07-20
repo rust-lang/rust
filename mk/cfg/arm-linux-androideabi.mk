@@ -1,8 +1,8 @@
 # arm-linux-androideabi configuration
-CC_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-gcc
-CXX_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-g++
-CPP_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-gcc -E
-AR_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-ar
+CC_arm-linux-androideabi=$(CFG_ARM_LINUX_ANDROIDEABI_NDK)/bin/arm-linux-androideabi-gcc
+CXX_arm-linux-androideabi=$(CFG_ARM_LINUX_ANDROIDEABI_NDK)/bin/arm-linux-androideabi-g++
+CPP_arm-linux-androideabi=$(CFG_ARM_LINUX_ANDROIDEABI_NDK)/bin/arm-linux-androideabi-gcc -E
+AR_arm-linux-androideabi=$(CFG_ARM_LINUX_ANDROIDEABI_NDK)/bin/arm-linux-androideabi-ar
 CFG_LIB_NAME_arm-linux-androideabi=lib$(1).so
 CFG_STATIC_LIB_NAME_arm-linux-androideabi=lib$(1).a
 CFG_LIB_GLOB_arm-linux-androideabi=lib$(1)-*.so
