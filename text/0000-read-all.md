@@ -173,6 +173,30 @@ discard the stream anyways.
 Users who need finer control should use the `read` method directly, or
 when available use the `Seek` trait.
 
+# About the buffer contents
+
+This RFC proposes that the contents of the output buffer be undefined on
+an error return. It might be untouched, partially overwritten, or
+completely overwritten (even if less bytes could be read; for instance,
+this method might in theory use it as a scratch space).
+
+Two possible alternatives could be considered: do not touch it on
+failure, or overwrite it with valid data as much as possible.
+
+Never touching the output buffer on failure would make it much more
+expensive for the default implementation (which calls `read` in a loop),
+since it would have to read into a temporary buffer and copy to the
+output buffer on success. Any implementation which cannot do an early
+return for all failure cases would have similar extra costs.
+
+Overwriting as much as possible with valid data makes some sense; it
+happens without any extra cost in the default implementation. However,
+for optimized implementations this extra work is useless; since the
+caller can't know how much is valid data and how much is garbage, it
+can't make use of the valid data.
+
+Users who need finer control should use the `read` method directly.
+
 # Naming
 
 It's unfortunate that `write_all` used `WriteZero` for its `ErrorKind`;
