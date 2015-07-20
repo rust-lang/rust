@@ -355,7 +355,7 @@ or projections are involved:
       R ⊢ scalar: 'a
 
     OutlivesNominalType:
-      ∀i. Pi: 'a
+      ∀i. R ⊢ Pi: 'a
       --------------------------------------------------
       R ⊢ Id<P0..Pn>: 'a
 
@@ -387,11 +387,11 @@ The outlives relation for lifetimes depends on whether the lifetime in
 question was bound within a type or not. In the usual case, we decide
 the relationship between two lifetimes by consulting the environment.
 Lifetimes representing scopes within the current fn have a
-relationship derived from the code itself, lifetime parameters have
-relationships defined by where-clauses and implied bounds:
+relationship derived from the code itself, while lifetime parameters
+have relationships defined by where-clauses and implied bounds.
 
-      'x not in R
-      ('x: 'a) in Env
+      'x ∉ R               // not a bound region
+      ('x: 'a) in Env      // derivable from where-clauses etc
       --------------------------------------------------
       R ⊢ 'x: 'a
       
@@ -401,7 +401,7 @@ i32): 'x` holds, even though we do not yet know what region `'a` is
 (and in fact it may be instantiated many times with different values
 on each call to the fn).
       
-      'x in R
+      'x ∈ R               // bound region
       --------------------------------------------------
       R ⊢ 'x: 'a
 
@@ -422,9 +422,9 @@ derived from the signature (discussed below).
 #### Outlives for projections
 
 Projections have the most possibilities. First, we may find
-information in the environment, as with type parameters, but we can
-also consult the trait definition to find bounds (consider an
-associated type declared like `type Foo: 'static`). These rule only
+information in the in-scope where clauses, as with type parameters,
+but we can also consult the trait definition to find bounds (consider
+an associated type declared like `type Foo: 'static`). These rule only
 apply if there are no higher-ranked lifetimes in the projection; for
 simplicity's sake, we encode that by requiring an empty list of
 higher-ranked lifetimes. (This is somewhat stricter than necessary,
@@ -483,7 +483,8 @@ reduce `<PROJ>: 'x` to `&'a T: 'x`, which in turn holds if `'a: 'x`
 and `T: 'x` (from the rule `OutlivesReference`).
 
 But often we are in a situation where we can't normalize the
-projection. What can we do then? The rule
+projection (for example, a projection like `I::Item` where we only
+know that `I: Iterator`). (For example, What can we do then? The rule
 `OutlivesProjectionComponents` says that if we can conclude that every
 lifetime/type parameter `Pi` to the trait reference outlives `'x`,
 then we know that a projection from those parameters outlives `'x`. In
@@ -538,11 +539,11 @@ impl Iterator for Foo {
 ```
 
 Clearly, whatever `<TYPE>` is, it can only refer to the lifetime
-`'static`.  So clearly `<Foo as Iterator>::Item: 'static` holds. We
-know this is true without ever knowing what `<TYPE>` is -- we just
-need to see that the trait reference `<Foo as Iterator>` doesn't have
-any lifetimes or type parameters in it, and hence the impl cannot
-refer to any lifetime or type parameters.
+`'static`.  So `<Foo as Iterator>::Item: 'static` holds. We know this
+is true without ever knowing what `<TYPE>` is -- we just need to see
+that the trait reference `<Foo as Iterator>` doesn't have any
+lifetimes or type parameters in it, and hence the impl cannot refer to
+any lifetime or type parameters.
 
 #### Implementation complications
 
@@ -588,7 +589,12 @@ declare one), but we'll take those basic conditions for granted.
 
     WfParameter:
       --------------------------------------------------
-      R ⊢ X WF
+      R ⊢ X WF                  // where X is a type parameter
+
+    WfTuple:
+      ∀i. R ⊢ Ti WF
+      --------------------------------------------------
+      R ⊢ (T0..Tn) WF
 
     WfNominalType:
       ∀i. R ⊢ Pi Wf             // parameters must be WF,
@@ -611,7 +617,7 @@ declare one), but we'll take those basic conditions for granted.
 
     WfProjection:
       ∀i. R ⊢ Pi WF             // all components well-formed
-      R ⊢ <P0 as Trait<P1..Pn>> // the projection itself is valid
+      R ⊢ <P0: Trait<P1..Pn>>   // the projection itself is valid
       --------------------------------------------------
       R ⊢ <P0 as Trait<P1..Pn>>::Id WF
 
@@ -623,9 +629,9 @@ than the rest, simply because they modify the set `R` of bound
 lifetime names. Let's start with the rule for fn types:
 
     WfFn:
-      ∀i. R, r.. ⊢ Ti
+      ∀i. R, r.. ⊢ Ti WF
       --------------------------------------------------
-      R ⊢ for<r..> fn(T1..Tn) -> T0
+      R ⊢ for<r..> fn(T1..Tn) -> T0 WF
 
 Basically, this rule says that a `fn` type is *always* WF, regardless
 of what types it references.  This certainly accepts a type like
@@ -670,8 +676,10 @@ and a trait object like `Foo+'x`, when we require that `'static: 'x`
 (which is true, clearly, but in some cases the implicit bounds from
 traits are not `'static` but rather some named lifetime).
 
-The next clause states that all object fragments must be WF. An object
-fragment is WF if its components are WF:
+The next clause states that all object type fragments must be WF (an
+"object type fragment" is part of an object type: so if you have
+`Box<FnMut()+Send>`, `FnMut()` and `Send` are object type
+fragments). An object type fragment is WF if its components are WF:
 
     WfObjectFragment:
       ∀i. R, r.. ⊢ Pi
@@ -855,8 +863,8 @@ current policy and later, if/when we adopt a more full notion of
 implied bounds, rationalize it by saying that the suitable bounds for
 a type alias are implied by its expansion.
 
-**For trait object fragments, should we check WF conditions when we can?**
-For example, if you have:
+**For trait object type fragments, should we check WF conditions when
+we can?** For example, if you have:
 
 ```rust
 trait HashSet<K:Hash>
