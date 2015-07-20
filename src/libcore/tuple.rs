@@ -28,7 +28,6 @@
 //! * `Default`
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "tuple")]
 
 use clone::Clone;
 use cmp::*;

@@ -9,9 +9,10 @@
 // except according to those terms.
 
 //! The 32-bit unsigned integer type
+//!
+//! *[See also the `u32` primitive type](../primitive.u32.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "u32")]
 
 pub use core::u32::{BITS, BYTES, MIN, MAX};
 

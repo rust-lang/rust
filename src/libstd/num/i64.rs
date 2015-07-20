@@ -9,9 +9,10 @@
 // except according to those terms.
 
 //! The 64-bit signed integer type
+//!
+//! *[See also the `i64` primitive type](../primitive.i64.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "i64")]
 
 pub use core::i64::{BITS, BYTES, MIN, MAX};
 
