@@ -1721,17 +1721,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ok_if(substs.upvar_tys.clone())
             }
 
-            ty::TyStruct(def_id, substs) => {
+            ty::TyStruct(def, substs) => {
                 let types: Vec<Ty> =
-                    self.tcx().struct_fields(def_id, substs).iter()
-                                                                 .map(|f| f.mt.ty)
-                                                                 .collect();
+                    self.tcx().struct_fields(def.did, substs).iter()
+                                                             .map(|f| f.mt.ty)
+                                                             .collect();
                 nominal(bound, types)
             }
 
-            ty::TyEnum(def_id, substs) => {
+            ty::TyEnum(def, substs) => {
                 let types: Vec<Ty> =
-                    self.tcx().substd_enum_variants(def_id, substs)
+                    self.tcx().substd_enum_variants(def.did, substs)
                     .iter()
                     .flat_map(|variant| &variant.args)
                     .cloned()
@@ -1861,25 +1861,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // for `PhantomData<T>`, we pass `T`
-            ty::TyStruct(def_id, substs)
-                if Some(def_id) == self.tcx().lang_items.phantom_data() =>
-            {
+            ty::TyStruct(def, substs) if def.is_phantom_data() => {
                 substs.types.get_slice(TypeSpace).to_vec()
             }
 
-            ty::TyStruct(def_id, substs) => {
-                self.tcx().struct_fields(def_id, substs)
+            ty::TyStruct(def, substs) => {
+                self.tcx().struct_fields(def.did, substs)
                           .iter()
                           .map(|f| f.mt.ty)
                           .collect()
             }
 
-            ty::TyEnum(def_id, substs) => {
-                self.tcx().substd_enum_variants(def_id, substs)
-                          .iter()
-                          .flat_map(|variant| &variant.args)
-                          .map(|&ty| ty)
-                          .collect()
+            ty::TyEnum(def, substs) => {
+                self.tcx().substd_enum_variants(def.did, substs)
+                    .iter()
+                    .flat_map(|variant| &variant.args)
+                    .map(|&ty| ty)
+                    .collect()
             }
         }
     }
@@ -2523,9 +2521,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // Struct<T> -> Struct<U>.
-            (&ty::TyStruct(def_id, substs_a), &ty::TyStruct(_, substs_b)) => {
-                let fields = tcx.lookup_struct_fields(def_id).iter().map(|f| {
-                    tcx.lookup_field_type_unsubstituted(def_id, f.id)
+            (&ty::TyStruct(def, substs_a), &ty::TyStruct(_, substs_b)) => {
+                let fields = tcx.lookup_struct_fields(def.did).iter().map(|f| {
+                    tcx.lookup_field_type_unsubstituted(def.did, f.id)
                 }).collect::<Vec<_>>();
 
                 // The last field of the structure has to exist and contain type parameters.
@@ -2572,7 +2570,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let param_b = *substs_b.types.get(TypeSpace, i);
                     new_substs.types.get_mut_slice(TypeSpace)[i] = param_b;
                 }
-                let new_struct = tcx.mk_struct(def_id, tcx.mk_substs(new_substs));
+                let new_struct = tcx.mk_struct(def, tcx.mk_substs(new_substs));
                 let origin = infer::Misc(obligation.cause.span);
                 if self.infcx.sub_types(false, origin, new_struct, target).is_err() {
                     return Err(Unimplemented);

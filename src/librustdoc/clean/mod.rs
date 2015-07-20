@@ -1658,8 +1658,9 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 decl: (ast_util::local_def(0), &fty.sig).clean(cx),
                 abi: fty.abi.to_string(),
             }),
-            ty::TyStruct(did, substs) |
-            ty::TyEnum(did, substs) => {
+            ty::TyStruct(def, substs) |
+            ty::TyEnum(def, substs) => {
+                let did = def.did;
                 let fqn = csearch::get_item_path(cx.tcx(), did);
                 let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
                 let kind = match self.sty {

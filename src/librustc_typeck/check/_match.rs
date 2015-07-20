@@ -528,7 +528,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
     let tcx = pcx.fcx.ccx.tcx;
 
     let def = tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
-    let (enum_def_id, variant_def_id) = match def {
+    let (adt_def, variant_def_id) = match def {
         def::DefTrait(_) => {
             let name = pprust::path_to_string(path);
             span_err!(tcx.sess, pat.span, E0168,
@@ -543,11 +543,12 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
         _ => {
             let def_type = tcx.lookup_item_type(def.def_id());
             match def_type.ty.sty {
-                ty::TyStruct(struct_def_id, _) =>
-                    (struct_def_id, struct_def_id),
-                ty::TyEnum(enum_def_id, _)
-                    if def == def::DefVariant(enum_def_id, def.def_id(), true) =>
-                    (enum_def_id, def.def_id()),
+                ty::TyStruct(struct_def, _) =>
+                    (struct_def, struct_def.did),
+                ty::TyEnum(enum_def, _)
+                    // TODO: wut?
+                    if def == def::DefVariant(enum_def.did, def.def_id(), true) =>
+                    (enum_def, def.def_id()),
                 _ => {
                     let name = pprust::path_to_string(path);
                     span_err!(tcx.sess, pat.span, E0163,
@@ -565,8 +566,8 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
 
     instantiate_path(pcx.fcx,
                      &path.segments,
-                     tcx.lookup_item_type(enum_def_id),
-                     &tcx.lookup_predicates(enum_def_id),
+                     adt_def.type_scheme(tcx),
+                     &adt_def.predicates(tcx),
                      None,
                      def,
                      pat.span,
@@ -647,17 +648,17 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
     let real_path_ty = fcx.node_ty(pat.id);
     let (arg_tys, kind_name): (Vec<_>, &'static str) = match real_path_ty.sty {
-        ty::TyEnum(enum_def_id, expected_substs)
-            if def == def::DefVariant(enum_def_id, def.def_id(), false) =>
+        ty::TyEnum(enum_def, expected_substs)
+            if def == def::DefVariant(enum_def.did, def.def_id(), false) =>
         {
-            let variant = tcx.enum_variant_with_id(enum_def_id, def.def_id());
+            let variant = tcx.enum_variant_with_id(enum_def.did, def.def_id());
             (variant.args.iter()
                          .map(|t| fcx.instantiate_type_scheme(pat.span, expected_substs, t))
                          .collect(),
              "variant")
         }
-        ty::TyStruct(struct_def_id, expected_substs) => {
-            let struct_fields = tcx.struct_fields(struct_def_id, expected_substs);
+        ty::TyStruct(struct_def, expected_substs) => {
+            let struct_fields = tcx.struct_fields(struct_def.did, expected_substs);
             (struct_fields.iter()
                           .map(|field| fcx.instantiate_type_scheme(pat.span,
                                                                    expected_substs,

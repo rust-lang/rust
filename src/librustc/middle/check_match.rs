@@ -234,10 +234,10 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
         match p.node {
             ast::PatIdent(ast::BindByValue(ast::MutImmutable), ident, None) => {
                 let pat_ty = cx.tcx.pat_ty(p);
-                if let ty::TyEnum(def_id, _) = pat_ty.sty {
+                if let ty::TyEnum(edef, _) = pat_ty.sty {
                     let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
                     if let Some(DefLocal(_)) = def {
-                        if cx.tcx.enum_variants(def_id).iter().any(|variant|
+                        if cx.tcx.enum_variants(edef.did).iter().any(|variant|
                             variant.name == ident.node.name
                                 && variant.args.is_empty()
                         ) {
@@ -501,8 +501,8 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
 ///
 /// left_ty: struct X { a: (bool, &'static str), b: usize}
 /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
-fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
-                     pats: Vec<&Pat>, left_ty: Ty) -> P<Pat> {
+fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
+                              pats: Vec<&Pat>, left_ty: Ty<'tcx>) -> P<Pat> {
     let pats_len = pats.len();
     let mut pats = pats.into_iter().map(|p| P((*p).clone()));
     let pat = match left_ty.sty {
@@ -511,9 +511,9 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
         ty::TyEnum(cid, _) | ty::TyStruct(cid, _)  => {
             let (vid, is_structure) = match ctor {
                 &Variant(vid) =>
-                    (vid, cx.tcx.enum_variant_with_id(cid, vid).arg_names.is_some()),
+                    (vid, cx.tcx.enum_variant_with_id(cid.did, vid).arg_names.is_some()),
                 _ =>
-                    (cid, !cx.tcx.is_tuple_struct(cid))
+                    (cid.did, !cid.is_tuple_struct(cx.tcx))
             };
             if is_structure {
                 let fields = cx.tcx.lookup_struct_fields(vid);
@@ -606,8 +606,8 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
             _ => vec!(Single)
         },
 
-        ty::TyEnum(eid, _) =>
-            cx.tcx.enum_variants(eid)
+        ty::TyEnum(edef, _) =>
+            cx.tcx.enum_variants(edef.did)
                 .iter()
                 .map(|va| Variant(va.id))
                 .collect(),
@@ -817,13 +817,13 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usi
             ty::TyStr => 0,
             _ => 1
         },
-        ty::TyEnum(eid, _) => {
+        ty::TyEnum(edef, _) => {
             match *ctor {
-                Variant(id) => cx.tcx.enum_variant_with_id(eid, id).args.len(),
+                Variant(id) => cx.tcx.enum_variant_with_id(edef.did, id).args.len(),
                 _ => unreachable!()
             }
         }
-        ty::TyStruct(cid, _) => cx.tcx.lookup_struct_fields(cid).len(),
+        ty::TyStruct(cdef, _) => cx.tcx.lookup_struct_fields(cdef.did).len(),
         ty::TyArray(_, n) => n,
         _ => 0
     }

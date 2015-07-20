@@ -173,10 +173,10 @@ fn type_needs_drop_given_env<'a,'tcx>(cx: &ty::ctxt<'tcx>,
 
 fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
-        ty::TyStruct(def_id, substs) => {
-            let fields = ccx.tcx().lookup_struct_fields(def_id);
+        ty::TyStruct(def, substs) => {
+            let fields = ccx.tcx().lookup_struct_fields(def.did);
             fields.len() == 1 && {
-                let ty = ccx.tcx().lookup_field_type(def_id, fields[0].id, substs);
+                let ty = ccx.tcx().lookup_field_type(def.did, fields[0].id, substs);
                 let ty = monomorphize::normalize_associated_type(ccx.tcx(), &ty);
                 type_is_immediate(ccx, ty)
             }

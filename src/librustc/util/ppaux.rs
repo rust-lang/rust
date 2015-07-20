@@ -366,6 +366,14 @@ impl<'tcx> fmt::Debug for ty::TraitDef<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Debug for ty::ADTDef<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        ty::tls::with(|tcx| {
+            write!(f, "{}", tcx.item_path_str(self.did))
+        })
+    }
+}
+
 impl fmt::Display for ty::BoundRegion {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if verbose() {
@@ -648,14 +656,14 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyInfer(infer_ty) => write!(f, "{}", infer_ty),
             TyError => write!(f, "[type error]"),
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
-            TyEnum(did, substs) | TyStruct(did, substs) => {
+            TyEnum(def, substs) | TyStruct(def, substs) => {
                 ty::tls::with(|tcx| {
-                    if did.krate == ast::LOCAL_CRATE &&
-                          !tcx.tcache.borrow().contains_key(&did) {
-                        write!(f, "{}<..>", tcx.item_path_str(did))
+                    if def.did.krate == ast::LOCAL_CRATE &&
+                          !tcx.tcache.borrow().contains_key(&def.did) {
+                        write!(f, "{}<..>", tcx.item_path_str(def.did))
                     } else {
-                        parameterized(f, substs, did, &[],
-                                      |tcx| tcx.lookup_item_type(did).generics)
+                        parameterized(f, substs, def.did, &[],
+                                      |tcx| tcx.lookup_item_type(def.did).generics)
                     }
                 })
             }

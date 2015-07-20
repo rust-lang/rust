@@ -468,9 +468,10 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
       'c' => return tcx.types.char,
       't' => {
         assert_eq!(next(st), '[');
-        let def = parse_def_(st, NominalType, conv);
+        let did = parse_def_(st, NominalType, conv);
         let substs = parse_substs_(st, conv);
         assert_eq!(next(st), ']');
+        let def = st.tcx.lookup_adt_def(did);
         return tcx.mk_enum(def, st.tcx.mk_substs(substs));
       }
       'x' => {
@@ -558,7 +559,8 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
           let did = parse_def_(st, NominalType, conv);
           let substs = parse_substs_(st, conv);
           assert_eq!(next(st), ']');
-          return st.tcx.mk_struct(did, st.tcx.mk_substs(substs));
+          let def = st.tcx.lookup_adt_def(did);
+          return st.tcx.mk_struct(def, st.tcx.mk_substs(substs));
       }
       'k' => {
           assert_eq!(next(st), '[');

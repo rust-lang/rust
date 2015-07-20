@@ -390,6 +390,13 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
     }
 }
 
+pub fn get_adt_def<'tcx>(cdata: Cmd,
+                         item_id: ast::NodeId,
+                         tcx: &ty::ctxt<'tcx>) -> &'tcx ty::ADTDef<'tcx>
+{
+    tcx.intern_adt_def(ast::DefId { krate: cdata.cnum, node: item_id })
+}
+
 pub fn get_predicates<'tcx>(cdata: Cmd,
                             item_id: ast::NodeId,
                             tcx: &ty::ctxt<'tcx>)

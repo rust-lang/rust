@@ -55,9 +55,9 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
                                   ty: Ty<'tcx>)
                                   -> Option<DefId> {
     match ty.sty {
-        TyEnum(def_id, _) |
-        TyStruct(def_id, _) => {
-            Some(def_id)
+        TyEnum(def, _) |
+        TyStruct(def, _) => {
+            Some(def.did)
         }
 
         TyTrait(ref t) => {
@@ -310,12 +310,11 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
             let self_type = tcx.lookup_item_type(impl_did);
             match self_type.ty.sty {
-                ty::TyEnum(type_def_id, _) |
-                ty::TyStruct(type_def_id, _) |
-                ty::TyClosure(type_def_id, _) => {
+                ty::TyEnum(type_def, _) |
+                ty::TyStruct(type_def, _) => {
                     tcx.destructor_for_type
                        .borrow_mut()
-                       .insert(type_def_id, method_def_id.def_id());
+                       .insert(type_def.did, method_def_id.def_id());
                     tcx.destructors
                        .borrow_mut()
                        .insert(method_def_id.def_id());
@@ -471,10 +470,10 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                     check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
                 }
 
-                (&ty::TyStruct(def_id_a, substs_a), &ty::TyStruct(def_id_b, substs_b)) => {
-                    if def_id_a != def_id_b {
-                        let source_path = tcx.item_path_str(def_id_a);
-                        let target_path = tcx.item_path_str(def_id_b);
+                (&ty::TyStruct(def_a, substs_a), &ty::TyStruct(def_b, substs_b)) => {
+                    if def_a != def_b {
+                        let source_path = tcx.item_path_str(def_a.did);
+                        let target_path = tcx.item_path_str(def_b.did);
                         span_err!(tcx.sess, span, E0377,
                                   "the trait `CoerceUnsized` may only be implemented \
                                    for a coercion between structures with the same \
@@ -484,9 +483,9 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                     }
 
                     let origin = infer::Misc(span);
-                    let fields = tcx.lookup_struct_fields(def_id_a);
+                    let fields = tcx.lookup_struct_fields(def_a.did);
                     let diff_fields = fields.iter().enumerate().filter_map(|(i, f)| {
-                        let ty = tcx.lookup_field_type_unsubstituted(def_id_a, f.id);
+                        let ty = tcx.lookup_field_type_unsubstituted(def_a.did, f.id);
                         let (a, b) = (ty.subst(tcx, substs_a), ty.subst(tcx, substs_b));
                         if infcx.sub_types(false, origin, b, a).is_ok() {
                             None

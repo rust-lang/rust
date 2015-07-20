@@ -101,8 +101,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_field_access(&mut self, lhs: &ast::Expr, name: ast::Name) {
         match self.tcx.expr_ty_adjusted(lhs).sty {
-            ty::TyStruct(id, _) => {
-                let fields = self.tcx.lookup_struct_fields(id);
+            ty::TyStruct(def, _) => {
+                let fields = self.tcx.lookup_struct_fields(def.did);
                 let field_id = fields.iter()
                     .find(|field| field.name == name).unwrap().id;
                 self.live_symbols.insert(field_id.node);
@@ -113,8 +113,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_tup_field_access(&mut self, lhs: &ast::Expr, idx: usize) {
         match self.tcx.expr_ty_adjusted(lhs).sty {
-            ty::TyStruct(id, _) => {
-                let fields = self.tcx.lookup_struct_fields(id);
+            ty::TyStruct(def, _) => {
+                let fields = self.tcx.lookup_struct_fields(def.did);
                 let field_id = fields[idx].id;
                 self.live_symbols.insert(field_id.node);
             },

@@ -902,9 +902,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::TyEnum(def_id, substs) |
-            ty::TyStruct(def_id, substs) => {
-                let item_type = self.tcx().lookup_item_type(def_id);
+            ty::TyEnum(def, substs) |
+            ty::TyStruct(def, substs) => {
+                let item_type = self.tcx().lookup_item_type(def.did);
 
                 // All type parameters on enums and structs should be
                 // in the TypeSpace.
@@ -915,7 +915,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
                 self.add_constraints_from_substs(
                     generics,
-                    def_id,
+                    def.did,
                     item_type.generics.types.get_slice(subst::TypeSpace),
                     item_type.generics.regions.get_slice(subst::TypeSpace),
                     substs,

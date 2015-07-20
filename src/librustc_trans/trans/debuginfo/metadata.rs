@@ -178,13 +178,13 @@ impl<'tcx> TypeMap<'tcx> {
             ty::TyFloat(_) => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
-            ty::TyEnum(def_id, substs) => {
+            ty::TyEnum(def, substs) => {
                 unique_type_id.push_str("enum ");
-                from_def_id_and_substs(self, cx, def_id, substs, &mut unique_type_id);
+                from_def_id_and_substs(self, cx, def.did, substs, &mut unique_type_id);
             },
-            ty::TyStruct(def_id, substs) => {
+            ty::TyStruct(def, substs) => {
                 unique_type_id.push_str("struct ");
-                from_def_id_and_substs(self, cx, def_id, substs, &mut unique_type_id);
+                from_def_id_and_substs(self, cx, def.did, substs, &mut unique_type_id);
             },
             ty::TyTuple(ref component_types) if component_types.is_empty() => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
@@ -710,8 +710,12 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyTuple(ref elements) if elements.is_empty() => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
-        ty::TyEnum(def_id, _) => {
-            prepare_enum_metadata(cx, t, def_id, unique_type_id, usage_site_span).finalize(cx)
+        ty::TyEnum(def, _) => {
+            prepare_enum_metadata(cx,
+                                  t,
+                                  def.did,
+                                  unique_type_id,
+                                  usage_site_span).finalize(cx)
         }
         ty::TyArray(typ, len) => {
             fixed_vec_metadata(cx, unique_type_id, typ, Some(len as u64), usage_site_span)
@@ -780,10 +784,10 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    unique_type_id,
                                    usage_site_span).finalize(cx)
         }
-        ty::TyStruct(def_id, substs) => {
+        ty::TyStruct(def, substs) => {
             prepare_struct_metadata(cx,
                                     t,
-                                    def_id,
+                                    def.did,
                                     substs,
                                     unique_type_id,
                                     usage_site_span).finalize(cx)

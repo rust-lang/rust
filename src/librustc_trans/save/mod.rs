@@ -447,8 +447,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             ast::ExprField(ref sub_ex, ident) => {
                 let ty = &self.tcx.expr_ty_adjusted(&sub_ex).sty;
                 match *ty {
-                    ty::TyStruct(def_id, _) => {
-                        let fields = self.tcx.lookup_struct_fields(def_id);
+                    ty::TyStruct(def, _) => {
+                        let fields = self.tcx.lookup_struct_fields(def.did);
                         for f in &fields {
                             if f.name == ident.node.name {
                                 let sub_span = self.span_utils.span_for_last_ident(expr.span);
@@ -474,12 +474,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             ast::ExprStruct(ref path, _, _) => {
                 let ty = &self.tcx.expr_ty_adjusted(expr).sty;
                 match *ty {
-                    ty::TyStruct(def_id, _) => {
+                    ty::TyStruct(def, _) => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
                         Some(Data::TypeRefData(TypeRefData {
                             span: sub_span.unwrap(),
                             scope: self.enclosing_scope(expr.id),
-                            ref_id: def_id,
+                            ref_id: def.did,
                         }))
                     }
                     _ => {

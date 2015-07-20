@@ -690,6 +690,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                    span: Span,
                    id: ast::DefId,
                    name: FieldName) {
+        // TODO: refactor to variant API
         let fields = self.tcx.lookup_struct_fields(id);
         let field = match name {
             NamedField(f_name) => {
@@ -883,13 +884,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &ast::Expr) {
         match expr.node {
             ast::ExprField(ref base, ident) => {
-                if let ty::TyStruct(id, _) = self.tcx.expr_ty_adjusted(&**base).sty {
-                    self.check_field(expr.span, id, NamedField(ident.node.name));
+                if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(&**base).sty {
+                    self.check_field(expr.span, def.did, NamedField(ident.node.name));
                 }
             }
             ast::ExprTupField(ref base, idx) => {
-                if let ty::TyStruct(id, _) = self.tcx.expr_ty_adjusted(&**base).sty {
-                    self.check_field(expr.span, id, UnnamedField(idx.node));
+                if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(&**base).sty {
+                    self.check_field(expr.span, def.did, UnnamedField(idx.node));
                 }
             }
             ast::ExprMethodCall(ident, _, _) => {
@@ -900,13 +901,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             }
             ast::ExprStruct(_, ref fields, _) => {
                 match self.tcx.expr_ty(expr).sty {
-                    ty::TyStruct(ctor_id, _) => {
+                    ty::TyStruct(ctor_def, _) => {
                         // RFC 736: ensure all unmentioned fields are visible.
                         // Rather than computing the set of unmentioned fields
                         // (i.e. `all_fields - fields`), just check them all.
-                        let all_fields = self.tcx.lookup_struct_fields(ctor_id);
+                        let all_fields = self.tcx.lookup_struct_fields(ctor_def.did);
                         for field in all_fields {
-                            self.check_field(expr.span, ctor_id,
+                            self.check_field(expr.span, ctor_def.did,
                                              NamedField(field.name));
                         }
                     }
@@ -977,9 +978,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
         match pattern.node {
             ast::PatStruct(_, ref fields, _) => {
                 match self.tcx.pat_ty(pattern).sty {
-                    ty::TyStruct(id, _) => {
+                    ty::TyStruct(def, _) => {
                         for field in fields {
-                            self.check_field(pattern.span, id,
+                            self.check_field(pattern.span, def.did,
                                              NamedField(field.node.ident.name));
                         }
                     }
@@ -1008,12 +1009,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             // elsewhere).
             ast::PatEnum(_, Some(ref fields)) => {
                 match self.tcx.pat_ty(pattern).sty {
-                    ty::TyStruct(id, _) => {
+                    ty::TyStruct(def, _) => {
                         for (i, field) in fields.iter().enumerate() {
                             if let ast::PatWild(..) = field.node {
                                 continue
                             }
-                            self.check_field(field.span, id, UnnamedField(i));
+                            self.check_field(field.span, def.did, UnnamedField(i));
                         }
                     }
                     ty::TyEnum(..) => {

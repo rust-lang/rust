@@ -1125,7 +1125,8 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              None,
                              expr.span,
                              expr.id,
-                             tcx.mk_struct(did, tcx.mk_substs(substs)),
+                             tcx.mk_struct(tcx.lookup_adt_def(did),
+                                           tcx.mk_substs(substs)),
                              dest)
             } else {
                 tcx.sess.span_bug(expr.span,
@@ -1268,7 +1269,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         def::DefStruct(_) => {
             let ty = expr_ty(bcx, ref_expr);
             match ty.sty {
-                ty::TyStruct(did, _) if bcx.tcx().has_dtor(did) => {
+                ty::TyStruct(def, _) if def.has_dtor(bcx.tcx()) => {
                     let repr = adt::represent_type(bcx.ccx(), ty);
                     adt::trans_set_discr(bcx, &*repr, lldest, 0);
                 }
@@ -1372,8 +1373,8 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
     F: FnOnce(ty::Disr, &[ty::Field<'tcx>]) -> R,
 {
     match ty.sty {
-        ty::TyStruct(did, substs) => {
-            let fields = tcx.struct_fields(did, substs);
+        ty::TyStruct(def, substs) => {
+            let fields = tcx.struct_fields(def.did, substs);
             let fields = monomorphize::normalize_associated_type(tcx, &fields);
             op(0, &fields[..])
         }

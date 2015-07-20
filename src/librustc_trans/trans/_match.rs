@@ -1186,13 +1186,13 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         ).collect();
 
         match left_ty.sty {
-            ty::TyStruct(def_id, substs) if !type_is_sized(bcx.tcx(), left_ty) => {
+            ty::TyStruct(def, substs) if !type_is_sized(bcx.tcx(), left_ty) => {
                 // The last field is technically unsized but
                 // since we can only ever match that field behind
                 // a reference we construct a fat ptr here.
-                let fields = bcx.tcx().lookup_struct_fields(def_id);
+                let fields = bcx.tcx().lookup_struct_fields(def.did);
                 let unsized_ty = fields.iter().last().map(|field| {
-                    let fty = bcx.tcx().lookup_field_type(def_id, field.id, substs);
+                    let fty = bcx.tcx().lookup_field_type(def.did, field.id, substs);
                     monomorphize::normalize_associated_type(bcx.tcx(), &fty)
                 }).unwrap();
                 let llty = type_of::type_of(bcx.ccx(), unsized_ty);
