@@ -349,7 +349,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         } else if num_supplied_types != num_method_types {
             span_err!(self.tcx().sess, self.span, E0036,
                 "incorrect number of type parameters given for this method");
-            final_substs.types.replace(subst::FnSpace, vec![self.tcx().types.err; num_method_types]);
+            final_substs.types.replace(
+                subst::FnSpace,
+                vec![self.tcx().types.err; num_method_types]);
         } else {
             final_substs.types.replace(subst::FnSpace, supplied_method_types);
         }
