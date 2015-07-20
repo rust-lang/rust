@@ -315,6 +315,72 @@ pub trait Read {
         append_to_string(buf, |b| read_to_end(self, b))
     }
 
+    /// Read the exact number of bytes required to fill `buf`.
+    ///
+    /// This function reads as many bytes as necessary to completely fill the
+    /// specified buffer `buf`.
+    ///
+    /// No guarantees are provided about the contents of `buf` when this
+    /// function is called, implementations cannot rely on any property of the
+    /// contents of `buf` being true. It is recommended that implementations
+    /// only write data to `buf` instead of reading its contents.
+    ///
+    /// # Errors
+    ///
+    /// If this function encounters an error of the kind
+    /// `ErrorKind::Interrupted` then the error is ignored and the operation
+    /// will continue.
+    ///
+    /// If this function encounters an "end of file" before completely filling
+    /// the buffer, it returns an error of the kind `ErrorKind::UnexpectedEOF`.
+    /// The contents of `buf` are unspecified in this case.
+    ///
+    /// If any other read error is encountered then this function immediately
+    /// returns. The contents of `buf` are unspecified in this case.
+    ///
+    /// If this function returns an error, it is unspecified how many bytes it
+    /// has read, but it will never read more than would be necessary to
+    /// completely fill the buffer.
+    ///
+    /// # Examples
+    ///
+    /// [`File`][file]s implement `Read`:
+    ///
+    /// [file]: ../std/fs/struct.File.html
+    ///
+    /// ```
+    /// #![feature(read_exact)]
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut f = try!(File::open("foo.txt"));
+    /// let mut buffer = [0; 10];
+    ///
+    /// // read exactly 10 bytes
+    /// try!(f.read_exact(&mut buffer));
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "read_exact", reason = "recently added")]
+    fn read_exact(&mut self, mut buf: &mut [u8]) -> Result<()> {
+        while !buf.is_empty() {
+            match self.read(buf) {
+                Ok(0) => break,
+                Ok(n) => { let tmp = buf; buf = &mut tmp[n..]; }
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(e) => return Err(e),
+            }
+        }
+        if !buf.is_empty() {
+            Err(Error::new(ErrorKind::UnexpectedEOF,
+                           "failed to fill whole buffer"))
+        } else {
+            Ok(())
+        }
+    }
+
     /// Creates a "by reference" adaptor for this instance of `Read`.
     ///
     /// The returned adaptor also implements `Read` and will simply borrow this
@@ -1554,6 +1620,47 @@ mod tests {
         let mut c = Cursor::new(&b"\xff"[..]);
         let mut v = String::new();
         assert!(c.read_to_string(&mut v).is_err());
+    }
+
+    #[test]
+    fn read_exact() {
+        let mut buf = [0; 4];
+
+        let mut c = Cursor::new(&b""[..]);
+        assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(),
+                   io::ErrorKind::UnexpectedEOF);
+
+        let mut c = Cursor::new(&b"123"[..]).chain(Cursor::new(&b"456789"[..]));
+        c.read_exact(&mut buf).unwrap();
+        assert_eq!(&buf, b"1234");
+        c.read_exact(&mut buf).unwrap();
+        assert_eq!(&buf, b"5678");
+        assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(),
+                   io::ErrorKind::UnexpectedEOF);
+    }
+
+    #[test]
+    fn read_exact_slice() {
+        let mut buf = [0; 4];
+
+        let mut c = &b""[..];
+        assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(),
+                   io::ErrorKind::UnexpectedEOF);
+
+        let mut c = &b"123"[..];
+        assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(),
+                   io::ErrorKind::UnexpectedEOF);
+        // make sure the optimized (early returning) method is being used
+        assert_eq!(&buf, &[0; 4]);
+
+        let mut c = &b"1234"[..];
+        c.read_exact(&mut buf).unwrap();
+        assert_eq!(&buf, b"1234");
+
+        let mut c = &b"56789"[..];
+        c.read_exact(&mut buf).unwrap();
+        assert_eq!(&buf, b"5678");
+        assert_eq!(c, b"9");
     }
 
     #[test]
