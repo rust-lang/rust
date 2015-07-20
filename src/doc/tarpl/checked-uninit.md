@@ -68,6 +68,29 @@ fn main() {
 }
 ```
 
+Of course, while the analysis doesn't consider actual values, it does
+have a relatively sophisticated understanding of dependencies and control
+flow. For instance, this works:
+
+```rust
+let x: i32;
+
+loop {
+    // Rust doesn't understand that this branch will be taken unconditionally,
+    // because it relies on actual values.
+    if true {
+        // But it does understand that it will only be taken once because
+        // we *do* unconditionally break out of it. Therefore `x` doesn't
+        // need to be marked as mutable.
+        x = 0;
+        break;
+    }
+}
+// It also knows that it's impossible to get here without reaching the break.
+// And therefore that `x` must be initialized here!
+println!("{}", x);
+```
+
 If a value is moved out of a variable, that variable becomes logically
 uninitialized if the type of the value isn't Copy. That is:
 
