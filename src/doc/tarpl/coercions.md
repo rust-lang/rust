@@ -9,8 +9,7 @@ Here's all the kinds of coercion:
 
 Coercion is allowed between the following types:
 
-* Subtyping: `T` to `U` if `T` is a [subtype](lifetimes.html#subtyping-and-variance)
-  of `U`
+* Subtyping: `T` to `U` if `T` is a [subtype][] of `U`
 * Transitivity: `T_1` to `T_3` where `T_1` coerces to `T_2` and `T_2` coerces to `T_3`
 * Pointer Weakening:
     * `&mut T` to `&T`
@@ -25,7 +24,6 @@ only implemented automatically, and enables the following transformations:
 
 * `[T, ..n]` => `[T]`
 * `T` => `Trait` where `T: Trait`
-* `SubTrait` => `Trait` where `SubTrait: Trait` (TODO: is this now implied by the previous?)
 * `Foo<..., T, ...>` => `Foo<..., U, ...>` where:
     * `T: Unsize<U>`
     * `Foo` is a struct
@@ -70,3 +68,5 @@ fn main() {
 <anon>:10     foo(t);
               ^~~
 ```
+
+[subtype]: subtyping.html
