@@ -46,6 +46,7 @@
 	* [Deref](vec-deref.md)
 	* [Insert and Remove](vec-insert-remove.md)
 	* [IntoIter](vec-into-iter.md)
+	* [RawVec](vec-raw.md)
 	* [Drain](vec-drain.md)
 	* [Handling Zero-Sized Types](vec-zsts.md)
 	* [Final Code](vec-final.md)

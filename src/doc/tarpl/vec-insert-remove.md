@@ -1,12 +1,13 @@
 % Insert and Remove
 
-Something *not* provided but slice is `insert` and `remove`, so let's do those next.
+Something *not* provided by slice is `insert` and `remove`, so let's do those
+next.
 
 Insert needs to shift all the elements at the target index to the right by one.
 To do this we need to use `ptr::copy`, which is our version of C's `memmove`.
-This copies some chunk of memory from one location to another, correctly handling
-the case where the source and destination overlap (which will definitely happen
-here).
+This copies some chunk of memory from one location to another, correctly
+handling the case where the source and destination overlap (which will
+definitely happen here).
 
 If we insert at index `i`, we want to shift the `[i .. len]` to `[i+1 .. len+1]`
 using the *old* len.
