@@ -1146,14 +1146,10 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                 span: Span) -> Ty<'tcx> {
         // Grab the default doing subsitution
         let default = ty_param_def.and_then(|def| {
-            let definition_span = self.tcx()
-                                      .map
-                                      .opt_span(def.def_id.node);
-
             def.default.map(|ty| type_variable::Default {
                 ty: ty.subst_spanned(self.tcx(), substs.as_ref().unwrap(), Some(span)),
                 origin_span: span,
-                definition_span: definition_span.unwrap_or(codemap::DUMMY_SP)
+                def_id: def.default_def_id
             })
         });
 
@@ -1850,7 +1846,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .unwrap_or(type_variable::Default {
                                 ty: self.infcx().next_ty_var(),
                                 origin_span: codemap::DUMMY_SP,
-                                definition_span: codemap::DUMMY_SP
+                                def_id: local_def(0) // what do I put here?
                             });
 
                     self.infcx().report_conflicting_default_types(
