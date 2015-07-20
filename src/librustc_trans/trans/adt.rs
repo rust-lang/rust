@@ -41,8 +41,6 @@
 //!   used unboxed and any field can have pointers (including mutable)
 //!   taken to it, implementing them for Rust seems difficult.
 
-#![allow(unsigned_negation)]
-
 pub use self::Repr::*;
 
 use std::rc::Rc;
