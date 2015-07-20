@@ -11,7 +11,7 @@ in `std` in order to facilitate this.
 # Motivation
 
 Sets are sometimes used as a cache keyed on a certain property of a type, but programs may need to
-access the type's other properties for efficiency or functionailty. The sets in `std` do not expose
+access the type's other properties for efficiency or functionality. The sets in `std` do not expose
 their elements (by reference or by value), making this use-case impossible.
 
 Consider the following example:
