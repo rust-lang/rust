@@ -1426,5 +1426,24 @@ fn generic_simd_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         return ShuffleVector(bcx, llargs[0], llargs[1], C_vector(&indices))
     }
-    C_null(llret_ty)
+
+    if name == "simd_insert" {
+        require!(arg_tys[0].is_simd(tcx),
+                 "SIMD insert intrinsic monomorphised for non-SIMD input type");
+
+        let elem_ty = arg_tys[0].simd_type(tcx);
+        require!(arg_tys[2] == elem_ty,
+                 "SIMD insert intrinsic monomorphised with inserted type not SIMD element type");
+        return InsertElement(bcx, llargs[0], llargs[2], llargs[1])
+    }
+    if name == "simd_extract" {
+        require!(arg_tys[0].is_simd(tcx),
+                 "SIMD insert intrinsic monomorphised for non-SIMD input type");
+
+        let elem_ty = arg_tys[0].simd_type(tcx);
+        require!(ret_ty == elem_ty,
+                 "SIMD insert intrinsic monomorphised with returned type not SIMD element type");
+        return ExtractElement(bcx, llargs[0], llargs[1])
+    }
+    bcx.sess().span_bug(call_info.span, "unknown SIMD intrinsic");
 }
