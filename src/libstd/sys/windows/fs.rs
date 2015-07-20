@@ -319,6 +319,8 @@ impl File {
 
     pub fn handle(&self) -> &Handle { &self.handle }
 
+    pub fn into_handle(self) -> Handle { self.handle }
+
     fn reparse_point<'a>(&self,
                          space: &'a mut [u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE])
                          -> io::Result<(libc::DWORD, &'a c::REPARSE_DATA_BUFFER)> {
@@ -357,8 +359,6 @@ impl File {
             Ok(PathBuf::from(OsString::from_wide(subst)))
         }
     }
-
-    pub fn into_handle(self) -> Handle { self.handle }
 }
 
 impl FromInner<libc::HANDLE> for File {

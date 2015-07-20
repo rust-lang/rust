@@ -220,6 +220,8 @@ impl Process {
     }
 
     pub fn handle(&self) -> &Handle { &self.handle }
+
+    pub fn into_handle(self) -> Handle { self.handle }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]

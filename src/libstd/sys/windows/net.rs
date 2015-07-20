@@ -21,7 +21,7 @@ use rt;
 use sync::Once;
 use sys;
 use sys::c;
-use sys_common::{AsInner, FromInner};
+use sys_common::{AsInner, FromInner, IntoInner};
 use sys_common::net::{setsockopt, getsockopt};
 use time::Duration;
 
@@ -183,4 +183,12 @@ impl AsInner<libc::SOCKET> for Socket {
 
 impl FromInner<libc::SOCKET> for Socket {
     fn from_inner(sock: libc::SOCKET) -> Socket { Socket(sock) }
+}
+
+impl IntoInner<libc::SOCKET> for Socket {
+    fn into_inner(self) -> libc::SOCKET {
+        let ret = self.0;
+        mem::forget(self);
+        ret
+    }
 }
