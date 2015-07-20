@@ -12,7 +12,11 @@ An enum is said to be *C-like* if none of its variants have associated data.
 For all these, individual fields are aligned to their preferred alignment. For
 primitives this is usually equal to their size. For instance, a u32 will be
 aligned to a multiple of 32 bits, and a u16 will be aligned to a multiple of 16
-bits. Composite structures will have a preferred alignment equal to the maximum
+bits. Note that some primitives may be emulated on different platforms, and as
+such may have strange alignment. For instance, a u64 on x86 may actually be
+emulated as a pair of u32s, and thus only have 32-bit alignment.
+
+Composite structures will have a preferred alignment equal to the maximum
 of their fields' preferred alignment, and a size equal to a multiple of their
 preferred alignment. This ensures that arrays of T can be correctly iterated
 by offsetting by their size. So for instance,
