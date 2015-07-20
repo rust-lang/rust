@@ -1119,8 +1119,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
                 let ty = &self.tcx.expr_ty_adjusted(&**sub_ex).sty;
                 match *ty {
-                    ty::TyStruct(def_id, _) => {
-                        let fields = self.tcx.lookup_struct_fields(def_id);
+                    ty::TyStruct(def, _) => {
+                        let fields = self.tcx.lookup_struct_fields(def.did);
                         for (i, f) in fields.iter().enumerate() {
                             if i == idx.node {
                                 let sub_span = self.span.sub_span_after_token(ex.span, token::Dot);

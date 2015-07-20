@@ -144,10 +144,10 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                 self.accumulate_from_object_ty(ty, t.bounds.region_bound, required_region_bounds)
             }
 
-            ty::TyEnum(def_id, substs) |
-            ty::TyStruct(def_id, substs) => {
-                let item_scheme = self.tcx().lookup_item_type(def_id);
-                self.accumulate_from_adt(ty, def_id, &item_scheme.generics, substs)
+            ty::TyEnum(def, substs) |
+            ty::TyStruct(def, substs) => {
+                let item_scheme = def.type_scheme(self.tcx());
+                self.accumulate_from_adt(ty, def.did, &item_scheme.generics, substs)
             }
 
             ty::TyArray(t, _) |

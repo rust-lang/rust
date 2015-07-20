@@ -222,6 +222,12 @@ pub fn get_trait_def<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId) -> ty::TraitDe
     decoder::get_trait_def(&*cdata, def.node, tcx)
 }
 
+pub fn get_adt_def<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId) -> &'tcx ty::ADTDef<'tcx> {
+    let cstore = &tcx.sess.cstore;
+    let cdata = cstore.get_crate_data(def.krate);
+    decoder::get_adt_def(&*cdata, def.node, tcx)
+}
+
 pub fn get_predicates<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId)
                             -> ty::GenericPredicates<'tcx>
 {

@@ -333,14 +333,14 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyInt(t) => Type::int_from_ty(cx, t),
       ty::TyUint(t) => Type::uint_from_ty(cx, t),
       ty::TyFloat(t) => Type::float_from_ty(cx, t),
-      ty::TyEnum(did, ref substs) => {
+      ty::TyEnum(def, ref substs) => {
           // Only create the named struct, but don't fill it in. We
           // fill it in *after* placing it into the type cache. This
           // avoids creating more than one copy of the enum when one
           // of the enum's variants refers to the enum itself.
           let repr = adt::represent_type(cx, t);
           let tps = substs.types.get_slice(subst::TypeSpace);
-          let name = llvm_type_name(cx, did, tps);
+          let name = llvm_type_name(cx, def.did, tps);
           adt::incomplete_type_of(cx, &*repr, &name[..])
       }
       ty::TyClosure(..) => {
@@ -403,7 +403,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           let repr = adt::represent_type(cx, t);
           adt::type_of(cx, &*repr)
       }
-      ty::TyStruct(did, ref substs) => {
+      ty::TyStruct(def, ref substs) => {
           if t.is_simd(cx.tcx()) {
               let llet = in_memory_type_of(cx, t.simd_type(cx.tcx()));
               let n = t.simd_size(cx.tcx()) as u64;
@@ -415,7 +415,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
               // infinite recursion with recursive struct types.
               let repr = adt::represent_type(cx, t);
               let tps = substs.types.get_slice(subst::TypeSpace);
-              let name = llvm_type_name(cx, did, tps);
+              let name = llvm_type_name(cx, def.did, tps);
               adt::incomplete_type_of(cx, &*repr, &name[..])
           }
       }

@@ -79,8 +79,8 @@ fn unsize_kind<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     match t.sty {
         ty::TySlice(_) | ty::TyStr => Some(UnsizeKind::Length),
         ty::TyTrait(ref tty) => Some(UnsizeKind::Vtable(tty.principal_def_id())),
-        ty::TyStruct(did, substs) => {
-            match fcx.tcx().struct_fields(did, substs).pop() {
+        ty::TyStruct(def, substs) => {
+            match fcx.tcx().struct_fields(def.did, substs).pop() {
                 None => None,
                 Some(f) => unsize_kind(fcx, f.mt.ty)
             }

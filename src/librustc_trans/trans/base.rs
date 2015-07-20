@@ -455,12 +455,12 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
               cx = f(cx, llfld_a, *arg);
           }
       }
-      ty::TyEnum(tid, substs) => {
+      ty::TyEnum(en, substs) => {
           let fcx = cx.fcx;
           let ccx = fcx.ccx;
 
           let repr = adt::represent_type(ccx, t);
-          let variants = ccx.tcx().enum_variants(tid);
+          let variants = ccx.tcx().enum_variants(en.did);
           let n_variants = (*variants).len();
 
           // NB: we must hit the discriminant first so that structural

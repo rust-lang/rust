@@ -438,8 +438,8 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             }
         }
 
-        (&ty::TyStruct(def_id, ref _substs), None) => {
-            let fields = tcx.lookup_struct_fields(def_id);
+        (&ty::TyStruct(def, ref _substs), None) => {
+            let fields = tcx.lookup_struct_fields(def.did);
             match *origin_field_name {
                 mc::NamedField(ast_name) => {
                     for f in &fields {
@@ -462,9 +462,9 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             }
         }
 
-        (&ty::TyEnum(enum_def_id, substs), ref enum_variant_info) => {
+        (&ty::TyEnum(enum_def, substs), ref enum_variant_info) => {
             let variant_info = {
-                let mut variants = tcx.substd_enum_variants(enum_def_id, substs);
+                let mut variants = tcx.substd_enum_variants(enum_def.did, substs);
                 match *enum_variant_info {
                     Some((variant_def_id, ref _lp2)) =>
                         variants.iter()

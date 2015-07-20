@@ -415,8 +415,8 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         ast::ExprField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
-                ty::TyStruct(did, _) => {
-                    tcx.lookup_struct_fields(did)
+                ty::TyStruct(def, _) => {
+                    tcx.lookup_struct_fields(def.did)
                         .iter()
                         .find(|f| f.name == field.node.name)
                         .unwrap_or_else(|| {
@@ -432,8 +432,8 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         ast::ExprTupField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
-                ty::TyStruct(did, _) => {
-                    tcx.lookup_struct_fields(did)
+                ty::TyStruct(def, _) => {
+                    tcx.lookup_struct_fields(def.did)
                         .get(field.node)
                         .unwrap_or_else(|| {
                             tcx.sess.span_bug(field.span,
@@ -450,8 +450,8 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         ast::ExprStruct(_, ref expr_fields, _) => {
             let type_ = tcx.expr_ty(e);
             match type_.sty {
-                ty::TyStruct(did, _) => {
-                    let struct_fields = tcx.lookup_struct_fields(did);
+                ty::TyStruct(def, _) => {
+                    let struct_fields = tcx.lookup_struct_fields(def.did);
                     // check the stability of each field that appears
                     // in the construction expression.
                     for field in expr_fields {
@@ -505,11 +505,11 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
 
-    let did = match tcx.pat_ty_opt(pat) {
-        Some(&ty::TyS { sty: ty::TyStruct(did, _), .. }) => did,
+    let def = match tcx.pat_ty_opt(pat) {
+        Some(&ty::TyS { sty: ty::TyStruct(def, _), .. }) => def,
         Some(_) | None => return,
     };
-    let struct_fields = tcx.lookup_struct_fields(did);
+    let struct_fields = tcx.lookup_struct_fields(def.did);
     match pat.node {
         // Foo(a, b, c)
         ast::PatEnum(_, Some(ref pat_fields)) => {

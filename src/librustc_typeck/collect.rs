@@ -1103,39 +1103,37 @@ fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     tcx.struct_fields.borrow_mut().insert(local_def(id), Rc::new(field_tys));
 
-    let substs = mk_item_substs(ccx, &scheme.generics);
-    let selfty = tcx.mk_struct(local_def(id), tcx.mk_substs(substs));
 
     // If this struct is enum-like or tuple-like, create the type of its
     // constructor.
-    match struct_def.ctor_id {
-        None => {}
-        Some(ctor_id) => {
-            if struct_def.fields.is_empty() {
-                // Enum-like.
-                write_ty_to_tcx(tcx, ctor_id, selfty);
+    if let Some(ctor_id) = struct_def.ctor_id {
+        let substs = mk_item_substs(ccx, &scheme.generics);
+        let selfty = tcx.mk_struct(tcx.lookup_adt_def(local_def(id)),
+                                   tcx.mk_substs(substs));
+        if struct_def.fields.is_empty() {
+            // Enum-like.
+            write_ty_to_tcx(tcx, ctor_id, selfty);
 
-                tcx.register_item_type(local_def(ctor_id), scheme);
-                tcx.predicates.borrow_mut().insert(local_def(ctor_id), predicates);
-            } else if struct_def.fields[0].node.kind.is_unnamed() {
-                // Tuple-like.
-                let inputs: Vec<_> =
-                    struct_def.fields
-                              .iter()
-                              .map(|field| tcx.lookup_item_type(
-                                  local_def(field.node.id)).ty)
-                              .collect();
-                let ctor_fn_ty = tcx.mk_ctor_fn(local_def(ctor_id),
-                                                &inputs[..],
-                                                selfty);
-                write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
-                tcx.register_item_type(local_def(ctor_id),
-                                       TypeScheme {
-                                           generics: scheme.generics,
-                                           ty: ctor_fn_ty
-                                       });
-                tcx.predicates.borrow_mut().insert(local_def(ctor_id), predicates);
-            }
+            tcx.register_item_type(local_def(ctor_id), scheme);
+            tcx.predicates.borrow_mut().insert(local_def(ctor_id), predicates);
+        } else if struct_def.fields[0].node.kind.is_unnamed() {
+            // Tuple-like.
+            let inputs: Vec<_> =
+                struct_def.fields
+                          .iter()
+                          .map(|field| tcx.lookup_item_type(
+                              local_def(field.node.id)).ty)
+                          .collect();
+            let ctor_fn_ty = tcx.mk_ctor_fn(local_def(ctor_id),
+                                            &inputs[..],
+                                            selfty);
+            write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
+            tcx.register_item_type(local_def(ctor_id),
+                                   TypeScheme {
+                                       generics: scheme.generics,
+                                       ty: ctor_fn_ty
+                                   });
+            tcx.predicates.borrow_mut().insert(local_def(ctor_id), predicates);
         }
     }
 }
@@ -1475,13 +1473,15 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             // Create a new generic polytype.
             let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let t = tcx.mk_enum(local_def(it.id), tcx.mk_substs(substs));
+            let def = tcx.intern_adt_def(local_def(it.id));
+            let t = tcx.mk_enum(def, tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
         ast::ItemStruct(_, ref generics) => {
             let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let t = tcx.mk_struct(local_def(it.id), tcx.mk_substs(substs));
+            let def = tcx.intern_adt_def(local_def(it.id));
+            let t = tcx.mk_struct(def, tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
         ast::ItemDefaultImpl(..) |

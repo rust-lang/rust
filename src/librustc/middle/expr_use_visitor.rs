@@ -695,8 +695,8 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         // Select just those fields of the `with`
         // expression that will actually be used
         let with_fields = match with_cmt.ty.sty {
-            ty::TyStruct(did, substs) => {
-                self.tcx().struct_fields(did, substs)
+            ty::TyStruct(def, substs) => {
+                self.tcx().struct_fields(def.did, substs)
             }
             _ => {
                 // the base expression should always evaluate to a
@@ -708,7 +708,6 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                         with_expr.span,
                         "with expression doesn't evaluate to a struct");
                 }
-                assert!(self.tcx().sess.has_errors());
                 vec!()
             }
         };

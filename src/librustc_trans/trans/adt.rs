@@ -245,14 +245,14 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyTuple(ref elems) => {
             Univariant(mk_struct(cx, &elems[..], false, t), 0)
         }
-        ty::TyStruct(def_id, substs) => {
-            let fields = cx.tcx().lookup_struct_fields(def_id);
+        ty::TyStruct(def, substs) => {
+            let fields = cx.tcx().lookup_struct_fields(def.did);
             let mut ftys = fields.iter().map(|field| {
-                let fty = cx.tcx().lookup_field_type(def_id, field.id, substs);
+                let fty = cx.tcx().lookup_field_type(def.did, field.id, substs);
                 monomorphize::normalize_associated_type(cx.tcx(), &fty)
             }).collect::<Vec<_>>();
-            let packed = cx.tcx().lookup_packed(def_id);
-            let dtor = cx.tcx().ty_dtor(def_id).has_drop_flag();
+            let packed = cx.tcx().lookup_packed(def.did);
+            let dtor = cx.tcx().ty_dtor(def.did).has_drop_flag();
             if dtor {
                 ftys.push(cx.tcx().dtor_type());
             }
@@ -262,12 +262,12 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyClosure(_, ref substs) => {
             Univariant(mk_struct(cx, &substs.upvar_tys, false, t), 0)
         }
-        ty::TyEnum(def_id, substs) => {
-            let cases = get_cases(cx.tcx(), def_id, substs);
-            let hint = *cx.tcx().lookup_repr_hints(def_id).get(0)
+        ty::TyEnum(def, substs) => {
+            let cases = get_cases(cx.tcx(), def.did, substs);
+            let hint = *cx.tcx().lookup_repr_hints(def.did).get(0)
                 .unwrap_or(&attr::ReprAny);
 
-            let dtor = cx.tcx().ty_dtor(def_id).has_drop_flag();
+            let dtor = cx.tcx().ty_dtor(def.did).has_drop_flag();
 
             if cases.is_empty() {
                 // Uninhabitable; represent as unit
@@ -296,7 +296,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             if !cases.iter().enumerate().all(|(i,c)| c.discr == (i as Disr)) {
                 cx.sess().bug(&format!("non-C-like enum {} with specified \
                                         discriminants",
-                                       cx.tcx().item_path_str(def_id)));
+                                       cx.tcx().item_path_str(def.did)));
             }
 
             if cases.len() == 1 {
@@ -443,10 +443,10 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
         ty::TyBareFn(..) => Some(path),
 
         // Is this the NonZero lang item wrapping a pointer or integer type?
-        ty::TyStruct(did, substs) if Some(did) == tcx.lang_items.non_zero() => {
-            let nonzero_fields = tcx.lookup_struct_fields(did);
+        ty::TyStruct(def, substs) if Some(def.did) == tcx.lang_items.non_zero() => {
+            let nonzero_fields = tcx.lookup_struct_fields(def.did);
             assert_eq!(nonzero_fields.len(), 1);
-            let nonzero_field = tcx.lookup_field_type(did, nonzero_fields[0].id, substs);
+            let nonzero_field = tcx.lookup_field_type(def.did, nonzero_fields[0].id, substs);
             match nonzero_field.sty {
                 ty::TyRawPtr(ty::TypeAndMut { ty, .. }) if !type_is_sized(tcx, ty) => {
                     path.push_all(&[0, FAT_PTR_ADDR]);
@@ -462,10 +462,10 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         // Perhaps one of the fields of this struct is non-zero
         // let's recurse and find out
-        ty::TyStruct(def_id, substs) => {
-            let fields = tcx.lookup_struct_fields(def_id);
+        ty::TyStruct(def, substs) => {
+            let fields = tcx.lookup_struct_fields(def.did);
             for (j, field) in fields.iter().enumerate() {
-                let field_ty = tcx.lookup_field_type(def_id, field.id, substs);
+                let field_ty = tcx.lookup_field_type(def.did, field.id, substs);
                 if let Some(mut fpath) = find_discr_field_candidate(tcx, field_ty, path.clone()) {
                     fpath.push(j);
                     return Some(fpath);

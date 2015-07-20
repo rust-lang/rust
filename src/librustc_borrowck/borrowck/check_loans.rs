@@ -746,24 +746,22 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             }
             LpExtend(ref lp_base, _, LpInterior(InteriorField(_))) => {
                 match lp_base.to_type().sty {
-                    ty::TyStruct(def_id, _) | ty::TyEnum(def_id, _) => {
-                        if self.tcx().has_dtor(def_id) {
-                            // In the case where the owner implements drop, then
-                            // the path must be initialized to prevent a case of
-                            // partial reinitialization
-                            //
-                            // FIXME (22079): could refactor via hypothetical
-                            // generalized check_if_path_is_moved
-                            let loan_path = owned_ptr_base_path_rc(lp_base);
-                            self.move_data.each_move_of(id, &loan_path, |_, _| {
-                                self.bccx
-                                    .report_partial_reinitialization_of_uninitialized_structure(
-                                        span,
-                                        &*loan_path);
-                                false
-                            });
-                            return;
-                        }
+                    ty::TyStruct(def, _) | ty::TyEnum(def, _) if def.has_dtor(self.tcx()) => {
+                        // In the case where the owner implements drop, then
+                        // the path must be initialized to prevent a case of
+                        // partial reinitialization
+                        //
+                        // FIXME (22079): could refactor via hypothetical
+                        // generalized check_if_path_is_moved
+                        let loan_path = owned_ptr_base_path_rc(lp_base);
+                        self.move_data.each_move_of(id, &loan_path, |_, _| {
+                            self.bccx
+                                .report_partial_reinitialization_of_uninitialized_structure(
+                                    span,
+                                    &*loan_path);
+                            false
+                        });
+                        return;
                     },
                     _ => {},
                 }
