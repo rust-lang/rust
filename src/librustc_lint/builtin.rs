@@ -89,12 +89,6 @@ impl LintPass for WhileTrue {
 }
 
 declare_lint! {
-    UNSIGNED_NEGATION,
-    Warn,
-    "using an unary minus operator on unsigned type"
-}
-
-declare_lint! {
     UNUSED_COMPARISONS,
     Warn,
     "comparisons made useless by limits of the types involved"
@@ -128,8 +122,7 @@ impl TypeLimits {
 
 impl LintPass for TypeLimits {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNSIGNED_NEGATION, UNUSED_COMPARISONS, OVERFLOWING_LITERALS,
-                    EXCEEDING_BITSHIFTS)
+        lint_array!(UNUSED_COMPARISONS, OVERFLOWING_LITERALS, EXCEEDING_BITSHIFTS)
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
@@ -139,9 +132,12 @@ impl LintPass for TypeLimits {
                     ast::ExprLit(ref lit) => {
                         match lit.node {
                             ast::LitInt(_, ast::UnsignedIntLit(_)) => {
-                                cx.span_lint(UNSIGNED_NEGATION, e.span,
-                                             "negation of unsigned int literal may \
-                                             be unintentional");
+                                check_unsigned_negation_feature(cx, e.span);
+                            },
+                            ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
+                                if let ty::TyUint(_) = cx.tcx.expr_ty(e).sty {
+                                    check_unsigned_negation_feature(cx, e.span);
+                                }
                             },
                             _ => ()
                         }
@@ -150,9 +146,7 @@ impl LintPass for TypeLimits {
                         let t = cx.tcx.expr_ty(&**expr);
                         match t.sty {
                             ty::TyUint(_) => {
-                                cx.span_lint(UNSIGNED_NEGATION, e.span,
-                                             "negation of unsigned int variable may \
-                                             be unintentional");
+                                check_unsigned_negation_feature(cx, e.span);
                             },
                             _ => ()
                         }
@@ -383,6 +377,18 @@ impl LintPass for TypeLimits {
                 ast::BiEq | ast::BiLt | ast::BiLe |
                 ast::BiNe | ast::BiGe | ast::BiGt => true,
                 _ => false
+            }
+        }
+
+        fn check_unsigned_negation_feature(cx: &Context, span: Span) {
+            if !cx.sess().features.borrow().negate_unsigned {
+                // FIXME(#27141): change this to syntax::feature_gate::emit_feature_err…
+                cx.sess().span_warn(span,
+                    "unary negation of unsigned integers will be feature gated in the future");
+                // …and remove following two expressions.
+                if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some() { return; }
+                cx.sess().fileline_help(span, "add #![feature(negate_unsigned)] to the \
+                                               crate attributes to enable the gate in advance");
             }
         }
     }

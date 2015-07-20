@@ -17,7 +17,6 @@
 // evaluation below (e.g. that performed by trans and llvm), so if you
 // change this warn to a deny, then the compiler will exit before
 // those errors are detected.
-#![warn(unsigned_negation)]
 
 use std::fmt;
 use std::{i8, i16, i32, i64, isize};
@@ -69,8 +68,6 @@ const VALS_I64: (i64, i64, i64, i64) =
 
 const VALS_U8: (u8, u8, u8, u8) =
     (-u8::MIN,
-     //~^ WARNING negation of unsigned int variable may be unintentional
-     // (The above is separately linted; unsigned negation is defined to be !x+1.)
      u8::MIN - 1,
      //~^ ERROR attempted to sub with overflow
      u8::MAX + 1,
@@ -81,8 +78,6 @@ const VALS_U8: (u8, u8, u8, u8) =
 
 const VALS_U16: (u16, u16, u16, u16) =
     (-u16::MIN,
-     //~^ WARNING negation of unsigned int variable may be unintentional
-     // (The above is separately linted; unsigned negation is defined to be !x+1.)
      u16::MIN - 1,
      //~^ ERROR attempted to sub with overflow
      u16::MAX + 1,
@@ -93,8 +88,6 @@ const VALS_U16: (u16, u16, u16, u16) =
 
 const VALS_U32: (u32, u32, u32, u32) =
     (-u32::MIN,
-     //~^ WARNING negation of unsigned int variable may be unintentional
-     // (The above is separately linted; unsigned negation is defined to be !x+1.)
      u32::MIN - 1,
      //~^ ERROR attempted to sub with overflow
      u32::MAX + 1,
@@ -105,8 +98,6 @@ const VALS_U32: (u32, u32, u32, u32) =
 
 const VALS_U64: (u64, u64, u64, u64) =
     (-u64::MIN,
-     //~^ WARNING negation of unsigned int variable may be unintentional
-     // (The above is separately linted; unsigned negation is defined to be !x+1.)
      u64::MIN - 1,
      //~^ ERROR attempted to sub with overflow
      u64::MAX + 1,

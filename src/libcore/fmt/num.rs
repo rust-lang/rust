@@ -12,8 +12,6 @@
 
 // FIXME: #6220 Implement floating point formatting
 
-#![allow(unsigned_negation)]
-
 use prelude::*;
 
 use fmt;
