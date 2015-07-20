@@ -321,5 +321,7 @@ register_diagnostics! {
     E0432, // unresolved import
     E0433, // failed to resolve
     E0434, // can't capture dynamic environment in a fn item
-    E0435  // attempt to use a non-constant value in a constant
+    E0435, // attempt to use a non-constant value in a constant
+    E0437, // type is not a member of trait
+    E0438, // const is not a member of trait
 }
