@@ -1188,9 +1188,12 @@ impl<T: Write, U: Write> Write for Broadcast<T, U> {
     }
 }
 
-/// Adaptor to chain together two instances of `Read`.
+/// Adaptor to chain together two readers.
 ///
-/// For more information, see `Read::chain`.
+/// This struct is generally created by calling [`chain()`][chain] on a reader.
+/// Please see the documentation of `chain()` for more details.
+///
+/// [chain]: trait.Read.html#method.chain
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chain<T, U> {
     first: T,
@@ -1266,7 +1269,10 @@ impl<T: BufRead> BufRead for Take<T> {
 
 /// An adaptor which will emit all read data to a specified writer as well.
 ///
-/// For more information see `Read::tee`
+/// This struct is generally created by calling [`tee()`][tee] on a reader.
+/// Please see the documentation of `tee()` for more details.
+///
+/// [tee]: trait.Read.html#method.tee
 #[unstable(feature = "io", reason = "awaiting stability of Read::tee")]
 pub struct Tee<R, W> {
     reader: R,
@@ -1283,9 +1289,12 @@ impl<R: Read, W: Write> Read for Tee<R, W> {
     }
 }
 
-/// A bridge from implementations of `Read` to an `Iterator` of `u8`.
+/// An iterator over `u8` values of a reader.
 ///
-/// See `Read::bytes` for more information.
+/// This struct is generally created by calling [`bytes()`][bytes] on a reader.
+/// Please see the documentation of `bytes()` for more details.
+///
+/// [bytes]: trait.Read.html#method.bytes
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Bytes<R> {
     inner: R,
@@ -1305,9 +1314,12 @@ impl<R: Read> Iterator for Bytes<R> {
     }
 }
 
-/// A bridge from implementations of `Read` to an `Iterator` of `char`.
+/// An iterator over the `char`s of a reader.
 ///
-/// See `Read::chars` for more information.
+/// This struct is generally created by calling [`chars()`][chars] on a reader.
+/// Please see the documentation of `chars()` for more details.
+///
+/// [chars]: trait.Read.html#method.chars
 #[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
 pub struct Chars<R> {
     inner: R,
@@ -1389,7 +1401,10 @@ impl fmt::Display for CharsError {
 /// An iterator over the contents of an instance of `BufRead` split on a
 /// particular byte.
 ///
-/// See `BufRead::split` for more information.
+/// This struct is generally created by calling [`split()`][split] on a
+/// `BufRead`. Please see the documentation of `split()` for more details.
+///
+/// [split]: trait.BufRead.html#method.split
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Split<B> {
     buf: B,
@@ -1415,10 +1430,12 @@ impl<B: BufRead> Iterator for Split<B> {
     }
 }
 
-/// An iterator over the lines of an instance of `BufRead` split on a newline
-/// byte.
+/// An iterator over the lines of an instance of `BufRead`.
 ///
-/// See `BufRead::lines` for more information.
+/// This struct is generally created by calling [`lines()`][lines] on a
+/// `BufRead`. Please see the documentation of `lines()` for more details.
+///
+/// [lines]: trait.BufRead.html#method.lines
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Lines<B> {
     buf: B,
