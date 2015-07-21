@@ -323,6 +323,17 @@ envopt() {
     fi
 }
 
+enable_if_not_disabled() {
+    local OP=$1
+    local UOP=$(echo $OP | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
+    local ENAB_V="CFG_ENABLE_$UOP"
+    local EXPLICITLY_DISABLED="CFG_DISABLE_${UOP}_PROVIDED"
+    eval VV=\$$EXPLICITLY_DISABLED
+    if [ -z "$VV" ]; then
+        eval $ENAB_V=1
+    fi
+}
+
 to_llvm_triple() {
     case $1 in
         i686-w64-mingw32) echo i686-pc-windows-gnu ;;
@@ -671,10 +682,12 @@ if [ -n "$CFG_ENABLE_DEBUG" ]; then
         CFG_DISABLE_OPTIMIZE=1
         CFG_DISABLE_OPTIMIZE_CXX=1
     fi
-    CFG_ENABLE_DEBUG_ASSERTIONS=1
-    CFG_ENABLE_DEBUG_JEMALLOC=1
-    CFG_ENABLE_DEBUGINFO=1
-    CFG_ENABLE_LLVM_ASSERTIONS=1
+
+    # Set following variables to 1 unless setting already provided
+    enable_if_not_disabled debug-assertions
+    enable_if_not_disabled debug-jemalloc
+    enable_if_not_disabled debuginfo
+    enable_if_not_disabled llvm-assertions
 fi
 
 # OK, now write the debugging options
