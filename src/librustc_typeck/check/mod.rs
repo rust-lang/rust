@@ -1800,6 +1800,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We wrap this in a transaction for error reporting, if we detect a conflict
             // we will rollback the inference context to its prior state so we can probe
             // for conflicts and correctly report them.
+
+
             let _ = self.infcx().commit_if_ok(|_: &infer::CombinedSnapshot| {
                 for ty in &unbound_tyvars {
                     if self.infcx().type_var_diverges(ty) {
@@ -1849,10 +1851,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 def_id: local_def(0) // what do I put here?
                             });
 
+                    // This is to ensure that we elimnate any non-determinism from the error
+                    // reporting by fixing an order, it doesn't matter what order we choose
+                    // just that it is consistent.
+                    let (first_default, second_default) =
+                        if default.def_id < conflicting_default.def_id {
+                            (default, conflicting_default)
+                        } else {
+                            (conflicting_default, default)
+                        };
+
+
                     self.infcx().report_conflicting_default_types(
-                        conflicting_default.origin_span,
-                        conflicting_default,
-                        default)
+                        first_default.origin_span,
+                        first_default,
+                        second_default)
                 }
             }
         }
