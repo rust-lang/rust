@@ -1947,6 +1947,10 @@ impl Span {
 
 impl Clean<Span> for syntax::codemap::Span {
     fn clean(&self, cx: &DocContext) -> Span {
+        if *self == DUMMY_SP {
+            return Span::empty();
+        }
+
         let cm = cx.sess().codemap();
         let filename = cm.span_to_filename(*self);
         let lo = cm.lookup_char_pos(self.lo);
