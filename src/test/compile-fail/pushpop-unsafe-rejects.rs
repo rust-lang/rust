@@ -13,6 +13,8 @@
 // positive number of pushes in the stack, or if we are within a
 // normal `unsafe` block, but otherwise cannot.
 
+#![feature(pushpop_unsafe)]
+
 static mut X: i32 = 0;
 
 unsafe fn f() { X += 1; return; }
