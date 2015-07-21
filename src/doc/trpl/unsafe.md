@@ -100,10 +100,14 @@ that you normally can not do. Just three. Here they are:
 
 That’s it. It’s important that `unsafe` does not, for example, ‘turn off the
 borrow checker’. Adding `unsafe` to some random Rust code doesn’t change its
-semantics, it won’t just start accepting anything.
+semantics, it won’t just start accepting anything. But it will let you write
+things that _do_ break some of the rules.
 
-But it will let you write things that _do_ break some of the rules. Let’s go
-over these three abilities in order.
+You will also encounter the `unsafe` keyword when writing bindings to foreign
+(non-Rust) interfaces. You're encouraged to write a safe, native Rust interface
+around the methods provided by the library.
+
+Let’s go over the basic three abilities listed, in order.
 
 ## Access or update a `static mut`
 
