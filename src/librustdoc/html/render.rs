@@ -118,11 +118,8 @@ pub enum ExternalLocation {
 /// Metadata about an implementor of a trait.
 pub struct Implementor {
     pub def_id: ast::DefId,
-    pub generics: clean::Generics,
-    pub trait_: clean::Type,
-    pub for_: clean::Type,
     pub stability: Option<clean::Stability>,
-    pub polarity: Option<clean::ImplPolarity>,
+    pub impl_: clean::Impl,
 }
 
 /// Metadata about implementations for a type.
@@ -644,10 +641,7 @@ fn write_shared(cx: &Context,
             // going on). If they're in different crates then the crate defining
             // the trait will be interested in our implementation.
             if imp.def_id.krate == did.krate { continue }
-            try!(write!(&mut f, r#""impl{} {}{} for {}","#,
-                        imp.generics,
-                        if imp.polarity == Some(clean::ImplPolarity::Negative) { "!" } else { "" },
-                        imp.trait_, imp.for_));
+            try!(write!(&mut f, r#""{}","#, imp.impl_));
         }
         try!(writeln!(&mut f, r"];"));
         try!(writeln!(&mut f, "{}", r"
@@ -888,11 +882,8 @@ impl DocFolder for Cache {
                 Some(clean::ResolvedPath{ did, .. }) => {
                     self.implementors.entry(did).or_insert(vec![]).push(Implementor {
                         def_id: item.def_id,
-                        generics: i.generics.clone(),
-                        trait_: i.trait_.as_ref().unwrap().clone(),
-                        for_: i.for_.clone(),
                         stability: item.stability.clone(),
-                        polarity: i.polarity.clone(),
+                        impl_: i.clone(),
                     });
                 }
                 Some(..) | None => {}
@@ -1910,8 +1901,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     match cache.implementors.get(&it.def_id) {
         Some(implementors) => {
             for i in implementors {
-                try!(writeln!(w, "<li><code>impl{} {} for {}{}</code></li>",
-                              i.generics, i.trait_, i.for_, WhereClause(&i.generics)));
+                try!(writeln!(w, "<li><code>{}</code></li>", i.impl_));
             }
         }
         None => {}
@@ -2335,16 +2325,7 @@ fn render_deref_methods(w: &mut fmt::Formatter, impl_: &Impl) -> fmt::Result {
 fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: AssocItemLink,
                render_header: bool) -> fmt::Result {
     if render_header {
-        try!(write!(w, "<h3 class='impl'><code>impl{} ",
-                    i.impl_.generics));
-        if let Some(clean::ImplPolarity::Negative) = i.impl_.polarity {
-            try!(write!(w, "!"));
-        }
-        if let Some(ref ty) = i.impl_.trait_ {
-            try!(write!(w, "{} for ", *ty));
-        }
-        try!(write!(w, "{}{}</code></h3>", i.impl_.for_,
-                    WhereClause(&i.impl_.generics)));
+        try!(write!(w, "<h3 class='impl'><code>{}</code></h3>", i.impl_));
         if let Some(ref dox) = i.dox {
             try!(write!(w, "<div class='docblock'>{}</div>", Markdown(dox)));
         }
