@@ -86,7 +86,8 @@ impl Thread {
 }
 
 pub mod guard {
-    pub unsafe fn main() -> usize { 0 }
-    pub unsafe fn current() -> usize { 0 }
-    pub unsafe fn init() {}
+    use prelude::v1::*;
+
+    pub unsafe fn current() -> Option<usize> { None }
+    pub unsafe fn init() -> Option<usize> { None }
 }
