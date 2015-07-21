@@ -372,6 +372,12 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v ast::Block) {
 
     impl<'v, 'a> Visitor<'v> for GatherLabels<'a> {
         fn visit_expr(&mut self, ex: &'v ast::Expr) {
+            // do not recurse into closures defined in the block
+            // since they are treated as separate fns from the POV of
+            // labels_in_fn
+            if let ast::ExprClosure(..) = ex.node {
+                return
+            }
             if let Some(label) = expression_label(ex) {
                 for &(prior, prior_span) in &self.labels_in_fn[..] {
                     // FIXME (#24278): non-hygienic comparison
