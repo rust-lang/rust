@@ -176,6 +176,16 @@ fn lookup_full_def(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
     }
 }
 
+fn require_c_abi_if_variadic(tcx: &ty::ctxt,
+                             decl: &ast::FnDecl,
+                             abi: abi::Abi,
+                             span: Span) {
+    if decl.variadic && abi != abi::C {
+        span_err!(tcx.sess, span, E0045,
+                  "variadic function must have C calling convention");
+    }
+}
+
 fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
                                    maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx>>,
                                    t1_is_expected: bool,

@@ -97,6 +97,7 @@ use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::{MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
+use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};
 use session::Session;
 use {CrateCtxt, lookup_full_def, require_same_types};
@@ -685,10 +686,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
                 }
 
                 if let ast::ForeignItemFn(ref fn_decl, _) = item.node {
-                    if fn_decl.variadic && m.abi != abi::C {
-                        span_err!(ccx.tcx.sess, item.span, E0045,
-                                  "variadic function must have C calling convention");
-                    }
+                    require_c_abi_if_variadic(ccx.tcx, fn_decl, m.abi, item.span);
                 }
             }
         }
