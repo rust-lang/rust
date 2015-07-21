@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for pointer-sized unsigned integers (`usize` type)
+//! The pointer-sized unsigned integer type.
+//!
+//! *[See also the `usize` primitive type](../primitive.usize.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "usize")]
 
 pub use core::usize::{BITS, BYTES, MIN, MAX};
 

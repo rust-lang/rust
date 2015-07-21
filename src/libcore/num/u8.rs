@@ -11,6 +11,5 @@
 //! Operations and constants for unsigned 8-bits integers (`u8` type)
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "u8")]
 
 uint_module! { u8, i8, 8 }

@@ -8,43 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unicode string manipulation (the `str` type).
+//! Unicode string slices
 //!
-//! Rust's `str` type is one of the core primitive types of the language. `&str`
-//! is the borrowed string type. This type of string can only be created from
-//! other strings, unless it is a `&'static str` (see below). It is not possible
-//! to move out of borrowed strings because they are owned elsewhere.
-//!
-//! # Examples
-//!
-//! Here's some code that uses a `&str`:
-//!
-//! ```
-//! let s = "Hello, world.";
-//! ```
-//!
-//! This `&str` is a `&'static str`, which is the type of string literals.
-//! They're `'static` because literals are available for the entire lifetime of
-//! the program.
-//!
-//! You can get a non-`'static` `&str` by taking a slice of a `String`:
-//!
-//! ```
-//! let some_string = "Hello, world.".to_string();
-//! let s = &some_string;
-//! ```
-//!
-//! # Representation
-//!
-//! Rust's string type, `str`, is a sequence of Unicode scalar values encoded as
-//! a stream of UTF-8 bytes. All [strings](../../reference.html#literals) are
-//! guaranteed to be validly encoded UTF-8 sequences. Additionally, strings are
-//! not null-terminated and can thus contain null bytes.
-//!
-//! The actual representation of `str`s have direct mappings to slices: `&str`
-//! is the same as `&[u8]`.
+//! *[See also the `str` primitive type](../primitive.str.html).*
 
-#![doc(primitive = "str")]
+
 #![stable(feature = "rust1", since = "1.0.0")]
 
 // Many of the usings in this module are only used in the test configuration.

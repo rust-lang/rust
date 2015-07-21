@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations on tuples
+//! A finite heterogeneous sequence, `(T, U, ..)`
 //!
 //! To access a single element of a tuple one can use the `.0`
 //! field access syntax.
@@ -28,7 +28,6 @@
 //! * `Default`
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "tuple")]
 
 use clone::Clone;
 use cmp::*;

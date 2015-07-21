@@ -415,12 +415,10 @@ pub mod __rand {
     pub use rand::{thread_rng, ThreadRng, Rng};
 }
 
-// Modules that exist purely to document + host impl docs for primitive types
-
-mod array;
-mod bool;
-mod unit;
-mod tuple;
+// Include a number of private modules that exist solely to provide
+// the rustdoc documentation for primitive types. Using `include!`
+// because rustdoc only looks for these modules at the crate level.
+include!("primitive_docs.rs");
 
 // A curious inner-module that's not exported that contains the binding
 // 'std' so that macro-expanded references to std::error and such
