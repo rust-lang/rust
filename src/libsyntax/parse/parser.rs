@@ -2738,14 +2738,15 @@ impl<'a> Parser<'a> {
             // (much lower than other prefix expressions) to be consistent
             // with the postfix-form 'expr..'
             let lo = self.span.lo;
+            let mut hi = self.span.hi;
             try!(self.bump());
             let opt_end = if self.is_at_start_of_range_notation_rhs() {
                 let end = try!(self.parse_binops());
+                hi = end.span.hi;
                 Some(end)
             } else {
                 None
             };
-            let hi = self.span.hi;
             let ex = self.mk_range(None, opt_end);
             Ok(self.mk_expr(lo, hi, ex))
           }
@@ -2787,17 +2788,17 @@ impl<'a> Parser<'a> {
           }
           // A range expression, either `expr..expr` or `expr..`.
           token::DotDot => {
+            let lo = lhs.span.lo;
+            let mut hi = self.span.hi;
             try!(self.bump());
 
             let opt_end = if self.is_at_start_of_range_notation_rhs() {
                 let end = try!(self.parse_binops());
+                hi = end.span.hi;
                 Some(end)
             } else {
                 None
             };
-
-            let lo = lhs.span.lo;
-            let hi = self.span.hi;
             let range = self.mk_range(Some(lhs), opt_end);
             return Ok(self.mk_expr(lo, hi, range));
           }
