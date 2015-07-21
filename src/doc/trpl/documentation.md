@@ -349,7 +349,7 @@ Here’s an example of documenting a macro:
 /// # }
 /// ```
 ///
-/// ```should_panic
+/// ```{.should_panic}
 /// # #[macro_use] extern crate foo;
 /// # fn main() {
 /// panic_unless!(true == false, “I’m broken.”);
@@ -398,14 +398,14 @@ with `text` if it's not code, or using `#`s to get a working example that
 only shows the part you care about.
 
 ```rust
-/// ```should_panic
+/// ```{.should_panic}
 /// assert!(false);
 /// ```
 # fn foo() {}
 ```
 
-`should_panic` tells `rustdoc` that the code should compile correctly, but
-not actually pass as a test.
+`{.should_panic}` tells `rustdoc` that the code should compile correctly,
+but not actually pass as a test.
 
 ```rust
 /// ```no_run
