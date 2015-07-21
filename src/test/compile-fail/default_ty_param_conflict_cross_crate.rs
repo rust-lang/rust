@@ -7,14 +7,20 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//
+//aux-build:default_ty_param_cross_crate_crate.rs
+extern crate default_param_test;
 
-use std::fmt::Debug;
-use std::collections::HashMap;
+use default_param_test::{Foo, bleh};
 
-fn foo<R=()>(x: HashMap<i32, i32, R>) ->  HashMap<i32, i32, R> { x }
-fn bar<R=char>(x: HashMap<i32, i32, R>) {}
+fn meh<X, B=bool>(x: Foo<X, B>) {}
+//~^ NOTE: a default was defined here...
 
 fn main() {
-    let x: HashMap<i32, i32, _> = foo(panic!());
-    bar(x);
+    let foo = bleh();
+    //~^ NOTE: ...that also applies to the same type variable here
+
+    meh(foo);
+    //~^ ERROR: mismatched types:
+    //~| NOTE: conflicting type parameter defaults `bool` and `char`
 }

@@ -12,12 +12,19 @@ use std::fmt::Debug;
 
 // Example from the RFC
 fn foo<F:Default=usize>() -> F { F::default() }
+//~^ NOTE: a default was defined here...
+
 fn bar<B:Debug=isize>(b: B) { println!("{:?}", b); }
+//~^ NOTE: a second default was defined here...
 
 fn main() {
     // Here, F is instantiated with $0=uint
     let x = foo();
+    //~^ ERROR: mismatched types
+    //~| NOTE: conflicting type parameter defaults `usize` and `isize`
+    //~| NOTE: ...that was applied to an unconstrained type variable here
 
     // Here, B is instantiated with $1=uint, and constraint $0 <: $1 is added.
     bar(x);
+    //~^ NOTE: ...that also applies to the same type variable here
 }

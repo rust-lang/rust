@@ -1930,7 +1930,6 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         index: index,
         name: param.ident.name,
         def_id: local_def(param.id),
-        // what do I return? should this be an option as well
         default_def_id: local_def(parent),
         default: default,
         object_lifetime_default: object_lifetime_default,
