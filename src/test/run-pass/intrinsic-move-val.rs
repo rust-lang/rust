@@ -20,7 +20,7 @@ use std::mem::{self, transmute};
 mod rusti {
     extern "rust-intrinsic" {
         pub fn init<T>() -> T;
-        pub fn move_val_init<T>(dst: &mut T, src: T);
+        pub fn move_val_init<T>(dst: *mut T, src: T);
     }
 }
 
