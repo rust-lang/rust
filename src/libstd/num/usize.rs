@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The pointer-sized unsigned integer type
+//! The pointer-sized unsigned integer type.
 //!
 //! *[See also the `usize` primitive type](../primitive.usize.html).*
 

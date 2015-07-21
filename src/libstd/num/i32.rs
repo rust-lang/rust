@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 32-bit signed integer type
+//! The 32-bit signed integer type.
 //!
 //! *[See also the `i32` primitive type](../primitive.i32.html).*
 

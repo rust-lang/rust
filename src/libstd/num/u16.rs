@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 16-bit unsigned integer type
+//! The 16-bit unsigned integer type.
 //!
 //! *[See also the `u16` primitive type](../primitive.u16.html).*
 

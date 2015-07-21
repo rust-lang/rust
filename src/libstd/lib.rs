@@ -415,9 +415,9 @@ pub mod __rand {
     pub use rand::{thread_rng, ThreadRng, Rng};
 }
 
-// Include a private number of modules that exist soley to provide the
-// rustdoc documentation for primitive types. Using `include!` because
-// rustdoc only looks for these modules at the crate level.
+// Include a number of private modules that exist solely to provide
+// the rustdoc documentation for primitive types. Using `include!`
+// because rustdoc only looks for these modules at the crate level.
 include!("primitive_docs.rs");
 
 // A curious inner-module that's not exported that contains the binding

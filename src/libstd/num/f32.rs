@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 32-bit floating point type
+//! The 32-bit floating point type.
 //!
 //! *[See also the `f32` primitive type](../primitive.f32.html).*
 
