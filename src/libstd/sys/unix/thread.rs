@@ -166,9 +166,10 @@ impl Drop for Thread {
           not(target_os = "netbsd"),
           not(target_os = "openbsd")))]
 pub mod guard {
-    pub unsafe fn current() -> usize { 0 }
-    pub unsafe fn main() -> usize { 0 }
-    pub unsafe fn init() {}
+    use prelude::v1::*;
+
+    pub unsafe fn current() -> Option<usize> { None }
+    pub unsafe fn init() -> Option<usize> { None }
 }
 
 
@@ -179,6 +180,8 @@ pub mod guard {
           target_os = "openbsd"))]
 #[allow(unused_imports)]
 pub mod guard {
+    use prelude::v1::*;
+
     use libc::{self, pthread_t};
     use libc::funcs::posix88::mman::mmap;
     use libc::consts::os::posix88::{PROT_NONE,
@@ -191,31 +194,38 @@ pub mod guard {
     use super::{pthread_self, pthread_attr_destroy};
     use sys::os;
 
-    // These are initialized in init() and only read from after
-    static mut GUARD_PAGE: usize = 0;
-
     #[cfg(any(target_os = "macos",
               target_os = "bitrig",
               target_os = "netbsd",
               target_os = "openbsd"))]
-    unsafe fn get_stack_start() -> *mut libc::c_void {
-        current() as *mut libc::c_void
+    unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
+        current().map(|s| s as *mut libc::c_void)
     }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
-    unsafe fn get_stack_start() -> *mut libc::c_void {
+    unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
+        use super::pthread_attr_init;
+
+        let mut ret = None;
         let mut attr: libc::pthread_attr_t = mem::zeroed();
-        assert_eq!(pthread_getattr_np(pthread_self(), &mut attr), 0);
-        let mut stackaddr = ptr::null_mut();
-        let mut stacksize = 0;
-        assert_eq!(pthread_attr_getstack(&attr, &mut stackaddr, &mut stacksize), 0);
+        assert_eq!(pthread_attr_init(&mut attr), 0);
+        if pthread_getattr_np(pthread_self(), &mut attr) == 0 {
+            let mut stackaddr = ptr::null_mut();
+            let mut stacksize = 0;
+            assert_eq!(pthread_attr_getstack(&attr, &mut stackaddr,
+                                             &mut stacksize), 0);
+            ret = Some(stackaddr);
+        }
         assert_eq!(pthread_attr_destroy(&mut attr), 0);
-        stackaddr
+        ret
     }
 
-    pub unsafe fn init() {
+    pub unsafe fn init() -> Option<usize> {
         let psize = os::page_size();
-        let mut stackaddr = get_stack_start();
+        let mut stackaddr = match get_stack_start() {
+            Some(addr) => addr,
+            None => return None,
+        };
 
         // Ensure stackaddr is page aligned! A parent process might
         // have reset RLIMIT_STACK to be non-page aligned. The
@@ -245,25 +255,21 @@ pub mod guard {
 
         let offset = if cfg!(target_os = "linux") {2} else {1};
 
-        GUARD_PAGE = stackaddr as usize + offset * psize;
-    }
-
-    pub unsafe fn main() -> usize {
-        GUARD_PAGE
+        Some(stackaddr as usize + offset * psize)
     }
 
     #[cfg(target_os = "macos")]
-    pub unsafe fn current() -> usize {
+    pub unsafe fn current() -> Option<usize> {
         extern {
             fn pthread_get_stackaddr_np(thread: pthread_t) -> *mut libc::c_void;
             fn pthread_get_stacksize_np(thread: pthread_t) -> libc::size_t;
         }
-        (pthread_get_stackaddr_np(pthread_self()) as libc::size_t -
-         pthread_get_stacksize_np(pthread_self())) as usize
+        Some((pthread_get_stackaddr_np(pthread_self()) as libc::size_t -
+              pthread_get_stacksize_np(pthread_self())) as usize)
     }
 
     #[cfg(any(target_os = "openbsd", target_os = "netbsd", target_os = "bitrig"))]
-    pub unsafe fn current() -> usize {
+    pub unsafe fn current() -> Option<usize> {
         #[repr(C)]
         struct stack_t {
             ss_sp: *mut libc::c_void,
@@ -280,30 +286,36 @@ pub mod guard {
         assert_eq!(pthread_stackseg_np(pthread_self(), &mut current_stack), 0);
 
         let extra = if cfg!(target_os = "bitrig") {3} else {1} * os::page_size();
-        if pthread_main_np() == 1 {
+        Some(if pthread_main_np() == 1 {
             // main thread
             current_stack.ss_sp as usize - current_stack.ss_size as usize + extra
         } else {
             // new thread
             current_stack.ss_sp as usize - current_stack.ss_size as usize
-        }
+        })
     }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
-    pub unsafe fn current() -> usize {
-        let mut attr: libc::pthread_attr_t = mem::zeroed();
-        assert_eq!(pthread_getattr_np(pthread_self(), &mut attr), 0);
-        let mut guardsize = 0;
-        assert_eq!(pthread_attr_getguardsize(&attr, &mut guardsize), 0);
-        if guardsize == 0 {
-            panic!("there is no guard page");
-        }
-        let mut stackaddr = ptr::null_mut();
-        let mut size = 0;
-        assert_eq!(pthread_attr_getstack(&attr, &mut stackaddr, &mut size), 0);
-        assert_eq!(pthread_attr_destroy(&mut attr), 0);
+    pub unsafe fn current() -> Option<usize> {
+        use super::pthread_attr_init;
 
-        stackaddr as usize + guardsize as usize
+        let mut ret = None;
+        let mut attr: libc::pthread_attr_t = mem::zeroed();
+        assert_eq!(pthread_attr_init(&mut attr), 0);
+        if pthread_getattr_np(pthread_self(), &mut attr) == 0 {
+            let mut guardsize = 0;
+            assert_eq!(pthread_attr_getguardsize(&attr, &mut guardsize), 0);
+            if guardsize == 0 {
+                panic!("there is no guard page");
+            }
+            let mut stackaddr = ptr::null_mut();
+            let mut size = 0;
+            assert_eq!(pthread_attr_getstack(&attr, &mut stackaddr, &mut size), 0);
+
+            ret = Some(stackaddr as usize + guardsize as usize);
+        }
+        assert_eq!(pthread_attr_destroy(&mut attr), 0);
+        return ret
     }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
