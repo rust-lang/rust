@@ -540,6 +540,19 @@ impl fmt::Display for clean::Type {
     }
 }
 
+impl fmt::Display for clean::Impl {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "impl{} ", self.generics));
+        if let Some(ref ty) = self.trait_ {
+            try!(write!(f, "{}{} for ",
+                        if self.polarity == Some(clean::ImplPolarity::Negative) { "!" } else { "" },
+                        *ty));
+        }
+        try!(write!(f, "{}{}", self.for_, WhereClause(&self.generics)));
+        Ok(())
+    }
+}
+
 impl fmt::Display for clean::Arguments {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, input) in self.values.iter().enumerate() {
