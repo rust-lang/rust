@@ -103,7 +103,7 @@ borrow checker’. Adding `unsafe` to some random Rust code doesn’t change its
 semantics, it won’t just start accepting anything. But it will let you write
 things that _do_ break some of the rules.
 
-You will also encounter the 'unsafe' keyword when writing bindings to foreign
+You will also encounter the `unsafe` keyword when writing bindings to foreign
 (non-Rust) interfaces. You're encouraged to write a safe, native Rust interface
 around the methods provided by the library.
 
