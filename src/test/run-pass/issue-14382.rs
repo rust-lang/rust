@@ -8,14 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait<'a> {
-    type A;
-    type B;
-}
+#[derive(Debug)]
+struct Matrix4<S>(S);
+trait POrd<S> {}
 
-fn foo<'a, T: Trait<'a>>(value: T::A) {
-    let new: T::B = unsafe { std::mem::transmute(value) };
-//~^ ERROR: cannot transmute to or from a type that contains unsubstituted type parameters [E0139]
-}
+fn translate<S: POrd<S>>(s: S) -> Matrix4<S> { Matrix4(s) }
 
-fn main() { }
+impl POrd<f32> for f32 {}
+impl POrd<f64> for f64 {}
+
+fn main() {
+    let x = 1.0;
+    let m : Matrix4<f32> = translate(x);
+    println!("m: {:?}", m);
+}
