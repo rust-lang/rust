@@ -195,7 +195,26 @@ extern "rust-intrinsic" {
 
     pub fn size_of_val<T: ?Sized>(_: &T) -> usize;
     pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
-    pub fn drop_in_place<T: ?Sized>(_: *mut T);
+
+    /// Executes the destructor (if any) of the pointed-to value.
+    ///
+    /// This has two usecases:
+    ///
+    /// * It is *required* to use `drop_in_place` to drop unsized types like
+    ///   trait objects, because they can't be read out onto the stack and
+    ///   dropped normally.
+    ///
+    /// * It is friendlier to the optimizer to do this over `ptr::read` when
+    ///   dropping manually allocated memory (e.g. when writing Box/Rc/Vec),
+    ///   as the compiler doesn't need to prove that it's sound to elide the
+    ///   copy.
+    ///
+    /// # Undefined Behaviour
+    ///
+    /// This has all the same safety problems as `ptr::read` with respect to
+    /// invalid pointers, types, and double drops.
+    #[unstable(feature = "drop_in_place", reason = "just exposed, needs FCP", issue = "27908")]
+    pub fn drop_in_place<T: ?Sized>(to_drop: *mut T);
 
     /// Gets a static string slice containing the name of a type.
     pub fn type_name<T: ?Sized>() -> &'static str;
