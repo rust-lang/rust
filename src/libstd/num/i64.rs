@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 64-bit signed integer type
+//! The 64-bit signed integer type.
 //!
 //! *[See also the `i64` primitive type](../primitive.i64.html).*
 

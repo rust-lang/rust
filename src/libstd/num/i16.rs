@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 16-bit signed integer type
+//! The 16-bit signed integer type.
 //!
 //! *[See also the `i16` primitive type](../primitive.i16.html).*
 

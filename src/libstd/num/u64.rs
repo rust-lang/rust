@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 64-bit unsigned integer type
+//! The 64-bit unsigned integer type.
 //!
 //! *[See also the `u64` primitive type](../primitive.u64.html).*
 
