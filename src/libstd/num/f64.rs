@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for 64-bits floats (`f64` type)
+//! The 64-bit floating point type.
+//!
+//! *[See also the `f64` primitive type](../primitive.f64.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
-#![doc(primitive = "f64")]
 
 use prelude::v1::*;
 

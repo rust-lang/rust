@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utilities for slice manipulation
+//! A dynamically-sized view into a contiguous sequence, `[T]`.
 //!
-//! The `slice` module contains useful code to help work with slice values.
 //! Slices are a view into a block of memory represented as a pointer and a
 //! length.
 //!
@@ -78,7 +77,8 @@
 //!   iterators.
 //! * Further methods that return iterators are `.split()`, `.splitn()`,
 //!   `.chunks()`, `.windows()` and more.
-#![doc(primitive = "slice")]
+//!
+//! *[See also the slice primitive type](../primitive.slice.html).*
 #![stable(feature = "rust1", since = "1.0.0")]
 
 // Many of the usings in this module are only used in the test configuration.

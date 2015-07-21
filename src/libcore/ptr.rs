@@ -10,84 +10,11 @@
 
 // FIXME: talk about offset, copy_memory, copy_nonoverlapping_memory
 
-//! Operations on raw pointers, `*const T`, and `*mut T`.
+//! Raw, unsafe pointers, `*const T`, and `*mut T`
 //!
-//! Working with raw pointers in Rust is uncommon,
-//! typically limited to a few patterns.
-//!
-//! Use the `null` function to create null pointers, and the `is_null` method
-//! of the `*const T` type  to check for null. The `*const T` type also defines
-//! the `offset` method, for pointer math.
-//!
-//! # Common ways to create raw pointers
-//!
-//! ## 1. Coerce a reference (`&T`) or mutable reference (`&mut T`).
-//!
-//! ```
-//! let my_num: i32 = 10;
-//! let my_num_ptr: *const i32 = &my_num;
-//! let mut my_speed: i32 = 88;
-//! let my_speed_ptr: *mut i32 = &mut my_speed;
-//! ```
-//!
-//! To get a pointer to a boxed value, dereference the box:
-//!
-//! ```
-//! let my_num: Box<i32> = Box::new(10);
-//! let my_num_ptr: *const i32 = &*my_num;
-//! let mut my_speed: Box<i32> = Box::new(88);
-//! let my_speed_ptr: *mut i32 = &mut *my_speed;
-//! ```
-//!
-//! This does not take ownership of the original allocation
-//! and requires no resource management later,
-//! but you must not use the pointer after its lifetime.
-//!
-//! ## 2. Consume a box (`Box<T>`).
-//!
-//! The `into_raw` function consumes a box and returns
-//! the raw pointer. It doesn't destroy `T` or deallocate any memory.
-//!
-//! ```
-//! # #![feature(box_raw)]
-//! let my_speed: Box<i32> = Box::new(88);
-//! let my_speed: *mut i32 = Box::into_raw(my_speed);
-//!
-//! // By taking ownership of the original `Box<T>` though
-//! // we are obligated to put it together later to be destroyed.
-//! unsafe {
-//!     drop(Box::from_raw(my_speed));
-//! }
-//! ```
-//!
-//! Note that here the call to `drop` is for clarity - it indicates
-//! that we are done with the given value and it should be destroyed.
-//!
-//! ## 3. Get it from C.
-//!
-//! ```
-//! # #![feature(libc)]
-//! extern crate libc;
-//!
-//! use std::mem;
-//!
-//! fn main() {
-//!     unsafe {
-//!         let my_num: *mut i32 = libc::malloc(mem::size_of::<i32>() as libc::size_t) as *mut i32;
-//!         if my_num.is_null() {
-//!             panic!("failed to allocate memory");
-//!         }
-//!         libc::free(my_num as *mut libc::c_void);
-//!     }
-//! }
-//! ```
-//!
-//! Usually you wouldn't literally use `malloc` and `free` from Rust,
-//! but C APIs hand out a lot of pointers generally, so are a common source
-//! of raw pointers in Rust.
+//! *[See also the pointer primitive types](../primitive.pointer.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "pointer")]
 
 use mem;
 use clone::Clone;

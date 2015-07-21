@@ -13,7 +13,6 @@
 //! For more details, see ::rustc_unicode::char (a.k.a. std::char)
 
 #![allow(non_snake_case)]
-#![doc(primitive = "char")]
 #![stable(feature = "core_char", since = "1.2.0")]
 
 use iter::Iterator;
