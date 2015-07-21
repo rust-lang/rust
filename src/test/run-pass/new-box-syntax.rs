@@ -15,6 +15,7 @@
 
 #![allow(warnings)]
 #![feature(box_syntax, box_heap)]
+#![feature(placement_in_syntax)]
 
 // Tests that the new `box` syntax works with unique pointers.
 
