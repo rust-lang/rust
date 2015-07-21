@@ -871,12 +871,12 @@ impl<'a> DoubleEndedIterator for LinesAny<'a> {
 Section: Comparing strings
 */
 
-// share the implementation of the lang-item vs. non-lang-item
-// eq_slice.
+/// Bytewise slice equality
 /// NOTE: This function is (ab)used in rustc::middle::trans::_match
 /// to compare &[u8] byte slices that are not necessarily valid UTF-8.
+#[lang = "str_eq"]
 #[inline]
-fn eq_slice_(a: &str, b: &str) -> bool {
+fn eq_slice(a: &str, b: &str) -> bool {
     // NOTE: In theory n should be libc::size_t and not usize, but libc is not available here
     #[allow(improper_ctypes)]
     extern { fn memcmp(s1: *const i8, s2: *const i8, n: usize) -> i32; }
@@ -885,15 +885,6 @@ fn eq_slice_(a: &str, b: &str) -> bool {
                b.as_ptr() as *const i8,
                a.len()) == 0
     }
-}
-
-/// Bytewise slice equality
-/// NOTE: This function is (ab)used in rustc::middle::trans::_match
-/// to compare &[u8] byte slices that are not necessarily valid UTF-8.
-#[lang = "str_eq"]
-#[inline]
-fn eq_slice(a: &str, b: &str) -> bool {
-    eq_slice_(a, b)
 }
 
 /*
