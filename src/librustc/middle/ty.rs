@@ -6091,13 +6091,7 @@ impl<'tcx> ctxt<'tcx> {
                 let found = match val {
                     ConstVal::Uint(count) => return count as usize,
                     ConstVal::Int(count) if count >= 0 => return count as usize,
-                    ConstVal::Int(_) => "negative integer",
-                    ConstVal::Float(_) => "float",
-                    ConstVal::Str(_) => "string",
-                    ConstVal::Bool(_) => "boolean",
-                    ConstVal::Binary(_) => "binary array",
-                    ConstVal::Struct(..) => "struct",
-                    ConstVal::Tuple(_) => "tuple"
+                    const_val => const_val.description(),
                 };
                 span_err!(self.sess, count_expr.span, E0306,
                     "expected positive integer for repeat count, found {}",

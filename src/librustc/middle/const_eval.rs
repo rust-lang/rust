@@ -271,6 +271,22 @@ pub enum ConstVal {
     Tuple(ast::NodeId),
 }
 
+impl ConstVal {
+    pub fn description(&self) -> &'static str {
+        match *self {
+            Float(_) => "float",
+            Int(i) if i < 0 => "negative integer",
+            Int(_) => "positive integer",
+            Uint(_) => "unsigned integer",
+            Str(_) => "string literal",
+            Binary(_) => "binary array",
+            Bool(_) => "boolean",
+            Struct(_) => "struct",
+            Tuple(_) => "tuple",
+        }
+    }
+}
+
 pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<ast::Pat> {
     let pat = match expr.node {
         ast::ExprTup(ref exprs) =>
@@ -350,16 +366,8 @@ pub enum ErrKind {
     InvalidOpForFloats(ast::BinOp_),
     InvalidOpForIntUint(ast::BinOp_),
     InvalidOpForUintInt(ast::BinOp_),
-    NegateOnString,
-    NegateOnBoolean,
-    NegateOnBinary,
-    NegateOnStruct,
-    NegateOnTuple,
-    NotOnFloat,
-    NotOnString,
-    NotOnBinary,
-    NotOnStruct,
-    NotOnTuple,
+    NegateOn(ConstVal),
+    NotOn(ConstVal),
 
     NegateWithOverflow(i64),
     AddiWithOverflow(i64, i64),
@@ -395,16 +403,8 @@ impl ConstEvalErr {
             InvalidOpForFloats(_) => "can't do this op on floats".into_cow(),
             InvalidOpForIntUint(..) => "can't do this op on an isize and usize".into_cow(),
             InvalidOpForUintInt(..) => "can't do this op on a usize and isize".into_cow(),
-            NegateOnString => "negate on string".into_cow(),
-            NegateOnBoolean => "negate on boolean".into_cow(),
-            NegateOnBinary => "negate on binary literal".into_cow(),
-            NegateOnStruct => "negate on struct".into_cow(),
-            NegateOnTuple => "negate on tuple".into_cow(),
-            NotOnFloat => "not on float or string".into_cow(),
-            NotOnString => "not on float or string".into_cow(),
-            NotOnBinary => "not on binary literal".into_cow(),
-            NotOnStruct => "not on struct".into_cow(),
-            NotOnTuple => "not on tuple".into_cow(),
+            NegateOn(ref const_val) => format!("negate on {}", const_val.description()).into_cow(),
+            NotOn(ref const_val) => format!("not on {}", const_val.description()).into_cow(),
 
             NegateWithOverflow(..) => "attempted to negate with overflow".into_cow(),
             AddiWithOverflow(..) => "attempted to add with overflow".into_cow(),
@@ -745,11 +745,7 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
           Uint(i) => {
               try!(const_uint_checked_neg(i, e, expr_uint_type))
           }
-          Str(_) => signal!(e, NegateOnString),
-          Bool(_) => signal!(e, NegateOnBoolean),
-          Binary(_) => signal!(e, NegateOnBinary),
-          Tuple(_) => signal!(e, NegateOnTuple),
-          Struct(..) => signal!(e, NegateOnStruct),
+          const_val => signal!(e, NegateOn(const_val)),
         }
       }
       ast::ExprUnary(ast::UnNot, ref inner) => {
@@ -757,11 +753,7 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
           Int(i) => Int(!i),
           Uint(i) => const_uint_not(i, expr_uint_type),
           Bool(b) => Bool(!b),
-          Str(_) => signal!(e, NotOnString),
-          Float(_) => signal!(e, NotOnFloat),
-          Binary(_) => signal!(e, NotOnBinary),
-          Tuple(_) => signal!(e, NotOnTuple),
-          Struct(..) => signal!(e, NotOnStruct),
+          const_val => signal!(e, NotOn(const_val)),
         }
       }
       ast::ExprBinary(op, ref a, ref b) => {
