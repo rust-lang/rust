@@ -208,6 +208,10 @@ impl Handler {
     }
     pub fn fatal(&self, msg: &str) -> ! {
         self.emit.borrow_mut().emit(None, msg, None, Fatal);
+
+        // Suppress the fatal error message from the panic below as we've
+        // already terminated in our own "legitimate" fashion.
+        io::set_panic(Box::new(io::sink()));
         panic!(FatalError);
     }
     pub fn err(&self, msg: &str) {
