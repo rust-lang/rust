@@ -2638,7 +2638,7 @@ impl<'a> Parser<'a> {
             // ... but for now: check for a place: `box(PLACE) EXPR`.
 
             if try!(self.eat(&token::OpenDelim(token::Paren)) ){
-                // SNAP ba0e1cd
+                // SNAP d4432b3
                 // Enable this warning after snapshot ...
                 //
                 // let box_span = mk_sp(lo, self.last_span.hi);
@@ -2659,9 +2659,15 @@ impl<'a> Parser<'a> {
                         self.span_err(span,
                                       &format!("expected expression, found `{}`",
                                               this_token_to_string));
+
+                        // Spanning just keyword avoids constructing
+                        // printout of arg expression (which starts
+                        // with parenthesis, as established above).
+
                         let box_span = mk_sp(lo, keyword_hi);
-                        let new_expr = format!("box () {}", pprust::expr_to_string(&place));
-                        self.span_suggestion(box_span, "try using `box ()` instead:", new_expr);
+                        self.span_suggestion(box_span,
+                                             "try using `box ()` instead:",
+                                             format!("box ()"));
                         self.abort_if_errors();
                     }
                     let subexpression = try!(self.parse_prefix_expr());
