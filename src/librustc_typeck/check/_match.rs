@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::const_eval;
 use middle::def;
 use middle::infer;
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
@@ -23,7 +22,7 @@ use check::{instantiate_path, resolve_ty_and_def_ufcs, structurally_resolved_typ
 use require_same_types;
 use util::nodemap::FnvHashMap;
 
-use std::cmp::{self, Ordering};
+use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::ast;
 use syntax::ast_util;
@@ -129,18 +128,6 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             let common_type = fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
 
             fcx.write_ty(pat.id, common_type);
-
-            // Finally we evaluate the constants and check that the range is non-empty.
-            let get_substs = |id| fcx.item_substs()[&id].substs.clone();
-            match const_eval::compare_lit_exprs(tcx, begin, end, Some(&common_type), get_substs) {
-                Some(Ordering::Less) |
-                Some(Ordering::Equal) => {}
-                Some(Ordering::Greater) => {
-                    span_err!(tcx.sess, begin.span, E0030,
-                        "lower range bound must be less than or equal to upper");
-                }
-                None => tcx.sess.span_bug(begin.span, "literals of different types in range pat")
-            }
 
             // subtyping doesn't matter here, as the value is some kind of scalar
             demand::eqtype(fcx, pat.span, expected, lhs_ty);

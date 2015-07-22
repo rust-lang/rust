@@ -26,6 +26,7 @@
 
 use middle::cast::{CastKind};
 use middle::const_eval;
+use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::def;
 use middle::expr_use_visitor as euv;
 use middle::infer;
@@ -39,6 +40,7 @@ use syntax::codemap::Span;
 use syntax::visit::{self, Visitor};
 
 use std::collections::hash_map::Entry;
+use std::cmp::Ordering;
 
 // Const qualification, from partial to completely promotable.
 bitflags! {
@@ -365,6 +367,19 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
             ast::PatRange(ref start, ref end) => {
                 self.global_expr(Mode::Const, &**start);
                 self.global_expr(Mode::Const, &**end);
+
+                match const_eval::compare_lit_exprs(self.tcx, start, end) {
+                    Some(Ordering::Less) |
+                    Some(Ordering::Equal) => {}
+                    Some(Ordering::Greater) => {
+                        span_err!(self.tcx.sess, start.span, E0030,
+                            "lower range bound must be less than or equal to upper");
+                    }
+                    None => {
+                        self.tcx.sess.span_bug(
+                            start.span, "literals of different types in range pat");
+                    }
+                }
             }
             _ => visit::walk_pat(self, p)
         }
@@ -457,7 +472,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 match node_ty.sty {
                     ty::TyUint(_) | ty::TyInt(_) if div_or_rem => {
                         if !self.qualif.intersects(ConstQualif::NOT_CONST) {
-                            match const_eval::eval_const_expr_partial(self.tcx, ex, None) {
+                            match const_eval::eval_const_expr_partial(
+                                    self.tcx, ex, ExprTypeChecked) {
                                 Ok(_) => {}
                                 Err(msg) => {
                                     span_err!(self.tcx.sess, msg.span, E0020,

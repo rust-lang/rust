@@ -11,8 +11,8 @@
 #![allow(non_camel_case_types)]
 
 use self::ConstVal::*;
-
 use self::ErrKind::*;
+use self::EvalHint::*;
 
 use ast_map;
 use ast_map::blocks::FnLikeNode;
@@ -345,7 +345,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<ast::Pat>
 }
 
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> ConstVal {
-    match eval_const_expr_partial(tcx, e, None) {
+    match eval_const_expr_partial(tcx, e, ExprTypeChecked) {
         Ok(r) => r,
         Err(s) => tcx.sess.span_fatal(s.span, &s.description())
     }
@@ -433,6 +433,28 @@ impl ConstEvalErr {
 
 pub type EvalResult = Result<ConstVal, ConstEvalErr>;
 pub type CastResult = Result<ConstVal, ErrKind>;
+
+// FIXME: Long-term, this enum should go away: trying to evaluate
+// an expression which hasn't been type-checked is a recipe for
+// disaster.  That said, it's not clear how to fix ast_ty_to_ty
+// to avoid the ordering issue.
+
+/// Hint to determine how to evaluate constant expressions which
+/// might not be type-checked.
+#[derive(Copy, Clone, Debug)]
+pub enum EvalHint<'tcx> {
+    /// We have a type-checked expression.
+    ExprTypeChecked,
+    /// We have an expression which hasn't been type-checked, but we have
+    /// an idea of what the type will be because of the context. For example,
+    /// the length of an array is always `usize`. (This is referred to as
+    /// a hint because it isn't guaranteed to be consistent with what
+    /// type-checking would compute.)
+    UncheckedExprHint(Ty<'tcx>),
+    /// We have an expression which has not yet been type-checked, and
+    /// and we have no clue what the type will be.
+    UncheckedExprNoHint,
+}
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum IntTy { I8, I16, I32, I64 }
@@ -704,26 +726,34 @@ pub_fn_checked_op!{ const_uint_checked_shr_via_int(a: u64, b: i64,.. UintTy) {
            uint_shift_body overflowing_shr Uint ShiftRightWithOverflow
 }}
 
-// After type checking, `eval_const_expr_partial` should always suffice. The
-// reason for providing `eval_const_expr_with_substs` is to allow
-// trait-associated consts to be evaluated *during* type checking, when the
-// substs for each expression have not been written into `tcx` yet.
+/// Evaluate a constant expression in a context where the expression isn't
+/// guaranteed to be evaluatable. `ty_hint` is usually ExprTypeChecked,
+/// but a few places need to evaluate constants during type-checking, like
+/// computing the length of an array. (See also the FIXME above EvalHint.)
 pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      e: &Expr,
-                                     ty_hint: Option<Ty<'tcx>>) -> EvalResult {
-    eval_const_expr_with_substs(tcx, e, ty_hint, |id| {
-        tcx.node_id_item_substs(id).substs
-    })
-}
-
-pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
-                                            e: &Expr,
-                                            ty_hint: Option<Ty<'tcx>>,
-                                            get_substs: S) -> EvalResult
-        where S: Fn(ast::NodeId) -> subst::Substs<'tcx> {
+                                     ty_hint: EvalHint<'tcx>) -> EvalResult {
     fn fromb(b: bool) -> ConstVal { Int(b as i64) }
 
-    let ety = ty_hint.or_else(|| tcx.expr_ty_opt(e));
+    // Try to compute the type of the expression based on the EvalHint.
+    // (See also the definition of EvalHint, and the FIXME above EvalHint.)
+    let ety = match ty_hint {
+        ExprTypeChecked => {
+            // After type-checking, expr_ty is guaranteed to succeed.
+            Some(tcx.expr_ty(e))
+        }
+        UncheckedExprHint(ty) => {
+            // Use the type hint; it's not guaranteed to be right, but it's
+            // usually good enough.
+            Some(ty)
+        }
+        UncheckedExprNoHint => {
+            // This expression might not be type-checked, and we have no hint.
+            // Try to query the context for a type anyway; we might get lucky
+            // (for example, if the expression was imported from another crate).
+            tcx.expr_ty_opt(e)
+        }
+    };
 
     // If type of expression itself is int or uint, normalize in these
     // bindings so that isize/usize is mapped to a type with an
@@ -739,7 +769,7 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
 
     let result = match e.node {
       ast::ExprUnary(ast::UnNeg, ref inner) => {
-        match try!(eval_const_expr_partial(tcx, &**inner, ety)) {
+        match try!(eval_const_expr_partial(tcx, &**inner, ty_hint)) {
           Float(f) => Float(-f),
           Int(n) =>  try!(const_int_checked_neg(n, e, expr_int_type)),
           Uint(i) => {
@@ -749,7 +779,7 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
         }
       }
       ast::ExprUnary(ast::UnNot, ref inner) => {
-        match try!(eval_const_expr_partial(tcx, &**inner, ety)) {
+        match try!(eval_const_expr_partial(tcx, &**inner, ty_hint)) {
           Int(i) => Int(!i),
           Uint(i) => const_uint_not(i, expr_uint_type),
           Bool(b) => Bool(!b),
@@ -758,10 +788,16 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
       }
       ast::ExprBinary(op, ref a, ref b) => {
         let b_ty = match op.node {
-            ast::BiShl | ast::BiShr => Some(tcx.types.usize),
-            _ => ety
+            ast::BiShl | ast::BiShr => {
+                if let ExprTypeChecked = ty_hint {
+                    ExprTypeChecked
+                } else {
+                    UncheckedExprHint(tcx.types.usize)
+                }
+            }
+            _ => ty_hint
         };
-        match (try!(eval_const_expr_partial(tcx, &**a, ety)),
+        match (try!(eval_const_expr_partial(tcx, &**a, ty_hint)),
                try!(eval_const_expr_partial(tcx, &**b, b_ty))) {
           (Float(a), Float(b)) => {
             match op.node {
@@ -851,22 +887,25 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
         }
       }
       ast::ExprCast(ref base, ref target_ty) => {
-        // This tends to get called w/o the type actually having been
-        // populated in the ctxt, which was causing things to blow up
-        // (#5900). Fall back to doing a limited lookup to get past it.
         let ety = ety.or_else(|| ast_ty_to_prim_ty(tcx, &**target_ty))
                 .unwrap_or_else(|| {
                     tcx.sess.span_fatal(target_ty.span,
                                         "target type not found for const cast")
                 });
 
-        // Prefer known type to noop, but always have a type hint.
-        //
-        // FIXME (#23833): the type-hint can cause problems,
-        // e.g. `(i8::MAX + 1_i8) as u32` feeds in `u32` as result
-        // type to the sum, and thus no overflow is signaled.
-        let base_hint = tcx.expr_ty_opt(&**base).unwrap_or(ety);
-        let val = try!(eval_const_expr_partial(tcx, &**base, Some(base_hint)));
+        let base_hint = if let ExprTypeChecked = ty_hint {
+            ExprTypeChecked
+        } else {
+            // FIXME (#23833): the type-hint can cause problems,
+            // e.g. `(i8::MAX + 1_i8) as u32` feeds in `u32` as result
+            // type to the sum, and thus no overflow is signaled.
+            match tcx.expr_ty_opt(&base) {
+                Some(t) => UncheckedExprHint(t),
+                None => ty_hint
+            }
+        };
+
+        let val = try!(eval_const_expr_partial(tcx, &**base, base_hint));
         match cast_const(tcx, val, ety) {
             Ok(val) => val,
             Err(kind) => return Err(ConstEvalErr { span: e.span, kind: kind }),
@@ -896,12 +935,16 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
                           def::FromTrait(trait_id) => match tcx.map.find(def_id.node) {
                               Some(ast_map::NodeTraitItem(ti)) => match ti.node {
                                   ast::ConstTraitItem(ref ty, _) => {
-                                      let substs = get_substs(e.id);
-                                      (resolve_trait_associated_const(tcx,
-                                                                      ti,
-                                                                      trait_id,
-                                                                      substs),
-                                       Some(&**ty))
+                                      if let ExprTypeChecked = ty_hint {
+                                          let substs = tcx.node_id_item_substs(e.id).substs;
+                                          (resolve_trait_associated_const(tcx,
+                                                                          ti,
+                                                                          trait_id,
+                                                                          substs),
+                                           Some(&**ty))
+                                       } else {
+                                           (None, None)
+                                       }
                                   }
                                   _ => (None, None)
                               },
@@ -930,27 +973,42 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
               Some(actual_e) => actual_e,
               None => signal!(e, NonConstPath)
           };
-          let ety = ety.or_else(|| const_ty.and_then(|ty| ast_ty_to_prim_ty(tcx, ty)));
-          try!(eval_const_expr_partial(tcx, const_expr, ety))
+          let item_hint = if let UncheckedExprNoHint = ty_hint {
+              match const_ty {
+                  Some(ty) => match ast_ty_to_prim_ty(tcx, ty) {
+                      Some(ty) => UncheckedExprHint(ty),
+                      None => UncheckedExprNoHint
+                  },
+                  None => UncheckedExprNoHint
+              }
+          } else {
+              ty_hint
+          };
+          try!(eval_const_expr_partial(tcx, const_expr, item_hint))
       }
       ast::ExprLit(ref lit) => {
           lit_to_const(&**lit, ety)
       }
-      ast::ExprParen(ref e) => try!(eval_const_expr_partial(tcx, &**e, ety)),
+      ast::ExprParen(ref e) => try!(eval_const_expr_partial(tcx, &**e, ty_hint)),
       ast::ExprBlock(ref block) => {
         match block.expr {
-            Some(ref expr) => try!(eval_const_expr_partial(tcx, &**expr, ety)),
+            Some(ref expr) => try!(eval_const_expr_partial(tcx, &**expr, ty_hint)),
             None => Int(0)
         }
       }
       ast::ExprTup(_) => Tuple(e.id),
       ast::ExprStruct(..) => Struct(e.id),
       ast::ExprTupField(ref base, index) => {
-        if let Ok(c) = eval_const_expr_partial(tcx, base, None) {
+        let base_hint = if let ExprTypeChecked = ty_hint {
+            ExprTypeChecked
+        } else {
+            UncheckedExprNoHint
+        };
+        if let Ok(c) = eval_const_expr_partial(tcx, base, base_hint) {
             if let Tuple(tup_id) = c {
                 if let ast::ExprTup(ref fields) = tcx.map.expect_expr(tup_id).node {
                     if index.node < fields.len() {
-                        return eval_const_expr_partial(tcx, &fields[index.node], None)
+                        return eval_const_expr_partial(tcx, &fields[index.node], base_hint)
                     } else {
                         signal!(e, TupleIndexOutOfBounds);
                     }
@@ -966,13 +1024,18 @@ pub fn eval_const_expr_with_substs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
       }
       ast::ExprField(ref base, field_name) => {
         // Get the base expression if it is a struct and it is constant
-        if let Ok(c) = eval_const_expr_partial(tcx, base, None) {
+        let base_hint = if let ExprTypeChecked = ty_hint {
+            ExprTypeChecked
+        } else {
+            UncheckedExprNoHint
+        };
+        if let Ok(c) = eval_const_expr_partial(tcx, base, base_hint) {
             if let Struct(struct_id) = c {
                 if let ast::ExprStruct(_, ref fields, _) = tcx.map.expect_expr(struct_id).node {
                     // Check that the given field exists and evaluate it
                     if let Some(f) = fields.iter().find(|f| f.ident.node.as_str()
                                                          == field_name.node.as_str()) {
-                        return eval_const_expr_partial(tcx, &*f.expr, None)
+                        return eval_const_expr_partial(tcx, &*f.expr, base_hint)
                     } else {
                         signal!(e, MissingStructField);
                     }
@@ -1148,21 +1211,17 @@ pub fn compare_const_vals(a: &ConstVal, b: &ConstVal) -> Option<Ordering> {
     })
 }
 
-pub fn compare_lit_exprs<'tcx, S>(tcx: &ty::ctxt<'tcx>,
-                                  a: &Expr,
-                                  b: &Expr,
-                                  ty_hint: Option<Ty<'tcx>>,
-                                  get_substs: S) -> Option<Ordering>
-        where S: Fn(ast::NodeId) -> subst::Substs<'tcx> {
-    let a = match eval_const_expr_with_substs(tcx, a, ty_hint,
-                                              |id| {get_substs(id)}) {
+pub fn compare_lit_exprs<'tcx>(tcx: &ty::ctxt<'tcx>,
+                               a: &Expr,
+                               b: &Expr) -> Option<Ordering> {
+    let a = match eval_const_expr_partial(tcx, a, ExprTypeChecked) {
         Ok(a) => a,
         Err(e) => {
             tcx.sess.span_err(a.span, &e.description());
             return None;
         }
     };
-    let b = match eval_const_expr_with_substs(tcx, b, ty_hint, get_substs) {
+    let b = match eval_const_expr_partial(tcx, b, ExprTypeChecked) {
         Ok(b) => b,
         Err(e) => {
             tcx.sess.span_err(b.span, &e.description());

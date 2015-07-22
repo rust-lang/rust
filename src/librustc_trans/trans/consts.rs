@@ -23,6 +23,8 @@ use middle::const_eval::{const_int_checked_div, const_uint_checked_div};
 use middle::const_eval::{const_int_checked_rem, const_uint_checked_rem};
 use middle::const_eval::{const_int_checked_shl, const_uint_checked_shl};
 use middle::const_eval::{const_int_checked_shr, const_uint_checked_shr};
+use middle::const_eval::EvalHint::ExprTypeChecked;
+use middle::const_eval::eval_const_expr_partial;
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
 use trans::common::*;
@@ -591,7 +593,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         ast::ExprIndex(ref base, ref index) => {
             let (bv, bt) = const_expr(cx, &**base, param_substs, fn_args);
-            let iv = match const_eval::eval_const_expr_partial(cx.tcx(), &**index, None) {
+            let iv = match eval_const_expr_partial(cx.tcx(), &index, ExprTypeChecked) {
                 Ok(ConstVal::Int(i)) => i as u64,
                 Ok(ConstVal::Uint(u)) => u,
                 _ => cx.sess().span_bug(index.span,
