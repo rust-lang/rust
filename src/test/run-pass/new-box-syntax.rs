@@ -31,4 +31,9 @@ pub fn main() {
     let y: Box<isize> = box 2;
     let b: Box<isize> = box()(1 + 2);
     let c = box()(3 + 4);
+
+    let s: Box<Structure> = box Structure {
+        x: 3,
+        y: 4,
+    };
 }
