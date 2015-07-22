@@ -1439,6 +1439,29 @@ anything, please remove the attribute or add some helpful note for users of the
 trait.
 "##,
 
+E0275: r##"
+This error occurs when there was a recursive trait requirement that overflowed
+before it could be evaluated. Often this means that there is unbounded recursion
+in resolving some type bounds.
+
+For example, in the following code
+
+```
+trait Foo {}
+
+struct Bar<T>(T);
+
+impl<T> Foo for T where Bar<T>: Foo {}
+```
+
+to determine if a `T` is `Foo`, we need to check if `Bar<T>` is `Foo`. However,
+to do this check, we need to determine that `Bar<Bar<T>>` is `Foo`. To determine
+this, we check if `Bar<Bar<Bar<T>>>` is `Foo`, and so on. This is clearly a
+recursive requirement that can't be resolved directly.
+
+Consider changing your trait bounds so that they're less self-referential.
+"##,
+
 E0277: r##"
 You tried to use a type which doesn't implement some trait in a place which
 expected that trait. Erroneous code example:
@@ -1863,7 +1886,6 @@ register_diagnostics! {
 //  E0134,
 //  E0135,
     E0264, // unknown external lang item
-    E0275, // overflow evaluating requirement
     E0276, // requirement appears on impl method but not on corresponding trait method
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
