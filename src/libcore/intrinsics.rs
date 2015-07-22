@@ -190,7 +190,7 @@ extern "rust-intrinsic" {
     /// Drop glue is not run on the destination.
     pub fn move_val_init<T>(dst: *mut T, src: T);
 
-    // SNAP ba0e1cd
+    // SNAP d4432b3
     #[cfg(stage0)]
     /// Moves a value to an uninitialized memory location.
     ///
