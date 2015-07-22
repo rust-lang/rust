@@ -39,6 +39,7 @@ use middle::ty::{self, Ty};
 use middle::traits;
 use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, ConstVal};
+use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::cfg;
 use rustc::ast_map;
 use util::nodemap::{FnvHashMap, NodeSet};
@@ -178,7 +179,7 @@ impl LintPass for TypeLimits {
                             if let ast::LitInt(shift, _) = lit.node { shift >= bits }
                             else { false }
                         } else {
-                            match eval_const_expr_partial(cx.tcx, &**r, Some(cx.tcx.types.usize)) {
+                            match eval_const_expr_partial(cx.tcx, &**r, ExprTypeChecked) {
                                 Ok(ConstVal::Int(shift)) => { shift as u64 >= bits },
                                 Ok(ConstVal::Uint(shift)) => { shift >= bits },
                                 _ => { false }

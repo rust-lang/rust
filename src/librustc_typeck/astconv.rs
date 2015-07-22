@@ -50,6 +50,7 @@
 
 use middle::astconv_util::{prim_ty_to_ty, check_path_args, NO_TPS, NO_REGIONS};
 use middle::const_eval::{self, ConstVal};
+use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def;
 use middle::implicator::object_region_bounds;
 use middle::resolve_lifetime as rl;
@@ -1623,7 +1624,8 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             ty
         }
         ast::TyFixedLengthVec(ref ty, ref e) => {
-            match const_eval::eval_const_expr_partial(tcx, &**e, Some(tcx.types.usize)) {
+            let hint = UncheckedExprHint(tcx.types.usize);
+            match const_eval::eval_const_expr_partial(tcx, &e, hint) {
                 Ok(r) => {
                     match r {
                         ConstVal::Int(i) =>
