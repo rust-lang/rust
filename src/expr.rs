@@ -132,7 +132,7 @@ fn rewrite_call(context: &RewriteContext,
     }
 
     // 2 is for parens.
-    let remaining_width = width - callee_str.len() - 2;
+    let remaining_width = try_opt!(width.checked_sub(callee_str.len() + 2));
     let offset = callee_str.len() + 1 + offset;
 
     let items = itemize_list(context.codemap,
