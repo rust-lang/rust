@@ -478,7 +478,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         let ctor_id = match def.ctor_id {
             Some(node_id) => node_id,
-            None => -1,
+            None => ast::DUMMY_NODE_ID,
         };
         let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Struct);
@@ -536,7 +536,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                 ast::StructVariantKind(ref struct_def) => {
                     let ctor_id = match struct_def.ctor_id {
                         Some(node_id) => node_id,
-                        None => -1,
+                        None => ast::DUMMY_NODE_ID,
                     };
                     self.fmt.struct_variant_str(variant.span,
                                                 self.span.span_for_first_ident(variant.span),
