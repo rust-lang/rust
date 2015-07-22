@@ -56,17 +56,17 @@ This RFC proposes changing the grammar to something like:
             | '{' path_item [ ',' path_item ] * '}' ;
 
   path_item : ident [ "as" ident] ?
-            | "self" ;
+            | "self" [ "as" ident];
 ```
 
 The `"as" ident` part is optional in each location, and if omitted, it is expanded
 to alias to the same name, e.g. `use foo::{bar}` expands to `use foo::{bar as bar}`.
 
+This includes being able to rename `self`, such as `use std::io::{self
+as stdio, Result as IoResult};`.
+
 # Drawbacks
 
 # Alternatives
 
-# Unresolved questions
-
-- **Should `self` also be aliasable?** So you could write `use foo::{self as xfoo, bar}`.
-
+# Unresolved Questions
