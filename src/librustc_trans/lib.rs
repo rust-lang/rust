@@ -29,7 +29,6 @@
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(iter_cmp)]
-#![feature(iter_arith)]
 #![feature(libc)]
 #![feature(path_ext)]
 #![feature(path_ext)]

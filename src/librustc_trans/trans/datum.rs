@@ -93,6 +93,7 @@ pub use self::Expr::*;
 pub use self::RvalueMode::*;
 
 use llvm::ValueRef;
+use trans::adt;
 use trans::base::*;
 use trans::build::Load;
 use trans::common::*;
@@ -101,7 +102,7 @@ use trans::cleanup::CleanupMethods;
 use trans::expr;
 use trans::tvec;
 use trans::type_of;
-use middle::ty::Ty;
+use middle::ty::{Disr, Ty};
 
 use std::fmt;
 use syntax::ast;
@@ -516,16 +517,20 @@ impl<'tcx> Datum<'tcx, Lvalue> {
     // datum may also be unsized _without the size information_. It is the
     // callers responsibility to package the result in some way to make a valid
     // datum in that case (e.g., by making a fat pointer or opened pair).
-    pub fn get_element<'blk, F>(&self, bcx: Block<'blk, 'tcx>, ty: Ty<'tcx>,
-                                gep: F)
-                                -> Datum<'tcx, Lvalue> where
-        F: FnOnce(ValueRef) -> ValueRef,
+    pub fn get_field<'blk>(&self,
+                           bcx: Block<'blk, 'tcx>,
+                           repr: &adt::Repr<'tcx>,
+                           discr: Disr,
+                           i: usize)
+                           -> Datum<'tcx, Lvalue>
     {
         let val = if type_is_sized(bcx.tcx(), self.ty) {
-            gep(self.val)
+            self.val
         } else {
-            gep(Load(bcx, expr::get_dataptr(bcx, self.val)))
+            Load(bcx, expr::get_dataptr(bcx, self.val))
         };
+        let val = adt::trans_field_ptr(bcx, repr, val, discr, i);
+        let ty = adt::trans_field_ty(bcx, repr, discr, i);
         Datum {
             val: val,
             kind: Lvalue,

@@ -471,14 +471,14 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
           // comparison know not to proceed when the discriminants differ.
 
           match adt::trans_switch(cx, &*repr, av) {
-              (_match::Single, None) => {
+              None => {
                   if n_variants != 0 {
                       assert!(n_variants == 1);
                       cx = iter_variant(cx, &*repr, av, &*(*variants)[0],
                                         substs, &mut f);
                   }
               }
-              (_match::Switch, Some(lldiscrim_a)) => {
+              Some(lldiscrim_a) => {
                   cx = f(cx, lldiscrim_a, cx.tcx().types.isize);
 
                   // Create a fall-through basic block for the "else" case of
@@ -506,13 +506,8 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                               &format!("enum-iter-variant-{}",
                                       &variant.disr_val.to_string())
                               );
-                      match adt::trans_case(cx, &*repr, variant.disr_val) {
-                          _match::SingleResult(r) => {
-                              AddCase(llswitch, r.val, variant_cx.llbb)
-                          }
-                          _ => ccx.sess().unimpl("value from adt::trans_case \
-                                                  in iter_structural_ty")
-                      }
+                      let r = adt::trans_case(cx.ccx(), &repr, variant.disr_val);
+                      AddCase(llswitch, r, variant_cx.llbb);
                       let variant_cx =
                           iter_variant(variant_cx,
                                        &*repr,
@@ -524,8 +519,6 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                   }
                   cx = next_cx;
               }
-              _ => ccx.sess().unimpl("value from adt::trans_switch \
-                                      in iter_structural_ty")
           }
       }
       _ => {
@@ -768,13 +761,6 @@ pub fn need_invoke(bcx: Block) -> bool {
     }
 
     bcx.fcx.needs_invoke()
-}
-
-pub fn load_if_immediate<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
-                                     v: ValueRef, t: Ty<'tcx>) -> ValueRef {
-    let _icx = push_ctxt("load_if_immediate");
-    if type_is_immediate(cx.ccx(), t) { return load_ty(cx, v, t); }
-    return v;
 }
 
 /// Helper for loading values from memory. Does the necessary conversion if the in-memory type

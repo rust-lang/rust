@@ -54,7 +54,6 @@ use middle::ty::Disr;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::IntType;
-use trans::_match;
 use trans::build::*;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
@@ -774,19 +773,17 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, st: &Struct<'tcx>,
 
 /// Obtain a representation of the discriminant sufficient to translate
 /// destructuring; this may or may not involve the actual discriminant.
-///
-/// This should ideally be less tightly tied to `_match`.
 pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 r: &Repr<'tcx>, scrutinee: ValueRef)
-                                -> (_match::BranchKind, Option<ValueRef>) {
+                                -> Option<ValueRef> {
     match *r {
         CEnum(..) | General(..) |
         RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
-            (_match::Switch, Some(trans_get_discr(bcx, r, scrutinee, None)))
+            Some(trans_get_discr(bcx, r, scrutinee, None))
         }
         Univariant(..) => {
             // N.B.: Univariant means <= 1 enum variants (*not* == 1 variants).
-            (_match::Single, None)
+            None
         }
     }
 }
@@ -862,26 +859,24 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
 
 /// Yield information about how to dispatch a case of the
 /// discriminant-like value returned by `trans_switch`.
-///
-/// This should ideally be less tightly tied to `_match`.
-pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
-                              -> _match::OptResult<'blk, 'tcx> {
+pub fn trans_case<'bcx, 'tcx>(ccx: &CrateContext<'bcx, 'tcx>,
+                              r: &Repr,
+                              discr: Disr)
+                              -> ValueRef {
     match *r {
         CEnum(ity, _, _) => {
-            _match::SingleResult(Result::new(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
-                                                              discr as u64, true)))
+            C_integral(ll_inttype(ccx, ity), discr as u64, true)
         }
         General(ity, _, _) => {
-            _match::SingleResult(Result::new(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
-                                                              discr as u64, true)))
+            C_integral(ll_inttype(ccx, ity), discr as u64, true)
         }
         Univariant(..) => {
-            bcx.ccx().sess().bug("no cases for univariants or structs")
+            ccx.sess().bug("no cases for univariants or structs")
         }
         RawNullablePointer { .. } |
         StructWrappedNullablePointer { .. } => {
             assert!(discr == 0 || discr == 1);
-            _match::SingleResult(Result::new(bcx, C_bool(bcx.ccx(), discr != 0)))
+            C_bool(ccx, discr != 0)
         }
     }
 }
@@ -993,6 +988,36 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
         StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             assert_eq!(discr, nndiscr);
             struct_field_ptr(bcx, nonnull, val, ix, false)
+        }
+    }
+}
+
+/// Get a field's type.
+pub fn trans_field_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
+                                  discr: Disr, ix: usize) -> Ty<'tcx> {
+    match *r {
+        CEnum(..) => {
+            bcx.ccx().sess().bug("element access in C-like enum")
+        }
+        Univariant(ref st, _) => {
+            assert_eq!(discr, 0);
+            st.fields[ix]
+        }
+        General(_, ref cases, _) => {
+            &cases[discr as usize].fields[ix + 1]
+        }
+        RawNullablePointer { nndiscr, ref nullfields, .. } |
+        StructWrappedNullablePointer { nndiscr, ref nullfields, .. } if discr != nndiscr => {
+            nullfields[ix]
+        }
+        RawNullablePointer { nndiscr, nnty, .. } => {
+            assert_eq!(ix, 0);
+            assert_eq!(discr, nndiscr);
+            nnty
+        }
+        StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
+            assert_eq!(discr, nndiscr);
+            nonnull.fields[ix]
         }
     }
 }
