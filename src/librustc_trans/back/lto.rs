@@ -16,6 +16,7 @@ use llvm::archive_ro::ArchiveRO;
 use llvm::{ModuleRef, TargetMachineRef, True, False};
 use rustc::metadata::cstore;
 use rustc::util::common::time;
+use back::write::{ModuleConfig, with_llvm_pmb};
 
 use libc;
 use flate;
@@ -23,7 +24,8 @@ use flate;
 use std::ffi::CString;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,
-           tm: TargetMachineRef, reachable: &[String]) {
+           tm: TargetMachineRef, reachable: &[String],
+           config: &ModuleConfig) {
     if sess.opts.cg.prefer_dynamic {
         sess.err("cannot prefer dynamic linking when performing LTO");
         sess.note("only 'staticlib' and 'bin' outputs are supported with LTO");
@@ -144,19 +146,11 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         llvm::LLVMRustAddAnalysisPasses(tm, pm, llmod);
         llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const _);
 
-        let opt = match sess.opts.optimize {
-            config::No => 0,
-            config::Less => 1,
-            config::Default => 2,
-            config::Aggressive => 3,
-        };
-
-        let builder = llvm::LLVMPassManagerBuilderCreate();
-        llvm::LLVMPassManagerBuilderSetOptLevel(builder, opt);
-        llvm::LLVMPassManagerBuilderPopulateLTOPassManager(builder, pm,
-            /* Internalize = */ False,
-            /* RunInliner = */ True);
-        llvm::LLVMPassManagerBuilderDispose(builder);
+        with_llvm_pmb(llmod, config, &mut |b| {
+            llvm::LLVMPassManagerBuilderPopulateLTOPassManager(b, pm,
+                /* Internalize = */ False,
+                /* RunInliner = */ True);
+        });
 
         llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const _);
 

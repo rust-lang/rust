@@ -249,7 +249,7 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
 
 /// Module-specific configuration for `optimize_and_codegen`.
 #[derive(Clone)]
-struct ModuleConfig {
+pub struct ModuleConfig {
     /// LLVM TargetMachine to use for codegen.
     tm: TargetMachineRef,
     /// Names of additional optimization passes to run.
@@ -444,72 +444,72 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
 
-    match config.opt_level {
-        Some(opt_level) => {
-            // Create the two optimizing pass managers. These mirror what clang
-            // does, and are by populated by LLVM's default PassManagerBuilder.
-            // Each manager has a different set of passes, but they also share
-            // some common passes.
-            let fpm = llvm::LLVMCreateFunctionPassManagerForModule(llmod);
-            let mpm = llvm::LLVMCreatePassManager();
+    if config.opt_level.is_some() {
+        // Create the two optimizing pass managers. These mirror what clang
+        // does, and are by populated by LLVM's default PassManagerBuilder.
+        // Each manager has a different set of passes, but they also share
+        // some common passes.
+        let fpm = llvm::LLVMCreateFunctionPassManagerForModule(llmod);
+        let mpm = llvm::LLVMCreatePassManager();
 
-            // If we're verifying or linting, add them to the function pass
-            // manager.
-            let addpass = |pass: &str| {
-                let pass = CString::new(pass).unwrap();
-                llvm::LLVMRustAddPass(fpm, pass.as_ptr())
-            };
+        // If we're verifying or linting, add them to the function pass
+        // manager.
+        let addpass = |pass: &str| {
+            let pass = CString::new(pass).unwrap();
+            llvm::LLVMRustAddPass(fpm, pass.as_ptr())
+        };
 
-            if !config.no_verify { assert!(addpass("verify")); }
-            if !config.no_prepopulate_passes {
-                llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
-                llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
-                populate_llvm_passes(fpm, mpm, llmod, opt_level, &config);
+        if !config.no_verify { assert!(addpass("verify")); }
+        if !config.no_prepopulate_passes {
+            llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
+            llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
+            with_llvm_pmb(llmod, &config, &mut |b| {
+                llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(b, fpm);
+                llvm::LLVMPassManagerBuilderPopulateModulePassManager(b, mpm);
+            })
+        }
+
+        for pass in &config.passes {
+            if !addpass(pass) {
+                cgcx.handler.warn(&format!("unknown pass `{}`, ignoring",
+                                           pass));
             }
+        }
 
-            for pass in &config.passes {
-                if !addpass(pass) {
-                    cgcx.handler.warn(&format!("unknown pass `{}`, ignoring",
-                                               pass));
+        for pass in &cgcx.plugin_passes {
+            if !addpass(pass) {
+                cgcx.handler.err(&format!("a plugin asked for LLVM pass \
+                                           `{}` but LLVM does not \
+                                           recognize it", pass));
+            }
+        }
+
+        cgcx.handler.abort_if_errors();
+
+        // Finally, run the actual optimization passes
+        time(config.time_passes, "llvm function passes", (), |()|
+             llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
+        time(config.time_passes, "llvm module passes", (), |()|
+             llvm::LLVMRunPassManager(mpm, llmod));
+
+        // Deallocate managers that we're now done with
+        llvm::LLVMDisposePassManager(fpm);
+        llvm::LLVMDisposePassManager(mpm);
+
+        match cgcx.lto_ctxt {
+            Some((sess, reachable)) if sess.lto() =>  {
+                time(sess.time_passes(), "all lto passes", (), |()|
+                     lto::run(sess, llmod, tm, reachable, &config));
+
+                if config.emit_lto_bc {
+                    let name = format!("{}.lto.bc", name_extra);
+                    let out = output_names.with_extension(&name);
+                    let out = path2cstr(&out);
+                    llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
                 }
-            }
-
-            for pass in &cgcx.plugin_passes {
-                if !addpass(pass) {
-                    cgcx.handler.err(&format!("a plugin asked for LLVM pass \
-                                               `{}` but LLVM does not \
-                                               recognize it", pass));
-                }
-            }
-
-            cgcx.handler.abort_if_errors();
-
-            // Finally, run the actual optimization passes
-            time(config.time_passes, "llvm function passes", (), |()|
-                 llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
-            time(config.time_passes, "llvm module passes", (), |()|
-                 llvm::LLVMRunPassManager(mpm, llmod));
-
-            // Deallocate managers that we're now done with
-            llvm::LLVMDisposePassManager(fpm);
-            llvm::LLVMDisposePassManager(mpm);
-
-            match cgcx.lto_ctxt {
-                Some((sess, reachable)) if sess.lto() =>  {
-                    time(sess.time_passes(), "all lto passes", (), |()|
-                         lto::run(sess, llmod, tm, reachable));
-
-                    if config.emit_lto_bc {
-                        let name = format!("{}.lto.bc", name_extra);
-                        let out = output_names.with_extension(&name);
-                        let out = path2cstr(&out);
-                        llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
-                    }
-                },
-                _ => {},
-            }
-        },
-        None => {},
+            },
+            _ => {},
+        }
     }
 
     // A codegen-specific pass manager is used to generate object
@@ -1001,15 +1001,14 @@ pub unsafe fn configure_llvm(sess: &Session) {
                                  llvm_args.as_ptr());
 }
 
-unsafe fn populate_llvm_passes(fpm: llvm::PassManagerRef,
-                               mpm: llvm::PassManagerRef,
-                               llmod: ModuleRef,
-                               opt: llvm::CodeGenOptLevel,
-                               config: &ModuleConfig) {
+pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
+                            config: &ModuleConfig,
+                            f: &mut FnMut(llvm::PassManagerBuilderRef)) {
     // Create the PassManagerBuilder for LLVM. We configure it with
     // reasonable defaults and prepare it to actually populate the pass
     // manager.
     let builder = llvm::LLVMPassManagerBuilderCreate();
+    let opt = config.opt_level.unwrap_or(llvm::CodeGenLevelNone);
 
     llvm::LLVMRustConfigurePassManagerBuilder(builder, opt,
                                               config.merge_functions,
@@ -1037,8 +1036,6 @@ unsafe fn populate_llvm_passes(fpm: llvm::PassManagerRef,
         }
     }
 
-    // Use the builder to populate the function/module pass managers.
-    llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(builder, fpm);
-    llvm::LLVMPassManagerBuilderPopulateModulePassManager(builder, mpm);
+    f(builder);
     llvm::LLVMPassManagerBuilderDispose(builder);
 }
