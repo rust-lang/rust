@@ -74,10 +74,12 @@ use std::cell::{Cell, RefCell, Ref};
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
+use std::iter;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops;
 use std::rc::Rc;
+use std::slice;
 use std::vec::IntoIter;
 use collections::enum_set::{self, EnumSet, CLike};
 use core::nonzero::NonZero;
@@ -90,7 +92,7 @@ use syntax::ast::{StructField, UnnamedField, Visibility};
 use syntax::ast_util::{self, is_local, local_def};
 use syntax::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
 use syntax::codemap::Span;
-use syntax::parse::token::{self, InternedString, special_idents};
+use syntax::parse::token::{InternedString, special_idents};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::ast;
@@ -211,7 +213,7 @@ impl DtorKind {
     }
 }
 
-trait IntTypeExt {
+pub trait IntTypeExt {
     fn to_ty<'tcx>(&self, cx: &ctxt<'tcx>) -> Ty<'tcx>;
     fn i64_to_disr(&self, val: i64) -> Option<Disr>;
     fn u64_to_disr(&self, val: u64) -> Option<Disr>;
@@ -852,7 +854,7 @@ pub struct ctxt<'tcx> {
 
     pub impl_trait_refs: RefCell<DefIdMap<Option<TraitRef<'tcx>>>>,
     pub trait_defs: RefCell<DefIdMap<&'tcx TraitDef<'tcx>>>,
-    pub adt_defs: RefCell<DefIdMap<&'tcx ADTDef<'tcx>>>,
+    pub adt_defs: RefCell<DefIdMap<&'tcx ADTDef_<'tcx, 'tcx>>>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated predicates.
@@ -1023,8 +1025,12 @@ impl<'tcx> ctxt<'tcx> {
         interned
     }
 
-    pub fn intern_adt_def(&self, did: DefId, kind: ADTKind) -> &'tcx ADTDef_<'tcx, 'tcx> {
-        let def = ADTDef_::new(self, did, kind);
+    pub fn intern_adt_def(&self,
+                          did: DefId,
+                          kind: ADTKind,
+                          variants: Vec<VariantDef_<'tcx, 'tcx>>)
+                          -> &'tcx ADTDef_<'tcx, 'tcx> {
+        let def = ADTDef_::new(self, did, kind, variants);
         let interned = self.arenas.adt_defs.alloc(def);
         // this will need a transmute when reverse-variance is removed
         self.adt_defs.borrow_mut().insert(did, interned);
@@ -2190,7 +2196,7 @@ pub struct ExistentialBounds<'tcx> {
 pub struct BuiltinBounds(EnumSet<BuiltinBound>);
 
 impl BuiltinBounds {
-       pub fn empty() -> BuiltinBounds {
+    pub fn empty() -> BuiltinBounds {
         BuiltinBounds(EnumSet::new())
     }
 
@@ -3274,17 +3280,21 @@ bitflags! {
 }
 
 pub type ADTDef<'tcx> = ADTDef_<'tcx, 'static>;
+pub type VariantDef<'tcx> = VariantDef_<'tcx, 'static>;
+pub type FieldDef<'tcx> = FieldDef_<'tcx, 'static>;
 
-pub struct VariantDef<'tcx, 'lt: 'tcx> {
+pub struct VariantDef_<'tcx, 'lt: 'tcx> {
     pub did: DefId,
     pub name: Name, // struct's name if this is a struct
     pub disr_val: Disr,
-    pub fields: Vec<FieldDef<'tcx, 'lt>>
+    pub fields: Vec<FieldDef_<'tcx, 'lt>>
 }
 
-pub struct FieldDef<'tcx, 'lt: 'tcx> {
+pub struct FieldDef_<'tcx, 'lt: 'tcx> {
     pub did: DefId,
-    pub name: Name, // XXX if tuple-like
+    // special_idents::unnamed_field.name
+    // if this is a tuple-like field
+    pub name: Name,
     pub vis: ast::Visibility,
     // TyIVar is used here to allow for
     ty: TyIVar<'tcx, 'lt>
@@ -3294,7 +3304,7 @@ pub struct FieldDef<'tcx, 'lt: 'tcx> {
 /// is here so 'tcx can be variant.
 pub struct ADTDef_<'tcx, 'lt: 'tcx> {
     pub did: DefId,
-    pub variants: Vec<VariantDef<'tcx, 'lt>>,
+    pub variants: Vec<VariantDef_<'tcx, 'lt>>,
     flags: Cell<ADTFlags>,
 }
 
@@ -3313,11 +3323,18 @@ impl<'tcx, 'lt> Hash for ADTDef_<'tcx, 'lt> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ADTKind { Struct, Enum }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum VariantKind { Dict, Tuple, Unit }
+
 impl<'tcx, 'lt> ADTDef_<'tcx, 'lt> {
-    fn new(tcx: &ctxt<'tcx>, did: DefId, kind: ADTKind) -> Self {
+    fn new(tcx: &ctxt<'tcx>,
+           did: DefId,
+           kind: ADTKind,
+           variants: Vec<VariantDef_<'tcx, 'lt>>) -> Self {
         let mut flags = ADTFlags::NO_ADT_FLAGS;
         if tcx.has_attr(did, "fundamental") {
             flags = flags | ADTFlags::IS_FUNDAMENTAL;
@@ -3330,7 +3347,7 @@ impl<'tcx, 'lt> ADTDef_<'tcx, 'lt> {
         }
         ADTDef {
             did: did,
-            variants: vec![],
+            variants: variants,
             flags: Cell::new(flags),
         }
     }
@@ -3374,9 +3391,9 @@ impl<'tcx, 'lt> ADTDef_<'tcx, 'lt> {
         tcx.destructor_for_type.borrow().contains_key(&self.did)
     }
 
-    pub fn is_tuple_struct(&self, tcx: &ctxt<'tcx>) -> bool {
-        let fields = tcx.lookup_struct_fields(self.did);
-        !fields.is_empty() && fields.iter().all(|f| f.name == token::special_names::unnamed_field)
+    pub fn struct_variant(&self) -> &ty::VariantDef_<'tcx, 'lt> {
+        assert!(self.adt_kind() == ADTKind::Struct);
+        &self.variants[0]
     }
 
     #[inline]
@@ -3387,6 +3404,104 @@ impl<'tcx, 'lt> ADTDef_<'tcx, 'lt> {
     #[inline]
     pub fn predicates(&self, tcx: &ctxt<'tcx>) -> GenericPredicates<'tcx> {
         tcx.lookup_predicates(self.did)
+    }
+
+    #[inline]
+    pub fn all_fields(&self) ->
+            iter::FlatMap<
+                slice::Iter<VariantDef_<'tcx, 'lt>>,
+                slice::Iter<FieldDef_<'tcx, 'lt>>,
+                for<'s> fn(&'s VariantDef_<'tcx, 'lt>)
+                    -> slice::Iter<'s, FieldDef_<'tcx, 'lt>>
+            > {
+        self.variants.iter().flat_map(VariantDef_::fields_iter)
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        // FIXME(#TODO(wxyz)): be smarter here
+        self.variants.is_empty()
+    }
+
+    #[inline]
+    pub fn is_univariant(&self) -> bool {
+        self.variants.len() == 1
+    }
+
+    pub fn is_payloadfree(&self) -> bool {
+        !self.variants.is_empty() &&
+            self.variants.iter().all(|v| v.fields.is_empty())
+    }
+
+    pub fn variant_with_id(&self, vid: DefId) -> &VariantDef_<'tcx, 'lt> {
+        self.variants
+            .iter()
+            .find(|v| v.did == vid)
+            .expect("variant_with_id: unknown variant")
+    }
+
+    pub fn variant_of_def(&self, def: def::Def) -> &VariantDef_<'tcx, 'lt> {
+        match def {
+            def::DefVariant(_, vid, _) => self.variant_with_id(vid),
+            def::DefStruct(..) | def::DefTy(..) => self.struct_variant(),
+            _ => panic!("unexpected def {:?} in variant_of_def", def)
+        }
+    }
+}
+
+impl<'tcx, 'lt> VariantDef_<'tcx, 'lt> {
+    #[inline]
+    fn fields_iter(&self) -> slice::Iter<FieldDef_<'tcx, 'lt>> {
+        self.fields.iter()
+    }
+
+    pub fn kind(&self) -> VariantKind {
+        match self.fields.get(0) {
+            None => VariantKind::Unit,
+            Some(&FieldDef_ { name, .. }) if name == special_idents::unnamed_field.name => {
+                VariantKind::Tuple
+            }
+            Some(_) => VariantKind::Dict
+        }
+    }
+
+    pub fn is_tuple_struct(&self) -> bool {
+        self.kind() == VariantKind::Tuple
+    }
+
+    #[inline]
+    pub fn find_field_named(&self, name: ast::Name) -> Option<&FieldDef_<'tcx, 'lt>> {
+        self.fields.iter().find(|f| f.name == name)
+    }
+
+    #[inline]
+    pub fn field_named(&self, name: ast::Name) -> &FieldDef_<'tcx, 'lt> {
+        self.find_field_named(name).unwrap()
+    }
+}
+
+impl<'tcx, 'lt> FieldDef_<'tcx, 'lt> {
+    pub fn new(did: DefId,
+               name: Name,
+               vis: ast::Visibility) -> Self {
+        FieldDef_ {
+            did: did,
+            name: name,
+            vis: vis,
+            ty: TyIVar::new()
+        }
+    }
+
+    pub fn ty(&self, tcx: &ctxt<'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
+        self.unsubst_ty().subst(tcx, subst)
+    }
+
+    pub fn unsubst_ty(&self) -> Ty<'tcx> {
+        self.ty.unwrap()
+    }
+
+    pub fn fulfill_ty(&self, ty: Ty<'lt>) {
+        self.ty.fulfill(ty);
     }
 }
 
@@ -6132,7 +6247,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     /// Given the did of a trait, returns its canonical trait ref.
-    pub fn lookup_adt_def(&self, did: ast::DefId) -> &'tcx ADTDef<'tcx> {
+    pub fn lookup_adt_def(&self, did: ast::DefId) -> &'tcx ADTDef_<'tcx, 'tcx> {
         lookup_locally_or_in_crate_store(
             "adt_defs", did, &self.adt_defs,
             || csearch::get_adt_def(self, did)
