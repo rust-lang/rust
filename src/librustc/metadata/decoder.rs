@@ -394,7 +394,8 @@ pub fn get_adt_def<'tcx>(cdata: Cmd,
                          item_id: ast::NodeId,
                          tcx: &ty::ctxt<'tcx>) -> &'tcx ty::ADTDef<'tcx>
 {
-    tcx.intern_adt_def(ast::DefId { krate: cdata.cnum, node: item_id })
+    tcx.intern_adt_def(ast::DefId { krate: cdata.cnum, node: item_id },
+                       ty::ADTKind::Enum)
 }
 
 pub fn get_predicates<'tcx>(cdata: Cmd,
