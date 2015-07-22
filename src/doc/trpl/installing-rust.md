@@ -25,11 +25,11 @@ $ sh rustup.sh
 [insecurity]: http://curlpipesh.tumblr.com
 
 If you're on Windows, please download the appropriate [installer][install-page].
-**NOTE:** By default, the Windows installer will not add Rust to the Path system
-variable. If this is the only version of Rust you are installing and you want to
-be able to run it from the command line, click on "Advanced" on the install
-dialog and on the "Product Features" page ensure "Add to PATH" is installed on
-the local hard drive.
+**NOTE:** By default, the Windows installer will not add Rust to the %PATH%
+system variable. If this is the only version of Rust you are installing and you
+want to be able to run it from the command line, click on "Advanced" on the
+install dialog and on the "Product Features" page ensure "Add to PATH" is
+installed on the local hard drive.
 
 
 [install-page]: http://www.rust-lang.org/install.html
@@ -93,7 +93,7 @@ rustc 1.0.0 (a59de37e9 2015-05-13)
 
 If you did, Rust has been installed successfully! Congrats!
 
-If you didn't and you're on Windows, check that Rust is in your Path system
+If you didn't and you're on Windows, check that Rust is in your %PATH% system
 variable. If it isn't, run the installer again, select "Change" on the "Change,
 repair, or remove installation" page and ensure "Add to PATH" is installed on
 the local hard drive.
