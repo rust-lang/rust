@@ -85,7 +85,6 @@
 #![feature(placement_in_syntax)]
 #![feature(raw)]
 #![feature(staged_api)]
-#![feature(placement_in_syntax)]
 #![feature(unboxed_closures)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
