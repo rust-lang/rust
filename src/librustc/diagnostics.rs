@@ -1359,8 +1359,84 @@ for v in &vs {
 "##,
 
 E0272: r##"
+The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
+message for when a particular trait isn't implemented on a type placed in a
+position that needs that trait. For example, when the following code is
+compiled:
 
-The `#[rustc_on_unimplemented]` attribute lets you specify
+```
+fn foo<T: Index<u8>>(x: T){}
+
+#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
+trait Index<Idx> { ... }
+
+foo(true); // `bool` does not implement `Index<u8>`
+```
+
+there will be an error about `bool` not implementing `Index<u8>`, followed by a
+note saying "the type `bool` cannot be indexed by `u8`".
+
+As you can see, you can specify type parameters in curly braces for substitution
+with the actual types (using the regular format string syntax) in a given
+situation. Furthermore, `{Self}` will substitute to the type (in this case,
+`bool`) that we tried to use.
+
+This error appears when the curly braces contain an identifier which doesn't
+match with any of the type parameters or the string `Self`. This might happen if
+you misspelled a type parameter, or if you intended to use literal curly braces.
+If it is the latter, escape the curly braces with a second curly brace of the
+same type; e.g. a literal `{` is `{{`
+"##,
+
+E0273: r##"
+The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
+message for when a particular trait isn't implemented on a type placed in a
+position that needs that trait. For example, when the following code is
+compiled:
+
+```
+fn foo<T: Index<u8>>(x: T){}
+
+#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
+trait Index<Idx> { ... }
+
+foo(true); // `bool` does not implement `Index<u8>`
+```
+
+there will be an error about `bool` not implementing `Index<u8>`, followed by a
+note saying "the type `bool` cannot be indexed by `u8`".
+
+As you can see, you can specify type parameters in curly braces for substitution
+with the actual types (using the regular format string syntax) in a given
+situation. Furthermore, `{Self}` will substitute to the type (in this case,
+`bool`) that we tried to use.
+
+This error appears when the curly braces do not contain an identifier. Please
+add one of the same name as a type parameter. If you intended to use literal
+braces, use `{{` and `}}` to escape them.
+"##,
+
+E0273: r##"
+The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
+message for when a particular trait isn't implemented on a type placed in a
+position that needs that trait. For example, when the following code is
+compiled:
+
+```
+fn foo<T: Index<u8>>(x: T){}
+
+#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
+trait Index<Idx> { ... }
+
+foo(true); // `bool` does not implement `Index<u8>`
+```
+
+there will be an error about `bool` not implementing `Index<u8>`, followed by a
+note saying "the type `bool` cannot be indexed by `u8`".
+
+For this to work, some note must be specified. An empty attribute will not do
+anything, please remove the attribute or add some helpful note for users of the
+trait.
 "##,
 
 E0277: r##"
@@ -1787,9 +1863,6 @@ register_diagnostics! {
 //  E0134,
 //  E0135,
     E0264, // unknown external lang item
-    E0272, // rustc_on_unimplemented attribute refers to non-existent type parameter
-    E0273, // rustc_on_unimplemented must have named format arguments
-    E0274, // rustc_on_unimplemented must have a value
     E0275, // overflow evaluating requirement
     E0276, // requirement appears on impl method but not on corresponding trait method
     E0278, // requirement is not satisfied
