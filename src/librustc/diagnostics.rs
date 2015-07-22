@@ -1462,6 +1462,28 @@ recursive requirement that can't be resolved directly.
 Consider changing your trait bounds so that they're less self-referential.
 "##,
 
+E0276: r##"
+This error occurs when a bound in an implementation of a trait does not match
+the bounds specified in the original trait. For example:
+
+```
+trait Foo {
+ fn foo<T>(x: T);
+}
+
+impl Foo for bool {
+ fn foo<T>(x: T) where T: Copy {}
+}
+```
+
+Here, all types implementing `Foo` must have a method `foo<T>(x: T)` which can
+take any type `T`. However, in the `impl` for `bool`, we have added an extra
+bound that `T` is `Copy`, which isn't compatible with the original trait.
+
+Consider removing the bound from the method or adding the bound to the original
+method definition in the trait.
+"##,
+
 E0277: r##"
 You tried to use a type which doesn't implement some trait in a place which
 expected that trait. Erroneous code example:
@@ -1886,7 +1908,6 @@ register_diagnostics! {
 //  E0134,
 //  E0135,
     E0264, // unknown external lang item
-    E0276, // requirement appears on impl method but not on corresponding trait method
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
