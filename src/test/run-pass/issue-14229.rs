@@ -8,14 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait<'a> {
-    type A;
-    type B;
+trait Foo: Sized {
+    fn foo(self) {}
 }
 
-fn foo<'a, T: Trait<'a>>(value: T::A) {
-    let new: T::B = unsafe { std::mem::transmute(value) };
-//~^ ERROR: cannot transmute to or from a type that contains unsubstituted type parameters [E0139]
+trait Bar: Sized {
+    fn bar(self) {}
 }
 
-fn main() { }
+struct S;
+
+impl<'l> Foo for &'l S {}
+
+impl<T: Foo> Bar for T {}
+
+fn main() {
+    let s = S;
+    s.foo();
+    (&s).bar();
+    s.bar();
+}

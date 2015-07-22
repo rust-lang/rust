@@ -8,14 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait<'a> {
-    type A;
-    type B;
+#![allow(dead_code)]
+
+enum FooMode {
+    Check = 0x1001,
 }
 
-fn foo<'a, T: Trait<'a>>(value: T::A) {
-    let new: T::B = unsafe { std::mem::transmute(value) };
-//~^ ERROR: cannot transmute to or from a type that contains unsubstituted type parameters [E0139]
+enum BarMode {
+    Check = 0x2001,
 }
 
-fn main() { }
+enum Mode {
+    Foo(FooMode),
+    Bar(BarMode),
+}
+
+#[inline(never)]
+fn broken(mode: &Mode) -> u32 {
+    for _ in 0..1 {
+        if let Mode::Foo(FooMode::Check) = *mode { return 17 }
+        if let Mode::Bar(BarMode::Check) = *mode { return 19 }
+    }
+    return 42;
+}
+
+fn main() {
+    let mode = Mode::Bar(BarMode::Check);
+    assert_eq!(broken(&mode), 19);
+}
