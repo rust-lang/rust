@@ -61,6 +61,7 @@ pub struct OpenOptions {
     read: bool,
     write: bool,
     truncate: bool,
+    exclusive: bool,
     desired_access: Option<libc::DWORD>,
     share_mode: Option<libc::DWORD>,
     creation_disposition: Option<libc::DWORD>,
@@ -158,6 +159,7 @@ impl OpenOptions {
     pub fn append(&mut self, append: bool) { self.append = append; }
     pub fn create(&mut self, create: bool) { self.create = create; }
     pub fn truncate(&mut self, truncate: bool) { self.truncate = truncate; }
+    pub fn exclusive(&mut self, exclusive: bool) { self.exclusive = exclusive; }
     pub fn creation_disposition(&mut self, val: u32) {
         self.creation_disposition = Some(val);
     }
@@ -197,11 +199,12 @@ impl OpenOptions {
 
     fn get_creation_disposition(&self) -> libc::DWORD {
         self.creation_disposition.unwrap_or({
-            match (self.create, self.truncate) {
-                (true, true) => libc::CREATE_ALWAYS,
-                (true, false) => libc::OPEN_ALWAYS,
-                (false, false) => libc::OPEN_EXISTING,
-                (false, true) => {
+            match (self.create, self.truncate, self.exclusive) {
+                (true, true, false) => libc::CREATE_ALWAYS,
+                (true, false, false) => libc::OPEN_ALWAYS,
+                (true, _, true) => libc::CREATE_NEW,
+                (false, false, _) => libc::OPEN_EXISTING,
+                (false, true, _) => {
                     if self.write && !self.append {
                         libc::CREATE_ALWAYS
                     } else {

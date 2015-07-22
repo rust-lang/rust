@@ -240,6 +240,10 @@ impl OpenOptions {
         self.flag(libc::O_CREAT, create);
     }
 
+    pub fn exclusive(&mut self, exclusive: bool) {
+        self.flag(libc::O_EXCL, exclusive);
+    }
+
     pub fn mode(&mut self, mode: raw::mode_t) {
         self.mode = mode as mode_t;
     }

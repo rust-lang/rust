@@ -473,6 +473,25 @@ impl OpenOptions {
         self.0.create(create); self
     }
 
+    /// Sets the option for exclusive creation mode.
+    ///
+    /// If both `OpenOptions::create` and this are set, the file will only
+    /// be successfully opened if it does not already exist on the filesystem.
+    /// If this is set but `OpenOptions::create` is not, the result is
+    /// unspecified.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::OpenOptions;
+    ///
+    /// let file = OpenOptions::new().create(true).exclusive(true).open("foo.txt");
+    /// ```
+    #[unstable(feature = "open_options_exclusive", reason = "recently added")]
+    pub fn exclusive(&mut self, exclusive: bool) -> &mut OpenOptions {
+        self.0.exclusive(exclusive); self
+    }
+
     /// Opens a file at `path` with the options specified by `self`.
     ///
     /// # Errors
@@ -2044,6 +2063,10 @@ mod tests {
             check!(f.write("bar".as_bytes()));
         }
         assert_eq!(check!(fs::metadata(&tmpdir.join("h"))).len(), 3);
+
+        check!(c(&rw).create(true).exclusive(true).open(&tmpdir.join("i")));
+        assert!(tmpdir.join("i").exists());
+        error!(c(&rw).create(true).exclusive(true).open(&tmpdir.join("i")), "exists");
     }
 
     #[test]
