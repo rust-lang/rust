@@ -25,6 +25,7 @@ use middle::lang_items::LangItem;
 use middle::subst::{self, Substs};
 use trans::base;
 use trans::build;
+use trans::callee;
 use trans::cleanup;
 use trans::consts;
 use trans::datum;
@@ -478,6 +479,56 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     /// may use or update caches within this `FunctionContext`.
     pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
         type_needs_drop_given_env(self.ccx.tcx(), ty, &self.param_env)
+    }
+
+    pub fn eh_personality(&self) -> ValueRef {
+        // The exception handling personality function.
+        //
+        // If our compilation unit has the `eh_personality` lang item somewhere
+        // within it, then we just need to translate that. Otherwise, we're
+        // building an rlib which will depend on some upstream implementation of
+        // this function, so we just codegen a generic reference to it. We don't
+        // specify any of the types for the function, we just make it a symbol
+        // that LLVM can later use.
+        //
+        // Note that MSVC is a little special here in that we don't use the
+        // `eh_personality` lang item at all. Currently LLVM has support for
+        // both Dwarf and SEH unwind mechanisms for MSVC targets and uses the
+        // *name of the personality function* to decide what kind of unwind side
+        // tables/landing pads to emit. It looks like Dwarf is used by default,
+        // injecting a dependency on the `_Unwind_Resume` symbol for resuming
+        // an "exception", but for MSVC we want to force SEH. This means that we
+        // can't actually have the personality function be our standard
+        // `rust_eh_personality` function, but rather we wired it up to the
+        // CRT's custom personality function, which forces LLVM to consider
+        // landing pads as "landing pads for SEH".
+        let target = &self.ccx.sess().target.target;
+        match self.ccx.tcx().lang_items.eh_personality() {
+            Some(def_id) if !target.options.is_like_msvc => {
+                callee::trans_fn_ref(self.ccx, def_id, ExprId(0),
+                                     self.param_substs).val
+            }
+            _ => {
+                let mut personality = self.ccx.eh_personality().borrow_mut();
+                match *personality {
+                    Some(llpersonality) => llpersonality,
+                    None => {
+                        let name = if !target.options.is_like_msvc {
+                            "rust_eh_personality"
+                        } else if target.arch == "x86" {
+                            "_except_handler3"
+                        } else {
+                            "__C_specific_handler"
+                        };
+                        let fty = Type::variadic_func(&[], &Type::i32(self.ccx));
+                        let f = declare::declare_cfn(self.ccx, name, fty,
+                                                     self.ccx.tcx().types.i32);
+                        *personality = Some(f);
+                        f
+                    }
+                }
+            }
+        }
     }
 }
 

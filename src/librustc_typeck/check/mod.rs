@@ -5086,6 +5086,21 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                                                                   ty::BrAnon(0))),
                                     param(ccx, 0))], tcx.types.u64),
 
+            "try" => {
+                let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
+                let fn_ty = ty::BareFnTy {
+                    unsafety: ast::Unsafety::Normal,
+                    abi: abi::Rust,
+                    sig: ty::Binder(FnSig {
+                        inputs: vec![mut_u8],
+                        output: ty::FnOutput::FnConverging(tcx.mk_nil()),
+                        variadic: false,
+                    }),
+                };
+                let fn_ty = tcx.mk_bare_fn(fn_ty);
+                (0, vec![tcx.mk_fn(None, fn_ty), mut_u8], mut_u8)
+            }
+
             ref other => {
                 span_err!(tcx.sess, it.span, E0093,
                     "unrecognized intrinsic function: `{}`", *other);

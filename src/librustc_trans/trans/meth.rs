@@ -550,9 +550,7 @@ fn trans_object_shim<'a, 'tcx>(
     let shim_fn_ty = tcx.mk_fn(None, fty);
     let method_bare_fn_ty = tcx.mk_fn(None, method_ty);
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, shim_fn_ty, "object_shim");
-    let llfn = declare::define_internal_rust_fn(ccx, &function_name, shim_fn_ty).unwrap_or_else(||{
-        ccx.sess().bug(&format!("symbol `{}` already defined", function_name));
-    });
+    let llfn = declare::define_internal_rust_fn(ccx, &function_name, shim_fn_ty);
 
     let sig = ccx.tcx().erase_late_bound_regions(&fty.sig);
 

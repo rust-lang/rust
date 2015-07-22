@@ -326,6 +326,8 @@ lets_do_this! {
     StartFnLangItem,                 "start",                   start_fn;
 
     EhPersonalityLangItem,           "eh_personality",          eh_personality;
+    EhPersonalityCatchLangItem,      "eh_personality_catch",    eh_personality_catch;
+    MSVCTryFilterLangItem,           "msvc_try_filter",         msvc_try_filter;
 
     ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
     OwnedBoxLangItem,                "owned_box",               owned_box;
