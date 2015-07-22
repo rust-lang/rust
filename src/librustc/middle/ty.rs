@@ -74,12 +74,15 @@ use std::cell::{Cell, RefCell, Ref};
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
+use std::marker::PhantomData;
 use std::mem;
 use std::ops;
 use std::rc::Rc;
 use std::vec::IntoIter;
 use collections::enum_set::{self, EnumSet, CLike};
+use core::nonzero::NonZero;
 use std::collections::{HashMap, HashSet};
+use rustc_data_structures::ivar;
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
@@ -721,7 +724,7 @@ pub struct CtxtArenas<'tcx> {
 
     // references
     trait_defs: TypedArena<TraitDef<'tcx>>,
-    adt_defs: TypedArena<ADTDef<'tcx>>,
+    adt_defs: TypedArena<ADTDef_<'tcx, 'tcx>>,
 }
 
 impl<'tcx> CtxtArenas<'tcx> {
@@ -1020,9 +1023,10 @@ impl<'tcx> ctxt<'tcx> {
         interned
     }
 
-    pub fn intern_adt_def(&self, did: DefId) -> &'tcx ADTDef<'tcx> {
-        let def = ADTDef::new(self, did);
+    pub fn intern_adt_def(&self, did: DefId, kind: ADTKind) -> &'tcx ADTDef_<'tcx, 'tcx> {
+        let def = ADTDef_::new(self, did, kind);
         let interned = self.arenas.adt_defs.alloc(def);
+        // this will need a transmute when reverse-variance is removed
         self.adt_defs.borrow_mut().insert(did, interned);
         interned
     }
@@ -1394,6 +1398,61 @@ impl<'tcx> Hash for TyS<'tcx> {
 }
 
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
+
+/// An IVar that contains a Ty. 'lt is a (reverse-variant) upper bound
+/// on the lifetime of the IVar. This is required because of variance
+/// problems: the IVar needs to be variant with respect to 'tcx (so
+/// it can be referred to from Ty) but can only be modified if its
+/// lifetime is exactly 'tcx.
+///
+/// Safety invariants:
+///     (A) self.0, if fulfilled, is a valid Ty<'tcx>
+///     (B) no aliases to this value with a 'tcx longer than this
+///         value's 'lt exist
+///
+/// NonZero is used rather than Unique because Unique isn't Copy.
+pub struct TyIVar<'tcx, 'lt: 'tcx>(ivar::Ivar<NonZero<*const TyS<'static>>>,
+                                   PhantomData<fn(TyS<'lt>)->TyS<'tcx>>);
+
+impl<'tcx, 'lt> TyIVar<'tcx, 'lt> {
+    #[inline]
+    pub fn new() -> Self {
+        // Invariant (A) satisfied because the IVar is unfulfilled
+        // Invariant (B) because 'lt : 'tcx
+        TyIVar(ivar::Ivar::new(), PhantomData)
+    }
+
+    #[inline]
+    pub fn get(&self) -> Option<Ty<'tcx>> {
+        match self.0.get() {
+            None => None,
+            // valid because of invariant (A)
+            Some(v) => Some(unsafe { &*(*v as *const TyS<'tcx>) })
+        }
+    }
+    #[inline]
+    pub fn unwrap(&self) -> Ty<'tcx> {
+        self.get().unwrap()
+    }
+
+    pub fn fulfill(&self, value: Ty<'lt>) {
+        // Invariant (A) is fulfilled, because by (B), every alias
+        // of this has a 'tcx longer than 'lt.
+        let value: *const TyS<'lt> = value;
+        // FIXME(27214): unneeded [as *const ()]
+        let value = value as *const () as *const TyS<'static>;
+        self.0.fulfill(unsafe { NonZero::new(value) })
+    }
+}
+
+impl<'tcx, 'lt> fmt::Debug for TyIVar<'tcx, 'lt> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.get() {
+            Some(val) => write!(f, "TyIVar({:?})", val),
+            None => f.write_str("TyIVar(<unfulfilled>)")
+        }
+    }
+}
 
 /// An entry in the type interner.
 pub struct InternedTy<'tcx> {
@@ -3210,33 +3269,55 @@ bitflags! {
         const IS_PHANTOM_DATA     = 1 << 1,
         const IS_DTORCK           = 1 << 2, // is this a dtorck type?
         const IS_DTORCK_VALID     = 1 << 3,
+        const IS_ENUM             = 1 << 4
     }
 }
 
-/// The definition of an abstract data type - a struct or enum.
-pub struct ADTDef<'tcx> {
+pub type ADTDef<'tcx> = ADTDef_<'tcx, 'static>;
+
+pub struct VariantDef<'tcx, 'lt: 'tcx> {
     pub did: DefId,
-    flags: Cell<ADTFlags>,
-    marker: ::std::marker::PhantomData<&'tcx ()>,
+    pub name: Name, // struct's name if this is a struct
+    pub disr_val: Disr,
+    pub fields: Vec<FieldDef<'tcx, 'lt>>
 }
 
-impl<'tcx> PartialEq for ADTDef<'tcx> {
+pub struct FieldDef<'tcx, 'lt: 'tcx> {
+    pub did: DefId,
+    pub name: Name, // XXX if tuple-like
+    pub vis: ast::Visibility,
+    // TyIVar is used here to allow for
+    ty: TyIVar<'tcx, 'lt>
+}
+
+/// The definition of an abstract data type - a struct or enum. 'lt
+/// is here so 'tcx can be variant.
+pub struct ADTDef_<'tcx, 'lt: 'tcx> {
+    pub did: DefId,
+    pub variants: Vec<VariantDef<'tcx, 'lt>>,
+    flags: Cell<ADTFlags>,
+}
+
+impl<'tcx, 'lt> PartialEq for ADTDef_<'tcx, 'lt> {
     // ADTDef are always interned and this is part of TyS equality
     #[inline]
     fn eq(&self, other: &Self) -> bool { self as *const _ == other as *const _ }
 }
 
-impl<'tcx> Eq for ADTDef<'tcx> {}
+impl<'tcx, 'lt> Eq for ADTDef_<'tcx, 'lt> {}
 
-impl<'tcx> Hash for ADTDef<'tcx> {
+impl<'tcx, 'lt> Hash for ADTDef_<'tcx, 'lt> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
         (self as *const ADTDef).hash(s)
     }
 }
 
-impl<'tcx> ADTDef<'tcx> {
-    fn new(tcx: &ctxt<'tcx>, did: DefId) -> Self {
+#[derive(Copy, Clone, Debug)]
+pub enum ADTKind { Struct, Enum }
+
+impl<'tcx, 'lt> ADTDef_<'tcx, 'lt> {
+    fn new(tcx: &ctxt<'tcx>, did: DefId, kind: ADTKind) -> Self {
         let mut flags = ADTFlags::NO_ADT_FLAGS;
         if tcx.has_attr(did, "fundamental") {
             flags = flags | ADTFlags::IS_FUNDAMENTAL;
@@ -3244,10 +3325,13 @@ impl<'tcx> ADTDef<'tcx> {
         if Some(did) == tcx.lang_items.phantom_data() {
             flags = flags | ADTFlags::IS_PHANTOM_DATA;
         }
+        if let ADTKind::Enum = kind {
+            flags = flags | ADTFlags::IS_ENUM;
+        }
         ADTDef {
             did: did,
+            variants: vec![],
             flags: Cell::new(flags),
-            marker: ::std::marker::PhantomData
         }
     }
 
@@ -3256,6 +3340,15 @@ impl<'tcx> ADTDef<'tcx> {
             self.flags.set(self.flags.get() | ADTFlags::IS_DTORCK);
         }
         self.flags.set(self.flags.get() | ADTFlags::IS_DTORCK_VALID)
+    }
+
+    #[inline]
+    pub fn adt_kind(&self) -> ADTKind {
+        if self.flags.get().intersects(ADTFlags::IS_ENUM) {
+            ADTKind::Enum
+        } else {
+            ADTKind::Struct
+        }
     }
 
     #[inline]

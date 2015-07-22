@@ -1473,14 +1473,14 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             // Create a new generic polytype.
             let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let def = tcx.intern_adt_def(local_def(it.id));
+            let def = tcx.intern_adt_def(local_def(it.id), ty::ADTKind::Enum);
             let t = tcx.mk_enum(def, tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
         ast::ItemStruct(_, ref generics) => {
             let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let def = tcx.intern_adt_def(local_def(it.id));
+            let def = tcx.intern_adt_def(local_def(it.id), ty::ADTKind::Struct);
             let t = tcx.mk_struct(def, tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
