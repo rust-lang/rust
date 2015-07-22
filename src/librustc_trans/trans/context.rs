@@ -142,6 +142,7 @@ pub struct LocalCrateContext<'tcx> {
     dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
 
     eh_personality: RefCell<Option<ValueRef>>,
+    rust_try_fn: RefCell<Option<ValueRef>>,
 
     intrinsics: RefCell<FnvHashMap<&'static str, ValueRef>>,
 
@@ -461,6 +462,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 closure_vals: RefCell::new(FnvHashMap()),
                 dbg_cx: dbg_cx,
                 eh_personality: RefCell::new(None),
+                rust_try_fn: RefCell::new(None),
                 intrinsics: RefCell::new(FnvHashMap()),
                 n_llvm_insns: Cell::new(0),
                 trait_cache: RefCell::new(FnvHashMap()),
@@ -726,6 +728,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.eh_personality
     }
 
+    pub fn rust_try_fn<'a>(&'a self) -> &'a RefCell<Option<ValueRef>> {
+        &self.local.rust_try_fn
+    }
+
     fn intrinsics<'a>(&'a self) -> &'a RefCell<FnvHashMap<&'static str, ValueRef>> {
         &self.local.intrinsics
     }
@@ -923,6 +929,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);
 
     ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
+    ifn!("llvm.eh.typeid.for", fn(i8p) -> t_i32);
 
     // Some intrinsics were introduced in later versions of LLVM, but they have
     // fallbacks in libc or libm and such.

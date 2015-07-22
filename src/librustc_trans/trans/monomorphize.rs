@@ -137,10 +137,9 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let lldecl = if abi != abi::Rust {
             foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, &s[..])
         } else {
-            // FIXME(nagisa): perhaps needs a more fine grained selection? See setup_lldecl below.
-            declare::define_internal_rust_fn(ccx, &s[..], mono_ty).unwrap_or_else(||{
-                ccx.sess().bug(&format!("symbol `{}` already defined", s));
-            })
+            // FIXME(nagisa): perhaps needs a more fine grained selection? See
+            // setup_lldecl below.
+            declare::define_internal_rust_fn(ccx, &s, mono_ty)
         };
 
         ccx.monomorphized().borrow_mut().insert(hash_id.take().unwrap(), lldecl);

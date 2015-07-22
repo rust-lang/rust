@@ -627,9 +627,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                ccx.tcx().map.path_to_string(id),
                id, t);
 
-        let llfn = declare::define_internal_rust_fn(ccx, &ps[..], t).unwrap_or_else(||{
-            ccx.sess().bug(&format!("symbol `{}` already defined", ps));
-        });
+        let llfn = declare::define_internal_rust_fn(ccx, &ps, t);
         attributes::from_fn_attrs(ccx, attrs, llfn);
         base::trans_fn(ccx, decl, body, llfn, param_substs, id, &[]);
         llfn

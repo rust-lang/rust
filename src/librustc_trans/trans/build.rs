@@ -1042,6 +1042,10 @@ pub fn LandingPad(cx: Block, ty: Type, pers_fn: ValueRef,
     B(cx).landing_pad(ty, pers_fn, num_clauses, cx.fcx.llfn)
 }
 
+pub fn AddClause(cx: Block, landing_pad: ValueRef, clause: ValueRef) {
+    B(cx).add_clause(landing_pad, clause)
+}
+
 pub fn SetCleanup(cx: Block, landing_pad: ValueRef) {
     B(cx).set_cleanup(landing_pad)
 }
