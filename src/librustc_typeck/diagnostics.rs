@@ -1458,6 +1458,33 @@ return, for example with a `loop` that never breaks or a call to another
 diverging function (such as `panic!()`).
 "##,
 
+E0172: r##"
+This error means that an attempt was made to specify the type of a variable with
+a combination of a concrete type and a trait. Consider the following example:
+
+```
+fn foo(bar: i32+std::fmt::Display) {}
+```
+
+The code is trying to specify that we want to receive a signed 32-bit integer
+which also implements `Display`. This doesn't make sense: when we pass `i32`, a
+concrete type, it implicitly includes all of the traits that it implements.
+This includes `Display`, `Debug`, `Clone`, and a host of others.
+
+If `i32` implements the trait we desire, there's no need to specify the trait
+separately. If it does not, then we need to `impl` the trait for `i32` before
+passing it into `foo`. Either way, a fixed definition for `foo` will look like
+the following:
+
+```
+fn foo(bar: i32) {}
+```
+
+To learn more about traits, take a look at the Book:
+
+https://doc.rust-lang.org/book/traits.html
+"##,
+
 E0178: r##"
 In types, the `+` type operator has low precedence, so it is often necessary
 to use parentheses.
@@ -2178,7 +2205,6 @@ register_diagnostics! {
     E0164,
     E0167,
     E0168,
-    E0172,
     E0173, // manual implementations of unboxed closure traits are experimental
     E0174, // explicit use of unboxed closure methods are experimental
     E0182,
