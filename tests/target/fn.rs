@@ -79,3 +79,17 @@ fn main() {
     let _ = function(move || 5);
     let _ = move || 42;
 }
+
+fn servo() {
+    let constellation_chan = Constellation::<layout::layout_task::LayoutTask,
+    script::script_task::ScriptTask>::start(
+        compositor_proxy,
+        resource_task,
+        image_cache_task,
+        font_cache_task,
+        time_profiler_chan,
+        mem_profiler_chan,
+        devtools_chan,
+        storage_task,
+        supports_clipboard);
+}
