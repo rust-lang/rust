@@ -110,15 +110,10 @@ On the client code, bar.rs:
 ```
 extern crate foo;
 
-use inner_mod::foo; // error, both of these `use` declarations add a symbol
-use another_mod::foo; // that conflicts with the external crate's symbol.
+use inner_mod::foo; // error, this conflicts with the external crate's symbol
 
 mod inner_mod {
     pub mod foo { }
-}
-
-mod another_mod {
-    pub type foo = i32;
 }
 ```
 "##,
