@@ -285,33 +285,11 @@ fn fmt_lines(changes: &mut ChangeSet, config: &Config) -> FormatReport {
 }
 
 struct RustFmtCalls {
-    input_path: Option<PathBuf>,
     write_mode: WriteMode,
     config: Option<Box<config::Config>>,
 }
 
 impl<'a> CompilerCalls<'a> for RustFmtCalls {
-    fn early_callback(&mut self,
-                      _: &getopts::Matches,
-                      _: &diagnostics::registry::Registry)
-                      -> Compilation {
-        Compilation::Continue
-    }
-
-    fn some_input(&mut self,
-                  input: Input,
-                  input_path: Option<PathBuf>)
-                  -> (Input, Option<PathBuf>) {
-        match input_path {
-            Some(ref ip) => self.input_path = Some(ip.clone()),
-            _ => {
-                // FIXME should handle string input and write to stdout or something
-                panic!("No input path");
-            }
-        }
-        (input, input_path)
-    }
-
     fn no_input(&mut self,
                 _: &getopts::Matches,
                 _: &rustc_config::Options,
@@ -320,16 +298,6 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
                 _: &diagnostics::registry::Registry)
                 -> Option<(Input, Option<PathBuf>)> {
         panic!("No input supplied to RustFmt");
-    }
-
-    fn late_callback(&mut self,
-                     _: &getopts::Matches,
-                     _: &Session,
-                     _: &Input,
-                     _: &Option<PathBuf>,
-                     _: &Option<PathBuf>)
-                     -> Compilation {
-        Compilation::Continue
     }
 
     fn build_controller(&mut self, _: &Session) -> driver::CompileController<'a> {
@@ -373,6 +341,6 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
 // default_config is a string of toml data to be used to configure rustfmt.
 pub fn run(args: Vec<String>, write_mode: WriteMode, default_config: &str) {
     let config = Some(Box::new(config::Config::from_toml(default_config)));
-    let mut call_ctxt = RustFmtCalls { input_path: None, write_mode: write_mode, config: config };
+    let mut call_ctxt = RustFmtCalls { write_mode: write_mode, config: config };
     rustc_driver::run_compiler(&args, &mut call_ctxt);
 }
