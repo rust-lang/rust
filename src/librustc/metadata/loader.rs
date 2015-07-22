@@ -602,7 +602,7 @@ impl<'a> Context<'a> {
                     info!("Rejecting via hash: expected {} got {}", *myhash, hash);
                     self.rejected_via_hash.push(CrateMismatch {
                         path: libpath.to_path_buf(),
-                        got: myhash.as_str().to_string()
+                        got: myhash.to_string()
                     });
                     false
                 } else {
