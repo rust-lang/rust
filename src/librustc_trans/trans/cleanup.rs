@@ -774,20 +774,22 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         // At this point, `popped_scopes` is empty, and so the final block
         // that we return to the user is `Cleanup(AST 24)`.
         while let Some(mut scope) = popped_scopes.pop() {
-            let name = scope.block_name("clean");
-            debug!("generating cleanups for {}", name);
-            let bcx_in = self.new_block(label.is_unwind(),
-                                        &name[..],
-                                        None);
-            let mut bcx_out = bcx_in;
-            for cleanup in scope.cleanups.iter().rev() {
-                bcx_out = cleanup.trans(bcx_out,
-                                        scope.debug_loc);
-            }
-            build::Br(bcx_out, prev_llbb, DebugLoc::None);
-            prev_llbb = bcx_in.llbb;
+            if !scope.cleanups.is_empty() {
+                let name = scope.block_name("clean");
+                debug!("generating cleanups for {}", name);
+                let bcx_in = self.new_block(label.is_unwind(),
+                                            &name[..],
+                                            None);
+                let mut bcx_out = bcx_in;
+                for cleanup in scope.cleanups.iter().rev() {
+                    bcx_out = cleanup.trans(bcx_out,
+                                            scope.debug_loc);
+                }
+                build::Br(bcx_out, prev_llbb, DebugLoc::None);
+                prev_llbb = bcx_in.llbb;
 
-            scope.add_cached_early_exit(label, prev_llbb);
+                scope.add_cached_early_exit(label, prev_llbb);
+            }
             self.push_scope(scope);
         }
 
