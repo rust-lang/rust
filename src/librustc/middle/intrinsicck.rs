@@ -165,7 +165,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
         if from_tc.interior_param() || to_tc.interior_param() {
             span_err!(self.tcx.sess, span, E0139,
                       "cannot transmute to or from a type that contains \
-                       type parameters in its interior");
+                       unsubstituted type parameters");
             return;
         }
 
