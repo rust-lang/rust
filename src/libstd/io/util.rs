@@ -61,6 +61,11 @@ pub fn copy<R: Read, W: Write>(reader: &mut R, writer: &mut W) -> io::Result<u64
 }
 
 /// A reader which is always at EOF.
+///
+/// This struct is generally created by calling [`empty()`][empty]. Please see
+/// the documentation of `empty()` for more details.
+///
+/// [empty]: fn.empty.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Empty { _priv: () }
 
@@ -95,7 +100,12 @@ impl BufRead for Empty {
     fn consume(&mut self, _n: usize) {}
 }
 
-/// A reader which infinitely yields one byte.
+/// A reader which yields one byte over and over and over and over and over and...
+///
+/// This struct is generally created by calling [`repeat()`][repeat]. Please
+/// see the documentation of `repeat()` for more details.
+///
+/// [empty]: fn.repeat.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Repeat { byte: u8 }
 
@@ -117,6 +127,11 @@ impl Read for Repeat {
 }
 
 /// A writer which will move data into the void.
+///
+/// This struct is generally created by calling [`sink()`][sink]. Please
+/// see the documentation of `sink()` for more details.
+///
+/// [empty]: fn.sink.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Sink { _priv: () }
 

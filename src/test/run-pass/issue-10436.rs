@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait<'a> {
-    type A;
-    type B;
-}
+fn works<T>(x: T) -> Vec<T> { vec![x] }
 
-fn foo<'a, T: Trait<'a>>(value: T::A) {
-    let new: T::B = unsafe { std::mem::transmute(value) };
-//~^ ERROR: cannot transmute to or from a type that contains unsubstituted type parameters [E0139]
-}
+fn also_works<T: Clone>(x: T) -> Vec<T> { vec![x] }
 
-fn main() { }
+fn main() {
+    let _: Vec<usize> = works(0);
+    let _: Vec<usize> = also_works(0);
+    let _ = works(0);
+    let _ = also_works(0);
+}

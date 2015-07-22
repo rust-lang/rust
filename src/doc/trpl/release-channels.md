@@ -43,3 +43,26 @@ This will help alert the team in case there’s an accidental regression.
 Additionally, testing against nightly can catch regressions even sooner, and so
 if you don’t mind a third build, we’d appreciate testing against all channels.
 
+As an example, many Rust programmers use [Travis](https://travis-ci.org/) to
+test their crates, which is free for open source projects. Travis [supports
+Rust directly][travis], and you can use a `.travis.yml` file like this to
+test on all channels:
+
+```yaml
+language: rust
+rust:
+  - nightly
+  - beta
+  - stable
+
+matrix:
+  allow_failures:
+    - rust: nightly
+```
+
+[travis]: http://docs.travis-ci.com/user/languages/rust/
+
+With this configuration, Travis will test all three channels, but if something
+breaks on nightly, it won’t fail your build. A similar configuration is
+recommended for any CI system, check the documentation of the one you’re
+using for more details.
