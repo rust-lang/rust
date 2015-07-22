@@ -252,14 +252,49 @@ impl<R: Seek> Seek for BufReader<R> {
     }
 }
 
-/// Wraps a Writer and buffers output to it.
+/// Wraps a writer and buffers its output.
 ///
-/// It can be excessively inefficient to work directly with a `Write`. For
-/// example, every call to `write` on `TcpStream` results in a system call. A
-/// `BufWriter` keeps an in memory buffer of data and writes it to the
-/// underlying `Write` in large, infrequent batches.
+/// It can be excessively inefficient to work directly with something that
+/// implements `Write`. For example, every call to `write` on `TcpStream`
+/// results in a system call. A `BufWriter` keeps an in-memory buffer of data
+/// and writes it to an underlying writer in large, infrequent batches.
 ///
 /// The buffer will be written out when the writer is dropped.
+///
+/// # Examples
+///
+/// Let's write the numbers one through ten to a `TcpStream`:
+///
+/// ```no_run
+/// use std::io::prelude::*;
+/// use std::net::TcpStream;
+///
+/// let mut stream = TcpStream::connect("127.0.0.1:34254").unwrap();
+///
+/// for i in 1..10 {
+///     stream.write(&[i]).unwrap();
+/// }
+/// ```
+///
+/// Because we're not buffering, we write each one in turn, incurring the
+/// overhead of a system call per byte written. We can fix this with a
+/// `BufWriter`:
+///
+/// ```no_run
+/// use std::io::prelude::*;
+/// use std::io::BufWriter;
+/// use std::net::TcpStream;
+///
+/// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+///
+/// for i in 1..10 {
+///     stream.write(&[i]).unwrap();
+/// }
+/// ```
+///
+/// By wrapping the stream with a `BufWriter`, these ten writes are all grouped
+/// together by the buffer, and will all be written out in one system call when
+/// the `stream` is dropped.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W: Write> {
     inner: Option<W>,
@@ -275,12 +310,33 @@ pub struct IntoInnerError<W>(W, Error);
 
 impl<W: Write> BufWriter<W> {
     /// Creates a new `BufWriter` with a default buffer capacity.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io::BufWriter;
+    /// use std::net::TcpStream;
+    ///
+    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: W) -> BufWriter<W> {
         BufWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
     /// Creates a new `BufWriter` with the specified buffer capacity.
+    ///
+    /// # Examples
+    ///
+    /// Creating a buffer with a buffer of a hundred bytes.
+    ///
+    /// ```no_run
+    /// use std::io::BufWriter;
+    /// use std::net::TcpStream;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:34254").unwrap();
+    /// let mut buffer = BufWriter::with_capacity(100, stream);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(cap: usize, inner: W) -> BufWriter<W> {
         BufWriter {
@@ -313,6 +369,18 @@ impl<W: Write> BufWriter<W> {
     }
 
     /// Gets a reference to the underlying writer.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io::BufWriter;
+    /// use std::net::TcpStream;
+    ///
+    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    ///
+    /// // we can use reference just like buffer
+    /// let reference = buffer.get_ref();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_ref(&self) -> &W { self.inner.as_ref().unwrap() }
 
@@ -321,12 +389,36 @@ impl<W: Write> BufWriter<W> {
     /// # Warning
     ///
     /// It is inadvisable to directly write to the underlying writer.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io::BufWriter;
+    /// use std::net::TcpStream;
+    ///
+    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    ///
+    /// // we can use reference just like buffer
+    /// let reference = buffer.get_mut();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut W { self.inner.as_mut().unwrap() }
 
     /// Unwraps this `BufWriter`, returning the underlying writer.
     ///
     /// The buffer is written out before returning the writer.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::io::BufWriter;
+    /// use std::net::TcpStream;
+    ///
+    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    ///
+    /// // unwrap the TcpStream and flush the buffer
+    /// let stream = buffer.into_inner().unwrap();
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(mut self) -> Result<W, IntoInnerError<BufWriter<W>>> {
         match self.flush_buf() {
