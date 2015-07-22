@@ -426,6 +426,57 @@ use something_which_doesnt_exist;
 Please verify you didn't misspell the import's name.
 "##,
 
+E0437: r##"
+Trait impls can only implement associated types that are members of the trait in
+question. This error indicates that you attempted to implement an associated
+type whose name does not match the name of any associated type in the trait.
+
+Here is an example that demonstrates the error:
+
+```
+trait Foo {}
+
+impl Foo for i32 {
+    type Bar = bool;
+}
+```
+
+The solution to this problem is to remove the extraneous associated type:
+
+```
+trait Foo {}
+
+impl Foo for i32 {}
+```
+"##,
+
+E0438: r##"
+Trait impls can only implement associated constants that are members of the
+trait in question. This error indicates that you attempted to implement an
+associated constant whose name does not match the name of any associated
+constant in the trait.
+
+Here is an example that demonstrates the error:
+
+```
+#![feature(associated_consts)]
+
+trait Foo {}
+
+impl Foo for i32 {
+    const BAR: bool = true;
+}
+```
+
+The solution to this problem is to remove the extraneous associated constant:
+
+```
+trait Foo {}
+
+impl Foo for i32 {}
+```
+"##
+
 }
 
 register_diagnostics! {
@@ -468,6 +519,4 @@ register_diagnostics! {
     E0432, // unresolved import
     E0434, // can't capture dynamic environment in a fn item
     E0435, // attempt to use a non-constant value in a constant
-    E0437, // type is not a member of trait
-    E0438, // const is not a member of trait
 }
