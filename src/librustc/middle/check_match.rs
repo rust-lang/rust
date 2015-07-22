@@ -513,7 +513,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                 &Variant(vid) =>
                     (vid, cx.tcx.enum_variant_with_id(cid.did, vid).arg_names.is_some()),
                 _ =>
-                    (cid.did, !cid.is_tuple_struct(cx.tcx))
+                    (cid.did, !cid.struct_variant().is_tuple_struct())
             };
             if is_structure {
                 let fields = cx.tcx.lookup_struct_fields(vid);

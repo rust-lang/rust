@@ -2980,7 +2980,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                   |base_t, _| {
                 match base_t.sty {
                     ty::TyStruct(base_def, substs) => {
-                        tuple_like = base_def.is_tuple_struct(tcx);
+                        tuple_like = base_def.struct_variant().is_tuple_struct();
                         if tuple_like {
                             debug!("tuple struct named {:?}",  base_t);
                             let fields = tcx.lookup_struct_fields(base_def.did);
