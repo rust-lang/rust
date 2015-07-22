@@ -13,7 +13,7 @@
 /* Any copyright is dedicated to the Public Domain.
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
-#![allow(warnings)]
+#![allow(dead_code, unused_variables)]
 #![feature(box_syntax, box_heap)]
 #![feature(placement_in_syntax)]
 
