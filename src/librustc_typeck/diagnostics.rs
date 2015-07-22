@@ -1316,6 +1316,45 @@ fn main() {
 ```
 "##,
 
+E0120: r##"
+An attempt was made to implement Drop on a trait, which is not allowed: only
+structs and enums can implement Drop. An example causing this error:
+
+```
+trait MyTrait {}
+
+impl Drop for MyTrait {
+    fn drop(&mut self) {}
+}
+```
+
+A workaround for this problem is to wrap the trait up in a struct, and implement
+Drop on that. An example is shown below:
+
+```
+trait MyTrait {}
+struct MyWrapper<T: MyTrait> { foo: T }
+
+impl <T: MyTrait> Drop for MyWrapper<T> {
+    fn drop(&mut self) {}
+}
+
+```
+
+Alternatively, wrapping trait objects requires something like the following:
+
+```
+trait MyTrait {}
+
+//or Box<MyTrait>, if you wanted an owned trait object
+struct MyWrapper<'a> { foo: &'a MyTrait }
+
+impl <'a> Drop for MyWrapper<'a> {
+    fn drop(&mut self) {}
+}
+```
+"##,
+
 E0121: r##"
 In order to be consistent with Rust's lack of global type inference, type
 placeholders are disallowed by design in item signatures.
@@ -2195,7 +2234,6 @@ register_diagnostics! {
     E0103,
     E0104,
     E0118,
-    E0120,
     E0122,
     E0123,
     E0127,
