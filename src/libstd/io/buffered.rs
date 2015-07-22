@@ -509,17 +509,74 @@ impl<W> fmt::Display for IntoInnerError<W> {
     }
 }
 
-/// Wraps a Writer and buffers output to it, flushing whenever a newline
+/// Wraps a writer and buffers output to it, flushing whenever a newline
 /// (`0x0a`, `'\n'`) is detected.
 ///
-/// The buffer will be written out when the writer is dropped.
+/// The [`BufWriter`][bufwriter] struct wraps a writer and buffers its output.
+/// But it only does this batched write when it goes out of scope, or when the
+/// internal buffer is full. Sometimes, you'd prefer to write each line as it's
+/// completed, rather than the entire buffer at once. Enter `LineWriter`. It
+/// does exactly that.
+///
+/// [bufwriter]: struct.BufWriter.html
+///
+/// If there's still a partial line in the buffer when the `LineWriter` is
+/// dropped, it will flush those contents.
+///
+/// # Examples
+///
+/// We can use `LineWriter` to write one line at a time, significantly
+/// reducing the number of actual writes to the file.
+///
+/// ```
+/// use std::fs::File;
+/// use std::io::prelude::*;
+/// use std::io::LineWriter;
+///
+/// # fn foo() -> std::io::Result<()> {
+/// let road_not_taken = b"I shall be telling this with a sigh
+/// Somewhere ages and ages hence:
+/// Two roads diverged in a wood, and I -
+/// I took the one less traveled by,
+/// And that has made all the difference.";
+///
+/// let file = try!(File::create("poem.txt"));
+/// let mut file = LineWriter::new(file);
+///
+/// for &byte in road_not_taken.iter() {
+///    file.write(&[byte]).unwrap();
+/// }
+///
+/// // let's check we did the right thing.
+/// let mut file = try!(File::open("poem.txt"));
+/// let mut contents = String::new();
+///
+/// try!(file.read_to_string(&mut contents));
+///
+/// assert_eq!(contents.as_bytes(), &road_not_taken[..]);
+/// # Ok(())
+/// # }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LineWriter<W: Write> {
     inner: BufWriter<W>,
 }
 
 impl<W: Write> LineWriter<W> {
-    /// Creates a new `LineWriter`
+    /// Creates a new `LineWriter`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs::File;
+    /// use std::io::LineWriter;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let file = try!(File::create("poem.txt"));
+    /// let file = LineWriter::new(file);
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: W) -> LineWriter<W> {
         // Lines typically aren't that long, don't use a giant buffer
@@ -528,12 +585,40 @@ impl<W: Write> LineWriter<W> {
 
     /// Creates a new `LineWriter` with a specified capacity for the internal
     /// buffer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs::File;
+    /// use std::io::LineWriter;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let file = try!(File::create("poem.txt"));
+    /// let file = LineWriter::with_capacity(100, file);
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(cap: usize, inner: W) -> LineWriter<W> {
         LineWriter { inner: BufWriter::with_capacity(cap, inner) }
     }
 
     /// Gets a reference to the underlying writer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs::File;
+    /// use std::io::LineWriter;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let file = try!(File::create("poem.txt"));
+    /// let file = LineWriter::new(file);
+    ///
+    /// let reference = file.get_ref();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_ref(&self) -> &W { self.inner.get_ref() }
 
@@ -541,12 +626,44 @@ impl<W: Write> LineWriter<W> {
     ///
     /// Caution must be taken when calling methods on the mutable reference
     /// returned as extra writes could corrupt the output stream.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs::File;
+    /// use std::io::LineWriter;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let file = try!(File::create("poem.txt"));
+    /// let mut file = LineWriter::new(file);
+    ///
+    /// // we can use reference just like file
+    /// let reference = file.get_mut();
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut W { self.inner.get_mut() }
 
     /// Unwraps this `LineWriter`, returning the underlying writer.
     ///
     /// The internal buffer is written out before returning the writer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fs::File;
+    /// use std::io::LineWriter;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let file = try!(File::create("poem.txt"));
+    ///
+    /// let writer: LineWriter<File> = LineWriter::new(file);
+    ///
+    /// let file: File = try!(writer.into_inner());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> Result<W, IntoInnerError<LineWriter<W>>> {
         self.inner.into_inner().map_err(|IntoInnerError(buf, e)| {
