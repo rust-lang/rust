@@ -340,7 +340,7 @@ libraries:
 Note that frameworks are only available on OSX targets.
 
 The different `kind` values are meant to differentiate how the native library
-participates in linkage. From a linkage perspective, the rust compiler creates
+participates in linkage. From a linkage perspective, the Rust compiler creates
 two flavors of artifacts: partial (rlib/staticlib) and final (dylib/binary).
 Native dynamic library and framework dependencies are propagated to the final
 artifact boundary, while static library dependencies are not propagated at
@@ -350,9 +350,9 @@ artifact.
 A few examples of how this model can be used are:
 
 * A native build dependency. Sometimes some C/C++ glue is needed when writing
-  some rust code, but distribution of the C/C++ code in a library format is just
+  some Rust code, but distribution of the C/C++ code in a library format is just
   a burden. In this case, the code will be archived into `libfoo.a` and then the
-  rust crate would declare a dependency via `#[link(name = "foo", kind =
+  Rust crate would declare a dependency via `#[link(name = "foo", kind =
   "static")]`.
 
   Regardless of the flavor of output for the crate, the native static library
@@ -361,7 +361,7 @@ A few examples of how this model can be used are:
 
 * A normal dynamic dependency. Common system libraries (like `readline`) are
   available on a large number of systems, and often a static copy of these
-  libraries cannot be found. When this dependency is included in a rust crate,
+  libraries cannot be found. When this dependency is included in a Rust crate,
   partial targets (like rlibs) will not link to the library, but when the rlib
   is included in a final target (like a binary), the native library will be
   linked in.

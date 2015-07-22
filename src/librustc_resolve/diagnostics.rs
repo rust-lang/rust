@@ -106,8 +106,7 @@ mod foo {
 use foo::MyTrait::do_something;
 ```
 
-In general, it's not legal to directly import methods belonging to a
-trait or concrete type.
+It's illegal to directly import methods belonging to a trait or concrete type.
 "##,
 
 E0255: r##"
@@ -272,7 +271,160 @@ See the 'Use Declarations' section of the reference for more information
 on this topic:
 
 http://doc.rust-lang.org/reference.html#use-declarations
-"##
+"##,
+
+E0403: r##"
+Some type parameters have the same name. Example of erroneous code:
+
+```
+fn foo<T, T>(s: T, u: T) {} // error: the name `T` is already used for a type
+                            //        parameter in this type parameter list
+```
+
+Please verify that none of the type parameterss are misspelled, and rename any
+clashing parameters. Example:
+
+```
+fn foo<T, Y>(s: T, u: Y) {} // ok!
+```
+"##,
+
+E0404: r##"
+You tried to implement something which was not a trait on an object. Example of
+erroneous code:
+
+```
+struct Foo;
+struct Bar;
+
+impl Foo for Bar {} // error: `Foo` is not a trait
+```
+
+Please verify that you didn't misspell the trait's name or otherwise use the
+wrong identifier. Example:
+
+```
+trait Foo {
+    // some functions
+}
+struct Bar;
+
+impl Foo for Bar { // ok!
+    // functions implementation
+}
+```
+"##,
+
+E0405: r##"
+An unknown trait was implemented. Example of erroneous code:
+
+```
+struct Foo;
+
+impl SomeTrait for Foo {} // error: use of undeclared trait name `SomeTrait`
+```
+
+Please verify that the name of the trait wasn't misspelled and ensure that it
+was imported. Example:
+
+```
+// solution 1:
+use some_file::SomeTrait;
+
+// solution 2:
+trait SomeTrait {
+    // some functions
+}
+
+struct Foo;
+
+impl SomeTrait for Foo { // ok!
+    // implements functions
+}
+```
+"##,
+
+E0407: r##"
+A definition of a method not in the implemented trait was given in a trait
+implementation. Example of erroneous code:
+
+```
+trait Foo {
+    fn a();
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn a() {}
+    fn b() {} // error: method `b` is not a member of trait `Foo`
+}
+```
+
+Please verify you didn't misspell the method name and you used the correct
+trait. First example:
+
+```
+trait Foo {
+    fn a();
+    fn b();
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn a() {}
+    fn b() {} // ok!
+}
+```
+
+Second example:
+
+```
+trait Foo {
+    fn a();
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn a() {}
+}
+
+impl Bar {
+    fn b() {}
+}
+```
+"##,
+
+E0428: r##"
+A type or module has been defined more than once. Example of erroneous
+code:
+
+```
+struct Bar;
+struct Bar; // error: duplicate definition of value `Bar`
+```
+
+Please verify you didn't misspell the type/module's name or remove/rename the
+duplicated one. Example:
+
+```
+struct Bar;
+struct Bar2; // ok!
+```
+"##,
+
+E0433: r##"
+Invalid import. Example of erroneous code:
+
+```
+use something_which_doesnt_exist;
+// error: unresolved import `something_which_doesnt_exist`
+```
+
+Please verify you didn't misspell the import's name.
+"##,
 
 }
 
@@ -284,11 +436,7 @@ register_diagnostics! {
     E0258,
     E0401, // can't use type parameters from outer function
     E0402, // cannot use an outer type parameter in this context
-    E0403, // the name `{}` is already used
-    E0404, // is not a trait
-    E0405, // use of undeclared trait name
     E0406, // undeclared associated type
-    E0407, // method is not a member of trait
     E0408, // variable from pattern #1 is not bound in pattern #
     E0409, // variable is bound with different mode in pattern # than in
            // pattern #1
@@ -313,13 +461,11 @@ register_diagnostics! {
     E0425, // unresolved name
     E0426, // use of undeclared label
     E0427, // cannot use `ref` binding mode with ...
-    E0428, // duplicate definition of ...
     E0429, // `self` imports are only allowed within a { } list
     E0430, // `self` import can only appear once in the list
     E0431, // `self` import can only appear in an import list with a non-empty
            // prefix
     E0432, // unresolved import
-    E0433, // failed to resolve
     E0434, // can't capture dynamic environment in a fn item
     E0435, // attempt to use a non-constant value in a constant
     E0437, // type is not a member of trait

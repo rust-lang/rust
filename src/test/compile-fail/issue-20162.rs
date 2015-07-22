@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait<'a> {
-    type A;
-    type B;
-}
+struct X { x: i32 }
 
-fn foo<'a, T: Trait<'a>>(value: T::A) {
-    let new: T::B = unsafe { std::mem::transmute(value) };
-//~^ ERROR: cannot transmute to or from a type that contains unsubstituted type parameters [E0139]
+fn main() {
+    let mut b: Vec<X> = vec![];
+    b.sort();
+    //~^ ERROR the trait `core::cmp::Ord` is not implemented for the type `X`
 }
-
-fn main() { }
