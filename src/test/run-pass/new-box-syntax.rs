@@ -17,6 +17,10 @@
 #![feature(box_syntax, box_heap)]
 #![feature(placement_in_syntax)]
 
+// during check-pretty, the expanded code needs to opt into these
+// features
+#![feature(placement_new_protocol, core_intrinsics)]
+
 // Tests that the new `box` syntax works with unique pointers.
 
 use std::boxed::{Box, HEAP};
