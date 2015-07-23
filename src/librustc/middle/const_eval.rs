@@ -967,6 +967,9 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               Some(def::DefVariant(enum_def, variant_def, _)) => {
                   (lookup_variant_by_id(tcx, enum_def, variant_def), None)
               }
+              Some(def::DefStruct(_)) => {
+                  return Ok(ConstVal::Struct(e.id))
+              }
               _ => (None, None)
           };
           let const_expr = match const_expr {
