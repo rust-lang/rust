@@ -75,7 +75,7 @@ use core::raw::{TraitObject};
 ///
 /// ```
 /// # #![feature(box_heap)]
-/// #![feature(box_syntax)]
+/// #![feature(box_syntax, placement_in_syntax)]
 /// use std::boxed::HEAP;
 ///
 /// fn main() {
