@@ -410,9 +410,10 @@ match 0 {
 }
 ```
 
-Compiler needs to know the pattern value at compile's time, which is
-not possible with a `static` variable. So please verify you didn't
-misspell the variable's name or use a `const` instead. Example:
+The compiler needs to know the value of the pattern at compile time,
+which is not possible with a `static` variable. Please verify that the
+variable is spelled correctly and if so, try to use a `const` instead.
+Example:
 
 ```
 const FOO : i32 = 0;
@@ -425,7 +426,7 @@ match 0 {
 "##,
 
 E0424: r##"
-`self` keyword was used in a static method. Example of erroneous code:
+The `self` keyword was used in a static method. Example of erroneous code:
 
 ```
 struct Foo;
@@ -439,8 +440,9 @@ impl Foo {
 }
 ```
 
-Please verify you didn't forget to add `self` in your method's argument
-list if your intention wasn't to create a static method. Example:
+Please check if the method's argument list should have contained self,
+&self, or &mut self (in case you didn't want to create a static method),
+and add it if so. Example:
 
 ```
 struct Foo;
@@ -450,18 +452,6 @@ impl Foo {
 
     fn foo(self) {
         self.bar(); // ok!
-    }
-}
-```
-
-Or please verify you didn't misspell the variable's name:
-
-```
-struct Foo;
-
-impl Foo {
-    fn foo(sel: i32) {
-        println!("{}", sel); // ok!
     }
 }
 ```
