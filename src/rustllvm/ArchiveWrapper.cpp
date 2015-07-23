@@ -168,7 +168,7 @@ LLVMRustWriteArchive(char *Dst,
       Members.push_back(NewArchiveIterator(Member->child, Member->name));
     }
   }
-  auto pair = writeArchive(Dst, Members, WriteSymbtab, Kind, false);
+  auto pair = writeArchive(Dst, Members, WriteSymbtab, Kind, true);
   if (!pair.second)
     return 0;
   LLVMRustSetLastError(pair.second.message().c_str());
