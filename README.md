@@ -44,6 +44,7 @@ the direction the language is evolving in.
 * [0771-std-iter-once.md](text/0771-std-iter-once.md)
 * [0803-type-ascription.md](text/0803-type-ascription.md)
 * [0809-box-and-in-for-stdlib.md](text/0809-box-and-in-for-stdlib.md)
+* [0873-type-macros.md](text/0873-type-macros.md)
 * [0888-compiler-fence-intrinsics.md](text/0888-compiler-fence-intrinsics.md)
 * [0909-move-thread-local-to-std-thread.md](text/0909-move-thread-local-to-std-thread.md)
 * [0911-const-fn.md](text/0911-const-fn.md)
