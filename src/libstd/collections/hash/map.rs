@@ -1605,12 +1605,16 @@ pub struct RandomState {
 #[unstable(feature = "hashmap_hasher",
            reason = "hashing an hash maps may be altered")]
 impl RandomState {
-    /// Constructs a new `RandomState` that is initialized with random keys.
+    /// Constructs a new `RandomState` that is initialized with thread-random keys.
     #[inline]
     #[allow(deprecated)]
     pub fn new() -> RandomState {
-        let mut r = rand::thread_rng();
-        RandomState { k0: r.gen(), k1: r.gen() }
+        thread_local!(static RANDOM_STATE: RandomState = {
+            let mut r = rand::thread_rng();
+            RandomState { k0: r.gen(), k1: r.gen() }
+        });
+
+        RANDOM_STATE.with(|state| RandomState { ..*state })
     }
 }
 
