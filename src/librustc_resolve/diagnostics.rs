@@ -397,6 +397,33 @@ impl Bar {
 ```
 "##,
 
+E0417: r##"
+A static variable was referenced in a pattern. Example of erroneous code:
+
+```
+static FOO : i32 = 0;
+
+match 0 {
+    FOO => {} // error: static variables cannot be referenced in a
+              //        pattern, use a `const` instead
+    _ => {}
+}
+```
+
+Compiler needs to know the pattern value at compile's time, which is
+not possible with a `static` variable. So please verify you didn't
+misspell the variable's name or use a `const` instead. Example:
+
+```
+const FOO : i32 = 0;
+
+match 0 {
+    FOO => {} // ok!
+    _ => {}
+}
+```
+"##,
+
 E0428: r##"
 A type or module has been defined more than once. Example of erroneous
 code:
@@ -448,8 +475,6 @@ register_diagnostics! {
     E0414, // only irrefutable patterns allowed here
     E0415, // identifier is bound more than once in this parameter list
     E0416, // identifier is bound more than once in the same pattern
-    E0417, // static variables cannot be referenced in a pattern, use a
-           // `const` instead
     E0418, // is not an enum variant, struct or const
     E0419, // unresolved enum variant, struct or const
     E0420, // is not an associated const
