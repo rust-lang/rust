@@ -1636,6 +1636,10 @@ The type of a function declared in an extern block is `extern "abi" fn(A1, ...,
 An) -> R`, where `A1...An` are the declared types of its arguments and `R` is
 the declared return type.
 
+It is valid to add the `link` attribute on an empty extern block. You can use
+this to satisfy the linking requirements of extern blocks elsewhere in your code
+(including upstream crates) instead of adding the attribute to each extern block.
+
 ## Visibility and Privacy
 
 These two terms are often used interchangeably, and what they are attempting to
