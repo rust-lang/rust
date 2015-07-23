@@ -91,6 +91,7 @@ pub fn from_u32(i: u32) -> Option<char> {
 /// Converts a `u32` to an `char`, not checking whether it is a valid unicode
 /// codepoint.
 #[inline]
+#[unstable(feature = "char_from_unchecked", reason = "recently added API")]
 pub unsafe fn from_u32_unchecked(i: u32) -> char {
     transmute(i)
 }
