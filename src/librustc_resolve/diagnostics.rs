@@ -424,6 +424,49 @@ match 0 {
 ```
 "##,
 
+E0424: r##"
+`self` keyword was used in a static method. Example of erroneous code:
+
+```
+struct Foo;
+
+impl Foo {
+    fn bar(self) {}
+
+    fn foo() {
+        self.bar(); // error: `self` is not available in a static method.
+    }
+}
+```
+
+Please verify you didn't forget to add `self` in your method's argument
+list if your intention wasn't to create a static method. Example:
+
+```
+struct Foo;
+
+impl Foo {
+    fn bar(self) {}
+
+    fn foo(self) {
+        self.bar(); // ok!
+    }
+}
+```
+
+Or please verify you didn't misspell the variable's name:
+
+```
+struct Foo;
+
+impl Foo {
+    fn foo(sel: i32) {
+        println!("{}", sel); // ok!
+    }
+}
+```
+"##,
+
 E0428: r##"
 A type or module has been defined more than once. Example of erroneous
 code:
@@ -482,7 +525,6 @@ register_diagnostics! {
     E0422, // does not name a structure
     E0423, // is a struct variant name, but this expression uses it like a
            // function name
-    E0424, // `self` is not available in a static method.
     E0425, // unresolved name
     E0426, // use of undeclared label
     E0427, // cannot use `ref` binding mode with ...
