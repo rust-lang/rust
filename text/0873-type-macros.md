@@ -1,7 +1,7 @@
 - Feature Name: macros_in_type_positions
 - Start Date: 2015-02-16
-- RFC PR: rust-lang/rfcs#873
-- Rust Issue: rust-lang/rust#27245
+- RFC PR: [rust-lang/rfcs#873](https://github.com/rust-lang/rfcs/pull/873)
+- Rust Issue: [rust-lang/rust#27245](https://github.com/rust-lang/rust/issues/27245)
 
 # Summary
 
