@@ -48,24 +48,24 @@ enum PushPop { Push, Pop }
 
 pub fn expand_push_unsafe<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                -> Box<base::MacResult+'cx> {
-    feature_gate::check_for_pushpop_syntax(
-        cx.ecfg.features, &cx.parse_sess.span_diagnostic, sp);
     expand_pushpop_unsafe(cx, sp, tts, PushPop::Push)
 }
 
 pub fn expand_pop_unsafe<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                -> Box<base::MacResult+'cx> {
-    feature_gate::check_for_pushpop_syntax(
-        cx.ecfg.features, &cx.parse_sess.span_diagnostic, sp);
     expand_pushpop_unsafe(cx, sp, tts, PushPop::Pop)
 }
 
 fn expand_pushpop_unsafe<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree],
                                   pp: PushPop) -> Box<base::MacResult+'cx> {
+    feature_gate::check_for_pushpop_syntax(
+        cx.ecfg.features, &cx.parse_sess.span_diagnostic, sp);
+
     let mut exprs = match get_exprs_from_tts(cx, sp, tts) {
         Some(exprs) => exprs.into_iter(),
         None => return DummyResult::expr(sp),
     };
+
     let expr = match (exprs.next(), exprs.next()) {
         (Some(expr), None) => expr,
         _ => {
