@@ -1895,6 +1895,62 @@ type Foo = Trait<Bar=i32>; // ok!
 ```
 "##,
 
+E0223: r##"
+An attempt was made to retrieve an associated type, but the type was ambiguous.
+For example:
+
+```
+trait MyTrait {type X; }
+
+fn main() {
+    let foo: MyTrait::X;
+}
+```
+
+The problem here is that we're attempting to take the type of X from MyTrait.
+Unfortunately, the type of X is not defined, because it's only made concrete in
+implementations of the trait. A working version of this code might look like:
+
+```
+trait MyTrait {type X; }
+struct MyStruct;
+
+impl MyTrait for MyStruct {
+    type X = u32;
+}
+
+fn main() {
+    let foo: <MyStruct as MyTrait>::X;
+}
+```
+
+This syntax specifies that we want the X type from MyTrait, as made concrete in
+MyStruct. The reason that we cannot simply use `MyStruct::X` is that MyStruct
+might implement two different traits with identically-named associated types.
+This syntax allows disambiguation between the two.
+"##,
+
+E0225: r##"
+You attempted to use multiple types as bounds for a closure or trait object.
+Rust does not currently support this. A simple example that causes this error:
+
+```
+fn main() {
+    let _: Box<std::io::Read+std::io::Write>;
+}
+```
+
+Builtin traits are an exception to this rule: it's possible to have bounds of
+one non-builtin type, plus any number of builtin types. For example, the
+following compiles correctly:
+
+```
+fn main() {
+    let _: Box<std::io::Read+Copy+Sync>;
+}
+```
+"##,
+
 E0232: r##"
 The attribute must have a value. Erroneous code example:
 
@@ -2233,9 +2289,7 @@ register_diagnostics! {
     E0221, // ambiguous associated type in bounds
     //E0222, // Error code E0045 (variadic function must have C calling
              // convention) duplicate
-    E0223, // ambiguous associated type
     E0224, // at least one non-builtin train is required for an object type
-    E0225, // only the builtin traits can be used as closure or object bounds
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
     E0228, // explicit lifetime bound required

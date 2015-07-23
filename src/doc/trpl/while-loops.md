@@ -88,6 +88,24 @@ for x in 0..10 {
 }
 ```
 
+You may also encounter situations where you have nested loops and need to 
+specify which one your `break` or `continue` statement is for. Like most 
+other languages, by default a `break` or `continue` will apply to innermost 
+loop. In a sitation where you would like to a `break` or `continue` for one 
+of the outer loops, you can use labels to specify which loop the `break` or
+ `continue` statement applies to. This will only print when both `x` and `y` are
+ odd:
+
+```rust
+'outer: for x in 0..10 {
+    'inner: for y in 0..10 {
+        if x % 2 == 0 { continue 'outer; } // continues the loop over x
+        if y % 2 == 0 { continue 'inner; } // continues the loop over y
+        println!("x: {}, y: {}", x, y);
+    }
+}
+```
+
 Both `continue` and `break` are valid in both `while` loops and [`for` loops][for].
 
 [for]: for-loops.html
