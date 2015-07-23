@@ -20,7 +20,6 @@ pub fn opts() -> TargetOptions {
         linker_is_gnu: true,
         has_rpath: true,
         position_independent_executables: true,
-        archive_format: "".to_string(),
 
         .. Default::default()
     }
