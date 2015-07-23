@@ -14,7 +14,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
-#![allow(unsigned_negation)]
 
 use prelude::v1::*;
 
