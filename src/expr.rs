@@ -378,11 +378,13 @@ fn rewrite_unary_op(context: &RewriteContext,
                     -> Option<String> {
     // For some reason, an UnOp is not spanned like BinOp!
     let operator_str = match *op {
-        ast::UnOp::UnUniq => "&",
+        ast::UnOp::UnUniq => "box ",
         ast::UnOp::UnDeref => "*",
         ast::UnOp::UnNot => "!",
         ast::UnOp::UnNeg => "-"
     };
 
-    Some(format!("{}{}", operator_str, try_opt!(expr.rewrite(context, width - 1, offset))))
+    let subexpr = try_opt!(expr.rewrite(context, width - operator_str.len(), offset));
+
+    Some(format!("{}{}", operator_str, subexpr))
 }

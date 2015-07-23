@@ -1,6 +1,9 @@
 // Test expressions
 
 fn foo() -> bool {
+    let boxed: Box<i32> = box 5;
+    let referenced = &5;
+
     let very_long_variable_name = (a + first + simple + test);
     let very_long_variable_name = (a + first + simple + test + AAAAAAAAAAAAA + BBBBBBBBBBBBBBBBB +
                                    b + c);
