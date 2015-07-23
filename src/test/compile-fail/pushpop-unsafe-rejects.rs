@@ -45,29 +45,30 @@ fn main() {
     });
 
 
-    // Note: For implementation simplicity I have chosen to just have
-    // the stack do "saturated pop", but perhaps we would prefer to
-    // have cases like these two here be errors:
+    // Note: For implementation simplicity the compiler just
+    // ICE's if you underflow the push_unsafe stack.
+    //
+    // Thus all of the following cases cause an ICE.
+    //
+    // (The "ERROR" notes are from an earlier version
+    //  that used saturated arithmetic rather than checked
+    //  arithmetic.)
 
-    pop_unsafe!{ g() };
-
-    push_unsafe!({
-        pop_unsafe!(pop_unsafe!{ g() })
-    });
-
-
-    // Okay, back to examples that do error, even in the presence of
-    // "saturated pop"
-
-    push_unsafe!({
-        g();
-        pop_unsafe!(pop_unsafe!({
-            f() //~ ERROR: call to unsafe function
-        }))
-    });
-
-    pop_unsafe!({
-        f(); //~ ERROR: call to unsafe function
-    })
+    //    pop_unsafe!{ g() };
+    //
+    //    push_unsafe!({
+    //        pop_unsafe!(pop_unsafe!{ g() })
+    //    });
+    //
+    //    push_unsafe!({
+    //        g();
+    //        pop_unsafe!(pop_unsafe!({
+    //            f() // ERROR: call to unsafe function
+    //        }))
+    //    });
+    //
+    //    pop_unsafe!({
+    //        f(); // ERROR: call to unsafe function
+    //    })
 
 }
