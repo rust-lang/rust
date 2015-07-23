@@ -435,7 +435,7 @@ impl fmt::Debug for Wtf8 {
                 None => break,
                 Some((surrogate_pos, surrogate)) => {
                     // the data in this slice is valid UTF-8, transmute to &str
-                    let s: &str = unsafe { mem::transmute(&self.bytes[pos..surrogate_pos]) };
+                    let s: &str = unsafe { str::from_utf8_unchecked(&self.bytes[pos..surrogate_pos]) };
                     try!(s.fmt(formatter));
                     try!(write!(formatter, "\\u{{{:X}}}", surrogate));
                     pos = surrogate_pos + 3;
@@ -443,7 +443,7 @@ impl fmt::Debug for Wtf8 {
             }
         }
         // the data in this slice is valid UTF-8, transmute to &str
-        let s: &str = unsafe { mem::transmute(&self.bytes[pos..]) };
+        let s: &str = unsafe { str::from_utf8_unchecked(&self.bytes[pos..]) };
         try!(s.fmt(formatter));
         formatter.write_str("\"")
     }
