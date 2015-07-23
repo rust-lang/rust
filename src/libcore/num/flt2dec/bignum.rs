@@ -11,9 +11,9 @@
 //! Custom arbitrary-precision number (bignum) implementation.
 //!
 //! This is designed to avoid the heap allocation at expense of stack memory.
-//! The most used bignum type, `Big32x36`, is limited by 32 × 36 = 1,152 bits
-//! and will take at most 152 bytes of stack memory. This is (barely) enough
-//! for handling all possible finite `f64` values.
+//! The most used bignum type, `Big32x40`, is limited by 32 × 40 = 1,280 bits
+//! and will take at most 160 bytes of stack memory. This is more than enough
+//! for formatting and parsing all possible finite `f64` values.
 //!
 //! In principle it is possible to have multiple bignum types for different
 //! inputs, but we don't do so to avoid the code bloat. Each bignum is still
@@ -344,10 +344,10 @@ macro_rules! define_bignum {
     )
 }
 
-/// The digit type for `Big32x36`.
+/// The digit type for `Big32x40`.
 pub type Digit32 = u32;
 
-define_bignum!(Big32x36: type=Digit32, n=36);
+define_bignum!(Big32x40: type=Digit32, n=40);
 
 // this one is used for testing only.
 #[doc(hidden)]
