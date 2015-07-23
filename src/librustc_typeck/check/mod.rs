@@ -251,9 +251,9 @@ impl UnsafetyState {
             unsafety => {
                 let (unsafety, def, count) = match blk.rules {
                     ast::PushUnsafeBlock(..) =>
-                        (unsafety, blk.id, self.unsafe_push_count.saturating_add(1)),
+                        (unsafety, blk.id, self.unsafe_push_count.checked_add(1).unwrap()),
                     ast::PopUnsafeBlock(..) =>
-                        (unsafety, blk.id, self.unsafe_push_count.saturating_sub(1)),
+                        (unsafety, blk.id, self.unsafe_push_count.checked_sub(1).unwrap()),
                     ast::UnsafeBlock(..) =>
                         (ast::Unsafety::Unsafe, blk.id, self.unsafe_push_count),
                     ast::DefaultBlock =>

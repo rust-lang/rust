@@ -124,11 +124,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
             }
             ast::PushUnsafeBlock(..) => {
                 self.unsafe_context.push_unsafe_count =
-                    self.unsafe_context.push_unsafe_count.saturating_add(1);
+                    self.unsafe_context.push_unsafe_count.checked_add(1).unwrap();
             }
             ast::PopUnsafeBlock(..) => {
                 self.unsafe_context.push_unsafe_count =
-                    self.unsafe_context.push_unsafe_count.saturating_sub(1);
+                    self.unsafe_context.push_unsafe_count.checked_sub(1).unwrap();
             }
         }
 
