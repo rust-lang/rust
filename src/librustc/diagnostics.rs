@@ -37,7 +37,7 @@ match foo {
 a wildcard arm above a more specific arm will make the latter arm irrelevant.
 
 Ensure the ordering of the match arm is correct and remove any superfluous
-checks.
+arms.
 "##,
 
 E0002: r##"
@@ -81,8 +81,8 @@ match number {
 }
 ```
 
-To match against NaN values, you should
-instead use the `is_nan()` method in a guard, like so:
+To match against NaN values, you should instead use the `is_nan()` method in a
+guard, like so:
 
 ```
 match number {
@@ -333,8 +333,8 @@ Statics are shared everywhere, and if they refer to mutable data one might
 violate memory safety since holding multiple mutable references to shared data
 is not allowed.
 
-If you really want global mutable state, try using a global `UnsafeCell` or
-`static mut`.
+If you really want global mutable state, try using `static mut` or a global
+`UnsafeCell`.
 
 "##,
 
@@ -416,7 +416,7 @@ is bad because the function body may not mutate `x`.
 
 Remove any mutable bindings from the argument list to fix this error. In case
 you need to mutate the argument, try lazily initializing a global variable
-instead of using a const fn, or refactoring the code to a functional style to
+instead of using a `const fn`, or refactoring the code to a functional style to
 avoid mutation if possible.
 "##,
 
@@ -444,11 +444,11 @@ requirements are satisfied by the trait in question.
 
 Trait objects are a form of dynamic dispatch and use a dynamically sized type
 for the inner type. So, for a given trait `Trait`, when `Trait` is treated as a
-type, as in `Box<Trait>`, the inner type is "unsized". In such cases the boxed
-pointer is a "fat pointer" that contains an extra pointer to a table of methods
+type, as in `Box<Trait>`, the inner type is 'unsized'. In such cases the boxed
+pointer is a 'fat pointer' that contains an extra pointer to a table of methods
 (among other things) for dynamic dispatch. This design mandates some
 restrictions on the types of traits that are allowed to be used in trait
-objects, which are collectively termed as "object safety" rules.
+objects, which are collectively termed as 'object safety' rules.
 
 Attempting to create a trait object for a non object-safe trait will trigger
 this error.
@@ -513,7 +513,7 @@ fn call_foo(x: Box<Trait>) {
 If only some methods aren't object-safe, you can add a `where Self: Sized` bound
 on them to mark them as explicitly unavailable to trait objects. The
 functionality will still be available to all other implementers, including
-`Box<Trait>` which is itself sized (assuming you `impl Trait for Box<Trait>`)
+`Box<Trait>` which is itself sized (assuming you `impl Trait for Box<Trait>`).
 
 ```
 trait Trait {
@@ -530,7 +530,7 @@ that trait that aren't behind trait objects.
 ### Method has generic type parameters
 
 As mentioned before, trait objects contain pointers to method tables. So, if we
-have
+have:
 
 ```
 trait Trait {
@@ -549,7 +549,7 @@ impl Trait for u8 {
 // ...
 ```
 
-at compile time each implementation of `Trait` will produce a table containing
+At compile time each implementation of `Trait` will produce a table containing
 the various methods (and other items) related to the implementation.
 
 This works fine, but when the method gains generic parameters, we can have a
@@ -578,7 +578,7 @@ that implements the trait. Now, if it has type parameters, we need to add
 implementations for every type that implements the trait, and there could
 theoretically be an infinite number of types.
 
-For example, with
+For example, with:
 
 ```
 trait Trait {
@@ -598,7 +598,7 @@ impl Trait for u8 {
 // 8 more implementations
 ```
 
-Now, if I have the following code:
+Now, if we have the following code:
 
 ```
 fn call_foo(thing: Box<Trait>) {
@@ -646,7 +646,6 @@ This could be called as `<Foo as Foo>::foo()`, which would not be able to pick
 an implementation.
 
 Adding a `Self: Sized` bound to these methods will generally make this compile.
-
 
 ```
 trait Foo {
@@ -752,7 +751,8 @@ https://doc.rust-lang.org/reference.html#ffi-attributes
 "##,
 
 E0109: r##"
-You tried to give a type parameter to a type which doesn't need it; for example:
+You tried to give a type parameter to a type which doesn't need it. Erroneous
+code example:
 
 ```
 type X = u32<i32>; // error: type parameters are not allowed on this type
@@ -769,8 +769,8 @@ type X = u32; // this compiles
 "##,
 
 E0110: r##"
-You tried to give a lifetime parameter to a type which doesn't need it; for
-example:
+You tried to give a lifetime parameter to a type which doesn't need it.
+Erroneous code example:
 
 ```
 type X = u32<'static>; // error: lifetime parameters are not allowed on
@@ -882,6 +882,14 @@ fn foo<T: MyTransmutableType>(x: Vec<T>) {
 Each impl will be checked for a size match in the transmute as usual, and since
 there are no unbound type parameters involved, this should compile unless there
 is a size mismatch in one of the impls.
+
+It is also possible to manually transmute:
+
+```
+let result: SomeType = mem::uninitialized();
+unsafe { copy_nonoverlapping(&v, &result) };
+result // `v` transmuted to type `SomeType`
+```
 "##,
 
 E0152: r##"
@@ -1157,7 +1165,7 @@ returning an appropriate value or panicking if necessary.
 
 E0270: r##"
 Rust lets you define functions which are known to never return, i.e. are
-"diverging", by marking its return type as `!`.
+'diverging', by marking its return type as `!`.
 
 For example, the following functions never return:
 
@@ -1416,7 +1424,7 @@ add one of the same name as a type parameter. If you intended to use literal
 braces, use `{{` and `}}` to escape them.
 "##,
 
-E0273: r##"
+E0274: r##"
 The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
 message for when a particular trait isn't implemented on a type placed in a
 position that needs that trait. For example, when the following code is
