@@ -606,7 +606,13 @@ impl<'a> TraitDef<'a> {
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
         let ident = ast_util::impl_pretty_name(&opt_trait_ref, Some(&*self_type));
-        let mut a = vec![attr];
+        let unused_qual = cx.attribute(
+            self.span,
+            cx.meta_list(self.span,
+                         InternedString::new("allow"),
+                         vec![cx.meta_word(self.span,
+                                           InternedString::new("unused_qualifications"))]));
+        let mut a = vec![attr, unused_qual];
         a.extend(self.attributes.iter().cloned());
         cx.item(
             self.span,
