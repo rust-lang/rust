@@ -525,6 +525,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                     // and bare functions don't own instances
                     // of the types appearing within them.
                     walker.skip_current_subtree();
+                    breadcrumbs.pop();
                 }
                 _ => {}
             };
