@@ -416,7 +416,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             ty::TyBareFn(_, ref barefnty) => {
                 (cx.tcx().erase_late_bound_regions(&barefnty.sig), barefnty.abi)
             }
-            ty::TyClosure(def_id, substs) => {
+            ty::TyClosure(def_id, ref substs) => {
                 let closure_type = cx.tcx().closure_type(def_id, substs);
                 (cx.tcx().erase_late_bound_regions(&closure_type.sig), closure_type.abi)
             }

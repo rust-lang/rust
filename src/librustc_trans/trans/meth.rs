@@ -341,8 +341,6 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let llfn = closure::trans_closure_method(bcx.ccx(),
                                                      vtable_closure.closure_def_id,
                                                      vtable_closure.substs,
-                                                     MethodCallKey(method_call),
-                                                     bcx.fcx.param_substs,
                                                      trait_closure_kind);
             Callee {
                 bcx: bcx,
@@ -646,8 +644,6 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 let llfn = closure::trans_closure_method(ccx,
                                                          closure_def_id,
                                                          substs,
-                                                         ExprId(0),
-                                                         param_substs,
                                                          trait_closure_kind);
                 vec![llfn].into_iter()
             }

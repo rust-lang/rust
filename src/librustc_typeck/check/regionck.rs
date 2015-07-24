@@ -89,7 +89,6 @@ use middle::free_region::FreeRegionMap;
 use middle::implicator;
 use middle::mem_categorization as mc;
 use middle::region::CodeExtent;
-use middle::subst::Substs;
 use middle::traits;
 use middle::ty::{self, ReScope, Ty, MethodCall, HasTypeFlags};
 use middle::infer::{self, GenericKind};
@@ -383,7 +382,6 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                         self.region_bound_pairs.push((r_a, generic_b.clone()));
                     }
                     implicator::Implication::RegionSubRegion(..) |
-                    implicator::Implication::RegionSubClosure(..) |
                     implicator::Implication::Predicate(..) => {
                         // In principle, we could record (and take
                         // advantage of) every relationship here, but
@@ -1426,9 +1424,6 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
                 generic_must_outlive(rcx, o1, r_a, generic_b);
             }
-            implicator::Implication::RegionSubClosure(_, r_a, def_id, substs) => {
-                closure_must_outlive(rcx, origin.clone(), r_a, def_id, substs);
-            }
             implicator::Implication::Predicate(def_id, predicate) => {
                 let cause = traits::ObligationCause::new(origin.span(),
                                                          rcx.body_id,
@@ -1437,23 +1432,6 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 rcx.fcx.register_predicate(obligation);
             }
         }
-    }
-}
-
-fn closure_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
-                                  origin: infer::SubregionOrigin<'tcx>,
-                                  region: ty::Region,
-                                  def_id: ast::DefId,
-                                  substs: &'tcx Substs<'tcx>) {
-    debug!("closure_must_outlive(region={:?}, def_id={:?}, substs={:?})",
-           region, def_id, substs);
-
-    let upvars = rcx.fcx.infcx().closure_upvars(def_id, substs).unwrap();
-    for upvar in upvars {
-        let var_id = upvar.def.def_id().local_id();
-        type_must_outlive(
-            rcx, infer::FreeVariable(origin.span(), var_id),
-            upvar.ty, region);
     }
 }
 
