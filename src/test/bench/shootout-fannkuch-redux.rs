@@ -47,6 +47,7 @@ use std::intrinsics::copy;
 fn rotate(x: &mut [i32]) {
     let tmp = x[0];
     let last = x.len() - 1;
+    if last <= 0 { return; }
     unsafe { copy(&x[1], &mut x[0], last); }
     x[last] = tmp;
 }
