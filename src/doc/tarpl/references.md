@@ -2,7 +2,8 @@
 
 There are two kinds of reference:
 
-* Shared reference: `&` Mutable reference: `&mut`
+* Shared reference: `&`
+* Mutable reference: `&mut`
 
 Which obey the following rules:
 
