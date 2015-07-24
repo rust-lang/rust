@@ -203,6 +203,7 @@
        test(no_crate_inject, attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
+#![cfg_attr(stage0, allow(unused_features))]
 #![feature(alloc)]
 #![feature(allow_internal_unstable)]
 #![feature(associated_consts)]
@@ -234,6 +235,7 @@
 #![feature(no_std)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
+#![feature(placement_in_syntax)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(reflect_marker)]

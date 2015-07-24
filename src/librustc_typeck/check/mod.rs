@@ -232,12 +232,13 @@ impl<'tcx> Expectation<'tcx> {
 pub struct UnsafetyState {
     pub def: ast::NodeId,
     pub unsafety: ast::Unsafety,
+    pub unsafe_push_count: u32,
     from_fn: bool
 }
 
 impl UnsafetyState {
     pub fn function(unsafety: ast::Unsafety, def: ast::NodeId) -> UnsafetyState {
-        UnsafetyState { def: def, unsafety: unsafety, from_fn: true }
+        UnsafetyState { def: def, unsafety: unsafety, unsafe_push_count: 0, from_fn: true }
     }
 
     pub fn recurse(&mut self, blk: &ast::Block) -> UnsafetyState {
@@ -249,13 +250,20 @@ impl UnsafetyState {
             ast::Unsafety::Unsafe if self.from_fn => *self,
 
             unsafety => {
-                let (unsafety, def) = match blk.rules {
-                    ast::UnsafeBlock(..) => (ast::Unsafety::Unsafe, blk.id),
-                    ast::DefaultBlock => (unsafety, self.def),
+                let (unsafety, def, count) = match blk.rules {
+                    ast::PushUnsafeBlock(..) =>
+                        (unsafety, blk.id, self.unsafe_push_count.checked_add(1).unwrap()),
+                    ast::PopUnsafeBlock(..) =>
+                        (unsafety, blk.id, self.unsafe_push_count.checked_sub(1).unwrap()),
+                    ast::UnsafeBlock(..) =>
+                        (ast::Unsafety::Unsafe, blk.id, self.unsafe_push_count),
+                    ast::DefaultBlock =>
+                        (unsafety, self.def, self.unsafe_push_count),
                 };
                 UnsafetyState{ def: def,
-                             unsafety: unsafety,
-                             from_fn: false }
+                               unsafety: unsafety,
+                               unsafe_push_count: count,
+                               from_fn: false }
             }
         }
     }
@@ -4884,9 +4892,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "move_val_init" => {
                 (1,
                  vec!(
-                    tcx.mk_mut_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
-                                                                  ty::BrAnon(0))),
-                                    param(ccx, 0)),
+                    tcx.mk_mut_ptr(param(ccx, 0)),
                     param(ccx, 0)
                   ),
                tcx.mk_nil())

@@ -10,7 +10,7 @@
 
 //! Enforces the Rust effect system. Currently there is just one effect,
 //! `unsafe`.
-use self::UnsafeContext::*;
+use self::RootUnsafeContext::*;
 
 use middle::def;
 use middle::ty::{self, Ty};
@@ -21,8 +21,20 @@ use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
 
+#[derive(Copy, Clone)]
+struct UnsafeContext {
+    push_unsafe_count: usize,
+    root: RootUnsafeContext,
+}
+
+impl UnsafeContext {
+    fn new(root: RootUnsafeContext) -> UnsafeContext {
+        UnsafeContext { root: root, push_unsafe_count: 0 }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq)]
-enum UnsafeContext {
+enum RootUnsafeContext {
     SafeContext,
     UnsafeFn,
     UnsafeBlock(ast::NodeId),
@@ -44,7 +56,8 @@ struct EffectCheckVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
     fn require_unsafe(&mut self, span: Span, description: &str) {
-        match self.unsafe_context {
+        if self.unsafe_context.push_unsafe_count > 0 { return; }
+        match self.unsafe_context.root {
             SafeContext => {
                 // Report an error.
                 span_err!(self.tcx.sess, span, E0133,
@@ -75,9 +88,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
 
         let old_unsafe_context = self.unsafe_context;
         if is_unsafe_fn {
-            self.unsafe_context = UnsafeFn
+            self.unsafe_context = UnsafeContext::new(UnsafeFn)
         } else if is_item_fn {
-            self.unsafe_context = SafeContext
+            self.unsafe_context = UnsafeContext::new(SafeContext)
         }
 
         visit::walk_fn(self, fn_kind, fn_decl, block, span);
@@ -105,9 +118,17 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 // external blocks (e.g. `unsafe { println("") }`,
                 // expands to `unsafe { ... unsafe { ... } }` where
                 // the inner one is compiler generated).
-                if self.unsafe_context == SafeContext || source == ast::CompilerGenerated {
-                    self.unsafe_context = UnsafeBlock(block.id)
+                if self.unsafe_context.root == SafeContext || source == ast::CompilerGenerated {
+                    self.unsafe_context.root = UnsafeBlock(block.id)
                 }
+            }
+            ast::PushUnsafeBlock(..) => {
+                self.unsafe_context.push_unsafe_count =
+                    self.unsafe_context.push_unsafe_count.checked_add(1).unwrap();
+            }
+            ast::PopUnsafeBlock(..) => {
+                self.unsafe_context.push_unsafe_count =
+                    self.unsafe_context.push_unsafe_count.checked_sub(1).unwrap();
             }
         }
 
@@ -162,7 +183,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
 pub fn check_crate(tcx: &ty::ctxt) {
     let mut visitor = EffectCheckVisitor {
         tcx: tcx,
-        unsafe_context: SafeContext,
+        unsafe_context: UnsafeContext::new(SafeContext),
     };
 
     visit::walk_crate(&mut visitor, tcx.map.krate());

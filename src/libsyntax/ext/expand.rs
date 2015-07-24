@@ -33,6 +33,16 @@ use visit;
 use visit::Visitor;
 use std_inject;
 
+// Given suffix ["b","c","d"], returns path `::std::b::c::d` when
+// `fld.cx.use_std`, and `::core::b::c::d` otherwise.
+fn mk_core_path(fld: &mut MacroExpander,
+                span: Span,
+                suffix: &[&'static str]) -> ast::Path {
+    let mut idents = vec![fld.cx.ident_of_std("core")];
+    for s in suffix.iter() { idents.push(fld.cx.ident_of(*s)); }
+    fld.cx.path_global(span, idents)
+}
+
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
     fn push_compiler_expansion(fld: &mut MacroExpander, span: Span, expansion_desc: &str) {
         fld.cx.bt_push(ExpnInfo {
@@ -40,13 +50,26 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             callee: NameAndSpan {
                 name: expansion_desc.to_string(),
                 format: CompilerExpansion,
+
+                // This does *not* mean code generated after
+                // `push_compiler_expansion` is automatically exempt
+                // from stability lints; must also tag such code with
+                // an appropriate span from `fld.cx.backtrace()`.
                 allow_internal_unstable: true,
+
                 span: None,
             },
         });
     }
 
-    e.and_then(|ast::Expr {id, node, span}| match node {
+    // Sets the expn_id so that we can use unstable methods.
+    fn allow_unstable(fld: &mut MacroExpander, span: Span) -> Span {
+        Span { expn_id: fld.cx.backtrace(), ..span }
+    }
+
+    let expr_span = e.span;
+    return e.and_then(|ast::Expr {id, node, span}| match node {
+
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
         ast::ExprMac(mac) => {
@@ -70,6 +93,118 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 span: span,
             })
         }
+
+        // Desugar ExprBox: `in (PLACE) EXPR`
+        ast::ExprBox(Some(placer), value_expr) => {
+            // to:
+            //
+            // let p = PLACE;
+            // let mut place = Placer::make_place(p);
+            // let raw_place = Place::pointer(&mut place);
+            // push_unsafe!({
+            //     std::intrinsics::move_val_init(raw_place, pop_unsafe!( EXPR ));
+            //     InPlace::finalize(place)
+            // })
+
+            // Ensure feature-gate is enabled
+            feature_gate::check_for_placement_in(
+                fld.cx.ecfg.features,
+                &fld.cx.parse_sess.span_diagnostic,
+                expr_span);
+
+            push_compiler_expansion(fld, expr_span, "placement-in expansion");
+
+            let value_span = value_expr.span;
+            let placer_span = placer.span;
+
+            let placer_expr = fld.fold_expr(placer);
+            let value_expr = fld.fold_expr(value_expr);
+
+            let placer_ident = token::gensym_ident("placer");
+            let agent_ident = token::gensym_ident("place");
+            let p_ptr_ident = token::gensym_ident("p_ptr");
+
+            let placer = fld.cx.expr_ident(span, placer_ident);
+            let agent = fld.cx.expr_ident(span, agent_ident);
+            let p_ptr = fld.cx.expr_ident(span, p_ptr_ident);
+
+            let make_place = ["ops", "Placer", "make_place"];
+            let place_pointer = ["ops", "Place", "pointer"];
+            let move_val_init = ["intrinsics", "move_val_init"];
+            let inplace_finalize = ["ops", "InPlace", "finalize"];
+
+            let make_call = |fld: &mut MacroExpander, p, args| {
+                // We feed in the `expr_span` because codemap's span_allows_unstable
+                // allows the call_site span to inherit the `allow_internal_unstable`
+                // setting.
+                let span_unstable = allow_unstable(fld, expr_span);
+                let path = mk_core_path(fld, span_unstable, p);
+                let path = fld.cx.expr_path(path);
+                let expr_span_unstable = allow_unstable(fld, span);
+                fld.cx.expr_call(expr_span_unstable, path, args)
+            };
+
+            let stmt_let = |fld: &mut MacroExpander, bind, expr| {
+                fld.cx.stmt_let(placer_span, false, bind, expr)
+            };
+            let stmt_let_mut = |fld: &mut MacroExpander, bind, expr| {
+                fld.cx.stmt_let(placer_span, true, bind, expr)
+            };
+
+            // let placer = <placer_expr> ;
+            let s1 = stmt_let(fld, placer_ident, placer_expr);
+
+            // let mut place = Placer::make_place(placer);
+            let s2 = {
+                let call = make_call(fld, &make_place, vec![placer]);
+                stmt_let_mut(fld, agent_ident, call)
+            };
+
+            // let p_ptr = Place::pointer(&mut place);
+            let s3 = {
+                let args = vec![fld.cx.expr_mut_addr_of(placer_span, agent.clone())];
+                let call = make_call(fld, &place_pointer, args);
+                stmt_let(fld, p_ptr_ident, call)
+            };
+
+            // pop_unsafe!(EXPR));
+            let pop_unsafe_expr = pop_unsafe_expr(fld.cx, value_expr, value_span);
+
+            // push_unsafe!({
+            //     ptr::write(p_ptr, pop_unsafe!(<value_expr>));
+            //     InPlace::finalize(place)
+            // })
+            let expr = {
+                let call_move_val_init = StmtSemi(make_call(
+                    fld, &move_val_init, vec![p_ptr, pop_unsafe_expr]), ast::DUMMY_NODE_ID);
+                let call_move_val_init = codemap::respan(value_span, call_move_val_init);
+
+                let call = make_call(fld, &inplace_finalize, vec![agent]);
+                Some(push_unsafe_expr(fld.cx, vec![P(call_move_val_init)], call, span))
+            };
+
+            let block = fld.cx.block_all(span, vec![s1, s2, s3], expr);
+            let result = fld.cx.expr_block(block);
+            fld.cx.bt_pop();
+            result
+        }
+
+        // Issue #22181:
+        // Eventually a desugaring for `box EXPR`
+        // (similar to the desugaring above for `in PLACE BLOCK`)
+        // should go here, desugaring
+        //
+        // to:
+        //
+        // let mut place = BoxPlace::make_place();
+        // let raw_place = Place::pointer(&mut place);
+        // let value = $value;
+        // unsafe {
+        //     ::std::ptr::write(raw_place, value);
+        //     Boxed::finalize(place)
+        // }
+        //
+        // But for now there are type-inference issues doing that.
 
         ast::ExprWhile(cond, body, opt_ident) => {
             let cond = fld.fold_expr(cond);
@@ -360,7 +495,26 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 span: span
             }, fld))
         }
-    })
+    });
+
+    fn push_unsafe_expr(cx: &mut ExtCtxt, stmts: Vec<P<ast::Stmt>>,
+                        expr: P<ast::Expr>, span: Span)
+                        -> P<ast::Expr> {
+        let rules = ast::PushUnsafeBlock(ast::CompilerGenerated);
+        cx.expr_block(P(ast::Block {
+            rules: rules, span: span, id: ast::DUMMY_NODE_ID,
+            stmts: stmts, expr: Some(expr),
+        }))
+    }
+
+    fn pop_unsafe_expr(cx: &mut ExtCtxt, expr: P<ast::Expr>, span: Span)
+                       -> P<ast::Expr> {
+        let rules = ast::PopUnsafeBlock(ast::CompilerGenerated);
+        cx.expr_block(P(ast::Block {
+            rules: rules, span: span, id: ast::DUMMY_NODE_ID,
+            stmts: vec![], expr: Some(expr),
+        }))
+    }
 }
 
 /// Expand a (not-ident-style) macro invocation. Returns the result
@@ -1504,6 +1658,7 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_trace_macros = allow_trace_macros,
         fn enable_allow_internal_unstable = allow_internal_unstable,
         fn enable_custom_derive = allow_custom_derive,
+        fn enable_pushpop_unsafe = allow_pushpop_unsafe,
     }
 }
 

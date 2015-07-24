@@ -980,6 +980,10 @@ impl CodeMap {
                             mac_span.lo <= span.lo && span.hi <= mac_span.hi
                         });
 
+                    debug!("span_allows_unstable: span: {:?} call_site: {:?} callee: {:?}",
+                           (span.lo, span.hi),
+                           (info.call_site.lo, info.call_site.hi),
+                           info.callee.span.map(|x| (x.lo, x.hi)));
                     debug!("span_allows_unstable: from this expansion? {}, allows unstable? {}",
                            span_comes_from_this_expansion,
                            info.callee.allow_internal_unstable);
