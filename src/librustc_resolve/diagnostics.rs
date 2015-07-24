@@ -484,7 +484,11 @@ use something::{self, self}; // error: `self` import can only appear once in
 ```
 
 Please verify you didn't misspell the import name or remove the duplicated
-`self` import.
+`self` import. Example:
+
+```
+use something::self; // ok!
+```
 "##,
 
 E0431: r##"
@@ -497,6 +501,25 @@ use {self}; // error: `self` import can only appear in an import list with a
 
 You can't import the current module in itself, please remove this import or
 verify you didn't misspell it.
+"##,
+
+E0432: r##"
+An import was unresolved. Erroneous code example:
+
+```
+use something::Foo; // error: unresolved import `something::Foo`.
+```
+
+Please verify you didn't misspell the import name or the import does exist
+in the module from where you tried to import it. Example:
+
+```
+use something::Foo; // ok!
+
+mod something {
+    pub struct Foo;
+}
+```
 "##,
 
 E0433: r##"
@@ -543,7 +566,6 @@ register_diagnostics! {
     E0426, // use of undeclared label
     E0427, // cannot use `ref` binding mode with ...
     E0429, // `self` imports are only allowed within a { } list
-    E0432, // unresolved import
     E0434, // can't capture dynamic environment in a fn item
     E0435, // attempt to use a non-constant value in a constant
     E0437, // type is not a member of trait
