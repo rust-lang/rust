@@ -410,10 +410,10 @@ match 0 {
 }
 ```
 
-The compiler needs to know the value of the pattern at compile time,
-which is not possible with a `static` variable. Please verify that the
-variable is spelled correctly and if so, try to use a `const` instead.
-Example:
+The compiler needs to know the value of the pattern at compile time;
+compile-time patterns can defined via const or enum items. Please verify
+that the identifier is spelled correctly, and if so, use a const instead
+of static to define it. Example:
 
 ```
 const FOO : i32 = 0;
