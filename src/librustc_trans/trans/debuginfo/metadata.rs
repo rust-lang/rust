@@ -811,14 +811,10 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
 
         }
-        ty::TyClosure(def_id, ref substs) => {
-            let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
-            let upvars = infcx.closure_upvars(def_id, substs).unwrap();
-            let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
-
+        ty::TyClosure(_, ref substs) => {
             prepare_tuple_metadata(cx,
                                    t,
-                                   &upvar_types[..],
+                                   &substs.upvar_tys,
                                    unique_type_id,
                                    usage_site_span).finalize(cx)
         }
