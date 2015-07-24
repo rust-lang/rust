@@ -11,6 +11,7 @@
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
 use metadata::common::LinkMeta;
+use metadata::cstore;
 use middle::def::ExportMap;
 use middle::traits;
 use trans::adt;
@@ -783,6 +784,29 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.shared.use_dll_storage_attrs()
+    }
+
+    /// Tests whether the given `krate` (an upstream crate) is ever used as a
+    /// dynamic library for the final linkage of this crate.
+    pub fn upstream_dylib_used(&self, krate: ast::CrateNum) -> bool {
+        let tcx = self.tcx();
+        let formats = tcx.dependency_formats.borrow();
+        tcx.sess.crate_types.borrow().iter().any(|ct| {
+            match formats[ct].get(krate as usize - 1) {
+                // If a crate is explicitly linked dynamically then we're
+                // definitely using it dynamically. If it's not being linked
+                // then currently that means it's being included through another
+                // dynamic library, so we're including it dynamically.
+                Some(&Some(cstore::RequireDynamic)) |
+                Some(&None) => true,
+
+                // Static linkage isn't included dynamically and if there's not
+                // an entry in the array then this crate type isn't actually
+                // doing much linkage so there's nothing dynamic going on.
+                Some(&Some(cstore::RequireStatic)) |
+                None => false,
+            }
+        })
     }
 }
 
