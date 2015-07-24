@@ -235,7 +235,6 @@
 #![feature(slice_bytes)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
-#![feature(str_as_bytes_mut)]
 #![feature(str_char)]
 #![feature(str_internals)]
 #![feature(unboxed_closures)]

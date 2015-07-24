@@ -1264,7 +1264,6 @@ pub trait StrExt {
     fn char_at(&self, i: usize) -> char;
     fn char_at_reverse(&self, i: usize) -> char;
     fn as_bytes<'a>(&'a self) -> &'a [u8];
-    unsafe fn as_bytes_mut<'a>(&'a mut self) -> &'a mut [u8];
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
     fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
         where P::Searcher: ReverseSearcher<'a>;
@@ -1555,11 +1554,6 @@ impl StrExt for str {
     #[inline]
     fn as_bytes(&self) -> &[u8] {
         unsafe { mem::transmute(self) }
-    }
-
-    #[inline]
-    unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
-        mem::transmute(self)
     }
 
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
