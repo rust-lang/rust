@@ -1057,6 +1057,10 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
 /// The `Deref` trait is used to specify the functionality of dereferencing
 /// operations like `*v`.
 ///
+/// `Deref` also enables ['`Deref` coercions'][coercions].
+///
+/// [coercions]: ../../book/deref-coercions.html
+///
 /// # Examples
 ///
 /// A struct with a single field which is accessible via dereferencing the
@@ -1110,6 +1114,10 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 
 /// The `DerefMut` trait is used to specify the functionality of dereferencing
 /// mutably like `*v = 1;`
+///
+/// `DerefMut` also enables ['`Deref` coercions'][coercions].
+///
+/// [coercions]: ../../book/deref-coercions.html
 ///
 /// # Examples
 ///
