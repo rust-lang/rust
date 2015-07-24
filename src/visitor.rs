@@ -351,7 +351,7 @@ impl<'a> FmtVisitor<'a> {
 
             result.push_str(&a_str);
 
-            if i < attrs.len() -1 {
+            if i < attrs.len() - 1 {
                 result.push('\n');
             }
         }

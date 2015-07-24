@@ -50,9 +50,8 @@ use visitor::FmtVisitor;
 use config::Config;
 
 #[macro_use]
-mod config;
-#[macro_use]
 mod utils;
+pub mod config;
 mod changes;
 mod visitor;
 mod items;
@@ -218,11 +217,12 @@ fn fmt_lines(changes: &mut ChangeSet, config: &Config) -> FormatReport {
         let mut cur_line = 1;
         let mut newline_count = 0;
         let mut errors = vec![];
-        let mut issue_seeker = BadIssueSeeker::new(config.report_todo,
-                                                   config.report_fixme);
+        let mut issue_seeker = BadIssueSeeker::new(config.report_todo, config.report_fixme);
 
         for (c, b) in text.chars() {
-            if c == '\r' { continue; }
+            if c == '\r' {
+                continue;
+            }
 
             // Add warnings for bad todos/ fixmes
             if let Some(issue) = issue_seeker.inspect(c) {

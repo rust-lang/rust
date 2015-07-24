@@ -60,7 +60,11 @@ impl<'a> FmtVisitor<'a> {
         }
 
         // 2 = ::
-        let path_separation_w = if path_str.len() > 0 { 2 } else { 0 };
+        let path_separation_w = if path_str.len() > 0 {
+            2
+        } else {
+            0
+        };
         // 5 = "use " + {
         let indent = path_str.len() + 5 + path_separation_w + vis.len();
 
@@ -106,7 +110,11 @@ impl<'a> FmtVisitor<'a> {
         // FIXME: Make more efficient by using a linked list? That would
         // require changes to the signatures of itemize_list and write_list.
         let has_self = move_self_to_front(&mut items);
-        let first_index = if has_self { 0 } else { 1 };
+        let first_index = if has_self {
+            0
+        } else {
+            1
+        };
 
         if self.config.reorder_imports {
             items[1..].sort_by(|a, b| a.item.cmp(&b.item));
@@ -115,10 +123,10 @@ impl<'a> FmtVisitor<'a> {
         let list = write_list(&items[first_index..], &fmt);
 
         Some(if path_str.len() == 0 {
-            format!("{}use {{{}}};", vis, list)
-        } else {
-            format!("{}use {}::{{{}}};", vis, path_str, list)
-        })
+                format!("{}use {{{}}};", vis, list)
+            } else {
+                format!("{}use {}::{{{}}};", vis, path_str, list)
+            })
     }
 }
 

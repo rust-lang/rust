@@ -13,3 +13,4 @@ enum_trailing_comma = true
 report_todo = "Always"
 report_fixme = "Never"
 reorder_imports = true
+expr_indent_style = "Tabbed"

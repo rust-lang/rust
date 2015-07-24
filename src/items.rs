@@ -446,7 +446,11 @@ impl<'a> FmtVisitor<'a> {
                                  + field.node.name.to_string().len()
                                  + 1; // Open paren
 
-                    let comma_cost = if self.config.enum_trailing_comma { 1 } else { 0 };
+                    let comma_cost = if self.config.enum_trailing_comma {
+                        1
+                    } else {
+                        0
+                    };
                     let budget = self.config.ideal_width - indent - comma_cost - 1; // 1 = )
 
                     let fmt = ListFormatting {
@@ -520,7 +524,11 @@ impl<'a> FmtVisitor<'a> {
             ast::StructFieldKind::UnnamedField(..) => true
         };
 
-        let (opener, terminator) = if is_tuple { ("(", ")") } else { (" {", "}") };
+        let (opener, terminator) = if is_tuple {
+            ("(", ")")
+        } else {
+            (" {", "}")
+        };
 
         let generics_str = match generics {
             Some(g) => self.format_generics(g,
@@ -565,7 +573,11 @@ impl<'a> FmtVisitor<'a> {
             result.push_str(&indentation);
         }
 
-        let tactic = if break_line { ListTactic::Vertical } else { ListTactic::Horizontal };
+        let tactic = if break_line {
+            ListTactic::Vertical
+        } else {
+            ListTactic::Horizontal
+        };
 
         // 1 = ,
         let budget = self.config.ideal_width - offset + self.config.tab_spaces - 1;

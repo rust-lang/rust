@@ -14,6 +14,18 @@ use {NewlineStyle, BraceStyle, ReturnIndent, StructLitStyle};
 use lists::SeparatorTactic;
 use issues::ReportTactic;
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum BlockIndentStyle {
+    // Same level as parent.
+    Inherit,
+    // One level deeper than parent.
+    Tabbed,
+    // Aligned with block open.
+    Visual,
+}
+
+impl_enum_decodable!(BlockIndentStyle, Inherit, Tabbed, Visual);
+
 #[derive(RustcDecodable, Clone)]
 pub struct Config {
     pub max_width: usize,
@@ -31,6 +43,7 @@ pub struct Config {
     pub report_todo: ReportTactic,
     pub report_fixme: ReportTactic,
     pub reorder_imports: bool, // Alphabetically, case sensitive.
+    pub expr_indent_style: BlockIndentStyle,
 }
 
 impl Config {
