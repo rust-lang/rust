@@ -1096,6 +1096,14 @@ impl<'a> From<&'a str> for String {
     }
 }
 
+impl From<Vec<char>> for String {
+    #[cfg(not(test))]
+    #[inline]
+    fn from(chars: Vec<char>) -> String {
+        chars.into_iter().collect()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for Cow<'a, str> {
     #[inline]
