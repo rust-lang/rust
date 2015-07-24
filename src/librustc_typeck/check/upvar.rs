@@ -93,22 +93,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'tcx> {
         visit::walk_expr(self, expr);
     }
 
-    fn visit_fn(&mut self,
-                fn_kind: visit::FnKind<'v>,
-                decl: &'v ast::FnDecl,
-                block: &'v ast::Block,
-                span: Span,
-                _id: ast::NodeId)
-    {
-        match fn_kind {
-            visit::FkItemFn(..) | visit::FkMethod(..) => {
-                // ignore nested fn items
-            }
-            visit::FkFnBlock => {
-                visit::walk_fn(self, fn_kind, decl, block, span);
-            }
-        }
-    }
+    // Skip all items; they aren't in the same context.
+    fn visit_item(&mut self, _: &'v ast::Item) { }
 }
 
 impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
@@ -515,16 +501,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'tcx> {
                 span: Span,
                 id: ast::NodeId)
     {
-        match fn_kind {
-            visit::FkItemFn(..) | visit::FkMethod(..) => {
-                // ignore nested fn items
-            }
-            visit::FkFnBlock => {
-                visit::walk_fn(self, fn_kind, decl, body, span);
-                self.analyze_closure(id, span, decl, body);
-            }
-        }
+        visit::walk_fn(self, fn_kind, decl, body, span);
+        self.analyze_closure(id, span, decl, body);
     }
+
+    // Skip all items; they aren't in the same context.
+    fn visit_item(&mut self, _: &'v ast::Item) { }
 }
 
 impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
