@@ -882,11 +882,16 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
         },
         ast::ExprClosure(_, ref decl, ref body) => {
-            closure::trans_closure_expr(closure::Dest::Ignore(cx),
-                                        decl,
-                                        body,
-                                        e.id,
-                                        param_substs);
+            match ety.sty {
+                ty::TyClosure(_, ref substs) => {
+                    closure::trans_closure_expr(closure::Dest::Ignore(cx), decl,
+                                                body, e.id, substs);
+                }
+                _ =>
+                    cx.sess().span_bug(
+                        e.span,
+                        &format!("bad type for closure expr: {:?}", ety))
+            }
             C_null(type_of::type_of(cx, ety))
         },
         _ => cx.sess().span_bug(e.span,

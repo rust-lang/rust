@@ -40,7 +40,6 @@ impl FreeRegionMap {
                     self.relate_free_regions(free_a, free_b);
                 }
                 Implication::RegionSubRegion(..) |
-                Implication::RegionSubClosure(..) |
                 Implication::RegionSubGeneric(..) |
                 Implication::Predicate(..) => {
                 }

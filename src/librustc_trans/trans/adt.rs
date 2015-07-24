@@ -48,7 +48,6 @@ use std::rc::Rc;
 use llvm::{ValueRef, True, IntEQ, IntNE};
 use back::abi::FAT_PTR_ADDR;
 use middle::subst;
-use middle::infer;
 use middle::ty::{self, Ty};
 use middle::ty::Disr;
 use syntax::ast;
@@ -221,11 +220,8 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             Univariant(mk_struct(cx, &ftys[..], packed, t), dtor_to_init_u8(dtor))
         }
-        ty::TyClosure(def_id, substs) => {
-            let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
-            let upvars = infcx.closure_upvars(def_id, substs).unwrap();
-            let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
-            Univariant(mk_struct(cx, &upvar_types[..], false, t), 0)
+        ty::TyClosure(_, ref substs) => {
+            Univariant(mk_struct(cx, &substs.upvar_tys, false, t), 0)
         }
         ty::TyEnum(def_id, substs) => {
             let cases = get_cases(cx.tcx(), def_id, substs);
@@ -441,12 +437,8 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         // Perhaps one of the upvars of this struct is non-zero
         // Let's recurse and find out!
-        ty::TyClosure(def_id, substs) => {
-            let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
-            let upvars = infcx.closure_upvars(def_id, substs).unwrap();
-            let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
-
-            for (j, &ty) in upvar_types.iter().enumerate() {
+        ty::TyClosure(_, ref substs) => {
+            for (j, &ty) in substs.upvar_tys.iter().enumerate() {
                 if let Some(mut fpath) = find_discr_field_candidate(tcx, ty, path.clone()) {
                     fpath.push(j);
                     return Some(fpath);

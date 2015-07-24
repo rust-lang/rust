@@ -367,7 +367,13 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
     }
 
     fn expr_ty(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
-        self.typer.node_ty(expr.id)
+        match self.typer.node_ty(expr.id) {
+            Ok(t) => Ok(t),
+            Err(()) => {
+                debug!("expr_ty({:?}) yielded Err", expr);
+                Err(())
+            }
+        }
     }
 
     fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {

@@ -1767,7 +1767,7 @@ pub enum TypeVariants<'tcx> {
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
-    TyClosure(DefId, &'tcx Substs<'tcx>),
+    TyClosure(DefId, Box<ClosureSubsts<'tcx>>),
 
     /// A tuple type.  For example, `(i32, bool)`.
     TyTuple(Vec<Ty<'tcx>>),
@@ -1785,6 +1785,93 @@ pub enum TypeVariants<'tcx> {
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
     TyError,
+}
+
+/// A closure can be modeled as a struct that looks like:
+///
+///     struct Closure<'l0...'li, T0...Tj, U0...Uk> {
+///         upvar0: U0,
+///         ...
+///         upvark: Uk
+///     }
+///
+/// where 'l0...'li and T0...Tj are the lifetime and type parameters
+/// in scope on the function that defined the closure, and U0...Uk are
+/// type parameters representing the types of its upvars (borrowed, if
+/// appropriate).
+///
+/// So, for example, given this function:
+///
+///     fn foo<'a, T>(data: &'a mut T) {
+///          do(|| data.count += 1)
+///     }
+///
+/// the type of the closure would be something like:
+///
+///     struct Closure<'a, T, U0> {
+///         data: U0
+///     }
+///
+/// Note that the type of the upvar is not specified in the struct.
+/// You may wonder how the impl would then be able to use the upvar,
+/// if it doesn't know it's type? The answer is that the impl is
+/// (conceptually) not fully generic over Closure but rather tied to
+/// instances with the expected upvar types:
+///
+///     impl<'b, 'a, T> FnMut() for Closure<'a, T, &'b mut &'a mut T> {
+///         ...
+///     }
+///
+/// You can see that the *impl* fully specified the type of the upvar
+/// and thus knows full well that `data` has type `&'b mut &'a mut T`.
+/// (Here, I am assuming that `data` is mut-borrowed.)
+///
+/// Now, the last question you may ask is: Why include the upvar types
+/// as extra type parameters? The reason for this design is that the
+/// upvar types can reference lifetimes that are internal to the
+/// creating function. In my example above, for example, the lifetime
+/// `'b` represents the extent of the closure itself; this is some
+/// subset of `foo`, probably just the extent of the call to the to
+/// `do()`. If we just had the lifetime/type parameters from the
+/// enclosing function, we couldn't name this lifetime `'b`. Note that
+/// there can also be lifetimes in the types of the upvars themselves,
+/// if one of them happens to be a reference to something that the
+/// creating fn owns.
+///
+/// OK, you say, so why not create a more minimal set of parameters
+/// that just includes the extra lifetime parameters? The answer is
+/// primarily that it would be hard --- we don't know at the time when
+/// we create the closure type what the full types of the upvars are,
+/// nor do we know which are borrowed and which are not. In this
+/// design, we can just supply a fresh type parameter and figure that
+/// out later.
+///
+/// All right, you say, but why include the type parameters from the
+/// original function then? The answer is that trans may need them
+/// when monomorphizing, and they may not appear in the upvars.  A
+/// closure could capture no variables but still make use of some
+/// in-scope type parameter with a bound (e.g., if our example above
+/// had an extra `U: Default`, and the closure called `U::default()`).
+///
+/// There is another reason. This design (implicitly) prohibits
+/// closures from capturing themselves (except via a trait
+/// object). This simplifies closure inference considerably, since it
+/// means that when we infer the kind of a closure or its upvars, we
+/// don't have to handle cycles where the decisions we make for
+/// closure C wind up influencing the decisions we ought to make for
+/// closure C (which would then require fixed point iteration to
+/// handle). Plus it fixes an ICE. :P
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct ClosureSubsts<'tcx> {
+    /// Lifetime and type parameters from the enclosing function.
+    /// These are separated out because trans wants to pass them around
+    /// when monomorphizing.
+    pub func_substs: &'tcx Substs<'tcx>,
+
+    /// The types of the upvars. The list parallels the freevars and
+    /// `upvar_borrows` lists. These are kept distinct so that we can
+    /// easily index into them.
+    pub upvar_tys: Vec<Ty<'tcx>>
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -3214,10 +3301,11 @@ impl FlagComputation {
                 }
             }
 
-            &TyClosure(_, substs) => {
+            &TyClosure(_, ref substs) => {
                 self.add_flags(TypeFlags::HAS_TY_CLOSURE);
                 self.add_flags(TypeFlags::HAS_LOCAL_NAMES);
-                self.add_substs(substs);
+                self.add_substs(&substs.func_substs);
+                self.add_tys(&substs.upvar_tys);
             }
 
             &TyInfer(_) => {
@@ -3461,10 +3549,10 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn closure_type(&self,
                         def_id: ast::DefId,
-                        substs: &subst::Substs<'tcx>)
+                        substs: &ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {
-        self.tables.borrow().closure_tys.get(&def_id).unwrap().subst(self, substs)
+        self.tables.borrow().closure_tys.get(&def_id).unwrap().subst(self, &substs.func_substs)
     }
 
     pub fn type_parameter_def(&self,
@@ -3659,9 +3747,22 @@ impl<'tcx> ctxt<'tcx> {
         self.mk_ty(TyStruct(struct_id, substs))
     }
 
-    pub fn mk_closure(&self, closure_id: ast::DefId, substs: &'tcx Substs<'tcx>)
+    pub fn mk_closure(&self,
+                      closure_id: ast::DefId,
+                      substs: &'tcx Substs<'tcx>,
+                      tys: Vec<Ty<'tcx>>)
                       -> Ty<'tcx> {
-        self.mk_ty(TyClosure(closure_id, substs))
+        self.mk_closure_from_closure_substs(closure_id, Box::new(ClosureSubsts {
+            func_substs: substs,
+            upvar_tys: tys
+        }))
+    }
+
+    pub fn mk_closure_from_closure_substs(&self,
+                                          closure_id: ast::DefId,
+                                          closure_substs: Box<ClosureSubsts<'tcx>>)
+                                          -> Ty<'tcx> {
+        self.mk_ty(TyClosure(closure_id, closure_substs))
     }
 
     pub fn mk_var(&self, v: TyVid) -> Ty<'tcx> {
@@ -4146,11 +4247,8 @@ impl<'tcx> TyS<'tcx> {
                     apply_lang_items(cx, did, res)
                 }
 
-                TyClosure(did, substs) => {
-                    let param_env = cx.empty_parameter_environment();
-                    let infcx = infer::new_infer_ctxt(cx, &cx.tables, Some(param_env), false);
-                    let upvars = infcx.closure_upvars(did, substs).unwrap();
-                    TypeContents::union(&upvars, |f| tc_ty(cx, &f.ty, cache))
+                TyClosure(_, ref substs) => {
+                    TypeContents::union(&substs.upvar_tys, |ty| tc_ty(cx, &ty, cache))
                 }
 
                 TyTuple(ref tys) => {
@@ -5905,62 +6003,6 @@ impl<'tcx> ctxt<'tcx> {
         (a, b)
     }
 
-    // Returns a list of `ClosureUpvar`s for each upvar.
-    pub fn closure_upvars<'a>(typer: &infer::InferCtxt<'a, 'tcx>,
-                          closure_id: ast::DefId,
-                          substs: &Substs<'tcx>)
-                          -> Option<Vec<ClosureUpvar<'tcx>>>
-    {
-        // Presently an unboxed closure type cannot "escape" out of a
-        // function, so we will only encounter ones that originated in the
-        // local crate or were inlined into it along with some function.
-        // This may change if abstract return types of some sort are
-        // implemented.
-        assert!(closure_id.krate == ast::LOCAL_CRATE);
-        let tcx = typer.tcx;
-        match tcx.freevars.borrow().get(&closure_id.node) {
-            None => Some(vec![]),
-            Some(ref freevars) => {
-                freevars.iter()
-                        .map(|freevar| {
-                            let freevar_def_id = freevar.def.def_id();
-                            let freevar_ty = match typer.node_ty(freevar_def_id.node) {
-                                Ok(t) => { t }
-                                Err(()) => { return None; }
-                            };
-                            let freevar_ty = freevar_ty.subst(tcx, substs);
-
-                            let upvar_id = ty::UpvarId {
-                                var_id: freevar_def_id.node,
-                                closure_expr_id: closure_id.node
-                            };
-
-                            typer.upvar_capture(upvar_id).map(|capture| {
-                                let freevar_ref_ty = match capture {
-                                    UpvarCapture::ByValue => {
-                                        freevar_ty
-                                    }
-                                    UpvarCapture::ByRef(borrow) => {
-                                        tcx.mk_ref(tcx.mk_region(borrow.region),
-                                            ty::TypeAndMut {
-                                                ty: freevar_ty,
-                                                mutbl: borrow.kind.to_mutbl_lossy(),
-                                            })
-                                    }
-                                };
-
-                                ClosureUpvar {
-                                    def: freevar.def,
-                                    span: freevar.span,
-                                    ty: freevar_ref_ty,
-                                }
-                            })
-                        })
-                        .collect()
-            }
-        }
-    }
-
     // Returns the repeat count for a repeating vector expression.
     pub fn eval_repeat_count(&self, count_expr: &ast::Expr) -> usize {
         let hint = UncheckedExprHint(self.types.usize);
@@ -6759,6 +6801,13 @@ impl<'tcx> RegionEscape for Substs<'tcx> {
     }
 }
 
+impl<'tcx> RegionEscape for ClosureSubsts<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.func_substs.has_regions_escaping_depth(depth) ||
+            self.upvar_tys.iter().any(|t| t.has_regions_escaping_depth(depth))
+    }
+}
+
 impl<T:RegionEscape> RegionEscape for Vec<T> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.iter().any(|t| t.has_regions_escaping_depth(depth))
@@ -7099,6 +7148,13 @@ impl<'tcx> HasTypeFlags for Field<'tcx> {
 impl<'tcx> HasTypeFlags for BareFnTy<'tcx> {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self.sig.has_type_flags(flags)
+    }
+}
+
+impl<'tcx> HasTypeFlags for ClosureSubsts<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.func_substs.has_type_flags(flags) ||
+            self.upvar_tys.iter().any(|t| t.has_type_flags(flags))
     }
 }
 

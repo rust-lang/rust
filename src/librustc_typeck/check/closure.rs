@@ -53,15 +53,26 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
            opt_kind,
            expected_sig);
 
-    let mut fn_ty = astconv::ty_of_closure(
-        fcx,
-        ast::Unsafety::Normal,
-        decl,
-        abi::RustCall,
-        expected_sig);
+    let mut fn_ty = astconv::ty_of_closure(fcx,
+                                           ast::Unsafety::Normal,
+                                           decl,
+                                           abi::RustCall,
+                                           expected_sig);
 
-    let closure_type = fcx.ccx.tcx.mk_closure(expr_def_id,
-        fcx.ccx.tcx.mk_substs(fcx.inh.infcx.parameter_environment.free_substs.clone()));
+    // Create type variables (for now) to represent the transformed
+    // types of upvars. These will be unified during the upvar
+    // inference phase (`upvar.rs`).
+    let num_upvars = fcx.tcx().with_freevars(expr.id, |fv| fv.len());
+    let upvar_tys = fcx.infcx().next_ty_vars(num_upvars);
+
+    debug!("check_closure: expr.id={:?} upvar_tys={:?}",
+           expr.id, upvar_tys);
+
+    let closure_type =
+        fcx.ccx.tcx.mk_closure(
+            expr_def_id,
+            fcx.ccx.tcx.mk_substs(fcx.inh.infcx.parameter_environment.free_substs.clone()),
+            upvar_tys);
 
     fcx.write_ty(expr.id, closure_type);
 

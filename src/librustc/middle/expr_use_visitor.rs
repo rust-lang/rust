@@ -256,7 +256,10 @@ macro_rules! return_if_err {
     ($inp: expr) => (
         match $inp {
             Ok(v) => v,
-            Err(()) => return
+            Err(()) => {
+                debug!("mc reported err");
+                return
+            }
         }
     )
 }

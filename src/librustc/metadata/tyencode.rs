@@ -143,9 +143,13 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
-        ty::TyClosure(def, substs) => {
+        ty::TyClosure(def, ref substs) => {
             mywrite!(w, "k[{}|", (cx.ds)(def));
-            enc_substs(w, cx, substs);
+            enc_substs(w, cx, &substs.func_substs);
+            for ty in &substs.upvar_tys {
+                enc_ty(w, cx, ty);
+            }
+            mywrite!(w, ".");
             mywrite!(w, "]");
         }
         ty::TyProjection(ref data) => {

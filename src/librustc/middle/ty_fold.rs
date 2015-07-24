@@ -296,6 +296,16 @@ impl<'tcx> TypeFoldable<'tcx> for subst::Substs<'tcx> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for ty::ClosureSubsts<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::ClosureSubsts<'tcx> {
+        let func_substs = self.func_substs.fold_with(folder);
+        ty::ClosureSubsts {
+            func_substs: folder.tcx().mk_substs(func_substs),
+            upvar_tys: self.upvar_tys.fold_with(folder),
+        }
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for ty::ItemSubsts<'tcx> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::ItemSubsts<'tcx> {
         ty::ItemSubsts {
@@ -604,7 +614,7 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
         }
         ty::TyClosure(did, ref substs) => {
             let s = substs.fold_with(this);
-            ty::TyClosure(did, this.tcx().mk_substs(s))
+            ty::TyClosure(did, s)
         }
         ty::TyProjection(ref data) => {
             ty::TyProjection(data.fold_with(this))

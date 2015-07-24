@@ -270,7 +270,7 @@ pub struct VtableImplData<'tcx, N> {
 #[derive(Clone, PartialEq, Eq)]
 pub struct VtableClosureData<'tcx, N> {
     pub closure_def_id: ast::DefId,
-    pub substs: subst::Substs<'tcx>,
+    pub substs: ty::ClosureSubsts<'tcx>,
     /// Nested obligations. This can be non-empty if the closure
     /// signature contains associated types.
     pub nested: Vec<N>
@@ -548,7 +548,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableClosure(c) => VtableClosure(VtableClosureData {
                 closure_def_id: c.closure_def_id,
                 substs: c.substs,
-                nested: c.nested.into_iter().map(f).collect()
+                nested: c.nested.into_iter().map(f).collect(),
             })
         }
     }

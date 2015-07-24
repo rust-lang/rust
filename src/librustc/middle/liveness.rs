@@ -1493,7 +1493,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn fn_ret(&self, id: NodeId) -> ty::PolyFnOutput<'tcx> {
         let fn_ty = self.ir.tcx.node_id_to_type(id);
         match fn_ty.sty {
-            ty::TyClosure(closure_def_id, substs) =>
+            ty::TyClosure(closure_def_id, ref substs) =>
                 self.ir.tcx.closure_type(closure_def_id, substs).sig.output(),
             _ => fn_ty.fn_ret()
         }

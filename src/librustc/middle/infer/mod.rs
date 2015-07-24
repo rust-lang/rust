@@ -1162,7 +1162,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// these unconstrained type variables.
     fn resolve_type_vars_or_error(&self, t: &Ty<'tcx>) -> mc::McResult<Ty<'tcx>> {
         let ty = self.resolve_type_vars_if_possible(t);
-        if ty.has_infer_types() || ty.references_error() { Err(()) } else { Ok(ty) }
+        if ty.references_error() || ty.is_ty_var() {
+            debug!("resolve_type_vars_or_error: error from {:?}", ty);
+            Err(())
+        } else {
+            Ok(ty)
+        }
     }
 
     pub fn fully_resolve<T:TypeFoldable<'tcx>>(&self, value: &T) -> FixupResult<T> {
@@ -1374,36 +1379,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn closure_type(&self,
-                    def_id: ast::DefId,
-                    substs: &subst::Substs<'tcx>)
-                    -> ty::ClosureTy<'tcx>
+                        def_id: ast::DefId,
+                        substs: &ty::ClosureSubsts<'tcx>)
+                        -> ty::ClosureTy<'tcx>
     {
-
         let closure_ty = self.tables
                              .borrow()
                              .closure_tys
                              .get(&def_id)
                              .unwrap()
-                             .subst(self.tcx, substs);
+                             .subst(self.tcx, &substs.func_substs);
 
         if self.normalize {
             normalize_associated_type(&self.tcx, &closure_ty)
         } else {
             closure_ty
-        }
-    }
-
-    pub fn closure_upvars(&self,
-                          def_id: ast::DefId,
-                          substs: &Substs<'tcx>)
-                          -> Option<Vec<ty::ClosureUpvar<'tcx>>>
-    {
-        let result = ty::ctxt::closure_upvars(self, def_id, substs);
-
-        if self.normalize {
-            normalize_associated_type(&self.tcx, &result)
-        } else {
-            result
         }
     }
 }

@@ -28,7 +28,6 @@ use util::nodemap::FnvHashSet;
 pub enum Implication<'tcx> {
     RegionSubRegion(Option<Ty<'tcx>>, ty::Region, ty::Region),
     RegionSubGeneric(Option<Ty<'tcx>>, ty::Region, GenericKind<'tcx>),
-    RegionSubClosure(Option<Ty<'tcx>>, ty::Region, ast::DefId, &'tcx Substs<'tcx>),
     Predicate(ast::DefId, ty::Predicate<'tcx>),
 }
 
@@ -96,9 +95,47 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                 // No borrowed content reachable here.
             }
 
-            ty::TyClosure(def_id, substs) => {
-                let &(r_a, opt_ty) = self.stack.last().unwrap();
-                self.out.push(Implication::RegionSubClosure(opt_ty, r_a, def_id, substs));
+            ty::TyClosure(_, ref substs) => {
+                // FIXME(#27086). We do not accumulate from substs, since they
+                // don't represent reachable data. This means that, in
+                // practice, some of the lifetime parameters might not
+                // be in scope when the body runs, so long as there is
+                // no reachable data with that lifetime. For better or
+                // worse, this is consistent with fn types, however,
+                // which can also encapsulate data in this fashion
+                // (though it's somewhat harder, and typically
+                // requires virtual dispatch).
+                //
+                // Note that changing this (in a naive way, at least)
+                // causes regressions for what appears to be perfectly
+                // reasonable code like this:
+                //
+                // ```
+                // fn foo<'a>(p: &Data<'a>) {
+                //    bar(|q: &mut Parser| q.read_addr())
+                // }
+                // fn bar(p: Box<FnMut(&mut Parser)+'static>) {
+                // }
+                // ```
+                //
+                // Note that `p` (and `'a`) are not used in the
+                // closure at all, but to meet the requirement that
+                // the closure type `C: 'static` (so it can be coerced
+                // to the object type), we get the requirement that
+                // `'a: 'static` since `'a` appears in the closure
+                // type `C`.
+                //
+                // A smarter fix might "prune" unused `func_substs` --
+                // this would avoid breaking simple examples like
+                // this, but would still break others (which might
+                // indeed be invalid, depending on your POV). Pruning
+                // would be a subtle process, since we have to see
+                // what func/type parameters are used and unused,
+                // taking into consideration UFCS and so forth.
+
+                for &upvar_ty in &substs.upvar_tys {
+                    self.accumulate_from_ty(upvar_ty);
+                }
             }
 
             ty::TyTrait(ref t) => {
@@ -273,6 +310,21 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
         self.out.extend(obligations);
 
         let variances = self.tcx().item_variances(def_id);
+        self.accumulate_from_substs(substs, Some(&variances));
+    }
+
+    fn accumulate_from_substs(&mut self,
+                              substs: &Substs<'tcx>,
+                              variances: Option<&ty::ItemVariances>)
+    {
+        let mut tmp_variances = None;
+        let variances = variances.unwrap_or_else(|| {
+            tmp_variances = Some(ty::ItemVariances {
+                types: substs.types.map(|_| ty::Variance::Invariant),
+                regions: substs.regions().map(|_| ty::Variance::Invariant),
+            });
+            tmp_variances.as_ref().unwrap()
+        });
 
         for (&region, &variance) in substs.regions().iter().zip(&variances.regions) {
             match variance {

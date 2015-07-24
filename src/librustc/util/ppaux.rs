@@ -662,22 +662,35 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyTrait(ref data) => write!(f, "{}", data),
             ty::TyProjection(ref data) => write!(f, "{}", data),
             TyStr => write!(f, "str"),
-            TyClosure(ref did, substs) => ty::tls::with(|tcx| {
+            TyClosure(ref did, ref substs) => ty::tls::with(|tcx| {
                 try!(write!(f, "[closure"));
-                let closure_tys = &tcx.tables.borrow().closure_tys;
-                try!(closure_tys.get(did).map(|cty| &cty.sig).and_then(|sig| {
-                    tcx.lift(&substs).map(|substs| sig.subst(tcx, substs))
-                }).map(|sig| {
-                    fn_sig(f, &sig.0.inputs, false, sig.0.output)
-                }).unwrap_or_else(|| {
-                    if did.krate == ast::LOCAL_CRATE {
-                        try!(write!(f, " {:?}", tcx.map.span(did.node)));
+
+                if did.krate == ast::LOCAL_CRATE {
+                    try!(write!(f, "@{:?}", tcx.map.span(did.node)));
+                    let mut sep = " ";
+                    try!(tcx.with_freevars(did.node, |freevars| {
+                        for (freevar, upvar_ty) in freevars.iter().zip(&substs.upvar_tys) {
+                            let node_id = freevar.def.local_node_id();
+                            try!(write!(f,
+                                        "{}{}:{}",
+                                        sep,
+                                        tcx.local_var_name_str(node_id),
+                                        upvar_ty));
+                            sep = ", ";
+                        }
+                        Ok(())
+                    }))
+                } else {
+                    // cross-crate closure types should only be
+                    // visible in trans bug reports, I imagine.
+                    try!(write!(f, "@{:?}", did));
+                    let mut sep = " ";
+                    for (index, upvar_ty) in substs.upvar_tys.iter().enumerate() {
+                        try!(write!(f, "{}{}:{}", sep, index, upvar_ty));
+                        sep = ", ";
                     }
-                    Ok(())
-                }));
-                if verbose() {
-                    try!(write!(f, " id={:?}", did));
                 }
+
                 write!(f, "]")
             }),
             TyArray(ty, sz) => write!(f, "[{}; {}]",  ty, sz),

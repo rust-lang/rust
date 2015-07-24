@@ -37,7 +37,6 @@ use llvm;
 use metadata::{csearch, encoder, loader};
 use middle::astencode;
 use middle::cfg;
-use middle::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::pat_util::simple_identifier;
@@ -470,13 +469,11 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
               }
           })
       }
-      ty::TyClosure(def_id, substs) => {
+      ty::TyClosure(_, ref substs) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
-          let upvars = infcx.closure_upvars(def_id, substs).unwrap();
-          for (i, upvar) in upvars.iter().enumerate() {
+          for (i, upvar_ty) in substs.upvar_tys.iter().enumerate() {
               let llupvar = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
-              cx = f(cx, llupvar, upvar.ty);
+              cx = f(cx, llupvar, upvar_ty);
           }
       }
       ty::TyArray(_, n) => {

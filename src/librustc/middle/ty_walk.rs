@@ -88,9 +88,12 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
             }).collect::<Vec<_>>());
         }
         ty::TyEnum(_, ref substs) |
-        ty::TyStruct(_, ref substs) |
-        ty::TyClosure(_, ref substs) => {
+        ty::TyStruct(_, ref substs) => {
             push_reversed(stack, substs.types.as_slice());
+        }
+        ty::TyClosure(_, ref substs) => {
+            push_reversed(stack, substs.func_substs.types.as_slice());
+            push_reversed(stack, &substs.upvar_tys);
         }
         ty::TyTuple(ref ts) => {
             push_reversed(stack, ts);
