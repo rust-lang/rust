@@ -1455,8 +1455,7 @@ fn check_types<T,U>() {
 /// This functions panics if the above preconditions about the types are not
 /// met.
 #[inline]
-#[unstable(feature = "slice_transmute", reason = "recent API addition")]
-pub unsafe fn transmute<T,U>(slice: &[T]) -> &[U] {
+unsafe fn transmute<T,U>(slice: &[T]) -> &[U] {
     check_types::<T,U>();
     from_raw_parts(slice.as_ptr() as *const U, slice.len())
 }
@@ -1466,8 +1465,7 @@ pub unsafe fn transmute<T,U>(slice: &[T]) -> &[U] {
 ///
 /// Equivalent of `slice::transmute` for mutable slices.
 #[inline]
-#[unstable(feature = "slice_transmute", reason = "recent API addition")]
-pub unsafe fn transmute_mut<T,U>(slice: &mut [T]) -> &mut [U] {
+unsafe fn transmute_mut<T,U>(slice: &mut [T]) -> &mut [U] {
     check_types::<T,U>();
     from_raw_parts_mut(slice.as_mut_ptr() as *mut U, slice.len())
 }
