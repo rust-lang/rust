@@ -138,7 +138,7 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
 
     if let Some(&llfn) = ccx.closure_vals().borrow().get(&mono_id) {
-        debug!("get_or_create_declaration_if_closure(): found closure {:?}: {:?}",
+        debug!("get_or_create_closure_declaration(): found closure {:?}: {:?}",
                mono_id, ccx.tn().val_to_string(llfn));
         return llfn;
     }

@@ -120,7 +120,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                 //
                 // Note that `p` (and `'a`) are not used in the
                 // closure at all, but to meet the requirement that
-                // the closure type `C: 'static` (so it can be coerce
+                // the closure type `C: 'static` (so it can be coerced
                 // to the object type), we get the requirement that
                 // `'a: 'static` since `'a` appears in the closure
                 // type `C`.

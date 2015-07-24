@@ -1162,10 +1162,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// these unconstrained type variables.
     fn resolve_type_vars_or_error(&self, t: &Ty<'tcx>) -> mc::McResult<Ty<'tcx>> {
         let ty = self.resolve_type_vars_if_possible(t);
-        if ty.references_error() {
-            debug!("resolve_type_vars_or_error: error from {:?}", ty);
-            Err(())
-        } else if ty.is_ty_var() {
+        if ty.references_error() || ty.is_ty_var() {
             debug!("resolve_type_vars_or_error: error from {:?}", ty);
             Err(())
         } else {

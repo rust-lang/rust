@@ -1857,9 +1857,9 @@ pub enum TypeVariants<'tcx> {
 /// closures from capturing themselves (except via a trait
 /// object). This simplifies closure inference considerably, since it
 /// means that when we infer the kind of a closure or its upvars, we
-/// don't have to handles cycles where the decisions we make wind up
-/// for closure C wind up influencing the decisions we ought to make
-/// for closure C (which would then require fixed point iteration to
+/// don't have to handle cycles where the decisions we make for
+/// closure C wind up influencing the decisions we ought to make for
+/// closure C (which would then require fixed point iteration to
 /// handle). Plus it fixes an ICE. :P
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ClosureSubsts<'tcx> {
@@ -7157,8 +7157,6 @@ impl<'tcx> HasTypeFlags for ClosureSubsts<'tcx> {
             self.upvar_tys.iter().any(|t| t.has_type_flags(flags))
     }
 }
-
-
 
 impl<'tcx> fmt::Debug for ClosureTy<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
