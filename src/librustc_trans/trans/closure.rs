@@ -148,9 +148,7 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     });
 
     let function_type = ccx.tcx().mk_closure_from_closure_substs(closure_id, Box::new(substs));
-    let llfn = declare::define_internal_rust_fn(ccx, &symbol[..], function_type).unwrap_or_else(||{
-        ccx.sess().bug(&format!("symbol `{}` already defined", symbol));
-    });
+    let llfn = declare::define_internal_rust_fn(ccx, &symbol[..], function_type);
 
     // set an inline hint for all closures
     attributes::inline(llfn, attributes::InlineAttr::Hint);
