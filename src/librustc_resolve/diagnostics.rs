@@ -457,6 +457,29 @@ impl Foo {
 ```
 "##,
 
+E0425: r##"
+An unresolved name was used. Example of erroneous code:
+
+```
+something_that_doesnt_exist::foo; // error: unresolved name `f::foo`
+```
+
+Please verify you didn't misspell the name or that you're not using an
+invalid object. Example:
+
+```
+enum something_that_does_exist {
+    foo
+}
+// or:
+mod something_that_does_exist {
+    pub static foo : i32 = 0i32;
+}
+
+something_that_does_exist::foo; // ok!
+```
+"##,
+
 E0426: r##"
 An undeclared label was used. Example of erroneous code:
 
@@ -581,7 +604,6 @@ register_diagnostics! {
     E0422, // does not name a structure
     E0423, // is a struct variant name, but this expression uses it like a
            // function name
-    E0425, // unresolved name
     E0427, // cannot use `ref` binding mode with ...
     E0429, // `self` imports are only allowed within a { } list
     E0434, // can't capture dynamic environment in a fn item
