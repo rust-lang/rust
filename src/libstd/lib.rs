@@ -210,6 +210,7 @@
 #![feature(borrow_state)]
 #![feature(box_raw)]
 #![feature(box_syntax)]
+#![feature(char_from_unchecked)]
 #![feature(char_internals)]
 #![feature(clone_from_slice)]
 #![feature(collections)]
