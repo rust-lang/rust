@@ -20,9 +20,7 @@ pub fn opts() -> TargetOptions {
         linker_is_gnu: true,
         has_rpath: true,
         position_independent_executables: true,
-        pre_link_args: vec!(
-        ),
-        archive_format: "bsd".to_string(),
+        archive_format: "gnu".to_string(),
 
         .. Default::default()
     }
