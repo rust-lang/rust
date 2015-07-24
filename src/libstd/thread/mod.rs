@@ -434,9 +434,9 @@ pub fn panicking() -> bool {
 
 /// Invokes a closure, capturing the cause of panic if one occurs.
 ///
-/// This function will return `Ok(())` if the closure does not panic, and will
-/// return `Err(cause)` if the closure panics. The `cause` returned is the
-/// object with which panic was originally invoked.
+/// This function will return `Ok` with the closure's result if the closure
+/// does not panic, and will return `Err(cause)` if the closure panics. The
+/// `cause` returned is the object with which panic was originally invoked.
 ///
 /// It is currently undefined behavior to unwind from Rust code into foreign
 /// code, so this function is particularly useful when Rust is called from
