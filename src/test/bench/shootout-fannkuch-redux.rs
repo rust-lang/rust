@@ -42,12 +42,14 @@
 
 use std::{cmp, mem};
 use std::thread;
+use std::intrinsics::copy;
 
 fn rotate(x: &mut [i32]) {
-    let mut prev = x[0];
-    for place in x.iter_mut().rev() {
-        prev = mem::replace(place, prev)
-    }
+    let tmp = x[0];
+    let last = x.len() - 1;
+    if last <= 0 { return; }
+    unsafe { copy(&x[1], &mut x[0], last); }
+    x[last] = tmp;
 }
 
 fn next_permutation(perm: &mut [i32], count: &mut [i32]) {
