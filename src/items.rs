@@ -11,7 +11,8 @@
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use {ReturnIndent, BraceStyle};
-use utils::{format_visibility, make_indent, contains_skip, span_after, end_typaram};
+use utils::{format_mutability, format_visibility, make_indent, contains_skip, span_after,
+            end_typaram};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
 use comment::FindUncommented;
 use visitor::FmtVisitor;
@@ -230,46 +231,14 @@ impl<'a> FmtVisitor<'a> {
                     -> String {
         let mut arg_item_strs: Vec<_> = args.iter().map(|a| self.rewrite_fn_input(a)).collect();
         // Account for sugary self.
-        let mut min_args = 1;
-        if let Some(explicit_self) = explicit_self {
-            match explicit_self.node {
-                ast::ExplicitSelf_::SelfRegion(ref lt, ref m, _) => {
-                    let lt_str = match lt {
-                        &Some(ref l) => format!("{} ", pprust::lifetime_to_string(l)),
-                        &None => String::new(),
-                    };
-                    let mut_str = match m {
-                        &ast::Mutability::MutMutable => "mut ".to_owned(),
-                        &ast::Mutability::MutImmutable => String::new(),
-                    };
-                    arg_item_strs[0] = format!("&{}{}self", lt_str, mut_str);
-                    min_args = 2;
-                }
-                ast::ExplicitSelf_::SelfExplicit(ref ty, _) => {
-                    arg_item_strs[0] = format!("self: {}", pprust::ty_to_string(ty));
-                }
-                ast::ExplicitSelf_::SelfValue(_) => {
-                    assert!(args.len() >= 1, "&[ast::Arg] shouldn't be empty.");
-
-                    // this hacky solution caused by absence of `Mutability` in `SelfValue`.
-                    let mut_str = {
-                        if let ast::Pat_::PatIdent(ast::BindingMode::BindByValue(mutability), _, _)
-                                = args[0].pat.node {
-                            match mutability {
-                                ast::Mutability::MutMutable => "mut ",
-                                ast::Mutability::MutImmutable => "",
-                            }
-                        } else {
-                            panic!("there is a bug or change in structure of AST, aborting.");
-                        }
-                    };
-
-                    arg_item_strs[0] = format!("{}self", mut_str);
-                    min_args = 2;
-                }
-                _ => {}
-            }
-        }
+        // FIXME: the comment for the self argument is dropped. This is blocked
+        // on rust issue #27522.
+        let min_args = explicit_self.and_then(|explicit_self| {
+                           rewrite_explicit_self(explicit_self, args)
+                       }).map(|self_str| {
+                           arg_item_strs[0] = self_str;
+                           2
+                       }).unwrap_or(1);
 
         // Comments between args
         let mut arg_items = Vec::new();
@@ -799,6 +768,37 @@ impl<'a> FmtVisitor<'a> {
         } else {
             pprust::ty_to_string(&arg.ty)
         }
+    }
+}
+
+fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf, args: &[ast::Arg]) -> Option<String> {
+    match explicit_self.node {
+        ast::ExplicitSelf_::SelfRegion(lt, m, _) => {
+            let mut_str = format_mutability(m);
+            match lt {
+                Some(ref l) => Some(format!("&{} {}self", pprust::lifetime_to_string(l), mut_str)),
+                None => Some(format!("&{}self", mut_str)),
+            }
+        }
+        ast::ExplicitSelf_::SelfExplicit(ref ty, _) => {
+            Some(format!("self: {}", pprust::ty_to_string(ty)))
+        }
+        ast::ExplicitSelf_::SelfValue(_) => {
+            assert!(args.len() >= 1, "&[ast::Arg] shouldn't be empty.");
+
+            // this hacky solution caused by absence of `Mutability` in `SelfValue`.
+            let mut_str = {
+                if let ast::Pat_::PatIdent(ast::BindingMode::BindByValue(mutability), _, _)
+                        = args[0].pat.node {
+                    format_mutability(mutability)
+                } else {
+                    panic!("there is a bug or change in structure of AST, aborting.");
+                }
+            };
+
+            Some(format!("{}self", mut_str))
+        }
+        _ => None
     }
 }
 

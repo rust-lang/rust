@@ -64,6 +64,14 @@ pub fn format_visibility(vis: Visibility) -> &'static str {
     }
 }
 
+#[inline]
+pub fn format_mutability(mutability: ast::Mutability) -> &'static str {
+    match mutability {
+        ast::Mutability::MutMutable => "mut ",
+        ast::Mutability::MutImmutable => ""
+    }
+}
+
 fn is_skip(meta_item: &MetaItem) -> bool {
     match meta_item.node {
         MetaItem_::MetaWord(ref s) => *s == SKIP_ANNOTATION,
