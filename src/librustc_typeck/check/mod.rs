@@ -1709,10 +1709,47 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Apply "fallbacks" to some types
+    /// ! gets replaced with (), unconstrained ints with i32, and unconstrained floats with f64.
+    pub fn default_type_parameters(&self) {
+        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
+        for ty in &self.infcx().unsolved_variables() {
+            let resolved = self.infcx().resolve_type_vars_if_possible(ty);
+            if self.infcx().type_var_diverges(resolved) {
+                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+            } else {
+                match self.infcx().type_is_unconstrained_numeric(resolved) {
+                    UnconstrainedInt => {
+                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
+                    },
+                    UnconstrainedFloat => {
+                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
+                    }
+                    Neither => { }
+                }
+            }
+        }
+    }
+
     fn select_all_obligations_and_apply_defaults(&self) {
+        if self.tcx().sess.features.borrow().default_type_parameter_fallback {
+            self.new_select_all_obligations_and_apply_defaults();
+        } else {
+            self.old_select_all_obligations_and_apply_defaults();
+        }
+    }
+
+    // Implements old type inference fallback algorithm
+    fn old_select_all_obligations_and_apply_defaults(&self) {
+        self.select_obligations_where_possible();
+        self.default_type_parameters();
+        self.select_obligations_where_possible();
+    }
+
+    fn new_select_all_obligations_and_apply_defaults(&self) {
         use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
 
-        // For the time being this errs on the side of being memory wasteful but provides better
+            // For the time being this errs on the side of being memory wasteful but provides better
         // error reporting.
         // let type_variables = self.infcx().type_variables.clone();
 
@@ -1934,6 +1971,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         assert!(self.inh.deferred_call_resolutions.borrow().is_empty());
 
         self.select_all_obligations_and_apply_defaults();
+
         let mut fulfillment_cx = self.inh.infcx.fulfillment_cx.borrow_mut();
         match fulfillment_cx.select_all_or_error(self.infcx()) {
             Ok(()) => { }

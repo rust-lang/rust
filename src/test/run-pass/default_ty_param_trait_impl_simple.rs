@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(default_type_parameter_fallback)]
+
 // An example from the RFC
 trait Foo { fn takes_foo(&self); }
 trait Bar { }
 
 impl<T:Bar=usize> Foo for Vec<T> {
     fn takes_foo(&self) {}
-} // Impl 1
+}
 
-impl Bar for usize { } // Impl 2
-
-// fn takes_foo<F:Foo>(f: F) { }
+impl Bar for usize {}
 
 fn main() {
     let x = Vec::new(); // x: Vec<$0>

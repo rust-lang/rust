@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(default_type_parameter_fallback)]
+
 // Another example from the RFC
 trait Foo { }
 trait Bar { }
 
-impl<T:Bar=usize> Foo for Vec<T> {} // Impl 1
-impl Bar for usize { } // Impl 2
+impl<T:Bar=usize> Foo for Vec<T> {}
+impl Bar for usize {}
 
-fn takes_foo<F:Foo>(f: F) { }
+fn takes_foo<F:Foo>(f: F) {}
 
 fn main() {
     let x = Vec::new(); // x: Vec<$0>

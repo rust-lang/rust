@@ -9,6 +9,7 @@
 // except according to those terms.
 //
 
+#![feature(default_type_parameter_fallback)]
 use std::marker::PhantomData;
 
 struct Foo<T,U=T> { t: T, data: PhantomData<U> }

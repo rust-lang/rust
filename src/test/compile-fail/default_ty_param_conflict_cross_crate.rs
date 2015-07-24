@@ -9,6 +9,9 @@
 // except according to those terms.
 //
 //aux-build:default_ty_param_cross_crate_crate.rs
+
+#![feature(default_type_parameter_fallback)]
+
 extern crate default_param_test;
 
 use default_param_test::{Foo, bleh};
