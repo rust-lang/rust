@@ -10,7 +10,6 @@
 
 mod sip;
 
-use std::mem;
 use std::hash::{Hash, Hasher};
 use std::default::Default;
 
@@ -72,15 +71,11 @@ fn test_writer_hasher() {
 
     // FIXME (#18248) Add tests for hashing Rc<str> and Rc<[T]>
 
-    unsafe {
-        let ptr: *const i32 = mem::transmute(5_usize);
-        assert_eq!(hash(&ptr), 5);
-    }
+    let ptr = 5_usize as *const i32;
+    assert_eq!(hash(&ptr), 5);
 
-    unsafe {
-        let ptr: *mut i32 = mem::transmute(5_usize);
-        assert_eq!(hash(&ptr), 5);
-    }
+    let ptr = 5_usize as *mut i32;
+    assert_eq!(hash(&ptr), 5);
 }
 
 struct Custom { hash: u64 }

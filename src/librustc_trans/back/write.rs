@@ -25,7 +25,6 @@ use syntax::diagnostic::{Emitter, Handler, Level};
 
 use std::ffi::{CStr, CString};
 use std::fs;
-use std::mem;
 use std::path::Path;
 use std::ptr;
 use std::str;
@@ -375,8 +374,7 @@ unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<'a>,
 unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
                                         user: *const c_void,
                                         cookie: c_uint) {
-    let HandlerFreeVars { cgcx, .. }
-        = *mem::transmute::<_, *const HandlerFreeVars>(user);
+    let HandlerFreeVars { cgcx, .. } = *(user as *const HandlerFreeVars);
 
     let msg = llvm::build_string(|s| llvm::LLVMWriteSMDiagnosticToString(diag, s))
         .expect("non-UTF8 SMDiagnostic");
@@ -385,8 +383,7 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
 }
 
 unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_void) {
-    let HandlerFreeVars { llcx, cgcx }
-        = *mem::transmute::<_, *const HandlerFreeVars>(user);
+    let HandlerFreeVars { llcx, cgcx } = *(user as *const HandlerFreeVars);
 
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::InlineAsm(inline) => {

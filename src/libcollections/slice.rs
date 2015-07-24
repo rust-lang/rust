@@ -109,6 +109,7 @@ pub use core::slice::{IntSliceExt, SplitMut, ChunksMut, Split};
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
 pub use core::slice::{bytes, mut_ref_slice, ref_slice};
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
+pub use core::slice::{transmute, transmute_mut};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods

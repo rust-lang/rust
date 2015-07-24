@@ -20,8 +20,11 @@ use util::nodemap::FnvHashMap;
 use syntax::ast;
 
 use std::ffi::CString;
+#[cfg(stage0)]
 use std::mem;
 use std::ptr;
+#[cfg(not(stage0))]
+use std::slice;
 use std::cell::RefCell;
 
 use libc::c_uint;
@@ -148,20 +151,45 @@ impl Type {
         }
     }
 
+    #[cfg(stage0)]
     pub fn func(args: &[Type], ret: &Type) -> Type {
         let vec : &[TypeRef] = unsafe { mem::transmute(args) };
         ty!(llvm::LLVMFunctionType(ret.to_ref(), vec.as_ptr(),
                                    args.len() as c_uint, False))
     }
 
+    #[cfg(not(stage0))]
+    pub fn func(args: &[Type], ret: &Type) -> Type {
+        let vec: &[TypeRef] = unsafe { slice::transmute(args) };
+        ty!(llvm::LLVMFunctionType(ret.to_ref(), vec.as_ptr(),
+                                   args.len() as c_uint, False))
+    }
+
+    #[cfg(stage0)]
     pub fn variadic_func(args: &[Type], ret: &Type) -> Type {
         let vec : &[TypeRef] = unsafe { mem::transmute(args) };
         ty!(llvm::LLVMFunctionType(ret.to_ref(), vec.as_ptr(),
                                    args.len() as c_uint, True))
     }
 
+    #[cfg(not(stage0))]
+    pub fn variadic_func(args: &[Type], ret: &Type) -> Type {
+        let vec: &[TypeRef] = unsafe { slice::transmute(args) };
+        ty!(llvm::LLVMFunctionType(ret.to_ref(), vec.as_ptr(),
+                                   args.len() as c_uint, True))
+    }
+
+    #[cfg(stage0)]
     pub fn struct_(ccx: &CrateContext, els: &[Type], packed: bool) -> Type {
         let els : &[TypeRef] = unsafe { mem::transmute(els) };
+        ty!(llvm::LLVMStructTypeInContext(ccx.llcx(), els.as_ptr(),
+                                          els.len() as c_uint,
+                                          packed as Bool))
+    }
+
+    #[cfg(not(stage0))]
+    pub fn struct_(ccx: &CrateContext, els: &[Type], packed: bool) -> Type {
+        let els : &[TypeRef] = unsafe { slice::transmute(els) };
         ty!(llvm::LLVMStructTypeInContext(ccx.llcx(), els.as_ptr(),
                                           els.len() as c_uint,
                                           packed as Bool))
@@ -208,9 +236,19 @@ impl Type {
         }
     }
 
+    #[cfg(stage0)]
     pub fn set_struct_body(&mut self, els: &[Type], packed: bool) {
         unsafe {
             let vec : &[TypeRef] = mem::transmute(els);
+            llvm::LLVMStructSetBody(self.to_ref(), vec.as_ptr(),
+                                    els.len() as c_uint, packed as Bool)
+        }
+    }
+
+    #[cfg(not(stage0))]
+    pub fn set_struct_body(&mut self, els: &[Type], packed: bool) {
+        unsafe {
+            let vec: &[TypeRef] = slice::transmute(els);
             llvm::LLVMStructSetBody(self.to_ref(), vec.as_ptr(),
                                     els.len() as c_uint, packed as Bool)
         }

@@ -977,7 +977,7 @@ impl ops::Index<ops::RangeFull> for String {
 
     #[inline]
     fn index(&self, _index: ops::RangeFull) -> &str {
-        unsafe { mem::transmute(&*self.vec) }
+        unsafe { str::from_utf8_unchecked(&self.vec) }
     }
 }
 
@@ -1016,7 +1016,7 @@ impl ops::Deref for String {
 
     #[inline]
     fn deref(&self) -> &str {
-        unsafe { mem::transmute(&self.vec[..]) }
+        unsafe { str::from_utf8_unchecked(&self.vec) }
     }
 }
 
@@ -1024,7 +1024,7 @@ impl ops::Deref for String {
 impl ops::DerefMut for String {
     #[inline]
     fn deref_mut(&mut self) -> &mut str {
-        unsafe { mem::transmute(&mut self.vec[..]) }
+        unsafe { mem::transmute(&mut *self.vec) }
     }
 }
 

@@ -33,7 +33,6 @@
 // * The `raw` and `bytes` submodules.
 // * Boilerplate trait implementations.
 
-use mem::transmute;
 use clone::Clone;
 use cmp::{Ordering, PartialEq, PartialOrd, Eq, Ord};
 use cmp::Ordering::{Less, Equal, Greater};
@@ -148,7 +147,7 @@ macro_rules! slice_ref {
             // Use a non-null pointer value
             &mut *(1 as *mut _)
         } else {
-            transmute(ptr)
+            mem::transmute(ptr)
         }
     }};
 }
@@ -261,7 +260,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     unsafe fn get_unchecked(&self, index: usize) -> &T {
-        transmute(self.repr().data.offset(index as isize))
+        &*(self.repr().data.offset(index as isize))
     }
 
     #[inline]
@@ -430,7 +429,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
-        transmute((self.repr().data as *mut T).offset(index as isize))
+        &mut *(self.repr().data as *mut T).offset(index as isize)
     }
 
     #[inline]
@@ -547,8 +546,7 @@ impl<T> ops::Index<usize> for [T] {
 
     fn index(&self, index: usize) -> &T {
         assert!(index < self.len());
-
-        unsafe { mem::transmute(self.repr().data.offset(index as isize)) }
+        unsafe { self.get_unchecked(index) }
     }
 }
 
@@ -557,8 +555,7 @@ impl<T> ops::IndexMut<usize> for [T] {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut T {
         assert!(index < self.len());
-
-        unsafe { mem::transmute(self.repr().data.offset(index as isize)) }
+        unsafe { self.get_unchecked_mut(index) }
     }
 }
 
@@ -1427,7 +1424,7 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: usize) -> &'a [T] {
-    transmute(RawSlice { data: p, len: len })
+    mem::transmute(RawSlice { data: p, len: len })
 }
 
 /// Performs the same functionality as `from_raw_parts`, except that a mutable
@@ -1439,7 +1436,40 @@ pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: usize) -> &'a [T] {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
-    transmute(RawSlice { data: p, len: len })
+    mem::transmute(RawSlice { data: p, len: len })
+}
+
+#[inline]
+fn check_types<T,U>() {
+    assert!(mem::size_of::<T>() == mem::size_of::<U>());
+    assert!(mem::align_of::<T>() % mem::align_of::<U>() == 0)
+}
+
+/// Reinterprets a slice of one type as a slice of another type.
+///
+/// Both types have to have the same size and the type that is converted to
+/// must have equal or less restrictive alignment.
+///
+/// # Panics
+///
+/// This functions panics if the above preconditions about the types are not
+/// met.
+#[inline]
+#[unstable(feature = "slice_transmute", reason = "recent API addition")]
+pub unsafe fn transmute<T,U>(slice: &[T]) -> &[U] {
+    check_types::<T,U>();
+    from_raw_parts(slice.as_ptr() as *const U, slice.len())
+}
+
+/// Reinterprets a mutable slice of one type as a mutable slice of another
+/// type.
+///
+/// Equivalent of `slice::transmute` for mutable slices.
+#[inline]
+#[unstable(feature = "slice_transmute", reason = "recent API addition")]
+pub unsafe fn transmute_mut<T,U>(slice: &mut [T]) -> &mut [U] {
+    check_types::<T,U>();
+    from_raw_parts_mut(slice.as_mut_ptr() as *mut U, slice.len())
 }
 
 //
@@ -1580,9 +1610,9 @@ macro_rules! impl_int_slice {
             #[inline]
             fn as_signed(&self) -> &[$s] { unsafe { transmute(self) } }
             #[inline]
-            fn as_unsigned_mut(&mut self) -> &mut [$u] { unsafe { transmute(self) } }
+            fn as_unsigned_mut(&mut self) -> &mut [$u] { unsafe { transmute_mut(self) } }
             #[inline]
-            fn as_signed_mut(&mut self) -> &mut [$s] { unsafe { transmute(self) } }
+            fn as_signed_mut(&mut self) -> &mut [$s] { unsafe { transmute_mut(self) } }
         }
     }
 }

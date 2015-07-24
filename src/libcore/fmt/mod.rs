@@ -90,7 +90,7 @@ pub trait Write {
     fn write_char(&mut self, c: char) -> Result {
         let mut utf_8 = [0u8; 4];
         let bytes_written = c.encode_utf8(&mut utf_8).unwrap_or(0);
-        self.write_str(unsafe { mem::transmute(&utf_8[..bytes_written]) })
+        self.write_str(unsafe { str::from_utf8_unchecked(&utf_8[..bytes_written]) })
     }
 
     /// Glue for usage of the `write!` macro with implementers of this trait.
@@ -1320,7 +1320,7 @@ impl Display for char {
         } else {
             let mut utf8 = [0; 4];
             let amt = self.encode_utf8(&mut utf8).unwrap_or(0);
-            let s: &str = unsafe { mem::transmute(&utf8[..amt]) };
+            let s: &str = unsafe { str::from_utf8_unchecked(&utf8[..amt]) };
             f.pad(s)
         }
     }

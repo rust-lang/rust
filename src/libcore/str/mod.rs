@@ -17,7 +17,7 @@
 use self::pattern::Pattern;
 use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 
-use char::CharExt;
+use char::{self, CharExt};
 use clone::Clone;
 use cmp::Eq;
 use convert::AsRef;
@@ -123,13 +123,13 @@ impl Utf8Error {
 /// Converts a slice of bytes to a string slice without performing any
 /// allocations.
 ///
-/// Once the slice has been validated as utf-8, it is transmuted in-place and
+/// Once the slice has been validated as UTF-8, it is transmuted in-place and
 /// returned as a '&str' instead of a '&[u8]'
 ///
 /// # Failure
 ///
-/// Returns `Err` if the slice is not utf-8 with a description as to why the
-/// provided slice is not utf-8.
+/// Returns `Err` if the slice is not UTF-8 with a description as to why the
+/// provided slice is not UTF-8.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     try!(run_utf8_validation_iterator(&mut v.iter()));
@@ -262,7 +262,7 @@ impl<'a> Iterator for Chars<'a> {
         next_code_point(&mut self.iter).map(|ch| {
             // str invariant says `ch` is a valid Unicode Scalar Value
             unsafe {
-                mem::transmute(ch)
+                char::from_u32_unchecked(ch)
             }
         })
     }
@@ -284,7 +284,7 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
         next_code_point_reverse(&mut self.iter).map(|ch| {
             // str invariant says `ch` is a valid Unicode Scalar Value
             unsafe {
-                mem::transmute(ch)
+                char::from_u32_unchecked(ch)
             }
         })
     }
@@ -1264,6 +1264,7 @@ pub trait StrExt {
     fn char_at(&self, i: usize) -> char;
     fn char_at_reverse(&self, i: usize) -> char;
     fn as_bytes<'a>(&'a self) -> &'a [u8];
+    unsafe fn as_bytes_mut<'a>(&'a mut self) -> &'a mut [u8];
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
     fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
         where P::Searcher: ReverseSearcher<'a>;
@@ -1507,7 +1508,7 @@ impl StrExt for str {
     #[inline]
     fn char_range_at(&self, i: usize) -> CharRange {
         let (c, n) = char_range_at_raw(self.as_bytes(), i);
-        CharRange { ch: unsafe { mem::transmute(c) }, next: n }
+        CharRange { ch: unsafe { char::from_u32_unchecked(c) }, next: n }
     }
 
     #[inline]
@@ -1535,7 +1536,7 @@ impl StrExt for str {
             if w > 2 { val = utf8_acc_cont_byte(val, s.as_bytes()[i + 2]); }
             if w > 3 { val = utf8_acc_cont_byte(val, s.as_bytes()[i + 3]); }
 
-            return CharRange {ch: unsafe { mem::transmute(val) }, next: i};
+            return CharRange {ch: unsafe { char::from_u32_unchecked(val) }, next: i};
         }
 
         return multibyte_char_range_at_reverse(self, prev);
@@ -1554,6 +1555,11 @@ impl StrExt for str {
     #[inline]
     fn as_bytes(&self) -> &[u8] {
         unsafe { mem::transmute(self) }
+    }
+
+    #[inline]
+    unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
+        mem::transmute(self)
     }
 
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {

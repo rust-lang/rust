@@ -126,20 +126,18 @@ const S_COUNT: u32 = (L_COUNT * N_COUNT);
 // Decompose a precomposed Hangul syllable
 #[inline(always)]
 fn decompose_hangul<F>(s: char, f: &mut F) where F: FnMut(char) {
-    use core::mem::transmute;
-
+    use core::char::from_u32_unchecked;
     let si = s as u32 - S_BASE;
-
     let li = si / N_COUNT;
     unsafe {
-        (*f)(transmute(L_BASE + li));
+        (*f)(from_u32_unchecked(L_BASE + li));
 
         let vi = (si % N_COUNT) / T_COUNT;
-        (*f)(transmute(V_BASE + vi));
+        (*f)(from_u32_unchecked(V_BASE + vi));
 
         let ti = si % T_COUNT;
         if ti > 0 {
-            (*f)(transmute(T_BASE + ti));
+            (*f)(from_u32_unchecked(T_BASE + ti));
         }
     }
 }
@@ -147,18 +145,18 @@ fn decompose_hangul<F>(s: char, f: &mut F) where F: FnMut(char) {
 // Compose a pair of Hangul Jamo
 #[inline(always)]
 fn compose_hangul(a: char, b: char) -> Option<char> {
-    use core::mem::transmute;
+    use core::char::from_u32_unchecked;
     let l = a as u32;
     let v = b as u32;
     // Compose an LPart and a VPart
     if L_BASE <= l && l < (L_BASE + L_COUNT) && V_BASE <= v && v < (V_BASE + V_COUNT) {
         let r = S_BASE + (l - L_BASE) * N_COUNT + (v - V_BASE) * T_COUNT;
-        return unsafe { Some(transmute(r)) };
+        return unsafe { Some(from_u32_unchecked(r)) };
     }
     // Compose an LVPart and a TPart
     if S_BASE <= l && l <= (S_BASE+S_COUNT-T_COUNT) && T_BASE <= v && v < (T_BASE+T_COUNT) {
         let r = l + (v - T_BASE);
-        return unsafe { Some(transmute(r)) };
+        return unsafe { Some(from_u32_unchecked(r)) };
     }
     None
 }

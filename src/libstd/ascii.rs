@@ -15,7 +15,6 @@
 use prelude::v1::*;
 
 use ops::Range;
-use mem;
 
 /// Extension methods for ASCII-subset only operations on owned strings
 #[unstable(feature = "owned_ascii_ext",
@@ -186,12 +185,12 @@ impl AsciiExt for str {
     }
 
     fn make_ascii_uppercase(&mut self) {
-        let me: &mut [u8] = unsafe { mem::transmute(self) };
+        let me: &mut [u8] = unsafe { self.as_bytes_mut() };
         me.make_ascii_uppercase()
     }
 
     fn make_ascii_lowercase(&mut self) {
-        let me: &mut [u8] = unsafe { mem::transmute(self) };
+        let me: &mut [u8] = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()
     }
 }

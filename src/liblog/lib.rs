@@ -294,7 +294,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
             1 => panic!("cannot log after main thread has exited"),
             n => {
                 let filter = mem::transmute::<_, &String>(n);
-                if !args.to_string().contains(&filter[..]) {
+                if !args.to_string().contains(filter) {
                     return
                 }
             }

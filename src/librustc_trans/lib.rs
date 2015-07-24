@@ -25,6 +25,7 @@
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
+#![cfg_attr(not(stage0), feature(slice_transmute))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
