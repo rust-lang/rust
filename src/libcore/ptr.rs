@@ -16,13 +16,13 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use mem;
 use clone::Clone;
 use intrinsics;
 use ops::Deref;
 use fmt;
 use option::Option::{self, Some, None};
 use marker::{PhantomData, Send, Sized, Sync};
+use mem;
 use nonzero::NonZero;
 
 use cmp::{PartialEq, Eq, Ord, PartialOrd};
@@ -100,7 +100,7 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
-    mem::swap(mem::transmute(dest), &mut src); // cannot overlap
+    mem::swap(&mut *dest, &mut src); // cannot overlap
     src
 }
 
@@ -327,15 +327,14 @@ impl<T: ?Sized> Clone for *mut T {
 
 // Equality for extern "C" fn pointers
 mod externfnpointers {
-    use mem;
     use cmp::PartialEq;
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<_R> PartialEq for extern "C" fn() -> _R {
         #[inline]
         fn eq(&self, other: &extern "C" fn() -> _R) -> bool {
-            let self_: *const () = unsafe { mem::transmute(*self) };
-            let other_: *const () = unsafe { mem::transmute(*other) };
+            let self_ = *self as usize;
+            let other_ = *other as usize;
             self_ == other_
         }
     }
@@ -345,9 +344,9 @@ mod externfnpointers {
             impl<_R,$($p),*> PartialEq for extern "C" fn($($p),*) -> _R {
                 #[inline]
                 fn eq(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
-                    let self_: *const () = unsafe { mem::transmute(*self) };
+                    let self_ = *self as usize;
 
-                    let other_: *const () = unsafe { mem::transmute(*other) };
+                    let other_ = *other as usize;
                     self_ == other_
                 }
             }

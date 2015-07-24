@@ -1714,7 +1714,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
                 } else {
                     self.end = self.end.offset(-1);
 
-                    Some(ptr::read(mem::transmute(self.end)))
+                    Some(ptr::read(self.end))
                 }
             }
         }

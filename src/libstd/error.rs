@@ -192,7 +192,7 @@ impl Error + 'static {
                 let to: TraitObject = transmute(self);
 
                 // Extract the data pointer
-                Some(transmute(to.data))
+                Some(&*(to.data as *const T))
             }
         } else {
             None
@@ -210,7 +210,7 @@ impl Error + 'static {
                 let to: TraitObject = transmute(self);
 
                 // Extract the data pointer
-                Some(transmute(to.data))
+                Some(&mut *(to.data as *const T as *mut T))
             }
         } else {
             None

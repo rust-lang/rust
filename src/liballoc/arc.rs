@@ -193,7 +193,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data: data,
         };
-        Arc { _ptr: unsafe { NonZero::new(mem::transmute(x)) } }
+        Arc { _ptr: unsafe { NonZero::new(Box::into_raw(x)) } }
     }
 }
 

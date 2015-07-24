@@ -134,7 +134,7 @@ impl ops::Index<ops::RangeFull> for OsString {
 
     #[inline]
     fn index(&self, _index: ops::RangeFull) -> &OsStr {
-        unsafe { mem::transmute(self.inner.as_slice()) }
+        OsStr::from_inner(self.inner.as_slice())
     }
 }
 
@@ -224,6 +224,10 @@ impl OsStr {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &OsStr {
         s.as_ref()
+    }
+
+    fn from_inner(inner: &Slice) -> &OsStr {
+        unsafe { mem::transmute(inner) }
     }
 
     /// Yields a `&str` slice if the `OsStr` is valid unicode.
@@ -387,14 +391,14 @@ impl AsRef<OsStr> for OsString {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for str {
     fn as_ref(&self) -> &OsStr {
-        unsafe { mem::transmute(Slice::from_str(self)) }
+        OsStr::from_inner(Slice::from_str(self))
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for String {
     fn as_ref(&self) -> &OsStr {
-        unsafe { mem::transmute(Slice::from_str(self)) }
+        (&**self).as_ref()
     }
 }
 

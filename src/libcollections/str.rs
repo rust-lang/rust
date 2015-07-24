@@ -479,6 +479,19 @@ impl str {
         core_str::StrExt::as_bytes(self)
     }
 
+    /// Converts `self` to a mutable byte slice.
+    ///
+    /// # Unsafety
+    ///
+    /// The `str` type guarantees that its contents are UTF-8 bytes, which can
+    /// be violated using this function, leading to memory-unsafeties in other
+    /// string functions.
+    #[unstable(feature = "str_as_bytes_mut")]
+    #[inline(always)]
+    pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
+        core_str::StrExt::as_bytes_mut(self)
+    }
+
     /// Returns a raw pointer to the `&str`'s buffer.
     ///
     /// The caller must ensure that the string outlives this pointer, and
@@ -504,8 +517,7 @@ impl str {
     /// # Unsafety
     ///
     /// Caller must check both UTF-8 sequence boundaries and the boundaries
-    /// of the entire slice as
-    /// well.
+    /// of the entire slice as well.
     ///
     /// # Examples
     ///

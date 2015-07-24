@@ -90,7 +90,6 @@ use io::prelude::*;
 use ffi::CStr;
 use io;
 use libc;
-use mem;
 use str;
 use sync::StaticMutex;
 
@@ -168,7 +167,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
 
     extern fn trace_fn(ctx: *mut uw::_Unwind_Context,
                        arg: *mut libc::c_void) -> uw::_Unwind_Reason_Code {
-        let cx: &mut Context = unsafe { mem::transmute(arg) };
+        let cx: &mut Context = unsafe { &mut *(arg as *mut Context) };
         let mut ip_before_insn = 0;
         let mut ip = unsafe {
             uw::_Unwind_GetIPInfo(ctx, &mut ip_before_insn) as *mut libc::c_void
