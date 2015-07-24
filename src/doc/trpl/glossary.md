@@ -53,6 +53,8 @@ syntactic categories: expressions had a value and statements did things.
 However, later languages blurred this distinction, allowing expressions to do
 things and statements to have a value. In an expression-oriented language,
 (nearly) every statement is an expression and therefore returns a value.
+Consequently these expression statements can themselves form part of larger
+expressions.
 
 [expressions]: glossary.html#expression
 [statements]: glossary.html#statement
