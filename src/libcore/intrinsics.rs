@@ -184,6 +184,14 @@ extern "rust-intrinsic" {
     /// elements.
     pub fn size_of<T>() -> usize;
 
+    #[cfg(not(stage0))]
+    /// Moves a value to an uninitialized memory location.
+    ///
+    /// Drop glue is not run on the destination.
+    pub fn move_val_init<T>(dst: *mut T, src: T);
+
+    // SNAP d4432b3
+    #[cfg(stage0)]
     /// Moves a value to an uninitialized memory location.
     ///
     /// Drop glue is not run on the destination.

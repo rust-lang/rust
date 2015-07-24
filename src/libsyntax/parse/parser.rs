@@ -2612,18 +2612,43 @@ impl<'a> Parser<'a> {
             ex = ExprAddrOf(m, e);
           }
           token::Ident(_, _) => {
-            if !self.check_keyword(keywords::Box) {
+            if !self.check_keyword(keywords::Box) && !self.check_keyword(keywords::In) {
                 return self.parse_dot_or_call_expr();
             }
 
             let lo = self.span.lo;
-            let box_hi = self.span.hi;
+            let keyword_hi = self.span.hi;
 
+            let is_in = self.token.is_keyword(keywords::In);
             try!(self.bump());
 
-            // Check for a place: `box(PLACE) EXPR`.
+            if is_in {
+              let place = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
+              let blk = try!(self.parse_block());
+              hi = blk.span.hi;
+              let blk_expr = self.mk_expr(blk.span.lo, blk.span.hi, ExprBlock(blk));
+              ex = ExprBox(Some(place), blk_expr);
+              return Ok(self.mk_expr(lo, hi, ex));
+            }
+
+            // FIXME (#22181) Remove `box (PLACE) EXPR` support
+            // entirely after next release (enabling `(box (EXPR))`),
+            // since it will be replaced by `in PLACE { EXPR }`, ...
+            //
+            // ... but for now: check for a place: `box(PLACE) EXPR`.
+
             if try!(self.eat(&token::OpenDelim(token::Paren)) ){
-                // Support `box() EXPR` as the default.
+                // SNAP d4432b3
+                // Enable this warning after snapshot ...
+                //
+                // let box_span = mk_sp(lo, self.last_span.hi);
+                // self.span_warn(
+                //     box_span,
+                //     "deprecated syntax; use the `in` keyword now \
+                //            (e.g. change `box (<expr>) <expr>` to \
+                //                         `in <expr> { <expr> }`)");
+
+                // Continue supporting `box () EXPR` (temporarily)
                 if !try!(self.eat(&token::CloseDelim(token::Paren)) ){
                     let place = try!(self.parse_expr_nopanic());
                     try!(self.expect(&token::CloseDelim(token::Paren)));
@@ -2634,10 +2659,15 @@ impl<'a> Parser<'a> {
                         self.span_err(span,
                                       &format!("expected expression, found `{}`",
                                               this_token_to_string));
-                        let box_span = mk_sp(lo, box_hi);
+
+                        // Spanning just keyword avoids constructing
+                        // printout of arg expression (which starts
+                        // with parenthesis, as established above).
+
+                        let box_span = mk_sp(lo, keyword_hi);
                         self.span_suggestion(box_span,
-                                             "try using `box()` instead:",
-                                             "box()".to_string());
+                                             "try using `box ()` instead:",
+                                             format!("box ()"));
                         self.abort_if_errors();
                     }
                     let subexpression = try!(self.parse_prefix_expr());
@@ -2650,6 +2680,7 @@ impl<'a> Parser<'a> {
             // Otherwise, we use the unique pointer default.
             let subexpression = try!(self.parse_prefix_expr());
             hi = subexpression.span.hi;
+
             // FIXME (pnkfelix): After working out kinks with box
             // desugaring, should be `ExprBox(None, subexpression)`
             // instead.

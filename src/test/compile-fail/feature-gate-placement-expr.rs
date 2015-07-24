@@ -8,18 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that `box EXPR` is feature-gated.
+// Check that `in PLACE { EXPR }` is feature-gated.
 //
-// See also feature-gate-placement-expr.rs
+// See also feature-gate-box-expr.rs
 //
 // (Note that the two tests are separated since the checks appear to
 // be performed at distinct phases, with an abort_if_errors call
 // separating them.)
 
 fn main() {
-    let x = box 'c'; //~ ERROR box expression syntax is experimental
+    use std::boxed::HEAP;
+
+    let x = box (HEAP) 'c'; //~ ERROR placement-in expression syntax is experimental
     println!("x: {}", x);
 
-    let x = box () 'c'; //~ ERROR box expression syntax is experimental
+    let x = in HEAP { 'c' }; //~ ERROR placement-in expression syntax is experimental
     println!("x: {}", x);
 }

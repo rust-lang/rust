@@ -80,6 +80,8 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("visible_private_types", "1.0.0", Active),
     ("slicing_syntax", "1.0.0", Accepted),
     ("box_syntax", "1.0.0", Active),
+    ("placement_in_syntax", "1.0.0", Active),
+    ("pushpop_unsafe", "1.2.0", Active),
     ("on_unimplemented", "1.0.0", Active),
     ("simd_ffi", "1.0.0", Active),
     ("allocator", "1.0.0", Active),
@@ -325,6 +327,9 @@ pub struct Features {
     pub allow_trace_macros: bool,
     pub allow_internal_unstable: bool,
     pub allow_custom_derive: bool,
+    pub allow_placement_in: bool,
+    pub allow_box: bool,
+    pub allow_pushpop_unsafe: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
     pub negate_unsigned: bool,
@@ -348,6 +353,9 @@ impl Features {
             allow_trace_macros: false,
             allow_internal_unstable: false,
             allow_custom_derive: false,
+            allow_placement_in: false,
+            allow_box: false,
+            allow_pushpop_unsafe: false,
             simd_ffi: false,
             unmarked_api: false,
             negate_unsigned: false,
@@ -358,6 +366,36 @@ impl Features {
     }
 }
 
+const EXPLAIN_BOX_SYNTAX: &'static str =
+    "box expression syntax is experimental; you can call `Box::new` instead.";
+
+const EXPLAIN_PLACEMENT_IN: &'static str =
+    "placement-in expression syntax is experimental and subject to change.";
+
+const EXPLAIN_PUSHPOP_UNSAFE: &'static str =
+    "push/pop_unsafe macros are experimental and subject to change.";
+
+pub fn check_for_box_syntax(f: Option<&Features>, diag: &SpanHandler, span: Span) {
+    if let Some(&Features { allow_box: true, .. }) = f {
+        return;
+    }
+    emit_feature_err(diag, "box_syntax", span, EXPLAIN_BOX_SYNTAX);
+}
+
+pub fn check_for_placement_in(f: Option<&Features>, diag: &SpanHandler, span: Span) {
+    if let Some(&Features { allow_placement_in: true, .. }) = f {
+        return;
+    }
+    emit_feature_err(diag, "placement_in_syntax", span, EXPLAIN_PLACEMENT_IN);
+}
+
+pub fn check_for_pushpop_syntax(f: Option<&Features>, diag: &SpanHandler, span: Span) {
+    if let Some(&Features { allow_pushpop_unsafe: true, .. }) = f {
+        return;
+    }
+    emit_feature_err(diag, "pushpop_unsafe", span, EXPLAIN_PUSHPOP_UNSAFE);
+}
+
 struct Context<'a> {
     features: Vec<&'static str>,
     span_handler: &'a SpanHandler,
@@ -366,6 +404,11 @@ struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
+    fn enable_feature(&mut self, feature: &'static str) {
+        debug!("enabling feature: {}", feature);
+        self.features.push(feature);
+    }
+
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
         let has_feature = self.has_feature(feature);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", feature, span, has_feature);
@@ -487,6 +530,26 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
 
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
         self.context.check_attribute(attr, true);
+    }
+
+    fn visit_expr(&mut self, e: &ast::Expr) {
+        // Issue 22181: overloaded-`box` and placement-`in` are
+        // implemented via a desugaring expansion, so their feature
+        // gates go into MacroVisitor since that works pre-expansion.
+        //
+        // Issue 22234: we also check during expansion as well.
+        // But we keep these checks as a pre-expansion check to catch
+        // uses in e.g. conditionalized code.
+
+        if let ast::ExprBox(None, _) = e.node {
+            self.context.gate_feature("box_syntax", e.span, EXPLAIN_BOX_SYNTAX);
+        }
+
+        if let ast::ExprBox(Some(_), _) = e.node {
+            self.context.gate_feature("placement_in_syntax", e.span, EXPLAIN_PLACEMENT_IN);
+        }
+
+        visit::walk_expr(self, e);
     }
 }
 
@@ -754,7 +817,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
                     match KNOWN_FEATURES.iter()
                                         .find(|& &(n, _, _)| name == n) {
                         Some(&(name, _, Active)) => {
-                            cx.features.push(name);
+                            cx.enable_feature(name);
                         }
                         Some(&(_, _, Removed)) => {
                             span_handler.span_err(mi.span, "feature has been removed");
@@ -787,6 +850,9 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         allow_trace_macros: cx.has_feature("trace_macros"),
         allow_internal_unstable: cx.has_feature("allow_internal_unstable"),
         allow_custom_derive: cx.has_feature("custom_derive"),
+        allow_placement_in: cx.has_feature("placement_in_syntax"),
+        allow_box: cx.has_feature("box_syntax"),
+        allow_pushpop_unsafe: cx.has_feature("pushpop_unsafe"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),
         negate_unsigned: cx.has_feature("negate_unsigned"),

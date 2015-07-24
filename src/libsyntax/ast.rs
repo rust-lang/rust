@@ -810,6 +810,8 @@ pub type SpannedIdent = Spanned<Ident>;
 pub enum BlockCheckMode {
     DefaultBlock,
     UnsafeBlock(UnsafeSource),
+    PushUnsafeBlock(UnsafeSource),
+    PopUnsafeBlock(UnsafeSource),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
