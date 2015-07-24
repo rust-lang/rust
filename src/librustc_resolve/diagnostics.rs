@@ -476,7 +476,7 @@ struct Bar2; // ok!
 "##,
 
 E0430: r##"
-The `self` import appears more than once in the list.
+The `self` import appears more than once in the list. Erroneous code example:
 
 ```
 use something::{self, self}; // error: `self` import can only appear once in
@@ -485,6 +485,18 @@ use something::{self, self}; // error: `self` import can only appear once in
 
 Please verify you didn't misspell the import name or remove the duplicated
 `self` import.
+"##,
+
+E0431: r##"
+`self` import was made. Erroneous code example:
+
+```
+use {self}; // error: `self` import can only appear in an import list with a
+            //        non-empty prefix
+```
+
+You can't import the current module in itself, please remove this import or
+verify you didn't misspell it.
 "##,
 
 E0433: r##"
@@ -531,8 +543,6 @@ register_diagnostics! {
     E0426, // use of undeclared label
     E0427, // cannot use `ref` binding mode with ...
     E0429, // `self` imports are only allowed within a { } list
-    E0431, // `self` import can only appear in an import list with a non-empty
-           // prefix
     E0432, // unresolved import
     E0434, // can't capture dynamic environment in a fn item
     E0435, // attempt to use a non-constant value in a constant
