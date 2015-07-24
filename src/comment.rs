@@ -101,10 +101,10 @@ fn format_comments() {
                                12));
 
     let input = "// comment";
-    let expected_output = "/* com\n                                                                      \
-                           * men\n                                                                      \
-                           * t */";
-    assert_eq!(expected_output, rewrite_comment(input, true, 9, 69));
+    let expected = "/* com\n                                                                      \
+                    * men\n                                                                      * \
+                    t */";
+    assert_eq!(expected, rewrite_comment(input, true, 9, 69));
 
     assert_eq!("/* trimmed */", rewrite_comment("/*   trimmed    */", true, 100, 100));
 }

@@ -11,13 +11,11 @@
 use syntax::ast;
 use syntax::codemap::{self, CodeMap, Span, BytePos};
 use syntax::visit;
-use syntax::parse::token;
-use syntax::attr;
+use syntax::parse::{token, parser};
 use std::path::PathBuf;
 
 use utils;
 use config::Config;
-use comment::FindUncommented;
 
 use changes::ChangeSet;
 use rewrite::{Rewrite, RewriteContext};
@@ -363,68 +361,48 @@ impl<'a> FmtVisitor<'a> {
 
     fn format_mod(&mut self, m: &ast::Mod, s: Span, ident: ast::Ident, attrs: &[ast::Attribute]) {
         debug!("FmtVisitor::format_mod: ident: {:?}, span: {:?}", ident, s);
+
         // Decide whether this is an inline mod or an external mod.
-        // There isn't any difference between inline and external mod in AST,
-        // so we use the trick of searching for an opening brace.
-        // We can't use the inner span of the mod since it is weird when it
-        // is empty (no items).
-        // FIXME Use the inner span once rust-lang/rust#26755 is fixed.
-        let open_brace = self.codemap.span_to_snippet(s).unwrap().find_uncommented("{");
-        match open_brace {
-            None => {
-                debug!("FmtVisitor::format_mod: external mod");
-                let file_path = self.module_file(ident, attrs, s);
-                let filename = file_path.to_str().unwrap();
-                if self.changes.is_changed(filename) {
-                    // The file has already been reformatted, do nothing
-                } else {
-                    self.format_separate_mod(m, filename);
-                }
-                // TODO Should rewrite properly `mod X;`
-            }
-            Some(open_brace) => {
-                debug!("FmtVisitor::format_mod: internal mod");
-                debug!("... open_brace: {}, str: {:?}",
-                       open_brace,
-                       self.codemap.span_to_snippet(s));
-                // Format everything until opening brace
-                // TODO Shoud rewrite properly
-                self.format_missing(s.lo + BytePos(open_brace as u32));
-                self.block_indent += self.config.tab_spaces;
-                visit::walk_mod(self, m);
-                debug!("... last_pos after: {:?}", self.last_pos);
-                self.block_indent -= self.config.tab_spaces;
+        let local_file_name = self.codemap.span_to_filename(s);
+        let is_internal = local_file_name == self.codemap.span_to_filename(m.inner);
+
+        // TODO Should rewrite properly `mod X;`
+
+        if is_internal {
+            debug!("FmtVisitor::format_mod: internal mod");
+            self.block_indent += self.config.tab_spaces;
+            visit::walk_mod(self, m);
+            debug!("... last_pos after: {:?}", self.last_pos);
+            self.block_indent -= self.config.tab_spaces;
+        } else {
+            debug!("FmtVisitor::format_mod: external mod");
+            let file_path = self.module_file(ident, attrs, local_file_name);
+            let filename = file_path.to_str().unwrap();
+            if self.changes.is_changed(filename) {
+                // The file has already been reformatted, do nothing
+            } else {
+                self.format_separate_mod(m, filename);
             }
         }
-        self.format_missing(s.hi);
+
         debug!("FmtVisitor::format_mod: exit");
     }
 
     /// Find the file corresponding to an external mod
-    /// Same algorithm as syntax::parse::eval_src_mod
-    fn module_file(&self, id: ast::Ident, outer_attrs: &[ast::Attribute], id_sp: Span) -> PathBuf {
-        // FIXME use libsyntax once rust-lang/rust#26750 is merged
-        let mut prefix = PathBuf::from(&self.codemap.span_to_filename(id_sp));
-        prefix.pop();
-        let mod_string = token::get_ident(id);
-        match attr::first_attr_value_str_by_name(outer_attrs, "path") {
-            Some(d) => prefix.join(&*d),
-            None => {
-                let default_path_str = format!("{}.rs", mod_string);
-                let secondary_path_str = format!("{}/mod.rs", mod_string);
-                let default_path = prefix.join(&default_path_str);
-                let secondary_path = prefix.join(&secondary_path_str);
-                let default_exists = self.codemap.file_exists(&default_path);
-                let secondary_exists = self.codemap.file_exists(&secondary_path);
-                if default_exists {
-                    default_path
-                } else if secondary_exists {
-                    secondary_path
-                } else {
-                    // Should never appens since rustc parsed everything sucessfully
-                    panic!("Didn't found module {}", mod_string);
-                }
-            }
+    fn module_file(&self, id: ast::Ident, attrs: &[ast::Attribute], filename: String) -> PathBuf {
+        let dir_path = {
+            let mut path = PathBuf::from(&filename);
+            path.pop();
+            path
+        };
+
+        if let Some(path) = parser::Parser::submod_path_from_attr(attrs, &dir_path) {
+            return path;
+        }
+
+        match parser::Parser::default_submod_path(id, &dir_path, &self.codemap).result {
+            Ok(parser::ModulePathSuccess { path, .. }) => path,
+            _ => panic!("Couldn't find module {}", token::get_ident(id))
         }
     }
 
