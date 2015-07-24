@@ -440,9 +440,9 @@ impl Foo {
 }
 ```
 
-Please check if the method's argument list should have contained self,
-&self, or &mut self (in case you didn't want to create a static method),
-and add it if so. Example:
+Please check if the method's argument list should have contained `self`,
+`&self`, or `&mut self` (in case you didn't want to create a static
+method), and add it if so. Example:
 
 ```
 struct Foo;
@@ -458,10 +458,18 @@ impl Foo {
 "##,
 
 E0425: r##"
-An unresolved name was used. Example of erroneous code:
+An unresolved name was used. Example of erroneous codes:
 
 ```
-something_that_doesnt_exist::foo; // error: unresolved name `f::foo`
+something_that_doesnt_exist::foo;
+// error: unresolved name `something_that_doesnt_exist::foo`
+
+// or:
+trait Foo {
+    fn bar() {
+        Self; // error: unresolved name `Self`
+    }
+}
 ```
 
 Please verify you didn't misspell the name or that you're not using an
@@ -489,8 +497,7 @@ loop {
 }
 ```
 
-Please verify you didn't misspell the label name or you did declare
-it. Example:
+Please verify you spelt or declare the label correctly. Example:
 
 ```
 'a: loop {
@@ -541,8 +548,8 @@ use {self}; // error: `self` import can only appear in an import list with a
             //        non-empty prefix
 ```
 
-You can't import the current module in itself, please remove this import or
-verify you didn't misspell it.
+You cannot import the current module into itself, please remove this import
+or verify you didn't misspell it.
 "##,
 
 E0432: r##"
