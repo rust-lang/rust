@@ -457,6 +457,25 @@ impl Foo {
 ```
 "##,
 
+E0426: r##"
+An undeclared label was used. Example of erroneous code:
+
+```
+loop {
+    break 'a; // error: use of undeclared label `'a`
+}
+```
+
+Please verify you didn't misspell the label name or you did declare
+it. Example:
+
+```
+'a: loop {
+    break 'a; // ok!
+}
+```
+"##,
+
 E0428: r##"
 A type or module has been defined more than once. Example of erroneous
 code:
@@ -563,7 +582,6 @@ register_diagnostics! {
     E0423, // is a struct variant name, but this expression uses it like a
            // function name
     E0425, // unresolved name
-    E0426, // use of undeclared label
     E0427, // cannot use `ref` binding mode with ...
     E0429, // `self` imports are only allowed within a { } list
     E0434, // can't capture dynamic environment in a fn item
