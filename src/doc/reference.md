@@ -2368,6 +2368,8 @@ The currently implemented features of the reference compiler are:
                               internally without imposing on callers
                               (i.e. making them behave like function calls in
                               terms of encapsulation).
+* - `default_type_parameter_fallback` - Allows type parameter defaults to
+                                        influence type inference.
 
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about `#![feature]` directives which enabled

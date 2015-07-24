@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
+
+#![feature(default_type_parameter_fallback)]
+
 use std::marker::PhantomData;
 
 trait Id {

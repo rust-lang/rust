@@ -9,6 +9,8 @@
 // except according to those terms.
 //
 
+#![feature(default_type_parameter_fallback)]
+
 use std::marker::PhantomData;
 
 struct DeterministicHasher;
