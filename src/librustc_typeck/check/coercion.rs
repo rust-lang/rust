@@ -68,16 +68,13 @@ use middle::traits::{predicate_for_trait_def, report_selection_error};
 use middle::ty::{AutoDerefRef, AdjustDerefRef};
 use middle::ty::{self, TypeAndMut, Ty, TypeError};
 use middle::ty_relate::RelateResult;
-use util::common::indent;
 
-use std::cell::RefCell;
 use std::collections::VecDeque;
 use syntax::ast;
 
 struct Coerce<'a, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,
-    origin: infer::TypeOrigin,
-    unsizing_obligations: RefCell<Vec<traits::PredicateObligation<'tcx>>>,
+    origin: infer::TypeOrigin
 }
 
 type CoerceResult<'tcx> = RelateResult<'tcx, Option<ty::AutoAdjustment<'tcx>>>;
@@ -101,7 +98,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug!("coerce({:?} => {:?})", a, b);
 
         // Consider coercing the subtype to a DST
-        let unsize = self.coerce_unsized(a, b);
+        let unsize = self.fcx.infcx().commit_if_ok(|_| self.coerce_unsized(a, b));
         if unsize.is_ok() {
             return unsize;
         }
@@ -311,9 +308,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         }
 
-        let mut obligations = self.unsizing_obligations.borrow_mut();
-        assert!(obligations.is_empty());
-        *obligations = leftover_predicates;
+        // Save all the obligations that are not for CoerceUnsized or Unsize.
+        for obligation in leftover_predicates {
+            self.fcx.register_predicate(obligation);
+        }
 
         let adjustment = AutoDerefRef {
             autoderefs: if reborrow.is_some() { 1 } else { 0 },
@@ -395,8 +393,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Check that the types which they point at are compatible.
         let a_unsafe = self.tcx().mk_ptr(ty::TypeAndMut{ mutbl: mutbl_b, ty: mt_a.ty });
-        try!(self.subtype(a_unsafe, b));
-        try!(coerce_mutbls(mt_a.mutbl, mutbl_b));
+        try!(self.fcx.infcx().commit_if_ok(|_| {
+            try!(self.subtype(a_unsafe, b));
+            coerce_mutbls(mt_a.mutbl, mutbl_b)
+        }));
 
         // Although references and unsafe ptrs have the same
         // representation, we still register an AutoDerefRef so that
@@ -419,29 +419,12 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              b: Ty<'tcx>)
                              -> RelateResult<'tcx, ()> {
     debug!("mk_assignty({:?} -> {:?})", a, b);
-    let mut unsizing_obligations = vec![];
-    let adjustment = try!(indent(|| {
-        fcx.infcx().commit_if_ok(|_| {
-            let coerce = Coerce {
-                fcx: fcx,
-                origin: infer::ExprAssignable(expr.span),
-                unsizing_obligations: RefCell::new(vec![])
-            };
-            let adjustment = try!(coerce.coerce(expr, a, b));
-            unsizing_obligations = coerce.unsizing_obligations.into_inner();
-            Ok(adjustment)
-        })
-    }));
+    let coerce = Coerce {
+        fcx: fcx,
+        origin: infer::ExprAssignable(expr.span)
+    };
 
-    if let Some(AdjustDerefRef(auto)) = adjustment {
-        if auto.unsize.is_some() {
-            for obligation in unsizing_obligations {
-                fcx.register_predicate(obligation);
-            }
-        }
-    }
-
-    if let Some(adjustment) = adjustment {
+    if let Some(adjustment) = try!(coerce.coerce(expr, a, b)) {
         debug!("Success, coerced with {:?}", adjustment);
         fcx.write_adjustment(expr.id, adjustment);
     }
