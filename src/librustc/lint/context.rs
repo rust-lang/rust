@@ -34,6 +34,7 @@ use lint::builtin;
 use util::nodemap::FnvHashMap;
 
 use std::cell::RefCell;
+use std::cmp;
 use std::mem;
 use syntax::ast_util::IdVisitingOperation;
 use syntax::attr::AttrMetaMethods;
@@ -66,6 +67,9 @@ pub struct LintStore {
     /// Map of registered lint groups to what lints they expand to. The bool
     /// is true if the lint group was added by a plugin.
     lint_groups: FnvHashMap<&'static str, (Vec<LintId>, bool)>,
+
+    /// Maximum level a lint can be
+    lint_cap: Option<Level>,
 }
 
 /// The targed of the `by_name` map, which accounts for renaming/deprecation.
@@ -94,7 +98,10 @@ impl LintStore {
         }
     }
 
-    fn set_level(&mut self, lint: LintId, lvlsrc: LevelSource) {
+    fn set_level(&mut self, lint: LintId, mut lvlsrc: LevelSource) {
+        if let Some(cap) = self.lint_cap {
+            lvlsrc.0 = cmp::min(lvlsrc.0, cap);
+        }
         if lvlsrc.0 == Allow {
             self.levels.remove(&lint);
         } else {
@@ -109,6 +116,7 @@ impl LintStore {
             by_name: FnvHashMap(),
             levels: FnvHashMap(),
             lint_groups: FnvHashMap(),
+            lint_cap: None,
         }
     }
 
@@ -225,6 +233,13 @@ impl LintStore {
                                                  level.as_str(), lint_name)),
                     }
                 }
+            }
+        }
+
+        self.lint_cap = sess.opts.lint_cap;
+        if let Some(cap) = self.lint_cap {
+            for level in self.levels.iter_mut().map(|p| &mut (p.1).0) {
+                *level = cmp::min(*level, cap);
             }
         }
     }
