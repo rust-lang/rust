@@ -12,8 +12,42 @@
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
 
+use os::raw::{c_uint, c_ushort};
+
+#[cfg(not(any(target_arch = "cris",
+              target_arch = "parisc",
+              target_arch = "microblaze",
+              target_arch = "m68k",
+              target_arch = "sh",
+              target_arch = "arm",
+              target_arch = "avr32",
+              target_arch = "sparc",
+              target_arch = "frv",
+              target_arch = "blackfin",
+              target_arch = "mn10300",
+              target_arch = "x86",
+              target_arch = "x86_64",
+              target_arch = "m32r")))]
+pub type __kernel_mode_t = c_uint;
+
+#[cfg(any(target_arch = "cris",
+         target_arch = "parisc",
+         target_arch = "microblaze",
+         target_arch = "m68k",
+         target_arch = "sh",
+         target_arch = "arm",
+         target_arch = "avr32",
+         target_arch = "sparc",
+         target_arch = "frv",
+         target_arch = "blackfin",
+         target_arch = "mn10300",
+         target_arch = "x86",
+         target_arch = "x86_64",
+         target_arch = "m32r"))]
+pub type __kernel_mode_t = c_ushort;
+
 #[stable(feature = "raw_ext", since = "1.1.0")] pub type dev_t = u64;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type mode_t = u32;
+#[stable(feature = "raw_ext", since = "1.1.0")] pub type mode_t = __kernel_mode_t;
 
 #[doc(inline)]
 pub use self::arch::{off_t, ino_t, nlink_t, blksize_t, blkcnt_t, stat, time_t};
