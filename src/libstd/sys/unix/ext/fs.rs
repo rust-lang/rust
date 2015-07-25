@@ -194,10 +194,10 @@ pub trait FileTypeExt {
 
 #[unstable(feature = "file_type_ext", reason = "recently added API")]
 impl FileTypeExt for fs::FileType {
-    fn is_block_device(&self) -> bool { self.as_inner().is(libc::S_IFBLK) }
-    fn is_char_device(&self) -> bool { self.as_inner().is(libc::S_IFCHR) }
-    fn is_fifo(&self) -> bool { self.as_inner().is(libc::S_IFIFO) }
-    fn is_socket(&self) -> bool { self.as_inner().is(libc::S_IFSOCK) }
+    fn is_block_device(&self) -> bool { self.as_inner().is(libc::S_IFBLK as raw::mode_t) }
+    fn is_char_device(&self) -> bool { self.as_inner().is(libc::S_IFCHR as raw::mode_t) }
+    fn is_fifo(&self) -> bool { self.as_inner().is(libc::S_IFIFO as raw::mode_t) }
+    fn is_socket(&self) -> bool { self.as_inner().is(libc::S_IFSOCK as raw::mode_t) }
 }
 
 /// Unix-specific extension methods for `fs::DirEntry`

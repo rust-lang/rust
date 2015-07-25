@@ -15,7 +15,7 @@ use os::unix::prelude::*;
 use ffi::{CString, CStr, OsString, OsStr};
 use fmt;
 use io::{self, Error, ErrorKind, SeekFrom};
-use libc::{self, c_int, size_t, off_t, c_char, mode_t};
+use libc::{self, c_int, size_t, off_t, c_char};
 use mem;
 use path::{Path, PathBuf};
 use ptr;
@@ -23,6 +23,7 @@ use sync::Arc;
 use sys::fd::FileDesc;
 use sys::platform::raw;
 use sys::{c, cvt, cvt_r};
+use os::unix::raw::{mode_t};
 use sys_common::{AsInner, FromInner};
 use vec::Vec;
 
@@ -109,11 +110,11 @@ impl FilePermissions {
 }
 
 impl FileType {
-    pub fn is_dir(&self) -> bool { self.is(libc::S_IFDIR) }
-    pub fn is_file(&self) -> bool { self.is(libc::S_IFREG) }
-    pub fn is_symlink(&self) -> bool { self.is(libc::S_IFLNK) }
+    pub fn is_dir(&self) -> bool { self.is(libc::S_IFDIR as mode_t) }
+    pub fn is_file(&self) -> bool { self.is(libc::S_IFREG as mode_t) }
+    pub fn is_symlink(&self) -> bool { self.is(libc::S_IFLNK as mode_t) }
 
-    pub fn is(&self, mode: mode_t) -> bool { self.mode & libc::S_IFMT == mode }
+    pub fn is(&self, mode: mode_t) -> bool { self.mode & libc::S_IFMT as mode_t == mode }
 }
 
 impl FromInner<raw::mode_t> for FilePermissions {
@@ -267,7 +268,7 @@ impl File {
             (false, false) => libc::O_RDONLY,
         };
         let fd = try!(cvt_r(|| unsafe {
-            libc::open(path.as_ptr(), flags, opts.mode)
+            libc::open(path.as_ptr(), flags, opts.mode as u32)
         }));
         let fd = FileDesc::new(fd);
         fd.set_cloexec();
@@ -342,7 +343,7 @@ impl DirBuilder {
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
         let p = try!(cstr(p));
-        try!(cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode) }));
+        try!(cvt(unsafe { libc::mkdir(p.as_ptr(), self.mode as u32) }));
         Ok(())
     }
 
@@ -451,7 +452,7 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
     let p = try!(cstr(p));
-    try!(cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }));
+    try!(cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode as u32) }));
     Ok(())
 }
 
