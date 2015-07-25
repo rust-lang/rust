@@ -1351,11 +1351,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // correct trait, but also the correct type parameters.
             // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
             // but `Foo` is declared as `trait Foo : Bar<u32>`.
-            let upcast_trait_refs = util::supertraits(self.tcx(), poly_trait_ref)
-                .filter(|upcast_trait_ref| self.infcx.probe(|_| {
-                    let upcast_trait_ref = upcast_trait_ref.clone();
-                    self.match_poly_trait_ref(obligation, upcast_trait_ref).is_ok()
-                })).count();
+            let upcast_trait_refs =
+                util::supertraits(self.tcx(), poly_trait_ref)
+                .filter(|upcast_trait_ref| {
+                    self.infcx.probe(|_| {
+                        let upcast_trait_ref = upcast_trait_ref.clone();
+                        self.match_poly_trait_ref(obligation, upcast_trait_ref).is_ok()
+                    })
+                })
+                .count();
 
             if upcast_trait_refs > 1 {
                 // can be upcast in many ways; need more type information
@@ -1627,9 +1631,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             let principal =
                                 data.principal_trait_ref_with_self_ty(self.tcx(),
                                                                       self.tcx().types.err);
-                            let desired_def_id = obligation.predicate.def_id();
+                            let copy_def_id = obligation.predicate.def_id();
                             for tr in util::supertraits(self.tcx(), principal) {
-                                if tr.def_id() == desired_def_id {
+                                if tr.def_id() == copy_def_id {
                                     return ok_if(Vec::new())
                                 }
                             }
@@ -2282,31 +2286,41 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         };
 
-        // Upcast the object type to the obligation type. There must
-        // be exactly one applicable trait-reference; if this were not
-        // the case, we would have reported an ambiguity error rather
-        // than successfully selecting one of the candidates.
-        let mut upcast_trait_refs = util::supertraits(self.tcx(), poly_trait_ref)
-            .map(|upcast_trait_ref| {
-                (upcast_trait_ref.clone(), self.infcx.probe(|_| {
-                    self.match_poly_trait_ref(obligation, upcast_trait_ref)
-                }).is_ok())
-            });
         let mut upcast_trait_ref = None;
-        let mut vtable_base = 0;
+        let vtable_base;
 
-        while let Some((supertrait, matches)) = upcast_trait_refs.next() {
-            if matches {
-                upcast_trait_ref = Some(supertrait);
-                break;
-            }
-            vtable_base += util::count_own_vtable_entries(self.tcx(), supertrait);
+        {
+            // We want to find the first supertrait in the list of
+            // supertraits that we can unify with, and do that
+            // unification. We know that there is exactly one in the list
+            // where we can unify because otherwise select would have
+            // reported an ambiguity. (When we do find a match, also
+            // record it for later.)
+            let nonmatching =
+                util::supertraits(self.tcx(), poly_trait_ref)
+                .take_while(|&t| {
+                    match
+                        self.infcx.commit_if_ok(
+                            |_| self.match_poly_trait_ref(obligation, t))
+                    {
+                        Ok(_) => { upcast_trait_ref = Some(t); false }
+                        Err(_) => { true }
+                    }
+                });
+
+            // Additionally, for each of the nonmatching predicates that
+            // we pass over, we sum up the set of number of vtable
+            // entries, so that we can compute the offset for the selected
+            // trait.
+            vtable_base =
+                nonmatching.map(|t| util::count_own_vtable_entries(self.tcx(), t))
+                           .sum();
+
         }
-        assert!(upcast_trait_refs.all(|(_, matches)| !matches));
 
         VtableObjectData {
             upcast_trait_ref: upcast_trait_ref.unwrap(),
-            vtable_base: vtable_base
+            vtable_base: vtable_base,
         }
     }
 

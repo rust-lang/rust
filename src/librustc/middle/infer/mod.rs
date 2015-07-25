@@ -698,8 +698,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn rollback_to(&self, snapshot: CombinedSnapshot) {
-        debug!("rollback!");
+    fn rollback_to(&self, cause: &str, snapshot: CombinedSnapshot) {
+        debug!("rollback_to(cause={})", cause);
         let CombinedSnapshot { type_snapshot,
                                int_snapshot,
                                float_snapshot,
@@ -759,7 +759,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("commit_if_ok() -- r.is_ok() = {}", r.is_ok());
         match r {
             Ok(_) => { self.commit_from(snapshot); }
-            Err(_) => { self.rollback_to(snapshot); }
+            Err(_) => { self.rollback_to("commit_if_ok -- error", snapshot); }
         }
         r
     }
@@ -777,6 +777,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                region_vars_snapshot } = self.start_snapshot();
 
         let r = self.commit_if_ok(|_| f());
+
+        debug!("commit_regions_if_ok: rolling back everything but regions");
 
         // Roll back any non-region bindings - they should be resolved
         // inside `f`, with, e.g. `resolve_type_vars_if_possible`.
@@ -804,7 +806,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("probe()");
         let snapshot = self.start_snapshot();
         let r = f(&snapshot);
-        self.rollback_to(snapshot);
+        self.rollback_to("probe", snapshot);
         r
     }
 
