@@ -347,40 +347,50 @@ easiest just to show an example:
 
 ```rust
 trait Foo {
-    fn bar(&self);
+    fn is_valid(&self) -> bool;
 
-    fn baz(&self) { println!("We called baz."); }
+    fn is_invalid(&self) -> bool { !self.is_valid() }
 }
 ```
 
-Implementors of the `Foo` trait need to implement `bar()`, but they don’t
-need to implement `baz()`. They’ll get this default behavior. They can
+Implementors of the `Foo` trait need to implement `is_valid()`, but they don’t
+need to implement `is_invalid()`. They’ll get this default behavior. They can
 override the default if they so choose:
 
 ```rust
 # trait Foo {
-# fn bar(&self);
-# fn baz(&self) { println!("We called baz."); }
+#     fn is_valid(&self) -> bool;
+#
+#     fn is_invalid(&self) -> bool { !self.is_valid() }
 # }
 struct UseDefault;
 
 impl Foo for UseDefault {
-    fn bar(&self) { println!("We called bar."); }
+    fn is_valid(&self) -> bool {
+        println!("Called UseDefault.is_valid.");
+        true
+    }
 }
 
 struct OverrideDefault;
 
 impl Foo for OverrideDefault {
-    fn bar(&self) { println!("We called bar."); }
+    fn is_valid(&self) -> bool {
+        println!("Called OverrideDefault.is_valid.");
+        true
+    }
 
-    fn baz(&self) { println!("Override baz!"); }
+    fn is_invalid(&self) -> bool {
+        println!("Called OverrideDefault.is_invalid!");
+        true // this implementation is a self-contradiction!
+    }
 }
 
 let default = UseDefault;
-default.baz(); // prints "We called baz."
+assert!(!default.is_invalid()); // prints "Called UseDefault.is_valid."
 
 let over = OverrideDefault;
-over.baz(); // prints "Override baz!"
+assert!(over.is_invalid()); // prints "Called OverrideDefault.is_invalid!"
 ```
 
 # Inheritance
