@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const FOO: usize = FOO; //~ ERROR recursive constant
+#![feature(static_recursion)]
 
-fn main() {
-    let _x: [u8; FOO]; // caused stack overflow prior to fix
-    let _y: usize = 1 + {
-        const BAR: usize = BAR; //~ ERROR recursive constant
-        let _z: [u8; BAR]; // caused stack overflow prior to fix
-        1
-    };
+// test that autoderef of a type like this does not
+// cause compiler to loop.  Note that no instances
+// of such a type could ever be constructed.
+
+struct S {
+  x: X,
+  to_str: (),
 }
+
+struct X(Box<S>);
+
+fn main() {}

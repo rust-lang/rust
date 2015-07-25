@@ -8,28 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(static_recursion)]
+
 // test that autoderef of a type like this does not
 // cause compiler to loop.  Note that no instances
 // of such a type could ever be constructed.
 
-struct t(Box<t>); //~ ERROR this type cannot be instantiated
+struct T(Box<T>);
 
-trait to_str_2 {
-    fn my_to_string() -> String;
+trait ToStr2 {
+    fn my_to_string(&self) -> String;
 }
 
-// I use an impl here because it will cause
-// the compiler to attempt autoderef and then
-// try to resolve the method.
-impl to_str_2 for t {
-    fn my_to_string() -> String { "t".to_string() }
+impl ToStr2 for T {
+    fn my_to_string(&self) -> String { "t".to_string() }
 }
 
-fn new_t(x: t) {
+#[allow(dead_code)]
+fn new_t(x: T) {
     x.my_to_string();
-    // (there used to be an error emitted right here as well. It was
-    // spurious, at best; if `t` did exist as a type, it clearly would
-    // have an impl of the `to_str_2` trait.)
 }
 
 fn main() {

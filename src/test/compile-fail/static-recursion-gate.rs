@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+static mut S: *const u8 = unsafe { &S as *const *const u8 as *const u8 };
+//~^ ERROR recursive static
 
-// test that autoderef of a type like this does not
-// cause compiler to loop.  Note that no instances
-// of such a type could ever be constructed.
-struct S { //~ ERROR this type cannot be instantiated
-  x: X,
-  to_str: (),
+pub fn main() {
+    unsafe { assert_eq!(S, *(S as *const *const u8)); }
 }
-
-struct X(Box<S>); //~ ERROR this type cannot be instantiated
-
-fn main() {}
