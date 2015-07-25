@@ -35,7 +35,7 @@ use core::iter::Iterator;
 use tables::{derived_property, property, general_category, conversions, charwidth};
 
 // stable reexports
-pub use core::char::{MAX, from_u32, from_digit, EscapeUnicode, EscapeDefault};
+pub use core::char::{MAX, from_u32, from_u32_unchecked, from_digit, EscapeUnicode, EscapeDefault};
 
 // unstable reexports
 #[allow(deprecated)]
