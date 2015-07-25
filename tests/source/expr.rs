@@ -68,4 +68,8 @@ fn bar() {
     let foo = 1..;
     let bar = 5;
     let nonsense = (10 .. 0)..(0..10);
+
+    let x = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &&
+             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+             a);
 }
