@@ -32,9 +32,13 @@ pub struct SipHasher {
     k0: u64,
     k1: u64,
     length: usize, // how many bytes we've processed
+    // v0, v2 and v1, v3 show up in pairs in the algorithm,
+    // and simd implementations of SipHash will use vectors
+    // of v02 and v13. By placing them in this order in the struct,
+    // the compiler can pick up on just a few simd optimizations by itself.
     v0: u64,      // hash state
-    v1: u64,
     v2: u64,
+    v1: u64,
     v3: u64,
     tail: u64, // unprocessed bytes le
     ntail: usize,  // how many bytes in tail are valid
