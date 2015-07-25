@@ -161,11 +161,10 @@ impl SipHasher {
 
         // Buffered tail is now flushed, process new input.
         let len = length - needed;
-        let end = len & (!0x7);
         let left = len & 0x7;
 
         let mut i = needed;
-        while i < end {
+        while i < len - left {
             let mi = unsafe { load_u64_le(msg, i) };
 
             self.v3 ^= mi;
