@@ -48,12 +48,12 @@ expression might perform actions other than simply returning a value.
 
 ### Expression-Oriented Language
 
-In early programming languages [expressions][expression] and
+In early programming languages, [expressions][expression] and
 [statements][statement] were two separate syntactic categories: expressions had
 a value and statements did things. However, later languages blurred this
 distinction, allowing expressions to do things and statements to have a value.
 In an expression-oriented language, (nearly) every statement is an expression
-and therefore returns a value. Consequently these expression statements can
+and therefore returns a value. Consequently, these expression statements can
 themselves form part of larger expressions.
 
 [expression]: glossary.html#expression
