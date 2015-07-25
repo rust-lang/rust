@@ -6,7 +6,7 @@ Generics are called ‘parametric polymorphism’ in type theory,
 which means that they are types or functions that have multiple forms (‘poly’
 is multiple, ‘morph’ is form) over a given parameter (‘parametric’).
 
-Anyway, enough with type theory, let’s check out some generic code. Rust’s
+Anyway, enough type theory, let’s check out some generic code. Rust’s
 standard library provides a type, `Option<T>`, that’s generic:
 
 ```rust
@@ -27,7 +27,7 @@ let x: Option<i32> = Some(5);
 
 In the type declaration, we say `Option<i32>`. Note how similar this looks to
 `Option<T>`. So, in this particular `Option`, `T` has the value of `i32`. On
-the right-hand side of the binding, we do make a `Some(T)`, where `T` is `5`.
+the right-hand side of the binding, we make a `Some(T)`, where `T` is `5`.
 Since that’s an `i32`, the two sides match, and Rust is happy. If they didn’t
 match, we’d get an error:
 
