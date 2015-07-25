@@ -32,17 +32,18 @@ use core::str::next_code_point;
 
 use ascii::*;
 use borrow::Cow;
+use char;
 use cmp;
 use fmt;
 use hash::{Hash, Hasher};
 use iter::FromIterator;
 use mem;
 use ops;
+use rustc_unicode::str::{Utf16Item, utf16_items};
 use slice;
 use str;
 use string::String;
 use sys_common::AsInner;
-use rustc_unicode::str::{Utf16Item, utf16_items};
 use vec::Vec;
 
 const UTF8_REPLACEMENT_CHARACTER: &'static [u8] = b"\xEF\xBF\xBD";
@@ -107,7 +108,7 @@ impl CodePoint {
     pub fn to_char(&self) -> Option<char> {
         match self.value {
             0xD800 ... 0xDFFF => None,
-            _ => Some(unsafe { mem::transmute(self.value) })
+            _ => Some(unsafe { char::from_u32_unchecked(self.value) })
         }
     }
 
@@ -213,18 +214,16 @@ impl Wtf8Buf {
             // Attempt to not use an intermediate buffer by just pushing bytes
             // directly onto this string.
             let slice = slice::from_raw_parts_mut(
-                self.bytes.as_mut_ptr().offset(cur_len as isize),
-                4
+                self.bytes.as_mut_ptr().offset(cur_len as isize), 4
             );
-            let used = encode_utf8_raw(code_point.value, mem::transmute(slice))
-                .unwrap_or(0);
+            let used = encode_utf8_raw(code_point.value, slice).unwrap();
             self.bytes.set_len(cur_len + used);
         }
     }
 
     #[inline]
     pub fn as_slice(&self) -> &Wtf8 {
-        unsafe { mem::transmute(&*self.bytes) }
+        unsafe { Wtf8::from_bytes_unchecked(&self.bytes) }
     }
 
     /// Reserves capacity for at least `additional` more bytes to be inserted
@@ -457,7 +456,16 @@ impl Wtf8 {
     /// Since WTF-8 is a superset of UTF-8, this always succeeds.
     #[inline]
     pub fn from_str(value: &str) -> &Wtf8 {
-        unsafe { mem::transmute(value.as_bytes()) }
+        unsafe { Wtf8::from_bytes_unchecked(value.as_bytes()) }
+    }
+
+    /// Creates a WTF-8 slice from a WTF-8 byte slice.
+    ///
+    /// Since the byte slice is not checked for valid WTF-8, this functions is
+    /// marked unsafe.
+    #[inline]
+    unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
+        mem::transmute(value)
     }
 
     /// Returns the length, in WTF-8 bytes.
@@ -682,7 +690,7 @@ fn decode_surrogate(second_byte: u8, third_byte: u8) -> u16 {
 #[inline]
 fn decode_surrogate_pair(lead: u16, trail: u16) -> char {
     let code_point = 0x10000 + ((((lead - 0xD800) as u32) << 10) | (trail - 0xDC00) as u32);
-    unsafe { mem::transmute(code_point) }
+    unsafe { char::from_u32_unchecked(code_point) }
 }
 
 /// Copied from core::str::StrPrelude::is_char_boundary
@@ -699,7 +707,7 @@ pub fn is_code_point_boundary(slice: &Wtf8, index: usize) -> bool {
 #[inline]
 pub unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
     // memory layout of an &[u8] and &Wtf8 are the same
-    mem::transmute(slice::from_raw_parts(
+    Wtf8::from_bytes_unchecked(slice::from_raw_parts(
         s.bytes.as_ptr().offset(begin as isize),
         end - begin
     ))
@@ -821,7 +829,6 @@ mod tests {
     use prelude::v1::*;
     use borrow::Cow;
     use super::*;
-    use mem::transmute;
 
     #[test]
     fn code_point_from_u32() {
@@ -962,7 +969,7 @@ mod tests {
         string.push_wtf8(Wtf8::from_str(" 💩"));
         assert_eq!(string.bytes, b"a\xC3\xA9 \xF0\x9F\x92\xA9");
 
-        fn w(value: &[u8]) -> &Wtf8 { unsafe { transmute(value) } }
+        fn w(v: &[u8]) -> &Wtf8 { unsafe { Wtf8::from_bytes_unchecked(v) } }
 
         let mut string = Wtf8Buf::new();
         string.push_wtf8(w(b"\xED\xA0\xBD"));  // lead
