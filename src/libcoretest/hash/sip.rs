@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use test::Bencher;
+use test::{Bencher, black_box};
 
 use core::hash::{Hash, Hasher};
 use core::hash::SipHasher;
@@ -55,6 +55,12 @@ fn hash_with_keys<T: Hash>(k1: u64, k2: u64, x: &T) -> u64 {
     let mut st = SipHasher::new_with_keys(k1, k2);
     x.hash(&mut st);
     st.finish()
+}
+
+fn hash_bytes(x: &[u8]) -> u64 {
+    let mut s = SipHasher::default();
+    Hasher::write(&mut s, x);
+    s.finish()
 }
 
 #[test]
@@ -267,9 +273,87 @@ officia deserunt mollit anim id est laborum.";
 }
 
 #[bench]
+fn bench_u32(b: &mut Bencher) {
+    let u = 162629500u32;
+    let u = black_box(u);
+    b.iter(|| {
+        hash(&u)
+    });
+    b.bytes = 8;
+}
+
+#[bench]
+fn bench_u32_keyed(b: &mut Bencher) {
+    let u = 162629500u32;
+    let u = black_box(u);
+    let k1 = black_box(0x1);
+    let k2 = black_box(0x2);
+    b.iter(|| {
+        hash_with_keys(k1, k2, &u)
+    });
+    b.bytes = 8;
+}
+
+#[bench]
 fn bench_u64(b: &mut Bencher) {
     let u = 16262950014981195938u64;
+    let u = black_box(u);
     b.iter(|| {
-        assert_eq!(hash(&u), 5254097107239593357);
-    })
+        hash(&u)
+    });
+    b.bytes = 8;
+}
+
+#[bench]
+fn bench_bytes_4(b: &mut Bencher) {
+    let data = black_box([b' '; 4]);
+    b.iter(|| {
+        hash_bytes(&data)
+    });
+    b.bytes = 4;
+}
+
+#[bench]
+fn bench_bytes_7(b: &mut Bencher) {
+    let data = black_box([b' '; 7]);
+    b.iter(|| {
+        hash_bytes(&data)
+    });
+    b.bytes = 7;
+}
+
+#[bench]
+fn bench_bytes_8(b: &mut Bencher) {
+    let data = black_box([b' '; 8]);
+    b.iter(|| {
+        hash_bytes(&data)
+    });
+    b.bytes = 8;
+}
+
+#[bench]
+fn bench_bytes_a_16(b: &mut Bencher) {
+    let data = black_box([b' '; 16]);
+    b.iter(|| {
+        hash_bytes(&data)
+    });
+    b.bytes = 16;
+}
+
+#[bench]
+fn bench_bytes_b_32(b: &mut Bencher) {
+    let data = black_box([b' '; 32]);
+    b.iter(|| {
+        hash_bytes(&data)
+    });
+    b.bytes = 32;
+}
+
+#[bench]
+fn bench_bytes_c_128(b: &mut Bencher) {
+    let data = black_box([b' '; 128]);
+    b.iter(|| {
+        hash_bytes(&data)
+    });
+    b.bytes = 128;
 }
