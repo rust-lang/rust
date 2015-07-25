@@ -10,6 +10,7 @@
 
 //! An implementation of SipHash 2-4.
 
+use ptr;
 use prelude::*;
 use super::Hasher;
 
@@ -63,6 +64,20 @@ macro_rules! u8to64_le {
         }
         out
     });
+}
+
+/// Load a full u64 word from a byte stream, in LE order. Use
+/// `copy_nonoverlapping` to let the compiler generate the most efficient way
+/// to load u64 from a possibly unaligned address.
+///
+/// Unsafe because: unchecked indexing at i..i+8
+#[inline]
+unsafe fn load_u64_le(buf: &[u8], i: usize) -> u64 {
+    debug_assert!(i + 8 <= buf.len());
+    let mut data = 0u64;
+    ptr::copy_nonoverlapping(buf.get_unchecked(i),
+                             &mut data as *mut _ as *mut u8, 8);
+    data.to_le()
 }
 
 macro_rules! rotl {
@@ -151,7 +166,7 @@ impl SipHasher {
 
         let mut i = needed;
         while i < end {
-            let mi = u8to64_le!(msg, i);
+            let mi = unsafe { load_u64_le(msg, i) };
 
             self.v3 ^= mi;
             compress!(self.v0, self.v1, self.v2, self.v3);
