@@ -1016,16 +1016,10 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
 fn check_local(cx: &mut MatchCheckCtxt, loc: &ast::Local) {
     visit::walk_local(cx, loc);
 
-    let name = match loc.source {
-        ast::LocalLet => "local",
-        ast::LocalFor => "`for` loop"
-    };
-
     let mut static_inliner = StaticInliner::new(cx.tcx, None);
     is_refutable(cx, &*static_inliner.fold_pat(loc.pat.clone()), |pat| {
         span_err!(cx.tcx.sess, loc.pat.span, E0005,
-            "refutable pattern in {} binding: `{}` not covered",
-            name, pat_to_string(pat)
+            "refutable pattern in local binding: `{}` not covered", pat_to_string(pat)
         );
     });
 

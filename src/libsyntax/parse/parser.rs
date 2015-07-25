@@ -35,7 +35,7 @@ use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemDefaultImpl};
 use ast::{ItemExternCrate, ItemUse};
 use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
-use ast::{LitStr, LitInt, Local, LocalLet};
+use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchSource};
 use ast::{MutTy, BiMul, Mutability};
@@ -3432,7 +3432,6 @@ impl<'a> Parser<'a> {
             init: init,
             id: ast::DUMMY_NODE_ID,
             span: mk_sp(lo, self.last_span.hi),
-            source: LocalLet,
         }))
     }
 
