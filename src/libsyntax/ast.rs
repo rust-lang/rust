@@ -29,7 +29,6 @@ pub use self::Item_::*;
 pub use self::KleeneOp::*;
 pub use self::Lit_::*;
 pub use self::LitIntType::*;
-pub use self::LocalSource::*;
 pub use self::Mac_::*;
 pub use self::MacStmtStyle::*;
 pub use self::MetaItem_::*;
@@ -756,14 +755,6 @@ pub enum MacStmtStyle {
     MacStmtWithoutBraces,
 }
 
-/// Where a local declaration came from: either a true `let ... =
-/// ...;`, or one desugared from the pattern of a for loop.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum LocalSource {
-    LocalLet,
-    LocalFor,
-}
-
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
@@ -775,7 +766,6 @@ pub struct Local {
     pub init: Option<P<Expr>>,
     pub id: NodeId,
     pub span: Span,
-    pub source: LocalSource,
 }
 
 pub type Decl = Spanned<Decl_>;
