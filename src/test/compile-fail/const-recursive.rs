@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: recursive constant
-static a: isize = b;
-static b: isize = a;
+const a: isize = b; //~ ERROR recursive constant
+const b: isize = a; //~ ERROR recursive constant
 
 fn main() {
 }

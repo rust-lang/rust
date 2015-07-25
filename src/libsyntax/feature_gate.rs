@@ -160,6 +160,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows using #[prelude_import] on glob `use` items.
     ("prelude_import", "1.2.0", Active),
+
+    // Allows the definition recursive static items.
+    ("static_recursion", "1.3.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -338,6 +341,7 @@ pub struct Features {
     /// #![feature] attrs for non-language (library) features
     pub declared_lib_features: Vec<(InternedString, Span)>,
     pub const_fn: bool,
+    pub static_recursion: bool
 }
 
 impl Features {
@@ -362,6 +366,7 @@ impl Features {
             declared_stable_lang_features: Vec::new(),
             declared_lib_features: Vec::new(),
             const_fn: false,
+            static_recursion: false
         }
     }
 }
@@ -859,6 +864,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         declared_stable_lang_features: accepted_features,
         declared_lib_features: unknown_features,
         const_fn: cx.has_feature("const_fn"),
+        static_recursion: cx.has_feature("static_recursion")
     }
 }
 
