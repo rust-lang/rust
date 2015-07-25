@@ -37,8 +37,14 @@ impl Rewrite for ast::ViewPath {
                 // FIXME convert to list?
                 None
             }
-            ast::ViewPath_::ViewPathSimple(_,_) => {
-                None
+            ast::ViewPath_::ViewPathSimple(ident, ref path) => {
+                let path_str = pprust::path_to_string(path);
+
+                Some(if path.segments.last().unwrap().identifier == ident {
+                         path_str
+                     } else {
+                         format!("{} as {}", path_str, ident)
+                     })
             }
         }
     }
