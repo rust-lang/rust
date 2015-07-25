@@ -591,8 +591,9 @@ always been designed to be compiled. For these reasons, this section assumes a
 compiler.
 
 Rust's semantics obey a *phase distinction* between compile-time and
-run-time.[^phase-distinction] Those semantic rules that have a *static
-interpretation* govern the success or failure of compilation. Those semantics
+run-time.[^phase-distinction] Semantic rules that have a *static
+interpretation* govern the success or failure of compilation, while
+semantic rules
 that have a *dynamic interpretation* govern the behavior of the program at
 run-time.
 
