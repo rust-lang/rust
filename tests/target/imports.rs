@@ -32,3 +32,8 @@ fn test() {
     use Baz::*;
     use Qux;
 }
+
+// Simple imports
+use foo::bar::baz;
+use bar::quux as kaas;
+use foo;
