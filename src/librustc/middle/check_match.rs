@@ -1049,7 +1049,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
 
     for input in &decl.inputs {
         is_refutable(cx, &*input.pat, |pat| {
-            span_err!(cx.tcx.sess, input.pat.span, E0006,
+            span_err!(cx.tcx.sess, input.pat.span, E0005,
                 "refutable pattern in function argument: `{}` not covered",
                 pat_to_string(pat)
             );
