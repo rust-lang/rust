@@ -164,43 +164,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         match item.node {
             ast::Item_::ItemUse(ref vp) => {
-                match vp.node {
-                    ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
-                        let block_indent = self.block_indent;
-                        let one_line_budget = self.config.max_width - block_indent;
-                        let multi_line_budget = self.config.ideal_width - block_indent;
-                        let formatted = self.rewrite_use_list(block_indent,
-                                                              one_line_budget,
-                                                              multi_line_budget,
-                                                              path,
-                                                              path_list,
-                                                              item.vis,
-                                                              item.span);
-
-                        if let Some(new_str) = formatted {
-                            self.format_missing_with_indent(item.span.lo);
-                            self.changes.push_str_span(item.span, &new_str);
-                        } else {
-                            // Format up to last newline
-                            let span = codemap::mk_sp(self.last_pos, item.span.lo);
-                            let span_end = match self.snippet(span).rfind('\n') {
-                                Some(offset) => self.last_pos + BytePos(offset as u32),
-                                None => item.span.lo
-                            };
-                            self.format_missing(span_end);
-                        }
-
-                        self.last_pos = item.span.hi;
-                    }
-                    ast::ViewPath_::ViewPathGlob(_) => {
-                        self.format_missing_with_indent(item.span.lo);
-                        // FIXME convert to list?
-                    }
-                    ast::ViewPath_::ViewPathSimple(_,_) => {
-                        self.format_missing_with_indent(item.span.lo);
-                    }
-                }
-                visit::walk_item(self, item);
+                self.format_import(item.vis, vp, item.span);
             }
             ast::Item_::ItemImpl(..) |
             ast::Item_::ItemTrait(..) => {
@@ -221,7 +185,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                   def,
                                   generics,
                                   item.span);
-                self.last_pos = item.span.hi;
             }
             ast::Item_::ItemEnum(ref def, ref generics) => {
                 self.format_missing_with_indent(item.span.lo);
@@ -417,5 +380,38 @@ impl<'a> FmtVisitor<'a> {
         self.format_missing(filemap.end_pos);
         self.last_pos = last_pos;
         self.block_indent = block_indent;
+    }
+
+    fn format_import(&mut self, vis: ast::Visibility, vp: &ast::ViewPath, span: Span) {
+        let vis = utils::format_visibility(vis);
+        let offset = self.block_indent + vis.len() + "use ".len();
+        let context = RewriteContext {
+            codemap: self.codemap,
+            config: self.config,
+            block_indent: self.block_indent,
+        };
+        // 1 = ";"
+        match vp.rewrite(&context, self.config.max_width - offset - 1, offset) {
+            Some(ref s) if s.len() == 0 => {
+                // Format up to last newline
+                let prev_span = codemap::mk_sp(self.last_pos, span.lo);
+                let span_end = match self.snippet(prev_span).rfind('\n') {
+                    Some(offset) => self.last_pos + BytePos(offset as u32),
+                    None => span.lo
+                };
+                self.format_missing(span_end);
+                self.last_pos = span.hi;
+            }
+            Some(ref s) => {
+                let s = format!("{}use {};", vis, s);
+                self.format_missing_with_indent(span.lo);
+                self.changes.push_str_span(span, &s);
+                self.last_pos = span.hi;
+            }
+            None => {
+                self.format_missing_with_indent(span.lo);
+                self.format_missing(span.hi);
+            }
+        }
     }
 }
