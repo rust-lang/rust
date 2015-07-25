@@ -63,6 +63,8 @@ pub enum Data {
     VariableRefData(VariableRefData),
     /// Data for a reference to a type or trait.
     TypeRefData(TypeRefData),
+    /// Data for a reference to a module.
+    ModRefData(ModRefData),
     /// Data about a function call.
     FunctionCallData(FunctionCallData),
     /// Data about a method call.
@@ -138,6 +140,14 @@ pub struct VariableRefData {
 /// Data for a reference to a type or trait.
 #[derive(Debug)]
 pub struct TypeRefData {
+    pub span: Span,
+    pub scope: NodeId,
+    pub ref_id: DefId,
+}
+
+/// Data for a reference to a module.
+#[derive(Debug)]
+pub struct ModRefData {
     pub span: Span,
     pub scope: NodeId,
     pub ref_id: DefId,
@@ -580,6 +590,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             },
             def::DefFn(def_id, _) => {
                 Data::FunctionCallData(FunctionCallData {
+                    ref_id: def_id,
+                    span: sub_span.unwrap(),
+                    scope: self.enclosing_scope(id),
+                })
+            }
+            def::DefMod(def_id) => {
+                Data::ModRefData(ModRefData {
                     ref_id: def_id,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(id),
