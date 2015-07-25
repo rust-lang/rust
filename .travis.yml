@@ -7,10 +7,7 @@ cache: ccache
 sudo: false
 
 # The test suite is in general way too stressful for travis, especially in
-# terms of time limit and reliability. In the past we've tried to scale things
-# back to only build the stage1 compiler and run a subset of tests, but this
-# didn't end up panning out very well.
-#
+# terms of time limit and reliability.
 # As a result, we're just using travis to run `make tidy` and *only* build
 # stage1 but *not* test it for now (a strict subset of the bootstrap). This will
 # catch "obvious" errors like style or not even compiling.
