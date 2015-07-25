@@ -7,6 +7,7 @@ fn foo() -> bool {
     let very_long_variable_name = ( a +  first +   simple + test   );
     let very_long_variable_name = (a + first + simple + test + AAAAAAAAAAAAA + BBBBBBBBBBBBBBBBB + b + c);
 
+    //FIXME this exceeds width limit. Needs assignments reformatting
     let is_internalxxxx = self.codemap.span_to_filename(s) == self.codemap.span_to_filename(m.inner);
 
     let some_val = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa * bbbb / (bbbbbb -

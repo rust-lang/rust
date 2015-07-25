@@ -608,7 +608,7 @@ fn rewrite_binary_op(context: &RewriteContext,
     result.push_str(&operator_str);
 
     // 1 = space between operator and rhs
-    let used_width = result.len() + operator_str.len() + 1;
+    let used_width = result.len() + 1;
     let remaining_width = match result.rfind('\n') {
         Some(idx) => (offset + width + idx).checked_sub(used_width).unwrap_or(0),
         None => width.checked_sub(used_width).unwrap_or(0)
