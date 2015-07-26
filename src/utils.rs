@@ -1,4 +1,4 @@
-use rustc::lint::Context;
+use rustc::lint::{Context, Lint};
 use syntax::ast::{DefId, Name, Path};
 use syntax::codemap::{ExpnInfo, Span};
 use syntax::ptr::P;
@@ -52,3 +52,16 @@ pub fn snippet<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, str> {
 
 /// dereference a P<T> and return a ref on the result
 pub fn de_p<T>(p: &P<T>) -> &T { &*p }
+
+#[cfg(not(feature="structured_logging"))]
+pub fn span_lint(cx: &Context, lint: &'static Lint, sp: Span, msg: &str) {
+	cx.span_lint(lint, sp, msg);
+}
+
+#[cfg(feature="structured_logging")]
+pub fn span_lint(cx: &Context, lint: &'static Lint, sp: Span, msg: &str) {
+	// lint.name / lint.desc is can give details of the lint
+	// cx.sess().codemap() has all these nice functions for line/column/snippet details
+	// http://doc.rust-lang.org/syntax/codemap/struct.CodeMap.html#method.span_to_string
+	cx.span_lint(lint, sp, msg);
+}

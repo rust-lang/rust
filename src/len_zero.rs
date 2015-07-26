@@ -10,6 +10,7 @@ use rustc::middle::def::{DefTy, DefStruct, DefTrait};
 use syntax::codemap::{Span, Spanned};
 use syntax::ast::*;
 use misc::walk_ty;
+use utils::span_lint;
 
 declare_lint!(pub LEN_ZERO, Warn,
               "Warn when .is_empty() could be used instead of checking .len()");
@@ -54,10 +55,10 @@ fn check_trait_items(cx: &Context, item: &Item, trait_items: &[P<TraitItem>]) {
 	}
 
 	if !trait_items.iter().any(|i| is_named_self(i, "is_empty")) {
-		//cx.span_lint(LEN_WITHOUT_IS_EMPTY, item.span, &format!("trait {}", item.ident.as_str()));
+		//span_lint(cx, LEN_WITHOUT_IS_EMPTY, item.span, &format!("trait {}", item.ident.as_str()));
 		for i in trait_items {
 			if is_named_self(i, "len") {
-				cx.span_lint(LEN_WITHOUT_IS_EMPTY, i.span,
+				span_lint(cx, LEN_WITHOUT_IS_EMPTY, i.span,
 					&format!("Trait '{}' has a '.len(_: &Self)' method, but no \
 						'.is_empty(_: &Self)' method. Consider adding one.", 
 						item.ident.as_str()));
@@ -76,7 +77,7 @@ fn check_impl_items(cx: &Context, item: &Item, impl_items: &[P<ImplItem>]) {
 		for i in impl_items {
 			if is_named_self(i, "len") {
 				let s = i.span;
-				cx.span_lint(LEN_WITHOUT_IS_EMPTY, 
+				span_lint(cx, LEN_WITHOUT_IS_EMPTY, 
 					Span{ lo: s.lo, hi: s.lo, expn_id: s.expn_id },
 					&format!("Item '{}' has a '.len(_: &Self)' method, but no \
 						'.is_empty(_: &Self)' method. Consider adding one.", 
@@ -107,7 +108,7 @@ fn check_len_zero(cx: &Context, span: Span, method: &SpannedIdent,
 	if let &Spanned{node: LitInt(0, _), ..} = lit {
 		if method.node.as_str() == "len" && args.len() == 1 &&
 			has_is_empty(cx, &*args[0]) {
-			cx.span_lint(LEN_ZERO, span, &format!(
+			span_lint(cx, LEN_ZERO, span, &format!(
 				"Consider replacing the len comparison with '{}_.is_empty()'",
 					empty))
 		}

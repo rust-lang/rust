@@ -8,7 +8,7 @@ use rustc::middle::ty;
 use syntax::codemap::{Span, Spanned};
 
 use types::span_note_and_lint;
-use utils::{match_path, snippet};
+use utils::{match_path, snippet, span_lint};
 
 pub fn walk_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
 	match ty.sty {
@@ -72,7 +72,7 @@ impl LintPass for StrToStringPass {
             ast::ExprMethodCall(ref method, _, ref args)
                 if method.node.as_str() == "to_string"
                 && is_str(cx, &*args[0]) => {
-                cx.span_lint(STR_TO_STRING, expr.span, "str.to_owned() is faster");
+                span_lint(cx, STR_TO_STRING, expr.span, "str.to_owned() is faster");
             },
             _ => ()
         }
@@ -100,7 +100,7 @@ impl LintPass for TopLevelRefPass {
     fn check_fn(&mut self, cx: &Context, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
         for ref arg in decl.inputs.iter() {
             if let PatIdent(BindByRef(_), _, _) = arg.pat.node {
-                cx.span_lint(
+                span_lint(cx, 
                     TOPLEVEL_REF_ARG,
                     arg.pat.span,
                     "`ref` directly on a function argument is ignored. Have you considered using a reference type instead?"
@@ -136,7 +136,7 @@ impl LintPass for CmpNan {
 
 fn check_nan(cx: &Context, path: &Path, span: Span) {
 	path.segments.last().map(|seg| if seg.identifier.as_str() == "NAN" {
-		cx.span_lint(CMP_NAN, span, "Doomed comparison with NAN, use std::{f32,f64}::is_nan instead");
+		span_lint(cx, CMP_NAN, span, "Doomed comparison with NAN, use std::{f32,f64}::is_nan instead");
 	});
 }
 
@@ -155,7 +155,7 @@ impl LintPass for FloatCmp {
 		if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
 			let op = cmp.node;
 			if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
-				cx.span_lint(FLOAT_CMP, expr.span, &format!(
+				span_lint(cx, FLOAT_CMP, expr.span, &format!(
 					"{}-Comparison of f32 or f64 detected. You may want to change this to 'abs({} - {}) < epsilon' for some suitable value of epsilon",
 					binop_to_string(op), snippet(cx, left.span, ".."), 
 					snippet(cx, right.span, "..")));
@@ -186,7 +186,7 @@ impl LintPass for Precedence {
 	fn check_expr(&mut self, cx: &Context, expr: &Expr) {
 		if let ExprBinary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
 			if is_bit_op(op) && (is_arith_expr(left) || is_arith_expr(right)) {
-				cx.span_lint(PRECEDENCE, expr.span, 
+				span_lint(cx, PRECEDENCE, expr.span, 
 					"Operator precedence can trip the unwary. Consider adding parenthesis to the subexpression.");
 			}
 		}
@@ -241,7 +241,7 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
 			let name = ident.as_str();
 			if name == "to_string" || 
 			   name == "to_owned" && is_str_arg(cx, args) {
-				cx.span_lint(CMP_OWNED, expr.span, &format!(
+				span_lint(cx, CMP_OWNED, expr.span, &format!(
 					"this creates an owned instance just for comparison. \
 					Consider using {}.as_slice() to compare without allocation",
 					snippet(cx, other_span, "..")))
@@ -251,7 +251,7 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
 			if let &ExprPath(None, ref path) = &path.node {
 				if match_path(path, &["String", "from_str"]) ||
 						match_path(path, &["String", "from"]) {
-					cx.span_lint(CMP_OWNED, expr.span, &format!(
+					span_lint(cx, CMP_OWNED, expr.span, &format!(
 					"this creates an owned instance just for comparison. \
 					Consider using {}.as_slice() to compare without allocation",
 					snippet(cx, other_span, "..")))

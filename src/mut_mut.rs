@@ -3,7 +3,7 @@ use syntax::ast::*;
 use rustc::lint::{Context, LintPass, LintArray, Lint};
 use rustc::middle::ty::{TypeVariants, TypeAndMut, TyRef};
 use syntax::codemap::{BytePos, ExpnInfo, Span};
-use utils::in_macro;
+use utils::{in_macro, span_lint};
 
 declare_lint!(pub MUT_MUT, Warn,
               "Warn on usage of double-mut refs, e.g. '&mut &mut ...'");
@@ -22,7 +22,7 @@ impl LintPass for MutMut {
 	}
 	
 	fn check_ty(&mut self, cx: &Context, ty: &Ty) {
-		unwrap_mut(ty).and_then(unwrap_mut).map_or((), |_| cx.span_lint(MUT_MUT, 
+		unwrap_mut(ty).and_then(unwrap_mut).map_or((), |_| span_lint(cx, MUT_MUT, 
 			ty.span, "Generally you want to avoid &mut &mut _ if possible."))
 	}
 }
@@ -39,12 +39,12 @@ fn check_expr_expd(cx: &Context, expr: &Expr, info: Option<&ExpnInfo>) {
 	
 	unwrap_addr(expr).map_or((), |e| {
 		unwrap_addr(e).map(|_| {
-			cx.span_lint(MUT_MUT, expr.span, 
+			span_lint(cx, MUT_MUT, expr.span, 
 				"Generally you want to avoid &mut &mut _ if possible.")
 		}).unwrap_or_else(|| {
 			if let TyRef(_, TypeAndMut{ty: _, mutbl: MutMutable}) = 
 					cx.tcx.expr_ty(e).sty {
-				cx.span_lint(MUT_MUT, expr.span,
+				span_lint(cx, MUT_MUT, expr.span,
 					"This expression mutably borrows a mutable reference. \
 					Consider reborrowing")
 			}

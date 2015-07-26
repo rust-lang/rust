@@ -1,6 +1,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::{BytePos, Span};
+use utils::span_lint;
 
 declare_lint!{ pub ZERO_WIDTH_SPACE, Deny, "Zero-width space is confusing" }
 
@@ -36,7 +37,7 @@ fn check_str(cx: &Context, string: &str, span: Span) {
 
 fn lint_zero_width(cx: &Context, span: Span, start: Option<usize>) {
 	start.map(|index| {
-		cx.span_lint(ZERO_WIDTH_SPACE, Span {
+		span_lint(cx, ZERO_WIDTH_SPACE, Span {
 			lo: span.lo + BytePos(index as u32),
 			hi: span.lo + BytePos(index as u32),
 			expn_id: span.expn_id,

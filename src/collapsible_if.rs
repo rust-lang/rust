@@ -19,7 +19,7 @@ use syntax::ast::*;
 use syntax::ptr::P;
 use syntax::codemap::{Span, Spanned, ExpnInfo};
 use syntax::print::pprust::expr_to_string;
-use utils::in_macro;
+use utils::{in_macro, span_lint};
 
 declare_lint! {
     pub COLLAPSIBLE_IF,
@@ -47,7 +47,7 @@ fn check_expr_expd(cx: &Context, e: &Expr, info: Option<&ExpnInfo>) {
 	if let ExprIf(ref check, ref then, None) = e.node {
 		if let Some(&Expr{ node: ExprIf(ref check_inner, _, None), ..}) = 
 				single_stmt_of_block(then) {
-			cx.span_lint(COLLAPSIBLE_IF, e.span, &format!(
+			span_lint(cx, COLLAPSIBLE_IF, e.span, &format!(
 				"This if statement can be collapsed. Try: if {} && {}\n{:?}", 
 				check_to_string(check), check_to_string(check_inner), e));
 		}

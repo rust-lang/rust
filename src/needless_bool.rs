@@ -10,7 +10,7 @@ use syntax::ast::*;
 use syntax::ast_util::{is_comparison_binop, binop_to_string};
 use syntax::ptr::P;
 use syntax::codemap::Span;
-use utils::de_p;
+use utils::{de_p, span_lint};
 
 declare_lint! {
     pub NEEDLESS_BOOL,
@@ -30,16 +30,16 @@ impl LintPass for NeedlessBool {
         if let ExprIf(_, ref then_block, Option::Some(ref else_expr)) = e.node {
 			match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
 				(Option::Some(true), Option::Some(true)) => { 
-					cx.span_lint(NEEDLESS_BOOL, e.span, 
+					span_lint(cx, NEEDLESS_BOOL, e.span, 
 						"your if-then-else expression will always return true"); },
 				(Option::Some(true), Option::Some(false)) => { 
-					cx.span_lint(NEEDLESS_BOOL, e.span, 
+					span_lint(cx, NEEDLESS_BOOL, e.span, 
 						"you can reduce your if-statement to its predicate"); },
 				(Option::Some(false), Option::Some(true)) => { 
-					cx.span_lint(NEEDLESS_BOOL, e.span, 
+					span_lint(cx, NEEDLESS_BOOL, e.span, 
 						"you can reduce your if-statement to '!' + your predicate"); },
 				(Option::Some(false), Option::Some(false)) => { 
-					cx.span_lint(NEEDLESS_BOOL, e.span, 
+					span_lint(cx, NEEDLESS_BOOL, e.span, 
 						"your if-then-else expression will always return false"); },
 				_ => ()
 			}

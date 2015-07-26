@@ -11,6 +11,7 @@ use syntax::ast_util::{is_comparison_binop, binop_to_string};
 use syntax::ptr::P;
 use syntax::codemap::Span;
 use types::match_ty_unwrap;
+use utils::span_lint;
 
 declare_lint! {
     pub PTR_ARG,
@@ -58,10 +59,10 @@ fn check_fn(cx: &Context, decl: &FnDecl) {
 fn check_ptr_subtype(cx: &Context, span: Span, ty: &Ty) {
 	match_ty_unwrap(ty, &["Vec"]).map_or_else(|| match_ty_unwrap(ty, 
 			&["String"]).map_or((), |_| {
-		cx.span_lint(PTR_ARG, span,
+		span_lint(cx, PTR_ARG, span,
 			"Writing '&String' instead of '&str' involves a new Object \
 			where a slices will do. Consider changing the type to &str")
-	}), |_| cx.span_lint(PTR_ARG, span, "Writing '&Vec<_>' instead of \
+	}), |_| span_lint(cx, PTR_ARG, span, "Writing '&Vec<_>' instead of \
 			'&[_]' involves one more reference and cannot be used with \
 			non-vec-based slices. Consider changing the type to &[...]")
 	)

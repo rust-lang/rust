@@ -7,6 +7,7 @@ use syntax::ast_util::{is_comparison_binop, binop_to_string};
 use syntax::ptr::P;
 use syntax::codemap::Span;
 use std::f64::consts as f64;
+use utils::span_lint;
 
 declare_lint! {
     pub APPROX_CONSTANT,
@@ -51,7 +52,7 @@ fn check_known_consts(cx: &Context, span: Span, str: &str, module: &str) {
 	if let Ok(value) = str.parse::<f64>() {
 		for &(constant, name) in KNOWN_CONSTS {
 			if within_epsilon(constant, value) {
-				cx.span_lint(APPROX_CONSTANT, span, &format!(
+				span_lint(cx, APPROX_CONSTANT, span, &format!(
 					"Approximate value of {}::{} found, consider using it directly.", module, &name));
 			}
 		}

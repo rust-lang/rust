@@ -6,6 +6,8 @@ use syntax::ast::*;
 use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
 use syntax::codemap::Span;
 
+use utils::span_lint;
+
 /// Handles all the linting of funky types
 #[allow(missing_copy_implementations)]
 pub struct TypePass;
@@ -40,7 +42,7 @@ pub fn match_ty_unwrap<'a>(ty: &'a Ty, segments: &[&str]) -> Option<&'a [P<Ty>]>
 
 /// Lets me span a note only if the lint is shown
 pub fn span_note_and_lint(cx: &Context, lint: &'static Lint, span: Span, msg: &str, note: &str) {
-    cx.span_lint(lint, span, msg);
+    span_lint(cx, lint, span, msg);
     if cx.current_level(lint) != Level::Allow {
         cx.sess().span_note(span, note);
     }

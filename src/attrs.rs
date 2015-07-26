@@ -6,7 +6,7 @@ use syntax::ast::*;
 use syntax::ptr::P;
 use syntax::codemap::{Span, ExpnInfo};
 use syntax::parse::token::InternedString;
-use utils::{in_macro, match_path};
+use utils::{in_macro, match_path, span_lint};
 
 declare_lint! { pub INLINE_ALWAYS, Warn,
     "#[inline(always)] is usually a bad idea."}
@@ -100,7 +100,7 @@ fn check_attrs(cx: &Context, info: Option<&ExpnInfo>, ident: &Ident,
 			if values.len() != 1 || inline != &"inline" { continue; }
 			if let MetaWord(ref always) = values[0].node {
 				if always != &"always" { continue; }
-				cx.span_lint(INLINE_ALWAYS, attr.span, &format!(
+				span_lint(cx, INLINE_ALWAYS, attr.span, &format!(
 					"You have declared #[inline(always)] on {}. This \
 					is usually a bad idea. Are you sure?", 
 					ident.as_str()));

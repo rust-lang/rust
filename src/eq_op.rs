@@ -3,6 +3,7 @@ use syntax::ast::*;
 use syntax::ast_util as ast_util;
 use syntax::ptr::P;
 use syntax::codemap as code;
+use utils::span_lint;
 
 declare_lint! {
     pub EQ_OP,
@@ -21,7 +22,7 @@ impl LintPass for EqOp {
     fn check_expr(&mut self, cx: &Context, e: &Expr) {
         if let ExprBinary(ref op, ref left, ref right) = e.node {
             if is_cmp_or_bit(op) && is_exp_equal(left, right) {
-                cx.span_lint(EQ_OP, e.span, &format!(
+                span_lint(cx, EQ_OP, e.span, &format!(
 					"equal expressions as operands to {}", 
 						ast_util::binop_to_string(op.node)));
             }

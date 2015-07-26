@@ -3,6 +3,8 @@ use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
 use syntax::codemap::{Span, Spanned};
 use syntax::print::pprust::expr_to_string;
 
+use utils::span_lint;
+
 
 #[allow(missing_copy_implementations)]
 pub struct EtaPass;
@@ -48,7 +50,7 @@ impl LintPass for EtaPass {
                             return
                         }
                     }
-                    cx.span_lint(REDUNDANT_CLOSURE, expr.span,
+                    span_lint(cx, REDUNDANT_CLOSURE, expr.span,
                                  &format!("Redundant closure found, consider using `{}` in its place",
                                           expr_to_string(caller))[..])
                 }
