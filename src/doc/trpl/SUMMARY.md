@@ -26,6 +26,7 @@
     * [Primitive Types](primitive-types.md)
     * [Comments](comments.md)
     * [if](if.md)
+    * [infinite loops](infinite-loops.md)
     * [for loops](for-loops.md)
     * [while loops](while-loops.md)
     * [Ownership](ownership.md)
