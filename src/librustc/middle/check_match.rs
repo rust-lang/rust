@@ -1016,18 +1016,8 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
 fn check_local(cx: &mut MatchCheckCtxt, loc: &ast::Local) {
     visit::walk_local(cx, loc);
 
-    let name = match loc.source {
-        ast::LocalLet => "local",
-        ast::LocalFor => "`for` loop"
-    };
-
-    let mut static_inliner = StaticInliner::new(cx.tcx, None);
-    is_refutable(cx, &*static_inliner.fold_pat(loc.pat.clone()), |pat| {
-        span_err!(cx.tcx.sess, loc.pat.span, E0005,
-            "refutable pattern in {} binding: `{}` not covered",
-            name, pat_to_string(pat)
-        );
-    });
+    let pat = StaticInliner::new(cx.tcx, None).fold_pat(loc.pat.clone());
+    check_irrefutable(cx, &pat, false);
 
     // Check legality of move bindings and `@` patterns.
     check_legality_of_move_bindings(cx, false, slice::ref_slice(&loc.pat));
@@ -1048,15 +1038,26 @@ fn check_fn(cx: &mut MatchCheckCtxt,
     visit::walk_fn(cx, kind, decl, body, sp);
 
     for input in &decl.inputs {
-        is_refutable(cx, &*input.pat, |pat| {
-            span_err!(cx.tcx.sess, input.pat.span, E0005,
-                "refutable pattern in function argument: `{}` not covered",
-                pat_to_string(pat)
-            );
-        });
+        check_irrefutable(cx, &input.pat, true);
         check_legality_of_move_bindings(cx, false, slice::ref_slice(&input.pat));
         check_legality_of_bindings_in_at_patterns(cx, &*input.pat);
     }
+}
+
+fn check_irrefutable(cx: &MatchCheckCtxt, pat: &Pat, is_fn_arg: bool) {
+    let origin = if is_fn_arg {
+        "function argument"
+    } else {
+        "local binding"
+    };
+
+    is_refutable(cx, pat, |uncovered_pat| {
+        span_err!(cx.tcx.sess, pat.span, E0005,
+            "refutable pattern in {}: `{}` not covered",
+            origin,
+            pat_to_string(uncovered_pat),
+        );
+    });
 }
 
 fn is_refutable<A, F>(cx: &MatchCheckCtxt, pat: &Pat, refutable: F) -> Option<A> where
