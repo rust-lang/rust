@@ -171,20 +171,19 @@ macro_rules! define_bignum {
             pub fn bit_length(&self) -> usize {
                 use mem;
 
-                let digitbits = mem::size_of::<$ty>()* 8;
                 // Skip over the most significant digits which are zero.
-                let nonzero = match self.digits().iter().rposition(|&x| x != 0) {
-                    Some(n) => {
-                        let end = self.size - n;
-                        &self.digits()[..end]
-                    }
-                    None => {
-                        // There are no non-zero digits, i.e. the number is zero.
-                        return 0;
-                    }
-                };
+                let digits = self.digits();
+                let zeros = digits.iter().rev().take_while(|&&x| x == 0).count();
+                let end = digits.len() - zeros;
+                let nonzero = &digits[..end];
+
+                if nonzero.is_empty() {
+                    // There are no non-zero digits, i.e. the number is zero.
+                    return 0;
+                }
                 // This could be optimized with leading_zeros() and bit shifts, but that's
                 // probably not worth the hassle.
+                let digitbits = mem::size_of::<$ty>()* 8;
                 let mut i = nonzero.len() * digitbits - 1;
                 while self.get_bit(i) == 0 {
                     i -= 1;
