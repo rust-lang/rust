@@ -51,6 +51,7 @@ use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
 use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
+use ast::{TyMac};
 use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr};
 use ast::{TyRptr, TyTup, TyU32, TyVec, UnUniq};
@@ -1369,8 +1370,20 @@ impl<'a> Parser<'a> {
         } else if self.check(&token::ModSep) ||
                   self.token.is_ident() ||
                   self.token.is_path() {
-            // NAMED TYPE
-            try!(self.parse_ty_path())
+            let path = try!(self.parse_path(LifetimeAndTypesWithoutColons));
+            if self.check(&token::Not) {
+                // MACRO INVOCATION
+                try!(self.bump());
+                let delim = try!(self.expect_open_delim());
+                let tts = try!(self.parse_seq_to_end(&token::CloseDelim(delim),
+                                                     seq_sep_none(),
+                                                     |p| p.parse_token_tree()));
+                let hi = self.span.hi;
+                TyMac(spanned(lo, hi, MacInvocTT(path, tts, EMPTY_CTXT)))
+            } else {
+                // NAMED TYPE
+                TyPath(None, path)
+            }
         } else if try!(self.eat(&token::Underscore) ){
             // TYPE TO BE INFERRED
             TyInfer
