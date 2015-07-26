@@ -1287,7 +1287,7 @@ impl Debug for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
         try!(write!(f, "\""));
         for c in self.chars().flat_map(|c| c.escape_default()) {
-            try!(write!(f, "{}", c));
+            try!(f.write_char(c))
         }
         write!(f, "\"")
     }
@@ -1306,7 +1306,7 @@ impl Debug for char {
         use char::CharExt;
         try!(write!(f, "'"));
         for c in self.escape_default() {
-            try!(write!(f, "{}", c));
+            try!(f.write_char(c))
         }
         write!(f, "'")
     }
