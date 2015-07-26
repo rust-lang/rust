@@ -14,6 +14,7 @@ use middle::infer;
 use middle::region;
 use middle::subst::{self, Subst};
 use middle::ty::{self, Ty};
+use util::nodemap::FnvHashSet;
 
 use syntax::ast;
 use syntax::codemap::{self, Span};
@@ -268,7 +269,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
             rcx: rcx,
             span: span,
             parent_scope: parent_scope,
-            breadcrumbs: vec![]
+            breadcrumbs: FnvHashSet()
         },
         TypeContext::Root,
         typ,
@@ -331,7 +332,7 @@ enum TypeContext {
 struct DropckContext<'a, 'b: 'a, 'tcx: 'b> {
     rcx: &'a mut Rcx<'b, 'tcx>,
     /// types that have already been traversed
-    breadcrumbs: Vec<Ty<'tcx>>,
+    breadcrumbs: FnvHashSet<Ty<'tcx>>,
     /// span for error reporting
     span: Span,
     /// the scope reachable dtorck types must outlive
@@ -358,15 +359,13 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
 
     let opt_phantom_data_def_id = tcx.lang_items.phantom_data();
 
-    // FIXME(arielb1): don't be O(n^2)
-    if cx.breadcrumbs.contains(&ty) {
+    if !cx.breadcrumbs.insert(ty) {
         debug!("iterate_over_potentially_unsafe_regions_in_type \
                {}ty: {} scope: {:?} - cached",
                (0..depth).map(|_| ' ').collect::<String>(),
                ty, cx.parent_scope);
         return Ok(()); // we already visited this type
     }
-    cx.breadcrumbs.push(ty);
     debug!("iterate_over_potentially_unsafe_regions_in_type \
            {}ty: {} scope: {:?}",
            (0..depth).map(|_| ' ').collect::<String>(),
