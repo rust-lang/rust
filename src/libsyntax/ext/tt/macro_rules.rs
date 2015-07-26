@@ -117,6 +117,12 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         self.ensure_complete_parse(false);
         Some(ret)
     }
+
+    fn make_ty(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Ty>> {
+        let ret = self.parser.borrow_mut().parse_ty();
+        self.ensure_complete_parse(true);
+        Some(ret)
+    }
 }
 
 struct MacroRulesMacroExpander {

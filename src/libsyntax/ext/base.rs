@@ -290,6 +290,10 @@ pub trait MacResult {
     fn make_stmts(self: Box<Self>) -> Option<SmallVector<P<ast::Stmt>>> {
         make_stmts_default!(self)
     }
+
+    fn make_ty(self: Box<Self>) -> Option<P<ast::Ty>> {
+        None
+    }
 }
 
 macro_rules! make_MacEager {
@@ -322,6 +326,7 @@ make_MacEager! {
     items: SmallVector<P<ast::Item>>,
     impl_items: SmallVector<P<ast::ImplItem>>,
     stmts: SmallVector<P<ast::Stmt>>,
+    ty: P<ast::Ty>,
 }
 
 impl MacResult for MacEager {
@@ -358,6 +363,10 @@ impl MacResult for MacEager {
             }
         }
         None
+    }
+
+    fn make_ty(self: Box<Self>) -> Option<P<ast::Ty>> {
+        self.ty
     }
 }
 
@@ -405,6 +414,12 @@ impl DummyResult {
         }
     }
 
+    pub fn raw_ty(sp: Span) -> P<ast::Ty> {
+        P(ast::Ty {
+            id: ast:DUMMY_NODE_ID,
+            node: ast::TyInfer,
+            span: sp
+        })
 }
 
 impl MacResult for DummyResult {
