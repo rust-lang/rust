@@ -11,8 +11,6 @@
 use syntax::ast;
 use syntax::codemap::{self, CodeMap, Span, BytePos};
 use syntax::visit;
-use syntax::parse::parser;
-use std::path::PathBuf;
 
 use utils;
 use config::Config;
@@ -197,7 +195,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             }
             ast::Item_::ItemMod(ref module) => {
                 self.format_missing_with_indent(item.span.lo);
-                self.format_mod(module, item.span, item.ident, &item.attrs);
+                self.format_mod(module, item.span, item.ident);
             }
             _ => {
                 visit::walk_item(self, item);
@@ -236,12 +234,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
     fn visit_mac(&mut self, mac: &'v ast::Mac) {
         visit::walk_mac(self, mac)
-    }
-
-    fn visit_mod(&mut self, m: &'v ast::Mod, s: Span, _: ast::NodeId) {
-        // This is only called for the root module
-        let filename = self.codemap.span_to_filename(s);
-        self.format_separate_mod(m, &filename);
     }
 }
 
@@ -322,7 +314,7 @@ impl<'a> FmtVisitor<'a> {
         result
     }
 
-    fn format_mod(&mut self, m: &ast::Mod, s: Span, ident: ast::Ident, attrs: &[ast::Attribute]) {
+    fn format_mod(&mut self, m: &ast::Mod, s: Span, ident: ast::Ident) {
         debug!("FmtVisitor::format_mod: ident: {:?}, span: {:?}", ident, s);
 
         // Decide whether this is an inline mod or an external mod.
@@ -337,49 +329,15 @@ impl<'a> FmtVisitor<'a> {
             visit::walk_mod(self, m);
             debug!("... last_pos after: {:?}", self.last_pos);
             self.block_indent -= self.config.tab_spaces;
-        } else {
-            debug!("FmtVisitor::format_mod: external mod");
-            let file_path = self.module_file(ident, attrs, local_file_name);
-            let filename = file_path.to_str().unwrap();
-            if self.changes.is_changed(filename) {
-                // The file has already been reformatted, do nothing
-            } else {
-                self.format_separate_mod(m, filename);
-            }
-        }
-
-        debug!("FmtVisitor::format_mod: exit");
-    }
-
-    /// Find the file corresponding to an external mod
-    fn module_file(&self, id: ast::Ident, attrs: &[ast::Attribute], filename: String) -> PathBuf {
-        let dir_path = {
-            let mut path = PathBuf::from(&filename);
-            path.pop();
-            path
-        };
-
-        if let Some(path) = parser::Parser::submod_path_from_attr(attrs, &dir_path) {
-            return path;
-        }
-
-        match parser::Parser::default_submod_path(id, &dir_path, &self.codemap).result {
-            Ok(parser::ModulePathSuccess { path, .. }) => path,
-            _ => panic!("Couldn't find module {}", id)
         }
     }
 
-    /// Format the content of a module into a separate file
-    fn format_separate_mod(&mut self, m: &ast::Mod, filename: &str) {
-        let last_pos = self.last_pos;
-        let block_indent = self.block_indent;
+    pub fn format_separate_mod(&mut self, m: &ast::Mod, filename: &str) {
         let filemap = self.codemap.get_filemap(filename);
         self.last_pos = filemap.start_pos;
         self.block_indent = 0;
         visit::walk_mod(self, m);
         self.format_missing(filemap.end_pos);
-        self.last_pos = last_pos;
-        self.block_indent = block_indent;
     }
 
     fn format_import(&mut self, vis: ast::Visibility, vp: &ast::ViewPath, span: Span) {

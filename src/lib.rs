@@ -37,7 +37,6 @@ use rustc_driver::{driver, CompilerCalls, Compilation};
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::diagnostics;
-use syntax::visit;
 
 use std::path::PathBuf;
 use std::collections::HashMap;
@@ -64,6 +63,7 @@ mod issues;
 mod rewrite;
 mod string;
 mod comment;
+mod modules;
 
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.
@@ -198,7 +198,9 @@ impl fmt::Display for FormatReport {
 // Formatting which depends on the AST.
 fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap, config: &'a Config) -> ChangeSet<'a> {
     let mut visitor = FmtVisitor::from_codemap(codemap, config);
-    visit::walk_crate(&mut visitor, krate);
+    for (path, module) in modules::list_modules(krate, codemap) {
+        visitor.format_separate_mod(module, path.to_str().unwrap());
+    }
     visitor.changes
 }
 
