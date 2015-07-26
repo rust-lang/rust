@@ -868,7 +868,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         declared_stable_lang_features: accepted_features,
         declared_lib_features: unknown_features,
         const_fn: cx.has_feature("const_fn"),
-        static_recursion: cx.has_feature("static_recursion")
+        static_recursion: cx.has_feature("static_recursion"),
         default_type_parameter_fallback: cx.has_feature("default_type_parameter_fallback"),
     }
 }
