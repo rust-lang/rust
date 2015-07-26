@@ -1663,7 +1663,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             this.ty_infer(None, None, None, ast_ty.span)
         }
         ast::TyMac(_) => {
-            tcx.sess.span_bug(m.span, "unexpanded type macro found conversion")
+            tcx.sess.span_bug(ast_ty.span, "unexpanded type macro found conversion")
         }
     };
 
