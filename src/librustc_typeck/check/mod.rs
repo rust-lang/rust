@@ -4273,10 +4273,8 @@ pub fn check_representable(tcx: &ty::ctxt,
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
       ty::SelfRecursive => {
-        span_err!(tcx.sess, sp, E0072,
-            "illegal recursive {} type; \
-             wrap the inner value in a box to make it representable",
-            designation);
+        span_err!(tcx.sess, sp, E0072, "invalid recursive {} type", designation);
+        tcx.sess.fileline_help(sp, "wrap the inner value in a box to make it representable");
         return false
       }
       ty::Representable | ty::ContainsRecursive => (),
