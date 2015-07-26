@@ -500,7 +500,7 @@ impl str {
     ///
     /// # Unsafety
     ///
-    /// Caller must check both UTF-8 character boundaries and the boundaries
+    /// Caller must check both UTF-8 sequence boundaries and the boundaries
     /// of the entire slice as
     /// well.
     ///
@@ -526,15 +526,16 @@ impl str {
         core_str::StrExt::slice_mut_unchecked(self, begin, end)
     }
 
-    /// Returns a slice of the string from the character range [`begin`..`end`).
+    /// Returns a slice of the string from the range [`begin`..`end`) where indices
+    /// are counted in code points.
     ///
     /// That is, start at the `begin`-th code point of the string and continue
     /// to the `end`-th code point. This does not detect or handle edge cases
-    /// such as leaving a combining character as the first code point of the
+    /// such as leaving a combining character as the first `char` of the
     /// string.
     ///
     /// Due to the design of UTF-8, this operation is `O(end)`. Use slicing
-    /// syntax if you want to use byte indices rather than codepoint indices.
+    /// syntax if you want to use `O(1)` byte indices instead.
     ///
     /// # Panics
     ///
@@ -556,18 +557,18 @@ impl str {
         core_str::StrExt::slice_chars(self, begin, end)
     }
 
-    /// Given a byte position, return the next char and its index.
+    /// Given a byte position, return the next code point and its index.
     ///
-    /// This can be used to iterate over the Unicode characters of a string.
+    /// This can be used to iterate over the Unicode code points of a string.
     ///
     /// # Panics
     ///
     /// If `i` is greater than or equal to the length of the string.
-    /// If `i` is not the index of the beginning of a valid UTF-8 character.
+    /// If `i` is not the index of the beginning of a valid UTF-8 sequence.
     ///
     /// # Examples
     ///
-    /// This example manually iterates through the characters of a string;
+    /// This example manually iterates through the code points of a string;
     /// this should normally be
     /// done by `.chars()` or `.char_indices()`.
     ///
@@ -575,7 +576,7 @@ impl str {
     /// # #![feature(str_char, core)]
     /// use std::str::CharRange;
     ///
-    /// let s = "中华Việt Nam";
+    /// let s = "中华Việt Nam";
     /// let mut i = 0;
     /// while i < s.len() {
     ///     let CharRange {ch, next} = s.char_range_at(i);
@@ -591,12 +592,14 @@ impl str {
     /// 3: 华
     /// 6: V
     /// 7: i
-    /// 8: ệ
-    /// 11: t
-    /// 12:
-    /// 13: N
-    /// 14: a
-    /// 15: m
+    /// 8: e
+    /// 9: ̣
+    /// 11: ̂
+    /// 13: t
+    /// 14:
+    /// 15: N
+    /// 16: a
+    /// 17: m
     /// ```
     #[unstable(feature = "str_char",
                reason = "often replaced by char_indices, this method may \
@@ -608,18 +611,21 @@ impl str {
 
     /// Given a byte position, return the previous `char` and its position.
     ///
-    /// This function can be used to iterate over a Unicode string in reverse.
+    /// This function can be used to iterate over a Unicode code points in reverse.
+    ///
+    /// Note that Unicode has many features, such as combining marks, ligatures,
+    /// and direction marks, that need to be taken into account to correctly reverse a string.
     ///
     /// Returns 0 for next index if called on start index 0.
     ///
     /// # Panics
     ///
     /// If `i` is greater than the length of the string.
-    /// If `i` is not an index following a valid UTF-8 character.
+    /// If `i` is not an index following a valid UTF-8 sequence.
     ///
     /// # Examples
     ///
-    /// This example manually iterates through the characters of a string;
+    /// This example manually iterates through the code points of a string;
     /// this should normally be
     /// done by `.chars().rev()` or `.char_indices()`.
     ///
@@ -627,7 +633,7 @@ impl str {
     /// # #![feature(str_char, core)]
     /// use std::str::CharRange;
     ///
-    /// let s = "中华Việt Nam";
+    /// let s = "中华Việt Nam";
     /// let mut i = s.len();
     /// while i > 0 {
     ///     let CharRange {ch, next} = s.char_range_at_reverse(i);
@@ -639,12 +645,14 @@ impl str {
     /// This outputs:
     ///
     /// ```text
-    /// 16: m
-    /// 15: a
-    /// 14: N
-    /// 13:
-    /// 12: t
-    /// 11: ệ
+    /// 18: m
+    /// 17: a
+    /// 16: N
+    /// 15:
+    /// 14: t
+    /// 13: ̂
+    /// 11: ̣
+    /// 9: e
     /// 8: i
     /// 7: V
     /// 6: 华
@@ -663,7 +671,7 @@ impl str {
     /// # Panics
     ///
     /// If `i` is greater than or equal to the length of the string.
-    /// If `i` is not the index of the beginning of a valid UTF-8 character.
+    /// If `i` is not the index of the beginning of a valid UTF-8 sequence.
     ///
     /// # Examples
     ///
@@ -672,6 +680,7 @@ impl str {
     /// let s = "abπc";
     /// assert_eq!(s.char_at(1), 'b');
     /// assert_eq!(s.char_at(2), 'π');
+    /// assert_eq!(s.char_at(4), 'c');
     /// ```
     #[unstable(feature = "str_char",
                reason = "frequently replaced by the chars() iterator, this \
@@ -689,7 +698,7 @@ impl str {
     /// # Panics
     ///
     /// If `i` is greater than the length of the string.
-    /// If `i` is not an index following a valid UTF-8 character.
+    /// If `i` is not an index following a valid UTF-8 sequence.
     ///
     /// # Examples
     ///
@@ -698,6 +707,7 @@ impl str {
     /// let s = "abπc";
     /// assert_eq!(s.char_at_reverse(1), 'a');
     /// assert_eq!(s.char_at_reverse(2), 'b');
+    /// assert_eq!(s.char_at_reverse(3), 'π');
     /// ```
     #[unstable(feature = "str_char",
                reason = "see char_at for more details, but reverse semantics \
@@ -707,28 +717,30 @@ impl str {
         core_str::StrExt::char_at_reverse(self, i)
     }
 
-    /// Retrieves the first character from a `&str` and returns it.
+    /// Retrieves the first code point from a `&str` and returns it.
+    ///
+    /// Note that a single Unicode character (grapheme cluster)
+    /// can be composed of multiple `char`s.
     ///
     /// This does not allocate a new string; instead, it returns a slice that
-    /// points one character
-    /// beyond the character that was shifted.
+    /// points one code point beyond the code point that was shifted.
     ///
-    /// If the slice does not contain any characters, None is returned instead.
+    /// `None` is returned if the slice is empty.
     ///
     /// # Examples
     ///
     /// ```
     /// # #![feature(str_char)]
-    /// let s = "Löwe 老虎 Léopard";
+    /// let s = "Łódź"; // \u{141}o\u{301}dz\u{301}
     /// let (c, s1) = s.slice_shift_char().unwrap();
     ///
-    /// assert_eq!(c, 'L');
-    /// assert_eq!(s1, "öwe 老虎 Léopard");
+    /// assert_eq!(c, 'Ł');
+    /// assert_eq!(s1, "ódź");
     ///
     /// let (c, s2) = s1.slice_shift_char().unwrap();
     ///
-    /// assert_eq!(c, 'ö');
-    /// assert_eq!(s2, "we 老虎 Léopard");
+    /// assert_eq!(c, 'o');
+    /// assert_eq!(s2, "\u{301}dz\u{301}");
     /// ```
     #[unstable(feature = "str_char",
                reason = "awaiting conventions about shifting and slices and \
@@ -741,14 +753,14 @@ impl str {
     /// Divide one string slice into two at an index.
     ///
     /// The index `mid` is a byte offset from the start of the string
-    /// that must be on a character boundary.
+    /// that must be on a `char` boundary.
     ///
     /// Return slices `&self[..mid]` and `&self[mid..]`.
     ///
     /// # Panics
     ///
-    /// Panics if `mid` is beyond the last character of the string,
-    /// or if it is not on a character boundary.
+    /// Panics if `mid` is beyond the last code point of the string,
+    /// or if it is not on a `char` boundary.
     ///
     /// # Examples
     /// ```
@@ -773,27 +785,39 @@ impl str {
         core_str::StrExt::split_at_mut(self, mid)
     }
 
-    /// An iterator over the codepoints of `self`.
+    /// An iterator over the code points of `self`.
+    ///
+    /// In Unicode relationship between code points and characters is complex.
+    /// A single character may be composed of multiple code points
+    /// (e.g. diacritical marks added to a letter), and a single code point
+    /// (e.g. Hangul syllable) may contain multiple characters.
+    ///
+    /// For iteration over human-readable characters a grapheme cluster iterator
+    /// may be more appropriate. See the [unicode-segmentation crate][1].
+    ///
+    /// [1]: https://crates.io/crates/unicode-segmentation
     ///
     /// # Examples
     ///
     /// ```
-    /// let v: Vec<char> = "abc åäö".chars().collect();
+    /// let v: Vec<char> = "ASCII żółć 🇨🇭 한".chars().collect();
     ///
-    /// assert_eq!(v, ['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
+    /// assert_eq!(v, ['A', 'S', 'C', 'I', 'I', ' ',
+    ///     'z', '\u{307}', 'o', '\u{301}', 'ł', 'c', '\u{301}', ' ',
+    ///     '\u{1f1e8}', '\u{1f1ed}', ' ', '한']);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn chars(&self) -> Chars {
         core_str::StrExt::chars(self)
     }
 
-    /// An iterator over the characters of `self` and their byte offsets.
+    /// An iterator over the `char`s of `self` and their byte offsets.
     ///
     /// # Examples
     ///
     /// ```
-    /// let v: Vec<(usize, char)> = "abc".char_indices().collect();
-    /// let b = vec![(0, 'a'), (1, 'b'), (2, 'c')];
+    /// let v: Vec<(usize, char)> = "A🇨🇭".char_indices().collect();
+    /// let b = vec![(0, 'A'), (1, '\u{1f1e8}'), (5, '\u{1f1ed}')];
     ///
     /// assert_eq!(v, b);
     /// ```
@@ -822,7 +846,7 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// let some_words = " Mary   had\ta little  \n\t lamb";
+    /// let some_words = " Mary   had\ta\u{2009}little  \n\t lamb";
     /// let v: Vec<&str> = some_words.split_whitespace().collect();
     ///
     /// assert_eq!(v, ["Mary", "had", "a", "little", "lamb"]);
@@ -840,7 +864,7 @@ impl str {
     /// ```
     /// # #![feature(str_words)]
     /// # #![allow(deprecated)]
-    /// let some_words = " Mary   had\ta little  \n\t lamb";
+    /// let some_words = " Mary   had\ta\u{2009}little  \n\t lamb";
     /// let v: Vec<&str> = some_words.words().collect();
     ///
     /// assert_eq!(v, ["Mary", "had", "a", "little", "lamb"]);
