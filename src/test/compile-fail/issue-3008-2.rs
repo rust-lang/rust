@@ -12,7 +12,7 @@
 
 enum foo { foo_(bar) }
 struct bar { x: bar }
-//~^ ERROR illegal recursive struct type; wrap the inner value in a box to make it representable
+//~^ ERROR invalid recursive struct type
 
 fn main() {
 }
