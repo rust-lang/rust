@@ -69,7 +69,6 @@ extern crate rustc_unicode;
 mod binary_heap;
 mod bit;
 mod btree;
-mod enum_set;
 mod fmt;
 mod linked_list;
 mod slice;

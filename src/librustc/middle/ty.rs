@@ -67,6 +67,8 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::FnvHashMap;
 use util::num::ToPrimitive;
 
+use rustc_data_structures::bitset::{U8BitSet, BitSet, BitSetIter};
+
 use arena::TypedArena;
 use std::borrow::{Borrow, Cow};
 use std::cell::{Cell, RefCell, Ref};
@@ -77,7 +79,6 @@ use std::mem;
 use std::ops;
 use std::rc::Rc;
 use std::vec::IntoIter;
-use collections::enum_set::{self, EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
@@ -2079,16 +2080,30 @@ pub struct ExistentialBounds<'tcx> {
     pub projection_bounds: Vec<PolyProjectionPredicate<'tcx>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct BuiltinBounds(EnumSet<BuiltinBound>);
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct BuiltinBounds {
+    bit_set: U8BitSet
+}
 
 impl BuiltinBounds {
-       pub fn empty() -> BuiltinBounds {
-        BuiltinBounds(EnumSet::new())
+    pub fn empty() -> BuiltinBounds {
+        BuiltinBounds { bit_set: BitSet::empty() }
     }
 
-    pub fn iter(&self) -> enum_set::Iter<BuiltinBound> {
+    pub fn insert(&mut self, bound: BuiltinBound) {
+        self.bit_set.insert(bound as u8)
+    }
+
+    pub fn contains(&self, bound: BuiltinBound) -> bool {
+        self.bit_set.contains(bound as u8)
+    }
+
+    pub fn iter(&self) -> BuiltinBoundsIter {
         self.into_iter()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.bit_set.is_empty()
     }
 
     pub fn to_predicates<'tcx>(&self,
@@ -2101,42 +2116,40 @@ impl BuiltinBounds {
             }
         ).collect()
     }
+
+    pub fn is_superset(&self, other: &BuiltinBounds) -> bool {
+        self.bit_set.is_superset(other.bit_set)
+    }
 }
 
-impl ops::Deref for BuiltinBounds {
-    type Target = EnumSet<BuiltinBound>;
-    fn deref(&self) -> &Self::Target { &self.0 }
+pub struct BuiltinBoundsIter {
+    bit_set: BitSetIter<u8>
 }
 
-impl ops::DerefMut for BuiltinBounds {
-    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
+impl Iterator for BuiltinBoundsIter {
+    type Item = BuiltinBound;
+
+    fn next(&mut self) -> Option<BuiltinBound> {
+        self.bit_set.next().map(|b| unsafe { mem::transmute(b) })
+    }
 }
 
 impl<'a> IntoIterator for &'a BuiltinBounds {
     type Item = BuiltinBound;
-    type IntoIter = enum_set::Iter<BuiltinBound>;
-    fn into_iter(self) -> Self::IntoIter {
-        (**self).into_iter()
+    type IntoIter = BuiltinBoundsIter;
+
+    fn into_iter(self) -> BuiltinBoundsIter {
+        BuiltinBoundsIter { bit_set: self.bit_set.into_iter() }
     }
 }
 
-#[derive(Clone, RustcEncodable, PartialEq, Eq, RustcDecodable, Hash,
-           Debug, Copy)]
-#[repr(usize)]
+#[repr(u8)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, RustcDecodable, RustcEncodable, Hash, Debug)]
 pub enum BuiltinBound {
     Send,
     Sized,
     Copy,
     Sync,
-}
-
-impl CLike for BuiltinBound {
-    fn to_usize(&self) -> usize {
-        *self as usize
-    }
-    fn from_usize(v: usize) -> BuiltinBound {
-        unsafe { mem::transmute(v) }
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -5607,7 +5620,7 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn try_add_builtin_trait(&self,
                                  trait_def_id: ast::DefId,
-                                 builtin_bounds: &mut EnumSet<BuiltinBound>)
+                                 builtin_bounds: &mut BuiltinBounds)
                                  -> bool
     {
         //! Checks whether `trait_ref` refers to one of the builtin

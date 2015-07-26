@@ -10,14 +10,12 @@
 
 //! Implementations of serialization for structures found in libcollections
 
-use std::usize;
 use std::default::Default;
 use std::hash::Hash;
 use std::collections::hash_state::HashState;
 
 use {Decodable, Encodable, Decoder, Encoder};
 use std::collections::{LinkedList, VecDeque, BTreeMap, BTreeSet, HashMap, HashSet, VecMap};
-use collections::enum_set::{EnumSet, CLike};
 
 impl<
     T: Encodable
@@ -127,33 +125,6 @@ impl<
             }
             Ok(set)
         })
-    }
-}
-
-impl<
-    T: Encodable + CLike
-> Encodable for EnumSet<T> {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        let mut bits = 0;
-        for item in self {
-            bits |= item.to_usize();
-        }
-        s.emit_uint(bits)
-    }
-}
-
-impl<
-    T: Decodable + CLike
-> Decodable for EnumSet<T> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<EnumSet<T>, D::Error> {
-        let bits = try!(d.read_uint());
-        let mut set = EnumSet::new();
-        for bit in 0..usize::BITS {
-            if bits & (1 << bit) != 0 {
-                set.insert(CLike::from_usize(1 << bit));
-            }
-        }
-        Ok(set)
     }
 }
 

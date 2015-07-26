@@ -29,9 +29,7 @@ Core encoding and decoding interfaces.
 
 #![feature(box_syntax)]
 #![feature(collections)]
-#![feature(enumset)]
 #![feature(hashmap_hasher)]
-#![feature(num_bits_bytes)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(str_char)]

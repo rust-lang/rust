@@ -35,7 +35,6 @@
 #![feature(duration)]
 #![feature(duration_span)]
 #![feature(dynamic_lib)]
-#![feature(enumset)]
 #![feature(fs_canonicalize)]
 #![feature(hash_default)]
 #![feature(hashmap_hasher)]

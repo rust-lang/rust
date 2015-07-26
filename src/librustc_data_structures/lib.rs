@@ -28,6 +28,7 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(rustc_private, staged_api)]
+#![feature(zero_one)]
 #![cfg_attr(test, feature(test))]
 
 #[macro_use] extern crate log;
@@ -36,4 +37,5 @@ extern crate serialize as rustc_serialize; // used by deriving
 pub mod snapshot_vec;
 pub mod graph;
 pub mod bitvec;
+pub mod bitset;
 pub mod unify;
