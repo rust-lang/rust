@@ -57,9 +57,11 @@ impl<Rec: HList + Sized, X, Xs: HList, Ys: HList> Add<Ys> for Cons<X, Xs> where
 // type macro Expr allows us to expand the + operator appropriately
 macro_rules! Expr {
         { ( $($LHS:tt)+ ) } => { Expr!($($LHS)+) };
-            { HList ! [ $($LHS:tt)* ] + $($RHS:tt)+ } => { <Expr!(HList![$($LHS)*]) as Add<Expr!($($RHS)+)>>::Output };
-                { $LHS:tt + $($RHS:tt)+ } => { <Expr!($LHS) as Add<Expr!($($RHS)+)>>::Output };
-                    { $LHS:ty } => { $LHS };
+        { HList ! [ $($LHS:tt)* ] + $($RHS:tt)+ } => {
+            <Expr!(HList![$($LHS)*]) as Add<Expr!($($RHS)+)>>::Output
+        };
+        { $LHS:tt + $($RHS:tt)+ } => { <Expr!($LHS) as Add<Expr!($($RHS)+)>>::Output };
+        { $LHS:ty } => { $LHS };
 }
 
 // test demonstrating term level `xs + ys` and type level `Expr!(Xs + Ys)`
