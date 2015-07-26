@@ -60,7 +60,7 @@ use middle::traits;
 use middle::ty::{self, RegionEscape, Ty, ToPredicate, HasTypeFlags};
 use middle::ty_fold;
 use require_c_abi_if_variadic;
-use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope, ExplicitRscope,
+use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope,
              ElisionFailureInfo, ElidedLifetime};
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
@@ -1208,40 +1208,33 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         (_, def::DefSelfTy(Some(trait_did), Some((impl_id, _)))) => {
             // `Self` in an impl of a trait - we have a concrete self type and a
             // trait reference.
-            match tcx.map.expect_item(impl_id).node {
-                ast::ItemImpl(_, _, _, Some(ref trait_ref), _, _) => {
-                    if this.ensure_super_predicates(span, trait_did).is_err() {
-                        return (tcx.types.err, ty_path_def);
-                    }
+            let trait_ref = tcx.impl_trait_ref(ast_util::local_def(impl_id)).unwrap();
+            let trait_ref = if let Some(free_substs) = this.get_free_substs() {
+                trait_ref.subst(tcx, free_substs)
+            } else {
+                trait_ref
+            };
 
-                    let trait_segment = &trait_ref.path.segments.last().unwrap();
-                    let trait_ref = ast_path_to_mono_trait_ref(this,
-                                                               &ExplicitRscope,
-                                                               span,
-                                                               PathParamMode::Explicit,
-                                                               trait_did,
-                                                               Some(ty),
-                                                               trait_segment);
+            if this.ensure_super_predicates(span, trait_did).is_err() {
+                return (tcx.types.err, ty_path_def);
+            }
 
-                    let candidates: Vec<ty::PolyTraitRef> =
-                        traits::supertraits(tcx, ty::Binder(trait_ref.clone()))
-                        .filter(|r| this.trait_defines_associated_type_named(r.def_id(),
-                                                                             assoc_name))
-                        .collect();
+            let candidates: Vec<ty::PolyTraitRef> =
+                traits::supertraits(tcx, ty::Binder(trait_ref))
+                .filter(|r| this.trait_defines_associated_type_named(r.def_id(),
+                                                                     assoc_name))
+                .collect();
 
-                    match one_bound_for_assoc_type(tcx,
-                                                   candidates,
-                                                   "Self",
-                                                   &token::get_name(assoc_name),
-                                                   span) {
-                        Ok(bound) => bound,
-                        Err(ErrorReported) => return (tcx.types.err, ty_path_def),
-                    }
-                }
-                _ => unreachable!()
+            match one_bound_for_assoc_type(tcx,
+                                           candidates,
+                                           "Self",
+                                           &token::get_name(assoc_name),
+                                           span) {
+                Ok(bound) => bound,
+                Err(ErrorReported) => return (tcx.types.err, ty_path_def),
             }
         }
-        (&ty::TyParam(_), def::DefSelfTy(Some(trait_did),  None)) => {
+        (&ty::TyParam(_), def::DefSelfTy(Some(trait_did), None)) => {
             assert_eq!(trait_did.krate, ast::LOCAL_CRATE);
             match find_bound_for_assoc_item(this,
                                             trait_did.node,
