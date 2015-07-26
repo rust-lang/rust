@@ -185,7 +185,7 @@ mod imp {
     use io;
     use mem;
     use rand::Rng;
-    use libc::{c_int, size_t};
+    use libc::{c_int, c_void, size_t};
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
@@ -203,8 +203,9 @@ mod imp {
         _dummy: (),
     }
 
-    #[repr(C)]
-    struct SecRandom;
+    // Fake definition; this is actually a struct, but we don't use the
+    // contents here.
+    type SecRandom = c_void;
 
     #[allow(non_upper_case_globals)]
     const kSecRandomDefault: *const SecRandom = 0 as *const SecRandom;
