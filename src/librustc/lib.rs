@@ -56,6 +56,7 @@
 #![feature(slice_splits)]
 #![feature(slice_patterns)]
 #![feature(slice_position_elem)]
+#![feature(slice_concat_ext)]
 #![feature(staged_api)]
 #![feature(str_char)]
 #![feature(str_match_indices)]

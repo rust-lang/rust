@@ -54,6 +54,7 @@ use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangIte
 use middle::region;
 use middle::resolve_lifetime;
 use middle::infer;
+use middle::infer::type_variable;
 use middle::pat_util;
 use middle::region::RegionMaps;
 use middle::stability;
@@ -78,6 +79,7 @@ use std::ops;
 use std::rc::Rc;
 use std::vec::IntoIter;
 use collections::enum_set::{self, EnumSet, CLike};
+use collections::slice::SliceConcatExt;
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
@@ -113,8 +115,6 @@ pub struct Field<'tcx> {
     pub name: ast::Name,
     pub mt: TypeAndMut<'tcx>
 }
-
-
 
 // Enum information
 #[derive(Clone)]
@@ -2038,7 +2038,7 @@ pub struct ExpectedFound<T> {
 }
 
 // Data structures used in type unification
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum TypeError<'tcx> {
     Mismatch,
     UnsafetyMismatch(ExpectedFound<ast::Unsafety>),
@@ -2068,6 +2068,7 @@ pub enum TypeError<'tcx> {
     ConvergenceMismatch(ExpectedFound<bool>),
     ProjectionNameMismatched(ExpectedFound<ast::Name>),
     ProjectionBoundsLength(ExpectedFound<usize>),
+    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>)
 }
 
 /// Bounds suitable for an existentially quantified type parameter
@@ -2280,6 +2281,7 @@ pub struct TypeParameterDef<'tcx> {
     pub def_id: ast::DefId,
     pub space: subst::ParamSpace,
     pub index: u32,
+    pub default_def_id: DefId, // for use in error reporing about defaults
     pub default: Option<Ty<'tcx>>,
     pub object_lifetime_default: ObjectLifetimeDefault,
 }
@@ -5080,6 +5082,11 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 write!(f, "expected {} associated type bindings, found {}",
                        values.expected,
                        values.found)
+            },
+            TyParamDefaultMismatch(ref values) => {
+                write!(f, "conflicting type parameter defaults `{}` and `{}`",
+                       values.expected.ty,
+                       values.found.ty)
             }
         }
     }
@@ -5399,7 +5406,7 @@ impl<'tcx> ctxt<'tcx> {
     pub fn note_and_explain_type_err(&self, err: &TypeError<'tcx>, sp: Span) {
         use self::TypeError::*;
 
-        match *err {
+        match err.clone() {
             RegionsDoesNotOutlive(subregion, superregion) => {
                 self.note_and_explain_region("", subregion, "...");
                 self.note_and_explain_region("...does not necessarily outlive ",
@@ -5437,6 +5444,56 @@ impl<'tcx> ctxt<'tcx> {
                         &format!("consider boxing your closure and/or \
                                   using it as a trait object"));
                 }
+            },
+            TyParamDefaultMismatch(values) => {
+                let expected = values.expected;
+                let found = values.found;
+                self.sess.span_note(sp,
+                                    &format!("conflicting type parameter defaults `{}` and `{}`",
+                                             expected.ty,
+                                             found.ty));
+
+                match (expected.def_id.krate == ast::LOCAL_CRATE,
+                       self.map.opt_span(expected.def_id.node)) {
+                    (true, Some(span)) => {
+                        self.sess.span_note(span,
+                                            &format!("a default was defined here..."));
+                    }
+                    (_, _) => {
+                        let elems = csearch::get_item_path(self, expected.def_id)
+                                        .into_iter()
+                                        .map(|p| p.to_string())
+                                        .collect::<Vec<_>>();
+                        self.sess.note(
+                            &format!("a default is defined on `{}`",
+                                     elems.join("::")));
+                    }
+                }
+
+                self.sess.span_note(
+                    expected.origin_span,
+                    &format!("...that was applied to an unconstrained type variable here"));
+
+                match (found.def_id.krate == ast::LOCAL_CRATE,
+                       self.map.opt_span(found.def_id.node)) {
+                    (true, Some(span)) => {
+                        self.sess.span_note(span,
+                                            &format!("a second default was defined here..."));
+                    }
+                    (_, _) => {
+                        let elems = csearch::get_item_path(self, found.def_id)
+                                        .into_iter()
+                                        .map(|p| p.to_string())
+                                        .collect::<Vec<_>>();
+
+                        self.sess.note(
+                            &format!("a second default is defined on `{}`", elems.join(" ")));
+                    }
+                }
+
+                self.sess.span_note(
+                    found.origin_span,
+                    &format!("...that also applies to the same type variable here"));
             }
             _ => {}
         }
