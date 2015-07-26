@@ -413,7 +413,7 @@ a {
     box-sizing: border-box !important;
     outline: none;
     border: none;
-    border-radius: 1px;
+    border-radius: 2em;
     color: #555;
     margin-top: 5px;
     padding: 10px 16px;
