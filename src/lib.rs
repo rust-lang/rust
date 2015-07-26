@@ -196,12 +196,15 @@ impl fmt::Display for FormatReport {
 }
 
 // Formatting which depends on the AST.
-fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap, config: &'a Config) -> ChangeSet<'a> {
-    let mut visitor = FmtVisitor::from_codemap(codemap, config);
+fn fmt_ast(krate: &ast::Crate, codemap: &CodeMap, config: &Config) -> ChangeSet {
+    let mut changes = ChangeSet::new();
     for (path, module) in modules::list_modules(krate, codemap) {
-        visitor.format_separate_mod(module, path.to_str().unwrap());
+        let path = path.to_str().unwrap();
+        let mut visitor = FmtVisitor::from_codemap(codemap, config);
+        visitor.format_separate_mod(module, path);
+        changes.file_map.insert(path.to_owned(), visitor.buffer);
     }
-    visitor.changes
+    changes
 }
 
 // Formatting done on a char by char or line by line basis.

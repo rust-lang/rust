@@ -15,96 +15,23 @@
 
 use strings::string_buffer::StringBuffer;
 use std::collections::HashMap;
-use syntax::codemap::{CodeMap, Span, BytePos};
 use std::fmt;
 use std::fs::File;
 use std::io::{Write, stdout};
 use WriteMode;
 use NewlineStyle;
 use config::Config;
-use utils::round_up_to_power_of_two;
 
 // This is basically a wrapper around a bunch of Ropes which makes it convenient
 // to work with libsyntax. It is badly named.
-pub struct ChangeSet<'a> {
-    file_map: HashMap<String, StringBuffer>,
-    codemap: &'a CodeMap,
-    file_spans: Vec<(u32, u32)>,
+pub struct ChangeSet {
+    pub file_map: HashMap<String, StringBuffer>,
 }
 
-impl<'a> ChangeSet<'a> {
+impl ChangeSet {
     // Create a new ChangeSet for a given libsyntax CodeMap.
-    pub fn from_codemap(codemap: &'a CodeMap) -> ChangeSet<'a> {
-        let mut result = ChangeSet {
-            file_map: HashMap::new(),
-            codemap: codemap,
-            file_spans: Vec::with_capacity(codemap.files.borrow().len()),
-        };
-
-        for f in codemap.files.borrow().iter() {
-            // Use the length of the file as a heuristic for how much space we
-            // need. Round to the next power of two.
-            let buffer_cap = round_up_to_power_of_two(f.src.as_ref().unwrap().len());
-
-            result.file_map.insert(f.name.clone(), StringBuffer::with_capacity(buffer_cap));
-            result.file_spans.push((f.start_pos.0, f.end_pos.0));
-        }
-
-        result.file_spans.sort();
-
-        result
-    }
-
-    pub fn filespans_for_span(&self, start: BytePos, end: BytePos) -> Vec<(u32, u32)> {
-        assert!(start.0 <= end.0);
-
-        if self.file_spans.len() == 0 {
-            return Vec::new();
-        }
-
-        // idx is the index into file_spans which indicates the current file, we
-        // with the file start denotes.
-        let mut idx = match self.file_spans.binary_search(&(start.0, ::std::u32::MAX)) {
-            Ok(i) => i,
-            Err(0) => 0,
-            Err(i) => i - 1,
-        };
-
-        let mut result = Vec::new();
-        let mut start = start.0;
-        loop {
-            let cur_file = &self.file_spans[idx];
-            idx += 1;
-
-            if idx >= self.file_spans.len() || start >= end.0 {
-                if start < end.0 {
-                    result.push((start, end.0));
-                }
-                return result;
-            }
-
-            let end = ::std::cmp::min(cur_file.1 - 1, end.0);
-            if start < end {
-                result.push((start, end));
-            }
-            start = self.file_spans[idx].0;
-        }
-    }
-
-    pub fn push_str(&mut self, filename: &str, text: &str) {
-        let buf = self.file_map.get_mut(&*filename).unwrap();
-        buf.push_str(text)
-    }
-
-    pub fn push_str_span(&mut self, span: Span, text: &str) {
-        let file_name = self.codemap.span_to_filename(span);
-        self.push_str(&file_name, text)
-    }
-
-    // Fetch the output buffer for the given file name.
-    // Panics on unknown files.
-    pub fn get(&mut self, file_name: &str) -> &StringBuffer {
-        self.file_map.get(file_name).unwrap()
+    pub fn new() -> ChangeSet {
+        ChangeSet { file_map: HashMap::new() }
     }
 
     // Fetch a mutable reference to the output buffer for the given file name.
@@ -113,17 +40,8 @@ impl<'a> ChangeSet<'a> {
         self.file_map.get_mut(file_name).unwrap()
     }
 
-    pub fn cur_offset(&mut self, filename: &str) -> usize {
-        self.file_map[&*filename].cur_offset()
-    }
-
-    pub fn cur_offset_span(&mut self, span: Span) -> usize {
-        let filename = self.codemap.span_to_filename(span);
-        self.cur_offset(&filename)
-    }
-
     // Return an iterator over the entire changed text.
-    pub fn text<'c>(&'c self) -> FileIterator<'c, 'a> {
+    pub fn text<'c>(&'c self) -> FileIterator<'c> {
         FileIterator { change_set: self, keys: self.file_map.keys().collect(), cur_key: 0 }
     }
 
@@ -220,13 +138,13 @@ impl<'a> ChangeSet<'a> {
 
 // Iterates over each file in the ChangSet. Yields the filename and the changed
 // text for that file.
-pub struct FileIterator<'c, 'a: 'c> {
-    change_set: &'c ChangeSet<'a>,
+pub struct FileIterator<'c> {
+    change_set: &'c ChangeSet,
     keys: Vec<&'c String>,
     cur_key: usize,
 }
 
-impl<'c, 'a> Iterator for FileIterator<'c, 'a> {
+impl<'c> Iterator for FileIterator<'c> {
     type Item = (&'c str, &'c StringBuffer);
 
     fn next(&mut self) -> Option<(&'c str, &'c StringBuffer)> {
@@ -240,7 +158,7 @@ impl<'c, 'a> Iterator for FileIterator<'c, 'a> {
     }
 }
 
-impl<'a> fmt::Display for ChangeSet<'a> {
+impl fmt::Display for ChangeSet {
     // Prints the entire changed text.
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         for (f, r) in self.text() {

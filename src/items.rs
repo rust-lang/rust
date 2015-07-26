@@ -382,7 +382,7 @@ impl<'a> FmtVisitor<'a> {
                       generics: &ast::Generics,
                       span: Span) {
         let header_str = self.format_header("enum ", ident, vis);
-        self.changes.push_str_span(span, &header_str);
+        self.buffer.push_str(&header_str);
 
         let enum_snippet = self.snippet(span);
         let body_start = span.lo + BytePos(enum_snippet.find_uncommented("{").unwrap() as u32 + 1);
@@ -391,7 +391,7 @@ impl<'a> FmtVisitor<'a> {
                                                 self.block_indent + self.config.tab_spaces,
                                                 codemap::mk_sp(span.lo,
                                                                body_start));
-        self.changes.push_str_span(span, &generics_str);
+        self.buffer.push_str(&generics_str);
 
         self.last_pos = body_start;
         self.block_indent += self.config.tab_spaces;
@@ -407,7 +407,7 @@ impl<'a> FmtVisitor<'a> {
         self.block_indent -= self.config.tab_spaces;
 
         self.format_missing_with_indent(span.lo + BytePos(enum_snippet.rfind('}').unwrap() as u32));
-        self.changes.push_str_span(span, "}");
+        self.buffer.push_str("}");
     }
 
     // Variant of an enum
@@ -421,9 +421,9 @@ impl<'a> FmtVisitor<'a> {
         let result = match field.node.kind {
             ast::VariantKind::TupleVariantKind(ref types) => {
                 let vis = format_visibility(field.node.vis);
-                self.changes.push_str_span(field.span, vis);
+                self.buffer.push_str(vis);
                 let name = field.node.name.to_string();
-                self.changes.push_str_span(field.span, &name);
+                self.buffer.push_str(&name);
 
                 let mut result = String::new();
 
@@ -491,10 +491,10 @@ impl<'a> FmtVisitor<'a> {
                                    self.block_indent)
             }
         };
-        self.changes.push_str_span(field.span, &result);
+        self.buffer.push_str(&result);
 
         if !last_field || self.config.enum_trailing_comma {
-            self.changes.push_str_span(field.span, ",");
+            self.buffer.push_str(",");
         }
 
         self.last_pos = field.span.hi + BytePos(1);
@@ -621,7 +621,7 @@ impl<'a> FmtVisitor<'a> {
                                         Some(generics),
                                         span,
                                         indent);
-        self.changes.push_str_span(span, &result);
+        self.buffer.push_str(&result);
         self.last_pos = span.hi;
     }
 

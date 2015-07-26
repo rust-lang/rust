@@ -15,7 +15,7 @@ use std::collections::HashMap;
 
 use syntax::ast;
 use syntax::codemap;
-use syntax::parse::{parser, token};
+use syntax::parse::parser;
 
 
 /// List all the files containing modules of a crate.
@@ -42,8 +42,7 @@ fn list_submodules<'a>(module: &'a ast::Mod,
                 let is_internal = codemap.span_to_filename(item.span) ==
                                   codemap.span_to_filename(sub_mod.inner);
                 let dir_path = if is_internal {
-                    let dir: &str = &token::get_ident(item.ident);
-                    search_dir.join(dir)
+                    search_dir.join(&item.ident.to_string())
                 } else {
                     let mod_path = module_file(item.ident, &item.attrs, search_dir, codemap);
                     let dir_path = mod_path.parent().unwrap().to_owned();
@@ -68,6 +67,6 @@ fn module_file(id: ast::Ident,
 
     match parser::Parser::default_submod_path(id, &dir_path, codemap).result {
         Ok(parser::ModulePathSuccess { path, .. }) => path,
-        Err(_) => panic!("Couldn't find module {}", token::get_ident(id))
+        Err(_) => panic!("Couldn't find module {}", id)
     }
 }
