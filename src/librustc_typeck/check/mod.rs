@@ -2490,7 +2490,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 // The special-cased logic below has three functions:
                 // 1. Provide as good of an expected type as possible.
                 let expected = expected_arg_tys.get(i).map(|&ty| {
-                    Expectation::rvalue_hint(ty)
+                    Expectation::rvalue_hint(fcx.tcx(), ty)
                 });
 
                 check_expr_with_unifier(fcx, &**arg,
@@ -3268,7 +3268,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             match unop {
                 ast::UnUniq => match ty.sty {
                     ty::TyBox(ty) => {
-                        Expectation::rvalue_hint(ty)
+                        Expectation::rvalue_hint(tcx, ty)
                     }
                     _ => {
                         NoExpectation
@@ -3345,7 +3345,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                         // the last field of a struct can be unsized.
                         ExpectHasType(mt.ty)
                     } else {
-                        Expectation::rvalue_hint(mt.ty)
+                        Expectation::rvalue_hint(tcx, mt.ty)
                     }
                 }
                 _ => NoExpectation
@@ -3982,8 +3982,8 @@ impl<'tcx> Expectation<'tcx> {
     /// which still is useful, because it informs integer literals and the like.
     /// See the test case `test/run-pass/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
-    fn rvalue_hint(ty: Ty<'tcx>) -> Expectation<'tcx> {
-        match ty.sty {
+    fn rvalue_hint(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
+        match tcx.struct_tail(ty).sty {
             ty::TySlice(_) | ty::TyTrait(..) => {
                 ExpectRvalueLikeUnsized(ty)
             }
