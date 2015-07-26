@@ -41,8 +41,10 @@ mod imp {
         const NR_GETRANDOM: libc::c_long = 318;
         #[cfg(target_arch = "x86")]
         const NR_GETRANDOM: libc::c_long = 355;
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64", target_arch = "powerpc"))]
+        #[cfg(any(target_arch = "arm", target_arch = "powerpc"))]
         const NR_GETRANDOM: libc::c_long = 384;
+        #[cfg(any(target_arch = "aarch64"))]
+        const NR_GETRANDOM: libc::c_long = 278;
 
         unsafe {
             syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), 0)
