@@ -60,9 +60,10 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::{autoderef, FnCtxt, LvaluePreference, UnresolvedTypeAction};
+use check::{autoderef, impl_self_ty, FnCtxt, LvaluePreference, UnresolvedTypeAction};
 
 use middle::infer::{self, Coercion};
+use middle::subst::Substs;
 use middle::traits::{self, ObligationCause};
 use middle::traits::{predicate_for_trait_def, report_selection_error};
 use middle::ty::{AutoDerefRef, AdjustDerefRef};
@@ -78,6 +79,24 @@ struct Coerce<'a, 'tcx: 'a> {
 }
 
 type CoerceResult<'tcx> = RelateResult<'tcx, Option<ty::AutoAdjustment<'tcx>>>;
+
+/// The result of an attempt at coercing a Source type to a
+/// Target type via unsizing (`Source: CoerceUnsized<Target>`).
+/// If successful, all `CoerceUnsized` and `Unsized` obligations were selected.
+/// Other obligations, such as `T: Trait` for `&T -> &Trait`, are provided
+/// alongside the adjustment, to be enforced later.
+type CoerceUnsizedResult<'tcx> = Result<(AutoDerefRef<'tcx>,
+                                         Vec<traits::PredicateObligation<'tcx>>),
+                                        CoerceUnsizedError>;
+
+#[derive(PartialEq, Eq)]
+enum CoerceUnsizedError {
+    /// Source definitely does not implement `CoerceUnsized<Target>`.
+    Unapplicable,
+
+    /// Source might implement `CoerceUnsized<Target>`.
+    Ambiguous,
+}
 
 impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> {
@@ -99,8 +118,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Consider coercing the subtype to a DST
         let unsize = self.fcx.infcx().commit_if_ok(|_| self.coerce_unsized(a, b));
-        if unsize.is_ok() {
-            return unsize;
+        if let Ok((adjustment, leftover_predicates)) = unsize {
+            for obligation in leftover_predicates {
+                self.fcx.register_predicate(obligation);
+            }
+            return Ok(Some(AdjustDerefRef(adjustment)));
         }
 
         // Examine the supertype and consider auto-borrowing.
@@ -119,23 +141,97 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             _ => {}
         }
 
+        let b = self.fcx.infcx().shallow_resolve(b);
         match a.sty {
             ty::TyBareFn(Some(_), a_f) => {
                 // Function items are coercible to any closure
                 // type; function pointers are not (that would
                 // require double indirection).
-                self.coerce_from_fn_item(a, a_f, b)
+                return self.coerce_from_fn_item(a, a_f, b);
             }
             ty::TyBareFn(None, a_f) => {
                 // We permit coercion of fn pointers to drop the
                 // unsafe qualifier.
-                self.coerce_from_fn_pointer(a, a_f, b)
+                return self.coerce_from_fn_pointer(a, a_f, b);
             }
-            _ => {
-                // Otherwise, just use subtyping rules.
-                self.subtype(a, b)
+            _ => {}
+        }
+
+        // Attempt to generalize the expected type in hopes of an unsizing
+        // coercion, where an intermediary stop-gap is usually necessary.
+        // This is the case with trait method calls where the returned type
+        // was not inferred, e.g. `Make::make(x: T): Box<Trait>`, if `Make`
+        // has many implementations. Unsizing coercion will be ambiguous
+        // and subtyping would result in a selection failure, if `Box<Trait>`
+        // does not implement `Make`, but `Box<T>` does. The stop-gap fix
+        // is `Make::make(x: T): Box<T>: Box<Trait>`.
+        // In that same case, the following generalization will attempt to
+        // apply `Box<_>` to the otherwise unconstrained `Make::make` return
+        // type and trigger selection, hoping to get the unambiguous source
+        // type `Box<T>` for the coercion to `Box<Trait>`.
+        // Subtyping rules are used if the generalization and second attempt
+        // at coercions through unsizing do not apply.
+
+        // The first unsizing coercion must have failed due to ambiguity.
+        if unsize.err() != Some(CoerceUnsizedError::Ambiguous) {
+            return self.subtype(a, b);
+        }
+
+        // The target type needs to be a structure or Box<T>.
+        // The only other types that implement CoerceUnsized are
+        // references and pointers and those have multiple forms,
+        // such as `*mut T -> *const Trait`.
+        match b.sty {
+            ty::TyBox(_) | ty::TyStruct(..) => {}
+            _ => return self.subtype(a, b)
+        }
+
+        // Construct a `Target: CoerceUnsized<Target>` predicate.
+        let trait_predicate = ty::Binder(ty::TraitRef {
+            def_id: self.tcx().lang_items.coerce_unsized_trait().unwrap(),
+            substs: self.tcx().mk_substs(Substs::new_trait(vec![b], vec![], b))
+        }).to_poly_trait_predicate();
+
+        // Select `Target: CoerceUnsized<Target>`.
+        let mut selcx = traits::SelectionContext::new(self.fcx.infcx());
+        let cause = ObligationCause::misc(self.origin.span(), self.fcx.body_id);
+        let obligation = traits::Obligation::new(cause, trait_predicate);
+        if let Ok(Some(traits::VtableImpl(i))) = selcx.select(&obligation) {
+            // There is a single applicable impl. If `Target = P<Trait>`, then
+            // the `Self` of this impl is some kind of supertype of `P<Trait>`,
+            // most likely `P<T> forall T: Unsize<U>`.
+            // This `Self` type, when all impl type parameters have been
+            // substituted with fresh inference variables (e.g. `P<_>`),
+            // will unify with the target type and all possible source types
+            // for a coercion.
+            // It can thus be used as a supertype of the source type,
+            // the generalized form that can allow fulfilling pending
+            // obligations and ultimately an unsizing coercion.
+            let success = self.fcx.infcx().commit_if_ok(|_| {
+                self.subtype(a, impl_self_ty(self.fcx,
+                                             self.origin.span(),
+                                              i.impl_def_id).ty)
+            });
+
+            if success.is_ok() {
+                // Select pending obligations to constrain the
+                // source type further, and resolve it again.
+                self.fcx.select_obligations_where_possible();
+                let a = self.fcx.infcx().shallow_resolve(a);
+
+                // Finally, attempt a coercion by unsizing again,
+                // now that the types are (hopefully) better known.
+                let unsize = self.fcx.infcx().commit_if_ok(|_| self.coerce_unsized(a, b));
+                if let Ok((adjustment, leftover_predicates)) = unsize {
+                    for obligation in leftover_predicates {
+                        self.fcx.register_predicate(obligation);
+                    }
+                    return Ok(Some(AdjustDerefRef(adjustment)));
+                }
             }
         }
+
+        self.subtype(a, b)
     }
 
     /// Reborrows `&mut A` to `&mut B` and `&(mut) A` to `&B`.
@@ -218,7 +314,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn coerce_unsized(&self,
                       source: Ty<'tcx>,
                       target: Ty<'tcx>)
-                      -> CoerceResult<'tcx> {
+                      -> CoerceUnsizedResult<'tcx> {
         debug!("coerce_unsized(source={:?}, target={:?})",
                source,
                target);
@@ -229,7 +325,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             (u, cu)
         } else {
             debug!("Missing Unsize or CoerceUnsized traits");
-            return Err(TypeError::Mismatch);
+            return Err(CoerceUnsizedError::Unapplicable);
         };
 
         // Note, we want to avoid unnecessary unsizing. We don't want to coerce to
@@ -240,7 +336,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
         let (source, reborrow) = match (&source.sty, &target.sty) {
             (&ty::TyRef(_, mt_a), &ty::TyRef(_, mt_b)) => {
-                try!(coerce_mutbls(mt_a.mutbl, mt_b.mutbl));
+                if coerce_mutbls(mt_a.mutbl, mt_b.mutbl).is_err() {
+                    return Err(CoerceUnsizedError::Unapplicable);
+                }
 
                 let coercion = Coercion(self.origin.span());
                 let r_borrow = self.fcx.infcx().next_region_var(coercion);
@@ -248,7 +346,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 (mt_a.ty, Some(ty::AutoPtr(region, mt_b.mutbl)))
             }
             (&ty::TyRef(_, mt_a), &ty::TyRawPtr(mt_b)) => {
-                try!(coerce_mutbls(mt_a.mutbl, mt_b.mutbl));
+                if coerce_mutbls(mt_a.mutbl, mt_b.mutbl).is_err() {
+                    return Err(CoerceUnsizedError::Unapplicable);
+                }
                 (mt_a.ty, Some(ty::AutoUnsafe(mt_b.mutbl)))
             }
             _ => (source, None)
@@ -287,9 +387,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             };
             match selcx.select(&obligation.with(trait_ref)) {
                 // Uncertain or unimplemented.
-                Ok(None) | Err(traits::Unimplemented) => {
-                    debug!("coerce_unsized: early return - can't prove obligation");
-                    return Err(TypeError::Mismatch);
+                Ok(None)  => {
+                    debug!("coerce_unsized: early return (Ambiguous)");
+                    return Err(CoerceUnsizedError::Ambiguous);
+                }
+                Err(traits::Unimplemented) => {
+                    debug!("coerce_unsized: early return (Unapplicable)");
+                    return Err(CoerceUnsizedError::Unapplicable);
                 }
 
                 // Object safety violations or miscellaneous.
@@ -308,18 +412,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         }
 
-        // Save all the obligations that are not for CoerceUnsized or Unsize.
-        for obligation in leftover_predicates {
-            self.fcx.register_predicate(obligation);
-        }
-
         let adjustment = AutoDerefRef {
             autoderefs: if reborrow.is_some() { 1 } else { 0 },
             autoref: reborrow,
             unsize: Some(target)
         };
         debug!("Success, coerced with {:?}", adjustment);
-        Ok(Some(AdjustDerefRef(adjustment)))
+        Ok((adjustment, leftover_predicates))
     }
 
     fn coerce_from_fn_pointer(&self,
@@ -333,7 +432,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
          * into a closure or a `proc`.
          */
 
-        let b = self.fcx.infcx().shallow_resolve(b);
         debug!("coerce_from_fn_pointer(a={:?}, b={:?})",
                 a, b);
 
@@ -360,7 +458,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
          * into a closure or a `proc`.
          */
 
-        let b = self.fcx.infcx().shallow_resolve(b);
         debug!("coerce_from_fn_item(a={:?}, b={:?})",
                 a, b);
 
