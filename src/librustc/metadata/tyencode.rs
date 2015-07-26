@@ -409,9 +409,9 @@ pub fn enc_region_bounds<'a, 'tcx>(w: &mut Encoder,
 
 pub fn enc_type_param_def<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>,
                                     v: &ty::TypeParameterDef<'tcx>) {
-    mywrite!(w, "{}:{}|{}|{}|",
+    mywrite!(w, "{}:{}|{}|{}|{}|",
              token::get_name(v.name), (cx.ds)(v.def_id),
-             v.space.to_uint(), v.index);
+             v.space.to_uint(), v.index, (cx.ds)(v.default_def_id));
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
     enc_object_lifetime_default(w, cx, v.object_lifetime_default);
 }

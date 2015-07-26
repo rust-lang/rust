@@ -653,6 +653,50 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    /// Returns a type variable's default fallback if any exists. A default
+    /// must be attached to the variable when created, if it is created
+    /// without a default, this will return None.
+    ///
+    /// This code does not apply to integral or floating point variables,
+    /// only to use declared defaults.
+    ///
+    /// See `new_ty_var_with_default` to create a type variable with a default.
+    /// See `type_variable::Default` for details about what a default entails.
+    pub fn default(&self, ty: Ty<'tcx>) -> Option<type_variable::Default<'tcx>> {
+        match ty.sty {
+            ty::TyInfer(ty::TyVar(vid)) => self.type_variables.borrow().default(vid),
+            _ => None
+        }
+    }
+
+    pub fn unsolved_variables(&self) -> Vec<ty::Ty<'tcx>> {
+        let mut variables = Vec::new();
+
+        let unbound_ty_vars = self.type_variables
+                                  .borrow()
+                                  .unsolved_variables()
+                                  .into_iter()
+                                  .map(|t| self.tcx.mk_var(t));
+
+        let unbound_int_vars = self.int_unification_table
+                                   .borrow_mut()
+                                   .unsolved_variables()
+                                   .into_iter()
+                                   .map(|v| self.tcx.mk_int_var(v));
+
+        let unbound_float_vars = self.float_unification_table
+                                     .borrow_mut()
+                                     .unsolved_variables()
+                                     .into_iter()
+                                     .map(|v| self.tcx.mk_float_var(v));
+
+        variables.extend(unbound_ty_vars);
+        variables.extend(unbound_int_vars);
+        variables.extend(unbound_float_vars);
+
+        return variables;
+    }
+
     fn combine_fields(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
                       -> CombineFields<'a, 'tcx> {
         CombineFields {infcx: self,
@@ -956,11 +1000,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn next_ty_var_id(&self, diverging: bool) -> TyVid {
         self.type_variables
             .borrow_mut()
-            .new_var(diverging)
+            .new_var(diverging, None)
     }
 
     pub fn next_ty_var(&self) -> Ty<'tcx> {
         self.tcx.mk_var(self.next_ty_var_id(false))
+    }
+
+    pub fn next_ty_var_with_default(&self,
+                                    default: Option<type_variable::Default<'tcx>>) -> Ty<'tcx> {
+        let ty_var_id = self.type_variables
+                            .borrow_mut()
+                            .new_var(false, default);
+
+        self.tcx.mk_var(ty_var_id)
     }
 
     pub fn next_diverging_ty_var(&self) -> Ty<'tcx> {
@@ -996,6 +1049,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .collect()
     }
 
+    // We have to take `&mut Substs` in order to provide the correct substitutions for defaults
+    // along the way, for this reason we don't return them.
+    pub fn type_vars_for_defs(&self,
+                              span: Span,
+                              space: subst::ParamSpace,
+                              substs: &mut Substs<'tcx>,
+                              defs: &[ty::TypeParameterDef<'tcx>]) {
+
+        let mut vars = Vec::with_capacity(defs.len());
+
+        for def in defs.iter() {
+            let default = def.default.map(|default| {
+                type_variable::Default {
+                    ty: default.subst_spanned(self.tcx, substs, Some(span)),
+                    origin_span: span,
+                    def_id: def.default_def_id
+                }
+            });
+
+            let ty_var = self.next_ty_var_with_default(default);
+            substs.types.push(space, ty_var);
+            vars.push(ty_var)
+        }
+    }
+
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
     /// type/region parameter to a fresh inference variable.
     pub fn fresh_substs_for_generics(&self,
@@ -1003,13 +1081,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                      generics: &ty::Generics<'tcx>)
                                      -> subst::Substs<'tcx>
     {
-        let type_params =
-            generics.types.map(
-                |_| self.next_ty_var());
+        let type_params = subst::VecPerParamSpace::empty();
+
         let region_params =
             generics.regions.map(
                 |d| self.next_region_var(EarlyBoundRegion(span, d.name)));
-        subst::Substs::new(type_params, region_params)
+
+        let mut substs = subst::Substs::new(type_params, region_params);
+
+        for space in subst::ParamSpace::all().iter() {
+            self.type_vars_for_defs(
+                span,
+                *space,
+                &mut substs,
+                generics.types.get_slice(*space));
+        }
+
+        return substs;
     }
 
     /// Given a set of generics defined on a trait, returns a substitution mapping each output
@@ -1027,13 +1115,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         assert!(generics.regions.len(subst::SelfSpace) == 0);
         assert!(generics.regions.len(subst::FnSpace) == 0);
 
-        let type_parameter_count = generics.types.len(subst::TypeSpace);
-        let type_parameters = self.next_ty_vars(type_parameter_count);
+        let type_params = Vec::new();
 
         let region_param_defs = generics.regions.get_slice(subst::TypeSpace);
         let regions = self.region_vars_for_defs(span, region_param_defs);
 
-        subst::Substs::new_trait(type_parameters, regions, self_ty)
+        let mut substs = subst::Substs::new_trait(type_params, regions, self_ty);
+
+        let type_parameter_defs = generics.types.get_slice(subst::TypeSpace);
+        self.type_vars_for_defs(span, subst::TypeSpace, &mut substs, type_parameter_defs);
+
+        return substs;
     }
 
     pub fn fresh_bound_region(&self, debruijn: ty::DebruijnIndex) -> ty::Region {
@@ -1266,6 +1358,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             })
         };
         self.report_and_explain_type_error(trace, err);
+    }
+
+    pub fn report_conflicting_default_types(&self,
+                                            span: Span,
+                                            expected: type_variable::Default<'tcx>,
+                                            actual: type_variable::Default<'tcx>) {
+        let trace = TypeTrace {
+            origin: Misc(span),
+            values: Types(ty::ExpectedFound {
+                expected: expected.ty,
+                found: actual.ty
+            })
+        };
+
+        self.report_and_explain_type_error(trace,
+            &TypeError::TyParamDefaultMismatch(ty::ExpectedFound {
+                expected: expected,
+                found: actual
+        }));
     }
 
     pub fn replace_late_bound_regions_with_fresh_var<T>(

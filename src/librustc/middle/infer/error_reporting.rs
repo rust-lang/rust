@@ -893,8 +893,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             self.report_inference_failure(vo.clone());
         }
         self.give_suggestion(same_regions);
-        for &(ref trace, terr) in trace_origins {
-            self.report_and_explain_type_error(trace.clone(), &terr);
+        for &(ref trace, ref terr) in trace_origins {
+            self.report_and_explain_type_error(trace.clone(), terr);
         }
     }
 
