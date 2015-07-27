@@ -85,12 +85,12 @@ x = 1;              y *= 2;
 
 Ideally this program has 2 possible final states:
 
-* `y = 3`: (thread 2 did the check before thread 1 completed) y = 6`: (thread 2
-* `did the check after thread 1 completed)
+* `y = 3`: (thread 2 did the check before thread 1 completed)
+* `y = 6`: (thread 2 did the check after thread 1 completed)
 
 However there's a third potential state that the hardware enables:
 
-* `y = 2`: (thread 2 saw `x = 2`, but not `y = 3`, and then overwrote `y = 3`)
+* `y = 2`: (thread 2 saw `x = 1`, but not `y = 3`, and then overwrote `y = 3`)
 
 It's worth noting that different kinds of CPU provide different guarantees. It
 is common to separate hardware into two categories: strongly-ordered and weakly-
