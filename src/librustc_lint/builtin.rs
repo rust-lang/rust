@@ -436,6 +436,16 @@ fn is_repr_nullable_ptr<'tcx>(variants: &Vec<Rc<ty::VariantInfo<'tcx>>>) -> bool
     false
 }
 
+fn ast_ty_to_normalized<'tcx>(tcx: &ty::ctxt<'tcx>,
+                              id: ast::NodeId)
+                              -> Ty<'tcx> {
+    let tty = match tcx.ast_ty_to_ty_cache.borrow().get(&id) {
+        Some(&t) => t,
+        None => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
+    };
+    infer::normalize_associated_type(tcx, &tty)
+}
+
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
@@ -638,11 +648,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 
     fn check_def(&mut self, sp: Span, id: ast::NodeId) {
-        let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().get(&id) {
-            Some(&t) => t,
-            None => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
-        };
-        let tty = infer::normalize_associated_type(self.cx.tcx, &tty);
+        let tty = ast_ty_to_normalized(self.cx.tcx, id);
 
         match ImproperCTypesVisitor::check_type_for_ffi(self, &mut FnvHashSet(), tty) {
             FfiResult::FfiSafe => {}
@@ -707,7 +713,10 @@ impl LintPass for ImproperCTypes {
                 check_ty(cx, &*input.ty);
             }
             if let ast::Return(ref ret_ty) = decl.output {
-                check_ty(cx, &**ret_ty);
+                let tty = ast_ty_to_normalized(cx.tcx, ret_ty.id);
+                if !tty.is_nil() {
+                    check_ty(cx, &ret_ty);
+                }
             }
         }
 
