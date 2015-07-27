@@ -81,7 +81,7 @@ The main guarantee provided here is that the data will not be destroyed until al
 are out of scope.
 
 This should be used when we wish to dynamically allocate and share some data (read-only) between
-various portions of yur program, where it is not certain which portion will finish using the pointer
+various portions of your program, where it is not certain which portion will finish using the pointer
 last. It's a viable alternative to `&T` when `&T` is either impossible to statically check for
 correctness, or creates extremely unergonomic code where the programmer does not wish to spend the
 development cost of working with.
