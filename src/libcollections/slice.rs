@@ -883,7 +883,8 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(permutations)]
+    /// #![feature(permutations)]
+    ///
     /// let v = [1, 2, 3];
     /// let mut perms = v.permutations();
     ///
@@ -895,7 +896,8 @@ impl<T> [T] {
     /// Iterating through permutations one by one.
     ///
     /// ```rust
-    /// # #![feature(permutations)]
+    /// #![feature(permutations)]
+    ///
     /// let v = [1, 2, 3];
     /// let mut perms = v.permutations();
     ///
@@ -920,7 +922,8 @@ impl<T> [T] {
     /// # Example
     ///
     /// ```rust
-    /// # #![feature(permutations)]
+    /// #![feature(permutations)]
+    ///
     /// let v: &mut [_] = &mut [0, 1, 2];
     /// v.next_permutation();
     /// let b: &mut [_] = &mut [0, 2, 1];
@@ -945,7 +948,8 @@ impl<T> [T] {
     /// # Example
     ///
     /// ```rust
-    /// # #![feature(permutations)]
+    /// #![feature(permutations)]
+    ///
     /// let v: &mut [_] = &mut [1, 0, 2];
     /// v.prev_permutation();
     /// let b: &mut [_] = &mut [0, 2, 1];
@@ -969,7 +973,8 @@ impl<T> [T] {
     /// # Example
     ///
     /// ```rust
-    /// # #![feature(clone_from_slice)]
+    /// #![feature(clone_from_slice)]
+    ///
     /// let mut dst = [0, 0, 0];
     /// let src = [1, 2];
     ///
@@ -1000,7 +1005,8 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```rust
-    /// # #![feature(move_from)]
+    /// #![feature(move_from)]
+    ///
     /// let mut a = [1, 2, 3, 4, 5];
     /// let b = vec![6, 7, 8];
     /// let num_moved = a.move_from(b, 0, 3);

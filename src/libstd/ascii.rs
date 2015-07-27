@@ -122,7 +122,8 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(ascii)]
+    /// #![feature(ascii)]
+    ///
     /// use std::ascii::AsciiExt;
     ///
     /// let mut ascii = 'a';
@@ -141,7 +142,8 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(ascii)]
+    /// #![feature(ascii)]
+    ///
     /// use std::ascii::AsciiExt;
     ///
     /// let mut ascii = 'A';

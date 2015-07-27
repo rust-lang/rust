@@ -622,7 +622,8 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(append)]
+    /// #![feature(append)]
+    ///
     /// let mut vec = vec![1, 2, 3];
     /// let mut vec2 = vec![4, 5, 6];
     /// vec.append(&mut vec2);
@@ -661,7 +662,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(drain)]
+    /// #![feature(drain)]
     ///
     /// // Draining using `..` clears the whole vector.
     /// let mut v = vec![1, 2, 3];
@@ -759,7 +760,8 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(map_in_place)]
+    /// #![feature(map_in_place)]
+    ///
     /// let v = vec![0, 1, 2];
     /// let w = v.map_in_place(|i| i + 3);
     /// assert_eq!(&w[..], &[3, 4, 5]);
@@ -962,7 +964,8 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(split_off)]
+    /// #![feature(split_off)]
+    ///
     /// let mut vec = vec![1,2,3];
     /// let vec2 = vec.split_off(1);
     /// assert_eq!(vec, [1]);
@@ -1001,7 +1004,8 @@ impl<T: Clone> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(vec_resize)]
+    /// #![feature(vec_resize)]
+    ///
     /// let mut vec = vec!["hello"];
     /// vec.resize(3, "world");
     /// assert_eq!(vec, ["hello", "world", "world"]);
@@ -1053,7 +1057,8 @@ impl<T: Clone> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(vec_push_all)]
+    /// #![feature(vec_push_all)]
+    ///
     /// let mut vec = vec![1];
     /// vec.push_all(&[2, 3, 4]);
     /// assert_eq!(vec, [1, 2, 3, 4]);

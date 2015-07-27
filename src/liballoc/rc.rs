@@ -91,7 +91,8 @@
 //! documentation for more details on interior mutability.
 //!
 //! ```rust
-//! # #![feature(rc_weak)]
+//! #![feature(rc_weak)]
+//!
 //! use std::rc::Rc;
 //! use std::rc::Weak;
 //! use std::cell::RefCell;
@@ -227,7 +228,8 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(rc_unique)]
+    /// #![feature(rc_unique)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let x = Rc::new(3);
@@ -262,7 +264,8 @@ impl<T: ?Sized> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(rc_weak)]
+    /// #![feature(rc_weak)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -292,7 +295,8 @@ impl<T: ?Sized> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(rc_unique)]
+    /// #![feature(rc_unique)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -313,7 +317,8 @@ impl<T: ?Sized> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(rc_unique)]
+    /// #![feature(rc_unique)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let mut x = Rc::new(3);
@@ -353,7 +358,8 @@ pub fn strong_count<T: ?Sized>(this: &Rc<T>) -> usize { Rc::strong_count(this) }
 /// # Examples
 ///
 /// ```
-/// # #![feature(rc_unique)]
+/// #![feature(rc_unique)]
+///
 /// use std::rc;
 /// use std::rc::Rc;
 ///
@@ -373,7 +379,8 @@ pub fn is_unique<T>(rc: &Rc<T>) -> bool { Rc::is_unique(rc) }
 /// # Examples
 ///
 /// ```
-/// # #![feature(rc_unique)]
+/// #![feature(rc_unique)]
+///
 /// use std::rc::{self, Rc};
 ///
 /// let x = Rc::new(3);
@@ -395,7 +402,8 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> { Rc::try_unwrap(rc) }
 /// # Examples
 ///
 /// ```
-/// # #![feature(rc_unique)]
+/// #![feature(rc_unique)]
+///
 /// use std::rc::{self, Rc};
 ///
 /// let mut x = Rc::new(3);
@@ -419,7 +427,8 @@ impl<T: Clone> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(rc_unique)]
+    /// #![feature(rc_unique)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let mut five = Rc::new(5);
@@ -750,7 +759,8 @@ impl<T: ?Sized> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(rc_weak)]
+    /// #![feature(rc_weak)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -778,7 +788,8 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(rc_weak)]
+    /// #![feature(rc_weak)]
+    ///
     /// use std::rc::Rc;
     ///
     /// {
@@ -825,7 +836,8 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(rc_weak)]
+    /// #![feature(rc_weak)]
+    ///
     /// use std::rc::Rc;
     ///
     /// let weak_five = Rc::new(5).downgrade();

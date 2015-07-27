@@ -24,7 +24,8 @@
 //! # Examples
 //!
 //! ```
-//! # #![feature(scoped_tls)]
+//! #![feature(scoped_tls)]
+//!
 //! scoped_thread_local!(static FOO: u32);
 //!
 //! // Initially each scoped slot is empty.
@@ -136,7 +137,8 @@ impl<T> ScopedKey<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(scoped_tls)]
+    /// #![feature(scoped_tls)]
+    ///
     /// scoped_thread_local!(static FOO: u32);
     ///
     /// FOO.set(&100, || {
@@ -189,7 +191,8 @@ impl<T> ScopedKey<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// # #![feature(scoped_tls)]
+    /// #![feature(scoped_tls)]
+    ///
     /// scoped_thread_local!(static FOO: u32);
     ///
     /// FOO.with(|slot| {
