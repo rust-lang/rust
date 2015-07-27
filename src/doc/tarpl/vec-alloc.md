@@ -61,9 +61,7 @@ like the standard library as much as possible, so we'll just kill the whole
 program.
 
 We said we don't want to use intrinsics, so doing *exactly* what `std` does is
-out. `std::rt::util::abort` actually exists, but it takes a message to print,
-which will probably allocate. Also it's still unstable. Instead, we'll call
-`std::process::exit` with some random number.
+out. Instead, we'll call `std::process::exit` with some random number.
 
 ```rust
 fn oom() {
@@ -78,7 +76,7 @@ if cap == 0:
     allocate()
     cap = 1
 else:
-    reallocate
+    reallocate()
     cap *= 2
 ```
 
@@ -109,7 +107,7 @@ the same location in memory, the operations need to be done to the same value,
 and they can't just be merged afterwards.
 
 When you use GEP inbounds, you are specifically telling LLVM that the offsets
-you're about to do are within the bounds of a single allocated entity. The
+you're about to do are within the bounds of a single "allocated" entity. The
 ultimate payoff being that LLVM can assume that if two pointers are known to
 point to two disjoint objects, all the offsets of those pointers are *also*
 known to not alias (because you won't just end up in some random place in
@@ -162,7 +160,8 @@ elements. This is a runtime no-op because every element takes up no space,
 and it's fine to pretend that there's infinite zero-sized types allocated
 at `0x01`. No allocator will ever allocate that address, because they won't
 allocate `0x00` and they generally allocate to some minimal alignment higher
-than a byte.
+than a byte. Also generally the whole first page of memory is
+protected from being allocated anyway (a whole 4k, on many platforms).
 
 However what about for positive-sized types? That one's a bit trickier. In
 principle, you can argue that offsetting by 0 gives LLVM no information: either

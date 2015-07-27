@@ -1,9 +1,9 @@
 % RawVec
 
 We've actually reached an interesting situation here: we've duplicated the logic
-for specifying a buffer and freeing its memory. Now that we've implemented it
-and identified *actual* logic duplication, this is a good time to perform some
-logic compression.
+for specifying a buffer and freeing its memory in Vec and IntoIter. Now that
+we've implemented it and identified *actual* logic duplication, this is a good
+time to perform some logic compression.
 
 We're going to abstract out the `(ptr, cap)` pair and give them the logic for
 allocating, growing, and freeing:
@@ -64,7 +64,7 @@ impl<T> Drop for RawVec<T> {
 }
 ```
 
-And change vec as follows:
+And change Vec as follows:
 
 ```rust,ignore
 pub struct Vec<T> {

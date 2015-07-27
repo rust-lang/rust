@@ -12,7 +12,7 @@ bit nicer or efficient because intrinsics are permanently unstable. Although
 many intrinsics *do* become stabilized elsewhere (`std::ptr` and `str::mem`
 consist of many intrinsics).
 
-Ultimately this means out implementation may not take advantage of all
+Ultimately this means our implementation may not take advantage of all
 possible optimizations, though it will be by no means *naive*. We will
 definitely get into the weeds over nitty-gritty details, even
 when the problem doesn't *really* merit it.
