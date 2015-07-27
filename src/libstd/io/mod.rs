@@ -707,7 +707,7 @@ pub trait Read {
     ///
     /// # fn foo() -> io::Result<()> {
     /// let mut f = try!(File::open("foo.txt"));
-    /// let mut buffer = [0; 10];
+    /// let mut buffer = [0; 5];
     ///
     /// // read at most five bytes
     /// let mut handle = f.take(5);
