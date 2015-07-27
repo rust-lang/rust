@@ -1,10 +1,10 @@
 % Splitting Lifetimes
 
 The mutual exclusion property of mutable references can be very limiting when
-working with a composite structure. The borrow checker understands some basic stuff, but
-will fall over pretty easily. It *does* understand structs sufficiently to
-know that it's possible to borrow disjoint fields of a struct simultaneously.
-So this works today:
+working with a composite structure. The borrow checker understands some basic
+stuff, but will fall over pretty easily. It *does* understand structs
+sufficiently to know that it's possible to borrow disjoint fields of a struct
+simultaneously. So this works today:
 
 ```rust
 struct Foo {
@@ -49,11 +49,11 @@ container types like a tree, especially if distinct keys actually *do* map
 to the same value.
 
 In order to "teach" borrowck that what we're doing is ok, we need to drop down
-to unsafe code. For instance, mutable slices expose a `split_at_mut` function that
-consumes the slice and returns *two* mutable slices. One for everything to the
-left of the index, and one for everything to the right. Intuitively we know this
-is safe because the slices don't alias. However the implementation requires some
-unsafety:
+to unsafe code. For instance, mutable slices expose a `split_at_mut` function
+that consumes the slice and returns *two* mutable slices. One for everything to
+the left of the index, and one for everything to the right. Intuitively we know
+this is safe because the slices don't alias. However the implementation requires
+some unsafety:
 
 ```rust,ignore
 fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
@@ -66,9 +66,9 @@ fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
 }
 ```
 
-This is pretty plainly dangerous. We use transmute to duplicate the slice with an
-*unbounded* lifetime, so that it can be treated as disjoint from the other until
-we unify them when we return.
+This is pretty plainly dangerous. We use transmute to duplicate the slice with
+an *unbounded* lifetime, so that it can be treated as disjoint from the other
+until we unify them when we return.
 
 However more subtle is how iterators that yield mutable references work.
 The iterator trait is defined as follows:
@@ -81,60 +81,201 @@ trait Iterator {
 }
 ```
 
-Given this definition, Self::Item has *no* connection to `self`. This means
-that we can call `next` several times in a row, and hold onto all the results
-*concurrently*. This is perfectly fine for by-value iterators, which have exactly
-these semantics. It's also actually fine for shared references, as they admit
-arbitrarily many references to the same thing (although the
-iterator needs to be a separate object from the thing being shared). But mutable
-references make this a mess. At first glance, they might seem completely
-incompatible with this API, as it would produce multiple mutable references to
-the same object!
+Given this definition, Self::Item has *no* connection to `self`. This means that
+we can call `next` several times in a row, and hold onto all the results
+*concurrently*. This is perfectly fine for by-value iterators, which have
+exactly these semantics. It's also actually fine for shared references, as they
+admit arbitrarily many references to the same thing (although the iterator needs
+to be a separate object from the thing being shared).
+
+But mutable references make this a mess. At first glance, they might seem
+completely incompatible with this API, as it would produce multiple mutable
+references to the same object!
 
 However it actually *does* work, exactly because iterators are one-shot objects.
-Everything an IterMut yields will be yielded *at most* once, so we don't *actually*
-ever yield multiple mutable references to the same piece of data.
+Everything an IterMut yields will be yielded *at most* once, so we don't
+*actually* ever yield multiple mutable references to the same piece of data.
 
-In general all mutable iterators require *some* unsafe code *somewhere*, though.
-Whether it's raw pointers, or safely composing on top of *another* IterMut.
+Perhaps surprisingly, mutable iterators *don't* require unsafe code to be
+implemented for many types!
 
-For instance, VecDeque's IterMut:
+For instance here's a singly linked list:
 
-```rust,ignore
-struct IterMut<'a, T:'a> {
-    // The whole backing array. Some of these indices are initialized!
-    ring: &'a mut [T],
-    tail: usize,
-    head: usize,
+```rust
+# fn main() {}
+type Link<T> = Option<Box<Node<T>>>;
+
+struct Node<T> {
+    elem: T,
+    next: Link<T>,
+}
+
+pub struct LinkedList<T> {
+    head: Link<T>,
+}
+
+pub struct IterMut<'a, T: 'a>(Option<&'a mut Node<T>>);
+
+impl<T> LinkedList<T> {
+    fn iter_mut(&mut self) -> IterMut<T> {
+        IterMut(self.head.as_mut().map(|node| &mut **node))
+    }
 }
 
 impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
-    fn next(&mut self) -> Option<&'a mut T> {
-        if self.tail == self.head {
-            return None;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.take().map(|node| {
+            self.0 = node.next.as_mut().map(|node| &mut **node);
+            &mut node.elem
+        })
+    }
+}
+```
+
+Here's a mutable slice:
+
+```rust
+use std::mem;
+
+pub struct IterMut<'a, T: 'a>(&'a mut[T]);
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let slice = mem::replace(&mut self.0, &mut []);
+        if slice.is_empty() { return None; }
+
+        let (l, r) = slice.split_at_mut(1);
+        self.0 = r;
+        l.get_mut(0)
+    }
+}
+
+impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let slice = mem::replace(&mut self.0, &mut []);
+        if slice.is_empty() { return None; }
+
+        let new_len = slice.len() - 1;
+        let (l, r) = slice.split_at_mut(new_len);
+        self.0 = l;
+        r.get_mut(0)
+    }
+}
+```
+
+And here's a binary tree:
+
+```rust
+use std::collections::VecDeque;
+
+type Link<T> = Option<Box<Node<T>>>;
+
+struct Node<T> {
+    elem: T,
+    left: Link<T>,
+    right: Link<T>,
+}
+
+pub struct Tree<T> {
+    root: Link<T>,
+}
+
+struct NodeIterMut<'a, T: 'a> {
+    elem: Option<&'a mut T>,
+    left: Option<&'a mut Node<T>>,
+    right: Option<&'a mut Node<T>>,
+}
+
+enum State<'a, T: 'a> {
+    Elem(&'a mut T),
+    Node(&'a mut Node<T>),
+}
+
+pub struct IterMut<'a, T: 'a>(VecDeque<NodeIterMut<'a, T>>);
+
+impl<T> Tree<T> {
+    pub fn iter_mut(&mut self) -> IterMut<T> {
+        let mut deque = VecDeque::new();
+        self.root.as_mut().map(|root| deque.push_front(root.iter_mut()));
+        IterMut(deque)
+    }
+}
+
+impl<T> Node<T> {
+    pub fn iter_mut(&mut self) -> NodeIterMut<T> {
+        NodeIterMut {
+            elem: Some(&mut self.elem),
+            left: self.left.as_mut().map(|node| &mut **node),
+            right: self.right.as_mut().map(|node| &mut **node),
         }
-        let tail = self.tail;
-        self.tail = wrap_index(self.tail.wrapping_add(1), self.ring.len());
+    }
+}
 
-        unsafe {
-            // might as well do unchecked indexing since wrap_index has us
-            // in-bounds, and many of the "middle" indices are uninitialized
-            // anyway.
-            let elem = self.ring.get_unchecked_mut(tail);
 
-            // round-trip through a raw pointer to unbound the lifetime from
-            // ourselves
-            Some(&mut *(elem as *mut _))
+impl<'a, T> Iterator for NodeIterMut<'a, T> {
+    type Item = State<'a, T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.left.take() {
+            Some(node) => Some(State::Node(node)),
+            None => match self.elem.take() {
+                Some(elem) => Some(State::Elem(elem)),
+                None => match self.right.take() {
+                    Some(node) => Some(State::Node(node)),
+                    None => None,
+                }
+            }
+        }
+    }
+}
+
+impl<'a, T> DoubleEndedIterator for NodeIterMut<'a, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        match self.right.take() {
+            Some(node) => Some(State::Node(node)),
+            None => match self.elem.take() {
+                Some(elem) => Some(State::Elem(elem)),
+                None => match self.left.take() {
+                    Some(node) => Some(State::Node(node)),
+                    None => None,
+                }
+            }
+        }
+    }
+}
+
+impl<'a, T> Iterator for IterMut<'a, T> {
+    type Item = &'a mut T;
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.0.front_mut().and_then(|node_it| node_it.next()) {
+                Some(State::Elem(elem)) => return Some(elem),
+                Some(State::Node(node)) => self.0.push_front(node.iter_mut()),
+                None => if let None = self.0.pop_front() { return None },
+            }
+        }
+    }
+}
+
+impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.0.back_mut().and_then(|node_it| node_it.next_back()) {
+                Some(State::Elem(elem)) => return Some(elem),
+                Some(State::Node(node)) => self.0.push_back(node.iter_mut()),
+                None => if let None = self.0.pop_back() { return None },
+            }
         }
     }
 }
 ```
 
-A very subtle but interesting detail in this design is that it *relies on
-privacy to be sound*. Borrowck works on some very simple rules. One of those rules
-is that if we have a live &mut Foo and Foo contains an &mut Bar, then that &mut
-Bar is *also* live. Since IterMut is always live when `next` can be called, if
-`ring` were public then we could mutate `ring` while outstanding mutable borrows
-to it exist!
+All of these are completely safe and work on stable Rust! This ultimately
+falls out of the simple struct case we saw before: Rust understands that you
+can safely split a mutable reference into subfields. We can then encode
+permanently consuming a reference via Options (or in the case of slices,
+replacing with an empty slice).
