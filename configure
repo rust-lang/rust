@@ -286,7 +286,7 @@ go() {
             err "libdir must begin with the prefix. Use --prefix to set it accordingly.";;
     esac
 
-    CFG_LIBDIR_RELATIVE=`echo ${CFG_LIBDIR} | cut -c$((${#CFG_PREFIX}+${CAT_INC}))-`
+    CFG_LIBDIR_RELATIVE=$(echo ${CFG_LIBDIR} | cut -c$((${#CFG_PREFIX}+${CAT_INC}))-)
 
     if ( [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ] ) \
         && [ "$CFG_LIBDIR_RELATIVE" != "bin" ]; then
@@ -350,7 +350,7 @@ go() {
     # channel.
     # Basing CFG_BOOTSTRAP_KEY on CFG_BOOTSTRAP_KEY lets it get picked up
     # during a Makefile reconfig.
-    CFG_BOOTSTRAP_KEY="${CFG_BOOTSTRAP_KEY-`date +%H:%M:%S`}"
+    CFG_BOOTSTRAP_KEY="${CFG_BOOTSTRAP_KEY-$(date +%H:%M:%S)}"
     putvar CFG_BOOTSTRAP_KEY
 
     step_msg "looking for build programs"
@@ -502,7 +502,7 @@ go() {
         fi
 
         CMD="${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF}"
-        LRV=`$CMD --version`
+        LRV=$($CMD --version)
         if [ $? -ne 0 ]
         then
             step_msg "failure while running $CMD --version"
@@ -802,7 +802,7 @@ go() {
                 #
                 # Consequently here we try to detect when that happens and print an
                 # error if it does.
-                if $CFG_PYTHON -c 'import sys; print sys.argv[1]' `pwd` | grep '^/'
+                if $CFG_PYTHON -c 'import sys; print sys.argv[1]' $(pwd) | grep '^/'
                 then
                     err "python is silently translating windows paths to MSYS paths \
                      and the build will fail if this python is used.\n\n \
@@ -873,7 +873,7 @@ go() {
 
     if [ -n "$CFG_PERF" ]
     then
-        HAVE_PERF_LOGFD=`$CFG_PERF stat --log-fd 2>&1 | grep 'unknown option'`
+        HAVE_PERF_LOGFD=$($CFG_PERF stat --log-fd 2>&1 | grep 'unknown option')
         if [ -z "$HAVE_PERF_LOGFD" ];
         then
             CFG_PERF_WITH_LOGFD=1
