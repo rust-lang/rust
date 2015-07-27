@@ -19,7 +19,6 @@ pub fn opts() -> TargetOptions {
         dynamic_linking: true,
         executables: true,
         is_like_osx: true,
-        morestack: true,
         has_rpath: true,
         dll_prefix: "lib".to_string(),
         dll_suffix: ".dylib".to_string(),

@@ -163,7 +163,7 @@ endif
 # that the snapshot will be generated with a statically linked rustc so we only
 # have to worry about the distribution of one file (with its native dynamic
 # dependencies)
-RUSTFLAGS_STAGE0 += -C prefer-dynamic
+RUSTFLAGS_STAGE0 += -C prefer-dynamic -C no-stack-check
 RUSTFLAGS_STAGE1 += -C prefer-dynamic
 RUST_LIB_FLAGS_ST2 += -C prefer-dynamic
 RUST_LIB_FLAGS_ST3 += -C prefer-dynamic
@@ -399,6 +399,11 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HSREQ$(1)_H_$(3)) \
 	$$(foreach obj,$$(INSTALLED_OBJECTS_$(2)),\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(obj))
+
+ifeq ($(1),0)
+TSREQ$(1)_T_$(2)_H_$(3) += \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(call CFG_STATIC_LIB_NAME_$(2),morestack)
+endif
 
 # Prerequisites for a working stageN compiler and libraries, for a specific
 # target

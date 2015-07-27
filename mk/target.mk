@@ -56,8 +56,7 @@ $(foreach host,$(CFG_HOST), \
 #   1. The immediate dependencies are the rust source files
 #   2. Each rust crate dependency is listed (based on their stamp files),
 #      as well as all native dependencies (listed in RT_OUTPUT_DIR)
-#   3. The stage (n-1) compiler is required through the TSREQ dependency, along
-#      with the morestack library
+#   3. The stage (n-1) compiler is required through the TSREQ dependency
 #   4. When actually executing the rule, the first thing we do is to clean out
 #      old libs and rlibs via the REMOVE_ALL_OLD_GLOB_MATCHES macro
 #   5. Finally, we get around to building the actual crate. It's just one

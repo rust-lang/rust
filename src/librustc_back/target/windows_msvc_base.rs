@@ -53,7 +53,6 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".exe".to_string(),
         staticlib_prefix: "".to_string(),
         staticlib_suffix: ".lib".to_string(),
-        morestack: false,
         is_like_windows: true,
         is_like_msvc: true,
         pre_link_args: vec![

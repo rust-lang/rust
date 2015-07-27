@@ -570,11 +570,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         }
     }
 
-    pub fn is_split_stack_supported(&self) -> bool {
-        self.sess().target.target.options.morestack
-    }
-
-
     pub fn llmod(&self) -> ModuleRef {
         self.local.llmod
     }

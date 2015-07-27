@@ -6,6 +6,3 @@ all:
 	$(RUSTC) foo.rs --target=my-incomplete-platform.json 2>&1 | grep 'Field llvm-target'
 	RUST_TARGET_PATH=. $(RUSTC) foo.rs --target=my-awesome-platform --crate-type=lib --emit=asm
 	RUST_TARGET_PATH=. $(RUSTC) foo.rs --target=x86_64-unknown-linux-gnu --crate-type=lib --emit=asm
-	# The built-in target *should* override the one we have here, and thus we
-	# should have morestack
-	grep -q morestack < $(TMPDIR)/foo.s

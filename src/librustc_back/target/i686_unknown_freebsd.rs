@@ -14,7 +14,6 @@ pub fn target() -> Target {
     let mut base = super::freebsd_base::opts();
     base.cpu = "pentium4".to_string();
     base.pre_link_args.push("-m32".to_string());
-    base.morestack = false;
 
     Target {
         llvm_target: "i686-unknown-freebsd".to_string(),

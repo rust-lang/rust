@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(libc)]
 
-use std::process::Command;
+extern crate libc;
+
+use std::process::{Command, ExitStatus};
 use std::env;
 
 fn main() {
@@ -18,8 +21,12 @@ fn main() {
         unsafe { *(0 as *mut isize) = 1 }; // trigger a segfault
     } else {
         let segfault = Command::new(&args[0]).arg("segfault").output().unwrap();
+        let stderr = String::from_utf8_lossy(&segfault.stderr);
+        let stdout = String::from_utf8_lossy(&segfault.stdout);
+        println!("stdout: {}", stdout);
+        println!("stderr: {}", stderr);
+        println!("status: {}", segfault.status);
         assert!(!segfault.status.success());
-        let error = String::from_utf8_lossy(&segfault.stderr);
-        assert!(!error.contains("has overflowed its stack"));
+        assert!(!stderr.contains("has overflowed its stack"));
     }
 }

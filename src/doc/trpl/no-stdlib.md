@@ -36,7 +36,6 @@ fn start(_argc: isize, _argv: *const *const u8) -> isize {
 // These functions and traits are used by the compiler, but not
 // for a bare-bones hello world. These are normally
 // provided by libstd.
-#[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
 # #[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
@@ -61,7 +60,6 @@ pub extern fn main(argc: i32, argv: *const *const u8) -> i32 {
     0
 }
 
-#[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
 # #[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
@@ -73,18 +71,12 @@ The compiler currently makes a few assumptions about symbols which are available
 in the executable to call. Normally these functions are provided by the standard
 library, but without it you must define your own.
 
-The first of these three functions, `stack_exhausted`, is invoked whenever stack
-overflow is detected.  This function has a number of restrictions about how it
-can be called and what it must do, but if the stack limit register is not being
-maintained then a thread always has an "infinite stack" and this function
-shouldn't get triggered.
-
-The second of these three functions, `eh_personality`, is used by the
+The first of these two functions, `eh_personality`, is used by the
 failure mechanisms of the compiler. This is often mapped to GCC's
 personality function (see the
 [libstd implementation](../std/rt/unwind/index.html) for more
 information), but crates which do not trigger a panic can be assured
-that this function is never called. The final function, `panic_fmt`, is
+that this function is never called. The second function, `panic_fmt`, is
 also used by the failure mechanisms of the compiler.
 
 ## Using libcore
@@ -150,7 +142,6 @@ extern fn panic_fmt(args: &core::fmt::Arguments,
     loop {}
 }
 
-#[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
 # #[lang = "eh_unwind_resume"] extern fn rust_eh_unwind_resume() {}
 # #[start] fn start(argc: isize, argv: *const *const u8) -> isize { 0 }
