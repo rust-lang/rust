@@ -1177,8 +1177,13 @@ do
             # INCLUDE and LIB variables for MSVC so we can set those in the
             # build system as well.
             install=$(reg QUERY \
-                       'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\12.0' \
+                       'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\14.0' \
                        -v InstallDir)
+            if [ -z "$install" ]; then
+              install=$(reg QUERY \
+                         'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\12.0' \
+                         -v InstallDir)
+            fi
             need_ok "couldn't find visual studio install root"
             CFG_MSVC_ROOT=$(echo "$install" | grep InstallDir | sed 's/.*REG_SZ[ ]*//')
             CFG_MSVC_ROOT=$(dirname "$CFG_MSVC_ROOT")
@@ -1460,12 +1465,22 @@ do
 
         msg "configuring LLVM with:"
         msg "$CMAKE_ARGS"
+        case "$CFG_MSVC_ROOT" in
+            *14.0*)
+                generator="Visual Studio 14 2015"
+                ;;
+            *12.0*)
+                generator="Visual Studio 12 2013"
+                ;;
+            *)
+                err "can't determine generator for LLVM cmake"
+                ;;
+        esac
         case "$t" in
             x86_64-*)
-                generator="Visual Studio 12 2013 Win64"
+                generator="$generator Win64"
                 ;;
             i686-*)
-                generator="Visual Studio 12 2013"
                 ;;
             *)
                 err "can only build LLVM for x86 platforms"
