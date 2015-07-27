@@ -42,7 +42,8 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
     use std::env;
     use std::ffi::OsString;
     use std::fs;
-    use std::path::PathBuf;
+    use std::io;
+    use std::path::{Path, PathBuf};
     use self::registry::{RegistryKey, LOCAL_MACHINE};
 
     // When finding the link.exe binary the 32-bit version is at the top level
@@ -103,9 +104,16 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
     // VS shells, so we only want to start adding our own pieces if it's not
     // set.
     //
-    // If we're adding our own pieces, then we need to add two primary
+    // If we're adding our own pieces, then we need to add a few primary
     // directories to the default search path for the linker. The first is in
-    // the VS install direcotry and the next is the Windows SDK directory.
+    // the VS install direcotry, the next is the Windows SDK directory, and the
+    // last is the possible UCRT installation directory.
+    //
+    // The UCRT is a recent addition to Visual Studio installs (2015 at the time
+    // of this writing), and it's in the normal windows SDK folder, but there
+    // apparently aren't registry keys pointing to it. As a result we detect the
+    // installation and then add it manually. This logic will probably need to
+    // be tweaked over time...
     if env::var_os("LIB").is_none() {
         if let Some(mut vs_install_dir) = vs_install_dir {
             vs_install_dir.push("VC/lib");
@@ -113,6 +121,15 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
             let mut arg = OsString::from("/LIBPATH:");
             arg.push(&vs_install_dir);
             cmd.arg(arg);
+
+            if let Some((ucrt_root, vers)) = ucrt_install_dir(&vs_install_dir) {
+                if let Some(arch) = windows_sdk_v8_subdir(sess) {
+                    let mut arg = OsString::from("/LIBPATH:");
+                    arg.push(ucrt_root.join("Lib").join(vers)
+                                      .join("ucrt").join(arch));
+                    cmd.arg(arg);
+                }
+            }
         }
         if let Some(path) = get_windows_sdk_lib_path(sess) {
             let mut arg = OsString::from("/LIBPATH:");
@@ -189,7 +206,7 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
         return max_key
     }
 
-    fn get_windows_sdk_lib_path(sess: &Session) -> Option<PathBuf> {
+    fn get_windows_sdk_path() -> Option<(PathBuf, usize)> {
         let key = r"SOFTWARE\Microsoft\Microsoft SDKs\Windows";
         let key = LOCAL_MACHINE.open(key.as_ref());
         let (n, k) = match key.ok().as_ref().and_then(max_version) {
@@ -199,10 +216,17 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
         let mut parts = n.to_str().unwrap().trim_left_matches("v").splitn(2, ".");
         let major = parts.next().unwrap().parse::<usize>().unwrap();
         let _minor = parts.next().unwrap().parse::<usize>().unwrap();
-        let path = match k.query_str("InstallationFolder") {
-            Ok(p) => PathBuf::from(p).join("Lib"),
-            Err(..) => return None,
+        k.query_str("InstallationFolder").ok().map(|folder| {
+            (PathBuf::from(folder), major)
+        })
+    }
+
+    fn get_windows_sdk_lib_path(sess: &Session) -> Option<PathBuf> {
+        let (mut path, major) = match get_windows_sdk_path() {
+            Some(p) => p,
+            None => return None,
         };
+        path.push("Lib");
         if major <= 7 {
             // In Windows SDK 7.x, x86 libraries are directly in the Lib folder,
             // x64 libraries are inside, and it's not necessary to link agains
@@ -218,11 +242,9 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
             // depend on the version of the OS you're targeting. By default
             // choose the newest, which usually corresponds to the version of
             // the OS you've installed the SDK on.
-            let extra = match &sess.target.target.arch[..] {
-                "x86" => "x86",
-                "x86_64" => "x64",
-                "arm" => "arm",
-                _ => return None,
+            let extra = match windows_sdk_v8_subdir(sess) {
+                Some(e) => e,
+                None => return None,
             };
             ["winv6.3", "win8", "win7"].iter().map(|p| path.join(p)).find(|part| {
                 fs::metadata(part).is_ok()
@@ -230,6 +252,48 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
                 path.join("um").join(extra)
             })
         }
+    }
+
+    fn windows_sdk_v8_subdir(sess: &Session) -> Option<&'static str> {
+        match &sess.target.target.arch[..] {
+            "x86" => Some("x86"),
+            "x86_64" => Some("x64"),
+            "arm" => Some("arm"),
+            _ => return None,
+        }
+    }
+
+    fn ucrt_install_dir(vs_install_dir: &Path) -> Option<(PathBuf, String)> {
+        let is_vs_14 = vs_install_dir.iter().filter_map(|p| p.to_str()).any(|s| {
+            s == "Microsoft Visual Studio 14.0"
+        });
+        if !is_vs_14 {
+            return None
+        }
+        let key = r"SOFTWARE\Microsoft\Windows Kits\Installed Roots";
+        let sdk_dir = LOCAL_MACHINE.open(key.as_ref()).and_then(|p| {
+            p.query_str("KitsRoot10")
+        }).map(PathBuf::from);
+        let sdk_dir = match sdk_dir {
+            Ok(p) => p,
+            Err(..) => return None,
+        };
+        (move || -> io::Result<_> {
+            let mut max = None;
+            let mut max_s = None;
+            for entry in try!(fs::read_dir(&sdk_dir.join("Lib"))) {
+                let entry = try!(entry);
+                if let Ok(s) = entry.file_name().into_string() {
+                    if let Ok(u) = s.replace(".", "").parse::<usize>() {
+                        if Some(u) > max {
+                            max = Some(u);
+                            max_s = Some(s);
+                        }
+                    }
+                }
+            }
+            Ok(max_s.map(|m| (sdk_dir, m)))
+        })().ok().and_then(|x| x)
     }
 }
 
