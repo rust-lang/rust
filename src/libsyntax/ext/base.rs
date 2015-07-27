@@ -224,33 +224,6 @@ impl<F> TTMacroExpander for F
     }
 }
 
-pub trait IdentMacroExpander {
-    fn expand<'cx>(&self,
-                   cx: &'cx mut ExtCtxt,
-                   sp: Span,
-                   ident: ast::Ident,
-                   token_tree: Vec<ast::TokenTree> )
-                   -> Box<MacResult+'cx>;
-}
-
-pub type IdentMacroExpanderFn =
-    for<'cx> fn(&'cx mut ExtCtxt, Span, ast::Ident, Vec<ast::TokenTree>) -> Box<MacResult+'cx>;
-
-impl<F> IdentMacroExpander for F
-    where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, ast::Ident,
-                          Vec<ast::TokenTree>) -> Box<MacResult+'cx>
-{
-    fn expand<'cx>(&self,
-                   cx: &'cx mut ExtCtxt,
-                   sp: Span,
-                   ident: ast::Ident,
-                   token_tree: Vec<ast::TokenTree> )
-                   -> Box<MacResult+'cx>
-    {
-        (*self)(cx, sp, ident, token_tree)
-    }
-}
-
 // Use a macro because forwarding to a simple function has type system issues
 macro_rules! make_stmts_default {
     ($me:expr) => {
@@ -470,11 +443,6 @@ pub enum SyntaxExtension {
     /// The `bool` dictates whether the contents of the macro can
     /// directly use `#[unstable]` things (true == yes).
     NormalTT(Box<TTMacroExpander + 'static>, Option<Span>, bool),
-
-    /// A function-like syntax extension that has an extra ident before
-    /// the block.
-    ///
-    IdentTT(Box<IdentMacroExpander + 'static>, Option<Span>, bool),
 
     /// Represents `macro_rules!` itself.
     MacroRulesTT,

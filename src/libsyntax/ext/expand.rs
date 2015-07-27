@@ -752,26 +752,6 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     let marked_before = mark_tts(&tts[..], fm);
                     expander.expand(fld.cx, it.span, &marked_before[..])
                 }
-                IdentTT(ref expander, span, allow_internal_unstable) => {
-                    if it.ident.name == parse::token::special_idents::invalid.name {
-                        fld.cx.span_err(path_span,
-                                        &format!("macro {}! expects an ident argument",
-                                                &extnamestr));
-                        return SmallVector::zero();
-                    }
-                    fld.cx.bt_push(ExpnInfo {
-                        call_site: it.span,
-                        callee: NameAndSpan {
-                            name: extnamestr.to_string(),
-                            format: MacroBang,
-                            span: span,
-                            allow_internal_unstable: allow_internal_unstable,
-                        }
-                    });
-                    // mark before expansion:
-                    let marked_tts = mark_tts(&tts[..], fm);
-                    expander.expand(fld.cx, it.span, it.ident, marked_tts)
-                }
                 MacroRulesTT => {
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(path_span,
