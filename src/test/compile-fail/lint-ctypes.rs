@@ -26,6 +26,7 @@ pub type I32Pair = (i32, i32);
 pub struct ZeroSize;
 pub type RustFn = fn();
 pub type RustBadRet = extern fn() -> Box<u32>;
+pub type CVoidRet = ();
 
 extern {
     pub fn bare_type1(size: isize); //~ ERROR: found Rust type
@@ -52,6 +53,8 @@ extern {
     pub fn good6(s: StructWithProjectionAndLifetime);
     pub fn good7(fptr: extern fn() -> ());
     pub fn good8(fptr: extern fn() -> !);
+    pub fn good9() -> ();
+    pub fn good10() -> CVoidRet;
 }
 
 fn main() {
