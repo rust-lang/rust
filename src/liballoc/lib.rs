@@ -70,8 +70,6 @@
        test(no_crate_inject))]
 #![no_std]
 
-// SNAP d4432b3
-#![allow(unused_features)] // until feature(placement_in_syntax) is in snap
 #![feature(allocator)]
 #![feature(box_syntax)]
 #![feature(coerce_unsized)]
