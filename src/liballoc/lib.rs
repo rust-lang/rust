@@ -92,6 +92,7 @@
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(unsize)]
 #![feature(core_slice_ext)]
+#![feature(core_str_ext)]
 
 #![cfg_attr(test, feature(test, alloc, rustc_private, box_raw))]
 #![cfg_attr(all(not(feature = "external_funcs"), not(feature = "external_crate")),
