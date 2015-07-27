@@ -57,7 +57,7 @@ pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
     let tcx = fcx.tcx();
     if !tcx.expr_is_lval(lhs_expr) {
-        span_err!(tcx.sess, lhs_expr.span, E0067, "illegal left-hand side expression");
+        span_err!(tcx.sess, lhs_expr.span, E0067, "invalid left-hand side expression");
     }
 
     fcx.require_expr_have_sized_type(lhs_expr, traits::AssignmentLhsSized);

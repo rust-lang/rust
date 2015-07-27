@@ -674,8 +674,7 @@ impl<'a> LifetimeContext<'a> {
             for lifetime in lifetimes {
                 if special_idents.iter().any(|&i| i.name == lifetime.lifetime.name) {
                     span_err!(self.sess, lifetime.lifetime.span, E0262,
-                        "illegal lifetime parameter name: `{}`",
-                                lifetime.lifetime.name);
+                        "invalid lifetime parameter name: `{}`", lifetime.lifetime.name);
                 }
             }
 

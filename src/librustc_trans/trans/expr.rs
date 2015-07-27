@@ -2325,7 +2325,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => {
             bcx.tcx().sess.span_bug(
                 expr.span,
-                &format!("deref invoked on expr of illegal type {:?}",
+                &format!("deref invoked on expr of invalid type {:?}",
                         datum.ty));
         }
     };

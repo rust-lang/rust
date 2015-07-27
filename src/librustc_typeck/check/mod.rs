@@ -3468,7 +3468,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let tcx = fcx.tcx();
         if !tcx.expr_is_lval(&**lhs) {
             span_err!(tcx.sess, expr.span, E0070,
-                "illegal left-hand side expression");
+                "invalid left-hand side expression");
         }
 
         let lhs_ty = fcx.expr_ty(&**lhs);
