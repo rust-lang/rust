@@ -19,7 +19,7 @@ our toes with lifetimes, we're going to pretend that we're actually allowed
 to label scopes with lifetimes, and desugar the examples from the start of
 this chapter.
 
-Our examples made use of *aggressive* sugar -- high fructose corn syrup even --
+Originally, our examples made use of *aggressive* sugar -- high fructose corn syrup even --
 around scopes and lifetimes, because writing everything out explicitly is
 *extremely noisy*. All Rust code relies on aggressive inference and elision of
 "obvious" things.
@@ -166,7 +166,7 @@ our implementation *just a bit*.)
 
 
 
-# Example 2: aliasing a mutable reference
+# Example: aliasing a mutable reference
 
 How about the other example:
 

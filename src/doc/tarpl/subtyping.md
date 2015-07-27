@@ -100,7 +100,7 @@ subsequently be dropped, and `forever_str` would point to freed memory when we
 print it! Therefore `&mut` should be invariant.
 
 This is the general theme of variance vs invariance: if variance would allow you
-to *store* a short-lived value over a longer-lived slot, then you must be
+to store a short-lived value into a longer-lived slot, then you must be
 invariant.
 
 However it *is* sound for `&'a mut T` to be variant over `'a`. The key difference
