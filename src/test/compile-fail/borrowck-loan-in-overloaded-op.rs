@@ -23,6 +23,7 @@ impl Add for foo {
         let foo(box i) = self;
         let foo(box j) = f;
         foo(box() (i + j))
+        //~^ WARN deprecated syntax
     }
 }
 
