@@ -167,7 +167,8 @@ pub struct RadixFmt<T, R>(T, R);
 /// # Examples
 ///
 /// ```
-/// # #![feature(fmt_radix)]
+/// #![feature(fmt_radix)]
+///
 /// use std::fmt::radix;
 /// assert_eq!(format!("{}", radix(55, 36)), "1j".to_string());
 /// ```

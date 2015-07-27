@@ -141,7 +141,8 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(btree_range, collections_bound)]
+    /// #![feature(btree_range, collections_bound)]
+    ///
     /// use std::collections::BTreeSet;
     /// use std::collections::Bound::{Included, Unbounded};
     ///

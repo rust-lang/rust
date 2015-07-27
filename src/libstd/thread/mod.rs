@@ -367,7 +367,8 @@ pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
 /// a join before any relevant stack frames are popped:
 ///
 /// ```rust
-/// # #![feature(scoped)]
+/// #![feature(scoped)]
+///
 /// use std::thread;
 ///
 /// let guard = thread::scoped(move || {
@@ -447,7 +448,8 @@ pub fn panicking() -> bool {
 /// # Examples
 ///
 /// ```
-/// # #![feature(catch_panic)]
+/// #![feature(catch_panic)]
+///
 /// use std::thread;
 ///
 /// let result = thread::catch_panic(|| {

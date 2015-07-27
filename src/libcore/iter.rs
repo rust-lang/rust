@@ -822,7 +822,8 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(iter_min_max)]
+    /// #![feature(iter_min_max)]
+    ///
     /// use std::iter::MinMaxResult::{NoElements, OneElement, MinMax};
     ///
     /// let a: [i32; 0] = [];
@@ -894,7 +895,8 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(iter_cmp)]
+    /// #![feature(iter_cmp)]
+    ///
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
@@ -922,7 +924,8 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(iter_cmp)]
+    /// #![feature(iter_cmp)]
+    ///
     /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
@@ -1061,7 +1064,8 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(iter_arith)]
+    /// #![feature(iter_arith)]
+    ///
     /// let a = [1, 2, 3, 4, 5];
     /// let it = a.iter();
     /// assert_eq!(it.sum::<i32>(), 15);
@@ -1079,7 +1083,8 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(iter_arith)]
+    /// #![feature(iter_arith)]
+    ///
     /// fn factorial(n: u32) -> u32 {
     ///     (1..).take_while(|&i| i <= n).product()
     /// }
@@ -1359,7 +1364,8 @@ impl<T: Clone> MinMaxResult<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(iter_min_max)]
+    /// #![feature(iter_min_max)]
+    ///
     /// use std::iter::MinMaxResult::{self, NoElements, OneElement, MinMax};
     ///
     /// let r: MinMaxResult<i32> = NoElements;
@@ -2751,7 +2757,8 @@ impl<A: Step> ops::Range<A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(step_by)]
+    /// #![feature(step_by)]
+    ///
     /// for i in (0..10).step_by(2) {
     ///     println!("{}", i);
     /// }

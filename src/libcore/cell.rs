@@ -221,7 +221,8 @@ impl<T:Copy> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(as_unsafe_cell)]
+    /// #![feature(as_unsafe_cell)]
+    ///
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);
@@ -589,7 +590,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Example
     ///
     /// ```
-    /// # #![feature(cell_extras)]
+    /// #![feature(cell_extras)]
+    ///
     /// use std::cell::{RefCell, Ref};
     ///
     /// let c = RefCell::new((5, 'b'));
