@@ -250,16 +250,26 @@ struct IndexItem {
 /// A type used for the search index.
 struct Type {
     name: Option<String>,
+    // true both for Option<T> and T, false otherwise.
+    generic: bool,
+    ty_params: Vec<Type>,
 }
 
 impl fmt::Display for Type {
-    /// Formats type as {name: $name}.
+    /// Formats type as {json}.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Wrapping struct fmt should never call us when self.name is None,
         // but just to be safe we write `null` in that case.
-        match self.name {
-            Some(ref n) => write!(f, "{{\"name\":\"{}\"}}", n),
-            None => write!(f, "null")
+        if let Some(ref n) = self.name {
+            try!(write!(f, "{{\"name\":\"{}\",", n));
+            try!(write!(f, "\"generic\":{},", self.generic));
+            let ty_params: Vec<String> = self.ty_params.iter().map(|ref t| {
+                format!("{}", t)
+            }).collect();
+            // No try, use as return value.
+            write!(f, "\"ty_params\":[{}]}}", ty_params.connect(","))
+        } else {
+            write!(f, "null")
         }
     }
 }
@@ -2547,7 +2557,11 @@ fn get_index_search_type(item: &clean::Item,
 
     // Consider `self` an argument as well.
     if let Some(name) = parent {
-        inputs.push(Type { name: Some(name.into_ascii_lowercase()) });
+        inputs.push(Type {
+            name: Some(name.into_ascii_lowercase()),
+            generic: false,
+            ty_params: vec![],
+        });
     }
 
     inputs.extend(&mut decl.inputs.values.iter().map(|arg| {
@@ -2562,8 +2576,53 @@ fn get_index_search_type(item: &clean::Item,
     Some(IndexItemFunctionType { inputs: inputs, output: output })
 }
 
+fn is_clean_type_generic(clean_type: &clean::Type) -> bool {
+    match *clean_type {
+        clean::ResolvedPath { ref path, is_generic, .. } => {
+            let segments = &path.segments;
+            let segment = &segments[segments.len() - 1];
+            let has_ty_params = match segment.params {
+                clean::PathParameters::AngleBracketed { ref types, .. } => !types.is_empty(),
+                _ => false
+            };
+            is_generic || has_ty_params
+        }
+        _ => false
+    }
+}
+
 fn get_index_type(clean_type: &clean::Type) -> Type {
-    Type { name: get_index_type_name(clean_type).map(|s| s.into_ascii_lowercase()) }
+    if is_clean_type_generic(clean_type) {
+        get_generic_index_type(clean_type)
+    } else {
+        Type {
+            name: get_index_type_name(clean_type).map(|s| s.into_ascii_lowercase()),
+            generic: false,
+            ty_params: vec![],
+        }
+    }
+}
+
+fn get_generic_index_type(clean_type: &clean::Type) -> Type {
+    let path = match *clean_type {
+        clean::ResolvedPath { ref path, .. } => path,
+        _ => unreachable!()
+    };
+    let segments = &path.segments;
+    let segment = &segments[segments.len() - 1];
+
+    let ty_params: Vec<Type> = match segment.params {
+        clean::PathParameters::AngleBracketed { ref types, .. } => {
+            types.iter().map(|t| get_index_type(t)).collect()
+        }
+        _ => unreachable!()
+    };
+
+    Type {
+        name: Some(segment.name.clone().into_ascii_lowercase()),
+        generic: true,
+        ty_params: ty_params,
+    }
 }
 
 fn get_index_type_name(clean_type: &clean::Type) -> Option<String> {

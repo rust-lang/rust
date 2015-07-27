@@ -258,7 +258,8 @@
 
                 for (var i = 0; i < nSearchWords; ++i) {
                     var type = searchIndex[i].type;
-                    if (!type) {
+                    // skip missing types as well as wrong number of args
+                    if (!type || type.inputs.length != inputs.length) {
                         continue;
                     }
 
@@ -272,6 +273,12 @@
                     if (inputs.toString() === typeInputs.toString() &&
                         output == typeOutput) {
                         results.push({id: i, index: -1, dontValidate: true});
+                    }
+                    // maybe we can find a generic match?
+                    else {
+                        if (genericTypeMatchesQuery(inputs, output, type)) {
+                            results.push({id: i, index: 1, dontValidate: true});
+                        }
                     }
                 }
             } else {
@@ -410,6 +417,76 @@
                 }
             }
             return results;
+        }
+
+        /***
+         * All combinations of keys using values.
+         * @return {[[[key, value]]]} [Array of array of pairs]
+         */
+        function generateCombinations(keys, values) {
+            if (!keys.length) {
+                return [[]];
+            }
+            var combos = [];
+            var key = keys[0];
+            for (var i = 0; i < values.length; ++i) {
+                var value = values[i];
+                var combo = [[key, value]];
+                var next = generateCombinations(keys.slice(1), values.slice(i + 1));
+                for (var j = 0; j < next.length; ++j) {
+                    combos.push(combo.concat(next[j]));
+                }
+            }
+            return combos;
+        }
+
+        /**
+         * Decide if the generic type (`type`) can be particularized
+         * to `inputs -> output`.
+         *
+         * @param {[string]} inputs [List of types]
+         * @param {[string]} output [Output type]
+         * @param {[object]} type   [Type from search index]
+         * @return {[boolean]}      [Whether types match]
+         */
+        function genericTypeMatchesQuery(inputs, output, type) {
+            // Currently only knows about queries such as
+            // `i32 -> i32` matching against `T -> T`.
+            var genericInputs = [];
+            for (var i = 0; i < type.inputs.length; ++i) {
+                if (type.inputs[i].generic && type.inputs[i].ty_params.length === 0) {
+                    genericInputs.push(type.inputs[i].name);
+                }
+            }
+
+            var possibleMappings = generateCombinations(genericInputs, inputs);
+            var typeOutput = type.output ? type.output.name : "";
+
+            // For every possible mapping, try to replace the generics
+            // accordingly and see if the types match.
+            for (var i = 0; i < possibleMappings.length; ++i) {
+                var mapping = possibleMappings[i];
+                var newTypeInputs = type.inputs.map(function (input) {
+                    return input.name;
+                }).sort();
+                var newTypeOutput = typeOutput;
+                for (var j = 0; j < mapping.length; ++j) {
+                    var index = newTypeInputs.indexOf(mapping[j][0]);
+                    newTypeInputs[index] = mapping[j][1];
+                    if (newTypeOutput === mapping[j][0]) {
+                        newTypeOutput = mapping[j][1];
+                    }
+                }
+
+                // Does this new, particularized type, match?
+                if (inputs.toString() === newTypeInputs.toString() &&
+                    output == newTypeOutput) {
+                    return true;
+                }
+            }
+
+            // Couldn't find any match till here, sorry.
+            return false;
         }
 
         /**
