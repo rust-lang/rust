@@ -85,33 +85,6 @@
 //! value produced by the child thread, or `Err` of the value given to
 //! a call to `panic!` if the child panicked.
 //!
-//! ## Scoped threads
-//!
-//! The `spawn` method does not allow the child and parent threads to
-//! share any stack data, since that is not safe in general. However,
-//! `scoped` makes it possible to share the parent's stack by forcing
-//! a join before any relevant stack frames are popped:
-//!
-//! ```rust
-//! # #![feature(scoped)]
-//! use std::thread;
-//!
-//! let guard = thread::scoped(move || {
-//!     // some work here
-//! });
-//!
-//! // do some other work in the meantime
-//! let output = guard.join();
-//! ```
-//!
-//! The `scoped` function doesn't return a `Thread` directly; instead,
-//! it returns a *join guard*. The join guard is an RAII-style guard
-//! that will automatically join the child thread (block until it
-//! terminates) when it is dropped. You can join the child thread in
-//! advance by calling the `join` method on the guard, which will also
-//! return the result produced by the thread.  A handle to the thread
-//! itself is available via the `thread` method of the join guard.
-//!
 //! ## Configuring threads
 //!
 //! A new thread can be configured before it is spawned via the `Builder` type,
@@ -288,7 +261,7 @@ impl Builder {
     /// upon being dropped. Because the child thread may refer to data on the
     /// current thread's stack (hence the "scoped" name), it cannot be detached;
     /// it *must* be joined before the relevant stack frame is popped. See the
-    /// module documentation for additional details.
+    /// documentation on `thread::scoped` for additional details.
     ///
     /// # Errors
     ///
@@ -388,12 +361,30 @@ pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
 
 /// Spawns a new *scoped* thread, returning a `JoinGuard` for it.
 ///
-/// The join guard can be used to explicitly join the child thread (via
-/// `join`), returning `Result<T>`, or it will implicitly join the child
-/// upon being dropped. Because the child thread may refer to data on the
-/// current thread's stack (hence the "scoped" name), it cannot be detached;
-/// it *must* be joined before the relevant stack frame is popped. See the
-/// module documentation for additional details.
+/// The `spawn` method does not allow the child and parent threads to
+/// share any stack data, since that is not safe in general. However,
+/// `scoped` makes it possible to share the parent's stack by forcing
+/// a join before any relevant stack frames are popped:
+///
+/// ```rust
+/// # #![feature(scoped)]
+/// use std::thread;
+///
+/// let guard = thread::scoped(move || {
+///     // some work here
+/// });
+///
+/// // do some other work in the meantime
+/// let output = guard.join();
+/// ```
+///
+/// The `scoped` function doesn't return a `Thread` directly; instead, it
+/// returns a *join guard*. The join guard can be used to explicitly join
+/// the child thread (via `join`), returning `Result<T>`, or it will
+/// implicitly join the child upon being dropped. Because the child thread
+/// may refer to data on the current thread's stack (hence the "scoped"
+/// name), it cannot be detached; it *must* be joined before the relevant
+/// stack frame is popped.
 ///
 /// # Panics
 ///
