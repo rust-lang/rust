@@ -256,7 +256,10 @@ macro_rules! return_if_err {
     ($inp: expr) => (
         match $inp {
             Ok(v) => v,
-            Err(()) => return
+            Err(()) => {
+                debug!("mc reported err");
+                return
+            }
         }
     )
 }
@@ -555,6 +558,11 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                     None => {}
                 }
                 self.consume_expr(&**base);
+                if place.is_some() {
+                    self.tcx().sess.span_bug(
+                        expr.span,
+                        "box with explicit place remains after expansion");
+                }
             }
 
             ast::ExprMac(..) => {
@@ -720,7 +728,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         // are properly handled.
         self.walk_expr(with_expr);
 
-        fn contains_field_named(field: &ty::field,
+        fn contains_field_named(field: &ty::Field,
                                 fields: &Vec<ast::Field>)
                                 -> bool
         {

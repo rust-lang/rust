@@ -9,12 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    match 5 {
-        6 ... 1 => { }
-        _ => { }
-    };
-    //~^^^ ERROR lower range bound must be less than or equal to upper
-
     match "wow" {
         "bar" ... "foo" => { }
     };

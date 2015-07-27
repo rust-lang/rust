@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:this type cannot be instantiated
+// error-pattern:illegal recursive struct type
 struct t1 {
     foo: isize,
     foolish: t1

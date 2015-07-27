@@ -35,7 +35,6 @@ use session::Session;
 use middle::def;
 use middle::ty::{self, Ty};
 
-use std::cell::Cell;
 use std::fs::File;
 use std::path::Path;
 
@@ -76,14 +75,11 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     pub fn new(tcx: &'l ty::ctxt<'tcx>,
                analysis: &'l ty::CrateAnalysis,
                output_file: Box<File>) -> DumpCsvVisitor<'l, 'tcx> {
-        let span_utils = SpanUtils {
-            sess: &tcx.sess,
-            err_count: Cell::new(0)
-        };
+        let span_utils = SpanUtils::new(&tcx.sess);
         DumpCsvVisitor {
             sess: &tcx.sess,
             tcx: tcx,
-            save_ctxt: SaveContext::new(tcx, span_utils.clone()),
+            save_ctxt: SaveContext::from_span_utils(tcx, span_utils.clone()),
             analysis: analysis,
             span: span_utils.clone(),
             fmt: FmtStrs::new(box Recorder {
@@ -482,7 +478,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
         let ctor_id = match def.ctor_id {
             Some(node_id) => node_id,
-            None => -1,
+            None => ast::DUMMY_NODE_ID,
         };
         let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Struct);
@@ -540,7 +536,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                 ast::StructVariantKind(ref struct_def) => {
                     let ctor_id = match struct_def.ctor_id {
                         Some(node_id) => node_id,
-                        None => -1,
+                        None => ast::DUMMY_NODE_ID,
                     };
                     self.fmt.struct_variant_str(variant.span,
                                                 self.span.span_for_first_ident(variant.span),

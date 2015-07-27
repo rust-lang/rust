@@ -1079,7 +1079,7 @@ impl MetricMap {
             .map(|(k,v)| format!("{}: {} (+/- {})", *k,
                                  v.value, v.noise))
             .collect();
-        v.connect(", ")
+        v.join(", ")
     }
 }
 

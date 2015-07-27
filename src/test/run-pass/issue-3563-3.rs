@@ -108,7 +108,7 @@ impl fmt::Display for AsciiArt {
                               .collect::<Vec<String>>();
 
         // Concatenate the lines together using a new-line.
-        write!(f, "{}", lines.connect("\n"))
+        write!(f, "{}", lines.join("\n"))
     }
 }
 

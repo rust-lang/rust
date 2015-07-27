@@ -87,6 +87,7 @@ use fmt_macros::{Parser, Piece, Position};
 use middle::astconv_util::{check_path_args, NO_TPS, NO_REGIONS};
 use middle::def;
 use middle::infer;
+use middle::infer::type_variable;
 use middle::pat_util::{self, pat_id_map};
 use middle::privacy::{AllPublic, LastMod};
 use middle::region::{self, CodeExtent};
@@ -97,6 +98,7 @@ use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::{MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
+use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};
 use session::Session;
 use {CrateCtxt, lookup_full_def, require_same_types};
@@ -107,6 +109,7 @@ use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 use util::lev_distance::lev_distance;
 
 use std::cell::{Cell, Ref, RefCell};
+use std::collections::HashSet;
 use std::mem::replace;
 use std::slice;
 use syntax::{self, abi, attr};
@@ -114,7 +117,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::ast::{self, DefId, Visibility};
 use syntax::ast_util::{self, local_def};
 use syntax::codemap::{self, Span};
-use syntax::feature_gate;
+use syntax::feature_gate::emit_feature_err;
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::print::pprust;
@@ -232,12 +235,13 @@ impl<'tcx> Expectation<'tcx> {
 pub struct UnsafetyState {
     pub def: ast::NodeId,
     pub unsafety: ast::Unsafety,
+    pub unsafe_push_count: u32,
     from_fn: bool
 }
 
 impl UnsafetyState {
     pub fn function(unsafety: ast::Unsafety, def: ast::NodeId) -> UnsafetyState {
-        UnsafetyState { def: def, unsafety: unsafety, from_fn: true }
+        UnsafetyState { def: def, unsafety: unsafety, unsafe_push_count: 0, from_fn: true }
     }
 
     pub fn recurse(&mut self, blk: &ast::Block) -> UnsafetyState {
@@ -249,13 +253,20 @@ impl UnsafetyState {
             ast::Unsafety::Unsafe if self.from_fn => *self,
 
             unsafety => {
-                let (unsafety, def) = match blk.rules {
-                    ast::UnsafeBlock(..) => (ast::Unsafety::Unsafe, blk.id),
-                    ast::DefaultBlock => (unsafety, self.def),
+                let (unsafety, def, count) = match blk.rules {
+                    ast::PushUnsafeBlock(..) =>
+                        (unsafety, blk.id, self.unsafe_push_count.checked_add(1).unwrap()),
+                    ast::PopUnsafeBlock(..) =>
+                        (unsafety, blk.id, self.unsafe_push_count.checked_sub(1).unwrap()),
+                    ast::UnsafeBlock(..) =>
+                        (ast::Unsafety::Unsafe, blk.id, self.unsafe_push_count),
+                    ast::DefaultBlock =>
+                        (unsafety, self.def, self.unsafe_push_count),
                 };
                 UnsafetyState{ def: def,
-                             unsafety: unsafety,
-                             from_fn: false }
+                               unsafety: unsafety,
+                               unsafe_push_count: count,
+                               from_fn: false }
             }
         }
     }
@@ -686,10 +697,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
                 }
 
                 if let ast::ForeignItemFn(ref fn_decl, _) = item.node {
-                    if fn_decl.variadic && m.abi != abi::C {
-                        span_err!(ccx.tcx.sess, item.span, E0045,
-                                  "variadic function must have C calling convention");
-                    }
+                    require_c_abi_if_variadic(ccx.tcx, fn_decl, m.abi, item.span);
                 }
             }
         }
@@ -1002,7 +1010,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             "not all trait items implemented, missing: `{}`",
             missing_items.iter()
                   .map(<ast::Name>::as_str)
-                  .collect::<Vec<_>>().connect("`, `"))
+                  .collect::<Vec<_>>().join("`, `"))
     }
 
     if !invalidated_items.is_empty() {
@@ -1013,7 +1021,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                   invalidator.ident.as_str(),
                   invalidated_items.iter()
                                    .map(<ast::Name>::as_str)
-                                   .collect::<Vec<_>>().connect("`, `"))
+                                   .collect::<Vec<_>>().join("`, `"))
     }
 }
 
@@ -1029,7 +1037,7 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         format!("cast to unsized type: `{}` as `{}`", actual, tstr)
     }, t_expr, None);
     match t_expr.sty {
-        ty::TyRef(_, ty::mt { mutbl: mt, .. }) => {
+        ty::TyRef(_, ty::TypeAndMut { mutbl: mt, .. }) => {
             let mtstr = match mt {
                 ast::MutMutable => "mut ",
                 ast::MutImmutable => ""
@@ -1131,8 +1139,27 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         trait_def.associated_type_names.contains(&assoc_name)
     }
 
-    fn ty_infer(&self, _span: Span) -> Ty<'tcx> {
-        self.infcx().next_ty_var()
+    fn ty_infer(&self,
+                ty_param_def: Option<ty::TypeParameterDef<'tcx>>,
+                substs: Option<&mut subst::Substs<'tcx>>,
+                space: Option<subst::ParamSpace>,
+                span: Span) -> Ty<'tcx> {
+        // Grab the default doing subsitution
+        let default = ty_param_def.and_then(|def| {
+            def.default.map(|ty| type_variable::Default {
+                ty: ty.subst_spanned(self.tcx(), substs.as_ref().unwrap(), Some(span)),
+                origin_span: span,
+                def_id: def.default_def_id
+            })
+        });
+
+        let ty_var = self.infcx().next_ty_var_with_default(default);
+
+        // Finally we add the type variable to the substs
+        match substs {
+            None => ty_var,
+            Some(substs) => { substs.types.push(space.unwrap(), ty_var); ty_var }
+        }
     }
 
     fn projected_ty_from_poly_trait_ref(&self,
@@ -1245,28 +1272,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span,
                     &format!("no type for local variable {}", nid));
                 self.tcx().types.err
-            }
-        }
-    }
-
-    /// Apply "fallbacks" to some types
-    /// ! gets replaced with (), unconstrained ints with i32, and unconstrained floats with f64.
-    pub fn default_type_parameters(&self) {
-        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
-        for (_, &mut ref ty) in &mut self.inh.tables.borrow_mut().node_types {
-            let resolved = self.infcx().resolve_type_vars_if_possible(ty);
-            if self.infcx().type_var_diverges(resolved) {
-                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
-            } else {
-                match self.infcx().type_is_unconstrained_numeric(resolved) {
-                    UnconstrainedInt => {
-                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
-                    },
-                    UnconstrainedFloat => {
-                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
-                    }
-                    Neither => { }
-                }
             }
         }
     }
@@ -1576,7 +1581,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     origin: infer::TypeOrigin,
                     sub: Ty<'tcx>,
                     sup: Ty<'tcx>)
-                    -> Result<(), ty::type_err<'tcx>> {
+                    -> Result<(), ty::TypeError<'tcx>> {
         infer::mk_subty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
@@ -1585,7 +1590,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                    origin: infer::TypeOrigin,
                    sub: Ty<'tcx>,
                    sup: Ty<'tcx>)
-                   -> Result<(), ty::type_err<'tcx>> {
+                   -> Result<(), ty::TypeError<'tcx>> {
         infer::mk_eqty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
@@ -1600,7 +1605,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  sp: Span,
                                  mk_msg: M,
                                  actual_ty: Ty<'tcx>,
-                                 err: Option<&ty::type_err<'tcx>>) where
+                                 err: Option<&ty::TypeError<'tcx>>) where
         M: FnOnce(String) -> String,
     {
         self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
@@ -1610,7 +1615,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                    sp: Span,
                                    e: Ty<'tcx>,
                                    a: Ty<'tcx>,
-                                   err: &ty::type_err<'tcx>) {
+                                   err: &ty::TypeError<'tcx>) {
         self.infcx().report_mismatched_types(sp, e, a, err)
     }
 
@@ -1674,7 +1679,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn lookup_field_ty(&self,
                            span: Span,
                            class_id: ast::DefId,
-                           items: &[ty::field_ty],
+                           items: &[ty::FieldTy],
                            fieldname: ast::Name,
                            substs: &subst::Substs<'tcx>)
                            -> Option<Ty<'tcx>>
@@ -1687,7 +1692,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn lookup_tup_field_ty(&self,
                                span: Span,
                                class_id: ast::DefId,
-                               items: &[ty::field_ty],
+                               items: &[ty::FieldTy],
                                idx: usize,
                                substs: &subst::Substs<'tcx>)
                                -> Option<Ty<'tcx>>
@@ -1704,12 +1709,258 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn select_all_obligations_and_apply_defaults(&self) {
-        debug!("select_all_obligations_and_apply_defaults");
+    /// Apply "fallbacks" to some types
+    /// ! gets replaced with (), unconstrained ints with i32, and unconstrained floats with f64.
+    fn default_type_parameters(&self) {
+        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
+        for ty in &self.infcx().unsolved_variables() {
+            let resolved = self.infcx().resolve_type_vars_if_possible(ty);
+            if self.infcx().type_var_diverges(resolved) {
+                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+            } else {
+                match self.infcx().type_is_unconstrained_numeric(resolved) {
+                    UnconstrainedInt => {
+                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
+                    },
+                    UnconstrainedFloat => {
+                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
+                    }
+                    Neither => { }
+                }
+            }
+        }
+    }
 
+    fn select_all_obligations_and_apply_defaults(&self) {
+        if self.tcx().sess.features.borrow().default_type_parameter_fallback {
+            self.new_select_all_obligations_and_apply_defaults();
+        } else {
+            self.old_select_all_obligations_and_apply_defaults();
+        }
+    }
+
+    // Implements old type inference fallback algorithm
+    fn old_select_all_obligations_and_apply_defaults(&self) {
         self.select_obligations_where_possible();
         self.default_type_parameters();
         self.select_obligations_where_possible();
+    }
+
+    fn new_select_all_obligations_and_apply_defaults(&self) {
+        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
+
+            // For the time being this errs on the side of being memory wasteful but provides better
+        // error reporting.
+        // let type_variables = self.infcx().type_variables.clone();
+
+        // There is a possibility that this algorithm will have to run an arbitrary number of times
+        // to terminate so we bound it by the compiler's recursion limit.
+        for _ in (0..self.tcx().sess.recursion_limit.get()) {
+            // First we try to solve all obligations, it is possible that the last iteration
+            // has made it possible to make more progress.
+            self.select_obligations_where_possible();
+
+            let mut conflicts = Vec::new();
+
+            // Collect all unsolved type, integral and floating point variables.
+            let unsolved_variables = self.inh.infcx.unsolved_variables();
+
+            // We must collect the defaults *before* we do any unification. Because we have
+            // directly attached defaults to the type variables any unification that occurs
+            // will erase defaults causing conflicting defaults to be completely ignored.
+            let default_map: FnvHashMap<_, _> =
+                unsolved_variables
+                    .iter()
+                    .filter_map(|t| self.infcx().default(t).map(|d| (t, d)))
+                    .collect();
+
+            let mut unbound_tyvars = HashSet::new();
+
+            debug!("select_all_obligations_and_apply_defaults: defaults={:?}", default_map);
+
+            // We loop over the unsolved variables, resolving them and if they are
+            // and unconstrainted numberic type we add them to the set of unbound
+            // variables. We do this so we only apply literal fallback to type
+            // variables without defaults.
+            for ty in &unsolved_variables {
+                let resolved = self.infcx().resolve_type_vars_if_possible(ty);
+                if self.infcx().type_var_diverges(resolved) {
+                    demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+                } else {
+                    match self.infcx().type_is_unconstrained_numeric(resolved) {
+                        UnconstrainedInt | UnconstrainedFloat => {
+                            unbound_tyvars.insert(resolved);
+                        },
+                        Neither => {}
+                    }
+                }
+            }
+
+            // We now remove any numeric types that also have defaults, and instead insert
+            // the type variable with a defined fallback.
+            for ty in &unsolved_variables {
+                if let Some(_default) = default_map.get(ty) {
+                    let resolved = self.infcx().resolve_type_vars_if_possible(ty);
+
+                    debug!("select_all_obligations_and_apply_defaults: ty: {:?} with default: {:?}",
+                             ty, _default);
+
+                    match resolved.sty {
+                        ty::TyInfer(ty::TyVar(_)) => {
+                            unbound_tyvars.insert(ty);
+                        }
+
+                        ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) => {
+                            unbound_tyvars.insert(ty);
+                            if unbound_tyvars.contains(resolved) {
+                                unbound_tyvars.remove(resolved);
+                            }
+                        }
+
+                        _ => {}
+                    }
+                }
+            }
+
+            // If there are no more fallbacks to apply at this point we have applied all possible
+            // defaults and type inference will procede as normal.
+            if unbound_tyvars.is_empty() {
+                break;
+            }
+
+            // Finally we go through each of the unbound type variables and unify them with
+            // the proper fallback, reporting a conflicting default error if any of the
+            // unifications fail. We know it must be a conflicting default because the
+            // variable would only be in `unbound_tyvars` and have a concrete value if
+            // it had been solved by previously applying a default.
+
+            // We wrap this in a transaction for error reporting, if we detect a conflict
+            // we will rollback the inference context to its prior state so we can probe
+            // for conflicts and correctly report them.
+
+
+            let _ = self.infcx().commit_if_ok(|_: &infer::CombinedSnapshot| {
+                for ty in &unbound_tyvars {
+                    if self.infcx().type_var_diverges(ty) {
+                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+                    } else {
+                        match self.infcx().type_is_unconstrained_numeric(ty) {
+                            UnconstrainedInt => {
+                                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
+                            },
+                            UnconstrainedFloat => {
+                                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
+                            }
+                            Neither => {
+                                if let Some(default) = default_map.get(ty) {
+                                    let default = default.clone();
+                                    match infer::mk_eqty(self.infcx(), false,
+                                                         infer::Misc(default.origin_span),
+                                                         ty, default.ty) {
+                                        Ok(()) => {}
+                                        Err(_) => {
+                                            conflicts.push((*ty, default));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // If there are conflicts we rollback, otherwise commit
+                if conflicts.len() > 0 {
+                    Err(())
+                } else {
+                    Ok(())
+                }
+            });
+
+            if conflicts.len() > 0 {
+                // Loop through each conflicting default, figuring out the default that caused
+                // a unification failure and then report an error for each.
+                for (conflict, default) in conflicts {
+                    let conflicting_default =
+                        self.find_conflicting_default(&unbound_tyvars, &default_map, conflict)
+                            .unwrap_or(type_variable::Default {
+                                ty: self.infcx().next_ty_var(),
+                                origin_span: codemap::DUMMY_SP,
+                                def_id: local_def(0) // what do I put here?
+                            });
+
+                    // This is to ensure that we elimnate any non-determinism from the error
+                    // reporting by fixing an order, it doesn't matter what order we choose
+                    // just that it is consistent.
+                    let (first_default, second_default) =
+                        if default.def_id < conflicting_default.def_id {
+                            (default, conflicting_default)
+                        } else {
+                            (conflicting_default, default)
+                        };
+
+
+                    self.infcx().report_conflicting_default_types(
+                        first_default.origin_span,
+                        first_default,
+                        second_default)
+                }
+            }
+        }
+
+        self.select_obligations_where_possible();
+    }
+
+    // For use in error handling related to default type parameter fallback. We explicitly
+    // apply the default that caused conflict first to a local version of the type variable
+    // table then apply defaults until we find a conflict. That default must be the one
+    // that caused conflict earlier.
+    fn find_conflicting_default(&self,
+                                unbound_vars: &HashSet<Ty<'tcx>>,
+                                default_map: &FnvHashMap<&Ty<'tcx>, type_variable::Default<'tcx>>,
+                                conflict: Ty<'tcx>)
+                                -> Option<type_variable::Default<'tcx>> {
+        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
+
+        // Ensure that we apply the conflicting default first
+        let mut unbound_tyvars = Vec::with_capacity(unbound_vars.len() + 1);
+        unbound_tyvars.push(conflict);
+        unbound_tyvars.extend(unbound_vars.iter());
+
+        let mut result = None;
+        // We run the same code as above applying defaults in order, this time when
+        // we find the conflict we just return it for error reporting above.
+
+        // We also run this inside snapshot that never commits so we can do error
+        // reporting for more then one conflict.
+        for ty in &unbound_tyvars {
+            if self.infcx().type_var_diverges(ty) {
+                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+            } else {
+                match self.infcx().type_is_unconstrained_numeric(ty) {
+                    UnconstrainedInt => {
+                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
+                    },
+                    UnconstrainedFloat => {
+                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
+                    },
+                    Neither => {
+                        if let Some(default) = default_map.get(ty) {
+                            let default = default.clone();
+                            match infer::mk_eqty(self.infcx(), false,
+                                                 infer::Misc(default.origin_span),
+                                                 ty, default.ty) {
+                                Ok(()) => {}
+                                Err(_) => {
+                                    result = Some(default);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
     }
 
     fn select_all_obligations_or_error(&self) {
@@ -1720,6 +1971,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         assert!(self.inh.deferred_call_resolutions.borrow().is_empty());
 
         self.select_all_obligations_and_apply_defaults();
+
         let mut fulfillment_cx = self.inh.infcx.fulfillment_cx.borrow_mut();
         match fulfillment_cx.select_all_or_error(self.infcx()) {
             Ok(()) => { }
@@ -1894,7 +2146,7 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   base_expr: Option<&ast::Expr>,
                                   base_ty: Ty<'tcx>,
                                   lvalue_pref: LvaluePreference)
-                                  -> Option<ty::mt<'tcx>>
+                                  -> Option<ty::TypeAndMut<'tcx>>
 {
     // Try DerefMut first, if preferred.
     let method = match (lvalue_pref, fcx.tcx().lang_items.deref_mut_trait()) {
@@ -1925,7 +2177,7 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                 method_call: Option<MethodCall>,
                                                 method: Option<MethodCallee<'tcx>>)
-                                                -> Option<ty::mt<'tcx>>
+                                                -> Option<ty::TypeAndMut<'tcx>>
 {
     match method {
         Some(method) => {
@@ -2238,7 +2490,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 // The special-cased logic below has three functions:
                 // 1. Provide as good of an expected type as possible.
                 let expected = expected_arg_tys.get(i).map(|&ty| {
-                    Expectation::rvalue_hint(ty)
+                    Expectation::rvalue_hint(fcx.tcx(), ty)
                 });
 
                 check_expr_with_unifier(fcx, &**arg,
@@ -2415,14 +2667,18 @@ pub fn impl_self_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let tcx = fcx.tcx();
 
     let ity = tcx.lookup_item_type(did);
-    let (n_tps, rps, raw_ty) =
-        (ity.generics.types.len(subst::TypeSpace),
+    let (tps, rps, raw_ty) =
+        (ity.generics.types.get_slice(subst::TypeSpace),
          ity.generics.regions.get_slice(subst::TypeSpace),
          ity.ty);
 
+    debug!("impl_self_ty: tps={:?} rps={:?} raw_ty={:?}", tps, rps, raw_ty);
+
     let rps = fcx.inh.infcx.region_vars_for_defs(span, rps);
-    let tps = fcx.inh.infcx.next_ty_vars(n_tps);
-    let substs = subst::Substs::new_type(tps, rps);
+    let mut substs = subst::Substs::new(
+        VecPerParamSpace::empty(),
+        VecPerParamSpace::new(rps, Vec::new(), Vec::new()));
+    fcx.inh.infcx.type_vars_for_defs(span, ParamSpace::TypeSpace, &mut substs, tps);
     let substd_ty = fcx.instantiate_type_scheme(span, &substs, &raw_ty);
 
     TypeAndSubsts { substs: substs, ty: substd_ty }
@@ -2776,7 +3032,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                 class_id: ast::DefId,
                                                 node_id: ast::NodeId,
                                                 substitutions: &'tcx subst::Substs<'tcx>,
-                                                field_types: &[ty::field_ty],
+                                                field_types: &[ty::FieldTy],
                                                 ast_fields: &'tcx [ast::Field],
                                                 check_completeness: bool,
                                                 enum_id_opt: Option<ast::DefId>)  {
@@ -2868,7 +3124,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 span_err!(tcx.sess, span, E0063,
                     "missing field{}: {}",
                     if missing_fields.len() == 1 {""} else {"s"},
-                    missing_fields.connect(", "));
+                    missing_fields.join(", "));
              }
         }
 
@@ -3012,7 +3268,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             match unop {
                 ast::UnUniq => match ty.sty {
                     ty::TyBox(ty) => {
-                        Expectation::rvalue_hint(ty)
+                        Expectation::rvalue_hint(tcx, ty)
                     }
                     _ => {
                         NoExpectation
@@ -3074,15 +3330,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                       tcx.lang_items.neg_trait(),
                                                       expr, &**oprnd, oprnd_t, unop);
                     }
-                    if let ty::TyUint(_) = oprnd_t.sty {
-                        if !tcx.sess.features.borrow().negate_unsigned {
-                            feature_gate::emit_feature_err(
-                                &tcx.sess.parse_sess.span_diagnostic,
-                                "negate_unsigned",
-                                expr.span,
-                                "unary negation of unsigned integers may be removed in the future");
-                        }
-                    }
                 }
             }
         }
@@ -3098,7 +3345,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                         // the last field of a struct can be unsized.
                         ExpectHasType(mt.ty)
                     } else {
-                        Expectation::rvalue_hint(mt.ty)
+                        Expectation::rvalue_hint(tcx, mt.ty)
                     }
                 }
                 _ => NoExpectation
@@ -3110,7 +3357,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                     hint,
                                                     lvalue_pref);
 
-        let tm = ty::mt { ty: fcx.expr_ty(&**oprnd), mutbl: mutbl };
+        let tm = ty::TypeAndMut { ty: fcx.expr_ty(&**oprnd), mutbl: mutbl };
         let oprnd_t = if tm.ty.references_error() {
             tcx.types.err
         } else {
@@ -3426,6 +3673,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let def = lookup_full_def(tcx, path.span, id);
         let struct_id = match def {
             def::DefVariant(enum_id, variant_id, true) => {
+                if let &Some(ref base_expr) = base_expr {
+                    span_err!(tcx.sess, base_expr.span, E0436,
+                              "functional record update syntax requires a struct");
+                    fcx.write_error(base_expr.id);
+                }
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
                                           variant_id, &fields[..]);
                 enum_id
@@ -3730,8 +3982,8 @@ impl<'tcx> Expectation<'tcx> {
     /// which still is useful, because it informs integer literals and the like.
     /// See the test case `test/run-pass/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
-    fn rvalue_hint(ty: Ty<'tcx>) -> Expectation<'tcx> {
-        match ty.sty {
+    fn rvalue_hint(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
+        match tcx.struct_tail(ty).sty {
             ty::TySlice(_) | ty::TyTrait(..) => {
                 ExpectRvalueLikeUnsized(ty)
             }
@@ -4008,9 +4260,7 @@ fn check_const_with_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 /// Checks whether a type can be represented in memory. In particular, it
 /// identifies types that contain themselves without indirection through a
-/// pointer, which would mean their size is unbounded. This is different from
-/// the question of whether a type can be instantiated. See the definition of
-/// `check_instantiable`.
+/// pointer, which would mean their size is unbounded.
 pub fn check_representable(tcx: &ty::ctxt,
                            sp: Span,
                            item_id: ast::NodeId,
@@ -4035,31 +4285,19 @@ pub fn check_representable(tcx: &ty::ctxt,
     return true
 }
 
-/// Checks whether a type can be created without an instance of itself.
-/// This is similar but different from the question of whether a type
-/// can be represented.  For example, the following type:
-///
-///     enum foo { None, Some(foo) }
-///
-/// is instantiable but is not representable.  Similarly, the type
-///
-///     enum foo { Some(@foo) }
-///
-/// is representable, but not instantiable.
+/// Checks whether a type can be constructed at runtime without
+/// an existing instance of that type.
 pub fn check_instantiable(tcx: &ty::ctxt,
                           sp: Span,
-                          item_id: ast::NodeId)
-                          -> bool {
+                          item_id: ast::NodeId) {
     let item_ty = tcx.node_id_to_type(item_id);
-    if !item_ty.is_instantiable(tcx) {
-        span_err!(tcx.sess, sp, E0073,
-            "this type cannot be instantiated without an \
-             instance of itself");
-        fileline_help!(tcx.sess, sp, "consider using `Option<{:?}>`",
-             item_ty);
-        false
-    } else {
-        true
+    if !item_ty.is_instantiable(tcx) &&
+            !tcx.sess.features.borrow().static_recursion {
+        emit_feature_err(&tcx.sess.parse_sess.span_diagnostic,
+                         "static_recursion",
+                         sp,
+                         "this type cannot be instantiated at runtime \
+                          without an instance of itself");
     }
 }
 
@@ -4198,11 +4436,6 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     do_check(ccx, vs, id, hint);
 
     check_representable(ccx.tcx, sp, id, "enum");
-
-    // Check that it is possible to instantiate this enum:
-    //
-    // This *sounds* like the same that as representable, but it's
-    // not.  See def'n of `check_instantiable()` for details.
     check_instantiable(ccx.tcx, sp, id);
 }
 
@@ -4451,7 +4684,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // variables. If the user provided some types, we may still need
     // to add defaults. If the user provided *too many* types, that's
     // a problem.
-    for &space in &ParamSpace::all() {
+    for &space in &[subst::SelfSpace, subst::TypeSpace, subst::FnSpace] {
         adjust_type_parameters(fcx, span, space, type_defs,
                                require_type_space, &mut substs);
         assert_eq!(substs.types.len(space), type_defs.len(space));
@@ -4664,7 +4897,8 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // Nothing specified at all: supply inference variables for
         // everything.
         if provided_len == 0 && !(require_type_space && space == subst::TypeSpace) {
-            substs.types.replace(space, fcx.infcx().next_ty_vars(desired.len()));
+            substs.types.replace(space, Vec::new());
+            fcx.infcx().type_vars_for_defs(span, space, substs, &desired[..]);
             return;
         }
 
@@ -4891,9 +5125,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "move_val_init" => {
                 (1,
                  vec!(
-                    tcx.mk_mut_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
-                                                                  ty::BrAnon(0))),
-                                    param(ccx, 0)),
+                    tcx.mk_mut_ptr(param(ccx, 0)),
                     param(ccx, 0)
                   ),
                tcx.mk_nil())
@@ -4908,13 +5140,13 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "offset" | "arith_offset" => {
               (1,
                vec!(
-                  tcx.mk_ptr(ty::mt {
+                  tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
                       mutbl: ast::MutImmutable
                   }),
                   ccx.tcx.types.isize
                ),
-               tcx.mk_ptr(ty::mt {
+               tcx.mk_ptr(ty::TypeAndMut {
                    ty: param(ccx, 0),
                    mutbl: ast::MutImmutable
                }))
@@ -4922,11 +5154,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "copy" | "copy_nonoverlapping" => {
               (1,
                vec!(
-                  tcx.mk_ptr(ty::mt {
+                  tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
                       mutbl: ast::MutImmutable
                   }),
-                  tcx.mk_ptr(ty::mt {
+                  tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
                       mutbl: ast::MutMutable
                   }),
@@ -4937,11 +5169,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "volatile_copy_memory" | "volatile_copy_nonoverlapping_memory" => {
               (1,
                vec!(
-                  tcx.mk_ptr(ty::mt {
+                  tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
                       mutbl: ast::MutMutable
                   }),
-                  tcx.mk_ptr(ty::mt {
+                  tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
                       mutbl: ast::MutImmutable
                   }),
@@ -4952,7 +5184,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "write_bytes" | "volatile_set_memory" => {
               (1,
                vec!(
-                  tcx.mk_ptr(ty::mt {
+                  tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
                       mutbl: ast::MutMutable
                   }),
@@ -5090,6 +5322,21 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
                                                                   ty::BrAnon(0))),
                                     param(ccx, 0))], tcx.types.u64),
+
+            "try" => {
+                let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
+                let fn_ty = ty::BareFnTy {
+                    unsafety: ast::Unsafety::Normal,
+                    abi: abi::Rust,
+                    sig: ty::Binder(FnSig {
+                        inputs: vec![mut_u8],
+                        output: ty::FnOutput::FnConverging(tcx.mk_nil()),
+                        variadic: false,
+                    }),
+                };
+                let fn_ty = tcx.mk_bare_fn(fn_ty);
+                (0, vec![tcx.mk_fn(None, fn_ty), mut_u8], mut_u8)
+            }
 
             ref other => {
                 span_err!(tcx.sess, it.span, E0093,

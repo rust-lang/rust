@@ -119,7 +119,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
 ) }
 
 weak_lang_items! {
-    panic_fmt,          PanicFmtLangItem,            rust_begin_unwind;
+    panic_fmt,          PanicFmtLangItem,           rust_begin_unwind;
     stack_exhausted,    StackExhaustedLangItem,     rust_stack_exhausted;
     eh_personality,     EhPersonalityLangItem,      rust_eh_personality;
 }

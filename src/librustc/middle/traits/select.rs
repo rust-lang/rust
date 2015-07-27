@@ -201,7 +201,7 @@ enum SelectionCandidate<'tcx> {
 
     /// Implementation of a `Fn`-family trait by one of the
     /// anonymous types generated for a `||` expression.
-    ClosureCandidate(/* closure */ ast::DefId, Substs<'tcx>),
+    ClosureCandidate(/* closure */ ast::DefId, &'tcx ty::ClosureSubsts<'tcx>),
 
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int)->int`)
@@ -348,7 +348,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // lifetimes can appear inside the self-type.
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let (closure_def_id, substs) = match self_ty.sty {
-            ty::TyClosure(id, ref substs) => (id, substs.clone()),
+            ty::TyClosure(id, ref substs) => (id, substs),
             _ => { return; }
         };
         assert!(!substs.has_escaping_regions());
@@ -1143,7 +1143,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // type/region parameters
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let (closure_def_id, substs) = match self_ty.sty {
-            ty::TyClosure(id, substs) => (id, substs),
+            ty::TyClosure(id, ref substs) => (id, substs),
             ty::TyInfer(ty::TyVar(_)) => {
                 debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
@@ -1161,8 +1161,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Some(closure_kind) => {
                 debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
                 if closure_kind.extends(kind) {
-                    candidates.vec.push(ClosureCandidate(closure_def_id,
-                                                         substs.clone()));
+                    candidates.vec.push(ClosureCandidate(closure_def_id, substs));
                 }
             }
             None => {
@@ -1285,22 +1284,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     candidates.ambiguous = true;
                 }
                 _ => {
-                    if self.constituent_types_for_ty(self_ty).is_some() {
-                        candidates.vec.push(DefaultImplCandidate(def_id.clone()))
-                    } else {
-                        // We don't yet know what the constituent
-                        // types are. So call it ambiguous for now,
-                        // though this is a bit stronger than
-                        // necessary: that is, we know that the
-                        // defaulted impl applies, but we can't
-                        // process the confirmation step without
-                        // knowing the constituent types. (Anyway, in
-                        // the particular case of defaulted impls, it
-                        // doesn't really matter much either way,
-                        // since we won't be aiding inference by
-                        // processing the confirmation step.)
-                        candidates.ambiguous = true;
-                    }
+                    candidates.vec.push(DefaultImplCandidate(def_id.clone()))
                 }
             }
         }
@@ -1367,11 +1351,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // correct trait, but also the correct type parameters.
             // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
             // but `Foo` is declared as `trait Foo : Bar<u32>`.
-            let upcast_trait_refs = util::supertraits(self.tcx(), poly_trait_ref)
-                .filter(|upcast_trait_ref| self.infcx.probe(|_| {
-                    let upcast_trait_ref = upcast_trait_ref.clone();
-                    self.match_poly_trait_ref(obligation, upcast_trait_ref).is_ok()
-                })).count();
+            let upcast_trait_refs =
+                util::supertraits(self.tcx(), poly_trait_ref)
+                .filter(|upcast_trait_ref| {
+                    self.infcx.probe(|_| {
+                        let upcast_trait_ref = upcast_trait_ref.clone();
+                        self.match_poly_trait_ref(obligation, upcast_trait_ref).is_ok()
+                    })
+                })
+                .count();
 
             if upcast_trait_refs > 1 {
                 // can be upcast in many ways; need more type information
@@ -1643,9 +1631,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             let principal =
                                 data.principal_trait_ref_with_self_ty(self.tcx(),
                                                                       self.tcx().types.err);
-                            let desired_def_id = obligation.predicate.def_id();
+                            let copy_def_id = obligation.predicate.def_id();
                             for tr in util::supertraits(self.tcx(), principal) {
-                                if tr.def_id() == desired_def_id {
+                                if tr.def_id() == copy_def_id {
                                     return ok_if(Vec::new())
                                 }
                             }
@@ -1659,7 +1647,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::TyRef(_, ty::mt { ty: _, mutbl }) => {
+            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl }) => {
                 // &mut T or &T
                 match bound {
                     ty::BoundCopy => {
@@ -1704,7 +1692,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
             ty::TyTuple(ref tys) => ok_if(tys.clone()),
 
-            ty::TyClosure(def_id, substs) => {
+            ty::TyClosure(def_id, ref substs) => {
                 // FIXME -- This case is tricky. In the case of by-ref
                 // closures particularly, we need the results of
                 // inference to decide how to reflect the type of each
@@ -1730,13 +1718,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     return ok_if(Vec::new());
                 }
 
-                match self.infcx.closure_upvars(def_id, substs) {
-                    Some(upvars) => ok_if(upvars.iter().map(|c| c.ty).collect()),
-                    None => {
-                        debug!("assemble_builtin_bound_candidates: no upvar types available yet");
-                        Ok(AmbiguousBuiltin)
-                    }
-                }
+                ok_if(substs.upvar_tys.clone())
             }
 
             ty::TyStruct(def_id, substs) => {
@@ -1819,7 +1801,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Bar<i32> where struct Bar<T> { x: T, y: u32 } -> [i32, u32]
     /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
     /// ```
-    fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Option<Vec<Ty<'tcx>>> {
+    fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
         match t.sty {
             ty::TyUint(_) |
             ty::TyInt(_) |
@@ -1831,7 +1813,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyInfer(ty::IntVar(_)) |
             ty::TyInfer(ty::FloatVar(_)) |
             ty::TyChar => {
-                Some(Vec::new())
+                Vec::new()
             }
 
             ty::TyTrait(..) |
@@ -1848,55 +1830,56 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::TyBox(referent_ty) => {  // Box<T>
-                Some(vec![referent_ty])
+                vec![referent_ty]
             }
 
-            ty::TyRawPtr(ty::mt { ty: element_ty, ..}) |
-            ty::TyRef(_, ty::mt { ty: element_ty, ..}) => {
-                Some(vec![element_ty])
+            ty::TyRawPtr(ty::TypeAndMut { ty: element_ty, ..}) |
+            ty::TyRef(_, ty::TypeAndMut { ty: element_ty, ..}) => {
+                vec![element_ty]
             },
 
             ty::TyArray(element_ty, _) | ty::TySlice(element_ty) => {
-                Some(vec![element_ty])
+                vec![element_ty]
             }
 
             ty::TyTuple(ref tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-                Some(tys.clone())
+                tys.clone()
             }
 
-            ty::TyClosure(def_id, substs) => {
+            ty::TyClosure(def_id, ref substs) => {
+                // FIXME(#27086). We are invariant w/r/t our
+                // substs.func_substs, but we don't see them as
+                // constituent types; this seems RIGHT but also like
+                // something that a normal type couldn't simulate. Is
+                // this just a gap with the way that PhantomData and
+                // OIBIT interact? That is, there is no way to say
+                // "make me invariant with respect to this TYPE, but
+                // do not act as though I can reach it"
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
-
-                match self.infcx.closure_upvars(def_id, substs) {
-                    Some(upvars) => {
-                        Some(upvars.iter().map(|c| c.ty).collect())
-                    }
-                    None => {
-                        None
-                    }
-                }
+                substs.upvar_tys.clone()
             }
 
             // for `PhantomData<T>`, we pass `T`
             ty::TyStruct(def_id, substs)
                 if Some(def_id) == self.tcx().lang_items.phantom_data() =>
             {
-                Some(substs.types.get_slice(TypeSpace).to_vec())
+                substs.types.get_slice(TypeSpace).to_vec()
             }
 
             ty::TyStruct(def_id, substs) => {
-                Some(self.tcx().struct_fields(def_id, substs).iter()
-                     .map(|f| f.mt.ty)
-                     .collect())
+                self.tcx().struct_fields(def_id, substs)
+                          .iter()
+                          .map(|f| f.mt.ty)
+                          .collect()
             }
 
             ty::TyEnum(def_id, substs) => {
-                Some(self.tcx().substd_enum_variants(def_id, substs)
-                     .iter()
-                     .flat_map(|variant| &variant.args)
-                     .map(|&ty| ty)
-                     .collect())
+                self.tcx().substd_enum_variants(def_id, substs)
+                          .iter()
+                          .flat_map(|variant| &variant.args)
+                          .map(|&ty| ty)
+                          .collect()
             }
         }
     }
@@ -2016,7 +1999,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ClosureCandidate(closure_def_id, substs) => {
                 let vtable_closure =
-                    try!(self.confirm_closure_candidate(obligation, closure_def_id, &substs));
+                    try!(self.confirm_closure_candidate(obligation, closure_def_id, substs));
                 Ok(VtableClosure(vtable_closure))
             }
 
@@ -2146,15 +2129,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // binder is moved below
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
-        match self.constituent_types_for_ty(self_ty) {
-            Some(types) => self.vtable_default_impl(obligation, trait_def_id, ty::Binder(types)),
-            None => {
-                self.tcx().sess.bug(
-                    &format!(
-                        "asked to confirm default implementation for ambiguous type: {:?}",
-                        self_ty));
-            }
-        }
+        let types = self.constituent_types_for_ty(self_ty);
+        self.vtable_default_impl(obligation, trait_def_id, ty::Binder(types))
     }
 
     fn confirm_default_impl_object_candidate(&mut self,
@@ -2310,31 +2286,41 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         };
 
-        // Upcast the object type to the obligation type. There must
-        // be exactly one applicable trait-reference; if this were not
-        // the case, we would have reported an ambiguity error rather
-        // than successfully selecting one of the candidates.
-        let mut upcast_trait_refs = util::supertraits(self.tcx(), poly_trait_ref)
-            .map(|upcast_trait_ref| {
-                (upcast_trait_ref.clone(), self.infcx.probe(|_| {
-                    self.match_poly_trait_ref(obligation, upcast_trait_ref)
-                }).is_ok())
-            });
         let mut upcast_trait_ref = None;
-        let mut vtable_base = 0;
+        let vtable_base;
 
-        while let Some((supertrait, matches)) = upcast_trait_refs.next() {
-            if matches {
-                upcast_trait_ref = Some(supertrait);
-                break;
-            }
-            vtable_base += util::count_own_vtable_entries(self.tcx(), supertrait);
+        {
+            // We want to find the first supertrait in the list of
+            // supertraits that we can unify with, and do that
+            // unification. We know that there is exactly one in the list
+            // where we can unify because otherwise select would have
+            // reported an ambiguity. (When we do find a match, also
+            // record it for later.)
+            let nonmatching =
+                util::supertraits(self.tcx(), poly_trait_ref)
+                .take_while(|&t| {
+                    match
+                        self.infcx.commit_if_ok(
+                            |_| self.match_poly_trait_ref(obligation, t))
+                    {
+                        Ok(_) => { upcast_trait_ref = Some(t); false }
+                        Err(_) => { true }
+                    }
+                });
+
+            // Additionally, for each of the nonmatching predicates that
+            // we pass over, we sum up the set of number of vtable
+            // entries, so that we can compute the offset for the selected
+            // trait.
+            vtable_base =
+                nonmatching.map(|t| util::count_own_vtable_entries(self.tcx(), t))
+                           .sum();
+
         }
-        assert!(upcast_trait_refs.all(|(_, matches)| !matches));
 
         VtableObjectData {
             upcast_trait_ref: upcast_trait_ref.unwrap(),
-            vtable_base: vtable_base
+            vtable_base: vtable_base,
         }
     }
 
@@ -2365,7 +2351,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_closure_candidate(&mut self,
                                  obligation: &TraitObligation<'tcx>,
                                  closure_def_id: ast::DefId,
-                                 substs: &Substs<'tcx>)
+                                 substs: &ty::ClosureSubsts<'tcx>)
                                  -> Result<VtableClosureData<'tcx, PredicateObligation<'tcx>>,
                                            SelectionError<'tcx>>
     {
@@ -2462,7 +2448,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     region_bound: data_b.bounds.region_bound,
                     builtin_bounds: data_b.bounds.builtin_bounds,
                     projection_bounds: data_a.bounds.projection_bounds.clone(),
-                    region_bound_will_change: data_b.bounds.region_bound_will_change,
                 };
 
                 let new_trait = tcx.mk_trait(data_a.principal.clone(), bounds);
@@ -2853,7 +2838,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn closure_trait_ref_unnormalized(&mut self,
                                       obligation: &TraitObligation<'tcx>,
                                       closure_def_id: ast::DefId,
-                                      substs: &Substs<'tcx>)
+                                      substs: &ty::ClosureSubsts<'tcx>)
                                       -> ty::PolyTraitRef<'tcx>
     {
         let closure_type = self.infcx.closure_type(closure_def_id, substs);
@@ -2875,7 +2860,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn closure_trait_ref(&mut self,
                          obligation: &TraitObligation<'tcx>,
                          closure_def_id: ast::DefId,
-                         substs: &Substs<'tcx>)
+                         substs: &ty::ClosureSubsts<'tcx>)
                          -> Normalized<'tcx, ty::PolyTraitRef<'tcx>>
     {
         let trait_ref = self.closure_trait_ref_unnormalized(

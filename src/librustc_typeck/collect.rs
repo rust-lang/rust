@@ -404,7 +404,11 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
         }
     }
 
-    fn ty_infer(&self, span: Span) -> Ty<'tcx> {
+        fn ty_infer(&self,
+                    _ty_param_def: Option<ty::TypeParameterDef<'tcx>>,
+                    _substs: Option<&mut Substs<'tcx>>,
+                    _space: Option<ParamSpace>,
+                    span: Span) -> Ty<'tcx> {
         span_err!(self.tcx().sess, span, E0121,
                   "the type placeholder `_` is not allowed within types on item signatures");
         self.tcx().types.err
@@ -655,7 +659,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            struct_predicates: &ty::GenericPredicates<'tcx>,
                            v: &ast::StructField,
                            origin: ast::DefId)
-                           -> ty::field_ty
+                           -> ty::FieldTy
 {
     let tt = ccx.icx(struct_predicates).to_ty(&ExplicitRscope, &*v.node.ty);
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
@@ -671,7 +675,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     match v.node.kind {
         ast::NamedField(ident, visibility) => {
-            ty::field_ty {
+            ty::FieldTy {
                 name: ident.name,
                 id: local_def(v.node.id),
                 vis: visibility,
@@ -679,7 +683,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             }
         }
         ast::UnnamedField(visibility) => {
-            ty::field_ty {
+            ty::FieldTy {
                 name: special_idents::unnamed_field.name,
                 id: local_def(v.node.id),
                 vis: visibility,
@@ -747,17 +751,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
            rcvr_ty_generics,
            rcvr_ty_predicates);
 
-    let tcx = ccx.tcx;
-    let mut seen_methods = FnvHashSet();
-    for (sig, id, ident, vis, span) in methods {
-        if !seen_methods.insert(ident.name) {
-            let fn_desc = match sig.explicit_self.node {
-                ast::SelfStatic => "associated function",
-                _               => "method",
-            };
-            span_err!(tcx.sess, span, E0201, "duplicate {}", fn_desc);
-        }
-
+    for (sig, id, ident, vis, _span) in methods {
         convert_method(ccx,
                        container,
                        sig,
@@ -846,6 +840,18 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                                                 ty: selfty });
             tcx.predicates.borrow_mut().insert(local_def(it.id),
                                                ty_predicates.clone());
+            if let &Some(ref ast_trait_ref) = opt_trait_ref {
+                tcx.impl_trait_refs.borrow_mut().insert(
+                    local_def(it.id),
+                    Some(astconv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
+                                                             &ExplicitRscope,
+                                                             ast_trait_ref,
+                                                             Some(selfty)))
+                        );
+            } else {
+                tcx.impl_trait_refs.borrow_mut().insert(local_def(it.id), None);
+            }
+
 
             // If there is a trait reference, treat the methods as always public.
             // This is to work around some incorrect behavior in privacy checking:
@@ -859,7 +865,30 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             };
 
             // Convert all the associated consts.
+            // Also, check if there are any duplicate associated items
+            let mut seen_type_items = FnvHashSet();
+            let mut seen_value_items = FnvHashSet();
+
             for impl_item in impl_items {
+                let seen_items = match impl_item.node {
+                    ast::TypeImplItem(_) => &mut seen_type_items,
+                    _                    => &mut seen_value_items,
+                };
+                if !seen_items.insert(impl_item.ident.name) {
+                    let desc = match impl_item.node {
+                        ast::ConstImplItem(_, _) => "associated constant",
+                        ast::TypeImplItem(_) => "associated type",
+                        ast::MethodImplItem(ref sig, _) =>
+                            match sig.explicit_self.node {
+                                ast::SelfStatic => "associated function",
+                                _ => "method",
+                            },
+                        _ => "associated item",
+                    };
+
+                    span_err!(tcx.sess, impl_item.span, E0201, "duplicate {}", desc);
+                }
+
                 if let ast::ConstImplItem(ref ty, ref expr) = impl_item.node {
                     let ty = ccx.icx(&ty_predicates)
                                 .to_ty(&ExplicitRscope, &*ty);
@@ -920,18 +949,6 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                                            &sig.explicit_self,
                                            body_id);
                 }
-            }
-
-            if let &Some(ref ast_trait_ref) = opt_trait_ref {
-                tcx.impl_trait_refs.borrow_mut().insert(
-                    local_def(it.id),
-                    Some(astconv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
-                                                             &ExplicitRscope,
-                                                             ast_trait_ref,
-                                                             Some(selfty)))
-                        );
-            } else {
-                tcx.impl_trait_refs.borrow_mut().insert(local_def(it.id), None);
             }
 
             enforce_impl_params_are_constrained(tcx,
@@ -1536,7 +1553,7 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                      d => format!("{:?}", d),
                                  })
                                  .collect::<Vec<String>>()
-                                 .connect(",");
+                                 .join(",");
 
         tcx.sess.span_err(it.span, &object_lifetime_default_reprs);
     }
@@ -1630,11 +1647,14 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // the node id for the Self type parameter.
     let param_id = trait_id;
 
+    let parent = ccx.tcx.map.get_parent(param_id);
+
     let def = ty::TypeParameterDef {
         space: SelfSpace,
         index: 0,
         name: special_idents::type_self.name,
         def_id: local_def(param_id),
+        default_def_id: local_def(parent),
         default: None,
         object_lifetime_default: ty::ObjectLifetimeDefault::BaseDefault,
     };
@@ -1903,11 +1923,14 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         compute_object_lifetime_default(ccx, param.id,
                                         &param.bounds, &ast_generics.where_clause);
 
+    let parent = tcx.map.get_parent(param.id);
+
     let def = ty::TypeParameterDef {
         space: space,
         index: index,
         name: param.ident.name,
         def_id: local_def(param.id),
+        default_def_id: local_def(parent),
         default: default,
         object_lifetime_default: object_lifetime_default,
     };

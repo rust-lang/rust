@@ -367,7 +367,13 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
     }
 
     fn expr_ty(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
-        self.typer.node_ty(expr.id)
+        match self.typer.node_ty(expr.id) {
+            Ok(t) => Ok(t),
+            Err(()) => {
+                debug!("expr_ty({:?}) yielded Err", expr);
+                Err(())
+            }
+        }
     }
 
     fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
@@ -1614,7 +1620,7 @@ impl fmt::Debug for InteriorKind {
 
 fn element_kind(t: Ty) -> ElementKind {
     match t.sty {
-        ty::TyRef(_, ty::mt{ty, ..}) |
+        ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
         ty::TyBox(ty) => match ty.sty {
             ty::TySlice(_) => VecElement,
             _ => OtherElement

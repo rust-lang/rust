@@ -231,8 +231,11 @@ pub static p_thread_callback: unsafe extern "system" fn(LPVOID, DWORD,
                                                         LPVOID) =
         on_tls_callback;
 
-#[cfg(target_env = "msvc")]
+#[cfg(all(target_env = "msvc", target_pointer_width = "64"))]
 #[link_args = "/INCLUDE:_tls_used"]
+extern {}
+#[cfg(all(target_env = "msvc", target_pointer_width = "32"))]
+#[link_args = "/INCLUDE:__tls_used"]
 extern {}
 
 #[allow(warnings)]

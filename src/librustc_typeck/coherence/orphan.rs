@@ -77,7 +77,10 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                         self.check_def_id(item, data.principal_def_id());
                     }
                     ty::TyBox(..) => {
-                        self.check_def_id(item, self.tcx.lang_items.owned_box().unwrap());
+                        match self.tcx.lang_items.require_owned_box() {
+                            Ok(trait_id) => self.check_def_id(item, trait_id),
+                            Err(msg) => self.tcx.sess.span_fatal(item.span, &msg),
+                        }
                     }
                     ty::TyChar => {
                         self.check_primitive_impl(def_id,
@@ -100,14 +103,14 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                                   "[T]",
                                                   item.span);
                     }
-                    ty::TyRawPtr(ty::mt { ty: _, mutbl: ast::MutImmutable }) => {
+                    ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: ast::MutImmutable }) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.const_ptr_impl(),
                                                   "const_ptr",
                                                   "*const T",
                                                   item.span);
                     }
-                    ty::TyRawPtr(ty::mt { ty: _, mutbl: ast::MutMutable }) => {
+                    ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: ast::MutMutable }) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.mut_ptr_impl(),
                                                   "mut_ptr",

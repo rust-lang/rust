@@ -32,7 +32,6 @@ use trans::build::*;
 use trans::callee;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
-use trans::closure;
 use trans::common::{self, Block, Result, NodeIdAndSpan, ExprId, CrateContext,
                     ExprOrMethodCall, FunctionContext, MethodCallKey};
 use trans::consts;
@@ -446,12 +445,6 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
         }
     };
 
-    // If this is a closure, redirect to it.
-    match closure::get_or_create_declaration_if_closure(ccx, def_id, substs) {
-        None => {}
-        Some(llfn) => return llfn,
-    }
-
     // Check whether this fn has an inlined copy and, if so, redirect
     // def_id to the local id of the inlined copy.
     let def_id = inline::maybe_instantiate_inline(ccx, def_id);
@@ -620,16 +613,17 @@ pub fn trans_lang_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }, ArgVals(args), dest)
 }
 
-/// This behemoth of a function translates function calls. Unfortunately, in order to generate more
-/// efficient LLVM output at -O0, it has quite a complex signature (refactoring this into two
-/// functions seems like a good idea).
+/// This behemoth of a function translates function calls. Unfortunately, in
+/// order to generate more efficient LLVM output at -O0, it has quite a complex
+/// signature (refactoring this into two functions seems like a good idea).
 ///
-/// In particular, for lang items, it is invoked with a dest of None, and in that case the return
-/// value contains the result of the fn. The lang item must not return a structural type or else
-/// all heck breaks loose.
+/// In particular, for lang items, it is invoked with a dest of None, and in
+/// that case the return value contains the result of the fn. The lang item must
+/// not return a structural type or else all heck breaks loose.
 ///
-/// For non-lang items, `dest` is always Some, and hence the result is written into memory
-/// somewhere. Nonetheless we return the actual return value of the function.
+/// For non-lang items, `dest` is always Some, and hence the result is written
+/// into memory somewhere. Nonetheless we return the actual return value of the
+/// function.
 pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                                            debug_loc: DebugLoc,
                                            get_callee: F,

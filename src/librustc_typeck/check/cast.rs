@@ -272,8 +272,8 @@ impl<'tcx> CastCheck<'tcx> {
 
     fn check_ptr_ptr_cast<'a>(&self,
                               fcx: &FnCtxt<'a, 'tcx>,
-                              m_expr: &'tcx ty::mt<'tcx>,
-                              m_cast: &'tcx ty::mt<'tcx>)
+                              m_expr: &'tcx ty::TypeAndMut<'tcx>,
+                              m_cast: &'tcx ty::TypeAndMut<'tcx>)
                               -> Result<CastKind, CastError>
     {
         debug!("check_ptr_ptr_cast m_expr={:?} m_cast={:?}",
@@ -299,7 +299,7 @@ impl<'tcx> CastCheck<'tcx> {
 
     fn check_fptr_ptr_cast<'a>(&self,
                                fcx: &FnCtxt<'a, 'tcx>,
-                               m_cast: &'tcx ty::mt<'tcx>)
+                               m_cast: &'tcx ty::TypeAndMut<'tcx>)
                                -> Result<CastKind, CastError>
     {
         // fptr-ptr cast. must be to sized ptr
@@ -313,7 +313,7 @@ impl<'tcx> CastCheck<'tcx> {
 
     fn check_ptr_addr_cast<'a>(&self,
                                fcx: &FnCtxt<'a, 'tcx>,
-                               m_expr: &'tcx ty::mt<'tcx>)
+                               m_expr: &'tcx ty::TypeAndMut<'tcx>)
                                -> Result<CastKind, CastError>
     {
         // ptr-addr cast. must be from sized ptr
@@ -327,8 +327,8 @@ impl<'tcx> CastCheck<'tcx> {
 
     fn check_ref_cast<'a>(&self,
                           fcx: &FnCtxt<'a, 'tcx>,
-                          m_expr: &'tcx ty::mt<'tcx>,
-                          m_cast: &'tcx ty::mt<'tcx>)
+                          m_expr: &'tcx ty::TypeAndMut<'tcx>,
+                          m_cast: &'tcx ty::TypeAndMut<'tcx>)
                           -> Result<CastKind, CastError>
     {
         // array-ptr-cast.
@@ -353,7 +353,7 @@ impl<'tcx> CastCheck<'tcx> {
 
     fn check_addr_ptr_cast<'a>(&self,
                                fcx: &FnCtxt<'a, 'tcx>,
-                               m_cast: &'tcx ty::mt<'tcx>)
+                               m_cast: &'tcx ty::TypeAndMut<'tcx>)
                                -> Result<CastKind, CastError>
     {
         // ptr-addr cast. pointer must be thin.

@@ -116,7 +116,7 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
         ty::TyBareFn(_, ref f) => {
             (&f.sig, f.abi, None)
         }
-        ty::TyClosure(closure_did, substs) => {
+        ty::TyClosure(closure_did, ref substs) => {
             let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
             function_type = infcx.closure_type(closure_did, substs);
             let self_type = base::self_type_for_closure(ccx, closure_did, fn_type);
@@ -176,8 +176,8 @@ pub fn define_global(ccx: &CrateContext, name: &str, ty: Type) -> Option<ValueRe
 /// return None if the name already has a definition associated with it. In that
 /// case an error should be reported to the user, because it usually happens due
 /// to user’s fault (e.g. misuse of #[no_mangle] or #[export_name] attributes).
-pub fn define_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, fn_type: Type,
-                 output: ty::FnOutput) -> Option<ValueRef> {
+pub fn define_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv,
+                 fn_type: Type, output: ty::FnOutput) -> Option<ValueRef> {
     if get_defined_value(ccx, name).is_some() {
         None
     } else {
@@ -224,20 +224,21 @@ pub fn define_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
 /// Declare a Rust function with an intention to define it.
 ///
 /// Use this function when you intend to define a function. This function will
-/// return None if the name already has a definition associated with it. In that
-/// case an error should be reported to the user, because it usually happens due
-/// to user’s fault (e.g. misuse of #[no_mangle] or #[export_name] attributes).
-pub fn define_internal_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
-                                         fn_type: ty::Ty<'tcx>) -> Option<ValueRef> {
+/// return panic if the name already has a definition associated with it. This
+/// can happen with #[no_mangle] or #[export_name], for example.
+pub fn define_internal_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                         name: &str,
+                                         fn_type: ty::Ty<'tcx>) -> ValueRef {
     if get_defined_value(ccx, name).is_some() {
-        None
+        ccx.sess().fatal(&format!("symbol `{}` already defined", name))
     } else {
-        Some(declare_internal_rust_fn(ccx, name, fn_type))
+        declare_internal_rust_fn(ccx, name, fn_type)
     }
 }
 
 
-/// Get defined or externally defined (AvailableExternally linkage) value by name.
+/// Get defined or externally defined (AvailableExternally linkage) value by
+/// name.
 fn get_defined_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
     debug!("get_defined_value(name={:?})", name);
     let namebuf = CString::new(name).unwrap_or_else(|_|{

@@ -37,7 +37,6 @@ use llvm;
 use metadata::{csearch, encoder, loader};
 use middle::astencode;
 use middle::cfg;
-use middle::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::pat_util::simple_identifier;
@@ -228,6 +227,7 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
     // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
     // FIXME(nagisa): investigate whether it can be changed into define_global
     let c = declare::declare_global(ccx, &name[..], ty);
+
     // Thread-local statics in some other crate need to *always* be linked
     // against in a thread-local fashion, so we need to be sure to apply the
     // thread-local attribute locally if it was present remotely. If we
@@ -239,7 +239,42 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
             llvm::set_thread_local(c, true);
         }
     }
-    if ccx.use_dll_storage_attrs() {
+
+    // MSVC is a little ornery about how items are imported across dlls, and for
+    // lots more info on dllimport/dllexport see the large comment in
+    // SharedCrateContext::new. Unfortunately, unlike functions, statics
+    // imported from dlls *must* be tagged with dllimport (if you forget
+    // dllimport on a function then the linker fixes it up with an injected
+    // shim). This means that to link correctly to an upstream Rust dynamic
+    // library we need to make sure its statics are tagged with dllimport.
+    //
+    // Hence, if this translation is using dll storage attributes and the crate
+    // that this const originated from is being imported as a dylib at some
+    // point we tag this with dllimport.
+    //
+    // Note that this is not 100% correct for a variety of reasons:
+    //
+    // 1. If we are producing an rlib and linking to an upstream rlib, we'll
+    //    omit the dllimport. It's a possibility, though, that some later
+    //    downstream compilation will link the same upstream dependency as a
+    //    dylib and use our rlib, causing linker errors because we didn't use
+    //    dllimport.
+    // 2. We may have multiple crate output types. For example if we are
+    //    emitting a statically linked binary as well as a dynamic library we'll
+    //    want to omit dllimport for the binary but we need to have it for the
+    //    dylib.
+    //
+    // For most every day uses, however, this should suffice. During the
+    // bootstrap we're almost always linking upstream to a dylib for some crate
+    // type output, so most imports will be tagged with dllimport (somewhat
+    // appropriately). Otherwise rust dylibs linking against rust dylibs is
+    // pretty rare in Rust so this will likely always be `false` and we'll never
+    // tag with dllimport.
+    //
+    // Note that we can't just blindly tag all constants with dllimport as can
+    // cause linkage errors when we're not actually linking against a dll. For
+    // more info on this see rust-lang/rust#26591.
+    if ccx.use_dll_storage_attrs() && ccx.upstream_dylib_used(did.krate) {
         llvm::SetDLLStorageClass(c, llvm::DLLImportStorageClass);
     }
     ccx.externs().borrow_mut().insert(name.to_string(), c);
@@ -434,13 +469,11 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
               }
           })
       }
-      ty::TyClosure(def_id, substs) => {
+      ty::TyClosure(_, ref substs) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
-          let upvars = infcx.closure_upvars(def_id, substs).unwrap();
-          for (i, upvar) in upvars.iter().enumerate() {
+          for (i, upvar_ty) in substs.upvar_tys.iter().enumerate() {
               let llupvar = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
-              cx = f(cx, llupvar, upvar.ty);
+              cx = f(cx, llupvar, upvar_ty);
           }
       }
       ty::TyArray(_, n) => {
@@ -2057,7 +2090,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
           let mut v = TransItemVisitor{ ccx: ccx };
           v.visit_expr(&**expr);
 
-          let g = consts::trans_static(ccx, m, item.id);
+          let g = consts::trans_static(ccx, m, expr, item.id, &item.attrs);
           update_linkage(ccx, g, Some(item.id), OriginalTranslation);
       },
       ast::ItemForeignMod(ref foreign_mod) => {
@@ -2301,7 +2334,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             let sym = || exported_name(ccx, id, ty, &i.attrs);
 
             let v = match i.node {
-                ast::ItemStatic(_, _, ref expr) => {
+                ast::ItemStatic(..) => {
                     // If this static came from an external crate, then
                     // we need to get the symbol from csearch instead of
                     // using the current crate's name/version
@@ -2309,36 +2342,17 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     let sym = sym();
                     debug!("making {}", sym);
 
-                    // We need the translated value here, because for enums the
-                    // LLVM type is not fully determined by the Rust type.
-                    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-                    let (v, ty) = consts::const_expr(ccx, &**expr, empty_substs, None);
-                    ccx.static_values().borrow_mut().insert(id, v);
-                    unsafe {
-                        // boolean SSA values are i1, but they have to be stored in i8 slots,
-                        // otherwise some LLVM optimization passes don't work as expected
-                        let llty = if ty.is_bool() {
-                            llvm::LLVMInt8TypeInContext(ccx.llcx())
-                        } else {
-                            llvm::LLVMTypeOf(v)
-                        };
+                    // Create the global before evaluating the initializer;
+                    // this is necessary to allow recursive statics.
+                    let llty = type_of(ccx, ty);
+                    let g = declare::define_global(ccx, &sym[..],
+                                                   llty).unwrap_or_else(|| {
+                        ccx.sess().span_fatal(i.span, &format!("symbol `{}` is already defined",
+                                                                sym))
+                    });
 
-                        // FIXME(nagisa): probably should be declare_global, because no definition
-                        // is happening here, but we depend on it being defined here from
-                        // const::trans_static. This all logic should be replaced.
-                        let g = declare::define_global(ccx, &sym[..],
-                                                       Type::from_ref(llty)).unwrap_or_else(||{
-                            ccx.sess().span_fatal(i.span, &format!("symbol `{}` is already defined",
-                                                                   sym))
-                        });
-
-                        if attr::contains_name(&i.attrs,
-                                               "thread_local") {
-                            llvm::set_thread_local(g, true);
-                        }
-                        ccx.item_symbols().borrow_mut().insert(i.id, sym);
-                        g
-                    }
+                    ccx.item_symbols().borrow_mut().insert(i.id, sym);
+                    g
                 }
 
                 ast::ItemFn(_, _, _, abi, _, _) => {
@@ -2666,6 +2680,8 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
                 // cannot proceed despite the Once not running more than once.
                 POISONED = true;
             }
+
+            ::back::write::configure_llvm(&tcx.sess);
         });
 
         if POISONED {
@@ -2702,6 +2718,13 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
     for ccx in shared_ccx.iter() {
         if ccx.sess().opts.debuginfo != NoDebugInfo {
             debuginfo::finalize(&ccx);
+        }
+        for &(old_g, new_g) in ccx.statics_to_rauw().borrow().iter() {
+            unsafe {
+                let bitcast = llvm::LLVMConstPointerCast(new_g, llvm::LLVMTypeOf(old_g));
+                llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
+                llvm::LLVMDeleteGlobal(old_g);
+            }
         }
     }
 

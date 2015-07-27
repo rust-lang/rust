@@ -14,17 +14,17 @@
 //! type equality, etc.
 
 use middle::subst::{ErasedRegions, NonerasedRegions, ParamSpace, Substs};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TypeError};
 use middle::ty_fold::TypeFoldable;
 use std::rc::Rc;
 use syntax::abi;
 use syntax::ast;
 
-pub type RelateResult<'tcx, T> = Result<T, ty::type_err<'tcx>>;
+pub type RelateResult<'tcx, T> = Result<T, ty::TypeError<'tcx>>;
 
 #[derive(Clone, Debug)]
 pub enum Cause {
-    ExistentialRegionBound(bool), // if true, this is a default, else explicit
+    ExistentialRegionBound, // relating an existential region bound
 }
 
 pub trait TypeRelation<'a,'tcx> : Sized {
@@ -43,16 +43,15 @@ pub trait TypeRelation<'a,'tcx> : Sized {
         f(self)
     }
 
-    /// Hack for deciding whether the lifetime bound defaults change
-    /// will be a breaking change or not. The bools indicate whether
-    /// `a`/`b` have a default that will change to `'static`; the
-    /// result is true if this will potentially affect the affect of
-    /// relating `a` and `b`.
-    fn will_change(&mut self, a: bool, b: bool) -> bool;
-
     /// Generic relation routine suitable for most anything.
     fn relate<T:Relate<'a,'tcx>>(&mut self, a: &T, b: &T) -> RelateResult<'tcx, T> {
         Relate::relate(self, a, b)
+    }
+
+    /// Relete elements of two slices pairwise.
+    fn relate_zip<T:Relate<'a,'tcx>>(&mut self, a: &[T], b: &[T]) -> RelateResult<'tcx, Vec<T>> {
+        assert_eq!(a.len(), b.len());
+        a.iter().zip(b).map(|(a, b)| self.relate(a, b)).collect()
     }
 
     /// Switch variance for the purpose of relating `a` and `b`.
@@ -89,11 +88,11 @@ pub trait Relate<'a,'tcx>: TypeFoldable<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Relate impls
 
-impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::mt<'tcx> {
+impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::TypeAndMut<'tcx> {
     fn relate<R>(relation: &mut R,
-                 a: &ty::mt<'tcx>,
-                 b: &ty::mt<'tcx>)
-                 -> RelateResult<'tcx, ty::mt<'tcx>>
+                 a: &ty::TypeAndMut<'tcx>,
+                 b: &ty::TypeAndMut<'tcx>)
+                 -> RelateResult<'tcx, ty::TypeAndMut<'tcx>>
         where R: TypeRelation<'a,'tcx>
     {
         debug!("{}.mts({:?}, {:?})",
@@ -101,7 +100,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::mt<'tcx> {
                a,
                b);
         if a.mutbl != b.mutbl {
-            Err(ty::terr_mutability)
+            Err(TypeError::Mutability)
         } else {
             let mutbl = a.mutbl;
             let variance = match mutbl {
@@ -109,7 +108,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::mt<'tcx> {
                 ast::MutMutable => ty::Invariant,
             };
             let ty = try!(relation.relate_with_variance(variance, &a.ty, &b.ty));
-            Ok(ty::mt {ty: ty, mutbl: mutbl})
+            Ok(ty::TypeAndMut {ty: ty, mutbl: mutbl})
         }
     }
 }
@@ -186,7 +185,7 @@ fn relate_type_params<'a,'tcx:'a,R>(relation: &mut R,
     where R: TypeRelation<'a,'tcx>
 {
     if a_tys.len() != b_tys.len() {
-        return Err(ty::terr_ty_param_size(expected_found(relation,
+        return Err(TypeError::TyParamSize(expected_found(relation,
                                                          &a_tys.len(),
                                                          &b_tys.len())));
     }
@@ -256,7 +255,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::FnSig<'tcx> {
         where R: TypeRelation<'a,'tcx>
     {
         if a.variadic != b.variadic {
-            return Err(ty::terr_variadic_mismatch(
+            return Err(TypeError::VariadicMismatch(
                 expected_found(relation, &a.variadic, &b.variadic)));
         }
 
@@ -270,7 +269,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::FnSig<'tcx> {
             (ty::FnDiverging, ty::FnDiverging) =>
                 Ok(ty::FnDiverging),
             (a, b) =>
-                Err(ty::terr_convergence_mismatch(
+                Err(TypeError::ConvergenceMismatch(
                     expected_found(relation, &(a != ty::FnDiverging), &(b != ty::FnDiverging)))),
         });
 
@@ -287,7 +286,7 @@ fn relate_arg_vecs<'a,'tcx:'a,R>(relation: &mut R,
     where R: TypeRelation<'a,'tcx>
 {
     if a_args.len() != b_args.len() {
-        return Err(ty::terr_arg_count);
+        return Err(TypeError::ArgCount);
     }
 
     a_args.iter().zip(b_args)
@@ -303,7 +302,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ast::Unsafety {
         where R: TypeRelation<'a,'tcx>
     {
         if a != b {
-            Err(ty::terr_unsafety_mismatch(expected_found(relation, a, b)))
+            Err(TypeError::UnsafetyMismatch(expected_found(relation, a, b)))
         } else {
             Ok(*a)
         }
@@ -320,7 +319,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for abi::Abi {
         if a == b {
             Ok(*a)
         } else {
-            Err(ty::terr_abi_mismatch(expected_found(relation, a, b)))
+            Err(TypeError::AbiMismatch(expected_found(relation, a, b)))
         }
     }
 }
@@ -333,7 +332,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ProjectionTy<'tcx> {
         where R: TypeRelation<'a,'tcx>
     {
         if a.item_name != b.item_name {
-            Err(ty::terr_projection_name_mismatched(
+            Err(TypeError::ProjectionNameMismatched(
                 expected_found(relation, &a.item_name, &b.item_name)))
         } else {
             let trait_ref = try!(relation.relate(&a.trait_ref, &b.trait_ref));
@@ -368,7 +367,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for Vec<ty::PolyProjectionPredicate<'tcx>> {
         // so we can just iterate through the lists pairwise, so long as they are the
         // same length.
         if a.len() != b.len() {
-            Err(ty::terr_projection_bounds_length(expected_found(relation, &a.len(), &b.len())))
+            Err(TypeError::ProjectionBoundsLength(expected_found(relation, &a.len(), &b.len())))
         } else {
             a.iter().zip(b)
                 .map(|(a, b)| relation.relate(a, b))
@@ -384,12 +383,9 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ExistentialBounds<'tcx> {
                  -> RelateResult<'tcx, ty::ExistentialBounds<'tcx>>
         where R: TypeRelation<'a,'tcx>
     {
-        let will_change = relation.will_change(a.region_bound_will_change,
-                                               b.region_bound_will_change);
-
         let r =
             try!(relation.with_cause(
-                Cause::ExistentialRegionBound(will_change),
+                Cause::ExistentialRegionBound,
                 |relation| relation.relate_with_variance(ty::Contravariant,
                                                          &a.region_bound,
                                                          &b.region_bound)));
@@ -397,8 +393,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ExistentialBounds<'tcx> {
         let pb = try!(relation.relate(&a.projection_bounds, &b.projection_bounds));
         Ok(ty::ExistentialBounds { region_bound: r,
                                    builtin_bounds: nb,
-                                   projection_bounds: pb,
-                                   region_bound_will_change: will_change })
+                                   projection_bounds: pb })
     }
 }
 
@@ -412,7 +407,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::BuiltinBounds {
         // Two sets of builtin bounds are only relatable if they are
         // precisely the same (but see the coercion code).
         if a != b {
-            Err(ty::terr_builtin_bounds(expected_found(relation, a, b)))
+            Err(TypeError::BuiltinBoundsMismatch(expected_found(relation, a, b)))
         } else {
             Ok(*a)
         }
@@ -428,7 +423,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::TraitRef<'tcx> {
     {
         // Different traits cannot be related
         if a.def_id != b.def_id {
-            Err(ty::terr_traits(expected_found(relation, &a.def_id, &b.def_id)))
+            Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
         } else {
             let substs = try!(relate_item_substs(relation, a.def_id, a.substs, b.substs));
             Ok(ty::TraitRef { def_id: a.def_id, substs: relation.tcx().mk_substs(substs) })
@@ -511,15 +506,15 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             Ok(tcx.mk_struct(a_id, tcx.mk_substs(substs)))
         }
 
-        (&ty::TyClosure(a_id, a_substs),
-         &ty::TyClosure(b_id, b_substs))
+        (&ty::TyClosure(a_id, ref a_substs),
+         &ty::TyClosure(b_id, ref b_substs))
             if a_id == b_id =>
         {
             // All TyClosure types with the same id represent
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
-            let substs = try!(relate_substs(relation, None, a_substs, b_substs));
-            Ok(tcx.mk_closure(a_id, tcx.mk_substs(substs)))
+            let substs = try!(relation.relate(a_substs, b_substs));
+            Ok(tcx.mk_closure_from_closure_substs(a_id, substs))
         }
 
         (&ty::TyBox(a_inner), &ty::TyBox(b_inner)) =>
@@ -547,7 +542,7 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             if sz_a == sz_b {
                 Ok(tcx.mk_array(t, sz_a))
             } else {
-                Err(ty::terr_fixed_array_size(expected_found(relation, &sz_a, &sz_b)))
+                Err(TypeError::FixedArraySize(expected_found(relation, &sz_a, &sz_b)))
             }
         }
 
@@ -565,10 +560,10 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
                                  .collect::<Result<_, _>>());
                 Ok(tcx.mk_tup(ts))
             } else if !(as_.is_empty() || bs.is_empty()) {
-                Err(ty::terr_tuple_size(
+                Err(TypeError::TupleSize(
                     expected_found(relation, &as_.len(), &bs.len())))
             } else {
-                Err(ty::terr_sorts(expected_found(relation, &a, &b)))
+                Err(TypeError::Sorts(expected_found(relation, &a, &b)))
             }
         }
 
@@ -587,8 +582,22 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
 
         _ =>
         {
-            Err(ty::terr_sorts(expected_found(relation, &a, &b)))
+            Err(TypeError::Sorts(expected_found(relation, &a, &b)))
         }
+    }
+}
+
+impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ClosureSubsts<'tcx> {
+    fn relate<R>(relation: &mut R,
+                 a: &ty::ClosureSubsts<'tcx>,
+                 b: &ty::ClosureSubsts<'tcx>)
+                 -> RelateResult<'tcx, ty::ClosureSubsts<'tcx>>
+        where R: TypeRelation<'a,'tcx>
+    {
+        let func_substs = try!(relate_substs(relation, None, a.func_substs, b.func_substs));
+        let upvar_tys = try!(relation.relate_zip(&a.upvar_tys, &b.upvar_tys));
+        Ok(ty::ClosureSubsts { func_substs: relation.tcx().mk_substs(func_substs),
+                               upvar_tys: upvar_tys })
     }
 }
 
@@ -652,7 +661,7 @@ impl<'a,'tcx:'a,T> Relate<'a,'tcx> for Box<T>
 pub fn expected_found<'a,'tcx:'a,R,T>(relation: &mut R,
                                       a: &T,
                                       b: &T)
-                                      -> ty::expected_found<T>
+                                      -> ty::ExpectedFound<T>
     where R: TypeRelation<'a,'tcx>, T: Clone
 {
     expected_found_bool(relation.a_is_expected(), a, b)
@@ -661,14 +670,14 @@ pub fn expected_found<'a,'tcx:'a,R,T>(relation: &mut R,
 pub fn expected_found_bool<T>(a_is_expected: bool,
                               a: &T,
                               b: &T)
-                              -> ty::expected_found<T>
+                              -> ty::ExpectedFound<T>
     where T: Clone
 {
     let a = a.clone();
     let b = b.clone();
     if a_is_expected {
-        ty::expected_found {expected: a, found: b}
+        ty::ExpectedFound {expected: a, found: b}
     } else {
-        ty::expected_found {expected: b, found: a}
+        ty::ExpectedFound {expected: b, found: a}
     }
 }

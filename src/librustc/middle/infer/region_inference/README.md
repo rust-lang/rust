@@ -121,7 +121,7 @@ every expression, block, and pattern (patterns are considered to
 "execute" by testing the value they are applied to and creating any
 relevant bindings).  So, for example:
 
-    fn foo(x: int, y: int) { // -+
+    fn foo(x: isize, y: isize) { // -+
     //  +------------+       //  |
     //  |      +-----+       //  |
     //  |  +-+ +-+ +-+       //  |
@@ -168,13 +168,13 @@ an error.
 Here is a more involved example (which is safe) so we can see what's
 going on:
 
-    struct Foo { f: uint, g: uint }
+    struct Foo { f: usize, g: usize }
     ...
-    fn add(p: &mut uint, v: uint) {
+    fn add(p: &mut usize, v: usize) {
         *p += v;
     }
     ...
-    fn inc(p: &mut uint) -> uint {
+    fn inc(p: &mut usize) -> usize {
         *p += 1; *p
     }
     fn weird() {
@@ -199,8 +199,8 @@ in a call expression:
 
     'a: {
         'a_arg1: let a_temp1: ... = add;
-        'a_arg2: let a_temp2: &'a mut uint = &'a mut (*x).f;
-        'a_arg3: let a_temp3: uint = {
+        'a_arg2: let a_temp2: &'a mut usize = &'a mut (*x).f;
+        'a_arg3: let a_temp3: usize = {
             let b_temp1: ... = inc;
             let b_temp2: &'b = &'b mut (*x).f;
             'b_call: b_temp1(b_temp2)
@@ -225,13 +225,13 @@ it will not be *dereferenced* during the evaluation of the second
 argument, it can still be *invalidated* by that evaluation. Consider
 this similar but unsound example:
 
-    struct Foo { f: uint, g: uint }
+    struct Foo { f: usize, g: usize }
     ...
-    fn add(p: &mut uint, v: uint) {
+    fn add(p: &mut usize, v: usize) {
         *p += v;
     }
     ...
-    fn consume(x: Box<Foo>) -> uint {
+    fn consume(x: Box<Foo>) -> usize {
         x.f + x.g
     }
     fn weird() {

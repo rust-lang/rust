@@ -378,7 +378,7 @@ impl UserIdentifiedItem {
     fn reconstructed_input(&self) -> String {
         match *self {
             ItemViaNode(node_id) => node_id.to_string(),
-            ItemViaPath(ref parts) => parts.connect("::"),
+            ItemViaPath(ref parts) => parts.join("::"),
         }
     }
 

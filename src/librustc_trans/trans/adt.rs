@@ -41,8 +41,6 @@
 //!   used unboxed and any field can have pointers (including mutable)
 //!   taken to it, implementing them for Rust seems difficult.
 
-#![allow(unsigned_negation)]
-
 pub use self::Repr::*;
 
 use std::rc::Rc;
@@ -50,7 +48,6 @@ use std::rc::Rc;
 use llvm::{ValueRef, True, IntEQ, IntNE};
 use back::abi::FAT_PTR_ADDR;
 use middle::subst;
-use middle::infer;
 use middle::ty::{self, Ty};
 use middle::ty::Disr;
 use syntax::ast;
@@ -223,11 +220,8 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             Univariant(mk_struct(cx, &ftys[..], packed, t), dtor_to_init_u8(dtor))
         }
-        ty::TyClosure(def_id, substs) => {
-            let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
-            let upvars = infcx.closure_upvars(def_id, substs).unwrap();
-            let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
-            Univariant(mk_struct(cx, &upvar_types[..], false, t), 0)
+        ty::TyClosure(_, ref substs) => {
+            Univariant(mk_struct(cx, &substs.upvar_tys, false, t), 0)
         }
         ty::TyEnum(def_id, substs) => {
             let cases = get_cases(cx.tcx(), def_id, substs);
@@ -398,7 +392,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
                                     mut path: DiscrField) -> Option<DiscrField> {
     match ty.sty {
         // Fat &T/&mut T/Box<T> i.e. T is [T], str, or Trait
-        ty::TyRef(_, ty::mt { ty, .. }) | ty::TyBox(ty) if !type_is_sized(tcx, ty) => {
+        ty::TyRef(_, ty::TypeAndMut { ty, .. }) | ty::TyBox(ty) if !type_is_sized(tcx, ty) => {
             path.push(FAT_PTR_ADDR);
             Some(path)
         },
@@ -415,7 +409,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
             assert_eq!(nonzero_fields.len(), 1);
             let nonzero_field = tcx.lookup_field_type(did, nonzero_fields[0].id, substs);
             match nonzero_field.sty {
-                ty::TyRawPtr(ty::mt { ty, .. }) if !type_is_sized(tcx, ty) => {
+                ty::TyRawPtr(ty::TypeAndMut { ty, .. }) if !type_is_sized(tcx, ty) => {
                     path.push_all(&[0, FAT_PTR_ADDR]);
                     Some(path)
                 },
@@ -443,12 +437,8 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         // Perhaps one of the upvars of this struct is non-zero
         // Let's recurse and find out!
-        ty::TyClosure(def_id, substs) => {
-            let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
-            let upvars = infcx.closure_upvars(def_id, substs).unwrap();
-            let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
-
-            for (j, &ty) in upvar_types.iter().enumerate() {
+        ty::TyClosure(_, ref substs) => {
+            for (j, &ty) in substs.upvar_tys.iter().enumerate() {
                 if let Some(mut fpath) = find_discr_field_candidate(tcx, ty, path.clone()) {
                     fpath.push(j);
                     return Some(fpath);

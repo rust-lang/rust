@@ -92,7 +92,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
                                     .chain(arch_clobbers.iter()
                                                .map(|s| s.to_string()))
                                     .collect::<Vec<String>>()
-                                    .connect(",");
+                                    .join(",");
 
     debug!("Asm Constraints: {}", &all_constraints[..]);
 

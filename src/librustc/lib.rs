@@ -56,6 +56,7 @@
 #![feature(slice_splits)]
 #![feature(slice_patterns)]
 #![feature(slice_position_elem)]
+#![feature(slice_concat_ext)]
 #![feature(staged_api)]
 #![feature(str_char)]
 #![feature(str_match_indices)]
@@ -99,14 +100,8 @@ pub mod diagnostics;
 
 pub mod back {
     pub use rustc_back::abi;
-    pub use rustc_back::arm;
-    pub use rustc_back::mips;
-    pub use rustc_back::mipsel;
     pub use rustc_back::rpath;
     pub use rustc_back::svh;
-    pub use rustc_back::target_strs;
-    pub use rustc_back::x86;
-    pub use rustc_back::x86_64;
 }
 
 pub mod ast_map;

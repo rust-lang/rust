@@ -469,16 +469,19 @@ mod tests {
     use char::from_u32;
 
     #[test]
-    fn test_ascii() {
-        assert!("banana".chars().all(|c| c.is_ascii()));
-        assert!(!"ประเทศไทย中华Việt Nam".chars().all(|c| c.is_ascii()));
-    }
+    fn test_is_ascii() {
+        assert!(b"".is_ascii());
+        assert!(b"banana\0\x7F".is_ascii());
+        assert!(b"banana\0\x7F".iter().all(|b| b.is_ascii()));
+        assert!(!b"Vi\xe1\xbb\x87t Nam".is_ascii());
+        assert!(!b"Vi\xe1\xbb\x87t Nam".iter().all(|b| b.is_ascii()));
+        assert!(!b"\xe1\xbb\x87".iter().any(|b| b.is_ascii()));
 
-    #[test]
-    fn test_ascii_vec() {
         assert!("".is_ascii());
-        assert!("a".is_ascii());
-        assert!(!"\u{2009}".is_ascii());
+        assert!("banana\0\u{7F}".is_ascii());
+        assert!("banana\0\u{7F}".chars().all(|c| c.is_ascii()));
+        assert!(!"ประเทศไทย中华Việt Nam".chars().all(|c| c.is_ascii()));
+        assert!(!"ประเทศไทย中华ệ ".chars().any(|c| c.is_ascii()));
     }
 
     #[test]
@@ -535,6 +538,55 @@ mod tests {
             assert_eq!((from_u32(i).unwrap()).to_string().into_ascii_lowercase(),
                        (from_u32(lower).unwrap()).to_string());
         }
+    }
+
+    #[test]
+    fn test_make_ascii_lower_case() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                {
+                    let mut x = $from;
+                    x.make_ascii_lowercase();
+                    assert_eq!(x, $to);
+                }
+            }
+        }
+        test!(b'A', b'a');
+        test!(b'a', b'a');
+        test!(b'!', b'!');
+        test!('A', 'a');
+        test!('À', 'À');
+        test!('a', 'a');
+        test!('!', '!');
+        test!(b"H\xc3\x89".to_vec(), b"h\xc3\x89");
+        test!("HİKß".to_string(), "hİKß");
+    }
+
+
+    #[test]
+    fn test_make_ascii_upper_case() {
+        macro_rules! test {
+            ($from: expr, $to: expr) => {
+                {
+                    let mut x = $from;
+                    x.make_ascii_uppercase();
+                    assert_eq!(x, $to);
+                }
+            }
+        }
+        test!(b'a', b'A');
+        test!(b'A', b'A');
+        test!(b'!', b'!');
+        test!('a', 'A');
+        test!('à', 'à');
+        test!('A', 'A');
+        test!('!', '!');
+        test!(b"h\xc3\xa9".to_vec(), b"H\xc3\xa9");
+        test!("hıKß".to_string(), "HıKß");
+
+        let mut x = "Hello".to_string();
+        x[..3].make_ascii_uppercase();  // Test IndexMut on String.
+        assert_eq!(x, "HELlo")
     }
 
     #[test]

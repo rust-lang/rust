@@ -43,7 +43,7 @@ use super::type_variable::{RelationDir, BiTo, EqTo, SubtypeOf, SupertypeOf};
 
 use middle::ty::{TyVar};
 use middle::ty::{IntType, UintType};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TypeError};
 use middle::ty_fold;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use middle::ty_relate::{self, Relate, RelateResult, TypeRelation};
@@ -108,7 +108,7 @@ pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,
         // All other cases of inference are errors
         (&ty::TyInfer(_), _) |
         (_, &ty::TyInfer(_)) => {
-            Err(ty::terr_sorts(ty_relate::expected_found(relation, &a, &b)))
+            Err(TypeError::Sorts(ty_relate::expected_found(relation, &a, &b)))
         }
 
 
@@ -278,7 +278,7 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
         };
         let u = ty.fold_with(&mut generalize);
         if generalize.cycle_detected {
-            Err(ty::terr_cyclic_ty)
+            Err(TypeError::CyclicTy)
         } else {
             Ok(u)
         }
@@ -363,12 +363,12 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
 
 pub trait RelateResultCompare<'tcx, T> {
     fn compare<F>(&self, t: T, f: F) -> RelateResult<'tcx, T> where
-        F: FnOnce() -> ty::type_err<'tcx>;
+        F: FnOnce() -> ty::TypeError<'tcx>;
 }
 
 impl<'tcx, T:Clone + PartialEq> RelateResultCompare<'tcx, T> for RelateResult<'tcx, T> {
     fn compare<F>(&self, t: T, f: F) -> RelateResult<'tcx, T> where
-        F: FnOnce() -> ty::type_err<'tcx>,
+        F: FnOnce() -> ty::TypeError<'tcx>,
     {
         self.clone().and_then(|s| {
             if s == t {
@@ -381,16 +381,16 @@ impl<'tcx, T:Clone + PartialEq> RelateResultCompare<'tcx, T> for RelateResult<'t
 }
 
 fn int_unification_error<'tcx>(a_is_expected: bool, v: (ty::IntVarValue, ty::IntVarValue))
-                               -> ty::type_err<'tcx>
+                               -> ty::TypeError<'tcx>
 {
     let (a, b) = v;
-    ty::terr_int_mismatch(ty_relate::expected_found_bool(a_is_expected, &a, &b))
+    TypeError::IntMismatch(ty_relate::expected_found_bool(a_is_expected, &a, &b))
 }
 
 fn float_unification_error<'tcx>(a_is_expected: bool,
                                  v: (ast::FloatTy, ast::FloatTy))
-                                 -> ty::type_err<'tcx>
+                                 -> ty::TypeError<'tcx>
 {
     let (a, b) = v;
-    ty::terr_float_mismatch(ty_relate::expected_found_bool(a_is_expected, &a, &b))
+    TypeError::FloatMismatch(ty_relate::expected_found_bool(a_is_expected, &a, &b))
 }

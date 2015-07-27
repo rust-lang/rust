@@ -583,22 +583,22 @@ fn test_concat() {
     assert_eq!(d, [1, 2, 3]);
 
     let v: &[&[_]] = &[&[1], &[2, 3]];
-    assert_eq!(v.connect(&0), [1, 0, 2, 3]);
+    assert_eq!(v.join(&0), [1, 0, 2, 3]);
     let v: &[&[_]] = &[&[1], &[2], &[3]];
-    assert_eq!(v.connect(&0), [1, 0, 2, 0, 3]);
+    assert_eq!(v.join(&0), [1, 0, 2, 0, 3]);
 }
 
 #[test]
-fn test_connect() {
+fn test_join() {
     let v: [Vec<i32>; 0] = [];
-    assert_eq!(v.connect(&0), []);
-    assert_eq!([vec![1], vec![2, 3]].connect(&0), [1, 0, 2, 3]);
-    assert_eq!([vec![1], vec![2], vec![3]].connect(&0), [1, 0, 2, 0, 3]);
+    assert_eq!(v.join(&0), []);
+    assert_eq!([vec![1], vec![2, 3]].join(&0), [1, 0, 2, 3]);
+    assert_eq!([vec![1], vec![2], vec![3]].join(&0), [1, 0, 2, 0, 3]);
 
     let v: [&[_]; 2] = [&[1], &[2, 3]];
-    assert_eq!(v.connect(&0), [1, 0, 2, 3]);
+    assert_eq!(v.join(&0), [1, 0, 2, 3]);
     let v: [&[_]; 3] = [&[1], &[2], &[3]];
-    assert_eq!(v.connect(&0), [1, 0, 2, 0, 3]);
+    assert_eq!(v.join(&0), [1, 0, 2, 0, 3]);
 }
 
 #[test]
@@ -1316,11 +1316,11 @@ mod bench {
     }
 
     #[bench]
-    fn connect(b: &mut Bencher) {
+    fn join(b: &mut Bencher) {
         let xss: Vec<Vec<i32>> =
             (0..100).map(|i| (0..i).collect()).collect();
         b.iter(|| {
-            xss.connect(&0)
+            xss.join(&0)
         });
     }
 

@@ -23,7 +23,7 @@ use super::{RegionVariableOrigin, SubregionOrigin, TypeTrace, MiscVariable};
 use rustc_data_structures::graph::{self, Direction, NodeIndex};
 use middle::free_region::FreeRegionMap;
 use middle::region;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TypeError};
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReInfer, ReFree, ReEarlyBound};
 use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
@@ -132,7 +132,7 @@ pub enum RegionResolutionError<'tcx> {
     /// should put a lifetime. In those cases we process and put those errors
     /// into `ProcessedErrors` before we do any reporting.
     ProcessedErrors(Vec<RegionVariableOrigin>,
-                    Vec<(TypeTrace<'tcx>, ty::type_err<'tcx>)>,
+                    Vec<(TypeTrace<'tcx>, ty::TypeError<'tcx>)>,
                     Vec<SameRegions>),
 }
 
@@ -869,10 +869,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 // is the scope `s_id`.  Otherwise, as we do not know
                 // big the free region is precisely, the GLB is undefined.
                 let fr_scope = fr.scope.to_code_extent();
-                if self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id) == fr_scope {
+                if self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id) == fr_scope ||
+                        free_regions.is_static(fr) {
                     Ok(s)
                 } else {
-                    Err(ty::terr_regions_no_overlap(b, a))
+                    Err(TypeError::RegionsNoOverlap(b, a))
                 }
             }
 
@@ -891,7 +892,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 if a == b {
                     Ok(a)
                 } else {
-                    Err(ty::terr_regions_no_overlap(b, a))
+                    Err(TypeError::RegionsNoOverlap(b, a))
                 }
             }
         }
@@ -948,7 +949,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         } else if r_id == scope_b {
             Ok(ReScope(scope_a))
         } else {
-            Err(ty::terr_regions_no_overlap(region_a, region_b))
+            Err(TypeError::RegionsNoOverlap(region_a, region_b))
         }
     }
 }
@@ -1357,54 +1358,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             }
         }
 
-        // Check for future hostile edges tied to a bad default
-        self.report_future_hostility(&graph);
-
         (0..self.num_vars() as usize).map(|idx| var_data[idx].value).collect()
-    }
-
-    fn report_future_hostility(&self, graph: &RegionGraph) {
-        let constraints = self.constraints.borrow();
-        for edge in graph.all_edges() {
-            match constraints[&edge.data] {
-                SubregionOrigin::DefaultExistentialBound(_) => {
-                    // this will become 'static in the future
-                }
-                _ => { continue; }
-            }
-
-            // this constraint will become a 'static constraint in the
-            // future, so walk outward and see if we have any hard
-            // bounds that could not be inferred to 'static
-            for nid in graph.depth_traverse(edge.target()) {
-                for (_, succ) in graph.outgoing_edges(nid) {
-                    match succ.data {
-                        ConstrainVarSubReg(_, r) => {
-                            match r {
-                                ty::ReStatic | ty::ReInfer(_) => {
-                                    /* OK */
-                                }
-                                ty::ReFree(_) | ty::ReScope(_) | ty::ReEmpty => {
-                                    span_warn!(
-                                        self.tcx.sess,
-                                        constraints[&edge.data].span(),
-                                        E0398,
-                                        "this code may fail to compile in Rust 1.3 due to \
-                                         the proposed change in object lifetime bound defaults");
-                                    return; // only issue the warning once per fn
-                                }
-                                ty::ReEarlyBound(..) | ty::ReLateBound(..) => {
-                                    self.tcx.sess.span_bug(
-                                        constraints[&succ.data].span(),
-                                        "relation to bound region");
-                                }
-                            }
-                        }
-                        _ => { }
-                    }
-                }
-            }
-        }
     }
 
     fn construct_graph(&self) -> RegionGraph {

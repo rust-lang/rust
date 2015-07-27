@@ -705,8 +705,19 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             ol,
                             moved_lp_msg,
                             pat_ty));
-                self.tcx.sess.fileline_help(span,
-                    "use `ref` to override");
+                match self.tcx.sess.codemap().span_to_snippet(span) {
+                    Ok(string) => {
+                        self.tcx.sess.span_suggestion(
+                            span,
+                            &format!("if you would like to borrow the value instead, \
+                                      use a `ref` binding as shown:"),
+                            format!("ref {}", string));
+                    },
+                    Err(_) => {
+                        self.tcx.sess.fileline_help(span,
+                            "use `ref` to override");
+                    },
+                }
             }
 
             move_data::Captured => {

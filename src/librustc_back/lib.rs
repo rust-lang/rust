@@ -52,13 +52,7 @@ extern crate rustc_llvm;
 
 pub mod abi;
 pub mod tempdir;
-pub mod arm;
-pub mod mips;
-pub mod mipsel;
 pub mod rpath;
 pub mod sha2;
 pub mod svh;
-pub mod target_strs;
-pub mod x86;
-pub mod x86_64;
 pub mod target;

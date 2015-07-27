@@ -119,6 +119,7 @@ pub enum Node<'ast> {
     NodeStructCtor(&'ast StructDef),
 
     NodeLifetime(&'ast Lifetime),
+    NodeTyParam(&'ast TyParam)
 }
 
 /// Represents an entry and its parent NodeID.
@@ -142,6 +143,7 @@ enum MapEntry<'ast> {
     EntryBlock(NodeId, &'ast Block),
     EntryStructCtor(NodeId, &'ast StructDef),
     EntryLifetime(NodeId, &'ast Lifetime),
+    EntryTyParam(NodeId, &'ast TyParam),
 
     /// Roots for node trees.
     RootCrate,
@@ -175,7 +177,8 @@ impl<'ast> MapEntry<'ast> {
             NodePat(n) => EntryPat(p, n),
             NodeBlock(n) => EntryBlock(p, n),
             NodeStructCtor(n) => EntryStructCtor(p, n),
-            NodeLifetime(n) => EntryLifetime(p, n)
+            NodeLifetime(n) => EntryLifetime(p, n),
+            NodeTyParam(n) => EntryTyParam(p, n),
         }
     }
 
@@ -194,6 +197,7 @@ impl<'ast> MapEntry<'ast> {
             EntryBlock(id, _) => id,
             EntryStructCtor(id, _) => id,
             EntryLifetime(id, _) => id,
+            EntryTyParam(id, _) => id,
             _ => return None
         })
     }
@@ -213,6 +217,7 @@ impl<'ast> MapEntry<'ast> {
             EntryBlock(_, n) => NodeBlock(n),
             EntryStructCtor(_, n) => NodeStructCtor(n),
             EntryLifetime(_, n) => NodeLifetime(n),
+            EntryTyParam(_, n) => NodeTyParam(n),
             _ => return None
         })
     }
@@ -411,6 +416,13 @@ impl<'ast> Map<'ast> {
         }
     }
 
+    pub fn expect_trait_item(&self, id: NodeId) -> &'ast TraitItem {
+        match self.find(id) {
+            Some(NodeTraitItem(item)) => item,
+            _ => panic!("expected trait item, found {}", self.node_to_string(id))
+        }
+    }
+
     pub fn expect_struct(&self, id: NodeId) -> &'ast StructDef {
         match self.find(id) {
             Some(NodeItem(i)) => {
@@ -491,9 +503,8 @@ impl<'ast> Map<'ast> {
     {
         let parent = self.get_parent(id);
         let parent = match self.find_entry(id) {
-            Some(EntryForeignItem(..)) | Some(EntryVariant(..)) => {
-                // Anonymous extern items, enum variants and struct ctors
-                // go in the parent scope.
+            Some(EntryForeignItem(..)) => {
+                // Anonymous extern items go in the parent scope.
                 self.get_parent(parent)
             }
             // But tuple struct ctors don't have names, so use the path of its
@@ -567,6 +578,7 @@ impl<'ast> Map<'ast> {
             Some(NodePat(pat)) => pat.span,
             Some(NodeBlock(block)) => block.span,
             Some(NodeStructCtor(_)) => self.expect_item(self.get_parent(id)).span,
+            Some(NodeTyParam(ty_param)) => ty_param.span,
             _ => return None,
         };
         Some(sp)
@@ -809,6 +821,14 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         self.parent_node = parent_node;
     }
 
+    fn visit_generics(&mut self, generics: &'ast Generics) {
+        for ty_param in generics.ty_params.iter() {
+            self.insert(ty_param.id, NodeTyParam(ty_param));
+        }
+
+        visit::walk_generics(self, generics);
+    }
+
     fn visit_trait_item(&mut self, ti: &'ast TraitItem) {
         let parent_node = self.parent_node;
         self.parent_node = ti.id;
@@ -1009,7 +1029,7 @@ impl<'a> NodePrinter for pprust::State<'a> {
             NodePat(a)         => self.print_pat(&*a),
             NodeBlock(a)       => self.print_block(&*a),
             NodeLifetime(a)    => self.print_lifetime(&*a),
-
+            NodeTyParam(_)     => panic!("cannot print TyParam"),
             // these cases do not carry enough information in the
             // ast_map to reconstruct their full structure for pretty
             // printing.
@@ -1116,6 +1136,9 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         Some(NodeLifetime(ref l)) => {
             format!("lifetime {}{}",
                     pprust::lifetime_to_string(&**l), id_str)
+        }
+        Some(NodeTyParam(ref ty_param)) => {
+            format!("typaram {:?}{}", ty_param, id_str)
         }
         None => {
             format!("unknown node{}", id_str)

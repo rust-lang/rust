@@ -85,33 +85,6 @@
 //! value produced by the child thread, or `Err` of the value given to
 //! a call to `panic!` if the child panicked.
 //!
-//! ## Scoped threads
-//!
-//! The `spawn` method does not allow the child and parent threads to
-//! share any stack data, since that is not safe in general. However,
-//! `scoped` makes it possible to share the parent's stack by forcing
-//! a join before any relevant stack frames are popped:
-//!
-//! ```rust
-//! # #![feature(scoped)]
-//! use std::thread;
-//!
-//! let guard = thread::scoped(move || {
-//!     // some work here
-//! });
-//!
-//! // do some other work in the meantime
-//! let output = guard.join();
-//! ```
-//!
-//! The `scoped` function doesn't return a `Thread` directly; instead,
-//! it returns a *join guard*. The join guard is an RAII-style guard
-//! that will automatically join the child thread (block until it
-//! terminates) when it is dropped. You can join the child thread in
-//! advance by calling the `join` method on the guard, which will also
-//! return the result produced by the thread.  A handle to the thread
-//! itself is available via the `thread` method of the join guard.
-//!
 //! ## Configuring threads
 //!
 //! A new thread can be configured before it is spawned via the `Builder` type,
@@ -288,7 +261,7 @@ impl Builder {
     /// upon being dropped. Because the child thread may refer to data on the
     /// current thread's stack (hence the "scoped" name), it cannot be detached;
     /// it *must* be joined before the relevant stack frame is popped. See the
-    /// module documentation for additional details.
+    /// documentation on `thread::scoped` for additional details.
     ///
     /// # Errors
     ///
@@ -388,12 +361,30 @@ pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
 
 /// Spawns a new *scoped* thread, returning a `JoinGuard` for it.
 ///
-/// The join guard can be used to explicitly join the child thread (via
-/// `join`), returning `Result<T>`, or it will implicitly join the child
-/// upon being dropped. Because the child thread may refer to data on the
-/// current thread's stack (hence the "scoped" name), it cannot be detached;
-/// it *must* be joined before the relevant stack frame is popped. See the
-/// module documentation for additional details.
+/// The `spawn` method does not allow the child and parent threads to
+/// share any stack data, since that is not safe in general. However,
+/// `scoped` makes it possible to share the parent's stack by forcing
+/// a join before any relevant stack frames are popped:
+///
+/// ```rust
+/// # #![feature(scoped)]
+/// use std::thread;
+///
+/// let guard = thread::scoped(move || {
+///     // some work here
+/// });
+///
+/// // do some other work in the meantime
+/// let output = guard.join();
+/// ```
+///
+/// The `scoped` function doesn't return a `Thread` directly; instead, it
+/// returns a *join guard*. The join guard can be used to explicitly join
+/// the child thread (via `join`), returning `Result<T>`, or it will
+/// implicitly join the child upon being dropped. Because the child thread
+/// may refer to data on the current thread's stack (hence the "scoped"
+/// name), it cannot be detached; it *must* be joined before the relevant
+/// stack frame is popped.
 ///
 /// # Panics
 ///
@@ -434,9 +425,9 @@ pub fn panicking() -> bool {
 
 /// Invokes a closure, capturing the cause of panic if one occurs.
 ///
-/// This function will return `Ok(())` if the closure does not panic, and will
-/// return `Err(cause)` if the closure panics. The `cause` returned is the
-/// object with which panic was originally invoked.
+/// This function will return `Ok` with the closure's result if the closure
+/// does not panic, and will return `Err(cause)` if the closure panics. The
+/// `cause` returned is the object with which panic was originally invoked.
 ///
 /// It is currently undefined behavior to unwind from Rust code into foreign
 /// code, so this function is particularly useful when Rust is called from
@@ -508,9 +499,25 @@ pub fn sleep(dur: Duration) {
     imp::Thread::sleep(dur)
 }
 
-/// Blocks unless or until the current thread's token is made available (may wake spuriously).
+/// Blocks unless or until the current thread's token is made available.
 ///
-/// See the module doc for more detail.
+/// Every thread is equipped with some basic low-level blocking support, via
+/// the `park()` function and the [`unpark()`][unpark] method. These can be
+/// used as a more CPU-efficient implementation of a spinlock.
+///
+/// [unpark]: struct.Thread.html#method.unpark
+///
+/// The API is typically used by acquiring a handle to the current thread,
+/// placing that handle in a shared data structure so that other threads can
+/// find it, and then parking (in a loop with a check for the token actually
+/// being acquired).
+///
+/// A call to `park` does not guarantee that the thread will remain parked
+/// forever, and callers should be prepared for this possibility.
+///
+/// See the [module documentation][thread] for more detail.
+///
+/// [thread]: index.html
 //
 // The implementation currently uses the trivial strategy of a Mutex+Condvar
 // with wakeup flag, which does not actually allow spurious wakeups. In the

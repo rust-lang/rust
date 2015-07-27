@@ -105,6 +105,7 @@
             if (!$("#help").hasClass("hidden")) {
                 ev.preventDefault();
                 $("#help").addClass("hidden");
+                $("body").removeClass("blur");
             } else if (!$("#search").hasClass("hidden")) {
                 ev.preventDefault();
                 $("#search").addClass("hidden");
@@ -115,13 +116,14 @@
         case "s":
         case "S":
             ev.preventDefault();
-            $(".search-input").focus();
+            focusSearchBar();
             break;
 
         case "?":
             if (ev.shiftKey && $("#help").hasClass("hidden")) {
                 ev.preventDefault();
                 $("#help").removeClass("hidden");
+                $("body").addClass("blur");
             }
             break;
         }
@@ -130,8 +132,9 @@
     $(document).on("keypress", handleShortcut);
     $(document).on("keydown", handleShortcut);
     $(document).on("click", function(ev) {
-        if (!$(ev.target).closest("#help").length) {
+        if (!$(e.target).closest("#help > div").length) {
             $("#help").addClass("hidden");
+            $("body").removeClass("blur");
         }
     });
 
@@ -701,6 +704,9 @@
             // Push and pop states are used to add search results to the browser
             // history.
             if (browserSupportsHistoryApi()) {
+                // Store the previous <title> so we can revert back to it later.
+                var previousTitle = $(document).prop("title");
+
                 $(window).on('popstate', function(e) {
                     var params = getQueryStringParams();
                     // When browsing back from search results the main page
@@ -709,6 +715,9 @@
                         $('#main.content').removeClass('hidden');
                         $('#search.content').addClass('hidden');
                     }
+                    // Revert to the previous title manually since the History
+                    // API ignores the title parameter.
+                    $(document).prop("title", previousTitle);
                     // When browsing forward to search results the previous
                     // search will be repeated, so the currentResults are
                     // cleared to ensure the search is successful.
@@ -951,3 +960,8 @@
     }());
 
 }());
+
+// Sets the focus on the search bar at the top of the page
+function focusSearchBar() {
+    $('.search-input').focus();
+}

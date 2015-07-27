@@ -120,7 +120,8 @@ extern "C" void LLVMAddDereferenceableCallSiteAttr(LLVMValueRef Instr, unsigned 
                                                          idx, B)));
 }
 
-extern "C" void LLVMAddFunctionAttribute(LLVMValueRef Fn, unsigned index, uint64_t Val) {
+extern "C" void LLVMAddFunctionAttribute(LLVMValueRef Fn, unsigned index,
+                                         uint64_t Val) {
   Function *A = unwrap<Function>(Fn);
   AttrBuilder B;
   B.addRawValue(Val);
@@ -941,4 +942,19 @@ extern "C" void LLVMSetInlineAsmDiagnosticHandler(
 extern "C" void LLVMWriteSMDiagnosticToString(LLVMSMDiagnosticRef d, RustStringRef str) {
     raw_rust_string_ostream os(str);
     unwrap(d)->print("", os);
+}
+
+extern "C" LLVMValueRef
+LLVMRustBuildLandingPad(LLVMBuilderRef Builder,
+                        LLVMTypeRef Ty,
+                        LLVMValueRef PersFn,
+                        unsigned NumClauses,
+                        const char* Name,
+                        LLVMValueRef F) {
+#if LLVM_VERSION_MINOR >= 7
+    unwrap<Function>(F)->setPersonalityFn(unwrap<Constant>(PersFn));
+    return LLVMBuildLandingPad(Builder, Ty, NumClauses, Name);
+#else
+    return LLVMBuildLandingPad(Builder, Ty, PersFn, NumClauses, Name);
+#endif
 }

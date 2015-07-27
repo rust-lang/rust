@@ -438,9 +438,12 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     match (&source.ty.sty, &target.ty.sty) {
         (&ty::TyBox(a), &ty::TyBox(b)) |
-        (&ty::TyRef(_, ty::mt { ty: a, .. }), &ty::TyRef(_, ty::mt { ty: b, .. })) |
-        (&ty::TyRef(_, ty::mt { ty: a, .. }), &ty::TyRawPtr(ty::mt { ty: b, .. })) |
-        (&ty::TyRawPtr(ty::mt { ty: a, .. }), &ty::TyRawPtr(ty::mt { ty: b, .. })) => {
+        (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
+         &ty::TyRef(_, ty::TypeAndMut { ty: b, .. })) |
+        (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
+         &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
+        (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
+         &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
             let (inner_source, inner_target) = (a, b);
 
             let (base, old_info) = if !type_is_sized(bcx.tcx(), inner_source) {
@@ -705,7 +708,7 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                               base: &ast::Expr,
                               get_idx: F)
                               -> DatumBlock<'blk, 'tcx, Expr> where
-    F: FnOnce(&'blk ty::ctxt<'tcx>, &[ty::field<'tcx>]) -> usize,
+    F: FnOnce(&'blk ty::ctxt<'tcx>, &[ty::Field<'tcx>]) -> usize,
 {
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_rec_field");
@@ -1143,8 +1146,14 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 SaveIn(lldest) => closure::Dest::SaveIn(bcx, lldest),
                 Ignore => closure::Dest::Ignore(bcx.ccx())
             };
-            closure::trans_closure_expr(dest, decl, body, expr.id, bcx.fcx.param_substs)
-                .unwrap_or(bcx)
+            let substs = match expr_ty(bcx, expr).sty {
+                ty::TyClosure(_, ref substs) => substs,
+                ref t =>
+                    bcx.tcx().sess.span_bug(
+                        expr.span,
+                        &format!("closure expr without closure type: {:?}", t)),
+            };
+            closure::trans_closure_expr(dest, decl, body, expr.id, substs).unwrap_or(bcx)
         }
         ast::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {
@@ -1331,7 +1340,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
                                   node_id_opt: Option<ast::NodeId>,
                                   op: F)
                                   -> R where
-    F: FnOnce(ty::Disr, &[ty::field<'tcx>]) -> R,
+    F: FnOnce(ty::Disr, &[ty::Field<'tcx>]) -> R,
 {
     match ty.sty {
         ty::TyStruct(did, substs) => {
@@ -1342,9 +1351,9 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
 
         ty::TyTuple(ref v) => {
             let fields: Vec<_> = v.iter().enumerate().map(|(i, &f)| {
-                ty::field {
+                ty::Field {
                     name: token::intern(&i.to_string()),
-                    mt: ty::mt {
+                    mt: ty::TypeAndMut {
                         ty: f,
                         mutbl: ast::MutImmutable
                     }
@@ -1990,7 +1999,7 @@ pub fn cast_is_noop<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 
     match (t_in.builtin_deref(true), t_out.builtin_deref(true)) {
-        (Some(ty::mt{ ty: t_in, .. }), Some(ty::mt{ ty: t_out, .. })) => {
+        (Some(ty::TypeAndMut{ ty: t_in, .. }), Some(ty::TypeAndMut{ ty: t_out, .. })) => {
             t_in == t_out
         }
         _ => {
@@ -2271,8 +2280,8 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
 
-        ty::TyRawPtr(ty::mt { ty: content_ty, .. }) |
-        ty::TyRef(_, ty::mt { ty: content_ty, .. }) => {
+        ty::TyRawPtr(ty::TypeAndMut { ty: content_ty, .. }) |
+        ty::TyRef(_, ty::TypeAndMut { ty: content_ty, .. }) => {
             if type_is_sized(bcx.tcx(), content_ty) {
                 let ptr = datum.to_llscalarish(bcx);
 

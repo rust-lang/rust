@@ -50,14 +50,3 @@ fn qux() {
         i += 1;
     }
 }
-
-fn quy() {
-    let i = -23_usize; //~ WARNING negation of unsigned int literal may be unintentional
-                  //~^ WARNING unused variable
-}
-
-fn quz() {
-    let i = 23_usize;
-    let j = -i;   //~ WARNING negation of unsigned int variable may be unintentional
-                  //~^ WARNING unused variable
-}

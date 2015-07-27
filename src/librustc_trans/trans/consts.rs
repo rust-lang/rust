@@ -23,6 +23,8 @@ use middle::const_eval::{const_int_checked_div, const_uint_checked_div};
 use middle::const_eval::{const_int_checked_rem, const_uint_checked_rem};
 use middle::const_eval::{const_int_checked_shl, const_uint_checked_shl};
 use middle::const_eval::{const_int_checked_shr, const_uint_checked_shr};
+use middle::const_eval::EvalHint::ExprTypeChecked;
+use middle::const_eval::eval_const_expr_partial;
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
 use trans::common::*;
@@ -35,8 +37,9 @@ use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use util::nodemap::NodeMap;
 
+use std::ffi::{CStr, CString};
 use libc::c_uint;
-use syntax::{ast, ast_util};
+use syntax::{ast, ast_util, attr};
 use syntax::parse::token;
 use syntax::ptr::P;
 
@@ -591,7 +594,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         ast::ExprIndex(ref base, ref index) => {
             let (bv, bt) = const_expr(cx, &**base, param_substs, fn_args);
-            let iv = match const_eval::eval_const_expr_partial(cx.tcx(), &**index, None) {
+            let iv = match eval_const_expr_partial(cx.tcx(), &index, ExprTypeChecked) {
                 Ok(ConstVal::Int(i)) => i as u64,
                 Ok(ConstVal::Uint(u)) => u,
                 _ => cx.sess().span_bug(index.span,
@@ -620,7 +623,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             let len = unsafe { llvm::LLVMConstIntGetZExtValue(len) as u64 };
             let len = match bt.sty {
-                ty::TyBox(ty) | ty::TyRef(_, ty::mt{ty, ..}) => match ty.sty {
+                ty::TyBox(ty) | ty::TyRef(_, ty::TypeAndMut{ty, ..}) => match ty.sty {
                     ty::TyStr => {
                         assert!(len > 0);
                         len - 1
@@ -880,47 +883,85 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
         },
         ast::ExprClosure(_, ref decl, ref body) => {
-            closure::trans_closure_expr(closure::Dest::Ignore(cx),
-                                        decl,
-                                        body,
-                                        e.id,
-                                        param_substs);
+            match ety.sty {
+                ty::TyClosure(_, ref substs) => {
+                    closure::trans_closure_expr(closure::Dest::Ignore(cx), decl,
+                                                body, e.id, substs);
+                }
+                _ =>
+                    cx.sess().span_bug(
+                        e.span,
+                        &format!("bad type for closure expr: {:?}", ety))
+            }
             C_null(type_of::type_of(cx, ety))
         },
         _ => cx.sess().span_bug(e.span,
                                 "bad constant expression type in consts::const_expr"),
     }
 }
-
-pub fn trans_static(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) -> ValueRef {
+pub fn trans_static(ccx: &CrateContext,
+                    m: ast::Mutability,
+                    expr: &ast::Expr,
+                    id: ast::NodeId,
+                    attrs: &Vec<ast::Attribute>)
+                    -> ValueRef {
     unsafe {
         let _icx = push_ctxt("trans_static");
         let g = base::get_item_val(ccx, id);
-        // At this point, get_item_val has already translated the
-        // constant's initializer to determine its LLVM type.
-        let v = ccx.static_values().borrow().get(&id).unwrap().clone();
+
+        let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
+        let (v, _) = const_expr(ccx, expr, empty_substs, None);
+
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected
-        let v = if llvm::LLVMTypeOf(v) == Type::i1(ccx).to_ref() {
-            llvm::LLVMConstZExt(v, Type::i8(ccx).to_ref())
+        let mut val_llty = llvm::LLVMTypeOf(v);
+        let v = if val_llty == Type::i1(ccx).to_ref() {
+            val_llty = Type::i8(ccx).to_ref();
+            llvm::LLVMConstZExt(v, val_llty)
         } else {
             v
+        };
+
+        let ty = ccx.tcx().node_id_to_type(id);
+        let llty = type_of::type_of(ccx, ty);
+        let g = if val_llty == llty.to_ref() {
+            g
+        } else {
+            // If we created the global with the wrong type,
+            // correct the type.
+            let empty_string = CString::new("").unwrap();
+            let name_str_ref = CStr::from_ptr(llvm::LLVMGetValueName(g));
+            let name_string = CString::new(name_str_ref.to_bytes()).unwrap();
+            llvm::LLVMSetValueName(g, empty_string.as_ptr());
+            let new_g = llvm::LLVMGetOrInsertGlobal(
+                ccx.llmod(), name_string.as_ptr(), val_llty);
+            // To avoid breaking any invariants, we leave around the old
+            // global for the moment; we'll replace all references to it
+            // with the new global later. (See base::trans_crate.)
+            ccx.statics_to_rauw().borrow_mut().push((g, new_g));
+            new_g
         };
         llvm::LLVMSetInitializer(g, v);
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
         if m != ast::MutMutable {
-            let node_ty = ccx.tcx().node_id_to_type(id);
-            let tcontents = node_ty.type_contents(ccx.tcx());
+            let tcontents = ty.type_contents(ccx.tcx());
             if !tcontents.interior_unsafe() {
-                llvm::LLVMSetGlobalConstant(g, True);
+                llvm::LLVMSetGlobalConstant(g, llvm::True);
             }
         }
+
         debuginfo::create_global_var_metadata(ccx, id, g);
+
+        if attr::contains_name(attrs,
+                               "thread_local") {
+            llvm::set_thread_local(g, true);
+        }
         g
     }
 }
+
 
 fn get_static_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
                             ty: Ty<'tcx>) -> ValueRef {

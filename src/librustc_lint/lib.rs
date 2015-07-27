@@ -38,6 +38,7 @@
 #![feature(ref_slice)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
+#![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(str_char)]
 
@@ -134,4 +135,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_renamed("raw_pointer_deriving", "raw_pointer_derive");
 
     store.register_renamed("unknown_features", "unused_features");
+
+    store.register_removed("unsigned_negation", "replaced by negate_unsigned feature gate");
 }

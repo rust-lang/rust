@@ -42,8 +42,10 @@
 // gdb-check:type = f32
 // gdb-command:whatis f64
 // gdb-check:type = f64
+// gdb-command:whatis fnptr
+// gdb-check:type = [...] (*)([...])
 // gdb-command:info functions _yyy
-// gdb-check:[...]![...]_yyy([...])([...]);
+// gdb-check:[...]![...]_yyy([...]);
 // gdb-command:continue
 
 #![allow(unused_variables)]
@@ -65,6 +67,7 @@ fn main() {
     let u64: u64 = 64;
     let f32: f32 = 2.5;
     let f64: f64 = 3.5;
+    let fnptr : fn() = _zzz;
     _zzz(); // #break
     if 1 == 1 { _yyy(); }
 }

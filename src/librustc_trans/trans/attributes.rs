@@ -145,7 +145,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
     let function_type;
     let (fn_sig, abi, env_ty) = match fn_type.sty {
         ty::TyBareFn(_, ref f) => (&f.sig, f.abi, None),
-        ty::TyClosure(closure_did, substs) => {
+        ty::TyClosure(closure_did, ref substs) => {
             let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
             function_type = infcx.closure_type(closure_did, substs);
             let self_type = base::self_type_for_closure(ccx, closure_did, fn_type);
@@ -223,7 +223,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             // We can also mark the return value as `dereferenceable` in certain cases
             match ret_ty.sty {
                 // These are not really pointers but pairs, (pointer, len)
-                ty::TyRef(_, ty::mt { ty: inner, .. })
+                ty::TyRef(_, ty::TypeAndMut { ty: inner, .. })
                 | ty::TyBox(inner) if common::type_is_sized(ccx.tcx(), inner) => {
                     let llret_sz = machine::llsize_of_real(ccx, type_of::type_of(ccx, inner));
                     attrs.ret(llvm::DereferenceableAttribute(llret_sz));

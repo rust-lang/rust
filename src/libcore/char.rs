@@ -13,7 +13,6 @@
 //! For more details, see ::rustc_unicode::char (a.k.a. std::char)
 
 #![allow(non_snake_case)]
-#![doc(primitive = "char")]
 #![stable(feature = "core_char", since = "1.2.0")]
 
 use iter::Iterator;
@@ -85,8 +84,16 @@ pub fn from_u32(i: u32) -> Option<char> {
     if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
         None
     } else {
-        Some(unsafe { transmute(i) })
+        Some(unsafe { from_u32_unchecked(i) })
     }
+}
+
+/// Converts a `u32` to an `char`, not checking whether it is a valid unicode
+/// codepoint.
+#[inline]
+#[unstable(feature = "char_from_unchecked", reason = "recently added API")]
+pub unsafe fn from_u32_unchecked(i: u32) -> char {
+    transmute(i)
 }
 
 /// Converts a number to the character representing it.
@@ -116,12 +123,11 @@ pub fn from_digit(num: u32, radix: u32) -> Option<char> {
         panic!("from_digit: radix is too high (maximum 36)");
     }
     if num < radix {
-        unsafe {
-            if num < 10 {
-                Some(transmute('0' as u32 + num))
-            } else {
-                Some(transmute('a' as u32 + num - 10))
-            }
+        let num = num as u8;
+        if num < 10 {
+            Some((b'0' + num) as char)
+        } else {
+            Some((b'a' + num - 10) as char)
         }
     } else {
         None
@@ -319,16 +325,13 @@ impl Iterator for EscapeUnicode {
                 Some('{')
             }
             EscapeUnicodeState::Value(offset) => {
-                let v = match ((self.c as i32) >> (offset * 4)) & 0xf {
-                    i @ 0 ... 9 => '0' as i32 + i,
-                    i => 'a' as i32 + (i - 10)
-                };
+                let c = from_digit(((self.c as u32) >> (offset * 4)) & 0xf, 16).unwrap();
                 if offset == 0 {
                     self.state = EscapeUnicodeState::RightBrace;
                 } else {
                     self.state = EscapeUnicodeState::Value(offset - 1);
                 }
-                Some(unsafe { transmute(v) })
+                Some(c)
             }
             EscapeUnicodeState::RightBrace => {
                 self.state = EscapeUnicodeState::Done;

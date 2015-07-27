@@ -133,8 +133,8 @@ Documentation improvements are very welcome. The source of `doc.rust-lang.org`
 is located in `src/doc` in the tree, and standard API documentation is generated
 from the source code itself.
 
-Documentation pull requests function in the same as other pull requests, though
-you may see a slightly different form of `r+`:
+Documentation pull requests function in the same way as other pull requests,
+though you may see a slightly different form of `r+`:
 
     @bors: r+ 38fe8d2 rollup
 

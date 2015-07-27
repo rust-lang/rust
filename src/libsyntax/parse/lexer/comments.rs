@@ -139,7 +139,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         let lines = vertical_trim(lines);
         let lines = horizontal_trim(lines);
 
-        return lines.connect("\n");
+        return lines.join("\n");
     }
 
     panic!("not a doc-comment: {}", comment);

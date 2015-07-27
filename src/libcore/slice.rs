@@ -13,7 +13,6 @@
 //! For more details `std::slice`.
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "slice")]
 
 // How this module is organized.
 //

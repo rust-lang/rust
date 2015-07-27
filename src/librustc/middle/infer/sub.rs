@@ -45,14 +45,6 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
         r
     }
 
-    fn will_change(&mut self, a: bool, b: bool) -> bool {
-        // if we have (Foo+'a) <: (Foo+'b), this requires that 'a:'b.
-        // So if 'a becomes 'static, no additional errors can occur.
-        // OTOH, if 'a stays the same, but 'b becomes 'static, we
-        // could have a problem.
-        !a && b
-    }
-
     fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
                                                variance: ty::Variance,
                                                a: &T,
@@ -106,12 +98,10 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
     fn regions(&mut self, a: ty::Region, b: ty::Region) -> RelateResult<'tcx, ty::Region> {
         debug!("{}.regions({:?}, {:?}) self.cause={:?}",
                self.tag(), a, b, self.fields.cause);
-        let origin = match self.fields.cause {
-            Some(Cause::ExistentialRegionBound(true)) =>
-                SubregionOrigin::DefaultExistentialBound(self.fields.trace.clone()),
-            _ =>
-                SubregionOrigin::Subtype(self.fields.trace.clone()),
-        };
+        // FIXME -- we have more fine-grained information available
+        // from the "cause" field, we could perhaps give more tailored
+        // error messages.
+        let origin = SubregionOrigin::Subtype(self.fields.trace.clone());
         self.fields.infcx.region_vars.make_subregion(origin, a, b);
         Ok(a)
     }

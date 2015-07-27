@@ -42,9 +42,10 @@
 
 use super::FnCtxt;
 
+use check::demand;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
-use middle::ty::{self};
+use middle::ty::{self, Ty};
 use middle::infer::{InferCtxt, UpvarRegion};
 use std::collections::HashSet;
 use syntax::ast;
@@ -92,22 +93,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'tcx> {
         visit::walk_expr(self, expr);
     }
 
-    fn visit_fn(&mut self,
-                fn_kind: visit::FnKind<'v>,
-                decl: &'v ast::FnDecl,
-                block: &'v ast::Block,
-                span: Span,
-                _id: ast::NodeId)
-    {
-        match fn_kind {
-            visit::FkItemFn(..) | visit::FkMethod(..) => {
-                // ignore nested fn items
-            }
-            visit::FkFnBlock => {
-                visit::walk_fn(self, fn_kind, decl, block, span);
-            }
-        }
-    }
+    // Skip all items; they aren't in the same context.
+    fn visit_item(&mut self, _: &'v ast::Item) { }
 }
 
 impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
@@ -178,55 +165,55 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         AdjustBorrowKind { fcx: fcx, closures_with_inferred_kinds: closures_with_inferred_kinds }
     }
 
-    fn analyze_closure(&mut self, id: ast::NodeId, decl: &ast::FnDecl, body: &ast::Block) {
+    fn analyze_closure(&mut self,
+                       id: ast::NodeId,
+                       span: Span,
+                       decl: &ast::FnDecl,
+                       body: &ast::Block) {
         /*!
          * Analysis starting point.
          */
 
-        self.visit_block(body);
+        debug!("analyze_closure(id={:?}, body.id={:?})", id, body.id);
 
-        debug!("analyzing closure `{}` with fn body id `{}`", id, body.id);
+        {
+            let mut euv = euv::ExprUseVisitor::new(self, self.fcx.infcx());
+            euv.walk_fn(decl, body);
+        }
 
-        let mut euv = euv::ExprUseVisitor::new(self, self.fcx.infcx());
-        euv.walk_fn(decl, body);
+        // Now that we've analyzed the closure, we know how each
+        // variable is borrowed, and we know what traits the closure
+        // implements (Fn vs FnMut etc). We now have some updates to do
+        // with that information.
+        //
+        // Note that no closure type C may have an upvar of type C
+        // (though it may reference itself via a trait object). This
+        // results from the desugaring of closures to a struct like
+        // `Foo<..., UV0...UVn>`. If one of those upvars referenced
+        // C, then the type would have infinite size (and the
+        // inference algorithm will reject it).
 
-        // If we had not yet settled on a closure kind for this closure,
-        // then we should have by now. Process and remove any deferred resolutions.
-        //
-        // Interesting fact: all calls to this closure must come
-        // *after* its definition.  Initially, I thought that some
-        // kind of fixed-point iteration would be required, due to the
-        // possibility of twisted examples like this one:
-        //
-        // ```rust
-        // let mut closure0 = None;
-        // let vec = vec!(1, 2, 3);
-        //
-        // loop {
-        //     {
-        //         let closure1 = || {
-        //             match closure0.take() {
-        //                 Some(c) => {
-        //                     return c(); // (*) call to `closure0` before it is defined
-        //                 }
-        //                 None => { }
-        //             }
-        //         };
-        //         closure1();
-        //     }
-        //
-        //     closure0 = || vec;
-        // }
-        // ```
-        //
-        // However, this turns out to be wrong. Examples like this
-        // fail to compile because the type of the variable `c` above
-        // is an inference variable.  And in fact since closure types
-        // cannot be written, there is no way to make this example
-        // work without a boxed closure. This implies that we can't
-        // have two closures that recursively call one another without
-        // some form of boxing (and hence explicit writing of a
-        // closure kind) involved. Huzzah. -nmatsakis
+        // Extract the type variables UV0...UVn.
+        let closure_substs = match self.fcx.node_ty(id).sty {
+            ty::TyClosure(_, ref substs) => substs,
+            ref t => {
+                self.fcx.tcx().sess.span_bug(
+                    span,
+                    &format!("type of closure expr {:?} is not a closure {:?}",
+                             id, t));
+            }
+        };
+
+        // Equate the type variables with the actual types.
+        let final_upvar_tys = self.final_upvar_tys(id);
+        debug!("analyze_closure: id={:?} closure_substs={:?} final_upvar_tys={:?}",
+               id, closure_substs, final_upvar_tys);
+        for (&upvar_ty, final_upvar_ty) in closure_substs.upvar_tys.iter().zip(final_upvar_tys) {
+            demand::eqtype(self.fcx, span, final_upvar_ty, upvar_ty);
+        }
+
+        // Now we must process and remove any deferred resolutions,
+        // since we have a concrete closure kind.
         let closure_def_id = ast_util::local_def(id);
         if self.closures_with_inferred_kinds.contains(&id) {
             let mut deferred_call_resolutions =
@@ -235,6 +222,42 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                 deferred_call_resolution.resolve(self.fcx);
             }
         }
+    }
+
+    // Returns a list of `ClosureUpvar`s for each upvar.
+    fn final_upvar_tys(&mut self, closure_id: ast::NodeId) -> Vec<Ty<'tcx>> {
+        // Presently an unboxed closure type cannot "escape" out of a
+        // function, so we will only encounter ones that originated in the
+        // local crate or were inlined into it along with some function.
+        // This may change if abstract return types of some sort are
+        // implemented.
+        let tcx = self.fcx.tcx();
+        tcx.with_freevars(closure_id, |freevars| {
+            freevars.iter()
+                    .map(|freevar| {
+                        let freevar_def_id = freevar.def.def_id();
+                        let freevar_ty = self.fcx.node_ty(freevar_def_id.node);
+                        let upvar_id = ty::UpvarId {
+                            var_id: freevar_def_id.node,
+                            closure_expr_id: closure_id
+                        };
+                        let capture = self.fcx.infcx().upvar_capture(upvar_id).unwrap();
+
+                        debug!("freevar_def_id={:?} freevar_ty={:?} capture={:?}",
+                               freevar_def_id, freevar_ty, capture);
+
+                        match capture {
+                            ty::UpvarCapture::ByValue => freevar_ty,
+                            ty::UpvarCapture::ByRef(borrow) =>
+                                tcx.mk_ref(tcx.mk_region(borrow.region),
+                                           ty::TypeAndMut {
+                                               ty: freevar_ty,
+                                               mutbl: borrow.kind.to_mutbl_lossy(),
+                                           }),
+                        }
+                    })
+                    .collect()
+            })
     }
 
     fn adjust_upvar_borrow_kind_for_consume(&self,
@@ -268,10 +291,8 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                         // to move out of an upvar, this must be a FnOnce closure
                         self.adjust_closure_kind(upvar_id.closure_expr_id, ty::FnOnceClosureKind);
 
-                        let upvar_capture_map = &mut self.fcx
-                                                         .inh
-                                                         .tables.borrow_mut()
-                                                         .upvar_capture_map;
+                        let upvar_capture_map =
+                            &mut self.fcx.inh.tables.borrow_mut().upvar_capture_map;
                         upvar_capture_map.insert(upvar_id, ty::UpvarCapture::ByValue);
                     }
                     mc::NoteClosureEnv(upvar_id) => {
@@ -480,16 +501,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'tcx> {
                 span: Span,
                 id: ast::NodeId)
     {
-        match fn_kind {
-            visit::FkItemFn(..) | visit::FkMethod(..) => {
-                // ignore nested fn items
-            }
-            visit::FkFnBlock => {
-                self.analyze_closure(id, decl, body);
-                visit::walk_fn(self, fn_kind, decl, body, span);
-            }
-        }
+        visit::walk_fn(self, fn_kind, decl, body, span);
+        self.analyze_closure(id, span, decl, body);
     }
+
+    // Skip all items; they aren't in the same context.
+    fn visit_item(&mut self, _: &'v ast::Item) { }
 }
 
 impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {

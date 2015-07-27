@@ -591,6 +591,12 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
     syntax_expanders.insert(intern("cfg"),
                             builtin_normal_expander(
                                     ext::cfg::expand_cfg));
+    syntax_expanders.insert(intern("push_unsafe"),
+                            builtin_normal_expander(
+                                ext::pushpop_safe::expand_push_unsafe));
+    syntax_expanders.insert(intern("pop_unsafe"),
+                            builtin_normal_expander(
+                                ext::pushpop_safe::expand_pop_unsafe));
     syntax_expanders.insert(intern("trace_macros"),
                             builtin_normal_expander(
                                     ext::trace_macros::expand_trace_macros));

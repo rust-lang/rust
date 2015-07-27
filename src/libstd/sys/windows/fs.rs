@@ -319,6 +319,8 @@ impl File {
 
     pub fn handle(&self) -> &Handle { &self.handle }
 
+    pub fn into_handle(self) -> Handle { self.handle }
+
     fn reparse_point<'a>(&self,
                          space: &'a mut [u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE])
                          -> io::Result<(libc::DWORD, &'a c::REPARSE_DATA_BUFFER)> {
@@ -357,8 +359,6 @@ impl File {
             Ok(PathBuf::from(OsString::from_wide(subst)))
         }
     }
-
-    pub fn into_handle(self) -> Handle { self.handle }
 }
 
 impl FromInner<libc::HANDLE> for File {
@@ -369,10 +369,13 @@ impl FromInner<libc::HANDLE> for File {
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // FIXME(#24570): add more info here (e.g. path, mode)
-        f.debug_struct("File")
-            .field("handle", &self.handle.raw())
-            .finish()
+        // FIXME(#24570): add more info here (e.g. mode)
+        let mut b = f.debug_struct("File");
+        b.field("handle", &self.handle.raw());
+        if let Ok(path) = get_path(&self) {
+            b.field("path", &path);
+        }
+        b.finish()
     }
 }
 
@@ -582,17 +585,20 @@ pub fn utimes(p: &Path, atime: u64, mtime: u64) -> io::Result<()> {
     Ok(())
 }
 
-pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
-
-    let mut opts = OpenOptions::new();
-    opts.read(true);
-    let f = try!(File::open(p, &opts));
+fn get_path(f: &File) -> io::Result<PathBuf> {
     super::fill_utf16_buf(|buf, sz| unsafe {
         c::GetFinalPathNameByHandleW(f.handle.raw(), buf, sz,
                                      libc::VOLUME_NAME_DOS)
     }, |buf| {
         PathBuf::from(OsString::from_wide(buf))
     })
+}
+
+pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
+    let mut opts = OpenOptions::new();
+    opts.read(true);
+    let f = try!(File::open(p, &opts));
+    get_path(&f)
 }
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {

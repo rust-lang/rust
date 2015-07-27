@@ -26,6 +26,7 @@ use ParentLink::{self, ModuleParentLink, BlockParentLink};
 use Resolver;
 use resolve_imports::Shadowable;
 use TypeNsDef;
+use {resolve_error, ResolutionError};
 
 use self::DuplicateCheckingMode::*;
 use self::NamespaceError::*;
@@ -208,10 +209,13 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     // Return an error here by looking up the namespace that
                     // had the duplicate.
                     let ns = ns.unwrap();
-                    self.resolve_error(sp,
-                        &format!("duplicate definition of {} `{}`",
-                             namespace_error_to_string(duplicate_type),
-                             token::get_name(name)));
+                    resolve_error(
+                        self,
+                        sp,
+                        ResolutionError::DuplicateDefinition(
+                            namespace_error_to_string(duplicate_type),
+                            name)
+                    );
                     {
                         let r = child.span_for_namespace(ns);
                         if let Some(sp) = r {
@@ -304,8 +308,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                             full_path.segments.last().unwrap().identifier.name;
                         if &token::get_name(source_name)[..] == "mod" ||
                            &token::get_name(source_name)[..] == "self" {
-                            self.resolve_error(view_path.span,
-                                "`self` imports are only allowed within a { } list");
+                            resolve_error(self,
+                                            view_path.span,
+                                            ResolutionError::SelfImportsOnlyAllowedWithin
+                            );
                         }
 
                         let subclass = SingleImport(binding.name,
@@ -325,8 +331,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                             _ => None
                         }).collect::<Vec<Span>>();
                         if mod_spans.len() > 1 {
-                            self.resolve_error(mod_spans[0],
-                                "`self` import can only appear once in the list");
+                            resolve_error(
+                                self,
+                                mod_spans[0],
+                                ResolutionError::SelfImportCanOnlyAppearOnceInTheList
+                            );
                             for other_span in mod_spans.iter().skip(1) {
                                 self.session.span_note(*other_span,
                                     "another `self` import appears here");
@@ -341,9 +350,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                     let name = match module_path.last() {
                                         Some(name) => *name,
                                         None => {
-                                            self.resolve_error(source_item.span,
-                                                "`self` import can only appear in an import list \
-                                                 with a non-empty prefix");
+                                            resolve_error(
+                                                self,
+                                                source_item.span,
+                                                ResolutionError::
+                                                SelfImportOnlyInImportListWithNonEmptyPrefix
+                                            );
                                             continue;
                                         }
                                     };

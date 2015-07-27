@@ -16,6 +16,7 @@ use std::fs;
 use back::archive;
 use session::Session;
 use session::config;
+use session::config::DebugInfoLevel::{NoDebugInfo, LimitedDebugInfo, FullDebugInfo};
 
 /// Linker abstraction used by back::link to build up the command to invoke a
 /// linker.
@@ -39,6 +40,7 @@ pub trait Linker {
     fn gc_sections(&mut self, is_dylib: bool);
     fn position_independent_executable(&mut self);
     fn optimize(&mut self);
+    fn debuginfo(&mut self);
     fn no_default_libraries(&mut self);
     fn build_dylib(&mut self, out_filename: &Path);
     fn args(&mut self, args: &[String]);
@@ -141,6 +143,10 @@ impl<'a> Linker for GnuLinker<'a> {
            self.sess.opts.optimize == config::Aggressive {
             self.cmd.arg("-Wl,-O1");
         }
+    }
+
+    fn debuginfo(&mut self) {
+        // Don't do anything special here for GNU-style linkers.
     }
 
     fn no_default_libraries(&mut self) {
@@ -265,6 +271,21 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn optimize(&mut self) {
         // Needs more investigation of `/OPT` arguments
     }
+
+    fn debuginfo(&mut self) {
+        match self.sess.opts.debuginfo {
+            NoDebugInfo => {
+                // Do nothing if debuginfo is disabled
+            },
+            LimitedDebugInfo |
+            FullDebugInfo    => {
+                // This will cause the Microsoft linker to generate a PDB file
+                // from the CodeView line tables in the object files.
+                self.cmd.arg("/DEBUG");
+            }
+        }
+    }
+
     fn whole_archives(&mut self) {
         // hints not supported?
     }

@@ -12,7 +12,6 @@
 //!
 //! For more details, see std::str
 
-#![doc(primitive = "str")]
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use self::pattern::Pattern;
@@ -636,10 +635,10 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        #[doc="Created with the method `.split()`."]
+        /// Created with the method `.split()`.
         struct Split;
     reverse:
-        #[doc="Created with the method `.rsplit()`."]
+        /// Created with the method `.rsplit()`.
         struct RSplit;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -650,10 +649,10 @@ generate_pattern_iterators! {
 
 generate_pattern_iterators! {
     forward:
-        #[doc="Created with the method `.split_terminator()`."]
+        /// Created with the method `.split_terminator()`.
         struct SplitTerminator;
     reverse:
-        #[doc="Created with the method `.rsplit_terminator()`."]
+        /// Created with the method `.rsplit_terminator()`.
         struct RSplitTerminator;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -696,10 +695,10 @@ impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        #[doc="Created with the method `.splitn()`."]
+        /// Created with the method `.splitn()`.
         struct SplitN;
     reverse:
-        #[doc="Created with the method `.rsplitn()`."]
+        /// Created with the method `.rsplitn()`.
         struct RSplitN;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -730,10 +729,10 @@ impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        #[doc="Created with the method `.match_indices()`."]
+        /// Created with the method `.match_indices()`.
         struct MatchIndices;
     reverse:
-        #[doc="Created with the method `.rmatch_indices()`."]
+        /// Created with the method `.rmatch_indices()`.
         struct RMatchIndices;
     stability:
         #[unstable(feature = "str_match_indices",
@@ -771,10 +770,10 @@ impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        #[doc="Created with the method `.matches()`."]
+        /// Created with the method `.matches()`.
         struct Matches;
     reverse:
-        #[doc="Created with the method `.rmatches()`."]
+        /// Created with the method `.rmatches()`.
         struct RMatches;
     stability:
         #[stable(feature = "str_matches", since = "1.2.0")]
@@ -872,12 +871,12 @@ impl<'a> DoubleEndedIterator for LinesAny<'a> {
 Section: Comparing strings
 */
 
-// share the implementation of the lang-item vs. non-lang-item
-// eq_slice.
+/// Bytewise slice equality
 /// NOTE: This function is (ab)used in rustc::middle::trans::_match
 /// to compare &[u8] byte slices that are not necessarily valid UTF-8.
+#[lang = "str_eq"]
 #[inline]
-fn eq_slice_(a: &str, b: &str) -> bool {
+fn eq_slice(a: &str, b: &str) -> bool {
     // NOTE: In theory n should be libc::size_t and not usize, but libc is not available here
     #[allow(improper_ctypes)]
     extern { fn memcmp(s1: *const i8, s2: *const i8, n: usize) -> i32; }
@@ -886,15 +885,6 @@ fn eq_slice_(a: &str, b: &str) -> bool {
                b.as_ptr() as *const i8,
                a.len()) == 0
     }
-}
-
-/// Bytewise slice equality
-/// NOTE: This function is (ab)used in rustc::middle::trans::_match
-/// to compare &[u8] byte slices that are not necessarily valid UTF-8.
-#[lang = "str_eq"]
-#[inline]
-fn eq_slice(a: &str, b: &str) -> bool {
-    eq_slice_(a, b)
 }
 
 /*
@@ -1116,6 +1106,23 @@ mod traits {
         }
     }
 
+    /// Returns a mutable slice of the given string from the byte range
+    /// [`begin`..`end`).
+    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
+    impl ops::IndexMut<ops::Range<usize>> for str {
+        #[inline]
+        fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
+            // is_char_boundary checks that the index is in [0, .len()]
+            if index.start <= index.end &&
+               self.is_char_boundary(index.start) &&
+               self.is_char_boundary(index.end) {
+                unsafe { self.slice_mut_unchecked(index.start, index.end) }
+            } else {
+                super::slice_error_fail(self, index.start, index.end)
+            }
+        }
+    }
+
     /// Returns a slice of the string from the beginning to byte
     /// `end`.
     ///
@@ -1132,6 +1139,21 @@ mod traits {
             // is_char_boundary checks that the index is in [0, .len()]
             if self.is_char_boundary(index.end) {
                 unsafe { self.slice_unchecked(0, index.end) }
+            } else {
+                super::slice_error_fail(self, 0, index.end)
+            }
+        }
+    }
+
+    /// Returns a mutable slice of the string from the beginning to byte
+    /// `end`.
+    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
+    impl ops::IndexMut<ops::RangeTo<usize>> for str {
+        #[inline]
+        fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
+            // is_char_boundary checks that the index is in [0, .len()]
+            if self.is_char_boundary(index.end) {
+                unsafe { self.slice_mut_unchecked(0, index.end) }
             } else {
                 super::slice_error_fail(self, 0, index.end)
             }
@@ -1159,12 +1181,35 @@ mod traits {
         }
     }
 
+    /// Returns a slice of the string from `begin` to its end.
+    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
+    impl ops::IndexMut<ops::RangeFrom<usize>> for str {
+        #[inline]
+        fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
+            // is_char_boundary checks that the index is in [0, .len()]
+            if self.is_char_boundary(index.start) {
+                let len = self.len();
+                unsafe { self.slice_mut_unchecked(index.start, len) }
+            } else {
+                super::slice_error_fail(self, index.start, self.len())
+            }
+        }
+    }
+
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeFull> for str {
         type Output = str;
 
         #[inline]
         fn index(&self, _index: ops::RangeFull) -> &str {
+            self
+        }
+    }
+
+    #[stable(feature = "derefmut_for_string", since = "1.2.0")]
+    impl ops::IndexMut<ops::RangeFull> for str {
+        #[inline]
+        fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
             self
         }
     }
@@ -1204,6 +1249,7 @@ pub trait StrExt {
     fn char_len(&self) -> usize;
     fn slice_chars<'a>(&'a self, begin: usize, end: usize) -> &'a str;
     unsafe fn slice_unchecked<'a>(&'a self, begin: usize, end: usize) -> &'a str;
+    unsafe fn slice_mut_unchecked<'a>(&'a mut self, begin: usize, end: usize) -> &'a mut str;
     fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;
     fn ends_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool
         where P::Searcher: ReverseSearcher<'a>;
@@ -1223,6 +1269,7 @@ pub trait StrExt {
         where P::Searcher: ReverseSearcher<'a>;
     fn find_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
     fn split_at(&self, mid: usize) -> (&str, &str);
+    fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str);
     fn slice_shift_char<'a>(&'a self) -> Option<(char, &'a str)>;
     fn subslice_offset(&self, inner: &str) -> usize;
     fn as_ptr(&self) -> *const u8;
@@ -1380,6 +1427,14 @@ impl StrExt for str {
     }
 
     #[inline]
+    unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
+        mem::transmute(Slice {
+            data: self.as_ptr().offset(begin as isize),
+            len: end - begin,
+        })
+    }
+
+    #[inline]
     fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
         pat.is_prefix_of(self)
     }
@@ -1521,6 +1576,20 @@ impl StrExt for str {
             unsafe {
                 (self.slice_unchecked(0, mid),
                  self.slice_unchecked(mid, self.len()))
+            }
+        } else {
+            slice_error_fail(self, 0, mid)
+        }
+    }
+
+    fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
+        // is_char_boundary checks that the index is in [0, .len()]
+        if self.is_char_boundary(mid) {
+            let len = self.len();
+            unsafe {
+                let self2: &mut str = mem::transmute_copy(&self);
+                (self.slice_mut_unchecked(0, mid),
+                 self2.slice_mut_unchecked(mid, len))
             }
         } else {
             slice_error_fail(self, 0, mid)

@@ -67,8 +67,6 @@ mod windows_msvc_base;
 /// Every field here must be specified, and has no default value.
 #[derive(Clone, Debug)]
 pub struct Target {
-    /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
-    pub data_layout: String,
     /// Target triple to pass to LLVM.
     pub llvm_target: String,
     /// String to use as the `target_endian` `cfg` variable.
@@ -92,6 +90,8 @@ pub struct Target {
 /// these try to take "minimal defaults" that don't assume anything about the runtime they run in.
 #[derive(Clone, Debug)]
 pub struct TargetOptions {
+    /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
+    pub data_layout: String,
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,
     /// Archive utility to use when managing archives. Defaults to "ar".
@@ -178,6 +178,7 @@ impl Default for TargetOptions {
     /// incomplete, and if used for compilation, will certainly not work.
     fn default() -> TargetOptions {
         TargetOptions {
+            data_layout: String::new(),
             linker: "cc".to_string(),
             ar: "ar".to_string(),
             pre_link_args: Vec::new(),
@@ -245,7 +246,6 @@ impl Target {
         };
 
         let mut base = Target {
-            data_layout: get_req_field("data-layout"),
             llvm_target: get_req_field("llvm-target"),
             target_endian: get_req_field("target-endian"),
             target_pointer_width: get_req_field("target-pointer-width"),
@@ -289,6 +289,7 @@ impl Target {
         key!(staticlib_prefix);
         key!(staticlib_suffix);
         key!(features);
+        key!(data_layout);
         key!(dynamic_linking, bool);
         key!(executables, bool);
         key!(morestack, bool);

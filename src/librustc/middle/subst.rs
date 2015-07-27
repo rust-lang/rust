@@ -154,7 +154,7 @@ impl<'tcx> Substs<'tcx> {
 }
 
 impl RegionSubsts {
-    fn map<F>(self, op: F) -> RegionSubsts where
+    pub fn map<F>(self, op: F) -> RegionSubsts where
         F: FnOnce(VecPerParamSpace<ty::Region>) -> VecPerParamSpace<ty::Region>,
     {
         match self {

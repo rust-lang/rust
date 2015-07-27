@@ -11,8 +11,10 @@
 pub use self::RelationDir::*;
 use self::TypeVariableValue::*;
 use self::UndoEntry::*;
-
 use middle::ty::{self, Ty};
+use syntax::ast::DefId;
+use syntax::codemap::Span;
+
 use std::cmp::min;
 use std::marker::PhantomData;
 use std::mem;
@@ -30,16 +32,30 @@ struct TypeVariableData<'tcx> {
 
 enum TypeVariableValue<'tcx> {
     Known(Ty<'tcx>),
-    Bounded(Vec<Relation>),
+    Bounded {
+        relations: Vec<Relation>,
+        default: Option<Default<'tcx>>
+    }
+}
+
+// We will use this to store the required information to recapitulate what happened when
+// an error occurs.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Default<'tcx> {
+    pub ty: Ty<'tcx>,
+    /// The span where the default was incurred
+    pub origin_span: Span,
+    /// The definition that the default originates from
+    pub def_id: DefId
 }
 
 pub struct Snapshot {
     snapshot: sv::Snapshot
 }
 
-enum UndoEntry {
+enum UndoEntry<'tcx> {
     // The type of the var was specified.
-    SpecifyVar(ty::TyVid, Vec<Relation>),
+    SpecifyVar(ty::TyVid, Vec<Relation>, Option<Default<'tcx>>),
     Relate(ty::TyVid, ty::TyVid),
 }
 
@@ -72,6 +88,13 @@ impl<'tcx> TypeVariableTable<'tcx> {
         relations(self.values.get_mut(a.index as usize))
     }
 
+    pub fn default(&self, vid: ty::TyVid) -> Option<Default<'tcx>> {
+        match &self.values.get(vid.index as usize).value {
+            &Known(_) => None,
+            &Bounded { ref default, .. } => default.clone()
+        }
+    }
+
     pub fn var_diverges<'a>(&'a self, vid: ty::TyVid) -> bool {
         self.values.get(vid.index as usize).diverging
     }
@@ -101,8 +124,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
             mem::replace(value_ptr, Known(ty))
         };
 
-        let relations = match old_value {
-            Bounded(b) => b,
+        let (relations, default) = match old_value {
+            Bounded { relations, default } => (relations, default),
             Known(_) => panic!("Asked to instantiate variable that is \
                                already instantiated")
         };
@@ -111,12 +134,14 @@ impl<'tcx> TypeVariableTable<'tcx> {
             stack.push((ty, dir, vid));
         }
 
-        self.values.record(SpecifyVar(vid, relations));
+        self.values.record(SpecifyVar(vid, relations, default));
     }
 
-    pub fn new_var(&mut self, diverging: bool) -> ty::TyVid {
+    pub fn new_var(&mut self,
+                   diverging: bool,
+                   default: Option<Default<'tcx>>) -> ty::TyVid {
         let index = self.values.push(TypeVariableData {
-            value: Bounded(vec![]),
+            value: Bounded { relations: vec![], default: default },
             diverging: diverging
         });
         ty::TyVid { index: index as u32 }
@@ -124,7 +149,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
     pub fn probe(&self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
         match self.values.get(vid.index as usize).value {
-            Bounded(..) => None,
+            Bounded { .. } => None,
             Known(t) => Some(t)
         }
     }
@@ -179,7 +204,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                     debug!("NewElem({}) new_elem_threshold={}", index, new_elem_threshold);
                 }
 
-                sv::UndoLog::Other(SpecifyVar(vid, _)) => {
+                sv::UndoLog::Other(SpecifyVar(vid, _, _)) => {
                     if vid.index < new_elem_threshold {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.
@@ -195,16 +220,30 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
         escaping_types
     }
+
+    pub fn unsolved_variables(&self) -> Vec<ty::TyVid> {
+        self.values
+            .iter()
+            .enumerate()
+            .filter_map(|(i, value)| match &value.value {
+                &TypeVariableValue::Known(_) => None,
+                &TypeVariableValue::Bounded { .. } => Some(ty::TyVid { index: i as u32 })
+            })
+            .collect()
+    }
 }
 
 impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
     type Value = TypeVariableData<'tcx>;
-    type Undo = UndoEntry;
+    type Undo = UndoEntry<'tcx>;
 
-    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: UndoEntry) {
+    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: UndoEntry<'tcx>) {
         match action {
-            SpecifyVar(vid, relations) => {
-                values[vid.index as usize].value = Bounded(relations);
+            SpecifyVar(vid, relations, default) => {
+                values[vid.index as usize].value = Bounded {
+                    relations: relations,
+                    default: default
+                };
             }
 
             Relate(a, b) => {
@@ -218,6 +257,6 @@ impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
 fn relations<'a>(v: &'a mut TypeVariableData) -> &'a mut Vec<Relation> {
     match v.value {
         Known(_) => panic!("var_sub_var: variable is known"),
-        Bounded(ref mut relations) => relations
+        Bounded { ref mut relations, .. } => relations
     }
 }

@@ -525,7 +525,7 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
         assert_eq!(next(st), ':');
         let len = parse_hex(st);
         assert_eq!(next(st), '#');
-        let key = ty::creader_cache_key {cnum: st.krate,
+        let key = ty::CReaderCacheKey {cnum: st.krate,
                                          pos: pos,
                                          len: len };
 
@@ -564,8 +564,13 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
           assert_eq!(next(st), '[');
           let did = parse_def_(st, ClosureSource, conv);
           let substs = parse_substs_(st, conv);
+          let mut tys = vec![];
+          while peek(st) != '.' {
+              tys.push(parse_ty_(st, conv));
+          }
+          assert_eq!(next(st), '.');
           assert_eq!(next(st), ']');
-          return st.tcx.mk_closure(did, st.tcx.mk_substs(substs));
+          return st.tcx.mk_closure(did, st.tcx.mk_substs(substs), tys);
       }
       'P' => {
           assert_eq!(next(st), '[');
@@ -587,11 +592,11 @@ fn parse_mutability(st: &mut PState) -> ast::Mutability {
     }
 }
 
-fn parse_mt_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> ty::mt<'tcx> where
+fn parse_mt_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> ty::TypeAndMut<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     let m = parse_mutability(st);
-    ty::mt { ty: parse_ty_(st, conv), mutbl: m }
+    ty::TypeAndMut { ty: parse_ty_(st, conv), mutbl: m }
 }
 
 fn parse_def_<F>(st: &mut PState, source: DefIdSource, conv: &mut F) -> ast::DefId where
@@ -828,6 +833,7 @@ fn parse_type_param_def_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
     assert_eq!(next(st), '|');
     let index = parse_u32(st);
     assert_eq!(next(st), '|');
+    let default_def_id = parse_def_(st, NominalType, conv);
     let default = parse_opt(st, |st| parse_ty_(st, conv));
     let object_lifetime_default = parse_object_lifetime_default(st, conv);
 
@@ -836,6 +842,7 @@ fn parse_type_param_def_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
         def_id: def_id,
         space: space,
         index: index,
+        default_def_id: default_def_id,
         default: default,
         object_lifetime_default: object_lifetime_default,
     }
@@ -887,16 +894,9 @@ fn parse_existential_bounds_<'a,'tcx, F>(st: &mut PState<'a,'tcx>,
         }
     }
 
-    let region_bound_will_change = match next(st) {
-        'y' => true,
-        'n' => false,
-        c => panic!("parse_ty: expected y/n not '{}'", c)
-    };
-
     return ty::ExistentialBounds { region_bound: region_bound,
                                    builtin_bounds: builtin_bounds,
-                                   projection_bounds: projection_bounds,
-                                   region_bound_will_change: region_bound_will_change };
+                                   projection_bounds: projection_bounds };
 }
 
 fn parse_builtin_bounds<F>(st: &mut PState, mut _conv: F) -> ty::BuiltinBounds where

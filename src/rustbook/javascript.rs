@@ -57,11 +57,13 @@ document.addEventListener("DOMContentLoaded", function(event) {
       if (i > 0) {
         var prevNode = toc[i-1].cloneNode(true);
         prevNode.className = 'left';
+        prevNode.setAttribute('rel', 'prev');
         nav.appendChild(prevNode);
       }
       if (i < toc.length - 1) {
         var nextNode = toc[i+1].cloneNode(true);
         nextNode.className = 'right';
+        nextNode.setAttribute('rel', 'next');
         nav.appendChild(nextNode);
       }
       document.getElementById('page').appendChild(nav);

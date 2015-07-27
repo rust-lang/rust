@@ -169,24 +169,6 @@ match string {
 ```
 "##,
 
-E0030: r##"
-When matching against a range, the compiler verifies that the range is
-non-empty.  Range patterns include both end-points, so this is equivalent to
-requiring the start of the range to be less than or equal to the end of the
-range.
-
-For example:
-
-```
-match 5u32 {
-    // This range is ok, albeit pointless.
-    1 ... 1 => ...
-    // This range is empty, and the compiler can tell.
-    1000 ... 5 => ...
-}
-```
-"##,
-
 E0033: r##"
 This error indicates that a pointer to a trait type cannot be implicitly
 dereferenced by a pattern. Every trait defines a type, but because the
@@ -1334,6 +1316,45 @@ fn main() {
 ```
 "##,
 
+E0120: r##"
+An attempt was made to implement Drop on a trait, which is not allowed: only
+structs and enums can implement Drop. An example causing this error:
+
+```
+trait MyTrait {}
+
+impl Drop for MyTrait {
+    fn drop(&mut self) {}
+}
+```
+
+A workaround for this problem is to wrap the trait up in a struct, and implement
+Drop on that. An example is shown below:
+
+```
+trait MyTrait {}
+struct MyWrapper<T: MyTrait> { foo: T }
+
+impl <T: MyTrait> Drop for MyWrapper<T> {
+    fn drop(&mut self) {}
+}
+
+```
+
+Alternatively, wrapping trait objects requires something like the following:
+
+```
+trait MyTrait {}
+
+//or Box<MyTrait>, if you wanted an owned trait object
+struct MyWrapper<'a> { foo: &'a MyTrait }
+
+impl <'a> Drop for MyWrapper<'a> {
+    fn drop(&mut self) {}
+}
+```
+"##,
+
 E0121: r##"
 In order to be consistent with Rust's lack of global type inference, type
 placeholders are disallowed by design in item signatures.
@@ -1474,6 +1495,33 @@ fn foo() -> ! { return; } // error
 For a function that diverges, every control path in the function must never
 return, for example with a `loop` that never breaks or a call to another
 diverging function (such as `panic!()`).
+"##,
+
+E0172: r##"
+This error means that an attempt was made to specify the type of a variable with
+a combination of a concrete type and a trait. Consider the following example:
+
+```
+fn foo(bar: i32+std::fmt::Display) {}
+```
+
+The code is trying to specify that we want to receive a signed 32-bit integer
+which also implements `Display`. This doesn't make sense: when we pass `i32`, a
+concrete type, it implicitly includes all of the traits that it implements.
+This includes `Display`, `Debug`, `Clone`, and a host of others.
+
+If `i32` implements the trait we desire, there's no need to specify the trait
+separately. If it does not, then we need to `impl` the trait for `i32` before
+passing it into `foo`. Either way, a fixed definition for `foo` will look like
+the following:
+
+```
+fn foo(bar: i32) {}
+```
+
+To learn more about traits, take a look at the Book:
+
+https://doc.rust-lang.org/book/traits.html
 "##,
 
 E0178: r##"
@@ -1689,7 +1737,8 @@ unsafe impl Bar for Foo { }
 "##,
 
 E0201: r##"
-It is an error to define an associated function more than once.
+It is an error to define two associated items (like methods, associated types,
+associated functions, etc.) with the same identifier.
 
 For example:
 
@@ -1698,20 +1747,24 @@ struct Foo(u8);
 
 impl Foo {
     fn bar(&self) -> bool { self.0 > 5 }
-
-    // error: duplicate associated function
-    fn bar() {}
+    fn bar() {} // error: duplicate associated function
 }
 
 trait Baz {
+    type Quux;
     fn baz(&self) -> bool;
 }
 
 impl Baz for Foo {
+    type Quux = u32;
+
     fn baz(&self) -> bool { true }
 
     // error: duplicate method
     fn baz(&self) -> bool { self.0 > 5 }
+
+    // error: duplicate associated type
+    type Quux = u32;
 }
 ```
 "##,
@@ -1878,6 +1931,62 @@ trait Trait {
 }
 
 type Foo = Trait<Bar=i32>; // ok!
+```
+"##,
+
+E0223: r##"
+An attempt was made to retrieve an associated type, but the type was ambiguous.
+For example:
+
+```
+trait MyTrait {type X; }
+
+fn main() {
+    let foo: MyTrait::X;
+}
+```
+
+The problem here is that we're attempting to take the type of X from MyTrait.
+Unfortunately, the type of X is not defined, because it's only made concrete in
+implementations of the trait. A working version of this code might look like:
+
+```
+trait MyTrait {type X; }
+struct MyStruct;
+
+impl MyTrait for MyStruct {
+    type X = u32;
+}
+
+fn main() {
+    let foo: <MyStruct as MyTrait>::X;
+}
+```
+
+This syntax specifies that we want the X type from MyTrait, as made concrete in
+MyStruct. The reason that we cannot simply use `MyStruct::X` is that MyStruct
+might implement two different traits with identically-named associated types.
+This syntax allows disambiguation between the two.
+"##,
+
+E0225: r##"
+You attempted to use multiple types as bounds for a closure or trait object.
+Rust does not currently support this. A simple example that causes this error:
+
+```
+fn main() {
+    let _: Box<std::io::Read+std::io::Write>;
+}
+```
+
+Builtin traits are an exception to this rule: it's possible to have bounds of
+one non-builtin type, plus any number of builtin types. For example, the
+following compiles correctly:
+
+```
+fn main() {
+    let _: Box<std::io::Read+Copy+Sync>;
+}
 ```
 "##,
 
@@ -2104,6 +2213,66 @@ E0380: r##"
 Default impls are only allowed for traits with no methods or associated items.
 For more information see the [opt-in builtin traits RFC](https://github.com/rust
 -lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
+"##,
+
+E0392: r##"
+This error indicates that a type or lifetime parameter has been declared
+but not actually used.  Here is an example that demonstrates the error:
+
+```
+enum Foo<T> {
+    Bar
+}
+```
+
+If the type parameter was included by mistake, this error can be fixed
+by simply removing the type parameter, as shown below:
+
+```
+enum Foo {
+    Bar
+}
+```
+
+Alternatively, if the type parameter was intentionally inserted, it must be
+used. A simple fix is shown below:
+
+```
+enum Foo<T> {
+    Bar(T)
+}
+```
+
+This error may also commonly be found when working with unsafe code. For
+example, when using raw pointers one may wish to specify the lifetime for
+which the pointed-at data is valid. An initial attempt (below) causes this
+error:
+
+```
+struct Foo<'a, T> {
+    x: *const T
+}
+```
+
+We want to express the constraint that Foo should not outlive `'a`, because
+the data pointed to by `T` is only valid for that lifetime. The problem is
+that there are no actual uses of `'a`. It's possible to work around this
+by adding a PhantomData type to the struct, using it to tell the compiler
+to act as if the struct contained a borrowed reference `&'a T`:
+
+```
+use std::marker::PhantomData;
+
+struct Foo<'a, T: 'a> {
+    x: *const T,
+    phantom: PhantomData<&'a T>
+}
+```
+
+PhantomData can also be used to express information about unused type
+parameters. You can read more about it in the API documentation:
+
+https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 "##
 
 }
@@ -2121,7 +2290,6 @@ register_diagnostics! {
     E0103,
     E0104,
     E0118,
-    E0120,
     E0122,
     E0123,
     E0127,
@@ -2131,7 +2299,6 @@ register_diagnostics! {
     E0164,
     E0167,
     E0168,
-    E0172,
     E0173, // manual implementations of unboxed closure traits are experimental
     E0174, // explicit use of unboxed closure methods are experimental
     E0182,
@@ -2160,9 +2327,7 @@ register_diagnostics! {
     E0221, // ambiguous associated type in bounds
     //E0222, // Error code E0045 (variadic function must have C calling
              // convention) duplicate
-    E0223, // ambiguous associated type
     E0224, // at least one non-builtin train is required for an object type
-    E0225, // only the builtin traits can be used as closure or object bounds
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
     E0228, // explicit lifetime bound required
@@ -2206,9 +2371,9 @@ register_diagnostics! {
     E0390, // only a single inherent implementation marked with
            // `#[lang = \"{}\"]` is allowed for the `{}` primitive
     E0391, // unsupported cyclic reference between types/traits detected
-    E0392, // parameter `{}` is never used
     E0393, // the type parameter `{}` must be explicitly specified in an object
            // type because its default value `{}` references the type `Self`"
-    E0399  // trait items need to be implemented because the associated
+    E0399, // trait items need to be implemented because the associated
            // type `{}` was overridden
+    E0436  // functional record update requires a struct
 }

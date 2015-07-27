@@ -267,7 +267,7 @@ fn encode_parent_item(rbml_w: &mut Encoder, id: DefId) {
 }
 
 fn encode_struct_fields(rbml_w: &mut Encoder,
-                        fields: &[ty::field_ty],
+                        fields: &[ty::FieldTy],
                         origin: DefId) {
     for f in fields {
         if f.name == special_idents::unnamed_field.name {
@@ -636,7 +636,7 @@ fn encode_provided_source(rbml_w: &mut Encoder,
 /* Returns an index of items in this class */
 fn encode_info_for_struct(ecx: &EncodeContext,
                           rbml_w: &mut Encoder,
-                          fields: &[ty::field_ty],
+                          fields: &[ty::FieldTy],
                           global_index: &mut Vec<entry<i64>>)
                           -> Vec<entry<i64>> {
     /* Each class has its own index, since different classes
@@ -2028,7 +2028,7 @@ fn encode_dylib_dependency_formats(rbml_w: &mut Encoder, ecx: &EncodeContext) {
                     cstore::RequireStatic => "s",
                 })).to_string())
             }).collect::<Vec<String>>();
-            rbml_w.wr_tagged_str(tag, &s.connect(","));
+            rbml_w.wr_tagged_str(tag, &s.join(","));
         }
         None => {
             rbml_w.wr_tagged_str(tag, "");

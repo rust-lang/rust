@@ -11,7 +11,6 @@
 //! Operations and constants for pointer-sized signed integers (`isize` type)
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "isize")]
 
 #[cfg(target_pointer_width = "32")]
 int_module! { isize, 32 }

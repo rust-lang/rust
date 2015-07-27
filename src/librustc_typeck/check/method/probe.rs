@@ -311,11 +311,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 let lang_def_id = self.tcx().lang_items.slice_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyRawPtr(ty::mt { ty: _, mutbl: ast::MutImmutable }) => {
+            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: ast::MutImmutable }) => {
                 let lang_def_id = self.tcx().lang_items.const_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyRawPtr(ty::mt { ty: _, mutbl: ast::MutMutable }) => {
+            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: ast::MutMutable }) => {
                 let lang_def_id = self.tcx().lang_items.mut_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
@@ -951,7 +951,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         // Search through mutabilities in order to find one where pick works:
         [ast::MutImmutable, ast::MutMutable].iter().filter_map(|&m| {
-            let autoref_ty = tcx.mk_ref(region, ty::mt {
+            let autoref_ty = tcx.mk_ref(region, ty::TypeAndMut {
                 ty: step.self_ty,
                 mutbl: m
             });
@@ -1200,16 +1200,12 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             return impl_ty;
         }
 
-        let placeholder;
+        let mut placeholder;
         let mut substs = substs;
         if
             !method.generics.types.is_empty_in(subst::FnSpace) ||
             !method.generics.regions.is_empty_in(subst::FnSpace)
         {
-            let method_types =
-                self.infcx().next_ty_vars(
-                    method.generics.types.len(subst::FnSpace));
-
             // In general, during probe we erase regions. See
             // `impl_self_ty()` for an explanation.
             let method_regions =
@@ -1218,7 +1214,14 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 .map(|_| ty::ReStatic)
                 .collect();
 
-            placeholder = (*substs).clone().with_method(method_types, method_regions);
+            placeholder = (*substs).clone().with_method(Vec::new(), method_regions);
+
+            self.infcx().type_vars_for_defs(
+                self.span,
+                subst::FnSpace,
+                &mut placeholder,
+                method.generics.types.get_slice(subst::FnSpace));
+
             substs = &placeholder;
         }
 

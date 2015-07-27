@@ -63,12 +63,18 @@ macro_rules! fileline_help {
 macro_rules! register_diagnostics {
     ($($code:tt),*) => (
         $(register_diagnostic! { $code })*
+    );
+    ($($code:tt),*,) => (
+        $(register_diagnostic! { $code })*
     )
 }
 
 #[macro_export]
 macro_rules! register_long_diagnostics {
     ($($code:tt: $description:tt),*) => (
+        $(register_diagnostic! { $code, $description })*
+    );
+    ($($code:tt: $description:tt),*,) => (
         $(register_diagnostic! { $code, $description })*
     )
 }

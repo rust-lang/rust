@@ -27,7 +27,7 @@ fn deref<T>(ss: &T) -> T {
 }
 
 fn load0(ss: &MyBox<SomeTrait>) -> MyBox<SomeTrait> {
-    deref(ss) //~ ERROR cannot infer
+    deref(ss)
 }
 
 fn load1<'a,'b>(a: &'a MyBox<SomeTrait>,
@@ -36,11 +36,10 @@ fn load1<'a,'b>(a: &'a MyBox<SomeTrait>,
 {
     a
       //~^ ERROR cannot infer
-      //~| ERROR mismatched types
 }
 
 fn load2<'a>(ss: &MyBox<SomeTrait+'a>) -> MyBox<SomeTrait+'a> {
-    load0(ss) //~ WARNING E0398
+    load0(ss) //~ ERROR mismatched types
 }
 
 fn main() {

@@ -206,7 +206,7 @@ impl<'tcx> TypeMap<'tcx> {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);
             },
-            ty::TyRawPtr(ty::mt { ty: inner_type, mutbl } ) => {
+            ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
                 unique_type_id.push('*');
                 if mutbl == ast::MutMutable {
                     unique_type_id.push_str("mut");
@@ -216,7 +216,7 @@ impl<'tcx> TypeMap<'tcx> {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);
             },
-            ty::TyRef(_, ty::mt { ty: inner_type, mutbl }) => {
+            ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
                 unique_type_id.push('&');
                 if mutbl == ast::MutMutable {
                     unique_type_id.push_str("mut");
@@ -287,7 +287,7 @@ impl<'tcx> TypeMap<'tcx> {
                     }
                 }
             },
-            ty::TyClosure(def_id, substs) => {
+            ty::TyClosure(def_id, ref substs) => {
                 let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
                 let closure_ty = infcx.closure_type(def_id, substs);
                 self.get_unique_type_id_of_closure_type(cx,
@@ -561,7 +561,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 unique_type_id: UniqueTypeId,
                                 span: Span)
                                 -> MetadataCreationResult {
-    let data_ptr_type = cx.tcx().mk_ptr(ty::mt {
+    let data_ptr_type = cx.tcx().mk_ptr(ty::TypeAndMut {
         ty: element_type,
         mutbl: ast::MutImmutable
     });
@@ -765,7 +765,9 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         trait_pointer_metadata(cx, t, None, unique_type_id),
             false)
         }
-        ty::TyBox(ty) | ty::TyRawPtr(ty::mt{ty, ..}) | ty::TyRef(_, ty::mt{ty, ..}) => {
+        ty::TyBox(ty) |
+        ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
+        ty::TyRef(_, ty::TypeAndMut{ty, ..}) => {
             match ty.sty {
                 ty::TySlice(typ) => {
                     vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)
@@ -794,12 +796,27 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
         }
         ty::TyBareFn(_, ref barefnty) => {
-            subroutine_type_metadata(cx, unique_type_id, &barefnty.sig, usage_site_span)
+            let fn_metadata = subroutine_type_metadata(cx,
+                                                       unique_type_id,
+                                                       &barefnty.sig,
+                                                       usage_site_span).metadata;
+            match debug_context(cx).type_map
+                                   .borrow()
+                                   .find_metadata_for_unique_id(unique_type_id) {
+                Some(metadata) => return metadata,
+                None => { /* proceed normally */ }
+            };
+
+            // This is actually a function pointer, so wrap it in pointer DI
+            MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
+
         }
-        ty::TyClosure(def_id, substs) => {
-            let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
-            let sig = infcx.closure_type(def_id, substs).sig;
-            subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)
+        ty::TyClosure(_, ref substs) => {
+            prepare_tuple_metadata(cx,
+                                   t,
+                                   &substs.upvar_tys,
+                                   unique_type_id,
+                                   usage_site_span).finalize(cx)
         }
         ty::TyStruct(def_id, substs) => {
             prepare_struct_metadata(cx,
@@ -918,7 +935,7 @@ pub fn scope_metadata(fcx: &FunctionContext,
     }
 }
 
-fn diverging_type_metadata(cx: &CrateContext) -> DIType {
+pub fn diverging_type_metadata(cx: &CrateContext) -> DIType {
     unsafe {
         llvm::LLVMDIBuilderCreateBasicType(
             DIB(cx),
@@ -1113,7 +1130,7 @@ impl<'tcx> MemberDescriptionFactory<'tcx> {
 
 // Creates MemberDescriptions for the fields of a struct
 struct StructMemberDescriptionFactory<'tcx> {
-    fields: Vec<ty::field<'tcx>>,
+    fields: Vec<ty::Field<'tcx>>,
     is_simd: bool,
     span: Span,
 }
@@ -1443,7 +1460,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 let discrfield = discrfield.iter()
                                            .skip(1)
                                            .map(|x| x.to_string())
-                                           .collect::<Vec<_>>().connect("$");
+                                           .collect::<Vec<_>>().join("$");
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
                                                 discrfield,
                                                 null_variant_name);
@@ -1604,13 +1621,10 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         .collect();
 
     let discriminant_type_metadata = |inttype| {
-        // We can reuse the type of the discriminant for all monomorphized
-        // instances of an enum because it doesn't depend on any type
-        // parameters. The def_id, uniquely identifying the enum's polytype acts
-        // as key in this cache.
+        let disr_type_key = (enum_def_id, inttype);
         let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
                                                                  .borrow()
-                                                                 .get(&enum_def_id).cloned();
+                                                                 .get(&disr_type_key).cloned();
         match cached_discriminant_type_metadata {
             Some(discriminant_type_metadata) => discriminant_type_metadata,
             None => {
@@ -1639,7 +1653,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
                 debug_context(cx).created_enum_disr_types
                                  .borrow_mut()
-                                 .insert(enum_def_id, discriminant_type_metadata);
+                                 .insert(disr_type_key, discriminant_type_metadata);
 
                 discriminant_type_metadata
             }

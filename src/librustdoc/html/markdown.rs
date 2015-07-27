@@ -199,7 +199,7 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
 fn collapse_whitespace(s: &str) -> String {
     s.split(|c: char| c.is_whitespace()).filter(|s| {
         !s.is_empty()
-    }).collect::<Vec<_>>().connect(" ")
+    }).collect::<Vec<_>>().join(" ")
 }
 
 thread_local!(static USED_HEADER_MAP: RefCell<HashMap<String, usize>> = {
@@ -238,14 +238,14 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             let lines = origtext.lines().filter(|l| {
                 stripped_filtered_line(*l).is_none()
             });
-            let text = lines.collect::<Vec<&str>>().connect("\n");
+            let text = lines.collect::<Vec<&str>>().join("\n");
             if rendered { return }
             PLAYGROUND_KRATE.with(|krate| {
                 let mut s = String::new();
                 krate.borrow().as_ref().map(|krate| {
                     let test = origtext.lines().map(|l| {
                         stripped_filtered_line(l).unwrap_or(l)
-                    }).collect::<Vec<&str>>().connect("\n");
+                    }).collect::<Vec<&str>>().join("\n");
                     let krate = krate.as_ref().map(|s| &**s);
                     let test = test::maketest(&test, krate, false,
                                               &Default::default());
@@ -275,7 +275,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         // Transform the contents of the header into a hyphenated string
         let id = s.split_whitespace().map(|s| s.to_ascii_lowercase())
-            .collect::<Vec<String>>().connect("-");
+            .collect::<Vec<String>>().join("-");
 
         // This is a terrible hack working around how hoedown gives us rendered
         // html for text rather than the raw text.
@@ -387,7 +387,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             let lines = text.lines().map(|l| {
                 stripped_filtered_line(l).unwrap_or(l)
             });
-            let text = lines.collect::<Vec<&str>>().connect("\n");
+            let text = lines.collect::<Vec<&str>>().join("\n");
             tests.add_test(text.to_string(),
                            block_info.should_panic, block_info.no_run,
                            block_info.ignore, block_info.test_harness);

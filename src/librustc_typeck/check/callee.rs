@@ -131,7 +131,7 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             return Some(CallStep::Builtin);
         }
 
-        ty::TyClosure(def_id, substs) => {
+        ty::TyClosure(def_id, ref substs) => {
             assert_eq!(def_id.krate, ast::LOCAL_CRATE);
 
             // Check whether this is a call to a closure where we
