@@ -46,6 +46,21 @@
 // gdb-check:type = [...] (*)([...])
 // gdb-command:info functions _yyy
 // gdb-check:[...]![...]_yyy([...]);
+// gdb-command:ptype closure_0
+// gdb-check: type = struct closure {
+// gdb-check:     <no data fields>
+// gdb-check: }
+// gdb-command:ptype closure_1
+// gdb-check: type = struct closure {
+// gdb-check:     bool *__0;
+// gdb-check: }
+// gdb-command:ptype closure_2
+// gdb-check: type = struct closure {
+// gdb-check:     bool *__0;
+// gdb-check:     isize *__1;
+// gdb-check: }
+
+//
 // gdb-command:continue
 
 #![allow(unused_variables)]
@@ -68,6 +83,9 @@ fn main() {
     let f32: f32 = 2.5;
     let f64: f64 = 3.5;
     let fnptr : fn() = _zzz;
+    let closure_0 = || {};
+    let closure_1 = || { b; };
+    let closure_2 = || { if b { i } else { i }; };
     _zzz(); // #break
     if 1 == 1 { _yyy(); }
 }

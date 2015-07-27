@@ -26,7 +26,6 @@ use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 use metadata::csearch;
 use middle::pat_util;
 use middle::subst::{self, Substs};
-use middle::infer;
 use rustc::ast_map;
 use trans::{type_of, adt, machine, monomorphize};
 use trans::common::{self, CrateContext, FunctionContext, Block};
@@ -287,12 +286,18 @@ impl<'tcx> TypeMap<'tcx> {
                     }
                 }
             },
-            ty::TyClosure(def_id, ref substs) => {
-                let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
-                let closure_ty = infcx.closure_type(def_id, substs);
-                self.get_unique_type_id_of_closure_type(cx,
-                                                        closure_ty,
-                                                        &mut unique_type_id);
+            ty::TyClosure(_, ref substs) if substs.upvar_tys.is_empty() => {
+                push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
+            },
+            ty::TyClosure(_, ref substs) => {
+                unique_type_id.push_str("closure ");
+                for upvar_type in &substs.upvar_tys {
+                    let upvar_type_id =
+                        self.get_unique_type_id_of_type(cx, upvar_type);
+                    let upvar_type_id =
+                        self.get_unique_type_id_as_string(upvar_type_id);
+                    unique_type_id.push_str(&upvar_type_id[..]);
+                }
             },
             _ => {
                 cx.sess().bug(&format!("get_unique_type_id_of_type() - unexpected type: {:?}",
@@ -357,49 +362,6 @@ impl<'tcx> TypeMap<'tcx> {
                 }
 
                 output.push('>');
-            }
-        }
-    }
-
-    fn get_unique_type_id_of_closure_type<'a>(&mut self,
-                                              cx: &CrateContext<'a, 'tcx>,
-                                              closure_ty: ty::ClosureTy<'tcx>,
-                                              unique_type_id: &mut String) {
-        let ty::ClosureTy { unsafety,
-                            ref sig,
-                            abi: _ } = closure_ty;
-
-        if unsafety == ast::Unsafety::Unsafe {
-            unique_type_id.push_str("unsafe ");
-        }
-
-        unique_type_id.push_str("|");
-
-        let sig = cx.tcx().erase_late_bound_regions(sig);
-
-        for &parameter_type in &sig.inputs {
-            let parameter_type_id =
-                self.get_unique_type_id_of_type(cx, parameter_type);
-            let parameter_type_id =
-                self.get_unique_type_id_as_string(parameter_type_id);
-            unique_type_id.push_str(&parameter_type_id[..]);
-            unique_type_id.push(',');
-        }
-
-        if sig.variadic {
-            unique_type_id.push_str("...");
-        }
-
-        unique_type_id.push_str("|->");
-
-        match sig.output {
-            ty::FnConverging(ret_ty) => {
-                let return_type_id = self.get_unique_type_id_of_type(cx, ret_ty);
-                let return_type_id = self.get_unique_type_id_as_string(return_type_id);
-                unique_type_id.push_str(&return_type_id[..]);
-            }
-            ty::FnDiverging => {
-                unique_type_id.push_str("!");
             }
         }
     }
