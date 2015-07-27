@@ -108,7 +108,7 @@ probe() {
         then
             VER0=$($P --version 2>/dev/null \
                 |  grep -o '[vV]\?[0-9][0-9.][a-z0-9.-]*' | head -1 )
-            if [ $? -eq 0 -a "x${VER0}" != "x" ]
+            if [ $? -eq 0 ] && [ "x${VER0}" != "x" ]
             then
               VER="($VER0)"
             else
@@ -381,7 +381,7 @@ msg "inspecting environment"
 CFG_OSTYPE=$(uname -s)
 CFG_CPUTYPE=$(uname -m)
 
-if [ $CFG_OSTYPE = Darwin -a $CFG_CPUTYPE = i386 ]
+if [ $CFG_OSTYPE = Darwin ] && [ $CFG_CPUTYPE = i386 ]
 then
     # Darwin's `uname -s` lies and always returns i386. We have to use sysctl
     # instead.
@@ -515,13 +515,13 @@ case $CFG_CPUTYPE in
 esac
 
 # Detect 64 bit linux systems with 32 bit userland and force 32 bit compilation
-if [ $CFG_OSTYPE = unknown-linux-gnu -a $CFG_CPUTYPE = x86_64 ]
+if [ $CFG_OSTYPE = unknown-linux-gnu ] && [ $CFG_CPUTYPE = x86_64 ]
 then
     # $SHELL does not exist in standard 'sh', so probably only exists
     # if configure is running in an interactive bash shell. /usr/bin/env
     # exists *everywhere*.
     BIN_TO_PROBE="$SHELL"
-    if [ -z "$BIN_TO_PROBE" -a -e "/usr/bin/env" ]; then
+    if [ -z "$BIN_TO_PROBE" ] && [ -e "/usr/bin/env" ]; then
        BIN_TO_PROBE="/usr/bin/env"
     fi
     if [ -n "$BIN_TO_PROBE" ]; then
@@ -880,7 +880,7 @@ fi
 
 # OS X 10.9, gcc is actually clang. This can cause some confusion in the build
 # system, so if we find that gcc is clang, we should just use clang directly.
-if [ $CFG_OSTYPE = apple-darwin -a -z "$CFG_ENABLE_CLANG" ]
+if [ $CFG_OSTYPE = apple-darwin ] && [ -z "$CFG_ENABLE_CLANG" ]
 then
     CFG_OSX_GCC_VERSION=$("$CFG_GCC" --version 2>&1 | grep "Apple LLVM version")
     if [ $? -eq 0 ]
@@ -941,7 +941,7 @@ then
     putvar CFG_DISABLE_JEMALLOC
 fi
 
-if [ -n "$CFG_LLVM_ROOT" -a -z "$CFG_DISABLE_LLVM_VERSION_CHECK" -a -e "$CFG_LLVM_ROOT/bin/llvm-config" ]
+if [ -n "$CFG_LLVM_ROOT" ] && [ -z "$CFG_DISABLE_LLVM_VERSION_CHECK" ] && [ -e "$CFG_LLVM_ROOT/bin/llvm-config" ]
 then
     step_msg "using custom LLVM at $CFG_LLVM_ROOT"
 
@@ -1052,7 +1052,7 @@ then
     CFG_CC="ccache $CFG_CC"
 fi
 
-if [ -z "$CC" -a -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
+if [ -z "$CC" ] && [ -z "$CFG_ENABLE_CLANG" ] && [ -z "$CFG_GCC" ]
 then
     err "either clang or gcc is required"
 fi
@@ -1431,9 +1431,7 @@ do
         for index in ${index1} ${index2}
         do
             config_status="${LLVM_BUILD_DIR}/config.status"
-            if test -e ${index} -a \
-                    -e ${config_status} -a \
-                    ${config_status} -nt ${index}
+            if [ -e ${index} ] && [ -e ${config_status} ] && [ ${config_status} -nt ${index} ]
             then
                 msg "not reconfiguring LLVM, config.status is fresh"
                 do_reconfigure=0
