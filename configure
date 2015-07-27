@@ -140,11 +140,11 @@ validate_opt () {
         isArgValid=0
         for option in $BOOL_OPTIONS
         do
-            if test --disable-$option = $arg
+            if [ --disable-$option = $arg ]
             then
                 isArgValid=1
             fi
-            if test --enable-$option = $arg
+            if [ --enable-$option = $arg ]
             then
                 isArgValid=1
             fi
@@ -163,7 +163,7 @@ validate_opt () {
             echo "check the Wiki or join our IRC channel"
             break
         else
-            if test $isArgValid -eq 0
+            if [ $isArgValid -eq 0 ]
             then
                 err "Option '$arg' is not recognized"
             fi
@@ -1353,7 +1353,7 @@ then
     need_ok "git failed"
 
     msg "git: submodule foreach sync"
-    "${CFG_GIT}" submodule foreach --recursive 'if test -e .gitmodules; then git submodule sync; fi'
+    "${CFG_GIT}" submodule foreach --recursive 'if [ -e .gitmodules ]; then git submodule sync; fi'
     need_ok "git failed"
 
     msg "git: submodule foreach update"
