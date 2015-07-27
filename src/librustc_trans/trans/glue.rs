@@ -437,34 +437,57 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             let field_ty = last_field.mt.ty;
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
+            let dbloc = DebugLoc::None;
+
             // #27023 FIXME: We should be adding any necessary padding
             // to `sized_size` (to accommodate the `unsized_align`
             // required of the unsized field that follows) before
             // summing it with `sized_size`.
 
             // Return the sum of sizes and max of aligns.
-            let mut size = Add(bcx, sized_size, unsized_size, DebugLoc::None);
+            let mut size = Add(bcx, sized_size, unsized_size, dbloc);
 
             // Issue #27023: If there is a drop flag, *now* we add 1
             // to the size.  (We can do this without adding any
             // padding because drop flags do not have any alignment
             // constraints.)
             if sizing_type.needs_drop_flag() {
-                size = Add(bcx, size, C_uint(bcx.ccx(), 1_u64), DebugLoc::None);
+                size = Add(bcx, size, C_uint(bcx.ccx(), 1_u64), dbloc);
             }
 
+            // Choose max of two known alignments (combined value must
+            // be aligned according to more restrictive of the two).
             let align = Select(bcx,
                                ICmp(bcx,
-                                    llvm::IntULT,
+                                    llvm::IntUGT,
                                     sized_align,
                                     unsized_align,
-                                    DebugLoc::None),
+                                    dbloc),
                                sized_align,
                                unsized_align);
 
-            // #27023 FIXME: We should be adding any necessary padding
-            // to `size` (to make it a multiple of `align`) before
-            // returning it.
+            // Issue #27023: must add any necessary padding to `size`
+            // (to make it a multiple of `align`) before returning it.
+            //
+            // Namely, the returned size should be, in C notation:
+            //
+            //   `size + ((size & (align-1)) ? align : 0)`
+            //
+            // Currently I am emulating the above via:
+            //
+            //   `size + ((size & (align-1)) * align-(size & (align-1)))`
+            //
+            // because I am not sure which is cheaper between a branch
+            // or a multiply.
+
+            let mask = Sub(bcx, align, C_uint(bcx.ccx(), 1_u64), dbloc);
+            let lowbits = And(bcx, size, mask, DebugLoc::None);
+            let nonzero = ICmp(bcx, llvm::IntNE, lowbits, C_uint(bcx.ccx(), 0_u64), dbloc);
+            let add_size = Mul(bcx,
+                               ZExt(bcx, nonzero, Type::i64(bcx.ccx())),
+                               Sub(bcx, align, lowbits, dbloc),
+                               dbloc);
+            let size = Add(bcx, size, add_size, dbloc);
 
             (size, align)
         }
