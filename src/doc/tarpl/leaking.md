@@ -8,14 +8,17 @@ is perfect and all of our problems are solved.
 
 Everything is terrible and we have new and exotic problems to try to solve.
 
-Many people like to believe that Rust eliminates resource leaks, but this is
-absolutely not the case, no matter how you look at it. In the strictest sense,
-"leaking" is so abstract as to be unpreventable. It's quite trivial to
-initialize a collection at the start of a program, fill it with tons of objects
-with destructors, and then enter an infinite event loop that never refers to it.
-The collection will sit around uselessly, holding on to its precious resources
-until the program terminates (at which point all those resources would have been
-reclaimed by the OS anyway).
+Many people like to believe that Rust eliminates resource leaks. In practice,
+this is basically true. You would be surprised to see a Safe Rust program
+leak resources in an uncontrolled way.
+
+However from a theoretical perspective this is absolutely not the case, no
+matter how you look at it. In the strictest sense, "leaking" is so abstract as
+to be unpreventable. It's quite trivial to initialize a collection at the start
+of a program, fill it with tons of objects with destructors, and then enter an
+infinite event loop that never refers to it. The collection will sit around
+uselessly, holding on to its precious resources until the program terminates (at
+which point all those resources would have been reclaimed by the OS anyway).
 
 We may consider a more restricted form of leak: failing to drop a value that is
 unreachable. Rust also doesn't prevent this. In fact Rust has a *function for
@@ -181,7 +184,26 @@ in memory.
 ## thread::scoped::JoinGuard
 
 The thread::scoped API intends to allow threads to be spawned that reference
-data on the stack without any synchronization over that data. Usage looked like:
+data on their parent's stack without any synchronization over that data by
+ensuring the parent joins the thread before any of the shared data goes out
+of scope.
+
+```rust
+pub fn scoped<'a, F>(f: F) -> JoinGuard<'a>
+    where F: FnOnce() + Send + 'a
+```
+
+Here `f` is some closure for the other thread to execute. Saying that
+`F: Send +'a` is saying that it closes over data that lives for `'a`, and it
+either owns that data or the data was Sync (implying `&data` is Send).
+
+Because JoinGuard has a lifetime, it keeps all the data it closes over
+borrowed in the parent thread. This means the JoinGuard can't outlive
+the data that the other thread is working on. When the JoinGuard *does* get
+dropped it blocks the parent thread, ensuring the child terminates before any
+of the closed-over data goes out of scope in the parent.
+
+Usage looked like:
 
 ```rust,ignore
 let mut data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];

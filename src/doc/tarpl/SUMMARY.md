@@ -27,7 +27,7 @@
 	* [Checked](checked-uninit.md)
 	* [Drop Flags](drop-flags.md)
 	* [Unchecked](unchecked-uninit.md)
-* [Ownership-Oriented Resource Management](raii.md)
+* [Ownership Based Resource Management](obrm.md)
 	* [Constructors](constructors.md)
 	* [Destructors](destructors.md)
 	* [Leaking](leaking.md)

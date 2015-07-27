@@ -45,8 +45,8 @@ impl<T> Drop for Box<T> {
 ```
 
 and this works fine because when Rust goes to drop the `ptr` field it just sees
-a *mut that has no actual `Drop` implementation. Similarly nothing can use-
-after-free the `ptr` because the Box is immediately marked as uninitialized.
+a [Unique][] that has no actual `Drop` implementation. Similarly nothing can
+use-after-free the `ptr` because when drop exits, it becomes inacessible.
 
 However this wouldn't work:
 
@@ -174,3 +174,5 @@ arbitrarily invalid state in there.
 On balance this is an ok choice. Certainly what you should reach for by default.
 However, in the future we expect there to be a first-class way to announce that
 a field shouldn't be automatically dropped.
+
+[Unique]: phantom-data.html
