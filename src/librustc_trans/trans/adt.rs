@@ -67,6 +67,31 @@ use trans::type_of;
 
 type Hint = attr::ReprAttr;
 
+// Representation of the context surrounding an unsized type. I want
+// to be able to track the drop flags that are injected by trans.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct TypeContext {
+    prefix: Type,
+    needs_drop_flag: bool,
+}
+
+impl TypeContext {
+    pub fn prefix(&self) -> Type { self.prefix }
+    pub fn needs_drop_flag(&self) -> bool { self.needs_drop_flag }
+
+    fn direct(t: Type) -> TypeContext {
+        TypeContext { prefix: t, needs_drop_flag: false }
+    }
+    fn may_need_drop_flag(t: Type, needs_drop_flag: bool) -> TypeContext {
+        TypeContext { prefix: t, needs_drop_flag: needs_drop_flag }
+    }
+    pub fn to_string(self) -> String {
+        let TypeContext { prefix, needs_drop_flag } = self;
+        format!("TypeContext {{ prefix: {}, needs_drop_flag: {} }}",
+                prefix.to_string(), needs_drop_flag)
+    }
+}
+
 /// Representations.
 #[derive(Eq, PartialEq, Debug)]
 pub enum Repr<'tcx> {
@@ -125,7 +150,7 @@ pub struct Struct<'tcx> {
     pub align: u32,
     pub sized: bool,
     pub packed: bool,
-    pub fields: Vec<Ty<'tcx>>
+    pub fields: Vec<Ty<'tcx>>,
 }
 
 /// Convenience for `represent_type`.  There should probably be more or
@@ -681,18 +706,30 @@ fn ensure_enum_fits_in_address_space<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 /// and fill in the actual contents in a second pass to prevent
 /// unbounded recursion; see also the comments in `trans::type_of`.
 pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>) -> Type {
-    generic_type_of(cx, r, None, false, false)
+    let c = generic_type_of(cx, r, None, false, false, false);
+    assert!(!c.needs_drop_flag);
+    c.prefix
 }
+
+
 // Pass dst=true if the type you are passing is a DST. Yes, we could figure
 // this out, but if you call this on an unsized type without realising it, you
 // are going to get the wrong type (it will not include the unsized parts of it).
 pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 r: &Repr<'tcx>, dst: bool) -> Type {
-    generic_type_of(cx, r, None, true, dst)
+    let c = generic_type_of(cx, r, None, true, dst, false);
+    assert!(!c.needs_drop_flag);
+    c.prefix
+}
+pub fn sizing_type_context_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
+                                        r: &Repr<'tcx>, dst: bool) -> TypeContext {
+    generic_type_of(cx, r, None, true, dst, true)
 }
 pub fn incomplete_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     r: &Repr<'tcx>, name: &str) -> Type {
-    generic_type_of(cx, r, Some(name), false, false)
+    let c = generic_type_of(cx, r, Some(name), false, false, false);
+    assert!(!c.needs_drop_flag);
+    c.prefix
 }
 pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 r: &Repr<'tcx>, llty: &mut Type) {
@@ -708,20 +745,50 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                              r: &Repr<'tcx>,
                              name: Option<&str>,
                              sizing: bool,
-                             dst: bool) -> Type {
+                             dst: bool,
+                             delay_drop_flag: bool) -> TypeContext {
+    debug!("adt::generic_type_of r: {:?} name: {:?} sizing: {} dst: {} delay_drop_flag: {}",
+           r, name, sizing, dst, delay_drop_flag);
     match *r {
-        CEnum(ity, _, _) => ll_inttype(cx, ity),
-        RawNullablePointer { nnty, .. } => type_of::sizing_type_of(cx, nnty),
-        Univariant(ref st, _) | StructWrappedNullablePointer { nonnull: ref st, .. } => {
+        CEnum(ity, _, _) => TypeContext::direct(ll_inttype(cx, ity)),
+        RawNullablePointer { nnty, .. } =>
+            TypeContext::direct(type_of::sizing_type_of(cx, nnty)),
+        StructWrappedNullablePointer { nonnull: ref st, .. } => {
             match name {
                 None => {
-                    Type::struct_(cx, &struct_llfields(cx, st, sizing, dst),
-                                  st.packed)
+                    TypeContext::direct(
+                        Type::struct_(cx, &struct_llfields(cx, st, sizing, dst),
+                                      st.packed))
                 }
-                Some(name) => { assert_eq!(sizing, false); Type::named_struct(cx, name) }
+                Some(name) => {
+                    assert_eq!(sizing, false);
+                    TypeContext::direct(Type::named_struct(cx, name))
+                }
             }
         }
-        General(ity, ref sts, _) => {
+        Univariant(ref st, dtor_needed) => {
+            let dtor_needed = dtor_needed != 0;
+            match name {
+                None => {
+                    let mut fields = struct_llfields(cx, st, sizing, dst);
+                    if delay_drop_flag && dtor_needed {
+                        fields.pop();
+                    }
+                    TypeContext::may_need_drop_flag(
+                        Type::struct_(cx, &fields,
+                                      st.packed),
+                        delay_drop_flag && dtor_needed)
+                }
+                Some(name) => {
+                    // Hypothesis: named_struct's can never need a
+                    // drop flag. (... needs validation.)
+                    assert_eq!(sizing, false);
+                    TypeContext::direct(Type::named_struct(cx, name))
+                }
+            }
+        }
+        General(ity, ref sts, dtor_needed) => {
+            let dtor_needed = dtor_needed != 0;
             // We need a representation that has:
             // * The alignment of the most-aligned field
             // * The size of the largest variant (rounded up to that alignment)
@@ -753,15 +820,25 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             };
             assert_eq!(machine::llalign_of_min(cx, fill_ty), align);
             assert_eq!(align_s % discr_size, 0);
-            let fields = [discr_ty,
-                          Type::array(&discr_ty, align_s / discr_size - 1),
-                          fill_ty];
+            let mut fields: Vec<Type> =
+                [discr_ty,
+                 Type::array(&discr_ty, align_s / discr_size - 1),
+                 fill_ty].iter().cloned().collect();
+            if delay_drop_flag && dtor_needed {
+                fields.pop();
+            }
             match name {
-                None => Type::struct_(cx, &fields[..], false),
+                None => {
+                    TypeContext::may_need_drop_flag(
+                        Type::struct_(cx, &fields[..], false),
+                        delay_drop_flag && dtor_needed)
+                }
                 Some(name) => {
                     let mut llty = Type::named_struct(cx, name);
                     llty.set_struct_body(&fields[..], false);
-                    llty
+                    TypeContext::may_need_drop_flag(
+                        llty,
+                        delay_drop_flag && dtor_needed)
                 }
             }
         }

@@ -406,8 +406,12 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
            t, bcx.val_to_string(info));
     if type_is_sized(bcx.tcx(), t) {
         let sizing_type = sizing_type_of(bcx.ccx(), t);
-        let size = C_uint(bcx.ccx(), llsize_of_alloc(bcx.ccx(), sizing_type));
-        let align = C_uint(bcx.ccx(), align_of(bcx.ccx(), t));
+        let size = llsize_of_alloc(bcx.ccx(), sizing_type);
+        let align = align_of(bcx.ccx(), t);
+        debug!("size_and_align_of_dst t={} info={} size: {} align: {}",
+               t, bcx.val_to_string(info), size, align);
+        let size = C_uint(bcx.ccx(), size);
+        let align = C_uint(bcx.ccx(), align);
         return (size, align);
     }
     match t.sty {
@@ -417,9 +421,14 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             // Don't use type_of::sizing_type_of because that expects t to be sized.
             assert!(!t.is_simd(bcx.tcx()));
             let repr = adt::represent_type(ccx, t);
-            let sizing_type = adt::sizing_type_of(ccx, &*repr, true);
-            let sized_size = C_uint(ccx, llsize_of_alloc(ccx, sizing_type));
-            let sized_align = C_uint(ccx, llalign_of_min(ccx, sizing_type));
+            let sizing_type = adt::sizing_type_context_of(ccx, &*repr, true);
+            debug!("DST {} sizing_type: {}", t, sizing_type.to_string());
+            let sized_size = llsize_of_alloc(ccx, sizing_type.prefix());
+            let sized_align = llalign_of_min(ccx, sizing_type.prefix());
+            debug!("DST {} statically sized prefix size: {} align: {}",
+                   t, sized_size, sized_align);
+            let sized_size = C_uint(ccx, sized_size);
+            let sized_align = C_uint(ccx, sized_align);
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
@@ -428,8 +437,22 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             let field_ty = last_field.mt.ty;
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
+            // #27023 FIXME: We should be adding any necessary padding
+            // to `sized_size` (to accommodate the `unsized_align`
+            // required of the unsized field that follows) before
+            // summing it with `sized_size`.
+
             // Return the sum of sizes and max of aligns.
-            let size = Add(bcx, sized_size, unsized_size, DebugLoc::None);
+            let mut size = Add(bcx, sized_size, unsized_size, DebugLoc::None);
+
+            // Issue #27023: If there is a drop flag, *now* we add 1
+            // to the size.  (We can do this without adding any
+            // padding because drop flags do not have any alignment
+            // constraints.)
+            if sizing_type.needs_drop_flag() {
+                size = Add(bcx, size, C_uint(bcx.ccx(), 1_u64), DebugLoc::None);
+            }
+
             let align = Select(bcx,
                                ICmp(bcx,
                                     llvm::IntULT,
@@ -438,6 +461,11 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
                                     DebugLoc::None),
                                sized_align,
                                unsized_align);
+
+            // #27023 FIXME: We should be adding any necessary padding
+            // to `size` (to make it a multiple of `align`) before
+            // returning it.
+
             (size, align)
         }
         ty::TyTrait(..) => {
