@@ -83,6 +83,7 @@ impl<T> Vec<T> {
     pub fn into_iter(self) -> IntoIter<T> {
         unsafe {
             let iter = RawValIter::new(&self);
+
             let buf = ptr::read(&self.buf);
             mem::forget(self);
 
@@ -112,7 +113,7 @@ pub struct Drain<'a, T: 'a> {
 
 impl<'a, T> Iterator for Drain<'a, T> {
     type Item = T;
-    fn next(&mut self) -> Option<T> { self.iter.next_back() }
+    fn next(&mut self) -> Option<T> { self.iter.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 
