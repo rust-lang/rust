@@ -591,7 +591,6 @@ mod tests {
     use io::prelude::*;
 
     use io::ErrorKind;
-    use rt::running_on_valgrind;
     use str;
     use super::{Command, Output, Stdio};
 
@@ -737,10 +736,7 @@ mod tests {
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_string(), "hello");
-        // FIXME #7224
-        if !running_on_valgrind() {
-            assert_eq!(stderr, Vec::new());
-        }
+        assert_eq!(stderr, Vec::new());
     }
 
     #[cfg(not(target_os="android"))]
@@ -779,10 +775,7 @@ mod tests {
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_string(), "hello");
-        // FIXME #7224
-        if !running_on_valgrind() {
-            assert_eq!(stderr, Vec::new());
-        }
+        assert_eq!(stderr, Vec::new());
     }
 
     #[cfg(all(unix, not(target_os="android")))]
@@ -807,7 +800,6 @@ mod tests {
     #[test]
     fn test_inherit_env() {
         use std::env;
-        if running_on_valgrind() { return; }
 
         let result = env_cmd().output().unwrap();
         let output = String::from_utf8(result.stdout).unwrap();
@@ -824,7 +816,6 @@ mod tests {
     #[test]
     fn test_inherit_env() {
         use std::env;
-        if running_on_valgrind() { return; }
 
         let mut result = env_cmd().output().unwrap();
         let output = String::from_utf8(result.stdout).unwrap();
