@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    let a = 1_is; //~ ERROR illegal suffix
-    let b = 2_us; //~ ERROR illegal suffix
+    let a = 1_is; //~ ERROR invalid suffix
+    let b = 2_us; //~ ERROR invalid suffix
 }
