@@ -11,7 +11,6 @@
 use ascii;
 use borrow::{Cow, ToOwned, Borrow};
 use boxed::Box;
-use clone::Clone;
 use convert::{Into, From};
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use error::Error;
@@ -62,7 +61,7 @@ use vec::Vec;
 /// }
 /// # }
 /// ```
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
     inner: Box<[u8]>,
@@ -247,13 +246,6 @@ impl CString {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes_with_nul(&self) -> &[u8] {
         &self.inner
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Clone for CString {
-    fn clone(&self) -> Self {
-        CString { inner: self.inner.to_owned().into_boxed_slice() }
     }
 }
 
