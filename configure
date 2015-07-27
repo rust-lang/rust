@@ -184,7 +184,6 @@ go() {
     CFG_BUILD_DIR="$(pwd)/"
     CFG_CONFIGURE_ARGS="$@"
 
-    OPTIONS=""
     HELP=0
     if [ "$1" = "--help" ]
     then
