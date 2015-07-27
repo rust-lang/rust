@@ -397,6 +397,115 @@ impl Bar {
 ```
 "##,
 
+E0417: r##"
+A static variable was referenced in a pattern. Example of erroneous code:
+
+```
+static FOO : i32 = 0;
+
+match 0 {
+    FOO => {} // error: static variables cannot be referenced in a
+              //        pattern, use a `const` instead
+    _ => {}
+}
+```
+
+The compiler needs to know the value of the pattern at compile time;
+compile-time patterns can defined via const or enum items. Please verify
+that the identifier is spelled correctly, and if so, use a const instead
+of static to define it. Example:
+
+```
+const FOO : i32 = 0;
+
+match 0 {
+    FOO => {} // ok!
+    _ => {}
+}
+```
+"##,
+
+E0424: r##"
+The `self` keyword was used in a static method. Example of erroneous code:
+
+```
+struct Foo;
+
+impl Foo {
+    fn bar(self) {}
+
+    fn foo() {
+        self.bar(); // error: `self` is not available in a static method.
+    }
+}
+```
+
+Please check if the method's argument list should have contained `self`,
+`&self`, or `&mut self` (in case you didn't want to create a static
+method), and add it if so. Example:
+
+```
+struct Foo;
+
+impl Foo {
+    fn bar(self) {}
+
+    fn foo(self) {
+        self.bar(); // ok!
+    }
+}
+```
+"##,
+
+E0425: r##"
+An unresolved name was used. Example of erroneous codes:
+
+```
+something_that_doesnt_exist::foo;
+// error: unresolved name `something_that_doesnt_exist::foo`
+
+// or:
+trait Foo {
+    fn bar() {
+        Self; // error: unresolved name `Self`
+    }
+}
+```
+
+Please verify you didn't misspell the name or that you're not using an
+invalid object. Example:
+
+```
+enum something_that_does_exist {
+    foo
+}
+// or:
+mod something_that_does_exist {
+    pub static foo : i32 = 0i32;
+}
+
+something_that_does_exist::foo; // ok!
+```
+"##,
+
+E0426: r##"
+An undeclared label was used. Example of erroneous code:
+
+```
+loop {
+    break 'a; // error: use of undeclared label `'a`
+}
+```
+
+Please verify you spelt or declare the label correctly. Example:
+
+```
+'a: loop {
+    break 'a; // ok!
+}
+```
+"##,
+
 E0428: r##"
 A type or module has been defined more than once. Example of erroneous
 code:
@@ -412,6 +521,53 @@ duplicated one. Example:
 ```
 struct Bar;
 struct Bar2; // ok!
+```
+"##,
+
+E0430: r##"
+The `self` import appears more than once in the list. Erroneous code example:
+
+```
+use something::{self, self}; // error: `self` import can only appear once in
+                             //        the list
+```
+
+Please verify you didn't misspell the import name or remove the duplicated
+`self` import. Example:
+
+```
+use something::self; // ok!
+```
+"##,
+
+E0431: r##"
+`self` import was made. Erroneous code example:
+
+```
+use {self}; // error: `self` import can only appear in an import list with a
+            //        non-empty prefix
+```
+
+You cannot import the current module into itself, please remove this import
+or verify you didn't misspell it.
+"##,
+
+E0432: r##"
+An import was unresolved. Erroneous code example:
+
+```
+use something::Foo; // error: unresolved import `something::Foo`.
+```
+
+Please verify you didn't misspell the import name or the import does exist
+in the module from where you tried to import it. Example:
+
+```
+use something::Foo; // ok!
+
+mod something {
+    pub struct Foo;
+}
 ```
 "##,
 
@@ -499,8 +655,6 @@ register_diagnostics! {
     E0414, // only irrefutable patterns allowed here
     E0415, // identifier is bound more than once in this parameter list
     E0416, // identifier is bound more than once in the same pattern
-    E0417, // static variables cannot be referenced in a pattern, use a
-           // `const` instead
     E0418, // is not an enum variant, struct or const
     E0419, // unresolved enum variant, struct or const
     E0420, // is not an associated const
@@ -508,15 +662,8 @@ register_diagnostics! {
     E0422, // does not name a structure
     E0423, // is a struct variant name, but this expression uses it like a
            // function name
-    E0424, // `self` is not available in a static method.
-    E0425, // unresolved name
-    E0426, // use of undeclared label
     E0427, // cannot use `ref` binding mode with ...
     E0429, // `self` imports are only allowed within a { } list
-    E0430, // `self` import can only appear once in the list
-    E0431, // `self` import can only appear in an import list with a non-empty
-           // prefix
-    E0432, // unresolved import
     E0434, // can't capture dynamic environment in a fn item
     E0435, // attempt to use a non-constant value in a constant
 }
