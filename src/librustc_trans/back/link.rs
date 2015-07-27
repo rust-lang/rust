@@ -759,9 +759,6 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
     if sess.target.target.options.is_like_osx && !ab.using_llvm() {
         ab.build();
     }
-    if sess.target.target.options.morestack {
-        ab.add_native_library("morestack").unwrap();
-    }
     if !sess.target.target.options.no_compiler_rt {
         ab.add_native_library("compiler-rt").unwrap();
     }
@@ -904,26 +901,6 @@ fn link_args(cmd: &mut Linker,
         cmd.add_object(obj);
     }
     cmd.output_filename(out_filename);
-
-    // Stack growth requires statically linking a __morestack function. Note
-    // that this is listed *before* all other libraries. Due to the usage of the
-    // --as-needed flag below, the standard library may only be useful for its
-    // rust_stack_exhausted function. In this case, we must ensure that the
-    // libmorestack.a file appears *before* the standard library (so we put it
-    // at the very front).
-    //
-    // Most of the time this is sufficient, except for when LLVM gets super
-    // clever. If, for example, we have a main function `fn main() {}`, LLVM
-    // will optimize out calls to `__morestack` entirely because the function
-    // doesn't need any stack at all!
-    //
-    // To get around this snag, we specially tell the linker to always include
-    // all contents of this library. This way we're guaranteed that the linker
-    // will include the __morestack symbol 100% of the time, always resolving
-    // references to it even if the object above didn't use it.
-    if t.options.morestack {
-        cmd.link_whole_staticlib("morestack", &[lib_path]);
-    }
 
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main

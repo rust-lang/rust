@@ -23,7 +23,7 @@
 
 use prelude::v1::*;
 use sys;
-use usize;
+use thread;
 
 // Reexport some of our utilities which are expected by other crates.
 pub use self::util::min_stack;
@@ -53,11 +53,6 @@ mod dwarf;
 /// of exiting cleanly.
 pub const DEFAULT_ERROR_CODE: isize = 101;
 
-#[cfg(any(windows, android))]
-const OS_DEFAULT_STACK_ESTIMATE: usize = 1 << 20;
-#[cfg(all(unix, not(android)))]
-const OS_DEFAULT_STACK_ESTIMATE: usize = 2 * (1 << 20);
-
 #[cfg(not(test))]
 #[lang = "start"]
 fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
@@ -67,37 +62,9 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
     use env;
     use rt;
     use sys_common::thread_info::{self, NewThread};
-    use sys_common;
     use thread::Thread;
 
-    let something_around_the_top_of_the_stack = 1;
-    let addr = &something_around_the_top_of_the_stack as *const _ as *const isize;
-    let my_stack_top = addr as usize;
-
-    // FIXME #11359 we just assume that this thread has a stack of a
-    // certain size, and estimate that there's at most 20KB of stack
-    // frames above our current position.
-    const TWENTY_KB: usize = 20000;
-
-    // saturating-add to sidestep overflow
-    let top_plus_spill = if usize::MAX - TWENTY_KB < my_stack_top {
-        usize::MAX
-    } else {
-        my_stack_top + TWENTY_KB
-    };
-    // saturating-sub to sidestep underflow
-    let my_stack_bottom = if top_plus_spill < OS_DEFAULT_STACK_ESTIMATE {
-        0
-    } else {
-        top_plus_spill - OS_DEFAULT_STACK_ESTIMATE
-    };
-
     let failed = unsafe {
-        // First, make sure we don't trigger any __morestack overflow checks,
-        // and next set up our stack to have a guard page and run through our
-        // own fault handlers if we hit it.
-        sys_common::stack::record_os_managed_stack_bounds(my_stack_bottom,
-                                                          my_stack_top);
         let main_guard = sys::thread::guard::init();
         sys::stack_overflow::init();
 
@@ -129,10 +96,7 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
         args::init(argc, argv);
 
         // And finally, let's run some code!
-        let res = unwind::try(|| {
-            let main: fn() = mem::transmute(main);
-            main();
-        });
+        let res = thread::catch_panic(mem::transmute::<_, fn()>(main));
         cleanup();
         res.is_err()
     };
