@@ -41,7 +41,6 @@
 #![feature(fnbox)]
 #![feature(iter_cmp)]
 #![feature(libc)]
-#![feature(rt)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]
 #![feature(staged_api)]
@@ -879,13 +878,7 @@ fn get_concurrency() -> usize {
                 _ => panic!("RUST_TEST_THREADS is `{}`, should be a positive integer.", s)
             }
         }
-        Err(..) => {
-            if std::rt::util::limit_thread_creation_due_to_osx_and_valgrind() {
-                1
-            } else {
-                num_cpus()
-            }
-        }
+        Err(..) => num_cpus(),
     };
 
     #[cfg(windows)]
