@@ -20,6 +20,7 @@ fn main() {
     use std::boxed::HEAP;
 
     let x = box (HEAP) 'c'; //~ ERROR placement-in expression syntax is experimental
+    //~^ WARN deprecated syntax
     println!("x: {}", x);
 
     let x = in HEAP { 'c' }; //~ ERROR placement-in expression syntax is experimental
