@@ -2216,10 +2216,10 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 "##,
 
 E0391: r##"
-This error indicates that some types or traits depends on each other
-and therefore could not be constructed properly.
+This error indicates that some types or traits depend on each other
+and therefore cannot be constructed.
 
-The following example contains circular dependency between two traits:
+The following example contains a circular dependency between two traits:
 
 ```
 trait FirstTrait : SecondTrait {
