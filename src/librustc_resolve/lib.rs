@@ -4013,16 +4013,7 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
                                make_glob_map: MakeGlobMap)
                                -> CrateMap {
     let krate = ast_map.krate();
-    let mut resolver = Resolver::new(session, ast_map, krate.span, make_glob_map);
-
-    build_reduced_graph::build_reduced_graph(&mut resolver, krate);
-    session.abort_if_errors();
-
-    resolve_imports::resolve_imports(&mut resolver);
-    session.abort_if_errors();
-
-    record_exports::record(&mut resolver);
-    session.abort_if_errors();
+    let mut resolver = create_resolver(session, ast_map, krate, make_glob_map, None);
 
     resolver.resolve_crate(krate);
     session.abort_if_errors();
