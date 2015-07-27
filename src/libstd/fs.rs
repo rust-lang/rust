@@ -21,10 +21,11 @@ use core::prelude::*;
 
 use fmt;
 use ffi::OsString;
-use io::{self, Error, ErrorKind, SeekFrom, Seek, Read, Write};
+use io::{self, SeekFrom, Seek, Read, Write};
 use path::{Path, PathBuf};
 use sys::fs as fs_imp;
-use sys_common::{AsInnerMut, FromInner, AsInner};
+use sys_common::io::read_to_end_uninitialized;
+use sys_common::{AsInnerMut, FromInner, AsInner, IntoInner};
 use vec::Vec;
 
 /// A reference to an open file on the filesystem.
@@ -269,14 +270,18 @@ impl File {
     /// will be extended to `size` and have all of the intermediate data filled
     /// in with 0s.
     ///
+    /// # Errors
+    ///
+    /// This function will return an error if the file is not opened for writing.
+    ///
     /// # Examples
     ///
     /// ```no_run
     /// use std::fs::File;
     ///
     /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = try!(File::open("foo.txt"));
-    /// try!(f.set_len(0));
+    /// let mut f = try!(File::create("foo.txt"));
+    /// try!(f.set_len(10));
     /// # Ok(())
     /// # }
     /// ```
@@ -312,6 +317,11 @@ impl FromInner<fs_imp::File> for File {
         File { inner: f }
     }
 }
+impl IntoInner<fs_imp::File> for File {
+    fn into_inner(self) -> fs_imp::File {
+        self.inner
+    }
+}
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -323,6 +333,9 @@ impl fmt::Debug for File {
 impl Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
+    }
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        unsafe { read_to_end_uninitialized(self, buf) }
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -419,7 +432,7 @@ impl OpenOptions {
     /// ```no_run
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().append(true).open("foo.txt");
+    /// let file = OpenOptions::new().write(true).append(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn append(&mut self, append: bool) -> &mut OpenOptions {
@@ -436,7 +449,7 @@ impl OpenOptions {
     /// ```no_run
     /// use std::fs::OpenOptions;
     ///
-    /// let file = OpenOptions::new().truncate(true).open("foo.txt");
+    /// let file = OpenOptions::new().write(true).truncate(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, truncate: bool) -> &mut OpenOptions {
@@ -635,6 +648,10 @@ impl FileType {
     /// Test whether this file type represents a symbolic link.
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_symlink(&self) -> bool { self.0.is_symlink() }
+}
+
+impl AsInner<fs_imp::FileType> for FileType {
+    fn as_inner(&self) -> &fs_imp::FileType { &self.0 }
 }
 
 impl FromInner<fs_imp::FilePermissions> for Permissions {
@@ -858,20 +875,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
-    let from = from.as_ref();
-    let to = to.as_ref();
-    if !from.is_file() {
-        return Err(Error::new(ErrorKind::InvalidInput,
-                              "the source path is not an existing file"))
-    }
-
-    let mut reader = try!(File::open(from));
-    let mut writer = try!(File::create(to));
-    let perm = try!(reader.metadata()).permissions();
-
-    let ret = try!(io::copy(&mut reader, &mut writer));
-    try!(set_permissions(to, perm));
-    Ok(ret)
+    fs_imp::copy(from.as_ref(), to.as_ref())
 }
 
 /// Creates a new hard link on the filesystem.
@@ -1746,6 +1750,19 @@ mod tests {
     }
 
     #[test]
+    fn copy_src_does_not_exist() {
+        let tmpdir = tmpdir();
+        let from = Path2::new("test/nonexistent-bogus-path");
+        let to = tmpdir.join("out.txt");
+        check!(check!(File::create(&to)).write(b"hello"));
+        assert!(fs::copy(&from, &to).is_err());
+        assert!(!from.exists());
+        let mut v = Vec::new();
+        check!(check!(File::open(&to)).read_to_end(&mut v));
+        assert_eq!(v, b"hello");
+    }
+
+    #[test]
     fn copy_file_ok() {
         let tmpdir = tmpdir();
         let input = tmpdir.join("in.txt");
@@ -1812,6 +1829,18 @@ mod tests {
         assert!(check!(out.metadata()).permissions().readonly());
         check!(fs::set_permissions(&input, attr.permissions()));
         check!(fs::set_permissions(&out, attr.permissions()));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn copy_file_preserves_streams() {
+        let tmp = tmpdir();
+        check!(check!(File::create(tmp.join("in.txt:bunny"))).write("carrot".as_bytes()));
+        assert_eq!(check!(fs::copy(tmp.join("in.txt"), tmp.join("out.txt"))), 6);
+        assert_eq!(check!(tmp.join("out.txt").metadata()).len(), 0);
+        let mut v = Vec::new();
+        check!(check!(File::open(tmp.join("out.txt:bunny"))).read_to_end(&mut v));
+        assert_eq!(v, b"carrot".to_vec());
     }
 
     #[cfg(not(windows))] // FIXME(#10264) operation not permitted?

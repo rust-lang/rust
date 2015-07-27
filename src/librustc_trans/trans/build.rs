@@ -148,7 +148,7 @@ pub fn Invoke(cx: Block,
     terminate(cx, "Invoke");
     debug!("Invoke({} with arguments ({}))",
            cx.val_to_string(fn_),
-           args.iter().map(|a| cx.val_to_string(*a)).collect::<Vec<String>>().connect(", "));
+           args.iter().map(|a| cx.val_to_string(*a)).collect::<Vec<String>>().join(", "));
     debug_loc.apply(cx.fcx);
     B(cx).invoke(fn_, args, then, catch, attributes)
 }
@@ -1039,7 +1039,11 @@ pub fn LandingPad(cx: Block, ty: Type, pers_fn: ValueRef,
                   num_clauses: usize) -> ValueRef {
     check_not_terminated(cx);
     assert!(!cx.unreachable.get());
-    B(cx).landing_pad(ty, pers_fn, num_clauses)
+    B(cx).landing_pad(ty, pers_fn, num_clauses, cx.fcx.llfn)
+}
+
+pub fn AddClause(cx: Block, landing_pad: ValueRef, clause: ValueRef) {
+    B(cx).add_clause(landing_pad, clause)
 }
 
 pub fn SetCleanup(cx: Block, landing_pad: ValueRef) {

@@ -10,7 +10,6 @@
 
 //! Operations and constants for 64-bits floats (`f64` type)
 
-#![doc(primitive = "f64")]
 // FIXME: MIN_VALUE and MAX_VALUE literals are parsed as -inf and inf #14353
 #![allow(overflowing_literals)]
 
@@ -24,14 +23,18 @@ use num::FpCategory as Fp;
 use num::{Float, ParseFloatError};
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const RADIX: u32 = 2;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const MANTISSA_DIGITS: u32 = 53;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const DIGITS: u32 = 15;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
 
 /// Smallest finite f64 value
@@ -45,20 +48,27 @@ pub const MIN_POSITIVE: f64 = 2.2250738585072014e-308_f64;
 pub const MAX: f64 = 1.7976931348623157e+308_f64;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const MIN_EXP: i32 = -1021;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const MAX_EXP: i32 = 1024;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const MIN_10_EXP: i32 = -307;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const MAX_10_EXP: i32 = 308;
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const NAN: f64 = 0.0_f64/0.0_f64;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const INFINITY: f64 = 1.0_f64/0.0_f64;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
 pub const NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
 
 /// Basic mathematial constants.

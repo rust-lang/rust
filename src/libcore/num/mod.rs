@@ -24,6 +24,7 @@ use mem::size_of;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
 use str::{FromStr, StrExt};
+use slice::SliceExt;
 
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///
@@ -459,7 +460,7 @@ macro_rules! int_impl {
             }
         }
 
-        /// Wrapping (modular) division. Computes `floor(self / other)`,
+        /// Wrapping (modular) division. Computes `self / other`,
         /// wrapping around at the boundary of the type.
         ///
         /// The only case where such wrapping can occur is when one
@@ -467,7 +468,7 @@ macro_rules! int_impl {
         /// negative minimal value for the type); this is equivalent
         /// to `-MIN`, a positive value that is too large to represent
         /// in the type. In such a case, this function returns `MIN`
-        /// itself..
+        /// itself.
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_div(self, rhs: Self) -> Self {
@@ -668,10 +669,12 @@ macro_rules! uint_impl {
      $mul_with_overflow:path) => {
         /// Returns the smallest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[inline]
         pub fn min_value() -> Self { 0 }
 
         /// Returns the largest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[inline]
         pub fn max_value() -> Self { !0 }
 
         /// Converts a string slice in a given base to an integer.
@@ -1029,7 +1032,7 @@ macro_rules! uint_impl {
             }
         }
 
-        /// Wrapping (modular) division. Computes `floor(self / other)`,
+        /// Wrapping (modular) division. Computes `self / other`,
         /// wrapping around at the boundary of the type.
         ///
         /// The only case where such wrapping can occur is when one
@@ -1037,7 +1040,7 @@ macro_rules! uint_impl {
         /// negative minimal value for the type); this is equivalent
         /// to `-MIN`, a positive value that is too large to represent
         /// in the type. In such a case, this function returns `MIN`
-        /// itself..
+        /// itself.
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
         pub fn wrapping_div(self, rhs: Self) -> Self {
@@ -1124,7 +1127,7 @@ macro_rules! uint_impl {
             acc
         }
 
-        /// Returns `true` iff `self == 2^k` for some `k`.
+        /// Returns `true` if and only if `self == 2^k` for some `k`.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn is_power_of_two(self) -> bool {
@@ -1446,19 +1449,30 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32)
                                          -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;
     use self::ParseIntError as PIE;
+
     assert!(radix >= 2 && radix <= 36,
            "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
            radix);
 
+    if src.is_empty() {
+        return Err(PIE { kind: Empty });
+    }
+
     let is_signed_ty = T::from_u32(0) > T::min_value();
 
-    match src.slice_shift_char() {
-        Some(('-', "")) => Err(PIE { kind: Empty }),
-        Some(('-', src)) if is_signed_ty => {
+    // all valid digits are ascii, so we will just iterate over the utf8 bytes
+    // and cast them to chars. .to_digit() will safely return None for anything
+    // other than a valid ascii digit for a the given radix, including the first-byte
+    // of multi-byte sequences
+    let src = src.as_bytes();
+
+    match (src[0], &src[1..])  {
+        (b'-', digits) if digits.is_empty() => Err(PIE { kind: Empty }),
+        (b'-', digits) if is_signed_ty => {
             // The number is negative
             let mut result = T::from_u32(0);
-            for c in src.chars() {
-                let x = match c.to_digit(radix) {
+            for &c in digits {
+                let x = match (c as char).to_digit(radix) {
                     Some(x) => x,
                     None => return Err(PIE { kind: InvalidDigit }),
                 };
@@ -1473,11 +1487,14 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32)
             }
             Ok(result)
         },
-        Some((_, _)) => {
+        (c, digits) => {
             // The number is signed
-            let mut result = T::from_u32(0);
-            for c in src.chars() {
-                let x = match c.to_digit(radix) {
+            let mut result = match (c as char).to_digit(radix) {
+                Some(x) => T::from_u32(x),
+                None => return Err(PIE { kind: InvalidDigit }),
+            };
+            for &c in digits {
+                let x = match (c as char).to_digit(radix) {
                     Some(x) => x,
                     None => return Err(PIE { kind: InvalidDigit }),
                 };
@@ -1491,8 +1508,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32)
                 };
             }
             Ok(result)
-        },
-        None => Err(ParseIntError { kind: Empty }),
+        }
     }
 }
 

@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Character manipulation (`char` type, Unicode Scalar Value)
+//! A Unicode scalar value
 //!
 //! This module provides the `CharExt` trait, as well as its
 //! implementation for the primitive `char` type, in order to allow
 //! basic character manipulation.
 //!
-//! A `char` actually represents a
-//! *[Unicode Scalar
-//! Value](http://www.unicode.org/glossary/#unicode_scalar_value)*, as it can
+//! A `char` represents a
+//! *[Unicode scalar
+//! value](http://www.unicode.org/glossary/#unicode_scalar_value)*, as it can
 //! contain any Unicode code point except high-surrogate and low-surrogate code
 //! points.
 //!
@@ -24,9 +24,10 @@
 //! (inclusive) are allowed. A `char` can always be safely cast to a `u32`;
 //! however the converse is not always true due to the above range limits
 //! and, as such, should be performed via the `from_u32` function.
+//!
+//! *[See also the `char` primitive type](../primitive.char.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "char")]
 
 use core::char::CharExt as C;
 use core::option::Option::{self, Some, None};
@@ -34,7 +35,7 @@ use core::iter::Iterator;
 use tables::{derived_property, property, general_category, conversions, charwidth};
 
 // stable reexports
-pub use core::char::{MAX, from_u32, from_digit, EscapeUnicode, EscapeDefault};
+pub use core::char::{MAX, from_u32, from_u32_unchecked, from_digit, EscapeUnicode, EscapeDefault};
 
 // unstable reexports
 #[allow(deprecated)]
@@ -63,18 +64,6 @@ pub struct ToUppercase(CaseMappingIter);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ToUppercase {
-    type Item = char;
-    fn next(&mut self) -> Option<char> { self.0.next() }
-}
-
-/// An iterator over the titlecase mapping of a given character, returned from
-/// the [`to_titlecase` method](../primitive.char.html#method.to_titlecase) on
-/// characters.
-#[unstable(feature = "unicode", reason = "recently added")]
-pub struct ToTitlecase(CaseMappingIter);
-
-#[stable(feature = "unicode_case_mapping", since = "1.2.0")]
-impl Iterator for ToTitlecase {
     type Item = char;
     fn next(&mut self) -> Option<char> { self.0.next() }
 }
@@ -475,27 +464,6 @@ impl char {
     #[inline]
     pub fn to_lowercase(self) -> ToLowercase {
         ToLowercase(CaseMappingIter::new(conversions::to_lower(self)))
-    }
-
-    /// Converts a character to its titlecase equivalent.
-    ///
-    /// This performs complex unconditional mappings with no tailoring.
-    /// See `to_uppercase()` for references and more information.
-    ///
-    /// This differs from `to_uppercase()` since Unicode contains
-    /// digraphs and ligature characters.
-    /// For example, U+01F3 “ǳ” and U+FB01 “ﬁ”
-    /// map to U+01F1 “Ǳ” and U+0046 U+0069 “Fi”, respectively.
-    ///
-    /// # Return value
-    ///
-    /// Returns an iterator which yields the characters corresponding to the
-    /// titlecase equivalent of the character. If no conversion is possible then
-    /// an iterator with just the input character is returned.
-    #[unstable(feature = "unicode", reason = "recently added")]
-    #[inline]
-    pub fn to_titlecase(self) -> ToTitlecase {
-        ToTitlecase(CaseMappingIter::new(conversions::to_title(self)))
     }
 
     /// Converts a character to its uppercase equivalent.

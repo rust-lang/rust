@@ -155,6 +155,7 @@ pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(reason = "use `align_of` instead", since = "1.2.0")]
 pub fn min_align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }
@@ -170,14 +171,14 @@ pub fn min_align_of<T>() -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(reason = "use `align_of_val` instead", since = "1.2.0")]
 pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
     unsafe { intrinsics::min_align_of_val(val) }
 }
 
 /// Returns the alignment in memory for a type.
 ///
-/// This function will return the alignment, in bytes, of a type in memory. If the alignment
-/// returned is adhered to, then the type is guaranteed to function properly.
+/// This is the alignment used for struct fields. It may be smaller than the preferred alignment.
 ///
 /// # Examples
 ///
@@ -189,17 +190,10 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn align_of<T>() -> usize {
-    // We use the preferred alignment as the default alignment for a type. This
-    // appears to be what clang migrated towards as well:
-    //
-    // http://lists.cs.uiuc.edu/pipermail/cfe-commits/Week-of-Mon-20110725/044411.html
-    unsafe { intrinsics::pref_align_of::<T>() }
+    unsafe { intrinsics::min_align_of::<T>() }
 }
 
-/// Returns the alignment of the type of the value that `_val` points to.
-///
-/// This is similar to `align_of`, but function will properly handle types such as trait objects
-/// (in the future), returning the alignment for an arbitrary value at runtime.
+/// Returns the ABI-required minimum alignment of the type of the value that `val` points to
 ///
 /// # Examples
 ///
@@ -210,8 +204,8 @@ pub fn align_of<T>() -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn align_of_val<T>(_val: &T) -> usize {
-    align_of::<T>()
+pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
+    unsafe { intrinsics::min_align_of_val(val) }
 }
 
 /// Creates a value initialized to zero.
@@ -371,10 +365,47 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 
 /// Disposes of a value.
 ///
-/// This function can be used to destroy any value by allowing `drop` to take ownership of its
-/// argument.
+/// While this does call the argument's implementation of `Drop`, it will not
+/// release any borrows, as borrows are based on lexical scope.
 ///
 /// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// let v = vec![1, 2, 3];
+///
+/// drop(v); // explicitly drop the vector
+/// ```
+///
+/// Borrows are based on lexical scope, so this produces an error:
+///
+/// ```ignore
+/// let mut v = vec![1, 2, 3];
+/// let x = &v[0];
+///
+/// drop(x); // explicitly drop the reference, but the borrow still exists
+///
+/// v.push(4); // error: cannot borrow `v` as mutable because it is also
+///            // borrowed as immutable
+/// ```
+///
+/// An inner scope is needed to fix this:
+///
+/// ```
+/// let mut v = vec![1, 2, 3];
+///
+/// {
+///     let x = &v[0];
+///
+///     drop(x); // this is now redundant, as `x` is going out of scope anyway
+/// }
+///
+/// v.push(4); // no problems
+/// ```
+///
+/// Since `RefCell` enforces the borrow rules at runtime, `drop()` can
+/// seemingly release a borrow of one:
 ///
 /// ```
 /// use std::cell::RefCell;
@@ -414,17 +445,22 @@ macro_rules! repeat_u8_as_u64 {
 //
 // And of course, 0x00 brings back the old world of zero'ing on drop.
 #[unstable(feature = "filling_drop")]
+#[allow(missing_docs)]
 pub const POST_DROP_U8: u8 = 0x1d;
 #[unstable(feature = "filling_drop")]
+#[allow(missing_docs)]
 pub const POST_DROP_U32: u32 = repeat_u8_as_u32!(POST_DROP_U8);
 #[unstable(feature = "filling_drop")]
+#[allow(missing_docs)]
 pub const POST_DROP_U64: u64 = repeat_u8_as_u64!(POST_DROP_U8);
 
 #[cfg(target_pointer_width = "32")]
 #[unstable(feature = "filling_drop")]
+#[allow(missing_docs)]
 pub const POST_DROP_USIZE: usize = POST_DROP_U32 as usize;
 #[cfg(target_pointer_width = "64")]
 #[unstable(feature = "filling_drop")]
+#[allow(missing_docs)]
 pub const POST_DROP_USIZE: usize = POST_DROP_U64 as usize;
 
 /// Interprets `src` as `&U`, and then reads `src` without moving the contained

@@ -26,6 +26,7 @@
 
 use middle::cast::{CastKind};
 use middle::const_eval;
+use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::def;
 use middle::expr_use_visitor as euv;
 use middle::infer;
@@ -39,6 +40,7 @@ use syntax::codemap::Span;
 use syntax::visit::{self, Visitor};
 
 use std::collections::hash_map::Entry;
+use std::cmp::Ordering;
 
 // Const qualification, from partial to completely promotable.
 bitflags! {
@@ -110,14 +112,16 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn with_euv<'b, F, R>(&'b mut self, item_id: Option<ast::NodeId>, f: F) -> R where
-        F: for<'t> FnOnce(&mut euv::ExprUseVisitor<'b, 't, 'tcx,
-                                    ty::ParameterEnvironment<'a, 'tcx>>) -> R,
+        F: for<'t> FnOnce(&mut euv::ExprUseVisitor<'b, 't, 'b, 'tcx>) -> R,
     {
         let param_env = match item_id {
             Some(item_id) => ty::ParameterEnvironment::for_item(self.tcx, item_id),
-            None => ty::empty_parameter_environment(self.tcx)
+            None => self.tcx.empty_parameter_environment()
         };
-        f(&mut euv::ExprUseVisitor::new(self, &param_env))
+
+        let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, Some(param_env), false);
+
+        f(&mut euv::ExprUseVisitor::new(self, &infcx))
     }
 
     fn global_expr(&mut self, mode: Mode, expr: &ast::Expr) -> ConstQualif {
@@ -231,7 +235,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
                                       fn_like.id());
             self.add_qualif(qualif);
 
-            if ty::type_contents(self.tcx, ret_ty).interior_unsafe() {
+            if ret_ty.type_contents(self.tcx).interior_unsafe() {
                 self.add_qualif(ConstQualif::MUTABLE_MEM);
             }
 
@@ -266,8 +270,8 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn check_static_mut_type(&self, e: &ast::Expr) {
-        let node_ty = ty::node_id_to_type(self.tcx, e.id);
-        let tcontents = ty::type_contents(self.tcx, node_ty);
+        let node_ty = self.tcx.node_id_to_type(e.id);
+        let tcontents = node_ty.type_contents(self.tcx);
 
         let suffix = if tcontents.has_dtor() {
             "destructors"
@@ -282,13 +286,12 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn check_static_type(&self, e: &ast::Expr) {
-        let ty = ty::node_id_to_type(self.tcx, e.id);
-        let infcx = infer::new_infer_ctxt(self.tcx);
-        let mut fulfill_cx = traits::FulfillmentContext::new(false);
+        let ty = self.tcx.node_id_to_type(e.id);
+        let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, None, false);
         let cause = traits::ObligationCause::new(e.span, e.id, traits::SharedStatic);
+        let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
         fulfill_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
-        let env = ty::empty_parameter_environment(self.tcx);
-        match fulfill_cx.select_all_or_error(&infcx, &env) {
+        match fulfill_cx.select_all_or_error(&infcx) {
             Ok(()) => { },
             Err(ref errors) => {
                 traits::report_fulfillment_errors(&infcx, errors);
@@ -364,6 +367,19 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
             ast::PatRange(ref start, ref end) => {
                 self.global_expr(Mode::Const, &**start);
                 self.global_expr(Mode::Const, &**end);
+
+                match const_eval::compare_lit_exprs(self.tcx, start, end) {
+                    Some(Ordering::Less) |
+                    Some(Ordering::Equal) => {}
+                    Some(Ordering::Greater) => {
+                        span_err!(self.tcx.sess, start.span, E0030,
+                            "lower range bound must be less than or equal to upper");
+                    }
+                    None => {
+                        self.tcx.sess.span_bug(
+                            start.span, "literals of different types in range pat");
+                    }
+                }
             }
             _ => visit::walk_pat(self, p)
         }
@@ -402,8 +418,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
         let mut outer = self.qualif;
         self.qualif = ConstQualif::empty();
 
-        let node_ty = ty::node_id_to_type(self.tcx, ex.id);
+        let node_ty = self.tcx.node_id_to_type(ex.id);
         check_expr(self, ex, node_ty);
+        check_adjustments(self, ex);
 
         // Special-case some expressions to avoid certain flags bubbling up.
         match ex.node {
@@ -455,7 +472,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 match node_ty.sty {
                     ty::TyUint(_) | ty::TyInt(_) if div_or_rem => {
                         if !self.qualif.intersects(ConstQualif::NOT_CONST) {
-                            match const_eval::eval_const_expr_partial(self.tcx, ex, None) {
+                            match const_eval::eval_const_expr_partial(
+                                    self.tcx, ex, ExprTypeChecked) {
                                 Ok(_) => {}
                                 Err(msg) => {
                                     span_err!(self.tcx.sess, msg.span, E0020,
@@ -479,7 +497,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 // initializer values (very bad).
                 // If the type doesn't have interior mutability, then `ConstQualif::MUTABLE_MEM` has
                 // propagated from another error, so erroring again would be just noise.
-                let tc = ty::type_contents(self.tcx, node_ty);
+                let tc = node_ty.type_contents(self.tcx);
                 if self.qualif.intersects(ConstQualif::MUTABLE_MEM) && tc.interior_unsafe() {
                     outer = outer | ConstQualif::NOT_CONST;
                     if self.mode != Mode::Var {
@@ -529,7 +547,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                         e: &ast::Expr, node_ty: Ty<'tcx>) {
     match node_ty.sty {
         ty::TyStruct(did, _) |
-        ty::TyEnum(did, _) if ty::has_dtor(v.tcx, did) => {
+        ty::TyEnum(did, _) if v.tcx.has_dtor(did) => {
             v.add_qualif(ConstQualif::NEEDS_DROP);
             if v.mode != Mode::Var {
                 v.tcx.sess.span_err(e.span,
@@ -544,7 +562,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
     match e.node {
         ast::ExprUnary(..) |
         ast::ExprBinary(..) |
-        ast::ExprIndex(..) if v.tcx.method_map.borrow().contains_key(&method_call) => {
+        ast::ExprIndex(..) if v.tcx.tables.borrow().method_map.contains_key(&method_call) => {
             v.add_qualif(ConstQualif::NOT_CONST);
             if v.mode != Mode::Var {
                 span_err!(v.tcx.sess, e.span, E0011,
@@ -560,7 +578,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
         }
         ast::ExprUnary(op, ref inner) => {
-            match ty::node_id_to_type(v.tcx, inner.id).sty {
+            match v.tcx.node_id_to_type(inner.id).sty {
                 ty::TyRawPtr(_) => {
                     assert!(op == ast::UnDeref);
 
@@ -574,7 +592,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
         }
         ast::ExprBinary(op, ref lhs, _) => {
-            match ty::node_id_to_type(v.tcx, lhs.id).sty {
+            match v.tcx.node_id_to_type(lhs.id).sty {
                 ty::TyRawPtr(_) => {
                     assert!(op.node == ast::BiEq || op.node == ast::BiNe ||
                             op.node == ast::BiLe || op.node == ast::BiLt ||
@@ -695,13 +713,10 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
         }
         ast::ExprMethodCall(..) => {
-            let method_did = match v.tcx.method_map.borrow()[&method_call].origin {
-                ty::MethodStatic(did) => Some(did),
-                _ => None
-            };
-            let is_const = match method_did {
-                Some(did) => v.handle_const_fn_call(e, did, node_ty),
-                None => false
+            let method = v.tcx.tables.borrow().method_map[&method_call];
+            let is_const = match v.tcx.impl_or_trait_item(method.def_id).container() {
+                ty::ImplContainer(_) => v.handle_const_fn_call(e, method.def_id, node_ty),
+                ty::TraitContainer(_) => false
             };
             if !is_const {
                 v.add_qualif(ConstQualif::NOT_CONST);
@@ -731,7 +746,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         ast::ExprClosure(..) => {
             // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
-            if ty::with_freevars(v.tcx, e.id, |fv| !fv.is_empty()) {
+            if v.tcx.with_freevars(e.id, |fv| !fv.is_empty()) {
                 assert!(v.mode == Mode::Var,
                         "global closures can't capture anything");
                 v.add_qualif(ConstQualif::NOT_CONST);
@@ -774,6 +789,25 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             if v.mode != Mode::Var {
                 span_err!(v.tcx.sess, e.span, E0019,
                           "{} contains unimplemented expression type", v.msg());
+            }
+        }
+    }
+}
+
+/// Check the adjustments of an expression
+fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &ast::Expr) {
+    match v.tcx.tables.borrow().adjustments.get(&e.id) {
+        None | Some(&ty::AdjustReifyFnPointer) | Some(&ty::AdjustUnsafeFnPointer) => {}
+        Some(&ty::AdjustDerefRef(ty::AutoDerefRef { autoderefs, .. })) => {
+            if (0..autoderefs as u32).any(|autoderef| {
+                    v.tcx.is_overloaded_autoderef(e.id, autoderef)
+            }) {
+                v.add_qualif(ConstQualif::NOT_CONST);
+                if v.mode != Mode::Var {
+                    span_err!(v.tcx.sess, e.span, E0400,
+                              "user-defined dereference operators are not allowed in {}s",
+                              v.msg());
+                }
             }
         }
     }

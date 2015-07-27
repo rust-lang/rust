@@ -9,7 +9,9 @@
 // except according to those terms.
 
 #![feature(rustc_private)]
+#![feature(libc)]
 
+extern crate libc;
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_lint;
@@ -29,6 +31,7 @@ use rustc::session::config::{self, basic_options, build_configuration, Input, Op
 use rustc::session::build_session;
 use rustc_driver::driver;
 use rustc_resolve::MakeGlobMap;
+use libc::c_void;
 
 use syntax::diagnostics::registry::Registry;
 
@@ -111,7 +114,7 @@ impl ExecutionEngine {
     }
 
     /// Returns a raw pointer to the named function.
-    pub fn get_function(&mut self, name: &str) -> Option<*const ()> {
+    pub fn get_function(&mut self, name: &str) -> Option<*const c_void> {
         let s = CString::new(name.as_bytes()).unwrap();
 
         for &m in &self.modules {
@@ -128,7 +131,7 @@ impl ExecutionEngine {
     }
 
     /// Returns a raw pointer to the named global item.
-    pub fn get_global(&mut self, name: &str) -> Option<*const ()> {
+    pub fn get_global(&mut self, name: &str) -> Option<*const c_void> {
         let s = CString::new(name.as_bytes()).unwrap();
 
         for &m in &self.modules {

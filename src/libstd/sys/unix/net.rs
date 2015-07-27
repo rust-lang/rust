@@ -17,7 +17,7 @@ use str;
 use sys::c;
 use net::SocketAddr;
 use sys::fd::FileDesc;
-use sys_common::{AsInner, FromInner};
+use sys_common::{AsInner, FromInner, IntoInner};
 use sys_common::net::{getsockopt, setsockopt};
 use time::Duration;
 
@@ -126,4 +126,8 @@ impl AsInner<c_int> for Socket {
 
 impl FromInner<c_int> for Socket {
     fn from_inner(fd: c_int) -> Socket { Socket(FileDesc::new(fd)) }
+}
+
+impl IntoInner<c_int> for Socket {
+    fn into_inner(self) -> c_int { self.0.into_raw() }
 }

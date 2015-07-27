@@ -38,6 +38,17 @@ fn add_one(x: i32) -> i32 {
 }
 ```
 
+There is another style of doc comment, `//!`, to comment containing items (e.g.
+crates, modules or functions), instead of the items following it. Commonly used
+inside crates root (lib.rs) or modules root (mod.rs):
+
+```
+//! # The Rust Standard Library
+//!
+//! The Rust Standard Library provides the essential runtime
+//! functionality for building portable Rust software.
+```
+
 When writing doc comments, providing some examples of usage is very, very
 helpful. You’ll notice we’ve used a new macro here: `assert_eq!`. This compares
 two values, and `panic!`s if they’re not equal to each other. It’s very helpful

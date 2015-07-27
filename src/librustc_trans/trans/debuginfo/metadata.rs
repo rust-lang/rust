@@ -26,12 +26,13 @@ use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 use metadata::csearch;
 use middle::pat_util;
 use middle::subst::{self, Substs};
+use middle::infer;
 use rustc::ast_map;
 use trans::{type_of, adt, machine, monomorphize};
-use trans::common::{self, CrateContext, FunctionContext, NormalizingClosureTyper, Block};
+use trans::common::{self, CrateContext, FunctionContext, Block};
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::type_::Type;
-use middle::ty::{self, Ty, ClosureTyper};
+use middle::ty::{self, Ty};
 use session::config::{self, FullDebugInfo};
 use util::nodemap::FnvHashMap;
 use util::common::path2cstr;
@@ -205,7 +206,7 @@ impl<'tcx> TypeMap<'tcx> {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);
             },
-            ty::TyRawPtr(ty::mt { ty: inner_type, mutbl } ) => {
+            ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
                 unique_type_id.push('*');
                 if mutbl == ast::MutMutable {
                     unique_type_id.push_str("mut");
@@ -215,7 +216,7 @@ impl<'tcx> TypeMap<'tcx> {
                 let inner_type_id = self.get_unique_type_id_as_string(inner_type_id);
                 unique_type_id.push_str(&inner_type_id[..]);
             },
-            ty::TyRef(_, ty::mt { ty: inner_type, mutbl }) => {
+            ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
                 unique_type_id.push('&');
                 if mutbl == ast::MutMutable {
                     unique_type_id.push_str("mut");
@@ -242,9 +243,7 @@ impl<'tcx> TypeMap<'tcx> {
             ty::TyTrait(ref trait_data) => {
                 unique_type_id.push_str("trait ");
 
-                let principal =
-                    ty::erase_late_bound_regions(cx.tcx(),
-                                                 &trait_data.principal);
+                let principal = cx.tcx().erase_late_bound_regions(&trait_data.principal);
 
                 from_def_id_and_substs(self,
                                        cx,
@@ -261,7 +260,7 @@ impl<'tcx> TypeMap<'tcx> {
 
                 unique_type_id.push_str(" fn(");
 
-                let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
+                let sig = cx.tcx().erase_late_bound_regions(sig);
 
                 for &parameter_type in &sig.inputs {
                     let parameter_type_id =
@@ -288,9 +287,9 @@ impl<'tcx> TypeMap<'tcx> {
                     }
                 }
             },
-            ty::TyClosure(def_id, substs) => {
-                let typer = NormalizingClosureTyper::new(cx.tcx());
-                let closure_ty = typer.closure_type(def_id, substs);
+            ty::TyClosure(def_id, ref substs) => {
+                let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables);
+                let closure_ty = infcx.closure_type(def_id, substs);
                 self.get_unique_type_id_of_closure_type(cx,
                                                         closure_ty,
                                                         &mut unique_type_id);
@@ -376,7 +375,7 @@ impl<'tcx> TypeMap<'tcx> {
 
         unique_type_id.push_str("|");
 
-        let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
+        let sig = cx.tcx().erase_late_bound_regions(sig);
 
         for &parameter_type in &sig.inputs {
             let parameter_type_id =
@@ -562,7 +561,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 unique_type_id: UniqueTypeId,
                                 span: Span)
                                 -> MetadataCreationResult {
-    let data_ptr_type = ty::mk_ptr(cx.tcx(), ty::mt {
+    let data_ptr_type = cx.tcx().mk_ptr(ty::TypeAndMut {
         ty: element_type,
         mutbl: ast::MutImmutable
     });
@@ -626,7 +625,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                       span: Span)
                                       -> MetadataCreationResult
 {
-    let signature = ty::erase_late_bound_regions(cx.tcx(), signature);
+    let signature = cx.tcx().erase_late_bound_regions(signature);
 
     let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs.len() + 1);
 
@@ -766,7 +765,9 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         trait_pointer_metadata(cx, t, None, unique_type_id),
             false)
         }
-        ty::TyBox(ty) | ty::TyRawPtr(ty::mt{ty, ..}) | ty::TyRef(_, ty::mt{ty, ..}) => {
+        ty::TyBox(ty) |
+        ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
+        ty::TyRef(_, ty::TypeAndMut{ty, ..}) => {
             match ty.sty {
                 ty::TySlice(typ) => {
                     vec_slice_metadata(cx, t, typ, unique_type_id, usage_site_span)
@@ -795,12 +796,27 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
         }
         ty::TyBareFn(_, ref barefnty) => {
-            subroutine_type_metadata(cx, unique_type_id, &barefnty.sig, usage_site_span)
+            let fn_metadata = subroutine_type_metadata(cx,
+                                                       unique_type_id,
+                                                       &barefnty.sig,
+                                                       usage_site_span).metadata;
+            match debug_context(cx).type_map
+                                   .borrow()
+                                   .find_metadata_for_unique_id(unique_type_id) {
+                Some(metadata) => return metadata,
+                None => { /* proceed normally */ }
+            };
+
+            // This is actually a function pointer, so wrap it in pointer DI
+            MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
+
         }
-        ty::TyClosure(def_id, substs) => {
-            let typer = NormalizingClosureTyper::new(cx.tcx());
-            let sig = typer.closure_type(def_id, substs).sig;
-            subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)
+        ty::TyClosure(_, ref substs) => {
+            prepare_tuple_metadata(cx,
+                                   t,
+                                   &substs.upvar_tys,
+                                   unique_type_id,
+                                   usage_site_span).finalize(cx)
         }
         ty::TyStruct(def_id, substs) => {
             prepare_struct_metadata(cx,
@@ -919,7 +935,7 @@ pub fn scope_metadata(fcx: &FunctionContext,
     }
 }
 
-fn diverging_type_metadata(cx: &CrateContext) -> DIType {
+pub fn diverging_type_metadata(cx: &CrateContext) -> DIType {
     unsafe {
         llvm::LLVMDIBuilderCreateBasicType(
             DIB(cx),
@@ -1114,7 +1130,7 @@ impl<'tcx> MemberDescriptionFactory<'tcx> {
 
 // Creates MemberDescriptions for the fields of a struct
 struct StructMemberDescriptionFactory<'tcx> {
-    fields: Vec<ty::field<'tcx>>,
+    fields: Vec<ty::Field<'tcx>>,
     is_simd: bool,
     span: Span,
 }
@@ -1176,7 +1192,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                   unique_type_id,
                                                   containing_scope);
 
-    let mut fields = ty::struct_fields(cx.tcx(), def_id, substs);
+    let mut fields = cx.tcx().struct_fields(def_id, substs);
 
     // The `Ty` values returned by `ty::struct_fields` can still contain
     // `TyProjection` variants, so normalize those away.
@@ -1192,7 +1208,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         struct_llvm_type,
         StructMDF(StructMemberDescriptionFactory {
             fields: fields,
-            is_simd: ty::type_is_simd(cx.tcx(), struct_type),
+            is_simd: struct_type.is_simd(cx.tcx()),
             span: span,
         })
     )
@@ -1444,7 +1460,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 let discrfield = discrfield.iter()
                                            .skip(1)
                                            .map(|x| x.to_string())
-                                           .collect::<Vec<_>>().connect("$");
+                                           .collect::<Vec<_>>().join("$");
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
                                                 discrfield,
                                                 null_variant_name);
@@ -1588,7 +1604,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let loc = span_start(cx, definition_span);
     let file_metadata = file_metadata(cx, &loc.file.name);
 
-    let variants = ty::enum_variants(cx.tcx(), enum_def_id);
+    let variants = cx.tcx().enum_variants(enum_def_id);
 
     let enumerators_metadata: Vec<DIDescriptor> = variants
         .iter()
@@ -1605,13 +1621,10 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         .collect();
 
     let discriminant_type_metadata = |inttype| {
-        // We can reuse the type of the discriminant for all monomorphized
-        // instances of an enum because it doesn't depend on any type
-        // parameters. The def_id, uniquely identifying the enum's polytype acts
-        // as key in this cache.
+        let disr_type_key = (enum_def_id, inttype);
         let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
                                                                  .borrow()
-                                                                 .get(&enum_def_id).cloned();
+                                                                 .get(&disr_type_key).cloned();
         match cached_discriminant_type_metadata {
             Some(discriminant_type_metadata) => discriminant_type_metadata,
             None => {
@@ -1640,7 +1653,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
                 debug_context(cx).created_enum_disr_types
                                  .borrow_mut()
-                                 .insert(enum_def_id, discriminant_type_metadata);
+                                 .insert(disr_type_key, discriminant_type_metadata);
 
                 discriminant_type_metadata
             }
@@ -1891,7 +1904,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let variable_type = ty::node_id_to_type(cx.tcx(), node_id);
+    let variable_type = cx.tcx().node_id_to_type(node_id);
     let type_metadata = type_metadata(cx, variable_type, span);
     let namespace_node = namespace_for_item(cx, ast_util::local_def(node_id));
     let var_name = token::get_name(name).to_string();

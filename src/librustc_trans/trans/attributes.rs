@@ -11,7 +11,8 @@
 
 use libc::{c_uint, c_ulonglong};
 use llvm::{self, ValueRef, AttrHelper};
-use middle::ty::{self, ClosureTyper};
+use middle::ty;
+use middle::infer;
 use session::config::NoDebugInfo;
 use syntax::abi;
 use syntax::ast;
@@ -144,16 +145,16 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
     let function_type;
     let (fn_sig, abi, env_ty) = match fn_type.sty {
         ty::TyBareFn(_, ref f) => (&f.sig, f.abi, None),
-        ty::TyClosure(closure_did, substs) => {
-            let typer = common::NormalizingClosureTyper::new(ccx.tcx());
-            function_type = typer.closure_type(closure_did, substs);
+        ty::TyClosure(closure_did, ref substs) => {
+            let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
+            function_type = infcx.closure_type(closure_did, substs);
             let self_type = base::self_type_for_closure(ccx, closure_did, fn_type);
             (&function_type.sig, abi::RustCall, Some(self_type))
         }
         _ => ccx.sess().bug("expected closure or function.")
     };
 
-    let fn_sig = ty::erase_late_bound_regions(ccx.tcx(), fn_sig);
+    let fn_sig = ccx.tcx().erase_late_bound_regions(fn_sig);
 
     let mut attrs = llvm::AttrBuilder::new();
     let ret_ty = fn_sig.output;
@@ -222,7 +223,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             // We can also mark the return value as `dereferenceable` in certain cases
             match ret_ty.sty {
                 // These are not really pointers but pairs, (pointer, len)
-                ty::TyRef(_, ty::mt { ty: inner, .. })
+                ty::TyRef(_, ty::TypeAndMut { ty: inner, .. })
                 | ty::TyBox(inner) if common::type_is_sized(ccx.tcx(), inner) => {
                     let llret_sz = machine::llsize_of_real(ccx, type_of::type_of(ccx, inner));
                     attrs.ret(llvm::DereferenceableAttribute(llret_sz));
@@ -262,7 +263,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                     attrs.arg(idx, llvm::DereferenceableAttribute(llsz));
                 } else {
                     attrs.arg(idx, llvm::NonNullAttribute);
-                    if ty::type_is_trait(inner) {
+                    if inner.is_trait() {
                         attrs.arg(idx + 1, llvm::NonNullAttribute);
                     }
                 }
@@ -274,7 +275,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as
                 // both `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely
                 // on memory dependencies rather than pointer equality
-                let interior_unsafe = ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe();
+                let interior_unsafe = mt.ty.type_contents(ccx.tcx()).interior_unsafe();
 
                 if mt.mutbl == ast::MutMutable || !interior_unsafe {
                     attrs.arg(idx, llvm::Attribute::NoAlias);
@@ -291,7 +292,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                     attrs.arg(idx, llvm::DereferenceableAttribute(llsz));
                 } else {
                     attrs.arg(idx, llvm::NonNullAttribute);
-                    if ty::type_is_trait(mt.ty) {
+                    if mt.ty.is_trait() {
                         attrs.arg(idx + 1, llvm::NonNullAttribute);
                     }
                 }

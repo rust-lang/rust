@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -30,7 +30,7 @@ pub enum Lonely<X,Y> { Zero, One(X), Two(X, Y) }
 #[rustc_move_fragments]
 pub fn test_match_partial(p: Lonely<D, D>) {
     //~^ ERROR                 parent_of_fragments: `$(local p)`
-    //~| ERROR                  assigned_leaf_path: `($(local p) as Zero)`
+    //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::Zero)`
     match p {
         Zero(..) => {}
         _ => {}
@@ -40,9 +40,9 @@ pub fn test_match_partial(p: Lonely<D, D>) {
 #[rustc_move_fragments]
 pub fn test_match_full(p: Lonely<D, D>) {
     //~^ ERROR                 parent_of_fragments: `$(local p)`
-    //~| ERROR                  assigned_leaf_path: `($(local p) as Zero)`
-    //~| ERROR                  assigned_leaf_path: `($(local p) as One)`
-    //~| ERROR                  assigned_leaf_path: `($(local p) as Two)`
+    //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::Zero)`
+    //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::One)`
+    //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::Two)`
     match p {
         Zero(..) => {}
         One(..) => {}
@@ -53,10 +53,10 @@ pub fn test_match_full(p: Lonely<D, D>) {
 #[rustc_move_fragments]
 pub fn test_match_bind_one(p: Lonely<D, D>) {
     //~^ ERROR                 parent_of_fragments: `$(local p)`
-    //~| ERROR                  assigned_leaf_path: `($(local p) as Zero)`
-    //~| ERROR                 parent_of_fragments: `($(local p) as One)`
-    //~| ERROR                     moved_leaf_path: `($(local p) as One).#0`
-    //~| ERROR                  assigned_leaf_path: `($(local p) as Two)`
+    //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::Zero)`
+    //~| ERROR                 parent_of_fragments: `($(local p) as Lonely::One)`
+    //~| ERROR                     moved_leaf_path: `($(local p) as Lonely::One).#0`
+    //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::Two)`
     //~| ERROR                  assigned_leaf_path: `$(local data)`
     match p {
         Zero(..) => {}
@@ -68,13 +68,13 @@ pub fn test_match_bind_one(p: Lonely<D, D>) {
 #[rustc_move_fragments]
 pub fn test_match_bind_many(p: Lonely<D, D>) {
     //~^ ERROR                 parent_of_fragments: `$(local p)`
-    //~| ERROR                  assigned_leaf_path: `($(local p) as Zero)`
-    //~| ERROR                 parent_of_fragments: `($(local p) as One)`
-    //~| ERROR                     moved_leaf_path: `($(local p) as One).#0`
+    //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::Zero)`
+    //~| ERROR                 parent_of_fragments: `($(local p) as Lonely::One)`
+    //~| ERROR                     moved_leaf_path: `($(local p) as Lonely::One).#0`
     //~| ERROR                  assigned_leaf_path: `$(local data)`
-    //~| ERROR                 parent_of_fragments: `($(local p) as Two)`
-    //~| ERROR                     moved_leaf_path: `($(local p) as Two).#0`
-    //~| ERROR                     moved_leaf_path: `($(local p) as Two).#1`
+    //~| ERROR                 parent_of_fragments: `($(local p) as Lonely::Two)`
+    //~| ERROR                     moved_leaf_path: `($(local p) as Lonely::Two).#0`
+    //~| ERROR                     moved_leaf_path: `($(local p) as Lonely::Two).#1`
     //~| ERROR                  assigned_leaf_path: `$(local left)`
     //~| ERROR                  assigned_leaf_path: `$(local right)`
     match p {

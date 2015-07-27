@@ -23,7 +23,7 @@ use super::{RegionVariableOrigin, SubregionOrigin, TypeTrace, MiscVariable};
 use rustc_data_structures::graph::{self, Direction, NodeIndex};
 use middle::free_region::FreeRegionMap;
 use middle::region;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TypeError};
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReInfer, ReFree, ReEarlyBound};
 use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
@@ -34,7 +34,6 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::fmt;
-use std::iter::repeat;
 use std::u32;
 use syntax::ast;
 
@@ -133,7 +132,7 @@ pub enum RegionResolutionError<'tcx> {
     /// should put a lifetime. In those cases we process and put those errors
     /// into `ProcessedErrors` before we do any reporting.
     ProcessedErrors(Vec<RegionVariableOrigin>,
-                    Vec<(TypeTrace<'tcx>, ty::type_err<'tcx>)>,
+                    Vec<(TypeTrace<'tcx>, ty::TypeError<'tcx>)>,
                     Vec<SameRegions>),
 }
 
@@ -870,10 +869,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 // is the scope `s_id`.  Otherwise, as we do not know
                 // big the free region is precisely, the GLB is undefined.
                 let fr_scope = fr.scope.to_code_extent();
-                if self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id) == fr_scope {
+                if self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id) == fr_scope ||
+                        free_regions.is_static(fr) {
                     Ok(s)
                 } else {
-                    Err(ty::terr_regions_no_overlap(b, a))
+                    Err(TypeError::RegionsNoOverlap(b, a))
                 }
             }
 
@@ -892,7 +892,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 if a == b {
                     Ok(a)
                 } else {
-                    Err(ty::terr_regions_no_overlap(b, a))
+                    Err(TypeError::RegionsNoOverlap(b, a))
                 }
             }
         }
@@ -949,7 +949,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         } else if r_id == scope_b {
             Ok(ReScope(scope_a))
         } else {
-            Err(ty::terr_regions_no_overlap(region_a, region_b))
+            Err(TypeError::RegionsNoOverlap(region_a, region_b))
         }
     }
 }
@@ -1304,7 +1304,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
-        let mut dup_vec: Vec<_> = repeat(u32::MAX).take(self.num_vars() as usize).collect();
+        let mut dup_vec = vec![u32::MAX; self.num_vars() as usize];
 
         for idx in 0..self.num_vars() as usize {
             match var_data[idx].value {
@@ -1672,7 +1672,7 @@ impl<'tcx> GenericKind<'tcx> {
             GenericKind::Param(ref p) =>
                 p.to_ty(tcx),
             GenericKind::Projection(ref p) =>
-                ty::mk_projection(tcx, p.trait_ref.clone(), p.item_name),
+                tcx.mk_projection(p.trait_ref.clone(), p.item_name),
         }
     }
 }

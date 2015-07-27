@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::infer::InferCtxt;
-use middle::ty::{self, RegionEscape, Ty};
+use middle::ty::{self, RegionEscape, Ty, HasTypeFlags};
 
 use std::collections::HashSet;
 use std::fmt;
@@ -85,7 +85,7 @@ pub struct FulfillmentContext<'tcx> {
     // particular node-id).
     region_obligations: NodeMap<Vec<RegionObligation<'tcx>>>,
 
-    errors_will_be_reported: bool,
+    pub errors_will_be_reported: bool,
 }
 
 #[derive(Clone)]
@@ -132,7 +132,6 @@ impl<'tcx> FulfillmentContext<'tcx> {
     /// `projection_ty` again.
     pub fn normalize_projection_type<'a>(&mut self,
                                          infcx: &InferCtxt<'a,'tcx>,
-                                         typer: &ty::ClosureTyper<'tcx>,
                                          projection_ty: ty::ProjectionTy<'tcx>,
                                          cause: ObligationCause<'tcx>)
                                          -> Ty<'tcx>
@@ -144,7 +143,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
         // FIXME(#20304) -- cache
 
-        let mut selcx = SelectionContext::new(infcx, typer);
+        let mut selcx = SelectionContext::new(infcx);
         let normalized = project::normalize_projection_type(&mut selcx, projection_ty, cause, 0);
 
         for obligation in normalized.obligations {
@@ -208,11 +207,10 @@ impl<'tcx> FulfillmentContext<'tcx> {
     }
 
     pub fn select_all_or_error<'a>(&mut self,
-                                   infcx: &InferCtxt<'a,'tcx>,
-                                   typer: &ty::ClosureTyper<'tcx>)
+                                   infcx: &InferCtxt<'a,'tcx>)
                                    -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
-        try!(self.select_where_possible(infcx, typer));
+        try!(self.select_where_possible(infcx));
 
         // Anything left is ambiguous.
         let errors: Vec<FulfillmentError> =
@@ -233,20 +231,18 @@ impl<'tcx> FulfillmentContext<'tcx> {
     /// gaining type information. It'd be equally valid to use `select_where_possible` but it
     /// results in `O(n^2)` performance (#18208).
     pub fn select_new_obligations<'a>(&mut self,
-                                      infcx: &InferCtxt<'a,'tcx>,
-                                      typer: &ty::ClosureTyper<'tcx>)
+                                      infcx: &InferCtxt<'a,'tcx>)
                                       -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
-        let mut selcx = SelectionContext::new(infcx, typer);
+        let mut selcx = SelectionContext::new(infcx);
         self.select(&mut selcx, true)
     }
 
     pub fn select_where_possible<'a>(&mut self,
-                                     infcx: &InferCtxt<'a,'tcx>,
-                                     typer: &ty::ClosureTyper<'tcx>)
+                                     infcx: &InferCtxt<'a,'tcx>)
                                      -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
-        let mut selcx = SelectionContext::new(infcx, typer);
+        let mut selcx = SelectionContext::new(infcx);
         self.select(&mut selcx, false)
     }
 
@@ -417,20 +413,38 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         }
 
         ty::Predicate::TypeOutlives(ref binder) => {
-            // For now, we just check that there are no higher-ranked
-            // regions.  If there are, we will call this obligation an
-            // error. Eventually we should be able to support some
-            // cases here, I imagine (e.g., `for<'a> int : 'a`).
-            if ty::count_late_bound_regions(selcx.tcx(), binder) != 0 {
-                errors.push(
-                    FulfillmentError::new(
-                        obligation.clone(),
-                        CodeSelectionError(Unimplemented)));
-            } else {
-                let ty::OutlivesPredicate(t_a, r_b) = binder.0;
-                register_region_obligation(t_a, r_b,
-                                           obligation.cause.clone(),
-                                           region_obligations);
+            // Check if there are higher-ranked regions.
+            match selcx.tcx().no_late_bound_regions(binder) {
+                // If there are, inspect the underlying type further.
+                None => {
+                    // Convert from `Binder<OutlivesPredicate<Ty, Region>>` to `Binder<Ty>`.
+                    let binder = binder.map_bound_ref(|pred| pred.0);
+
+                    // Check if the type has any bound regions.
+                    match selcx.tcx().no_late_bound_regions(&binder) {
+                        // If so, this obligation is an error (for now). Eventually we should be
+                        // able to support additional cases here, like `for<'a> &'a str: 'a`.
+                        None => {
+                            errors.push(
+                                FulfillmentError::new(
+                                    obligation.clone(),
+                                    CodeSelectionError(Unimplemented)))
+                        }
+                        // Otherwise, we have something of the form
+                        // `for<'a> T: 'a where 'a not in T`, which we can treat as `T: 'static`.
+                        Some(t_a) => {
+                            register_region_obligation(t_a, ty::ReStatic,
+                                                       obligation.cause.clone(),
+                                                       region_obligations);
+                        }
+                    }
+                }
+                // If there aren't, register the obligation.
+                Some(ty::OutlivesPredicate(t_a, r_b)) => {
+                    register_region_obligation(t_a, r_b,
+                                               obligation.cause.clone(),
+                                               region_obligations);
+                }
             }
             true
         }
@@ -501,5 +515,3 @@ impl<'tcx> FulfilledPredicates<'tcx> {
         !self.set.insert(p.clone())
     }
 }
-
-

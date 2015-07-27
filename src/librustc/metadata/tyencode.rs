@@ -143,9 +143,13 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
-        ty::TyClosure(def, substs) => {
+        ty::TyClosure(def, ref substs) => {
             mywrite!(w, "k[{}|", (cx.ds)(def));
-            enc_substs(w, cx, substs);
+            enc_substs(w, cx, &substs.func_substs);
+            for ty in &substs.upvar_tys {
+                enc_ty(w, cx, ty);
+            }
+            mywrite!(w, ".");
             mywrite!(w, "]");
         }
         ty::TyProjection(ref data) => {
@@ -183,7 +187,7 @@ fn enc_mutability(w: &mut Encoder, mt: ast::Mutability) {
 }
 
 fn enc_mt<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>,
-                    mt: ty::mt<'tcx>) {
+                    mt: ty::TypeAndMut<'tcx>) {
     enc_mutability(w, mt.mutbl);
     enc_ty(w, cx, mt.ty);
 }
@@ -405,21 +409,21 @@ pub fn enc_region_bounds<'a, 'tcx>(w: &mut Encoder,
 
 pub fn enc_type_param_def<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>,
                                     v: &ty::TypeParameterDef<'tcx>) {
-    mywrite!(w, "{}:{}|{}|{}|",
+    mywrite!(w, "{}:{}|{}|{}|{}|",
              token::get_name(v.name), (cx.ds)(v.def_id),
-             v.space.to_uint(), v.index);
+             v.space.to_uint(), v.index, (cx.ds)(v.default_def_id));
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
     enc_object_lifetime_default(w, cx, v.object_lifetime_default);
 }
 
 fn enc_object_lifetime_default<'a, 'tcx>(w: &mut Encoder,
                                          cx: &ctxt<'a, 'tcx>,
-                                         default: Option<ty::ObjectLifetimeDefault>)
+                                         default: ty::ObjectLifetimeDefault)
 {
     match default {
-        None => mywrite!(w, "n"),
-        Some(ty::ObjectLifetimeDefault::Ambiguous) => mywrite!(w, "a"),
-        Some(ty::ObjectLifetimeDefault::Specific(r)) => {
+        ty::ObjectLifetimeDefault::Ambiguous => mywrite!(w, "a"),
+        ty::ObjectLifetimeDefault::BaseDefault => mywrite!(w, "b"),
+        ty::ObjectLifetimeDefault::Specific(r) => {
             mywrite!(w, "s");
             enc_region(w, cx, r);
         }

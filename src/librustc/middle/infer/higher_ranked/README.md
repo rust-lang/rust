@@ -17,7 +17,7 @@ The problem we are addressing is that there is a kind of subtyping
 between functions with bound region parameters. Consider, for
 example, whether the following relation holds:
 
-    for<'a> fn(&'a int) <: for<'b> fn(&'b int)? (Yes, a => b)
+    for<'a> fn(&'a isize) <: for<'b> fn(&'b isize)? (Yes, a => b)
 
 The answer is that of course it does. These two types are basically
 the same, except that in one we used the name `a` and one we used
@@ -27,14 +27,14 @@ In the examples that follow, it becomes very important to know whether
 a lifetime is bound in a function type (that is, is a lifetime
 parameter) or appears free (is defined in some outer scope).
 Therefore, from now on I will always write the bindings explicitly,
-using the Rust syntax `for<'a> fn(&'a int)` to indicate that `a` is a
+using the Rust syntax `for<'a> fn(&'a isize)` to indicate that `a` is a
 lifetime parameter.
 
 Now let's consider two more function types. Here, we assume that the
 `'b` lifetime is defined somewhere outside and hence is not a lifetime
 parameter bound by the function type (it "appears free"):
 
-    for<'a> fn(&'a int) <: fn(&'b int)? (Yes, a => b)
+    for<'a> fn(&'a isize) <: fn(&'b isize)? (Yes, a => b)
 
 This subtyping relation does in fact hold. To see why, you have to
 consider what subtyping means. One way to look at `T1 <: T2` is to
@@ -51,7 +51,7 @@ to the same thing: a function that accepts pointers with any lifetime
 
 So, what if we reverse the order of the two function types, like this:
 
-    fn(&'b int) <: for<'a> fn(&'a int)? (No)
+    fn(&'b isize) <: for<'a> fn(&'a isize)? (No)
 
 Does the subtyping relationship still hold?  The answer of course is
 no. In this case, the function accepts *only the lifetime `'b`*,
@@ -60,8 +60,8 @@ accepted any lifetime.
 
 What about these two examples:
 
-    for<'a,'b> fn(&'a int, &'b int) <: for<'a>    fn(&'a int, &'a int)? (Yes)
-    for<'a>    fn(&'a int, &'a int) <: for<'a,'b> fn(&'a int, &'b int)? (No)
+    for<'a,'b> fn(&'a isize, &'b isize) <: for<'a>    fn(&'a isize, &'a isize)? (Yes)
+    for<'a>    fn(&'a isize, &'a isize) <: for<'a,'b> fn(&'a isize, &'b isize)? (No)
 
 Here, it is true that functions which take two pointers with any two
 lifetimes can be treated as if they only accepted two pointers with

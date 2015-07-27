@@ -13,7 +13,6 @@ use io::prelude::*;
 use env;
 use fmt;
 use intrinsics;
-use libc::uintptr_t;
 use sync::atomic::{self, Ordering};
 use sys::stdio::Stderr;
 
@@ -22,10 +21,18 @@ use sys::stdio::Stderr;
 /// can't run correctly un-altered. Valgrind is there to help
 /// you notice weirdness in normal, un-doctored code paths!
 pub fn running_on_valgrind() -> bool {
-    extern {
-        fn rust_running_on_valgrind() -> uintptr_t;
+    return on_valgrind();
+    #[cfg(windows)]
+    fn on_valgrind() -> bool { false }
+
+    #[cfg(unix)]
+    fn on_valgrind() -> bool {
+        use libc::uintptr_t;
+        extern {
+            fn rust_running_on_valgrind() -> uintptr_t;
+        }
+        unsafe { rust_running_on_valgrind() != 0 }
     }
-    unsafe { rust_running_on_valgrind() != 0 }
 }
 
 /// Valgrind has a fixed-sized array (size around 2000) of segment descriptors

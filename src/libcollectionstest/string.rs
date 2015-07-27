@@ -10,17 +10,8 @@
 
 use std::borrow::{IntoCow, Cow};
 use std::iter::repeat;
-#[allow(deprecated)]
-use std::string::as_string;
 
 use test::Bencher;
-
-#[test]
-#[allow(deprecated)]
-fn test_as_string() {
-    let x = "foo";
-    assert_eq!(x, &**as_string(x));
-}
 
 #[test]
 fn test_from_str() {
@@ -372,6 +363,13 @@ fn test_extend_ref() {
     a.extend(&['b', 'a', 'r']);
 
     assert_eq!(&a, "foobar");
+}
+
+#[test]
+fn test_into_boxed_slice() {
+    let xs = String::from("hello my name is bob");
+    let ys = xs.into_boxed_slice();
+    assert_eq!(&*ys, "hello my name is bob");
 }
 
 #[bench]

@@ -63,4 +63,15 @@ impl Baz {
     }
 }
 
+fn all_fine() {
+    let _f = all_fine;
+}
+
+// issue 26333
+trait Bar {
+    fn method<T: Bar>(&self, x: &T) {
+        x.method(x)
+    }
+}
+
 fn main() {}

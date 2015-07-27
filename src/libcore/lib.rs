@@ -154,10 +154,6 @@ pub mod str;
 pub mod hash;
 pub mod fmt;
 
-#[doc(primitive = "bool")]
-mod bool {
-}
-
 // note: does not need to be public
 mod tuple;
 

@@ -27,7 +27,7 @@ use super::write_call;
 
 use CrateCtxt;
 use middle::infer;
-use middle::ty::{self, Ty, ClosureTyper};
+use middle::ty::{self, Ty};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -131,15 +131,15 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             return Some(CallStep::Builtin);
         }
 
-        ty::TyClosure(def_id, substs) => {
+        ty::TyClosure(def_id, ref substs) => {
             assert_eq!(def_id.krate, ast::LOCAL_CRATE);
 
             // Check whether this is a call to a closure where we
             // haven't yet decided on whether the closure is fn vs
             // fnmut vs fnonce. If so, we have to defer further processing.
-            if fcx.closure_kind(def_id).is_none() {
+            if fcx.infcx().closure_kind(def_id).is_none() {
                 let closure_ty =
-                    fcx.closure_type(def_id, substs);
+                    fcx.infcx().closure_type(def_id, substs);
                 let fn_sig =
                     fcx.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
                                                                           infer::FnCall,
@@ -324,7 +324,7 @@ fn write_overloaded_call_method_map<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                              call_expr: &ast::Expr,
                                              method_callee: ty::MethodCallee<'tcx>) {
     let method_call = ty::MethodCall::expr(call_expr.id);
-    fcx.inh.method_map.borrow_mut().insert(method_call, method_callee);
+    fcx.inh.tables.borrow_mut().method_map.insert(method_call, method_callee);
 }
 
 #[derive(Debug)]
@@ -344,7 +344,7 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
-        assert!(fcx.closure_kind(self.closure_def_id).is_some());
+        assert!(fcx.infcx().closure_kind(self.closure_def_id).is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
         match try_overloaded_call_traits(fcx, self.call_expr, self.callee_expr,
@@ -358,9 +358,8 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                 // can't because of the annoying need for a TypeTrace.
                 // (This always bites me, should find a way to
                 // refactor it.)
-                let method_sig =
-                    ty::no_late_bound_regions(fcx.tcx(),
-                                              ty::ty_fn_sig(method_callee.ty)).unwrap();
+                let method_sig = fcx.tcx().no_late_bound_regions(method_callee.ty.fn_sig())
+                                          .unwrap();
 
                 debug!("attempt_resolution: method_callee={:?}",
                        method_callee);
@@ -371,7 +370,7 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                     demand::eqtype(fcx, self.call_expr.span, self_arg_ty, method_arg_ty);
                 }
 
-                let nilty = ty::mk_nil(fcx.tcx());
+                let nilty = fcx.tcx().mk_nil();
                 demand::eqtype(fcx,
                                self.call_expr.span,
                                method_sig.output.unwrap_or(nilty),

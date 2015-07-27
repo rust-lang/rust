@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -118,11 +118,8 @@ pub enum ExternalLocation {
 /// Metadata about an implementor of a trait.
 pub struct Implementor {
     pub def_id: ast::DefId,
-    pub generics: clean::Generics,
-    pub trait_: clean::Type,
-    pub for_: clean::Type,
     pub stability: Option<clean::Stability>,
-    pub polarity: Option<clean::ImplPolarity>,
+    pub impl_: clean::Impl,
 }
 
 /// Metadata about implementations for a type.
@@ -285,7 +282,7 @@ impl fmt::Display for IndexItemFunctionType {
         let inputs: Vec<String> = self.inputs.iter().map(|ref t| {
             format!("{}", t)
         }).collect();
-        try!(write!(f, "{{\"inputs\":[{}],\"output\":", inputs.connect(",")));
+        try!(write!(f, "{{\"inputs\":[{}],\"output\":", inputs.join(",")));
 
         match self.output {
             Some(ref t) => try!(write!(f, "{}", t)),
@@ -461,7 +458,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
                     search_index.push(IndexItem {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
-                        path: fqp[..fqp.len() - 1].connect("::"),
+                        path: fqp[..fqp.len() - 1].join("::"),
                         desc: shorter(item.doc_value()),
                         parent: Some(did),
                         search_type: get_index_search_type(&item, parent_basename),
@@ -552,7 +549,7 @@ fn write_shared(cx: &Context,
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
     try!(write(cx.dst.join("jquery.js"),
-               include_bytes!("static/jquery-2.1.0.min.js")));
+               include_bytes!("static/jquery-2.1.4.min.js")));
     try!(write(cx.dst.join("main.js"), include_bytes!("static/main.js")));
     try!(write(cx.dst.join("playpen.js"), include_bytes!("static/playpen.js")));
     try!(write(cx.dst.join("main.css"), include_bytes!("static/main.css")));
@@ -644,10 +641,7 @@ fn write_shared(cx: &Context,
             // going on). If they're in different crates then the crate defining
             // the trait will be interested in our implementation.
             if imp.def_id.krate == did.krate { continue }
-            try!(write!(&mut f, r#""impl{} {}{} for {}","#,
-                        imp.generics,
-                        if imp.polarity == Some(clean::ImplPolarity::Negative) { "!" } else { "" },
-                        imp.trait_, imp.for_));
+            try!(write!(&mut f, r#""{}","#, imp.impl_));
         }
         try!(writeln!(&mut f, r"];"));
         try!(writeln!(&mut f, "{}", r"
@@ -888,11 +882,8 @@ impl DocFolder for Cache {
                 Some(clean::ResolvedPath{ did, .. }) => {
                     self.implementors.entry(did).or_insert(vec![]).push(Implementor {
                         def_id: item.def_id,
-                        generics: i.generics.clone(),
-                        trait_: i.trait_.as_ref().unwrap().clone(),
-                        for_: i.for_.clone(),
                         stability: item.stability.clone(),
-                        polarity: i.polarity.clone(),
+                        impl_: i.clone(),
                     });
                 }
                 Some(..) | None => {}
@@ -957,7 +948,7 @@ impl DocFolder for Cache {
                     self.search_index.push(IndexItem {
                         ty: shortty(&item),
                         name: s.to_string(),
-                        path: path.connect("::").to_string(),
+                        path: path.join("::").to_string(),
                         desc: shorter(item.doc_value()),
                         parent: parent,
                         search_type: get_index_search_type(&item, parent_basename),
@@ -1187,7 +1178,7 @@ impl Context {
                 *slot.borrow_mut() = cx.current.clone();
             });
 
-            let mut title = cx.current.connect("::");
+            let mut title = cx.current.join("::");
             if pushname {
                 if !title.is_empty() {
                     title.push_str("::");
@@ -1393,7 +1384,7 @@ impl<'a> Item<'a> {
             Some(format!("{root}src/{krate}/{path}.html#{href}",
                          root = self.cx.root_path,
                          krate = self.cx.layout.krate,
-                         path = path.connect("/"),
+                         path = path.join("/"),
                          href = href))
 
         // If this item is not part of the local crate, then things get a little
@@ -1417,7 +1408,7 @@ impl<'a> Item<'a> {
             };
             Some(format!("{root}{path}/{file}?gotosrc={goto}",
                          root = root,
-                         path = path[..path.len() - 1].connect("/"),
+                         path = path[..path.len() - 1].join("/"),
                          file = item_path(self.item),
                          goto = self.item.def_id.node))
         }
@@ -1523,7 +1514,7 @@ fn item_path(item: &clean::Item) -> String {
 }
 
 fn full_path(cx: &Context, item: &clean::Item) -> String {
-    let mut s = cx.current.connect("::");
+    let mut s = cx.current.join("::");
     s.push_str("::");
     s.push_str(item.name.as_ref().unwrap());
     return s
@@ -1535,7 +1526,7 @@ fn shorter<'a>(s: Option<&'a str>) -> String {
             (*line).chars().any(|chr|{
                 !chr.is_whitespace()
             })
-        }).collect::<Vec<_>>().connect("\n"),
+        }).collect::<Vec<_>>().join("\n"),
         None => "".to_string()
     }
 }
@@ -1910,8 +1901,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     match cache.implementors.get(&it.def_id) {
         Some(implementors) => {
             for i in implementors {
-                try!(writeln!(w, "<li><code>impl{} {} for {}{}</code></li>",
-                              i.generics, i.trait_, i.for_, WhereClause(&i.generics)));
+                try!(writeln!(w, "<li><code>{}</code></li>", i.impl_));
             }
         }
         None => {}
@@ -1920,12 +1910,12 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     try!(write!(w, r#"<script type="text/javascript" async
                               src="{root_path}/implementors/{path}/{ty}.{name}.js">
                       </script>"#,
-                root_path = repeat("..").take(cx.current.len()).collect::<Vec<_>>().connect("/"),
+                root_path = vec![".."; cx.current.len()].join("/"),
                 path = if ast_util::is_local(it.def_id) {
-                    cx.current.connect("/")
+                    cx.current.join("/")
                 } else {
                     let path = &cache.external_paths[&it.def_id];
-                    path[..path.len() - 1].connect("/")
+                    path[..path.len() - 1].join("/")
                 },
                 ty = shortty(it).to_static_str(),
                 name = *it.name.as_ref().unwrap()));
@@ -2335,16 +2325,7 @@ fn render_deref_methods(w: &mut fmt::Formatter, impl_: &Impl) -> fmt::Result {
 fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: AssocItemLink,
                render_header: bool) -> fmt::Result {
     if render_header {
-        try!(write!(w, "<h3 class='impl'><code>impl{} ",
-                    i.impl_.generics));
-        if let Some(clean::ImplPolarity::Negative) = i.impl_.polarity {
-            try!(write!(w, "!"));
-        }
-        if let Some(ref ty) = i.impl_.trait_ {
-            try!(write!(w, "{} for ", *ty));
-        }
-        try!(write!(w, "{}{}</code></h3>", i.impl_.for_,
-                    WhereClause(&i.impl_.generics)));
+        try!(write!(w, "<h3 class='impl'><code>{}</code></h3>", i.impl_));
         if let Some(ref dox) = i.dox {
             try!(write!(w, "<div class='docblock'>{}</div>", Markdown(dox)));
         }

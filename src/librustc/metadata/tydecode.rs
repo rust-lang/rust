@@ -21,7 +21,7 @@ pub use self::DefIdSource::*;
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{self, AsPredicate, Ty};
+use middle::ty::{self, ToPredicate, Ty, HasTypeFlags};
 
 use std::str;
 use syntax::abi;
@@ -471,14 +471,14 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
         let def = parse_def_(st, NominalType, conv);
         let substs = parse_substs_(st, conv);
         assert_eq!(next(st), ']');
-        return ty::mk_enum(tcx, def, st.tcx.mk_substs(substs));
+        return tcx.mk_enum(def, st.tcx.mk_substs(substs));
       }
       'x' => {
         assert_eq!(next(st), '[');
         let trait_ref = ty::Binder(parse_trait_ref_(st, conv));
         let bounds = parse_existential_bounds_(st, conv);
         assert_eq!(next(st), ']');
-        return ty::mk_trait(tcx, trait_ref, bounds);
+        return tcx.mk_trait(trait_ref, bounds);
       }
       'p' => {
         assert_eq!(next(st), '[');
@@ -487,45 +487,45 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
         let space = parse_param_space(st);
         assert_eq!(next(st), '|');
         let name = token::intern(&parse_str(st, ']'));
-        return ty::mk_param(tcx, space, index, name);
+        return tcx.mk_param(space, index, name);
       }
-      '~' => return ty::mk_uniq(tcx, parse_ty_(st, conv)),
-      '*' => return ty::mk_ptr(tcx, parse_mt_(st, conv)),
+      '~' => return tcx.mk_box(parse_ty_(st, conv)),
+      '*' => return tcx.mk_ptr(parse_mt_(st, conv)),
       '&' => {
         let r = parse_region_(st, conv);
         let mt = parse_mt_(st, conv);
-        return ty::mk_rptr(tcx, tcx.mk_region(r), mt);
+        return tcx.mk_ref(tcx.mk_region(r), mt);
       }
       'V' => {
         let t = parse_ty_(st, conv);
-        let sz = parse_size(st);
-        return ty::mk_vec(tcx, t, sz);
+        return match parse_size(st) {
+            Some(n) => tcx.mk_array(t, n),
+            None => tcx.mk_slice(t)
+        };
       }
       'v' => {
-        return ty::mk_str(tcx);
+        return tcx.mk_str();
       }
       'T' => {
         assert_eq!(next(st), '[');
         let mut params = Vec::new();
         while peek(st) != ']' { params.push(parse_ty_(st, conv)); }
         st.pos = st.pos + 1;
-        return ty::mk_tup(tcx, params);
+        return tcx.mk_tup(params);
       }
       'F' => {
           let def_id = parse_def_(st, NominalType, conv);
-          return ty::mk_bare_fn(tcx, Some(def_id),
-                                tcx.mk_bare_fn(parse_bare_fn_ty_(st, conv)));
+          return tcx.mk_fn(Some(def_id), tcx.mk_bare_fn(parse_bare_fn_ty_(st, conv)));
       }
       'G' => {
-          return ty::mk_bare_fn(tcx, None,
-                                tcx.mk_bare_fn(parse_bare_fn_ty_(st, conv)));
+          return tcx.mk_fn(None, tcx.mk_bare_fn(parse_bare_fn_ty_(st, conv)));
       }
       '#' => {
         let pos = parse_hex(st);
         assert_eq!(next(st), ':');
         let len = parse_hex(st);
         assert_eq!(next(st), '#');
-        let key = ty::creader_cache_key {cnum: st.krate,
+        let key = ty::CReaderCacheKey {cnum: st.krate,
                                          pos: pos,
                                          len: len };
 
@@ -534,7 +534,7 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
             // If there is a closure buried in the type some where, then we
             // need to re-convert any def ids (see case 'k', below). That means
             // we can't reuse the cached version.
-            if !ty::type_has_ty_closure(tt) {
+            if !tt.has_closure_types() {
                 return tt;
             }
           }
@@ -558,20 +558,25 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
           let did = parse_def_(st, NominalType, conv);
           let substs = parse_substs_(st, conv);
           assert_eq!(next(st), ']');
-          return ty::mk_struct(st.tcx, did, st.tcx.mk_substs(substs));
+          return st.tcx.mk_struct(did, st.tcx.mk_substs(substs));
       }
       'k' => {
           assert_eq!(next(st), '[');
           let did = parse_def_(st, ClosureSource, conv);
           let substs = parse_substs_(st, conv);
+          let mut tys = vec![];
+          while peek(st) != '.' {
+              tys.push(parse_ty_(st, conv));
+          }
+          assert_eq!(next(st), '.');
           assert_eq!(next(st), ']');
-          return ty::mk_closure(st.tcx, did, st.tcx.mk_substs(substs));
+          return st.tcx.mk_closure(did, st.tcx.mk_substs(substs), tys);
       }
       'P' => {
           assert_eq!(next(st), '[');
           let trait_ref = parse_trait_ref_(st, conv);
           let name = token::intern(&parse_str(st, ']'));
-          return ty::mk_projection(tcx, trait_ref, name);
+          return tcx.mk_projection(trait_ref, name);
       }
       'e' => {
           return tcx.types.err;
@@ -587,11 +592,11 @@ fn parse_mutability(st: &mut PState) -> ast::Mutability {
     }
 }
 
-fn parse_mt_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> ty::mt<'tcx> where
+fn parse_mt_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> ty::TypeAndMut<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     let m = parse_mutability(st);
-    ty::mt { ty: parse_ty_(st, conv), mutbl: m }
+    ty::TypeAndMut { ty: parse_ty_(st, conv), mutbl: m }
 }
 
 fn parse_def_<F>(st: &mut PState, source: DefIdSource, conv: &mut F) -> ast::DefId where
@@ -775,14 +780,14 @@ fn parse_predicate_<'a,'tcx, F>(st: &mut PState<'a, 'tcx>,
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     match next(st) {
-        't' => ty::Binder(parse_trait_ref_(st, conv)).as_predicate(),
+        't' => ty::Binder(parse_trait_ref_(st, conv)).to_predicate(),
         'e' => ty::Binder(ty::EquatePredicate(parse_ty_(st, conv),
-                                              parse_ty_(st, conv))).as_predicate(),
+                                              parse_ty_(st, conv))).to_predicate(),
         'r' => ty::Binder(ty::OutlivesPredicate(parse_region_(st, conv),
-                                                parse_region_(st, conv))).as_predicate(),
+                                                parse_region_(st, conv))).to_predicate(),
         'o' => ty::Binder(ty::OutlivesPredicate(parse_ty_(st, conv),
-                                                parse_region_(st, conv))).as_predicate(),
-        'p' => ty::Binder(parse_projection_predicate_(st, conv)).as_predicate(),
+                                                parse_region_(st, conv))).to_predicate(),
+        'p' => ty::Binder(parse_projection_predicate_(st, conv)).to_predicate(),
         c => panic!("Encountered invalid character in metadata: {}", c)
     }
 }
@@ -828,6 +833,7 @@ fn parse_type_param_def_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
     assert_eq!(next(st), '|');
     let index = parse_u32(st);
     assert_eq!(next(st), '|');
+    let default_def_id = parse_def_(st, NominalType, conv);
     let default = parse_opt(st, |st| parse_ty_(st, conv));
     let object_lifetime_default = parse_object_lifetime_default(st, conv);
 
@@ -836,6 +842,7 @@ fn parse_type_param_def_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
         def_id: def_id,
         space: space,
         index: index,
+        default_def_id: default_def_id,
         default: default,
         object_lifetime_default: object_lifetime_default,
     }
@@ -843,15 +850,15 @@ fn parse_type_param_def_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
 
 fn parse_object_lifetime_default<'a,'tcx, F>(st: &mut PState<'a,'tcx>,
                                              conv: &mut F)
-                                             -> Option<ty::ObjectLifetimeDefault>
+                                             -> ty::ObjectLifetimeDefault
     where F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     match next(st) {
-        'n' => None,
-        'a' => Some(ty::ObjectLifetimeDefault::Ambiguous),
+        'a' => ty::ObjectLifetimeDefault::Ambiguous,
+        'b' => ty::ObjectLifetimeDefault::BaseDefault,
         's' => {
             let region = parse_region_(st, conv);
-            Some(ty::ObjectLifetimeDefault::Specific(region))
+            ty::ObjectLifetimeDefault::Specific(region)
         }
         _ => panic!("parse_object_lifetime_default: bad input")
     }

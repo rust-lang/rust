@@ -27,6 +27,5 @@ impl TheTrait<isize> for TheType { }
 
 impl !Send for Vec<isize> { }
 //~^ ERROR E0117
-//~| ERROR E0119
 
 fn main() { }

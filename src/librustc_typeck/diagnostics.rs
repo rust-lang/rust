@@ -169,24 +169,6 @@ match string {
 ```
 "##,
 
-E0030: r##"
-When matching against a range, the compiler verifies that the range is
-non-empty.  Range patterns include both end-points, so this is equivalent to
-requiring the start of the range to be less than or equal to the end of the
-range.
-
-For example:
-
-```
-match 5u32 {
-    // This range is ok, albeit pointless.
-    1 ... 1 => ...
-    // This range is empty, and the compiler can tell.
-    1000 ... 5 => ...
-}
-```
-"##,
-
 E0033: r##"
 This error indicates that a pointer to a trait type cannot be implicitly
 dereferenced by a pattern. Every trait defines a type, but because the
@@ -934,6 +916,51 @@ The number of supplied parameters much exactly match the number of defined type
 parameters.
 "##,
 
+E0088: r##"
+You gave too many lifetime parameters. Erroneous code example:
+
+```
+fn f() {}
+
+fn main() {
+    f::<'static>() // error: too many lifetime parameters provided
+}
+```
+
+Please check you give the right number of lifetime parameters. Example:
+
+```
+fn f() {}
+
+fn main() {
+    f() // ok!
+}
+```
+
+It's also important to note that the Rust compiler can generally
+determine the lifetime by itself. Example:
+
+```
+struct Foo {
+    value: String
+}
+
+impl Foo {
+    // it can be written like this
+    fn get_value<'a>(&'a self) -> &'a str { &self.value }
+    // but the compiler works fine with this too:
+    fn without_lifetime(&self) -> &str { &self.value }
+}
+
+fn main() {
+    let f = Foo { value: "hello".to_owned() };
+
+    println!("{}", f.get_value());
+    println!("{}", f.without_lifetime());
+}
+```
+"##,
+
 E0089: r##"
 Not enough type parameters were supplied for a function. For example:
 
@@ -955,6 +982,138 @@ fn main() {
     let x: bool = true;
     foo::<f64>(x);    // error, expected 2 parameters, found 1 parameter
     foo::<_, f64>(x); // same as `foo::<bool, f64>(x)`
+}
+```
+"##,
+
+E0091: r##"
+You gave an unnecessary type parameter in a type alias. Erroneous code
+example:
+
+```
+type Foo<T> = u32; // error: type parameter `T` is unused
+// or:
+type Foo<A,B> = Box<A>; // error: type parameter `B` is unused
+```
+
+Please check you didn't write too many type parameters. Example:
+
+```
+type Foo = u32; // ok!
+type Foo<A> = Box<A>; // ok!
+```
+"##,
+
+E0092: r##"
+You tried to declare an undefined atomic operation function.
+Erroneous code example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn atomic_foo(); // error: unrecognized atomic operation
+                     //        function
+}
+```
+
+Please check you didn't make a mistake in the function's name. All intrinsic
+functions are defined in librustc_trans/trans/intrinsic.rs and in
+libcore/intrinsics.rs in the Rust source code. Example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn atomic_fence(); // ok!
+}
+```
+"##,
+
+E0093: r##"
+You declared an unknown intrinsic function. Erroneous code example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn foo(); // error: unrecognized intrinsic function: `foo`
+}
+
+fn main() {
+    unsafe {
+        foo();
+    }
+}
+```
+
+Please check you didn't make a mistake in the function's name. All intrinsic
+functions are defined in librustc_trans/trans/intrinsic.rs and in
+libcore/intrinsics.rs in the Rust source code. Example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn atomic_fence(); // ok!
+}
+
+fn main() {
+    unsafe {
+        atomic_fence();
+    }
+}
+```
+"##,
+
+E0094: r##"
+You gave an invalid number of type parameters to an intrinsic function.
+Erroneous code example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn size_of<T, U>() -> usize; // error: intrinsic has wrong number
+                                 //        of type parameters
+}
+```
+
+Please check that you provided the right number of lifetime parameters
+and verify with the function declaration in the Rust source code.
+Example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn size_of<T>() -> usize; // ok!
+}
+```
+"##,
+
+E0101: r##"
+You hit this error because the compiler the compiler lacks information
+to determine a type for this expression. Erroneous code example:
+
+```
+fn main() {
+    let x = |_| {}; // error: cannot determine a type for this expression
+}
+```
+
+You have two possibilities to solve this situation:
+ * Give an explicit definition of the expression
+ * Infer the expression
+
+Examples:
+
+```
+fn main() {
+    let x = |_ : u32| {}; // ok!
+    // or:
+    let x = |_| {};
+    x(0u32);
 }
 ```
 "##,
@@ -1067,6 +1226,135 @@ impl Bytes { ... } // error, same as above
 ```
 "##,
 
+E0117: r##"
+You got this error because because you tried to implement a foreign
+trait for a foreign type (with maybe a foreign type parameter). Erroneous
+code example:
+
+```
+impl Drop for u32 {}
+```
+
+The type, trait or the type parameter (or all of them) has to be defined
+in your crate. Example:
+
+```
+pub struct Foo; // you define your type in your crate
+
+impl Drop for Foo { // and you can implement the trait on it!
+    // code of trait implementation here
+}
+
+trait Bar { // or define your trait in your crate
+    fn get(&self) -> usize;
+}
+
+impl Bar for u32 { // and then you implement it on a foreign type
+    fn get(&self) -> usize { 0 }
+}
+
+impl From<Foo> for i32 { // or you use a type from your crate as
+                         // a type parameter
+    fn from(i: Foo) -> i32 {
+        0
+    }
+}
+```
+"##,
+
+E0119: r##"
+There are conflicting trait implementations for the same type.
+Erroneous code example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+
+struct Foo {
+    value: usize
+}
+
+impl MyTrait for Foo { // error: conflicting implementations for trait
+                       //        `MyTrait`
+    fn get(&self) -> usize { self.value }
+}
+```
+
+When you write:
+
+```
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+```
+
+This makes the trait implemented on all types in the scope. So if you
+try to implement it on another one after that, the implementations will
+conflict. Example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+impl<T> MyTrait for T {
+    fn get(&self) -> usize { 0 }
+}
+
+struct Foo;
+
+fn main() {
+    let f = Foo;
+
+    f.get(); // the trait is implemented so we can use it
+}
+```
+"##,
+
+E0120: r##"
+An attempt was made to implement Drop on a trait, which is not allowed: only
+structs and enums can implement Drop. An example causing this error:
+
+```
+trait MyTrait {}
+
+impl Drop for MyTrait {
+    fn drop(&mut self) {}
+}
+```
+
+A workaround for this problem is to wrap the trait up in a struct, and implement
+Drop on that. An example is shown below:
+
+```
+trait MyTrait {}
+struct MyWrapper<T: MyTrait> { foo: T }
+
+impl <T: MyTrait> Drop for MyWrapper<T> {
+    fn drop(&mut self) {}
+}
+
+```
+
+Alternatively, wrapping trait objects requires something like the following:
+
+```
+trait MyTrait {}
+
+//or Box<MyTrait>, if you wanted an owned trait object
+struct MyWrapper<'a> { foo: &'a MyTrait }
+
+impl <'a> Drop for MyWrapper<'a> {
+    fn drop(&mut self) {}
+}
+```
+"##,
+
 E0121: r##"
 In order to be consistent with Rust's lack of global type inference, type
 placeholders are disallowed by design in item signatures.
@@ -1077,6 +1365,83 @@ Examples of this error include:
 fn foo() -> _ { 5 } // error, explicitly write out the return type instead
 
 static BAR: _ = "test"; // error, explicitly write out the type instead
+```
+"##,
+
+E0124: r##"
+You declared two fields of a struct with the same name. Erroneous code
+example:
+
+```
+struct Foo {
+    field1: i32,
+    field1: i32 // error: field is already declared
+}
+```
+
+Please verify that the field names have been correctly spelled. Example:
+
+```
+struct Foo {
+    field1: i32,
+    field2: i32 // ok!
+}
+```
+"##,
+
+E0128: r##"
+Type parameter defaults can only use parameters that occur before them.
+Erroneous code example:
+
+```
+pub struct Foo<T=U, U=()> {
+    field1: T,
+    filed2: U,
+}
+// error: type parameters with a default cannot use forward declared
+// identifiers
+```
+
+Since type parameters are evaluated in-order, you may be able to fix this issue
+by doing:
+
+```
+pub struct Foo<U=(), T=U> {
+    field1: T,
+    filed2: U,
+}
+```
+
+Please also verify that this wasn't because of a name-clash and rename the type
+parameter if so.
+"##,
+
+E0130: r##"
+You declared a pattern as an argument in a foreign function declaration.
+Erroneous code example:
+
+```
+extern {
+    fn foo((a, b): (u32, u32)); // error: patterns aren't allowed in foreign
+                                //        function declarations
+}
+```
+
+Please replace the pattern argument with a regular one. Example:
+
+```
+struct SomeStruct {
+    a: u32,
+    b: u32,
+}
+
+extern {
+    fn foo(s: SomeStruct); // ok!
+}
+// or
+extern {
+    fn foo(a: (u32, u32)); // ok!
+}
 ```
 "##,
 
@@ -1094,6 +1459,30 @@ fn(isize, *const *const u8) -> isize
 ```
 "##,
 
+E0159: r##"
+You tried to use a trait as a struct constructor. Erroneous code example:
+
+```
+trait TraitNotAStruct {}
+
+TraitNotAStruct{ value: 0 }; // error: use of trait `TraitNotAStruct` as a
+                             //        struct constructor
+```
+
+Please verify you used the correct type name or please implement the trait
+on a struct and use this struct constructor. Example:
+
+```
+trait TraitNotAStruct {}
+
+struct Foo {
+    value: i32
+}
+
+Foo{ value: 0 }; // ok!
+```
+"##,
+
 E0166: r##"
 This error means that the compiler found a return expression in a function
 marked as diverging. A function diverges if it has `!` in the place of the
@@ -1106,6 +1495,33 @@ fn foo() -> ! { return; } // error
 For a function that diverges, every control path in the function must never
 return, for example with a `loop` that never breaks or a call to another
 diverging function (such as `panic!()`).
+"##,
+
+E0172: r##"
+This error means that an attempt was made to specify the type of a variable with
+a combination of a concrete type and a trait. Consider the following example:
+
+```
+fn foo(bar: i32+std::fmt::Display) {}
+```
+
+The code is trying to specify that we want to receive a signed 32-bit integer
+which also implements `Display`. This doesn't make sense: when we pass `i32`, a
+concrete type, it implicitly includes all of the traits that it implements.
+This includes `Display`, `Debug`, `Clone`, and a host of others.
+
+If `i32` implements the trait we desire, there's no need to specify the trait
+separately. If it does not, then we need to `impl` the trait for `i32` before
+passing it into `foo`. Either way, a fixed definition for `foo` will look like
+the following:
+
+```
+fn foo(bar: i32) {}
+```
+
+To learn more about traits, take a look at the Book:
+
+https://doc.rust-lang.org/book/traits.html
 "##,
 
 E0178: r##"
@@ -1179,12 +1595,75 @@ impl Foo for Bar {
     // the impl
     fn foo() {}
 }
+```
+"##,
+
+E0191: r##"
+Trait objects need to have all associated types specified. Erroneous code
+example:
+
+```
+trait Trait {
+    type Bar;
+}
+
+type Foo = Trait; // error: the value of the associated type `Bar` (from
+                  //        the trait `Trait`) must be specified
+```
+
+Please verify you specified all associated types of the trait and that you
+used the right trait. Example:
+
+```
+trait Trait {
+    type Bar;
+}
+
+type Foo = Trait<Bar=i32>; // ok!
+```
 "##,
 
 E0192: r##"
 Negative impls are only allowed for traits with default impls. For more
 information see the [opt-in builtin traits RFC](https://github.com/rust-lang/
 rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
+"##,
+
+E0195: r##"
+Your method's lifetime parameters do not match the trait declaration.
+Erroneous code example:
+
+```
+trait Trait {
+    fn bar<'a,'b:'a>(x: &'a str, y: &'b str);
+}
+
+struct Foo;
+
+impl Trait for Foo {
+    fn bar<'a,'b>(x: &'a str, y: &'b str) {
+    // error: lifetime parameters or bounds on method `bar`
+    // do not match the trait declaration
+    }
+}
+```
+
+The lifetime constraint `'b` for bar() implementation does not match the
+trait declaration. Ensure lifetime declarations match exactly in both trait
+declaration and implementation. Example:
+
+```
+trait Trait {
+    fn t<'a,'b:'a>(x: &'a str, y: &'b str);
+}
+
+struct Foo;
+
+impl Trait for Foo {
+    fn t<'a,'b:'a>(x: &'a str, y: &'b str) { // ok!
+    }
+}
+```
 "##,
 
 E0197: r##"
@@ -1258,7 +1737,8 @@ unsafe impl Bar for Foo { }
 "##,
 
 E0201: r##"
-It is an error to define an associated function more than once.
+It is an error to define two associated items (like methods, associated types,
+associated functions, etc.) with the same identifier.
 
 For example:
 
@@ -1267,20 +1747,24 @@ struct Foo(u8);
 
 impl Foo {
     fn bar(&self) -> bool { self.0 > 5 }
-
-    // error: duplicate associated function
-    fn bar() {}
+    fn bar() {} // error: duplicate associated function
 }
 
 trait Baz {
+    type Quux;
     fn baz(&self) -> bool;
 }
 
 impl Baz for Foo {
+    type Quux = u32;
+
     fn baz(&self) -> bool { true }
 
     // error: duplicate method
     fn baz(&self) -> bool { self.0 > 5 }
+
+    // error: duplicate associated type
+    type Quux = u32;
 }
 ```
 "##,
@@ -1363,6 +1847,162 @@ impl Copy for Foo { } // error
 #[derive(Copy, Clone)]
 struct Bar;
 impl Copy for &'static Bar { } // error
+```
+"##,
+
+E0207: r##"
+You declared an unused type parameter when implementing a trait on an object.
+Erroneous code example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+struct Foo;
+
+impl<T> MyTrait for Foo {
+    fn get(&self) -> usize {
+        0
+    }
+}
+```
+
+Please check your object definition and remove unused type
+parameter(s). Example:
+
+```
+trait MyTrait {
+    fn get(&self) -> usize;
+}
+
+struct Foo;
+
+impl MyTrait for Foo {
+    fn get(&self) -> usize {
+        0
+    }
+}
+```
+"##,
+
+E0211: r##"
+You used an intrinsic function which doesn't correspond to its
+definition. Erroneous code example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn size_of<T>(); // error: intrinsic has wrong type
+}
+```
+
+Please check the function definition. Example:
+
+```
+#![feature(intrinsics)]
+
+extern "rust-intrinsic" {
+    fn size_of<T>() -> usize;
+}
+```
+"##,
+
+E0220: r##"
+You used an associated type which isn't defined in the trait.
+Erroneous code example:
+
+```
+trait Trait {
+    type Bar;
+}
+
+type Foo = Trait<F=i32>; // error: associated type `F` not found for
+                         //        `Trait`
+```
+
+Please verify you used the right trait or you didn't misspell the
+associated type name. Example:
+
+```
+trait Trait {
+    type Bar;
+}
+
+type Foo = Trait<Bar=i32>; // ok!
+```
+"##,
+
+E0223: r##"
+An attempt was made to retrieve an associated type, but the type was ambiguous.
+For example:
+
+```
+trait MyTrait {type X; }
+
+fn main() {
+    let foo: MyTrait::X;
+}
+```
+
+The problem here is that we're attempting to take the type of X from MyTrait.
+Unfortunately, the type of X is not defined, because it's only made concrete in
+implementations of the trait. A working version of this code might look like:
+
+```
+trait MyTrait {type X; }
+struct MyStruct;
+
+impl MyTrait for MyStruct {
+    type X = u32;
+}
+
+fn main() {
+    let foo: <MyStruct as MyTrait>::X;
+}
+```
+
+This syntax specifies that we want the X type from MyTrait, as made concrete in
+MyStruct. The reason that we cannot simply use `MyStruct::X` is that MyStruct
+might implement two different traits with identically-named associated types.
+This syntax allows disambiguation between the two.
+"##,
+
+E0225: r##"
+You attempted to use multiple types as bounds for a closure or trait object.
+Rust does not currently support this. A simple example that causes this error:
+
+```
+fn main() {
+    let _: Box<std::io::Read+std::io::Write>;
+}
+```
+
+Builtin traits are an exception to this rule: it's possible to have bounds of
+one non-builtin type, plus any number of builtin types. For example, the
+following compiles correctly:
+
+```
+fn main() {
+    let _: Box<std::io::Read+Copy+Sync>;
+}
+```
+"##,
+
+E0232: r##"
+The attribute must have a value. Erroneous code example:
+
+```
+#[rustc_on_unimplemented] // error: this attribute must have a value
+trait Bar {}
+```
+
+Please supply the missing value of the attribute. Example:
+
+```
+#[rustc_on_unimplemented = "foo"] // ok!
+trait Bar {}
 ```
 "##,
 
@@ -1458,6 +2098,42 @@ impl Foo for Bar {
 ```
 "##,
 
+E0327: r##"
+You cannot use associated items other than constant items as patterns. This
+includes method items. Example of erroneous code:
+
+```
+enum B {}
+
+impl B {
+    fn bb() -> i32 { 0 }
+}
+
+fn main() {
+    match 0 {
+        B::bb => {} // error: associated items in match patterns must
+                    // be constants
+    }
+}
+```
+
+Please check that you're not using a method as a pattern. Example:
+
+```
+enum B {
+    ba,
+    bb
+}
+
+fn main() {
+    match B::ba {
+        B::bb => {} // ok!
+        _ => {}
+    }
+}
+```
+"##,
+
 E0368: r##"
 This error indicates that a binary assignment operator like `+=` or `^=` was
 applied to the wrong types. For example:
@@ -1537,6 +2213,66 @@ E0380: r##"
 Default impls are only allowed for traits with no methods or associated items.
 For more information see the [opt-in builtin traits RFC](https://github.com/rust
 -lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
+"##,
+
+E0392: r##"
+This error indicates that a type or lifetime parameter has been declared
+but not actually used.  Here is an example that demonstrates the error:
+
+```
+enum Foo<T> {
+    Bar
+}
+```
+
+If the type parameter was included by mistake, this error can be fixed
+by simply removing the type parameter, as shown below:
+
+```
+enum Foo {
+    Bar
+}
+```
+
+Alternatively, if the type parameter was intentionally inserted, it must be
+used. A simple fix is shown below:
+
+```
+enum Foo<T> {
+    Bar(T)
+}
+```
+
+This error may also commonly be found when working with unsafe code. For
+example, when using raw pointers one may wish to specify the lifetime for
+which the pointed-at data is valid. An initial attempt (below) causes this
+error:
+
+```
+struct Foo<'a, T> {
+    x: *const T
+}
+```
+
+We want to express the constraint that Foo should not outlive `'a`, because
+the data pointed to by `T` is only valid for that lifetime. The problem is
+that there are no actual uses of `'a`. It's possible to work around this
+by adding a PhantomData type to the struct, using it to tell the compiler
+to act as if the struct contained a borrowed reference `&'a T`:
+
+```
+use std::marker::PhantomData;
+
+struct Foo<'a, T: 'a> {
+    x: *const T,
+    phantom: PhantomData<&'a T>
+}
+```
+
+PhantomData can also be used to express information about unused type
+parameters. You can read more about it in the API documentation:
+
+https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 "##
 
 }
@@ -1549,34 +2285,20 @@ register_diagnostics! {
     E0077,
     E0085,
     E0086,
-    E0088,
     E0090,
-    E0091,
-    E0092,
-    E0093,
-    E0094,
-    E0101,
     E0102,
     E0103,
     E0104,
-    E0117,
     E0118,
-    E0119,
-    E0120,
     E0122,
     E0123,
-    E0124,
     E0127,
-    E0128,
     E0129,
-    E0130,
     E0141,
-    E0159,
     E0163,
     E0164,
     E0167,
     E0168,
-    E0172,
     E0173, // manual implementations of unboxed closure traits are experimental
     E0174, // explicit use of unboxed closure methods are experimental
     E0182,
@@ -1585,19 +2307,15 @@ register_diagnostics! {
     E0188, // can not cast a immutable reference to a mutable pointer
     E0189, // deprecated: can only cast a boxed pointer to a boxed object
     E0190, // deprecated: can only cast a &-pointer to an &-object
-    E0191, // value of the associated type must be specified
     E0193, // cannot bound type where clause bounds may only be attached to types
            // involving type parameters
     E0194,
-    E0195, // lifetime parameters or bounds on method do not match the trait declaration
     E0196, // cannot determine a type for this closure
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
-    E0207, // type parameter is not constrained by the impl trait, self type, or predicate
     E0208,
     E0209, // builtin traits can only be implemented on structs or enums
     E0210, // type parameter is not constrained by any local type
-    E0211,
     E0212, // cannot extract an associated type from a higher-ranked trait bound
     E0213, // associated types are not accepted in this context
     E0214, // parenthesized parameters may only be used with a trait
@@ -1606,20 +2324,16 @@ register_diagnostics! {
     E0217, // ambiguous associated type, defined in multiple supertraits
     E0218, // no associated type defined
     E0219, // associated type defined in higher-ranked supertrait
-    E0220, // associated type not found for type parameter
     E0221, // ambiguous associated type in bounds
     //E0222, // Error code E0045 (variadic function must have C calling
              // convention) duplicate
-    E0223, // ambiguous associated type
     E0224, // at least one non-builtin train is required for an object type
-    E0225, // only the builtin traits can be used as closure or object bounds
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
     E0228, // explicit lifetime bound required
     E0229, // associated type bindings are not allowed here
     E0230, // there is no type parameter on trait
     E0231, // only named substitution parameters are allowed
-    E0232, // this attribute must have a value
     E0233,
     E0234,
     E0235, // structure constructor specifies a structure of type but
@@ -1640,7 +2354,6 @@ register_diagnostics! {
     E0323, // implemented an associated const when another trait item expected
     E0324, // implemented a method when another trait item expected
     E0325, // implemented an associated type when another trait item expected
-    E0327, // referred to method instead of constant in match pattern
     E0328, // cannot implement Unsize explicitly
     E0329, // associated const depends on type parameter or Self.
     E0366, // dropck forbid specialization to concrete type or region
@@ -1658,7 +2371,9 @@ register_diagnostics! {
     E0390, // only a single inherent implementation marked with
            // `#[lang = \"{}\"]` is allowed for the `{}` primitive
     E0391, // unsupported cyclic reference between types/traits detected
-    E0392, // parameter `{}` is never used
-    E0393  // the type parameter `{}` must be explicitly specified in an object
+    E0393, // the type parameter `{}` must be explicitly specified in an object
            // type because its default value `{}` references the type `Self`"
+    E0399, // trait items need to be implemented because the associated
+           // type `{}` was overridden
+    E0436  // functional record update requires a struct
 }

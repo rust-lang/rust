@@ -11,22 +11,22 @@
 use middle::infer::InferCtxt;
 use middle::traits::{self, FulfillmentContext, Normalized, MiscObligation,
                      SelectionContext, ObligationCause};
-use middle::ty::{self, HasProjectionTypes};
+use middle::ty::HasTypeFlags;
 use middle::ty_fold::TypeFoldable;
 use syntax::ast;
 use syntax::codemap::Span;
 
+//FIXME(@jroesch): Ideally we should be able to drop the fulfillment_cx argument.
 pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
-                                                typer: &(ty::ClosureTyper<'tcx>+'a),
                                                 fulfillment_cx: &mut FulfillmentContext<'tcx>,
                                                 span: Span,
                                                 body_id: ast::NodeId,
                                                 value: &T)
                                                 -> T
-    where T : TypeFoldable<'tcx> + HasProjectionTypes
+    where T : TypeFoldable<'tcx> + HasTypeFlags
 {
     debug!("normalize_associated_types_in(value={:?})", value);
-    let mut selcx = SelectionContext::new(infcx, typer);
+    let mut selcx = SelectionContext::new(infcx);
     let cause = ObligationCause::new(span, body_id, MiscObligation);
     let Normalized { value: result, obligations } = traits::normalize(&mut selcx, cause, value);
     debug!("normalize_associated_types_in: result={:?} predicates={:?}",

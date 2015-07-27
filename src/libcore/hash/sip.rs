@@ -10,8 +10,6 @@
 
 //! An implementation of SipHash 2-4.
 
-#![allow(deprecated)] // until the next snapshot for inherent wrapping ops
-
 use prelude::*;
 use super::Hasher;
 

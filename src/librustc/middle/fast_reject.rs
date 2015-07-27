@@ -71,8 +71,10 @@ pub fn simplify_type(tcx: &ty::ctxt,
         }
         ty::TyBox(_) => {
             // treat like we would treat `Box`
-            let def_id = tcx.lang_items.owned_box().unwrap();
-            Some(StructSimplifiedType(def_id))
+            match tcx.lang_items.require_owned_box() {
+                Ok(def_id) => Some(StructSimplifiedType(def_id)),
+                Err(msg) => tcx.sess.fatal(&msg),
+            }
         }
         ty::TyClosure(def_id, _) => {
             Some(ClosureSimplifiedType(def_id))

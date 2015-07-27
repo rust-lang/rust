@@ -13,11 +13,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use os::unix::raw::{uid_t, gid_t};
-use os::unix::io::{FromRawFd, RawFd, AsRawFd};
+use os::unix::io::{FromRawFd, RawFd, AsRawFd, IntoRawFd};
 use prelude::v1::*;
 use process;
 use sys;
-use sys_common::{AsInnerMut, AsInner, FromInner};
+use sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
 
 /// Unix-specific extensions to the `std::process::Command` builder
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -90,5 +90,23 @@ impl AsRawFd for process::ChildStdout {
 impl AsRawFd for process::ChildStderr {
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().raw()
+    }
+}
+
+impl IntoRawFd for process::ChildStdin {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_fd().into_raw()
+    }
+}
+
+impl IntoRawFd for process::ChildStdout {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_fd().into_raw()
+    }
+}
+
+impl IntoRawFd for process::ChildStderr {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_fd().into_raw()
     }
 }

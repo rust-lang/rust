@@ -158,32 +158,32 @@ fn test_concat_for_different_lengths() {
     test_concat!("abc", ["", "a", "bc"]);
 }
 
-macro_rules! test_connect {
+macro_rules! test_join {
     ($expected: expr, $string: expr, $delim: expr) => {
         {
-            let s = $string.connect($delim);
+            let s = $string.join($delim);
             assert_eq!($expected, s);
         }
     }
 }
 
 #[test]
-fn test_connect_for_different_types() {
-    test_connect!("a-b", ["a", "b"], "-");
+fn test_join_for_different_types() {
+    test_join!("a-b", ["a", "b"], "-");
     let hyphen = "-".to_string();
-    test_connect!("a-b", [s("a"), s("b")], &*hyphen);
-    test_connect!("a-b", vec!["a", "b"], &*hyphen);
-    test_connect!("a-b", &*vec!["a", "b"], "-");
-    test_connect!("a-b", vec![s("a"), s("b")], "-");
+    test_join!("a-b", [s("a"), s("b")], &*hyphen);
+    test_join!("a-b", vec!["a", "b"], &*hyphen);
+    test_join!("a-b", &*vec!["a", "b"], "-");
+    test_join!("a-b", vec![s("a"), s("b")], "-");
 }
 
 #[test]
-fn test_connect_for_different_lengths() {
+fn test_join_for_different_lengths() {
     let empty: &[&str] = &[];
-    test_connect!("", empty, "-");
-    test_connect!("a", ["a"], "-");
-    test_connect!("a-b", ["a", "b"], "-");
-    test_connect!("-a-bc", ["", "a", "bc"], "-");
+    test_join!("", empty, "-");
+    test_join!("a", ["a"], "-");
+    test_join!("a-b", ["a", "b"], "-");
+    test_join!("-a-bc", ["", "a", "bc"], "-");
 }
 
 #[test]
@@ -702,10 +702,22 @@ fn test_split_at() {
 }
 
 #[test]
+fn test_split_at_mut() {
+    use std::ascii::AsciiExt;
+    let mut s = "Hello World".to_string();
+    {
+        let (a, b) = s.split_at_mut(5);
+        a.make_ascii_uppercase();
+        b.make_ascii_lowercase();
+    }
+    assert_eq!(s, "HELLO world");
+}
+
+#[test]
 #[should_panic]
 fn test_split_at_boundscheck() {
     let s = "ศไทย中华Việt Nam";
-    let (a, b) = s.split_at(1);
+    s.split_at(1);
 }
 
 #[test]
@@ -1746,6 +1758,14 @@ fn to_uppercase() {
     assert_eq!("aéǅßﬁᾀ".to_uppercase(), "AÉǄSSFIἈΙ");
 }
 
+#[test]
+fn test_into_string() {
+    // The only way to acquire a Box<str> in the first place is through a String, so just
+    // test that we can round-trip between Box<str> and String.
+    let string = String::from("Some text goes here");
+    assert_eq!(string.clone().into_boxed_slice().into_string(), string);
+}
+
 mod pattern {
     use std::str::pattern::Pattern;
     use std::str::pattern::{Searcher, ReverseSearcher};
@@ -1819,6 +1839,14 @@ mod pattern {
         Reject(3, 4),
         Match (4, 6),
         Reject(6, 7),
+    ]);
+    make_test!(str_searcher_ascii_haystack_seq, "bb", "abbcbbbbd", [
+        Reject(0, 1),
+        Match (1, 3),
+        Reject(3, 4),
+        Match (4, 6),
+        Match (6, 8),
+        Reject(8, 9),
     ]);
     make_test!(str_searcher_empty_needle_ascii_haystack, "", "abbcbbd", [
         Match (0, 0),
@@ -2073,12 +2101,12 @@ mod bench {
     }
 
     #[bench]
-    fn bench_connect(b: &mut Bencher) {
+    fn bench_join(b: &mut Bencher) {
         let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
         let sep = "→";
         let v = vec![s, s, s, s, s, s, s, s, s, s];
         b.iter(|| {
-            assert_eq!(v.connect(sep).len(), s.len() * 10 + sep.len() * 9);
+            assert_eq!(v.join(sep).len(), s.len() * 10 + sep.len() * 9);
         })
     }
 

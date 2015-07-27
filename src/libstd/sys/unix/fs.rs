@@ -14,7 +14,7 @@ use os::unix::prelude::*;
 
 use ffi::{CString, CStr, OsString, OsStr};
 use fmt;
-use io::{self, Error, SeekFrom};
+use io::{self, Error, ErrorKind, SeekFrom};
 use libc::{self, c_int, size_t, off_t, c_char, mode_t};
 use mem;
 use path::{Path, PathBuf};
@@ -113,7 +113,7 @@ impl FileType {
     pub fn is_file(&self) -> bool { self.is(libc::S_IFREG) }
     pub fn is_symlink(&self) -> bool { self.is(libc::S_IFLNK) }
 
-    fn is(&self, mode: mode_t) -> bool { self.mode & libc::S_IFMT == mode }
+    pub fn is(&self, mode: mode_t) -> bool { self.mode & libc::S_IFMT == mode }
 }
 
 impl FromInner<raw::mode_t> for FilePermissions {
@@ -331,6 +331,8 @@ impl File {
     }
 
     pub fn fd(&self) -> &FileDesc { &self.0 }
+
+    pub fn into_fd(self) -> FileDesc { self.0 }
 }
 
 impl DirBuilder {
@@ -370,13 +372,25 @@ impl fmt::Debug for File {
             readlink(&p).ok()
         }
 
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(target_os = "macos")]
+        fn get_path(fd: c_int) -> Option<PathBuf> {
+            let mut buf = vec![0;libc::PATH_MAX as usize];
+            let n = unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_ptr()) };
+            if n == -1 {
+                return None;
+            }
+            let l = buf.iter().position(|&c| c == 0).unwrap();
+            buf.truncate(l as usize);
+            Some(PathBuf::from(OsString::from_vec(buf)))
+        }
+
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
         fn get_path(_fd: c_int) -> Option<PathBuf> {
             // FIXME(#24570): implement this for other Unix platforms
             None
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
         fn get_mode(fd: c_int) -> Option<(bool, bool)> {
             let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
             if mode == -1 {
@@ -390,7 +404,7 @@ impl fmt::Debug for File {
             }
         }
 
-        #[cfg(not(target_os = "linux"))]
+        #[cfg(not(any(target_os = "linux", target_os = "macos")))]
         fn get_mode(_fd: c_int) -> Option<(bool, bool)> {
             // FIXME(#24570): implement this for other Unix platforms
             None
@@ -515,4 +529,20 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     let p = buf.iter().position(|i| *i == 0).unwrap();
     buf.truncate(p);
     Ok(PathBuf::from(OsString::from_vec(buf)))
+}
+
+pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+    use fs::{File, PathExt, set_permissions};
+    if !from.is_file() {
+        return Err(Error::new(ErrorKind::InvalidInput,
+                              "the source path is not an existing file"))
+    }
+
+    let mut reader = try!(File::open(from));
+    let mut writer = try!(File::create(to));
+    let perm = try!(reader.metadata()).permissions();
+
+    let ret = try!(io::copy(&mut reader, &mut writer));
+    try!(set_permissions(to, perm));
+    Ok(ret)
 }

@@ -351,7 +351,25 @@ pub trait Div<RHS=Self> {
     fn div(self, rhs: RHS) -> Self::Output;
 }
 
-macro_rules! div_impl {
+macro_rules! div_impl_integer {
+    ($($t:ty)*) => ($(
+        /// This operation rounds towards zero, truncating any
+        /// fractional part of the exact result.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Div for $t {
+            type Output = $t;
+
+            #[inline]
+            fn div(self, other: $t) -> $t { self / other }
+        }
+
+        forward_ref_binop! { impl Div, div for $t, $t }
+    )*)
+}
+
+div_impl_integer! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+
+macro_rules! div_impl_float {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Div for $t {
@@ -365,7 +383,7 @@ macro_rules! div_impl {
     )*)
 }
 
-div_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+div_impl_float! { f32 f64 }
 
 /// The `Rem` trait is used to specify the functionality of `%`.
 ///
@@ -407,6 +425,8 @@ pub trait Rem<RHS=Self> {
 
 macro_rules! rem_impl {
     ($($t:ty)*) => ($(
+        /// This operation satisfies `n % d == n - (n / d) * d`.  The
+        /// result has the same sign as the left operand.
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Rem for $t {
             type Output = $t;
@@ -419,26 +439,40 @@ macro_rules! rem_impl {
     )*)
 }
 
-macro_rules! rem_float_impl {
-    ($t:ty, $fmod:ident) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl Rem for $t {
-            type Output = $t;
+rem_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
-            #[inline]
-            fn rem(self, other: $t) -> $t {
-                extern { fn $fmod(a: $t, b: $t) -> $t; }
-                unsafe { $fmod(self, other) }
-            }
-        }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Rem for f32 {
+    type Output = f32;
 
-        forward_ref_binop! { impl Rem, rem for $t, $t }
+    // see notes in `core::f32::Float::floor`
+    #[inline]
+    #[cfg(target_env = "msvc")]
+    fn rem(self, other: f32) -> f32 {
+        (self as f64).rem(other as f64) as f32
+    }
+
+    #[inline]
+    #[cfg(not(target_env = "msvc"))]
+    fn rem(self, other: f32) -> f32 {
+        extern { fn fmodf(a: f32, b: f32) -> f32; }
+        unsafe { fmodf(self, other) }
     }
 }
 
-rem_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
-rem_float_impl! { f32, fmodf }
-rem_float_impl! { f64, fmod }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Rem for f64 {
+    type Output = f64;
+
+    #[inline]
+    fn rem(self, other: f64) -> f64 {
+        extern { fn fmod(a: f64, b: f64) -> f64; }
+        unsafe { fmod(self, other) }
+    }
+}
+
+forward_ref_binop! { impl Rem, rem for f64, f64 }
+forward_ref_binop! { impl Rem, rem for f32, f32 }
 
 /// The `Neg` trait is used to specify the functionality of unary `-`.
 ///
@@ -483,7 +517,6 @@ pub trait Neg {
 macro_rules! neg_impl_core {
     ($id:ident => $body:expr, $($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[allow(unsigned_negation)]
         impl Neg for $t {
             #[stable(feature = "rust1", since = "1.0.0")]
             type Output = $t;
@@ -1024,6 +1057,10 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
 /// The `Deref` trait is used to specify the functionality of dereferencing
 /// operations like `*v`.
 ///
+/// `Deref` also enables ['`Deref` coercions'][coercions].
+///
+/// [coercions]: ../../book/deref-coercions.html
+///
 /// # Examples
 ///
 /// A struct with a single field which is accessible via dereferencing the
@@ -1077,6 +1114,10 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 
 /// The `DerefMut` trait is used to specify the functionality of dereferencing
 /// mutably like `*v = 1;`
+///
+/// `DerefMut` also enables ['`Deref` coercions'][coercions].
+///
+/// [coercions]: ../../book/deref-coercions.html
 ///
 /// # Examples
 ///
@@ -1233,3 +1274,120 @@ impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
 
 // *const T -> *const U
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
+
+/// Both `in (PLACE) EXPR` and `box EXPR` desugar into expressions
+/// that allocate an intermediate "place" that holds uninitialized
+/// state.  The desugaring evaluates EXPR, and writes the result at
+/// the address returned by the `pointer` method of this trait.
+///
+/// A `Place` can be thought of as a special representation for a
+/// hypothetical `&uninit` reference (which Rust cannot currently
+/// express directly). That is, it represents a pointer to
+/// uninitialized storage.
+///
+/// The client is responsible for two steps: First, initializing the
+/// payload (it can access its address via `pointer`). Second,
+/// converting the agent to an instance of the owning pointer, via the
+/// appropriate `finalize` method (see the `InPlace`.
+///
+/// If evaluating EXPR fails, then the destructor for the
+/// implementation of Place to clean up any intermediate state
+/// (e.g. deallocate box storage, pop a stack, etc).
+#[unstable(feature = "placement_new_protocol")]
+pub trait Place<Data: ?Sized> {
+    /// Returns the address where the input value will be written.
+    /// Note that the data at this address is generally uninitialized,
+    /// and thus one should use `ptr::write` for initializing it.
+    fn pointer(&mut self) -> *mut Data;
+}
+
+/// Interface to implementations of  `in (PLACE) EXPR`.
+///
+/// `in (PLACE) EXPR` effectively desugars into:
+///
+/// ```rust,ignore
+/// let p = PLACE;
+/// let mut place = Placer::make_place(p);
+/// let raw_place = Place::pointer(&mut place);
+/// let value = EXPR;
+/// unsafe {
+///     std::ptr::write(raw_place, value);
+///     InPlace::finalize(place)
+/// }
+/// ```
+///
+/// The type of `in (PLACE) EXPR` is derived from the type of `PLACE`;
+/// if the type of `PLACE` is `P`, then the final type of the whole
+/// expression is `P::Place::Owner` (see the `InPlace` and `Boxed`
+/// traits).
+///
+/// Values for types implementing this trait usually are transient
+/// intermediate values (e.g. the return value of `Vec::emplace_back`)
+/// or `Copy`, since the `make_place` method takes `self` by value.
+#[unstable(feature = "placement_new_protocol")]
+pub trait Placer<Data: ?Sized> {
+    /// `Place` is the intermedate agent guarding the
+    /// uninitialized state for `Data`.
+    type Place: InPlace<Data>;
+
+    /// Creates a fresh place from `self`.
+    fn make_place(self) -> Self::Place;
+}
+
+/// Specialization of `Place` trait supporting `in (PLACE) EXPR`.
+#[unstable(feature = "placement_new_protocol")]
+pub trait InPlace<Data: ?Sized>: Place<Data> {
+    /// `Owner` is the type of the end value of `in (PLACE) EXPR`
+    ///
+    /// Note that when `in (PLACE) EXPR` is solely used for
+    /// side-effecting an existing data-structure,
+    /// e.g. `Vec::emplace_back`, then `Owner` need not carry any
+    /// information at all (e.g. it can be the unit type `()` in that
+    /// case).
+    type Owner;
+
+    /// Converts self into the final value, shifting
+    /// deallocation/cleanup responsibilities (if any remain), over to
+    /// the returned instance of `Owner` and forgetting self.
+    unsafe fn finalize(self) -> Self::Owner;
+}
+
+/// Core trait for the `box EXPR` form.
+///
+/// `box EXPR` effectively desugars into:
+///
+/// ```rust,ignore
+/// let mut place = BoxPlace::make_place();
+/// let raw_place = Place::pointer(&mut place);
+/// let value = EXPR;
+/// unsafe {
+///     ::std::ptr::write(raw_place, value);
+///     Boxed::finalize(place)
+/// }
+/// ```
+///
+/// The type of `box EXPR` is supplied from its surrounding
+/// context; in the above expansion, the result type `T` is used
+/// to determine which implementation of `Boxed` to use, and that
+/// `<T as Boxed>` in turn dictates determines which
+/// implementation of `BoxPlace` to use, namely:
+/// `<<T as Boxed>::Place as BoxPlace>`.
+#[unstable(feature = "placement_new_protocol")]
+pub trait Boxed {
+    /// The kind of data that is stored in this kind of box.
+    type Data;  /* (`Data` unused b/c cannot yet express below bound.) */
+    /// The place that will negotiate the storage of the data.
+    type Place: BoxPlace<Self::Data>;
+
+    /// Converts filled place into final owning value, shifting
+    /// deallocation/cleanup responsibilities (if any remain), over to
+    /// returned instance of `Self` and forgetting `filled`.
+    unsafe fn finalize(filled: Self::Place) -> Self;
+}
+
+/// Specialization of `Place` trait supporting `box EXPR`.
+#[unstable(feature = "placement_new_protocol")]
+pub trait BoxPlace<Data: ?Sized> : Place<Data> {
+    /// Creates a globally fresh place.
+    fn make_place() -> Self;
+}

@@ -21,7 +21,6 @@ use middle::cfg::CFGIndex;
 use middle::ty;
 use std::io;
 use std::usize;
-use std::iter::repeat;
 use syntax::ast;
 use syntax::ast_util::IdRange;
 use syntax::visit;
@@ -239,11 +238,11 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
         let entry = if oper.initial_value() { usize::MAX } else {0};
 
-        let zeroes: Vec<_> = repeat(0).take(num_nodes * words_per_id).collect();
-        let gens: Vec<_> = zeroes.clone();
-        let kills1: Vec<_> = zeroes.clone();
-        let kills2: Vec<_> = zeroes;
-        let on_entry: Vec<_> = repeat(entry).take(num_nodes * words_per_id).collect();
+        let zeroes = vec![0; num_nodes * words_per_id];
+        let gens = zeroes.clone();
+        let kills1 = zeroes.clone();
+        let kills2 = zeroes;
+        let on_entry = vec![entry; num_nodes * words_per_id];
 
         let nodeid_to_index = build_nodeid_to_index(decl, cfg);
 
@@ -511,7 +510,7 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
                 changed: true
             };
 
-            let mut temp: Vec<_> = repeat(0).take(words_per_id).collect();
+            let mut temp = vec![0; words_per_id];
             while propcx.changed {
                 propcx.changed = false;
                 propcx.reset(&mut temp);

@@ -35,6 +35,7 @@ impl Drop for Handler {
 #[cfg(any(target_os = "linux",
           target_os = "macos",
           target_os = "bitrig",
+          target_os = "netbsd",
           target_os = "openbsd"))]
 mod imp {
     use sys_common::stack;
@@ -149,6 +150,7 @@ mod imp {
 #[cfg(not(any(target_os = "linux",
               target_os = "macos",
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd")))]
 mod imp {
     use libc;

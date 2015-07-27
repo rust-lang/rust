@@ -175,6 +175,12 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     fn is_pretty(&self) -> bool {
         self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
     }
+
+    /// Returns the wrapped `Formatter`.
+    #[unstable(feature = "debug_builder_formatter", reason = "recently added")]
+    pub fn formatter(&mut self) -> &mut fmt::Formatter<'b> {
+        &mut self.fmt
+    }
 }
 
 struct DebugInner<'a, 'b: 'a> {

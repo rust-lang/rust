@@ -11,10 +11,12 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::fs;
 
-use rustc_back::archive;
+use back::archive;
 use session::Session;
 use session::config;
+use session::config::DebugInfoLevel::{NoDebugInfo, LimitedDebugInfo, FullDebugInfo};
 
 /// Linker abstraction used by back::link to build up the command to invoke a
 /// linker.
@@ -25,9 +27,11 @@ use session::config;
 /// MSVC linker (e.g. `link.exe`) is being used.
 pub trait Linker {
     fn link_dylib(&mut self, lib: &str);
+    fn link_rust_dylib(&mut self, lib: &str, path: &Path);
     fn link_framework(&mut self, framework: &str);
     fn link_staticlib(&mut self, lib: &str);
     fn link_rlib(&mut self, lib: &Path);
+    fn link_whole_rlib(&mut self, lib: &Path);
     fn link_whole_staticlib(&mut self, lib: &str, search_path: &[PathBuf]);
     fn include_path(&mut self, path: &Path);
     fn framework_path(&mut self, path: &Path);
@@ -36,6 +40,7 @@ pub trait Linker {
     fn gc_sections(&mut self, is_dylib: bool);
     fn position_independent_executable(&mut self);
     fn optimize(&mut self);
+    fn debuginfo(&mut self);
     fn no_default_libraries(&mut self);
     fn build_dylib(&mut self, out_filename: &Path);
     fn args(&mut self, args: &[String]);
@@ -67,6 +72,10 @@ impl<'a> Linker for GnuLinker<'a> {
     fn position_independent_executable(&mut self) { self.cmd.arg("-pie"); }
     fn args(&mut self, args: &[String]) { self.cmd.args(args); }
 
+    fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
+        self.cmd.arg("-l").arg(lib);
+    }
+
     fn link_framework(&mut self, framework: &str) {
         self.cmd.arg("-framework").arg(framework);
     }
@@ -81,12 +90,19 @@ impl<'a> Linker for GnuLinker<'a> {
             // -force_load is the OSX equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             let mut v = OsString::from("-Wl,-force_load,");
-            v.push(&archive::find_library(lib,
-                                          &target.options.staticlib_prefix,
-                                          &target.options.staticlib_suffix,
-                                          search_path,
-                                          &self.sess.diagnostic().handler));
+            v.push(&archive::find_library(lib, search_path, &self.sess));
             self.cmd.arg(&v);
+        }
+    }
+
+    fn link_whole_rlib(&mut self, lib: &Path) {
+        if self.sess.target.target.options.is_like_osx {
+            let mut v = OsString::from("-Wl,-force_load,");
+            v.push(lib);
+            self.cmd.arg(&v);
+        } else {
+            self.cmd.arg("-Wl,--whole-archive").arg(lib)
+                    .arg("-Wl,--no-whole-archive");
         }
     }
 
@@ -127,6 +143,10 @@ impl<'a> Linker for GnuLinker<'a> {
            self.sess.opts.optimize == config::Aggressive {
             self.cmd.arg("-Wl,-O1");
         }
+    }
+
+    fn debuginfo(&mut self) {
+        // Don't do anything special here for GNU-style linkers.
     }
 
     fn no_default_libraries(&mut self) {
@@ -189,6 +209,18 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn link_dylib(&mut self, lib: &str) {
         self.cmd.arg(&format!("{}.lib", lib));
     }
+
+    fn link_rust_dylib(&mut self, lib: &str, path: &Path) {
+        // When producing a dll, the MSVC linker may not actually emit a
+        // `foo.lib` file if the dll doesn't actually export any symbols, so we
+        // check to see if the file is there and just omit linking to it if it's
+        // not present.
+        let name = format!("{}.lib", lib);
+        if fs::metadata(&path.join(&name)).is_ok() {
+            self.cmd.arg(name);
+        }
+    }
+
     fn link_staticlib(&mut self, lib: &str) {
         self.cmd.arg(&format!("{}.lib", lib));
     }
@@ -232,9 +264,28 @@ impl<'a> Linker for MsvcLinker<'a> {
         // not supported?
         self.link_staticlib(lib);
     }
+    fn link_whole_rlib(&mut self, path: &Path) {
+        // not supported?
+        self.link_rlib(path);
+    }
     fn optimize(&mut self) {
         // Needs more investigation of `/OPT` arguments
     }
+
+    fn debuginfo(&mut self) {
+        match self.sess.opts.debuginfo {
+            NoDebugInfo => {
+                // Do nothing if debuginfo is disabled
+            },
+            LimitedDebugInfo |
+            FullDebugInfo    => {
+                // This will cause the Microsoft linker to generate a PDB file
+                // from the CodeView line tables in the object files.
+                self.cmd.arg("/DEBUG");
+            }
+        }
+    }
+
     fn whole_archives(&mut self) {
         // hints not supported?
     }

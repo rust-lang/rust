@@ -21,7 +21,6 @@ use trans::context::CrateContext;
 use trans::type_::Type;
 
 use std::cmp;
-use std::iter::repeat;
 
 #[derive(Clone, Copy, PartialEq)]
 enum RegClass {
@@ -319,7 +318,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
     }
 
     let words = (ty_size(ty) + 7) / 8;
-    let mut cls: Vec<_> = repeat(NoClass).take(words).collect();
+    let mut cls = vec![NoClass; words];
     if words > 4 {
         all_mem(&mut cls);
         return cls;

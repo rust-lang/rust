@@ -16,6 +16,7 @@ use prelude::v1::*;
 
 use fs::{self, Permissions, OpenOptions};
 use io;
+use libc;
 use os::raw::c_long;
 use os::unix::raw;
 use path::Path;
@@ -176,6 +177,27 @@ impl MetadataExt for fs::Metadata {
     fn blocks(&self) -> raw::blkcnt_t {
         self.as_raw_stat().st_blocks as raw::blkcnt_t
     }
+}
+
+/// Add special unix types (block/char device, fifo and socket)
+#[unstable(feature = "file_type_ext", reason = "recently added API")]
+pub trait FileTypeExt {
+    /// Returns whether this file type is a block device.
+    fn is_block_device(&self) -> bool;
+    /// Returns whether this file type is a char device.
+    fn is_char_device(&self) -> bool;
+    /// Returns whether this file type is a fifo.
+    fn is_fifo(&self) -> bool;
+    /// Returns whether this file type is a socket.
+    fn is_socket(&self) -> bool;
+}
+
+#[unstable(feature = "file_type_ext", reason = "recently added API")]
+impl FileTypeExt for fs::FileType {
+    fn is_block_device(&self) -> bool { self.as_inner().is(libc::S_IFBLK) }
+    fn is_char_device(&self) -> bool { self.as_inner().is(libc::S_IFCHR) }
+    fn is_fifo(&self) -> bool { self.as_inner().is(libc::S_IFIFO) }
+    fn is_socket(&self) -> bool { self.as_inner().is(libc::S_IFSOCK) }
 }
 
 /// Unix-specific extension methods for `fs::DirEntry`

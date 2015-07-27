@@ -302,8 +302,8 @@ fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &NamedMatch, sp: Span) {
             tt @ &TtSequence(..) => {
                 check_matcher(cx, Some(tt).into_iter(), &Eof);
             },
-            _ => cx.span_bug(sp, "wrong-structured lhs for follow check (didn't find \
-            a TtDelimited or TtSequence)")
+            _ => cx.span_err(sp, "Invalid macro matcher; matchers must be contained \
+               in balanced delimiters or a repetition indicator")
         },
         _ => cx.span_bug(sp, "wrong-structured lhs for follow check (didn't find a \
            MatchedNonterminal)")
@@ -501,7 +501,7 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
             },
             "path" | "ty" => {
                 match *tok {
-                    Comma | FatArrow | Colon | Eq | Gt => Ok(true),
+                    Comma | FatArrow | Colon | Eq | Gt | Semi => Ok(true),
                     Ident(i, _) if i.as_str() == "as" => Ok(true),
                     _ => Ok(false)
                 }

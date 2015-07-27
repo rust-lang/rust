@@ -547,7 +547,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                                   sess.diagnostic()));
 
     krate = time(time_passes, "prelude injection", krate, |krate|
-                 syntax::std_inject::maybe_inject_prelude(krate));
+                 syntax::std_inject::maybe_inject_prelude(&sess.parse_sess, krate));
 
     time(time_passes, "checking that all macro invocations are gone", &krate, |krate|
          syntax::ext::expand::check_for_macros(&sess.parse_sess, krate));
@@ -602,7 +602,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
                                                make_glob_map: resolve::MakeGlobMap,
                                                f: F)
                                                -> (Session, R)
-                                               where F: FnOnce(&ty::ctxt<'tcx>,
+                                               where F: for<'a> FnOnce(&'a ty::ctxt<'tcx>,
                                                                ty::CrateAnalysis) -> R
 {
     let time_passes = sess.time_passes();
@@ -648,16 +648,16 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
     time(time_passes, "static item recursion checking", (), |_|
          middle::check_static_recursion::check_crate(&sess, krate, &def_map, &ast_map));
 
-    ty::with_ctxt(sess,
-                  arenas,
-                  def_map,
-                  named_region_map,
-                  ast_map,
-                  freevars,
-                  region_map,
-                  lang_items,
-                  stability::Index::new(krate),
-                  |tcx| {
+    ty::ctxt::create_and_enter(sess,
+                               arenas,
+                               def_map,
+                               named_region_map,
+                               ast_map,
+                               freevars,
+                               region_map,
+                               lang_items,
+                               stability::Index::new(krate),
+                               |tcx| {
 
         // passes are timed inside typeck
         typeck::check_crate(tcx, trait_map);
@@ -804,8 +804,8 @@ fn write_out_deps(sess: &Session,
         match *output_type {
             config::OutputTypeExe => {
                 for output in sess.crate_types.borrow().iter() {
-                    let p = link::filename_for_input(sess, *output,
-                                                     id, &file);
+                    let p = link::filename_for_input(sess, *output, id,
+                                                     outputs);
                     out_filenames.push(p);
                 }
             }
@@ -843,7 +843,7 @@ fn write_out_deps(sess: &Session,
         let mut file = try!(fs::File::create(&deps_filename));
         for path in &out_filenames {
             try!(write!(&mut file,
-                        "{}: {}\n\n", path.display(), files.connect(" ")));
+                        "{}: {}\n\n", path.display(), files.join(" ")));
         }
         Ok(())
     })();

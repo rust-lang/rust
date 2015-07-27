@@ -32,6 +32,7 @@
 #![feature(libc)]
 #![feature(ref_slice)]
 #![feature(rustc_private)]
+#![feature(set_stdio)]
 #![feature(staged_api)]
 #![feature(str_char)]
 #![feature(str_escape)]
@@ -119,6 +120,7 @@ pub mod ext {
     pub mod log_syntax;
     pub mod mtwt;
     pub mod quote;
+    pub mod pushpop_safe;
     pub mod source_util;
     pub mod trace_macros;
 

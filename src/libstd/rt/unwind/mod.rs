@@ -69,7 +69,6 @@ use cmp;
 use panicking;
 use fmt;
 use intrinsics;
-use libc::c_void;
 use mem;
 use sync::atomic::{self, Ordering};
 use sys_common::mutex::Mutex;
@@ -127,7 +126,7 @@ extern {}
 ///   run.
 pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
     let mut f = Some(f);
-    return inner_try(try_fn::<F>, &mut f as *mut _ as *mut c_void);
+    return inner_try(try_fn::<F>, &mut f as *mut _ as *mut u8);
 
     // If an inner function were not used here, then this generic function `try`
     // uses the native symbol `rust_try`, for which the code is statically
@@ -140,11 +139,12 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
     // `dllexport`, but it's easier to not have conditional `src/rt/rust_try.ll`
     // files and instead just have this non-generic shim the compiler can take
     // care of exposing correctly.
-    unsafe fn inner_try(f: extern fn(*mut c_void), data: *mut c_void)
+    #[cfg(not(stage0))]
+    unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
                         -> Result<(), Box<Any + Send>> {
         let prev = PANICKING.with(|s| s.get());
         PANICKING.with(|s| s.set(false));
-        let ep = rust_try(f, data);
+        let ep = intrinsics::try(f, data);
         PANICKING.with(|s| s.set(prev));
         if ep.is_null() {
             Ok(())
@@ -152,8 +152,13 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
             Err(imp::cleanup(ep))
         }
     }
+    #[cfg(stage0)]
+    unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
+                        -> Result<(), Box<Any + Send>> {
+        Ok(f(data))
+    }
 
-    extern fn try_fn<F: FnOnce()>(opt_closure: *mut c_void) {
+    fn try_fn<F: FnOnce()>(opt_closure: *mut u8) {
         let opt_closure = opt_closure as *mut Option<F>;
         unsafe { (*opt_closure).take().unwrap()(); }
     }
@@ -163,8 +168,8 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
         // When f(...) returns normally, the return value is null.
         // When f(...) throws, the return value is a pointer to the caught
         // exception object.
-        fn rust_try(f: extern fn(*mut c_void),
-                    data: *mut c_void) -> *mut c_void;
+        fn rust_try(f: extern fn(*mut u8),
+                    data: *mut u8) -> *mut u8;
     }
 }
 

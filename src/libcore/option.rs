@@ -46,7 +46,7 @@
 //!     // The division was valid
 //!     Some(x) => println!("Result: {}", x),
 //!     // The division was invalid
-//!     None    => println!("Cannot divide by 0")
+//!     None    => println!("Cannot divide by 0"),
 //! }
 //! ```
 //!
@@ -75,7 +75,7 @@
 //! fn check_optional(optional: &Option<Box<i32>>) {
 //!     match *optional {
 //!         Some(ref p) => println!("have value {}", p),
-//!         None => println!("have no value")
+//!         None => println!("have no value"),
 //!     }
 //! }
 //! ```
@@ -95,13 +95,13 @@
 //! // Take a reference to the contained string
 //! match msg {
 //!     Some(ref m) => println!("{}", *m),
-//!     None => ()
+//!     None => (),
 //! }
 //!
 //! // Remove the contained string, destroying the Option
 //! let unwrapped_msg = match msg {
 //!     Some(m) => m,
-//!     None => "default message"
+//!     None => "default message",
 //! };
 //! ```
 //!
@@ -137,7 +137,7 @@
 //!
 //! match name_of_biggest_animal {
 //!     Some(name) => println!("the biggest animal is {}", name),
-//!     None => println!("there are no animals :(")
+//!     None => println!("there are no animals :("),
 //! }
 //! ```
 
@@ -198,7 +198,7 @@ impl<T> Option<T> {
     pub fn is_some(&self) -> bool {
         match *self {
             Some(_) => true,
-            None => false
+            None => false,
         }
     }
 
@@ -244,7 +244,7 @@ impl<T> Option<T> {
     pub fn as_ref<'r>(&'r self) -> Option<&'r T> {
         match *self {
             Some(ref x) => Some(x),
-            None => None
+            None => None,
         }
     }
 
@@ -265,7 +265,7 @@ impl<T> Option<T> {
     pub fn as_mut<'r>(&'r mut self) -> Option<&'r mut T> {
         match *self {
             Some(ref mut x) => Some(x),
-            None => None
+            None => None,
         }
     }
 
@@ -376,7 +376,7 @@ impl<T> Option<T> {
     pub fn unwrap_or(self, def: T) -> T {
         match self {
             Some(x) => x,
-            None => def
+            None => def,
         }
     }
 
@@ -394,7 +394,7 @@ impl<T> Option<T> {
     pub fn unwrap_or_else<F: FnOnce() -> T>(self, f: F) -> T {
         match self {
             Some(x) => x,
-            None => f()
+            None => f(),
         }
     }
 
@@ -420,7 +420,7 @@ impl<T> Option<T> {
     pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> {
         match self {
             Some(x) => Some(f(x)),
-            None => None
+            None => None,
         }
     }
 
@@ -464,7 +464,7 @@ impl<T> Option<T> {
     pub fn map_or_else<U, D: FnOnce() -> U, F: FnOnce(T) -> U>(self, default: D, f: F) -> U {
         match self {
             Some(t) => f(t),
-            None => default()
+            None => default(),
         }
     }
 
@@ -637,7 +637,7 @@ impl<T> Option<T> {
     pub fn or(self, optb: Option<T>) -> Option<T> {
         match self {
             Some(_) => self,
-            None => optb
+            None => optb,
         }
     }
 
@@ -659,7 +659,7 @@ impl<T> Option<T> {
     pub fn or_else<F: FnOnce() -> Option<T>>(self, f: F) -> Option<T> {
         match self {
             Some(_) => self,
-            None => f()
+            None => f(),
         }
     }
 
@@ -736,7 +736,7 @@ impl<T: Default> Option<T> {
     pub fn unwrap_or_default(self) -> T {
         match self {
             Some(x) => x,
-            None => Default::default()
+            None => Default::default(),
         }
     }
 }

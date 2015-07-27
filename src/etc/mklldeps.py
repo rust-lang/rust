@@ -14,10 +14,9 @@ import subprocess
 
 f = open(sys.argv[1], 'wb')
 
-components = sys.argv[2].split(' ')
-components = [i for i in components if i]  # ignore extra whitespaces
+components = sys.argv[2].split() # splits on whitespace
 enable_static = sys.argv[3]
-llconfig = sys.argv[4]
+llvm_config = sys.argv[4]
 
 f.write("""// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -39,7 +38,7 @@ def run(args):
     out, err = proc.communicate()
 
     if err:
-        print("failed to run llconfig: args = `{}`".format(args))
+        print("failed to run llvm_config: args = `{}`".format(args))
         print(err)
         sys.exit(1)
     return out
@@ -47,7 +46,7 @@ def run(args):
 f.write("\n")
 
 # LLVM libs
-args = [llconfig, '--libs', '--system-libs']
+args = [llvm_config, '--libs', '--system-libs']
 
 args.extend(components)
 out = run(args)
@@ -69,13 +68,13 @@ for lib in out.strip().replace("\n", ' ').split(' '):
     f.write(")]\n")
 
 # LLVM ldflags
-out = run([llconfig, '--ldflags'])
+out = run([llvm_config, '--ldflags'])
 for lib in out.strip().split(' '):
     if lib[:2] == "-l":
         f.write("#[link(name = \"" + lib[2:] + "\")]\n")
 
 # C++ runtime library
-out = run([llconfig, '--cxxflags'])
+out = run([llvm_config, '--cxxflags'])
 if enable_static == '1':
     assert('stdlib=libc++' not in out)
     f.write("#[link(name = \"stdc++\", kind = \"static\")]\n")

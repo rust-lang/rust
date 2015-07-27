@@ -44,7 +44,6 @@
 #![feature(rt)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]
-#![feature(slice_extras)]
 #![feature(staged_api)]
 
 extern crate getopts;
@@ -359,7 +358,7 @@ Test Attributes:
 
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
-    let args_ = args.tail();
+    let args_ = &args[1..];
     let matches =
         match getopts::getopts(args_, &optgroups()) {
           Ok(m) => m,
@@ -872,7 +871,7 @@ fn run_tests<F>(opts: &TestOpts,
 
 #[allow(deprecated)]
 fn get_concurrency() -> usize {
-    match env::var("RUST_TEST_THREADS") {
+    return match env::var("RUST_TEST_THREADS") {
         Ok(s) => {
             let opt_n: Option<usize> = s.parse().ok();
             match opt_n {
@@ -884,10 +883,24 @@ fn get_concurrency() -> usize {
             if std::rt::util::limit_thread_creation_due_to_osx_and_valgrind() {
                 1
             } else {
-                extern { fn rust_get_num_cpus() -> libc::uintptr_t; }
-                unsafe { rust_get_num_cpus() as usize }
+                num_cpus()
             }
         }
+    };
+
+    #[cfg(windows)]
+    fn num_cpus() -> usize {
+        unsafe {
+            let mut sysinfo = std::mem::zeroed();
+            libc::GetSystemInfo(&mut sysinfo);
+            sysinfo.dwNumberOfProcessors as usize
+        }
+    }
+
+    #[cfg(unix)]
+    fn num_cpus() -> usize {
+        extern { fn rust_get_num_cpus() -> libc::uintptr_t; }
+        unsafe { rust_get_num_cpus() as usize }
     }
 }
 
@@ -1066,7 +1079,7 @@ impl MetricMap {
             .map(|(k,v)| format!("{}: {} (+/- {})", *k,
                                  v.value, v.noise))
             .collect();
-        v.connect(", ")
+        v.join(", ")
     }
 }
 

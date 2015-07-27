@@ -33,8 +33,10 @@ pub fn new(value: T) -> Rc<T> {
 ```
 
 This code generates documentation that looks [like this][rc-new]. I've left the
-implementation out, with a regular comment in its place. That's the first thing
-to notice about this annotation: it uses `///`, instead of `//`. The triple slash
+implementation out, with a regular comment in its place.
+
+The first thing to notice about this annotation is that it uses
+`///` instead of `//`. The triple slash
 indicates a documentation comment.
 
 Documentation comments are written in Markdown.
@@ -375,7 +377,7 @@ $ rustdoc --test path/to/my/crate/root.rs
 $ cargo test
 ```
 
-That's right, `cargo test` tests embedded documentation too. However, 
+That's right, `cargo test` tests embedded documentation too. However,
 `cargo test` will not test binary crates, only library ones. This is
 due to the way `rustdoc` works: it links against the library to be tested,
 but with a binary, there’s nothing to link to.

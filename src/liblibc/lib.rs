@@ -960,6 +960,100 @@ pub mod types {
             }
         }
 
+        #[cfg(target_arch = "x86")]
+        pub mod arch {
+            pub mod c95 {
+                pub type c_char = i8;
+                pub type c_schar = i8;
+                pub type c_uchar = u8;
+                pub type c_short = i16;
+                pub type c_ushort = u16;
+                pub type c_int = i32;
+                pub type c_uint = u32;
+                pub type c_long = i32;
+                pub type c_ulong = u32;
+                pub type c_float = f32;
+                pub type c_double = f64;
+                pub type size_t = u32;
+                pub type ptrdiff_t = i32;
+                pub type clock_t = i32;
+                pub type time_t = i32;
+                pub type suseconds_t = i32;
+                pub type wchar_t = i32;
+            }
+            pub mod c99 {
+                pub type c_longlong = i64;
+                pub type c_ulonglong = u64;
+                pub type intptr_t = i32;
+                pub type uintptr_t = u32;
+                pub type intmax_t = i64;
+                pub type uintmax_t = u64;
+            }
+            pub mod posix88 {
+                pub type off_t = i64;
+                pub type dev_t = u32;
+                pub type ino_t = u32;
+                pub type pid_t = i32;
+                pub type uid_t = u32;
+                pub type gid_t = u32;
+                pub type useconds_t = u32;
+                pub type mode_t = u16;
+                pub type ssize_t = i32;
+            }
+            pub mod posix01 {
+                use types::common::c95::{c_void};
+                use types::common::c99::{uint8_t, uint32_t, int32_t};
+                use types::os::arch::c95::{c_long, time_t};
+                use types::os::arch::posix88::{dev_t, gid_t, ino_t};
+                use types::os::arch::posix88::{mode_t, off_t};
+                use types::os::arch::posix88::{uid_t};
+
+                pub type nlink_t = u16;
+                pub type blksize_t = i32;
+                pub type blkcnt_t = i64;
+                pub type fflags_t = u32;
+                #[repr(C)]
+                #[derive(Copy, Clone)] pub struct stat {
+                    pub st_dev: dev_t,
+                    pub st_ino: ino_t,
+                    pub st_mode: mode_t,
+                    pub st_nlink: nlink_t,
+                    pub st_uid: uid_t,
+                    pub st_gid: gid_t,
+                    pub st_rdev: dev_t,
+                    pub st_atime: time_t,
+                    pub st_atime_nsec: c_long,
+                    pub st_mtime: time_t,
+                    pub st_mtime_nsec: c_long,
+                    pub st_ctime: time_t,
+                    pub st_ctime_nsec: c_long,
+                    pub st_size: off_t,
+                    pub st_blocks: blkcnt_t,
+                    pub st_blksize: blksize_t,
+                    pub st_flags: fflags_t,
+                    pub st_gen: uint32_t,
+                    pub st_lspare: int32_t,
+                    pub st_birthtime: time_t,
+                    pub st_birthtime_nsec: c_long,
+                    pub __unused: [uint8_t; 2],
+                }
+
+                #[repr(C)]
+                #[derive(Copy, Clone)] pub struct utimbuf {
+                    pub actime: time_t,
+                    pub modtime: time_t,
+                }
+
+                pub type pthread_attr_t = *mut c_void;
+            }
+            pub mod posix08 {
+            }
+            pub mod bsd44 {
+            }
+            pub mod extra {
+            }
+        }
+
         #[cfg(target_arch = "x86_64")]
         pub mod arch {
             pub mod c95 {
@@ -1322,7 +1416,7 @@ pub mod types {
         }
     }
 
-    #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
+    #[cfg(any(target_os = "bitrig", target_os = "netbsd", target_os ="openbsd"))]
     pub mod os {
         pub mod common {
             pub mod posix01 {
@@ -1351,7 +1445,7 @@ pub mod types {
                     pub __unused7: *mut c_void,
                 }
 
-                #[cfg(target_os = "openbsd")]
+                #[cfg(any(target_os = "netbsd", target_os="openbsd"))]
                 #[repr(C)]
                 #[derive(Copy, Clone)] pub struct glob_t {
                     pub gl_pathc:  c_int,
@@ -2522,6 +2616,7 @@ pub mod consts {
             pub const S_IFDIR : c_int = 16384;
             pub const S_IFREG : c_int = 32768;
             pub const S_IFLNK : c_int = 40960;
+            pub const S_IFSOCK : mode_t = 49152;
             pub const S_IFMT : c_int = 61440;
             pub const S_IEXEC : c_int = 64;
             pub const S_IWRITE : c_int = 128;
@@ -2881,6 +2976,7 @@ pub mod consts {
             pub const S_IFDIR : mode_t = 16384;
             pub const S_IFREG : mode_t = 32768;
             pub const S_IFLNK : mode_t = 40960;
+            pub const S_IFSOCK : mode_t = 49152;
             pub const S_IFMT : mode_t = 61440;
             pub const S_IEXEC : mode_t = 64;
             pub const S_IWRITE : mode_t = 128;
@@ -3103,6 +3199,7 @@ pub mod consts {
             pub const S_IFDIR : mode_t = 16384;
             pub const S_IFREG : mode_t = 32768;
             pub const S_IFLNK : mode_t = 40960;
+            pub const S_IFSOCK : mode_t = 49152;
             pub const S_IFMT : mode_t = 61440;
             pub const S_IEXEC : mode_t = 64;
             pub const S_IWRITE : mode_t = 128;
@@ -3600,6 +3697,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         #[cfg(any(target_arch = "mips",
                   target_arch = "mipsel"))]
@@ -3684,6 +3786,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         #[cfg(any(target_arch = "x86",
                   target_arch = "x86_64",
@@ -3895,6 +4002,7 @@ pub mod consts {
             pub const S_IFDIR : mode_t = 16384;
             pub const S_IFREG : mode_t = 32768;
             pub const S_IFLNK : mode_t = 40960;
+            pub const S_IFSOCK : mode_t = 49152;
             pub const S_IFMT : mode_t = 61440;
             pub const S_IEXEC : mode_t = 64;
             pub const S_IWRITE : mode_t = 128;
@@ -4227,6 +4335,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         pub mod extra {
             use types::os::arch::c95::c_int;
@@ -4308,7 +4421,7 @@ pub mod consts {
         }
     }
 
-    #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
+    #[cfg(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"))]
     pub mod os {
         pub mod c95 {
             use types::os::arch::c95::{c_int, c_uint};
@@ -4350,6 +4463,7 @@ pub mod consts {
             pub const S_IFDIR : mode_t = 16384;
             pub const S_IFREG : mode_t = 32768;
             pub const S_IFLNK : mode_t = 40960;
+            pub const S_IFSOCK : mode_t = 49152;
             pub const S_IFMT : mode_t = 61440;
             pub const S_IEXEC : mode_t = 64;
             pub const S_IWRITE : mode_t = 128;
@@ -4651,6 +4765,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         pub mod extra {
             use types::os::arch::c95::c_int;
@@ -4771,6 +4890,7 @@ pub mod consts {
             pub const S_IFDIR : mode_t = 16384;
             pub const S_IFREG : mode_t = 32768;
             pub const S_IFLNK : mode_t = 40960;
+            pub const S_IFSOCK : mode_t = 49152;
             pub const S_IFMT : mode_t = 61440;
             pub const S_IEXEC : mode_t = 64;
             pub const S_IWRITE : mode_t = 128;
@@ -4952,6 +5072,8 @@ pub mod consts {
             pub const F_GETFL : c_int = 3;
             pub const F_SETFL : c_int = 4;
 
+            pub const O_ACCMODE : c_int = 3;
+
             pub const SIGTRAP : c_int = 5;
             pub const SIG_IGN: size_t = 1;
 
@@ -5092,6 +5214,11 @@ pub mod consts {
             pub const SHUT_RD: c_int = 0;
             pub const SHUT_WR: c_int = 1;
             pub const SHUT_RDWR: c_int = 2;
+
+            pub const LOCK_SH: c_int = 1;
+            pub const LOCK_EX: c_int = 2;
+            pub const LOCK_NB: c_int = 4;
+            pub const LOCK_UN: c_int = 8;
         }
         pub mod extra {
             use types::os::arch::c95::c_int;
@@ -5099,6 +5226,7 @@ pub mod consts {
             pub const O_DSYNC : c_int = 4194304;
             pub const O_SYNC : c_int = 128;
             pub const O_NONBLOCK : c_int = 4;
+            pub const F_GETPATH : c_int = 50;
             pub const F_FULLFSYNC : c_int = 51;
 
             pub const MAP_COPY : c_int = 0x0002;
@@ -5120,6 +5248,8 @@ pub mod consts {
             pub const SO_DONTTRUNC: c_int = 0x2000;
             pub const SO_WANTMORE: c_int = 0x4000;
             pub const SO_WANTOOBFLAG: c_int = 0x8000;
+
+            pub const PATH_MAX: c_int = 1024;
         }
         pub mod sysconf {
             use types::os::arch::c95::c_int;
@@ -5543,6 +5673,7 @@ pub mod funcs {
               target_os = "freebsd",
               target_os = "dragonfly",
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd",
               target_os = "nacl"))]
     pub mod posix88 {
@@ -5559,6 +5690,7 @@ pub mod funcs {
                           target_os = "freebsd",
                           target_os = "dragonfly",
                           target_os = "bitrig",
+                          target_os = "netbsd",
                           target_os = "openbsd",
                           target_os = "android",
                           target_os = "ios",
@@ -5577,6 +5709,7 @@ pub mod funcs {
                           target_os = "freebsd",
                           target_os = "dragonfly",
                           target_os = "bitrig",
+                          target_os = "netbsd",
                           target_os = "openbsd",
                           target_os = "android",
                           target_os = "ios",
@@ -5864,6 +5997,7 @@ pub mod funcs {
               target_os = "freebsd",
               target_os = "dragonfly",
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd",
               target_os = "nacl"))]
     pub mod posix01 {
@@ -5876,6 +6010,7 @@ pub mod funcs {
                           target_os = "freebsd",
                           target_os = "dragonfly",
                           target_os = "bitrig",
+                          target_os = "netbsd",
                           target_os = "openbsd",
                           target_os = "android",
                           target_os = "ios",
@@ -5994,16 +6129,17 @@ pub mod funcs {
     }
 
 
-    #[cfg(any(target_os = "windows",
-              target_os = "linux",
-              target_os = "android",
-              target_os = "macos",
+    #[cfg(any(target_os = "android",
+              target_os = "bitrig",
+              target_os = "dragonfly",
               target_os = "ios",
               target_os = "freebsd",
-              target_os = "dragonfly",
-              target_os = "bitrig",
+              target_os = "linux",
+              target_os = "macos",
+              target_os = "nacl",
+              target_os = "netbsd",
               target_os = "openbsd",
-              target_os = "nacl"))]
+              target_os = "windows"))]
     pub mod posix08 {
         pub mod unistd {
         }
@@ -6090,13 +6226,14 @@ pub mod funcs {
               target_os = "freebsd",
               target_os = "dragonfly",
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd"))]
     pub mod bsd44 {
         use types::common::c95::{c_void};
         use types::os::arch::c95::{c_char, c_uchar, c_int, c_uint, c_ulong, size_t};
 
         extern {
-            pub fn ioctl(d: c_int, request: c_ulong, ...) -> c_int;
+            pub fn ioctl(fd: c_int, request: c_ulong, ...) -> c_int;
             pub fn sysctl(name: *mut c_int,
                           namelen: c_uint,
                           oldp: *mut c_void,
@@ -6121,22 +6258,24 @@ pub mod funcs {
                            -> c_int;
             pub fn realpath(pathname: *const c_char, resolved: *mut c_char)
                             -> *mut c_char;
+            pub fn flock(fd: c_int, operation: c_int) -> c_int;
         }
     }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     pub mod bsd44 {
         use types::common::c95::{c_void};
-        use types::os::arch::c95::{c_uchar, c_int, size_t};
+        use types::os::arch::c95::{c_uchar, c_int, c_ulong, size_t};
 
         extern {
             #[cfg(not(all(target_os = "android", target_arch = "aarch64")))]
             pub fn getdtablesize() -> c_int;
-            pub fn ioctl(d: c_int, request: c_int, ...) -> c_int;
+            pub fn ioctl(fd: c_int, request: c_ulong, ...) -> c_int;
             pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int)
                            -> c_int;
             pub fn mincore(addr: *mut c_void, len: size_t, vec: *mut c_uchar)
                            -> c_int;
+            pub fn flock(fd: c_int, operation: c_int) -> c_int;
         }
     }
 
@@ -6165,6 +6304,7 @@ pub mod funcs {
     #[cfg(any(target_os = "freebsd",
               target_os = "dragonfly",
               target_os = "bitrig",
+              target_os = "netbsd",
               target_os = "openbsd"))]
     pub mod extra {
     }
@@ -6394,8 +6534,5 @@ pub mod funcs {
         }
     }
 }
-
-#[doc(hidden)]
-pub fn issue_14344_workaround() {} // FIXME #14344 force linkage to happen correctly
 
 #[test] fn work_on_windows() { } // FIXME #10872 needed for a happy windows

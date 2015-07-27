@@ -317,7 +317,7 @@ impl<'a, 'tcx> pprust::PpAnn for TypedAnnotation<'a, 'tcx> {
                 try!(pp::word(&mut s.s, "as"));
                 try!(pp::space(&mut s.s));
                 try!(pp::word(&mut s.s,
-                              &ty::expr_ty(self.tcx, expr).to_string()));
+                              &self.tcx.expr_ty(expr).to_string()));
                 s.pclose()
             }
             _ => Ok(())
@@ -378,7 +378,7 @@ impl UserIdentifiedItem {
     fn reconstructed_input(&self) -> String {
         match *self {
             ItemViaNode(node_id) => node_id.to_string(),
-            ItemViaPath(ref parts) => parts.connect("::"),
+            ItemViaPath(ref parts) => parts.join("::"),
         }
     }
 

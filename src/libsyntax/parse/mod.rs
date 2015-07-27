@@ -11,7 +11,7 @@
 //! The main parser interface
 
 use ast;
-use codemap::{Span, CodeMap, FileMap};
+use codemap::{self, Span, CodeMap, FileMap};
 use diagnostic::{SpanHandler, Handler, Auto, FatalError};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
@@ -203,7 +203,14 @@ pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
 pub fn filemap_to_parser<'a>(sess: &'a ParseSess,
                              filemap: Rc<FileMap>,
                              cfg: ast::CrateConfig) -> Parser<'a> {
-    tts_to_parser(sess, filemap_to_tts(sess, filemap), cfg)
+    let end_pos = filemap.end_pos;
+    let mut parser = tts_to_parser(sess, filemap_to_tts(sess, filemap), cfg);
+
+    if parser.token == token::Eof && parser.span == codemap::DUMMY_SP {
+        parser.span = codemap::mk_sp(end_pos, end_pos);
+    }
+
+    parser
 }
 
 // must preserve old name for now, because quote! from the *existing*

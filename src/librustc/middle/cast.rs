@@ -36,9 +36,9 @@ pub enum CastTy<'tcx> {
     /// Function Pointers
     FnPtr,
     /// Raw pointers
-    Ptr(&'tcx ty::mt<'tcx>),
+    Ptr(&'tcx ty::TypeAndMut<'tcx>),
     /// References
-    RPtr(&'tcx ty::mt<'tcx>),
+    RPtr(&'tcx ty::TypeAndMut<'tcx>),
 }
 
 /// Cast Kind. See RFC 401 (or librustc_typeck/check/cast.rs)
@@ -66,8 +66,8 @@ impl<'tcx> CastTy<'tcx> {
             ty::TyInt(_) => Some(CastTy::Int(IntTy::I)),
             ty::TyUint(u) => Some(CastTy::Int(IntTy::U(u))),
             ty::TyFloat(_) => Some(CastTy::Float),
-            ty::TyEnum(..) if ty::type_is_c_like_enum(
-                tcx, t) => Some(CastTy::Int(IntTy::CEnum)),
+            ty::TyEnum(..) if t.is_c_like_enum(tcx) =>
+                Some(CastTy::Int(IntTy::CEnum)),
             ty::TyRawPtr(ref mt) => Some(CastTy::Ptr(mt)),
             ty::TyRef(_, ref mt) => Some(CastTy::RPtr(mt)),
             ty::TyBareFn(..) => Some(CastTy::FnPtr),

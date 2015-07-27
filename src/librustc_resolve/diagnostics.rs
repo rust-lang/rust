@@ -93,6 +93,22 @@ mod bar {
 ```
 "##,
 
+E0253: r##"
+Attempt was made to import an unimportable value. This can happen when
+trying to import a method from a trait. An example of this error:
+
+```
+mod foo {
+    pub trait MyTrait {
+        fn do_something();
+    }
+}
+use foo::MyTrait::do_something;
+```
+
+It's illegal to directly import methods belonging to a trait or concrete type.
+"##,
+
 E0255: r##"
 You can't import a value whose name is the same as another value defined in the
 module.
@@ -197,17 +213,310 @@ See the Types section of the reference for more information about the primitive
 types:
 
 http://doc.rust-lang.org/reference.html#types
+"##,
+
+E0364: r##"
+Private items cannot be publicly re-exported.  This error indicates that
+you attempted to `pub use` a type or value that was not itself public.
+
+Here is an example that demonstrates the error:
+
+```
+mod foo {
+    const X: u32 = 1;
+}
+pub use foo::X;
+```
+
+The solution to this problem is to ensure that the items that you are
+re-exporting are themselves marked with `pub`:
+
+```
+mod foo {
+    pub const X: u32 = 1;
+}
+pub use foo::X;
+```
+
+See the 'Use Declarations' section of the reference for more information
+on this topic:
+
+http://doc.rust-lang.org/reference.html#use-declarations
+"##,
+
+E0365: r##"
+Private modules cannot be publicly re-exported.  This error indicates
+that you attempted to `pub use` a module that was not itself public.
+
+Here is an example that demonstrates the error:
+
+```
+mod foo {
+    pub const X: u32 = 1;
+}
+pub use foo as foo2;
+
+```
+The solution to this problem is to ensure that the module that you are
+re-exporting is itself marked with `pub`:
+
+```
+pub mod foo {
+    pub const X: u32 = 1;
+}
+pub use foo as foo2;
+```
+
+See the 'Use Declarations' section of the reference for more information
+on this topic:
+
+http://doc.rust-lang.org/reference.html#use-declarations
+"##,
+
+E0403: r##"
+Some type parameters have the same name. Example of erroneous code:
+
+```
+fn foo<T, T>(s: T, u: T) {} // error: the name `T` is already used for a type
+                            //        parameter in this type parameter list
+```
+
+Please verify that none of the type parameterss are misspelled, and rename any
+clashing parameters. Example:
+
+```
+fn foo<T, Y>(s: T, u: Y) {} // ok!
+```
+"##,
+
+E0404: r##"
+You tried to implement something which was not a trait on an object. Example of
+erroneous code:
+
+```
+struct Foo;
+struct Bar;
+
+impl Foo for Bar {} // error: `Foo` is not a trait
+```
+
+Please verify that you didn't misspell the trait's name or otherwise use the
+wrong identifier. Example:
+
+```
+trait Foo {
+    // some functions
+}
+struct Bar;
+
+impl Foo for Bar { // ok!
+    // functions implementation
+}
+```
+"##,
+
+E0405: r##"
+An unknown trait was implemented. Example of erroneous code:
+
+```
+struct Foo;
+
+impl SomeTrait for Foo {} // error: use of undeclared trait name `SomeTrait`
+```
+
+Please verify that the name of the trait wasn't misspelled and ensure that it
+was imported. Example:
+
+```
+// solution 1:
+use some_file::SomeTrait;
+
+// solution 2:
+trait SomeTrait {
+    // some functions
+}
+
+struct Foo;
+
+impl SomeTrait for Foo { // ok!
+    // implements functions
+}
+```
+"##,
+
+E0407: r##"
+A definition of a method not in the implemented trait was given in a trait
+implementation. Example of erroneous code:
+
+```
+trait Foo {
+    fn a();
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn a() {}
+    fn b() {} // error: method `b` is not a member of trait `Foo`
+}
+```
+
+Please verify you didn't misspell the method name and you used the correct
+trait. First example:
+
+```
+trait Foo {
+    fn a();
+    fn b();
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn a() {}
+    fn b() {} // ok!
+}
+```
+
+Second example:
+
+```
+trait Foo {
+    fn a();
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn a() {}
+}
+
+impl Bar {
+    fn b() {}
+}
+```
+"##,
+
+E0428: r##"
+A type or module has been defined more than once. Example of erroneous
+code:
+
+```
+struct Bar;
+struct Bar; // error: duplicate definition of value `Bar`
+```
+
+Please verify you didn't misspell the type/module's name or remove/rename the
+duplicated one. Example:
+
+```
+struct Bar;
+struct Bar2; // ok!
+```
+"##,
+
+E0433: r##"
+Invalid import. Example of erroneous code:
+
+```
+use something_which_doesnt_exist;
+// error: unresolved import `something_which_doesnt_exist`
+```
+
+Please verify you didn't misspell the import's name.
+"##,
+
+E0437: r##"
+Trait impls can only implement associated types that are members of the trait in
+question. This error indicates that you attempted to implement an associated
+type whose name does not match the name of any associated type in the trait.
+
+Here is an example that demonstrates the error:
+
+```
+trait Foo {}
+
+impl Foo for i32 {
+    type Bar = bool;
+}
+```
+
+The solution to this problem is to remove the extraneous associated type:
+
+```
+trait Foo {}
+
+impl Foo for i32 {}
+```
+"##,
+
+E0438: r##"
+Trait impls can only implement associated constants that are members of the
+trait in question. This error indicates that you attempted to implement an
+associated constant whose name does not match the name of any associated
+constant in the trait.
+
+Here is an example that demonstrates the error:
+
+```
+#![feature(associated_consts)]
+
+trait Foo {}
+
+impl Foo for i32 {
+    const BAR: bool = true;
+}
+```
+
+The solution to this problem is to remove the extraneous associated constant:
+
+```
+trait Foo {}
+
+impl Foo for i32 {}
+```
 "##
 
 }
 
 register_diagnostics! {
-    E0157,
-    E0153,
-    E0253, // not directly importable
+    E0153, // called no where
+    E0157, // called from no where
     E0254, // import conflicts with imported crate in this module
     E0257,
     E0258,
-    E0364, // item is private
-    E0365  // item is private
+    E0401, // can't use type parameters from outer function
+    E0402, // cannot use an outer type parameter in this context
+    E0406, // undeclared associated type
+    E0408, // variable from pattern #1 is not bound in pattern #
+    E0409, // variable is bound with different mode in pattern # than in
+           // pattern #1
+    E0410, // variable from pattern is not bound in pattern 1
+    E0411, // use of `Self` outside of an impl or trait
+    E0412, // use of undeclared
+    E0413, // declaration of shadows an enum variant or unit-like struct in
+           // scope
+    E0414, // only irrefutable patterns allowed here
+    E0415, // identifier is bound more than once in this parameter list
+    E0416, // identifier is bound more than once in the same pattern
+    E0417, // static variables cannot be referenced in a pattern, use a
+           // `const` instead
+    E0418, // is not an enum variant, struct or const
+    E0419, // unresolved enum variant, struct or const
+    E0420, // is not an associated const
+    E0421, // unresolved associated const
+    E0422, // does not name a structure
+    E0423, // is a struct variant name, but this expression uses it like a
+           // function name
+    E0424, // `self` is not available in a static method.
+    E0425, // unresolved name
+    E0426, // use of undeclared label
+    E0427, // cannot use `ref` binding mode with ...
+    E0429, // `self` imports are only allowed within a { } list
+    E0430, // `self` import can only appear once in the list
+    E0431, // `self` import can only appear in an import list with a non-empty
+           // prefix
+    E0432, // unresolved import
+    E0434, // can't capture dynamic environment in a fn item
+    E0435, // attempt to use a non-constant value in a constant
 }

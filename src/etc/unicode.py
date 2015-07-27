@@ -372,13 +372,6 @@ def emit_conversions_module(f, to_upper, to_lower, to_title):
         }
     }
 
-    pub fn to_title(c: char) -> [char; 3] {
-        match bsearch_case_table(c, to_titlecase_table) {
-            None        => [c, '\\0', '\\0'],
-            Some(index) => to_titlecase_table[index].1
-        }
-    }
-
     fn bsearch_case_table(c: char, table: &'static [(char, [char; 3])]) -> Option<usize> {
         match table.binary_search_by(|&(key, _)| {
             if c == key { Equal }
@@ -399,9 +392,6 @@ def emit_conversions_module(f, to_upper, to_lower, to_title):
         is_pub=False, t_type = t_type, pfun=pfun)
     emit_table(f, "to_uppercase_table",
         sorted(to_upper.iteritems(), key=operator.itemgetter(0)),
-        is_pub=False, t_type = t_type, pfun=pfun)
-    emit_table(f, "to_titlecase_table",
-        sorted(to_title.iteritems(), key=operator.itemgetter(0)),
         is_pub=False, t_type = t_type, pfun=pfun)
     f.write("}\n\n")
 

@@ -34,6 +34,7 @@ use libc;
           target_os = "freebsd",
           target_os = "dragonfly",
           target_os = "bitrig",
+          target_os = "netbsd",
           target_os = "openbsd"))]
 pub const FIOCLEX: libc::c_ulong = 0x20006601;
 
@@ -60,6 +61,7 @@ pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 70;
           target_os = "dragonfly"))]
 pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 71;
 #[cfg(any(target_os = "bitrig",
+          target_os = "netbsd",
           target_os = "openbsd"))]
 pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 101;
 #[cfg(target_os = "android")]
@@ -82,6 +84,7 @@ pub struct passwd {
           target_os = "freebsd",
           target_os = "dragonfly",
           target_os = "bitrig",
+          target_os = "netbsd",
           target_os = "openbsd"))]
 pub struct passwd {
     pub pw_name: *mut libc::c_char,
@@ -321,6 +324,7 @@ mod signal_os {
           target_os = "freebsd",
           target_os = "dragonfly",
           target_os = "bitrig",
+          target_os = "netbsd",
           target_os = "openbsd"))]
 mod signal_os {
     use libc;
@@ -348,7 +352,7 @@ mod signal_os {
     pub struct sigset_t {
         bits: [u32; 4],
     }
-    #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
+    #[cfg(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"))]
     pub type sigset_t = libc::c_uint;
 
     // This structure has more fields, but we're not all that interested in
@@ -365,7 +369,7 @@ mod signal_os {
         pub _status: libc::c_int,
         pub si_addr: *mut libc::c_void
     }
-    #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
+    #[cfg(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"))]
     #[repr(C)]
     pub struct siginfo {
         pub si_signo: libc::c_int,
@@ -375,7 +379,7 @@ mod signal_os {
     }
 
     #[cfg(any(target_os = "macos", target_os = "ios",
-              target_os = "bitrig", target_os = "openbsd"))]
+              target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"))]
     #[repr(C)]
     pub struct sigaction {
         pub sa_sigaction: sighandler_t,

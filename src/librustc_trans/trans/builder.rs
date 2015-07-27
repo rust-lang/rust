@@ -167,7 +167,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                args.iter()
                    .map(|&v| self.ccx.tn().val_to_string(v))
                    .collect::<Vec<String>>()
-                   .connect(", "));
+                   .join(", "));
 
         unsafe {
             let v = llvm::LLVMBuildInvoke(self.llbuilder,
@@ -809,7 +809,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                args.iter()
                    .map(|&v| self.ccx.tn().val_to_string(v))
                    .collect::<Vec<String>>()
-                   .connect(", "));
+                   .join(", "));
 
         unsafe {
             let v = llvm::LLVMBuildCall(self.llbuilder, llfn, args.as_ptr(),
@@ -927,11 +927,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn landing_pad(&self, ty: Type, pers_fn: ValueRef, num_clauses: usize) -> ValueRef {
+    pub fn landing_pad(&self, ty: Type, pers_fn: ValueRef,
+                       num_clauses: usize,
+                       llfn: ValueRef) -> ValueRef {
         self.count_insn("landingpad");
         unsafe {
-            llvm::LLVMBuildLandingPad(
-                self.llbuilder, ty.to_ref(), pers_fn, num_clauses as c_uint, noname())
+            llvm::LLVMRustBuildLandingPad(self.llbuilder, ty.to_ref(), pers_fn,
+                                          num_clauses as c_uint, noname(), llfn)
+        }
+    }
+
+    pub fn add_clause(&self, landing_pad: ValueRef, clause: ValueRef) {
+        unsafe {
+            llvm::LLVMAddClause(landing_pad, clause);
         }
     }
 

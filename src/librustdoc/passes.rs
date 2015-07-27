@@ -353,7 +353,7 @@ pub fn unindent(s: &str) -> String {
 
     if !lines.is_empty() {
         let mut unindented = vec![ lines[0].trim().to_string() ];
-        unindented.push_all(&lines.tail().iter().map(|&line| {
+        unindented.push_all(&lines[1..].iter().map(|&line| {
             if line.chars().all(|c| c.is_whitespace()) {
                 line.to_string()
             } else {
@@ -361,7 +361,7 @@ pub fn unindent(s: &str) -> String {
                 line[min_indent..].to_string()
             }
         }).collect::<Vec<_>>());
-        unindented.connect("\n")
+        unindented.join("\n")
     } else {
         s.to_string()
     }

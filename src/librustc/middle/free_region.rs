@@ -13,18 +13,21 @@
 use middle::implicator::Implication;
 use middle::ty::{self, FreeRegion};
 use util::common::can_reach;
-use util::nodemap::FnvHashMap;
+use util::nodemap::{FnvHashMap, FnvHashSet};
 
 #[derive(Clone)]
 pub struct FreeRegionMap {
-    /// `free_region_map` maps from a free region `a` to a list of
+    /// `map` maps from a free region `a` to a list of
     /// free regions `bs` such that `a <= b for all b in bs`
     map: FnvHashMap<FreeRegion, Vec<FreeRegion>>,
+    /// regions that are required to outlive (and therefore be
+    /// equal to) 'static.
+    statics: FnvHashSet<FreeRegion>
 }
 
 impl FreeRegionMap {
     pub fn new() -> FreeRegionMap {
-        FreeRegionMap { map: FnvHashMap() }
+        FreeRegionMap { map: FnvHashMap(), statics: FnvHashSet() }
     }
 
     pub fn relate_free_regions_from_implications<'tcx>(&mut self,
@@ -37,7 +40,6 @@ impl FreeRegionMap {
                     self.relate_free_regions(free_a, free_b);
                 }
                 Implication::RegionSubRegion(..) |
-                Implication::RegionSubClosure(..) |
                 Implication::RegionSubGeneric(..) |
                 Implication::Predicate(..) => {
                 }
@@ -59,6 +61,8 @@ impl FreeRegionMap {
                 }
                 ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(r_a, r_b))) => {
                     match (r_a, r_b) {
+                        (ty::ReStatic, ty::ReFree(_)) => {},
+                        (ty::ReFree(fr_a), ty::ReStatic) => self.relate_to_static(fr_a),
                         (ty::ReFree(fr_a), ty::ReFree(fr_b)) => {
                             // Record that `'a:'b`. Or, put another way, `'b <= 'a`.
                             self.relate_free_regions(fr_b, fr_a);
@@ -76,8 +80,12 @@ impl FreeRegionMap {
         }
     }
 
-    pub fn relate_free_regions(&mut self, sub: FreeRegion, sup: FreeRegion) {
-        let mut sups = self.map.entry(sub).or_insert(Vec::new());
+    fn relate_to_static(&mut self, sup: FreeRegion) {
+        self.statics.insert(sup);
+    }
+
+    fn relate_free_regions(&mut self, sub: FreeRegion, sup: FreeRegion) {
+       let mut sups = self.map.entry(sub).or_insert(Vec::new());
         if !sups.contains(&sup) {
             sups.push(sup);
         }
@@ -88,7 +96,7 @@ impl FreeRegionMap {
     /// it is possible that `sub != sup` and `sub <= sup` and `sup <= sub`
     /// (that is, the user can give two different names to the same lifetime).
     pub fn sub_free_region(&self, sub: FreeRegion, sup: FreeRegion) -> bool {
-        can_reach(&self.map, sub, sup)
+        can_reach(&self.map, sub, sup) || self.is_static(&sup)
     }
 
     /// Determines whether one region is a subregion of another.  This is intended to run *after
@@ -116,10 +124,17 @@ impl FreeRegionMap {
                 (ty::ReFree(sub_fr), ty::ReFree(super_fr)) =>
                     self.sub_free_region(sub_fr, super_fr),
 
+                (ty::ReStatic, ty::ReFree(ref sup_fr)) => self.is_static(sup_fr),
+
                 _ =>
                     false,
             }
         }
     }
-}
 
+    /// Determines whether this free-region is required to be 'static
+    pub fn is_static(&self, super_region: &ty::FreeRegion) -> bool {
+        debug!("is_static(super_region={:?})", super_region);
+        self.statics.iter().any(|s| can_reach(&self.map, *s, *super_region))
+    }
+}

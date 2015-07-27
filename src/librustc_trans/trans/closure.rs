@@ -11,7 +11,7 @@
 use arena::TypedArena;
 use back::link::{self, mangle_internal_name_by_path_and_seq};
 use llvm::{ValueRef, get_params};
-use middle::mem_categorization::Typer;
+use middle::infer;
 use trans::adt;
 use trans::attributes;
 use trans::base::*;
@@ -23,10 +23,9 @@ use trans::datum::{self, Datum, rvalue_scratch_datum, Rvalue, ByValue};
 use trans::debuginfo::{self, DebugLoc};
 use trans::declare;
 use trans::expr;
-use trans::monomorphize::{self, MonoId};
+use trans::monomorphize::{MonoId};
 use trans::type_of::*;
-use middle::ty::{self, ClosureTyper};
-use middle::subst::Substs;
+use middle::ty;
 use session::config::FullDebugInfo;
 
 use syntax::abi::RustCall;
@@ -126,48 +125,30 @@ impl<'a> ClosureEnv<'a> {
 
 /// Returns the LLVM function declaration for a closure, creating it if
 /// necessary. If the ID does not correspond to a closure ID, returns None.
-pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                                      closure_id: ast::DefId,
-                                                      substs: &Substs<'tcx>)
-                                                      -> Option<Datum<'tcx, Rvalue>> {
-    if !ccx.tcx().closure_kinds.borrow().contains_key(&closure_id) {
-        // Not a closure.
-        return None
-    }
-
-    let function_type = ty::node_id_to_type(ccx.tcx(), closure_id.node);
-    let function_type = monomorphize::apply_param_substs(ccx.tcx(), substs, &function_type);
-
+pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                                   closure_id: ast::DefId,
+                                                   substs: &ty::ClosureSubsts<'tcx>)
+                                                   -> ValueRef {
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
-    let function_type = erase_regions(ccx.tcx(), &function_type);
-    let params = match function_type.sty {
-        ty::TyClosure(_, substs) => &substs.types,
-        _ => unreachable!()
-    };
+    let substs = erase_regions(ccx.tcx(), substs);
     let mono_id = MonoId {
         def: closure_id,
-        params: params
+        params: &substs.func_substs.types
     };
 
-    match ccx.closure_vals().borrow().get(&mono_id) {
-        Some(&llfn) => {
-            debug!("get_or_create_declaration_if_closure(): found closure {:?}: {:?}",
-                   mono_id, ccx.tn().val_to_string(llfn));
-            return Some(Datum::new(llfn, function_type, Rvalue::new(ByValue)))
-        }
-        None => {}
+    if let Some(&llfn) = ccx.closure_vals().borrow().get(&mono_id) {
+        debug!("get_or_create_closure_declaration(): found closure {:?}: {:?}",
+               mono_id, ccx.tn().val_to_string(llfn));
+        return llfn;
     }
 
     let symbol = ccx.tcx().map.with_path(closure_id.node, |path| {
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
 
-    // Currently there’s only a single user of get_or_create_declaration_if_closure and it
-    // unconditionally defines the function, therefore we use define_* here.
-    let llfn = declare::define_internal_rust_fn(ccx, &symbol[..], function_type).unwrap_or_else(||{
-        ccx.sess().bug(&format!("symbol `{}` already defined", symbol));
-    });
+    let function_type = ccx.tcx().mk_closure_from_closure_substs(closure_id, Box::new(substs));
+    let llfn = declare::define_internal_rust_fn(ccx, &symbol[..], function_type);
 
     // set an inline hint for all closures
     attributes::inline(llfn, attributes::InlineAttr::Hint);
@@ -179,7 +160,7 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
            ccx.tn().val_to_string(llfn));
     ccx.closure_vals().borrow_mut().insert(mono_id, llfn);
 
-    Some(Datum::new(llfn, function_type, Rvalue::new(ByValue)))
+    llfn
 }
 
 pub enum Dest<'a, 'tcx: 'a> {
@@ -191,9 +172,11 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                                     decl: &ast::FnDecl,
                                     body: &ast::Block,
                                     id: ast::NodeId,
-                                    param_substs: &'tcx Substs<'tcx>)
+                                    closure_substs: &'tcx ty::ClosureSubsts<'tcx>)
                                     -> Option<Block<'a, 'tcx>>
 {
+    let param_substs = closure_substs.func_substs;
+
     let ccx = match dest {
         Dest::SaveIn(bcx, _) => bcx.ccx(),
         Dest::Ignore(ccx) => ccx
@@ -204,28 +187,26 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     debug!("trans_closure_expr()");
 
     let closure_id = ast_util::local_def(id);
-    let llfn = get_or_create_declaration_if_closure(
-        ccx,
-        closure_id,
-        param_substs).unwrap();
+    let llfn = get_or_create_closure_declaration(ccx, closure_id, closure_substs);
 
     // Get the type of this closure. Use the current `param_substs` as
     // the closure substitutions. This makes sense because the closure
     // takes the same set of type arguments as the enclosing fn, and
     // this function (`trans_closure`) is invoked at the point
     // of the closure expression.
-    let typer = NormalizingClosureTyper::new(tcx);
-    let function_type = typer.closure_type(closure_id, param_substs);
+
+    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
+    let function_type = infcx.closure_type(closure_id, closure_substs);
 
     let freevars: Vec<ty::Freevar> =
-        ty::with_freevars(tcx, id, |fv| fv.iter().cloned().collect());
+        tcx.with_freevars(id, |fv| fv.iter().cloned().collect());
 
-    let sig = ty::erase_late_bound_regions(tcx, &function_type.sig);
+    let sig = tcx.erase_late_bound_regions(&function_type.sig);
 
     trans_closure(ccx,
                   decl,
                   body,
-                  llfn.val,
+                  llfn,
                   param_substs,
                   id,
                   &[],
@@ -268,19 +249,12 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
 
 pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                                       closure_def_id: ast::DefId,
-                                      substs: Substs<'tcx>,
-                                      node: ExprOrMethodCall,
-                                      param_substs: &'tcx Substs<'tcx>,
+                                      substs: ty::ClosureSubsts<'tcx>,
                                       trait_closure_kind: ty::ClosureKind)
                                       -> ValueRef
 {
-    // The substitutions should have no type parameters remaining
-    // after passing through fulfill_obligation
-    let llfn = callee::trans_fn_ref_with_substs(ccx,
-                                                closure_def_id,
-                                                node,
-                                                param_substs,
-                                                substs.clone()).val;
+    // If this is a closure, redirect to it.
+    let llfn = get_or_create_closure_declaration(ccx, closure_def_id, &substs);
 
     // If the closure is a Fn closure, but a FnOnce is needed (etc),
     // then adapt the self type
@@ -296,7 +270,7 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 fn trans_closure_adapter_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
     closure_def_id: ast::DefId,
-    substs: Substs<'tcx>,
+    substs: ty::ClosureSubsts<'tcx>,
     llfn_closure_kind: ty::ClosureKind,
     trait_closure_kind: ty::ClosureKind,
     llfn: ValueRef)
@@ -348,7 +322,7 @@ fn trans_closure_adapter_shim<'a, 'tcx>(
 fn trans_fn_once_adapter_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
     closure_def_id: ast::DefId,
-    substs: Substs<'tcx>,
+    substs: ty::ClosureSubsts<'tcx>,
     llreffn: ValueRef)
     -> ValueRef
 {
@@ -358,21 +332,20 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
            ccx.tn().val_to_string(llreffn));
 
     let tcx = ccx.tcx();
-    let typer = NormalizingClosureTyper::new(tcx);
+    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
 
     // Find a version of the closure type. Substitute static for the
     // region since it doesn't really matter.
-    let substs = tcx.mk_substs(substs);
-    let closure_ty = ty::mk_closure(tcx, closure_def_id, substs);
-    let ref_closure_ty = ty::mk_imm_rptr(tcx, tcx.mk_region(ty::ReStatic), closure_ty);
+    let closure_ty = tcx.mk_closure_from_closure_substs(closure_def_id, Box::new(substs.clone()));
+    let ref_closure_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), closure_ty);
 
     // Make a version with the type of by-ref closure.
-    let ty::ClosureTy { unsafety, abi, mut sig } = typer.closure_type(closure_def_id, substs);
+    let ty::ClosureTy { unsafety, abi, mut sig } = infcx.closure_type(closure_def_id, &substs);
     sig.0.inputs.insert(0, ref_closure_ty); // sig has no self type as of yet
     let llref_bare_fn_ty = tcx.mk_bare_fn(ty::BareFnTy { unsafety: unsafety,
                                                                abi: abi,
                                                                sig: sig.clone() });
-    let llref_fn_ty = ty::mk_bare_fn(tcx, None, llref_bare_fn_ty);
+    let llref_fn_ty = tcx.mk_fn(None, llref_bare_fn_ty);
     debug!("trans_fn_once_adapter_shim: llref_fn_ty={:?}",
            llref_fn_ty);
 
@@ -383,16 +356,13 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let llonce_bare_fn_ty = tcx.mk_bare_fn(ty::BareFnTy { unsafety: unsafety,
                                                                 abi: abi,
                                                                 sig: sig });
-    let llonce_fn_ty = ty::mk_bare_fn(tcx, None, llonce_bare_fn_ty);
+    let llonce_fn_ty = tcx.mk_fn(None, llonce_bare_fn_ty);
 
     // Create the by-value helper.
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, llonce_fn_ty, "once_shim");
-    let lloncefn = declare::define_internal_rust_fn(ccx, &function_name[..], llonce_fn_ty)
-        .unwrap_or_else(||{
-            ccx.sess().bug(&format!("symbol `{}` already defined", function_name));
-        });
-
-    let sig = ty::erase_late_bound_regions(tcx, &llonce_bare_fn_ty.sig);
+    let lloncefn = declare::define_internal_rust_fn(ccx, &function_name,
+                                                    llonce_fn_ty);
+    let sig = tcx.erase_late_bound_regions(&llonce_bare_fn_ty.sig);
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
     fcx = new_fn_ctxt(ccx,
@@ -400,7 +370,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                       ast::DUMMY_NODE_ID,
                       false,
                       sig.output,
-                      substs,
+                      substs.func_substs,
                       None,
                       &block_arena);
     let mut bcx = init_function(&fcx, false, sig.output);
@@ -428,12 +398,13 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let callee_data = TraitItem(MethodData { llfn: llreffn,
                                              llself: env_datum.val });
 
-    bcx = callee::trans_call_inner(bcx,
-                                   DebugLoc::None,
-                                   llref_fn_ty,
-                                   |bcx, _| Callee { bcx: bcx, data: callee_data },
-                                   ArgVals(&llargs[(self_idx + 1)..]),
-                                   dest).bcx;
+    bcx = callee::trans_call_inner(bcx, DebugLoc::None, |bcx, _| {
+        Callee {
+            bcx: bcx,
+            data: callee_data,
+            ty: llref_fn_ty
+        }
+    }, ArgVals(&llargs[(self_idx + 1)..]), dest).bcx;
 
     fcx.pop_custom_cleanup_scope(self_scope);
 

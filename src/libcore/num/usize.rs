@@ -11,6 +11,5 @@
 //! Operations and constants for pointer-sized unsigned integers (`usize` type)
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "usize")]
 
 uint_module! { usize, isize, ::isize::BITS }

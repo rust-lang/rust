@@ -364,3 +364,18 @@ impl<'a> Pattern<'a> for CharEqPattern {
 }
 
 struct CharSearcher<'a>(<CharEqPattern as Pattern<'a>>::Searcher);
+
+pub trait Error {
+}
+
+impl Error + 'static {
+    pub fn is<T: Error + 'static>(&self) -> bool {
+        panic!()
+    }
+}
+
+impl Error + 'static + Send {
+    pub fn is<T: Error + 'static>(&self) -> bool {
+        <Error + 'static>::is::<T>(self)
+    }
+}
