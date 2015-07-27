@@ -109,6 +109,31 @@ use foo::MyTrait::do_something;
 It's illegal to directly import methods belonging to a trait or concrete type.
 "##,
 
+E0254: r##"
+This error indicates that a `use` declaration added a symbol to the current
+namespace that conflicts with a symbol added by an `extern crate` declaration.
+
+An example of this error:
+
+There's an external crate and it, also, can have no exports as foo.rs:
+
+```
+#![crate_type="lib"]
+```
+
+On the client code, bar.rs:
+
+```
+extern crate foo;
+
+use inner_mod::foo; // error, this conflicts with the external crate's symbol
+
+mod inner_mod {
+    pub mod foo { }
+}
+```
+"##,
+
 E0255: r##"
 You can't import a value whose name is the same as another value defined in the
 module.
@@ -482,7 +507,6 @@ impl Foo for i32 {}
 register_diagnostics! {
     E0153, // called no where
     E0157, // called from no where
-    E0254, // import conflicts with imported crate in this module
     E0257,
     E0258,
     E0401, // can't use type parameters from outer function
