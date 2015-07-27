@@ -744,7 +744,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
     /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
     /// ```
     #[inline]
-    #[unstable(feature = "result_expect", reason = "newly introduced")]
+    #[unstable(feature = "result_expect", reason = "newly introduced", issue = "27277")]
     pub fn expect(self, msg: &str) -> T {
         match self {
             Ok(t) => t,
