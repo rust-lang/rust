@@ -29,7 +29,6 @@ pub use self::Item_::*;
 pub use self::KleeneOp::*;
 pub use self::Lit_::*;
 pub use self::LitIntType::*;
-pub use self::LocalSource::*;
 pub use self::Mac_::*;
 pub use self::MacStmtStyle::*;
 pub use self::MetaItem_::*;
@@ -63,6 +62,7 @@ use owned_slice::OwnedSlice;
 use parse::token::{InternedString, str_to_ident};
 use parse::token;
 use parse::lexer;
+use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use print::pprust;
 use ptr::P;
 
@@ -755,14 +755,6 @@ pub enum MacStmtStyle {
     MacStmtWithoutBraces,
 }
 
-/// Where a local declaration came from: either a true `let ... =
-/// ...;`, or one desugared from the pattern of a for loop.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum LocalSource {
-    LocalLet,
-    LocalFor,
-}
-
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
@@ -774,7 +766,6 @@ pub struct Local {
     pub init: Option<P<Expr>>,
     pub id: NodeId,
     pub span: Span,
-    pub source: LocalSource,
 }
 
 pub type Decl = Spanned<Decl_>;
@@ -809,6 +800,8 @@ pub type SpannedIdent = Spanned<Ident>;
 pub enum BlockCheckMode {
     DefaultBlock,
     UnsafeBlock(UnsafeSource),
+    PushUnsafeBlock(UnsafeSource),
+    PopUnsafeBlock(UnsafeSource),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1079,7 +1072,12 @@ pub enum TokenTree {
 impl TokenTree {
     pub fn len(&self) -> usize {
         match *self {
-            TtToken(_, token::DocComment(_)) => 2,
+            TtToken(_, token::DocComment(name)) => {
+                match doc_comment_style(name.as_str()) {
+                    AttrOuter => 2,
+                    AttrInner => 3
+                }
+            }
             TtToken(_, token::SpecialVarNt(..)) => 2,
             TtToken(_, token::MatchNt(..)) => 3,
             TtDelimited(_, ref delimed) => {
@@ -1097,14 +1095,20 @@ impl TokenTree {
             (&TtToken(sp, token::DocComment(_)), 0) => {
                 TtToken(sp, token::Pound)
             }
-            (&TtToken(sp, token::DocComment(name)), 1) => {
+            (&TtToken(sp, token::DocComment(name)), 1)
+            if doc_comment_style(name.as_str()) == AttrInner => {
+                TtToken(sp, token::Not)
+            }
+            (&TtToken(sp, token::DocComment(name)), _) => {
+                let stripped = strip_doc_comment_decoration(name.as_str());
                 TtDelimited(sp, Rc::new(Delimited {
                     delim: token::Bracket,
                     open_span: sp,
                     tts: vec![TtToken(sp, token::Ident(token::str_to_ident("doc"),
                                                        token::Plain)),
                               TtToken(sp, token::Eq),
-                              TtToken(sp, token::Literal(token::Str_(name), None))],
+                              TtToken(sp, token::Literal(
+                                  token::StrRaw(token::intern(&stripped), 0), None))],
                     close_span: sp,
                 }))
             }

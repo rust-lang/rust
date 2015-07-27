@@ -134,7 +134,7 @@ pub enum DLLStorageClassTypes {
 }
 
 bitflags! {
-    flags Attribute : u32 {
+    flags Attribute : u64 {
         const ZExt            = 1 << 0,
         const SExt            = 1 << 1,
         const NoReturn        = 1 << 2,
@@ -161,6 +161,7 @@ bitflags! {
         const ReturnsTwice    = 1 << 29,
         const UWTable         = 1 << 30,
         const NonLazyBind     = 1 << 31,
+        const OptimizeNone    = 1 << 42,
     }
 }
 
@@ -452,6 +453,15 @@ pub enum DiagnosticKind {
     DK_OptimizationFailure,
 }
 
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub enum ArchiveKind {
+    K_GNU,
+    K_MIPS64,
+    K_BSD,
+    K_COFF,
+}
+
 // Opaque pointer types
 #[allow(missing_copy_implementations)]
 pub enum Module_opaque {}
@@ -522,6 +532,9 @@ pub type DebugLocRef = *mut DebugLoc_opaque;
 #[allow(missing_copy_implementations)]
 pub enum SMDiagnostic_opaque {}
 pub type SMDiagnosticRef = *mut SMDiagnostic_opaque;
+#[allow(missing_copy_implementations)]
+pub enum RustArchiveMember_opaque {}
+pub type RustArchiveMemberRef = *mut RustArchiveMember_opaque;
 
 pub type DiagnosticHandler = unsafe extern "C" fn(DiagnosticInfoRef, *mut c_void);
 pub type InlineAsmDiagHandler = unsafe extern "C" fn(SMDiagnosticRef, *const c_void, c_uint);
@@ -672,7 +685,7 @@ extern {
     pub fn LLVMGetArrayLength(ArrayTy: TypeRef) -> c_uint;
     pub fn LLVMGetPointerAddressSpace(PointerTy: TypeRef) -> c_uint;
     pub fn LLVMGetPointerToGlobal(EE: ExecutionEngineRef, V: ValueRef)
-                                  -> *const ();
+                                  -> *const c_void;
     pub fn LLVMGetVectorSize(VectorTy: TypeRef) -> c_uint;
 
     /* Operations on other types */
@@ -1133,12 +1146,13 @@ extern {
                            Catch: BasicBlockRef,
                            Name: *const c_char)
                            -> ValueRef;
-    pub fn LLVMBuildLandingPad(B: BuilderRef,
-                               Ty: TypeRef,
-                               PersFn: ValueRef,
-                               NumClauses: c_uint,
-                               Name: *const c_char)
-                               -> ValueRef;
+    pub fn LLVMRustBuildLandingPad(B: BuilderRef,
+                                   Ty: TypeRef,
+                                   PersFn: ValueRef,
+                                   NumClauses: c_uint,
+                                   Name: *const c_char,
+                                   F: ValueRef)
+                                   -> ValueRef;
     pub fn LLVMBuildResume(B: BuilderRef, Exn: ValueRef) -> ValueRef;
     pub fn LLVMBuildUnreachable(B: BuilderRef) -> ValueRef;
 
@@ -2069,12 +2083,12 @@ extern {
 
     pub fn LLVMRustOpenArchive(path: *const c_char) -> ArchiveRef;
     pub fn LLVMRustArchiveIteratorNew(AR: ArchiveRef) -> ArchiveIteratorRef;
-    pub fn LLVMRustArchiveIteratorNext(AIR: ArchiveIteratorRef);
-    pub fn LLVMRustArchiveIteratorCurrent(AIR: ArchiveIteratorRef) -> ArchiveChildRef;
+    pub fn LLVMRustArchiveIteratorNext(AIR: ArchiveIteratorRef) -> ArchiveChildRef;
     pub fn LLVMRustArchiveChildName(ACR: ArchiveChildRef,
                                     size: *mut size_t) -> *const c_char;
     pub fn LLVMRustArchiveChildData(ACR: ArchiveChildRef,
                                     size: *mut size_t) -> *const c_char;
+    pub fn LLVMRustArchiveChildFree(ACR: ArchiveChildRef);
     pub fn LLVMRustArchiveIteratorFree(AIR: ArchiveIteratorRef);
     pub fn LLVMRustDestroyArchive(AR: ArchiveRef);
 
@@ -2111,6 +2125,20 @@ extern {
                                              CX: *mut c_void);
 
     pub fn LLVMWriteSMDiagnosticToString(d: SMDiagnosticRef, s: RustStringRef);
+
+    pub fn LLVMRustWriteArchive(Dst: *const c_char,
+                                NumMembers: size_t,
+                                Members: *const RustArchiveMemberRef,
+                                WriteSymbtab: bool,
+                                Kind: ArchiveKind) -> c_int;
+    pub fn LLVMRustArchiveMemberNew(Filename: *const c_char,
+                                    Name: *const c_char,
+                                    Child: ArchiveChildRef) -> RustArchiveMemberRef;
+    pub fn LLVMRustArchiveMemberFree(Member: RustArchiveMemberRef);
+
+    pub fn LLVMRustSetDataLayoutFromTargetMachine(M: ModuleRef,
+                                                  TM: TargetMachineRef);
+    pub fn LLVMRustGetModuleDataLayout(M: ModuleRef) -> TargetDataRef;
 }
 
 // LLVM requires symbols from this library, but apparently they're not printed
@@ -2166,7 +2194,8 @@ pub fn ConstFCmp(pred: RealPredicate, v1: ValueRef, v2: ValueRef) -> ValueRef {
 
 pub fn SetFunctionAttribute(fn_: ValueRef, attr: Attribute) {
     unsafe {
-        LLVMAddFunctionAttribute(fn_, FunctionIndex as c_uint, attr.bits() as uint64_t)
+        LLVMAddFunctionAttribute(fn_, FunctionIndex as c_uint,
+                                 attr.bits() as uint64_t)
     }
 }
 

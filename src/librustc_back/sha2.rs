@@ -12,7 +12,6 @@
 //! use. This implementation is not intended for external use or for any use where security is
 //! important.
 
-use std::iter::repeat;
 use std::slice::bytes::{MutableByteVector, copy_memory};
 use serialize::hex::ToHex;
 
@@ -255,7 +254,7 @@ pub trait Digest {
     /// Convenience function that retrieves the result of a digest as a
     /// newly allocated vec of bytes.
     fn result_bytes(&mut self) -> Vec<u8> {
-        let mut buf: Vec<u8> = repeat(0).take((self.output_bits()+7)/8).collect();
+        let mut buf = vec![0; (self.output_bits()+7)/8];
         self.result(&mut buf);
         buf
     }
@@ -534,7 +533,6 @@ mod tests {
     use self::rand::Rng;
     use self::rand::isaac::IsaacRng;
     use serialize::hex::FromHex;
-    use std::iter::repeat;
     use std::u64;
     use super::{Digest, Sha256, FixedBuffer};
 
@@ -613,7 +611,7 @@ mod tests {
     /// correct.
     fn test_digest_1million_random<D: Digest>(digest: &mut D, blocksize: usize, expected: &str) {
         let total_size = 1000000;
-        let buffer: Vec<u8> = repeat('a' as u8).take(blocksize * 2).collect();
+        let buffer = vec![b'a'; blocksize * 2];
         let mut rng = IsaacRng::new_unseeded();
         let mut count = 0;
 

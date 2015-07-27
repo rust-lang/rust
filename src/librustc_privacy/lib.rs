@@ -40,10 +40,6 @@ use rustc::middle::privacy::ImportUse::*;
 use rustc::middle::privacy::LastPrivate::*;
 use rustc::middle::privacy::PrivateDep::*;
 use rustc::middle::privacy::{ExternalExports, ExportedItems, PublicItems};
-use rustc::middle::ty::{MethodTypeParam, MethodStatic};
-use rustc::middle::ty::{MethodCall, MethodMap, MethodOrigin, MethodParam};
-use rustc::middle::ty::{MethodStaticClosure, MethodObject};
-use rustc::middle::ty::MethodTraitObject;
 use rustc::middle::ty::{self, Ty};
 use rustc::util::nodemap::{NodeMap, NodeSet};
 
@@ -53,7 +49,7 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit::{self, Visitor};
 
-type Context<'a, 'tcx> = (&'a MethodMap<'tcx>, &'a def::ExportMap);
+type Context<'a, 'tcx> = (&'a ty::MethodMap<'tcx>, &'a def::ExportMap);
 
 /// Result of a checking operation - None => no errors were found. Some => an
 /// error and contains the span and message for reporting that error and
@@ -273,7 +269,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     }
                     _ => true,
                 };
-                let tr = ty::impl_trait_ref(self.tcx, local_def(item.id));
+                let tr = self.tcx.impl_trait_ref(local_def(item.id));
                 let public_trait = tr.clone().map_or(false, |tr| {
                     !is_local(tr.def_id) ||
                      self.exported_items.contains(&tr.def_id.node)
@@ -423,7 +419,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                             self.def_privacy(id)
                         }
                         ty::ImplContainer(id) => {
-                            match ty::impl_trait_ref(self.tcx, id) {
+                            match self.tcx.impl_trait_ref(id) {
                                 Some(t) => {
                                     debug!("privacy - impl of trait {:?}", id);
                                     self.def_privacy(t.def_id)
@@ -451,7 +447,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                             self.def_privacy(id)
                         }
                         ty::ImplContainer(id) => {
-                            match ty::impl_trait_ref(self.tcx, id) {
+                            match self.tcx.impl_trait_ref(id) {
                                 Some(t) => {
                                     debug!("privacy - impl of trait {:?}", id);
                                     self.def_privacy(t.def_id)
@@ -476,7 +472,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                             self.def_privacy(id)
                         }
                         ty::ImplContainer(id) => {
-                            match ty::impl_trait_ref(self.tcx, id) {
+                            match self.tcx.impl_trait_ref(id) {
                                 Some(t) => {
                                     debug!("privacy - impl of trait {:?}", id);
                                     self.def_privacy(t.def_id)
@@ -537,7 +533,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                         ast::MethodImplItem(..) => {
                             let imp = self.tcx.map
                                           .get_parent_did(closest_private_id);
-                            match ty::impl_trait_ref(self.tcx, imp) {
+                            match self.tcx.impl_trait_ref(imp) {
                                 Some(..) => return Allowable,
                                 _ if ii.vis == ast::Public => {
                                     return Allowable
@@ -696,7 +692,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                    span: Span,
                    id: ast::DefId,
                    name: FieldName) {
-        let fields = ty::lookup_struct_fields(self.tcx, id);
+        let fields = self.tcx.lookup_struct_fields(id);
         let field = match name {
             NamedField(f_name) => {
                 debug!("privacy - check named field {} in struct {:?}", f_name, id);
@@ -709,10 +705,10 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             return
         }
 
-        let struct_type = ty::lookup_item_type(self.tcx, id).ty;
+        let struct_type = self.tcx.lookup_item_type(id).ty;
         let struct_desc = match struct_type.sty {
             ty::TyStruct(_, _) =>
-                format!("struct `{}`", ty::item_path_str(self.tcx, id)),
+                format!("struct `{}`", self.tcx.item_path_str(id)),
             // struct variant fields have inherited visibility
             ty::TyEnum(..) => return,
             _ => self.tcx.sess.span_bug(span, "can't find struct for field")
@@ -733,7 +729,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                            name: ast::Name) {
         // If the method is a default method, we need to use the def_id of
         // the default implementation.
-        let method_id = match ty::impl_or_trait_item(self.tcx, method_id) {
+        let method_id = match self.tcx.impl_or_trait_item(method_id) {
             ty::MethodTraitItem(method_type) => {
                 method_type.provided_source.unwrap_or(method_id)
             }
@@ -848,18 +844,16 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     }
 
     // Checks that a method is in scope.
-    fn check_method(&mut self, span: Span, origin: &MethodOrigin,
+    fn check_method(&mut self, span: Span, method_def_id: ast::DefId,
                     name: ast::Name) {
-        match *origin {
-            MethodStatic(method_id) => {
-                self.check_static_method(span, method_id, name)
+        match self.tcx.impl_or_trait_item(method_def_id).container() {
+            ty::ImplContainer(_) => {
+                self.check_static_method(span, method_def_id, name)
             }
-            MethodStaticClosure(_) => {}
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
-            MethodTypeParam(MethodParam { ref trait_ref, .. }) |
-            MethodTraitObject(MethodObject { ref trait_ref, .. }) => {
-                self.report_error(self.ensure_public(span, trait_ref.def_id,
+            ty::TraitContainer(trait_def_id) => {
+                self.report_error(self.ensure_public(span, trait_def_id,
                                                      None, "source trait"));
             }
         }
@@ -893,36 +887,28 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &ast::Expr) {
         match expr.node {
             ast::ExprField(ref base, ident) => {
-                if let ty::TyStruct(id, _) = ty::expr_ty_adjusted(self.tcx, &**base).sty {
+                if let ty::TyStruct(id, _) = self.tcx.expr_ty_adjusted(&**base).sty {
                     self.check_field(expr.span, id, NamedField(ident.node.name));
                 }
             }
             ast::ExprTupField(ref base, idx) => {
-                if let ty::TyStruct(id, _) = ty::expr_ty_adjusted(self.tcx, &**base).sty {
+                if let ty::TyStruct(id, _) = self.tcx.expr_ty_adjusted(&**base).sty {
                     self.check_field(expr.span, id, UnnamedField(idx.node));
                 }
             }
             ast::ExprMethodCall(ident, _, _) => {
-                let method_call = MethodCall::expr(expr.id);
-                match self.tcx.method_map.borrow().get(&method_call) {
-                    None => {
-                        self.tcx.sess.span_bug(expr.span,
-                                                "method call not in \
-                                                method map");
-                    }
-                    Some(method) => {
-                        debug!("(privacy checking) checking impl method");
-                        self.check_method(expr.span, &method.origin, ident.node.name);
-                    }
-                }
+                let method_call = ty::MethodCall::expr(expr.id);
+                let method = self.tcx.tables.borrow().method_map[&method_call];
+                debug!("(privacy checking) checking impl method");
+                self.check_method(expr.span, method.def_id, ident.node.name);
             }
             ast::ExprStruct(_, ref fields, _) => {
-                match ty::expr_ty(self.tcx, expr).sty {
+                match self.tcx.expr_ty(expr).sty {
                     ty::TyStruct(ctor_id, _) => {
                         // RFC 736: ensure all unmentioned fields are visible.
                         // Rather than computing the set of unmentioned fields
                         // (i.e. `all_fields - fields`), just check them all.
-                        let all_fields = ty::lookup_struct_fields(self.tcx, ctor_id);
+                        let all_fields = self.tcx.lookup_struct_fields(ctor_id);
                         for field in all_fields {
                             self.check_field(expr.span, ctor_id,
                                              NamedField(field.name));
@@ -950,7 +936,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             }
             ast::ExprPath(..) => {
                 let guard = |did: ast::DefId| {
-                    let fields = ty::lookup_struct_fields(self.tcx, did);
+                    let fields = self.tcx.lookup_struct_fields(did);
                     let any_priv = fields.iter().any(|f| {
                         f.vis != ast::Public && (
                             !is_local(f.id) ||
@@ -994,7 +980,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
         match pattern.node {
             ast::PatStruct(_, ref fields, _) => {
-                match ty::pat_ty(self.tcx, pattern).sty {
+                match self.tcx.pat_ty(pattern).sty {
                     ty::TyStruct(id, _) => {
                         for field in fields {
                             self.check_field(pattern.span, id,
@@ -1025,7 +1011,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             // Patterns which bind no fields are allowable (the path is check
             // elsewhere).
             ast::PatEnum(_, Some(ref fields)) => {
-                match ty::pat_ty(self.tcx, pattern).sty {
+                match self.tcx.pat_ty(pattern).sty {
                     ty::TyStruct(id, _) => {
                         for (i, field) in fields.iter().enumerate() {
                             if let ast::PatWild(..) = field.node {
@@ -1337,7 +1323,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                 let not_private_trait =
                     trait_ref.as_ref().map_or(true, // no trait counts as public trait
                                               |tr| {
-                        let did = ty::trait_ref_to_def_id(self.tcx, tr);
+                        let did = self.tcx.trait_ref_to_def_id(tr);
 
                         !is_local(did) || self.trait_is_public(did.node)
                     });

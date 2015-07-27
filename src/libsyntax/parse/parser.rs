@@ -35,7 +35,7 @@ use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemDefaultImpl};
 use ast::{ItemExternCrate, ItemUse};
 use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
-use ast::{LitStr, LitInt, Local, LocalLet};
+use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchSource};
 use ast::{MutTy, BiMul, Mutability};
@@ -60,7 +60,7 @@ use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use ast;
 use ast_util::{self, AS_PREC, ident_to_path, operator_prec};
-use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp};
+use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp, CodeMap};
 use diagnostic;
 use ext::tt::macro_parser;
 use parse;
@@ -296,6 +296,24 @@ impl TokenType {
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
     t.is_plain_ident() || *t == token::Underscore
 }
+
+/// Information about the path to a module.
+pub struct ModulePath {
+    pub name: String,
+    pub path_exists: bool,
+    pub result: Result<ModulePathSuccess, ModulePathError>,
+}
+
+pub struct ModulePathSuccess {
+    pub path: ::std::path::PathBuf,
+    pub owns_directory: bool,
+}
+
+pub struct ModulePathError {
+    pub err_msg: String,
+    pub help_msg: String,
+}
+
 
 impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess,
@@ -1566,12 +1584,13 @@ impl<'a> Parser<'a> {
     // Assumes that the leading `<` has been parsed already.
     pub fn parse_qualified_path(&mut self, mode: PathParsingMode)
                                 -> PResult<(QSelf, ast::Path)> {
+        let span = self.last_span;
         let self_type = try!(self.parse_ty_sum());
         let mut path = if try!(self.eat_keyword(keywords::As)) {
             try!(self.parse_path(LifetimeAndTypesWithoutColons))
         } else {
             ast::Path {
-                span: self.span,
+                span: span,
                 global: false,
                 segments: vec![]
             }
@@ -1598,9 +1617,6 @@ impl<'a> Parser<'a> {
         };
         path.segments.extend(segments);
 
-        if path.segments.len() == 1 {
-            path.span.lo = self.last_span.lo;
-        }
         path.span.hi = self.last_span.hi;
 
         Ok((qself, path))
@@ -2083,28 +2099,32 @@ impl<'a> Parser<'a> {
                     return self.parse_if_expr();
                 }
                 if try!(self.eat_keyword(keywords::For) ){
-                    return self.parse_for_expr(None);
+                    let lo = self.last_span.lo;
+                    return self.parse_for_expr(None, lo);
                 }
                 if try!(self.eat_keyword(keywords::While) ){
-                    return self.parse_while_expr(None);
+                    let lo = self.last_span.lo;
+                    return self.parse_while_expr(None, lo);
                 }
                 if self.token.is_lifetime() {
                     let lifetime = self.get_lifetime();
+                    let lo = self.span.lo;
                     try!(self.bump());
                     try!(self.expect(&token::Colon));
                     if try!(self.eat_keyword(keywords::While) ){
-                        return self.parse_while_expr(Some(lifetime))
+                        return self.parse_while_expr(Some(lifetime), lo)
                     }
                     if try!(self.eat_keyword(keywords::For) ){
-                        return self.parse_for_expr(Some(lifetime))
+                        return self.parse_for_expr(Some(lifetime), lo)
                     }
                     if try!(self.eat_keyword(keywords::Loop) ){
-                        return self.parse_loop_expr(Some(lifetime))
+                        return self.parse_loop_expr(Some(lifetime), lo)
                     }
                     return Err(self.fatal("expected `while`, `for`, or `loop` after a label"))
                 }
                 if try!(self.eat_keyword(keywords::Loop) ){
-                    return self.parse_loop_expr(None);
+                    let lo = self.last_span.lo;
+                    return self.parse_loop_expr(None, lo);
                 }
                 if try!(self.eat_keyword(keywords::Continue) ){
                     let lo = self.span.lo;
@@ -2592,18 +2612,43 @@ impl<'a> Parser<'a> {
             ex = ExprAddrOf(m, e);
           }
           token::Ident(_, _) => {
-            if !self.check_keyword(keywords::Box) {
+            if !self.check_keyword(keywords::Box) && !self.check_keyword(keywords::In) {
                 return self.parse_dot_or_call_expr();
             }
 
             let lo = self.span.lo;
-            let box_hi = self.span.hi;
+            let keyword_hi = self.span.hi;
 
+            let is_in = self.token.is_keyword(keywords::In);
             try!(self.bump());
 
-            // Check for a place: `box(PLACE) EXPR`.
+            if is_in {
+              let place = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
+              let blk = try!(self.parse_block());
+              hi = blk.span.hi;
+              let blk_expr = self.mk_expr(blk.span.lo, blk.span.hi, ExprBlock(blk));
+              ex = ExprBox(Some(place), blk_expr);
+              return Ok(self.mk_expr(lo, hi, ex));
+            }
+
+            // FIXME (#22181) Remove `box (PLACE) EXPR` support
+            // entirely after next release (enabling `(box (EXPR))`),
+            // since it will be replaced by `in PLACE { EXPR }`, ...
+            //
+            // ... but for now: check for a place: `box(PLACE) EXPR`.
+
             if try!(self.eat(&token::OpenDelim(token::Paren)) ){
-                // Support `box() EXPR` as the default.
+                // SNAP d4432b3
+                // Enable this warning after snapshot ...
+                //
+                // let box_span = mk_sp(lo, self.last_span.hi);
+                // self.span_warn(
+                //     box_span,
+                //     "deprecated syntax; use the `in` keyword now \
+                //            (e.g. change `box (<expr>) <expr>` to \
+                //                         `in <expr> { <expr> }`)");
+
+                // Continue supporting `box () EXPR` (temporarily)
                 if !try!(self.eat(&token::CloseDelim(token::Paren)) ){
                     let place = try!(self.parse_expr_nopanic());
                     try!(self.expect(&token::CloseDelim(token::Paren)));
@@ -2614,10 +2659,15 @@ impl<'a> Parser<'a> {
                         self.span_err(span,
                                       &format!("expected expression, found `{}`",
                                               this_token_to_string));
-                        let box_span = mk_sp(lo, box_hi);
+
+                        // Spanning just keyword avoids constructing
+                        // printout of arg expression (which starts
+                        // with parenthesis, as established above).
+
+                        let box_span = mk_sp(lo, keyword_hi);
                         self.span_suggestion(box_span,
-                                             "try using `box()` instead:",
-                                             "box()".to_string());
+                                             "try using `box ()` instead:",
+                                             format!("box ()"));
                         self.abort_if_errors();
                     }
                     let subexpression = try!(self.parse_prefix_expr());
@@ -2630,6 +2680,7 @@ impl<'a> Parser<'a> {
             // Otherwise, we use the unique pointer default.
             let subexpression = try!(self.parse_prefix_expr());
             hi = subexpression.span.hi;
+
             // FIXME (pnkfelix): After working out kinks with box
             // desugaring, should be `ExprBox(None, subexpression)`
             // instead.
@@ -2718,14 +2769,15 @@ impl<'a> Parser<'a> {
             // (much lower than other prefix expressions) to be consistent
             // with the postfix-form 'expr..'
             let lo = self.span.lo;
+            let mut hi = self.span.hi;
             try!(self.bump());
             let opt_end = if self.is_at_start_of_range_notation_rhs() {
                 let end = try!(self.parse_binops());
+                hi = end.span.hi;
                 Some(end)
             } else {
                 None
             };
-            let hi = self.span.hi;
             let ex = self.mk_range(None, opt_end);
             Ok(self.mk_expr(lo, hi, ex))
           }
@@ -2767,17 +2819,17 @@ impl<'a> Parser<'a> {
           }
           // A range expression, either `expr..expr` or `expr..`.
           token::DotDot => {
+            let lo = lhs.span.lo;
+            let mut hi = self.span.hi;
             try!(self.bump());
 
             let opt_end = if self.is_at_start_of_range_notation_rhs() {
                 let end = try!(self.parse_binops());
+                hi = end.span.hi;
                 Some(end)
             } else {
                 None
             };
-
-            let lo = lhs.span.lo;
-            let hi = self.span.hi;
             let range = self.mk_range(Some(lhs), opt_end);
             return Ok(self.mk_expr(lo, hi, range));
           }
@@ -2876,48 +2928,48 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a 'for' .. 'in' expression ('for' token already eaten)
-    pub fn parse_for_expr(&mut self, opt_ident: Option<ast::Ident>) -> PResult<P<Expr>> {
+    pub fn parse_for_expr(&mut self, opt_ident: Option<ast::Ident>,
+                          span_lo: BytePos) -> PResult<P<Expr>> {
         // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
 
-        let lo = self.last_span.lo;
         let pat = try!(self.parse_pat_nopanic());
         try!(self.expect_keyword(keywords::In));
         let expr = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
         let loop_block = try!(self.parse_block());
         let hi = self.last_span.hi;
 
-        Ok(self.mk_expr(lo, hi, ExprForLoop(pat, expr, loop_block, opt_ident)))
+        Ok(self.mk_expr(span_lo, hi, ExprForLoop(pat, expr, loop_block, opt_ident)))
     }
 
     /// Parse a 'while' or 'while let' expression ('while' token already eaten)
-    pub fn parse_while_expr(&mut self, opt_ident: Option<ast::Ident>) -> PResult<P<Expr>> {
+    pub fn parse_while_expr(&mut self, opt_ident: Option<ast::Ident>,
+                            span_lo: BytePos) -> PResult<P<Expr>> {
         if self.token.is_keyword(keywords::Let) {
-            return self.parse_while_let_expr(opt_ident);
+            return self.parse_while_let_expr(opt_ident, span_lo);
         }
-        let lo = self.last_span.lo;
         let cond = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
         let body = try!(self.parse_block());
         let hi = body.span.hi;
-        return Ok(self.mk_expr(lo, hi, ExprWhile(cond, body, opt_ident)));
+        return Ok(self.mk_expr(span_lo, hi, ExprWhile(cond, body, opt_ident)));
     }
 
     /// Parse a 'while let' expression ('while' token already eaten)
-    pub fn parse_while_let_expr(&mut self, opt_ident: Option<ast::Ident>) -> PResult<P<Expr>> {
-        let lo = self.last_span.lo;
+    pub fn parse_while_let_expr(&mut self, opt_ident: Option<ast::Ident>,
+                                span_lo: BytePos) -> PResult<P<Expr>> {
         try!(self.expect_keyword(keywords::Let));
         let pat = try!(self.parse_pat_nopanic());
         try!(self.expect(&token::Eq));
         let expr = try!(self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL));
         let body = try!(self.parse_block());
         let hi = body.span.hi;
-        return Ok(self.mk_expr(lo, hi, ExprWhileLet(pat, expr, body, opt_ident)));
+        return Ok(self.mk_expr(span_lo, hi, ExprWhileLet(pat, expr, body, opt_ident)));
     }
 
-    pub fn parse_loop_expr(&mut self, opt_ident: Option<ast::Ident>) -> PResult<P<Expr>> {
-        let lo = self.last_span.lo;
+    pub fn parse_loop_expr(&mut self, opt_ident: Option<ast::Ident>,
+                           span_lo: BytePos) -> PResult<P<Expr>> {
         let body = try!(self.parse_block());
         let hi = body.span.hi;
-        Ok(self.mk_expr(lo, hi, ExprLoop(body, opt_ident)))
+        Ok(self.mk_expr(span_lo, hi, ExprLoop(body, opt_ident)))
     }
 
     fn parse_match_expr(&mut self) -> PResult<P<Expr>> {
@@ -3380,7 +3432,6 @@ impl<'a> Parser<'a> {
             init: init,
             id: ast::DUMMY_NODE_ID,
             span: mk_sp(lo, self.last_span.hi),
-            source: LocalLet,
         }))
     }
 
@@ -4804,8 +4855,14 @@ impl<'a> Parser<'a> {
             return Err(self.fatal(&format!("expected item, found `{}`", token_str)));
         }
 
+        let hi = if self.span == codemap::DUMMY_SP {
+            inner_lo
+        } else {
+            self.span.lo
+        };
+
         Ok(ast::Mod {
-            inner: mk_sp(inner_lo, self.span.lo),
+            inner: mk_sp(inner_lo, hi),
             items: items
         })
     }
@@ -4849,8 +4906,7 @@ impl<'a> Parser<'a> {
 
     fn push_mod_path(&mut self, id: Ident, attrs: &[Attribute]) {
         let default_path = self.id_to_interned_str(id);
-        let file_path = match ::attr::first_attr_value_str_by_name(attrs,
-                                                                   "path") {
+        let file_path = match ::attr::first_attr_value_str_by_name(attrs, "path") {
             Some(d) => d,
             None => default_path,
         };
@@ -4861,82 +4917,104 @@ impl<'a> Parser<'a> {
         self.mod_path_stack.pop().unwrap();
     }
 
-    /// Read a module from a source file.
-    fn eval_src_mod(&mut self,
-                    id: ast::Ident,
-                    outer_attrs: &[ast::Attribute],
-                    id_sp: Span)
-                    -> PResult<(ast::Item_, Vec<ast::Attribute> )> {
+    pub fn submod_path_from_attr(attrs: &[ast::Attribute], dir_path: &Path) -> Option<PathBuf> {
+        ::attr::first_attr_value_str_by_name(attrs, "path").map(|d| dir_path.join(&*d))
+    }
+
+    /// Returns either a path to a module, or .
+    pub fn default_submod_path(id: ast::Ident, dir_path: &Path, codemap: &CodeMap) -> ModulePath
+    {
+        let mod_string = token::get_ident(id);
+        let mod_name = mod_string.to_string();
+        let default_path_str = format!("{}.rs", mod_name);
+        let secondary_path_str = format!("{}/mod.rs", mod_name);
+        let default_path = dir_path.join(&default_path_str);
+        let secondary_path = dir_path.join(&secondary_path_str);
+        let default_exists = codemap.file_exists(&default_path);
+        let secondary_exists = codemap.file_exists(&secondary_path);
+
+        let result = match (default_exists, secondary_exists) {
+            (true, false) => Ok(ModulePathSuccess { path: default_path, owns_directory: false }),
+            (false, true) => Ok(ModulePathSuccess { path: secondary_path, owns_directory: true }),
+            (false, false) => Err(ModulePathError {
+                err_msg: format!("file not found for module `{}`", mod_name),
+                help_msg: format!("name the file either {} or {} inside the directory {:?}",
+                                  default_path_str,
+                                  secondary_path_str,
+                                  dir_path.display()),
+            }),
+            (true, true) => Err(ModulePathError {
+                err_msg: format!("file for module `{}` found at both {} and {}",
+                                 mod_name,
+                                 default_path_str,
+                                 secondary_path_str),
+                help_msg: "delete or rename one of them to remove the ambiguity".to_owned(),
+            }),
+        };
+
+        ModulePath {
+            name: mod_name,
+            path_exists: default_exists || secondary_exists,
+            result: result,
+        }
+    }
+
+    fn submod_path(&mut self,
+                   id: ast::Ident,
+                   outer_attrs: &[ast::Attribute],
+                   id_sp: Span) -> PResult<ModulePathSuccess> {
         let mut prefix = PathBuf::from(&self.sess.codemap().span_to_filename(self.span));
         prefix.pop();
         let mut dir_path = prefix;
         for part in &self.mod_path_stack {
             dir_path.push(&**part);
         }
-        let mod_string = token::get_ident(id);
-        let (file_path, owns_directory) = match ::attr::first_attr_value_str_by_name(
-                outer_attrs, "path") {
-            Some(d) => (dir_path.join(&*d), true),
-            None => {
-                let mod_name = mod_string.to_string();
-                let default_path_str = format!("{}.rs", mod_name);
-                let secondary_path_str = format!("{}/mod.rs", mod_name);
-                let default_path = dir_path.join(&default_path_str[..]);
-                let secondary_path = dir_path.join(&secondary_path_str[..]);
-                let default_exists = self.sess.codemap().file_exists(&default_path);
-                let secondary_exists = self.sess.codemap().file_exists(&secondary_path);
 
-                if !self.owns_directory {
-                    self.span_err(id_sp,
-                                  "cannot declare a new module at this location");
-                    let this_module = match self.mod_path_stack.last() {
-                        Some(name) => name.to_string(),
-                        None => self.root_module_name.as_ref().unwrap().clone(),
-                    };
-                    self.span_note(id_sp,
-                                   &format!("maybe move this module `{0}` \
-                                            to its own directory via \
-                                            `{0}/mod.rs`",
-                                           this_module));
-                    if default_exists || secondary_exists {
-                        self.span_note(id_sp,
-                                       &format!("... or maybe `use` the module \
-                                                `{}` instead of possibly \
-                                                redeclaring it",
-                                               mod_name));
-                    }
-                    self.abort_if_errors();
-                }
+        if let Some(p) = Parser::submod_path_from_attr(outer_attrs, &dir_path) {
+            return Ok(ModulePathSuccess { path: p, owns_directory: true });
+        }
 
-                match (default_exists, secondary_exists) {
-                    (true, false) => (default_path, false),
-                    (false, true) => (secondary_path, true),
-                    (false, false) => {
-                        return Err(self.span_fatal_help(id_sp,
-                                             &format!("file not found for module `{}`",
-                                                     mod_name),
-                                             &format!("name the file either {} or {} inside \
-                                                     the directory {:?}",
-                                                     default_path_str,
-                                                     secondary_path_str,
-                                                     dir_path.display())));
-                    }
-                    (true, true) => {
-                        return Err(self.span_fatal_help(
-                            id_sp,
-                            &format!("file for module `{}` found at both {} \
-                                     and {}",
-                                    mod_name,
-                                    default_path_str,
-                                    secondary_path_str),
-                            "delete or rename one of them to remove the ambiguity"));
-                    }
-                }
+        let paths = Parser::default_submod_path(id, &dir_path, self.sess.codemap());
+
+        if !self.owns_directory {
+            self.span_err(id_sp, "cannot declare a new module at this location");
+            let this_module = match self.mod_path_stack.last() {
+                Some(name) => name.to_string(),
+                None => self.root_module_name.as_ref().unwrap().clone(),
+            };
+            self.span_note(id_sp,
+                           &format!("maybe move this module `{0}` to its own directory \
+                                     via `{0}/mod.rs`",
+                                    this_module));
+            if paths.path_exists {
+                self.span_note(id_sp,
+                               &format!("... or maybe `use` the module `{}` instead \
+                                         of possibly redeclaring it",
+                                        paths.name));
             }
-        };
+            self.abort_if_errors();
+        }
 
-        self.eval_src_mod_from_path(file_path, owns_directory,
-                                    mod_string.to_string(), id_sp)
+        match paths.result {
+            Ok(succ) => Ok(succ),
+            Err(err) => Err(self.span_fatal_help(id_sp, &err.err_msg, &err.help_msg)),
+        }
+    }
+
+    /// Read a module from a source file.
+    fn eval_src_mod(&mut self,
+                    id: ast::Ident,
+                    outer_attrs: &[ast::Attribute],
+                    id_sp: Span)
+                    -> PResult<(ast::Item_, Vec<ast::Attribute> )> {
+        let ModulePathSuccess { path, owns_directory } = try!(self.submod_path(id,
+                                                                               outer_attrs,
+                                                                               id_sp));
+
+        self.eval_src_mod_from_path(path,
+                                    owns_directory,
+                                    token::get_ident(id).to_string(),
+                                    id_sp)
     }
 
     fn eval_src_mod_from_path(&mut self,
@@ -4961,13 +5039,12 @@ impl<'a> Parser<'a> {
         included_mod_stack.push(path.clone());
         drop(included_mod_stack);
 
-        let mut p0 =
-            new_sub_parser_from_file(self.sess,
-                                     self.cfg.clone(),
-                                     &path,
-                                     owns_directory,
-                                     Some(name),
-                                     id_sp);
+        let mut p0 = new_sub_parser_from_file(self.sess,
+                                              self.cfg.clone(),
+                                              &path,
+                                              owns_directory,
+                                              Some(name),
+                                              id_sp);
         let mod_inner_lo = p0.span.lo;
         let mod_attrs = p0.parse_inner_attributes();
         let m0 = try!(p0.parse_mod_items(&token::Eof, mod_inner_lo));
@@ -5217,7 +5294,7 @@ impl<'a> Parser<'a> {
                             last_span,
                             &format!("illegal ABI: expected one of [{}], \
                                      found `{}`",
-                                    abi::all_names().connect(", "),
+                                    abi::all_names().join(", "),
                                     the_string));
                         Ok(None)
                     }

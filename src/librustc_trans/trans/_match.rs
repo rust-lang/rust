@@ -195,6 +195,7 @@ use middle::check_match;
 use middle::const_eval;
 use middle::def::{self, DefMap};
 use middle::expr_use_visitor as euv;
+use middle::infer;
 use middle::lang_items::StrEqFnLangItem;
 use middle::mem_categorization as mc;
 use middle::pat_util::*;
@@ -214,7 +215,7 @@ use trans::monomorphize;
 use trans::tvec;
 use trans::type_of;
 use middle::ty::{self, Ty};
-use session::config::{NoDebugInfo, FullDebugInfo};
+use session::config::NoDebugInfo;
 use util::common::indenter;
 use util::nodemap::FnvHashMap;
 use util::ppaux;
@@ -234,8 +235,7 @@ struct ConstantExpr<'a>(&'a ast::Expr);
 
 impl<'a> ConstantExpr<'a> {
     fn eq(self, other: ConstantExpr<'a>, tcx: &ty::ctxt) -> bool {
-        match const_eval::compare_lit_exprs(tcx, self.0, other.0, None,
-                                            |id| {ty::node_id_item_substs(tcx, id).substs}) {
+        match const_eval::compare_lit_exprs(tcx, self.0, other.0) {
             Some(result) => result == Ordering::Equal,
             None => panic!("compare_list_exprs: type mismatch"),
         }
@@ -279,7 +279,7 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
         let ccx = bcx.ccx();
         match *self {
             ConstantValue(ConstantExpr(lit_expr), _) => {
-                let lit_ty = ty::node_id_to_type(bcx.tcx(), lit_expr.id);
+                let lit_ty = bcx.tcx().node_id_to_type(lit_expr.id);
                 let (llval, _) = consts::const_expr(ccx, &*lit_expr, bcx.fcx.param_substs, None);
                 let lit_datum = immediate_rvalue(llval, lit_ty);
                 let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
@@ -562,7 +562,7 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
             check_match::Constructor::Variant(def_id)
     };
 
-    let param_env = ty::empty_parameter_environment(bcx.tcx());
+    let param_env = bcx.tcx().empty_parameter_environment();
     let mcx = check_match::MatchCheckCtxt {
         tcx: bcx.tcx(),
         param_env: param_env,
@@ -603,7 +603,7 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let opt_def = tcx.def_map.borrow().get(&cur.id).map(|d| d.full_def());
                 match opt_def {
                     Some(def::DefVariant(enum_id, var_id, _)) => {
-                        let variant = ty::enum_variant_with_id(tcx, enum_id, var_id);
+                        let variant = tcx.enum_variant_with_id(enum_id, var_id);
                         Variant(variant.disr_val,
                                 adt::represent_node(bcx, cur.id),
                                 var_id,
@@ -662,16 +662,20 @@ fn bind_subslice_pat(bcx: Block,
                      offset_right: usize) -> ValueRef {
     let _icx = push_ctxt("match::bind_subslice_pat");
     let vec_ty = node_id_type(bcx, pat_id);
-    let unit_ty = ty::sequence_element_type(bcx.tcx(), ty::type_content(vec_ty));
+    let vec_ty_contents = match vec_ty.sty {
+        ty::TyBox(ty) => ty,
+        ty::TyRef(_, mt) | ty::TyRawPtr(mt) => mt.ty,
+        _ => vec_ty
+    };
+    let unit_ty = vec_ty_contents.sequence_element_type(bcx.tcx());
     let vec_datum = match_datum(val, vec_ty);
     let (base, len) = vec_datum.get_vec_base_and_len(bcx);
 
     let slice_begin = InBoundsGEP(bcx, base, &[C_uint(bcx.ccx(), offset_left)]);
     let slice_len_offset = C_uint(bcx.ccx(), offset_left + offset_right);
     let slice_len = Sub(bcx, len, slice_len_offset, DebugLoc::None);
-    let slice_ty = ty::mk_slice(bcx.tcx(),
-                                bcx.tcx().mk_region(ty::ReStatic),
-                                ty::mt {ty: unit_ty, mutbl: ast::MutImmutable});
+    let slice_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReStatic),
+                                         bcx.tcx().mk_slice(unit_ty));
     let scratch = rvalue_scratch_datum(bcx, slice_ty, "");
     Store(bcx, slice_begin,
           GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
@@ -836,7 +840,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     }
 
     let _icx = push_ctxt("compare_values");
-    if ty::type_is_scalar(rhs_t) {
+    if rhs_t.is_scalar() {
         let cmp = compare_scalar_types(cx, lhs, rhs, rhs_t, ast::BiEq, debug_loc);
         return Result::new(cx, cmp);
     }
@@ -849,9 +853,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                     // NOTE: cast &[u8] and &[u8; N] to &str and abuse the str_eq lang item,
                     // which calls memcmp().
                     let pat_len = val_ty(rhs).element_type().array_length();
-                    let ty_str_slice = ty::mk_str_slice(cx.tcx(),
-                                                        cx.tcx().mk_region(ty::ReStatic),
-                                                        ast::MutImmutable);
+                    let ty_str_slice = cx.tcx().mk_static_str();
 
                     let rhs_str = alloc_ty(cx, ty_str_slice, "rhs_str");
                     Store(cx, GEPi(cx, rhs, &[0, 0]), expr::get_dataptr(cx, rhs_str));
@@ -933,7 +935,7 @@ fn compile_guard<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            bcx.to_str(),
            guard_expr,
            m,
-           vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().connect(", "));
+           vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().join(", "));
     let _indenter = indenter();
 
     let mut bcx = insert_lllocals(bcx, &data.bindings_map, None);
@@ -978,7 +980,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("compile_submatch(bcx={}, m={:?}, vals=[{}])",
            bcx.to_str(),
            m,
-           vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().connect(", "));
+           vals.iter().map(|v| bcx.val_to_string(*v)).collect::<Vec<_>>().join(", "));
     let _indenter = indenter();
     let _icx = push_ctxt("match::compile_submatch");
     let mut bcx = bcx;
@@ -1058,14 +1060,14 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                          .unwrap_or(DUMMY_NODE_ID);
 
     let left_ty = if pat_id == DUMMY_NODE_ID {
-        ty::mk_nil(tcx)
+        tcx.mk_nil()
     } else {
         node_id_type(bcx, pat_id)
     };
 
     let mcx = check_match::MatchCheckCtxt {
         tcx: bcx.tcx(),
-        param_env: ty::empty_parameter_environment(bcx.tcx()),
+        param_env: bcx.tcx().empty_parameter_environment(),
     };
     let adt_vals = if any_irrefutable_adt_pat(bcx.tcx(), m, col) {
         let repr = adt::represent_type(bcx.ccx(), left_ty);
@@ -1088,9 +1090,9 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 // The last field is technically unsized but
                 // since we can only ever match that field behind
                 // a reference we construct a fat ptr here.
-                let fields = ty::lookup_struct_fields(bcx.tcx(), def_id);
+                let fields = bcx.tcx().lookup_struct_fields(def_id);
                 let unsized_ty = fields.iter().last().map(|field| {
-                    let fty = ty::lookup_field_type(bcx.tcx(), def_id, field.id, substs);
+                    let fty = bcx.tcx().lookup_field_type(def_id, field.id, substs);
                     monomorphize::normalize_associated_type(bcx.tcx(), &fty)
                 }).unwrap();
                 let llty = type_of::type_of(bcx.ccx(), unsized_ty);
@@ -1140,7 +1142,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         match opts[0] {
             ConstantValue(..) | ConstantRange(..) => {
                 test_val = load_if_immediate(bcx, val, left_ty);
-                kind = if ty::type_is_integral(left_ty) {
+                kind = if left_ty.is_integral() {
                     Switch
                 } else {
                     Compare
@@ -1348,7 +1350,8 @@ fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool 
         reassigned: false
     };
     {
-        let mut visitor = euv::ExprUseVisitor::new(&mut rc, bcx);
+        let infcx = infer::normalizing_infer_ctxt(bcx.tcx(), &bcx.tcx().tables);
+        let mut visitor = euv::ExprUseVisitor::new(&mut rc, &infcx);
         visitor.walk_expr(body);
     }
     rc.reassigned
@@ -1380,7 +1383,8 @@ impl<'tcx> euv::Delegate<'tcx> for ReassignmentChecker {
                 match base_cmt.cat {
                     mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
                     mc::cat_local(vid) => {
-                        self.reassigned |= self.node == vid && Some(field) == self.field
+                        self.reassigned |= self.node == vid &&
+                            (self.field.is_none() || Some(field) == self.field)
                     },
                     _ => {}
                 }
@@ -1407,13 +1411,13 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
         let tcx = bcx.tcx();
-        let param_env = ty::empty_parameter_environment(tcx);
+        let param_env = tcx.empty_parameter_environment();
 
         let llmatch;
         let trmode;
         match bm {
             ast::BindByValue(_)
-                if !ty::type_moves_by_default(&param_env, span, variable_ty) || reassigned =>
+                if !variable_ty.moves_by_default(&param_env, span) || reassigned =>
             {
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),
@@ -1466,7 +1470,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
     }
 
     let t = node_id_type(bcx, discr_expr.id);
-    let chk = if ty::type_is_empty(tcx, t) {
+    let chk = if t.is_empty(tcx) {
         Unreachable
     } else {
         Infallible
@@ -1596,54 +1600,6 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-/// Generates code for argument patterns like `fn foo(<pat>: T)`.
-/// Creates entries in the `lllocals` map for each of the bindings
-/// in `pat`.
-///
-/// # Arguments
-///
-/// - `pat` is the argument pattern
-/// - `llval` is a pointer to the argument value (in other words,
-///   if the argument type is `T`, then `llval` is a `T*`). In some
-///   cases, this code may zero out the memory `llval` points at.
-pub fn store_arg<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                             pat: &ast::Pat,
-                             arg: Datum<'tcx, Rvalue>,
-                             arg_scope: cleanup::ScopeId)
-                             -> Block<'blk, 'tcx> {
-    let _icx = push_ctxt("match::store_arg");
-
-    match simple_identifier(&*pat) {
-        Some(ident) => {
-            // Generate nicer LLVM for the common case of fn a pattern
-            // like `x: T`
-            let arg_ty = node_id_type(bcx, pat.id);
-            if type_of::arg_is_indirect(bcx.ccx(), arg_ty)
-                && bcx.sess().opts.debuginfo != FullDebugInfo {
-                // Don't copy an indirect argument to an alloca, the caller
-                // already put it in a temporary alloca and gave it up, unless
-                // we emit extra-debug-info, which requires local allocas :(.
-                let arg_val = arg.add_clean(bcx.fcx, arg_scope);
-                bcx.fcx.lllocals.borrow_mut()
-                   .insert(pat.id, Datum::new(arg_val, arg_ty, Lvalue));
-                bcx
-            } else {
-                mk_binding_alloca(
-                    bcx, pat.id, ident.name, arg_scope, arg,
-                    |arg, bcx, llval, _| arg.store_to(bcx, llval))
-            }
-        }
-
-        None => {
-            // General path. Copy out the values that are used in the
-            // pattern.
-            let arg = unpack_datum!(
-                bcx, arg.to_lvalue_datum_in_scope(bcx, "__arg", arg_scope));
-            bind_irrefutable_pat(bcx, pat, arg.val, arg_scope)
-        }
-    }
-}
-
 fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
                                        p_id: ast::NodeId,
                                        name: ast::Name,
@@ -1683,7 +1639,7 @@ fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
 /// - bcx: starting basic block context
 /// - pat: the irrefutable pattern being matched.
 /// - val: the value being matched -- must be an lvalue (by ref, with cleanup)
-fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     pat: &ast::Pat,
                                     val: ValueRef,
                                     cleanup_scope: cleanup::ScopeId)
@@ -1745,9 +1701,7 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match opt_def {
                 Some(def::DefVariant(enum_id, var_id, _)) => {
                     let repr = adt::represent_node(bcx, pat.id);
-                    let vinfo = ty::enum_variant_with_id(ccx.tcx(),
-                                                         enum_id,
-                                                         var_id);
+                    let vinfo = ccx.tcx().enum_variant_with_id(enum_id, var_id);
                     let args = extract_variant_args(bcx,
                                                     &*repr,
                                                     vinfo.disr_val,
@@ -1787,7 +1741,7 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
             expr::with_field_tys(tcx, pat_ty, Some(pat.id), |discr, field_tys| {
                 for f in fields {
-                    let ix = ty::field_idx_strict(tcx, f.node.ident.name, field_tys);
+                    let ix = tcx.field_idx_strict(f.node.ident.name, field_tys);
                     let fldptr = adt::trans_field_ptr(bcx, &*pat_repr, val,
                                                       discr, ix);
                     bcx = bind_irrefutable_pat(bcx, &*f.node.pat, fldptr, cleanup_scope);

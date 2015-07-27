@@ -163,12 +163,12 @@ fn test_offset_calculation() {
 }
 
 fn calculate_allocation_generic<K, V>(capacity: usize, is_leaf: bool) -> (usize, usize) {
-    let (keys_size, keys_align) = (capacity * mem::size_of::<K>(), mem::min_align_of::<K>());
-    let (vals_size, vals_align) = (capacity * mem::size_of::<V>(), mem::min_align_of::<V>());
+    let (keys_size, keys_align) = (capacity * mem::size_of::<K>(), mem::align_of::<K>());
+    let (vals_size, vals_align) = (capacity * mem::size_of::<V>(), mem::align_of::<V>());
     let (edges_size, edges_align) = if is_leaf {
         (0, 1)
     } else {
-        ((capacity + 1) * mem::size_of::<Node<K, V>>(), mem::min_align_of::<Node<K, V>>())
+        ((capacity + 1) * mem::size_of::<Node<K, V>>(), mem::align_of::<Node<K, V>>())
     };
 
     calculate_allocation(
@@ -181,11 +181,11 @@ fn calculate_allocation_generic<K, V>(capacity: usize, is_leaf: bool) -> (usize,
 fn calculate_offsets_generic<K, V>(capacity: usize, is_leaf: bool) -> (usize, usize) {
     let keys_size = capacity * mem::size_of::<K>();
     let vals_size = capacity * mem::size_of::<V>();
-    let vals_align = mem::min_align_of::<V>();
+    let vals_align = mem::align_of::<V>();
     let edges_align = if is_leaf {
         1
     } else {
-        mem::min_align_of::<Node<K, V>>()
+        mem::align_of::<Node<K, V>>()
     };
 
     calculate_offsets(

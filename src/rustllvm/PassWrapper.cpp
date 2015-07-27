@@ -21,6 +21,8 @@
 #else
 #include "llvm/Target/TargetLibraryInfo.h"
 #endif
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetSubtargetInfo.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
 
@@ -326,4 +328,29 @@ LLVMRustMarkAllFunctionsNounwind(LLVMModuleRef M) {
             }
         }
     }
+}
+
+extern "C" void
+LLVMRustSetDataLayoutFromTargetMachine(LLVMModuleRef Module,
+                                       LLVMTargetMachineRef TMR) {
+    TargetMachine *Target = unwrap(TMR);
+#if LLVM_VERSION_MINOR >= 7
+    if (const DataLayout *DL = Target->getDataLayout())
+        unwrap(Module)->setDataLayout(*DL);
+#elif LLVM_VERSION_MINOR >= 6
+    if (const DataLayout *DL = Target->getSubtargetImpl()->getDataLayout())
+        unwrap(Module)->setDataLayout(DL);
+#else
+    if (const DataLayout *DL = Target->getDataLayout())
+        unwrap(Module)->setDataLayout(DL);
+#endif
+}
+
+extern "C" LLVMTargetDataRef
+LLVMRustGetModuleDataLayout(LLVMModuleRef M) {
+#if LLVM_VERSION_MINOR >= 7
+    return wrap(&unwrap(M)->getDataLayout());
+#else
+    return wrap(unwrap(M)->getDataLayout());
+#endif
 }

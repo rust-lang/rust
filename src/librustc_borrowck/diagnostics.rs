@@ -12,6 +12,56 @@
 
 register_long_diagnostics! {
 
+E0373: r##"
+This error occurs when an attempt is made to use data captured by a closure,
+when that data may no longer exist. It's most commonly seen when attempting to
+return a closure:
+
+```
+fn foo() -> Box<Fn(u32) -> u32> {
+    let x = 0u32;
+    Box::new(|y| x + y)
+}
+```
+
+Notice that `x` is stack-allocated by `foo()`. By default, Rust captures
+closed-over data by reference. This means that once `foo()` returns, `x` no
+longer exists. An attempt to access `x` within the closure would thus be unsafe.
+
+Another situation where this might be encountered is when spawning threads:
+
+```
+fn foo() {
+    let x = 0u32;
+    let y = 1u32;
+
+    let thr = std::thread::spawn(|| {
+        x + y
+    });
+}
+```
+
+Since our new thread runs in parallel, the stack frame containing `x` and `y`
+may well have disappeared by the time we try to use them. Even if we call
+`thr.join()` within foo (which blocks until `thr` has completed, ensuring the
+stack frame won't disappear), we will not succeed: the compiler cannot prove
+that this behaviour is safe, and so won't let us do it.
+
+The solution to this problem is usually to switch to using a `move` closure.
+This approach moves (or copies, where possible) data into the closure, rather
+than taking references to it. For example:
+
+```
+fn foo() -> Box<Fn(u32) -> u32> {
+    let x = 0u32;
+    Box::new(move |y| x + y)
+}
+```
+
+Now that the closure has its own copy of the data, there's no need to worry
+about safety.
+"##,
+
 E0381: r##"
 It is not allowed to use or capture an uninitialized variable. For example:
 
@@ -28,7 +78,6 @@ used.
 }
 
 register_diagnostics! {
-    E0373, // closure may outlive current fn, but it borrows {}, which is owned by current fn
     E0382, // use of partially/collaterally moved value
     E0383, // partial reinitialization of uninitialized structure
     E0384, // reassignment of immutable variable

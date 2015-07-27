@@ -14,13 +14,12 @@ use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{ReEarlyBound, BrFresh, ctxt};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar, BrEnv};
-use middle::ty::{mt, Ty};
 use middle::ty::{TyBool, TyChar, TyStruct, TyEnum};
 use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyBareFn};
 use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use middle::ty::TyClosure;
 use middle::ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
-use middle::ty;
+use middle::ty::{self, TypeAndMut, Ty, HasTypeFlags};
 use middle::ty_fold::{self, TypeFoldable};
 
 use std::fmt;
@@ -52,7 +51,7 @@ fn fn_sig(f: &mut fmt::Formatter,
 
     match output {
         ty::FnConverging(ty) => {
-            if !ty::type_is_nil(ty) {
+            if !ty.is_nil() {
                 try!(write!(f, " -> {}", ty));
             }
             Ok(())
@@ -72,7 +71,7 @@ fn parameterized<GG>(f: &mut fmt::Formatter,
     where GG: for<'tcx> FnOnce(&ty::ctxt<'tcx>) -> ty::Generics<'tcx>
 {
     let (fn_trait_kind, verbose) = try!(ty::tls::with(|tcx| {
-        try!(write!(f, "{}", ty::item_path_str(tcx, did)));
+        try!(write!(f, "{}", tcx.item_path_str(did)));
         Ok((tcx.lang_items.fn_trait_kind(did), tcx.sess.verbose()))
     }));
 
@@ -155,7 +154,7 @@ fn parameterized<GG>(f: &mut fmt::Formatter,
             ty_params.iter().zip(tps).rev().take_while(|&(def, &actual)| {
                 match def.default {
                     Some(default) => {
-                        if !has_self && ty::type_has_self(default) {
+                        if !has_self && default.has_self_ty() {
                             // In an object type, there is no `Self`, and
                             // thus if the default value references Self,
                             // the user will be required to give an
@@ -266,7 +265,7 @@ impl<'tcx> fmt::Display for TraitAndProjections<'tcx> {
         parameterized(f, trait_ref.substs,
                       trait_ref.def_id,
                       projection_bounds,
-                      |tcx| ty::lookup_trait_def(tcx, trait_ref.def_id).generics.clone())
+                      |tcx| tcx.lookup_trait_def(trait_ref.def_id).generics.clone())
     }
 }
 
@@ -291,13 +290,14 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
             try!(write!(f, " + {:?}", bound));
         }
 
-        // Region, if not obviously implied by builtin bounds.
-        if bounds.region_bound != ty::ReStatic {
-            // Region bound is implied by builtin bounds:
-            let bound = bounds.region_bound.to_string();
-            if !bound.is_empty() {
-                try!(write!(f, " + {}", bound));
-            }
+        // FIXME: It'd be nice to compute from context when this bound
+        // is implied, but that's non-trivial -- we'd perhaps have to
+        // use thread-local data of some kind? There are also
+        // advantages to just showing the region, since it makes
+        // people aware that it's there.
+        let bound = bounds.region_bound.to_string();
+        if !bound.is_empty() {
+            try!(write!(f, " + {}", bound));
         }
 
         Ok(())
@@ -317,7 +317,7 @@ impl<'tcx> fmt::Debug for ty::TyS<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Display for ty::mt<'tcx> {
+impl<'tcx> fmt::Display for ty::TypeAndMut<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}{}",
                if self.mutbl == ast::MutMutable { "mut " } else { "" },
@@ -490,38 +490,6 @@ impl<'tcx> fmt::Display for ty::FnSig<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::MethodOrigin<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            ty::MethodStatic(def_id) => {
-                write!(f, "MethodStatic({:?})", def_id)
-            }
-            ty::MethodStaticClosure(def_id) => {
-                write!(f, "MethodStaticClosure({:?})", def_id)
-            }
-            ty::MethodTypeParam(ref p) => write!(f, "{:?}", p),
-            ty::MethodTraitObject(ref p) => write!(f, "{:?}", p)
-        }
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::MethodParam<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "MethodParam({:?},{})",
-               self.trait_ref,
-               self.method_num)
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::MethodObject<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "MethodObject({:?},{},{})",
-               self.trait_ref,
-               self.method_num,
-               self.vtable_index)
-    }
-}
-
 impl<'tcx> fmt::Debug for ty::ExistentialBounds<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut empty = true;
@@ -617,7 +585,7 @@ impl fmt::Display for ty::Binder<ty::OutlivesPredicate<ty::Region, ty::Region>> 
 impl<'tcx> fmt::Display for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         parameterized(f, self.substs, self.def_id, &[],
-                      |tcx| ty::lookup_trait_def(tcx, self.def_id).generics.clone())
+                      |tcx| tcx.lookup_trait_def(self.def_id).generics.clone())
     }
 }
 
@@ -672,7 +640,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
 
                 if let Some(def_id) = opt_def_id {
                     try!(write!(f, " {{{}}}", ty::tls::with(|tcx| {
-                        ty::item_path_str(tcx, def_id)
+                        tcx.item_path_str(def_id)
                     })));
                 }
                 Ok(())
@@ -681,28 +649,48 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyError => write!(f, "[type error]"),
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
             TyEnum(did, substs) | TyStruct(did, substs) => {
-                parameterized(f, substs, did, &[],
-                              |tcx| ty::lookup_item_type(tcx, did).generics)
+                ty::tls::with(|tcx| {
+                    if did.krate == ast::LOCAL_CRATE &&
+                          !tcx.tcache.borrow().contains_key(&did) {
+                        write!(f, "{}<..>", tcx.item_path_str(did))
+                    } else {
+                        parameterized(f, substs, did, &[],
+                                      |tcx| tcx.lookup_item_type(did).generics)
+                    }
+                })
             }
             TyTrait(ref data) => write!(f, "{}", data),
             ty::TyProjection(ref data) => write!(f, "{}", data),
             TyStr => write!(f, "str"),
-            TyClosure(ref did, substs) => ty::tls::with(|tcx| {
+            TyClosure(ref did, ref substs) => ty::tls::with(|tcx| {
                 try!(write!(f, "[closure"));
-                let closure_tys = tcx.closure_tys.borrow();
-                try!(closure_tys.get(did).map(|cty| &cty.sig).and_then(|sig| {
-                    tcx.lift(&substs).map(|substs| sig.subst(tcx, substs))
-                }).map(|sig| {
-                    fn_sig(f, &sig.0.inputs, false, sig.0.output)
-                }).unwrap_or_else(|| {
-                    if did.krate == ast::LOCAL_CRATE {
-                        try!(write!(f, " {:?}", tcx.map.span(did.node)));
+
+                if did.krate == ast::LOCAL_CRATE {
+                    try!(write!(f, "@{:?}", tcx.map.span(did.node)));
+                    let mut sep = " ";
+                    try!(tcx.with_freevars(did.node, |freevars| {
+                        for (freevar, upvar_ty) in freevars.iter().zip(&substs.upvar_tys) {
+                            let node_id = freevar.def.local_node_id();
+                            try!(write!(f,
+                                        "{}{}:{}",
+                                        sep,
+                                        tcx.local_var_name_str(node_id),
+                                        upvar_ty));
+                            sep = ", ";
+                        }
+                        Ok(())
+                    }))
+                } else {
+                    // cross-crate closure types should only be
+                    // visible in trans bug reports, I imagine.
+                    try!(write!(f, "@{:?}", did));
+                    let mut sep = " ";
+                    for (index, upvar_ty) in substs.upvar_tys.iter().enumerate() {
+                        try!(write!(f, "{}{}:{}", sep, index, upvar_ty));
+                        sep = ", ";
                     }
-                    Ok(())
-                }));
-                if verbose() {
-                    try!(write!(f, " id={:?}", did));
                 }
+
                 write!(f, "]")
             }),
             TyArray(ty, sz) => write!(f, "[{}; {}]",  ty, sz),
@@ -721,7 +709,7 @@ impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "UpvarId({};`{}`;{})",
                self.var_id,
-               ty::tls::with(|tcx| ty::local_var_name_str(tcx, self.var_id)),
+               ty::tls::with(|tcx| tcx.local_var_name_str(self.var_id)),
                self.closure_expr_id)
     }
 }

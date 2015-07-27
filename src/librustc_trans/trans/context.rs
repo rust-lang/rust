@@ -10,9 +10,8 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
-use llvm::TargetData;
-use llvm::mk_target_data;
 use metadata::common::LinkMeta;
+use metadata::cstore;
 use middle::def::ExportMap;
 use middle::traits;
 use trans::adt;
@@ -83,7 +82,6 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
-    td: TargetData,
     tn: TypeNames,
     externs: RefCell<ExternMap>,
     item_vals: RefCell<NodeMap<ValueRef>>,
@@ -120,9 +118,6 @@ pub struct LocalCrateContext<'tcx> {
     /// Cache of emitted const values
     const_values: RefCell<FnvHashMap<(ast::NodeId, &'tcx Substs<'tcx>), ValueRef>>,
 
-    /// Cache of emitted static values
-    static_values: RefCell<NodeMap<ValueRef>>,
-
     /// Cache of external const values
     extern_const_values: RefCell<DefIdMap<ValueRef>>,
 
@@ -130,6 +125,12 @@ pub struct LocalCrateContext<'tcx> {
 
     /// Cache of closure wrappers for bare fn's.
     closure_bare_wrapper_cache: RefCell<FnvHashMap<ValueRef, ValueRef>>,
+
+    /// List of globals for static variables which need to be passed to the
+    /// LLVM function ReplaceAllUsesWith (RAUW) when translation is complete.
+    /// (We have to make sure we don't invalidate any ValueRefs referring
+    /// to constants.)
+    statics_to_rauw: RefCell<Vec<(ValueRef, ValueRef)>>,
 
     lltypes: RefCell<FnvHashMap<Ty<'tcx>, Type>>,
     llsizingtypes: RefCell<FnvHashMap<Ty<'tcx>, Type>>,
@@ -145,6 +146,7 @@ pub struct LocalCrateContext<'tcx> {
     dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
 
     eh_personality: RefCell<Option<ValueRef>>,
+    rust_try_fn: RefCell<Option<ValueRef>>,
 
     intrinsics: RefCell<FnvHashMap<&'static str, ValueRef>>,
 
@@ -226,9 +228,15 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
-    let data_layout = sess.target.target.data_layout.as_bytes();
-    let data_layout = CString::new(data_layout).unwrap();
-    llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
+    let custom_data_layout = &sess.target.target.options.data_layout[..];
+    if custom_data_layout.len() > 0 {
+        let data_layout = CString::new(custom_data_layout).unwrap();
+        llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
+    } else {
+        let tm = ::back::write::create_target_machine(sess);
+        llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
+        llvm::LLVMRustDisposeTargetMachine(tm);
+    }
 
     let llvm_target = sess.target.target.llvm_target.as_bytes();
     let llvm_target = CString::new(llvm_target).unwrap();
@@ -419,13 +427,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
         unsafe {
             let (llcx, llmod) = create_context_and_module(&shared.tcx.sess, name);
 
-            let td = mk_target_data(&shared.tcx
-                                          .sess
-                                          .target
-                                          .target
-                                          .data_layout
-                                          );
-
             let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
                 Some(debuginfo::CrateDebugContext::new(llmod))
             } else {
@@ -435,7 +436,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
             let mut local_ccx = LocalCrateContext {
                 llmod: llmod,
                 llcx: llcx,
-                td: td,
                 tn: TypeNames::new(),
                 externs: RefCell::new(FnvHashMap()),
                 item_vals: RefCell::new(NodeMap()),
@@ -452,10 +452,10 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 const_unsized: RefCell::new(FnvHashMap()),
                 const_globals: RefCell::new(FnvHashMap()),
                 const_values: RefCell::new(FnvHashMap()),
-                static_values: RefCell::new(NodeMap()),
                 extern_const_values: RefCell::new(DefIdMap()),
                 impl_method_cache: RefCell::new(FnvHashMap()),
                 closure_bare_wrapper_cache: RefCell::new(FnvHashMap()),
+                statics_to_rauw: RefCell::new(Vec::new()),
                 lltypes: RefCell::new(FnvHashMap()),
                 llsizingtypes: RefCell::new(FnvHashMap()),
                 adt_reprs: RefCell::new(FnvHashMap()),
@@ -466,6 +466,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 closure_vals: RefCell::new(FnvHashMap()),
                 dbg_cx: dbg_cx,
                 eh_personality: RefCell::new(None),
+                rust_try_fn: RefCell::new(None),
                 intrinsics: RefCell::new(FnvHashMap()),
                 n_llvm_insns: Cell::new(0),
                 trait_cache: RefCell::new(FnvHashMap()),
@@ -581,8 +582,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.llcx
     }
 
-    pub fn td<'a>(&'a self) -> &'a TargetData {
-        &self.local.td
+    pub fn td(&self) -> llvm::TargetDataRef {
+        unsafe { llvm::LLVMRustGetModuleDataLayout(self.llmod()) }
     }
 
     pub fn tn<'a>(&'a self) -> &'a TypeNames {
@@ -662,10 +663,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.const_values
     }
 
-    pub fn static_values<'a>(&'a self) -> &'a RefCell<NodeMap<ValueRef>> {
-        &self.local.static_values
-    }
-
     pub fn extern_const_values<'a>(&'a self) -> &'a RefCell<DefIdMap<ValueRef>> {
         &self.local.extern_const_values
     }
@@ -677,6 +674,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn closure_bare_wrapper_cache<'a>(&'a self) -> &'a RefCell<FnvHashMap<ValueRef, ValueRef>> {
         &self.local.closure_bare_wrapper_cache
+    }
+
+    pub fn statics_to_rauw<'a>(&'a self) -> &'a RefCell<Vec<(ValueRef, ValueRef)>> {
+        &self.local.statics_to_rauw
     }
 
     pub fn lltypes<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, Type>> {
@@ -731,6 +732,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.eh_personality
     }
 
+    pub fn rust_try_fn<'a>(&'a self) -> &'a RefCell<Option<ValueRef>> {
+        &self.local.rust_try_fn
+    }
+
     fn intrinsics<'a>(&'a self) -> &'a RefCell<FnvHashMap<&'static str, ValueRef>> {
         &self.local.intrinsics
     }
@@ -783,6 +788,29 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.shared.use_dll_storage_attrs()
     }
+
+    /// Tests whether the given `krate` (an upstream crate) is ever used as a
+    /// dynamic library for the final linkage of this crate.
+    pub fn upstream_dylib_used(&self, krate: ast::CrateNum) -> bool {
+        let tcx = self.tcx();
+        let formats = tcx.dependency_formats.borrow();
+        tcx.sess.crate_types.borrow().iter().any(|ct| {
+            match formats[ct].get(krate as usize - 1) {
+                // If a crate is explicitly linked dynamically then we're
+                // definitely using it dynamically. If it's not being linked
+                // then currently that means it's being included through another
+                // dynamic library, so we're including it dynamically.
+                Some(&Some(cstore::RequireDynamic)) |
+                Some(&None) => true,
+
+                // Static linkage isn't included dynamically and if there's not
+                // an entry in the array then this crate type isn't actually
+                // doing much linkage so there's nothing dynamic going on.
+                Some(&Some(cstore::RequireStatic)) |
+                None => false,
+            }
+        })
+    }
 }
 
 /// Declare any llvm intrinsics that you might need
@@ -791,7 +819,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
         ($name:expr, fn() -> $ret:expr) => (
             if *key == $name {
                 let f = declare::declare_cfn(ccx, $name, Type::func(&[], &$ret),
-                                             ty::mk_nil(ccx.tcx()));
+                                             ccx.tcx().mk_nil());
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
@@ -799,7 +827,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
         ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
             if *key == $name {
                 let f = declare::declare_cfn(ccx, $name, Type::func(&[$($arg),*], &$ret),
-                                             ty::mk_nil(ccx.tcx()));
+                                             ccx.tcx().mk_nil());
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
@@ -928,6 +956,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);
 
     ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
+    ifn!("llvm.eh.typeid.for", fn(i8p) -> t_i32);
 
     // Some intrinsics were introduced in later versions of LLVM, but they have
     // fallbacks in libc or libm and such.
@@ -939,7 +968,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
             } else if *key == $name {
                 let f = declare::declare_cfn(ccx, stringify!($cname),
                                              Type::func(&[$($arg),*], &void),
-                                             ty::mk_nil(ccx.tcx()));
+                                             ccx.tcx().mk_nil());
                 llvm::SetLinkage(f, llvm::InternalLinkage);
 
                 let bld = ccx.builder();
@@ -962,7 +991,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
             } else if *key == $name {
                 let f = declare::declare_cfn(ccx, stringify!($cname),
                                              Type::func(&[$($arg),*], &$ret),
-                                             ty::mk_nil(ccx.tcx()));
+                                             ccx.tcx().mk_nil());
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }

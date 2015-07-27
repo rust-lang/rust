@@ -15,7 +15,7 @@ use super::{CombinedSnapshot, InferCtxt, HigherRankedType, SkolemizationMap};
 use super::combine::CombineFields;
 
 use middle::subst;
-use middle::ty::{self, Binder};
+use middle::ty::{self, TypeError, Binder};
 use middle::ty_fold::{self, TypeFoldable};
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
 use syntax::codemap::Span;
@@ -85,11 +85,11 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
                 Err((skol_br, tainted_region)) => {
                     if self.a_is_expected {
                         debug!("Not as polymorphic!");
-                        return Err(ty::terr_regions_insufficiently_polymorphic(skol_br,
+                        return Err(TypeError::RegionsInsufficientlyPolymorphic(skol_br,
                                                                                tainted_region));
                     } else {
                         debug!("Overly polymorphic!");
-                        return Err(ty::terr_regions_overly_polymorphic(skol_br,
+                        return Err(TypeError::RegionsOverlyPolymorphic(skol_br,
                                                                        tainted_region));
                     }
                 }
@@ -359,7 +359,7 @@ fn fold_regions_in<'tcx, T, F>(tcx: &ty::ctxt<'tcx>,
     where T: TypeFoldable<'tcx>,
           F: FnMut(ty::Region, ty::DebruijnIndex) -> ty::Region,
 {
-    unbound_value.fold_with(&mut ty_fold::RegionFolder::new(tcx, &mut |region, current_depth| {
+    ty_fold::fold_regions(tcx, unbound_value, &mut false, |region, current_depth| {
         // we should only be encountering "escaping" late-bound regions here,
         // because the ones at the current level should have been replaced
         // with fresh variables
@@ -369,7 +369,7 @@ fn fold_regions_in<'tcx, T, F>(tcx: &ty::ctxt<'tcx>,
         });
 
         fldr(region, ty::DebruijnIndex::new(current_depth))
-    }))
+    })
 }
 
 impl<'a,'tcx> InferCtxtExt for InferCtxt<'a,'tcx> {
@@ -437,11 +437,10 @@ impl<'a,'tcx> InferCtxtExt for InferCtxt<'a,'tcx> {
         let escaping_types =
             self.type_variables.borrow().types_escaping_snapshot(&snapshot.type_snapshot);
 
-        let escaping_region_vars: FnvHashSet<_> =
-            escaping_types
-            .iter()
-            .flat_map(|&t| ty_fold::collect_regions(self.tcx, &t))
-            .collect();
+        let mut escaping_region_vars = FnvHashSet();
+        for ty in &escaping_types {
+            ty_fold::collect_regions(self.tcx, ty, &mut escaping_region_vars);
+        }
 
         region_vars.retain(|&region_vid| {
             let r = ty::ReInfer(ty::ReVar(region_vid));
@@ -507,7 +506,7 @@ pub fn construct_skolemized_substs<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                   types: &mut subst::VecPerParamSpace<ty::Ty<'tcx>>,
                                   defs: &[ty::TypeParameterDef<'tcx>]) {
         for def in defs {
-            let ty = ty::mk_param_from_def(tcx, def);
+            let ty = tcx.mk_param_from_def(def);
             types.push(def.space, ty);
         }
     }
@@ -649,7 +648,7 @@ pub fn plug_leaks<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     // binder is that we encountered in `value`. The caller is
     // responsible for ensuring that (a) `value` contains at least one
     // binder and (b) that binder is the one we want to use.
-    let result = ty_fold::fold_regions(infcx.tcx, &value, |r, current_depth| {
+    let result = ty_fold::fold_regions(infcx.tcx, &value, &mut false, |r, current_depth| {
         match inv_skol_map.get(&r) {
             None => r,
             Some(br) => {

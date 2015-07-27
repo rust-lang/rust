@@ -106,7 +106,7 @@ extern {}
 #[link(name = "unwind", kind = "static")]
 extern {}
 
-#[cfg(any(target_os = "android", target_os = "openbsd"))]
+#[cfg(any(target_os = "android", target_os = "netbsd", target_os = "openbsd"))]
 #[link(name = "gcc")]
 extern {}
 

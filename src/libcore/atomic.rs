@@ -78,6 +78,7 @@ use intrinsics;
 use cell::UnsafeCell;
 
 use default::Default;
+use fmt;
 
 /// A boolean type which can be safely shared between threads.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -272,13 +273,13 @@ impl AtomicBool {
         unsafe { atomic_swap(self.v.get(), val, order) > 0 }
     }
 
-    /// Stores a value into the bool if the current value is the same as the expected value.
+    /// Stores a value into the `bool` if the current value is the same as the `current` value.
     ///
-    /// The return value is always the previous value. If it is equal to `old`, then the value was
-    /// updated.
+    /// The return value is always the previous value. If it is equal to `current`, then the value
+    /// was updated.
     ///
-    /// `swap` also takes an `Ordering` argument which describes the memory ordering of this
-    /// operation.
+    /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
+    /// this operation.
     ///
     /// # Examples
     ///
@@ -295,11 +296,11 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn compare_and_swap(&self, old: bool, new: bool, order: Ordering) -> bool {
-        let old = if old { UINT_TRUE } else { 0 };
+    pub fn compare_and_swap(&self, current: bool, new: bool, order: Ordering) -> bool {
+        let current = if current { UINT_TRUE } else { 0 };
         let new = if new { UINT_TRUE } else { 0 };
 
-        unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) > 0 }
+        unsafe { atomic_compare_and_swap(self.v.get(), current, new, order) > 0 }
     }
 
     /// Logical "and" with a boolean value.
@@ -515,10 +516,10 @@ impl AtomicIsize {
         unsafe { atomic_swap(self.v.get(), val, order) }
     }
 
-    /// Stores a value into the isize if the current value is the same as the expected value.
+    /// Stores a value into the `isize` if the current value is the same as the `current` value.
     ///
-    /// The return value is always the previous value. If it is equal to `old`, then the value was
-    /// updated.
+    /// The return value is always the previous value. If it is equal to `current`, then the value
+    /// was updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
     /// this operation.
@@ -538,8 +539,8 @@ impl AtomicIsize {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn compare_and_swap(&self, old: isize, new: isize, order: Ordering) -> isize {
-        unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
+    pub fn compare_and_swap(&self, current: isize, new: isize, order: Ordering) -> isize {
+        unsafe { atomic_compare_and_swap(self.v.get(), current, new, order) }
     }
 
     /// Add an isize to the current value, returning the previous value.
@@ -709,10 +710,10 @@ impl AtomicUsize {
         unsafe { atomic_swap(self.v.get(), val, order) }
     }
 
-    /// Stores a value into the usize if the current value is the same as the expected value.
+    /// Stores a value into the `usize` if the current value is the same as the `current` value.
     ///
-    /// The return value is always the previous value. If it is equal to `old`, then the value was
-    /// updated.
+    /// The return value is always the previous value. If it is equal to `current`, then the value
+    /// was updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
     /// this operation.
@@ -732,8 +733,8 @@ impl AtomicUsize {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn compare_and_swap(&self, old: usize, new: usize, order: Ordering) -> usize {
-        unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
+    pub fn compare_and_swap(&self, current: usize, new: usize, order: Ordering) -> usize {
+        unsafe { atomic_compare_and_swap(self.v.get(), current, new, order) }
     }
 
     /// Add to the current usize, returning the previous value.
@@ -910,10 +911,10 @@ impl<T> AtomicPtr<T> {
         unsafe { atomic_swap(self.p.get() as *mut usize, ptr as usize, order) as *mut T }
     }
 
-    /// Stores a value into the pointer if the current value is the same as the expected value.
+    /// Stores a value into the pointer if the current value is the same as the `current` value.
     ///
-    /// The return value is always the previous value. If it is equal to `old`, then the value was
-    /// updated.
+    /// The return value is always the previous value. If it is equal to `current`, then the value
+    /// was updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
     /// this operation.
@@ -933,9 +934,9 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn compare_and_swap(&self, old: *mut T, new: *mut T, order: Ordering) -> *mut T {
+    pub fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
         unsafe {
-            atomic_compare_and_swap(self.p.get() as *mut usize, old as usize,
+            atomic_compare_and_swap(self.p.get() as *mut usize, current as usize,
                                     new as usize, order) as *mut T
         }
     }
@@ -953,7 +954,6 @@ unsafe fn atomic_store<T>(dst: *mut T, val: T, order:Ordering) {
 }
 
 #[inline]
-#[stable(feature = "rust1", since = "1.0.0")]
 unsafe fn atomic_load<T>(dst: *const T, order:Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_load_acq(dst),
@@ -965,7 +965,6 @@ unsafe fn atomic_load<T>(dst: *const T, order:Ordering) -> T {
 }
 
 #[inline]
-#[stable(feature = "rust1", since = "1.0.0")]
 unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xchg_acq(dst, val),
@@ -978,7 +977,6 @@ unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// Returns the old value (like __sync_fetch_and_add).
 #[inline]
-#[stable(feature = "rust1", since = "1.0.0")]
 unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xadd_acq(dst, val),
@@ -991,7 +989,6 @@ unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 /// Returns the old value (like __sync_fetch_and_sub).
 #[inline]
-#[stable(feature = "rust1", since = "1.0.0")]
 unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xsub_acq(dst, val),
@@ -1003,7 +1000,6 @@ unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
-#[stable(feature = "rust1", since = "1.0.0")]
 unsafe fn atomic_compare_and_swap<T>(dst: *mut T, old:T, new:T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_cxchg_acq(dst, old, new),
@@ -1015,7 +1011,6 @@ unsafe fn atomic_compare_and_swap<T>(dst: *mut T, old:T, new:T, order: Ordering)
 }
 
 #[inline]
-#[stable(feature = "rust1", since = "1.0.0")]
 unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_and_acq(dst, val),
@@ -1027,7 +1022,6 @@ unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
-#[stable(feature = "rust1", since = "1.0.0")]
 unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_nand_acq(dst, val),
@@ -1040,7 +1034,6 @@ unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 
 #[inline]
-#[stable(feature = "rust1", since = "1.0.0")]
 unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_or_acq(dst, val),
@@ -1053,7 +1046,6 @@ unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
 
 
 #[inline]
-#[stable(feature = "rust1", since = "1.0.0")]
 unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_xor_acq(dst, val),
@@ -1096,5 +1088,25 @@ pub fn fence(order: Ordering) {
             SeqCst  => intrinsics::atomic_fence(),
             Relaxed => panic!("there is no such thing as a relaxed fence")
         }
+    }
+}
+
+macro_rules! impl_Debug {
+    ($($t:ident)*) => ($(
+        #[stable(feature = "atomic_debug", since = "1.3.0")]
+        impl fmt::Debug for $t {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.debug_tuple(stringify!($t)).field(&self.load(Ordering::SeqCst)).finish()
+            }
+        }
+    )*);
+}
+
+impl_Debug!{ AtomicUsize AtomicIsize AtomicBool }
+
+#[stable(feature = "atomic_debug", since = "1.3.0")]
+impl<T> fmt::Debug for AtomicPtr<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("AtomicPtr").field(&self.load(Ordering::SeqCst)).finish()
     }
 }

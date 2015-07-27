@@ -16,7 +16,7 @@ use middle::def;
 use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
 use middle::traits;
-use middle::ty::{self, AsPredicate, ToPolyTraitRef, TraitRef};
+use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef};
 use middle::infer;
 
 use syntax::ast::DefId;
@@ -73,8 +73,6 @@ pub enum CandidateSource {
     ImplSource(ast::DefId),
     TraitSource(/* trait id */ ast::DefId),
 }
-
-type ItemIndex = usize; // just for doc purposes
 
 /// Determines whether the type `self_ty` supports a method name `method_name` or not.
 pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -167,35 +165,42 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            m_name,
            trait_def_id);
 
-    let trait_def = ty::lookup_trait_def(fcx.tcx(), trait_def_id);
+    let trait_def = fcx.tcx().lookup_trait_def(trait_def_id);
 
-    let expected_number_of_input_types = trait_def.generics.types.len(subst::TypeSpace);
-    let input_types = match opt_input_types {
-        Some(input_types) => {
-            assert_eq!(expected_number_of_input_types, input_types.len());
-            input_types
-        }
-
-        None => {
-            fcx.inh.infcx.next_ty_vars(expected_number_of_input_types)
-        }
-    };
+    let type_parameter_defs = trait_def.generics.types.get_slice(subst::TypeSpace);
+    let expected_number_of_input_types = type_parameter_defs.len();
 
     assert_eq!(trait_def.generics.types.len(subst::FnSpace), 0);
     assert!(trait_def.generics.regions.is_empty());
 
     // Construct a trait-reference `self_ty : Trait<input_tys>`
-    let substs = subst::Substs::new_trait(input_types, Vec::new(), self_ty);
+    let mut substs = subst::Substs::new_trait(Vec::new(), Vec::new(), self_ty);
+
+    match opt_input_types {
+        Some(input_types) => {
+            assert_eq!(expected_number_of_input_types, input_types.len());
+            substs.types.replace(subst::ParamSpace::TypeSpace, input_types);
+        }
+
+        None => {
+            fcx.inh.infcx.type_vars_for_defs(
+                span,
+                subst::ParamSpace::TypeSpace,
+                &mut substs,
+                type_parameter_defs);
+        }
+    }
+
     let trait_ref = ty::TraitRef::new(trait_def_id, fcx.tcx().mk_substs(substs));
 
     // Construct an obligation
     let poly_trait_ref = trait_ref.to_poly_trait_ref();
     let obligation = traits::Obligation::misc(span,
                                               fcx.body_id,
-                                              poly_trait_ref.as_predicate());
+                                              poly_trait_ref.to_predicate());
 
     // Now we want to know if this can be matched
-    let mut selcx = traits::SelectionContext::new(fcx.infcx(), fcx);
+    let mut selcx = traits::SelectionContext::new(fcx.infcx());
     if !selcx.evaluate_obligation(&obligation) {
         debug!("--> Cannot match obligation");
         return None; // Cannot be matched, no such method resolution is possible.
@@ -204,14 +209,13 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Trait must have a method named `m_name` and it should not have
     // type parameters or early-bound regions.
     let tcx = fcx.tcx();
-    let (method_num, method_ty) = trait_item(tcx, trait_def_id, m_name)
-            .and_then(|(idx, item)| item.as_opt_method().map(|m| (idx, m)))
-            .unwrap();
+    let method_item = trait_item(tcx, trait_def_id, m_name).unwrap();
+    let method_ty = method_item.as_opt_method().unwrap();
     assert_eq!(method_ty.generics.types.len(subst::FnSpace), 0);
     assert_eq!(method_ty.generics.regions.len(subst::FnSpace), 0);
 
-    debug!("lookup_in_trait_adjusted: method_num={} method_ty={:?}",
-           method_num, method_ty);
+    debug!("lookup_in_trait_adjusted: method_item={:?} method_ty={:?}",
+           method_item, method_ty);
 
     // Instantiate late-bound regions and substitute the trait
     // parameters into the method type to get the actual method type.
@@ -224,7 +228,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                                        &method_ty.fty.sig).0;
     let fn_sig = fcx.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
     let transformed_self_ty = fn_sig.inputs[0];
-    let fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(ty::BareFnTy {
+    let fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
         sig: ty::Binder(fn_sig),
         unsafety: method_ty.fty.unsafety,
         abi: method_ty.fty.abi.clone(),
@@ -274,7 +278,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     // Trait method is fn(&self) or fn(&mut self), need an
                     // autoref. Pull the region etc out of the type of first argument.
                     match transformed_self_ty.sty {
-                        ty::TyRef(region, ty::mt { mutbl, ty: _ }) => {
+                        ty::TyRef(region, ty::TypeAndMut { mutbl, ty: _ }) => {
                             fcx.write_adjustment(self_expr.id,
                                 ty::AdjustDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,
@@ -309,11 +313,9 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
     let callee = ty::MethodCallee {
-        origin: ty::MethodTypeParam(ty::MethodParam{trait_ref: trait_ref.clone(),
-                                                    method_num: method_num,
-                                                    impl_def_id: None}),
+        def_id: method_item.def_id(),
         ty: fty,
-        substs: trait_ref.substs.clone()
+        substs: trait_ref.substs
     };
 
     debug!("callee = {:?}", callee);
@@ -332,14 +334,15 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
     let def_id = pick.item.def_id();
     let mut lp = LastMod(AllPublic);
+    let container_def_id = pick.item.container().id();
     let provenance = match pick.kind {
-        probe::InherentImplPick(impl_def_id) => {
+        probe::InherentImplPick => {
             if pick.item.vis() != ast::Public {
                 lp = LastMod(DependsOn(def_id));
             }
-            def::FromImpl(impl_def_id)
+            def::FromImpl(container_def_id)
         }
-        _ => def::FromTrait(pick.item.container().id())
+        _ => def::FromTrait(container_def_id)
     };
     let def_result = match pick.item {
         ty::ImplOrTraitItem::MethodTraitItem(..) => def::DefMethod(def_id, provenance),
@@ -352,19 +355,17 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 }
 
 
-/// Find item with name `item_name` defined in `trait_def_id` and return it, along with its
-/// index (or `None`, if no such item).
+/// Find item with name `item_name` defined in `trait_def_id`
+/// and return it, or `None`, if no such item.
 fn trait_item<'tcx>(tcx: &ty::ctxt<'tcx>,
                     trait_def_id: ast::DefId,
                     item_name: ast::Name)
-                    -> Option<(usize, ty::ImplOrTraitItem<'tcx>)>
+                    -> Option<ty::ImplOrTraitItem<'tcx>>
 {
-    let trait_items = ty::trait_items(tcx, trait_def_id);
-    trait_items
-        .iter()
-        .enumerate()
-        .find(|&(_, ref item)| item.name() == item_name)
-        .map(|(num, item)| (num, (*item).clone()))
+    let trait_items = tcx.trait_items(trait_def_id);
+    trait_items.iter()
+               .find(|item| item.name() == item_name)
+               .cloned()
 }
 
 fn impl_item<'tcx>(tcx: &ty::ctxt<'tcx>,
@@ -376,6 +377,6 @@ fn impl_item<'tcx>(tcx: &ty::ctxt<'tcx>,
     let impl_items = impl_items.get(&impl_def_id).unwrap();
     impl_items
         .iter()
-        .map(|&did| ty::impl_or_trait_item(tcx, did.def_id()))
+        .map(|&did| tcx.impl_or_trait_item(did.def_id()))
         .find(|m| m.name() == item_name)
 }

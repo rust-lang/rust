@@ -12,10 +12,10 @@ reference to a trait. So, for example, if there is a generic function like:
 
 and then a call to that function:
 
-    let v: Vec<int> = clone_slice([1, 2, 3])
+    let v: Vec<isize> = clone_slice([1, 2, 3])
 
 it is the job of trait resolution to figure out (in which case)
-whether there exists an impl of `int : Clone`
+whether there exists an impl of `isize : Clone`
 
 Note that in some cases, like generic functions, we may not be able to
 find a specific impl, but we can figure out that the caller must
@@ -115,27 +115,27 @@ trait Convert<Target> {
 
 This trait just has one method. It's about as simple as it gets. It
 converts from the (implicit) `Self` type to the `Target` type. If we
-wanted to permit conversion between `int` and `uint`, we might
+wanted to permit conversion between `isize` and `usize`, we might
 implement `Convert` like so:
 
 ```rust
-impl Convert<uint> for int { ... } // int -> uint
-impl Convert<int> for uint { ... } // uint -> int
+impl Convert<usize> for isize { ... } // isize -> usize
+impl Convert<isize> for usize { ... } // usize -> isize
 ```
 
 Now imagine there is some code like the following:
 
 ```rust
-let x: int = ...;
+let x: isize = ...;
 let y = x.convert();
 ```
 
 The call to convert will generate a trait reference `Convert<$Y> for
-int`, where `$Y` is the type variable representing the type of
+isize`, where `$Y` is the type variable representing the type of
 `y`. When we match this against the two impls we can see, we will find
-that only one remains: `Convert<uint> for int`. Therefore, we can
+that only one remains: `Convert<usize> for isize`. Therefore, we can
 select this impl, which will cause the type of `$Y` to be unified to
-`uint`. (Note that while assembling candidates, we do the initial
+`usize`. (Note that while assembling candidates, we do the initial
 unifications in a transaction, so that they don't affect one another.)
 
 There are tests to this effect in src/test/run-pass:
@@ -225,7 +225,7 @@ Confirmation unifies the output type parameters of the trait with the
 values found in the obligation, possibly yielding a type error.  If we
 return to our example of the `Convert` trait from the previous
 section, confirmation is where an error would be reported, because the
-impl specified that `T` would be `uint`, but the obligation reported
+impl specified that `T` would be `usize`, but the obligation reported
 `char`. Hence the result of selection would be an error.
 
 ### Selection during translation
@@ -250,12 +250,12 @@ Here is an example:
     trait Foo { ... }
     impl<U,T:Bar<U>> Foo for Vec<T> { ... }
 
-    impl Bar<uint> for int { ... }
+    impl Bar<usize> for isize { ... }
 
-After one shallow round of selection for an obligation like `Vec<int>
+After one shallow round of selection for an obligation like `Vec<isize>
 : Foo`, we would know which impl we want, and we would know that
-`T=int`, but we do not know the type of `U`.  We must select the
-nested obligation `int : Bar<U>` to find out that `U=uint`.
+`T=isize`, but we do not know the type of `U`.  We must select the
+nested obligation `isize : Bar<U>` to find out that `U=usize`.
 
 It would be good to only do *just as much* nested resolution as
 necessary. Currently, though, we just do a full resolution.
@@ -263,7 +263,7 @@ necessary. Currently, though, we just do a full resolution.
 # Higher-ranked trait bounds
 
 One of the more subtle concepts at work are *higher-ranked trait
-bounds*. An example of such a bound is `for<'a> MyTrait<&'a int>`.
+bounds*. An example of such a bound is `for<'a> MyTrait<&'a isize>`.
 Let's walk through how selection on higher-ranked trait references
 works.
 
@@ -279,21 +279,21 @@ trait Foo<X> {
 ```
 
 Let's say we have a function `want_hrtb` that wants a type which
-implements `Foo<&'a int>` for any `'a`:
+implements `Foo<&'a isize>` for any `'a`:
 
 ```rust
-fn want_hrtb<T>() where T : for<'a> Foo<&'a int> { ... }
+fn want_hrtb<T>() where T : for<'a> Foo<&'a isize> { ... }
 ```
 
-Now we have a struct `AnyInt` that implements `Foo<&'a int>` for any
+Now we have a struct `AnyInt` that implements `Foo<&'a isize>` for any
 `'a`:
 
 ```rust
 struct AnyInt;
-impl<'a> Foo<&'a int> for AnyInt { }
+impl<'a> Foo<&'a isize> for AnyInt { }
 ```
 
-And the question is, does `AnyInt : for<'a> Foo<&'a int>`? We want the
+And the question is, does `AnyInt : for<'a> Foo<&'a isize>`? We want the
 answer to be yes. The algorithm for figuring it out is closely related
 to the subtyping for higher-ranked types (which is described in
 `middle::infer::higher_ranked::doc`, but also in a [paper by SPJ] that
@@ -306,12 +306,12 @@ I recommend you read).
 [paper by SPJ]: http://research.microsoft.com/en-us/um/people/simonpj/papers/higher-rank/
 
 So let's work through our example. The first thing we would do is to
-skolemize the obligation, yielding `AnyInt : Foo<&'0 int>` (here `'0`
+skolemize the obligation, yielding `AnyInt : Foo<&'0 isize>` (here `'0`
 represents skolemized region #0). Note that now have no quantifiers;
 in terms of the compiler type, this changes from a `ty::PolyTraitRef`
 to a `TraitRef`. We would then create the `TraitRef` from the impl,
 using fresh variables for it's bound regions (and thus getting
-`Foo<&'$a int>`, where `'$a` is the inference variable for `'a`). Next
+`Foo<&'$a isize>`, where `'$a` is the inference variable for `'a`). Next
 we relate the two trait refs, yielding a graph with the constraint
 that `'0 == '$a`. Finally, we check for skolemization "leaks" -- a
 leak is basically any attempt to relate a skolemized region to another
@@ -327,13 +327,13 @@ Let's consider a failure case. Imagine we also have a struct
 
 ```rust
 struct StaticInt;
-impl Foo<&'static int> for StaticInt;
+impl Foo<&'static isize> for StaticInt;
 ```
 
-We want the obligation `StaticInt : for<'a> Foo<&'a int>` to be
+We want the obligation `StaticInt : for<'a> Foo<&'a isize>` to be
 considered unsatisfied. The check begins just as before. `'a` is
 skolemized to `'0` and the impl trait reference is instantiated to
-`Foo<&'static int>`. When we relate those two, we get a constraint
+`Foo<&'static isize>`. When we relate those two, we get a constraint
 like `'static == '0`. This means that the taint set for `'0` is `{'0,
 'static}`, which fails the leak check.
 
@@ -358,13 +358,13 @@ impl<X,F> Foo<X> for F
 }
 ```
 
-Now let's say we have a obligation `for<'a> Foo<&'a int>` and we match
+Now let's say we have a obligation `for<'a> Foo<&'a isize>` and we match
 this impl. What obligation is generated as a result? We want to get
-`for<'a> Bar<&'a int>`, but how does that happen?
+`for<'a> Bar<&'a isize>`, but how does that happen?
 
 After the matching, we are in a position where we have a skolemized
-substitution like `X => &'0 int`. If we apply this substitution to the
-impl obligations, we get `F : Bar<&'0 int>`. Obviously this is not
+substitution like `X => &'0 isize`. If we apply this substitution to the
+impl obligations, we get `F : Bar<&'0 isize>`. Obviously this is not
 directly usable because the skolemized region `'0` cannot leak out of
 our computation.
 
@@ -375,7 +375,7 @@ leak check passed, so this taint set consists solely of the skolemized
 region itself plus various intermediate region variables. We then walk
 the trait-reference and convert every region in that taint set back to
 a late-bound region, so in this case we'd wind up with `for<'a> F :
-Bar<&'a int>`.
+Bar<&'a isize>`.
 
 # Caching and subtle considerations therewith
 
@@ -391,8 +391,8 @@ but *replay* its effects on the type variables.
 
 The high-level idea of how the cache works is that we first replace
 all unbound inference variables with skolemized versions. Therefore,
-if we had a trait reference `uint : Foo<$1>`, where `$n` is an unbound
-inference variable, we might replace it with `uint : Foo<%0>`, where
+if we had a trait reference `usize : Foo<$1>`, where `$n` is an unbound
+inference variable, we might replace it with `usize : Foo<%0>`, where
 `%n` is a skolemized type. We would then look this up in the cache.
 If we found a hit, the hit would tell us the immediate next step to
 take in the selection process: i.e., apply impl #22, or apply where
@@ -401,17 +401,17 @@ Therefore, we search through impls and where clauses and so forth, and
 we come to the conclusion that the only possible impl is this one,
 with def-id 22:
 
-    impl Foo<int> for uint { ... } // Impl #22
+    impl Foo<isize> for usize { ... } // Impl #22
 
-We would then record in the cache `uint : Foo<%0> ==>
+We would then record in the cache `usize : Foo<%0> ==>
 ImplCandidate(22)`. Next we would confirm `ImplCandidate(22)`, which
-would (as a side-effect) unify `$1` with `int`.
+would (as a side-effect) unify `$1` with `isize`.
 
-Now, at some later time, we might come along and see a `uint :
-Foo<$3>`.  When skolemized, this would yield `uint : Foo<%0>`, just as
+Now, at some later time, we might come along and see a `usize :
+Foo<$3>`.  When skolemized, this would yield `usize : Foo<%0>`, just as
 before, and hence the cache lookup would succeed, yielding
 `ImplCandidate(22)`. We would confirm `ImplCandidate(22)` which would
-(as a side-effect) unify `$3` with `int`.
+(as a side-effect) unify `$3` with `isize`.
 
 ## Where clauses and the local vs global cache
 

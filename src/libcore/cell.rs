@@ -36,16 +36,16 @@
 //! would otherwise be disallowed though, there are occasions when interior mutability might be
 //! appropriate, or even *must* be used, e.g.
 //!
-//! * Introducing inherited mutability roots to shared types.
+//! * Introducing mutability 'inside' of something immutable
 //! * Implementation details of logically-immutable methods.
 //! * Mutating implementations of `Clone`.
 //!
-//! ## Introducing inherited mutability roots to shared types
+//! ## Introducing mutability 'inside' of something immutable
 //!
-//! Shared smart pointer types, including `Rc<T>` and `Arc<T>`, provide containers that can be
+//! Many shared smart pointer types, including `Rc<T>` and `Arc<T>`, provide containers that can be
 //! cloned and shared between multiple parties. Because the contained values may be
-//! multiply-aliased, they can only be borrowed as shared references, not mutable references.
-//! Without cells it would be impossible to mutate data inside of shared boxes at all!
+//! multiply-aliased, they can only be borrowed with `&`, not `&mut`. Without cells it would be
+//! impossible to mutate data inside of these smart pointers at all.
 //!
 //! It's very common then to put a `RefCell<T>` inside shared pointer types to reintroduce
 //! mutability:
@@ -65,8 +65,8 @@
 //! ```
 //!
 //! Note that this example uses `Rc<T>` and not `Arc<T>`. `RefCell<T>`s are for single-threaded
-//! scenarios. Consider using `Mutex<T>` if you need shared mutability in a multi-threaded
-//! situation.
+//! scenarios. Consider using `RwLock<T>` or `Mutex<T>` if you need shared mutability in a
+//! multi-threaded situation.
 //!
 //! ## Implementation details of logically-immutable methods
 //!

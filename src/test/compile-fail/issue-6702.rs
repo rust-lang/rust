@@ -14,6 +14,6 @@ struct Monster {
 
 
 fn main() {
-    let _m = Monster(); //~ ERROR `Monster` is a structure name, but
+    let _m = Monster(); //~ ERROR `Monster` is a struct variant name, but
     //~^ HELP did you mean to write: `Monster { /* fields */ }`?
 }

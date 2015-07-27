@@ -22,6 +22,8 @@ use os::windows::ffi::{OsStrExt, OsStringExt};
 use path::PathBuf;
 use time::Duration;
 
+#[macro_use] pub mod compat;
+
 pub mod backtrace;
 pub mod c;
 pub mod condvar;
@@ -36,7 +38,6 @@ pub mod pipe;
 pub mod process;
 pub mod rwlock;
 pub mod stack_overflow;
-pub mod sync;
 pub mod thread;
 pub mod thread_local;
 pub mod time;

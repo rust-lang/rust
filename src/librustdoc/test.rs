@@ -360,7 +360,7 @@ impl Collector {
             let s = self.current_header.as_ref().map(|s| &**s).unwrap_or("");
             format!("{}_{}", s, self.cnt)
         } else {
-            format!("{}_{}", self.names.connect("::"), self.cnt)
+            format!("{}_{}", self.names.join("::"), self.cnt)
         };
         self.cnt += 1;
         let libs = self.libs.clone();

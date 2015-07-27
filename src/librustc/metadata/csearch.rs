@@ -197,7 +197,7 @@ pub fn get_item_attrs(cstore: &cstore::CStore,
 
 pub fn get_struct_fields(cstore: &cstore::CStore,
                          def: ast::DefId)
-                      -> Vec<ty::field_ty> {
+                      -> Vec<ty::FieldTy> {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_struct_fields(cstore.intr.clone(), &*cdata, def.node)
 }

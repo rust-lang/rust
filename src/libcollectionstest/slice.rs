@@ -119,71 +119,48 @@ fn test_first_mut() {
 }
 
 #[test]
-fn test_tail() {
+fn test_split_first() {
     let mut a = vec![11];
     let b: &[i32] = &[];
-    assert_eq!(a.tail(), b);
+    assert!(b.split_first().is_none());
+    assert_eq!(a.split_first(), Some((&11, b)));
     a = vec![11, 12];
     let b: &[i32] = &[12];
-    assert_eq!(a.tail(), b);
+    assert_eq!(a.split_first(), Some((&11, b)));
 }
 
 #[test]
-fn test_tail_mut() {
+fn test_split_first_mut() {
     let mut a = vec![11];
     let b: &mut [i32] = &mut [];
-    assert!(a.tail_mut() == b);
+    assert!(b.split_first_mut().is_none());
+    assert!(a.split_first_mut() == Some((&mut 11, b)));
     a = vec![11, 12];
     let b: &mut [_] = &mut [12];
-    assert!(a.tail_mut() == b);
+    assert!(a.split_first_mut() == Some((&mut 11, b)));
 }
 
 #[test]
-#[should_panic]
-fn test_tail_empty() {
-    let a = Vec::<i32>::new();
-    a.tail();
-}
-
-#[test]
-#[should_panic]
-fn test_tail_mut_empty() {
-    let mut a = Vec::<i32>::new();
-    a.tail_mut();
-}
-
-#[test]
-fn test_init() {
+fn test_split_last() {
     let mut a = vec![11];
     let b: &[i32] = &[];
-    assert_eq!(a.init(), b);
+    assert!(b.split_last().is_none());
+    assert_eq!(a.split_last(), Some((&11, b)));
     a = vec![11, 12];
     let b: &[_] = &[11];
-    assert_eq!(a.init(), b);
+    assert_eq!(a.split_last(), Some((&12, b)));
 }
 
 #[test]
-fn test_init_mut() {
+fn test_split_last_mut() {
     let mut a = vec![11];
     let b: &mut [i32] = &mut [];
-    assert!(a.init_mut() == b);
+    assert!(b.split_last_mut().is_none());
+    assert!(a.split_last_mut() == Some((&mut 11, b)));
+
     a = vec![11, 12];
     let b: &mut [_] = &mut [11];
-    assert!(a.init_mut() == b);
-}
-
-#[test]
-#[should_panic]
-fn test_init_empty() {
-    let a = Vec::<i32>::new();
-    a.init();
-}
-
-#[test]
-#[should_panic]
-fn test_init_mut_empty() {
-    let mut a = Vec::<i32>::new();
-    a.init_mut();
+    assert!(a.split_last_mut() == Some((&mut 12, b)));
 }
 
 #[test]
@@ -606,22 +583,22 @@ fn test_concat() {
     assert_eq!(d, [1, 2, 3]);
 
     let v: &[&[_]] = &[&[1], &[2, 3]];
-    assert_eq!(v.connect(&0), [1, 0, 2, 3]);
+    assert_eq!(v.join(&0), [1, 0, 2, 3]);
     let v: &[&[_]] = &[&[1], &[2], &[3]];
-    assert_eq!(v.connect(&0), [1, 0, 2, 0, 3]);
+    assert_eq!(v.join(&0), [1, 0, 2, 0, 3]);
 }
 
 #[test]
-fn test_connect() {
+fn test_join() {
     let v: [Vec<i32>; 0] = [];
-    assert_eq!(v.connect(&0), []);
-    assert_eq!([vec![1], vec![2, 3]].connect(&0), [1, 0, 2, 3]);
-    assert_eq!([vec![1], vec![2], vec![3]].connect(&0), [1, 0, 2, 0, 3]);
+    assert_eq!(v.join(&0), []);
+    assert_eq!([vec![1], vec![2, 3]].join(&0), [1, 0, 2, 3]);
+    assert_eq!([vec![1], vec![2], vec![3]].join(&0), [1, 0, 2, 0, 3]);
 
     let v: [&[_]; 2] = [&[1], &[2, 3]];
-    assert_eq!(v.connect(&0), [1, 0, 2, 3]);
+    assert_eq!(v.join(&0), [1, 0, 2, 3]);
     let v: [&[_]; 3] = [&[1], &[2], &[3]];
-    assert_eq!(v.connect(&0), [1, 0, 2, 0, 3]);
+    assert_eq!(v.join(&0), [1, 0, 2, 0, 3]);
 }
 
 #[test]
@@ -1318,7 +1295,7 @@ mod bench {
 
     #[bench]
     fn mut_iterator(b: &mut Bencher) {
-        let mut v: Vec<_> = repeat(0).take(100).collect();
+        let mut v = vec![0; 100];
 
         b.iter(|| {
             let mut i = 0;
@@ -1339,11 +1316,11 @@ mod bench {
     }
 
     #[bench]
-    fn connect(b: &mut Bencher) {
+    fn join(b: &mut Bencher) {
         let xss: Vec<Vec<i32>> =
             (0..100).map(|i| (0..i).collect()).collect();
         b.iter(|| {
-            xss.connect(&0)
+            xss.join(&0)
         });
     }
 
@@ -1419,7 +1396,7 @@ mod bench {
     #[bench]
     fn zero_1kb_from_elem(b: &mut Bencher) {
         b.iter(|| {
-            repeat(0u8).take(1024).collect::<Vec<_>>()
+            vec![0u8; 1024]
         });
     }
 
@@ -1467,7 +1444,7 @@ mod bench {
     fn random_inserts(b: &mut Bencher) {
         let mut rng = thread_rng();
         b.iter(|| {
-            let mut v: Vec<_> = repeat((0, 0)).take(30).collect();
+            let mut v = vec![(0, 0); 30];
             for _ in 0..100 {
                 let l = v.len();
                 v.insert(rng.gen::<usize>() % (l + 1),
@@ -1479,7 +1456,7 @@ mod bench {
     fn random_removes(b: &mut Bencher) {
         let mut rng = thread_rng();
         b.iter(|| {
-            let mut v: Vec<_> = repeat((0, 0)).take(130).collect();
+            let mut v = vec![(0, 0); 130];
             for _ in 0..100 {
                 let l = v.len();
                 v.remove(rng.gen::<usize>() % l);

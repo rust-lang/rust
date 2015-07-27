@@ -120,7 +120,8 @@ extern "C" void LLVMAddDereferenceableCallSiteAttr(LLVMValueRef Instr, unsigned 
                                                          idx, B)));
 }
 
-extern "C" void LLVMAddFunctionAttribute(LLVMValueRef Fn, unsigned index, uint64_t Val) {
+extern "C" void LLVMAddFunctionAttribute(LLVMValueRef Fn, unsigned index,
+                                         uint64_t Val) {
   Function *A = unwrap<Function>(Fn);
   AttrBuilder B;
   B.addRawValue(Val);
@@ -825,107 +826,6 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     return true;
 }
 
-extern "C" void*
-LLVMRustOpenArchive(char *path) {
-    ErrorOr<std::unique_ptr<MemoryBuffer>> buf_or = MemoryBuffer::getFile(path,
-                                                                          -1,
-                                                                          false);
-    if (!buf_or) {
-        LLVMRustSetLastError(buf_or.getError().message().c_str());
-        return nullptr;
-    }
-
-#if LLVM_VERSION_MINOR >= 6
-    ErrorOr<std::unique_ptr<Archive>> archive_or =
-        Archive::create(buf_or.get()->getMemBufferRef());
-
-    if (!archive_or) {
-        LLVMRustSetLastError(archive_or.getError().message().c_str());
-        return nullptr;
-    }
-
-    OwningBinary<Archive> *ret = new OwningBinary<Archive>(
-            std::move(archive_or.get()), std::move(buf_or.get()));
-#else
-    std::error_code err;
-    Archive *ret = new Archive(std::move(buf_or.get()), err);
-    if (err) {
-        LLVMRustSetLastError(err.message().c_str());
-        return nullptr;
-    }
-#endif
-
-    return ret;
-}
-
-#if LLVM_VERSION_MINOR >= 6
-typedef OwningBinary<Archive> RustArchive;
-#define GET_ARCHIVE(a) ((a)->getBinary())
-#else
-typedef Archive RustArchive;
-#define GET_ARCHIVE(a) (a)
-#endif
-
-extern "C" void
-LLVMRustDestroyArchive(RustArchive *ar) {
-    delete ar;
-}
-
-struct RustArchiveIterator {
-    Archive::child_iterator cur;
-    Archive::child_iterator end;
-};
-
-extern "C" RustArchiveIterator*
-LLVMRustArchiveIteratorNew(RustArchive *ra) {
-    Archive *ar = GET_ARCHIVE(ra);
-    RustArchiveIterator *rai = new RustArchiveIterator();
-    rai->cur = ar->child_begin();
-    rai->end = ar->child_end();
-    return rai;
-}
-
-extern "C" const Archive::Child*
-LLVMRustArchiveIteratorCurrent(RustArchiveIterator *rai) {
-    if (rai->cur == rai->end)
-        return NULL;
-#if LLVM_VERSION_MINOR >= 6
-    const Archive::Child &ret = *rai->cur;
-    return &ret;
-#else
-    return rai->cur.operator->();
-#endif
-}
-
-extern "C" void
-LLVMRustArchiveIteratorNext(RustArchiveIterator *rai) {
-    if (rai->cur == rai->end)
-        return;
-    ++rai->cur;
-}
-
-extern "C" void
-LLVMRustArchiveIteratorFree(RustArchiveIterator *rai) {
-    delete rai;
-}
-
-extern "C" const char*
-LLVMRustArchiveChildName(const Archive::Child *child, size_t *size) {
-    ErrorOr<StringRef> name_or_err = child->getName();
-    if (name_or_err.getError())
-        return NULL;
-    StringRef name = name_or_err.get();
-    *size = name.size();
-    return name.data();
-}
-
-extern "C" const char*
-LLVMRustArchiveChildData(Archive::Child *child, size_t *size) {
-    StringRef buf = child->getBuffer();
-    *size = buf.size();
-    return buf.data();
-}
-
 extern "C" void
 LLVMRustSetDLLStorageClass(LLVMValueRef Value,
                            GlobalValue::DLLStorageClassTypes Class) {
@@ -1042,4 +942,19 @@ extern "C" void LLVMSetInlineAsmDiagnosticHandler(
 extern "C" void LLVMWriteSMDiagnosticToString(LLVMSMDiagnosticRef d, RustStringRef str) {
     raw_rust_string_ostream os(str);
     unwrap(d)->print("", os);
+}
+
+extern "C" LLVMValueRef
+LLVMRustBuildLandingPad(LLVMBuilderRef Builder,
+                        LLVMTypeRef Ty,
+                        LLVMValueRef PersFn,
+                        unsigned NumClauses,
+                        const char* Name,
+                        LLVMValueRef F) {
+#if LLVM_VERSION_MINOR >= 7
+    unwrap<Function>(F)->setPersonalityFn(unwrap<Constant>(PersFn));
+    return LLVMBuildLandingPad(Builder, Ty, NumClauses, Name);
+#else
+    return LLVMBuildLandingPad(Builder, Ty, PersFn, NumClauses, Name);
+#endif
 }

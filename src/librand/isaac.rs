@@ -126,7 +126,6 @@ impl IsaacRng {
 
     /// Refills the output buffer (`self.rsl`)
     #[inline]
-    #[allow(unsigned_negation)]
     fn isaac(&mut self) {
         self.c = self.c + w(1);
         // abbreviations

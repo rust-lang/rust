@@ -344,7 +344,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
         check_lines,
         breakpoint_lines
     } = parse_debugger_commands(testfile, "gdb");
-    let mut cmds = commands.connect("\n");
+    let mut cmds = commands.join("\n");
 
     // compile test file (it should have 'compile-flags:-g' in the header)
     let compiler_run_result = compile_test(config, props, testfile);
@@ -799,7 +799,7 @@ fn cleanup_debug_info_options(options: &Option<String>) -> Option<String> {
         split_maybe_args(options).into_iter()
                                  .filter(|x| !options_to_remove.contains(x))
                                  .collect::<Vec<String>>()
-                                 .connect(" ");
+                                 .join(" ");
     Some(new_options)
 }
 
@@ -1126,16 +1126,10 @@ impl fmt::Display for Status {
 
 fn compile_test(config: &Config, props: &TestProps,
                 testfile: &Path) -> ProcRes {
-    compile_test_(config, props, testfile, &[])
-}
-
-fn compile_test_(config: &Config, props: &TestProps,
-                 testfile: &Path, extra_args: &[String]) -> ProcRes {
     let aux_dir = aux_output_dir_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let mut link_args = vec!("-L".to_string(),
-                             aux_dir.to_str().unwrap().to_string());
-    link_args.extend(extra_args.iter().cloned());
+    let link_args = vec!("-L".to_string(),
+                         aux_dir.to_str().unwrap().to_string());
     let args = make_compile_args(config,
                                  props,
                                  link_args,
@@ -1144,7 +1138,7 @@ fn compile_test_(config: &Config, props: &TestProps,
 }
 
 fn document(config: &Config, props: &TestProps,
-            testfile: &Path, extra_args: &[String]) -> (ProcRes, PathBuf) {
+            testfile: &Path) -> (ProcRes, PathBuf) {
     let aux_dir = aux_output_dir_name(config, testfile);
     let out_dir = output_base_name(config, testfile);
     let _ = fs::remove_dir_all(&out_dir);
@@ -1154,7 +1148,6 @@ fn document(config: &Config, props: &TestProps,
                         "-o".to_string(),
                         out_dir.to_str().unwrap().to_string(),
                         testfile.to_str().unwrap().to_string()];
-    args.extend(extra_args.iter().cloned());
     args.extend(split_maybe_args(&props.compile_flags));
     let args = ProcArgs {
         prog: config.rustdoc_path.to_str().unwrap().to_string(),
@@ -1419,7 +1412,7 @@ fn make_cmdline(libpath: &str, prog: &str, args: &[String]) -> String {
 
     // Linux and mac don't require adjusting the library search path
     if cfg!(unix) {
-        format!("{} {}", prog, args.connect(" "))
+        format!("{} {}", prog, args.join(" "))
     } else {
         // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
         // for diagnostic purposes
@@ -1427,7 +1420,7 @@ fn make_cmdline(libpath: &str, prog: &str, args: &[String]) -> String {
             format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
         }
 
-        format!("{} {} {}", lib_path_cmd_prefix(libpath), prog, args.connect(" "))
+        format!("{} {} {}", lib_path_cmd_prefix(libpath), prog, args.join(" "))
     }
 }
 
@@ -1709,15 +1702,18 @@ fn run_codegen_test(config: &Config, props: &TestProps, testfile: &Path) {
 }
 
 fn charset() -> &'static str {
-    if cfg!(any(target_os = "bitrig", target_os = "freebsd")) {
+    // FreeBSD 10.1 defaults to GDB 6.1.1 which doesn't support "auto" charset
+    if cfg!(target_os = "bitrig") {
         "auto"
+    } else if cfg!(target_os = "freebsd") {
+        "ISO-8859-1"
     } else {
         "UTF-8"
     }
 }
 
 fn run_rustdoc_test(config: &Config, props: &TestProps, testfile: &Path) {
-    let (proc_res, out_dir) = document(config, props, testfile, &[]);
+    let (proc_res, out_dir) = document(config, props, testfile);
     if !proc_res.status.success() {
         fatal_proc_rec("rustdoc failed!", &proc_res);
     }

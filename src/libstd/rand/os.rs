@@ -41,10 +41,10 @@ mod imp {
         const NR_GETRANDOM: libc::c_long = 318;
         #[cfg(target_arch = "x86")]
         const NR_GETRANDOM: libc::c_long = 355;
-        #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+        #[cfg(any(target_arch = "arm", target_arch = "powerpc"))]
         const NR_GETRANDOM: libc::c_long = 384;
-        #[cfg(target_arch = "powerpc")]
-        const NR_GETRANDOM: libc::c_long = 384;
+        #[cfg(any(target_arch = "aarch64"))]
+        const NR_GETRANDOM: libc::c_long = 278;
 
         unsafe {
             syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), 0)
@@ -187,7 +187,7 @@ mod imp {
     use io;
     use mem;
     use rand::Rng;
-    use libc::{c_int, size_t};
+    use libc::{c_int, c_void, size_t};
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
@@ -205,8 +205,9 @@ mod imp {
         _dummy: (),
     }
 
-    #[repr(C)]
-    struct SecRandom;
+    // Fake definition; this is actually a struct, but we don't use the
+    // contents here.
+    type SecRandom = c_void;
 
     #[allow(non_upper_case_globals)]
     const kSecRandomDefault: *const SecRandom = 0 as *const SecRandom;

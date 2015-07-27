@@ -56,7 +56,7 @@
 //!         optopt("o", "", "set output file name", "NAME"),
 //!         optflag("h", "help", "print this help menu")
 //!     ];
-//!     let matches = match getopts(args.tail(), opts) {
+//!     let matches = match getopts(args[1..], opts) {
 //!         Ok(m) => { m }
 //!         Err(f) => { panic!(f.to_string()) }
 //!     };
@@ -784,13 +784,13 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
 
         // FIXME: #5516 should be graphemes not codepoints
         // wrapped description
-        row.push_str(&desc_rows.connect(&desc_sep[..]));
+        row.push_str(&desc_rows.join(&desc_sep[..]));
 
         row
     });
 
     format!("{}\n\nOptions:\n{}\n", brief,
-            rows.collect::<Vec<String>>().connect("\n"))
+            rows.collect::<Vec<String>>().join("\n"))
 }
 
 fn format_option(opt: &OptGroup) -> String {
@@ -836,7 +836,7 @@ pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> String {
     line.push_str(&opts.iter()
                        .map(format_option)
                        .collect::<Vec<String>>()
-                       .connect(" ")[..]);
+                       .join(" ")[..]);
     line
 }
 

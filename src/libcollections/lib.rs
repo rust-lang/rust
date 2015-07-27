@@ -32,7 +32,6 @@
 
 #![feature(alloc)]
 #![feature(box_patterns)]
-#![feature(box_raw)]
 #![feature(box_syntax)]
 #![feature(core)]
 #![feature(core_intrinsics)]
@@ -77,7 +76,9 @@ extern crate alloc;
 #[cfg(test)] extern crate test;
 
 pub use binary_heap::BinaryHeap;
+#[allow(deprecated)]
 pub use bit_vec::BitVec;
+#[allow(deprecated)]
 pub use bit_set::BitSet;
 pub use btree_map::BTreeMap;
 pub use btree_set::BTreeSet;
@@ -111,11 +112,13 @@ pub mod vec_map;
 
 #[unstable(feature = "bitvec", reason = "RFC 509")]
 pub mod bit_vec {
+    #![allow(deprecated)]
     pub use bit::{BitVec, Iter};
 }
 
 #[unstable(feature = "bitset", reason = "RFC 509")]
 pub mod bit_set {
+    #![allow(deprecated)]
     pub use bit::{BitSet, Union, Intersection, Difference, SymmetricDifference};
     pub use bit::SetIter as Iter;
 }
@@ -129,12 +132,6 @@ pub mod btree_map {
 pub mod btree_set {
     pub use btree::set::*;
 }
-
-
-// FIXME(#14344) this shouldn't be necessary
-#[doc(hidden)]
-#[unstable(feature = "issue_14344_fixme")]
-pub fn fixme_14344_be_sure_to_link_to_collections() {}
 
 #[cfg(not(test))]
 mod std {

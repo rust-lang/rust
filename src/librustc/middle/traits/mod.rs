@@ -17,7 +17,7 @@ pub use self::ObligationCauseCode::*;
 
 use middle::free_region::FreeRegionMap;
 use middle::subst;
-use middle::ty::{self, HasProjectionTypes, Ty};
+use middle::ty::{self, HasTypeFlags, Ty};
 use middle::ty_fold::TypeFoldable;
 use middle::infer::{self, fixup_err_to_string, InferCtxt};
 use std::rc::Rc;
@@ -155,7 +155,7 @@ pub enum SelectionError<'tcx> {
     Unimplemented,
     OutputTypeParameterMismatch(ty::PolyTraitRef<'tcx>,
                                 ty::PolyTraitRef<'tcx>,
-                                ty::type_err<'tcx>),
+                                ty::TypeError<'tcx>),
     TraitNotObjectSafe(ast::DefId),
 }
 
@@ -270,7 +270,7 @@ pub struct VtableImplData<'tcx, N> {
 #[derive(Clone, PartialEq, Eq)]
 pub struct VtableClosureData<'tcx, N> {
     pub closure_def_id: ast::DefId,
-    pub substs: subst::Substs<'tcx>,
+    pub substs: ty::ClosureSubsts<'tcx>,
     /// Nested obligations. This can be non-empty if the closure
     /// signature contains associated types.
     pub nested: Vec<N>
@@ -291,11 +291,13 @@ pub struct VtableBuiltinData<N> {
 /// for the object type `Foo`.
 #[derive(PartialEq,Eq,Clone)]
 pub struct VtableObjectData<'tcx> {
-    /// the object type `Foo`.
-    pub object_ty: Ty<'tcx>,
-
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
     pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
+
+    /// The vtable is formed by concatenating together the method lists of
+    /// the base object trait and all supertraits; this is the start of
+    /// `upcast_trait_ref`'s methods in that vtable.
+    pub vtable_base: usize
 }
 
 /// Creates predicate obligations from the generic bounds.
@@ -312,7 +314,6 @@ pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
 pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                                                 typer: &ty::ClosureTyper<'tcx>,
                                                  ty: Ty<'tcx>,
                                                  bound: ty::BuiltinBound,
                                                  span: Span)
@@ -334,7 +335,7 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     // Note: we only assume something is `Copy` if we can
     // *definitively* show that it implements `Copy`. Otherwise,
     // assume it is move; linear is always ok.
-    match fulfill_cx.select_all_or_error(infcx, typer) {
+    match fulfill_cx.select_all_or_error(infcx) {
         Ok(()) => {
             debug!("type_known_to_meet_builtin_bound: ty={:?} bound={:?} success",
                    ty,
@@ -351,6 +352,7 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     }
 }
 
+// FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
 pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvironment<'a,'tcx>,
                                              cause: ObligationCause<'tcx>)
@@ -396,13 +398,13 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
 
     let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
-    let infcx = infer::new_infer_ctxt(tcx);
-    let predicates = match fully_normalize(&infcx, &elaborated_env, cause,
-                                           &elaborated_env.caller_bounds) {
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(elaborated_env), false);
+    let predicates = match fully_normalize(&infcx, cause,
+                                           &infcx.parameter_environment.caller_bounds) {
         Ok(predicates) => predicates,
         Err(errors) => {
             report_fulfillment_errors(&infcx, &errors);
-            return unnormalized_env; // an unnormalized env is better than nothing
+            return infcx.parameter_environment; // an unnormalized env is better than nothing
         }
     };
 
@@ -420,24 +422,37 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
             // all things considered.
             let err_msg = fixup_err_to_string(fixup_err);
             tcx.sess.span_err(span, &err_msg);
-            return elaborated_env; // an unnormalized env is better than nothing
+            return infcx.parameter_environment; // an unnormalized env is better than nothing
         }
     };
 
-    elaborated_env.with_caller_bounds(predicates)
+    infcx.parameter_environment.with_caller_bounds(predicates)
 }
 
 pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
-                                  closure_typer: &ty::ClosureTyper<'tcx>,
                                   cause: ObligationCause<'tcx>,
                                   value: &T)
                                   -> Result<T, Vec<FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx> + HasProjectionTypes
+    where T : TypeFoldable<'tcx> + HasTypeFlags
 {
     debug!("normalize_param_env(value={:?})", value);
 
-    let mut selcx = &mut SelectionContext::new(infcx, closure_typer);
+    let mut selcx = &mut SelectionContext::new(infcx);
+    // FIXME (@jroesch) ISSUE 26721
+    // I'm not sure if this is a bug or not, needs further investigation.
+    // It appears that by reusing the fulfillment_cx here we incur more
+    // obligations and later trip an asssertion on regionck.rs line 337.
+    //
+    // The two possibilities I see is:
+    //      - normalization is not actually fully happening and we
+    //        have a bug else where
+    //      - we are adding a duplicate bound into the list causing
+    //        its size to change.
+    //
+    // I think we should probably land this refactor and then come
+    // back to this is a follow-up patch.
     let mut fulfill_cx = FulfillmentContext::new(false);
+
     let Normalized { value: normalized_value, obligations } =
         project::normalize(selcx, cause, value);
     debug!("normalize_param_env: normalized_value={:?} obligations={:?}",
@@ -446,7 +461,8 @@ pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     for obligation in obligations {
         fulfill_cx.register_predicate_obligation(selcx.infcx(), obligation);
     }
-    try!(fulfill_cx.select_all_or_error(infcx, closure_typer));
+
+    try!(fulfill_cx.select_all_or_error(infcx));
     let resolved_value = infcx.resolve_type_vars_if_possible(&normalized_value);
     debug!("normalize_param_env: resolved_value={:?}", resolved_value);
     Ok(resolved_value)
@@ -532,7 +548,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableClosure(c) => VtableClosure(VtableClosureData {
                 closure_def_id: c.closure_def_id,
                 substs: c.substs,
-                nested: c.nested.into_iter().map(f).collect()
+                nested: c.nested.into_iter().map(f).collect(),
             })
         }
     }

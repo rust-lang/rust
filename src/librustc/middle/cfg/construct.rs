@@ -332,7 +332,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             ast::ExprIndex(ref l, ref r) |
-            ast::ExprBinary(_, ref l, ref r) if self.is_method_call(expr) => {
+            ast::ExprBinary(_, ref l, ref r) if self.tcx.is_method_call(expr.id) => {
                 self.call(expr, pred, &**l, Some(&**r).into_iter())
             }
 
@@ -342,7 +342,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.straightline(expr, pred, fields)
             }
 
-            ast::ExprUnary(_, ref e) if self.is_method_call(expr) => {
+            ast::ExprUnary(_, ref e) if self.tcx.is_method_call(expr.id) => {
                 self.call(expr, pred, &**e, None::<ast::Expr>.iter())
             }
 
@@ -411,14 +411,14 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             func_or_rcvr: &ast::Expr,
             args: I) -> CFGIndex {
         let method_call = ty::MethodCall::expr(call_expr.id);
-        let return_ty = ty::ty_fn_ret(match self.tcx.method_map.borrow().get(&method_call) {
+        let fn_ty = match self.tcx.tables.borrow().method_map.get(&method_call) {
             Some(method) => method.ty,
-            None => ty::expr_ty_adjusted(self.tcx, func_or_rcvr)
-        });
+            None => self.tcx.expr_ty_adjusted(func_or_rcvr)
+        };
 
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
-        if return_ty.diverges() {
+        if fn_ty.fn_ret().diverges() {
             self.add_unreachable_node()
         } else {
             ret
@@ -630,10 +630,5 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     &format!("bad entry `{:?}` in def_map for label", r));
             }
         }
-    }
-
-    fn is_method_call(&self, expr: &ast::Expr) -> bool {
-        let method_call = ty::MethodCall::expr(expr.id);
-        self.tcx.method_map.borrow().contains_key(&method_call)
     }
 }

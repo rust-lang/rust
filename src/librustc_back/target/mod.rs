@@ -58,6 +58,7 @@ mod dragonfly_base;
 mod freebsd_base;
 mod linux_base;
 mod openbsd_base;
+mod netbsd_base;
 mod windows_base;
 mod windows_msvc_base;
 
@@ -66,8 +67,6 @@ mod windows_msvc_base;
 /// Every field here must be specified, and has no default value.
 #[derive(Clone, Debug)]
 pub struct Target {
-    /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
-    pub data_layout: String,
     /// Target triple to pass to LLVM.
     pub llvm_target: String,
     /// String to use as the `target_endian` `cfg` variable.
@@ -91,6 +90,8 @@ pub struct Target {
 /// these try to take "minimal defaults" that don't assume anything about the runtime they run in.
 #[derive(Clone, Debug)]
 pub struct TargetOptions {
+    /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
+    pub data_layout: String,
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,
     /// Archive utility to use when managing archives. Defaults to "ar".
@@ -165,6 +166,11 @@ pub struct TargetOptions {
     /// the functions in the executable are not randomized and can be used
     /// during an exploit of a vulnerability in any code.
     pub position_independent_executables: bool,
+    /// Format that archives should be emitted in. This affects whether we use
+    /// LLVM to assemble an archive or fall back to the system linker, and
+    /// currently only "gnu" is used to fall into LLVM. Unknown strings cause
+    /// the system linker to be used.
+    pub archive_format: String,
 }
 
 impl Default for TargetOptions {
@@ -172,6 +178,7 @@ impl Default for TargetOptions {
     /// incomplete, and if used for compilation, will certainly not work.
     fn default() -> TargetOptions {
         TargetOptions {
+            data_layout: String::new(),
             linker: "cc".to_string(),
             ar: "ar".to_string(),
             pre_link_args: Vec::new(),
@@ -201,6 +208,7 @@ impl Default for TargetOptions {
             position_independent_executables: false,
             pre_link_objects: Vec::new(),
             post_link_objects: Vec::new(),
+            archive_format: String::new(),
         }
     }
 }
@@ -238,7 +246,6 @@ impl Target {
         };
 
         let mut base = Target {
-            data_layout: get_req_field("data-layout"),
             llvm_target: get_req_field("llvm-target"),
             target_endian: get_req_field("target-endian"),
             target_pointer_width: get_req_field("target-pointer-width"),
@@ -282,6 +289,7 @@ impl Target {
         key!(staticlib_prefix);
         key!(staticlib_suffix);
         key!(features);
+        key!(data_layout);
         key!(dynamic_linking, bool);
         key!(executables, bool);
         key!(morestack, bool);
@@ -361,6 +369,7 @@ impl Target {
             arm_linux_androideabi,
             aarch64_linux_android,
 
+            i686_unknown_freebsd,
             x86_64_unknown_freebsd,
 
             i686_unknown_dragonfly,
@@ -368,6 +377,7 @@ impl Target {
 
             x86_64_unknown_bitrig,
             x86_64_unknown_openbsd,
+            x86_64_unknown_netbsd,
 
             x86_64_apple_darwin,
             i686_apple_darwin,
@@ -381,7 +391,8 @@ impl Target {
             x86_64_pc_windows_gnu,
             i686_pc_windows_gnu,
 
-            x86_64_pc_windows_msvc
+            x86_64_pc_windows_msvc,
+            i686_pc_windows_msvc
         );
 
 

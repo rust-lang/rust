@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(ascii)]
 #![feature(append)]
-#![feature(bit_vec_append_split_off)]
 #![feature(bitset)]
 #![feature(bitvec)]
 #![feature(box_syntax)]
@@ -37,14 +37,16 @@
 #![feature(rustc_private)]
 #![feature(slice_bytes)]
 #![feature(slice_chars)]
-#![feature(slice_extras)]
+#![feature(slice_splits)]
 #![feature(slice_position_elem)]
 #![feature(split_off)]
 #![feature(step_by)]
 #![feature(str_char)]
 #![feature(str_escape)]
 #![feature(str_match_indices)]
+#![feature(str_split_at)]
 #![feature(str_utf16)]
+#![feature(box_str)]
 #![feature(subslice_offset)]
 #![feature(test)]
 #![feature(unboxed_closures)]
@@ -52,8 +54,9 @@
 #![feature(vec_deque_retain)]
 #![feature(vec_from_raw_buf)]
 #![feature(vec_push_all)]
-#![feature(vec_split_off)]
 #![feature(vecmap)]
+
+#![allow(deprecated)]
 
 #[macro_use] extern crate log;
 

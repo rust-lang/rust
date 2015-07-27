@@ -360,7 +360,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, path: &clean::Path,
     match href(did) {
         Some((url, shortty, fqp)) => {
             try!(write!(w, "<a class='{}' href='{}' title='{}'>{}</a>",
-                          shortty, url, fqp.connect("::"), last.name));
+                          shortty, url, fqp.join("::"), last.name));
         }
         _ => try!(write!(w, "{}", last.name)),
     }
@@ -537,6 +537,19 @@ impl fmt::Display for clean::Type {
                 panic!("should have been cleaned")
             }
         }
+    }
+}
+
+impl fmt::Display for clean::Impl {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "impl{} ", self.generics));
+        if let Some(ref ty) = self.trait_ {
+            try!(write!(f, "{}{} for ",
+                        if self.polarity == Some(clean::ImplPolarity::Negative) { "!" } else { "" },
+                        *ty));
+        }
+        try!(write!(f, "{}{}", self.for_, WhereClause(&self.generics)));
+        Ok(())
     }
 }
 

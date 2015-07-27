@@ -13,7 +13,7 @@
 use middle::infer::{InferCtxt, GenericKind};
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, RegionEscape, ToPolyTraitRef, AsPredicate, Ty};
+use middle::ty::{self, RegionEscape, ToPolyTraitRef, ToPredicate, Ty};
 use middle::ty_fold::{TypeFoldable, TypeFolder};
 
 use syntax::ast;
@@ -28,13 +28,11 @@ use util::nodemap::FnvHashSet;
 pub enum Implication<'tcx> {
     RegionSubRegion(Option<Ty<'tcx>>, ty::Region, ty::Region),
     RegionSubGeneric(Option<Ty<'tcx>>, ty::Region, GenericKind<'tcx>),
-    RegionSubClosure(Option<Ty<'tcx>>, ty::Region, ast::DefId, &'tcx Substs<'tcx>),
     Predicate(ast::DefId, ty::Predicate<'tcx>),
 }
 
 struct Implicator<'a, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a,'tcx>,
-    closure_typer: &'a (ty::ClosureTyper<'tcx>+'a),
     body_id: ast::NodeId,
     stack: Vec<(ty::Region, Option<Ty<'tcx>>)>,
     span: Span,
@@ -46,7 +44,6 @@ struct Implicator<'a, 'tcx: 'a> {
 /// appear in a context with lifetime `outer_region`
 pub fn implications<'a,'tcx>(
     infcx: &'a InferCtxt<'a,'tcx>,
-    closure_typer: &ty::ClosureTyper<'tcx>,
     body_id: ast::NodeId,
     ty: Ty<'tcx>,
     outer_region: ty::Region,
@@ -60,8 +57,7 @@ pub fn implications<'a,'tcx>(
 
     let mut stack = Vec::new();
     stack.push((outer_region, None));
-    let mut wf = Implicator { closure_typer: closure_typer,
-                              infcx: infcx,
+    let mut wf = Implicator { infcx: infcx,
                               body_id: body_id,
                               span: span,
                               stack: stack,
@@ -99,9 +95,47 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                 // No borrowed content reachable here.
             }
 
-            ty::TyClosure(def_id, substs) => {
-                let &(r_a, opt_ty) = self.stack.last().unwrap();
-                self.out.push(Implication::RegionSubClosure(opt_ty, r_a, def_id, substs));
+            ty::TyClosure(_, ref substs) => {
+                // FIXME(#27086). We do not accumulate from substs, since they
+                // don't represent reachable data. This means that, in
+                // practice, some of the lifetime parameters might not
+                // be in scope when the body runs, so long as there is
+                // no reachable data with that lifetime. For better or
+                // worse, this is consistent with fn types, however,
+                // which can also encapsulate data in this fashion
+                // (though it's somewhat harder, and typically
+                // requires virtual dispatch).
+                //
+                // Note that changing this (in a naive way, at least)
+                // causes regressions for what appears to be perfectly
+                // reasonable code like this:
+                //
+                // ```
+                // fn foo<'a>(p: &Data<'a>) {
+                //    bar(|q: &mut Parser| q.read_addr())
+                // }
+                // fn bar(p: Box<FnMut(&mut Parser)+'static>) {
+                // }
+                // ```
+                //
+                // Note that `p` (and `'a`) are not used in the
+                // closure at all, but to meet the requirement that
+                // the closure type `C: 'static` (so it can be coerced
+                // to the object type), we get the requirement that
+                // `'a: 'static` since `'a` appears in the closure
+                // type `C`.
+                //
+                // A smarter fix might "prune" unused `func_substs` --
+                // this would avoid breaking simple examples like
+                // this, but would still break others (which might
+                // indeed be invalid, depending on your POV). Pruning
+                // would be a subtle process, since we have to see
+                // what func/type parameters are used and unused,
+                // taking into consideration UFCS and so forth.
+
+                for &upvar_ty in &substs.upvar_tys {
+                    self.accumulate_from_ty(upvar_ty);
+                }
             }
 
             ty::TyTrait(ref t) => {
@@ -112,13 +146,13 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
 
             ty::TyEnum(def_id, substs) |
             ty::TyStruct(def_id, substs) => {
-                let item_scheme = ty::lookup_item_type(self.tcx(), def_id);
+                let item_scheme = self.tcx().lookup_item_type(def_id);
                 self.accumulate_from_adt(ty, def_id, &item_scheme.generics, substs)
             }
 
             ty::TyArray(t, _) |
             ty::TySlice(t) |
-            ty::TyRawPtr(ty::mt { ty: t, .. }) |
+            ty::TyRawPtr(ty::TypeAndMut { ty: t, .. }) |
             ty::TyBox(t) => {
                 self.accumulate_from_ty(t)
             }
@@ -236,7 +270,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                            substs: &Substs<'tcx>)
     {
         let predicates =
-            ty::lookup_predicates(self.tcx(), def_id).instantiate(self.tcx(), substs);
+            self.tcx().lookup_predicates(def_id).instantiate(self.tcx(), substs);
         let predicates = match self.fully_normalize(&predicates) {
             Ok(predicates) => predicates,
             Err(ErrorReported) => { return; }
@@ -250,7 +284,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                 ty::Predicate::Equate(..) => { }
                 ty::Predicate::Projection(..) => { }
                 ty::Predicate::RegionOutlives(ref data) => {
-                    match ty::no_late_bound_regions(self.tcx(), data) {
+                    match self.tcx().no_late_bound_regions(data) {
                         None => { }
                         Some(ty::OutlivesPredicate(r_a, r_b)) => {
                             self.push_sub_region_constraint(Some(ty), r_b, r_a);
@@ -258,7 +292,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                     }
                 }
                 ty::Predicate::TypeOutlives(ref data) => {
-                    match ty::no_late_bound_regions(self.tcx(), data) {
+                    match self.tcx().no_late_bound_regions(data) {
                         None => { }
                         Some(ty::OutlivesPredicate(ty_a, r_b)) => {
                             self.stack.push((r_b, Some(ty)));
@@ -275,7 +309,22 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                                     .map(|pred| Implication::Predicate(def_id, pred));
         self.out.extend(obligations);
 
-        let variances = ty::item_variances(self.tcx(), def_id);
+        let variances = self.tcx().item_variances(def_id);
+        self.accumulate_from_substs(substs, Some(&variances));
+    }
+
+    fn accumulate_from_substs(&mut self,
+                              substs: &Substs<'tcx>,
+                              variances: Option<&ty::ItemVariances>)
+    {
+        let mut tmp_variances = None;
+        let variances = variances.unwrap_or_else(|| {
+            tmp_variances = Some(ty::ItemVariances {
+                types: substs.types.map(|_| ty::Variance::Invariant),
+                regions: substs.regions().map(|_| ty::Variance::Invariant),
+            });
+            tmp_variances.as_ref().unwrap()
+        });
 
         for (&region, &variance) in substs.regions().iter().zip(&variances.regions) {
             match variance {
@@ -316,7 +365,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                data);
 
         for poly_trait_ref in traits::supertraits(self.tcx(), data.to_poly_trait_ref()) {
-            match ty::no_late_bound_regions(self.tcx(), &poly_trait_ref) {
+            match self.tcx().no_late_bound_regions(&poly_trait_ref) {
                 Some(trait_ref) => { self.accumulate_from_assoc_types(trait_ref); }
                 None => { }
             }
@@ -330,11 +379,11 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                trait_ref);
 
         let trait_def_id = trait_ref.def_id;
-        let trait_def = ty::lookup_trait_def(self.tcx(), trait_def_id);
+        let trait_def = self.tcx().lookup_trait_def(trait_def_id);
         let assoc_type_projections: Vec<_> =
             trait_def.associated_type_names
                      .iter()
-                     .map(|&name| ty::mk_projection(self.tcx(), trait_ref.clone(), name))
+                     .map(|&name| self.tcx().mk_projection(trait_ref.clone(), name))
                      .collect();
         debug!("accumulate_from_assoc_types: assoc_type_projections={:?}",
                assoc_type_projections);
@@ -400,11 +449,10 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     }
 
     fn fully_normalize<T>(&self, value: &T) -> Result<T,ErrorReported>
-        where T : TypeFoldable<'tcx> + ty::HasProjectionTypes
+        where T : TypeFoldable<'tcx> + ty::HasTypeFlags
     {
         let value =
             traits::fully_normalize(self.infcx,
-                                    self.closure_typer,
                                     traits::ObligationCause::misc(self.span, self.body_id),
                                     value);
         match value {
@@ -437,7 +485,7 @@ pub fn object_region_bounds<'tcx>(
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically
     // a skolemized type.
-    let open_ty = ty::mk_infer(tcx, ty::FreshTy(0));
+    let open_ty = tcx.mk_infer(ty::FreshTy(0));
 
     // Note that we preserve the overall binding levels here.
     assert!(!open_ty.has_escaping_regions());
@@ -445,7 +493,7 @@ pub fn object_region_bounds<'tcx>(
     let trait_refs = vec!(ty::Binder(ty::TraitRef::new(principal.0.def_id, substs)));
 
     let mut predicates = others.to_predicates(tcx, open_ty);
-    predicates.extend(trait_refs.iter().map(|t| t.as_predicate()));
+    predicates.extend(trait_refs.iter().map(|t| t.to_predicate()));
 
-    ty::required_region_bounds(tcx, open_ty, predicates)
+    tcx.required_region_bounds(open_ty, predicates)
 }

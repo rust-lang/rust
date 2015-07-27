@@ -53,24 +53,31 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
            opt_kind,
            expected_sig);
 
-    let mut fn_ty = astconv::ty_of_closure(
-        fcx,
-        ast::Unsafety::Normal,
-        decl,
-        abi::RustCall,
-        expected_sig);
+    let mut fn_ty = astconv::ty_of_closure(fcx,
+                                           ast::Unsafety::Normal,
+                                           decl,
+                                           abi::RustCall,
+                                           expected_sig);
 
-    let closure_type = ty::mk_closure(fcx.ccx.tcx,
-                                      expr_def_id,
-                                      fcx.ccx.tcx.mk_substs(
-                                        fcx.inh.param_env.free_substs.clone()));
+    // Create type variables (for now) to represent the transformed
+    // types of upvars. These will be unified during the upvar
+    // inference phase (`upvar.rs`).
+    let num_upvars = fcx.tcx().with_freevars(expr.id, |fv| fv.len());
+    let upvar_tys = fcx.infcx().next_ty_vars(num_upvars);
+
+    debug!("check_closure: expr.id={:?} upvar_tys={:?}",
+           expr.id, upvar_tys);
+
+    let closure_type =
+        fcx.ccx.tcx.mk_closure(
+            expr_def_id,
+            fcx.ccx.tcx.mk_substs(fcx.inh.infcx.parameter_environment.free_substs.clone()),
+            upvar_tys);
 
     fcx.write_ty(expr.id, closure_type);
 
-    let fn_sig =
-        ty::liberate_late_bound_regions(fcx.tcx(),
-                                        region::DestructionScopeData::new(body.id),
-                                        &fn_ty.sig);
+    let fn_sig = fcx.tcx().liberate_late_bound_regions(
+        region::DestructionScopeData::new(body.id), &fn_ty.sig);
 
     check_fn(fcx.ccx,
              ast::Unsafety::Normal,
@@ -83,16 +90,16 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
     // Tuple up the arguments and insert the resulting function type into
     // the `closures` table.
-    fn_ty.sig.0.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.0.inputs)];
+    fn_ty.sig.0.inputs = vec![fcx.tcx().mk_tup(fn_ty.sig.0.inputs)];
 
     debug!("closure for {:?} --> sig={:?} opt_kind={:?}",
            expr_def_id,
            fn_ty.sig,
            opt_kind);
 
-    fcx.inh.closure_tys.borrow_mut().insert(expr_def_id, fn_ty);
+    fcx.inh.tables.borrow_mut().closure_tys.insert(expr_def_id, fn_ty);
     match opt_kind {
-        Some(kind) => { fcx.inh.closure_kinds.borrow_mut().insert(expr_def_id, kind); }
+        Some(kind) => { fcx.inh.tables.borrow_mut().closure_kinds.insert(expr_def_id, kind); }
         None => { }
     }
 }
@@ -129,7 +136,7 @@ fn deduce_expectations_from_obligations<'a,'tcx>(
     expected_vid: ty::TyVid)
     -> (Option<ty::FnSig<'tcx>>, Option<ty::ClosureKind>)
 {
-    let fulfillment_cx = fcx.inh.fulfillment_cx.borrow();
+    let fulfillment_cx = fcx.inh.infcx.fulfillment_cx.borrow();
     // Here `expected_ty` is known to be a type inference variable.
 
     let expected_sig =

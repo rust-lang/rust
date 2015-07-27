@@ -22,6 +22,22 @@ matched, one of the preceding patterns will match.
 
 This means that perhaps some of the preceding patterns are too general, this one
 is too specific or the ordering is incorrect.
+
+For example, the following `match` block has too many arms:
+
+```
+match foo {
+    Some(bar) => {/* ... */}
+    None => {/* ... */}
+    _ => {/* ... */} // All possible cases have already been handled
+}
+```
+
+`match` blocks have their patterns matched in order, so, for example, putting
+a wildcard arm above a more specific arm will make the latter arm irrelevant.
+
+Ensure the ordering of the match arm is correct and remove any superfluous
+arms.
 "##,
 
 E0002: r##"
@@ -31,13 +47,50 @@ it is impossible to create an instance of an empty type, so empty match
 expressions are almost never desired.  This error is typically fixed by adding
 one or more cases to the match expression.
 
-An example of an empty type is `enum Empty { }`.
+An example of an empty type is `enum Empty { }`. So, the following will work:
+
+```
+fn foo(x: Empty) {
+    match x {
+        // empty
+    }
+}
+```
+
+However, this won't:
+
+```
+fn foo(x: Option<String>) {
+    match x {
+        // empty
+    }
+}
+```
 "##,
 
 E0003: r##"
 Not-a-Number (NaN) values cannot be compared for equality and hence can never
-match the input to a match expression. To match against NaN values, you should
-instead use the `is_nan` method in a guard, as in: `x if x.is_nan() => ...`
+match the input to a match expression. So, the following will not compile:
+
+```
+const NAN: f32 = 0.0 / 0.0;
+
+match number {
+    NAN => { /* ... */ },
+    // ...
+}
+```
+
+To match against NaN values, you should instead use the `is_nan()` method in a
+guard, like so:
+
+```
+match number {
+    // ...
+    x if x.is_nan() => { /* ... */ }
+    // ...
+}
+```
 "##,
 
 E0004: r##"
@@ -53,15 +106,7 @@ underscore `_` wildcard pattern can be added after all other patterns to match
 "anything else".
 "##,
 
-// FIXME: Remove duplication here?
 E0005: r##"
-Patterns used to bind names must be irrefutable, that is, they must guarantee
-that a name will be extracted in all cases. If you encounter this error you
-probably need to use a `match` or `if let` to deal with the possibility of
-failure.
-"##,
-
-E0006: r##"
 Patterns used to bind names must be irrefutable, that is, they must guarantee
 that a name will be extracted in all cases. If you encounter this error you
 probably need to use a `match` or `if let` to deal with the possibility of
@@ -271,6 +316,28 @@ const FOO: i32 = { const X : i32 = 0; X };
 ```
 "##,
 
+E0017: r##"
+References in statics and constants may only refer to immutable values. Example:
+
+```
+static X: i32 = 1;
+const C: i32 = 2;
+
+// these three are not allowed:
+const CR: &'static mut i32 = &mut C;
+static STATIC_REF: &'static mut i32 = &mut X;
+static CONST_REF: &'static mut i32 = &mut C;
+```
+
+Statics are shared everywhere, and if they refer to mutable data one might
+violate memory safety since holding multiple mutable references to shared data
+is not allowed.
+
+If you really want global mutable state, try using `static mut` or a global
+`UnsafeCell`.
+
+"##,
+
 E0018: r##"
 The value of static and const variables must be known at compile time. You
 can't cast a pointer as an integer because we can't know what value the
@@ -318,7 +385,7 @@ fn main() {
 ```
 
 Remember: you can't use a function call inside a const's initialization
-expression! However, you can totally use it elsewhere you want:
+expression! However, you can totally use it anywhere else:
 
 ```
 fn main() {
@@ -335,10 +402,333 @@ This error indicates that an attempt was made to divide by zero (or take the
 remainder of a zero divisor) in a static or constant expression.
 "##,
 
+E0022: r##"
+Constant functions are not allowed to mutate anything. Thus, binding to an
+argument with a mutable pattern is not allowed. For example,
+
+```
+const fn foo(mut x: u8) {
+    // do stuff
+}
+```
+
+is bad because the function body may not mutate `x`.
+
+Remove any mutable bindings from the argument list to fix this error. In case
+you need to mutate the argument, try lazily initializing a global variable
+instead of using a `const fn`, or refactoring the code to a functional style to
+avoid mutation if possible.
+"##,
+
+E0030: r##"
+When matching against a range, the compiler verifies that the range is
+non-empty.  Range patterns include both end-points, so this is equivalent to
+requiring the start of the range to be less than or equal to the end of the
+range.
+
+For example:
+
+```
+match 5u32 {
+    // This range is ok, albeit pointless.
+    1 ... 1 => ...
+    // This range is empty, and the compiler can tell.
+    1000 ... 5 => ...
+}
+```
+"##,
+
+E0038: r####"
+Trait objects like `Box<Trait>` can only be constructed when certain
+requirements are satisfied by the trait in question.
+
+Trait objects are a form of dynamic dispatch and use a dynamically sized type
+for the inner type. So, for a given trait `Trait`, when `Trait` is treated as a
+type, as in `Box<Trait>`, the inner type is 'unsized'. In such cases the boxed
+pointer is a 'fat pointer' that contains an extra pointer to a table of methods
+(among other things) for dynamic dispatch. This design mandates some
+restrictions on the types of traits that are allowed to be used in trait
+objects, which are collectively termed as 'object safety' rules.
+
+Attempting to create a trait object for a non object-safe trait will trigger
+this error.
+
+There are various rules:
+
+### The trait cannot require `Self: Sized`
+
+When `Trait` is treated as a type, the type does not implement the special
+`Sized` trait, because the type does not have a known size at compile time and
+can only be accessed behind a pointer. Thus, if we have a trait like the
+following:
+
+```
+trait Foo where Self: Sized {
+
+}
+```
+
+we cannot create an object of type `Box<Foo>` or `&Foo` since in this case
+`Self` would not be `Sized`.
+
+Generally, `Self : Sized` is used to indicate that the trait should not be used
+as a trait object. If the trait comes from your own crate, consider removing
+this restriction.
+
+### Method references the `Self` type in its arguments or return type
+
+This happens when a trait has a method like the following:
+
+```
+trait Trait {
+    fn foo(&self) -> Self;
+}
+
+impl Trait for String {
+    fn foo(&self) -> Self {
+        "hi".to_owned()
+    }
+}
+
+impl Trait for u8 {
+    fn foo(&self) -> Self {
+        1
+    }
+}
+```
+
+(Note that `&self` and `&mut self` are okay, it's additional `Self` types which
+cause this problem)
+
+In such a case, the compiler cannot predict the return type of `foo()` in a
+situation like the following:
+
+```
+fn call_foo(x: Box<Trait>) {
+    let y = x.foo(); // What type is y?
+    // ...
+}
+```
+
+If only some methods aren't object-safe, you can add a `where Self: Sized` bound
+on them to mark them as explicitly unavailable to trait objects. The
+functionality will still be available to all other implementers, including
+`Box<Trait>` which is itself sized (assuming you `impl Trait for Box<Trait>`).
+
+```
+trait Trait {
+    fn foo(&self) -> Self where Self: Sized;
+    // more functions
+}
+```
+
+Now, `foo()` can no longer be called on a trait object, but you will now be
+allowed to make a trait object, and that will be able to call any object-safe
+methods". With such a bound, one can still call `foo()` on types implementing
+that trait that aren't behind trait objects.
+
+### Method has generic type parameters
+
+As mentioned before, trait objects contain pointers to method tables. So, if we
+have:
+
+```
+trait Trait {
+    fn foo(&self);
+}
+impl Trait for String {
+    fn foo(&self) {
+        // implementation 1
+    }
+}
+impl Trait for u8 {
+    fn foo(&self) {
+        // implementation 2
+    }
+}
+// ...
+```
+
+At compile time each implementation of `Trait` will produce a table containing
+the various methods (and other items) related to the implementation.
+
+This works fine, but when the method gains generic parameters, we can have a
+problem.
+
+Usually, generic parameters get _monomorphized_. For example, if I have
+
+```
+fn foo<T>(x: T) {
+    // ...
+}
+```
+
+the machine code for `foo::<u8>()`, `foo::<bool>()`, `foo::<String>()`, or any
+other type substitution is different. Hence the compiler generates the
+implementation on-demand. If you call `foo()` with a `bool` parameter, the
+compiler will only generate code for `foo::<bool>()`. When we have additional
+type parameters, the number of monomorphized implementations the compiler
+generates does not grow drastically, since the compiler will only generate an
+implementation if the function is called with unparametrized substitutions
+(i.e., substitutions where none of the substituted types are themselves
+parametrized).
+
+However, with trait objects we have to make a table containing _every_ object
+that implements the trait. Now, if it has type parameters, we need to add
+implementations for every type that implements the trait, and there could
+theoretically be an infinite number of types.
+
+For example, with:
+
+```
+trait Trait {
+    fn foo<T>(&self, on: T);
+    // more methods
+}
+impl Trait for String {
+    fn foo<T>(&self, on: T) {
+        // implementation 1
+    }
+}
+impl Trait for u8 {
+    fn foo<T>(&self, on: T) {
+        // implementation 2
+    }
+}
+// 8 more implementations
+```
+
+Now, if we have the following code:
+
+```
+fn call_foo(thing: Box<Trait>) {
+    thing.foo(true); // this could be any one of the 8 types above
+    thing.foo(1);
+    thing.foo("hello");
+}
+```
+
+we don't just need to create a table of all implementations of all methods of
+`Trait`, we need to create such a table, for each different type fed to
+`foo()`. In this case this turns out to be (10 types implementing `Trait`)*(3
+types being fed to `foo()`) = 30 implementations!
+
+With real world traits these numbers can grow drastically.
+
+To fix this, it is suggested to use a `where Self: Sized` bound similar to the
+fix for the sub-error above if you do not intend to call the method with type
+parameters:
+
+```
+trait Trait {
+    fn foo<T>(&self, on: T) where Self: Sized;
+    // more methods
+}
+```
+
+If this is not an option, consider replacing the type parameter with another
+trait object (e.g. if `T: OtherTrait`, use `on: Box<OtherTrait>`). If the number
+of types you intend to feed to this method is limited, consider manually listing
+out the methods of different types.
+
+### Method has no receiver
+
+Methods that do not take a `self` parameter can't be called since there won't be
+a way to get a pointer to the method table for them
+
+```
+trait Foo {
+    fn foo() -> u8;
+}
+```
+
+This could be called as `<Foo as Foo>::foo()`, which would not be able to pick
+an implementation.
+
+Adding a `Self: Sized` bound to these methods will generally make this compile.
+
+```
+trait Foo {
+    fn foo() -> u8 where Self: Sized;
+}
+```
+
+### The trait cannot use `Self` as a type parameter in the supertrait listing
+
+This is similar to the second sub-error, but subtler. It happens in situations
+like the following:
+
+```
+trait Super<A> {}
+
+trait Trait: Super<Self> {
+}
+
+struct Foo;
+
+impl Super<Foo> for Foo{}
+
+impl Trait for Foo {}
+```
+
+Here, the supertrait might have methods as follows:
+
+```
+trait Super<A> {
+    fn get_a(&self) -> A; // note that this is object safe!
+}
+```
+
+If the trait `Foo` was deriving from something like `Super<String>` or
+`Super<T>` (where `Foo` itself is `Foo<T>`), this is okay, because given a type
+`get_a()` will definitely return an object of that type.
+
+However, if it derives from `Super<Self>`, even though `Super` is object safe,
+the method `get_a()` would return an object of unknown type when called on the
+function. `Self` type parameters let us make object safe traits no longer safe,
+so they are forbidden when specifying supertraits.
+
+There's no easy fix for this, generally code will need to be refactored so that
+you no longer need to derive from `Super<Self>`.
+"####,
+
 E0079: r##"
 Enum variants which contain no data can be given a custom integer
-representation. This error indicates that the value provided is not an
-integer literal and is therefore invalid.
+representation. This error indicates that the value provided is not an integer
+literal and is therefore invalid.
+
+For example, in the following code,
+
+```
+enum Foo {
+    Q = "32"
+}
+```
+
+we try to set the representation to a string.
+
+There's no general fix for this; if you can work with an integer then just set
+it to one:
+
+```
+enum Foo {
+    Q = 32
+}
+```
+
+however if you actually wanted a mapping between variants and non-integer
+objects, it may be preferable to use a method with a match instead:
+
+```
+enum Foo { Q }
+impl Foo {
+    fn get_str(&self) -> &'static str {
+        match *self {
+            Foo::Q => "32",
+        }
+    }
+}
+```
 "##,
 
 E0080: r##"
@@ -357,7 +747,45 @@ Ensure that the expressions given can be evaluated as the desired integer type.
 See the FFI section of the Reference for more information about using a custom
 integer type:
 
-http://doc.rust-lang.org/reference.html#ffi-attributes
+https://doc.rust-lang.org/reference.html#ffi-attributes
+"##,
+
+E0109: r##"
+You tried to give a type parameter to a type which doesn't need it. Erroneous
+code example:
+
+```
+type X = u32<i32>; // error: type parameters are not allowed on this type
+```
+
+Please check that you used the correct type and recheck its definition. Perhaps
+it doesn't need the type parameter.
+
+Example:
+
+```
+type X = u32; // this compiles
+```
+
+Note that type parameters for enum-variant constructors go after the variant,
+not after the enum (Option::None::<u32>, not Option::<u32>::None).
+"##,
+
+E0110: r##"
+You tried to give a lifetime parameter to a type which doesn't need it.
+Erroneous code example:
+
+```
+type X = u32<'static>; // error: lifetime parameters are not allowed on
+                       //        this type
+```
+
+Please check that the correct type was used and recheck its definition; perhaps
+it doesn't need the lifetime parameter. Example:
+
+```
+type X = u32; // ok!
+```
 "##,
 
 E0133: r##"
@@ -374,13 +802,97 @@ fn main() {
 }
 ```
 
-See also http://doc.rust-lang.org/book/unsafe.html
+See also https://doc.rust-lang.org/book/unsafe.html
+"##,
+
+// This shouldn't really ever trigger since the repeated value error comes first
+E0136: r##"
+A binary can only have one entry point, and by default that entry point is the
+function `main()`. If there are multiple such functions, please rename one.
 "##,
 
 E0137: r##"
 This error indicates that the compiler found multiple functions with the
 `#[main]` attribute. This is an error because there must be a unique entry
 point into a Rust program.
+"##,
+
+E0138: r##"
+This error indicates that the compiler found multiple functions with the
+`#[start]` attribute. This is an error because there must be a unique entry
+point into a Rust program.
+"##,
+
+// FIXME link this to the relevant turpl chapters for instilling fear of the
+//       transmute gods in the user
+E0139: r##"
+There are various restrictions on transmuting between types in Rust; for example
+types being transmuted must have the same size. To apply all these restrictions,
+the compiler must know the exact types that may be transmuted. When type
+parameters are involved, this cannot always be done.
+
+So, for example, the following is not allowed:
+
+```
+struct Foo<T>(Vec<T>)
+
+fn foo<T>(x: Vec<T>) {
+    // we are transmuting between Vec<T> and Foo<T> here
+    let y: Foo<T> = unsafe { transmute(x) };
+    // do something with y
+}
+```
+
+In this specific case there's a good chance that the transmute is harmless (but
+this is not guaranteed by Rust). However, when alignment and enum optimizations
+come into the picture, it's quite likely that the sizes may or may not match
+with different type parameter substitutions. It's not possible to check this for
+_all_ possible types, so `transmute()` simply only accepts types without any
+unsubstituted type parameters.
+
+If you need this, there's a good chance you're doing something wrong. Keep in
+mind that Rust doesn't guarantee much about the layout of different structs
+(even two structs with identical declarations may have different layouts). If
+there is a solution that avoids the transmute entirely, try it instead.
+
+If it's possible, hand-monomorphize the code by writing the function for each
+possible type substitution. It's possible to use traits to do this cleanly,
+for example:
+
+```
+trait MyTransmutableType {
+    fn transmute(Vec<Self>) -> Foo<Self>
+}
+
+impl MyTransmutableType for u8 {
+    fn transmute(x: Foo<u8>) -> Vec<u8> {
+        transmute(x)
+    }
+}
+impl MyTransmutableType for String {
+    fn transmute(x: Foo<String>) -> Vec<String> {
+        transmute(x)
+    }
+}
+// ... more impls for the types you intend to transmute
+
+fn foo<T: MyTransmutableType>(x: Vec<T>) {
+    let y: Foo<T> = <T as MyTransmutableType>::transmute(x);
+    // do something with y
+}
+```
+
+Each impl will be checked for a size match in the transmute as usual, and since
+there are no unbound type parameters involved, this should compile unless there
+is a size mismatch in one of the impls.
+
+It is also possible to manually transmute:
+
+```
+let result: SomeType = mem::uninitialized();
+unsafe { copy_nonoverlapping(&v, &result) };
+result // `v` transmuted to type `SomeType`
+```
 "##,
 
 E0152: r##"
@@ -500,6 +1012,14 @@ you prefer them unqualified, you can import the variants into scope:
 use Method::*;
 enum Method { GET, POST }
 ```
+
+If you want others to be able to import variants from your module directly, use
+`pub use`:
+
+```
+pub use Method::*;
+enum Method { GET, POST }
+```
 "##,
 
 E0261: r##"
@@ -568,15 +1088,149 @@ const Y: u32 = X;
 
 E0267: r##"
 This error indicates the use of a loop keyword (`break` or `continue`) inside a
-closure but outside of any loop. Break and continue can be used as normal inside
-closures as long as they are also contained within a loop. To halt the execution
-of a closure you should instead use a return statement.
+closure but outside of any loop. Erroneous code example:
+
+```
+let w = || { break; }; // error: `break` inside of a closure
+```
+
+`break` and `continue` keywords can be used as normal inside closures as long as
+they are also contained within a loop. To halt the execution of a closure you
+should instead use a return statement. Example:
+
+```
+let w = || {
+    for _ in 0..10 {
+        break;
+    }
+};
+
+w();
+```
 "##,
 
 E0268: r##"
 This error indicates the use of a loop keyword (`break` or `continue`) outside
 of a loop. Without a loop to break out of or continue in, no sensible action can
-be taken.
+be taken. Erroneous code example:
+
+```
+fn some_func() {
+    break; // error: `break` outside of loop
+}
+```
+
+Please verify that you are using `break` and `continue` only in loops. Example:
+
+```
+fn some_func() {
+    for _ in 0..10 {
+        break; // ok!
+    }
+}
+```
+"##,
+
+E0269: r##"
+Functions must eventually return a value of their return type. For example, in
+the following function
+
+```
+fn foo(x: u8) -> u8 {
+    if x > 0 {
+        x // alternatively, `return x`
+    }
+    // nothing here
+}
+```
+
+if the condition is true, the value `x` is returned, but if the condition is
+false, control exits the `if` block and reaches a place where nothing is being
+returned. All possible control paths must eventually return a `u8`, which is not
+happening here.
+
+An easy fix for this in a complicated function is to specify a default return
+value, if possible:
+
+```
+fn foo(x: u8) -> u8 {
+    if x > 0 {
+        x // alternatively, `return x`
+    }
+    // lots of other if branches
+    0 // return 0 if all else fails
+}
+```
+
+It is advisable to find out what the unhandled cases are and check for them,
+returning an appropriate value or panicking if necessary.
+"##,
+
+E0270: r##"
+Rust lets you define functions which are known to never return, i.e. are
+'diverging', by marking its return type as `!`.
+
+For example, the following functions never return:
+
+```
+fn foo() -> ! {
+    loop {}
+}
+
+fn bar() -> ! {
+    foo() // foo() is diverging, so this will diverge too
+}
+
+fn baz() -> ! {
+    panic!(); // this macro internally expands to a call to a diverging function
+}
+
+```
+
+Such functions can be used in a place where a value is expected without
+returning a value of that type,  for instance:
+
+```
+let y = match x {
+    1 => 1,
+    2 => 4,
+    _ => foo() // diverging function called here
+};
+println!("{}", y)
+```
+
+If the third arm of the match block is reached, since `foo()` doesn't ever
+return control to the match block, it is fine to use it in a place where an
+integer was expected. The `match` block will never finish executing, and any
+point where `y` (like the print statement) is needed will not be reached.
+
+However, if we had a diverging function that actually does finish execution
+
+```
+fn foo() -> {
+    loop {break;}
+}
+```
+
+then we would have an unknown value for `y` in the following code:
+
+```
+let y = match x {
+    1 => 1,
+    2 => 4,
+    _ => foo()
+};
+println!("{}", y);
+```
+
+In the previous example, the print statement was never reached when the wildcard
+match arm was hit, so we were okay with `foo()` not returning an integer that we
+could set to `y`. But in this example, `foo()` actually does return control, so
+the print statement will be executed with an uninitialized value.
+
+Obviously we cannot have functions which are allowed to be used in such
+positions and yet can return control. So, if you are defining a function that
+returns `!`, make sure that there is no way for it to actually finish executing.
 "##,
 
 E0271: r##"
@@ -711,6 +1365,179 @@ for v in &vs {
         &1 => {}
         _ => {}
     }
+}
+```
+"##,
+
+E0272: r##"
+The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
+message for when a particular trait isn't implemented on a type placed in a
+position that needs that trait. For example, when the following code is
+compiled:
+
+```
+fn foo<T: Index<u8>>(x: T){}
+
+#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
+trait Index<Idx> { ... }
+
+foo(true); // `bool` does not implement `Index<u8>`
+```
+
+there will be an error about `bool` not implementing `Index<u8>`, followed by a
+note saying "the type `bool` cannot be indexed by `u8`".
+
+As you can see, you can specify type parameters in curly braces for substitution
+with the actual types (using the regular format string syntax) in a given
+situation. Furthermore, `{Self}` will substitute to the type (in this case,
+`bool`) that we tried to use.
+
+This error appears when the curly braces contain an identifier which doesn't
+match with any of the type parameters or the string `Self`. This might happen if
+you misspelled a type parameter, or if you intended to use literal curly braces.
+If it is the latter, escape the curly braces with a second curly brace of the
+same type; e.g. a literal `{` is `{{`
+"##,
+
+E0273: r##"
+The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
+message for when a particular trait isn't implemented on a type placed in a
+position that needs that trait. For example, when the following code is
+compiled:
+
+```
+fn foo<T: Index<u8>>(x: T){}
+
+#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
+trait Index<Idx> { ... }
+
+foo(true); // `bool` does not implement `Index<u8>`
+```
+
+there will be an error about `bool` not implementing `Index<u8>`, followed by a
+note saying "the type `bool` cannot be indexed by `u8`".
+
+As you can see, you can specify type parameters in curly braces for substitution
+with the actual types (using the regular format string syntax) in a given
+situation. Furthermore, `{Self}` will substitute to the type (in this case,
+`bool`) that we tried to use.
+
+This error appears when the curly braces do not contain an identifier. Please
+add one of the same name as a type parameter. If you intended to use literal
+braces, use `{{` and `}}` to escape them.
+"##,
+
+E0274: r##"
+The `#[rustc_on_unimplemented]` attribute lets you specify a custom error
+message for when a particular trait isn't implemented on a type placed in a
+position that needs that trait. For example, when the following code is
+compiled:
+
+```
+fn foo<T: Index<u8>>(x: T){}
+
+#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
+trait Index<Idx> { ... }
+
+foo(true); // `bool` does not implement `Index<u8>`
+```
+
+there will be an error about `bool` not implementing `Index<u8>`, followed by a
+note saying "the type `bool` cannot be indexed by `u8`".
+
+For this to work, some note must be specified. An empty attribute will not do
+anything, please remove the attribute or add some helpful note for users of the
+trait.
+"##,
+
+E0275: r##"
+This error occurs when there was a recursive trait requirement that overflowed
+before it could be evaluated. Often this means that there is unbounded recursion
+in resolving some type bounds.
+
+For example, in the following code
+
+```
+trait Foo {}
+
+struct Bar<T>(T);
+
+impl<T> Foo for T where Bar<T>: Foo {}
+```
+
+to determine if a `T` is `Foo`, we need to check if `Bar<T>` is `Foo`. However,
+to do this check, we need to determine that `Bar<Bar<T>>` is `Foo`. To determine
+this, we check if `Bar<Bar<Bar<T>>>` is `Foo`, and so on. This is clearly a
+recursive requirement that can't be resolved directly.
+
+Consider changing your trait bounds so that they're less self-referential.
+"##,
+
+E0276: r##"
+This error occurs when a bound in an implementation of a trait does not match
+the bounds specified in the original trait. For example:
+
+```
+trait Foo {
+ fn foo<T>(x: T);
+}
+
+impl Foo for bool {
+ fn foo<T>(x: T) where T: Copy {}
+}
+```
+
+Here, all types implementing `Foo` must have a method `foo<T>(x: T)` which can
+take any type `T`. However, in the `impl` for `bool`, we have added an extra
+bound that `T` is `Copy`, which isn't compatible with the original trait.
+
+Consider removing the bound from the method or adding the bound to the original
+method definition in the trait.
+"##,
+
+E0277: r##"
+You tried to use a type which doesn't implement some trait in a place which
+expected that trait. Erroneous code example:
+
+```
+// here we declare the Foo trait with a bar method
+trait Foo {
+    fn bar(&self);
+}
+
+// we now declare a function which takes an object implementing the Foo trait
+fn some_func<T: Foo>(foo: T) {
+    foo.bar();
+}
+
+fn main() {
+    // we now call the method with the i32 type, which doesn't implement
+    // the Foo trait
+    some_func(5i32); // error: the trait `Foo` is not implemented for the
+                     //     type `i32`
+}
+```
+
+In order to fix this error, verify that the type you're using does implement
+the trait. Example:
+
+```
+trait Foo {
+    fn bar(&self);
+}
+
+fn some_func<T: Foo>(foo: T) {
+    foo.bar(); // we can now use this method since i32 implements the
+               // Foo trait
+}
+
+// we implement the trait on the i32 type
+impl Foo for i32 {
+    fn bar(&self) {}
+}
+
+fn main() {
+    some_func(5i32); // ok!
 }
 ```
 "##,
@@ -859,16 +1686,16 @@ Updates to the borrow checker in a future version of Rust may remove this
 restriction, but for now patterns must be rewritten without sub-bindings.
 
 ```
-// Code like this...
-match Some(5) {
-    ref op_num @ Some(num) => ...
+// Before.
+match Some("hi".to_string()) {
+    ref op_string_ref @ Some(ref s) => ...
     None => ...
 }
 
 // After.
 match Some("hi".to_string()) {
     Some(ref s) => {
-        let op_string_ref = &Some(&s);
+        let op_string_ref = &Some(s);
         ...
     }
     None => ...
@@ -892,7 +1719,7 @@ a compile-time constant.
 
 E0308: r##"
 This error occurs when the compiler was unable to infer the concrete type of a
-variable. This error can occur for several cases, the most common of which is a
+variable. It can occur for several cases, the most common of which is a
 mismatch in the expected type that the compiler inferred for a variable's
 initializing expression, and the actual type explicitly assigned to the
 variable.
@@ -984,6 +1811,57 @@ From [RFC 246]:
 [RFC 246]: https://github.com/rust-lang/rfcs/pull/246
 "##,
 
+E0395: r##"
+The value assigned to a constant expression must be known at compile time,
+which is not the case when comparing raw pointers. Erroneous code example:
+
+```
+static foo: i32 = 42;
+static bar: i32 = 43;
+
+static baz: bool = { (&foo as *const i32) == (&bar as *const i32) };
+// error: raw pointers cannot be compared in statics!
+```
+
+Please check that the result of the comparison can be determined at compile time
+or isn't assigned to a constant expression. Example:
+
+```
+static foo: i32 = 42;
+static bar: i32 = 43;
+
+let baz: bool = { (&foo as *const i32) == (&bar as *const i32) };
+// baz isn't a constant expression so it's ok
+```
+"##,
+
+E0396: r##"
+The value assigned to a constant expression must be known at compile time,
+which is not the case when dereferencing raw pointers. Erroneous code
+example:
+
+```
+const foo: i32 = 42;
+const baz: *const i32 = (&foo as *const i32);
+
+const deref: i32 = *baz;
+// error: raw pointers cannot be dereferenced in constants
+```
+
+To fix this error, please do not assign this value to a constant expression.
+Example:
+
+```
+const foo: i32 = 42;
+const baz: *const i32 = (&foo as *const i32);
+
+unsafe { let deref: i32 = *baz; }
+// baz isn't a constant expression so it's ok
+```
+
+You'll also note that this assignment must be done in an unsafe block!
+"##,
+
 E0397: r##"
 It is not allowed for a mutable static to allocate or have destructors. For
 example:
@@ -995,32 +1873,52 @@ static mut FOO: Option<Box<usize>> = None;
 // error: mutable statics are not allowed to have destructors
 static mut BAR: Option<Vec<i32>> = None;
 ```
+"##,
+
+E0398: r##"
+In Rust 1.3, the default object lifetime bounds are expected to
+change, as described in RFC #1156 [1]. You are getting a warning
+because the compiler thinks it is possible that this change will cause
+a compilation error in your code. It is possible, though unlikely,
+that this is a false alarm.
+
+The heart of the change is that where `&'a Box<SomeTrait>` used to
+default to `&'a Box<SomeTrait+'a>`, it now defaults to `&'a
+Box<SomeTrait+'static>` (here, `SomeTrait` is the name of some trait
+type). Note that the only types which are affected are references to
+boxes, like `&Box<SomeTrait>` or `&[Box<SomeTrait>]`.  More common
+types like `&SomeTrait` or `Box<SomeTrait>` are unaffected.
+
+To silence this warning, edit your code to use an explicit bound.
+Most of the time, this means that you will want to change the
+signature of a function that you are calling. For example, if
+the error is reported on a call like `foo(x)`, and `foo` is
+defined as follows:
+
+```
+fn foo(arg: &Box<SomeTrait>) { ... }
+```
+
+you might change it to:
+
+```
+fn foo<'a>(arg: &Box<SomeTrait+'a>) { ... }
+```
+
+This explicitly states that you expect the trait object `SomeTrait` to
+contain references (with a maximum lifetime of `'a`).
+
+[1]: https://github.com/rust-lang/rfcs/pull/1156
 "##
 
 }
 
 
 register_diagnostics! {
-    E0017,
-    E0022,
-    E0038,
-    E0109,
-    E0110,
-    E0134,
-    E0135,
-    E0136,
-    E0138,
-    E0139,
+    // E0006 // merged with E0005
+//  E0134,
+//  E0135,
     E0264, // unknown external lang item
-    E0266, // expected item
-    E0269, // not all control paths return a value
-    E0270, // computation may converge in a function marked as diverging
-    E0272, // rustc_on_unimplemented attribute refers to non-existent type parameter
-    E0273, // rustc_on_unimplemented must have named format arguments
-    E0274, // rustc_on_unimplemented must have a value
-    E0275, // overflow evaluating requirement
-    E0276, // requirement appears on impl method but not on corresponding trait method
-    E0277, // trait is not implemented for type
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
@@ -1040,6 +1938,5 @@ register_diagnostics! {
     E0315, // cannot invoke closure outside of its lifetime
     E0316, // nested quantification of lifetimes
     E0370, // discriminant overflow
-    E0395, // pointer comparison in const-expr
-    E0396  // pointer dereference in const-expr
+    E0400  // overloaded derefs are not allowed in constants
 }

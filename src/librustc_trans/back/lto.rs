@@ -16,6 +16,7 @@ use llvm::archive_ro::ArchiveRO;
 use llvm::{ModuleRef, TargetMachineRef, True, False};
 use rustc::metadata::cstore;
 use rustc::util::common::time;
+use back::write::{ModuleConfig, with_llvm_pmb};
 
 use libc;
 use flate;
@@ -23,7 +24,8 @@ use flate;
 use std::ffi::CString;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,
-           tm: TargetMachineRef, reachable: &[String]) {
+           tm: TargetMachineRef, reachable: &[String],
+           config: &ModuleConfig) {
     if sess.opts.cg.prefer_dynamic {
         sess.err("cannot prefer dynamic linking when performing LTO");
         sess.note("only 'staticlib' and 'bin' outputs are supported with LTO");
@@ -56,33 +58,14 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         };
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
-        let file = path.file_name().unwrap().to_str().unwrap();
-        let file = &file[3..file.len() - 5]; // chop off lib/.rlib
-        debug!("reading {}", file);
-        for i in 0.. {
-            let filename = format!("{}.{}.bytecode.deflate", file, i);
-            let msg = format!("check for {}", filename);
-            let bc_encoded = time(sess.time_passes(), &msg, (), |_| {
-                archive.iter().find(|section| {
-                    section.name() == Some(&filename[..])
-                })
-            });
-            let bc_encoded = match bc_encoded {
-                Some(data) => data,
-                None => {
-                    if i == 0 {
-                        // No bitcode was found at all.
-                        sess.fatal(&format!("missing compressed bytecode in {}",
-                                           path.display()));
-                    }
-                    // No more bitcode files to read.
-                    break
-                }
-            };
-            let bc_encoded = bc_encoded.data();
+        let bytecodes = archive.iter().filter_map(|child| {
+            child.name().map(|name| (name, child))
+        }).filter(|&(name, _)| name.ends_with("bytecode.deflate"));
+        for (name, data) in bytecodes {
+            let bc_encoded = data.data();
 
             let bc_decoded = if is_versioned_bytecode_format(bc_encoded) {
-                time(sess.time_passes(), &format!("decode {}.{}.bc", file, i), (), |_| {
+                time(sess.time_passes(), &format!("decode {}", name), (), |_| {
                     // Read the version
                     let version = extract_bytecode_format_version(bc_encoded);
 
@@ -106,7 +89,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                     }
                 })
             } else {
-                time(sess.time_passes(), &format!("decode {}.{}.bc", file, i), (), |_| {
+                time(sess.time_passes(), &format!("decode {}", name), (), |_| {
                 // the object must be in the old, pre-versioning format, so simply
                 // inflate everything and let LLVM decide if it can make sense of it
                     match flate::inflate_bytes(bc_encoded) {
@@ -120,10 +103,8 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             };
 
             let ptr = bc_decoded.as_ptr();
-            debug!("linking {}, part {}", name, i);
-            time(sess.time_passes(),
-                 &format!("ll link {}.{}", name, i),
-                 (),
+            debug!("linking {}", name);
+            time(sess.time_passes(), &format!("ll link {}", name), (),
                  |()| unsafe {
                 if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                         ptr as *const libc::c_char,
@@ -165,19 +146,11 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         llvm::LLVMRustAddAnalysisPasses(tm, pm, llmod);
         llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const _);
 
-        let opt = match sess.opts.optimize {
-            config::No => 0,
-            config::Less => 1,
-            config::Default => 2,
-            config::Aggressive => 3,
-        };
-
-        let builder = llvm::LLVMPassManagerBuilderCreate();
-        llvm::LLVMPassManagerBuilderSetOptLevel(builder, opt);
-        llvm::LLVMPassManagerBuilderPopulateLTOPassManager(builder, pm,
-            /* Internalize = */ False,
-            /* RunInliner = */ True);
-        llvm::LLVMPassManagerBuilderDispose(builder);
+        with_llvm_pmb(llmod, config, &mut |b| {
+            llvm::LLVMPassManagerBuilderPopulateLTOPassManager(b, pm,
+                /* Internalize = */ False,
+                /* RunInliner = */ True);
+        });
 
         llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const _);
 

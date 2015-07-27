@@ -30,7 +30,6 @@ use std::mem;
 use std::collections::HashMap;
 
 use rustc::middle::subst;
-use rustc::middle::ty;
 use syntax::ast;
 
 use clean::PathParameters as PP;
@@ -154,8 +153,8 @@ fn trait_is_same_or_supertrait(cx: &DocContext, child: ast::DefId,
     if child == trait_ {
         return true
     }
-    let def = ty::lookup_trait_def(cx.tcx(), child);
-    let predicates = ty::lookup_predicates(cx.tcx(), child);
+    let def = cx.tcx().lookup_trait_def(child);
+    let predicates = cx.tcx().lookup_predicates(child);
     let generics = (&def.generics, &predicates, subst::TypeSpace).clean(cx);
     generics.where_predicates.iter().filter_map(|pred| {
         match *pred {

@@ -15,7 +15,7 @@
 #![feature(libc)]
 #![feature(path_ext)]
 #![feature(rustc_private)]
-#![feature(slice_extras)]
+#![feature(slice_splits)]
 #![feature(str_char)]
 #![feature(test)]
 #![feature(vec_push_all)]
@@ -90,9 +90,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH"),
           optflag("h", "help", "show this message"));
 
-    assert!(!args.is_empty());
-    let argv0 = args[0].clone();
-    let args_ = args.tail();
+    let (argv0, args_) = args.split_first().unwrap();
     if args[1] == "-h" || args[1] == "--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
         println!("{}", getopts::usage(&message, &groups));

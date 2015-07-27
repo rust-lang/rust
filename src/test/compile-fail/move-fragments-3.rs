@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -30,11 +30,11 @@ pub enum Lonely<X,Y> { Zero, One(X), Two(X, Y) }
 #[rustc_move_fragments]
 pub fn test_match_bind_and_underscore(p: Lonely<D, D>) {
     //~^ ERROR                 parent_of_fragments: `$(local p)`
-    //~| ERROR                  assigned_leaf_path: `($(local p) as Zero)`
-    //~| ERROR                  assigned_leaf_path: `($(local p) as One)`
-    //~| ERROR                 parent_of_fragments: `($(local p) as Two)`
-    //~| ERROR                     moved_leaf_path: `($(local p) as Two).#0`
-    //~| ERROR                    unmoved_fragment: `($(local p) as Two).#1`
+    //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::Zero)`
+    //~| ERROR                  assigned_leaf_path: `($(local p) as Lonely::One)`
+    //~| ERROR                 parent_of_fragments: `($(local p) as Lonely::Two)`
+    //~| ERROR                     moved_leaf_path: `($(local p) as Lonely::Two).#0`
+    //~| ERROR                    unmoved_fragment: `($(local p) as Lonely::Two).#1`
     //~| ERROR                  assigned_leaf_path: `$(local left)`
 
     match p {

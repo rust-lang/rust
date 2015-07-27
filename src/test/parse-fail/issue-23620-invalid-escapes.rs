@@ -16,7 +16,8 @@ fn main() {
     //~^ ERROR unicode escape sequences cannot be used as a byte or in a byte string
 
     let _ = b'\u';
-    //~^ ERROR unknown byte escape: u
+    //~^ ERROR incorrect unicode escape sequence
+    //~^^ ERROR unicode escape sequences cannot be used as a byte or in a byte string
 
     let _ = b'\x5';
     //~^ ERROR numeric character escape is too short
@@ -35,11 +36,12 @@ fn main() {
     let _ = b"\u{a4a4} \xf \u";
     //~^ ERROR unicode escape sequences cannot be used as a byte or in a byte string
     //~^^ ERROR illegal character in numeric character escape:
-    //~^^^ ERROR unknown byte escape: u
+    //~^^^ ERROR incorrect unicode escape sequence
+    //~^^^^ ERROR unicode escape sequences cannot be used as a byte or in a byte string
 
     let _ = "\u{ffffff} \xf \u";
     //~^ ERROR illegal unicode character escape
     //~^^ ERROR illegal character in numeric character escape:
     //~^^^ ERROR form of character escape may only be used with characters in the range [\x00-\x7f]
-    //~^^^^ ERROR unknown character escape: u
+    //~^^^^ ERROR incorrect unicode escape sequence
 }

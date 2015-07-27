@@ -221,6 +221,10 @@ a > code {
     color: #428BCA;
 }
 
+.section-header > a > code {
+    color: #8D1A38;
+}
+
 /* Code highlighting */
 pre.rust .kw { color: #8959A8; }
 pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }

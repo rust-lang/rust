@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+mod sip;
+
 use std::mem;
 use std::hash::{Hash, Hasher};
 use std::default::Default;

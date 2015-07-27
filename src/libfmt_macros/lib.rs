@@ -399,7 +399,7 @@ impl<'a> Parser<'a> {
             }
             Some(..) | None => { return &self.input[..0]; }
         };
-        let mut end;
+        let end;
         loop {
             match self.cur.clone().next() {
                 Some((_, c)) if c.is_xid_continue() => {

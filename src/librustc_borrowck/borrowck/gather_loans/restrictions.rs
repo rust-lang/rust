@@ -124,7 +124,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                             self.bccx.report(
                                 BckError {
                                     span: self.span,
-                                    cause: self.cause,
+                                    cause: BorrowViolation(self.cause),
                                     cmt: cmt_base,
                                     code: err_borrowed_pointer_too_short(
                                         self.loan_region, lt)});

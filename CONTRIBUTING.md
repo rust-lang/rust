@@ -83,6 +83,21 @@ feature. We use the 'fork and pull' model described there.
 
 Please make pull requests against the `master` branch.
 
+Compiling all of `make check` can take a while. When testing your pull request,
+consider using one of the more specialized `make` targets to cut down on the
+amount of time you have to wait. You need to have built the compiler at least
+once before running these will work, but that’s only one full build rather than
+one each time.
+
+    $ make -j8 rustc-stage1 && make check-stage1
+
+is one such example, which builds just `rustc`, and then runs the tests. If
+you’re adding something to the standard library, try
+
+    $ make -j8 check-stage1-std NO_REBUILD=1
+
+This will not rebuild the compiler, but will run the tests.
+
 All pull requests are reviewed by another person. We have a bot,
 @rust-highfive, that will automatically assign a random person to review your
 request.
@@ -108,14 +123,18 @@ will run all the tests on every platform we support. If it all works out,
 
 [merge-queue]: http://buildbot.rust-lang.org/homu/queue/rust
 
+Speaking of tests, Rust has a comprehensive test suite. More information about
+it can be found
+[here](https://github.com/rust-lang/rust-wiki-backup/blob/master/Note-testsuite.md).
+
 ## Writing Documentation
 
 Documentation improvements are very welcome. The source of `doc.rust-lang.org`
 is located in `src/doc` in the tree, and standard API documentation is generated
 from the source code itself.
 
-Documentation pull requests function in the same as other pull requests, though
-you may see a slightly different form of `r+`:
+Documentation pull requests function in the same way as other pull requests,
+though you may see a slightly different form of `r+`:
 
     @bors: r+ 38fe8d2 rollup
 

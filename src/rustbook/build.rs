@@ -196,15 +196,15 @@ impl Subcommand for Build {
         try!(fs::create_dir(&tgt));
 
         // Copy static files
-        try!(fs::copy(
-            &cwd.join("src/rustbook/static/rustbook.css"),
-            &tgt.join("rust-book.css")
-        ));
+        let css = include_bytes!("static/rustbook.css");
+        let js = include_bytes!("static/rustbook.js");
 
-        try!(fs::copy(
-            &cwd.join("src/rustbook/static/rustbook.js"),
-            &tgt.join("rust-book.js")
-        ));
+        let mut css_file = try!(File::create(tgt.join("rust-book.css")));
+        try!(css_file.write_all(css));
+
+        let mut js_file = try!(File::create(tgt.join("rust-book.js")));
+        try!(js_file.write_all(js));
+
 
         let mut summary = try!(File::open(&src.join("SUMMARY.md")));
         match book::parse_summary(&mut summary, &src) {

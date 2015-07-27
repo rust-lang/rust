@@ -35,6 +35,7 @@ pub fn main() {
           target_os = "freebsd",
           target_os = "dragonfly",
           target_os = "bitrig",
+          target_os = "netbsd",
           target_os = "openbsd",
           target_os = "android"))]
 pub fn main() { }

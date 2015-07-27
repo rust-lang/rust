@@ -11,6 +11,5 @@
 //! Operations and constants for signed 8-bits integers (`i8` type)
 
 #![stable(feature = "rust1", since = "1.0.0")]
-#![doc(primitive = "i8")]
 
 int_module! { i8, 8 }

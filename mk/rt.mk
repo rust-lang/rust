@@ -53,9 +53,7 @@ NATIVE_DEPS_hoedown_$(1) := hoedown/src/autolink.c \
 NATIVE_DEPS_miniz_$(1) = miniz.c
 NATIVE_DEPS_rust_builtin_$(1) := rust_builtin.c \
 			rust_android_dummy.c
-NATIVE_DEPS_rustrt_native_$(1) := \
-			rust_try.ll \
-			arch/$$(HOST_$(1))/record_sp.S
+NATIVE_DEPS_rustrt_native_$(1) := arch/$$(HOST_$(1))/record_sp.S
 NATIVE_DEPS_rust_test_helpers_$(1) := rust_test_helpers.c
 NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 
@@ -68,14 +66,6 @@ NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
 # common rules used to build files for various targets.
 
 RT_OUTPUT_DIR_$(1) := $(1)/rt
-
-$$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.ll $$(MKFILE_DEPS) \
-	    $$(LLVM_CONFIG_$$(CFG_BUILD))
-	@mkdir -p $$(@D)
-	@$$(call E, compile: $$@)
-	$$(Q)$$(LLC_$$(CFG_BUILD)) $$(CFG_LLC_FLAGS_$(1)) \
-	    -filetype=obj -mtriple=$$(CFG_LLVM_TARGET_$(1)) \
-	    -relocation-model=pic -o $$@ $$<
 
 $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.c $$(MKFILE_DEPS)
 	@mkdir -p $$(@D)
@@ -90,6 +80,17 @@ $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.S $$(MKFILE_DEPS) \
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
+
+# On MSVC targets the compiler's default include path (e.g. where to find system
+# headers) is specified by the INCLUDE environment variable. This may not be set
+# so the ./configure script scraped the relevant values and this is the location
+# that we put them into cl.exe's environment.
+ifeq ($$(findstring msvc,$(1)),msvc)
+$$(RT_OUTPUT_DIR_$(1))/%.o: \
+	export INCLUDE := $$(CFG_MSVC_INCLUDE_PATH_$$(HOST_$(1)))
+$(1)/rustllvm/%.o: \
+	export INCLUDE := $$(CFG_MSVC_INCLUDE_PATH_$$(HOST_$(1)))
+endif
 endef
 
 $(foreach target,$(CFG_TARGET),$(eval $(call NATIVE_LIBRARIES,$(target))))
@@ -104,7 +105,6 @@ define THIRD_PARTY_LIB
 OBJS_$(2)_$(1) := $$(NATIVE_DEPS_$(2)_$(1):%=$$(RT_OUTPUT_DIR_$(1))/%)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.c=.o)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.cpp=.o)
-OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.ll=.o)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.S=.o)
 NATIVE_$(2)_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),$(2))
 $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1)): $$(OBJS_$(2)_$(1))
@@ -237,7 +237,11 @@ COMPRT_CFLAGS_$(1) := $$(CFG_GCCISH_CFLAGS_$(1))
 ifeq ($$(findstring msvc,$(1)),msvc)
 COMPRT_CC_$(1) := gcc
 COMPRT_AR_$(1) := ar
+ifeq ($$(findstring i686,$(1)),i686)
+COMPRT_CFLAGS_$(1) := $$(CFG_GCCISH_CFLAGS_$(1)) -m32
+else
 COMPRT_CFLAGS_$(1) := $$(CFG_GCCISH_CFLAGS_$(1)) -m64
+endif
 endif
 
 $$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS)

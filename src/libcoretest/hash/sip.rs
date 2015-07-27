@@ -8,26 +8,53 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 use test::Bencher;
-use std::prelude::*;
-use std::fmt;
 
-use str::Str;
-use string::String;
-use slice::{AsSlice, SlicePrelude};
-use vec::Vec;
-
-use core::hash::{Hash, Writer};
-use core::hash::sip::{SipState, hash, hash_with_keys};
+use core::hash::{Hash, Hasher};
+use core::hash::SipHasher;
 
 // Hash just the bytes of the slice, without length prefix
 struct Bytes<'a>(&'a [u8]);
 
-impl<'a, S: Writer> Hash<S> for Bytes<'a> {
+impl<'a> Hash for Bytes<'a> {
     #[allow(unused_must_use)]
-    fn hash(&self, state: &mut S) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         let Bytes(v) = *self;
         state.write(v);
     }
+}
+
+macro_rules! u8to64_le {
+    ($buf:expr, $i:expr) =>
+    ($buf[0+$i] as u64 |
+     ($buf[1+$i] as u64) << 8 |
+     ($buf[2+$i] as u64) << 16 |
+     ($buf[3+$i] as u64) << 24 |
+     ($buf[4+$i] as u64) << 32 |
+     ($buf[5+$i] as u64) << 40 |
+     ($buf[6+$i] as u64) << 48 |
+     ($buf[7+$i] as u64) << 56);
+    ($buf:expr, $i:expr, $len:expr) =>
+    ({
+        let mut t = 0;
+        let mut out = 0;
+        while t < $len {
+            out |= ($buf[t+$i] as u64) << t*8;
+            t += 1;
+        }
+        out
+    });
+}
+
+fn hash<T: Hash>(x: &T) -> u64 {
+    let mut st = SipHasher::new();
+    x.hash(&mut st);
+    st.finish()
+}
+
+fn hash_with_keys<T: Hash>(k1: u64, k2: u64, x: &T) -> u64 {
+    let mut st = SipHasher::new_with_keys(k1, k2);
+    x.hash(&mut st);
+    st.finish()
 }
 
 #[test]
@@ -104,79 +131,43 @@ fn test_siphash() {
     let k1 = 0x_0f_0e_0d_0c_0b_0a_09_08;
     let mut buf = Vec::new();
     let mut t = 0;
-    let mut state_inc = SipState::new_with_keys(k0, k1);
-    let mut state_full = SipState::new_with_keys(k0, k1);
-
-    fn to_hex_str(r: &[u8; 8]) -> String {
-        let mut s = String::new();
-        for b in r {
-            s.push_str(format!("{}", fmt::radix(*b, 16)));
-        }
-        s
-    }
-
-    fn result_bytes(h: u64) -> Vec<u8> {
-        vec![(h >> 0) as u8,
-          (h >> 8) as u8,
-          (h >> 16) as u8,
-          (h >> 24) as u8,
-          (h >> 32) as u8,
-          (h >> 40) as u8,
-          (h >> 48) as u8,
-          (h >> 56) as u8,
-        ]
-    }
-
-    fn result_str(h: u64) -> String {
-        let r = result_bytes(h);
-        let mut s = String::new();
-        for b in &r {
-            s.push_str(format!("{}", fmt::radix(*b, 16)));
-        }
-        s
-    }
+    let mut state_inc = SipHasher::new_with_keys(k0, k1);
 
     while t < 64 {
-        debug!("siphash test {}: {}", t, buf);
         let vec = u8to64_le!(vecs[t], 0);
-        let out = hash_with_keys(k0, k1, &Bytes(buf));
-        debug!("got {}, expected {}", out, vec);
+        let out = hash_with_keys(k0, k1, &Bytes(&buf));
         assert_eq!(vec, out);
 
-        state_full.reset();
-        state_full.write(buf);
-        let f = result_str(state_full.result());
-        let i = result_str(state_inc.result());
-        let v = to_hex_str(&vecs[t]);
-        debug!("{}: ({}) => inc={} full={}", t, v, i, f);
+        let full = hash_with_keys(k0, k1, &Bytes(&buf));
+        let i = state_inc.finish();
 
-        assert_eq!(f, i);
-        assert_eq!(f, v);
+        assert_eq!(full, i);
+        assert_eq!(full, vec);
 
         buf.push(t as u8);
-        state_inc.write(&[t as u8]);
+        Hasher::write(&mut state_inc, &[t as u8]);
 
         t += 1;
     }
 }
 
 #[test] #[cfg(target_arch = "arm")]
-fn test_hash_uint() {
+fn test_hash_usize() {
     let val = 0xdeadbeef_deadbeef_u64;
-    assert!(hash(&(val as u64)) != hash(&(val as uint)));
-    assert_eq!(hash(&(val as u32)), hash(&(val as uint)));
+    assert!(hash(&(val as u64)) != hash(&(val as usize)));
+    assert_eq!(hash(&(val as u32)), hash(&(val as usize)));
 }
 #[test] #[cfg(target_arch = "x86_64")]
-fn test_hash_uint() {
+fn test_hash_usize() {
     let val = 0xdeadbeef_deadbeef_u64;
-    assert_eq!(hash(&(val as u64)), hash(&(val as uint)));
-    assert!(hash(&(val as u32)) != hash(&(val as uint)));
+    assert_eq!(hash(&(val as u64)), hash(&(val as usize)));
+    assert!(hash(&(val as u32)) != hash(&(val as usize)));
 }
 #[test] #[cfg(target_arch = "x86")]
-fn test_hash_uint() {
+fn test_hash_usize() {
     let val = 0xdeadbeef_deadbeef_u64;
-    assert!(hash(&(val as u64)) != hash(&(val as uint)));
-    assert_eq!(hash(&(val as u32)), hash(&(val as uint)));
+    assert!(hash(&(val as u64)) != hash(&(val as usize)));
+    assert_eq!(hash(&(val as u32)), hash(&(val as usize)));
 }
 
 #[test]
@@ -200,7 +191,7 @@ fn test_hash_no_bytes_dropped_64() {
     assert!(hash(&val) != hash(&zero_byte(val, 6)));
     assert!(hash(&val) != hash(&zero_byte(val, 7)));
 
-    fn zero_byte(val: u64, byte: uint) -> u64 {
+    fn zero_byte(val: u64, byte: usize) -> u64 {
         assert!(byte < 8);
         val & !(0xff << (byte * 8))
     }
@@ -215,7 +206,7 @@ fn test_hash_no_bytes_dropped_32() {
     assert!(hash(&val) != hash(&zero_byte(val, 2)));
     assert!(hash(&val) != hash(&zero_byte(val, 3)));
 
-    fn zero_byte(val: u32, byte: uint) -> u32 {
+    fn zero_byte(val: u32, byte: usize) -> u32 {
         assert!(byte < 4);
         val & !(0xff << (byte * 8))
     }
@@ -230,8 +221,9 @@ fn test_hash_no_concat_alias() {
     assert!(s != t && t != u);
     assert!(hash(&s) != hash(&t) && hash(&s) != hash(&u));
 
-    let v: (&[u8], &[u8], &[u8]) = (&[1], &[0, 0], &[0]);
-    let w: (&[u8], &[u8], &[u8]) = (&[1, 0, 0, 0], &[], &[]);
+    let u = [1, 0, 0, 0];
+    let v = (&u[..1], &u[1..3], &u[3..]);
+    let w = (&u[..], &u[4..4], &u[4..4]);
 
     assert!(v != w);
     assert!(hash(&v) != hash(&w));

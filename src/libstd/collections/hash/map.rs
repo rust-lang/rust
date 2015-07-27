@@ -1638,7 +1638,7 @@ mod test_map {
 
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
-    use iter::{range_inclusive, repeat};
+    use iter::range_inclusive;
     use cell::RefCell;
     use rand::{thread_rng, Rng};
 
@@ -1698,7 +1698,7 @@ mod test_map {
     #[test]
     fn test_drops() {
         DROP_VECTOR.with(|slot| {
-            *slot.borrow_mut() = repeat(0).take(200).collect();
+            *slot.borrow_mut() = vec![0; 200];
         });
 
         {
@@ -1757,7 +1757,7 @@ mod test_map {
     #[test]
     fn test_move_iter_drops() {
         DROP_VECTOR.with(|v| {
-            *v.borrow_mut() = repeat(0).take(200).collect();
+            *v.borrow_mut() = vec![0; 200];
         });
 
         let hm = {
