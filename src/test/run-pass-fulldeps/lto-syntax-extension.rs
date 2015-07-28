@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_private)]
+// aux-build:lto-syntax-extension-lib.rs
+// aux-build:lto-syntax-extension-plugin.rs
+// compile-flags:-C lto
+// ignore-stage1
+// no-prefer-dynamic
 
-extern crate lib;
-#[macro_use] extern crate log;
+#![feature(plugin)]
+#![plugin(lto_syntax_extension_plugin)]
 
-fn main() {}
+extern crate lto_syntax_extension_lib;
+
+fn main() {
+    lto_syntax_extension_lib::foo();
+}

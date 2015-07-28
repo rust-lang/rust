@@ -56,6 +56,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[allow(deprecated)]
 use self::MinMaxResult::*;
 
 use clone::Clone;
@@ -445,6 +446,7 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(deprecated)]
     fn scan<St, B, F>(self, initial_state: St, f: F) -> Scan<Self, St, F>
         where Self: Sized, F: FnMut(&mut St, Self::Item) -> Option<B>,
     {
@@ -840,6 +842,8 @@ pub trait Iterator {
     #[unstable(feature = "iter_min_max",
                reason = "return type may change or may wish to have a closure \
                          based version as well")]
+    #[deprecated(since = "1.3.0", reason = "has not proven itself")]
+    #[allow(deprecated)]
     fn min_max(mut self) -> MinMaxResult<Self::Item> where Self: Sized, Self::Item: Ord
     {
         let (mut min, mut max) = match self.next() {
@@ -1336,6 +1340,8 @@ impl<I> RandomAccessIterator for Rev<I>
 #[derive(Clone, PartialEq, Debug)]
 #[unstable(feature = "iter_min_max",
            reason = "unclear whether such a fine-grained result is widely useful")]
+#[deprecated(since = "1.3.0", reason = "has not proven itself")]
+#[allow(deprecated)]
 pub enum MinMaxResult<T> {
     /// Empty iterator
     NoElements,
@@ -1349,6 +1355,8 @@ pub enum MinMaxResult<T> {
 }
 
 #[unstable(feature = "iter_min_max", reason = "type is unstable")]
+#[deprecated(since = "1.3.0", reason = "has not proven itself")]
+#[allow(deprecated)]
 impl<T: Clone> MinMaxResult<T> {
     /// `into_option` creates an `Option` of type `(T,T)`. The returned `Option`
     /// has variant `None` if and only if the `MinMaxResult` has variant
@@ -2249,6 +2257,7 @@ impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
+#[allow(deprecated)]
 pub struct Scan<I, St, F> {
     iter: I,
     f: F,
@@ -2256,6 +2265,7 @@ pub struct Scan<I, St, F> {
     /// The current internal state to be passed to the closure next.
     #[unstable(feature = "scan_state",
                reason = "public fields are otherwise rare in the stdlib")]
+    #[deprecated(since = "1.3.0", reason = "unclear whether this is necessary")]
     pub state: St,
 }
 
@@ -2267,6 +2277,7 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
     type Item = B;
 
     #[inline]
+    #[allow(deprecated)]
     fn next(&mut self) -> Option<B> {
         self.iter.next().and_then(|a| (self.f)(&mut self.state, a))
     }
@@ -2448,6 +2459,8 @@ impl<I> Fuse<I> {
     /// previously returned `None`.
     #[inline]
     #[unstable(feature = "iter_reset_fuse", reason = "seems marginal")]
+    #[deprecated(since = "1.3.0",
+                 reason = "unusual for adaptors to have one-off methods")]
     pub fn reset_fuse(&mut self) {
         self.done = false
     }

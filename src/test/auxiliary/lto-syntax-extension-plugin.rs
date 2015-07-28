@@ -8,8 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
+// force-host
 
-#![crate_type = "rlib"]
+#![feature(plugin_registrar)]
+#![feature(rustc_private)]
 
-pub static FOO: u8 = 8;
+extern crate rustc;
+
+use rustc::plugin::Registry;
+
+#[plugin_registrar]
+pub fn plugin_registrar(_reg: &mut Registry) {}

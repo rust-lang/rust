@@ -426,26 +426,36 @@ impl Ord for Wtf8 {
 /// and surrogates as `\u` followed by four hexadecimal digits.
 /// Example: `"a\u{D800}"` for a slice with code points [U+0061, U+D800]
 impl fmt::Debug for Wtf8 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn write_str_escaped(f: &mut fmt::Formatter, s: &str) -> fmt::Result {
+            use fmt::Write;
+            for c in s.chars().flat_map(|c| c.escape_default()) {
+                try!(f.write_char(c))
+            }
+            Ok(())
+        }
+
         try!(formatter.write_str("\""));
         let mut pos = 0;
         loop {
             match self.next_surrogate(pos) {
                 None => break,
                 Some((surrogate_pos, surrogate)) => {
-                    try!(formatter.write_str(unsafe {
-                        // the data in this slice is valid UTF-8, transmute to &str
-                        mem::transmute(&self.bytes[pos .. surrogate_pos])
-                    }));
+                    try!(write_str_escaped(
+                        formatter,
+                        unsafe { str::from_utf8_unchecked(
+                            &self.bytes[pos .. surrogate_pos]
+                        )},
+                    ));
                     try!(write!(formatter, "\\u{{{:X}}}", surrogate));
                     pos = surrogate_pos + 3;
                 }
             }
         }
-        try!(formatter.write_str(unsafe {
-            // the data in this slice is valid UTF-8, transmute to &str
-            mem::transmute(&self.bytes[pos..])
-        }));
+        try!(write_str_escaped(
+            formatter,
+            unsafe { str::from_utf8_unchecked(&self.bytes[pos..]) },
+        ));
         formatter.write_str("\"")
     }
 }
@@ -1083,9 +1093,9 @@ mod tests {
 
     #[test]
     fn wtf8buf_show() {
-        let mut string = Wtf8Buf::from_str("aé 💩");
+        let mut string = Wtf8Buf::from_str("a\té 💩\r");
         string.push(CodePoint::from_u32(0xD800).unwrap());
-        assert_eq!(format!("{:?}", string), r#""aé 💩\u{D800}""#);
+        assert_eq!(format!("{:?}", string), r#""a\t\u{e9} \u{1f4a9}\r\u{D800}""#);
     }
 
     #[test]
@@ -1094,10 +1104,10 @@ mod tests {
     }
 
     #[test]
-    fn wtf8_show() {
-        let mut string = Wtf8Buf::from_str("aé 💩");
-        string.push(CodePoint::from_u32(0xD800).unwrap());
-        assert_eq!(format!("{:?}", string), r#""aé 💩\u{D800}""#);
+    fn wtf8buf_show_str() {
+        let text = "a\té 💩\r";
+        let mut string = Wtf8Buf::from_str(text);
+        assert_eq!(format!("{:?}", text), format!("{:?}", string));
     }
 
     #[test]

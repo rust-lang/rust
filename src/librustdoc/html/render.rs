@@ -34,7 +34,7 @@
 //! both occur before the crate is rendered.
 pub use self::ExternalLocation::*;
 
-use std::ascii::OwnedAsciiExt;
+use std::ascii::AsciiExt;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -2547,7 +2547,7 @@ fn get_index_search_type(item: &clean::Item,
 
     // Consider `self` an argument as well.
     if let Some(name) = parent {
-        inputs.push(Type { name: Some(name.into_ascii_lowercase()) });
+        inputs.push(Type { name: Some(name.to_ascii_lowercase()) });
     }
 
     inputs.extend(&mut decl.inputs.values.iter().map(|arg| {
@@ -2563,7 +2563,7 @@ fn get_index_search_type(item: &clean::Item,
 }
 
 fn get_index_type(clean_type: &clean::Type) -> Type {
-    Type { name: get_index_type_name(clean_type).map(|s| s.into_ascii_lowercase()) }
+    Type { name: get_index_type_name(clean_type).map(|s| s.to_ascii_lowercase()) }
 }
 
 fn get_index_type_name(clean_type: &clean::Type) -> Option<String> {

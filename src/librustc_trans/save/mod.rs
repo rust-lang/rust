@@ -63,6 +63,8 @@ pub enum Data {
     VariableRefData(VariableRefData),
     /// Data for a reference to a type or trait.
     TypeRefData(TypeRefData),
+    /// Data for a reference to a module.
+    ModRefData(ModRefData),
     /// Data about a function call.
     FunctionCallData(FunctionCallData),
     /// Data about a method call.
@@ -138,6 +140,14 @@ pub struct VariableRefData {
 /// Data for a reference to a type or trait.
 #[derive(Debug)]
 pub struct TypeRefData {
+    pub span: Span,
+    pub scope: NodeId,
+    pub ref_id: DefId,
+}
+
+/// Data for a reference to a module.
+#[derive(Debug)]
+pub struct ModRefData {
     pub span: Span,
     pub scope: NodeId,
     pub ref_id: DefId,
@@ -498,7 +508,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ExprPath(_, ref path) => {
-                Some(self.get_path_data(expr.id, path))
+                self.get_path_data(expr.id, path)
             }
             _ => {
                 // FIXME
@@ -510,7 +520,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_path_data(&self,
                          id: NodeId,
                          path: &ast::Path)
-                         -> Data {
+                         -> Option<Data> {
         let def_map = self.tcx.def_map.borrow();
         if !def_map.contains_key(&id) {
             self.tcx.sess.span_bug(path.span,
@@ -525,22 +535,22 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             def::DefConst(..) |
             def::DefAssociatedConst(..) |
             def::DefVariant(..) => {
-                Data::VariableRefData(VariableRefData {
+                Some(Data::VariableRefData(VariableRefData {
                     name: self.span_utils.snippet(sub_span.unwrap()),
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(id),
                     ref_id: def.def_id(),
-                })
+                }))
             }
             def::DefStruct(def_id) |
             def::DefTy(def_id, _) |
             def::DefTrait(def_id) |
             def::DefTyParam(_, _, def_id, _) => {
-                Data::TypeRefData(TypeRefData {
+                Some(Data::TypeRefData(TypeRefData {
                     span: sub_span.unwrap(),
                     ref_id: def_id,
                     scope: self.enclosing_scope(id),
-                })
+                }))
             }
             def::DefMethod(decl_id, provenence) => {
                 let sub_span = self.span_utils.sub_span_for_meth_name(path.span);
@@ -571,25 +581,28 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 } else {
                     None
                 };
-                Data::MethodCallData(MethodCallData {
+                Some(Data::MethodCallData(MethodCallData {
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(id),
                     ref_id: def_id,
                     decl_id: Some(decl_id),
-                })
+                }))
             },
             def::DefFn(def_id, _) => {
-                Data::FunctionCallData(FunctionCallData {
+                Some(Data::FunctionCallData(FunctionCallData {
                     ref_id: def_id,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(id),
-                })
+                }))
             }
-            _ => self.tcx.sess.span_bug(path.span,
-                                        &format!("Unexpected def kind while looking \
-                                                  up path in `{}`: `{:?}`",
-                                                 self.span_utils.snippet(path.span),
-                                                 def)),
+            def::DefMod(def_id) => {
+                Some(Data::ModRefData(ModRefData {
+                    ref_id: def_id,
+                    span: sub_span.unwrap(),
+                    scope: self.enclosing_scope(id),
+                }))
+            }
+            _ => None,
         }
     }
 

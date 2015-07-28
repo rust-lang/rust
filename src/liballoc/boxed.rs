@@ -86,10 +86,13 @@ use core::raw::{TraitObject};
 #[lang = "exchange_heap"]
 #[unstable(feature = "box_heap",
            reason = "may be renamed; uncertain about custom allocator design")]
+#[allow(deprecated)]
 pub const HEAP: ExchangeHeapSingleton =
     ExchangeHeapSingleton { _force_singleton: () };
 
 /// This the singleton type used solely for `boxed::HEAP`.
+#[unstable(feature = "box_heap",
+           reason = "may be renamed; uncertain about custom allocator design")]
 #[derive(Copy, Clone)]
 pub struct ExchangeHeapSingleton { _force_singleton: () }
 
@@ -297,7 +300,7 @@ impl<T: Clone> Clone for Box<T> {
     /// let y = x.clone();
     /// ```
     #[inline]
-    fn clone(&self) -> Box<T> { box (HEAP) {(**self).clone()} }
+    fn clone(&self) -> Box<T> { box {(**self).clone()} }
     /// Copies `source`'s contents into `self` without creating a new allocation.
     ///
     /// # Examples

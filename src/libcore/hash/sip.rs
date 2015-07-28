@@ -10,6 +10,7 @@
 
 //! An implementation of SipHash 2-4.
 
+use ptr;
 use prelude::*;
 use super::Hasher;
 
@@ -31,9 +32,13 @@ pub struct SipHasher {
     k0: u64,
     k1: u64,
     length: usize, // how many bytes we've processed
+    // v0, v2 and v1, v3 show up in pairs in the algorithm,
+    // and simd implementations of SipHash will use vectors
+    // of v02 and v13. By placing them in this order in the struct,
+    // the compiler can pick up on just a few simd optimizations by itself.
     v0: u64,      // hash state
-    v1: u64,
     v2: u64,
+    v1: u64,
     v3: u64,
     tail: u64, // unprocessed bytes le
     ntail: usize,  // how many bytes in tail are valid
@@ -63,6 +68,20 @@ macro_rules! u8to64_le {
         }
         out
     });
+}
+
+/// Load a full u64 word from a byte stream, in LE order. Use
+/// `copy_nonoverlapping` to let the compiler generate the most efficient way
+/// to load u64 from a possibly unaligned address.
+///
+/// Unsafe because: unchecked indexing at i..i+8
+#[inline]
+unsafe fn load_u64_le(buf: &[u8], i: usize) -> u64 {
+    debug_assert!(i + 8 <= buf.len());
+    let mut data = 0u64;
+    ptr::copy_nonoverlapping(buf.get_unchecked(i),
+                             &mut data as *mut _ as *mut u8, 8);
+    data.to_le()
 }
 
 macro_rules! rotl {
@@ -146,12 +165,11 @@ impl SipHasher {
 
         // Buffered tail is now flushed, process new input.
         let len = length - needed;
-        let end = len & (!0x7);
         let left = len & 0x7;
 
         let mut i = needed;
-        while i < end {
-            let mi = u8to64_le!(msg, i);
+        while i < len - left {
+            let mi = unsafe { load_u64_le(msg, i) };
 
             self.v3 ^= mi;
             compress!(self.v0, self.v1, self.v2, self.v3);

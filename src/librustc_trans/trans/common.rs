@@ -299,6 +299,33 @@ pub fn validate_substs(substs: &Substs) {
 type RvalueDatum<'tcx> = datum::Datum<'tcx, datum::Rvalue>;
 pub type LvalueDatum<'tcx> = datum::Datum<'tcx, datum::Lvalue>;
 
+#[derive(Clone, Debug)]
+struct HintEntry<'tcx> {
+    // The datum for the dropflag-hint itself; note that many
+    // source-level Lvalues will be associated with the same
+    // dropflag-hint datum.
+    datum: cleanup::DropHintDatum<'tcx>,
+}
+
+pub struct DropFlagHintsMap<'tcx> {
+    // Maps NodeId for expressions that read/write unfragmented state
+    // to that state's drop-flag "hint."  (A stack-local hint
+    // indicates either that (1.) it is certain that no-drop is
+    // needed, or (2.)  inline drop-flag must be consulted.)
+    node_map: NodeMap<HintEntry<'tcx>>,
+}
+
+impl<'tcx> DropFlagHintsMap<'tcx> {
+    pub fn new() -> DropFlagHintsMap<'tcx> { DropFlagHintsMap { node_map: NodeMap() } }
+    pub fn has_hint(&self, id: ast::NodeId) -> bool { self.node_map.contains_key(&id) }
+    pub fn insert(&mut self, id: ast::NodeId, datum: cleanup::DropHintDatum<'tcx>) {
+        self.node_map.insert(id, HintEntry { datum: datum });
+    }
+    pub fn hint_datum(&self, id: ast::NodeId) -> Option<cleanup::DropHintDatum<'tcx>> {
+        self.node_map.get(&id).map(|t|t.datum)
+    }
+}
+
 // Function context.  Every LLVM function we create will have one of
 // these.
 pub struct FunctionContext<'a, 'tcx: 'a> {
@@ -348,6 +375,10 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // Same as above, but for closure upvars
     pub llupvars: RefCell<NodeMap<ValueRef>>,
+
+    // Carries info about drop-flags for local bindings (longer term,
+    // paths) for the code being compiled.
+    pub lldropflag_hints: RefCell<DropFlagHintsMap<'tcx>>,
 
     // The NodeId of the function, or -1 if it doesn't correspond to
     // a user-defined function.

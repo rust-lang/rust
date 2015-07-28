@@ -1100,12 +1100,22 @@ go() {
 
             msg "configuring LLVM with:"
             msg "$CMAKE_ARGS"
+            case "$CFG_MSVC_ROOT" in
+                *14.0*)
+                    generator="Visual Studio 14 2015"
+                    ;;
+                *12.0*)
+                    generator="Visual Studio 12 2013"
+                    ;;
+                *)
+                    err "can't determine generator for LLVM cmake"
+                    ;;
+            esac
             case "$t" in
                 x86_64-*)
-                    generator="Visual Studio 12 2013 Win64"
+                    generator="$generator Win64"
                     ;;
                 i686-*)
-                    generator="Visual Studio 12 2013"
                     ;;
                 *)
                     err "can only build LLVM for x86 platforms"
