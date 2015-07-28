@@ -290,9 +290,13 @@ pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
     GEPi(bcx, fat_ptr, &[0, abi::FAT_PTR_ADDR])
 }
 
-pub fn copy_fat_ptr(bcx: Block, src_ptr: ValueRef, dst_ptr: ValueRef) {
-    Store(bcx, Load(bcx, get_dataptr(bcx, src_ptr)), get_dataptr(bcx, dst_ptr));
-    Store(bcx, Load(bcx, get_len(bcx, src_ptr)), get_len(bcx, dst_ptr));
+pub fn copy_fat_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                src_ptr: ValueRef,
+                                dst_ptr: ValueRef,
+                                ty: Ty<'tcx>) {
+    let pointee_ty = ty.pointee_type(bcx.tcx());
+    store_addr(bcx, load_addr(bcx, src_ptr), dst_ptr);
+    store_extra(bcx, load_extra(bcx, src_ptr, pointee_ty), dst_ptr);
 }
 
 /// Retrieve the information we are losing (making dynamic) in an unsizing
@@ -453,8 +457,8 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // to use a different vtable. In that case, we want to
                 // load out the original data pointer so we can repackage
                 // it.
-                (Load(bcx, get_dataptr(bcx, source.val)),
-                Some(Load(bcx, get_len(bcx, source.val))))
+                (load_addr(bcx, source.val),
+                Some(load_extra(bcx, source.val, inner_source)))
             } else {
                 let val = if source.kind.is_by_ref() {
                     load_ty(bcx, source.val, source.ty)
@@ -472,8 +476,8 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), inner_target).ptr_to();
             let base = PointerCast(bcx, base, ptr_ty);
 
-            Store(bcx, base, get_dataptr(bcx, target.val));
-            Store(bcx, info, get_len(bcx, target.val));
+            store_addr(bcx, base, target.val);
+            store_extra(bcx, info, target.val);
         }
 
         // This can be extended to enums and tuples in the future.
@@ -727,9 +731,9 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             DatumBlock { datum: d.to_expr_datum(), bcx: bcx }
         } else {
             let scratch = rvalue_scratch_datum(bcx, d.ty, "");
-            Store(bcx, d.val, get_dataptr(bcx, scratch.val));
-            let info = Load(bcx, get_len(bcx, base_datum.val));
-            Store(bcx, info, get_len(bcx, scratch.val));
+            store_addr(bcx, d.val, scratch.val);
+            let info = load_extra(bcx, base_datum.val, d.ty);
+            store_extra(bcx, info, scratch.val);
 
             // Always generate an lvalue datum, because this pointer doesn't own
             // the data and cleanup is scheduled elsewhere.
@@ -2089,7 +2093,7 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Return the address
             return immediate_rvalue_bcx(bcx,
                                         PointerCast(bcx,
-                                                    Load(bcx, get_dataptr(bcx, datum.val)),
+                                                    load_addr(bcx, datum.val),
                                                     ll_t_out),
                                         t_out).to_expr_datumblock();
         }

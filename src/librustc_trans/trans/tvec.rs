@@ -10,7 +10,6 @@
 
 #![allow(non_camel_case_types)]
 
-use back::abi;
 use llvm;
 use llvm::ValueRef;
 use trans::base::*;
@@ -147,8 +146,8 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let llbytes = C_uint(bcx.ccx(), bytes);
             let llcstr = C_cstr(bcx.ccx(), str_lit, false);
             let llcstr = consts::ptrcast(llcstr, Type::i8p(bcx.ccx()));
-            Store(bcx, llcstr, GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]));
-            Store(bcx, llbytes, GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]));
+            store_addr(bcx, llcstr, lldest);
+            store_extra(bcx, llbytes, lldest);
             bcx
         }
     }
@@ -309,8 +308,8 @@ pub fn get_base_and_len<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     match vec_ty.sty {
         ty::TyArray(_, n) => get_fixed_base_and_len(bcx, llval, n),
         ty::TySlice(_) | ty::TyStr => {
-            let base = Load(bcx, expr::get_dataptr(bcx, llval));
-            let len = Load(bcx, expr::get_len(bcx, llval));
+            let base = load_addr(bcx, llval);
+            let len = load_extra(bcx, llval, vec_ty);
             (base, len)
         }
 

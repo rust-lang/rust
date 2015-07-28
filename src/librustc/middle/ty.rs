@@ -3953,6 +3953,15 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn pointee_type(&self, cx: &ctxt<'tcx>) -> Ty<'tcx> {
+        match self.sty {
+            ty::TyBox(inner) |
+            ty::TyRef(_, ty::TypeAndMut { ty: inner, .. }) |
+            ty::TyRawPtr(ty::TypeAndMut { ty: inner, .. }) => inner,
+            _ => cx.sess.bug(&format!("pointee_type called on non-pointer value: {}", self))
+        }
+    }
+
     pub fn sequence_element_type(&self, cx: &ctxt<'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => ty,

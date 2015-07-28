@@ -407,9 +407,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
     let (data_ptr, info) = if common::type_is_sized(cx.tcx(), t) {
         (av, None)
     } else {
-        let data = GEPi(cx, av, &[0, abi::FAT_PTR_ADDR]);
-        let info = GEPi(cx, av, &[0, abi::FAT_PTR_EXTRA]);
-        (Load(cx, data), Some(Load(cx, info)))
+        (load_addr(cx, av), Some(load_extra(cx, av, t)))
     };
 
     let mut cx = cx;
@@ -425,8 +423,8 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                       llfld_a
                   } else {
                       let scratch = datum::rvalue_scratch_datum(cx, field_ty, "__fat_ptr_iter");
-                      Store(cx, llfld_a, GEPi(cx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
-                      Store(cx, info.unwrap(), GEPi(cx, scratch.val, &[0, abi::FAT_PTR_EXTRA]));
+                      store_addr(cx, llfld_a, scratch.val);
+                      store_extra(cx, info.unwrap(), scratch.val);
                       scratch.val
                   };
                   cx = f(cx, val, field_ty);
@@ -774,6 +772,27 @@ pub fn load_if_immediate<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     return v;
 }
 
+pub fn load_addr(bcx: Block, fatptr: ValueRef) -> ValueRef {
+    LoadNonNull(bcx, expr::get_dataptr(bcx, fatptr))
+}
+
+pub fn store_addr(bcx: Block, addr: ValueRef, fatptr: ValueRef) -> ValueRef {
+    Store(bcx, addr, expr::get_dataptr(bcx, fatptr))
+}
+
+pub fn load_extra<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, fatptr: ValueRef, ty: Ty<'tcx>) -> ValueRef {
+    assert!(!common::type_is_sized(bcx.tcx(), ty));
+    if ty.is_trait() {
+        LoadNonNull(bcx, expr::get_len(bcx, fatptr))
+    } else {
+        Load(bcx, expr::get_len(bcx, fatptr))
+    }
+}
+
+pub fn store_extra(bcx: Block, extra: ValueRef, fatptr: ValueRef) -> ValueRef {
+    Store(bcx, extra, expr::get_len(bcx, fatptr))
+}
+
 /// Helper for loading values from memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values. Also handles various special cases where the type
 /// gives us better information about what we are loading.
@@ -832,8 +851,8 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
     }
 
     if common::type_is_fat_ptr(cx.tcx(), t) {
-        Store(cx, ExtractValue(cx, v, abi::FAT_PTR_ADDR), expr::get_dataptr(cx, dst));
-        Store(cx, ExtractValue(cx, v, abi::FAT_PTR_EXTRA), expr::get_len(cx, dst));
+        store_addr(cx, ExtractValue(cx, v, abi::FAT_PTR_ADDR), dst);
+        store_extra(cx, ExtractValue(cx, v, abi::FAT_PTR_EXTRA), dst);
     } else {
         let store = Store(cx, from_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t));
         unsafe {
@@ -957,7 +976,9 @@ pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              t: Ty<'tcx>) {
     let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
-    if t.is_structural() {
+    if common::type_is_fat_ptr(bcx.tcx(), t) {
+        expr::copy_fat_ptr(bcx, src, dst, t);
+    } else if t.is_structural() {
         let llty = type_of::type_of(ccx, t);
         let llsz = llsize_of(ccx, llty);
         let llalign = type_of::align_of(ccx, t);
@@ -1345,8 +1366,8 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                 unpack_datum!(bcx, datum::lvalue_scratch_datum(bcx, arg_ty, "",
                                                         arg_scope_id, (data, extra),
                                                         |(data, extra), bcx, dst| {
-                    Store(bcx, data, expr::get_dataptr(bcx, dst));
-                    Store(bcx, extra, expr::get_len(bcx, dst));
+                    store_addr(bcx, data, dst);
+                    store_extra(bcx, extra, dst);
                     bcx
                 }))
             } else {
@@ -1376,8 +1397,8 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                             if common::type_is_fat_ptr(bcx.tcx(), tupled_arg_ty) {
                                 let data = get_param(bcx.fcx.llfn, idx);
                                 let extra = get_param(bcx.fcx.llfn, idx + 1);
-                                Store(bcx, data, expr::get_dataptr(bcx, lldest));
-                                Store(bcx, extra, expr::get_len(bcx, lldest));
+                                store_addr(bcx, data, lldest);
+                                store_extra(bcx, extra, lldest);
                                 idx += 2;
                             } else {
                                 let datum = datum::Datum::new(
@@ -1781,8 +1802,8 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
                                                  disr,
                                                  i);
             if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
-                Store(bcx, get_param(fcx.llfn, llarg_idx), expr::get_dataptr(bcx, lldestptr));
-                Store(bcx, get_param(fcx.llfn, llarg_idx + 1), expr::get_len(bcx, lldestptr));
+                store_addr(bcx, get_param(fcx.llfn, llarg_idx), lldestptr);
+                store_extra(bcx, get_param(fcx.llfn, llarg_idx + 1), lldestptr);
                 llarg_idx += 2;
             } else {
                 let arg = get_param(fcx.llfn, llarg_idx);
