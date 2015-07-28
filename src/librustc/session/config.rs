@@ -594,6 +594,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "Force drop flag checks on or off"),
     trace_macros: bool = (false, parse_bool,
           "For every macro invocation, print its name and arguments"),
+    disable_nonzeroing_move_hints: bool = (false, parse_bool,
+          "Force nonzeroing move optimization off"),
 }
 
 pub fn default_lib_output() -> CrateType {

@@ -117,7 +117,7 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // Arrange for the backing array to be cleaned up.
         let cleanup_scope = cleanup::temporary_scope(bcx.tcx(), content_expr.id);
         fcx.schedule_lifetime_end(cleanup_scope, llfixed);
-        fcx.schedule_drop_mem(cleanup_scope, llfixed, fixed_ty);
+        fcx.schedule_drop_mem(cleanup_scope, llfixed, fixed_ty, None);
 
         // Generate the content into the backing array.
         // llfixed has type *[T x N], but we want the type *T,
@@ -212,7 +212,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                SaveIn(lleltptr));
                         let scope = cleanup::CustomScope(temp_scope);
                         fcx.schedule_lifetime_end(scope, lleltptr);
-                        fcx.schedule_drop_mem(scope, lleltptr, vt.unit_ty);
+                        fcx.schedule_drop_mem(scope, lleltptr, vt.unit_ty, None);
                     }
                     fcx.pop_custom_cleanup_scope(temp_scope);
                 }

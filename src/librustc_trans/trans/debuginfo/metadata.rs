@@ -30,7 +30,7 @@ use middle::infer;
 use rustc::ast_map;
 use trans::{type_of, adt, machine, monomorphize};
 use trans::common::{self, CrateContext, FunctionContext, Block};
-use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
+use trans::_match::{BindingInfo, TransBindingMode};
 use trans::type_::Type;
 use middle::ty::{self, Ty};
 use session::config::{self, FullDebugInfo};
@@ -2082,14 +2082,15 @@ pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // dereference once more. For ByCopy we just use the stack slot we created
     // for the binding.
     let var_access = match binding.trmode {
-        TrByCopy(llbinding) => VariableAccess::DirectVariable {
+        TransBindingMode::TrByCopy(llbinding) |
+        TransBindingMode::TrByMoveIntoCopy(llbinding) => VariableAccess::DirectVariable {
             alloca: llbinding
         },
-        TrByMove => VariableAccess::IndirectVariable {
+        TransBindingMode::TrByMoveRef => VariableAccess::IndirectVariable {
             alloca: binding.llmatch,
             address_operations: &aops
         },
-        TrByRef => VariableAccess::DirectVariable {
+        TransBindingMode::TrByRef => VariableAccess::DirectVariable {
             alloca: binding.llmatch
         }
     };
