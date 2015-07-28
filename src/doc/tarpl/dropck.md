@@ -49,7 +49,7 @@ accidentally make dangling pointers. Consider the following simple program:
 struct Inspector<'a>(&'a u8);
 
 fn main() {
-    let (days, inspector);
+    let (inspector, days);
     days = Box::new(1);
     inspector = Inspector(&days);
 }
@@ -71,7 +71,7 @@ impl<'a> Drop for Inspector<'a> {
 }
 
 fn main() {
-    let (days, inspector);
+    let (inspector, days);
     days = Box::new(1);
     inspector = Inspector(&days);
     // Let's say `days` happens to get dropped first.
@@ -85,14 +85,14 @@ fn main() {
                                      ^~~~
 <anon>:9:11: 15:2 note: reference must be valid for the block at 9:10...
 <anon>:9 fn main() {
-<anon>:10     let (days, inspector);
+<anon>:10     let (inspector, days);
 <anon>:11     days = Box::new(1);
 <anon>:12     inspector = Inspector(&days);
 <anon>:13     // Let's say `days` happens to get dropped first.
 <anon>:14     // Then when Inspector is dropped, it will try to read free'd memory!
           ...
 <anon>:10:27: 15:2 note: ...but borrowed value is only valid for the block suffix following statement 0 at 10:26
-<anon>:10     let (days, inspector);
+<anon>:10     let (inspector, days);
 <anon>:11     days = Box::new(1);
 <anon>:12     inspector = Inspector(&days);
 <anon>:13     // Let's say `days` happens to get dropped first.
@@ -112,8 +112,8 @@ of the finer details of how the drop checker validates types is totally up in
 the air. However The Big Rule is the subtlety that we have focused on this whole
 section:
 
-**For a generic type to soundly implement drop, it must strictly outlive all of
-its generic arguments.**
+**For a generic type to soundly implement drop, its generics arguments must
+strictly outlive it.**
 
 This rule is sufficient but not necessary to satisfy the drop checker. That is,
 if your type obeys this rule then it's *definitely* sound to drop. However

@@ -33,7 +33,7 @@ Variance is where things get a bit complicated.
 Variance is a property that *type constructors* have with respect to their
 arguments. A type constructor in Rust is a generic type with unbound arguments.
 For instance `Vec` is a type constructor that takes a `T` and returns a
-`Vec<T>`. `&` and `&mut` are type constructors that take a two types: a
+`Vec<T>`. `&` and `&mut` are type constructors that take two inputs: a
 lifetime, and a type to point to.
 
 A type constructor's *variance* is how the subtyping of its inputs affects the
@@ -54,7 +54,8 @@ Some important variances:
 * `&'a T` is variant over `'a` and `T` (as is `*const T` by metaphor)
 * `&'a mut T` is variant with over `'a` but invariant over `T`
 * `Fn(T) -> U` is invariant over `T`, but variant over `U`
-* `Box`, `Vec`, and all other collections are variant over their contents
+* `Box`, `Vec`, and all other collections are variant over the types of
+  their contents
 * `UnsafeCell<T>`, `Cell<T>`, `RefCell<T>`, `Mutex<T>` and all other
   interior mutability types are invariant over T (as is `*mut T` by metaphor)
 
@@ -71,7 +72,7 @@ to be able to pass `&&'static str` where an `&&'a str` is expected. The
 additional level of indirection does not change the desire to be able to pass
 longer lived things where shorted lived things are expected.
 
-However this logic *does not* apply to see why `&mut`. To see why &mut should
+However this logic *does not* apply to `&mut`. To see why `&mut` should
 be invariant over T, consider the following code:
 
 ```rust,ignore
@@ -117,8 +118,9 @@ in them *via a mutable reference*! The mutable reference makes the whole type
 invariant, and therefore prevents you from smuggling a short-lived type into
 them.
 
-Being variant *does* allows them to be weakened when shared immutably.
-So you can pass a `&Box<&'static str>` where a `&Box<&'a str>` is expected.
+Being variant *does* allows `Box` and `Vec` to be weakened when shared
+immutably. So you can pass a `&Box<&'static str>` where a `&Box<&'a str>` is
+expected.
 
 However what should happen when passing *by-value* is less obvious. It turns out
 that, yes, you can use subtyping when passing by-value. That is, this works:
@@ -178,7 +180,7 @@ fn foo(usize) -> &'static str;
 in its place. Therefore functions *are* variant over their return type.
 
 `*const` has the exact same semantics as `&`, so variance follows. `*mut` on the
-other hand can dereference to an &mut whether shared or not, so it is marked
+other hand can dereference to an `&mut` whether shared or not, so it is marked
 as invariant just like cells.
 
 This is all well and good for the types the standard library provides, but

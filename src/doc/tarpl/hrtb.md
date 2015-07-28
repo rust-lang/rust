@@ -1,6 +1,6 @@
 % Higher-Rank Trait Bounds (HRTBs)
 
-Rust's Fn traits are a little bit magic. For instance, we can write the
+Rust's `Fn` traits are a little bit magic. For instance, we can write the
 following code:
 
 ```rust
@@ -52,21 +52,22 @@ fn main() {
 }
 ```
 
-How on earth are we supposed to express the lifetimes on F's trait bound? We need
-to provide some lifetime there, but the lifetime we care about can't be named until
-we enter the body of `call`! Also, that isn't some fixed lifetime; call works with
-*any* lifetime `&self` happens to have at that point.
+How on earth are we supposed to express the lifetimes on `F`'s trait bound? We
+need to provide some lifetime there, but the lifetime we care about can't be
+named until we enter the body of `call`! Also, that isn't some fixed lifetime;
+call works with *any* lifetime `&self` happens to have at that point.
 
-This job requires The Magic of Higher-Rank Trait Bounds. The way we desugar
-this is as follows:
+This job requires The Magic of Higher-Rank Trait Bounds (HRTBs). The way we
+desugar this is as follows:
 
 ```rust,ignore
 where for<'a> F: Fn(&'a (u8, u16)) -> &'a u8,
 ```
 
-(Where `Fn(a, b, c) -> d` is itself just sugar for the unstable *real* Fn trait)
+(Where `Fn(a, b, c) -> d` is itself just sugar for the unstable *real* `Fn`
+trait)
 
 `for<'a>` can be read as "for all choices of `'a`", and basically produces an
-*inifinite list* of trait bounds that F must satisfy. Intense. There aren't many
-places outside of the Fn traits where we encounter HRTBs, and even for those we
-have a nice magic sugar for the common cases.
+*infinite list* of trait bounds that F must satisfy. Intense. There aren't many
+places outside of the `Fn` traits where we encounter HRTBs, and even for
+those we have a nice magic sugar for the common cases.

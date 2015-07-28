@@ -52,16 +52,17 @@ In order to "teach" borrowck that what we're doing is ok, we need to drop down
 to unsafe code. For instance, mutable slices expose a `split_at_mut` function
 that consumes the slice and returns *two* mutable slices. One for everything to
 the left of the index, and one for everything to the right. Intuitively we know
-this is safe because the slices don't alias. However the implementation requires
-some unsafety:
+this is safe because the slices don't overlap, and therefore alias. However
+the implementation requires some unsafety:
 
 ```rust,ignore
 fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+    let len = self.len();
+    let ptr = self.as_mut_ptr();
+    assert!(mid <= len);
     unsafe {
-        let self2: &mut [T] = mem::transmute_copy(&self);
-
-        (ops::IndexMut::index_mut(self, ops::RangeTo { end: mid } ),
-         ops::IndexMut::index_mut(self2, ops::RangeFrom { start: mid } ))
+        (from_raw_parts_mut(ptr, mid),
+         from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
     }
 }
 ```

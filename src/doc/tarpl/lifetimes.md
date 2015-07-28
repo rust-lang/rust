@@ -7,11 +7,10 @@ the scope it's valid for.
 
 Within a function body, Rust generally doesn't let you explicitly name the
 lifetimes involved. This is because it's generally not really *necessary*
-to talk about lifetimes in a local context; rust has all the information and
-can work out everything. It's also a good thing because the scope of a borrow
-is often significantly smaller than the scope its referent is *actually* valid
-for. Rust will introduce *many* anonymous scopes and temporaries to make your
-code *just work*.
+to talk about lifetimes in a local context; Rust has all the information and
+can work out everything as optimally as possible. Many anonymous scopes and
+temporaries that you would otherwise have to write are often introduced to
+make your code *just work*.
 
 However once you cross the function boundary, you need to start talking about
 lifetimes. Lifetimes are denoted with an apostrophe: `'a`, `'static`. To dip
@@ -19,10 +18,10 @@ our toes with lifetimes, we're going to pretend that we're actually allowed
 to label scopes with lifetimes, and desugar the examples from the start of
 this chapter.
 
-Originally, our examples made use of *aggressive* sugar -- high fructose corn syrup even --
-around scopes and lifetimes, because writing everything out explicitly is
-*extremely noisy*. All Rust code relies on aggressive inference and elision of
-"obvious" things.
+Originally, our examples made use of *aggressive* sugar -- high fructose corn
+syrup even -- around scopes and lifetimes, because writing everything out
+explicitly is *extremely noisy*. All Rust code relies on aggressive inference
+and elision of "obvious" things.
 
 One particularly interesting piece of sugar is that each `let` statement implicitly
 introduces a scope. For the most part, this doesn't really matter. However it

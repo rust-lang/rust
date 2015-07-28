@@ -26,7 +26,7 @@ returns a pointer to uninitialized memory.
 
 To handle this, we must use the `ptr` module. In particular, it provides
 three functions that allow us to assign bytes to a location in memory without
-evaluating the old value: `write`, `copy`, and `copy_nonoverlapping`.
+dropping the old value: `write`, `copy`, and `copy_nonoverlapping`.
 
 * `ptr::write(ptr, val)` takes a `val` and moves it into the address pointed
   to by `ptr`.
@@ -35,7 +35,7 @@ evaluating the old value: `write`, `copy`, and `copy_nonoverlapping`.
   order is reversed!)
 * `ptr::copy_nonoverlapping(src, dest, count)` does what `copy` does, but a
   little faster on the assumption that the two ranges of memory don't overlap.
-  (this is equivalent to memcopy -- note that the argument order is reversed!)
+  (this is equivalent to memcpy -- note that the argument order is reversed!)
 
 It should go without saying that these functions, if misused, will cause serious
 havoc or just straight up Undefined Behaviour. The only things that these
@@ -68,14 +68,14 @@ unsafe {
 println!("{:?}", x);
 ```
 
-It's worth noting that you don't need to worry about ptr::write-style
-shenanigans with types which don't implement Drop or
-contain Drop types, because Rust knows not to try to Drop them. Similarly you
-should be able to assign to fields of partially initialized structs
-directly if those fields don't contain any Drop types.
+It's worth noting that you don't need to worry about `ptr::write`-style
+shenanigans with types which don't implement `Drop` or contain `Drop` types,
+because Rust knows not to try to drop them. Similarly you should be able to
+assign to fields of partially initialized structs directly if those fields don't
+contain any `Drop` types.
 
 However when working with uninitialized memory you need to be ever-vigilant for
-Rust trying to Drop values you make like this before they're fully initialized.
+Rust trying to drop values you make like this before they're fully initialized.
 Every control path through that variable's scope must initialize the value
 before it ends, if has a destructor.
 *[This includes code panicking](unwinding.html)*.
