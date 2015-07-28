@@ -1555,29 +1555,39 @@ fn expand_and_rename_method(sig: ast::MethodSig, body: P<ast::Block>,
 pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
     let t = match t.node.clone() {
         ast::Ty_::TyMac(mac) => {
-            let expanded_ty = match expand_mac_invoc(mac, t.span,
-                                                     |r| r.make_ty(),
-                                                     mark_ty,
-                                                     fld) {
-                Some(ty) => ty,
-                None => {
-                    return DummyResult::raw_ty(t.span);
-                }
-            };
+            if fld.cx.ecfg.features.unwrap().type_macros {
+                let expanded_ty = match expand_mac_invoc(mac, t.span,
+                                                         |r| r.make_ty(),
+                                                         mark_ty,
+                                                         fld) {
+                    Some(ty) => ty,
+                    None => {
+                        return DummyResult::raw_ty(t.span);
+                    }
+                };
 
-            // Keep going, outside-in.
-            //
-            let fully_expanded = fld.fold_ty(expanded_ty);
-            fld.cx.bt_pop();
+                // Keep going, outside-in.
+                //
+                let fully_expanded = fld.fold_ty(expanded_ty);
+                fld.cx.bt_pop();
 
-            fully_expanded.map(|t| ast::Ty {
-                id: ast::DUMMY_NODE_ID,
-                node: t.node,
-                span: t.span,
-            })
+                fully_expanded.map(|t| ast::Ty {
+                    id: ast::DUMMY_NODE_ID,
+                    node: t.node,
+                    span: t.span,
+                    })
+            } else {
+                feature_gate::emit_feature_err(
+                    &fld.cx.parse_sess.span_diagnostic,
+                    "type_macros",
+                    t.span,
+                    "type macros are experimental (see tracking issue: 27336)");
+                t
+            }
         }
         _ => t
     };
+
     fold::noop_fold_ty(t, fld)
 }
 
