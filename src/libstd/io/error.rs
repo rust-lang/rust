@@ -219,8 +219,7 @@ impl Error {
     ///
     /// If this `Error` was constructed via `new` then this function will
     /// return `Some`, otherwise it will return `None`.
-    #[unstable(feature = "io_error_inner",
-               reason = "recently added and requires UFCS to downcast")]
+    #[stable(feature = "io_error_inner", since = "1.3.0")]
     pub fn get_ref(&self) -> Option<&(error::Error+Send+Sync+'static)> {
         match self.repr {
             Repr::Os(..) => None,
@@ -233,8 +232,7 @@ impl Error {
     ///
     /// If this `Error` was constructed via `new` then this function will
     /// return `Some`, otherwise it will return `None`.
-    #[unstable(feature = "io_error_inner",
-               reason = "recently added and requires UFCS to downcast")]
+    #[stable(feature = "io_error_inner", since = "1.3.0")]
     pub fn get_mut(&mut self) -> Option<&mut (error::Error+Send+Sync+'static)> {
         match self.repr {
             Repr::Os(..) => None,
@@ -246,8 +244,7 @@ impl Error {
     ///
     /// If this `Error` was constructed via `new` then this function will
     /// return `Some`, otherwise it will return `None`.
-    #[unstable(feature = "io_error_inner",
-               reason = "recently added and requires UFCS to downcast")]
+    #[stable(feature = "io_error_inner", since = "1.3.0")]
     pub fn into_inner(self) -> Option<Box<error::Error+Send+Sync>> {
         match self.repr {
             Repr::Os(..) => None,
@@ -349,10 +346,10 @@ mod test {
         // we have to call all of these UFCS style right now since method
         // resolution won't implicitly drop the Send+Sync bounds
         let mut err = Error::new(ErrorKind::Other, TestError);
-        assert!(error::Error::is::<TestError>(err.get_ref().unwrap()));
+        assert!(err.get_ref().unwrap().is::<TestError>());
         assert_eq!("asdf", err.get_ref().unwrap().description());
-        assert!(error::Error::is::<TestError>(err.get_mut().unwrap()));
+        assert!(err.get_mut().unwrap().is::<TestError>());
         let extracted = err.into_inner().unwrap();
-        error::Error::downcast::<TestError>(extracted).unwrap();
+        extracted.downcast::<TestError>().unwrap();
     }
 }

@@ -505,7 +505,7 @@ impl Child {
     }
 
     /// Returns the OS-assigned process identifier associated with this child.
-    #[unstable(feature = "process_id", reason = "api recently added")]
+    #[stable(feature = "process_id", since = "1.3.0")]
     pub fn id(&self) -> u32 {
         self.handle.id()
     }
