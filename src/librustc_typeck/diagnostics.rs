@@ -584,7 +584,7 @@ extern "C" {
 ```
 
 Using this declaration, it must be called with at least one argument, so
-simply calling `printf()` is illegal. But the following uses are allowed:
+simply calling `printf()` is invalid. But the following uses are allowed:
 
 ```
 unsafe {
@@ -778,7 +778,7 @@ the pointer the size of the type would need to be unbounded.
 Consider the following erroneous definition of a type for a list of bytes:
 
 ```
-// error, illegal recursive struct type
+// error, invalid recursive struct type
 struct ListNode {
     head: u8,
     tail: Option<ListNode>,
@@ -2345,7 +2345,7 @@ register_diagnostics! {
     E0241,
     E0242, // internal error looking up a definition
     E0245, // not a trait
-    E0246, // illegal recursive type
+    E0246, // invalid recursive type
     E0247, // found module name used as a type
     E0248, // found value name used as a type
     E0319, // trait impls for defaulted traits allowed just for structs/enums
