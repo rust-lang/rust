@@ -407,7 +407,7 @@ fn id_ext(str: &str) -> ast::Ident {
 
 // Lift an ident to the expr that evaluates to that ident.
 fn mk_ident(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> P<ast::Expr> {
-    let e_str = cx.expr_str(sp, token::get_ident(ident));
+    let e_str = cx.expr_str(sp, ident.name.as_str());
     cx.expr_method_call(sp,
                         cx.expr_ident(sp, id_ext("ext_cx")),
                         id_ext("ident_of"),
@@ -416,7 +416,7 @@ fn mk_ident(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> P<ast::Expr> {
 
 // Lift a name to the expr that evaluates to that name
 fn mk_name(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> P<ast::Expr> {
-    let e_str = cx.expr_str(sp, token::get_ident(ident));
+    let e_str = cx.expr_str(sp, ident.name.as_str());
     cx.expr_method_call(sp,
                         cx.expr_ident(sp, id_ext("ext_cx")),
                         id_ext("name_of"),

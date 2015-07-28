@@ -1036,8 +1036,9 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             if let Struct(struct_id) = c {
                 if let ast::ExprStruct(_, ref fields, _) = tcx.map.expect_expr(struct_id).node {
                     // Check that the given field exists and evaluate it
-                    if let Some(f) = fields.iter().find(|f| f.ident.node.as_str()
-                                                         == field_name.node.as_str()) {
+                    // if the idents are compared run-pass/issue-19244 fails
+                    if let Some(f) = fields.iter().find(|f| f.ident.node.name
+                                                         == field_name.node.name) {
                         return eval_const_expr_partial(tcx, &*f.expr, base_hint)
                     } else {
                         signal!(e, MissingStructField);

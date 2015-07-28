@@ -35,7 +35,6 @@ use syntax::ast_util;
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
 use syntax::fold::{Folder, noop_fold_pat};
 use syntax::print::pprust::pat_to_string;
-use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::visit::{self, Visitor, FnKind};
 use util::nodemap::FnvHashMap;
@@ -239,17 +238,17 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                     let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
                     if let Some(DefLocal(_)) = def {
                         if cx.tcx.enum_variants(def_id).iter().any(|variant|
-                            token::get_name(variant.name) == token::get_name(ident.node.name)
+                            variant.name == ident.node.name
                                 && variant.args.is_empty()
                         ) {
                             span_warn!(cx.tcx.sess, p.span, E0170,
                                 "pattern binding `{}` is named the same as one \
                                  of the variants of the type `{}`",
-                                &token::get_ident(ident.node), pat_ty);
+                                ident.node, pat_ty);
                             fileline_help!(cx.tcx.sess, p.span,
                                 "if you meant to match on a variant, \
                                  consider making the path in the pattern qualified: `{}::{}`",
-                                pat_ty, &token::get_ident(ident.node));
+                                pat_ty, ident.node);
                         }
                     }
                 }

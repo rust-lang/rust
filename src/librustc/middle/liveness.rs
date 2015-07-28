@@ -122,7 +122,7 @@ use std::io;
 use std::rc::Rc;
 use syntax::ast::{self, NodeId, Expr};
 use syntax::codemap::{BytePos, original_sp, Span};
-use syntax::parse::token::{self, special_idents};
+use syntax::parse::token::special_idents;
 use syntax::print::pprust::{expr_to_string, block_to_string};
 use syntax::ptr::P;
 use syntax::ast_util;
@@ -332,7 +332,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
     fn variable_name(&self, var: Variable) -> String {
         match self.var_kinds[var.get()] {
             Local(LocalInfo { name, .. }) | Arg(_, name) => {
-                token::get_name(name).to_string()
+                name.to_string()
             },
             ImplicitRet => "<implicit-ret>".to_string(),
             CleanExit => "<clean-exit>".to_string()

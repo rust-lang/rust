@@ -26,7 +26,6 @@ use module_to_string;
 
 use rustc::middle::def::Export;
 use syntax::ast;
-use syntax::parse::token;
 
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
@@ -143,7 +142,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
                 match import_resolution.target_for_namespace(ns) {
                     Some(target) => {
                         debug!("(computing exports) maybe export '{}'",
-                               token::get_name(*name));
+                               name);
                         self.add_exports_of_namebindings(exports,
                                                          *name,
                                                          &*target.bindings,

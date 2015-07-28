@@ -121,8 +121,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     return None;
                 }
             };
-            let interned_name = token::get_ident(ident);
-            let name = &interned_name[..];
+            let name: &str = &ident.name.as_str();
 
             panictry!(p.expect(&token::Eq));
             let e = p.parse_expr();

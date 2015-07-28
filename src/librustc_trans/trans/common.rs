@@ -617,7 +617,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     pub fn sess(&self) -> &'blk Session { self.fcx.ccx.sess() }
 
     pub fn name(&self, name: ast::Name) -> String {
-        token::get_name(name).to_string()
+        name.to_string()
     }
 
     pub fn node_id_to_string(&self, id: ast::NodeId) -> String {

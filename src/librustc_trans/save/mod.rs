@@ -21,7 +21,7 @@ use syntax::{attr};
 use syntax::ast::{self, NodeId, DefId};
 use syntax::ast_util;
 use syntax::codemap::*;
-use syntax::parse::token::{self, get_ident, keywords};
+use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::ty_to_string;
 
@@ -227,7 +227,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
                 Data::VariableData(VariableData {
                     id: item.id,
-                    name: get_ident(item.ident).to_string(),
+                    name: item.ident.to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
@@ -241,7 +241,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
                 Data::VariableData(VariableData {
                     id: item.id,
-                    name: get_ident(item.ident).to_string(),
+                    name: item.ident.to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
@@ -259,7 +259,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
                 Data::ModData(ModData {
                     id: item.id,
-                    name: get_ident(item.ident).to_string(),
+                    name: item.ident.to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(item.id),
@@ -323,16 +323,15 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_field_data(&self, field: &ast::StructField, scope: NodeId) -> Option<VariableData> {
         match field.node.kind {
             ast::NamedField(ident, _) => {
-                let name = get_ident(ident);
                 let qualname = format!("::{}::{}",
                                        self.tcx.map.path_to_string(scope),
-                                       name);
+                                       ident);
                 let typ = self.tcx.node_types().get(&field.node.id).unwrap()
                                                .to_string();
                 let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
                 Some(VariableData {
                     id: field.node.id,
-                    name: get_ident(ident).to_string(),
+                    name: ident.to_string(),
                     qualname: qualname,
                     span: sub_span.unwrap(),
                     scope: scope,
@@ -404,7 +403,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             },
         };
 
-        let qualname = format!("{}::{}", qualname, &token::get_name(name));
+        let qualname = format!("{}::{}", qualname, name);
 
         let decl_id = self.tcx.trait_item_of_item(ast_util::local_def(id))
             .and_then(|new_id| {
@@ -420,7 +419,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         FunctionData {
             id: id,
-            name: token::get_name(name).to_string(),
+            name: name.to_string(),
             qualname: qualname,
             declaration: decl_id,
             span: sub_span.unwrap(),
@@ -454,7 +453,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             if f.name == ident.node.name {
                                 let sub_span = self.span_utils.span_for_last_ident(expr.span);
                                 return Some(Data::VariableRefData(VariableRefData {
-                                    name: get_ident(ident.node).to_string(),
+                                    name: ident.node.to_string(),
                                     span: sub_span.unwrap(),
                                     scope: self.enclosing_scope(expr.id),
                                     ref_id: f.id,
@@ -464,7 +463,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
                         self.tcx.sess.span_bug(expr.span,
                                                &format!("Couldn't find field {} on {:?}",
-                                                        &get_ident(ident.node), ty))
+                                                        ident.node, ty))
                     }
                     _ => {
                         debug!("Expected struct type, found {:?}", ty);
@@ -626,7 +625,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                               parent: NodeId)
                               -> VariableRefData {
         let fields = self.tcx.lookup_struct_fields(struct_id);
-        let field_name = get_ident(field_ref.ident.node).to_string();
+        let field_name = field_ref.ident.node.to_string();
         for f in &fields {
             if f.name == field_ref.ident.node.name {
                 // We don't really need a sub-span here, but no harm done
@@ -700,7 +699,7 @@ impl<'v> Visitor<'v> for PathCollector {
             }
             ast::PatIdent(bm, ref path1, _) => {
                 debug!("PathCollector, visit ident in pat {}: {:?} {:?}",
-                       token::get_ident(path1.node),
+                       path1.node,
                        p.span,
                        path1.span);
                 let immut = match bm {

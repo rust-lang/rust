@@ -288,7 +288,7 @@ impl TokenType {
         match *self {
             TokenType::Token(ref t) => format!("`{}`", Parser::token_to_string(t)),
             TokenType::Operator => "an operator".to_string(),
-            TokenType::Keyword(kw) => format!("`{}`", token::get_name(kw.to_name())),
+            TokenType::Keyword(kw) => format!("`{}`", kw.to_name()),
         }
     }
 }
@@ -1023,7 +1023,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn id_to_interned_str(&mut self, id: Ident) -> InternedString {
-        token::get_ident(id)
+        id.name.as_str()
     }
 
     /// Is the current token one of the keywords that signals a bare function
@@ -1498,20 +1498,20 @@ impl<'a> Parser<'a> {
             }
             token::Literal(lit, suf) => {
                 let (suffix_illegal, out) = match lit {
-                    token::Byte(i) => (true, LitByte(parse::byte_lit(i.as_str()).0)),
-                    token::Char(i) => (true, LitChar(parse::char_lit(i.as_str()).0)),
+                    token::Byte(i) => (true, LitByte(parse::byte_lit(&i.as_str()).0)),
+                    token::Char(i) => (true, LitChar(parse::char_lit(&i.as_str()).0)),
 
                     // there are some valid suffixes for integer and
                     // float literals, so all the handling is done
                     // internally.
                     token::Integer(s) => {
-                        (false, parse::integer_lit(s.as_str(),
+                        (false, parse::integer_lit(&s.as_str(),
                                                    suf.as_ref().map(|s| s.as_str()),
                                                    &self.sess.span_diagnostic,
                                                    self.last_span))
                     }
                     token::Float(s) => {
-                        (false, parse::float_lit(s.as_str(),
+                        (false, parse::float_lit(&s.as_str(),
                                                  suf.as_ref().map(|s| s.as_str()),
                                                   &self.sess.span_diagnostic,
                                                  self.last_span))
@@ -1519,20 +1519,20 @@ impl<'a> Parser<'a> {
 
                     token::Str_(s) => {
                         (true,
-                         LitStr(token::intern_and_get_ident(&parse::str_lit(s.as_str())),
+                         LitStr(token::intern_and_get_ident(&parse::str_lit(&s.as_str())),
                                 ast::CookedStr))
                     }
                     token::StrRaw(s, n) => {
                         (true,
                          LitStr(
-                            token::intern_and_get_ident(&parse::raw_str_lit(s.as_str())),
+                            token::intern_and_get_ident(&parse::raw_str_lit(&s.as_str())),
                             ast::RawStr(n)))
                     }
                     token::Binary(i) =>
-                        (true, LitBinary(parse::binary_lit(i.as_str()))),
+                        (true, LitBinary(parse::binary_lit(&i.as_str()))),
                     token::BinaryRaw(i, _) =>
                         (true,
-                         LitBinary(Rc::new(i.as_str().as_bytes().iter().cloned().collect()))),
+                         LitBinary(Rc::new(i.to_string().into_bytes()))),
                 };
 
                 if suffix_illegal {
@@ -2448,7 +2448,7 @@ impl<'a> Parser<'a> {
             match self.token {
                 token::SubstNt(name, _) =>
                     return Err(self.fatal(&format!("unknown macro variable `{}`",
-                                       token::get_ident(name)))),
+                                       name))),
                 _ => {}
             }
         }
@@ -4736,7 +4736,7 @@ impl<'a> Parser<'a> {
             if fields.is_empty() {
                 return Err(self.fatal(&format!("unit-like struct definition should be \
                     written as `struct {};`",
-                    token::get_ident(class_name.clone()))));
+                    class_name)));
             }
 
             try!(self.bump());
@@ -4775,7 +4775,7 @@ impl<'a> Parser<'a> {
             if fields.is_empty() {
                 return Err(self.fatal(&format!("unit-like struct definition should be \
                     written as `struct {};`",
-                    token::get_ident(class_name.clone()))));
+                    class_name)));
             }
 
             generics.where_clause = try!(self.parse_where_clause());
@@ -4920,8 +4920,7 @@ impl<'a> Parser<'a> {
     /// Returns either a path to a module, or .
     pub fn default_submod_path(id: ast::Ident, dir_path: &Path, codemap: &CodeMap) -> ModulePath
     {
-        let mod_string = token::get_ident(id);
-        let mod_name = mod_string.to_string();
+        let mod_name = id.to_string();
         let default_path_str = format!("{}.rs", mod_name);
         let secondary_path_str = format!("{}/mod.rs", mod_name);
         let default_path = dir_path.join(&default_path_str);
@@ -5009,7 +5008,7 @@ impl<'a> Parser<'a> {
 
         self.eval_src_mod_from_path(path,
                                     owns_directory,
-                                    token::get_ident(id).to_string(),
+                                    id.to_string(),
                                     id_sp)
     }
 
@@ -5213,7 +5212,7 @@ impl<'a> Parser<'a> {
                     self.span_err(start_span,
                         &format!("unit-like struct variant should be written \
                                  without braces, as `{},`",
-                                token::get_ident(ident)));
+                                ident));
                 }
                 kind = StructVariantKind(struct_def);
             } else if self.check(&token::OpenDelim(token::Paren)) {
@@ -5281,8 +5280,7 @@ impl<'a> Parser<'a> {
                 let sp = self.span;
                 self.expect_no_suffix(sp, "ABI spec", suf);
                 try!(self.bump());
-                let the_string = s.as_str();
-                match abi::lookup(the_string) {
+                match abi::lookup(&s.as_str()) {
                     Some(abi) => Ok(Some(abi)),
                     None => {
                         let last_span = self.last_span;
@@ -5291,7 +5289,7 @@ impl<'a> Parser<'a> {
                             &format!("illegal ABI: expected one of [{}], \
                                      found `{}`",
                                     abi::all_names().join(", "),
-                                    the_string));
+                                    s));
                         Ok(None)
                     }
                 }

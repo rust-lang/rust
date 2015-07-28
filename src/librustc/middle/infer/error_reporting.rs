@@ -194,9 +194,7 @@ impl<'tcx> ty::ctxt<'tcx> {
 
             ty::ReEmpty => ("the empty lifetime".to_owned(), None),
 
-            ty::ReEarlyBound(ref data) => {
-                (format!("{}", token::get_name(data.name)), None)
-            }
+            ty::ReEarlyBound(ref data) => (data.name.to_string(), None),
 
             // I believe these cases should not occur (except when debugging,
             // perhaps)
@@ -1056,7 +1054,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
             // choice of lifetime name deterministic and thus easier to test.
             let mut names = Vec::new();
             for rn in region_names {
-                let lt_name = token::get_name(*rn).to_string();
+                let lt_name = rn.to_string();
                 names.push(lt_name);
             }
             names.sort();
@@ -1544,15 +1542,15 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
             }
             infer::LateBoundRegion(_, br, infer::AssocTypeProjection(type_name)) => {
                 format!(" for lifetime parameter {}in trait containing associated type `{}`",
-                        br_string(br), token::get_name(type_name))
+                        br_string(br), type_name)
             }
             infer::EarlyBoundRegion(_, name) => {
                 format!(" for lifetime parameter `{}`",
-                        &token::get_name(name))
+                        name)
             }
             infer::BoundRegionInCoherence(name) => {
                 format!(" for lifetime parameter `{}` in coherence check",
-                        &token::get_name(name))
+                        name)
             }
             infer::UpvarRegion(ref upvar_id, _) => {
                 format!(" for capture of `{}` by closure",
@@ -1838,7 +1836,7 @@ impl LifeGiver {
     fn with_taken(taken: &[ast::LifetimeDef]) -> LifeGiver {
         let mut taken_ = HashSet::new();
         for lt in taken {
-            let lt_name = token::get_name(lt.lifetime.name).to_string();
+            let lt_name = lt.lifetime.name.to_string();
             taken_.insert(lt_name);
         }
         LifeGiver {

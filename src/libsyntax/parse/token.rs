@@ -647,6 +647,12 @@ impl InternedString {
             string: string,
         }
     }
+
+    #[inline]
+    pub fn new_from_name(name: ast::Name) -> InternedString {
+        let interner = get_ident_interner();
+        InternedString::new_from_rc_str(interner.get(name))
+    }
 }
 
 impl Deref for InternedString {
@@ -678,7 +684,7 @@ impl<'a> PartialEq<&'a str> for InternedString {
     }
 }
 
-impl<'a> PartialEq<InternedString > for &'a str {
+impl<'a> PartialEq<InternedString> for &'a str {
     #[inline(always)]
     fn eq(&self, other: &InternedString) -> bool {
         PartialEq::eq(*self, &other.string[..])
@@ -691,7 +697,7 @@ impl<'a> PartialEq<InternedString > for &'a str {
 
 impl Decodable for InternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
-        Ok(get_name(get_ident_interner().intern(&try!(d.read_str())[..])))
+        Ok(intern(try!(d.read_str()).as_ref()).as_str())
     }
 }
 
@@ -701,25 +707,11 @@ impl Encodable for InternedString {
     }
 }
 
-/// Returns the string contents of a name, using the thread-local interner.
-#[inline]
-pub fn get_name(name: ast::Name) -> InternedString {
-    let interner = get_ident_interner();
-    InternedString::new_from_rc_str(interner.get(name))
-}
-
-/// Returns the string contents of an identifier, using the thread-local
-/// interner.
-#[inline]
-pub fn get_ident(ident: ast::Ident) -> InternedString {
-    get_name(ident.name)
-}
-
 /// Interns and returns the string contents of an identifier, using the
 /// thread-local interner.
 #[inline]
 pub fn intern_and_get_ident(s: &str) -> InternedString {
-    get_name(intern(s))
+    intern(s).as_str()
 }
 
 /// Maps a string to its interned representation.

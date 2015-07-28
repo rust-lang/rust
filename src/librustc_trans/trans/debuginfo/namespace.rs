@@ -36,14 +36,14 @@ impl NamespaceTreeNode {
                 Some(ref parent) => fill_nested(&*parent.upgrade().unwrap(), output),
                 None => {}
             }
-            let string = token::get_name(node.name);
-            output.push_str(&format!("{}", string.len()));
+            let string = node.name.as_str();
+            output.push_str(&string.len().to_string());
             output.push_str(&string);
         }
 
         let mut name = String::from("_ZN");
         fill_nested(self, &mut name);
-        name.push_str(&format!("{}", item_name.len()));
+        name.push_str(&item_name.len().to_string());
         name.push_str(item_name);
         name.push('E');
         name
@@ -93,7 +93,7 @@ pub fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<Namespace
                         Some(ref node) => node.scope,
                         None => ptr::null_mut()
                     };
-                    let namespace_name = token::get_name(name);
+                    let namespace_name = name.as_str();
                     let namespace_name = CString::new(namespace_name.as_bytes()).unwrap();
                     let scope = unsafe {
                         llvm::LLVMDIBuilderCreateNameSpace(

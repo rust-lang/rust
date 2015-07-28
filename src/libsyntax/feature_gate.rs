@@ -582,7 +582,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_name(&mut self, sp: Span, name: ast::Name) {
-        if !token::get_name(name).is_ascii() {
+        if !name.as_str().is_ascii() {
             self.gate_feature("non_ascii_idents", sp,
                               "non-ascii idents are not fully supported.");
         }
