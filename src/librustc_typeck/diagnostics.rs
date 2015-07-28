@@ -2215,6 +2215,23 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 -lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
 "##,
 
+E0391: r##"
+This error indicates that some types or traits depend on each other
+and therefore cannot be constructed.
+
+The following example contains a circular dependency between two traits:
+
+```
+trait FirstTrait : SecondTrait {
+
+}
+
+trait SecondTrait : FirstTrait {
+
+}
+```
+"##,
+
 E0392: r##"
 This error indicates that a type or lifetime parameter has been declared
 but not actually used.  Here is an example that demonstrates the error:
@@ -2370,7 +2387,6 @@ register_diagnostics! {
            // between structures with the same definition
     E0390, // only a single inherent implementation marked with
            // `#[lang = \"{}\"]` is allowed for the `{}` primitive
-    E0391, // unsupported cyclic reference between types/traits detected
     E0393, // the type parameter `{}` must be explicitly specified in an object
            // type because its default value `{}` references the type `Self`"
     E0399, // trait items need to be implemented because the associated
