@@ -279,7 +279,7 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
                                .expect("could not lift TraitRef for printing");
             let projections = tcx.lift(&bounds.projection_bounds[..])
                                  .expect("could not lift projections for printing");
-            let projections = projections.map_in_place(|p| p.0);
+            let projections = projections.into_iter().map(|p| p.0).collect();
 
             let tap = ty::Binder(TraitAndProjections(principal, projections));
             in_binder(f, tcx, &ty::Binder(""), Some(tap))

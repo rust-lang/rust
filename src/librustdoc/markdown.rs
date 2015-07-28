@@ -34,7 +34,7 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
             // remove %<whitespace>
             metadata.push(line[1..].trim_left())
         } else {
-            let line_start_byte = s.subslice_offset(line);
+            let line_start_byte = s.find(line).unwrap();
             return (metadata, &s[line_start_byte..]);
         }
     }

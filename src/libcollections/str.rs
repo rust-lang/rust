@@ -553,6 +553,9 @@ impl str {
     /// ```
     #[unstable(feature = "slice_chars",
                reason = "may have yet to prove its worth")]
+    #[deprecated(since = "1.3.0",
+                 reason = "can be implemented with char_indices and \
+                           hasn't seen enough use to justify inclusion")]
     pub fn slice_chars(&self, begin: usize, end: usize) -> &str {
         core_str::StrExt::slice_chars(self, begin, end)
     }
@@ -1666,6 +1669,8 @@ impl str {
     /// ```
     #[unstable(feature = "subslice_offset",
                reason = "awaiting convention about comparability of arbitrary slices")]
+    #[deprecated(since = "1.3.0",
+                 reason = "replaced with other pattern-related methods")]
     pub fn subslice_offset(&self, inner: &str) -> usize {
         core_str::StrExt::subslice_offset(self, inner)
     }

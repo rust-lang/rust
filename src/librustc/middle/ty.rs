@@ -79,7 +79,6 @@ use std::ops;
 use std::rc::Rc;
 use std::vec::IntoIter;
 use collections::enum_set::{self, EnumSet, CLike};
-use collections::slice::SliceConcatExt;
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
