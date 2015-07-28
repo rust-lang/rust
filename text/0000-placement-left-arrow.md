@@ -96,6 +96,19 @@ This feature has already been prototyped, see [place-left-syntax branch].
 
 [place-left-syntax branch]: https://github.com/rust-lang/rust/compare/rust-lang:master...pnkfelix:place-left-syntax
 
+Then, (after sufficient snapshot and/or time passes) remove the following syntaxes:
+
+ * `box (PLACE_EXPR) VALUE_EXPR`
+ * `in PLACE_EXPR { VALUE_BLOCK }`
+
+That is, `PLACE_EXPR <- VALUE_EXPR` will be the "one true way" to
+express placement-new.
+
+(Note that support for `box VALUE_EXPR` will remain, and in fact, the
+expression `(box ())` expression will become unambiguous and thus we
+could make it legal. Because, you know, those boxes of unit have a
+syntax that is really important to optimize.)
+
 Finally, it would may be good, as part of this process, to actually
 amend the text [RFC 809] itself to use the `a <- b` syntax.
 At least, it seems like many people use the RFC's as a reference source
