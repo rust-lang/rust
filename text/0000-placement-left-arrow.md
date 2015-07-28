@@ -65,6 +65,22 @@ applied to the original `in (PLACE_EXPR) VALUE_EXPR` syntax):
 I believe the `PLACE_EXPR <- VALUE_EXPR` syntax addresses all of the
 above concerns.
 
+Thus cases like allocating into an arena (which needs to take as input the arena itself
+and a value-expression, and returns a reference or handle for the allocated entry in the arena -- i.e. *cannot* return unit)
+would look like:
+
+```rust
+let ref_1 = arena <- value_expression;
+let ref_2 = arena <- value_expression;
+```
+
+compare the above against the way this would look under [RFC 809]:
+
+```rust
+let ref_1 = in arena { value_expression };
+let ref_2 = in arena { value_expression };
+```
+
 # Detailed design
 
 Extend the parser to parse `EXPR <- EXPR`.
@@ -133,6 +149,14 @@ I think the use of the `<-` operator can be considered sufficiently
 See [different surface syntax] from the alternatives from [RFC 809].
 
 [different surface syntax]: https://github.com/pnkfelix/rfcs/blob/fsk-placement-box-rfc/text/0000-placement-box.md#same-semantics-but-different-surface-syntax
+
+Also, if we want to try to make it clear that this is not *just*
+an assignment, we could combine `in` and `<-`, yielding e.g.:
+
+```rust
+let ref_1 = in arena <- value_expression;
+let ref_2 = in arena <- value_expression;
+```
 
 # Unresolved questions
 
