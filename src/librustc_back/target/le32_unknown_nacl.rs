@@ -15,6 +15,13 @@ use std::path::PathBuf;
 #[cfg(not(target_os = "nacl"))]
 fn get_cross_target() -> Option<CrossTarget> {
     fn pnacl_toolchain(mut cross_path: PathBuf) -> Result<PathBuf, String> {
+        use std::fs::PathExt;
+        // allow the use of toolchains built from source:
+        if !cross_path.join("REV").exists() {
+            cross_path.push("bin");
+            return Ok(cross_path);
+        }
+
         #[cfg(windows)]
         fn get() -> Result<&'static str, String> { Ok("win") }
         #[cfg(target_os = "linux")]

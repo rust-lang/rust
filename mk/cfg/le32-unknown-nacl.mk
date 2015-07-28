@@ -1,5 +1,5 @@
 # le32-unknown-nacl (portable, PNaCl)
-CROSS_PREFIX_le32-unknown-nacl:=$(CFG_NACL_CROSS_PATH)/toolchain/$(NACL_TOOLCHAIN_OS_PATH)_pnacl/bin/pnacl-
+CROSS_PREFIX_le32-unknown-nacl:=$(CFG_PNACL_TOOLCHAIN)/bin/pnacl-
 CC_le32-unknown-nacl=clang
 CXX_le32-unknown-nacl=clang++
 CPP_le32-unknown-nacl=$(CXX_le32-unknown-nacl) -E
@@ -34,7 +34,7 @@ SHARED_LIBS_DISABLED_le32-unknown-nacl := 1
 RUNTIME_CFLAGS_le32-unknown-nacl:= -I$(CFG_NACL_CROSS_PATH)/include/pnacl
 RUNTIME_DISABLE_ASM_le32-unknown-nacl := 1
 RUSTC_FLAGS_le32-unknown-nacl:=
-RUSTC_CROSS_FLAGS_le32-unknown-nacl=-C cross-path=$(CFG_NACL_CROSS_PATH) --cfg "target_libc=\"newlib\"" -L $(CFG_NACL_CROSS_PATH)/lib/pnacl/Release -L $(CFG_NACL_CROSS_PATH)/toolchain/$(NACL_TOOLCHAIN_OS_PATH)_pnacl/lib/clang/3.7.0/lib/le32-nacl -L $(CFG_NACL_CROSS_PATH)/toolchain/$(NACL_TOOLCHAIN_OS_PATH)_pnacl/le32-nacl/usr/lib -L $(CFG_NACL_CROSS_PATH)/toolchain/$(NACL_TOOLCHAIN_OS_PATH)_pnacl/le32-nacl/lib
+RUSTC_CROSS_FLAGS_le32-unknown-nacl=-C cross-path=$(CFG_NACL_CROSS_PATH) --cfg "target_libc=\"newlib\"" -L $(CFG_NACL_CROSS_PATH)/lib/pnacl/Release -L $(CFG_PNACL_TOOLCHAIN)/lib/clang/3.7.0/lib/le32-nacl -L $(CFG_PNACL_TOOLCHAIN)/le32-nacl/usr/lib -L $(CFG_PNACL_TOOLCHAIN)/le32-nacl/lib
 CFG_GNU_TRIPLE_le32-unknown-nacl := le32-unknown-nacl
 
 LLVM_EXTRA_COMPONENTS_le32-unknown-nacl := NaClTransforms NaClAnalysis NaClBitWriter NaClBitReader irreader
