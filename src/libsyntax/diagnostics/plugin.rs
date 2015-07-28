@@ -63,7 +63,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
             // Previously used errors.
             Some(&mut ErrorInfo { description: _, use_site: Some(previous_span) }) => {
                 ecx.span_warn(span, &format!(
-                    "diagnostic code {} already used", &token::get_ident(code)
+                    "diagnostic code {} already used", code
                 ));
                 ecx.span_note(previous_span, "previous invocation");
             }
@@ -74,7 +74,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
             // Unregistered errors.
             None => {
                 ecx.span_err(span, &format!(
-                    "used diagnostic code {} not registered", &token::get_ident(code)
+                    "used diagnostic code {} not registered", code
                 ));
             }
         }
@@ -110,7 +110,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         if !msg.starts_with("\n") || !msg.ends_with("\n") {
             ecx.span_err(span, &format!(
                 "description for error code {} doesn't start and end with a newline",
-                token::get_ident(*code)
+                code
             ));
         }
 
@@ -122,7 +122,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
             ecx.span_err(span, &format!(
                 "description for error code {} contains a line longer than {} characters.\n\
                  if you're inserting a long URL use the footnote style to bypass this check.",
-                token::get_ident(*code), MAX_DESCRIPTION_WIDTH
+                code, MAX_DESCRIPTION_WIDTH
             ));
         }
     });
@@ -134,12 +134,12 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         };
         if diagnostics.insert(code.name, info).is_some() {
             ecx.span_err(span, &format!(
-                "diagnostic code {} already registered", &token::get_ident(*code)
+                "diagnostic code {} already registered", code
             ));
         }
     });
-    let sym = Ident::new(token::gensym(&(
-        "__register_diagnostic_".to_string() + &token::get_ident(*code)
+    let sym = Ident::new(token::gensym(&format!(
+        "__register_diagnostic_{}", code
     )));
     MacEager::items(SmallVector::many(vec![
         ecx.item_mod(
@@ -163,7 +163,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
             &ast::TtToken(_, token::Ident(ref crate_name, _)),
             // DIAGNOSTICS ident.
             &ast::TtToken(_, token::Ident(ref name, _))
-        ) => (crate_name.as_str(), name),
+        ) => (*&crate_name, name),
         _ => unreachable!()
     };
 
@@ -172,7 +172,10 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
         .ok().expect("unable to determine target arch from $CFG_COMPILER_HOST_TRIPLE");
 
     with_registered_diagnostics(|diagnostics| {
-        if let Err(e) = output_metadata(ecx, &target_triple, crate_name, &diagnostics) {
+        if let Err(e) = output_metadata(ecx,
+                                        &target_triple,
+                                        &crate_name.name.as_str(),
+                                        &diagnostics) {
             ecx.span_bug(span, &format!(
                 "error writing metadata for triple `{}` and crate `{}`, error: {}, cause: {:?}",
                 target_triple, crate_name, e.description(), e.cause()
@@ -187,8 +190,8 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
                 diagnostics.iter().filter_map(|(code, info)| {
                     info.description.map(|description| {
                         ecx.expr_tuple(span, vec![
-                            ecx.expr_str(span, token::get_name(*code)),
-                            ecx.expr_str(span, token::get_name(description))
+                            ecx.expr_str(span, code.as_str()),
+                            ecx.expr_str(span, description.as_str())
                         ])
                     })
                 }).collect();

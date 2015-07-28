@@ -160,8 +160,7 @@ impl fold::Folder for PreludeInjector {
                     style: ast::AttrOuter,
                     value: P(ast::MetaItem {
                         span: self.span,
-                        node: ast::MetaWord(token::get_name(
-                                special_idents::prelude_import.name)),
+                        node: ast::MetaWord(special_idents::prelude_import.name.as_str()),
                     }),
                     is_sugared_doc: false,
                 },

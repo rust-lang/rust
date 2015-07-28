@@ -33,7 +33,6 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span, mk_sp, Pos};
 use syntax::parse;
 use syntax::parse::token::InternedString;
-use syntax::parse::token;
 use syntax::visit;
 use log;
 
@@ -181,19 +180,18 @@ impl<'a> CrateReader<'a> {
     fn extract_crate_info(&self, i: &ast::Item) -> Option<CrateInfo> {
         match i.node {
             ast::ItemExternCrate(ref path_opt) => {
-                let ident = token::get_ident(i.ident);
                 debug!("resolving extern crate stmt. ident: {} path_opt: {:?}",
-                       ident, path_opt);
+                       i.ident, path_opt);
                 let name = match *path_opt {
                     Some(name) => {
-                        validate_crate_name(Some(self.sess), name.as_str(),
+                        validate_crate_name(Some(self.sess), &name.as_str(),
                                             Some(i.span));
-                        name.as_str().to_string()
+                        name.to_string()
                     }
-                    None => ident.to_string(),
+                    None => i.ident.to_string(),
                 };
                 Some(CrateInfo {
-                    ident: ident.to_string(),
+                    ident: i.ident.to_string(),
                     name: name,
                     id: i.id,
                     should_link: should_link(i),

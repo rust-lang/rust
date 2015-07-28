@@ -745,19 +745,19 @@ impl Lifetime {
 
 impl Clean<Lifetime> for ast::Lifetime {
     fn clean(&self, _: &DocContext) -> Lifetime {
-        Lifetime(token::get_name(self.name).to_string())
+        Lifetime(self.name.to_string())
     }
 }
 
 impl Clean<Lifetime> for ast::LifetimeDef {
     fn clean(&self, _: &DocContext) -> Lifetime {
-        Lifetime(token::get_name(self.lifetime.name).to_string())
+        Lifetime(self.lifetime.name.to_string())
     }
 }
 
 impl Clean<Lifetime> for ty::RegionParameterDef {
     fn clean(&self, _: &DocContext) -> Lifetime {
-        Lifetime(token::get_name(self.name).to_string())
+        Lifetime(self.name.to_string())
     }
 }
 
@@ -766,7 +766,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),
             ty::ReLateBound(_, ty::BrNamed(_, name)) =>
-                Some(Lifetime(token::get_name(name).to_string())),
+                Some(Lifetime(name.to_string())),
             ty::ReEarlyBound(ref data) => Some(Lifetime(data.name.clean(cx))),
 
             ty::ReLateBound(..) |
@@ -1695,7 +1695,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
 
             ty::TyProjection(ref data) => data.clean(cx),
 
-            ty::TyParam(ref p) => Generic(token::get_name(p.name).to_string()),
+            ty::TyParam(ref p) => Generic(p.name.to_string()),
 
             ty::TyClosure(..) => Tuple(vec![]), // FIXME(pcwalton)
 
@@ -2048,7 +2048,7 @@ impl Clean<PathSegment> for ast::PathSegment {
 fn path_to_string(p: &ast::Path) -> String {
     let mut s = String::new();
     let mut first = true;
-    for i in p.segments.iter().map(|x| token::get_ident(x.identifier)) {
+    for i in p.segments.iter().map(|x| x.identifier.name.as_str()) {
         if !first || p.global {
             s.push_str("::");
         } else {
@@ -2061,13 +2061,13 @@ fn path_to_string(p: &ast::Path) -> String {
 
 impl Clean<String> for ast::Ident {
     fn clean(&self, _: &DocContext) -> String {
-        token::get_ident(*self).to_string()
+        self.to_string()
     }
 }
 
 impl Clean<String> for ast::Name {
     fn clean(&self, _: &DocContext) -> String {
-        token::get_name(*self).to_string()
+        self.to_string()
     }
 }
 
@@ -2532,14 +2532,14 @@ fn name_from_pat(p: &ast::Pat) -> String {
     match p.node {
         PatWild(PatWildSingle) => "_".to_string(),
         PatWild(PatWildMulti) => "..".to_string(),
-        PatIdent(_, ref p, _) => token::get_ident(p.node).to_string(),
+        PatIdent(_, ref p, _) => p.node.to_string(),
         PatEnum(ref p, _) => path_to_string(p),
         PatQPath(..) => panic!("tried to get argument name from PatQPath, \
                                 which is not allowed in function arguments"),
         PatStruct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", path_to_string(name),
                 fields.iter().map(|&Spanned { node: ref fp, .. }|
-                                  format!("{}: {}", fp.ident.as_str(), name_from_pat(&*fp.pat)))
+                                  format!("{}: {}", fp.ident, name_from_pat(&*fp.pat)))
                              .collect::<Vec<String>>().join(", "),
                 if etc { ", ..." } else { "" }
             )
@@ -2603,7 +2603,7 @@ fn resolve_type(cx: &DocContext,
             ast::TyFloat(ast::TyF64) => return Primitive(F64),
         },
         def::DefSelfTy(..) if path.segments.len() == 1 => {
-            return Generic(token::get_name(special_idents::type_self.name).to_string());
+            return Generic(special_idents::type_self.name.to_string());
         }
         def::DefSelfTy(..) | def::DefTyParam(..) => true,
         _ => false,

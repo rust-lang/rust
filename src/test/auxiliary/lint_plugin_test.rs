@@ -20,7 +20,6 @@ extern crate syntax;
 extern crate rustc;
 
 use syntax::ast;
-use syntax::parse::token;
 use rustc::lint::{Context, LintPass, LintPassObject, LintArray};
 use rustc::plugin::Registry;
 
@@ -34,8 +33,7 @@ impl LintPass for Pass {
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
-        let name = token::get_ident(it.ident);
-        if &name[..] == "lintme" {
+        if it.ident.name == "lintme" {
             cx.span_lint(TEST_LINT, it.span, "item is named 'lintme'");
         }
     }

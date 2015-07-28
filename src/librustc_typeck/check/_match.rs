@@ -27,7 +27,6 @@ use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::{Span, Spanned};
-use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
 
@@ -736,10 +735,10 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             Occupied(occupied) => {
                 span_err!(tcx.sess, span, E0025,
                     "field `{}` bound multiple times in the pattern",
-                    token::get_ident(field.ident));
+                    field.ident);
                 span_note!(tcx.sess, *occupied.get(),
                     "field `{}` previously bound here",
-                    token::get_ident(field.ident));
+                    field.ident);
                 tcx.types.err
             }
             Vacant(vacant) => {
@@ -749,7 +748,7 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                         span_err!(tcx.sess, span, E0026,
                             "struct `{}` does not have a field named `{}`",
                             tcx.item_path_str(struct_id),
-                            token::get_ident(field.ident));
+                            field.ident);
                         tcx.types.err
                     })
             }
@@ -767,7 +766,7 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             .filter(|field| !used_fields.contains_key(&field.name)) {
             span_err!(tcx.sess, span, E0027,
                 "pattern does not mention field `{}`",
-                token::get_name(field.name));
+                field.name);
         }
     }
 }

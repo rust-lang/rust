@@ -75,7 +75,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
                 continue
             },
             token::Shebang(s) => {
-                try!(write!(out, "{}", Escape(s.as_str())));
+                try!(write!(out, "{}", Escape(&s.as_str())));
                 continue
             },
             // If this '&' token is directly adjacent to another token, assume
@@ -141,7 +141,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
 
             // keywords are also included in the identifier set
             token::Ident(ident, _is_mod_sep) => {
-                match &token::get_ident(ident)[..] {
+                match &*ident.name.as_str() {
                     "ref" | "mut" => "kw-2",
 
                     "self" => "self",

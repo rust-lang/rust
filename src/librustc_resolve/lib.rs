@@ -1275,7 +1275,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                               name_search_type,
                                               false) {
                 Failed(None) => {
-                    let segment_name = token::get_name(name);
+                    let segment_name = name.as_str();
                     let module_name = module_to_string(&*search_module);
                     let mut span = span;
                     let msg = if "???" == &module_name[..] {
@@ -1688,27 +1688,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                  -> ResolveResult<ModulePrefixResult> {
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
-        let mut containing_module;
-        let mut i;
-        let first_module_path_string = token::get_name(module_path[0]);
-        if "self" == &first_module_path_string[..] {
-            containing_module =
-                self.get_nearest_normal_module_parent_or_self(module_);
-            i = 1;
-        } else if "super" == &first_module_path_string[..] {
-            containing_module =
-                self.get_nearest_normal_module_parent_or_self(module_);
-            i = 0;  // We'll handle `super` below.
-        } else {
-            return Success(NoPrefixFound);
-        }
+        let mut i = match &*module_path[0].as_str() {
+            "self" => 1,
+            "super" => 0,
+            _ => return Success(NoPrefixFound),
+        };
+        let mut containing_module = self.get_nearest_normal_module_parent_or_self(module_);
 
         // Now loop through all the `super`s we find.
-        while i < module_path.len() {
-            let string = token::get_name(module_path[i]);
-            if "super" != &string[..] {
-                break
-            }
+        while i < module_path.len() && "super" == module_path[i].as_str() {
             debug!("(resolving module prefix) resolving `super` at {}",
                    module_to_string(&*containing_module));
             match self.get_nearest_normal_module_parent(containing_module) {
@@ -2761,7 +2749,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     self,
                                     pattern.span,
                                     ResolutionError::IdentifierBoundMoreThanOnceInParameterList(
-                                        &*token::get_ident(ident))
+                                        &ident.name.as_str())
                                 );
                             } else if bindings_list.get(&renamed) ==
                                     Some(&pat_id) {
@@ -2771,7 +2759,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     self,
                                     pattern.span,
                                     ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(
-                                        &*token::get_ident(ident))
+                                        &ident.name.as_str())
                                 );
                             }
                             // Else, not bound in the same pattern: do
@@ -2817,9 +2805,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         self,
                                         path.span,
                                         ResolutionError::NotAnEnumVariantStructOrConst(
-                                            &*token::get_ident(
-                                                path.segments.last().unwrap().identifier)
-                                            )
+                                            &path.segments
+                                                 .last()
+                                                 .unwrap()
+                                                 .identifier
+                                                 .name
+                                                 .as_str())
                                     );
                                 } else {
                                     let const_name = path.segments.last().unwrap()
@@ -2835,7 +2826,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             self,
                             path.span,
                             ResolutionError::UnresolvedEnumVariantStructOrConst(
-                                &*token::get_ident(path.segments.last().unwrap().identifier))
+                                &path.segments.last().unwrap().identifier.name.as_str())
                         );
                     }
                     visit::walk_path(self, path);
@@ -2872,8 +2863,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     self,
                                     path.span,
                                     ResolutionError::NotAnAssociatedConst(
-                                        &*token::get_ident(
-                                            path.segments.last().unwrap().identifier)
+                                        &path.segments.last().unwrap().identifier.name.as_str()
                                     )
                                 );
                             }
@@ -2883,7 +2873,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             self,
                             path.span,
                             ResolutionError::UnresolvedAssociatedConst(
-                                &*token::get_ident(path.segments.last().unwrap().identifier)
+                                &path.segments.last().unwrap().identifier.name.as_str()
                             )
                         );
                     }
@@ -3304,7 +3294,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match search_result {
             Some(DlDef(def)) => {
                 debug!("(resolving path in local ribs) resolved `{}` to local: {:?}",
-                       token::get_ident(ident),
+                       ident,
                        def);
                 Some(def)
             }
@@ -3492,7 +3482,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         for rib in self.value_ribs.iter().rev() {
             for (&k, _) in &rib.bindings {
-                maybes.push(token::get_name(k));
+                maybes.push(k.as_str());
                 values.push(usize::MAX);
             }
         }
@@ -3624,8 +3614,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 false // Stop advancing
                             });
 
-                            if method_scope &&
-                               &token::get_name(special_names::self_)[..] == path_name {
+                            if method_scope && special_names::self_ == path_name {
                                 resolve_error(
                                     self,
                                     expr.span,
@@ -3706,7 +3695,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     None => {
                         resolve_error(self,
                                       expr.span,
-                                      ResolutionError::UndeclaredLabel(&*token::get_ident(label)))
+                                      ResolutionError::UndeclaredLabel(&label.name.as_str()))
                     }
                     Some(DlDef(def @ DefLabel(_))) => {
                         // Since this def is a label, it is never read.
@@ -3912,7 +3901,7 @@ fn names_to_string(names: &[Name]) -> String {
         } else {
             result.push_str("::")
         }
-        result.push_str(&token::get_name(*name));
+        result.push_str(&name.as_str());
     };
     result
 }

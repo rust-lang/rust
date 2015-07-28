@@ -119,7 +119,7 @@ use syntax::ast_util::{self, local_def};
 use syntax::codemap::{self, Span};
 use syntax::feature_gate::emit_feature_err;
 use syntax::owned_slice::OwnedSlice;
-use syntax::parse::token;
+use syntax::parse::token::{self, InternedString};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
@@ -505,7 +505,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                                                traits::VariableType(p.id));
 
                 debug!("Pattern binding {} is assigned to {} with type {:?}",
-                       token::get_ident(path1.node),
+                       path1.node,
                        self.fcx.infcx().ty_to_string(
                            self.fcx.inh.locals.borrow().get(&p.id).unwrap().clone()),
                        var_ty);
@@ -662,7 +662,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
       }
       ast::ItemFn(..) => {} // entirely within check_item_body
       ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
-          debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
+          debug!("ItemImpl {} with id {}", it.ident, it.id);
           match ccx.tcx.impl_trait_ref(local_def(it.id)) {
               Some(impl_trait_ref) => {
                 check_impl_items_against_trait(ccx,
@@ -718,7 +718,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
         check_bare_fn(ccx, &**decl, &**body, it.id, it.span, fn_pty.ty, param_env);
       }
       ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
-        debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
+        debug!("ItemImpl {} with id {}", it.ident, it.id);
 
         let impl_pty = ccx.tcx.lookup_item_type(ast_util::local_def(it.id));
 
@@ -796,14 +796,14 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         Position::ArgumentNamed(s) if s == "Self" => (),
                         // So is `{A}` if A is a type parameter
                         Position::ArgumentNamed(s) => match types.iter().find(|t| {
-                            t.ident.as_str() == s
+                            t.ident.name == s
                         }) {
                             Some(_) => (),
                             None => {
                                 span_err!(ccx.tcx.sess, attr.span, E0230,
                                                  "there is no type parameter \
                                                           {} on trait {}",
-                                                           s, item.ident.as_str());
+                                                           s, item.ident);
                             }
                         },
                         // `{:1}` and `{}` are not to be used
@@ -865,7 +865,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 // This is checked by resolve
                 tcx.sess.span_bug(impl_item.span,
                                   &format!("impl-item `{}` is not a member of `{:?}`",
-                                           token::get_name(ty_impl_item.name()),
+                                           ty_impl_item.name(),
                                            impl_trait_ref));
             });
         match impl_item.node {
@@ -886,7 +886,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     span_err!(tcx.sess, impl_item.span, E0323,
                               "item `{}` is an associated const, \
                               which doesn't match its trait `{:?}`",
-                              token::get_name(impl_const.name),
+                              impl_const.name,
                               impl_trait_ref)
                 }
             }
@@ -909,7 +909,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     span_err!(tcx.sess, impl_item.span, E0324,
                               "item `{}` is an associated method, \
                               which doesn't match its trait `{:?}`",
-                              token::get_name(impl_method.name),
+                              impl_method.name,
                               impl_trait_ref)
                 }
             }
@@ -927,7 +927,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     span_err!(tcx.sess, impl_item.span, E0325,
                               "item `{}` is an associated type, \
                               which doesn't match its trait `{:?}`",
-                              token::get_name(impl_type.name),
+                              impl_type.name,
                               impl_trait_ref)
                 }
             }
@@ -1009,7 +1009,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         span_err!(tcx.sess, impl_span, E0046,
             "not all trait items implemented, missing: `{}`",
             missing_items.iter()
-                  .map(<ast::Name>::as_str)
+                  .map(|name| name.to_string())
                   .collect::<Vec<_>>().join("`, `"))
     }
 
@@ -1018,9 +1018,9 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         span_err!(tcx.sess, invalidator.span, E0399,
                   "the following trait items need to be reimplemented \
                    as `{}` was overridden: `{}`",
-                  invalidator.ident.as_str(),
+                  invalidator.ident,
                   invalidated_items.iter()
-                                   .map(<ast::Name>::as_str)
+                                   .map(|name| name.to_string())
                                    .collect::<Vec<_>>().join("`, `"))
     }
 }
@@ -2901,7 +2901,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 field.span,
                 |actual| {
                     format!("attempted to take value of method `{}` on type \
-                            `{}`", token::get_ident(field.node), actual)
+                            `{}`", field.node, actual)
                 },
                 expr_t, None);
 
@@ -2915,7 +2915,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     format!("attempted access of field `{}` on \
                             type `{}`, but no field with that \
                             name was found",
-                            token::get_ident(field.node),
+                            field.node,
                             actual)
                 },
                 expr_t, None);
@@ -2931,9 +2931,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
     fn suggest_field_names<'tcx>(id : DefId,
                                  field : &ast::SpannedIdent,
                                  tcx : &ty::ctxt<'tcx>,
-                                 skip : Vec<&str>) {
-        let ident = token::get_ident(field.node);
-        let name = &ident;
+                                 skip : Vec<InternedString>) {
+        let name = field.node.name.as_str();
         // only find fits with at least one matching letter
         let mut best_dist = name.len();
         let fields = tcx.lookup_struct_fields(id);
@@ -2941,14 +2940,14 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         for elem in &fields {
             let n = elem.name.as_str();
             // ignore already set fields
-            if skip.iter().any(|&x| x == n) {
+            if skip.iter().any(|x| *x == n) {
                 continue;
             }
             // ignore private fields from non-local crates
             if id.krate != ast::LOCAL_CRATE && elem.vis != Visibility::Public {
                 continue;
             }
-            let dist = lev_distance(n, name);
+            let dist = lev_distance(&n, &name);
             if dist < best_dist {
                 best = Some(n);
                 best_dist = dist;
@@ -3061,12 +3060,12 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                                             class_id);
                                 format!("struct variant `{}::{}` has no field named `{}`",
                                         actual, variant_type.name.as_str(),
-                                        token::get_ident(field.ident.node))
+                                        field.ident.node)
                             }
                             None => {
                                 format!("structure `{}` has no field named `{}`",
                                         actual,
-                                        token::get_ident(field.ident.node))
+                                        field.ident.node)
                             }
                         },
                         struct_ty,
@@ -3083,7 +3082,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 Some((_, true)) => {
                     span_err!(fcx.tcx().sess, field.ident.span, E0062,
                         "field `{}` specified more than once",
-                        token::get_ident(field.ident.node));
+                        field.ident.node);
                     error_happened = true;
                 }
                 Some((field_id, false)) => {
@@ -3117,7 +3116,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     let (_, seen) = *class_field_map.get(&name).unwrap();
                     if !seen {
                         missing_fields.push(
-                            format!("`{}`", &token::get_name(name)))
+                            format!("`{}`", name))
                     }
                 }
 
@@ -5059,7 +5058,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         if !*b {
             span_err!(ccx.tcx.sess, span, E0091,
                 "type parameter `{}` is unused",
-                token::get_ident(tps[i].ident));
+                tps[i].ident);
         }
     }
 }
@@ -5073,7 +5072,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
     }
 
     let tcx = ccx.tcx;
-    let name = token::get_ident(it.ident);
+    let name = it.ident.name.as_str();
     let (n_tps, inputs, output) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic not correct format");

@@ -53,7 +53,6 @@ use syntax::ast_util::{self, is_shift_binop, local_def};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
-use syntax::parse::token;
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
@@ -1043,7 +1042,7 @@ pub struct NonCamelCaseTypes;
 impl NonCamelCaseTypes {
     fn check_case(&self, cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
         fn is_camel_case(ident: ast::Ident) -> bool {
-            let ident = token::get_ident(ident);
+            let ident = ident.name.as_str();
             if ident.is_empty() {
                 return true;
             }
@@ -1064,7 +1063,7 @@ impl NonCamelCaseTypes {
             )).collect::<Vec<_>>().concat()
         }
 
-        let s = token::get_ident(ident);
+        let s = ident.name.as_str();
 
         if !is_camel_case(ident) {
             let c = to_camel_case(&s);
@@ -1245,15 +1244,15 @@ impl LintPass for NonSnakeCase {
         match fk {
             visit::FkMethod(ident, _, _) => match method_context(cx, id, span) {
                 MethodContext::PlainImpl => {
-                    self.check_snake_case(cx, "method", &token::get_ident(ident), Some(span))
+                    self.check_snake_case(cx, "method", &ident.name.as_str(), Some(span))
                 },
                 MethodContext::TraitDefaultImpl => {
-                    self.check_snake_case(cx, "trait method", &token::get_ident(ident), Some(span))
+                    self.check_snake_case(cx, "trait method", &ident.name.as_str(), Some(span))
                 },
                 _ => (),
             },
             visit::FkItemFn(ident, _, _, _, _, _) => {
-                self.check_snake_case(cx, "function", &token::get_ident(ident), Some(span))
+                self.check_snake_case(cx, "function", &ident.name.as_str(), Some(span))
             },
             _ => (),
         }
@@ -1261,19 +1260,19 @@ impl LintPass for NonSnakeCase {
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
         if let ast::ItemMod(_) = it.node {
-            self.check_snake_case(cx, "module", &token::get_ident(it.ident), Some(it.span));
+            self.check_snake_case(cx, "module", &it.ident.name.as_str(), Some(it.span));
         }
     }
 
     fn check_trait_item(&mut self, cx: &Context, trait_item: &ast::TraitItem) {
         if let ast::MethodTraitItem(_, None) = trait_item.node {
-            self.check_snake_case(cx, "trait method", &token::get_ident(trait_item.ident),
+            self.check_snake_case(cx, "trait method", &trait_item.ident.name.as_str(),
                                   Some(trait_item.span));
         }
     }
 
     fn check_lifetime_def(&mut self, cx: &Context, t: &ast::LifetimeDef) {
-        self.check_snake_case(cx, "lifetime", &token::get_ident(t.lifetime.name.ident()),
+        self.check_snake_case(cx, "lifetime", &t.lifetime.name.as_str(),
                               Some(t.lifetime.span));
     }
 
@@ -1281,7 +1280,7 @@ impl LintPass for NonSnakeCase {
         if let &ast::PatIdent(_, ref path1, _) = &p.node {
             let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
             if let Some(def::DefLocal(_)) = def {
-                self.check_snake_case(cx, "variable", &token::get_ident(path1.node), Some(p.span));
+                self.check_snake_case(cx, "variable", &path1.node.name.as_str(), Some(p.span));
             }
         }
     }
@@ -1290,7 +1289,7 @@ impl LintPass for NonSnakeCase {
                         _: ast::Ident, _: &ast::Generics, _: ast::NodeId) {
         for sf in &s.fields {
             if let ast::StructField_ { kind: ast::NamedField(ident, _), .. } = sf.node {
-                self.check_snake_case(cx, "structure field", &token::get_ident(ident),
+                self.check_snake_case(cx, "structure field", &ident.name.as_str(),
                                       Some(sf.span));
             }
         }
@@ -1308,7 +1307,7 @@ pub struct NonUpperCaseGlobals;
 
 impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
-        let s = token::get_ident(ident);
+        let s = ident.name.as_str();
 
         if s.chars().any(|c| c.is_lowercase()) {
             let uc = NonSnakeCase::to_snake_case(&s).to_uppercase();
@@ -1489,7 +1488,7 @@ impl LintPass for UnusedImportBraces {
                 if items.len() == 1 {
                     if let ast::PathListIdent {ref name, ..} = items[0].node {
                         let m = format!("braces around {} is unnecessary",
-                                        &token::get_ident(*name));
+                                        name);
                         cx.span_lint(UNUSED_IMPORT_BRACES, item.span,
                                      &m[..]);
                     }
@@ -1525,10 +1524,12 @@ impl LintPass for NonShorthandFieldPatterns {
             });
             for fieldpat in field_pats {
                 if let ast::PatIdent(_, ident, None) = fieldpat.node.pat.node {
-                    if ident.node.as_str() == fieldpat.node.ident.as_str() {
+                    if ident.node.name == fieldpat.node.ident.name {
+                        // FIXME: should this comparison really be done on the name?
+                        // doing it on the ident will fail during compilation of libcore
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant and can \
-                                              be removed", ident.node.as_str()))
+                                              be removed", ident.node))
                     }
                 }
             }
@@ -1641,7 +1642,7 @@ impl UnusedMut {
             pat_util::pat_bindings(&cx.tcx.def_map, &**p, |mode, id, _, path1| {
                 let ident = path1.node;
                 if let ast::BindByValue(ast::MutMutable) = mode {
-                    if !token::get_ident(ident).starts_with("_") {
+                    if !ident.name.as_str().starts_with("_") {
                         match mutables.entry(ident.name.usize()) {
                             Vacant(entry) => { entry.insert(vec![id]); },
                             Occupied(mut entry) => { entry.get_mut().push(id); },

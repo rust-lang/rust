@@ -16,7 +16,6 @@ use middle::subst::{self, Subst, Substs, VecPerParamSpace};
 
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::parse::token;
 
 use super::assoc;
 
@@ -85,7 +84,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         span_err!(tcx.sess, impl_m_span, E0049,
             "method `{}` has {} type parameter{} \
              but its trait declaration has {} type parameter{}",
-            token::get_name(trait_m.name),
+            trait_m.name,
             num_impl_m_type_params,
             if num_impl_m_type_params == 1 {""} else {"s"},
             num_trait_m_type_params,
@@ -97,7 +96,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         span_err!(tcx.sess, impl_m_span, E0050,
             "method `{}` has {} parameter{} \
              but the declaration in trait `{}` has {}",
-            token::get_name(trait_m.name),
+            trait_m.name,
             impl_m.fty.sig.0.inputs.len(),
             if impl_m.fty.sig.0.inputs.len() == 1 {""} else {"s"},
             tcx.item_path_str(trait_m.def_id),
@@ -337,7 +336,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                    trait_fty);
             span_err!(tcx.sess, impl_m_span, E0053,
                       "method `{}` has an incompatible type for trait: {}",
-                      token::get_name(trait_m.name),
+                      trait_m.name,
                       terr);
             return;
         }
@@ -401,7 +400,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
             span_err!(tcx.sess, span, E0195,
                 "lifetime parameters or bounds on method `{}` do \
                          not match the trait declaration",
-                         token::get_name(impl_m.name));
+                         impl_m.name);
             return false;
         }
 
@@ -484,7 +483,7 @@ pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
             span_err!(tcx.sess, impl_c_span, E0326,
                       "implemented const `{}` has an incompatible type for \
                       trait: {}",
-                      token::get_name(trait_c.name),
+                      trait_c.name,
                       terr);
             return;
         }

@@ -128,7 +128,7 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                 decoder,
                                 cx.ident_of("read_struct"),
                                 vec!(
-                cx.expr_str(trait_span, token::get_ident(substr.type_ident)),
+                cx.expr_str(trait_span, substr.type_ident.name.as_str()),
                 cx.expr_usize(trait_span, nfields),
                 cx.lambda_expr_1(trait_span, result, blkarg)
             ))
@@ -140,10 +140,10 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             let mut variants = Vec::new();
             let rvariant_arg = cx.ident_of("read_enum_variant_arg");
 
-            for (i, &(name, v_span, ref parts)) in fields.iter().enumerate() {
-                variants.push(cx.expr_str(v_span, token::get_ident(name)));
+            for (i, &(ident, v_span, ref parts)) in fields.iter().enumerate() {
+                variants.push(cx.expr_str(v_span, ident.name.as_str()));
 
-                let path = cx.path(trait_span, vec![substr.type_ident, name]);
+                let path = cx.path(trait_span, vec![substr.type_ident, ident]);
                 let decoded = decode_static_fields(cx,
                                                    v_span,
                                                    path,
@@ -175,7 +175,7 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                 decoder,
                                 cx.ident_of("read_enum"),
                                 vec!(
-                cx.expr_str(trait_span, token::get_ident(substr.type_ident)),
+                cx.expr_str(trait_span, substr.type_ident.name.as_str()),
                 cx.lambda_expr_1(trait_span, result, blkarg)
             ))
         }
@@ -211,9 +211,9 @@ fn decode_static_fields<F>(cx: &mut ExtCtxt,
         }
         Named(ref fields) => {
             // use the field's span to get nicer error messages.
-            let fields = fields.iter().enumerate().map(|(i, &(name, span))| {
-                let arg = getarg(cx, span, token::get_ident(name), i);
-                cx.field_imm(span, name, arg)
+            let fields = fields.iter().enumerate().map(|(i, &(ident, span))| {
+                let arg = getarg(cx, span, ident.name.as_str(), i);
+                cx.field_imm(span, ident, arg)
             }).collect();
             cx.expr_struct(trait_span, outer_pat_path, fields)
         }
