@@ -1152,7 +1152,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
             let name = if field.name == special_idents::unnamed_field.name {
                 format!("__{}", i)
             } else {
-                token::get_name(field.name).to_string()
+                field.name.to_string()
             };
 
             let offset = if self.is_simd {
@@ -1307,7 +1307,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                             describe_enum_variant(cx,
                                                   self.enum_type,
                                                   struct_def,
-                                                  &*(*self.variants)[i],
+                                                  &*self.variants[i],
                                                   discriminant_info,
                                                   self.containing_scope,
                                                   self.span);
@@ -1340,7 +1340,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         describe_enum_variant(cx,
                                               self.enum_type,
                                               struct_def,
-                                              &*(*self.variants)[0],
+                                              &*self.variants[0],
                                               NoDiscriminant,
                                               self.containing_scope,
                                               self.span);
@@ -1369,8 +1369,8 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // DWARF representation of enums uniform.
 
                 // First create a description of the artificial wrapper struct:
-                let non_null_variant = &(*self.variants)[non_null_variant_index as usize];
-                let non_null_variant_name = token::get_name(non_null_variant.name);
+                let non_null_variant = &self.variants[non_null_variant_index as usize];
+                let non_null_variant_name = non_null_variant.name.as_str();
 
                 // The llvm type and metadata of the pointer
                 let non_null_llvm_type = type_of::type_of(cx, nnty);
@@ -1385,7 +1385,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // MemberDescription of the struct's single field.
                 let sole_struct_member_description = MemberDescription {
                     name: match non_null_variant.arg_names {
-                        Some(ref names) => token::get_name(names[0]).to_string(),
+                        Some(ref names) => names[0].to_string(),
                         None => "__0".to_string()
                     },
                     llvm_type: non_null_llvm_type,
@@ -1415,7 +1415,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // Encode the information about the null variant in the union
                 // member's name.
                 let null_variant_index = (1 - non_null_variant_index) as usize;
-                let null_variant_name = token::get_name((*self.variants)[null_variant_index].name);
+                let null_variant_name = self.variants[null_variant_index].name;
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
                                                 0,
                                                 null_variant_name);
@@ -1440,7 +1440,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     describe_enum_variant(cx,
                                           self.enum_type,
                                           struct_def,
-                                          &*(*self.variants)[nndiscr as usize],
+                                          &*self.variants[nndiscr as usize],
                                           OptimizedDiscriminant,
                                           self.containing_scope,
                                           self.span);
@@ -1456,7 +1456,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // Encode the information about the null variant in the union
                 // member's name.
                 let null_variant_index = (1 - nndiscr) as usize;
-                let null_variant_name = token::get_name((*self.variants)[null_variant_index].name);
+                let null_variant_name = self.variants[null_variant_index].name;
                 let discrfield = discrfield.iter()
                                            .skip(1)
                                            .map(|x| x.to_string())
@@ -1534,18 +1534,17 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       struct_def.packed);
     // Could do some consistency checks here: size, align, field count, discr type
 
-    let variant_name = token::get_name(variant_info.name);
-    let variant_name = &variant_name;
+    let variant_name = variant_info.name.as_str();
     let unique_type_id = debug_context(cx).type_map
                                           .borrow_mut()
                                           .get_unique_type_id_of_enum_variant(
                                               cx,
                                               enum_type,
-                                              variant_name);
+                                              &variant_name);
 
     let metadata_stub = create_struct_stub(cx,
                                            variant_llvm_type,
-                                           variant_name,
+                                           &variant_name,
                                            unique_type_id,
                                            containing_scope);
 
@@ -1553,7 +1552,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let mut arg_names: Vec<_> = match variant_info.arg_names {
         Some(ref names) => {
             names.iter()
-                 .map(|&name| token::get_name(name).to_string())
+                 .map(|name| name.to_string())
                  .collect()
         }
         None => {
@@ -1609,7 +1608,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let enumerators_metadata: Vec<DIDescriptor> = variants
         .iter()
         .map(|v| {
-            let token = token::get_name(v.name);
+            let token = v.name.as_str();
             let name = CString::new(token.as_bytes()).unwrap();
             unsafe {
                 llvm::LLVMDIBuilderCreateEnumerator(
@@ -1723,7 +1722,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             csearch::get_item_path(cx.tcx(), def_id).last().unwrap().name()
         };
 
-        token::get_name(name)
+        name.as_str()
     }
 }
 
@@ -1907,7 +1906,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let variable_type = cx.tcx().node_id_to_type(node_id);
     let type_metadata = type_metadata(cx, variable_type, span);
     let namespace_node = namespace_for_item(cx, ast_util::local_def(node_id));
-    let var_name = token::get_name(name).to_string();
+    let var_name = name.to_string();
     let linkage_name =
         namespace_node.mangled_name_of_contained_item(&var_name[..]);
     let var_scope = namespace_node.scope;

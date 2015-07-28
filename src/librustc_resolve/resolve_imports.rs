@@ -31,7 +31,6 @@ use rustc::middle::privacy::*;
 
 use syntax::ast::{DefId, NodeId, Name};
 use syntax::attr::AttrMetaMethods;
-use syntax::parse::token;
 use syntax::codemap::Span;
 
 use std::mem::replace;
@@ -435,10 +434,10 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                (*child_name_bindings).clone());
                     if directive.is_public && !child_name_bindings.is_public(ValueNS) {
                         let msg = format!("`{}` is private, and cannot be reexported",
-                                          token::get_name(source));
+                                          source);
                         let note_msg =
                             format!("Consider marking `{}` as `pub` in the imported module",
-                                    token::get_name(source));
+                                    source);
                         span_err!(self.resolver.session, directive.span, E0364, "{}", &msg);
                         self.resolver.session.span_note(directive.span, &note_msg);
                         pub_err = true;
@@ -450,9 +449,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                               (*child_name_bindings).clone());
                     if !pub_err && directive.is_public && !child_name_bindings.is_public(TypeNS) {
                         let msg = format!("`{}` is private, and cannot be reexported",
-                                          token::get_name(source));
+                                          source);
                         let note_msg = format!("Consider declaring module `{}` as a `pub mod`",
-                                               token::get_name(source));
+                                               source);
                         span_err!(self.resolver.session, directive.span, E0365, "{}", &msg);
                         self.resolver.session.span_note(directive.span, &note_msg);
                     }
@@ -1041,9 +1040,7 @@ fn import_path_to_string(names: &[Name],
 
 fn import_directive_subclass_to_string(subclass: ImportDirectiveSubclass) -> String {
     match subclass {
-        SingleImport(_, source) => {
-            token::get_name(source).to_string()
-        }
+        SingleImport(_, source) => source.to_string(),
         GlobImport => "*".to_string()
     }
 }

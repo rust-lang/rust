@@ -545,14 +545,13 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac,
                 // let compilation continue
                 return None;
             }
-            let extname = pth.segments[0].identifier;
-            let extnamestr = token::get_ident(extname);
-            match fld.cx.syntax_env.find(&extname.name) {
+            let extname = pth.segments[0].identifier.name;
+            match fld.cx.syntax_env.find(&extname) {
                 None => {
                     fld.cx.span_err(
                         pth.span,
                         &format!("macro undefined: '{}!'",
-                                &extnamestr));
+                                &extname));
 
                     // let compilation continue
                     None
@@ -562,7 +561,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac,
                         fld.cx.bt_push(ExpnInfo {
                                 call_site: span,
                                 callee: NameAndSpan {
-                                    name: extnamestr.to_string(),
+                                    name: extname.to_string(),
                                     format: MacroBang,
                                     span: exp_span,
                                     allow_internal_unstable: allow_internal_unstable,
@@ -589,7 +588,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac,
                                 fld.cx.span_err(
                                     pth.span,
                                     &format!("non-expression macro in expression position: {}",
-                                            &extnamestr[..]
+                                            extname
                                             ));
                                 return None;
                             }
@@ -600,7 +599,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac,
                         fld.cx.span_err(
                             pth.span,
                             &format!("'{}' is not a tt-style macro",
-                                    &extnamestr));
+                                    extname));
                         None
                     }
                 }
@@ -712,19 +711,18 @@ pub fn expand_item_mac(it: P<ast::Item>,
             node: MacInvocTT(ref pth, ref tts, _),
             ..
         }) => {
-            (pth.segments[0].identifier, pth.span, (*tts).clone())
+            (pth.segments[0].identifier.name, pth.span, (*tts).clone())
         }
         _ => fld.cx.span_bug(it.span, "invalid item macro invocation")
     };
 
-    let extnamestr = token::get_ident(extname);
     let fm = fresh_mark();
     let items = {
-        let expanded = match fld.cx.syntax_env.find(&extname.name) {
+        let expanded = match fld.cx.syntax_env.find(&extname) {
             None => {
                 fld.cx.span_err(path_span,
                                 &format!("macro undefined: '{}!'",
-                                        extnamestr));
+                                        extname));
                 // let compilation continue
                 return SmallVector::zero();
             }
@@ -735,14 +733,14 @@ pub fn expand_item_mac(it: P<ast::Item>,
                         fld.cx
                             .span_err(path_span,
                                       &format!("macro {}! expects no ident argument, given '{}'",
-                                               extnamestr,
-                                               token::get_ident(it.ident)));
+                                               extname,
+                                               it.ident));
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
-                            name: extnamestr.to_string(),
+                            name: extname.to_string(),
                             format: MacroBang,
                             span: span,
                             allow_internal_unstable: allow_internal_unstable,
@@ -756,13 +754,13 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(path_span,
                                         &format!("macro {}! expects an ident argument",
-                                                &extnamestr));
+                                                extname));
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
-                            name: extnamestr.to_string(),
+                            name: extname.to_string(),
                             format: MacroBang,
                             span: span,
                             allow_internal_unstable: allow_internal_unstable,
@@ -783,7 +781,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
-                            name: extnamestr.to_string(),
+                            name: extname.to_string(),
                             format: MacroBang,
                             span: None,
                             // `macro_rules!` doesn't directly allow
@@ -828,7 +826,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                 _ => {
                     fld.cx.span_err(it.span,
                                     &format!("{}! is not legal in item position",
-                                            &extnamestr));
+                                            extname));
                     return SmallVector::zero();
                 }
             }
@@ -847,7 +845,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
         None => {
             fld.cx.span_err(path_span,
                             &format!("non-item macro in item position: {}",
-                                    &extnamestr));
+                                    extname));
             return SmallVector::zero();
         }
     };
@@ -1096,13 +1094,12 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
             fld.cx.span_err(pth.span, "expected macro name without module separators");
             return DummyResult::raw_pat(span);
         }
-        let extname = pth.segments[0].identifier;
-        let extnamestr = token::get_ident(extname);
-        let marked_after = match fld.cx.syntax_env.find(&extname.name) {
+        let extname = pth.segments[0].identifier.name;
+        let marked_after = match fld.cx.syntax_env.find(&extname) {
             None => {
                 fld.cx.span_err(pth.span,
                                 &format!("macro undefined: '{}!'",
-                                        extnamestr));
+                                        extname));
                 // let compilation continue
                 return DummyResult::raw_pat(span);
             }
@@ -1112,7 +1109,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                     fld.cx.bt_push(ExpnInfo {
                         call_site: span,
                         callee: NameAndSpan {
-                            name: extnamestr.to_string(),
+                            name: extname.to_string(),
                             format: MacroBang,
                             span: tt_span,
                             allow_internal_unstable: allow_internal_unstable,
@@ -1132,7 +1129,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                                 pth.span,
                                 &format!(
                                     "non-pattern macro in pattern position: {}",
-                                    &extnamestr
+                                    extname
                                     )
                             );
                             return DummyResult::raw_pat(span);
@@ -1145,7 +1142,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                 _ => {
                     fld.cx.span_err(span,
                                     &format!("{}! is not legal in pattern position",
-                                            &extnamestr));
+                                            extname));
                     return DummyResult::raw_pat(span);
                 }
             }
@@ -2121,8 +2118,7 @@ mod tests {
                         = varref.segments.iter().map(|s| s.identifier)
                         .collect();
                     println!("varref #{}: {:?}, resolves to {}",idx, varref_idents, varref_name);
-                    let string = token::get_ident(final_varref_ident);
-                    println!("varref's first segment's string: \"{}\"", &string[..]);
+                    println!("varref's first segment's string: \"{}\"", final_varref_ident);
                     println!("binding #{}: {}, resolves to {}",
                              binding_idx, bindings[binding_idx], binding_name);
                     mtwt::with_sctable(|x| mtwt::display_sctable(x));
@@ -2174,11 +2170,7 @@ foo_module!();
         // find the xx binding
         let bindings = crate_bindings(&cr);
         let cxbinds: Vec<&ast::Ident> =
-            bindings.iter().filter(|b| {
-                let ident = token::get_ident(**b);
-                let string = &ident[..];
-                "xx" == string
-            }).collect();
+            bindings.iter().filter(|b| b.name == "xx").collect();
         let cxbinds: &[&ast::Ident] = &cxbinds[..];
         let cxbind = match (cxbinds.len(), cxbinds.get(0)) {
             (1, Some(b)) => *b,
@@ -2190,7 +2182,7 @@ foo_module!();
         // the xx binding should bind all of the xx varrefs:
         for (idx,v) in varrefs.iter().filter(|p| {
             p.segments.len() == 1
-            && "xx" == &*token::get_ident(p.segments[0].identifier)
+            && p.segments[0].identifier.name == "xx"
         }).enumerate() {
             if mtwt::resolve(v.segments[0].identifier) != resolved_binding {
                 println!("uh oh, xx binding didn't match xx varref:");

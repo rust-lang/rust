@@ -39,7 +39,7 @@ use syntax::ast;
 use syntax::parse::token;
 
 pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
-    let name = match &token::get_ident(item.ident)[..] {
+    let name = match &*item.ident.name.as_str() {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
         "powif32" => "llvm.powi.f32",
@@ -171,10 +171,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         _ => panic!("expected bare_fn in trans_intrinsic_call")
     };
     let foreign_item = tcx.map.expect_foreign_item(node);
-    let name = token::get_ident(foreign_item.ident);
+    let name = foreign_item.ident.name.as_str();
 
     // For `transmute` we can just trans the input expr directly into dest
-    if &name[..] == "transmute" {
+    if name == "transmute" {
         let llret_ty = type_of::type_of(ccx, ret_ty.unwrap());
         match args {
             callee::ArgExprs(arg_exprs) => {
@@ -271,7 +271,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // (the first argument) and then trans the source value (the
     // second argument) directly into the resulting destination
     // address.
-    if &name[..] == "move_val_init" {
+    if name == "move_val_init" {
         if let callee::ArgExprs(ref exprs) = args {
             let (dest_expr, source_expr) = if exprs.len() != 2 {
                 ccx.sess().bug("expected two exprs as arguments for `move_val_init` intrinsic");
@@ -354,7 +354,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
 
     // These are the only intrinsic functions that diverge.
-    if &name[..] == "abort" {
+    if name == "abort" {
         let llfn = ccx.get_intrinsic(&("llvm.trap"));
         Call(bcx, llfn, &[], None, call_debug_location);
         fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
@@ -387,7 +387,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     };
 
     let simple = get_simple_intrinsic(ccx, &*foreign_item);
-    let llval = match (simple, &name[..]) {
+    let llval = match (simple, &*name) {
         (Some(llfn), _) => {
             Call(bcx, llfn, &llargs, None, call_debug_location)
         }

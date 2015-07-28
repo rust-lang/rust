@@ -47,8 +47,7 @@ impl PathElem {
 
 impl fmt::Display for PathElem {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let slot = token::get_name(self.name());
-        write!(f, "{}", slot)
+        write!(f, "{}", self.name())
     }
 }
 
@@ -1073,18 +1072,18 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
             match ii.node {
                 ConstImplItem(..) => {
                     format!("assoc const {} in {}{}",
-                            token::get_ident(ii.ident),
+                            ii.ident,
                             map.path_to_string(id),
                             id_str)
                 }
                 MethodImplItem(..) => {
                     format!("method {} in {}{}",
-                            token::get_ident(ii.ident),
+                            ii.ident,
                             map.path_to_string(id), id_str)
                 }
                 TypeImplItem(_) => {
                     format!("assoc type {} in {}{}",
-                            token::get_ident(ii.ident),
+                            ii.ident,
                             map.path_to_string(id),
                             id_str)
                 }
@@ -1103,13 +1102,13 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
 
             format!("{} {} in {}{}",
                     kind,
-                    token::get_ident(ti.ident),
+                    ti.ident,
                     map.path_to_string(id),
                     id_str)
         }
         Some(NodeVariant(ref variant)) => {
             format!("variant {} in {}{}",
-                    token::get_ident(variant.node.name),
+                    variant.node.name,
                     map.path_to_string(id), id_str)
         }
         Some(NodeExpr(ref expr)) => {

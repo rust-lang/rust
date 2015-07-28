@@ -28,7 +28,6 @@ use std::mem::replace;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
-use syntax::parse::token;
 use syntax::print::pprust::lifetime_to_string;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -664,7 +663,7 @@ impl<'a> LifetimeContext<'a> {
     fn unresolved_lifetime_ref(&self, lifetime_ref: &ast::Lifetime) {
         span_err!(self.sess, lifetime_ref.span, E0261,
             "use of undeclared lifetime name `{}`",
-                    token::get_name(lifetime_ref.name));
+                    lifetime_ref.name);
     }
 
     fn check_lifetime_defs(&mut self, old_scope: Scope, lifetimes: &Vec<ast::LifetimeDef>) {
@@ -676,7 +675,7 @@ impl<'a> LifetimeContext<'a> {
                 if special_idents.iter().any(|&i| i.name == lifetime.lifetime.name) {
                     span_err!(self.sess, lifetime.lifetime.span, E0262,
                         "illegal lifetime parameter name: `{}`",
-                                token::get_name(lifetime.lifetime.name));
+                                lifetime.lifetime.name);
                 }
             }
 
@@ -688,7 +687,7 @@ impl<'a> LifetimeContext<'a> {
                     span_err!(self.sess, lifetime_j.lifetime.span, E0263,
                         "lifetime name `{}` declared twice in \
                                 the same scope",
-                                token::get_name(lifetime_j.lifetime.name));
+                                lifetime_j.lifetime.name);
                 }
             }
 

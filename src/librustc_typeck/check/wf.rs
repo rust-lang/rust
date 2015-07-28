@@ -23,7 +23,7 @@ use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::codemap::{DUMMY_SP, Span};
-use syntax::parse::token::{self, special_idents};
+use syntax::parse::token::special_idents;
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -422,7 +422,7 @@ fn reject_shadowing_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>,
         if impl_params.contains(&method_param.name) {
             span_err!(tcx.sess, span, E0194,
                 "type parameter `{}` shadows another type parameter of the same name",
-                          token::get_name(method_param.name));
+                          method_param.name);
         }
     }
 }

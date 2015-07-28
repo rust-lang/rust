@@ -40,7 +40,7 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]
         } else {
             match *e {
                 ast::TtToken(_, token::Ident(ident, _)) => {
-                    res_str.push_str(&token::get_ident(ident))
+                    res_str.push_str(&ident.name.as_str())
                 },
                 _ => {
                     cx.span_err(sp, "concat_idents! requires ident args.");
@@ -49,7 +49,7 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]
             }
         }
     }
-    let res = str_to_ident(&res_str[..]);
+    let res = str_to_ident(&res_str);
 
     let e = P(ast::Expr {
         id: ast::DUMMY_NODE_ID,

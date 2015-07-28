@@ -61,7 +61,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         ("I",    1)];
 
     let text = match args {
-        [TtToken(_, token::Ident(s, _))] => token::get_ident(s).to_string(),
+        [TtToken(_, token::Ident(s, _))] => s.to_string(),
         _ => {
             cx.span_err(sp, "argument should be a single identifier");
             return DummyResult::any(sp);
@@ -186,8 +186,7 @@ impl LintPass for Pass {
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
-        let name = token::get_ident(it.ident);
-        if name.get() == "lintme" {
+        if it.ident.name == "lintme" {
             cx.span_lint(TEST_LINT, it.span, "item is named 'lintme'");
         }
     }
