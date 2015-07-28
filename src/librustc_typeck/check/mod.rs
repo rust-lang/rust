@@ -1096,13 +1096,13 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     if !invalidated_items.is_empty() {
         let invalidator = overridden_associated_type.unwrap();
-        span_err!(tcx.sess, invalidator.span, E0399,
-                  "the following trait items need to be reimplemented \
-                   as `{}` was overridden: `{}`",
+        tcx.sess.span_warn(invalidator.span, &format!(
+                  "in Rust 1.3.0, the following trait items will need to \
+                   be reimplemented as `{}` was overridden: `{}`",
                   invalidator.ident.as_str(),
                   invalidated_items.iter()
                                    .map(<ast::Name>::as_str)
-                                   .collect::<Vec<_>>().connect("`, `"))
+                                   .collect::<Vec<_>>().connect("`, `")))
     }
 }
 

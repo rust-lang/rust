@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts)]
+#![feature(associated_consts, rustc_attrs)]
 
 pub trait Tr {
     type Assoc = u8;
@@ -19,7 +19,7 @@ pub trait Tr {
 
 impl Tr for () {
     type Assoc = ();
-    //~^ ERROR need to be reimplemented as `Assoc` was overridden: `Assoc2`, `C`, `foo`
+    //~^ WARNING need to be reimplemented as `Assoc` was overridden: `Assoc2`, `C`, `foo`
 }
 
-fn main() {}
+#[rustc_error] fn main() {} //~ ERROR compilation successful
