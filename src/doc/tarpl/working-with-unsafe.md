@@ -1,8 +1,8 @@
 % Working with Unsafe
 
-Rust generally only gives us the tools to talk about Unsafe in a scoped and
-binary manner. Unfortunately, reality is significantly more complicated than that.
-For instance, consider the following toy function:
+Rust generally only gives us the tools to talk about Unsafe Rust in a scoped and
+binary manner. Unfortunately, reality is significantly more complicated than
+that. For instance, consider the following toy function:
 
 ```rust
 fn index(idx: usize, arr: &[u8]) -> Option<u8> {
@@ -35,10 +35,15 @@ fn index(idx: usize, arr: &[u8]) -> Option<u8> {
 
 This program is now unsound, and yet *we only modified safe code*. This is the
 fundamental problem of safety: it's non-local. The soundness of our unsafe
-operations necessarily depends on the state established by "safe" operations.
-Although safety *is* modular (we *still* don't need to worry about about
-unrelated safety issues like uninitialized memory), it quickly contaminates the
-surrounding code.
+operations necessarily depends on the state established by otherwise
+"safe" operations.
+
+Safety is modular in the sense that opting into unsafety doesn't require you
+to consider arbitrary other kinds of badness. For instance, doing an unchecked
+index into a slice doesn't mean you suddenly need to worry about the slice being
+null or containing uninitialized memory. Nothing fundamentally changes. However
+safety *isn't* modular in the sense that programs are inherently stateful and
+your unsafe operations may depend on arbitrary other state.
 
 Trickier than that is when we get into actual statefulness. Consider a simple
 implementation of `Vec`:
@@ -84,10 +89,10 @@ fn make_room(&mut self) {
 }
 ```
 
-This code is safe, but it is also completely unsound. Changing the capacity
-violates the invariants of Vec (that `cap` reflects the allocated space in the
-Vec). This is not something the rest of Vec can guard against. It *has* to
-trust the capacity field because there's no way to verify it.
+This code is 100% Safe Rust but it is also completely unsound. Changing the
+capacity violates the invariants of Vec (that `cap` reflects the allocated space
+in the Vec). This is not something the rest of Vec can guard against. It *has*
+to trust the capacity field because there's no way to verify it.
 
 `unsafe` does more than pollute a whole function: it pollutes a whole *module*.
 Generally, the only bullet-proof way to limit the scope of unsafe code is at the
@@ -102,9 +107,13 @@ as Vec.
 It is therefore possible for us to write a completely safe abstraction that
 relies on complex invariants. This is *critical* to the relationship between
 Safe Rust and Unsafe Rust. We have already seen that Unsafe code must trust
-*some* Safe code, but can't trust *arbitrary* Safe code. However if Unsafe
-couldn't prevent client Safe code from messing with its state in arbitrary ways,
-safety would be a lost cause.
+*some* Safe code, but can't trust *generic* Safe code. It can't trust an
+arbitrary implementor of a trait or any function that was passed to it to be
+well-behaved in a way that safe code doesn't care about.
+
+However if unsafe code couldn't prevent client safe code from messing with its
+state in arbitrary ways, safety would be a lost cause. Thankfully, it *can*
+prevent arbitrary code from messing with critical state due to privacy.
 
 Safety lives!
 

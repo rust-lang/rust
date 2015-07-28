@@ -2,7 +2,7 @@
 
 Programmers in safe "high-level" languages face a fundamental dilemma. On one
 hand, it would be *really* great to just say what you want and not worry about
-how it's done. On the other hand, that can lead to some *really* poor
+how it's done. On the other hand, that can lead to unacceptably poor
 performance. It may be necessary to drop down to less clear or idiomatic
 practices to get the performance characteristics you want. Or maybe you just
 throw up your hands in disgust and decide to shell out to an implementation in
@@ -12,21 +12,22 @@ Worse, when you want to talk directly to the operating system, you *have* to
 talk to an unsafe language: *C*. C is ever-present and unavoidable. It's the
 lingua-franca of the programming world.
 Even other safe languages generally expose C interfaces for the world at large!
-Regardless of *why* you're doing it, as soon as your program starts talking to
+Regardless of why you're doing it, as soon as your program starts talking to
 C it stops being safe.
 
 With that said, Rust is *totally* a safe programming language.
 
 Well, Rust *has* a safe programming language. Let's step back a bit.
 
-Rust can be thought of as being composed of two
-programming languages: *Safe* and *Unsafe*. Safe is For Reals Totally Safe.
-Unsafe, unsurprisingly, is *not* For Reals Totally Safe. In fact, Unsafe lets
-you do some really crazy unsafe things.
+Rust can be thought of as being composed of two programming languages: *Safe
+Rust* and *Unsafe Rust*. Safe Rust is For Reals  Totally Safe. Unsafe Rust,
+unsurprisingly, is *not* For Reals Totally Safe.  In fact, Unsafe Rust lets you
+do some really crazy unsafe things.
 
-Safe is *the* Rust programming language. If all you do is write Safe Rust,
-you will never have to worry about type-safety or memory-safety. You will never
-endure a null or dangling pointer, or any of that Undefined Behaviour nonsense.
+Safe Rust is the *true* Rust programming language. If all you do is write Safe
+Rust, you will never have to worry about type-safety or memory-safety. You will
+never endure a null or dangling pointer, or any of that Undefined Behaviour
+nonsense.
 
 *That's totally awesome*.
 
@@ -69,17 +70,16 @@ language cares about is preventing the following things:
     * A non-utf8 `str`
 * Unwinding into another language
 * Causing a [data race][race]
-* Double-dropping a value
 
-That's it. That's all the Undefined Behaviour baked into Rust. Of course, unsafe
-functions and traits are free to declare arbitrary other constraints that a
-program must maintain to avoid Undefined Behaviour. However these are generally
-just things that will transitively lead to one of the above problems. Some
-additional constraints may also derive from compiler intrinsics that make special
-assumptions about how code can be optimized.
+That's it. That's all the causes of Undefined Behaviour baked into Rust. Of
+course, unsafe functions and traits are free to declare arbitrary other
+constraints that a program must maintain to avoid Undefined Behaviour. However,
+generally violations of these constraints will just transitively lead to one of
+the above problems. Some additional constraints may also derive from compiler
+intrinsics that make special assumptions about how code can be optimized.
 
-Rust is otherwise quite permissive with respect to other dubious operations. Rust
-considers it "safe" to:
+Rust is otherwise quite permissive with respect to other dubious operations.
+Rust considers it "safe" to:
 
 * Deadlock
 * Have a [race condition][race]
