@@ -125,13 +125,13 @@ unsafe impl UnsafeOrd for MyType {
 But it's probably not the implementation you want.
 
 Rust has traditionally avoided making traits unsafe because it makes Unsafe
-pervasive, which is not desirable. Send and Sync are unsafe is because
-thread safety is a *fundamental property* that Unsafe cannot possibly hope to
-defend against in the same way it would defend against a bad Ord implementation.
-The only way to possibly defend against thread-unsafety would be to *not use
-threading at all*. Making every operation atomic isn't even sufficient, because
-it's possible for complex invariants to exist between disjoint locations in
-memory. For instance, the pointer and capacity of a Vec must be in sync.
+pervasive, which is not desirable. Send and Sync are unsafe is because thread
+safety is a *fundamental property* that Unsafe cannot possibly hope to defend
+against in the same way it would defend against a bad Ord implementation. The
+only way to possibly defend against thread-unsafety would be to *not use
+threading at all*. Making every load and store atomic isn't even sufficient,
+because it's possible for complex invariants to exist between disjoint locations
+in memory. For instance, the pointer and capacity of a Vec must be in sync.
 
 Even concurrent paradigms that are traditionally regarded as Totally Safe like
 message passing implicitly rely on some notion of thread safety -- are you

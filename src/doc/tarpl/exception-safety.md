@@ -37,7 +37,7 @@ needs to be careful and consider exception safety.
 ## Vec::push_all
 
 `Vec::push_all` is a temporary hack to get extending a Vec by a slice reliably
-effecient without specialization. Here's a simple implementation:
+efficient without specialization. Here's a simple implementation:
 
 ```rust,ignore
 impl<T: Clone> Vec<T> {

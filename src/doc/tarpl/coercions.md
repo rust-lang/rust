@@ -27,7 +27,7 @@ only implemented automatically, and enables the following transformations:
 * `Foo<..., T, ...>` => `Foo<..., U, ...>` where:
     * `T: Unsize<U>`
     * `Foo` is a struct
-    * Only the last field has type `T`
+    * Only the last field of `Foo` has type `T`
     * `T` is not part of the type of any other fields
 
 Coercions occur at a *coercion site*. Any location that is explicitly typed

@@ -41,8 +41,7 @@ Note that lengths are not adjusted when casting raw slices -
 half of the original memory.
 
 Casting is not transitive, that is, even if `e as U1 as U2` is a valid
-expression, `e as U2` is not necessarily so (in fact it will only be valid if
-`U1` coerces to `U2`).
+expression, `e as U2` is not necessarily so.
 
 For numeric casts, there are quite a few cases to consider:
 
@@ -53,15 +52,20 @@ For numeric casts, there are quite a few cases to consider:
     * zero-extend if the source is unsigned
     * sign-extend if the source is signed
 * casting from a float to an integer will round the float towards zero
-    * **NOTE: currently this will cause Undefined Behaviour if the rounded
-      value cannot be represented by the target integer type**. This includes
-      Inf and NaN. This is a bug and will be fixed.
+    * **[NOTE: currently this will cause Undefined Behaviour if the rounded
+      value cannot be represented by the target integer type][float-int]**.
+      This includes Inf and NaN. This is a bug and will be fixed.
 * casting from an integer to float will produce the floating point
   representation of the integer, rounded if necessary (rounding strategy
   unspecified)
 * casting from an f32 to an f64 is perfect and lossless
 * casting from an f64 to an f32 will produce the closest possible value
   (rounding strategy unspecified)
-    * **NOTE: currently this will cause Undefined Behaviour if the value
+    * **[NOTE: currently this will cause Undefined Behaviour if the value
       is finite but larger or smaller than the largest or smallest finite
-      value representable by f32**. This is a bug and will be fixed.
+      value representable by f32][float-float]**. This is a bug and will
+      be fixed.
+
+
+[float-int]: https://github.com/rust-lang/rust/issues/10184
+[float-float]: https://github.com/rust-lang/rust/issues/15536

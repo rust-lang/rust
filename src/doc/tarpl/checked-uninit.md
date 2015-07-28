@@ -104,5 +104,14 @@ fn main() {
 ```
 
 However reassigning `y` in this example *would* require `y` to be marked as
-mutable, as a Safe Rust program could observe that the value of `y` changed.
-Otherwise the variable is exactly like new.
+mutable, as a Safe Rust program could observe that the value of `y` changed:
+
+```rust
+fn main() {
+    let mut y = Box::new(0);
+    let z = y; // y is now logically uninitialized because Box isn't Copy
+    y = Box::new(1); // reinitialize y
+}
+```
+
+Otherwise it's like `y` is a brand new variable.
