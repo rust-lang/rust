@@ -92,10 +92,8 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
 
     fn is_obsolete_ident(&mut self, ident: &str) -> bool {
         match self.token {
-            token::Ident(sid, _) => {
-                token::get_ident(sid) == ident
-            }
-            _ => false
+            token::Ident(sid, _) => sid.name == ident,
+            _ => false,
         }
     }
 

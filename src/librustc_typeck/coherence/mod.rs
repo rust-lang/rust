@@ -383,14 +383,14 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                  "the trait `Copy` may not be \
                                           implemented for this type; field \
                                           `{}` does not implement `Copy`",
-                                         token::get_name(name))
+                                         name)
                 }
                 Err(ty::VariantDoesNotImplementCopy(name)) => {
                        span_err!(tcx.sess, span, E0205,
                                  "the trait `Copy` may not be \
                                           implemented for this type; variant \
                                           `{}` does not implement `Copy`",
-                                         token::get_name(name))
+                                         name)
                 }
                 Err(ty::TypeIsStructural) => {
                        span_err!(tcx.sess, span, E0206,

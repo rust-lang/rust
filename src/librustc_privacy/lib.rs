@@ -46,7 +46,6 @@ use rustc::util::nodemap::{NodeMap, NodeSet};
 use syntax::ast;
 use syntax::ast_util::{is_local, local_def};
 use syntax::codemap::Span;
-use syntax::parse::token;
 use syntax::visit::{self, Visitor};
 
 type Context<'a, 'tcx> = (&'a ty::MethodMap<'tcx>, &'a def::ExportMap);
@@ -682,8 +681,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             ast::ItemEnum(..) => "enum",
             _ => return Some((err_span, err_msg, None))
         };
-        let msg = format!("{} `{}` is private", desc,
-                          token::get_ident(item.ident));
+        let msg = format!("{} `{}` is private", desc, item.ident);
         Some((err_span, err_msg, Some((span, msg))))
     }
 
@@ -715,7 +713,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         };
         let msg = match name {
             NamedField(name) => format!("field `{}` of {} is private",
-                                        token::get_name(name), struct_desc),
+                                        name, struct_desc),
             UnnamedField(idx) => format!("field #{} of {} is private",
                                          idx + 1, struct_desc),
         };
@@ -740,12 +738,11 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             }
         };
 
-        let string = token::get_name(name);
         self.report_error(self.ensure_public(span,
                                              method_id,
                                              None,
                                              &format!("method `{}`",
-                                                     string)));
+                                                     name)));
     }
 
     // Checks that a path is in scope.
@@ -755,12 +752,11 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         let ck = |tyname: &str| {
             let ck_public = |def: ast::DefId| {
                 debug!("privacy - ck_public {:?}", def);
-                let name = token::get_name(last);
                 let origdid = path_res.def_id();
                 self.ensure_public(span,
                                    def,
                                    Some(origdid),
-                                   &format!("{} `{}`", tyname, name))
+                                   &format!("{} `{}`", tyname, last))
             };
 
             match path_res.last_private {

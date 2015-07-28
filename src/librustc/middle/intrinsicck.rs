@@ -21,7 +21,6 @@ use syntax::abi::RustIntrinsic;
 use syntax::ast::DefId;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
 
@@ -61,16 +60,14 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
         if def_id.krate == ast::LOCAL_CRATE {
             match self.tcx.map.get(def_id.node) {
                 NodeForeignItem(ref item) if intrinsic => {
-                    token::get_ident(item.ident) ==
-                        token::intern_and_get_ident("transmute")
+                    item.ident.name == "transmute"
                 }
                 _ => false,
             }
         } else {
             match csearch::get_item_path(self.tcx, def_id).last() {
                 Some(ref last) if intrinsic => {
-                    token::get_name(last.name()) ==
-                        token::intern_and_get_ident("transmute")
+                    last.name() == "transmute"
                 }
                 _ => false,
             }

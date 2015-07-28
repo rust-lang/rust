@@ -5331,19 +5331,13 @@ impl<'tcx> ctxt<'tcx> {
         match self.map.find(id) {
             Some(ast_map::NodeLocal(pat)) => {
                 match pat.node {
-                    ast::PatIdent(_, ref path1, _) => {
-                        token::get_ident(path1.node)
-                    }
+                    ast::PatIdent(_, ref path1, _) => path1.node.name.as_str(),
                     _ => {
-                        self.sess.bug(&format!("Variable id {} maps to {:?}, not local",
-                                               id, pat));
-                    }
+                        self.sess.bug(&format!("Variable id {} maps to {:?}, not local", id, pat));
+                    },
                 }
-            }
-            r => {
-                self.sess.bug(&format!("Variable id {} maps to {:?}, not local",
-                                       id, r));
-            }
+            },
+            r => self.sess.bug(&format!("Variable id {} maps to {:?}, not local", id, r)),
         }
     }
 
@@ -5435,9 +5429,9 @@ impl<'tcx> ctxt<'tcx> {
         for f in fields { if f.name == name { return i; } i += 1; }
         self.sess.bug(&format!(
             "no field named `{}` found in the list of fields `{:?}`",
-            token::get_name(name),
+            name,
             fields.iter()
-                  .map(|f| token::get_name(f.name).to_string())
+                  .map(|f| f.name.to_string())
                   .collect::<Vec<String>>()));
     }
 
@@ -5854,13 +5848,13 @@ impl<'tcx> ctxt<'tcx> {
                                       "expected {} integer constant",
                                       sign_desc);
                             current_disr_val = attempt_fresh_value();
-                        }
+                        },
                         Err(ref err) => {
                             span_err!(self.sess, err.span, E0080,
                                       "constant evaluation error: {}",
                                       err.description());
                             current_disr_val = attempt_fresh_value();
-                        }
+                        },
                     }
                 },
                 None => {
@@ -5869,14 +5863,14 @@ impl<'tcx> ctxt<'tcx> {
                             if let Some(v) = repr_type.disr_incr(prev_disr_val) {
                                 v
                             } else {
-                                self.report_discrim_overflow(v.span, v.node.name.as_str(),
+                                self.report_discrim_overflow(v.span, &v.node.name.name.as_str(),
                                                              repr_type, prev_disr_val);
                                 attempt_fresh_value()
                             }
                         }
-                        None => ty::INITIAL_DISCRIMINANT_VALUE
+                        None => ty::INITIAL_DISCRIMINANT_VALUE,
                     }
-                }
+                },
             }
 
             let variant_info = Rc::new(VariantInfo::from_ast_variant(self, &**v, current_disr_val));
@@ -6511,7 +6505,7 @@ impl<'tcx> ctxt<'tcx> {
                         byte!(20);
                         hash!(p.space);
                         hash!(p.idx);
-                        hash!(token::get_name(p.name));
+                        hash!(p.name.as_str());
                     }
                     TyInfer(_) => unreachable!(),
                     TyError => byte!(21),
@@ -6522,7 +6516,7 @@ impl<'tcx> ctxt<'tcx> {
                     TyProjection(ref data) => {
                         byte!(23);
                         did(state, data.trait_ref.def_id);
-                        hash!(token::get_name(data.item_name));
+                        hash!(data.item_name.as_str());
                     }
                 }
                 true

@@ -40,7 +40,7 @@ use std::path::Path;
 
 use syntax::ast::{self, NodeId, DefId};
 use syntax::codemap::*;
-use syntax::parse::token::{self, get_ident, keywords};
+use syntax::parse::token::{self, keywords};
 use syntax::owned_slice::OwnedSlice;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string};
@@ -302,7 +302,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             return;
         }
 
-        debug!("process_method: {}:{}", id, token::get_name(name));
+        debug!("process_method: {}:{}", id, name);
 
         let method_data = self.save_ctxt.get_method_data(id, name, span);
 
@@ -459,7 +459,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         self.fmt.static_str(span,
                             sub_span,
                             id,
-                            &get_ident((*ident).clone()),
+                            &ident.name.as_str(),
                             &qualname,
                             &self.span.snippet(expr.span),
                             &ty_to_string(&*typ),
@@ -513,7 +513,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                           &enum_data.value);
 
         for variant in &enum_definition.variants {
-            let name = &get_ident(variant.node.name);
+            let name = &variant.node.name.name.as_str();
             let mut qualname = enum_data.qualname.clone();
             qualname.push_str("::");
             qualname.push_str(name);
@@ -886,7 +886,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                                sub_span,
                                                item.id,
                                                mod_id,
-                                               &get_ident(ident),
+                                               &ident.name.as_str(),
                                                self.cur_scope);
                         self.write_sub_paths_truncated(path, true);
                     }
@@ -900,7 +900,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                 if !name_string.is_empty() {
                                     name_string.push_str(", ");
                                 }
-                                name_string.push_str(n.as_str());
+                                name_string.push_str(&n.as_str());
                             }
                         }
 
@@ -940,11 +940,9 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 }
             }
             ast::ItemExternCrate(ref s) => {
-                let name = get_ident(item.ident);
-                let name = &name;
                 let location = match *s {
                     Some(s) => s.to_string(),
-                    None => name.to_string(),
+                    None => item.ident.to_string(),
                 };
                 let alias_span = self.span.span_for_last_ident(item.span);
                 let cnum = match self.sess.cstore.find_extern_mod_stmt_cnum(item.id) {
@@ -955,7 +953,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                           alias_span,
                                           item.id,
                                           cnum,
-                                          name,
+                                          &item.ident.name.as_str(),
                                           &location,
                                           self.cur_scope);
             }

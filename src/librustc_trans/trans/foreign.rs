@@ -37,7 +37,6 @@ use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
 use syntax::abi::{RustIntrinsic, Rust, RustCall, Stdcall, Fastcall, System};
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
-use syntax::parse::token;
 use syntax::ast;
 use syntax::attr;
 use syntax::print::pprust;
@@ -902,7 +901,7 @@ pub fn link_name(i: &ast::ForeignItem) -> InternedString {
         Some(ln) => ln.clone(),
         None => match weak_lang_items::link_name(&i.attrs) {
             Some(name) => name,
-            None => token::get_ident(i.ident),
+            None => i.ident.name.as_str(),
         }
     }
 }

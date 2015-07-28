@@ -59,7 +59,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
     // build fmt.debug_struct(<name>).field(<fieldname>, &<fieldval>)....build()
     // or fmt.debug_tuple(<name>).field(&<fieldval>)....build()
     // based on the "shape".
-    let name = match *substr.fields {
+    let ident = match *substr.fields {
         Struct(_) => substr.type_ident,
         EnumMatching(_, v, _) => v.node.name,
         EnumNonMatchingCollapsed(..) | StaticStruct(..) | StaticEnum(..) => {
@@ -69,7 +69,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
 
     // We want to make sure we have the expn_id set so that we can use unstable methods
     let span = Span { expn_id: cx.backtrace(), .. span };
-    let name = cx.expr_lit(span, ast::Lit_::LitStr(token::get_ident(name),
+    let name = cx.expr_lit(span, ast::Lit_::LitStr(ident.name.as_str(),
                                                    ast::StrStyle::CookedStr));
     let mut expr = substr.nonself_args[0].clone();
 
@@ -102,7 +102,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
 
                 for field in fields {
                     let name = cx.expr_lit(field.span, ast::Lit_::LitStr(
-                            token::get_ident(field.name.clone().unwrap()),
+                            field.name.unwrap().name.as_str(),
                             ast::StrStyle::CookedStr));
 
                     // Use double indirection to make sure this works for unsized types

@@ -34,7 +34,6 @@ use middle::ty::{self, Ty};
 use syntax::{ast, ast_util, codemap, fold};
 use syntax::codemap::Span;
 use syntax::fold::Folder;
-use syntax::parse::token;
 use syntax::ptr::P;
 use syntax;
 
@@ -156,10 +155,10 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
             ast::IITraitItem(_, ref ti) => ti.ident,
             ast::IIImplItem(_, ref ii) => ii.ident
         };
-        debug!("Fn named: {}", token::get_ident(ident));
+        debug!("Fn named: {}", ident);
         debug!("< Decoded inlined fn: {}::{}",
                path_as_str.unwrap(),
-               token::get_ident(ident));
+               ident);
         region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
         decode_side_tables(dcx, ast_doc);
         match *ii {

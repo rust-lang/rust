@@ -26,7 +26,6 @@ use util::nodemap::FnvHashMap;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::diagnostic::SpanHandler;
-use syntax::parse::token;
 
 use rbml::writer::Encoder;
 
@@ -136,7 +135,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
             cx.diag.handler().bug("cannot encode inference variable types");
         }
         ty::TyParam(ParamTy {space, idx, name}) => {
-            mywrite!(w, "p[{}|{}|{}]", idx, space.to_uint(), token::get_name(name))
+            mywrite!(w, "p[{}|{}|{}]", idx, space.to_uint(), name)
         }
         ty::TyStruct(def, substs) => {
             mywrite!(w, "a[{}|", (cx.ds)(def));
@@ -155,7 +154,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
         ty::TyProjection(ref data) => {
             mywrite!(w, "P[");
             enc_trait_ref(w, cx, data.trait_ref);
-            mywrite!(w, "{}]", token::get_name(data.item_name));
+            mywrite!(w, "{}]", data.item_name);
         }
         ty::TyError => {
             mywrite!(w, "e");
@@ -251,7 +250,7 @@ pub fn enc_region(w: &mut Encoder, cx: &ctxt, r: ty::Region) {
                      data.param_id,
                      data.space.to_uint(),
                      data.index,
-                     token::get_name(data.name));
+                     data.name);
         }
         ty::ReFree(ref fr) => {
             mywrite!(w, "f[");
@@ -302,7 +301,7 @@ fn enc_bound_region(w: &mut Encoder, cx: &ctxt, br: ty::BoundRegion) {
         ty::BrNamed(d, name) => {
             mywrite!(w, "[{}|{}]",
                      (cx.ds)(d),
-                     token::get_name(name));
+                     name);
         }
         ty::BrFresh(id) => {
             mywrite!(w, "f{}|", id);
@@ -410,7 +409,7 @@ pub fn enc_region_bounds<'a, 'tcx>(w: &mut Encoder,
 pub fn enc_type_param_def<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>,
                                     v: &ty::TypeParameterDef<'tcx>) {
     mywrite!(w, "{}:{}|{}|{}|{}|",
-             token::get_name(v.name), (cx.ds)(v.def_id),
+             v.name, (cx.ds)(v.def_id),
              v.space.to_uint(), v.index, (cx.ds)(v.default_def_id));
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
     enc_object_lifetime_default(w, cx, v.object_lifetime_default);
@@ -465,6 +464,6 @@ fn enc_projection_predicate<'a, 'tcx>(w: &mut Encoder,
                                       cx: &ctxt<'a, 'tcx>,
                                       data: &ty::ProjectionPredicate<'tcx>) {
     enc_trait_ref(w, cx, data.projection_ty.trait_ref);
-    mywrite!(w, "{}|", token::get_name(data.projection_ty.item_name));
+    mywrite!(w, "{}|", data.projection_ty.item_name);
     enc_ty(w, cx, data.ty);
 }

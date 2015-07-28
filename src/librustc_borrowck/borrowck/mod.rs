@@ -39,7 +39,6 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
-use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::{Visitor, FnKind};
 use syntax::ast::{FnDecl, Block, NodeId};
@@ -1068,7 +1067,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 match fname {
                     mc::NamedField(fname) => {
                         out.push('.');
-                        out.push_str(&token::get_name(fname));
+                        out.push_str(&fname.as_str());
                     }
                     mc::PositionalField(idx) => {
                         out.push('.');
