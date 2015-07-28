@@ -9,19 +9,24 @@ is not always the case, however.
 
 # Dynamically Sized Types (DSTs)
 
-Rust also supports types without a statically known size. On the surface, this
-is a bit nonsensical: Rust *must* know the size of something in order to work
-with it! DSTs are generally produced as views, or through type-erasure of types
-that *do* have a known size. Due to their lack of a statically known size, these
-types can only exist *behind* some kind of pointer. They consequently produce a
-*fat* pointer consisting of the pointer and the information that *completes*
-them.
+Rust in fact supports Dynamically Sized Types (DSTs): types without a statically
+known size or alignment. On the surface, this is a bit nonsensical: Rust *must*
+know the size and alignment of something in order to correctly work with it! In
+this regard, DSTs are not normal types. Due to their lack of a statically known
+size, these types can only exist behind some kind of pointer. Any pointer to a
+DST consequently becomes a *fat* pointer consisting of the pointer and the
+information that "completes" them (more on this below).
 
-For instance, the slice type, `[T]`, is some statically unknown number of
-elements stored contiguously. `&[T]` consequently consists of a `(&T, usize)`
-pair that specifies where the slice starts, and how many elements it contains.
-Similarly, Trait Objects support interface-oriented type erasure through a
-`(data_ptr, vtable_ptr)` pair.
+There are two major DSTs exposed by the language: trait objects, and slices.
+
+A trait object represents some type that implements the traits it specifies.
+The exact original type is *erased* in favour of runtime reflection
+with a vtable containing all the information necessary to use the type.
+This is the information that completes a trait object: a pointer to its vtable.
+
+A slice is simply a view into some contiguous storage -- typically an array or
+`Vec`. The information that completes a slice is just the number of elements
+it points to.
 
 Structs can actually store a single DST directly as their last field, but this
 makes them a DST as well:
@@ -34,8 +39,8 @@ struct Foo {
 }
 ```
 
-**NOTE: As of Rust 1.0 struct DSTs are broken if the last field has
-a variable position based on its alignment.**
+**NOTE: [As of Rust 1.0 struct DSTs are broken if the last field has
+a variable position based on its alignment][dst-issue].**
 
 
 
@@ -56,22 +61,32 @@ struct Baz {
 }
 ```
 
-On their own, ZSTs are, for obvious reasons, pretty useless. However as with
-many curious layout choices in Rust, their potential is realized in a generic
-context.
+On their own, Zero Sized Types (ZSTs) are, for obvious reasons, pretty useless.
+However as with many curious layout choices in Rust, their potential is realized
+in a generic context: Rust largely understands that any operation that  produces
+or stores a ZST can be reduced to a no-op. First off, storing it  doesn't even
+make sense -- it doesn't occupy any space. Also there's only one  value of that
+type, so anything that loads it can just produce it from the  aether -- which is
+also a no-op since it doesn't occupy any space.
 
-Rust largely understands that any operation that produces or stores a ZST can be
-reduced to a no-op. For instance, a `HashSet<T>` can be effeciently implemented
-as a thin wrapper around `HashMap<T, ()>` because all the operations `HashMap`
-normally does to store and retrieve values will be completely stripped in
-monomorphization.
+One of the most extreme example's of this is Sets and Maps. Given a
+`Map<Key, Value>`, it is common to implement a `Set<Key>` as just a thin wrapper
+around `Map<Key, UselessJunk>`. In many languages, this would necessitate
+allocating space for UselessJunk and doing work to store and load UselessJunk
+only to discard it. Proving this unnecessary would be a difficult analysis for
+the compiler.
 
-Similarly `Result<(), ()>` and `Option<()>` are effectively just fancy `bool`s.
+However in Rust, we can just say that  `Set<Key> = Map<Key, ()>`. Now Rust
+statically knows that every load and store is useless, and no allocation has any
+size. The result is that the monomorphized code is basically a custom
+implementation of a HashSet with none of the overhead that HashMap would have to
+support values.
 
 Safe code need not worry about ZSTs, but *unsafe* code must be careful about the
 consequence of types with no size. In particular, pointer offsets are no-ops,
-and standard allocators (including jemalloc, the one used by Rust) generally
-consider passing in `0` as Undefined Behaviour.
+and standard allocators (including jemalloc, the one used by default in Rust)
+generally consider passing in `0` for the size of an allocation as Undefined
+Behaviour.
 
 
 
@@ -93,11 +108,12 @@ return a Result in general, but a specific case actually is infallible. It's
 actually possible to communicate this at the type level by returning a
 `Result<T, Void>`. Consumers of the API can confidently unwrap such a Result
 knowing that it's *statically impossible* for this value to be an `Err`, as
-this would require providing a value of type Void.
+this would require providing a value of type `Void`.
 
 In principle, Rust can do some interesting analyses and optimizations based
 on this fact. For instance, `Result<T, Void>` could be represented as just `T`,
-because the Err case doesn't actually exist. The following *could* also compile:
+because the `Err` case doesn't actually exist. The following *could* also
+compile:
 
 ```rust,ignore
 enum Void {}
@@ -116,3 +132,6 @@ actually valid to construct, but dereferencing them is Undefined Behaviour
 because that doesn't actually make sense. That is, you could model C's `void *`
 type with `*const Void`, but this doesn't necessarily gain anything over using
 e.g. `*const ()`, which *is* safe to randomly dereference.
+
+
+[dst-issue]: https://github.com/rust-lang/rust/issues/26403

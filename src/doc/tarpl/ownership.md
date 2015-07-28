@@ -5,16 +5,17 @@ memory-safe and efficient, while avoiding garbage collection. Before getting
 into the ownership system in detail, we will consider the motivation of this
 design.
 
-We will assume that you accept that garbage collection is not always an optimal
-solution, and that it is desirable to manually manage memory to some extent.
-If you do not accept this, might I interest you in a different language?
+We will assume that you accept that garbage collection (GC) is not always an
+optimal solution, and that it is desirable to manually manage memory in some
+contexts. If you do not accept this, might I interest you in a different
+language?
 
 Regardless of your feelings on GC, it is pretty clearly a *massive* boon to
 making code safe. You never have to worry about things going away *too soon*
 (although whether you still *wanted* to be pointing at that thing is a different
-issue...). This is a pervasive problem that C and C++ need to deal with.
-Consider this simple mistake that all of us who have used a non-GC'd language
-have made at one point:
+issue...). This is a pervasive problem that C and C++ programs need to deal
+with. Consider this simple mistake that all of us who have used a non-GC'd
+language have made at one point:
 
 ```rust,ignore
 fn as_str(data: &u32) -> &str {
@@ -40,7 +41,7 @@ be forced to accept your program on the assumption that it is correct.
 This will never happen to Rust. It's up to the programmer to prove to the
 compiler that everything is sound.
 
-Of course, rust's story around ownership is much more complicated than just
+Of course, Rust's story around ownership is much more complicated than just
 verifying that references don't escape the scope of their referent. That's
 because ensuring pointers are always valid is much more complicated than this.
 For instance in this code,

@@ -1,29 +1,30 @@
 % How Safe and Unsafe Interact
 
-So what's the relationship between Safe and Unsafe? How do they interact?
+So what's the relationship between Safe and Unsafe Rust? How do they interact?
 
-Rust models the seperation between Safe and Unsafe with the `unsafe` keyword, which
-can be thought as a sort of *foreign function interface* (FFI) between Safe and Unsafe.
-This is the magic behind why we can say Safe is a safe language: all the scary unsafe
-bits are relagated *exclusively* to FFI *just like every other safe language*.
+Rust models the separation between Safe and Unsafe Rust with the `unsafe`
+keyword, which can be thought as a sort of *foreign function interface* (FFI)
+between Safe and Unsafe Rust. This is the magic behind why we can say Safe Rust
+is a safe language: all the scary unsafe bits are relegated *exclusively* to FFI
+*just like every other safe language*.
 
 However because one language is a subset of the other, the two can be cleanly
-intermixed as long as the boundary between Safe and Unsafe is denoted with the
-`unsafe` keyword. No need to write headers, initialize runtimes, or any of that
-other FFI boiler-plate.
+intermixed as long as the boundary between Safe and Unsafe Rust is denoted with
+the `unsafe` keyword. No need to write headers, initialize runtimes, or any of
+that other FFI boiler-plate.
 
 There are several places `unsafe` can appear in Rust today, which can largely be
 grouped into two categories:
 
 * There are unchecked contracts here. To declare you understand this, I require
 you to write `unsafe` elsewhere:
-    * On functions, `unsafe` is declaring the function to be unsafe to call. Users
-      of the function must check the documentation to determine what this means,
-      and then have to write `unsafe` somewhere to identify that they're aware of
-      the danger.
+    * On functions, `unsafe` is declaring the function to be unsafe to call.
+      Users of the function must check the documentation to determine what this
+      means, and then have to write `unsafe` somewhere to identify that they're
+      aware of the danger.
     * On trait declarations, `unsafe` is declaring that *implementing* the trait
-      is an unsafe operation, as it has contracts that other unsafe code is free to
-      trust blindly. (More on this below.)
+      is an unsafe operation, as it has contracts that other unsafe code is free
+      to trust blindly. (More on this below.)
 
 * I am declaring that I have, to the best of my knowledge, adhered to the
 unchecked contracts:
@@ -64,9 +65,9 @@ This means that Unsafe, **the royal vanguard of Undefined Behaviour**, has to be
 *super paranoid* about generic safe code. Unsafe is free to trust *specific* safe
 code (or else you would degenerate into infinite spirals of paranoid despair).
 It is generally regarded as ok to trust the standard library to be correct, as
-std is effectively an extension of the language (and you *really* just have to trust
-the language). If `std` fails to uphold the guarantees it declares, then it's
-basically a language bug.
+`std` is effectively an extension of the language (and you *really* just have
+to trust the language). If `std` fails to uphold the guarantees it declares,
+then it's basically a language bug.
 
 That said, it would be best to minimize *needlessly* relying on properties of
 concrete safe code. Bugs happen! Of course, I must reinforce that this is only
@@ -89,7 +90,7 @@ Ord for a type, but don't actually provide a proper total ordering, BTreeMap wil
 get *really confused* and start making a total mess of itself. Data that is
 inserted may be impossible to find!
 
-But that's ok. BTreeMap is safe, so it guarantees that even if you give it a
+But that's okay. BTreeMap is safe, so it guarantees that even if you give it a
 *completely* garbage Ord implementation, it will still do something *safe*. You
 won't start reading uninitialized memory or unallocated memory. In fact, BTreeMap
 manages to not actually lose any of your data. When the map is dropped, all the
@@ -104,7 +105,24 @@ Safe's responsibility to uphold.
 But wouldn't it be grand if there was some way for Unsafe to trust *some* trait
 contracts *somewhere*? This is the problem that unsafe traits tackle: by marking
 *the trait itself* as unsafe *to implement*, Unsafe can trust the implementation
-to be correct.
+to uphold the trait's contract. Although the trait implementation may be
+incorrect in arbitrary other ways.
+
+For instance, given a hypothetical UnsafeOrd trait, this is technically a valid
+implementation:
+
+```rust
+# use std::cmp::Ordering;
+# struct MyType;
+# pub unsafe trait UnsafeOrd { fn cmp(&self, other: &Self) -> Ordering; }
+unsafe impl UnsafeOrd for MyType {
+    fn cmp(&self, other: &Self) -> Ordering {
+        Ordering::Equal
+    }
+}
+```
+
+But it's probably not the implementation you want.
 
 Rust has traditionally avoided making traits unsafe because it makes Unsafe
 pervasive, which is not desirable. Send and Sync are unsafe is because
