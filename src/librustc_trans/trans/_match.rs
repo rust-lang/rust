@@ -952,9 +952,24 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         Lvalue::new("_match::insert_lllocals"),
                     TrByMoveIntoCopy(..) => {
                         // match_input moves from the input into a
-                        // separate stack slot; it must zero (at least
-                        // until we track drop flags for a fragmented
-                        // parent match input expression).
+                        // separate stack slot.
+                        //
+                        // E.g. consider moving the value `D(A)` out
+                        // of the tuple `(D(A), D(B))` and into the
+                        // local variable `x` via the pattern `(x,_)`,
+                        // leaving the remainder of the tuple `(_,
+                        // D(B))` still to be dropped in the future.
+                        //
+                        // Thus, here we must must zero the place that
+                        // we are moving *from*, because we do not yet
+                        // track drop flags for a fragmented parent
+                        // match input expression.
+                        //
+                        // Longer term we will be able to map the move
+                        // into `(x, _)` up to the parent path that
+                        // owns the whole tuple, and mark the
+                        // corresponding stack-local drop-flag
+                        // tracking the first component of the tuple.
                         let hint_kind = HintKind::ZeroAndMaintain;
                         Lvalue::new_with_hint("_match::insert_lllocals (match_input)",
                                               bcx, binding_info.id, hint_kind)

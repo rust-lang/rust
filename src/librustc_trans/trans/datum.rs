@@ -189,9 +189,27 @@ pub struct Rvalue {
     pub mode: RvalueMode
 }
 
+/// Classifies what action we should take when a value is moved away
+/// with respect to its drop-flag.
+///
+/// Long term there will be no need for this classification: all flags
+/// (which will be stored on the stack frame) will have the same
+/// interpretation and maintenance code associated with them.
 #[derive(Copy, Clone, Debug)]
 pub enum HintKind {
+    /// When the value is moved, set the drop-flag to "dropped"
+    /// (i.e. "zero the flag", even when the specific representation
+    /// is not literally 0) and when it is reinitialized, set the
+    /// drop-flag back to "initialized".
     ZeroAndMaintain,
+
+    /// When the value is moved, do not set the drop-flag to "dropped"
+    /// However, continue to read the drop-flag in deciding whether to
+    /// drop. (In essence, the path/fragment in question will never
+    /// need to be dropped at the points where it is moved away by
+    /// this code, but we are defending against the scenario where
+    /// some *other* code could move away (or drop) the value and thus
+    /// zero-the-flag, which is why we will still read from it.
     DontZeroJustUse,
 }
 
@@ -218,7 +236,8 @@ impl Lvalue { // Constructors for various Lvalues.
                     DropFlagInfo::ZeroAndMaintain(id),
                 HintKind::DontZeroJustUse if hint_available =>
                     DropFlagInfo::DontZeroJustUse(id),
-                _ => DropFlagInfo::None,
+                _ =>
+                    DropFlagInfo::None,
             };
             (Some(id), info)
         };
