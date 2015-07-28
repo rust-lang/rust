@@ -1225,6 +1225,9 @@ impl PathExt for Path {
            reason = "the argument type of u64 is not quite appropriate for \
                      this function and may change if the standard library \
                      gains a type to represent a moment in time")]
+#[deprecated(since = "1.3.0",
+             reason = "will never be stabilized as-is and its replacement will \
+                       likely have a totally new API")]
 pub fn set_file_times<P: AsRef<Path>>(path: P, accessed: u64,
                                  modified: u64) -> io::Result<()> {
     fs_imp::utimes(path.as_ref(), accessed, modified)

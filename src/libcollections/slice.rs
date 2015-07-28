@@ -762,12 +762,16 @@ impl<T> [T] {
 
     /// Find the first index containing a matching value.
     #[unstable(feature = "slice_position_elem")]
+    #[deprecated(since = "1.3.0",
+                 reason = "less idiomatic than .iter().position()")]
     pub fn position_elem(&self, t: &T) -> Option<usize> where T: PartialEq {
         core_slice::SliceExt::position_elem(self, t)
     }
 
     /// Find the last index containing a matching value.
     #[unstable(feature = "slice_position_elem")]
+    #[deprecated(since = "1.3.0",
+                 reason = "less idiomatic than .iter().rev().position()")]
     pub fn rposition_elem(&self, t: &T) -> Option<usize> where T: PartialEq {
         core_slice::SliceExt::rposition_elem(self, t)
     }
@@ -1009,6 +1013,8 @@ impl<T> [T] {
     /// ```
     #[unstable(feature = "move_from",
                reason = "uncertain about this API approach")]
+    #[deprecated(since = "1.3.0",
+                 reason = "unclear that it must belong in the standard library")]
     #[inline]
     pub fn move_from(&mut self, mut src: Vec<T>, start: usize, end: usize) -> usize {
         for (a, b) in self.iter_mut().zip(&mut src[start .. end]) {

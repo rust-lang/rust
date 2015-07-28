@@ -56,7 +56,6 @@
 #![deny(missing_docs)]
 
 #![feature(box_syntax)]
-#![feature(owned_ascii_ext)]
 #![feature(path_ext)]
 #![feature(rustc_private)]
 #![feature(staged_api)]

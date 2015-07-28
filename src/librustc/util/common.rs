@@ -124,6 +124,7 @@ fn get_working_set_size() -> Option<usize> {
 }
 
 #[cfg_attr(windows, allow(dead_code))]
+#[allow(deprecated)]
 fn get_proc_self_statm_field(field: usize) -> Option<usize> {
     use std::fs::File;
     use std::io::Read;

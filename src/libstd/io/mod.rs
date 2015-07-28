@@ -1105,7 +1105,7 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
                 Err(e) => return Err(e)
             };
-            match available.position_elem(&delim) {
+            match available.iter().position(|x| *x == delim) {
                 Some(i) => {
                     buf.push_all(&available[..i + 1]);
                     (true, i + 1)

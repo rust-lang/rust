@@ -197,7 +197,9 @@ impl CStore {
             }))
             .collect::<Vec<_>>();
         libs.sort_by(|&(a, _), &(b, _)| {
-            ordering.position_elem(&a).cmp(&ordering.position_elem(&b))
+            let a = ordering.iter().position(|x| *x == a);
+            let b = ordering.iter().position(|x| *x == b);
+            a.cmp(&b)
         });
         libs
     }

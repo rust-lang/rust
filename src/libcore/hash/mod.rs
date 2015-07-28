@@ -171,6 +171,8 @@ pub trait Hasher {
 #[unstable(feature = "hash_default",
            reason = "not the most ergonomic interface unless `H` is defaulted \
                      to SipHasher, but perhaps not ready to commit to that")]
+#[deprecated(since = "1.3.0",
+             reason = "has yet to prove itself useful")]
 pub fn hash<T: Hash, H: Hasher + Default>(value: &T) -> u64 {
     let mut h: H = Default::default();
     value.hash(&mut h);

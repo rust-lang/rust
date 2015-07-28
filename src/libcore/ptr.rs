@@ -131,6 +131,9 @@ pub unsafe fn read<T>(src: *const T) -> T {
 #[inline(always)]
 #[unstable(feature = "read_and_zero",
            reason = "may play a larger role in std::ptr future extensions")]
+#[deprecated(since = "1.3.0",
+             reason = "a \"zero value\" will soon not actually exist for all \
+                       types once dynamic drop has been implemented")]
 pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
     // Copy the data out from `dest`:
     let tmp = read(&*dest);

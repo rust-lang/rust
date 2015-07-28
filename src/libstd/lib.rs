@@ -232,7 +232,6 @@
 #![feature(linkage, thread_local, asm)]
 #![feature(macro_reexport)]
 #![feature(slice_concat_ext)]
-#![feature(slice_position_elem)]
 #![feature(no_std)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
