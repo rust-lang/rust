@@ -24,6 +24,7 @@ fn produce<T>() -> T { panic!(); }
 
 fn inc(v: &mut Box<isize>) {
     *v = box() (**v + 1);
+    //~^ WARN deprecated syntax
 }
 
 fn pre_freeze_cond() {

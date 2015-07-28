@@ -300,7 +300,7 @@ impl<T: Clone> Clone for Box<T> {
     /// let y = x.clone();
     /// ```
     #[inline]
-    fn clone(&self) -> Box<T> { box (HEAP) {(**self).clone()} }
+    fn clone(&self) -> Box<T> { box {(**self).clone()} }
     /// Copies `source`'s contents into `self` without creating a new allocation.
     ///
     /// # Examples

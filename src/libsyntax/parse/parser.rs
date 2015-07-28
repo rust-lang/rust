@@ -2637,19 +2637,15 @@ impl<'a> Parser<'a> {
             //
             // ... but for now: check for a place: `box(PLACE) EXPR`.
 
-            if try!(self.eat(&token::OpenDelim(token::Paren)) ){
-                // SNAP d4432b3
-                // Enable this warning after snapshot ...
-                //
-                // let box_span = mk_sp(lo, self.last_span.hi);
-                // self.span_warn(
-                //     box_span,
-                //     "deprecated syntax; use the `in` keyword now \
-                //            (e.g. change `box (<expr>) <expr>` to \
-                //                         `in <expr> { <expr> }`)");
+            if try!(self.eat(&token::OpenDelim(token::Paren))) {
+                let box_span = mk_sp(lo, self.last_span.hi);
+                self.span_warn(box_span,
+                    "deprecated syntax; use the `in` keyword now \
+                           (e.g. change `box (<expr>) <expr>` to \
+                                        `in <expr> { <expr> }`)");
 
                 // Continue supporting `box () EXPR` (temporarily)
-                if !try!(self.eat(&token::CloseDelim(token::Paren)) ){
+                if !try!(self.eat(&token::CloseDelim(token::Paren))) {
                     let place = try!(self.parse_expr_nopanic());
                     try!(self.expect(&token::CloseDelim(token::Paren)));
                     // Give a suggestion to use `box()` when a parenthesised expression is used
