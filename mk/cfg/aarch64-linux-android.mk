@@ -1,9 +1,9 @@
 # aarch64-linux-android configuration
 # CROSS_PREFIX_aarch64-linux-android-
-CC_aarch64-linux-android=$(CFG_ANDROID_CROSS_PATH)/bin/aarch64-linux-android-gcc
-CXX_aarch64-linux-android=$(CFG_ANDROID_CROSS_PATH)/bin/aarch64-linux-android-g++
-CPP_aarch64-linux-android=$(CFG_ANDROID_CROSS_PATH)/bin/aarch64-linux-android-gcc -E
-AR_aarch64-linux-android=$(CFG_ANDROID_CROSS_PATH)/bin/aarch64-linux-android-ar
+CC_aarch64-linux-android=$(CFG_AARCH64_LINUX_ANDROID_NDK)/bin/aarch64-linux-android-gcc
+CXX_aarch64-linux-android=$(CFG_AARCH64_LINUX_ANDROID_NDK)/bin/aarch64-linux-android-g++
+CPP_aarch64-linux-android=$(CFG_AARCH64_LINUX_ANDROID_NDK)/bin/aarch64-linux-android-gcc -E
+AR_aarch64-linux-android=$(CFG_AARCH64_LINUX_ANDROID_NDK)/bin/aarch64-linux-android-ar
 CFG_LIB_NAME_aarch64-linux-android=lib$(1).so
 CFG_STATIC_LIB_NAME_aarch64-linux-android=lib$(1).a
 CFG_LIB_GLOB_aarch64-linux-android=lib$(1)-*.so

@@ -601,7 +601,9 @@ valopt llvm-root "" "set LLVM root"
 valopt python "" "set path to python"
 valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
 valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
-valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
+valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path (deprecated)"
+valopt arm-linux-androideabi-ndk "" "arm-linux-androideabi NDK standalone path"
+valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
 valopt release-channel "dev" "the name of the release channel to build"
 valopt musl-root "/usr/local" "MUSL root installation directory"
 
@@ -1112,20 +1114,24 @@ do
     fi
 
     case $i in
-        arm-linux-androideabi)
+        *android*)
+            upper_snake_target=$(echo "$i" | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
+            eval ndk=\$"CFG_${upper_snake_target}_NDK"
+            if [ -z "$ndk" ]
+            then
+                ndk=$CFG_ANDROID_CROSS_PATH
+                eval "CFG_${upper_snake_target}_NDK"=$CFG_ANDROID_CROSS_PATH
+                warn "generic/default Android NDK option is deprecated (use --$i-ndk option instead)"
+            fi
 
-            if [ ! -f $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-gcc ]
-            then
-                err "NDK $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-gcc not found"
-            fi
-            if [ ! -f $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-g++ ]
-            then
-                err "NDK $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-g++ not found"
-            fi
-            if [ ! -f $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-ar ]
-            then
-                err "NDK $CFG_ANDROID_CROSS_PATH/bin/arm-linux-androideabi-ar not found"
-            fi
+            # Perform a basic sanity check of the NDK
+            for android_ndk_tool in "$ndk/bin/$i-gcc" "$ndk/bin/$i-g++" "$ndk/bin/$i-ar"
+            do
+                if [ ! -f $android_ndk_tool ]
+                then
+                    err "NDK tool $android_ndk_tool not found (bad or missing --$i-ndk option?)"
+                fi
+            done
             ;;
 
         arm-apple-darwin)
@@ -1682,7 +1688,8 @@ putvar CFG_HOST
 putvar CFG_TARGET
 putvar CFG_LIBDIR_RELATIVE
 putvar CFG_DISABLE_MANAGE_SUBMODULES
-putvar CFG_ANDROID_CROSS_PATH
+putvar CFG_AARCH64_LINUX_ANDROID_NDK
+putvar CFG_ARM_LINUX_ANDROIDEABI_NDK
 putvar CFG_MANDIR
 
 # Avoid spurious warnings from clang by feeding it original source on
