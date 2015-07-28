@@ -15,11 +15,11 @@ initialization.
 
 Unfortunately, this opens us up to all kinds of problems. Assignment has a
 different meaning to Rust based on whether it believes that a variable is
-initialized or not. If it's uninitialized, then Rust will semantically just
-memcopy the bits over the uninitialized ones, and do nothing else. However if Rust
-believes a value to be initialized, it will try to `Drop` the old value!
-Since we've tricked Rust into believing that the value is initialized, we
-can no longer safely use normal assignment.
+initialized or not. If it's believed uninitialized, then Rust will semantically
+just memcopy the bits over the uninitialized ones, and do nothing else. However
+if Rust believes a value to be initialized, it will try to `Drop` the old value!
+Since we've tricked Rust into believing that the value is initialized, we can no
+longer safely use normal assignment.
 
 This is also a problem if you're working with a raw system allocator, which
 returns a pointer to uninitialized memory.

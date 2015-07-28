@@ -17,7 +17,7 @@
 	* [Subtyping and Variance](subtyping.md)
 	* [Drop Check](dropck.md)
 	* [PhantomData](phantom-data.md)
-	* [Splitting Lifetimes](lifetime-splitting.md)
+	* [Splitting Borrows](borrow-splitting.md)
 * [Type Conversions](conversions.md)
 	* [Coercions](coercions.md)
 	* [The Dot Operator](dot-operator.md)
