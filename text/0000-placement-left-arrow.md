@@ -96,6 +96,13 @@ This feature has already been prototyped, see [place-left-syntax branch].
 
 [place-left-syntax branch]: https://github.com/rust-lang/rust/compare/rust-lang:master...pnkfelix:place-left-syntax
 
+Finally, it would may be good, as part of this process, to actually
+amend the text [RFC 809] itself to use the `a <- b` syntax.
+At least, it seems like many people use the RFC's as a reference source
+even when they are later outdated.
+(An easier option though may be to just add a forward reference to this
+RFC from [RFC 809], if this RFC is accepted.)
+
 # Drawbacks
 
 The only drawback I am aware of is this [comment from nikomataskis](https://github.com/rust-lang/rfcs/pull/809#issuecomment-73903777)
