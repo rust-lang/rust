@@ -1009,7 +1009,7 @@ pub mod types {
                 use types::os::arch::posix88::{uid_t};
 
                 pub type nlink_t = u16;
-                pub type blksize_t = i32;
+                pub type blksize_t = u32;
                 pub type blkcnt_t = i64;
                 pub type fflags_t = u32;
                 #[repr(C)]
@@ -1035,7 +1035,7 @@ pub mod types {
                     pub st_lspare: int32_t,
                     pub st_birthtime: time_t,
                     pub st_birthtime_nsec: c_long,
-                    pub __unused: [uint8_t; 2],
+                    pub __unused: [u8; 8],
                 }
 
                 #[repr(C)]
@@ -1103,7 +1103,7 @@ pub mod types {
                 use types::os::arch::posix88::{uid_t};
 
                 pub type nlink_t = u16;
-                pub type blksize_t = i64;
+                pub type blksize_t = u32;
                 pub type blkcnt_t = i64;
                 pub type fflags_t = u32;
                 #[repr(C)]
@@ -1129,7 +1129,6 @@ pub mod types {
                     pub st_lspare: int32_t,
                     pub st_birthtime: time_t,
                     pub st_birthtime_nsec: c_long,
-                    pub __unused: [uint8_t; 2],
                 }
 
                 #[repr(C)]
