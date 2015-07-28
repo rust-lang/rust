@@ -55,59 +55,6 @@ LLVMInitializePasses() {
   initializeInstCombine(Registry);
   initializeInstrumentation(Registry);
   initializeTarget(Registry);
-
-#if ENABLE_PNACL
-  initializeAddPNaClExternalDeclsPass(Registry);
-  initializeBackendCanonicalizePass(Registry);
-  initializeCanonicalizeMemIntrinsicsPass(Registry);
-  initializeCleanupUsedGlobalsMetadataPass(Registry);
-  initializeConstantInsertExtractElementIndexPass(Registry);
-  initializeExpandArithWithOverflowPass(Registry);
-  initializeExpandByValPass(Registry);
-  initializeExpandConstantExprPass(Registry);
-  initializeExpandCtorsPass(Registry);
-  initializeExpandGetElementPtrPass(Registry);
-  initializeExpandIndirectBrPass(Registry);
-  initializeExpandLargeIntegersPass(Registry);
-  initializeExpandShuffleVectorPass(Registry);
-  initializeExpandSmallArgumentsPass(Registry);
-  initializeExpandStructRegsPass(Registry);
-  initializeExpandTlsConstantExprPass(Registry);
-  initializeExpandTlsPass(Registry);
-  initializeExpandVarArgsPass(Registry);
-  initializeFixVectorLoadStoreAlignmentPass(Registry);
-  initializeFlattenGlobalsPass(Registry);
-  initializeGlobalCleanupPass(Registry);
-  initializeGlobalizeConstantVectorsPass(Registry);
-  initializeInsertDivideCheckPass(Registry);
-  initializeInternalizeUsedGlobalsPass(Registry);
-  initializeNormalizeAlignmentPass(Registry);
-  initializePNaClABIVerifyFunctionsPass(Registry);
-  initializePNaClABIVerifyModulePass(Registry);
-  initializePNaClSjLjEHPass(Registry);
-  initializePromoteI1OpsPass(Registry);
-  initializePromoteIntegersPass(Registry);
-  initializeRemoveAsmMemoryPass(Registry);
-  initializeReplacePtrsWithIntsPass(Registry);
-  initializeResolveAliasesPass(Registry);
-  initializeResolvePNaClIntrinsicsPass(Registry);
-  initializeRewriteAtomicsPass(Registry);
-  initializeRewriteLLVMIntrinsicsPass(Registry);
-  initializeRewritePNaClLibraryCallsPass(Registry);
-  initializeSimplifyAllocasPass(Registry);
-  initializeSimplifyStructRegSignaturesPass(Registry);
-  initializeStripAttributesPass(Registry);
-  initializeStripMetadataPass(Registry);
-  initializeStripModuleFlagsPass(Registry);
-  // Emscripten passes:
-  initializeExpandI64Pass(Registry);
-  initializeExpandInsertExtractElementPass(Registry);
-  initializeLowerEmAsyncifyPass(Registry);
-  initializeLowerEmExceptionsPass(Registry);
-  initializeLowerEmSetjmpPass(Registry);
-  initializeNoExitRuntimePass(Registry);
-  // Emscripten passes end.
-#endif
 }
 
 extern "C" bool
