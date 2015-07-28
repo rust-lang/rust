@@ -13,7 +13,7 @@ use check::regionck::{self, Rcx};
 use middle::infer;
 use middle::region;
 use middle::subst::{self, Subst};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, RegionEscape};
 
 use syntax::ast;
 use syntax::codemap::{self, Span};
@@ -357,7 +357,32 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
         if breadcrumbs.contains(&typ) {
             continue;
         }
-        breadcrumbs.push(typ);
+
+        // Okay, it looks like we have not seen `typ`, so add it to
+        // the breadcrumbs set so that we will not recurse on it again
+        // in the future.
+        //
+        // Issues #25750, #27138: on a type `B` within `for <'r> B`,
+        // occurrences of `'r` within `B` are not globally meaningful.
+        // Nonetheless they might accidentally be considered equal to
+        // other occurrences outside of the `for <'r> B`, since they
+        // will be structurally the same.
+        //
+        // This comes up for example in the type:
+        //
+        //     (for <'r> Fn(&'r u8), for <'r> Fn(&'r u8))
+        //
+        // We deal with this by detecting if we are looking at such a
+        // `B`, and if so, we don't add it to breadcrumbs set.
+        //
+        // (A more robust/disciplined way of dealing with this would
+        // be to add such types *temporarily* to the breadcrumbs set,
+        // *solely* during the extent of the time that we are
+        // underneath the `for <'r> ...`; I may look into doing that
+        // later, but for now I think this simpler measure will suffice.)
+        if !typ.has_escaping_regions() {
+            breadcrumbs.push(typ);
+        }
 
         // If we encounter `PhantomData<T>`, then we should replace it
         // with `T`, the type it represents as owned by the
