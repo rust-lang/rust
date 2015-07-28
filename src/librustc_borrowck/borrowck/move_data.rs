@@ -159,6 +159,9 @@ pub struct Assignment {
 
     /// span of node where assignment occurs
     pub span: Span,
+
+    /// id for l-value expression on lhs of assignment
+    pub assignee_id: ast::NodeId,
 }
 
 #[derive(Copy, Clone)]
@@ -412,6 +415,7 @@ impl<'tcx> MoveData<'tcx> {
             path: path_index,
             id: assign_id,
             span: span,
+            assignee_id: assignee_id,
         };
 
         if self.is_var_path(path_index) {

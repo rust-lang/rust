@@ -86,7 +86,7 @@ fn owned_ptr_base_path_rc<'tcx>(loan_path: &Rc<LoanPath<'tcx>>) -> Rc<LoanPath<'
 struct CheckLoanCtxt<'a, 'tcx: 'a> {
     bccx: &'a BorrowckCtxt<'a, 'tcx>,
     dfcx_loans: &'a LoanDataFlow<'a, 'tcx>,
-    move_data: move_data::FlowedMoveData<'a, 'tcx>,
+    move_data: &'a move_data::FlowedMoveData<'a, 'tcx>,
     all_loans: &'a [Loan<'tcx>],
     param_env: &'a ty::ParameterEnvironment<'a, 'tcx>,
 }
@@ -191,7 +191,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
 
 pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      dfcx_loans: &LoanDataFlow<'b, 'tcx>,
-                                     move_data: move_data::FlowedMoveData<'c, 'tcx>,
+                                     move_data: &move_data::FlowedMoveData<'c, 'tcx>,
                                      all_loans: &[Loan<'tcx>],
                                      fn_id: ast::NodeId,
                                      decl: &ast::FnDecl,
