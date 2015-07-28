@@ -15,10 +15,8 @@ use cmp;
 use io::{self, SeekFrom, Error, ErrorKind};
 use slice;
 
-/// A `Cursor` wraps another type and provides it with a [`Seek`][seek]
-/// implementation.
-///
-/// [seek]: trait.Seek.html
+/// A `Cursor` wraps another type and provides it with a
+/// [`Seek`](trait.Seek.html) implementation.
 ///
 /// Cursors are typically used with in-memory buffers to allow them to
 /// implement `Read` and/or `Write`, allowing these buffers to be used
