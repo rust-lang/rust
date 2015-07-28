@@ -126,16 +126,17 @@ this exception safety problem.
 
 All safe code in Rust is guaranteed to not cause any memory unsafety due to a
 panic. There is never any invalid intermediate state which can then be read due
-to a destructor running on a panic. It's possible for a **logical** invariant to
-be violated as a result of a panic, however. For example if a structure
-guarantees that its field `foo` is always an even integer, it may be odd
-temporarily while a helper function is called and if that panics then the
-logical guarantee is no longer valid.
+to a destructor running on a panic. As we've also seen, however, it's possible
+to cause memory unsafety through panics when dealing with `unsafe` code. The key
+part of this is that you have to have `unsafe` somewhere to inject the memory
+unsafety, and you largely just need to worry about exception safety in the
+context of unsafe code.
 
-As we've also seen, however, it's possible to cause memory unsafety through
-panics when dealing with `unsafe` code. The key part of this is that you have to
-have `unsafe` somewhere to inject the memory unsafety, and you largely just need
-to worry about exception safety in the confines of an unsafe block.
+Even though mixing safe Rust and panics cannot cause undefined behavior, it's
+possible for a **logical** invariant to be violated as a result of a panic.
+These sorts of situations can often become serious bugs and are difficult to
+audit for, so it means that exception safety in Rust is unfortunately not a
+situation that can be completely sidestepped.
 
 ### Exception Safety in Rust
 
