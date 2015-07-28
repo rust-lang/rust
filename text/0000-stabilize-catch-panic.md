@@ -58,7 +58,7 @@ bar();
 foo = false;
 ```
 
-It may intuitive to say that this block of code returns that `foo`'s value is
+It may be intuitive to say that this block of code returns that `foo`'s value is
 always `false` (e.g. a local invariant of ours). If, however, the `bar` function
 panics, then the block of code will "return" (because of unwinding), but the
 value of `foo` is still `true`.  Let's take a look at a more harmful example to
