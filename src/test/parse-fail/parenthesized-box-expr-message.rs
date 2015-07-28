@@ -14,5 +14,6 @@ fn main() {
     box (1 + 1)
     //~^ HELP try using `box ()` instead:
     //~| SUGGESTION box () (1 + 1)
+    //~| WARN deprecated syntax
     ; //~ ERROR expected expression, found `;`
 }

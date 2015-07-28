@@ -115,7 +115,7 @@ pub mod eabi {
         }
     }
 
-    #[cfg_attr(not(stage0), lang = "eh_personality_catch")]
+    #[lang = "eh_personality_catch"]
     #[no_mangle]
     pub extern fn rust_eh_personality_catch(
         _version: c_int,
@@ -168,7 +168,7 @@ pub mod eabi {
         }
     }
 
-    #[cfg_attr(not(stage0), lang = "eh_personality_catch")]
+    #[lang = "eh_personality_catch"]
     #[no_mangle]
     pub extern fn rust_eh_personality_catch(
         _version: c_int,
@@ -218,7 +218,7 @@ pub mod eabi {
         }
     }
 
-    #[cfg_attr(not(stage0), lang = "eh_personality_catch")]
+    #[lang = "eh_personality_catch"]
     #[no_mangle]
     pub extern fn rust_eh_personality_catch(
         state: uw::_Unwind_State,
@@ -307,7 +307,7 @@ pub mod eabi {
         }
     }
 
-    #[cfg_attr(not(stage0), lang = "eh_personality_catch")]
+    #[lang = "eh_personality_catch"]
     #[no_mangle]
     pub extern fn rust_eh_personality_catch(
         exceptionRecord: *mut EXCEPTION_RECORD,

@@ -139,7 +139,6 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
     // `dllexport`, but it's easier to not have conditional `src/rt/rust_try.ll`
     // files and instead just have this non-generic shim the compiler can take
     // care of exposing correctly.
-    #[cfg(not(stage0))]
     unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
                         -> Result<(), Box<Any + Send>> {
         let prev = PANICKING.with(|s| s.get());
@@ -151,11 +150,6 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
         } else {
             Err(imp::cleanup(ep))
         }
-    }
-    #[cfg(stage0)]
-    unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
-                        -> Result<(), Box<Any + Send>> {
-        Ok(f(data))
     }
 
     fn try_fn<F: FnOnce()>(opt_closure: *mut u8) {

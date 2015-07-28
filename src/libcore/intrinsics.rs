@@ -184,18 +184,10 @@ extern "rust-intrinsic" {
     /// elements.
     pub fn size_of<T>() -> usize;
 
-    #[cfg(not(stage0))]
     /// Moves a value to an uninitialized memory location.
     ///
     /// Drop glue is not run on the destination.
     pub fn move_val_init<T>(dst: *mut T, src: T);
-
-    // SNAP d4432b3
-    #[cfg(stage0)]
-    /// Moves a value to an uninitialized memory location.
-    ///
-    /// Drop glue is not run on the destination.
-    pub fn move_val_init<T>(dst: &mut T, src: T);
 
     pub fn min_align_of<T>() -> usize;
     pub fn pref_align_of<T>() -> usize;
@@ -614,6 +606,5 @@ extern "rust-intrinsic" {
     /// Rust's "try catch" construct which invokes the function pointer `f` with
     /// the data pointer `data`, returning the exception payload if an exception
     /// is thrown (aka the thread panics).
-    #[cfg(not(stage0))]
     pub fn try(f: fn(*mut u8), data: *mut u8) -> *mut u8;
 }
