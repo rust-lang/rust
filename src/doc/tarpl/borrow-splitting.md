@@ -1,4 +1,4 @@
-% Splitting Lifetimes
+% Splitting Borrows
 
 The mutual exclusion property of mutable references can be very limiting when
 working with a composite structure. The borrow checker understands some basic
@@ -67,9 +67,8 @@ fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
 }
 ```
 
-This is pretty plainly dangerous. We use transmute to duplicate the slice with
-an *unbounded* lifetime, so that it can be treated as disjoint from the other
-until we unify them when we return.
+This is actually a bit subtle. So as to avoid ever making two `&mut`'s to the
+same value, we explicitly construct brand-new slices through raw pointers.
 
 However more subtle is how iterators that yield mutable references work.
 The iterator trait is defined as follows:
