@@ -10,12 +10,21 @@ bounds from the closure parameter.
 
 # Motivation
 
-It is currently defined as undefined behavior to have a Rust program panic
-across an FFI boundary. For example if C calls into Rust and Rust panics, then
-this is undefined behavior. The purpose of the unstable `thread::catch_panic`
-function is to solve this problem by enabling you to catch a panic in Rust
-before control flow is returned back over to C. As a refresher, the signature of
-the function looks like:
+In today's Rust it's not currently possible to catch a panic by design. There
+are a number of situations, however, where catching a panic is either required
+for correctness or necessary for building a useful abstraction:
+
+* It is currently defined as undefined behavior to have a Rust program panic
+  across an FFI boundary. For example if C calls into Rust and Rust panics, then
+  this is undefined behavior. Being able to catch a panic will allow writing
+  robust C apis in Rust.
+* Abstactions like thread pools want to catch the panics of tasks being run
+  instead of having the thread torn down (and having to spawn a new thread).
+
+The purpose of the unstable `thread::catch_panic` function is to solve these
+problems by enabling you to catch a panic in Rust before control flow is
+returned back over to C. As a refresher, the signature of the function looks
+like:
 
 ```rust
 fn catch_panic<F, R>(f: F) -> thread::Result<R>
@@ -34,10 +43,14 @@ understand why let's first briefly review exception safety in Rust.
 
 The problem of exception safety often plagues many C++ programmers (and other
 languages), and it essentially means that code needs to be ready to handle
-exceptional control flow. For Rust this means that code needs to be prepared to
-handle panics as any function call can cause a thread to panic. What this
-largely boils down to is that a block of code having only one entry point but
-possibly many exit points. For example:
+exceptional control flow. This primarily matters when an invariant is
+temporarily broken in a region of code which can have exceptional control flow.
+What this largely boils down to is that a block of code having only one entry
+point but possibly many exit points, and invariants need to be upheld on all
+exit points.
+
+For Rust this means that code needs to be prepared to handle panics as any
+unknown function call can cause a thread to panic. For example:
 
 ```rust
 let mut foo = true;
@@ -46,9 +59,10 @@ foo = false;
 ```
 
 It may intuitive to say that this block of code returns that `foo`'s value is
-always `false`. If, however, the `bar` function panics, then the block of code
-will "return" (because of unwinding), but the value of `foo` is still `true`.
-Let's take a look at a more harmful example to see how this can go wrong:
+always `false` (e.g. a local invariant of ours). If, however, the `bar` function
+panics, then the block of code will "return" (because of unwinding), but the
+value of `foo` is still `true`.  Let's take a look at a more harmful example to
+see how this can go wrong:
 
 ```
 pub fn push_ten_more<T: Clone>(v: &mut Vec<T>, t: T) {
@@ -65,26 +79,42 @@ pub fn push_ten_more<T: Clone>(v: &mut Vec<T>, t: T) {
 
 While this code may look correct, it's actually not memory safe. If the type
 `T`'s `clone` method panics, then this vector will point to uninitialized data.
-We extended the vector's length (the call to `set_len`) before we actually wrote
-the necessary data, so if a call to `clone` panics it will cause the vector's
-destructor to attempt to destroy an uninitialized instance of `T`.
+`Vec` has an internal invariant that the first `len` elements are safe to drop
+at any time, and we have broken that invariant temporarily with a call to
+`set_len`. If a call to `clone` panics then we'll exit this block before
+reaching the end, causing the invariant breakage to be leaked.
 
-The problem with this code is that it's not **exception safe**. A small
-restructuring can help it become exception safe (e.g. call `set_len` after
-`ptr::write`), but it's not always considered when writing code.
+The problem with this code is that it's not **exception safe**. There are a
+number of common strategies to help mitigate this problem:
+
+* Use a "finally" block or some other equivalent mechanism to restore invariants
+  on all exit paths. In Rust this typically manifests itself as a destructor on
+  a structure as the compiler will ensure that this is run whenever a panic
+  happens.
+* Avoid calling code which can panic (e.g. functions with assertions or
+  functions with statically unknown implementations) whenever an invariant is
+  broken.
+
+In our example of `push_ten_more` we can take the second round of avoiding code
+which can panic when an invariant is broken. If we call `set_len` on each
+iteration of the loop with `len + i` then the vector's invariant will always bee
+respected.
 
 ### Catching Exceptions
 
-Dealing with exception safety is typically more involved in other languages
-because of `catch` blocks. The core problem here is that shared state in the
-"try" block and the "catch" block can end up getting corrupted. Due to a panic
-possibly happening at any time, data may not often prepare for the panic and the
-catch (or finally) block will then read this corrupt data.
+In languages with `catch` blocks exception unsafe code can often cause problems
+more frequently. The core problem here is that shared state in the "try" block
+and the "catch" block can end up getting corrupted. Due to a panic possibly
+happening at any time, data may not often prepare for the panic and the catch
+(or finally) block will then read this corrupt data.
 
 Rust has not had to deal with this problem much because there's no stable way to
-catch a panic and in a thread. The `catch_panic` function proposed in this RFC,
-however, is exactly this. To see how this function is not making Rust memory
-unsafe, let's take a look at how memory safety and exception safety interact.
+catch a panic. One primary area this comes up is dealing with cross-thread
+panics, and the standard library poisons mutexes and rwlocks by default to help
+deal with this situation. The `catch_panic` function proposed in this RFC,
+however, is exactly "catch for Rust". To see how this function is not making
+Rust memory unsafe, let's take a look at how memory safety and exception safety
+interact.
 
 ### Exception Safety and Memory Safety
 
