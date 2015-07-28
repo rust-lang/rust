@@ -76,6 +76,7 @@
 #![feature(core)]
 #![feature(core_intrinsics)]
 #![feature(core_prelude)]
+#![feature(core_slice_ext)]
 #![feature(custom_attribute)]
 #![feature(fundamental)]
 #![feature(lang_items)]
