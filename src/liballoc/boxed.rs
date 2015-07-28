@@ -56,6 +56,7 @@
 use core::prelude::*;
 
 use heap;
+use raw_vec::RawVec;
 
 use core::any::Any;
 use core::cmp::Ordering;
@@ -65,7 +66,7 @@ use core::marker::{self, Unsize};
 use core::mem;
 use core::ops::{CoerceUnsized, Deref, DerefMut};
 use core::ops::{Placer, Boxed, Place, InPlace, BoxPlace};
-use core::ptr::Unique;
+use core::ptr::{self, Unique};
 use core::raw::{TraitObject};
 
 /// A value that represents the heap. This is the default place that the `box`
@@ -514,3 +515,55 @@ impl<'a,A,R> FnOnce<A> for Box<FnBox<A,Output=R>+Send+'a> {
 }
 
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
+
+#[stable(feature = "box_slice_clone", since = "1.3.0")]
+impl<T: Clone> Clone for Box<[T]> {
+    fn clone(&self) -> Self {
+        let mut new = BoxBuilder {
+            data: RawVec::with_capacity(self.len()),
+            len: 0
+        };
+
+        let mut target = new.data.ptr();
+
+        for item in self.iter() {
+            unsafe {
+                ptr::write(target, item.clone());
+                target = target.offset(1);
+            };
+
+            new.len += 1;
+        }
+
+        return unsafe { new.into_box() };
+
+        // Helper type for responding to panics correctly.
+        struct BoxBuilder<T> {
+            data: RawVec<T>,
+            len: usize,
+        }
+
+        impl<T> BoxBuilder<T> {
+            unsafe fn into_box(self) -> Box<[T]> {
+                let raw = ptr::read(&self.data);
+                mem::forget(self);
+                raw.into_box()
+            }
+        }
+
+        impl<T> Drop for BoxBuilder<T> {
+            fn drop(&mut self) {
+                let mut data = self.data.ptr();
+                let max = unsafe { data.offset(self.len as isize) };
+
+                while data != max {
+                    unsafe {
+                        ptr::read(data);
+                        data = data.offset(1);
+                    }
+                }
+            }
+        }
+    }
+}
+
