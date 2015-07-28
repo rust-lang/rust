@@ -1264,7 +1264,7 @@ impl From<Foo> for i32 { // or you use a type from your crate as
 
 E0119: r##"
 There are conflicting trait implementations for the same type.
-Erroneous code example:
+Example of erroneous code:
 
 ```
 trait MyTrait {
@@ -1285,7 +1285,10 @@ impl MyTrait for Foo { // error: conflicting implementations for trait
 }
 ```
 
-When you write:
+When looking for the implementation for the trait, the compiler finds
+both the `impl<T> MyTrait for T` where T is all types and the `impl
+MyTrait for Foo`. Since a trait cannot be implemented multiple times,
+this is an error. So, when you write:
 
 ```
 impl<T> MyTrait for T {
