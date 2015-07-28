@@ -137,7 +137,7 @@ fn main() {
             // need to last for the whole scope x is valid for. The return
             // of as_str must find a str somewhere *before* this function
             // call. Obviously not happening.
-            println!("{}", as_str::<'d>(&'d temp));
+            println!("{}", as_str::<'d>(&'d x));
         }
     }
 }
