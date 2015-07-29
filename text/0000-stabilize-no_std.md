@@ -5,8 +5,8 @@
 
 # Summary
 
-Stabilize the `#![no_std]` attribute, add a new `#![no_core]` attribute, and
-start stabilizing the libcore library.
+Tweak the `#![no_std]` attribute, add a new `#![no_core]` attribute, and
+pave the way for stabilizing the libcore library.
 
 # Motivation
 
@@ -43,10 +43,9 @@ must be available in a stable fashion.
 
 This RFC proposes a nuber of changes:
 
-* Stabilize the `#![no_std]` attribute after tweaking its behavior slightly
+* Tweak the `#![no_std]` attribute slightly.
 * Introduce a `#![no_core]` attribute.
-* Stabilize the name "core" in libcore.
-* Introduce a `#![lang_items_abort]` attribute.
+* Pave the way to stabilize the `core` module.
 
 ## `no_std`
 
@@ -79,9 +78,9 @@ this attribute instead of `#![no_std]`.
 ## Stabilization of libcore
 
 This RFC does not yet propose a stabilization path for the contents of libcore,
-but it proposes stabilizing the name `core` for libcore, paving the way for the
-rest of the library to be stabilized. The exact method of stabilizing its
-contents will be determined with a future RFC or pull requests.
+but it proposes readying to stabilize the name `core` for libcore, paving the
+way for the rest of the library to be stabilized. The exact method of
+stabilizing its contents will be determined with a future RFC or pull requests.
 
 ## Stabilizing lang items
 
@@ -102,18 +101,8 @@ reasons:
 * These items are pretty obscure and it's not very widely known what they do or
   how they should be implemented.
 
-For `#![no_std]` to be generally useful, however, these lang items *must* be
-able to be defined in one form or another on stable Rust, so this RFC proposes a
-new crate attribute, `lang_items_abort`, which will define these functions. Any
-crate tagged with `#![lang_items_abort]` will cause the compiler to generate any
-necessary language items to get the program to correctly link. Each lang item
-generated will simply abort the program as if it called the `intrinsics::abort`
-function.
-
-This attribute will behave the same as `#[lang]` in terms of uniqueness, two
-crates declaring `#![lang_items_abort]` cannot be linked together and an
-upstream crate declaring this attribute means that no downstream crate has to
-worry about it.
+Stabilization of these lang items (in any form) will be considered in a future
+RFC.
 
 # Drawbacks
 
@@ -137,13 +126,6 @@ This RFC just enables creation of Rust static or dynamic libraries which don't
 depend on the standard library in addition to Rust libraries (rlibs) which do
 not depend on the standard library.
 
-On the topic of lang items, it's somewhat unfortunate that the implementation of
-a panic cannot be defined on stable Rust. The `#![lang_items_abort]` attribute
-unconditionally defines all lang items, including `panic_fmt`, so it's not
-possible to provide a custom implementation of the `panic_fmt` lang item while
-still asking the compiler to define others like `eh_personality` and
-`stack_exhausted`.
-
 In stabilizing the `#![no_std]` attribute it's likely that a whole ecosystem of
 crates will arise which work with `#![no_std]`, but in theory all of these
 crates should also interoperate with the rest of the ecosystem using `std`.
@@ -161,23 +143,6 @@ happen:
   import the core prelude manually. The burden of adding `#![no_core]` to the
   compiler, however, is seen as not-too-bad compared to the increase in
   ergonomics of using `#![no_std]`.
-* The lang items could not be required to be defined, and the compiler could
-  provide aborting stubs to be linked in if they aren't defined anywhere else.
-  This has the downside of perhaps silently aborting a program, however, without
-  an explicit opt-in.
-* The compiler could not require `eh_personality` or `stack_exhausted` if no
-  crate in the dependency tree has landing pads enabled or stack overflow checks
-  enabled. This is quite a difficult situation to get into today, however, as
-  the libcore distribution always has these enabled and Cargo does not easily
-  provide a method to configure this when compiling crates. The overhead of
-  defining these functions seems small and because the compiler could stop
-  requiring them in the future it seems plausibly ok to require them today.
-* The lang items could be stabilized at this time instead of providing a way to
-  have the compiler generate an appropriate function. The downsides of this
-  approach, however, were listed above.
-* The various language items could not be stabilized at this time, allowing
-  stable libraries that leverage `#![no_std]` but not stable final artifacts
-  (e.g. staticlibs, dylibs, or binaries).
 * Another stable crate could be provided by the distribution which provides
   definitions of these lang items which are all wired to abort. This has the
   downside of selecting a name for this crate, however, and also inflating the
