@@ -10,9 +10,9 @@ bounds from the closure parameter.
 
 # Motivation
 
-In today's Rust it's not currently possible to catch a panic by design. There
-are a number of situations, however, where catching a panic is either required
-for correctness or necessary for building a useful abstraction:
+In today's stable Rust it's not currently possible to catch a panic. There are a
+number of situations, however, where catching a panic is either required for
+correctness or necessary for building a useful abstraction:
 
 * It is currently defined as undefined behavior to have a Rust program panic
   across an FFI boundary. For example if C calls into Rust and Rust panics, then
@@ -21,10 +21,8 @@ for correctness or necessary for building a useful abstraction:
 * Abstactions like thread pools want to catch the panics of tasks being run
   instead of having the thread torn down (and having to spawn a new thread).
 
-The purpose of the unstable `thread::catch_panic` function is to solve these
-problems by enabling you to catch a panic in Rust before control flow is
-returned back over to C. As a refresher, the signature of the function looks
-like:
+Stabilizing the `catch_panic` function would enable these two use cases, but
+let's also take a look at the current signature of the function:
 
 ```rust
 fn catch_panic<F, R>(f: F) -> thread::Result<R>
@@ -33,13 +31,74 @@ fn catch_panic<F, R>(f: F) -> thread::Result<R>
 
 This function will run the closure `f` and if it panics return `Err(Box<Any>)`.
 If the closure doesn't panic it will return `Ok(val)` where `val` is the
-returned value of the closure. Most of these aspects "pretty much make sense",
-but an odd part about this signature is the `Send` and `'static` bounds on the
-closure provided. At a high level, these two bounds are intended to mitigate
-problems related to something many programmers call "exception safety". To
-understand why let's first briefly review exception safety in Rust.
+returned value of the closure. The closure, however, is restricted to only close
+over `Send` and `'static` data. This can be overly restrictive at times and it's
+also not clear what purpose the bounds are serving today, hence the desire to
+remove these bounds.
 
-### Exception Safety
+Historically Rust has purposefully avoided the foray into the situation of
+catching panics, largely because of a problem typically referred to as
+"exception safety". To further understand the motivation of stabilization and
+relaxing the bounds, let's review what exception safety is and what it means for
+Rust.
+
+# Background: What is exception safety?
+
+Languages with exceptions have the property that a function can "return" early
+if an exception is thrown. This is normally not something that needs to be
+worried about, but this form of control flow can often be surprising and
+unexpected. If an exception ends up causing unexpected behavior or a bug then
+code is said to not be **exception safe**.
+
+Unexpected bugs arising because of an exception typically boil down to an
+invariant being broken at runtime which is then observed later on. For example
+many data structures often have a number of invariants that are dynamically
+upheld for correctness, but if these invariants are broken then an observation
+of the data structure may result in unexpected behavior. Routines inside these
+data structures tend to temporarily break invariants as an inherent part of the
+implementation, fixing up the state before a function returns, but if an
+exception being thrown could cause the function to return early and expose the
+broken invariant. The observation of this broken invariant can happen because
+of:
+
+* A finally block (code run on a normal or exceptional return) may still have
+  access to the broken data structure.
+* If an exception can be caught in the language, then the broken data structure
+  may still be accessible after the exception is caught.
+
+To be exception safe, code needs to be prepared for an exception to possibly be
+thrown whenever an invariant it relies on is broken. There are a number of
+tactics to do this, such as:
+
+* Audit code to ensure it only calls functions which are known to not throw an
+  exception.
+* Place local "cleanup" handlers on the stack to restore invariants whenever a
+  function returns, either normally or exceptionally. This can be done through
+  finally blocks in some languages for via destructors in others.
+* Catch exceptions locally to perform cleanup before possibly re-raising the
+  exception.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 The problem of exception safety often plagues many C++ programmers (and other
 languages), and it essentially means that code needs to be ready to handle
@@ -64,7 +123,7 @@ panics, then the block of code will "return" (because of unwinding), but the
 value of `foo` is still `true`.  Let's take a look at a more harmful example to
 see how this can go wrong:
 
-```
+```rust
 pub fn push_ten_more<T: Clone>(v: &mut Vec<T>, t: T) {
     unsafe {
         v.reserve(10);
