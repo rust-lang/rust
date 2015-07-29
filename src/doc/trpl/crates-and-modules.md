@@ -521,9 +521,6 @@ of `foo` relative to where we are. If that’s prefixed with `::`, as in
 `::foo::bar()`, it refers to a different `foo`, an absolute path from your
 crate root.
 
-Also, note that we `pub use`d before we declared our `mod`s. Rust requires that
-`use` declarations go first.
-
 This will build and run:
 
 ```bash
