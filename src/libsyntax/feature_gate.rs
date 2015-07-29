@@ -165,7 +165,10 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("static_recursion", "1.3.0", Active),
 
     // Allows default type parameters to influence type inference.
-    ("default_type_parameter_fallback", "1.3.0", Active)
+    ("default_type_parameter_fallback", "1.3.0", Active),
+
+    // Allows associated type defaults
+    ("associated_type_defaults", "1.2.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -762,6 +765,10 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 if sig.constness == ast::Constness::Const {
                     self.gate_feature("const_fn", ti.span, "const fn is unstable");
                 }
+            }
+            ast::TypeTraitItem(_, Some(_)) => {
+                self.gate_feature("associated_type_defaults", ti.span,
+                                  "associated type defaults are unstable");
             }
             _ => {}
         }
