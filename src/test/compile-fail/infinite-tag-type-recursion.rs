@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-// error-pattern: illegal recursive enum type; wrap the inner value in a box
+// error-pattern: invalid recursive enum type
 
 enum mlist { cons(isize, mlist), nil, }
 

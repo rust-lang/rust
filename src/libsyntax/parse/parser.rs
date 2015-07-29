@@ -681,7 +681,7 @@ impl<'a> Parser<'a> {
                 if text.is_empty() {
                     self.span_bug(sp, "found empty literal suffix in Some")
                 }
-                self.span_err(sp, &*format!("{} with a suffix is illegal", kind));
+                self.span_err(sp, &*format!("{} with a suffix is invalid", kind));
             }
         }
     }
@@ -5286,7 +5286,7 @@ impl<'a> Parser<'a> {
                         let last_span = self.last_span;
                         self.span_err(
                             last_span,
-                            &format!("illegal ABI: expected one of [{}], \
+                            &format!("invalid ABI: expected one of [{}], \
                                      found `{}`",
                                     abi::all_names().join(", "),
                                     s));

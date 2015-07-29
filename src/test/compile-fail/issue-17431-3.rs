@@ -11,7 +11,7 @@
 use std::sync::Mutex;
 
 struct Foo { foo: Mutex<Option<Foo>> }
-//~^ ERROR illegal recursive struct type; wrap the inner value in a box to make it representable
+//~^ ERROR invalid recursive struct type
 
 impl Foo { fn bar(&self) {} }
 

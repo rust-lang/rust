@@ -20,8 +20,8 @@ enum F {
     H1 = 0xFFFFFFFFFFFFFFFF
 }
 
-static C0: f32 = E::L0 as f32; //~ ERROR illegal cast
-static C1: f32 = F::H1 as f32; //~ ERROR illegal cast
+static C0: f32 = E::L0 as f32; //~ ERROR casting
+static C1: f32 = F::H1 as f32; //~ ERROR casting
 
 pub fn main() {
     let b = C0;

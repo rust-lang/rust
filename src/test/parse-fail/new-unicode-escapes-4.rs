@@ -12,7 +12,7 @@
 
 pub fn main() {
     let s = "\u{lol}";
-     //~^ ERROR illegal character in unicode escape: l
-     //~^^ ERROR illegal character in unicode escape: o
-     //~^^^ ERROR illegal character in unicode escape: l
+     //~^ ERROR invalid character in unicode escape: l
+     //~^^ ERROR invalid character in unicode escape: o
+     //~^^^ ERROR invalid character in unicode escape: l
 }
