@@ -69,6 +69,7 @@ use util::nodemap::FnvHashSet;
 use std::slice;
 use syntax::{abi, ast, ast_util};
 use syntax::codemap::{Span, Pos};
+use syntax::feature_gate::emit_feature_err;
 use syntax::parse::token;
 use syntax::print::pprust;
 
@@ -791,12 +792,11 @@ fn create_substs_for_ast_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
             // For now, require that parenthetical notation be used
             // only with `Fn()` etc.
             if !this.tcx().sess.features.borrow().unboxed_closures && trait_def.paren_sugar {
-                span_err!(this.tcx().sess, span, E0215,
-                                         "angle-bracket notation is not stable when \
-                                         used with the `Fn` family of traits, use parentheses");
-                fileline_help!(this.tcx().sess, span,
-                           "add `#![feature(unboxed_closures)]` to \
-                            the crate attributes to enable");
+                emit_feature_err(&this.tcx().sess.parse_sess.span_diagnostic,
+                                 "unboxed_closures", span,
+                                 "\
+                    the precise format of `Fn`-family traits' type parameters is \
+                    subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead");
             }
 
             convert_angle_bracketed_parameters(this, rscope, span, &trait_def.generics, data)
@@ -805,12 +805,10 @@ fn create_substs_for_ast_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
             // For now, require that parenthetical notation be used
             // only with `Fn()` etc.
             if !this.tcx().sess.features.borrow().unboxed_closures && !trait_def.paren_sugar {
-                span_err!(this.tcx().sess, span, E0216,
-                                         "parenthetical notation is only stable when \
-                                         used with the `Fn` family of traits");
-                fileline_help!(this.tcx().sess, span,
-                           "add `#![feature(unboxed_closures)]` to \
-                            the crate attributes to enable");
+                emit_feature_err(&this.tcx().sess.parse_sess.span_diagnostic,
+                                 "unboxed_closures", span,
+                                 "\
+                    parenthetical notation is only stable when used with `Fn`-family traits");
             }
 
             convert_parenthesized_parameters(this, rscope, span, &trait_def.generics, data)

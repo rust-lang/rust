@@ -21,7 +21,7 @@ trait Foo<A> {
 
 fn main() {
     let x: Box<Foo(isize)>;
-    //~^ ERROR parenthetical notation is only stable when used with the `Fn` family
+    //~^ ERROR parenthetical notation is only stable when used with `Fn`-family
 
     // No errors with these:
     let x: Box<Fn(isize)>;

@@ -2339,14 +2339,14 @@ register_diagnostics! {
     E0212, // cannot extract an associated type from a higher-ranked trait bound
     E0213, // associated types are not accepted in this context
     E0214, // parenthesized parameters may only be used with a trait
-    E0215, // angle-bracket notation is not stable with `Fn`
-    E0216, // parenthetical notation is only stable with `Fn`
+//  E0215, // angle-bracket notation is not stable with `Fn`
+//  E0216, // parenthetical notation is only stable with `Fn`
     E0217, // ambiguous associated type, defined in multiple supertraits
     E0218, // no associated type defined
     E0219, // associated type defined in higher-ranked supertrait
     E0221, // ambiguous associated type in bounds
-    //E0222, // Error code E0045 (variadic function must have C calling
-             // convention) duplicate
+//  E0222, // Error code E0045 (variadic function must have C calling
+           // convention) duplicate
     E0224, // at least one non-builtin train is required for an object type
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
