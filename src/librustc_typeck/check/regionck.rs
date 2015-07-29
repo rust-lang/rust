@@ -174,7 +174,7 @@ pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 // INTERNALS
 
 pub struct Rcx<'a, 'tcx: 'a> {
-    fcx: &'a FnCtxt<'a, 'tcx>,
+    pub fcx: &'a FnCtxt<'a, 'tcx>,
 
     region_bound_pairs: Vec<(ty::Region, GenericKind<'tcx>)>,
 
