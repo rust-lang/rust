@@ -105,7 +105,7 @@ impl BufRead for Empty {
 /// This struct is generally created by calling [`repeat()`][repeat]. Please
 /// see the documentation of `repeat()` for more details.
 ///
-/// [empty]: fn.repeat.html
+/// [repeat]: fn.repeat.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Repeat { byte: u8 }
 
@@ -131,7 +131,7 @@ impl Read for Repeat {
 /// This struct is generally created by calling [`sink()`][sink]. Please
 /// see the documentation of `sink()` for more details.
 ///
-/// [empty]: fn.sink.html
+/// [sink]: fn.sink.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Sink { _priv: () }
 

@@ -15,8 +15,8 @@ struct X {
 
 fn main() {
     let x = X { a: [0] };
-    let _f = &x.a as *mut u8; //~ ERROR illegal cast
+    let _f = &x.a as *mut u8; //~ ERROR casting
 
     let local: [u8; 1] = [0];
-    let _v = &local as *mut u8; //~ ERROR illegal cast
+    let _v = &local as *mut u8; //~ ERROR casting
 }

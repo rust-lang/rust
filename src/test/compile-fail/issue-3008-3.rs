@@ -12,7 +12,7 @@ use std::marker;
 
 enum E1 { V1(E2<E1>), }
 enum E2<T> { V2(E2<E1>, marker::PhantomData<T>), }
-//~^ ERROR illegal recursive enum type; wrap the inner value in a box to make it representable
+//~^ ERROR invalid recursive enum type
 
 impl E1 { fn foo(&self) {} }
 

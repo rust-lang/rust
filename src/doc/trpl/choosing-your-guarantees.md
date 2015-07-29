@@ -42,7 +42,7 @@ allowed to share references to this by the regular borrowing rules, checked at c
 
 ## `&T` and `&mut T` 
 
-These are immutable and mutable references respectively. They follow the &lquo;read-write lock&rquo;
+These are immutable and mutable references respectively. They follow the &ldquo;read-write lock&rdquo;
 pattern, such that one may either have only one mutable reference to some data, or any number of
 immutable ones, but not both. This guarantee is enforced at compile time, and has no visible cost at
 runtime. In most cases these two pointer types suffice for sharing cheap references between sections
@@ -108,7 +108,7 @@ increment the inner reference count and return a copy of the `Rc<T>`.
 
 # Cell types
 
-&lquo;Cell&rquo;s provide interior mutability. In other words, they contain data which can be manipulated even
+`Cell`s provide interior mutability. In other words, they contain data which can be manipulated even
 if the type cannot be obtained in a mutable form (for example, when it is behind an `&`-ptr or
 `Rc<T>`).
 
@@ -127,7 +127,8 @@ If a field is wrapped in `Cell`, it's a nice indicator that the chunk of data is
 stay the same between the time you first read it and when you intend to use it.
 
 ```rust
-# use std::cell::Cell;
+use std::cell::Cell;
+
 let x = Cell::new(1);
 let y = &x;
 let z = &x;
@@ -185,7 +186,8 @@ any other borrows active when a mutable borrow is active. If the programmer atte
 borrow, the thread will panic.
 
 ```rust
-# use std::cell::RefCell;
+use std::cell::RefCell;
+
 let x = RefCell::new(vec![1,2,3,4]);
 {
     println!("{:?}", *x.borrow())

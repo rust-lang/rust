@@ -499,7 +499,7 @@ generator, which is local to the particular [thread][concurrency] of execution
 we’re in. Because we `use rand::Rng`’d above, it has a `gen_range()` method
 available. This method takes two arguments, and generates a number between
 them. It’s inclusive on the lower bound, but exclusive on the upper bound,
-so we need `1` and `101` to get a number between one and a hundred.
+so we need `1` and `101` to get a number ranging from one to a hundred.
 
 [concurrency]: concurrency.html
 

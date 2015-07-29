@@ -420,7 +420,8 @@ impl<T, E> Result<T, E> {
     /// Converts from `Result<T, E>` to `&mut [T]` (without copying)
     ///
     /// ```
-    /// # #![feature(as_slice)]
+    /// #![feature(as_slice)]
+    ///
     /// let mut x: Result<&str, u32> = Ok("Gold");
     /// {
     ///     let v = x.as_mut_slice();

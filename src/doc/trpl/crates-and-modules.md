@@ -355,6 +355,10 @@ Hello in English: Hello!
 Goodbye in English: Goodbye.
 ```
 
+`pub` also applies to `struct`s and their member fields. In keeping with Rust’s
+tendency toward safety, simply making a `struct` public won't automatically
+make its members public: you must mark the fields individually with `pub`.
+
 Now that our functions are public, we can use them. Great! However, typing out
 `phrases::english::greetings::hello()` is very long and repetitive. Rust has
 another keyword for importing names into the current scope, so that you can
@@ -516,9 +520,6 @@ Outside of `use`, paths are relative: `foo::bar()` refers to a function inside
 of `foo` relative to where we are. If that’s prefixed with `::`, as in
 `::foo::bar()`, it refers to a different `foo`, an absolute path from your
 crate root.
-
-Also, note that we `pub use`d before we declared our `mod`s. Rust requires that
-`use` declarations go first.
 
 This will build and run:
 
