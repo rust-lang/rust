@@ -26,7 +26,7 @@ use sys;
 use usize;
 
 // Reexport some of our utilities which are expected by other crates.
-pub use self::util::{min_stack, running_on_valgrind};
+pub use self::util::min_stack;
 pub use self::unwind::{begin_unwind, begin_unwind_fmt};
 
 // Reexport some functionality from liballoc.
