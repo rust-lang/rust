@@ -1005,11 +1005,9 @@ then
         (''|*clang)
         CFG_CLANG_REPORTED_VERSION=$($CFG_CC --version | grep version)
 
-        if [[ $CFG_CLANG_REPORTED_VERSION == *"(based on LLVM "* ]]
-        then
+        if echo $CFG_CLANG_REPORTED_VERSION | grep -q "(based on LLVM "; then
             CFG_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*(based on LLVM \(.*\))/\1/')
-        elif [[ $CFG_CLANG_REPORTED_VERSION == "Apple LLVM"* ]]
-        then
+        elif echo $CFG_CLANG_REPORTED_VERSION | grep -q "Apple LLVM"; then
             CFG_OSX_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*version \(.*\) .*/\1/')
         else
             CFG_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*version \(.*\) .*/\1/')
