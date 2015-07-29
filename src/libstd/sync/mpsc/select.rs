@@ -27,7 +27,8 @@
 //! # Examples
 //!
 //! ```rust
-//! # #![feature(mpsc_select)]
+//! #![feature(mpsc_select)]
+//!
 //! use std::sync::mpsc::channel;
 //!
 //! let (tx1, rx1) = channel();
@@ -124,7 +125,8 @@ impl Select {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(mpsc_select)]
+    /// #![feature(mpsc_select)]
+    ///
     /// use std::sync::mpsc::Select;
     ///
     /// let select = Select::new();

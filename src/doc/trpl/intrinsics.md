@@ -11,7 +11,7 @@ perform efficient pointer arithmetic, one would import those functions
 via a declaration like
 
 ```rust
-# #![feature(intrinsics)]
+#![feature(intrinsics)]
 # fn main() {}
 
 extern "rust-intrinsic" {

@@ -494,7 +494,8 @@ impl<'a> Iterator for Utf16Items<'a> {
 /// # Examples
 ///
 /// ```
-/// # #![feature(unicode)]
+/// #![feature(unicode)]
+///
 /// extern crate rustc_unicode;
 ///
 /// use rustc_unicode::str::Utf16Item::{ScalarValue, LoneSurrogate};

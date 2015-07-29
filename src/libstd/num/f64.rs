@@ -191,7 +191,8 @@ impl f64 {
     /// The floating point encoding is documented in the [Reference][floating-point].
     ///
     /// ```
-    /// # #![feature(float_extras)]
+    /// #![feature(float_extras)]
+    ///
     /// let num = 2.0f64;
     ///
     /// // (8388608, -22, 1)
@@ -568,7 +569,8 @@ impl f64 {
     /// Constructs a floating point number of `x*2^exp`.
     ///
     /// ```
-    /// # #![feature(float_extras)]
+    /// #![feature(float_extras)]
+    ///
     /// // 3*2^2 - 12 == 0
     /// let abs_difference = (f64::ldexp(3.0, 2) - 12.0).abs();
     ///
@@ -588,7 +590,8 @@ impl f64 {
     ///  * `0.5 <= abs(x) < 1.0`
     ///
     /// ```
-    /// # #![feature(float_extras)]
+    /// #![feature(float_extras)]
+    ///
     /// let x = 4.0_f64;
     ///
     /// // (1/2)*2^3 -> 1 * 8/2 -> 4.0
@@ -614,7 +617,7 @@ impl f64 {
     /// `other`.
     ///
     /// ```
-    /// # #![feature(float_extras)]
+    /// #![feature(float_extras)]
     ///
     /// let x = 1.0f32;
     ///
