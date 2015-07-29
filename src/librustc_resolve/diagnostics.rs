@@ -426,6 +426,29 @@ match 0 {
 "##,
 
 E0424: r##"
+A `struct` variant name was used like a function name. Example of
+erroneous code:
+
+```
+struct Foo { a: bool};
+
+println!("I am {}", Foo);
+// error: `Foo` is a struct variant name, but this expression uses
+//        it like a function name
+```
+
+Please verify you didn't misspell the name of what you actually wanted
+to use here. Example:
+
+```
+struct Foo { a: bool};
+
+let foo = Foo { a: true };
+println!("I am {}", foo); // ok!
+```
+"##,
+
+E0424: r##"
 The `self` keyword was used in a static method. Example of erroneous code:
 
 ```
@@ -660,8 +683,6 @@ register_diagnostics! {
     E0420, // is not an associated const
     E0421, // unresolved associated const
     E0422, // does not name a structure
-    E0423, // is a struct variant name, but this expression uses it like a
-           // function name
     E0427, // cannot use `ref` binding mode with ...
     E0429, // `self` imports are only allowed within a { } list
     E0434, // can't capture dynamic environment in a fn item
