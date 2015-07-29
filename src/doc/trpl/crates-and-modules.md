@@ -355,6 +355,10 @@ Hello in English: Hello!
 Goodbye in English: Goodbye.
 ```
 
+`pub` also applies to `struct`s and their member fields. In keeping with Rust’s
+tendency toward safety, simply making a `struct` public won't automatically
+make its members public: you must mark the fields individually with `pub`.
+
 Now that our functions are public, we can use them. Great! However, typing out
 `phrases::english::greetings::hello()` is very long and repetitive. Rust has
 another keyword for importing names into the current scope, so that you can
