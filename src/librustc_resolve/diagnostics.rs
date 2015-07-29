@@ -106,7 +106,7 @@ mod foo {
 use foo::MyTrait::do_something;
 ```
 
-It's illegal to directly import methods belonging to a trait or concrete type.
+It's invalid to directly import methods belonging to a trait or concrete type.
 "##,
 
 E0255: r##"

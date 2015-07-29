@@ -205,7 +205,7 @@ pub trait Copy : Clone {
 /// Any types with interior mutability must also use the `std::cell::UnsafeCell`
 /// wrapper around the value(s) which can be mutated when behind a `&`
 /// reference; not doing this is undefined behaviour (for example,
-/// `transmute`-ing from `&T` to `&mut T` is illegal).
+/// `transmute`-ing from `&T` to `&mut T` is invalid).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]

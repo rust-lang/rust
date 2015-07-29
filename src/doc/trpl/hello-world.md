@@ -111,10 +111,13 @@ string to the screen. Easy enough!
 
 [allocation]: the-stack-and-the-heap.html
 
-Finally, the line ends with a semicolon (`;`). Rust is an ‘expression oriented’
-language, which means that most things are expressions, rather than statements.
-The `;` is used to indicate that this expression is over, and the next one is
-ready to begin. Most lines of Rust code end with a `;`.
+Finally, the line ends with a semicolon (`;`). Rust is an [‘expression oriented’
+language][expression-oriented language], which means that most things are
+expressions, rather than statements. The `;` is used to indicate that this
+expression is over, and the next one is ready to begin. Most lines of Rust code
+end with a `;`.
+
+[expression-oriented language]: glossary.html#expression-oriented-language
 
 Finally, actually compiling and running our program. We can compile with our
 compiler, `rustc`, by passing it the name of our source file:
