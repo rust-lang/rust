@@ -26,8 +26,7 @@ fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
     // Add the new dylib search path var
     let var = DynamicLibrary::envvar();
     let newpath = DynamicLibrary::create_path(&path);
-    let newpath = newpath.to_str().unwrap().to_string();
-    cmd.env(var, &newpath);
+    cmd.env(var, newpath);
 }
 
 pub struct Result {pub status: ExitStatus, pub out: String, pub err: String}

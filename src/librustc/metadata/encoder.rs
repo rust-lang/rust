@@ -1781,9 +1781,8 @@ fn encode_crate_deps(rbml_w: &mut Encoder, cstore: &cstore::CStore) {
     // FIXME (#2166): This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
     rbml_w.start_tag(tag_crate_deps);
-    let r = get_ordered_deps(cstore);
-    for dep in &r {
-        encode_crate_dep(rbml_w, (*dep).clone());
+    for dep in &get_ordered_deps(cstore) {
+        encode_crate_dep(rbml_w, dep);
     }
     rbml_w.end_tag();
 }
@@ -1971,24 +1970,22 @@ fn encode_misc_info(ecx: &EncodeContext,
     rbml_w.end_tag();
 }
 
-fn encode_reachable_extern_fns(ecx: &EncodeContext, rbml_w: &mut Encoder) {
-    rbml_w.start_tag(tag_reachable_extern_fns);
-
+// Encodes all reachable symbols in this crate into the metadata.
+//
+// This pass is seeded off the reachability list calculated in the
+// middle::reachable module but filters out items that either don't have a
+// symbol associated with them (they weren't translated) or if they're an FFI
+// definition (as that's not defined in this crate).
+fn encode_reachable(ecx: &EncodeContext, rbml_w: &mut Encoder) {
+    rbml_w.start_tag(tag_reachable_ids);
     for id in ecx.reachable {
-        if let Some(ast_map::NodeItem(i)) = ecx.tcx.map.find(*id) {
-            if let ast::ItemFn(_, _, _, abi, ref generics, _) = i.node {
-                if abi != abi::Rust && !generics.is_type_parameterized() {
-                    rbml_w.wr_tagged_u32(tag_reachable_extern_fn_id, *id);
-                }
-            }
-        }
+        rbml_w.wr_tagged_u32(tag_reachable_id, *id);
     }
-
     rbml_w.end_tag();
 }
 
 fn encode_crate_dep(rbml_w: &mut Encoder,
-                    dep: decoder::CrateDep) {
+                    dep: &decoder::CrateDep) {
     rbml_w.start_tag(tag_crate_dep);
     rbml_w.wr_tagged_str(tag_crate_dep_crate_name, &dep.name);
     rbml_w.wr_tagged_str(tag_crate_dep_hash, dep.hash.as_str());
@@ -2170,7 +2167,7 @@ fn encode_metadata_inner(wr: &mut Cursor<Vec<u8>>,
     // Encode miscellaneous info.
     i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     encode_misc_info(&ecx, krate, &mut rbml_w);
-    encode_reachable_extern_fns(&ecx, &mut rbml_w);
+    encode_reachable(&ecx, &mut rbml_w);
     stats.misc_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     // Encode and index the items.
