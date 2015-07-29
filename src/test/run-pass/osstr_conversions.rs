@@ -30,12 +30,12 @@ fn main() {
 
     // Valid UTF-8
     let by1: &[u8] = b"t\xC3\xA9st";
-    let oss1: &OsStr = OsStr::from_bytes_slice(by1).unwrap();
+    let oss1: &OsStr = OsStr::from_platform_bytes(by1).unwrap();
     assert_eq!(oss1.to_bytes().unwrap().as_ptr(), by1.as_ptr());
     assert_eq!(oss1.to_str().unwrap().as_ptr(), by1.as_ptr());
     // Not UTF-8
     let by2: &[u8] = b"t\xE9st";
-    let oss2: &OsStr = OsStr::from_bytes_slice(by2).unwrap();
+    let oss2: &OsStr = OsStr::from_platform_bytes(by2).unwrap();
     if cfg!(windows) {
         assert_eq!(oss2.to_bytes(), None);
     } else {
