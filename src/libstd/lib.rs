@@ -281,28 +281,23 @@ extern crate libc;
 
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 
-// Make std testable by not duplicating lang items. See #2912
+// Make std testable by not duplicating lang items and other globals. See #2912
 #[cfg(test)] extern crate std as realstd;
-#[cfg(test)] pub use realstd::marker;
-#[cfg(test)] pub use realstd::ops;
-#[cfg(test)] pub use realstd::cmp;
-#[cfg(test)] pub use realstd::boxed;
-
 
 // NB: These reexports are in the order they should be listed in rustdoc
 
 pub use core::any;
 pub use core::cell;
 pub use core::clone;
-#[cfg(not(test))] pub use core::cmp;
+pub use core::cmp;
 pub use core::convert;
 pub use core::default;
 pub use core::hash;
 pub use core::intrinsics;
 pub use core::iter;
-#[cfg(not(test))] pub use core::marker;
+pub use core::marker;
 pub use core::mem;
-#[cfg(not(test))] pub use core::ops;
+pub use core::ops;
 pub use core::ptr;
 pub use core::raw;
 pub use core::simd;
@@ -310,7 +305,7 @@ pub use core::result;
 pub use core::option;
 pub mod error;
 
-#[cfg(not(test))] pub use alloc::boxed;
+pub use alloc::boxed;
 pub use alloc::rc;
 
 pub use core_collections::borrow;

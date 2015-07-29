@@ -479,8 +479,8 @@ macro_rules! int_impl {
         /// wrapping around at the boundary of the type.
         ///
         /// Such wrap-around never actually occurs mathematically;
-        /// implementation artifacts make `x % y` illegal for `MIN /
-        /// -1` on a signed type illegal (where `MIN` is the negative
+        /// implementation artifacts make `x % y` invalid for `MIN /
+        /// -1` on a signed type (where `MIN` is the negative
         /// minimal value). In such a case, this function returns `0`.
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
@@ -1051,8 +1051,8 @@ macro_rules! uint_impl {
         /// wrapping around at the boundary of the type.
         ///
         /// Such wrap-around never actually occurs mathematically;
-        /// implementation artifacts make `x % y` illegal for `MIN /
-        /// -1` on a signed type illegal (where `MIN` is the negative
+        /// implementation artifacts make `x % y` invalid for `MIN /
+        /// -1` on a signed type (where `MIN` is the negative
         /// minimal value). In such a case, this function returns `0`.
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]

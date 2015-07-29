@@ -584,7 +584,7 @@ extern "C" {
 ```
 
 Using this declaration, it must be called with at least one argument, so
-simply calling `printf()` is illegal. But the following uses are allowed:
+simply calling `printf()` is invalid. But the following uses are allowed:
 
 ```
 unsafe {
