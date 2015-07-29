@@ -77,6 +77,21 @@ impl OsString {
     ///
     /// On Windows system, only UTF-8 byte sequences will successfully
     /// convert; non UTF-8 data will produce `None`.
+    #[deprecated(reason = "Renamed to from_platform_bytes", since = "1.2.0")]
+    #[unstable(feature = "convert", reason = "recently added")]
+    pub fn from_bytes<B>(bytes: B) -> Option<OsString> where B: Into<Vec<u8>> {
+        OsString::from_platform_bytes(bytes)
+    }
+
+    /// Constructs an `OsString` from a byte sequence.
+    ///
+    /// # Platform behavior
+    ///
+    /// On Unix systems, any byte sequence can be successfully
+    /// converted into an `OsString`.
+    ///
+    /// On Windows system, only UTF-8 byte sequences will successfully
+    /// convert; non UTF-8 data will produce `None`.
     #[unstable(feature = "convert", reason = "recently added")]
     pub fn from_platform_bytes<B>(bytes: B) -> Option<OsString> where B: Into<Vec<u8>> {
         #[cfg(unix)]
