@@ -442,7 +442,8 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_char)]
+    /// #![feature(str_char)]
+    ///
     /// let s = "Löwe 老虎 Léopard";
     /// assert!(s.is_char_boundary(0));
     /// // start of `老`
@@ -549,7 +550,8 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(slice_chars)]
+    /// #![feature(slice_chars)]
+    ///
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.slice_chars(0, 4), "Löwe");
@@ -581,7 +583,8 @@ impl str {
     /// done by `.chars()` or `.char_indices()`.
     ///
     /// ```
-    /// # #![feature(str_char, core)]
+    /// #![feature(str_char, core)]
+    ///
     /// use std::str::CharRange;
     ///
     /// let s = "中华Việt Nam";
@@ -639,7 +642,8 @@ impl str {
     /// done by `.chars().rev()` or `.char_indices()`.
     ///
     /// ```
-    /// # #![feature(str_char, core)]
+    /// #![feature(str_char, core)]
+    ///
     /// use std::str::CharRange;
     ///
     /// let s = "中华Việt Nam";
@@ -686,7 +690,8 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_char)]
+    /// #![feature(str_char)]
+    ///
     /// let s = "abπc";
     /// assert_eq!(s.char_at(1), 'b');
     /// assert_eq!(s.char_at(2), 'π');
@@ -714,7 +719,8 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_char)]
+    /// #![feature(str_char)]
+    ///
     /// let s = "abπc";
     /// assert_eq!(s.char_at_reverse(1), 'a');
     /// assert_eq!(s.char_at_reverse(2), 'b');
@@ -742,7 +748,8 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_char)]
+    /// #![feature(str_char)]
+    ///
     /// let s = "Łódź"; // \u{141}o\u{301}dz\u{301}
     /// let (c, s1) = s.slice_shift_char().unwrap();
     ///
@@ -777,7 +784,8 @@ impl str {
     ///
     /// # Examples
     /// ```
-    /// # #![feature(str_split_at)]
+    /// #![feature(str_split_at)]
+    ///
     /// let s = "Löwe 老虎 Léopard";
     /// let first_space = s.find(' ').unwrap_or(s.len());
     /// let (a, b) = s.split_at(first_space);
@@ -879,8 +887,9 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_words)]
-    /// # #![allow(deprecated)]
+    /// #![feature(str_words)]
+    /// #![allow(deprecated)]
+    ///
     /// let some_words = " Mary   had\ta\u{2009}little  \n\t lamb";
     /// let v: Vec<&str> = some_words.words().collect();
     ///
@@ -1038,7 +1047,8 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(unicode, core)]
+    /// #![feature(unicode, core)]
+    ///
     /// let gr1 = "a\u{310}e\u{301}o\u{308}\u{332}".graphemes(true).collect::<Vec<&str>>();
     /// let b: &[_] = &["a\u{310}", "e\u{301}", "o\u{308}\u{332}"];
     ///
@@ -1064,7 +1074,8 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(unicode, core)]
+    /// #![feature(unicode, core)]
+    ///
     /// let gr_inds = "a̐éö̲\r\n".grapheme_indices(true).collect::<Vec<(usize, &str)>>();
     /// let b: &[_] = &[(0, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
     ///
@@ -1602,7 +1613,8 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_match_indices)]
+    /// #![feature(str_match_indices)]
+    ///
     /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".match_indices("abc").collect();
     /// assert_eq!(v, [(0, 3), (6, 9), (12, 15)]);
     ///
@@ -1646,7 +1658,8 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(str_match_indices)]
+    /// #![feature(str_match_indices)]
+    ///
     /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".rmatch_indices("abc").collect();
     /// assert_eq!(v, [(12, 15), (6, 9), (0, 3)]);
     ///
@@ -1676,7 +1689,8 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(subslice_offset)]
+    /// #![feature(subslice_offset)]
+    ///
     /// let string = "a\nb\nc";
     /// let lines: Vec<&str> = string.lines().collect();
     ///

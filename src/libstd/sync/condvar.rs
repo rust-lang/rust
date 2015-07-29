@@ -69,7 +69,8 @@ pub struct Condvar { inner: Box<StaticCondvar> }
 /// # Examples
 ///
 /// ```
-/// # #![feature(static_condvar)]
+/// #![feature(static_condvar)]
+///
 /// use std::sync::{StaticCondvar, CONDVAR_INIT};
 ///
 /// static CVAR: StaticCondvar = CONDVAR_INIT;

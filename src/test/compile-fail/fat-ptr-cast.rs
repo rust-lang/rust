@@ -17,14 +17,16 @@ fn main() {
     let p = a as *const [i32];
     let q = a.as_ptr();
 
-    a as usize; //~ ERROR illegal cast
+    a as usize; //~ ERROR casting
     b as usize; //~ ERROR non-scalar cast
-    p as usize; //~ ERROR illegal cast; cast through a raw pointer
+    p as usize;
+    //~^ ERROR casting
+    //~^^ HELP cast through a raw pointer
 
     // #22955
-    q as *const [i32]; //~ ERROR illegal cast
+    q as *const [i32]; //~ ERROR casting
 
     // #21397
-    let t: *mut (Trait + 'static) = 0 as *mut _; //~ ERROR illegal cast
-    let mut fail: *const str = 0 as *const str; //~ ERROR illegal cast
+    let t: *mut (Trait + 'static) = 0 as *mut _; //~ ERROR casting
+    let mut fail: *const str = 0 as *const str; //~ ERROR casting
 }

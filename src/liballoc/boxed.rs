@@ -75,7 +75,8 @@ use core::raw::{TraitObject};
 /// The following two examples are equivalent:
 ///
 /// ```
-/// # #![feature(box_heap)]
+/// #![feature(box_heap)]
+///
 /// #![feature(box_syntax, placement_in_syntax)]
 /// use std::boxed::HEAP;
 ///
@@ -241,7 +242,8 @@ impl<T : ?Sized> Box<T> {
     ///
     /// # Examples
     /// ```
-    /// # #![feature(box_raw)]
+    /// #![feature(box_raw)]
+    ///
     /// let seventeen = Box::new(17u32);
     /// let raw = Box::into_raw(seventeen);
     /// let boxed_again = unsafe { Box::from_raw(raw) };
@@ -264,7 +266,8 @@ impl<T : ?Sized> Box<T> {
 ///
 /// # Examples
 /// ```
-/// # #![feature(box_raw)]
+/// #![feature(box_raw)]
+///
 /// use std::boxed;
 ///
 /// let seventeen = Box::new(17u32);
@@ -307,7 +310,8 @@ impl<T: Clone> Clone for Box<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(box_raw)]
+    /// #![feature(box_raw)]
+    ///
     /// let x = Box::new(5);
     /// let mut y = Box::new(10);
     ///

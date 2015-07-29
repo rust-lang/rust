@@ -200,7 +200,8 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(arc_weak)]
+    /// #![feature(arc_weak)]
+    ///
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -337,7 +338,8 @@ impl<T: Clone> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(arc_unique)]
+    /// #![feature(arc_unique)]
+    ///
     /// use std::sync::Arc;
     ///
     /// let mut five = Arc::new(5);
@@ -408,7 +410,8 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(arc_unique, alloc)]
+    /// #![feature(arc_unique, alloc)]
+    ///
     /// extern crate alloc;
     /// # fn main() {
     /// use alloc::arc::Arc;
@@ -555,7 +558,8 @@ impl<T: ?Sized> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(arc_weak)]
+    /// #![feature(arc_weak)]
+    ///
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -599,7 +603,8 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(arc_weak)]
+    /// #![feature(arc_weak)]
+    ///
     /// use std::sync::Arc;
     ///
     /// let weak_five = Arc::new(5).downgrade();
@@ -626,7 +631,8 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(arc_weak)]
+    /// #![feature(arc_weak)]
+    ///
     /// use std::sync::Arc;
     ///
     /// {

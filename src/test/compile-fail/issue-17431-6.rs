@@ -11,7 +11,7 @@
 use std::sync::Mutex;
 
 enum Foo { X(Mutex<Option<Foo>>) }
-//~^ ERROR illegal recursive enum type; wrap the inner value in a box to make it representable
+//~^ ERROR invalid recursive enum type
 
 impl Foo { fn bar(self) {} }
 

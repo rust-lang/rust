@@ -103,7 +103,8 @@ impl Iterator for LookupHost {
 /// # Examples
 ///
 /// ```no_run
-/// # #![feature(lookup_host)]
+/// #![feature(lookup_host)]
+///
 /// use std::net;
 ///
 /// # fn foo() -> std::io::Result<()> {

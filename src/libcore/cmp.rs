@@ -383,7 +383,8 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 /// # Examples
 ///
 /// ```
-/// # #![feature(cmp_partial)]
+/// #![feature(cmp_partial)]
+///
 /// use std::cmp;
 ///
 /// assert_eq!(Some(1), cmp::partial_min(1, 2));
@@ -393,7 +394,8 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 /// When comparison is impossible:
 ///
 /// ```
-/// # #![feature(cmp_partial)]
+/// #![feature(cmp_partial)]
+///
 /// use std::cmp;
 ///
 /// let result = cmp::partial_min(std::f64::NAN, 1.0);
@@ -417,7 +419,8 @@ pub fn partial_min<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
 /// # Examples
 ///
 /// ```
-/// # #![feature(cmp_partial)]
+/// #![feature(cmp_partial)]
+///
 /// use std::cmp;
 ///
 /// assert_eq!(Some(2), cmp::partial_max(1, 2));
@@ -427,7 +430,8 @@ pub fn partial_min<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
 /// When comparison is impossible:
 ///
 /// ```
-/// # #![feature(cmp_partial)]
+/// #![feature(cmp_partial)]
+///
 /// use std::cmp;
 ///
 /// let result = cmp::partial_max(std::f64::NAN, 1.0);

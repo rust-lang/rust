@@ -138,7 +138,8 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> { }
 /// # Examples
 ///
 /// ```
-/// # #![feature(static_mutex)]
+/// #![feature(static_mutex)]
+///
 /// use std::sync::{StaticMutex, MUTEX_INIT};
 ///
 /// static LOCK: StaticMutex = MUTEX_INIT;

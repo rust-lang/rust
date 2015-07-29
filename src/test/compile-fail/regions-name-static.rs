@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo<'static> { //~ ERROR illegal lifetime parameter name: `'static`
+struct Foo<'static> { //~ ERROR invalid lifetime parameter name: `'static`
     x: &'static isize
 }
 

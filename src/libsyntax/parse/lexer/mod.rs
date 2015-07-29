@@ -694,7 +694,7 @@ impl<'a> StringReader<'a> {
             accum_int *= 16;
             accum_int += c.to_digit(16).unwrap_or_else(|| {
                 self.err_span_char(self.last_pos, self.pos,
-                              "illegal character in numeric character escape", c);
+                              "invalid character in numeric character escape", c);
 
                 valid = false;
                 0
@@ -714,7 +714,7 @@ impl<'a> StringReader<'a> {
             Some(_) => valid,
             None => {
                 let last_bpos = self.last_pos;
-                self.err_span_(start_bpos, last_bpos, "illegal numeric character escape");
+                self.err_span_(start_bpos, last_bpos, "invalid numeric character escape");
                 false
             }
         }
@@ -846,7 +846,7 @@ impl<'a> StringReader<'a> {
                                      "unterminated unicode escape (needed a `}`)");
                 } else {
                     self.err_span_char(self.last_pos, self.pos,
-                                   "illegal character in unicode escape", c);
+                                   "invalid character in unicode escape", c);
                 }
                 valid = false;
                 0
@@ -862,7 +862,7 @@ impl<'a> StringReader<'a> {
         }
 
         if valid && (char::from_u32(accum_int).is_none() || count == 0) {
-            self.err_span_(start_bpos, self.last_pos, "illegal unicode character escape");
+            self.err_span_(start_bpos, self.last_pos, "invalid unicode character escape");
             valid = false;
         }
 
@@ -1138,8 +1138,8 @@ impl<'a> StringReader<'a> {
                 let last_bpos = self.last_pos;
                 let curr_char = self.curr.unwrap();
                 self.fatal_span_char(start_bpos, last_bpos,
-                                "only `#` is allowed in raw string delimitation; \
-                                 found illegal character",
+                                "found invalid character; \
+                                 only `#` is allowed in raw string delimitation",
                                 curr_char);
             }
             self.bump();
@@ -1323,8 +1323,8 @@ impl<'a> StringReader<'a> {
             let last_pos = self.last_pos;
             let ch = self.curr.unwrap();
             self.fatal_span_char(start_bpos, last_pos,
-                            "only `#` is allowed in raw string delimitation; \
-                             found illegal character",
+                            "found invalid character; \
+                             only `#` is allowed in raw string delimitation",
                             ch);
         }
         self.bump();

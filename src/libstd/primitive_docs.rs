@@ -111,7 +111,8 @@ mod prim_unit { }
 /// the raw pointer. It doesn't destroy `T` or deallocate any memory.
 ///
 /// ```
-/// # #![feature(box_raw)]
+/// #![feature(box_raw)]
+///
 /// let my_speed: Box<i32> = Box::new(88);
 /// let my_speed: *mut i32 = Box::into_raw(my_speed);
 ///

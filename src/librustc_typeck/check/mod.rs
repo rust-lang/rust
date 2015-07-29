@@ -3468,7 +3468,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let tcx = fcx.tcx();
         if !tcx.expr_is_lval(&**lhs) {
             span_err!(tcx.sess, expr.span, E0070,
-                "illegal left-hand side expression");
+                "invalid left-hand side expression");
         }
 
         let lhs_ty = fcx.expr_ty(&**lhs);
@@ -4273,10 +4273,8 @@ pub fn check_representable(tcx: &ty::ctxt,
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
       ty::SelfRecursive => {
-        span_err!(tcx.sess, sp, E0072,
-            "illegal recursive {} type; \
-             wrap the inner value in a box to make it representable",
-            designation);
+        span_err!(tcx.sess, sp, E0072, "invalid recursive {} type", designation);
+        tcx.sess.fileline_help(sp, "wrap the inner value in a box to make it representable");
         return false
       }
       ty::Representable | ty::ContainsRecursive => (),

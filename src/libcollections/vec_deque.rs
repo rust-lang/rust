@@ -231,7 +231,7 @@ impl<T> VecDeque<T> {
     /// buf.push_back(3);
     /// buf.push_back(4);
     /// buf.push_back(5);
-    /// assert_eq!(buf.get(1).unwrap(), &4);
+    /// assert_eq!(buf.get(1), Some(&4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self, index: usize) -> Option<&T> {
@@ -379,7 +379,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// #![feature(collections)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::with_capacity(15);
@@ -455,7 +456,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(deque_extras)]
+    /// #![feature(deque_extras)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -604,7 +606,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(drain)]
+    /// #![feature(drain)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut v = VecDeque::new();
@@ -847,17 +850,20 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(deque_extras)]
+    /// #![feature(deque_extras)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
     /// assert_eq!(buf.swap_back_remove(0), None);
-    /// buf.push_back(5);
-    /// buf.push_back(99);
-    /// buf.push_back(15);
-    /// buf.push_back(20);
-    /// buf.push_back(10);
-    /// assert_eq!(buf.swap_back_remove(1), Some(99));
+    /// buf.push_back(1);
+    /// buf.push_back(2);
+    /// buf.push_back(3);
+    ///
+    /// assert_eq!(buf.swap_back_remove(0), Some(1));
+    /// assert_eq!(buf.len(), 2);
+    /// assert_eq!(buf[0], 3);
+    /// assert_eq!(buf[1], 2);
     /// ```
     #[unstable(feature = "deque_extras",
                reason = "the naming of this function may be altered")]
@@ -881,17 +887,20 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(deque_extras)]
+    /// #![feature(deque_extras)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
     /// assert_eq!(buf.swap_front_remove(0), None);
-    /// buf.push_back(15);
-    /// buf.push_back(5);
-    /// buf.push_back(10);
-    /// buf.push_back(99);
-    /// buf.push_back(20);
-    /// assert_eq!(buf.swap_front_remove(3), Some(99));
+    /// buf.push_back(1);
+    /// buf.push_back(2);
+    /// buf.push_back(3);
+    ///
+    /// assert_eq!(buf.swap_front_remove(2), Some(3));
+    /// assert_eq!(buf.len(), 2);
+    /// assert_eq!(buf[0], 2);
+    /// assert_eq!(buf[1], 1);
     /// ```
     #[unstable(feature = "deque_extras",
                reason = "the naming of this function may be altered")]
@@ -915,7 +924,8 @@ impl<T> VecDeque<T> {
     ///
     /// # Examples
     /// ```
-    /// # #![feature(collections)]
+    /// #![feature(collections)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1123,12 +1133,12 @@ impl<T> VecDeque<T> {
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
-    /// buf.push_back(5);
-    /// buf.push_back(10);
-    /// buf.push_back(12);
-    /// buf.push_back(15);
-    /// buf.remove(2);
-    /// assert_eq!(Some(&15), buf.get(2));
+    /// buf.push_back(1);
+    /// buf.push_back(2);
+    /// buf.push_back(3);
+    ///
+    /// assert_eq!(buf.remove(1), Some(2));
+    /// assert_eq!(buf.get(1), Some(&3));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, index: usize) -> Option<T> {
@@ -1291,7 +1301,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(split_off)]
+    /// #![feature(split_off)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<_> = vec![1,2,3].into_iter().collect();
@@ -1354,7 +1365,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(append)]
+    /// #![feature(append)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
@@ -1380,7 +1392,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(vec_deque_retain)]
+    /// #![feature(vec_deque_retain)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1415,7 +1428,8 @@ impl<T: Clone> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(deque_extras)]
+    /// #![feature(deque_extras)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();

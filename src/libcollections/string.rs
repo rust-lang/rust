@@ -89,7 +89,8 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// #![feature(collections)]
+    ///
     /// let s = String::from("hello");
     /// assert_eq!(&s[..], "hello");
     /// ```
@@ -702,7 +703,7 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(drain)]
+    /// #![feature(drain)]
     ///
     /// let mut s = String::from("α is alpha, β is beta");
     /// let beta_offset = s.find('β').unwrap_or(s.len());

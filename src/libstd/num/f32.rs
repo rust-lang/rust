@@ -235,7 +235,8 @@ impl f32 {
     /// The floating point encoding is documented in the [Reference][floating-point].
     ///
     /// ```
-    /// # #![feature(float_extras)]
+    /// #![feature(float_extras)]
+    ///
     /// use std::f32;
     ///
     /// let num = 2.0f32;
@@ -598,7 +599,8 @@ impl f32 {
     /// Converts radians to degrees.
     ///
     /// ```
-    /// # #![feature(float_extras)]
+    /// #![feature(float_extras)]
+    ///
     /// use std::f32::{self, consts};
     ///
     /// let angle = consts::PI;
@@ -614,7 +616,8 @@ impl f32 {
     /// Converts degrees to radians.
     ///
     /// ```
-    /// # #![feature(float_extras)]
+    /// #![feature(float_extras)]
+    ///
     /// use std::f32::{self, consts};
     ///
     /// let angle = 180.0f32;
@@ -630,7 +633,8 @@ impl f32 {
     /// Constructs a floating point number of `x*2^exp`.
     ///
     /// ```
-    /// # #![feature(float_extras)]
+    /// #![feature(float_extras)]
+    ///
     /// use std::f32;
     /// // 3*2^2 - 12 == 0
     /// let abs_difference = (f32::ldexp(3.0, 2) - 12.0).abs();
@@ -651,7 +655,8 @@ impl f32 {
     ///  * `0.5 <= abs(x) < 1.0`
     ///
     /// ```
-    /// # #![feature(float_extras)]
+    /// #![feature(float_extras)]
+    ///
     /// use std::f32;
     ///
     /// let x = 4.0f32;
@@ -679,7 +684,8 @@ impl f32 {
     /// `other`.
     ///
     /// ```
-    /// # #![feature(float_extras)]
+    /// #![feature(float_extras)]
+    ///
     /// use std::f32;
     ///
     /// let x = 1.0f32;
