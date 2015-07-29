@@ -163,7 +163,8 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows the definition recursive static items.
     ("static_recursion", "1.3.0", Active),
-// Allows default type parameters to influence type inference.
+
+    // Allows default type parameters to influence type inference.
     ("default_type_parameter_fallback", "1.3.0", Active)
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
