@@ -799,7 +799,7 @@ mod tests {
     #[cfg(not(target_os="android"))]
     #[test]
     fn test_inherit_env() {
-        use std::env;
+        use env;
 
         let result = env_cmd().output().unwrap();
         let output = String::from_utf8(result.stdout).unwrap();
