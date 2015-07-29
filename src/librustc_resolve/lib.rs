@@ -2654,23 +2654,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let pat_id = pattern.id;
         walk_pat(pattern, |pattern| {
             match pattern.node {
-                PatIdent(binding_mode, ref path1, _) => {
-
-                    // The meaning of pat_ident with no type parameters
+                PatIdent(binding_mode, ref path1, ref at_rhs) => {
+                    // The meaning of PatIdent with no type parameters
                     // depends on whether an enum variant or unit-like struct
                     // with that name is in scope. The probing lookup has to
                     // be careful not to emit spurious errors. Only matching
                     // patterns (match) can match nullary variants or
-                    // unit-like structs. For binding patterns (let), matching
-                    // such a value is simply disallowed (since it's rarely
-                    // what you want).
+                    // unit-like structs. For binding patterns (let
+                    // and the LHS of @-patterns), matching such a value is
+                    // simply disallowed (since it's rarely what you want).
+                    let const_ok = mode == RefutableMode && at_rhs.is_none();
 
                     let ident = path1.node;
                     let renamed = mtwt::resolve(ident);
 
                     match self.resolve_bare_identifier_pattern(ident.name, pattern.span) {
-                        FoundStructOrEnumVariant(def, lp)
-                                if mode == RefutableMode => {
+                        FoundStructOrEnumVariant(def, lp) if const_ok => {
                             debug!("(resolving pattern) resolving `{}` to \
                                     struct or enum variant",
                                    renamed);
@@ -2693,7 +2692,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     renamed)
                             );
                         }
-                        FoundConst(def, lp) if mode == RefutableMode => {
+                        FoundConst(def, lp) if const_ok => {
                             debug!("(resolving pattern) resolving `{}` to \
                                     constant",
                                    renamed);
