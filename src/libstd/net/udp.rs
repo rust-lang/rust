@@ -98,6 +98,9 @@ impl UdpSocket {
     }
 
     /// Sets the broadcast flag on or off.
+    #[deprecated(since = "1.3.0",
+                 reason = "available through the `net2` crate on crates.io")]
+    #[unstable(feature = "udp_extras", reason = "available externally")]
     pub fn set_broadcast(&self, on: bool) -> io::Result<()> {
         self.0.set_broadcast(on)
     }
@@ -105,26 +108,41 @@ impl UdpSocket {
     /// Sets the multicast loop flag to the specified value.
     ///
     /// This lets multicast packets loop back to local sockets (if enabled)
+    #[deprecated(since = "1.3.0",
+                 reason = "available through the `net2` crate on crates.io")]
+    #[unstable(feature = "udp_extras", reason = "available externally")]
     pub fn set_multicast_loop(&self, on: bool) -> io::Result<()> {
         self.0.set_multicast_loop(on)
     }
 
     /// Joins a multicast IP address (becomes a member of it).
+    #[deprecated(since = "1.3.0",
+                 reason = "available through the `net2` crate on crates.io")]
+    #[unstable(feature = "udp_extras", reason = "available externally")]
     pub fn join_multicast(&self, multi: &IpAddr) -> io::Result<()> {
         self.0.join_multicast(multi)
     }
 
     /// Leaves a multicast IP address (drops membership from it).
+    #[deprecated(since = "1.3.0",
+                 reason = "available through the `net2` crate on crates.io")]
+    #[unstable(feature = "udp_extras", reason = "available externally")]
     pub fn leave_multicast(&self, multi: &IpAddr) -> io::Result<()> {
         self.0.leave_multicast(multi)
     }
 
     /// Sets the multicast TTL.
+    #[deprecated(since = "1.3.0",
+                 reason = "available through the `net2` crate on crates.io")]
+    #[unstable(feature = "udp_extras", reason = "available externally")]
     pub fn set_multicast_time_to_live(&self, ttl: i32) -> io::Result<()> {
         self.0.multicast_time_to_live(ttl)
     }
 
     /// Sets this socket's TTL.
+    #[deprecated(since = "1.3.0",
+                 reason = "available through the `net2` crate on crates.io")]
+    #[unstable(feature = "udp_extras", reason = "available externally")]
     pub fn set_time_to_live(&self, ttl: i32) -> io::Result<()> {
         self.0.time_to_live(ttl)
     }
