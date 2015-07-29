@@ -63,8 +63,8 @@ pub const UNKNOWN_LINE_NUMBER: c_uint = 0;
 pub const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
 // ptr::null() doesn't work :(
-const UNKNOWN_FILE_METADATA: DIFile = (0 as DIFile);
-const UNKNOWN_SCOPE_METADATA: DIScope = (0 as DIScope);
+const NO_FILE_METADATA: DIFile = (0 as DIFile);
+const NO_SCOPE_METADATA: DIScope = (0 as DIScope);
 
 const FLAGS_NONE: c_uint = 0;
 
@@ -566,7 +566,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                            &slice_type_name[..],
                                            unique_type_id,
                                            &member_descriptions,
-                                           UNKNOWN_SCOPE_METADATA,
+                                           NO_SCOPE_METADATA,
                                            file_metadata,
                                            span);
     return MetadataCreationResult::new(metadata, false);
@@ -611,7 +611,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         unsafe {
             llvm::LLVMDIBuilderCreateSubroutineType(
                 DIB(cx),
-                UNKNOWN_FILE_METADATA,
+                NO_FILE_METADATA,
                 create_DIArray(DIB(cx), &signature_metadata[..]))
         },
         false);
@@ -655,7 +655,7 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             unique_type_id,
                             &[],
                             containing_scope,
-                            UNKNOWN_FILE_METADATA,
+                            NO_FILE_METADATA,
                             codemap::DUMMY_SP)
 }
 
@@ -851,13 +851,6 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
-    match debug_context(cx).created_files.borrow().get(full_path) {
-        Some(file_metadata) => return *file_metadata,
-        None => ()
-    }
-
-    debug!("file_metadata: {}", full_path);
-
     // FIXME (#9639): This needs to handle non-utf8 paths
     let work_dir = cx.sess().working_dir.to_str().unwrap();
     let file_name =
@@ -867,6 +860,24 @@ pub fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
             full_path
         };
 
+    file_metadata_(cx, full_path, file_name, &work_dir)
+}
+
+pub fn unknown_file_metadata(cx: &CrateContext) -> DIFile {
+    // Regular filenames should not be empty, so we abuse an empty name as the
+    // key for the special unknown file metadata
+    file_metadata_(cx, "", "<unknown>", "")
+
+}
+
+fn file_metadata_(cx: &CrateContext, key: &str, file_name: &str, work_dir: &str) -> DIFile {
+    match debug_context(cx).created_files.borrow().get(key) {
+        Some(file_metadata) => return *file_metadata,
+        None => ()
+    }
+
+    debug!("file_metadata: file_name: {}, work_dir: {}", file_name, work_dir);
+
     let file_name = CString::new(file_name).unwrap();
     let work_dir = CString::new(work_dir).unwrap();
     let file_metadata = unsafe {
@@ -875,8 +886,8 @@ pub fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
     };
 
     let mut created_files = debug_context(cx).created_files.borrow_mut();
-    created_files.insert(full_path.to_string(), file_metadata);
-    return file_metadata;
+    created_files.insert(key.to_string(), file_metadata);
+    file_metadata
 }
 
 /// Finds the scope metadata node for the given AST node.
@@ -1227,7 +1238,7 @@ fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                            tuple_llvm_type,
                            &tuple_name[..],
                            unique_type_id,
-                           UNKNOWN_SCOPE_METADATA),
+                           NO_SCOPE_METADATA),
         tuple_llvm_type,
         TupleMDF(TupleMemberDescriptionFactory {
             component_types: component_types.to_vec(),
@@ -1570,9 +1581,14 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    -> RecursiveTypeDescription<'tcx> {
     let enum_name = compute_debuginfo_type_name(cx, enum_type, false);
 
-    let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, enum_def_id);
-    let loc = span_start(cx, definition_span);
-    let file_metadata = file_metadata(cx, &loc.file.name);
+    let (containing_scope, _) = get_namespace_and_span_for_item(cx, enum_def_id);
+    // FIXME: This should emit actual file metadata for the enum, but we
+    // currently can't get the necessary information when it comes to types
+    // imported from other crates. Formerly we violated the ODR when performing
+    // LTO because we emitted debuginfo for the same type with varying file
+    // metadata, so as a workaround we pretend that the type comes from
+    // <unknown>
+    let file_metadata = unknown_file_metadata(cx);
 
     let variants = &enum_type.ty_adt_def().unwrap().variants;
 
@@ -1613,7 +1629,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         DIB(cx),
                         containing_scope,
                         name.as_ptr(),
-                        UNKNOWN_FILE_METADATA,
+                        NO_FILE_METADATA,
                         UNKNOWN_LINE_NUMBER,
                         bytes_to_bits(discriminant_size),
                         bytes_to_bits(discriminant_align),
@@ -1765,7 +1781,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
                     DIB(cx),
                     composite_type_metadata,
                     member_name.as_ptr(),
-                    UNKNOWN_FILE_METADATA,
+                    NO_FILE_METADATA,
                     UNKNOWN_LINE_NUMBER,
                     bytes_to_bits(member_size),
                     bytes_to_bits(member_align),
@@ -1808,7 +1824,7 @@ fn create_struct_stub(cx: &CrateContext,
             DIB(cx),
             containing_scope,
             name.as_ptr(),
-            UNKNOWN_FILE_METADATA,
+            NO_FILE_METADATA,
             UNKNOWN_LINE_NUMBER,
             bytes_to_bits(struct_size),
             bytes_to_bits(struct_align),
@@ -1869,7 +1885,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
         let loc = span_start(cx, span);
         (file_metadata(cx, &loc.file.name), loc.line as c_uint)
     } else {
-        (UNKNOWN_FILE_METADATA, UNKNOWN_LINE_NUMBER)
+        (NO_FILE_METADATA, UNKNOWN_LINE_NUMBER)
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
