@@ -1,7 +1,7 @@
 - Feature Name: `allocator`
 - Start Date: 2015-06-27
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1183](https://github.com/rust-lang/rfcs/pull/1183)
+- Rust Issue: [rust-lang/rust#27389](https://github.com/rust-lang/rust/issues/27389)
 
 # Summary
 
