@@ -407,8 +407,6 @@ impl<W: Write> BufWriter<W> {
 
     /// Gets a mutable reference to the underlying writer.
     ///
-    /// # Warning
-    ///
     /// It is inadvisable to directly write to the underlying writer.
     ///
     /// # Examples
@@ -834,8 +832,6 @@ impl<S: Read + Write> BufStream<S> {
     }
 
     /// Gets a mutable reference to the underlying stream.
-    ///
-    /// # Warning
     ///
     /// It is inadvisable to read directly from or write directly to the
     /// underlying stream.
