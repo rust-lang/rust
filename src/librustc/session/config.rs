@@ -828,8 +828,8 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                    `typed` (crates expanded, with type annotations), or
                    `expanded,identified` (fully parenthesized, AST nodes with IDs).",
                  "TYPE"),
-        opt::flagopt_u("", "xpretty",
-                     "Pretty-print the input instead of compiling, unstable variants;
+        opt::flagopt_u("", "unpretty",
+                     "Present the input source, unstable (and less-pretty) variants;
                       valid types are any of the types for `--pretty`, as well as:
                       `flowgraph=<nodeid>` (graphviz formatted flowgraph for node), or
                       `everybody_loops` (all function bodies replaced with `loop {}`).",
