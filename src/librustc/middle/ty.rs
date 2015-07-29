@@ -44,7 +44,7 @@ use metadata::csearch;
 use middle;
 use middle::cast;
 use middle::check_const;
-use middle::const_eval::{self, ConstVal};
+use middle::const_eval::{self, ConstVal, ErrKind};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def::{self, DefMap, ExportMap};
 use middle::dependency_format;
@@ -6107,20 +6107,20 @@ impl<'tcx> ctxt<'tcx> {
                     found);
             }
             Err(err) => {
-                let err_description = err.description();
-                let found = match count_expr.node {
+                let err_msg = match count_expr.node {
                     ast::ExprPath(None, ast::Path {
                         global: false,
                         ref segments,
                         ..
                     }) if segments.len() == 1 =>
-                        format!("{}", "found variable"),
-                    _ =>
-                        format!("but {}", err_description),
+                        format!("found variable"),
+                    _ => match err.kind {
+                        ErrKind::MiscCatchAll => format!("but found {}", err.description()),
+                        _ => format!("but {}", err.description())
+                    }
                 };
                 span_err!(self.sess, count_expr.span, E0307,
-                    "expected constant integer for repeat count, {}",
-                    found);
+                    "expected constant integer for repeat count, {}", err_msg);
             }
         }
         0
