@@ -22,6 +22,10 @@ what *aliased* means. To define aliasing, we must define the notion of
 *paths* and *liveness*.
 
 
+**NOTE: The model that follows is generally agreed to be dubious and have
+issues. It's ok-ish as an intuitive model, but fails to capture the desired
+semantics. We leave this here to be able to use notions introduced here in later
+sections. This will be significantly changed in the future. TODO: do that.**
 
 
 # Paths
