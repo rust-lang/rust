@@ -122,20 +122,21 @@ impl<'tcx> CastCheck<'tcx> {
             CastError::NeedViaInt |
             CastError::NeedViaUsize => {
                 fcx.type_error_message(self.span, |actual| {
-                    format!("illegal cast; cast through {} first: `{}` as `{}`",
-                            match e {
-                                CastError::NeedViaPtr => "a raw pointer",
-                                CastError::NeedViaInt => "an integer",
-                                CastError::NeedViaUsize => "a usize",
-                                _ => unreachable!()
-                            },
+                    format!("casting `{}` as `{}` is invalid",
                             actual,
                             fcx.infcx().ty_to_string(self.cast_ty))
-                }, self.expr_ty, None)
+                }, self.expr_ty, None);
+                fcx.ccx.tcx.sess.fileline_help(self.span,
+                    &format!("cast through {} first", match e {
+                        CastError::NeedViaPtr => "a raw pointer",
+                        CastError::NeedViaInt => "an integer",
+                        CastError::NeedViaUsize => "a usize",
+                        _ => unreachable!()
+                }));
             }
             CastError::CastToBool => {
-                span_err!(fcx.tcx().sess, self.span, E0054,
-                          "cannot cast as `bool`, compare with zero instead");
+                span_err!(fcx.tcx().sess, self.span, E0054, "cannot cast as `bool`");
+                fcx.ccx.tcx.sess.fileline_help(self.span, "compare with zero instead");
             }
             CastError::CastToChar => {
                 fcx.type_error_message(self.span, |actual| {
@@ -151,17 +152,18 @@ impl<'tcx> CastCheck<'tcx> {
             }
             CastError::IllegalCast => {
                 fcx.type_error_message(self.span, |actual| {
-                    format!("illegal cast: `{}` as `{}`",
+                    format!("casting `{}` as `{}` is invalid",
                             actual,
                             fcx.infcx().ty_to_string(self.cast_ty))
                 }, self.expr_ty, None);
             }
             CastError::DifferingKinds => {
                 fcx.type_error_message(self.span, |actual| {
-                    format!("illegal cast: `{}` as `{}`; vtable kinds may not match",
+                    format!("casting `{}` as `{}` is invalid",
                             actual,
                             fcx.infcx().ty_to_string(self.cast_ty))
                 }, self.expr_ty, None);
+                fcx.ccx.tcx.sess.fileline_note(self.span, "vtable kinds may not match");
             }
         }
     }
@@ -285,7 +287,7 @@ impl<'tcx> CastCheck<'tcx> {
             return Ok(CastKind::PtrPtrCast);
         }
 
-        // sized -> unsized? report illegal cast (don't complain about vtable kinds)
+        // sized -> unsized? report invalid cast (don't complain about vtable kinds)
         if fcx.type_is_known_to_be_sized(m_expr.ty, self.span) {
             return Err(CastError::IllegalCast);
         }

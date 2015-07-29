@@ -21,8 +21,8 @@ enum F {
 }
 
 pub fn main() {
-    let a = E::L0 as f32;  //~ ERROR illegal cast
-    let c = F::H1 as f32;  //~ ERROR illegal cast
+    let a = E::L0 as f32;  //~ ERROR casting
+    let c = F::H1 as f32;  //~ ERROR casting
     assert_eq!(a, -1.0f32);
     assert_eq!(c, -1.0f32);
 }
