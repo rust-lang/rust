@@ -11,11 +11,6 @@
 #include "rustllvm.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/ObjectFile.h"
-
-#if ENABLE_PNACL
-#include "llvm/Bitcode/NaCl/NaClReaderWriter.h"
-#endif
-
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 
@@ -286,10 +281,9 @@ DIT unwrapDI(LLVMMetadataRef ref) {
   }
 
 #  if ENABLE_PNACL
-// the NaCl SDK uses 3.7, whereas Rust, annoyingly, uses 3.7+.
+// The NaCl SDK and Rust use slightly different LLVM 3.7 versions.
 // In the small space between these two revisions, LLVM has managed to modify
 // just about every DIBuilder function.
-// But more appropriately, why aren't these APIs in LLVM?
 
 SPECIALIZE_UNWRAP(DICompositeType, MDCompositeType*);
 
@@ -883,26 +877,6 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     return true;
 }
 
-extern "C" bool
-LLVMRustLinkInModule(LLVMModuleRef dest, LLVMModuleRef src) {
-  Module* Dst = unwrap(dest);
-  Module* Src  = unwrap(src);
-
-  std::string Err;
-
-#if LLVM_VERSION_MINOR >= 6
-  raw_string_ostream Stream(Err);
-  DiagnosticPrinterRawOStream DP(Stream);
-  if (Linker::LinkModules(Dst, Src, [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
-#else
-  if (Linker::LinkModules(Dst, Src, Linker::DestroySource, &Err)) {
-#endif
-      LLVMRustSetLastError(Err.c_str());
-      return false;
-  }
-  return true;
-}
-
 extern "C" void
 LLVMRustSetDLLStorageClass(LLVMValueRef Value,
                            GlobalValue::DLLStorageClassTypes Class) {
@@ -932,100 +906,6 @@ LLVMRustGetSectionName(LLVMSectionIteratorRef SI, const char **ptr) {
       report_fatal_error(ec.message());
     *ptr = ret.data();
     return ret.size();
-}
-
-#if ENABLE_PNACL
-extern "C" bool
-LLVMRustWritePNaClBitcode(LLVMModuleRef M,
-                          const char* Path,
-                          const bool AcceptSupportedOnly) {
-  std::string ErrorInfo;
-#if LLVM_VERSION_MINOR >= 6
-  std::error_code EC;
-  raw_fd_ostream OS(Path, EC, sys::fs::F_None);
-  if (EC)
-    ErrorInfo = EC.message();
-#elif LLVM_VERSION_MINOR >= 4
-  raw_fd_ostream OS(Path, ErrorInfo, sys::fs::F_None);
-#else
-  raw_fd_ostream OS(Path, ErrorInfo, raw_fd_ostream::F_Binary);
-#endif
-  if (!ErrorInfo.empty()) {
-    LLVMRustSetLastError(ErrorInfo.c_str());
-    return false;
-  }
-
-  NaClWriteBitcodeToFile(unwrap(M), OS);
-  return true;
-}
-#else
-extern "C" bool
-LLVMRustWritePNaClBitcode(LLVMModuleRef _M,
-                          const char* _Path,
-                          const bool _AcceptSupportedOnly) {
-  LLVMRustSetLastError("This Rust wasn't built with PNaCl support");
-  return false;
-}
-#endif
-
-#if ENABLE_PNACL
-/// isNaClBitcode - Return true if the given bytes are the magic bytes for
-/// PNaCl bitcode wire format. Does not take ownership of Buffer. Placed here so
-/// tools don't need to depend on extra components.
-static inline bool isNaClBitcode(const MemoryBuffer *Buffer) {
-  return isNaClBitcode((const unsigned char *)Buffer->getBufferStart(),
-                       (const unsigned char *)Buffer->getBufferEnd());
-}
-#else
- static inline bool isNaClBitcode(const MemoryBuffer *_Buffer) {
-  return false;
- }
- static inline ErrorOr<std::unique_ptr<Module>>
-   NaClParseBitcodeFile(MemoryBufferRef _Buffer,
-                        LLVMContext &_Context,
-                        raw_ostream *_Verbose = nullptr,
-                        bool _AcceptSupportedOnly = true) {
-   __builtin_unreachable();
- }
-#endif
-
-extern "C" LLVMModuleRef
-LLVMRustParseBitcode(LLVMContextRef ctxt, const char* name, const void* bc, size_t len) {
-  std::unique_ptr<MemoryBuffer> buf =
-    MemoryBuffer::getMemBuffer(StringRef(static_cast<const char*>(bc),
-                                         len),
-                               name,
-                               false);
-
-  LLVMModuleRef Mod = wrap(static_cast<Module*>(nullptr));
-#if !ENABLE_PNACL
-  ErrorOr<std::unique_ptr<Module>> Src(nullptr);
-#else
-  ErrorOr<Module*> Src(nullptr);
-#endif
-  if (isNaClBitcode(buf.get())) {
-    Src = NaClParseBitcodeFile(buf->getMemBufferRef(), *unwrap(ctxt),
-                               nullptr, false);
-
-  } else {
-    Src = llvm::parseBitcodeFile(buf->getMemBufferRef(), *unwrap(ctxt));
-  }
-
-  if (!Src) {
-    LLVMRustSetLastError(Src.getError().message().c_str());
-  } else {
-#if !ENABLE_PNACL
-    Mod = wrap(Src.get().release());
-#else
-    Mod = wrap(Src.get());
-#endif
-  }
-
-  return Mod;
-}
-extern "C" void
-LLVMRustStripDebugInfo(LLVMModuleRef M) {
-  llvm::StripDebugInfo(*unwrap(M));
 }
 
 // LLVMArrayType function does not support 64-bit ElementCount

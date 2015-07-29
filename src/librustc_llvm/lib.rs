@@ -2103,16 +2103,6 @@ extern {
 
     pub fn LLVMWriteDebugLocToString(C: ContextRef, DL: DebugLocRef, s: RustStringRef);
 
-    pub fn LLVMRustParseBitcode(C: ContextRef,
-                                N: *const c_char,
-                                P: *const c_void,
-                                L: size_t) -> ModuleRef;
-
-    pub fn LLVMRustWritePNaClBitcode(M: ModuleRef,
-                                     Path: *const c_char,
-                                     AcceptSupportedOnly: bool) -> bool;
-    pub fn LLVMRustStripDebugInfo(M: ModuleRef);
-
     pub fn LLVMSetInlineAsmDiagnosticHandler(C: ContextRef,
                                              H: InlineAsmDiagHandler,
                                              CX: *mut c_void);
