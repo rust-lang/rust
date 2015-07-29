@@ -439,10 +439,12 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
 
             let dbloc = DebugLoc::None;
 
-            // #27023 FIXME: We should be adding any necessary padding
+            // FIXME (#26403, #27023): We should be adding padding
             // to `sized_size` (to accommodate the `unsized_align`
             // required of the unsized field that follows) before
-            // summing it with `sized_size`.
+            // summing it with `sized_size`. (Note that since #26403
+            // is unfixed, we do not yet add the necessary padding
+            // here. But this is where the add would go.)
 
             // Return the sum of sizes and max of aligns.
             let mut size = Add(bcx, sized_size, unsized_size, dbloc);
