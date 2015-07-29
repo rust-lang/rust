@@ -15,12 +15,12 @@ use std::ffi::{OsStr, OsString};
 fn main() {
     // Valid UTF-8
     let vec1: Vec<u8> = b"t\xC3\xA9st".to_vec();
-    let oso1: OsString = OsString::from_bytes(vec1).unwrap();
+    let oso1: OsString = OsString::from_platform_bytes(vec1).unwrap();
     assert!(oso1.to_bytes() == Some(b"t\xC3\xA9st"));
     assert!(oso1.to_str() == Some("t\u{E9}st"));
     // Not UTF-8
     let vec2: Vec<u8> = b"t\xE9st".to_vec();
-    let oso2: OsString = OsString::from_bytes(vec2).unwrap();
+    let oso2: OsString = OsString::from_platform_bytes(vec2).unwrap();
     if cfg!(windows) {
         assert!(oso2.to_bytes() == None);
     } else {
