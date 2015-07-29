@@ -81,7 +81,7 @@ use trans::type_of::*;
 use trans::value::Value;
 use util::common::indenter;
 use util::sha2::Sha256;
-use util::nodemap::NodeMap;
+use util::nodemap::{NodeMap, NodeSet};
 
 use arena::TypedArena;
 use libc::c_uint;
@@ -2007,17 +2007,11 @@ pub fn update_linkage(ccx: &CrateContext,
     match id {
         Some(id) if ccx.reachable().contains(&id) => {
             llvm::SetLinkage(llval, llvm::ExternalLinkage);
-            if ccx.use_dll_storage_attrs() {
-                llvm::SetDLLStorageClass(llval, llvm::DLLExportStorageClass);
-            }
         },
         _ => {
             // `id` does not refer to an item in `ccx.reachable`.
             if ccx.sess().opts.cg.codegen_units > 1 {
                 llvm::SetLinkage(llval, llvm::ExternalLinkage);
-                if ccx.use_dll_storage_attrs() {
-                    llvm::SetDLLStorageClass(llval, llvm::DLLExportStorageClass);
-                }
             } else {
                 llvm::SetLinkage(llval, llvm::InternalLinkage);
             }
@@ -2158,28 +2152,12 @@ pub fn register_fn_llvmty(ccx: &CrateContext,
                                    ty::FnConverging(ccx.tcx().mk_nil())).unwrap_or_else(||{
         ccx.sess().span_fatal(sp, &format!("symbol `{}` is already defined", sym));
     });
-    finish_register_fn(ccx, sym, node_id, llfn);
+    finish_register_fn(ccx, sym, node_id);
     llfn
 }
 
-fn finish_register_fn(ccx: &CrateContext, sym: String, node_id: ast::NodeId,
-                      llfn: ValueRef) {
+fn finish_register_fn(ccx: &CrateContext, sym: String, node_id: ast::NodeId) {
     ccx.item_symbols().borrow_mut().insert(node_id, sym);
-
-    // The eh_personality function need to be externally linkable.
-    let def = ast_util::local_def(node_id);
-    if ccx.tcx().lang_items.eh_personality() == Some(def) {
-        llvm::SetLinkage(llfn, llvm::ExternalLinkage);
-        if ccx.use_dll_storage_attrs() {
-            llvm::SetDLLStorageClass(llfn, llvm::DLLExportStorageClass);
-        }
-    }
-    if ccx.tcx().lang_items.eh_unwind_resume() == Some(def) {
-        llvm::SetLinkage(llfn, llvm::ExternalLinkage);
-        if ccx.use_dll_storage_attrs() {
-            llvm::SetDLLStorageClass(llfn, llvm::DLLExportStorageClass);
-        }
-    }
 }
 
 fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -2201,7 +2179,7 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let llfn = declare::define_rust_fn(ccx, &sym[..], node_type).unwrap_or_else(||{
         ccx.sess().span_fatal(sp, &format!("symbol `{}` is already defined", sym));
     });
-    finish_register_fn(ccx, sym, node_id, llfn);
+    finish_register_fn(ccx, sym, node_id);
     llfn
 }
 
@@ -2215,8 +2193,8 @@ pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
 /// Create the `main` function which will initialise the rust runtime and call users’ main
 /// function.
 pub fn create_entry_wrapper(ccx: &CrateContext,
-                           sp: Span,
-                           main_llfn: ValueRef) {
+                            sp: Span,
+                            main_llfn: ValueRef) {
     let et = ccx.sess().entry_type.get().unwrap();
     match et {
         config::EntryMain => {
@@ -2241,12 +2219,6 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
             ccx.sess().abort_if_errors();
             panic!();
         });
-
-        // FIXME: #16581: Marking a symbol in the executable with `dllexport`
-        // linkage forces MinGW's linker to output a `.reloc` section for ASLR
-        if ccx.sess().target.target.options.is_like_windows {
-            llvm::SetDLLStorageClass(llfn, llvm::DLLExportStorageClass);
-        }
 
         let llbb = unsafe {
             llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llfn,
@@ -2524,7 +2496,8 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
 }
 
 pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'a, 'tcx>,
-                                            ie: encoder::EncodeInlinedItem<'a>)
+                                            ie: encoder::EncodeInlinedItem<'a>,
+                                            reachable: &'a NodeSet)
                                             -> encoder::EncodeParams<'a, 'tcx> {
     encoder::EncodeParams {
         diag: cx.sess().diagnostic(),
@@ -2534,11 +2507,12 @@ pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'a, 'tcx>
         link_meta: cx.link_meta(),
         cstore: &cx.sess().cstore,
         encode_inlined_item: ie,
-        reachable: cx.reachable(),
+        reachable: reachable,
     }
 }
 
-pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
+pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate,
+                      reachable: &NodeSet) -> Vec<u8> {
     use flate;
 
     let any_library = cx.sess().crate_types.borrow().iter().any(|ty| {
@@ -2551,7 +2525,8 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
     let encode_inlined_item: encoder::EncodeInlinedItem =
         Box::new(|ecx, rbml_w, ii| astencode::encode_inlined_item(ecx, rbml_w, ii));
 
-    let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
+    let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item,
+                                                  reachable);
     let metadata = encoder::encode_metadata(encode_parms, krate);
     let mut compressed = encoder::metadata_encoding_version.to_vec();
     compressed.push_all(&flate::deflate_bytes(&metadata));
@@ -2576,7 +2551,7 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
 
 /// Find any symbols that are defined in one compilation unit, but not declared
 /// in any other compilation unit.  Give these symbols internal linkage.
-fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
+fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<&str>) {
     unsafe {
         let mut declared = HashSet::new();
 
@@ -2659,6 +2634,41 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
     }
 }
 
+/// The context provided lists a set of reachable ids as calculated by
+/// middle::reachable, but this contains far more ids and symbols than we're
+/// actually exposing from the object file. This function will filter the set in
+/// the context to the set of ids which correspond to symbols that are exposed
+/// from the object file being generated.
+///
+/// This list is later used by linkers to determine the set of symbols needed to
+/// be exposed from a dynamic library and it's also encoded into the metadata.
+pub fn filter_reachable_ids(ccx: &SharedCrateContext) -> NodeSet {
+    ccx.reachable().iter().map(|x| *x).filter(|id| {
+        // First, only worry about nodes which have a symbol name
+        ccx.item_symbols().borrow().contains_key(id)
+    }).filter(|&id| {
+        // Next, we want to ignore some FFI functions that are not exposed from
+        // this crate. Reachable FFI functions can be lumped into two
+        // categories:
+        //
+        // 1. Those that are included statically via a static library
+        // 2. Those included otherwise (e.g. dynamically or via a framework)
+        //
+        // Although our LLVM module is not literally emitting code for the
+        // statically included symbols, it's an export of our library which
+        // needs to be passed on to the linker and encoded in the metadata.
+        //
+        // As a result, if this id is an FFI item (foreign item) then we only
+        // let it through if it's included statically.
+        match ccx.tcx().map.get(id) {
+            ast_map::NodeForeignItem(..) => {
+                ccx.sess().cstore.is_statically_included_foreign_item(id)
+            }
+            _ => true,
+        }
+    }).collect()
+}
+
 pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslation {
     let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
     let krate = tcx.map.krate();
@@ -2734,8 +2744,10 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
         }
     }
 
+    let reachable_symbol_ids = filter_reachable_ids(&shared_ccx);
+
     // Translate the metadata.
-    let metadata = write_metadata(&shared_ccx, krate);
+    let metadata = write_metadata(&shared_ccx, krate, &reachable_symbol_ids);
 
     if shared_ccx.sess().trans_stats() {
         let stats = shared_ccx.stats();
@@ -2770,31 +2782,31 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
         .map(|ccx| ModuleTranslation { llcx: ccx.llcx(), llmod: ccx.llmod() })
         .collect();
 
-    let mut reachable: Vec<String> = shared_ccx.reachable().iter().filter_map(|id| {
-        shared_ccx.item_symbols().borrow().get(id).map(|s| s.to_string())
-    }).collect();
+    let sess = shared_ccx.sess();
+    let mut reachable_symbols = reachable_symbol_ids.iter().map(|id| {
+        shared_ccx.item_symbols().borrow()[id].to_string()
+    }).collect::<Vec<_>>();
+    if sess.entry_fn.borrow().is_some() {
+        reachable_symbols.push("main".to_string());
+    }
 
     // For the purposes of LTO, we add to the reachable set all of the upstream
     // reachable extern fns. These functions are all part of the public ABI of
     // the final product, so LTO needs to preserve them.
-    shared_ccx.sess().cstore.iter_crate_data(|cnum, _| {
-        let syms = csearch::get_reachable_extern_fns(&shared_ccx.sess().cstore, cnum);
-        reachable.extend(syms.into_iter().map(|did| {
-            csearch::get_symbol(&shared_ccx.sess().cstore, did)
-        }));
-    });
-
-    // Make sure that some other crucial symbols are not eliminated from the
-    // module, including the main function.
-    reachable.push("main".to_string());
-
-    // referenced from .eh_frame section on some platforms
-    reachable.push("rust_eh_personality".to_string());
-    // referenced from rt/rust_try.ll
-    reachable.push("rust_eh_personality_catch".to_string());
+    if sess.lto() {
+        sess.cstore.iter_crate_data(|cnum, _| {
+            let syms = csearch::get_reachable_ids(&sess.cstore, cnum);
+            reachable_symbols.extend(syms.into_iter().filter(|did| {
+                csearch::is_extern_fn(&sess.cstore, *did, shared_ccx.tcx())
+            }).map(|did| {
+                csearch::get_symbol(&sess.cstore, did)
+            }));
+        });
+    }
 
     if codegen_units > 1 {
-        internalize_symbols(&shared_ccx, &reachable.iter().cloned().collect());
+        internalize_symbols(&shared_ccx,
+                            &reachable_symbols.iter().map(|x| &x[..]).collect());
     }
 
     let metadata_module = ModuleTranslation {
@@ -2809,7 +2821,7 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
         metadata_module: metadata_module,
         link: link_meta,
         metadata: metadata,
-        reachable: reachable,
+        reachable: reachable_symbols,
         crate_formats: formats,
         no_builtins: no_builtins,
     }

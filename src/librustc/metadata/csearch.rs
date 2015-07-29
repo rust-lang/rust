@@ -352,11 +352,11 @@ pub fn get_method_arg_names(cstore: &cstore::CStore, did: ast::DefId)
     decoder::get_method_arg_names(&*cdata, did.node)
 }
 
-pub fn get_reachable_extern_fns(cstore: &cstore::CStore, cnum: ast::CrateNum)
+pub fn get_reachable_ids(cstore: &cstore::CStore, cnum: ast::CrateNum)
     -> Vec<ast::DefId>
 {
     let cdata = cstore.get_crate_data(cnum);
-    decoder::get_reachable_extern_fns(&*cdata)
+    decoder::get_reachable_ids(&*cdata)
 }
 
 pub fn is_typedef(cstore: &cstore::CStore, did: ast::DefId) -> bool {
@@ -399,4 +399,10 @@ pub fn is_defaulted_trait(cstore: &cstore::CStore, trait_def_id: ast::DefId) -> 
 pub fn is_default_impl(cstore: &cstore::CStore, impl_did: ast::DefId) -> bool {
     let cdata = cstore.get_crate_data(impl_did.krate);
     decoder::is_default_impl(&*cdata, impl_did.node)
+}
+
+pub fn is_extern_fn(cstore: &cstore::CStore, did: ast::DefId,
+                    tcx: &ty::ctxt) -> bool {
+    let cdata = cstore.get_crate_data(did.krate);
+    decoder::is_extern_fn(&*cdata, did.node, tcx)
 }
