@@ -5346,6 +5346,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             }
             "simd_insert" => (2, vec![param(ccx, 0), tcx.types.u32, param(ccx, 1)], param(ccx, 0)),
             "simd_extract" => (2, vec![param(ccx, 0), tcx.types.u32], param(ccx, 1)),
+            "simd_cast" => (2, vec![param(ccx, 0)], param(ccx, 1)),
             name if name.starts_with("simd_shuffle") => {
                 match name["simd_shuffle".len()..].parse() {
                     Ok(n) => {
