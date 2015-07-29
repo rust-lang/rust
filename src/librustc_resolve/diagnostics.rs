@@ -397,6 +397,39 @@ impl Bar {
 ```
 "##,
 
+E0413: r##"
+A declaration shadows an enum variant or unit-like struct in scope.
+Example of erroneous code:
+
+```
+struct Foo;
+
+let Foo = 12i32; // error: declaration of `Foo` shadows an enum variant or
+                 //        unit-like struct in scope
+```
+
+
+To fix this error, you have to change the name of the declaration of the
+shadowed object. Please also verify that neither name was misspelled.
+Example:
+
+```
+struct Foo;
+
+let foo = 12i32; // ok!
+```
+
+Or:
+
+```
+struct FooStruct;
+
+let Foo = 12i32; // ok!
+```
+
+The goal here is to avoid a conflict of names.
+"##,
+
 E0417: r##"
 A static variable was referenced in a pattern. Example of erroneous code:
 
@@ -425,7 +458,7 @@ match 0 {
 ```
 "##,
 
-E0424: r##"
+E0423: r##"
 A `struct` variant name was used like a function name. Example of
 erroneous code:
 
@@ -673,8 +706,6 @@ register_diagnostics! {
     E0410, // variable from pattern is not bound in pattern 1
     E0411, // use of `Self` outside of an impl or trait
     E0412, // use of undeclared
-    E0413, // declaration of shadows an enum variant or unit-like struct in
-           // scope
     E0414, // only irrefutable patterns allowed here
     E0415, // identifier is bound more than once in this parameter list
     E0416, // identifier is bound more than once in the same pattern
