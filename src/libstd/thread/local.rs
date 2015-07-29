@@ -107,14 +107,14 @@ pub struct LocalKey<T> {
 #[cfg(not(no_elf_tls))]
 macro_rules! thread_local {
     (static $name:ident: $t:ty = $init:expr) => (
-        static $name: ::std::thread::LocalKey<$t> =
+        static $name: $crate::thread::LocalKey<$t> =
             __thread_local_inner!($t, $init,
                 #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
                                not(target_arch = "aarch64")),
                            thread_local)]);
     );
     (pub static $name:ident: $t:ty = $init:expr) => (
-        pub static $name: ::std::thread::LocalKey<$t> =
+        pub static $name: $crate::thread::LocalKey<$t> =
             __thread_local_inner!($t, $init,
                 #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
                                not(target_arch = "aarch64")),
@@ -128,11 +128,11 @@ macro_rules! thread_local {
 #[cfg(no_elf_tls)]
 macro_rules! thread_local {
     (static $name:ident: $t:ty = $init:expr) => (
-        static $name: ::std::thread::LocalKey<$t> =
+        static $name: $crate::thread::LocalKey<$t> =
             __thread_local_inner!($t, $init, #[]);
     );
     (pub static $name:ident: $t:ty = $init:expr) => (
-        pub static $name: ::std::thread::LocalKey<$t> =
+        pub static $name: $crate::thread::LocalKey<$t> =
             __thread_local_inner!($t, $init, #[]);
     );
 }
@@ -145,11 +145,11 @@ macro_rules! thread_local {
 macro_rules! __thread_local_inner {
     ($t:ty, $init:expr, #[$($attr:meta),*]) => {{
         $(#[$attr])*
-        static __KEY: ::std::thread::__LocalKeyInner<$t> =
-            ::std::thread::__LocalKeyInner::new();
+        static __KEY: $crate::thread::__LocalKeyInner<$t> =
+            $crate::thread::__LocalKeyInner::new();
         fn __init() -> $t { $init }
-        fn __getit() -> &'static ::std::thread::__LocalKeyInner<$t> { &__KEY }
-        ::std::thread::LocalKey::new(__getit, __init)
+        fn __getit() -> &'static $crate::thread::__LocalKeyInner<$t> { &__KEY }
+        $crate::thread::LocalKey::new(__getit, __init)
     }}
 }
 
