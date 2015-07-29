@@ -425,6 +425,7 @@ impl str {
                  since = "1.0.0")]
     #[unstable(feature = "unicode",
                reason = "this functionality may only be provided by libunicode")]
+    #[inline]
     pub fn width(&self, is_cjk: bool) -> usize {
         UnicodeStr::width(self, is_cjk)
     }
@@ -459,6 +460,7 @@ impl str {
                          with the existence of the char_indices iterator or \
                          this method may want to be replaced with checked \
                          slicing")]
+    #[inline]
     pub fn is_char_boundary(&self, index: usize) -> bool {
         core_str::StrExt::is_char_boundary(self, index)
     }
@@ -514,6 +516,7 @@ impl str {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
         core_str::StrExt::slice_unchecked(self, begin, end)
     }
@@ -522,6 +525,7 @@ impl str {
     ///
     /// Same as `slice_unchecked`, but works with `&mut str` instead of `&str`.
     #[unstable(feature = "str_slice_mut", reason = "recently added")]
+    #[inline]
     pub unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
         core_str::StrExt::slice_mut_unchecked(self, begin, end)
     }
@@ -556,6 +560,7 @@ impl str {
     #[deprecated(since = "1.3.0",
                  reason = "can be implemented with char_indices and \
                            hasn't seen enough use to justify inclusion")]
+    #[inline]
     pub fn slice_chars(&self, begin: usize, end: usize) -> &str {
         core_str::StrExt::slice_chars(self, begin, end)
     }
@@ -608,6 +613,7 @@ impl str {
                reason = "often replaced by char_indices, this method may \
                          be removed in favor of just char_at() or eventually \
                          removed altogether")]
+    #[inline]
     pub fn char_range_at(&self, start: usize) -> CharRange {
         core_str::StrExt::char_range_at(self, start)
     }
@@ -665,6 +671,7 @@ impl str {
                reason = "often replaced by char_indices, this method may \
                          be removed in favor of just char_at_reverse() or \
                          eventually removed altogether")]
+    #[inline]
     pub fn char_range_at_reverse(&self, start: usize) -> CharRange {
         core_str::StrExt::char_range_at_reverse(self, start)
     }
@@ -691,6 +698,7 @@ impl str {
                          future; it is normally replaced by chars/char_indices \
                          iterators or by getting the first char from a \
                          subslice")]
+    #[inline]
     pub fn char_at(&self, i: usize) -> char {
         core_str::StrExt::char_at(self, i)
     }
@@ -716,6 +724,7 @@ impl str {
                reason = "see char_at for more details, but reverse semantics \
                          are also somewhat unclear, especially with which \
                          cases generate panics")]
+    #[inline]
     pub fn char_at_reverse(&self, i: usize) -> char {
         core_str::StrExt::char_at_reverse(self, i)
     }
@@ -749,6 +758,7 @@ impl str {
                reason = "awaiting conventions about shifting and slices and \
                          may not be warranted with the existence of the chars \
                          and/or char_indices iterators")]
+    #[inline]
     pub fn slice_shift_char(&self) -> Option<(char, &str)> {
         core_str::StrExt::slice_shift_char(self)
     }
@@ -810,6 +820,7 @@ impl str {
     ///     '\u{1f1e8}', '\u{1f1ed}', ' ', '한']);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn chars(&self) -> Chars {
         core_str::StrExt::chars(self)
     }
@@ -825,6 +836,7 @@ impl str {
     /// assert_eq!(v, b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn char_indices(&self) -> CharIndices {
         core_str::StrExt::char_indices(self)
     }
@@ -839,6 +851,7 @@ impl str {
     /// assert_eq!(v, b"bors".to_vec());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn bytes(&self) -> Bytes {
         core_str::StrExt::bytes(self)
     }
@@ -855,6 +868,7 @@ impl str {
     /// assert_eq!(v, ["Mary", "had", "a", "little", "lamb"]);
     /// ```
     #[stable(feature = "split_whitespace", since = "1.1.0")]
+    #[inline]
     pub fn split_whitespace(&self) -> SplitWhitespace {
         UnicodeStr::split_whitespace(self)
     }
@@ -877,6 +891,7 @@ impl str {
     #[unstable(feature = "str_words",
                reason = "the precise algorithm to use is unclear")]
     #[allow(deprecated)]
+    #[inline]
     pub fn words(&self) -> Words {
         UnicodeStr::words(self)
     }
@@ -903,6 +918,7 @@ impl str {
     /// assert_eq!(v, ["foo", "bar", "", "baz"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn lines(&self) -> Lines {
         core_str::StrExt::lines(self)
     }
@@ -930,6 +946,7 @@ impl str {
     /// assert_eq!(v, ["foo", "bar", "", "baz"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn lines_any(&self) -> LinesAny {
         core_str::StrExt::lines_any(self)
     }
