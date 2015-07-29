@@ -35,6 +35,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         "vsqrtq_f32" => plain!("llvm.sqrt.v4f32", (f32x4) -> f32x4),
         "vsqrtq_f64" => plain!("llvm.sqrt.v2f64", (f64x2) -> f64x2),
 
+        "vrecpeq_f32" => p!("vrecpe.v4f32", (f32x4) -> f32x4),
         "vrsqrteq_f32" => p!("vrsqrte.v4f32", (f32x4) -> f32x4),
         "vrsqrteq_f64" => p!("vrsqrte.v2f64", (f64x2) -> f64x2),
 

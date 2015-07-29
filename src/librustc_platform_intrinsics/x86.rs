@@ -24,6 +24,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         "mm_movemask_epi8" => p!("sse2.pmovmskb.128", (i8x16) -> i32),
 
         "mm_rsqrt_ps" => p!("sse.rsqrt.ps", (f32x4) -> f32x4),
+        "mm_rcp_ps" => p!("sse.rcp.ps", (f32x4) -> f32x4),
 
         "mm_sqrt_ps" => plain!("llvm.sqrt.v4f32", (f32x4) -> f32x4),
         "mm_sqrt_pd" => plain!("llvm.sqrt.v2f64", (f64x2) -> f64x2),
