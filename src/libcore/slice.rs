@@ -300,11 +300,12 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+        let len = self.len();
+        let ptr = self.as_mut_ptr();
+        assert!(mid <= len);
         unsafe {
-            let self2: &mut [T] = mem::transmute_copy(&self);
-
-            (ops::IndexMut::index_mut(self, ops::RangeTo { end: mid } ),
-             ops::IndexMut::index_mut(self2, ops::RangeFrom { start: mid } ))
+            (from_raw_parts_mut(ptr, mid),
+             from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
         }
     }
 
