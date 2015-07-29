@@ -112,6 +112,13 @@ use super::range::RangeArgument;
 /// assert_eq!(vec, [1, 2, 3, 4]);
 /// ```
 ///
+/// It can also initialize each element of a `Vec<T>` with a given value:
+///
+/// ```
+/// let vec = vec![0; 5];
+/// assert_eq!(vec, [0, 0, 0, 0, 0]);
+/// ```
+///
 /// Use a `Vec<T>` as an efficient stack:
 ///
 /// ```
@@ -574,7 +581,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec = vec!(1, 2);
+    /// let mut vec = vec![1, 2];
     /// vec.push(3);
     /// assert_eq!(vec, [1, 2, 3]);
     /// ```
