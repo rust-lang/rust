@@ -127,7 +127,8 @@ If a field is wrapped in `Cell`, it's a nice indicator that the chunk of data is
 stay the same between the time you first read it and when you intend to use it.
 
 ```rust
-# use std::cell::Cell;
+use std::cell::Cell;
+
 let x = Cell::new(1);
 let y = &x;
 let z = &x;
@@ -185,7 +186,8 @@ any other borrows active when a mutable borrow is active. If the programmer atte
 borrow, the thread will panic.
 
 ```rust
-# use std::cell::RefCell;
+use std::cell::RefCell;
+
 let x = RefCell::new(vec![1,2,3,4]);
 {
     println!("{:?}", *x.borrow())

@@ -784,7 +784,8 @@ impl<'a, A> IterMut<'a, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(linked_list_extras)]
+    /// #![feature(linked_list_extras)]
+    ///
     /// use std::collections::LinkedList;
     ///
     /// let mut list: LinkedList<_> = vec![1, 3, 4].into_iter().collect();
@@ -812,7 +813,8 @@ impl<'a, A> IterMut<'a, A> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(linked_list_extras)]
+    /// #![feature(linked_list_extras)]
+    ///
     /// use std::collections::LinkedList;
     ///
     /// let mut list: LinkedList<_> = vec![1, 2, 3].into_iter().collect();

@@ -172,7 +172,7 @@
 //! like:
 //!
 //! ```
-//! # #![feature(fmt_flags)]
+//! #![feature(fmt_flags)]
 //! use std::fmt;
 //!
 //! #[derive(Debug)]

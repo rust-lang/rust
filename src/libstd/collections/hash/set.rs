@@ -154,7 +154,8 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// # #![feature(hashmap_hasher)]
+    /// #![feature(hashmap_hasher)]
+    ///
     /// use std::collections::HashSet;
     /// use std::collections::hash_map::RandomState;
     ///
@@ -179,7 +180,8 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
-    /// # #![feature(hashmap_hasher)]
+    /// #![feature(hashmap_hasher)]
+    ///
     /// use std::collections::HashSet;
     /// use std::collections::hash_map::RandomState;
     ///

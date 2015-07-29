@@ -379,7 +379,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(collections)]
+    /// #![feature(collections)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::with_capacity(15);
@@ -455,7 +456,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(deque_extras)]
+    /// #![feature(deque_extras)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -604,7 +606,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(drain)]
+    /// #![feature(drain)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut v = VecDeque::new();
@@ -847,7 +850,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(deque_extras)]
+    /// #![feature(deque_extras)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -883,7 +887,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(deque_extras)]
+    /// #![feature(deque_extras)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -919,7 +924,8 @@ impl<T> VecDeque<T> {
     ///
     /// # Examples
     /// ```
-    /// # #![feature(collections)]
+    /// #![feature(collections)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1295,7 +1301,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(split_off)]
+    /// #![feature(split_off)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<_> = vec![1,2,3].into_iter().collect();
@@ -1358,7 +1365,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(append)]
+    /// #![feature(append)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
@@ -1384,7 +1392,8 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(vec_deque_retain)]
+    /// #![feature(vec_deque_retain)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1419,7 +1428,8 @@ impl<T: Clone> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(deque_extras)]
+    /// #![feature(deque_extras)]
+    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
