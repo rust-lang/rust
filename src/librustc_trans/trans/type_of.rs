@@ -182,6 +182,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         None => ()
     }
 
+    debug!("sizing_type_of {:?}", t);
     let llsizingty = match t.sty {
         _ if !type_is_sized(cx.tcx(), t) => {
             Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
@@ -239,6 +240,10 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         }
         ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => unreachable!()
     };
+
+    debug!("--> mapped t={:?} to llsizingty={}",
+            t,
+            cx.tn().type_to_string(llsizingty));
 
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
     llsizingty
@@ -426,8 +431,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyError(..) => cx.sess().bug("type_of with TyError"),
     };
 
-    debug!("--> mapped t={:?} {:?} to llty={}",
-            t,
+    debug!("--> mapped t={:?} to llty={}",
             t,
             cx.tn().type_to_string(llty));
 
