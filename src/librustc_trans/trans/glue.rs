@@ -475,21 +475,13 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             //
             //   `size + ((size & (align-1)) ? align : 0)`
             //
-            // Currently I am emulating the above via:
+            // emulated via the semi-standard fast bit trick:
             //
-            //   `size + ((size & (align-1)) * align-(size & (align-1)))`
-            //
-            // because I am not sure which is cheaper between a branch
-            // or a multiply.
+            //   `(size + (align-1)) & !align`
 
-            let mask = Sub(bcx, align, C_uint(bcx.ccx(), 1_u64), dbloc);
-            let lowbits = And(bcx, size, mask, DebugLoc::None);
-            let nonzero = ICmp(bcx, llvm::IntNE, lowbits, C_uint(bcx.ccx(), 0_u64), dbloc);
-            let add_size = Mul(bcx,
-                               ZExt(bcx, nonzero, Type::i64(bcx.ccx())),
-                               Sub(bcx, align, lowbits, dbloc),
-                               dbloc);
-            let size = Add(bcx, size, add_size, dbloc);
+            let addend = Sub(bcx, align, C_uint(bcx.ccx(), 1_u64), dbloc);
+            let size = And(
+                bcx, Add(bcx, size, addend, dbloc), Neg(bcx, align, dbloc), dbloc);
 
             (size, align)
         }
