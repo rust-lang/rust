@@ -1766,6 +1766,14 @@ fn test_into_string() {
     assert_eq!(string.clone().into_boxed_slice().into_string(), string);
 }
 
+#[test]
+fn test_box_slice_clone() {
+    let data = String::from("hello HELLO hello HELLO yes YES 5 中ä华!!!");
+    let data2 = data.clone().into_boxed_slice().clone().into_string();
+
+    assert_eq!(data, data2);
+}
+
 mod pattern {
     use std::str::pattern::Pattern;
     use std::str::pattern::{Searcher, ReverseSearcher};

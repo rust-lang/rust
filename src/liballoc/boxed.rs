@@ -325,6 +325,19 @@ impl<T: Clone> Clone for Box<T> {
     }
 }
 
+
+#[stable(feature = "box_slice_clone", since = "1.3.0")]
+impl Clone for Box<str> {
+    fn clone(&self) -> Self {
+        let len = self.len();
+        let buf = RawVec::with_capacity(len);
+        unsafe {
+            ptr::copy_nonoverlapping(self.as_ptr(), buf.ptr(), len);
+            mem::transmute(buf.into_box()) // bytes to str ~magic
+        }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq> PartialEq for Box<T> {
     #[inline]
