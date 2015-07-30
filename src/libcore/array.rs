@@ -90,7 +90,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[state(since = "1.3.0")]
+            #[stable(since = "1.3.0")]
             impl<T: Default> Default for [T; $N] {
                 fn default() -> [T; $N] {
                     [T::default(); $N]
