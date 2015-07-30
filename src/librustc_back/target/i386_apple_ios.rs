@@ -19,7 +19,6 @@ pub fn target() -> Target {
         arch: "x86".to_string(),
         target_os: "ios".to_string(),
         target_env: "".to_string(),
-        options: opts(Arch::I386),
-        cross: Default::default(),
+        options: opts(Arch::I386)
     }
 }

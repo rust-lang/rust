@@ -702,14 +702,13 @@ fn link_rlib<'a>(sess: &'a Session,
 
                     ab.add_file(&bc_deflated_filename);
 
-                    // See the bottom of back::write::run_passes for an explanation
-                    // of when we do and don't keep .0.bc files around.
-                    let user_wants_numbered_bitcode =
+                // See the bottom of back::write::run_passes for an explanation
+                // of when we do and don't keep .0.bc files around.
+                let user_wants_numbered_bitcode =
                         sess.opts.output_types.contains(&OutputTypeBitcode) &&
                         sess.opts.cg.codegen_units > 1;
-                    if !sess.opts.cg.save_temps && !user_wants_numbered_bitcode {
-                        remove(sess, &bc_filename);
-                    }
+                if !sess.opts.cg.save_temps && !user_wants_numbered_bitcode {
+                    remove(sess, &bc_filename);
                 }
             }
 
@@ -842,15 +841,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     // The compiler's sysroot often has some bundled tools, so add it to the
     // PATH for the child.
     let mut new_path = sess.host_filesearch(PathKind::All)
-        .get_tools_search_paths();
-
-    match sess.target.cross_bin_path {
-        Some(ref path) => {
-            new_path.push(path.clone());
-        },
-        None => {},
-    }
-
+                           .get_tools_search_paths();
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
     for obj in &sess.target.target.options.pre_link_objects {

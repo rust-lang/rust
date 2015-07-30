@@ -46,7 +46,6 @@ pub struct Config {
     pub target: Target,
     pub int_type: IntTy,
     pub uint_type: UintTy,
-    pub cross_bin_path: Option<PathBuf>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -659,61 +658,11 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
 }
 
 pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
-    use std::env;
-    use std::ffi::OsString;
-
     let target = match Target::search(&opts.target_triple) {
         Ok(t) => t,
         Err(e) => {
             sp.handler().fatal(&format!("Error loading target specification: {}", e));
         }
-    };
-
-    // Check for the cross path if required:
-    let cross_bin_path = if target.options.requires_cross_path {
-        let cross_path: Option<OsString> = opts.cg.cross_path
-            .as_ref()
-            .map(|cp| From::from(cp) );
-        let mut env_msg = "".to_string();
-        match cross_path.or_else(|| {
-            target.cross
-                .as_ref()
-                .and_then(|cross| {
-                    cross.toolchain_env_key
-                        .as_ref()
-                })
-                .and_then(|env_key| {
-                    env_msg = format!(", or via `{}` from the environment",
-                                      env_key);
-                    env::var_os(env_key)
-                })
-        }) {
-            None => {
-                let msg = format!("need toolchain cross path (-C cross-path{}) \
-                                   for this target",
-                                  env_msg);
-                sp.handler().fatal(&msg[..]);
-            },
-            Some(p) => {
-                target.cross
-                    .as_ref()
-                    .and_then(|cross| {
-                        cross.get_tool_bin_path
-                            .clone()
-                    })
-                    .and_then(|get_tool_bin_path| {
-                        get_tool_bin_path(From::from(p.clone()))
-                            .map_err(|err_msg| sp.handler().fatal(&err_msg[..]) )
-                            .ok()
-                    })
-                    .or_else(|| {
-                        let p: PathBuf = From::from(p.clone());
-                        Some(p.join("bin").to_path_buf())
-                    })
-            },
-        }
-    } else {
-        None
     };
 
     let (int_type, uint_type) = match &target.target_pointer_width[..] {
@@ -727,7 +676,6 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
         target: target,
         int_type: int_type,
         uint_type: uint_type,
-        cross_bin_path: cross_bin_path,
     }
 }
 

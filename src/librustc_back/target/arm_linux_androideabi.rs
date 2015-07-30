@@ -22,6 +22,5 @@ pub fn target() -> Target {
         target_os: "android".to_string(),
         target_env: "gnu".to_string(),
         options: base,
-        cross: Default::default(),
     }
 }

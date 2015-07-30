@@ -48,7 +48,6 @@
 use serialize::json::Json;
 use std::default::Default;
 use std::io::prelude::*;
-use std::path::PathBuf;
 use syntax::{diagnostic, abi};
 
 mod android_base;
@@ -83,9 +82,6 @@ pub struct Target {
     pub arch: String,
     /// Optional settings with defaults.
     pub options: TargetOptions,
-    /// Cross compilation options for the target. Ignored unless
-    /// `options.requires_cross_path` is true.
-    pub cross: Option<CrossTarget>,
 }
 
 /// Optional aspects of a target specification.
@@ -181,30 +177,6 @@ pub struct TargetOptions {
     pub no_asm: bool,
     /// Is LTO allowed? Defaults to true.
     pub lto_supported: bool,
-    /// Do we require `-C cross-path` or CrossTarget::toolchain_env? Defaults to
-    /// false.
-    pub requires_cross_path: bool,
-}
-
-/// Options for when the host is different from the target.
-#[derive(Clone)]
-pub struct CrossTarget {
-    // If `-C cross-path` wasn't set, use this env var to find the toolchain
-    // root.
-    pub toolchain_env_key: Option<String>,
-    pub get_tool_bin_path: Option<fn(cross_path: PathBuf) -> Result<PathBuf, String>>
-}
-impl ::std::fmt::Debug for CrossTarget {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
-        let gtbp_str = if self.get_tool_bin_path.is_some() {
-            "Some(<fn-pointer>)"
-        } else {
-            "None"
-        };
-        write!(f, "CrossTarget {{ toolchain_env_key: {:?}, get_tool_bin_path: \
-                   <{}>, }}",
-               self.toolchain_env_key, gtbp_str)
-    }
 }
 
 impl Default for TargetOptions {
@@ -246,7 +218,6 @@ impl Default for TargetOptions {
             archive_format: String::new(),
             no_asm: false,
             lto_supported: true,
-            requires_cross_path: false,
         }
     }
 }
@@ -292,7 +263,6 @@ impl Target {
             target_env: obj.find("env").and_then(|s| s.as_string())
                            .map(|s| s.to_string()).unwrap_or(String::new()),
             options: Default::default(),
-            cross: Default::default(),
         };
 
         macro_rules! key {

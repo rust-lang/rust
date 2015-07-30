@@ -19,6 +19,5 @@ pub fn target() -> Target {
         target_os: "android".to_string(),
         target_env: "".to_string(),
         options: super::android_base::opts(),
-        cross: Default::default(),
     }
 }

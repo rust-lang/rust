@@ -22,6 +22,5 @@ pub fn target() -> Target {
         target_os: "windows".to_string(),
         target_env: "msvc".to_string(),
         options: base,
-        cross: Default::default(),
     }
 }

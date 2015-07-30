@@ -24,6 +24,5 @@ pub fn target() -> Target {
             eliminate_frame_pointer: false,
             .. opts(Arch::Arm64)
         },
-        cross: Default::default(),
     }
 }
