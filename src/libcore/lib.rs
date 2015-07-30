@@ -157,21 +157,23 @@ pub mod fmt;
 // note: does not need to be public
 mod tuple;
 
+// A curious inner-module that's not exported that contains the bindings of core
+// so that compiler-expanded references to `core::$foo` can be resolved within
+// core itself.
+//
+// Note that no crate-defined macros require this module due to the existence of
+// the `$crate` meta variable, only those expansions defined in the compiler
+// require this. This is because the compiler doesn't currently know that it's
+// compiling the core library when it's compiling this library, so it expands
+// all references to `::core::$foo`
 #[doc(hidden)]
 mod core {
-    pub use intrinsics;
-    pub use panicking;
-    pub use fmt;
-    pub use clone;
-    pub use cmp;
-    pub use hash;
-    pub use marker;
-    pub use option;
-    pub use iter;
-}
-
-#[doc(hidden)]
-mod std {
-    // range syntax
-    pub use ops;
+    pub use intrinsics;     // derive(PartialOrd)
+    pub use fmt;            // format_args!
+    pub use clone;          // derive(Clone)
+    pub use cmp;            // derive(Ord)
+    pub use hash;           // derive(Hash)
+    pub use marker;         // derive(Copy)
+    pub use option;         // iterator protocol
+    pub use iter;           // iterator protocol
 }
