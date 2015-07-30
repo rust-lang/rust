@@ -1924,10 +1924,16 @@ On an `extern` block, the following attributes are interpreted:
   name and type. This is feature gated and the exact behavior is
   implementation-defined (due to variety of linker invocation syntax).
 - `link` - indicate that a native library should be linked to for the
-  declarations in this block to be linked correctly. `link` supports an optional `kind`
-  key with three possible values: `dylib`, `static`, and `framework`. See [external blocks](#external-blocks) for more about external blocks. Two
+  declarations in this block to be linked correctly. `link` supports an optional
+  `kind` key with three possible values: `dylib`, `static`, and `framework`. See
+  [external blocks](#external-blocks) for more about external blocks. Two
   examples: `#[link(name = "readline")]` and
   `#[link(name = "CoreFoundation", kind = "framework")]`.
+- `linked_from` - indicates what native library this block of FFI items is
+  coming from. This attribute is of the form `#[linked_from = "foo"]` where
+  `foo` is the name of a library in either `#[link]` or a `-l` flag. This
+  attribute is currently required to export symbols from a Rust dynamic library
+  on Windows, and it is feature gated behind the `linked_from` feature.
 
 On declarations inside an `extern` block, the following attributes are
 interpreted:
