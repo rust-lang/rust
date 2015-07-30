@@ -33,17 +33,16 @@
        test(no_crate_inject))]
 #![no_std]
 
-#![feature(core)]
 #![feature(core_char_ext)]
-#![feature(core_prelude)]
 #![feature(core_slice_ext)]
 #![feature(core_str_ext)]
 #![feature(iter_arith)]
 #![feature(lang_items)]
 #![feature(no_std)]
 #![feature(staged_api)]
+#![cfg_attr(stage0, feature(core, core_prelude))]
 
-extern crate core;
+#[cfg(stage0)] extern crate core;
 
 mod normalize;
 mod tables;

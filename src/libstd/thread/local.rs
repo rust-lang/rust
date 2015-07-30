@@ -12,6 +12,7 @@
 
 #![unstable(feature = "thread_local_internals")]
 
+#[cfg(stage0)]
 use prelude::v1::*;
 
 use cell::UnsafeCell;
@@ -271,6 +272,7 @@ impl<T: 'static> LocalKey<T> {
           not(no_elf_tls)))]
 #[doc(hidden)]
 mod imp {
+    #[cfg(stage0)]
     use prelude::v1::*;
 
     use cell::{Cell, UnsafeCell};

@@ -16,7 +16,8 @@
 #![unstable(feature = "pattern",
             reason = "API not fully fleshed out and ready to be stabilized")]
 
-use prelude::*;
+use prelude::v1::*;
+
 use cmp;
 use usize;
 

@@ -28,26 +28,26 @@
 #![staged_api]
 #![unstable(feature = "rand",
             reason = "use `rand` from crates.io")]
-#![feature(core)]
 #![feature(core_float)]
-#![feature(core_prelude)]
 #![feature(core_slice_ext)]
 #![feature(no_std)]
 #![feature(num_bits_bytes)]
 #![feature(staged_api)]
 #![feature(step_by)]
+#![cfg_attr(stage0, feature(core, core_prelude))]
 
 #![cfg_attr(test, feature(test, rand, rustc_private, iter_order))]
 
 #![allow(deprecated)]
 
-#[macro_use]
-extern crate core;
+#[cfg(stage0)] #[macro_use] extern crate core;
 
 #[cfg(test)] #[macro_use] extern crate std;
 #[cfg(test)] #[macro_use] extern crate log;
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
+
 use core::marker::PhantomData;
 
 pub use isaac::{IsaacRng, Isaac64Rng};

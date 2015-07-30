@@ -11,18 +11,8 @@
 //! The core prelude
 //!
 //! This module is intended for users of libcore which do not link to libstd as
-//! well. This module is not imported by default, but using the entire contents
-//! of this module will provide all of the useful traits and types in libcore
-//! that one would expect from the standard library as well.
-//!
-//! There is no method to automatically inject this prelude, and this prelude is
-//! a subset of the standard library's prelude.
-//!
-//! # Example
-//!
-//! ```ignore
-//! use core::prelude::*;
-//! ```
+//! well. This module is imported by default when `#![no_std]` is used in the
+//! same manner as the standard library's prelude.
 
 #![unstable(feature = "core_prelude",
             reason = "the libcore prelude has not been scrutinized and \

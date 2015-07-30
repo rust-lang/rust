@@ -10,8 +10,9 @@
 
 //! An implementation of SipHash 2-4.
 
+use prelude::v1::*;
+
 use ptr;
-use prelude::*;
 use super::Hasher;
 
 /// An implementation of SipHash 2-4.

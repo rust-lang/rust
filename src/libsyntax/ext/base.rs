@@ -611,7 +611,7 @@ pub struct ExtCtxt<'a> {
     pub cfg: ast::CrateConfig,
     pub backtrace: ExpnId,
     pub ecfg: expand::ExpansionConfig<'a>,
-    pub use_std: bool,
+    pub crate_root: Option<&'static str>,
 
     pub mod_path: Vec<ast::Ident> ,
     pub exported_macros: Vec<ast::MacroDef>,
@@ -630,7 +630,7 @@ impl<'a> ExtCtxt<'a> {
             backtrace: NO_EXPANSION,
             mod_path: Vec::new(),
             ecfg: ecfg,
-            use_std: true,
+            crate_root: None,
             exported_macros: Vec::new(),
             syntax_env: env,
             recursion_count: 0,
@@ -805,8 +805,13 @@ impl<'a> ExtCtxt<'a> {
     pub fn ident_of(&self, st: &str) -> ast::Ident {
         str_to_ident(st)
     }
-    pub fn ident_of_std(&self, st: &str) -> ast::Ident {
-        self.ident_of(if self.use_std { "std" } else { st })
+    pub fn std_path(&self, components: &[&str]) -> Vec<ast::Ident> {
+        let mut v = Vec::new();
+        if let Some(s) = self.crate_root {
+            v.push(self.ident_of(s));
+        }
+        v.extend(components.iter().map(|s| self.ident_of(s)));
+        return v
     }
     pub fn name_of(&self, st: &str) -> ast::Name {
         token::intern(st)

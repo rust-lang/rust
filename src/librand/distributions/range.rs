@@ -12,7 +12,8 @@
 
 // this is surprisingly complicated to be both generic & correct
 
-use core::prelude::PartialOrd;
+#[cfg(stage0)]
+use core::prelude::v1::PartialOrd;
 
 use Rng;
 use distributions::{Sample, IndependentSample};

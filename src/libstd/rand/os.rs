@@ -15,7 +15,7 @@ pub use self::imp::OsRng;
 
 #[cfg(all(unix, not(target_os = "ios")))]
 mod imp {
-    use prelude::v1::*;
+    #[cfg(stage0)] use prelude::v1::*;
     use self::OsRngInner::*;
 
     use fs::File;
@@ -251,6 +251,7 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
+    #[cfg(stage0)]
     use prelude::v1::*;
 
     use io;

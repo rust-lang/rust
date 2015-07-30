@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(no_std)]
-#![no_std]
+#![feature(no_core)]
+#![no_core]
 #![crate_type = "lib"]
 #![crate_name = "a"]
 

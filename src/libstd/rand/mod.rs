@@ -57,6 +57,7 @@
 
 #![unstable(feature = "rand")]
 
+#[cfg(stage0)]
 use prelude::v1::*;
 
 use cell::RefCell;

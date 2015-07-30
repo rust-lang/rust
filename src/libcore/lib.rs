@@ -60,8 +60,10 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![doc(test(no_crate_inject))]
 
-#![feature(no_std)]
-#![no_std]
+#![cfg_attr(stage0, feature(no_std))]
+#![cfg_attr(stage0, no_std)]
+#![cfg_attr(not(stage0), feature(no_core))]
+#![cfg_attr(not(stage0), no_core)]
 #![allow(raw_pointer_derive)]
 #![deny(missing_docs)]
 
@@ -168,6 +170,7 @@ mod tuple;
 // compiling the core library when it's compiling this library, so it expands
 // all references to `::core::$foo`
 #[doc(hidden)]
+#[cfg(stage0)]
 mod core {
     pub use intrinsics;     // derive(PartialOrd)
     pub use fmt;            // format_args!

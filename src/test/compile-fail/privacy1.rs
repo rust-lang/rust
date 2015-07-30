@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, start, no_std)]
-#![no_std] // makes debugging this test *a lot* easier (during resolve)
+#![feature(lang_items, start, no_core)]
+#![no_core] // makes debugging this test *a lot* easier (during resolve)
 
 #[lang="sized"]
 pub trait Sized {}

@@ -12,6 +12,7 @@
 
 #![unstable(feature = "duration", reason = "recently added API per RFC 1040")]
 
+#[cfg(stage0)]
 use prelude::v1::*;
 
 use fmt;

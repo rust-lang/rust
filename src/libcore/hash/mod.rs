@@ -62,7 +62,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use prelude::*;
+use prelude::v1::*;
 
 use mem;
 
@@ -183,7 +183,7 @@ pub fn hash<T: Hash, H: Hasher + Default>(value: &T) -> u64 {
 //////////////////////////////////////////////////////////////////////////////
 
 mod impls {
-    use prelude::*;
+    use prelude::v1::*;
 
     use slice;
     use super::*;

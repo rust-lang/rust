@@ -258,6 +258,7 @@ fn generate_test_harness(sess: &ParseSess,
         config: krate.config.clone(),
         toplevel_reexport: None,
     };
+    cx.ext_cx.crate_root = Some("std");
 
     cx.ext_cx.bt_push(ExpnInfo {
         call_site: DUMMY_SP,

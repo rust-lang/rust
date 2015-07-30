@@ -1252,9 +1252,7 @@ impl<'a> MethodDef<'a> {
 
             let mut first_ident = None;
             for (&ident, self_arg) in vi_idents.iter().zip(&self_args) {
-                let path = vec![cx.ident_of_std("core"),
-                                cx.ident_of("intrinsics"),
-                                cx.ident_of("discriminant_value")];
+                let path = cx.std_path(&["intrinsics", "discriminant_value"]);
                 let call = cx.expr_call_global(
                     sp, path, vec![cx.expr_addr_of(sp, self_arg.clone())]);
                 let variant_value = cx.expr_block(P(ast::Block {
@@ -1289,9 +1287,7 @@ impl<'a> MethodDef<'a> {
             //Since we know that all the arguments will match if we reach the match expression we
             //add the unreachable intrinsics as the result of the catch all which should help llvm
             //in optimizing it
-            let path = vec![cx.ident_of_std("core"),
-                            cx.ident_of("intrinsics"),
-                            cx.ident_of("unreachable")];
+            let path = cx.std_path(&["intrinsics", "unreachable"]);
             let call = cx.expr_call_global(
                 sp, path, vec![]);
             let unreachable = cx.expr_block(P(ast::Block {

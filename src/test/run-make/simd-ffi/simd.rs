@@ -12,8 +12,8 @@
 #![crate_type = "lib"]
 // we can compile to a variety of platforms, because we don't need
 // cross-compiled standard libraries.
-#![feature(no_std)]
-#![no_std]
+#![feature(no_core)]
+#![no_core]
 
 #![feature(simd, simd_ffi, link_llvm_intrinsics, lang_items)]
 
@@ -75,8 +75,6 @@ pub trait Sized { }
 #[lang = "copy"]
 pub trait Copy { }
 
-mod core {
-    pub mod marker {
-        pub use Copy;
-    }
+pub mod marker {
+    pub use Copy;
 }

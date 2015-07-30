@@ -122,6 +122,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // Allows using #![no_std]
     ("no_std", "1.0.0", Active),
 
+    // Allows using #![no_core]
+    ("no_core", "1.3.0", Active),
+
     // Allows using `box` in patterns; RFC 469
     ("box_patterns", "1.0.0", Active),
 
@@ -226,6 +229,8 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
                       and possibly buggy")),
     ("no_std", Gated("no_std",
                      "no_std is experimental")),
+    ("no_core", Gated("no_core",
+                     "no_core is experimental")),
     ("lang", Gated("lang_items",
                      "language items are subject to change")),
     ("linkage", Gated("linkage",
