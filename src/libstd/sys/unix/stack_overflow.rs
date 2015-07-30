@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(stage0)]
+use core::prelude::v1::*;
+
 use libc;
-use core::prelude::*;
 use self::imp::{make_handler, drop_handler};
 
 pub use self::imp::{init, cleanup};

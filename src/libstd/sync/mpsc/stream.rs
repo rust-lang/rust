@@ -22,7 +22,8 @@ pub use self::UpgradeResult::*;
 pub use self::SelectionResult::*;
 use self::Message::*;
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
 
 use core::cmp;
 use core::isize;

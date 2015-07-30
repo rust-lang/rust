@@ -14,7 +14,8 @@
 #![crate_type = "rlib"]
 #![cfg_attr(not(feature = "cargo-build"), unstable(feature = "libc",
                                                    reason = "use `libc` from crates.io"))]
-#![cfg_attr(not(feature = "cargo-build"), feature(staged_api, core, no_std))]
+#![cfg_attr(not(feature = "cargo-build"), feature(staged_api, no_std))]
+#![cfg_attr(all(not(feature = "cargo-build"), stage0), feature(core))]
 #![cfg_attr(not(feature = "cargo-build"), staged_api)]
 #![cfg_attr(not(feature = "cargo-build"), no_std)]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -78,7 +79,7 @@
 #![allow(bad_style, raw_pointer_derive)]
 #![cfg_attr(target_os = "nacl", allow(unused_imports))]
 #[cfg(feature = "cargo-build")] extern crate std as core;
-#[cfg(not(feature = "cargo-build"))] extern crate core;
+#[cfg(all(stage0, not(feature = "cargo-build")))] extern crate core;
 
 #[cfg(test)] extern crate std;
 #[cfg(test)] extern crate test;

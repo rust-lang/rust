@@ -9,9 +9,8 @@
 // except according to those terms.
 
 #![crate_type = "rlib"]
-#![feature(no_std, core)]
+#![feature(no_std)]
 #![no_std]
-extern crate core;
 
 
 #[inline]

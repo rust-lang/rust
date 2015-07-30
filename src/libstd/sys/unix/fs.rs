@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
 use io::prelude::*;
 use os::unix::prelude::*;
 

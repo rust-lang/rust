@@ -13,8 +13,8 @@
 
 #![crate_type = "lib"]
 #![feature(lang_items)]
-#![feature(no_std)]
-#![no_std]
+#![feature(no_core)]
+#![no_core]
 
 #[lang="sized"]
 pub trait Sized {

@@ -15,8 +15,6 @@
 #![no_std]
 #![feature(lang_items, no_std, box_syntax)]
 
-extern crate core;
-
 fn main() {
     let x = box 1i32;
 }

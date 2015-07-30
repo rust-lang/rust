@@ -12,7 +12,9 @@
 
 #![allow(non_camel_case_types)]
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
+
 use core::slice;
 use core::iter::repeat;
 use core::num::Wrapping as w;

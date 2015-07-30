@@ -122,9 +122,10 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                                  push: &mut FnMut(Annotatable),
                                  krate: &'static str)
 {
-    if !cx.use_std {
+    if cx.crate_root != Some("std") {
         // FIXME(#21880): lift this requirement.
-        cx.span_err(span, "this trait cannot be derived with #![no_std]");
+        cx.span_err(span, "this trait cannot be derived with #![no_std] \
+                           or #![no_core]");
         return;
     }
 

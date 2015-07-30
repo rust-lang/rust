@@ -10,7 +10,9 @@
 
 //! The ChaCha random number generator.
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
+
 use {Rng, SeedableRng, Rand};
 
 const KEY_WORDS    : usize =  8; // 8 words for the 256-bit key

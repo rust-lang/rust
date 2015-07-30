@@ -11,8 +11,6 @@
 #![feature(no_std, lang_items, core)]
 #![no_std]
 
-extern crate core;
-
 pub mod str {
     #![doc(primitive = "str")]
 

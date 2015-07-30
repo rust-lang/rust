@@ -305,8 +305,7 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 
     fn rtpath(ecx: &ExtCtxt, s: &str) -> Vec<ast::Ident> {
-        vec![ecx.ident_of_std("core"), ecx.ident_of("fmt"), ecx.ident_of("rt"),
-             ecx.ident_of("v1"), ecx.ident_of(s)]
+        ecx.std_path(&["fmt", "rt", "v1", s])
     }
 
     fn trans_count(&self, c: parse::Count) -> P<ast::Expr> {
@@ -579,11 +578,8 @@ impl<'a, 'b> Context<'a, 'b> {
             ("new_v1_formatted", vec![pieces, args_slice, fmt])
         };
 
-        self.ecx.expr_call_global(self.macsp, vec!(
-                self.ecx.ident_of_std("core"),
-                self.ecx.ident_of("fmt"),
-                self.ecx.ident_of("Arguments"),
-                self.ecx.ident_of(fn_name)), fn_args)
+        let path = self.ecx.std_path(&["fmt", "Arguments", fn_name]);
+        self.ecx.expr_call_global(self.macsp, path, fn_args)
     }
 
     fn format_arg(ecx: &ExtCtxt, macsp: Span, sp: Span,
@@ -610,24 +606,15 @@ impl<'a, 'b> Context<'a, 'b> {
                 }
             }
             Unsigned => {
-                return ecx.expr_call_global(macsp, vec![
-                        ecx.ident_of_std("core"),
-                        ecx.ident_of("fmt"),
-                        ecx.ident_of("ArgumentV1"),
-                        ecx.ident_of("from_usize")], vec![arg])
+                let path = ecx.std_path(&["fmt", "ArgumentV1", "from_usize"]);
+                return ecx.expr_call_global(macsp, path, vec![arg])
             }
         };
 
-        let format_fn = ecx.path_global(sp, vec![
-                ecx.ident_of_std("core"),
-                ecx.ident_of("fmt"),
-                ecx.ident_of(trait_),
-                ecx.ident_of("fmt")]);
-        ecx.expr_call_global(macsp, vec![
-                ecx.ident_of_std("core"),
-                ecx.ident_of("fmt"),
-                ecx.ident_of("ArgumentV1"),
-                ecx.ident_of("new")], vec![arg, ecx.expr_path(format_fn)])
+        let path = ecx.std_path(&["fmt", trait_, "fmt"]);
+        let format_fn = ecx.path_global(sp, path);
+        let path = ecx.std_path(&["fmt", "ArgumentV1", "new"]);
+        ecx.expr_call_global(macsp, path, vec![arg, ecx.expr_path(format_fn)])
     }
 }
 

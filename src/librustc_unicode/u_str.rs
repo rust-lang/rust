@@ -14,7 +14,8 @@
 //! unicode parts of the CharExt trait.
 
 use self::GraphemeState::*;
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
 
 use core::char;
 use core::cmp;

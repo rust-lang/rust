@@ -15,7 +15,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use prelude::*;
+use prelude::v1::*;
 
 use intrinsics;
 use mem;

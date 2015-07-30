@@ -38,8 +38,7 @@ use std_inject;
 fn mk_core_path(fld: &mut MacroExpander,
                 span: Span,
                 suffix: &[&'static str]) -> ast::Path {
-    let mut idents = vec![fld.cx.ident_of_std("core")];
-    for s in suffix.iter() { idents.push(fld.cx.ident_of(*s)); }
+    let idents = fld.cx.std_path(suffix);
     fld.cx.path_global(span, idents)
 }
 
@@ -417,12 +416,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             // `match ::std::iter::Iterator::next(&mut iter) { ... }`
             let match_expr = {
                 let next_path = {
-                    let strs = vec![
-                        fld.cx.ident_of_std("core"),
-                        fld.cx.ident_of("iter"),
-                        fld.cx.ident_of("Iterator"),
-                        fld.cx.ident_of("next"),
-                    ];
+                    let strs = fld.cx.std_path(&["iter", "Iterator", "next"]);
 
                     fld.cx.path_global(span, strs)
                 };
@@ -450,12 +444,8 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
             let into_iter_expr = {
                 let into_iter_path = {
-                    let strs = vec![
-                        fld.cx.ident_of_std("core"),
-                        fld.cx.ident_of("iter"),
-                        fld.cx.ident_of("IntoIterator"),
-                        fld.cx.ident_of("into_iter"),
-                    ];
+                    let strs = fld.cx.std_path(&["iter", "IntoIterator",
+                                                 "into_iter"]);
 
                     fld.cx.path_global(span, strs)
                 };
@@ -1665,7 +1655,13 @@ pub fn expand_crate<'feat>(parse_sess: &parse::ParseSess,
                            user_exts: Vec<NamedSyntaxExtension>,
                            c: Crate) -> Crate {
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg);
-    cx.use_std = std_inject::use_std(&c);
+    if std_inject::no_core(&c) {
+        cx.crate_root = None;
+    } else if std_inject::no_std(&c) {
+        cx.crate_root = Some("core");
+    } else {
+        cx.crate_root = Some("std");
+    }
 
     let mut expander = MacroExpander::new(&mut cx);
 
