@@ -414,11 +414,3 @@ pub mod __rand {
 // the rustdoc documentation for primitive types. Using `include!`
 // because rustdoc only looks for these modules at the crate level.
 include!("primitive_docs.rs");
-
-// The expansion of --test has a few references to `::std::$foo` so this module
-// is necessary to get things to compile.
-#[cfg(test)]
-mod std {
-    pub use option;
-    pub use realstd::env;
-}

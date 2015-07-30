@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(stage0)]
 use prelude::v1::*;
 
 use alloc::boxed::FnBox;
@@ -87,6 +86,7 @@ impl Thread {
 }
 
 pub mod guard {
+    #[cfg(stage0)]
     use prelude::v1::*;
 
     pub unsafe fn current() -> Option<usize> { None }

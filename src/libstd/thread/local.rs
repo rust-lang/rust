@@ -329,6 +329,7 @@ mod imp {
     // Due to rust-lang/rust#18804, make sure this is not generic!
     #[cfg(target_os = "linux")]
     unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
+        use prelude::v1::*;
         use mem;
         use libc;
         use sys_common::thread_local as os;
