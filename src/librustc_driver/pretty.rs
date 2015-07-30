@@ -60,7 +60,7 @@ pub enum PpSourceMode {
 pub enum PpFlowGraphMode {
     Default,
     /// Drops the labels from the edges in the flowgraph output. This
-    /// is mostly for use in the --xpretty flowgraph run-make tests,
+    /// is mostly for use in the --unpretty flowgraph run-make tests,
     /// since the labels are largely uninteresting in those cases and
     /// have become a pain to maintain.
     UnlabelledEdges,
@@ -90,7 +90,7 @@ pub fn parse_pretty(sess: &Session,
         _ => {
             if extended {
                 sess.fatal(&format!(
-                    "argument to `xpretty` must be one of `normal`, \
+                    "argument to `unpretty` must be one of `normal`, \
                      `expanded`, `flowgraph[,unlabelled]=<nodeid>`, `typed`, `identified`, \
                      `expanded,identified`, or `everybody_loops`; got {}", name));
             } else {
