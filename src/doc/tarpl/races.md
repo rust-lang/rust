@@ -25,7 +25,7 @@ race condition can't violate memory safety in a Rust program on
 its own. Only in conjunction with some other unsafe code can a race condition
 actually violate memory safety. For instance:
 
-```rust,norun
+```rust,no_run
 use std::thread;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -56,7 +56,7 @@ thread::spawn(move || {
 println!("{}", data[idx.load(Ordering::SeqCst)]);
 ```
 
-```rust,norun
+```rust,no_run
 use std::thread;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
