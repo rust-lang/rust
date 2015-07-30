@@ -11,9 +11,12 @@
 //! A simple map based on a vector for small integer keys. Space requirements
 //! are O(highest integer key).
 
+#![deprecated(reason = "VecMap moved to crates.io as vec_map",
+              since = "1.3.0")]
+#![unstable(feature = "vecmap", reason = "deprecated")]
+#![allow(deprecated)]
+
 #![allow(missing_docs)]
-#![unstable(feature = "vecmap",
-            reason = "may not be stabilized in the standard library")]
 
 use self::Entry::*;
 
