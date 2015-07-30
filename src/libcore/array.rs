@@ -21,6 +21,7 @@
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use convert::{AsRef, AsMut};
+use default::Default;
 use fmt;
 use hash::{Hash, self};
 use iter::IntoIterator;
@@ -86,6 +87,13 @@ macro_rules! array_impls {
             impl<T: fmt::Debug> fmt::Debug for [T; $N] {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     fmt::Debug::fmt(&&self[..], f)
+                }
+            }
+
+            //FIXME: Should be marked stable or unstable or what?
+            impl<T: Default> Default for [T; $N] {
+                fn default() -> [T; $N] {
+                    [$T::default(); $N]
                 }
             }
 
