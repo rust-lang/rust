@@ -161,7 +161,7 @@ use core::cell::Cell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hasher, Hash};
-use core::intrinsics::{assume, drop_in_place};
+use core::intrinsics::{assume, drop_in_place, abort};
 use core::marker::{self, Unsize};
 use core::mem::{self, align_of, size_of, align_of_val, size_of_val, forget};
 use core::nonzero::NonZero;
@@ -858,6 +858,15 @@ impl<T: ?Sized+fmt::Debug> fmt::Debug for Weak<T> {
     }
 }
 
+// NOTE: We checked_add here to deal with mem::forget safety. In particular
+// if you mem::forget Rcs (or Weaks), the ref-count can overflow, and then
+// you can free the allocation while outstanding Rcs (or Weaks) exist.
+// We abort because this is such a degenerate scenario that we don't care about
+// what happens -- no real program should ever experience this.
+//
+// This should have negligible overhead since you don't actually need to
+// clone these much in Rust thanks to ownership and move-semantics.
+
 #[doc(hidden)]
 trait RcBoxPtr<T: ?Sized> {
     fn inner(&self) -> &RcBox<T>;
@@ -866,7 +875,9 @@ trait RcBoxPtr<T: ?Sized> {
     fn strong(&self) -> usize { self.inner().strong.get() }
 
     #[inline]
-    fn inc_strong(&self) { self.inner().strong.set(self.strong() + 1); }
+    fn inc_strong(&self) {
+        self.inner().strong.set(self.strong().checked_add(1).unwrap_or_else(|| unsafe { abort() }));
+    }
 
     #[inline]
     fn dec_strong(&self) { self.inner().strong.set(self.strong() - 1); }
@@ -875,7 +886,9 @@ trait RcBoxPtr<T: ?Sized> {
     fn weak(&self) -> usize { self.inner().weak.get() }
 
     #[inline]
-    fn inc_weak(&self) { self.inner().weak.set(self.weak() + 1); }
+    fn inc_weak(&self) {
+        self.inner().weak.set(self.weak().checked_add(1).unwrap_or_else(|| unsafe { abort() }));
+    }
 
     #[inline]
     fn dec_weak(&self) { self.inner().weak.set(self.weak() - 1); }
