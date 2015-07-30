@@ -167,6 +167,3 @@ Do nothing.
 # Unresolved questions
 
 Are these the best method names?
-
-Should `{BTreeMap, HashMap}::insert` be changed to replace equivalent keys? This could break code
-relying on the old behavior, and would add an additional inconsistency to `OccupiedEntry::insert`.
