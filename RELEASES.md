@@ -16,6 +16,12 @@ Highlights
   jobs). It's not enabled by default, but will be "in the near
   future". It can be activated with the `-C codegen-units=N` flag to
   `rustc`.
+* This is the first release with [experimental support for linking
+  with the MSVC linker and lib C on Windows (instead of using the GNU
+  variants via MinGW)][win]. It is yet recommended only for the most
+  intrepid Rusticians.
+* Benchmark compilations are showing a 30% improvement in
+  bootstrapping over 1.1.
 
 Breaking Changes
 ----------------
@@ -31,6 +37,10 @@ Breaking Changes
 * [The `#[packed]` attribute is no longer silently accepted by the
   compiler][packed]. This attribute did nothing and code that
   mentioned it likely did not work as intended.
+* Associated type defaults are [now behind the
+  `associated_type_defaults` feature gate][ad]. In 1.1 associated type
+  defaults *did not work*, but could be mentioned syntactically. As
+  such this breakage has minimal impact.
 
 Language
 --------
@@ -46,12 +56,11 @@ Libraries
   `LinkedList`, `VecDeque`, `EnumSet`, `BinaryHeap`, `VecMap`,
   `BTreeSet` and `BTreeMap`. [RFC][extend-rfc].
 * The [`iter::once`] function returns an iterator that yields a single
-  element.
-* The [`iter::empty`] function returns an iterator that yields no
+  element, and [`iter::empty`] returns an iterator that yields no
   elements.
 * The [`matches`] and [`rmatches`] methods on `str` return iterators
   over substring matches.
-* [`Cell`] and [`RefCell`] both implement [`Eq`].
+* [`Cell`] and [`RefCell`] both implement `Eq`.
 * A number of methods for wrapping arithmetic are added to the
   integral types, [`wrapping_div`], [`wrapping_rem`],
   [`wrapping_neg`], [`wrapping_shl`], [`wrapping_shr`]. These are in
@@ -144,6 +153,8 @@ Misc
 [dst]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
 [parcodegen]: https://github.com/rust-lang/rust/pull/26018
 [packed]: https://github.com/rust-lang/rust/pull/25541
+[ad]: https://github.com/rust-lang/rust/pull/27382
+[win]: https://github.com/rust-lang/rust/pull/25350
 
 Version 1.1.0 (June 2015)
 =========================
