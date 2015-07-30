@@ -60,6 +60,7 @@ the direction the language is evolving in.
 * [1122-language-semver.md](text/1122-language-semver.md)
 * [1131-likely-intrinsic.md](text/1131-likely-intrinsic.md)
 * [1156-adjust-default-object-bounds.md](text/1156-adjust-default-object-bounds.md)
+* [1184-stabilize-no_std.md](text/1184-stabilize-no_std.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
