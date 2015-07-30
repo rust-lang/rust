@@ -188,7 +188,7 @@ data on their parent's stack without any synchronization over that data by
 ensuring the parent joins the thread before any of the shared data goes out
 of scope.
 
-```rust
+```rust,ignore
 pub fn scoped<'a, F>(f: F) -> JoinGuard<'a>
     where F: FnOnce() + Send + 'a
 ```
