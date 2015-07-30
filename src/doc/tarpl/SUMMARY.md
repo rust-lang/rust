@@ -10,7 +10,7 @@
 * [Ownership](ownership.md)
 	* [References](references.md)
 	* [Lifetimes](lifetimes.md)
-	* [Limits of lifetimes](lifetime-mismatch.md)
+	* [Limits of Lifetimes](lifetime-mismatch.md)
 	* [Lifetime Elision](lifetime-elision.md)
 	* [Unbounded Lifetimes](unbounded-lifetimes.md)
 	* [Higher-Rank Trait Bounds](hrtb.md)
