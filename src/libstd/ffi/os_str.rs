@@ -279,7 +279,8 @@ impl OsStr {
         if cfg!(windows) {
             str::from_utf8(bytes).ok().map(|s| s.as_ref())
         } else {
-            Some(unsafe { mem::transmute(bytes) })
+            use os::unix::ffi::OsStrExt;
+            Some(<OsStr as OsStrExt>::from_bytes(bytes))
         }
     }
 
