@@ -87,6 +87,7 @@ pub use enum_set::EnumSet;
 pub use vec_deque::VecDeque;
 pub use string::String;
 pub use vec::Vec;
+#[allow(deprecated)]
 pub use vec_map::VecMap;
 
 // Needed for the vec! macro
@@ -108,6 +109,7 @@ pub mod str;
 pub mod string;
 pub mod vec;
 pub mod vec_deque;
+#[allow(deprecated)]
 pub mod vec_map;
 
 #[unstable(feature = "bitvec", reason = "RFC 509")]
