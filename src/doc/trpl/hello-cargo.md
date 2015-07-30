@@ -23,20 +23,21 @@ README][cargoreadme] for specific instructions about installing it.
 
 Let’s convert Hello World to Cargo.
 
-To Cargo-ify our project, we need to do two things: Make a `Cargo.toml`
-configuration file, and put our source file in the right place. Let's
-do that part first:
+To Cargo-ify our project, we need to do three things: Make a `Cargo.toml`
+configuration file, put our source file in the right place, and get rid of the
+old  `main.exe`. Let's do that part first:
 
 ```bash
 $ mkdir src
 $ mv main.rs src/main.rs
+$ rm main.exe
 ```
 
-Note that since we're creating an executable, we used `main.rs`. If we
-want to make a library instead, we should use `lib.rs`. This convention is required
-for Cargo to successfully compile our projects, but it can be overridden if we wish. 
-Custom file locations for the entry point can be specified
-with a [`[lib]` or `[[bin]]`][crates-custom] key in the TOML file.
+Note that since we're creating an executable, we retain `main.rs` as the source
+filename. If we want to make a library instead, we should use `lib.rs`. This
+convention is required for Cargo to successfully compile our projects, but it
+can be overridden if we wish.  Custom file locations for the entry point can be
+specified with a [`[lib]` or `[[bin]]`][crates-custom] key in the TOML file.
 
 [crates-custom]: http://doc.crates.io/manifest.html#configuring-a-target
 
@@ -63,8 +64,8 @@ version = "0.0.1"
 authors = [ "Your name <you@example.com>" ]
 ```
 
-This file is in the [TOML][toml] format. TOML is similar to INI, but has some 
-extra goodies. According to the TOML docs, 
+This file is in the [TOML][toml] format. TOML is similar to INI, but has some
+extra goodies. According to the TOML docs,
 
 > TOML aims to be a minimal configuration file format that's easy to read due
 > to obvious semantics. TOML is designed to map unambiguously to a hash table.
@@ -73,7 +74,8 @@ extra goodies. According to the TOML docs,
 
 [toml]: https://github.com/toml-lang/toml
 
-Once you have this file in place, we should be ready to build! To do so, run:
+Once you have this file in place in your project's root directory, we should be
+ready to build! To do so, run:
 
 ```bash
 $ cargo build
