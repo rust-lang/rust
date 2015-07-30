@@ -43,6 +43,9 @@
 #[cfg(all(target_os = "nacl", target_arch = "le32"))]
 use {cmp, ops};
 
+// The PNaCl ABI doesn't currently allow the <i64 x 2>, <u64 x 2>, <f64 x 2>
+// simd types (i64x2, u64x2, and f64x2, respectively). So, these are a poor
+// man's fix so the run-pass simd tests can pass.
 macro_rules! pnacl_abi_workaround_arithmetic (
     ($ty:ident) => {
         #[cfg(all(target_os = "nacl", target_arch = "le32"))]
@@ -169,7 +172,6 @@ pub struct i16x8(pub i16, pub i16, pub i16, pub i16,
 #[repr(C)]
 pub struct i32x4(pub i32, pub i32, pub i32, pub i32);
 
-// The PNaCl ABI doesn't currently allow this type.
 #[cfg_attr(not(all(target_os = "nacl", target_arch = "le32")), simd)]
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
@@ -197,7 +199,6 @@ pub struct u16x8(pub u16, pub u16, pub u16, pub u16,
 #[repr(C)]
 pub struct u32x4(pub u32, pub u32, pub u32, pub u32);
 
-// The PNaCl ABI doesn't currently allow this type.
 #[cfg_attr(not(all(target_os = "nacl", target_arch = "le32")), simd)]
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
@@ -210,7 +211,6 @@ pnacl_abi_workaround_bit!(u64x2);
 #[repr(C)]
 pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
 
-// The PNaCl ABI doesn't currently allow this type.
 #[cfg_attr(not(all(target_os = "nacl", target_arch = "le32")), simd)]
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
