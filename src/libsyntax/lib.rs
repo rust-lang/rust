@@ -32,7 +32,6 @@
 #![feature(libc)]
 #![feature(ref_slice)]
 #![feature(rustc_private)]
-#![feature(set_stdio)]
 #![feature(staged_api)]
 #![feature(str_char)]
 #![feature(str_escape)]
@@ -55,10 +54,10 @@ extern crate serialize as rustc_serialize; // used by deriving
 macro_rules! panictry {
     ($e:expr) => ({
         use std::result::Result::{Ok, Err};
-        use diagnostic::FatalError;
+        use diagnostic::{FatalError, raise_fatal_error};
         match $e {
             Ok(e) => e,
-            Err(FatalError) => panic!(FatalError)
+            Err(FatalError) => raise_fatal_error(),
         }
     })
 }

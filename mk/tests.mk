@@ -612,8 +612,10 @@ define DEF_CTEST_VARS
 # $(3) is the host triple to test
 
 # Prerequisites for compiletest tests
+# Note that we always use a stage2 compiletest binary; a stage1
+# compiletest is unusable because stage1 binaries can't panic.
 TEST_SREQ$(1)_T_$(2)_H_$(3) = \
-	$$(HBIN$(1)_H_$(3))/compiletest$$(X_$(3)) \
+	$$(HBIN2_H_$(3))/compiletest$$(X_$(3)) \
 	$$(SREQ$(1)_T_$(2)_H_$(3))
 
 # Rules for the cfail/rfail/rpass/bench/perf test runner
@@ -735,7 +737,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
                 $$(CTEST_DEPS_$(4)_$(1)-T-$(2)-H-$(3))
 	@$$(call E, run $(4) [$(2)]: $$<)
 	$$(Q)touch $$@.start_time
-	$$(Q)$$(call CFG_RUN_CTEST_$(2),$(1),$$<,$(3)) \
+	$$(Q)$$(call CFG_RUN_CTEST_$(2),2,$$<,$(3)) \
 		$$(CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4)) \
 		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
                 && touch -r $$@.start_time $$@ && rm $$@.start_time

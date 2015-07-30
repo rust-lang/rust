@@ -130,11 +130,15 @@ impl SpanHandler {
     }
     pub fn span_fatal(&self, sp: Span, msg: &str) -> FatalError {
         self.handler.emit(Some((&self.cm, sp)), msg, Fatal);
-        return FatalError;
+        // FIXME: This API should probably be changed so it returns `!`,
+        // like its counterpart in librustc.
+        raise_fatal_error();
     }
     pub fn span_fatal_with_code(&self, sp: Span, msg: &str, code: &str) -> FatalError {
         self.handler.emit_with_code(Some((&self.cm, sp)), msg, code, Fatal);
-        return FatalError;
+        // FIXME: This API should probably be changed so it returns `!`,
+        // like its counterpart in librustc.
+        raise_fatal_error();
     }
     pub fn span_err(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&self.cm, sp)), msg, Error);
@@ -208,11 +212,7 @@ impl Handler {
     }
     pub fn fatal(&self, msg: &str) -> ! {
         self.emit.borrow_mut().emit(None, msg, None, Fatal);
-
-        // Suppress the fatal error message from the panic below as we've
-        // already terminated in our own "legitimate" fashion.
-        io::set_panic(Box::new(io::sink()));
-        panic!(FatalError);
+        raise_fatal_error();
     }
     pub fn err(&self, msg: &str) {
         self.emit.borrow_mut().emit(None, msg, None, Error);
@@ -822,6 +822,21 @@ pub fn expect<T, M>(diag: &SpanHandler, opt: Option<T>, msg: M) -> T where
         Some(t) => t,
         None => diag.handler().bug(&msg()),
     }
+}
+
+// Note: this is necessary to make stage1 compilers usable; don't
+// remove on snapshot.
+#[cfg(stage0)]
+pub fn raise_fatal_error() -> ! {
+    // A stage1 compiler has panics disabled... so as a hack, just kill the
+    // whole process.
+    use std;
+    std::process::exit(101);
+}
+
+#[cfg(not(stage0))]
+pub fn raise_fatal_error() -> ! {
+    panic!(FatalError);
 }
 
 #[cfg(test)]

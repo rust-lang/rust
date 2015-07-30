@@ -76,13 +76,15 @@ impl Session {
         if self.opts.treat_err_as_bug {
             self.span_bug(sp, msg);
         }
-        panic!(self.diagnostic().span_fatal(sp, msg))
+        let _ = self.diagnostic().span_fatal(sp, msg);
+        diagnostic::raise_fatal_error();
     }
     pub fn span_fatal_with_code(&self, sp: Span, msg: &str, code: &str) -> ! {
         if self.opts.treat_err_as_bug {
             self.span_bug(sp, msg);
         }
-        panic!(self.diagnostic().span_fatal_with_code(sp, msg, code))
+        let _ = self.diagnostic().span_fatal_with_code(sp, msg, code);
+        diagnostic::raise_fatal_error();
     }
     pub fn fatal(&self, msg: &str) -> ! {
         if self.opts.treat_err_as_bug {
@@ -454,7 +456,7 @@ pub fn expect<T, M>(sess: &Session, opt: Option<T>, msg: M) -> T where
 pub fn early_error(msg: &str) -> ! {
     let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
     emitter.emit(None, msg, None, diagnostic::Fatal);
-    panic!(diagnostic::FatalError);
+    diagnostic::raise_fatal_error();
 }
 
 pub fn early_warn(msg: &str) {
