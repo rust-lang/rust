@@ -29,13 +29,14 @@ use test::{TestOptions, Collector};
 /// Separate any lines at the start of the file that begin with `%`.
 fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
     let mut metadata = Vec::new();
+    let mut count = 0;
     for line in s.lines() {
         if line.starts_with("%") {
             // remove %<whitespace>
-            metadata.push(line[1..].trim_left())
+            metadata.push(line[1..].trim_left());
+            count += line.len() + 1;
         } else {
-            let line_start_byte = s.find(line).unwrap();
-            return (metadata, &s[line_start_byte..]);
+            return (metadata, &s[count..]);
         }
     }
     // if we're here, then all lines were metadata % lines.
