@@ -273,16 +273,6 @@ endif
 LLVM_COMPONENTS=x86 arm aarch64 mips powerpc ipo bitreader bitwriter linker asmparser mcjit \
                 interpreter instrumentation
 
-define DEF_ADD_LLVM_TARGET_COMPONENTS
-LLVM_COMPONENTS += $$(LLVM_EXTRA_COMPONENTS_$(1))
-endef
-
-$(foreach target,$(CFG_TARGET), \
-  $(eval $(call DEF_ADD_LLVM_TARGET_COMPONENTS,$(target))))
-
-# deduplicate components:
-LLVM_COMPONENTS:=$(shell echo $(LLVM_COMPONENTS) | tr ' ' '\n' | awk '!a[$$0]++' | tr '\n' ' ')
-
 ifneq ($(CFG_LLVM_ROOT),)
 # Ensure we only try to link components that the installed LLVM actually has:
 LLVM_COMPONENTS:=$(filter $(shell $(CFG_LLVM_ROOT)/bin/llvm-config$(X_$(CFG_BUILD)) --components),\
@@ -322,8 +312,7 @@ LLVM_INCDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --includedir)
 LLVM_LIBDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libdir)
 LLVM_LIBDIR_RUSTFLAGS_$(1)=-L "$$(LLVM_LIBDIR_$(1))"
 
-LLVM_LIBS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libs $$(filter-out $$(LLVM_DISABLED_TARGETS_$(1)), \
-                                                           $$(LLVM_COMPONENTS))
+LLVM_LIBS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libs $$(LLVM_COMPONENTS))
 LLVM_LDFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --ldflags)
 
 ifeq ($$(findstring freebsd,$(1)),freebsd)
