@@ -85,6 +85,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("on_unimplemented", "1.0.0", Active),
     ("simd_ffi", "1.0.0", Active),
     ("allocator", "1.0.0", Active),
+    ("linked_from", "1.3.0", Active),
 
     ("if_let", "1.0.0", Accepted),
     ("while_let", "1.0.0", Accepted),
@@ -267,6 +268,10 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
 
     ("fundamental", Gated("fundamental",
                           "the `#[fundamental]` attribute \
+                           is an experimental feature")),
+
+    ("linked_from", Gated("linked_from",
+                          "the `#[linked_from]` attribute \
                            is an experimental feature")),
 
     // FIXME: #14408 whitelist docs since rustdoc looks at them
