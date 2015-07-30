@@ -72,7 +72,7 @@
 
 use self::Ordering::*;
 
-use marker::Sync;
+use marker::{Send, Sync};
 
 use intrinsics;
 use cell::UnsafeCell;
@@ -134,6 +134,7 @@ impl<T> Default for AtomicPtr<T> {
     }
 }
 
+unsafe impl<T> Send for AtomicPtr<T> {}
 unsafe impl<T> Sync for AtomicPtr<T> {}
 
 /// Atomic memory orderings
