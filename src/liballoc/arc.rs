@@ -78,15 +78,17 @@ use core::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
 use core::fmt;
 use core::cmp::Ordering;
 use core::mem::{align_of_val, size_of_val};
-use core::intrinsics::drop_in_place;
+use core::intrinsics::{drop_in_place, abort};
 use core::mem;
 use core::nonzero::NonZero;
 use core::ops::{Deref, CoerceUnsized};
 use core::ptr;
 use core::marker::Unsize;
 use core::hash::{Hash, Hasher};
-use core::usize;
+use core::{usize, isize};
 use heap::deallocate;
+
+const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 
 /// An atomically reference counted wrapper for shared state.
 ///
@@ -312,7 +314,21 @@ impl<T: ?Sized> Clone for Arc<T> {
         // another must already provide any required synchronization.
         //
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        self.inner().strong.fetch_add(1, Relaxed);
+        let old_size = self.inner().strong.fetch_add(1, Relaxed);
+
+        // However we need to guard against massive refcounts in case someone
+        // is `mem::forget`ing Arcs. If we don't do this the count can overflow
+        // and users will use-after free. We racily saturate to `isize::MAX` on
+        // the assumption that there aren't ~2 billion threads incrementing
+        // the reference count at once. This branch will never be taken in
+        // any realistic program.
+        //
+        // We abort because such a program is incredibly degenerate, and we
+        // don't care to support it.
+        if old_size > MAX_REFCOUNT {
+            unsafe { abort(); }
+        }
+
         Arc { _ptr: self._ptr }
     }
 }
@@ -617,7 +633,13 @@ impl<T: ?Sized> Clone for Weak<T> {
         // fetch_add (ignoring the lock) because the weak count is only locked
         // where are *no other* weak pointers in existence. (So we can't be
         // running this code in that case).
-        self.inner().weak.fetch_add(1, Relaxed);
+        let old_size = self.inner().weak.fetch_add(1, Relaxed);
+
+        // See comments in Arc::clone() for why we do this (for mem::forget).
+        if old_size > MAX_REFCOUNT {
+            unsafe { abort(); }
+        }
+
         return Weak { _ptr: self._ptr }
     }
 }
