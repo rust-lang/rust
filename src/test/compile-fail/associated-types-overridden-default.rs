@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(associated_consts)]
+#![feature(associated_type_defaults)]
 
 pub trait Tr {
     type Assoc = u8;
