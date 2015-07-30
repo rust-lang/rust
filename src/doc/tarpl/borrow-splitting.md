@@ -137,6 +137,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 Here's a mutable slice:
 
 ```rust
+# fn main() {}
 use std::mem;
 
 pub struct IterMut<'a, T: 'a>(&'a mut[T]);
@@ -170,6 +171,7 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 And here's a binary tree:
 
 ```rust
+# fn main() {}
 use std::collections::VecDeque;
 
 type Link<T> = Option<Box<Node<T>>>;
@@ -262,7 +264,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 }
 
 impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next_back(&mut self) -> Option<Self::Item> {
         loop {
             match self.0.back_mut().and_then(|node_it| node_it.next_back()) {
                 Some(State::Elem(elem)) => return Some(elem),

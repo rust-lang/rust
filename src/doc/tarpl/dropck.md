@@ -8,12 +8,12 @@ when we talked about `'a: 'b`, it was ok for `'a` to live *exactly* as long as
 gets dropped at the same time as another, right? This is why we used the
 following desugarring of `let` statements:
 
-```rust
+```rust,ignore
 let x;
 let y;
 ```
 
-```rust
+```rust,ignore
 {
     let x;
     {
@@ -25,7 +25,7 @@ let y;
 Each creates its own scope, clearly establishing that one drops before the
 other. However, what if we do the following?
 
-```rust
+```rust,ignore
 let (x, y) = (vec![], vec![]);
 ```
 

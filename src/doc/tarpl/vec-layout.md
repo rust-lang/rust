@@ -12,7 +12,6 @@ pub struct Vec<T> {
     cap: usize,
     len: usize,
 }
-
 # fn main() {}
 ```
 
@@ -69,6 +68,7 @@ impl<T> Deref for Unique<T> {
         unsafe { mem::transmute(&self.ptr) }
     }
 }
+# fn main() {}
 ```
 
 Unfortunately the mechanism for stating that your value is non-zero is
