@@ -98,8 +98,8 @@ use std::io;
 
 We’ll need to take user input, and then print the result as output. As such, we
 need the `io` library from the standard library. Rust only imports a few things
-into every program, [the ‘prelude’][prelude]. If it’s not in the prelude,
-you’ll have to `use` it directly.
+by default into every program, [the ‘prelude’][prelude]. If it’s not in the
+prelude, you’ll have to `use` it directly.
 
 [prelude]: ../std/prelude/index.html
 
