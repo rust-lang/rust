@@ -90,7 +90,7 @@ macro_rules! array_impls {
                 }
             }
 
-            //FIXME: Should be marked stable or unstable or what?
+            #[state(since = "1.3.0")]
             impl<T: Default> Default for [T; $N] {
                 fn default() -> [T; $N] {
                     [T::default(); $N]
