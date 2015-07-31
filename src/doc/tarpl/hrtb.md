@@ -55,7 +55,7 @@ fn main() {
 How on earth are we supposed to express the lifetimes on `F`'s trait bound? We
 need to provide some lifetime there, but the lifetime we care about can't be
 named until we enter the body of `call`! Also, that isn't some fixed lifetime;
-call works with *any* lifetime `&self` happens to have at that point.
+`call` works with *any* lifetime `&self` happens to have at that point.
 
 This job requires The Magic of Higher-Rank Trait Bounds (HRTBs). The way we
 desugar this is as follows:

@@ -80,7 +80,7 @@ loop {
     // because it relies on actual values.
     if true {
         // But it does understand that it will only be taken once because
-        // we *do* unconditionally break out of it. Therefore `x` doesn't
+        // we unconditionally break out of it. Therefore `x` doesn't
         // need to be marked as mutable.
         x = 0;
         break;

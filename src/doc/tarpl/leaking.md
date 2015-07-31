@@ -21,21 +21,21 @@ uselessly, holding on to its precious resources until the program terminates (at
 which point all those resources would have been reclaimed by the OS anyway).
 
 We may consider a more restricted form of leak: failing to drop a value that is
-unreachable. Rust also doesn't prevent this. In fact Rust has a *function for
+unreachable. Rust also doesn't prevent this. In fact Rust *has a function for
 doing this*: `mem::forget`. This function consumes the value it is passed *and
 then doesn't run its destructor*.
 
 In the past `mem::forget` was marked as unsafe as a sort of lint against using
 it, since failing to call a destructor is generally not a well-behaved thing to
 do (though useful for some special unsafe code). However this was generally
-determined to be an untenable stance to take: there are *many* ways to fail to
+determined to be an untenable stance to take: there are many ways to fail to
 call a destructor in safe code. The most famous example is creating a cycle of
 reference-counted pointers using interior mutability.
 
 It is reasonable for safe code to assume that destructor leaks do not happen, as
 any program that leaks destructors is probably wrong. However *unsafe* code
-cannot rely on destructors to be run to be *safe*. For most types this doesn't
-matter: if you leak the destructor then the type is *by definition*
+cannot rely on destructors to be run in order to be safe. For most types this
+doesn't matter: if you leak the destructor then the type is by definition
 inaccessible, so it doesn't matter, right? For instance, if you leak a `Box<u8>`
 then you waste some memory but that's hardly going to violate memory-safety.
 
@@ -64,7 +64,7 @@ uninitialized data! We could backshift all the elements in the Vec every time we
 remove a value, but this would have pretty catastrophic performance
 consequences.
 
-Instead, we would like Drain to *fix* the Vec's backing storage when it is
+Instead, we would like Drain to fix the Vec's backing storage when it is
 dropped. It should run itself to completion, backshift any elements that weren't
 removed (drain supports subranges), and then fix Vec's `len`. It's even
 unwinding-safe! Easy!
@@ -97,13 +97,13 @@ consistent state gives us Undefined Behaviour in safe code (making the API
 unsound).
 
 So what can we do? Well, we can pick a trivially consistent state: set the Vec's
-len to be 0 when we *start* the iteration, and fix it up if necessary in the
+len to be 0 when we start the iteration, and fix it up if necessary in the
 destructor. That way, if everything executes like normal we get the desired
 behaviour with minimal overhead. But if someone has the *audacity* to
 mem::forget us in the middle of the iteration, all that does is *leak even more*
-(and possibly leave the Vec in an *unexpected* but consistent state). Since
-we've accepted that mem::forget is safe, this is definitely safe. We call leaks
-causing more leaks a *leak amplification*.
+(and possibly leave the Vec in an unexpected but otherwise consistent state).
+Since we've accepted that mem::forget is safe, this is definitely safe. We call
+leaks causing more leaks a *leak amplification*.
 
 
 
@@ -167,16 +167,16 @@ impl<T> Drop for Rc<T> {
 }
 ```
 
-This code contains an implicit and subtle assumption: ref_count can fit in a
+This code contains an implicit and subtle assumption: `ref_count` can fit in a
 `usize`, because there can't be more than `usize::MAX` Rcs in memory. However
-this itself assumes that the ref_count accurately reflects the number of Rcs
-in memory, which we know is false with mem::forget. Using mem::forget we can
-overflow the ref_count, and then get it down to 0 with outstanding Rcs. Then we
-can happily use-after-free the inner data. Bad Bad Not Good.
+this itself assumes that the `ref_count` accurately reflects the number of Rcs
+in memory, which we know is false with `mem::forget`. Using `mem::forget` we can
+overflow the `ref_count`, and then get it down to 0 with outstanding Rcs. Then
+we can happily use-after-free the inner data. Bad Bad Not Good.
 
-This can be solved by *saturating* the ref_count, which is sound because
-decreasing the refcount by `n` still requires `n` Rcs simultaneously living
-in memory.
+This can be solved by just checking the `ref_count` and doing *something*. The
+standard library's stance is to just abort, because your program has become
+horribly degenerate. Also *oh my gosh* it's such a ridiculous corner case.
 
 
 
@@ -237,7 +237,7 @@ In principle, this totally works! Rust's ownership system perfectly ensures it!
 let mut data = Box::new(0);
 {
     let guard = thread::scoped(|| {
-        // This is at best a data race. At worst, it's *also* a use-after-free.
+        // This is at best a data race. At worst, it's also a use-after-free.
         *data += 1;
     });
     // Because the guard is forgotten, expiring the loan without blocking this

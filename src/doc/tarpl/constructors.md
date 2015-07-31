@@ -37,14 +37,14 @@ blindly memcopied to somewhere else in memory. This means pure on-the-stack-but-
 still-movable intrusive linked lists are simply not happening in Rust (safely).
 
 Assignment and copy constructors similarly don't exist because move semantics
-are the *only* semantics in Rust. At most `x = y` just moves the bits of y into
-the x variable. Rust *does* provide two facilities for providing C++'s copy-
+are the only semantics in Rust. At most `x = y` just moves the bits of y into
+the x variable. Rust does provide two facilities for providing C++'s copy-
 oriented semantics: `Copy` and `Clone`. Clone is our moral equivalent of a copy
 constructor, but it's never implicitly invoked. You have to explicitly call
 `clone` on an element you want to be cloned. Copy is a special case of Clone
 where the implementation is just "copy the bits". Copy types *are* implicitly
 cloned whenever they're moved, but because of the definition of Copy this just
-means *not* treating the old copy as uninitialized -- a no-op.
+means not treating the old copy as uninitialized -- a no-op.
 
 While Rust provides a `Default` trait for specifying the moral equivalent of a
 default constructor, it's incredibly rare for this trait to be used. This is

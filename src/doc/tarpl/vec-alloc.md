@@ -60,7 +60,7 @@ of memory at once (e.g. half the theoretical address space). As such it's
 like the standard library as much as possible, so we'll just kill the whole
 program.
 
-We said we don't want to use intrinsics, so doing *exactly* what `std` does is
+We said we don't want to use intrinsics, so doing exactly what `std` does is
 out. Instead, we'll call `std::process::exit` with some random number.
 
 ```rust
@@ -84,7 +84,7 @@ But Rust's only supported allocator API is so low level that we'll need to do a
 fair bit of extra work. We also need to guard against some special
 conditions that can occur with really large allocations or empty allocations.
 
-In particular, `ptr::offset` will cause us *a lot* of trouble, because it has
+In particular, `ptr::offset` will cause us a lot of trouble, because it has
 the semantics of LLVM's GEP inbounds instruction. If you're fortunate enough to
 not have dealt with this instruction, here's the basic story with GEP: alias
 analysis, alias analysis, alias analysis. It's super important to an optimizing
@@ -102,7 +102,7 @@ As a simple example, consider the following fragment of code:
 If the compiler can prove that `x` and `y` point to different locations in
 memory, the two operations can in theory be executed in parallel (by e.g.
 loading them into different registers and working on them independently).
-However in *general* the compiler can't do this because if x and y point to
+However the compiler can't do this in general because if x and y point to
 the same location in memory, the operations need to be done to the same value,
 and they can't just be merged afterwards.
 
@@ -118,7 +118,7 @@ possible.
 So that's what GEP's about, how can it cause us trouble?
 
 The first problem is that we index into arrays with unsigned integers, but
-GEP (and as a consequence `ptr::offset`) takes a *signed integer*. This means
+GEP (and as a consequence `ptr::offset`) takes a signed integer. This means
 that half of the seemingly valid indices into an array will overflow GEP and
 actually go in the wrong direction! As such we must limit all allocations to
 `isize::MAX` elements. This actually means we only need to worry about
@@ -138,7 +138,7 @@ However since this is a tutorial, we're not going to be particularly optimal
 here, and just unconditionally check, rather than use clever platform-specific
 `cfg`s.
 
-The other corner-case we need to worry about is *empty* allocations. There will
+The other corner-case we need to worry about is empty allocations. There will
 be two kinds of empty allocations we need to worry about: `cap = 0` for all T,
 and `cap > 0` for zero-sized types.
 
@@ -165,9 +165,9 @@ protected from being allocated anyway (a whole 4k, on many platforms).
 
 However what about for positive-sized types? That one's a bit trickier. In
 principle, you can argue that offsetting by 0 gives LLVM no information: either
-there's an element before the address, or after it, but it can't know which.
+there's an element before the address or after it, but it can't know which.
 However we've chosen to conservatively assume that it may do bad things. As
-such we *will* guard against this case explicitly.
+such we will guard against this case explicitly.
 
 *Phew*
 

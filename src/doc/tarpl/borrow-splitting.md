@@ -2,7 +2,7 @@
 
 The mutual exclusion property of mutable references can be very limiting when
 working with a composite structure. The borrow checker understands some basic
-stuff, but will fall over pretty easily. It *does* understand structs
+stuff, but will fall over pretty easily. It does understand structs
 sufficiently to know that it's possible to borrow disjoint fields of a struct
 simultaneously. So this works today:
 
@@ -50,7 +50,7 @@ to the same value.
 
 In order to "teach" borrowck that what we're doing is ok, we need to drop down
 to unsafe code. For instance, mutable slices expose a `split_at_mut` function
-that consumes the slice and returns *two* mutable slices. One for everything to
+that consumes the slice and returns two mutable slices. One for everything to
 the left of the index, and one for everything to the right. Intuitively we know
 this is safe because the slices don't overlap, and therefore alias. However
 the implementation requires some unsafety:
@@ -93,10 +93,10 @@ completely incompatible with this API, as it would produce multiple mutable
 references to the same object!
 
 However it actually *does* work, exactly because iterators are one-shot objects.
-Everything an IterMut yields will be yielded *at most* once, so we don't
-*actually* ever yield multiple mutable references to the same piece of data.
+Everything an IterMut yields will be yielded at most once, so we don't
+actually ever yield multiple mutable references to the same piece of data.
 
-Perhaps surprisingly, mutable iterators *don't* require unsafe code to be
+Perhaps surprisingly, mutable iterators don't require unsafe code to be
 implemented for many types!
 
 For instance here's a singly linked list:

@@ -18,7 +18,7 @@ fn main() {
 ```
 
 One might expect it to compile. We call `mutate_and_share`, which mutably borrows
-`foo` *temporarily*, but then returns *only* a shared reference. Therefore we
+`foo` temporarily, but then returns only a shared reference. Therefore we
 would expect `foo.share()` to succeed as `foo` shouldn't be mutably borrowed.
 
 However when we try to compile it:
@@ -69,7 +69,7 @@ due to the lifetime of `loan` and mutate_and_share's signature. Then when we
 try to call `share`, and it sees we're trying to alias that `&'c mut foo` and
 blows up in our face!
 
-This program is clearly correct according to the reference semantics we *actually*
+This program is clearly correct according to the reference semantics we actually
 care about, but the lifetime system is too coarse-grained to handle that.
 
 
