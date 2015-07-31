@@ -8,20 +8,19 @@ captures this with through the `Send` and `Sync` traits.
 * A type is Send if it is safe to send it to another thread. A type is Sync if
 * it is safe to share between threads (`&T` is Send).
 
-Send and Sync are *very* fundamental to Rust's concurrency story. As such, a
+Send and Sync are fundamental to Rust's concurrency story. As such, a
 substantial amount of special tooling exists to make them work right. First and
-foremost, they're *unsafe traits*. This means that they are unsafe *to
-implement*, and other unsafe code can *trust* that they are correctly
+foremost, they're [unsafe traits][]. This means that they are unsafe to
+implement, and other unsafe code can  that they are correctly
 implemented. Since they're *marker traits* (they have no associated items like
 methods), correctly implemented simply means that they have the intrinsic
 properties an implementor should have. Incorrectly implementing Send or Sync can
 cause Undefined Behaviour.
 
-Send and Sync are also what Rust calls *opt-in builtin traits*. This means that,
-unlike every other trait, they are *automatically* derived: if a type is
-composed entirely of Send or Sync types, then it is Send or Sync. Almost all
-primitives are Send and Sync, and as a consequence pretty much all types you'll
-ever interact with are Send and Sync.
+Send and Sync are also automatically derived traits. This means that, unlike
+every other trait, if a type is composed entirely of Send or Sync types, then it
+is Send or Sync. Almost all primitives are Send and Sync, and as a consequence
+pretty much all types you'll ever interact with are Send and Sync.
 
 Major exceptions include:
 
@@ -37,13 +36,12 @@ sense, one could argue that it would be "fine" for them to be marked as thread
 safe.
 
 However it's important that they aren't thread safe to prevent types that
-*contain them* from being automatically marked as thread safe. These types have
+contain them from being automatically marked as thread safe. These types have
 non-trivial untracked ownership, and it's unlikely that their author was
 necessarily thinking hard about thread safety. In the case of Rc, we have a nice
-example of a type that contains a `*mut` that is *definitely* not thread safe.
+example of a type that contains a `*mut` that is definitely not thread safe.
 
-Types that aren't automatically derived can *opt-in* to Send and Sync by simply
-implementing them:
+Types that aren't automatically derived can simply implement them if desired:
 
 ```rust
 struct MyBox(*mut u8);
@@ -52,12 +50,13 @@ unsafe impl Send for MyBox {}
 unsafe impl Sync for MyBox {}
 ```
 
-In the *incredibly rare* case that a type is *inappropriately* automatically
-derived to be Send or Sync, then one can also *unimplement* Send and Sync:
+In the *incredibly rare* case that a type is inappropriately automatically
+derived to be Send or Sync, then one can also unimplement Send and Sync:
 
 ```rust
 #![feature(optin_builtin_traits)]
 
+// I have some magic semantics for some synchronization primitive!
 struct SpecialThreadToken(u8);
 
 impl !Send for SpecialThreadToken {}
@@ -77,3 +76,5 @@ largely behave like an `&` or `&mut` into the collection.
 
 TODO: better explain what can or can't be Send or Sync. Sufficient to appeal
 only to data races?
+
+[unsafe traits]: safe-unsafe-meaning.html

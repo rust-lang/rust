@@ -32,14 +32,14 @@ pub fn push(&mut self, elem: T) {
 
 Easy! How about `pop`? Although this time the index we want to access is
 initialized, Rust won't just let us dereference the location of memory to move
-the value out, because that *would* leave the memory uninitialized! For this we
+the value out, because that would leave the memory uninitialized! For this we
 need `ptr::read`, which just copies out the bits from the target address and
 intrprets it as a value of type T. This will leave the memory at this address
-*logically* uninitialized, even though there is in fact a perfectly good instance
+logically uninitialized, even though there is in fact a perfectly good instance
 of T there.
 
 For `pop`, if the old len is 1, we want to read out of the 0th index. So we
-should offset by the *new* len.
+should offset by the new len.
 
 ```rust,ignore
 pub fn pop(&mut self) -> Option<T> {
