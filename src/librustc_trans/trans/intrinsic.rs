@@ -1496,5 +1496,35 @@ fn generic_simd_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         require!(false, "SIMD cast intrinsic monomorphised with incompatible cast");
     }
+    macro_rules! arith {
+        ($($name: ident: $($($p: ident),* => $call: expr),*;)*) => {
+            $(
+                if name == stringify!($name) {
+                    let in_ = arg_tys[0].simd_type(tcx);
+                    match in_.sty {
+                        $(
+                            $(ty::$p(_))|* => {
+                                return $call(bcx, llargs[0], llargs[1], call_debug_location)
+                            }
+                            )*
+                        _ => {},
+                    }
+                    require!(false,
+                             "{} intrinsic monomorphised with invalid type",
+                             name)
+                })*
+        }
+    }
+    arith! {
+        simd_add: TyUint, TyInt => Add, TyFloat => FAdd;
+        simd_sub: TyUint, TyInt => Sub, TyFloat => FSub;
+        simd_mul: TyUint, TyInt => Mul, TyFloat => FMul;
+        simd_div: TyFloat => FDiv;
+        simd_shl: TyUint, TyInt => Shl;
+        simd_shr: TyUint => LShr, TyInt => AShr;
+        simd_and: TyUint, TyInt => And;
+        simd_or: TyUint, TyInt => Or;
+        simd_xor: TyUint, TyInt => Xor;
+    }
     bcx.sess().span_bug(call_info.span, "unknown SIMD intrinsic");
 }
