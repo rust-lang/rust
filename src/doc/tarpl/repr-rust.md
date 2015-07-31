@@ -68,12 +68,11 @@ struct B {
 ```
 
 Rust *does* guarantee that two instances of A have their data laid out in
-exactly the same way. However Rust *does not* guarantee that an instance of A
-has the same field ordering or padding as an instance of B (in practice there's
-no particular reason why they wouldn't, other than that its not currently
-guaranteed).
+exactly the same way. However Rust *does not* currently guarantee that an
+instance of A has the same field ordering or padding as an instance of B, though
+in practice there's no reason why they wouldn't.
 
-With A and B as written, this is basically nonsensical, but several other
+With A and B as written, this point would seem to be pedantic, but several other
 features of Rust make it desirable for the language to play with data layout in
 complex ways.
 
