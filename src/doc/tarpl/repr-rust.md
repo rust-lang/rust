@@ -144,7 +144,7 @@ by using null as a special value. The net result is that
 There are many types in Rust that are, or contain, non-nullable pointers such as
 `Box<T>`, `Vec<T>`, `String`, `&T`, and `&mut T`. Similarly, one can imagine
 nested enums pooling their tags into a single discriminant, as they are by
-definition known to have a limited range of valid values. In principle enums can
+definition known to have a limited range of valid values. In principle enums could
 use fairly elaborate algorithms to cache bits throughout nested types with
 special constrained representations. As such it is *especially* desirable that
 we leave enum layout unspecified today.
