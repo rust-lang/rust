@@ -27,8 +27,8 @@ use rustc::middle::mem_categorization as mc;
 use std::mem;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
+use rustc_front::attr::AttrMetaMethods;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 enum Fragment {

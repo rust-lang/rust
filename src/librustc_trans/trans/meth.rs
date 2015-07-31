@@ -37,9 +37,13 @@ use trans::type_of::*;
 use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty::MethodCall;
 
-use syntax::{ast, attr, visit};
+use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 use syntax::ptr::P;
+
+use rustc_front::attr;
+use rustc_front::visit;
+use rustc_front::hir;
 
 // drop_glue pointer, size, align.
 const VTABLE_OFFSET: usize = 3;
@@ -50,8 +54,8 @@ const VTABLE_OFFSET: usize = 3;
 /// see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 pub fn trans_impl(ccx: &CrateContext,
                   name: ast::Ident,
-                  impl_items: &[P<ast::ImplItem>],
-                  generics: &ast::Generics,
+                  impl_items: &[P<hir::ImplItem>],
+                  generics: &hir::Generics,
                   id: ast::NodeId) {
     let _icx = push_ctxt("meth::trans_impl");
     let tcx = ccx.tcx();
@@ -65,7 +69,7 @@ pub fn trans_impl(ccx: &CrateContext,
     if !generics.ty_params.is_empty() {
         for impl_item in impl_items {
             match impl_item.node {
-                ast::MethodImplItem(..) => {
+                hir::MethodImplItem(..) => {
                     visit::walk_impl_item(&mut v, impl_item);
                 }
                 _ => {}
@@ -75,7 +79,7 @@ pub fn trans_impl(ccx: &CrateContext,
     }
     for impl_item in impl_items {
         match impl_item.node {
-            ast::MethodImplItem(ref sig, ref body) => {
+            hir::MethodImplItem(ref sig, ref body) => {
                 if sig.generics.ty_params.is_empty() {
                     let trans_everywhere = attr::requests_inline(&impl_item.attrs);
                     for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
@@ -98,7 +102,7 @@ pub fn trans_impl(ccx: &CrateContext,
 
 pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                        method_call: MethodCall,
-                                       self_expr: Option<&ast::Expr>,
+                                       self_expr: Option<&hir::Expr>,
                                        arg_cleanup_scope: cleanup::ScopeId)
                                        -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_method_callee");
@@ -289,7 +293,7 @@ fn method_with_name(ccx: &CrateContext, impl_id: DefId, name: ast::Name)
 
 fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           method_call: MethodCall,
-                                          self_expr: Option<&ast::Expr>,
+                                          self_expr: Option<&hir::Expr>,
                                           trait_id: DefId,
                                           method_id: DefId,
                                           method_ty: Ty<'tcx>,
@@ -416,7 +420,7 @@ fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   opaque_fn_ty: Ty<'tcx>,
                                   vtable_index: usize,
-                                  self_expr: &ast::Expr,
+                                  self_expr: &hir::Expr,
                                   arg_cleanup_scope: cleanup::ScopeId)
                                   -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_trait_callee");
@@ -769,7 +773,7 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 fn opaque_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>, method_ty: &ty::BareFnTy<'tcx>)
                           -> &'tcx ty::BareFnTy<'tcx> {
     let mut inputs = method_ty.sig.0.inputs.clone();
-    inputs[0] = tcx.mk_mut_ptr(tcx.mk_mach_int(ast::TyI8));
+    inputs[0] = tcx.mk_mut_ptr(tcx.mk_mach_int(hir::TyI8));
 
     tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: method_ty.unsafety,

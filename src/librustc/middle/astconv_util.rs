@@ -16,7 +16,7 @@
 
 use middle::def;
 use middle::ty::{self, Ty};
-use syntax::ast;
+use rustc_front::hir as ast;
 
 pub const NO_REGIONS: usize = 1;
 pub const NO_TPS: usize = 2;

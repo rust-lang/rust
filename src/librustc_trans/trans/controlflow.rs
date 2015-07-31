@@ -25,13 +25,15 @@ use trans::expr;
 use trans;
 use middle::ty;
 
+use rustc_front::hir;
+use rustc_front::util as ast_util;
+
 use syntax::ast;
-use syntax::ast_util;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 
 pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
-                              s: &ast::Stmt)
+                              s: &hir::Stmt)
                               -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_stmt");
     let fcx = cx.fcx;
@@ -53,20 +55,19 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
     match s.node {
-        ast::StmtExpr(ref e, _) | ast::StmtSemi(ref e, _) => {
+        hir::StmtExpr(ref e, _) | hir::StmtSemi(ref e, _) => {
             bcx = trans_stmt_semi(bcx, &**e);
         }
-        ast::StmtDecl(ref d, _) => {
+        hir::StmtDecl(ref d, _) => {
             match d.node {
-                ast::DeclLocal(ref local) => {
+                hir::DeclLocal(ref local) => {
                     bcx = init_local(bcx, &**local);
                     debuginfo::create_local_var_metadata(bcx, &**local);
                 }
                 // Inner items are visited by `trans_item`/`trans_meth`.
-                ast::DeclItem(_) => {},
+                hir::DeclItem(_) => {},
             }
         }
-        ast::StmtMac(..) => cx.tcx().sess.bug("unexpanded macro")
     }
 
     bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, ast_util::stmt_id(s));
@@ -74,7 +75,7 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     return bcx;
 }
 
-pub fn trans_stmt_semi<'blk, 'tcx>(cx: Block<'blk, 'tcx>, e: &ast::Expr)
+pub fn trans_stmt_semi<'blk, 'tcx>(cx: Block<'blk, 'tcx>, e: &hir::Expr)
                                    -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_stmt_semi");
 
@@ -91,7 +92,7 @@ pub fn trans_stmt_semi<'blk, 'tcx>(cx: Block<'blk, 'tcx>, e: &ast::Expr)
 }
 
 pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                               b: &ast::Block,
+                               b: &hir::Block,
                                mut dest: expr::Dest)
                                -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_block");
@@ -145,9 +146,9 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             if_id: ast::NodeId,
-                            cond: &ast::Expr,
-                            thn: &ast::Block,
-                            els: Option<&ast::Expr>,
+                            cond: &hir::Expr,
+                            thn: &hir::Block,
+                            els: Option<&hir::Expr>,
                             dest: expr::Dest)
                             -> Block<'blk, 'tcx> {
     debug!("trans_if(bcx={}, if_id={}, cond={:?}, thn={}, dest={})",
@@ -211,9 +212,9 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_while<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                               loop_expr: &ast::Expr,
-                               cond: &ast::Expr,
-                               body: &ast::Block)
+                               loop_expr: &hir::Expr,
+                               cond: &hir::Expr,
+                               body: &hir::Block)
                                -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_while");
 
@@ -260,8 +261,8 @@ pub fn trans_while<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                              loop_expr: &ast::Expr,
-                              body: &ast::Block)
+                              loop_expr: &hir::Expr,
+                              body: &hir::Block)
                               -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_loop");
 
@@ -303,7 +304,7 @@ pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    expr: &ast::Expr,
+                                    expr: &hir::Expr,
                                     opt_label: Option<ast::Ident>,
                                     exit: usize)
                                     -> Block<'blk, 'tcx> {
@@ -336,22 +337,22 @@ pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_break<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                               expr: &ast::Expr,
+                               expr: &hir::Expr,
                                label_opt: Option<ast::Ident>)
                                -> Block<'blk, 'tcx> {
     return trans_break_cont(bcx, expr, label_opt, cleanup::EXIT_BREAK);
 }
 
 pub fn trans_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                              expr: &ast::Expr,
+                              expr: &hir::Expr,
                               label_opt: Option<ast::Ident>)
                               -> Block<'blk, 'tcx> {
     return trans_break_cont(bcx, expr, label_opt, cleanup::EXIT_LOOP);
 }
 
 pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                             return_expr: &ast::Expr,
-                             retval_expr: Option<&ast::Expr>)
+                             return_expr: &hir::Expr,
+                             retval_expr: Option<&hir::Expr>)
                              -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_ret");
 

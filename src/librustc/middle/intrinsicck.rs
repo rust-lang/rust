@@ -19,8 +19,8 @@ use std::fmt;
 use syntax::abi::RustIntrinsic;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::visit::{FnKind, Visitor};
-use syntax::visit;
+use rustc_front::visit::{self, Visitor, FnKind};
+use rustc_front::hir;
 
 pub fn check_crate(tcx: &ctxt) {
     let mut visitor = IntrinsicCheckingVisitor {
@@ -216,8 +216,8 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v ast::FnDecl,
-                b: &'v ast::Block, s: Span, id: ast::NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
+                b: &'v hir::Block, s: Span, id: ast::NodeId) {
         match fk {
             FnKind::ItemFn(..) | FnKind::Method(..) => {
                 let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
@@ -232,8 +232,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
 
     }
 
-    fn visit_expr(&mut self, expr: &ast::Expr) {
-        if let ast::ExprPath(..) = expr.node {
+    fn visit_expr(&mut self, expr: &hir::Expr) {
+        if let hir::ExprPath(..) = expr.node {
             match self.tcx.resolve_expr(expr) {
                 DefFn(did, _) if self.def_id_is_transmute(did) => {
                     let typ = self.tcx.node_id_to_type(expr.id);

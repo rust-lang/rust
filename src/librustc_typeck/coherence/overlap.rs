@@ -16,8 +16,9 @@ use middle::traits;
 use middle::ty;
 use middle::infer::{self, new_infer_ctxt};
 use syntax::ast;
-use syntax::visit;
 use syntax::codemap::Span;
+use rustc_front::hir;
+use rustc_front::visit;
 use util::nodemap::DefIdMap;
 
 pub fn check(tcx: &ty::ctxt) {
@@ -170,9 +171,9 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
 
 
 impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
-    fn visit_item(&mut self, item: &'v ast::Item) {
+    fn visit_item(&mut self, item: &'v hir::Item) {
         match item.node {
-            ast::ItemDefaultImpl(_, _) => {
+            hir::ItemDefaultImpl(_, _) => {
                 // look for another default impl; note that due to the
                 // general orphan/coherence rules, it must always be
                 // in this crate.
@@ -188,7 +189,7 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                     None => { }
                 }
             }
-            ast::ItemImpl(_, _, _, Some(_), ref self_ty, _) => {
+            hir::ItemImpl(_, _, _, Some(_), ref self_ty, _) => {
                 let impl_def_id = DefId::local(item.id);
                 let trait_ref = self.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;

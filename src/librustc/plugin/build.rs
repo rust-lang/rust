@@ -11,19 +11,20 @@
 //! Used by `rustc` when compiling a plugin crate.
 
 use syntax::ast;
-use syntax::attr;
 use syntax::codemap::Span;
 use syntax::diagnostic;
-use syntax::visit;
-use syntax::visit::Visitor;
+use rustc_front::visit;
+use rustc_front::visit::Visitor;
+use rustc_front::hir;
+use rustc_front::attr;
 
 struct RegistrarFinder {
     registrars: Vec<(ast::NodeId, Span)> ,
 }
 
 impl<'v> Visitor<'v> for RegistrarFinder {
-    fn visit_item(&mut self, item: &ast::Item) {
-        if let ast::ItemFn(..) = item.node {
+    fn visit_item(&mut self, item: &hir::Item) {
+        if let hir::ItemFn(..) = item.node {
             if attr::contains_name(&item.attrs,
                                    "plugin_registrar") {
                 self.registrars.push((item.id, item.span));
@@ -36,7 +37,8 @@ impl<'v> Visitor<'v> for RegistrarFinder {
 
 /// Find the function marked with `#[plugin_registrar]`, if any.
 pub fn find_plugin_registrar(diagnostic: &diagnostic::SpanHandler,
-                             krate: &ast::Crate) -> Option<ast::NodeId> {
+                             krate: &hir::Crate)
+                             -> Option<ast::NodeId> {
     let mut finder = RegistrarFinder { registrars: Vec::new() };
     visit::walk_crate(&mut finder, krate);
 

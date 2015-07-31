@@ -356,12 +356,14 @@ pub struct GatedCfg {
     span: Span,
     index: usize,
 }
+
 impl Ord for GatedCfg {
     fn cmp(&self, other: &GatedCfg) -> cmp::Ordering {
         (self.span.lo.0, self.span.hi.0, self.index)
             .cmp(&(other.span.lo.0, other.span.hi.0, other.index))
     }
 }
+
 impl PartialOrd for GatedCfg {
     fn partial_cmp(&self, other: &GatedCfg) -> Option<cmp::Ordering> {
         Some(self.cmp(other))

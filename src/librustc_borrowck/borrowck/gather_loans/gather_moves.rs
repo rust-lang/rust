@@ -22,6 +22,7 @@ use rustc::middle::ty;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
+use rustc_front::hir;
 
 struct GatherMoveInfo<'tcx> {
     id: ast::NodeId,
@@ -62,7 +63,7 @@ pub fn gather_move_from_expr<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 pub fn gather_match_variant<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       move_data: &MoveData<'tcx>,
                                       _move_error_collector: &MoveErrorCollector<'tcx>,
-                                      move_pat: &ast::Pat,
+                                      move_pat: &hir::Pat,
                                       cmt: mc::cmt<'tcx>,
                                       mode: euv::MatchMode) {
     let tcx = bccx.tcx;
@@ -93,10 +94,10 @@ pub fn gather_match_variant<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 pub fn gather_move_from_pat<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                       move_data: &MoveData<'tcx>,
                                       move_error_collector: &MoveErrorCollector<'tcx>,
-                                      move_pat: &ast::Pat,
+                                      move_pat: &hir::Pat,
                                       cmt: mc::cmt<'tcx>) {
     let pat_span_path_opt = match move_pat.node {
-        ast::PatIdent(_, ref path1, _) => {
+        hir::PatIdent(_, ref path1, _) => {
             Some(MoveSpanAndPath{span: move_pat.span,
                                  ident: path1.node})
         },

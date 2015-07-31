@@ -26,7 +26,9 @@ use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 use middle::def_id::DefId;
 use middle::pat_util;
 use middle::subst::{self, Substs};
-use rustc::ast_map;
+use rustc::front::map as hir_map;
+use rustc_front;
+use rustc_front::hir;
 use trans::{type_of, adt, machine, monomorphize};
 use trans::common::{self, CrateContext, FunctionContext, Block};
 use trans::_match::{BindingInfo, TransBindingMode};
@@ -207,7 +209,7 @@ impl<'tcx> TypeMap<'tcx> {
             },
             ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
                 unique_type_id.push('*');
-                if mutbl == ast::MutMutable {
+                if mutbl == hir::MutMutable {
                     unique_type_id.push_str("mut");
                 }
 
@@ -217,7 +219,7 @@ impl<'tcx> TypeMap<'tcx> {
             },
             ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
                 unique_type_id.push('&');
-                if mutbl == ast::MutMutable {
+                if mutbl == hir::MutMutable {
                     unique_type_id.push_str("mut");
                 }
 
@@ -251,7 +253,7 @@ impl<'tcx> TypeMap<'tcx> {
                                        &mut unique_type_id);
             },
             ty::TyBareFn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
-                if unsafety == ast::Unsafety::Unsafe {
+                if unsafety == hir::Unsafety::Unsafe {
                     unique_type_id.push_str("unsafe ");
                 }
 
@@ -525,7 +527,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 -> MetadataCreationResult {
     let data_ptr_type = cx.tcx().mk_ptr(ty::TypeAndMut {
         ty: element_type,
-        mutbl: ast::MutImmutable
+        mutbl: hir::MutImmutable
     });
 
     let element_type_metadata = type_metadata(cx, data_ptr_type, span);
@@ -932,22 +934,22 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyBool => ("bool".to_string(), DW_ATE_boolean),
         ty::TyChar => ("char".to_string(), DW_ATE_unsigned_char),
         ty::TyInt(int_ty) => match int_ty {
-            ast::TyIs => ("isize".to_string(), DW_ATE_signed),
-            ast::TyI8 => ("i8".to_string(), DW_ATE_signed),
-            ast::TyI16 => ("i16".to_string(), DW_ATE_signed),
-            ast::TyI32 => ("i32".to_string(), DW_ATE_signed),
-            ast::TyI64 => ("i64".to_string(), DW_ATE_signed)
+            hir::TyIs => ("isize".to_string(), DW_ATE_signed),
+            hir::TyI8 => ("i8".to_string(), DW_ATE_signed),
+            hir::TyI16 => ("i16".to_string(), DW_ATE_signed),
+            hir::TyI32 => ("i32".to_string(), DW_ATE_signed),
+            hir::TyI64 => ("i64".to_string(), DW_ATE_signed)
         },
         ty::TyUint(uint_ty) => match uint_ty {
-            ast::TyUs => ("usize".to_string(), DW_ATE_unsigned),
-            ast::TyU8 => ("u8".to_string(), DW_ATE_unsigned),
-            ast::TyU16 => ("u16".to_string(), DW_ATE_unsigned),
-            ast::TyU32 => ("u32".to_string(), DW_ATE_unsigned),
-            ast::TyU64 => ("u64".to_string(), DW_ATE_unsigned)
+            hir::TyUs => ("usize".to_string(), DW_ATE_unsigned),
+            hir::TyU8 => ("u8".to_string(), DW_ATE_unsigned),
+            hir::TyU16 => ("u16".to_string(), DW_ATE_unsigned),
+            hir::TyU32 => ("u32".to_string(), DW_ATE_unsigned),
+            hir::TyU64 => ("u64".to_string(), DW_ATE_unsigned)
         },
         ty::TyFloat(float_ty) => match float_ty {
-            ast::TyF32 => ("f32".to_string(), DW_ATE_float),
-            ast::TyF64 => ("f64".to_string(), DW_ATE_float),
+            hir::TyF32 => ("f32".to_string(), DW_ATE_float),
+            hir::TyF64 => ("f64".to_string(), DW_ATE_float),
         },
         _ => cx.sess().bug("debuginfo::basic_type_metadata - t is invalid type")
     };
@@ -1606,7 +1608,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         })
         .collect();
 
-    let discriminant_type_metadata = |inttype| {
+    let discriminant_type_metadata = |inttype: rustc_front::attr::IntType| {
         let disr_type_key = (enum_def_id, inttype);
         let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
                                                                  .borrow()
@@ -1854,10 +1856,10 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let var_item = cx.tcx().map.get(node_id);
 
     let (name, span) = match var_item {
-        ast_map::NodeItem(item) => {
+        hir_map::NodeItem(item) => {
             match item.node {
-                ast::ItemStatic(..) => (item.ident.name, item.span),
-                ast::ItemConst(..) => (item.ident.name, item.span),
+                hir::ItemStatic(..) => (item.ident.name, item.span),
+                hir::ItemConst(..) => (item.ident.name, item.span),
                 _ => {
                     cx.sess()
                       .span_bug(item.span,
@@ -1871,7 +1873,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
         },
         _ => cx.sess().bug(&format!("debuginfo::create_global_var_metadata() \
                                     - Captured var-id refers to unexpected \
-                                    ast_map variant: {:?}",
+                                    hir_map variant: {:?}",
                                    var_item))
     };
 
@@ -1912,7 +1914,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 /// This function assumes that there's a datum for each pattern component of the
 /// local in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
+pub fn create_local_var_metadata(bcx: Block, local: &hir::Local) {
     if bcx.unreachable.get() ||
        fn_should_be_ignored(bcx.fcx) ||
        bcx.sess().opts.debuginfo != FullDebugInfo  {
@@ -1973,9 +1975,9 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         None => {
             cx.sess().span_bug(span, "debuginfo::create_captured_var_metadata: node not found");
         }
-        Some(ast_map::NodeLocal(pat)) | Some(ast_map::NodeArg(pat)) => {
+        Some(hir_map::NodeLocal(pat)) | Some(hir_map::NodeArg(pat)) => {
             match pat.node {
-                ast::PatIdent(_, ref path1, _) => {
+                hir::PatIdent(_, ref path1, _) => {
                     path1.node.name
                 }
                 _ => {
@@ -1984,7 +1986,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 &format!(
                                 "debuginfo::create_captured_var_metadata() - \
                                  Captured var-id refers to unexpected \
-                                 ast_map variant: {:?}",
+                                 hir_map variant: {:?}",
                                  ast_item));
                 }
             }
@@ -1994,7 +1996,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
               .span_bug(span,
                         &format!("debuginfo::create_captured_var_metadata() - \
                                  Captured var-id refers to unexpected \
-                                 ast_map variant: {:?}",
+                                 hir_map variant: {:?}",
                                 ast_item));
         }
     };
@@ -2088,7 +2090,7 @@ pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// This function assumes that there's a datum for each pattern component of the
 /// argument in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
+pub fn create_argument_metadata(bcx: Block, arg: &hir::Arg) {
     if bcx.unreachable.get() ||
        fn_should_be_ignored(bcx.fcx) ||
        bcx.sess().opts.debuginfo != FullDebugInfo {

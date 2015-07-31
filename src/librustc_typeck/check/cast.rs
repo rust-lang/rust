@@ -47,14 +47,15 @@ use lint;
 use middle::cast::{CastKind, CastTy};
 use middle::def_id::DefId;
 use middle::ty::{self, Ty, HasTypeFlags};
-use syntax::ast;
-use syntax::ast::UintTy::{TyU8};
 use syntax::codemap::Span;
+use rustc_front::hir;
+use rustc_front::hir::UintTy::TyU8;
+
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
 pub struct CastCheck<'tcx> {
-    expr: ast::Expr,
+    expr: hir::Expr,
     expr_ty: Ty<'tcx>,
     cast_ty: Ty<'tcx>,
     span: Span,
@@ -108,7 +109,7 @@ enum CastError {
 }
 
 impl<'tcx> CastCheck<'tcx> {
-    pub fn new(expr: ast::Expr, expr_ty: Ty<'tcx>, cast_ty: Ty<'tcx>, span: Span)
+    pub fn new(expr: hir::Expr, expr_ty: Ty<'tcx>, cast_ty: Ty<'tcx>, span: Span)
                -> CastCheck<'tcx> {
         CastCheck {
             expr: expr,
@@ -244,7 +245,7 @@ impl<'tcx> CastCheck<'tcx> {
             (_, Int(Bool)) => Err(CastError::CastToBool),
 
             // * -> Char
-            (Int(U(ast::TyU8)), Int(Char)) => Ok(CastKind::U8CharCast), // u8-char-cast
+            (Int(U(hir::TyU8)), Int(Char)) => Ok(CastKind::U8CharCast), // u8-char-cast
             (_, Int(Char)) => Err(CastError::CastToChar),
 
             // prim -> float,ptr
@@ -340,7 +341,7 @@ impl<'tcx> CastCheck<'tcx> {
     {
         // array-ptr-cast.
 
-        if m_expr.mutbl == ast::MutImmutable && m_cast.mutbl == ast::MutImmutable {
+        if m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutImmutable {
             if let ty::TyArray(ety, _) = m_expr.ty.sty {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of

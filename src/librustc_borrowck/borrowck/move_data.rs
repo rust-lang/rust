@@ -29,6 +29,7 @@ use std::usize;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
+use rustc_front::hir;
 
 #[path="fragments.rs"]
 pub mod fragments;
@@ -601,8 +602,8 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                tcx: &'a ty::ctxt<'tcx>,
                cfg: &cfg::CFG,
                id_range: ast_util::IdRange,
-               decl: &ast::FnDecl,
-               body: &ast::Block)
+               decl: &hir::FnDecl,
+               body: &hir::Block)
                -> FlowedMoveData<'a, 'tcx> {
         let mut dfcx_moves =
             DataFlowContext::new(tcx,

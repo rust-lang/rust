@@ -17,7 +17,8 @@ use middle::subst::Substs;
 use trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
 use trans::common::*;
 
-use syntax::ast;
+use rustc_front::hir;
+
 
 fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
     -> Option<DefId> {
@@ -57,7 +58,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
             trans_item(ccx, item);
 
             let linkage = match item.node {
-                ast::ItemFn(_, _, _, _, ref generics, _) => {
+                hir::ItemFn(_, _, _, _, ref generics, _) => {
                     if generics.is_type_parameterized() {
                         // Generics have no symbol, so they can't be given any
                         // linkage.
@@ -78,7 +79,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
                         }
                     }
                 }
-                ast::ItemConst(..) => None,
+                hir::ItemConst(..) => None,
                 _ => unreachable!(),
             };
 
@@ -103,7 +104,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
 
             let mut my_id = 0;
             match item.node {
-                ast::ItemEnum(ref ast_def, _) => {
+                hir::ItemEnum(ref ast_def, _) => {
                     let ast_vs = &ast_def.variants;
                     let ty_vs = &ccx.tcx().lookup_adt_def(parent_id).variants;
                     assert_eq!(ast_vs.len(), ty_vs.len());
@@ -112,7 +113,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
                         ccx.external().borrow_mut().insert(ty_v.did, Some(ast_v.node.id));
                     }
                 }
-                ast::ItemStruct(ref struct_def, _) => {
+                hir::ItemStruct(ref struct_def, _) => {
                     match struct_def.ctor_id {
                         None => ccx.sess().bug("instantiate_inline: called on a \
                                                 non-tuple struct"),
@@ -158,7 +159,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
             ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
 
             // Translate monomorphic impl methods immediately.
-            if let ast::MethodImplItem(ref sig, ref body) = impl_item.node {
+            if let hir::MethodImplItem(ref sig, ref body) = impl_item.node {
                 let impl_tpt = ccx.tcx().lookup_item_type(impl_did);
                 if impl_tpt.generics.types.is_empty() &&
                         sig.generics.ty_params.is_empty() {

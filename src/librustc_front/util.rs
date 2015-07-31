@@ -1,0 +1,427 @@
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+use hir;
+use hir::*;
+use visit::{self, Visitor, FnKind};
+use syntax::ast_util;
+use syntax::ast::{Ident, NodeId, DUMMY_NODE_ID};
+use syntax::codemap::Span;
+use syntax::ptr::P;
+use syntax::owned_slice::OwnedSlice;
+
+pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool where F: FnMut(&Pat) -> bool {
+    // FIXME(#19596) this is a workaround, but there should be a better way
+    fn walk_pat_<G>(pat: &Pat, it: &mut G) -> bool where G: FnMut(&Pat) -> bool {
+        if !(*it)(pat) {
+            return false;
+        }
+
+        match pat.node {
+            PatIdent(_, _, Some(ref p)) => walk_pat_(&**p, it),
+            PatStruct(_, ref fields, _) => {
+                fields.iter().all(|field| walk_pat_(&*field.node.pat, it))
+            }
+            PatEnum(_, Some(ref s)) | PatTup(ref s) => {
+                s.iter().all(|p| walk_pat_(&**p, it))
+            }
+            PatBox(ref s) | PatRegion(ref s, _) => {
+                walk_pat_(&**s, it)
+            }
+            PatVec(ref before, ref slice, ref after) => {
+                before.iter().all(|p| walk_pat_(&**p, it)) &&
+                slice.iter().all(|p| walk_pat_(&**p, it)) &&
+                after.iter().all(|p| walk_pat_(&**p, it))
+            }
+            PatWild(_) | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
+            PatEnum(_, _) | PatQPath(_, _) => {
+                true
+            }
+        }
+    }
+
+    walk_pat_(pat, &mut it)
+}
+
+pub fn binop_to_string(op: BinOp_) -> &'static str {
+    match op {
+        BiAdd => "+",
+        BiSub => "-",
+        BiMul => "*",
+        BiDiv => "/",
+        BiRem => "%",
+        BiAnd => "&&",
+        BiOr => "||",
+        BiBitXor => "^",
+        BiBitAnd => "&",
+        BiBitOr => "|",
+        BiShl => "<<",
+        BiShr => ">>",
+        BiEq => "==",
+        BiLt => "<",
+        BiLe => "<=",
+        BiNe => "!=",
+        BiGe => ">=",
+        BiGt => ">"
+    }
+}
+
+/// Returns true if the given struct def is tuple-like; i.e. that its fields
+/// are unnamed.
+pub fn struct_def_is_tuple_like(struct_def: &hir::StructDef) -> bool {
+    struct_def.ctor_id.is_some()
+}
+
+pub fn stmt_id(s: &Stmt) -> NodeId {
+    match s.node {
+      StmtDecl(_, id) => id,
+      StmtExpr(_, id) => id,
+      StmtSemi(_, id) => id,
+    }
+}
+
+pub fn lazy_binop(b: BinOp_) -> bool {
+    match b {
+      BiAnd => true,
+      BiOr => true,
+      _ => false
+    }
+}
+
+pub fn is_shift_binop(b: BinOp_) -> bool {
+    match b {
+      BiShl => true,
+      BiShr => true,
+      _ => false
+    }
+}
+
+pub fn is_comparison_binop(b: BinOp_) -> bool {
+    match b {
+        BiEq | BiLt | BiLe | BiNe | BiGt | BiGe =>
+            true,
+        BiAnd | BiOr | BiAdd | BiSub | BiMul | BiDiv | BiRem |
+        BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr =>
+            false,
+    }
+}
+
+/// Returns `true` if the binary operator takes its arguments by value
+pub fn is_by_value_binop(b: BinOp_) -> bool {
+    !is_comparison_binop(b)
+}
+
+/// Returns `true` if the unary operator takes its argument by value
+pub fn is_by_value_unop(u: UnOp) -> bool {
+    match u {
+        UnNeg | UnNot => true,
+        _ => false,
+    }
+}
+
+pub fn unop_to_string(op: UnOp) -> &'static str {
+    match op {
+      UnUniq => "box() ",
+      UnDeref => "*",
+      UnNot => "!",
+      UnNeg => "-",
+    }
+}
+
+pub struct IdVisitor<'a, O:'a> {
+    pub operation: &'a mut O,
+    pub pass_through_items: bool,
+    pub visited_outermost: bool,
+}
+
+impl<'a, O: ast_util::IdVisitingOperation> IdVisitor<'a, O> {
+    fn visit_generics_helper(&mut self, generics: &Generics) {
+        for type_parameter in generics.ty_params.iter() {
+            self.operation.visit_id(type_parameter.id)
+        }
+        for lifetime in &generics.lifetimes {
+            self.operation.visit_id(lifetime.lifetime.id)
+        }
+    }
+}
+
+impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
+    fn visit_mod(&mut self,
+                 module: &Mod,
+                 _: Span,
+                 node_id: NodeId) {
+        self.operation.visit_id(node_id);
+        visit::walk_mod(self, module)
+    }
+
+    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
+        self.operation.visit_id(foreign_item.id);
+        visit::walk_foreign_item(self, foreign_item)
+    }
+
+    fn visit_item(&mut self, item: &Item) {
+        if !self.pass_through_items {
+            if self.visited_outermost {
+                return
+            } else {
+                self.visited_outermost = true
+            }
+        }
+
+        self.operation.visit_id(item.id);
+        match item.node {
+            ItemUse(ref view_path) => {
+                match view_path.node {
+                    ViewPathSimple(_, _) |
+                    ViewPathGlob(_) => {}
+                    ViewPathList(_, ref paths) => {
+                        for path in paths {
+                            self.operation.visit_id(path.node.id())
+                        }
+                    }
+                }
+            }
+            ItemEnum(ref enum_definition, _) => {
+                for variant in &enum_definition.variants {
+                    self.operation.visit_id(variant.node.id)
+                }
+            }
+            _ => {}
+        }
+
+        visit::walk_item(self, item);
+
+        self.visited_outermost = false
+    }
+
+    fn visit_local(&mut self, local: &Local) {
+        self.operation.visit_id(local.id);
+        visit::walk_local(self, local)
+    }
+
+    fn visit_block(&mut self, block: &Block) {
+        self.operation.visit_id(block.id);
+        visit::walk_block(self, block)
+    }
+
+    fn visit_stmt(&mut self, statement: &Stmt) {
+        self.operation.visit_id(stmt_id(statement));
+        visit::walk_stmt(self, statement)
+    }
+
+    fn visit_pat(&mut self, pattern: &Pat) {
+        self.operation.visit_id(pattern.id);
+        visit::walk_pat(self, pattern)
+    }
+
+    fn visit_expr(&mut self, expression: &Expr) {
+        self.operation.visit_id(expression.id);
+        visit::walk_expr(self, expression)
+    }
+
+    fn visit_ty(&mut self, typ: &Ty) {
+        self.operation.visit_id(typ.id);
+        visit::walk_ty(self, typ)
+    }
+
+    fn visit_generics(&mut self, generics: &Generics) {
+        self.visit_generics_helper(generics);
+        visit::walk_generics(self, generics)
+    }
+
+    fn visit_fn(&mut self,
+                function_kind: FnKind<'v>,
+                function_declaration: &'v FnDecl,
+                block: &'v Block,
+                span: Span,
+                node_id: NodeId) {
+        if !self.pass_through_items {
+            match function_kind {
+                FnKind::Method(..) if self.visited_outermost => return,
+                FnKind::Method(..) => self.visited_outermost = true,
+                _ => {}
+            }
+        }
+
+        self.operation.visit_id(node_id);
+
+        match function_kind {
+            FnKind::ItemFn(_, generics, _, _, _, _) => {
+                self.visit_generics_helper(generics)
+            }
+            FnKind::Method(_, sig, _) => {
+                self.visit_generics_helper(&sig.generics)
+            }
+            FnKind::Closure => {}
+        }
+
+        for argument in &function_declaration.inputs {
+            self.operation.visit_id(argument.id)
+        }
+
+        visit::walk_fn(self,
+                       function_kind,
+                       function_declaration,
+                       block,
+                       span);
+
+        if !self.pass_through_items {
+            if let FnKind::Method(..) = function_kind {
+                self.visited_outermost = false;
+            }
+        }
+    }
+
+    fn visit_struct_field(&mut self, struct_field: &StructField) {
+        self.operation.visit_id(struct_field.node.id);
+        visit::walk_struct_field(self, struct_field)
+    }
+
+    fn visit_struct_def(&mut self,
+                        struct_def: &StructDef,
+                        _: Ident,
+                        _: &hir::Generics,
+                        id: NodeId) {
+        self.operation.visit_id(id);
+        struct_def.ctor_id.map(|ctor_id| self.operation.visit_id(ctor_id));
+        visit::walk_struct_def(self, struct_def);
+    }
+
+    fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
+        self.operation.visit_id(ti.id);
+        visit::walk_trait_item(self, ti);
+    }
+
+    fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
+        self.operation.visit_id(ii.id);
+        visit::walk_impl_item(self, ii);
+    }
+
+    fn visit_lifetime_ref(&mut self, lifetime: &Lifetime) {
+        self.operation.visit_id(lifetime.id);
+    }
+
+    fn visit_lifetime_def(&mut self, def: &LifetimeDef) {
+        self.visit_lifetime_ref(&def.lifetime);
+    }
+
+    fn visit_trait_ref(&mut self, trait_ref: &TraitRef) {
+        self.operation.visit_id(trait_ref.ref_id);
+        visit::walk_trait_ref(self, trait_ref);
+    }
+}
+
+/// Computes the id range for a single fn body, ignoring nested items.
+pub fn compute_id_range_for_fn_body(fk: FnKind,
+                                    decl: &FnDecl,
+                                    body: &Block,
+                                    sp: Span,
+                                    id: NodeId)
+                                    -> ast_util::IdRange
+{
+    let mut visitor = ast_util::IdRangeComputingVisitor {
+        result: ast_util::IdRange::max()
+    };
+    let mut id_visitor = IdVisitor {
+        operation: &mut visitor,
+        pass_through_items: false,
+        visited_outermost: false,
+    };
+    id_visitor.visit_fn(fk, decl, body, sp, id);
+    id_visitor.operation.result
+}
+
+/// Returns true if this literal is a string and false otherwise.
+pub fn lit_is_str(lit: &Lit) -> bool {
+    match lit.node {
+        LitStr(..) => true,
+        _ => false,
+    }
+}
+
+pub fn is_path(e: P<Expr>) -> bool {
+    match e.node { ExprPath(..) => true, _ => false }
+}
+
+/// Get a string representation of a signed int type, with its value.
+/// We want to avoid "45int" and "-3int" in favor of "45" and "-3"
+pub fn int_ty_to_string(t: IntTy, val: Option<i64>) -> String {
+    let s = match t {
+        TyIs => "isize",
+        TyI8 => "i8",
+        TyI16 => "i16",
+        TyI32 => "i32",
+        TyI64 => "i64"
+    };
+
+    match val {
+        // cast to a u64 so we can correctly print INT64_MIN. All integral types
+        // are parsed as u64, so we wouldn't want to print an extra negative
+        // sign.
+        Some(n) => format!("{}{}", n as u64, s),
+        None => s.to_string()
+    }
+}
+
+
+/// Get a string representation of an unsigned int type, with its value.
+/// We want to avoid "42u" in favor of "42us". "42uint" is right out.
+pub fn uint_ty_to_string(t: UintTy, val: Option<u64>) -> String {
+    let s = match t {
+        TyUs => "usize",
+        TyU8 => "u8",
+        TyU16 => "u16",
+        TyU32 => "u32",
+        TyU64 => "u64"
+    };
+
+    match val {
+        Some(n) => format!("{}{}", n, s),
+        None => s.to_string()
+    }
+}
+
+pub fn float_ty_to_string(t: FloatTy) -> String {
+    match t {
+        TyF32 => "f32".to_string(),
+        TyF64 => "f64".to_string(),
+    }
+}
+
+
+pub fn empty_generics() -> Generics {
+    Generics {
+        lifetimes: Vec::new(),
+        ty_params: OwnedSlice::empty(),
+        where_clause: WhereClause {
+            id: DUMMY_NODE_ID,
+            predicates: Vec::new(),
+        }
+    }
+}
+
+// convert a span and an identifier to the corresponding
+// 1-segment path
+pub fn ident_to_path(s: Span, identifier: Ident) -> Path {
+    hir::Path {
+        span: s,
+        global: false,
+        segments: vec!(
+            hir::PathSegment {
+                identifier: identifier,
+                parameters: hir::AngleBracketedParameters(hir::AngleBracketedParameterData {
+                    lifetimes: Vec::new(),
+                    types: OwnedSlice::empty(),
+                    bindings: OwnedSlice::empty(),
+                })
+            }
+        ),
+    }
+}

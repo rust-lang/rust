@@ -21,7 +21,7 @@ use middle::ty::{self, RegionEscape, Ty};
 use trans::type_::Type;
 
 use syntax::abi;
-use syntax::ast;
+use rustc_front::hir;
 
 // LLVM doesn't like objects that are too big. Issue #17913
 fn ensure_array_fits_in_address_space<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -379,7 +379,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                   let unsized_part = cx.tcx().struct_tail(ty);
                   let info_ty = match unsized_part.sty {
                       ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
-                          Type::uint_from_ty(cx, ast::TyUs)
+                          Type::uint_from_ty(cx, hir::TyUs)
                       }
                       ty::TyTrait(_) => Type::vtable_ptr(cx),
                       _ => panic!("Unexpected type returned from \

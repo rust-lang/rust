@@ -15,7 +15,8 @@ use rustc::middle::ty;
 use std::cell::RefCell;
 use syntax::ast;
 use syntax::codemap;
-use syntax::print::pprust;
+use rustc_front::print::pprust;
+use rustc_front::hir;
 
 pub struct MoveErrorCollector<'tcx> {
     errors: RefCell<Vec<MoveError<'tcx>>>
@@ -125,7 +126,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 
         mc::cat_interior(ref b, mc::InteriorElement(Kind::Index, _)) => {
             let expr = bccx.tcx.map.expect_expr(move_from.id);
-            if let ast::ExprIndex(..) = expr.node {
+            if let hir::ExprIndex(..) = expr.node {
                 bccx.span_err(move_from.span,
                               &format!("cannot move out of type `{}`, \
                                         a non-copy fixed-size array",

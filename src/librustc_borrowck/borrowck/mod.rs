@@ -20,8 +20,8 @@ pub use self::MovedValueUseKind::*;
 
 use self::InteriorKind::*;
 
-use rustc::ast_map;
-use rustc::ast_map::blocks::{FnLikeNode, FnParts};
+use rustc::front::map as hir_map;
+use rustc::front::map::blocks::{FnLikeNode, FnParts};
 use rustc::middle::cfg;
 use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
@@ -37,12 +37,14 @@ use rustc::middle::ty::{self, Ty};
 use std::fmt;
 use std::mem;
 use std::rc::Rc;
-use syntax::ast;
-use syntax::ast_util;
+use syntax::ast::{self, NodeId};
 use syntax::codemap::Span;
-use syntax::visit;
-use syntax::visit::{Visitor, FnKind};
-use syntax::ast::{FnDecl, Block, NodeId};
+
+use rustc_front::hir;
+use rustc_front::hir::{FnDecl, Block};
+use rustc_front::visit;
+use rustc_front::visit::{Visitor, FnKind};
+use rustc_front::util as hir_util;
 
 pub mod check_loans;
 
@@ -74,19 +76,19 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn visit_item(&mut self, item: &ast::Item) {
+    fn visit_item(&mut self, item: &hir::Item) {
         borrowck_item(self, item);
     }
 
-    fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
-        if let ast::ConstTraitItem(_, Some(ref expr)) = ti.node {
+    fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
+        if let hir::ConstTraitItem(_, Some(ref expr)) = ti.node {
             gather_loans::gather_loans_in_static_initializer(self, &*expr);
         }
         visit::walk_trait_item(self, ti);
     }
 
-    fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
-        if let ast::ConstImplItem(_, ref expr) = ii.node {
+    fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
+        if let hir::ConstImplItem(_, ref expr) = ii.node {
             gather_loans::gather_loans_in_static_initializer(self, &*expr);
         }
         visit::walk_impl_item(self, ii);
@@ -126,14 +128,14 @@ pub fn check_crate(tcx: &ty::ctxt) {
     }
 }
 
-fn borrowck_item(this: &mut BorrowckCtxt, item: &ast::Item) {
+fn borrowck_item(this: &mut BorrowckCtxt, item: &hir::Item) {
     // Gather loans for items. Note that we don't need
     // to check loans for single expressions. The check
     // loan step is intended for things that have a data
     // flow dependent conditions.
     match item.node {
-        ast::ItemStatic(_, _, ref ex) |
-        ast::ItemConst(_, ref ex) => {
+        hir::ItemStatic(_, _, ref ex) |
+        hir::ItemConst(_, ref ex) => {
             gather_loans::gather_loans_in_static_initializer(this, &**ex);
         }
         _ => { }
@@ -151,8 +153,8 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
 
 fn borrowck_fn(this: &mut BorrowckCtxt,
                fk: FnKind,
-               decl: &ast::FnDecl,
-               body: &ast::Block,
+               decl: &hir::FnDecl,
+               body: &hir::Block,
                sp: Span,
                id: ast::NodeId) {
     debug!("borrowck_fn(id={})", id);
@@ -183,16 +185,16 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                                           fk: FnKind,
-                                          decl: &ast::FnDecl,
+                                          decl: &hir::FnDecl,
                                           cfg: &cfg::CFG,
-                                          body: &ast::Block,
+                                          body: &hir::Block,
                                           sp: Span,
                                           id: ast::NodeId)
                                           -> AnalysisData<'a, 'tcx>
 {
     // Check the body of fn items.
     let tcx = this.tcx;
-    let id_range = ast_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
+    let id_range = hir_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
     let (all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, id, decl, body);
 
@@ -398,8 +400,8 @@ pub enum LoanPathElem {
 pub fn closure_to_block(closure_id: ast::NodeId,
                         tcx: &ty::ctxt) -> ast::NodeId {
     match tcx.map.get(closure_id) {
-        ast_map::NodeExpr(expr) => match expr.node {
-            ast::ExprClosure(_, _, ref block) => {
+        hir_map::NodeExpr(expr) => match expr.node {
+            hir::ExprClosure(_, _, ref block) => {
                 block.id
             }
             _ => {
@@ -667,7 +669,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let (expr_ty, expr_span) = match self.tcx
                                                      .map
                                                      .find(the_move.id) {
-                    Some(ast_map::NodeExpr(expr)) => {
+                    Some(hir_map::NodeExpr(expr)) => {
                         (self.tcx.expr_ty_adjusted(&*expr), expr.span)
                     }
                     r => {
@@ -729,7 +731,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let (expr_ty, expr_span) = match self.tcx
                                                      .map
                                                      .find(the_move.id) {
-                    Some(ast_map::NodeExpr(expr)) => {
+                    Some(hir_map::NodeExpr(expr)) => {
                         (self.tcx.expr_ty_adjusted(&*expr), expr.span)
                     }
                     r => {
@@ -1138,7 +1140,7 @@ fn statement_scope_span(tcx: &ty::ctxt, region: ty::Region) -> Option<Span> {
     match region {
         ty::ReScope(scope) => {
             match tcx.map.find(scope.node_id(&tcx.region_maps)) {
-                Some(ast_map::NodeStmt(stmt)) => Some(stmt.span),
+                Some(hir_map::NodeStmt(stmt)) => Some(stmt.span),
                 _ => None
             }
         }

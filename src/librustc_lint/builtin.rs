@@ -35,7 +35,7 @@ use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use middle::const_eval::{eval_const_expr_partial, ConstVal};
 use middle::const_eval::EvalHint::ExprTypeChecked;
-use rustc::ast_map;
+use rustc::front::map as hir_map;
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeSet};
 use lint::{Level, Context, LintPass, LintArray, Lint};
 
@@ -52,6 +52,14 @@ use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ptr::P;
 use syntax::visit::{self, FnKind, Visitor};
+
+use rustc_front::lowering::{lower_expr, lower_block, lower_item, lower_path, lower_pat,
+                            lower_trait_ref};
+use rustc_front::hir;
+use rustc_front::attr as front_attr;
+use rustc_front::attr::AttrMetaMethods as FrontAttrMetaMethods;
+use rustc_front::visit::Visitor as HirVisitor;
+use rustc_front::visit as hir_visit;
 
 // hardwired lints from librustc
 pub use lint::builtin::*;
@@ -129,7 +137,7 @@ impl LintPass for TypeLimits {
                                 check_unsigned_negation_feature(cx, e.span);
                             },
                             ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
-                                if let ty::TyUint(_) = cx.tcx.expr_ty(e).sty {
+                                if let ty::TyUint(_) = cx.tcx.node_id_to_type(e.id).sty {
                                     check_unsigned_negation_feature(cx, e.span);
                                 }
                             },
@@ -137,7 +145,7 @@ impl LintPass for TypeLimits {
                         }
                     },
                     _ => {
-                        let t = cx.tcx.expr_ty(&**expr);
+                        let t = cx.tcx.node_id_to_type(expr.id);
                         match t.sty {
                             ty::TyUint(_) => {
                                 check_unsigned_negation_feature(cx, e.span);
@@ -161,7 +169,7 @@ impl LintPass for TypeLimits {
                 }
 
                 if is_shift_binop(binop.node) {
-                    let opt_ty_bits = match cx.tcx.expr_ty(&**l).sty {
+                    let opt_ty_bits = match cx.tcx.node_id_to_type(l.id).sty {
                         ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
                         ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
                         _ => None
@@ -172,7 +180,8 @@ impl LintPass for TypeLimits {
                             if let ast::LitInt(shift, _) = lit.node { shift >= bits }
                             else { false }
                         } else {
-                            match eval_const_expr_partial(cx.tcx, &**r, ExprTypeChecked) {
+                            let r = lower_expr(r);
+                            match eval_const_expr_partial(cx.tcx, &r, ExprTypeChecked) {
                                 Ok(ConstVal::Int(shift)) => { shift as u64 >= bits },
                                 Ok(ConstVal::Uint(shift)) => { shift >= bits },
                                 _ => { false }
@@ -186,12 +195,12 @@ impl LintPass for TypeLimits {
                 }
             },
             ast::ExprLit(ref lit) => {
-                match cx.tcx.expr_ty(e).sty {
+                match cx.tcx.node_id_to_type(e.id).sty {
                     ty::TyInt(t) => {
                         match lit.node {
                             ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
                             ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
-                                let int_type = if let ast::TyIs = t {
+                                let int_type = if let hir::TyIs = t {
                                     cx.sess().target.int_type
                                 } else {
                                     t
@@ -212,7 +221,7 @@ impl LintPass for TypeLimits {
                         };
                     },
                     ty::TyUint(t) => {
-                        let uint_type = if let ast::TyUs = t {
+                        let uint_type = if let hir::TyUs = t {
                             cx.sess().target.uint_type
                         } else {
                             t
@@ -275,50 +284,50 @@ impl LintPass for TypeLimits {
 
         // for isize & usize, be conservative with the warnings, so that the
         // warnings are consistent between 32- and 64-bit platforms
-        fn int_ty_range(int_ty: ast::IntTy) -> (i64, i64) {
+        fn int_ty_range(int_ty: hir::IntTy) -> (i64, i64) {
             match int_ty {
-                ast::TyIs => (i64::MIN,        i64::MAX),
-                ast::TyI8 =>    (i8::MIN  as i64, i8::MAX  as i64),
-                ast::TyI16 =>   (i16::MIN as i64, i16::MAX as i64),
-                ast::TyI32 =>   (i32::MIN as i64, i32::MAX as i64),
-                ast::TyI64 =>   (i64::MIN,        i64::MAX)
+                hir::TyIs => (i64::MIN,        i64::MAX),
+                hir::TyI8 =>    (i8::MIN  as i64, i8::MAX  as i64),
+                hir::TyI16 =>   (i16::MIN as i64, i16::MAX as i64),
+                hir::TyI32 =>   (i32::MIN as i64, i32::MAX as i64),
+                hir::TyI64 =>   (i64::MIN,        i64::MAX)
             }
         }
 
-        fn uint_ty_range(uint_ty: ast::UintTy) -> (u64, u64) {
+        fn uint_ty_range(uint_ty: hir::UintTy) -> (u64, u64) {
             match uint_ty {
-                ast::TyUs => (u64::MIN,         u64::MAX),
-                ast::TyU8 =>    (u8::MIN   as u64, u8::MAX   as u64),
-                ast::TyU16 =>   (u16::MIN  as u64, u16::MAX  as u64),
-                ast::TyU32 =>   (u32::MIN  as u64, u32::MAX  as u64),
-                ast::TyU64 =>   (u64::MIN,         u64::MAX)
+                hir::TyUs => (u64::MIN,         u64::MAX),
+                hir::TyU8 =>    (u8::MIN   as u64, u8::MAX   as u64),
+                hir::TyU16 =>   (u16::MIN  as u64, u16::MAX  as u64),
+                hir::TyU32 =>   (u32::MIN  as u64, u32::MAX  as u64),
+                hir::TyU64 =>   (u64::MIN,         u64::MAX)
             }
         }
 
-        fn float_ty_range(float_ty: ast::FloatTy) -> (f64, f64) {
+        fn float_ty_range(float_ty: hir::FloatTy) -> (f64, f64) {
             match float_ty {
-                ast::TyF32 => (f32::MIN as f64, f32::MAX as f64),
-                ast::TyF64 => (f64::MIN,        f64::MAX)
+                hir::TyF32 => (f32::MIN as f64, f32::MAX as f64),
+                hir::TyF64 => (f64::MIN,        f64::MAX)
             }
         }
 
-        fn int_ty_bits(int_ty: ast::IntTy, target_int_ty: ast::IntTy) -> u64 {
+        fn int_ty_bits(int_ty: hir::IntTy, target_int_ty: hir::IntTy) -> u64 {
             match int_ty {
-                ast::TyIs => int_ty_bits(target_int_ty, target_int_ty),
-                ast::TyI8 =>    i8::BITS  as u64,
-                ast::TyI16 =>   i16::BITS as u64,
-                ast::TyI32 =>   i32::BITS as u64,
-                ast::TyI64 =>   i64::BITS as u64
+                hir::TyIs => int_ty_bits(target_int_ty, target_int_ty),
+                hir::TyI8 =>    i8::BITS  as u64,
+                hir::TyI16 =>   i16::BITS as u64,
+                hir::TyI32 =>   i32::BITS as u64,
+                hir::TyI64 =>   i64::BITS as u64
             }
         }
 
-        fn uint_ty_bits(uint_ty: ast::UintTy, target_uint_ty: ast::UintTy) -> u64 {
+        fn uint_ty_bits(uint_ty: hir::UintTy, target_uint_ty: hir::UintTy) -> u64 {
             match uint_ty {
-                ast::TyUs => uint_ty_bits(target_uint_ty, target_uint_ty),
-                ast::TyU8 =>    u8::BITS  as u64,
-                ast::TyU16 =>   u16::BITS as u64,
-                ast::TyU32 =>   u32::BITS as u64,
-                ast::TyU64 =>   u64::BITS as u64
+                hir::TyUs => uint_ty_bits(target_uint_ty, target_uint_ty),
+                hir::TyU8 =>    u8::BITS  as u64,
+                hir::TyU16 =>   u16::BITS as u64,
+                hir::TyU32 =>   u32::BITS as u64,
+                hir::TyU64 =>   u64::BITS as u64
             }
         }
 
@@ -336,7 +345,7 @@ impl LintPass for TypeLimits {
             } else {
                 binop
             };
-            match tcx.expr_ty(expr).sty {
+            match tcx.node_id_to_type(expr.id).sty {
                 ty::TyInt(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i64 = match lit.node {
@@ -466,7 +475,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         match ty.sty {
             ty::TyStruct(def, substs) => {
-                if !cx.lookup_repr_hints(def.did).contains(&attr::ReprExtern) {
+                if !cx.lookup_repr_hints(def.did).contains(&front_attr::ReprExtern) {
                     return FfiUnsafe(
                         "found struct without foreign-function-safe \
                          representation annotation in foreign module, \
@@ -550,11 +559,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::TyInt(ast::TyIs) => {
+            ty::TyInt(hir::TyIs) => {
                 FfiUnsafe("found Rust type `isize` in foreign module, while \
                           `libc::c_int` or `libc::c_long` should be used")
             }
-            ty::TyUint(ast::TyUs) => {
+            ty::TyUint(hir::TyUs) => {
                 FfiUnsafe("found Rust type `usize` in foreign module, while \
                           `libc::c_uint` or `libc::c_ulong` should be used")
             }
@@ -784,7 +793,7 @@ impl LintPass for BoxPointers {
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        let ty = cx.tcx.expr_ty(e);
+        let ty = cx.tcx.node_id_to_type(e.id);
         self.check_heap_type(cx, e.span, ty);
     }
 }
@@ -799,17 +808,17 @@ struct RawPtrDeriveVisitor<'a, 'tcx: 'a> {
     cx: &'a Context<'a, 'tcx>
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for RawPtrDeriveVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, ty: &ast::Ty) {
+impl<'a, 'tcx, 'v> HirVisitor<'v> for RawPtrDeriveVisitor<'a, 'tcx> {
+    fn visit_ty(&mut self, ty: &hir::Ty) {
         const MSG: &'static str = "use of `#[derive]` with a raw pointer";
-        if let ast::TyPtr(..) = ty.node {
+        if let hir::TyPtr(..) = ty.node {
             self.cx.span_lint(RAW_POINTER_DERIVE, ty.span, MSG);
         }
-        visit::walk_ty(self, ty);
+        hir_visit::walk_ty(self, ty);
     }
     // explicit override to a no-op to reduce code bloat
-    fn visit_expr(&mut self, _: &ast::Expr) {}
-    fn visit_block(&mut self, _: &ast::Block) {}
+    fn visit_expr(&mut self, _: &hir::Expr) {}
+    fn visit_block(&mut self, _: &hir::Block) {}
 }
 
 pub struct RawPointerDerive {
@@ -833,8 +842,9 @@ impl LintPass for RawPointerDerive {
         if !attr::contains_name(&item.attrs, "automatically_derived") {
             return;
         }
+        let item = lower_item(item);
         let did = match item.node {
-            ast::ItemImpl(_, _, _, ref t_ref_opt, _, _) => {
+            hir::ItemImpl(_, _, _, ref t_ref_opt, _, _) => {
                 // Deriving the Copy trait does not cause a warning
                 if let &Some(ref trait_ref) = t_ref_opt {
                     let def_id = cx.tcx.trait_ref_to_def_id(trait_ref);
@@ -855,16 +865,16 @@ impl LintPass for RawPointerDerive {
             return;
         }
         let item = match cx.tcx.map.find(did.node) {
-            Some(ast_map::NodeItem(item)) => item,
+            Some(hir_map::NodeItem(item)) => item,
             _ => return,
         };
         if !self.checked_raw_pointers.insert(item.id) {
             return;
         }
         match item.node {
-            ast::ItemStruct(..) | ast::ItemEnum(..) => {
+            hir::ItemStruct(..) | hir::ItemEnum(..) => {
                 let mut visitor = RawPtrDeriveVisitor { cx: cx };
-                visit::walk_item(&mut visitor, &*item);
+                hir_visit::walk_item(&mut visitor, &item);
             }
             _ => {}
         }
@@ -989,14 +999,15 @@ impl LintPass for UnusedResults {
             return;
         }
 
-        let t = cx.tcx.expr_ty(expr);
+        let expr = lower_expr(expr);
+        let t = cx.tcx.expr_ty(&expr);
         let warned = match t.sty {
             ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyBool => return,
             ty::TyStruct(def, _) |
             ty::TyEnum(def, _) => {
                 if def.did.is_local() {
-                    if let ast_map::NodeItem(it) = cx.tcx.map.get(def.did.node) {
+                    if let hir_map::NodeItem(it) = cx.tcx.map.get(def.did.node) {
                         check_must_use(cx, &it.attrs, s.span)
                     } else {
                         false
@@ -1012,7 +1023,7 @@ impl LintPass for UnusedResults {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
-        fn check_must_use(cx: &Context, attrs: &[ast::Attribute], sp: Span) -> bool {
+        fn check_must_use(cx: &Context, attrs: &[hir::Attribute], sp: Span) -> bool {
             for attr in attrs {
                 if attr.check_name("must_use") {
                     let mut msg = "unused result which must be used".to_string();
@@ -1642,9 +1653,9 @@ impl UnusedMut {
 
         let mut mutables = FnvHashMap();
         for p in pats {
-            pat_util::pat_bindings(&cx.tcx.def_map, &**p, |mode, id, _, path1| {
+            pat_util::pat_bindings(&cx.tcx.def_map, &lower_pat(p), |mode, id, _, path1| {
                 let ident = path1.node;
-                if let ast::BindByValue(ast::MutMutable) = mode {
+                if let hir::BindByValue(hir::MutMutable) = mode {
                     if !ident.name.as_str().starts_with("_") {
                         match mutables.entry(ident.name.usize()) {
                             Vacant(entry) => { entry.insert(vec![id]); },
@@ -1718,11 +1729,11 @@ impl LintPass for UnusedAllocation {
         if let Some(adjustment) = cx.tcx.tables.borrow().adjustments.get(&e.id) {
             if let ty::AdjustDerefRef(ty::AutoDerefRef { ref autoref, .. }) = *adjustment {
                 match autoref {
-                    &Some(ty::AutoPtr(_, ast::MutImmutable)) => {
+                    &Some(ty::AutoPtr(_, hir::MutImmutable)) => {
                         cx.span_lint(UNUSED_ALLOCATION, e.span,
                                      "unnecessary allocation, use & instead");
                     }
-                    &Some(ty::AutoPtr(_, ast::MutMutable)) => {
+                    &Some(ty::AutoPtr(_, hir::MutMutable)) => {
                         cx.span_lint(UNUSED_ALLOCATION, e.span,
                                      "unnecessary allocation, use &mut instead");
                     }
@@ -1862,9 +1873,9 @@ impl LintPass for MissingDoc {
             ast::ItemImpl(_, _, _, Some(ref trait_ref), _, ref impl_items) => {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
-                let real_trait = cx.tcx.trait_ref_to_def_id(trait_ref);
+                let real_trait = cx.tcx.trait_ref_to_def_id(&lower_trait_ref(trait_ref));
                 match cx.tcx.map.find(real_trait.node) {
-                    Some(ast_map::NodeItem(item)) => if item.vis == ast::Visibility::Inherited {
+                    Some(hir_map::NodeItem(item)) => if item.vis == hir::Visibility::Inherited {
                         for itm in impl_items {
                             self.private_traits.insert(itm.id);
                         }
@@ -2087,29 +2098,51 @@ impl Stability {
     }
 }
 
+fn hir_to_ast_stability(stab: &front_attr::Stability) -> attr::Stability {
+    attr::Stability {
+        level: match stab.level {
+            front_attr::Unstable => attr::Unstable,
+            front_attr::Stable => attr::Stable,
+        },
+        feature: stab.feature.clone(),
+        since: stab.since.clone(),
+        deprecated_since: stab.deprecated_since.clone(),
+        reason: stab.reason.clone(),
+        issue: stab.issue,
+    }
+}
+
 impl LintPass for Stability {
     fn get_lints(&self) -> LintArray {
         lint_array!(DEPRECATED)
     }
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {
-        stability::check_item(cx.tcx, item, false,
-                              &mut |id, sp, stab| self.lint(cx, id, sp, stab));
+        stability::check_item(cx.tcx, &lower_item(item), false,
+                              &mut |id, sp, stab|
+                                self.lint(cx, id, sp,
+                                          &stab.map(|s| hir_to_ast_stability(s)).as_ref()));
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        stability::check_expr(cx.tcx, e,
-                              &mut |id, sp, stab| self.lint(cx, id, sp, stab));
+        stability::check_expr(cx.tcx, &lower_expr(e),
+                              &mut |id, sp, stab|
+                                self.lint(cx, id, sp,
+                                          &stab.map(|s| hir_to_ast_stability(s)).as_ref()));
     }
 
     fn check_path(&mut self, cx: &Context, path: &ast::Path, id: ast::NodeId) {
-        stability::check_path(cx.tcx, path, id,
-                              &mut |id, sp, stab| self.lint(cx, id, sp, stab));
+        stability::check_path(cx.tcx, &lower_path(path), id,
+                              &mut |id, sp, stab|
+                                self.lint(cx, id, sp,
+                                          &stab.map(|s| hir_to_ast_stability(s)).as_ref()));
     }
 
     fn check_pat(&mut self, cx: &Context, pat: &ast::Pat) {
-        stability::check_pat(cx.tcx, pat,
-                             &mut |id, sp, stab| self.lint(cx, id, sp, stab))
+        stability::check_pat(cx.tcx, &lower_pat(pat),
+                             &mut |id, sp, stab|
+                                self.lint(cx, id, sp,
+                                          &stab.map(|s| hir_to_ast_stability(s)).as_ref()));
     }
 }
 
@@ -2168,7 +2201,7 @@ impl LintPass for UnconditionalRecursion {
         // to have behaviour like the above, rather than
         // e.g. accidentally recurring after an assert.
 
-        let cfg = cfg::CFG::new(cx.tcx, blk);
+        let cfg = cfg::CFG::new(cx.tcx, &lower_block(blk));
 
         let mut work_queue = vec![cfg.entry];
         let mut reached_exit_without_self_call = false;
@@ -2248,7 +2281,7 @@ impl LintPass for UnconditionalRecursion {
                                   fn_id: ast::NodeId,
                                   id: ast::NodeId) -> bool {
             match tcx.map.get(id) {
-                ast_map::NodeExpr(&ast::Expr { node: ast::ExprCall(ref callee, _), .. }) => {
+                hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     tcx.def_map.borrow().get(&callee.id)
                         .map_or(false, |def| def.def_id() == DefId::local(fn_id))
                 }
@@ -2283,7 +2316,7 @@ impl LintPass for UnconditionalRecursion {
 
             // Check for calls to methods via explicit paths (e.g. `T::method()`).
             match tcx.map.get(id) {
-                ast_map::NodeExpr(&ast::Expr { node: ast::ExprCall(ref callee, _), .. }) => {
+                hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     match tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def()) {
                         Some(def::DefMethod(def_id)) => {
                             let no_substs = &ty::ItemSubsts::empty();
@@ -2479,12 +2512,13 @@ impl LintPass for MutableTransmutes {
 
     fn check_expr(&mut self, cx: &Context, expr: &ast::Expr) {
         use syntax::abi::RustIntrinsic;
+
         let msg = "mutating transmuted &mut T from &T may cause undefined behavior,\
                    consider instead using an UnsafeCell";
         match get_transmute_from_to(cx, expr) {
             Some((&ty::TyRef(_, from_mt), &ty::TyRef(_, to_mt))) => {
-                if to_mt.mutbl == ast::Mutability::MutMutable
-                    && from_mt.mutbl == ast::Mutability::MutImmutable {
+                if to_mt.mutbl == hir::Mutability::MutMutable
+                    && from_mt.mutbl == hir::Mutability::MutImmutable {
                     cx.span_lint(MUTABLE_TRANSMUTES, expr.span, msg);
                 }
             }
@@ -2497,7 +2531,7 @@ impl LintPass for MutableTransmutes {
                 ast::ExprPath(..) => (),
                 _ => return None
             }
-            if let def::DefFn(did, _) = cx.tcx.resolve_expr(expr) {
+            if let def::DefFn(did, _) = cx.tcx.resolve_expr(&lower_expr(expr)) {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
@@ -2584,7 +2618,7 @@ impl LintPass for DropWithReprExtern {
                 ty::TyStruct(self_type_def, _) => {
                     let self_type_did = self_type_def.did;
                     let hints = ctx.tcx.lookup_repr_hints(self_type_did);
-                    if hints.iter().any(|attr| *attr == attr::ReprExtern) &&
+                    if hints.iter().any(|attr| *attr == front_attr::ReprExtern) &&
                         self_type_def.dtor_kind().has_drop_flag() {
                         let drop_impl_span = ctx.tcx.map.def_id_span(drop_impl_did,
                                                                      codemap::DUMMY_SP);

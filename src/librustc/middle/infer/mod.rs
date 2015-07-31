@@ -20,6 +20,7 @@ pub use self::freshen::TypeFreshener;
 pub use self::region_inference::{GenericKind, VerifyBound};
 
 use middle::def_id::DefId;
+use rustc_front::hir;
 use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
@@ -1147,7 +1148,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Apply `adjustment` to the type of `expr`
     pub fn adjust_expr_ty(&self,
-                          expr: &ast::Expr,
+                          expr: &hir::Expr,
                           adjustment: Option<&ty::AutoAdjustment<'tcx>>)
                           -> Ty<'tcx>
     {
@@ -1179,7 +1180,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn expr_ty(&self, ex: &ast::Expr) -> Ty<'tcx> {
+    pub fn expr_ty(&self, ex: &hir::Expr) -> Ty<'tcx> {
         match self.tables.borrow().node_types.get(&ex.id) {
             Some(&t) => t,
             None => {
@@ -1446,7 +1447,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.resolve_type_vars_or_error(&ty)
     }
 
-    pub fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
+    pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
         let ty = self.adjust_expr_ty(expr, self.tables.borrow().adjustments.get(&expr.id));
         self.resolve_type_vars_or_error(&ty)
     }

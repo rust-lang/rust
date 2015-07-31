@@ -26,16 +26,17 @@ use write_ty_to_tcx;
 use std::cell::Cell;
 
 use syntax::ast;
-use syntax::ast_util;
 use syntax::codemap::{DUMMY_SP, Span};
-use syntax::print::pprust::pat_to_string;
-use syntax::visit;
-use syntax::visit::Visitor;
+use rustc_front::print::pprust::pat_to_string;
+use rustc_front::visit;
+use rustc_front::visit::Visitor;
+use rustc_front::util as hir_util;
+use rustc_front::hir;
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point functions
 
-pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &ast::Expr) {
+pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &hir::Expr) {
     assert_eq!(fcx.writeback_errors.get(), false);
     let mut wbcx = WritebackCx::new(fcx);
     wbcx.visit_expr(e);
@@ -44,8 +45,8 @@ pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &ast::Expr) {
 }
 
 pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
-                               decl: &ast::FnDecl,
-                               blk: &ast::Block) {
+                               decl: &hir::FnDecl,
+                               blk: &hir::Block) {
     assert_eq!(fcx.writeback_errors.get(), false);
     let mut wbcx = WritebackCx::new(fcx);
     wbcx.visit_block(blk);
@@ -88,8 +89,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // as potentially overloaded. But then, during writeback, if
     // we observe that something like `a+b` is (known to be)
     // operating on scalars, we clear the overload.
-    fn fix_scalar_binary_expr(&mut self, e: &ast::Expr) {
-        if let ast::ExprBinary(ref op, ref lhs, ref rhs) = e.node {
+    fn fix_scalar_binary_expr(&mut self, e: &hir::Expr) {
+        if let hir::ExprBinary(ref op, ref lhs, ref rhs) = e.node {
             let lhs_ty = self.fcx.node_ty(lhs.id);
             let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
 
@@ -103,7 +104,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 // adjustment on the lhs but not the rhs; the
                 // adjustment for rhs is kind of baked into the
                 // system.
-                if !ast_util::is_by_value_binop(op.node) {
+                if !hir_util::is_by_value_binop(op.node) {
                     self.fcx.inh.tables.borrow_mut().adjustments.remove(&lhs.id);
                 }
             }
@@ -120,20 +121,20 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 // traffic in node-ids or update tables in the type context etc.
 
 impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
-    fn visit_item(&mut self, _: &ast::Item) {
+    fn visit_item(&mut self, _: &hir::Item) {
         // Ignore items
     }
 
-    fn visit_stmt(&mut self, s: &ast::Stmt) {
+    fn visit_stmt(&mut self, s: &hir::Stmt) {
         if self.fcx.writeback_errors.get() {
             return;
         }
 
-        self.visit_node_id(ResolvingExpr(s.span), ast_util::stmt_id(s));
+        self.visit_node_id(ResolvingExpr(s.span), hir_util::stmt_id(s));
         visit::walk_stmt(self, s);
     }
 
-    fn visit_expr(&mut self, e: &ast::Expr) {
+    fn visit_expr(&mut self, e: &hir::Expr) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -144,7 +145,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         self.visit_method_map_entry(ResolvingExpr(e.span),
                                     MethodCall::expr(e.id));
 
-        if let ast::ExprClosure(_, ref decl, _) = e.node {
+        if let hir::ExprClosure(_, ref decl, _) = e.node {
             for input in &decl.inputs {
                 self.visit_node_id(ResolvingExpr(e.span), input.id);
             }
@@ -153,7 +154,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         visit::walk_expr(self, e);
     }
 
-    fn visit_block(&mut self, b: &ast::Block) {
+    fn visit_block(&mut self, b: &hir::Block) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -162,7 +163,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         visit::walk_block(self, b);
     }
 
-    fn visit_pat(&mut self, p: &ast::Pat) {
+    fn visit_pat(&mut self, p: &hir::Pat) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -177,7 +178,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         visit::walk_pat(self, p);
     }
 
-    fn visit_local(&mut self, l: &ast::Local) {
+    fn visit_local(&mut self, l: &hir::Local) {
         if self.fcx.writeback_errors.get() {
             return;
         }
@@ -188,9 +189,9 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         visit::walk_local(self, l);
     }
 
-    fn visit_ty(&mut self, t: &ast::Ty) {
+    fn visit_ty(&mut self, t: &hir::Ty) {
         match t.node {
-            ast::TyFixedLengthVec(ref ty, ref count_expr) => {
+            hir::TyFixedLengthVec(ref ty, ref count_expr) => {
                 self.visit_ty(&**ty);
                 write_ty_to_tcx(self.tcx(), count_expr.id, self.tcx().types.usize);
             }

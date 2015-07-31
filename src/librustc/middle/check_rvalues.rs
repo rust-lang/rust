@@ -18,11 +18,12 @@ use middle::ty::ParameterEnvironment;
 use middle::ty;
 
 use syntax::ast;
+use rustc_front::hir;
 use syntax::codemap::Span;
-use syntax::visit;
+use rustc_front::visit;
 
 pub fn check_crate(tcx: &ty::ctxt,
-                   krate: &ast::Crate) {
+                   krate: &hir::Crate) {
     let mut rvcx = RvalueContext { tcx: tcx };
     visit::walk_crate(&mut rvcx, krate);
 }
@@ -34,8 +35,8 @@ struct RvalueContext<'a, 'tcx: 'a> {
 impl<'a, 'tcx, 'v> visit::Visitor<'v> for RvalueContext<'a, 'tcx> {
     fn visit_fn(&mut self,
                 fk: visit::FnKind<'v>,
-                fd: &'v ast::FnDecl,
-                b: &'v ast::Block,
+                fd: &'v hir::FnDecl,
+                b: &'v hir::Block,
                 s: Span,
                 fn_id: ast::NodeId) {
         {
@@ -73,12 +74,12 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for RvalueContextDelegate<'a, 'tcx> {
     }
 
     fn matched_pat(&mut self,
-                   _matched_pat: &ast::Pat,
+                   _matched_pat: &hir::Pat,
                    _cmt: mc::cmt,
                    _mode: euv::MatchMode) {}
 
     fn consume_pat(&mut self,
-                   _consume_pat: &ast::Pat,
+                   _consume_pat: &hir::Pat,
                    _cmt: mc::cmt,
                    _mode: euv::ConsumeMode) {
     }

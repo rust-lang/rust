@@ -35,10 +35,11 @@ pub use self::BuiltinBound::Sized as BoundSized;
 pub use self::BuiltinBound::Copy as BoundCopy;
 pub use self::BuiltinBound::Sync as BoundSync;
 
-use ast_map::{self, LinkedPath};
 use back::svh::Svh;
 use session::Session;
 use lint;
+use front::map as ast_map;
+use front::map::LinkedPath;
 use metadata::csearch;
 use middle;
 use middle::cast;
@@ -85,12 +86,14 @@ use core::nonzero::NonZero;
 use std::collections::{HashMap, HashSet};
 use rustc_data_structures::ivar;
 use syntax::abi;
-use syntax::ast::{CrateNum, ItemImpl, ItemTrait};
-use syntax::ast::{MutImmutable, MutMutable, Name, NodeId, Visibility};
-use syntax::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
+use syntax::ast::{self, CrateNum, Name, NodeId};
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
-use syntax::ast;
+
+use rustc_front::hir;
+use rustc_front::hir::{ItemImpl, ItemTrait};
+use rustc_front::hir::{MutImmutable, MutMutable, Visibility};
+use rustc_front::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
 
 pub type Disr = u64;
 
@@ -108,6 +111,7 @@ pub struct CrateAnalysis {
     pub name: String,
     pub glob_map: Option<GlobMap>,
 }
+
 
 #[derive(Copy, Clone)]
 pub enum DtorKind {
@@ -143,48 +147,48 @@ pub trait IntTypeExt {
 impl IntTypeExt for attr::IntType {
     fn to_ty<'tcx>(&self, cx: &ctxt<'tcx>) -> Ty<'tcx> {
         match *self {
-            SignedInt(ast::TyI8)      => cx.types.i8,
-            SignedInt(ast::TyI16)     => cx.types.i16,
-            SignedInt(ast::TyI32)     => cx.types.i32,
-            SignedInt(ast::TyI64)     => cx.types.i64,
-            SignedInt(ast::TyIs)   => cx.types.isize,
-            UnsignedInt(ast::TyU8)    => cx.types.u8,
-            UnsignedInt(ast::TyU16)   => cx.types.u16,
-            UnsignedInt(ast::TyU32)   => cx.types.u32,
-            UnsignedInt(ast::TyU64)   => cx.types.u64,
-            UnsignedInt(ast::TyUs) => cx.types.usize,
+            SignedInt(hir::TyI8)      => cx.types.i8,
+            SignedInt(hir::TyI16)     => cx.types.i16,
+            SignedInt(hir::TyI32)     => cx.types.i32,
+            SignedInt(hir::TyI64)     => cx.types.i64,
+            SignedInt(hir::TyIs)   => cx.types.isize,
+            UnsignedInt(hir::TyU8)    => cx.types.u8,
+            UnsignedInt(hir::TyU16)   => cx.types.u16,
+            UnsignedInt(hir::TyU32)   => cx.types.u32,
+            UnsignedInt(hir::TyU64)   => cx.types.u64,
+            UnsignedInt(hir::TyUs) => cx.types.usize,
         }
     }
 
     fn i64_to_disr(&self, val: i64) -> Option<Disr> {
         match *self {
-            SignedInt(ast::TyI8)    => val.to_i8()  .map(|v| v as Disr),
-            SignedInt(ast::TyI16)   => val.to_i16() .map(|v| v as Disr),
-            SignedInt(ast::TyI32)   => val.to_i32() .map(|v| v as Disr),
-            SignedInt(ast::TyI64)   => val.to_i64() .map(|v| v as Disr),
-            UnsignedInt(ast::TyU8)  => val.to_u8()  .map(|v| v as Disr),
-            UnsignedInt(ast::TyU16) => val.to_u16() .map(|v| v as Disr),
-            UnsignedInt(ast::TyU32) => val.to_u32() .map(|v| v as Disr),
-            UnsignedInt(ast::TyU64) => val.to_u64() .map(|v| v as Disr),
+            SignedInt(hir::TyI8)    => val.to_i8()  .map(|v| v as Disr),
+            SignedInt(hir::TyI16)   => val.to_i16() .map(|v| v as Disr),
+            SignedInt(hir::TyI32)   => val.to_i32() .map(|v| v as Disr),
+            SignedInt(hir::TyI64)   => val.to_i64() .map(|v| v as Disr),
+            UnsignedInt(hir::TyU8)  => val.to_u8()  .map(|v| v as Disr),
+            UnsignedInt(hir::TyU16) => val.to_u16() .map(|v| v as Disr),
+            UnsignedInt(hir::TyU32) => val.to_u32() .map(|v| v as Disr),
+            UnsignedInt(hir::TyU64) => val.to_u64() .map(|v| v as Disr),
 
-            UnsignedInt(ast::TyUs) |
-            SignedInt(ast::TyIs) => unreachable!(),
+            UnsignedInt(hir::TyUs) |
+            SignedInt(hir::TyIs) => unreachable!(),
         }
     }
 
     fn u64_to_disr(&self, val: u64) -> Option<Disr> {
         match *self {
-            SignedInt(ast::TyI8)    => val.to_i8()  .map(|v| v as Disr),
-            SignedInt(ast::TyI16)   => val.to_i16() .map(|v| v as Disr),
-            SignedInt(ast::TyI32)   => val.to_i32() .map(|v| v as Disr),
-            SignedInt(ast::TyI64)   => val.to_i64() .map(|v| v as Disr),
-            UnsignedInt(ast::TyU8)  => val.to_u8()  .map(|v| v as Disr),
-            UnsignedInt(ast::TyU16) => val.to_u16() .map(|v| v as Disr),
-            UnsignedInt(ast::TyU32) => val.to_u32() .map(|v| v as Disr),
-            UnsignedInt(ast::TyU64) => val.to_u64() .map(|v| v as Disr),
+            SignedInt(hir::TyI8)    => val.to_i8()  .map(|v| v as Disr),
+            SignedInt(hir::TyI16)   => val.to_i16() .map(|v| v as Disr),
+            SignedInt(hir::TyI32)   => val.to_i32() .map(|v| v as Disr),
+            SignedInt(hir::TyI64)   => val.to_i64() .map(|v| v as Disr),
+            UnsignedInt(hir::TyU8)  => val.to_u8()  .map(|v| v as Disr),
+            UnsignedInt(hir::TyU16) => val.to_u16() .map(|v| v as Disr),
+            UnsignedInt(hir::TyU32) => val.to_u32() .map(|v| v as Disr),
+            UnsignedInt(hir::TyU64) => val.to_u64() .map(|v| v as Disr),
 
-            UnsignedInt(ast::TyUs) |
-            SignedInt(ast::TyIs) => unreachable!(),
+            UnsignedInt(hir::TyUs) |
+            SignedInt(hir::TyIs) => unreachable!(),
         }
     }
 
@@ -196,18 +200,18 @@ impl IntTypeExt for attr::IntType {
             // SignedInt repr means we *want* to reinterpret the bits
             // treating the highest bit of Disr as a sign-bit, so
             // cast to i64 before range-checking.
-            SignedInt(ast::TyI8)    => add1!((val as i64).to_i8()),
-            SignedInt(ast::TyI16)   => add1!((val as i64).to_i16()),
-            SignedInt(ast::TyI32)   => add1!((val as i64).to_i32()),
-            SignedInt(ast::TyI64)   => add1!(Some(val as i64)),
+            SignedInt(hir::TyI8)    => add1!((val as i64).to_i8()),
+            SignedInt(hir::TyI16)   => add1!((val as i64).to_i16()),
+            SignedInt(hir::TyI32)   => add1!((val as i64).to_i32()),
+            SignedInt(hir::TyI64)   => add1!(Some(val as i64)),
 
-            UnsignedInt(ast::TyU8)  => add1!(val.to_u8()),
-            UnsignedInt(ast::TyU16) => add1!(val.to_u16()),
-            UnsignedInt(ast::TyU32) => add1!(val.to_u32()),
-            UnsignedInt(ast::TyU64) => add1!(Some(val)),
+            UnsignedInt(hir::TyU8)  => add1!(val.to_u8()),
+            UnsignedInt(hir::TyU16) => add1!(val.to_u16()),
+            UnsignedInt(hir::TyU32) => add1!(val.to_u32()),
+            UnsignedInt(hir::TyU64) => add1!(Some(val)),
 
-            UnsignedInt(ast::TyUs) |
-            SignedInt(ast::TyIs) => unreachable!(),
+            UnsignedInt(hir::TyUs) |
+            SignedInt(hir::TyIs) => unreachable!(),
         }
     }
 
@@ -216,17 +220,17 @@ impl IntTypeExt for attr::IntType {
     // full range from `i64::MIN` through `u64::MAX`.
     fn disr_string(&self, val: Disr) -> String {
         match *self {
-            SignedInt(ast::TyI8)    => format!("{}", val as i8 ),
-            SignedInt(ast::TyI16)   => format!("{}", val as i16),
-            SignedInt(ast::TyI32)   => format!("{}", val as i32),
-            SignedInt(ast::TyI64)   => format!("{}", val as i64),
-            UnsignedInt(ast::TyU8)  => format!("{}", val as u8 ),
-            UnsignedInt(ast::TyU16) => format!("{}", val as u16),
-            UnsignedInt(ast::TyU32) => format!("{}", val as u32),
-            UnsignedInt(ast::TyU64) => format!("{}", val as u64),
+            SignedInt(hir::TyI8)    => format!("{}", val as i8 ),
+            SignedInt(hir::TyI16)   => format!("{}", val as i16),
+            SignedInt(hir::TyI32)   => format!("{}", val as i32),
+            SignedInt(hir::TyI64)   => format!("{}", val as i64),
+            UnsignedInt(hir::TyU8)  => format!("{}", val as u8 ),
+            UnsignedInt(hir::TyU16) => format!("{}", val as u16),
+            UnsignedInt(hir::TyU32) => format!("{}", val as u32),
+            UnsignedInt(hir::TyU64) => format!("{}", val as u64),
 
-            UnsignedInt(ast::TyUs) |
-            SignedInt(ast::TyIs) => unreachable!(),
+            UnsignedInt(hir::TyUs) |
+            SignedInt(hir::TyIs) => unreachable!(),
         }
     }
 
@@ -236,17 +240,17 @@ impl IntTypeExt for attr::IntType {
         }
         let val = val.unwrap_or(ty::INITIAL_DISCRIMINANT_VALUE);
         match *self {
-            SignedInt(ast::TyI8)    => add1!(val as i8 ),
-            SignedInt(ast::TyI16)   => add1!(val as i16),
-            SignedInt(ast::TyI32)   => add1!(val as i32),
-            SignedInt(ast::TyI64)   => add1!(val as i64),
-            UnsignedInt(ast::TyU8)  => add1!(val as u8 ),
-            UnsignedInt(ast::TyU16) => add1!(val as u16),
-            UnsignedInt(ast::TyU32) => add1!(val as u32),
-            UnsignedInt(ast::TyU64) => add1!(val as u64),
+            SignedInt(hir::TyI8)    => add1!(val as i8 ),
+            SignedInt(hir::TyI16)   => add1!(val as i16),
+            SignedInt(hir::TyI32)   => add1!(val as i32),
+            SignedInt(hir::TyI64)   => add1!(val as i64),
+            UnsignedInt(hir::TyU8)  => add1!(val as u8 ),
+            UnsignedInt(hir::TyU16) => add1!(val as u16),
+            UnsignedInt(hir::TyU32) => add1!(val as u32),
+            UnsignedInt(hir::TyU64) => add1!(val as u64),
 
-            UnsignedInt(ast::TyUs) |
-            SignedInt(ast::TyIs) => unreachable!(),
+            UnsignedInt(hir::TyUs) |
+            SignedInt(hir::TyIs) => unreachable!(),
         }
     }
 }
@@ -294,7 +298,7 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
         }
     }
 
-    pub fn name(&self) -> ast::Name {
+    pub fn name(&self) -> Name {
         match *self {
             ConstTraitItem(ref associated_const) => associated_const.name,
             MethodTraitItem(ref method) => method.name,
@@ -302,7 +306,7 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
         }
     }
 
-    pub fn vis(&self) -> ast::Visibility {
+    pub fn vis(&self) -> hir::Visibility {
         match *self {
             ConstTraitItem(ref associated_const) => associated_const.vis,
             MethodTraitItem(ref method) => method.vis,
@@ -345,12 +349,12 @@ impl ImplOrTraitItemId {
 
 #[derive(Clone, Debug)]
 pub struct Method<'tcx> {
-    pub name: ast::Name,
+    pub name: Name,
     pub generics: Generics<'tcx>,
     pub predicates: GenericPredicates<'tcx>,
     pub fty: BareFnTy<'tcx>,
     pub explicit_self: ExplicitSelfCategory,
-    pub vis: ast::Visibility,
+    pub vis: hir::Visibility,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
 
@@ -359,12 +363,12 @@ pub struct Method<'tcx> {
 }
 
 impl<'tcx> Method<'tcx> {
-    pub fn new(name: ast::Name,
+    pub fn new(name: Name,
                generics: ty::Generics<'tcx>,
                predicates: GenericPredicates<'tcx>,
                fty: BareFnTy<'tcx>,
                explicit_self: ExplicitSelfCategory,
-               vis: ast::Visibility,
+               vis: hir::Visibility,
                def_id: DefId,
                container: ImplOrTraitItemContainer,
                provided_source: Option<DefId>)
@@ -392,9 +396,9 @@ impl<'tcx> Method<'tcx> {
 
 #[derive(Clone, Copy, Debug)]
 pub struct AssociatedConst<'tcx> {
-    pub name: ast::Name,
+    pub name: Name,
     pub ty: Ty<'tcx>,
-    pub vis: ast::Visibility,
+    pub vis: hir::Visibility,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
     pub default: Option<DefId>,
@@ -402,9 +406,9 @@ pub struct AssociatedConst<'tcx> {
 
 #[derive(Clone, Copy, Debug)]
 pub struct AssociatedType<'tcx> {
-    pub name: ast::Name,
+    pub name: Name,
     pub ty: Option<Ty<'tcx>>,
-    pub vis: ast::Visibility,
+    pub vis: hir::Visibility,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
 }
@@ -412,8 +416,9 @@ pub struct AssociatedType<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
-    pub mutbl: ast::Mutability,
+    pub mutbl: hir::Mutability,
 }
+
 
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct ItemVariances {
@@ -526,11 +531,11 @@ pub struct AutoDerefRef<'tcx> {
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum AutoRef<'tcx> {
     /// Convert from T to &T.
-    AutoPtr(&'tcx Region, ast::Mutability),
+    AutoPtr(&'tcx Region, hir::Mutability),
 
     /// Convert from T to *T.
     /// Value to thin pointer.
-    AutoUnsafe(ast::Mutability),
+    AutoUnsafe(hir::Mutability),
 }
 
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
@@ -561,19 +566,19 @@ pub struct MethodCallee<'tcx> {
 /// our key.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct MethodCall {
-    pub expr_id: ast::NodeId,
+    pub expr_id: NodeId,
     pub autoderef: u32
 }
 
 impl MethodCall {
-    pub fn expr(id: ast::NodeId) -> MethodCall {
+    pub fn expr(id: NodeId) -> MethodCall {
         MethodCall {
             expr_id: id,
             autoderef: 0
         }
     }
 
-    pub fn autoderef(expr_id: ast::NodeId, autoderef: u32) -> MethodCall {
+    pub fn autoderef(expr_id: NodeId, autoderef: u32) -> MethodCall {
         MethodCall {
             expr_id: expr_id,
             autoderef: 1 + autoderef
@@ -622,7 +627,7 @@ pub struct TransmuteRestriction<'tcx> {
     pub substituted_to: Ty<'tcx>,
 
     /// NodeId of the transmute intrinsic.
-    pub id: ast::NodeId,
+    pub id: NodeId,
 }
 
 /// Internal storage
@@ -828,11 +833,11 @@ pub struct ctxt<'tcx> {
     pub populated_external_primitive_impls: RefCell<DefIdSet>,
 
     /// These caches are used by const_eval when decoding external constants.
-    pub extern_const_statics: RefCell<DefIdMap<ast::NodeId>>,
-    pub extern_const_variants: RefCell<DefIdMap<ast::NodeId>>,
-    pub extern_const_fns: RefCell<DefIdMap<ast::NodeId>>,
+    pub extern_const_statics: RefCell<DefIdMap<NodeId>>,
+    pub extern_const_variants: RefCell<DefIdMap<NodeId>>,
+    pub extern_const_fns: RefCell<DefIdMap<NodeId>>,
 
-    pub node_lint_levels: RefCell<FnvHashMap<(ast::NodeId, lint::LintId),
+    pub node_lint_levels: RefCell<FnvHashMap<(NodeId, lint::LintId),
                                               lint::LevelSource>>,
 
     /// The types that must be asserted to be the same size for `transmute`
@@ -1367,14 +1372,14 @@ impl<'tcx> Borrow<TypeVariants<'tcx>> for InternedTy<'tcx> {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct BareFnTy<'tcx> {
-    pub unsafety: ast::Unsafety,
+    pub unsafety: hir::Unsafety,
     pub abi: abi::Abi,
     pub sig: PolyFnSig<'tcx>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct ClosureTy<'tcx> {
-    pub unsafety: ast::Unsafety,
+    pub unsafety: hir::Unsafety,
     pub abi: abi::Abi,
     pub sig: PolyFnSig<'tcx>,
 }
@@ -1447,7 +1452,7 @@ impl<'tcx> PolyFnSig<'tcx> {
 pub struct ParamTy {
     pub space: subst::ParamSpace,
     pub idx: u32,
-    pub name: ast::Name,
+    pub name: Name,
 }
 
 /// A [De Bruijn index][dbi] is a standard means of representing
@@ -1595,10 +1600,10 @@ pub enum Region {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct EarlyBoundRegion {
-    pub param_id: ast::NodeId,
+    pub param_id: NodeId,
     pub space: subst::ParamSpace,
     pub index: u32,
-    pub name: ast::Name,
+    pub name: Name,
 }
 
 /// Upvars do not get their own node-id. Instead, we use the pair of
@@ -1606,8 +1611,8 @@ pub struct EarlyBoundRegion {
 /// by the upvar) and the id of the closure expression.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UpvarId {
-    pub var_id: ast::NodeId,
-    pub closure_expr_id: ast::NodeId,
+    pub var_id: NodeId,
+    pub closure_expr_id: NodeId,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, Copy)]
@@ -1742,7 +1747,7 @@ pub enum BoundRegion {
     ///
     /// The def-id is needed to distinguish free regions in
     /// the event of shadowing.
-    BrNamed(DefId, ast::Name),
+    BrNamed(DefId, Name),
 
     /// Fresh bound identifiers created during GLB computations.
     BrFresh(u32),
@@ -1764,13 +1769,13 @@ pub enum TypeVariants<'tcx> {
     TyChar,
 
     /// A primitive signed integer type. For example, `i32`.
-    TyInt(ast::IntTy),
+    TyInt(hir::IntTy),
 
     /// A primitive unsigned integer type. For example, `u32`.
-    TyUint(ast::UintTy),
+    TyUint(hir::UintTy),
 
     /// A primitive floating-point type. For example, `f64`.
-    TyFloat(ast::FloatTy),
+    TyFloat(hir::FloatTy),
 
     /// An enumerated type, defined with `enum`.
     ///
@@ -1778,7 +1783,7 @@ pub enum TypeVariants<'tcx> {
     /// That is, even after substitution it is possible that there are type
     /// variables. This happens when the `TyEnum` corresponds to an enum
     /// definition and not a concrete use of it. To get the correct `TyEnum`
-    /// from the tcx, use the `NodeId` from the `ast::Ty` and look it up in
+    /// from the tcx, use the `NodeId` from the `hir::Ty` and look it up in
     /// the `ast_ty_to_ty_cache`. This is probably true for `TyStruct` as
     /// well.
     TyEnum(AdtDef<'tcx>, &'tcx Substs<'tcx>),
@@ -2084,8 +2089,8 @@ impl<T> Binder<T> {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum IntVarValue {
-    IntType(ast::IntTy),
-    UintType(ast::UintTy),
+    IntType(hir::IntTy),
+    UintType(hir::UintTy),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -2098,7 +2103,7 @@ pub struct ExpectedFound<T> {
 #[derive(Clone, Debug)]
 pub enum TypeError<'tcx> {
     Mismatch,
-    UnsafetyMismatch(ExpectedFound<ast::Unsafety>),
+    UnsafetyMismatch(ExpectedFound<hir::Unsafety>),
     AbiMismatch(ExpectedFound<abi::Abi>),
     Mutability,
     BoxMutability,
@@ -2117,13 +2122,13 @@ pub enum TypeError<'tcx> {
     Sorts(ExpectedFound<Ty<'tcx>>),
     IntegerAsChar,
     IntMismatch(ExpectedFound<IntVarValue>),
-    FloatMismatch(ExpectedFound<ast::FloatTy>),
+    FloatMismatch(ExpectedFound<hir::FloatTy>),
     Traits(ExpectedFound<DefId>),
     BuiltinBoundsMismatch(ExpectedFound<BuiltinBounds>),
     VariadicMismatch(ExpectedFound<bool>),
     CyclicTy,
     ConvergenceMismatch(ExpectedFound<bool>),
-    ProjectionNameMismatched(ExpectedFound<ast::Name>),
+    ProjectionNameMismatched(ExpectedFound<Name>),
     ProjectionBoundsLength(ExpectedFound<usize>),
     TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>)
 }
@@ -2316,7 +2321,7 @@ pub enum ObjectLifetimeDefault {
 
 #[derive(Clone)]
 pub struct TypeParameterDef<'tcx> {
-    pub name: ast::Name,
+    pub name: Name,
     pub def_id: DefId,
     pub space: subst::ParamSpace,
     pub index: u32,
@@ -2327,7 +2332,7 @@ pub struct TypeParameterDef<'tcx> {
 
 #[derive(Clone)]
 pub struct RegionParameterDef {
-    pub name: ast::Name,
+    pub name: Name,
     pub def_id: DefId,
     pub space: subst::ParamSpace,
     pub index: u32,
@@ -2349,7 +2354,7 @@ impl RegionParameterDef {
 }
 
 /// Information about the formal type/lifetime parameters associated
-/// with an item or method. Analogous to ast::Generics.
+/// with an item or method. Analogous to hir::Generics.
 #[derive(Clone, Debug)]
 pub struct Generics<'tcx> {
     pub types: VecPerParamSpace<TypeParameterDef<'tcx>>,
@@ -2583,11 +2588,11 @@ pub struct ProjectionPredicate<'tcx> {
 pub type PolyProjectionPredicate<'tcx> = Binder<ProjectionPredicate<'tcx>>;
 
 impl<'tcx> PolyProjectionPredicate<'tcx> {
-    pub fn item_name(&self) -> ast::Name {
+    pub fn item_name(&self) -> Name {
         self.0.projection_ty.item_name // safe to skip the binder to access a name
     }
 
-    pub fn sort_key(&self) -> (DefId, ast::Name) {
+    pub fn sort_key(&self) -> (DefId, Name) {
         self.0.projection_ty.sort_key()
     }
 }
@@ -2600,11 +2605,11 @@ pub struct ProjectionTy<'tcx> {
     pub trait_ref: ty::TraitRef<'tcx>,
 
     /// The name `N` of the associated type.
-    pub item_name: ast::Name,
+    pub item_name: Name,
 }
 
 impl<'tcx> ProjectionTy<'tcx> {
-    pub fn sort_key(&self) -> (DefId, ast::Name) {
+    pub fn sort_key(&self) -> (DefId, Name) {
         (self.trait_ref.def_id, self.item_name)
     }
 }
@@ -2873,7 +2878,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
-                    ast::TypeImplItem(_) => {
+                    hir::TypeImplItem(_) => {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the impl
                         let impl_id = cx.map.get_parent(id);
@@ -2885,7 +2890,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            &predicates,
                                                            id)
                     }
-                    ast::ConstImplItem(_, _) => {
+                    hir::ConstImplItem(_, _) => {
                         let def_id = DefId::local(id);
                         let scheme = cx.lookup_item_type(def_id);
                         let predicates = cx.lookup_predicates(def_id);
@@ -2894,7 +2899,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            &predicates,
                                                            id)
                     }
-                    ast::MethodImplItem(_, ref body) => {
+                    hir::MethodImplItem(_, ref body) => {
                         let method_def_id = DefId::local(id);
                         match cx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
@@ -2913,12 +2918,11 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                             }
                         }
                     }
-                    ast::MacImplItem(_) => cx.sess.bug("unexpanded macro")
                 }
             }
             Some(ast_map::NodeTraitItem(trait_item)) => {
                 match trait_item.node {
-                    ast::TypeTraitItem(..) => {
+                    hir::TypeTraitItem(..) => {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the trait
                         let trait_id = cx.map.get_parent(id);
@@ -2930,7 +2934,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            &predicates,
                                                            id)
                     }
-                    ast::ConstTraitItem(..) => {
+                    hir::ConstTraitItem(..) => {
                         let def_id = DefId::local(id);
                         let scheme = cx.lookup_item_type(def_id);
                         let predicates = cx.lookup_predicates(def_id);
@@ -2939,12 +2943,13 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            &predicates,
                                                            id)
                     }
-                    ast::MethodTraitItem(_, ref body) => {
+                    hir::MethodTraitItem(_, ref body) => {
                         // for the body-id, use the id of the body
                         // block, unless this is a trait method with
                         // no default, then fallback to the method id.
                         let body_id = body.as_ref().map(|b| b.id).unwrap_or(id);
                         let method_def_id = DefId::local(id);
+
                         match cx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
                                 let method_generics = &method_ty.generics;
@@ -2967,7 +2972,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             }
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
-                    ast::ItemFn(_, _, _, _, _, ref body) => {
+                    hir::ItemFn(_, _, _, _, _, ref body) => {
                         // We assume this is a function.
                         let fn_def_id = DefId::local(id);
                         let fn_scheme = cx.lookup_item_type(fn_def_id);
@@ -2978,11 +2983,11 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            &fn_predicates,
                                                            body.id)
                     }
-                    ast::ItemEnum(..) |
-                    ast::ItemStruct(..) |
-                    ast::ItemImpl(..) |
-                    ast::ItemConst(..) |
-                    ast::ItemStatic(..) => {
+                    hir::ItemEnum(..) |
+                    hir::ItemStruct(..) |
+                    hir::ItemImpl(..) |
+                    hir::ItemConst(..) |
+                    hir::ItemStatic(..) => {
                         let def_id = DefId::local(id);
                         let scheme = cx.lookup_item_type(def_id);
                         let predicates = cx.lookup_predicates(def_id);
@@ -2991,7 +2996,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            &predicates,
                                                            id)
                     }
-                    ast::ItemTrait(..) => {
+                    hir::ItemTrait(..) => {
                         let def_id = DefId::local(id);
                         let trait_def = cx.lookup_trait_def(def_id);
                         let predicates = cx.lookup_predicates(def_id);
@@ -3061,8 +3066,8 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
 
 #[derive(Copy, Clone)]
 pub enum CopyImplementationError {
-    FieldDoesNotImplementCopy(ast::Name),
-    VariantDoesNotImplementCopy(ast::Name),
+    FieldDoesNotImplementCopy(Name),
+    VariantDoesNotImplementCopy(Name),
     TypeIsStructural,
     TypeHasDestructor,
 }
@@ -3104,7 +3109,7 @@ bitflags! {
 
 /// As `TypeScheme` but for a trait ref.
 pub struct TraitDef<'tcx> {
-    pub unsafety: ast::Unsafety,
+    pub unsafety: hir::Unsafety,
 
     /// If `true`, then this trait had the `#[rustc_paren_sugar]`
     /// attribute, indicating that it should be used with `Foo()`
@@ -3123,7 +3128,7 @@ pub struct TraitDef<'tcx> {
 
     /// A list of the associated types defined in this trait. Useful
     /// for resolving `X::Foo` type markers.
-    pub associated_type_names: Vec<ast::Name>,
+    pub associated_type_names: Vec<Name>,
 
     // Impls of this trait. To allow for quicker lookup, the impls are indexed
     // by a simplified version of their Self type: impls with a simplifiable
@@ -3283,7 +3288,7 @@ pub struct FieldDefData<'tcx, 'container: 'tcx> {
     /// special_idents::unnamed_field.name
     /// if this is a tuple-like field
     pub name: Name,
-    pub vis: ast::Visibility,
+    pub vis: hir::Visibility,
     /// TyIVar is used here to allow for variance (see the doc at
     /// AdtDefData).
     ty: TyIVar<'tcx, 'container>
@@ -3532,7 +3537,7 @@ impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
 impl<'tcx, 'container> FieldDefData<'tcx, 'container> {
     pub fn new(did: DefId,
                name: Name,
-               vis: ast::Visibility) -> Self {
+               vis: hir::Visibility) -> Self {
         FieldDefData {
             did: did,
             name: name,
@@ -3613,18 +3618,18 @@ impl<'tcx> CommonTypes<'tcx> {
             bool: mk(TyBool),
             char: mk(TyChar),
             err: mk(TyError),
-            isize: mk(TyInt(ast::TyIs)),
-            i8: mk(TyInt(ast::TyI8)),
-            i16: mk(TyInt(ast::TyI16)),
-            i32: mk(TyInt(ast::TyI32)),
-            i64: mk(TyInt(ast::TyI64)),
-            usize: mk(TyUint(ast::TyUs)),
-            u8: mk(TyUint(ast::TyU8)),
-            u16: mk(TyUint(ast::TyU16)),
-            u32: mk(TyUint(ast::TyU32)),
-            u64: mk(TyUint(ast::TyU64)),
-            f32: mk(TyFloat(ast::TyF32)),
-            f64: mk(TyFloat(ast::TyF64)),
+            isize: mk(TyInt(hir::TyIs)),
+            i8: mk(TyInt(hir::TyI8)),
+            i16: mk(TyInt(hir::TyI16)),
+            i32: mk(TyInt(hir::TyI32)),
+            i64: mk(TyInt(hir::TyI64)),
+            usize: mk(TyUint(hir::TyUs)),
+            u8: mk(TyUint(hir::TyU8)),
+            u16: mk(TyUint(hir::TyU16)),
+            u32: mk(TyUint(hir::TyU32)),
+            u64: mk(TyUint(hir::TyU64)),
+            f32: mk(TyFloat(hir::TyF32)),
+            f64: mk(TyFloat(hir::TyF64)),
         }
     }
 }
@@ -3913,9 +3918,9 @@ impl<'tcx> ctxt<'tcx> {
 
     /// Create an unsafe fn ty based on a safe fn ty.
     pub fn safe_to_unsafe_fn_ty(&self, bare_fn: &BareFnTy<'tcx>) -> Ty<'tcx> {
-        assert_eq!(bare_fn.unsafety, ast::Unsafety::Normal);
+        assert_eq!(bare_fn.unsafety, hir::Unsafety::Normal);
         let unsafe_fn_ty_a = self.mk_bare_fn(ty::BareFnTy {
-            unsafety: ast::Unsafety::Unsafe,
+            unsafety: hir::Unsafety::Unsafe,
             abi: bare_fn.abi,
             sig: bare_fn.sig.clone()
         });
@@ -3955,17 +3960,17 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn type_parameter_def(&self,
-                              node_id: ast::NodeId)
+                              node_id: NodeId)
                               -> TypeParameterDef<'tcx>
     {
         self.ty_param_defs.borrow().get(&node_id).unwrap().clone()
     }
 
-    pub fn pat_contains_ref_binding(&self, pat: &ast::Pat) -> Option<ast::Mutability> {
+    pub fn pat_contains_ref_binding(&self, pat: &hir::Pat) -> Option<hir::Mutability> {
         pat_util::pat_contains_ref_binding(&self.def_map, pat)
     }
 
-    pub fn arm_contains_ref_binding(&self, arm: &ast::Arm) -> Option<ast::Mutability> {
+    pub fn arm_contains_ref_binding(&self, arm: &hir::Arm) -> Option<hir::Mutability> {
         pat_util::arm_contains_ref_binding(&self.def_map, arm)
     }
 
@@ -4003,30 +4008,30 @@ impl<'tcx> ctxt<'tcx> {
         ctxt::intern_ty(&self.arenas.type_, &self.interner, st)
     }
 
-    pub fn mk_mach_int(&self, tm: ast::IntTy) -> Ty<'tcx> {
+    pub fn mk_mach_int(&self, tm: hir::IntTy) -> Ty<'tcx> {
         match tm {
-            ast::TyIs   => self.types.isize,
-            ast::TyI8   => self.types.i8,
-            ast::TyI16  => self.types.i16,
-            ast::TyI32  => self.types.i32,
-            ast::TyI64  => self.types.i64,
+            hir::TyIs   => self.types.isize,
+            hir::TyI8   => self.types.i8,
+            hir::TyI16  => self.types.i16,
+            hir::TyI32  => self.types.i32,
+            hir::TyI64  => self.types.i64,
         }
     }
 
-    pub fn mk_mach_uint(&self, tm: ast::UintTy) -> Ty<'tcx> {
+    pub fn mk_mach_uint(&self, tm: hir::UintTy) -> Ty<'tcx> {
         match tm {
-            ast::TyUs   => self.types.usize,
-            ast::TyU8   => self.types.u8,
-            ast::TyU16  => self.types.u16,
-            ast::TyU32  => self.types.u32,
-            ast::TyU64  => self.types.u64,
+            hir::TyUs   => self.types.usize,
+            hir::TyU8   => self.types.u8,
+            hir::TyU16  => self.types.u16,
+            hir::TyU32  => self.types.u32,
+            hir::TyU64  => self.types.u64,
         }
     }
 
-    pub fn mk_mach_float(&self, tm: ast::FloatTy) -> Ty<'tcx> {
+    pub fn mk_mach_float(&self, tm: hir::FloatTy) -> Ty<'tcx> {
         match tm {
-            ast::TyF32  => self.types.f32,
-            ast::TyF64  => self.types.f64,
+            hir::TyF32  => self.types.f32,
+            hir::TyF64  => self.types.f64,
         }
     }
 
@@ -4056,19 +4061,19 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn mk_mut_ref(&self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: ast::MutMutable})
+        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::MutMutable})
     }
 
     pub fn mk_imm_ref(&self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: ast::MutImmutable})
+        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::MutImmutable})
     }
 
     pub fn mk_mut_ptr(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut {ty: ty, mutbl: ast::MutMutable})
+        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::MutMutable})
     }
 
     pub fn mk_imm_ptr(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut {ty: ty, mutbl: ast::MutImmutable})
+        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::MutImmutable})
     }
 
     pub fn mk_nil_ptr(&self) -> Ty<'tcx> {
@@ -4107,7 +4112,7 @@ impl<'tcx> ctxt<'tcx> {
                       output: Ty<'tcx>) -> Ty<'tcx> {
         let input_args = input_tys.iter().cloned().collect();
         self.mk_fn(Some(def_id), self.mk_bare_fn(BareFnTy {
-            unsafety: ast::Unsafety::Normal,
+            unsafety: hir::Unsafety::Normal,
             abi: abi::Rust,
             sig: ty::Binder(FnSig {
                 inputs: input_args,
@@ -4133,7 +4138,7 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn mk_projection(&self,
                          trait_ref: TraitRef<'tcx>,
-                         item_name: ast::Name)
+                         item_name: Name)
                          -> Ty<'tcx> {
         // take a copy of substs so that we own the vectors inside
         let inner = ProjectionTy { trait_ref: trait_ref, item_name: item_name };
@@ -4182,7 +4187,7 @@ impl<'tcx> ctxt<'tcx> {
     pub fn mk_param(&self,
                     space: subst::ParamSpace,
                     index: u32,
-                    name: ast::Name) -> Ty<'tcx> {
+                    name: Name) -> Ty<'tcx> {
         self.mk_ty(TyParam(ParamTy { space: space, idx: index, name: name }))
     }
 
@@ -4304,7 +4309,7 @@ impl<'tcx> TyS<'tcx> {
 impl ParamTy {
     pub fn new(space: subst::ParamSpace,
                index: u32,
-               name: ast::Name)
+               name: Name)
                -> ParamTy {
         ParamTy { space: space, idx: index, name: name }
     }
@@ -4398,7 +4403,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn sequence_element_type(&self, cx: &ctxt<'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => ty,
-            TyStr => cx.mk_mach_uint(ast::TyU8),
+            TyStr => cx.mk_mach_uint(hir::TyU8),
             _ => cx.sess.bug(&format!("sequence_element_type called on non-sequence value: {}",
                                       self)),
         }
@@ -4646,7 +4651,7 @@ impl<'tcx> TyS<'tcx> {
 
             let result = match ty.sty {
                 // usize and isize are ffi-unsafe
-                TyUint(ast::TyUs) | TyInt(ast::TyIs) => {
+                TyUint(hir::TyUs) | TyInt(hir::TyIs) => {
                     TC::None
                 }
 
@@ -4761,11 +4766,11 @@ impl<'tcx> TyS<'tcx> {
         let result = match self.sty {
             TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
             TyRawPtr(..) | TyBareFn(..) | TyRef(_, TypeAndMut {
-                mutbl: ast::MutImmutable, ..
+                mutbl: hir::MutImmutable, ..
             }) => Some(false),
 
             TyStr | TyBox(..) | TyRef(_, TypeAndMut {
-                mutbl: ast::MutMutable, ..
+                mutbl: hir::MutMutable, ..
             }) => Some(true),
 
             TyArray(..) | TySlice(_) | TyTrait(..) | TyTuple(..) |
@@ -5012,7 +5017,7 @@ impl<'tcx> TyS<'tcx> {
 
     pub fn is_uint(&self) -> bool {
         match self.sty {
-            TyInfer(IntVar(_)) | TyUint(ast::TyUs) => true,
+            TyInfer(IntVar(_)) | TyUint(hir::TyUs) => true,
             _ => false
         }
     }
@@ -5058,7 +5063,7 @@ impl<'tcx> TyS<'tcx> {
 
     pub fn is_machine(&self) -> bool {
         match self.sty {
-            TyInt(ast::TyIs) | TyUint(ast::TyUs) => false,
+            TyInt(hir::TyIs) | TyUint(hir::TyUs) => false,
             TyInt(..) | TyUint(..) | TyFloat(..) => true,
             _ => false
         }
@@ -5073,7 +5078,7 @@ impl<'tcx> TyS<'tcx> {
             TyBox(ty) => {
                 Some(TypeAndMut {
                     ty: ty,
-                    mutbl: ast::MutImmutable,
+                    mutbl: hir::MutImmutable,
                 })
             },
             TyRef(_, mt) => Some(mt),
@@ -5124,7 +5129,7 @@ impl<'tcx> TyS<'tcx> {
     /// See `expr_ty_adjusted`
     pub fn adjust<F>(&'tcx self, cx: &ctxt<'tcx>,
                      span: Span,
-                     expr_id: ast::NodeId,
+                     expr_id: NodeId,
                      adjustment: Option<&AutoAdjustment<'tcx>>,
                      mut method_type: F)
                      -> Ty<'tcx> where
@@ -5423,10 +5428,10 @@ fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
 }
 
 impl BorrowKind {
-    pub fn from_mutbl(m: ast::Mutability) -> BorrowKind {
+    pub fn from_mutbl(m: hir::Mutability) -> BorrowKind {
         match m {
-            ast::MutMutable => MutBorrow,
-            ast::MutImmutable => ImmBorrow,
+            hir::MutMutable => MutBorrow,
+            hir::MutImmutable => ImmBorrow,
         }
     }
 
@@ -5434,15 +5439,15 @@ impl BorrowKind {
     /// kind. Because borrow kinds are richer than mutabilities, we sometimes have to pick a
     /// mutability that is stronger than necessary so that it at least *would permit* the borrow in
     /// question.
-    pub fn to_mutbl_lossy(self) -> ast::Mutability {
+    pub fn to_mutbl_lossy(self) -> hir::Mutability {
         match self {
-            MutBorrow => ast::MutMutable,
-            ImmBorrow => ast::MutImmutable,
+            MutBorrow => hir::MutMutable,
+            ImmBorrow => hir::MutImmutable,
 
             // We have no type corresponding to a unique imm borrow, so
             // use `&mut`. It gives all the capabilities of an `&uniq`
             // and hence is a safe "over approximation".
-            UniqueImmBorrow => ast::MutMutable,
+            UniqueImmBorrow => hir::MutMutable,
         }
     }
 
@@ -5482,7 +5487,7 @@ impl<'tcx> ctxt<'tcx> {
     /// For an enum `t`, `variant` must be some def id.
     pub fn named_element_ty(&self,
                             ty: Ty<'tcx>,
-                            n: ast::Name,
+                            n: Name,
                             variant: Option<DefId>) -> Option<Ty<'tcx>> {
         match (&ty.sty, variant) {
             (&TyStruct(def, substs), None) => {
@@ -5495,7 +5500,7 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn node_id_to_type(&self, id: ast::NodeId) -> Ty<'tcx> {
+    pub fn node_id_to_type(&self, id: NodeId) -> Ty<'tcx> {
         match self.node_id_to_type_opt(id) {
            Some(ty) => ty,
            None => self.sess.bug(
@@ -5504,11 +5509,11 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn node_id_to_type_opt(&self, id: ast::NodeId) -> Option<Ty<'tcx>> {
+    pub fn node_id_to_type_opt(&self, id: NodeId) -> Option<Ty<'tcx>> {
         self.tables.borrow().node_types.get(&id).cloned()
     }
 
-    pub fn node_id_item_substs(&self, id: ast::NodeId) -> ItemSubsts<'tcx> {
+    pub fn node_id_item_substs(&self, id: NodeId) -> ItemSubsts<'tcx> {
         match self.tables.borrow().item_substs.get(&id) {
             None => ItemSubsts::empty(),
             Some(ts) => ts.clone(),
@@ -5517,10 +5522,10 @@ impl<'tcx> ctxt<'tcx> {
 
     // Returns the type of a pattern as a monotype. Like @expr_ty, this function
     // doesn't provide type parameter substitutions.
-    pub fn pat_ty(&self, pat: &ast::Pat) -> Ty<'tcx> {
+    pub fn pat_ty(&self, pat: &hir::Pat) -> Ty<'tcx> {
         self.node_id_to_type(pat.id)
     }
-    pub fn pat_ty_opt(&self, pat: &ast::Pat) -> Option<Ty<'tcx>> {
+    pub fn pat_ty_opt(&self, pat: &hir::Pat) -> Option<Ty<'tcx>> {
         self.node_id_to_type_opt(pat.id)
     }
 
@@ -5534,11 +5539,11 @@ impl<'tcx> ctxt<'tcx> {
     // NB (2): This type doesn't provide type parameter substitutions; e.g. if you
     // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
     // instead of "fn(ty) -> T with T = isize".
-    pub fn expr_ty(&self, expr: &ast::Expr) -> Ty<'tcx> {
+    pub fn expr_ty(&self, expr: &hir::Expr) -> Ty<'tcx> {
         self.node_id_to_type(expr.id)
     }
 
-    pub fn expr_ty_opt(&self, expr: &ast::Expr) -> Option<Ty<'tcx>> {
+    pub fn expr_ty_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
         self.node_id_to_type_opt(expr.id)
     }
 
@@ -5551,7 +5556,7 @@ impl<'tcx> ctxt<'tcx> {
     /// hard to do, I just hate that code so much I didn't want to touch it
     /// unless it was to fix it properly, which seemed a distraction from the
     /// thread at hand! -nmatsakis
-    pub fn expr_ty_adjusted(&self, expr: &ast::Expr) -> Ty<'tcx> {
+    pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> Ty<'tcx> {
         self.expr_ty(expr)
             .adjust(self, expr.span, expr.id,
                     self.tables.borrow().adjustments.get(&expr.id),
@@ -5580,7 +5585,7 @@ impl<'tcx> ctxt<'tcx> {
         match self.map.find(id) {
             Some(ast_map::NodeLocal(pat)) => {
                 match pat.node {
-                    ast::PatIdent(_, ref path1, _) => path1.node.name.as_str(),
+                    hir::PatIdent(_, ref path1, _) => path1.node.name.as_str(),
                     _ => {
                         self.sess.bug(&format!("Variable id {} maps to {:?}, not local", id, pat));
                     },
@@ -5590,7 +5595,7 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn resolve_expr(&self, expr: &ast::Expr) -> def::Def {
+    pub fn resolve_expr(&self, expr: &hir::Expr) -> def::Def {
         match self.def_map.borrow().get(&expr.id) {
             Some(def) => def.full_def(),
             None => {
@@ -5600,9 +5605,9 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn expr_is_lval(&self, expr: &ast::Expr) -> bool {
+    pub fn expr_is_lval(&self, expr: &hir::Expr) -> bool {
          match expr.node {
-            ast::ExprPath(..) => {
+            hir::ExprPath(..) => {
                 // We can't use resolve_expr here, as this needs to run on broken
                 // programs. We don't need to through - associated items are all
                 // rvalues.
@@ -5624,51 +5629,42 @@ impl<'tcx> ctxt<'tcx> {
                 }
             }
 
-            ast::ExprUnary(ast::UnDeref, _) |
-            ast::ExprField(..) |
-            ast::ExprTupField(..) |
-            ast::ExprIndex(..) => {
+            hir::ExprUnary(hir::UnDeref, _) |
+            hir::ExprField(..) |
+            hir::ExprTupField(..) |
+            hir::ExprIndex(..) => {
                 true
             }
 
-            ast::ExprCall(..) |
-            ast::ExprMethodCall(..) |
-            ast::ExprStruct(..) |
-            ast::ExprRange(..) |
-            ast::ExprTup(..) |
-            ast::ExprIf(..) |
-            ast::ExprMatch(..) |
-            ast::ExprClosure(..) |
-            ast::ExprBlock(..) |
-            ast::ExprRepeat(..) |
-            ast::ExprVec(..) |
-            ast::ExprBreak(..) |
-            ast::ExprAgain(..) |
-            ast::ExprRet(..) |
-            ast::ExprWhile(..) |
-            ast::ExprLoop(..) |
-            ast::ExprAssign(..) |
-            ast::ExprInlineAsm(..) |
-            ast::ExprAssignOp(..) |
-            ast::ExprLit(_) |
-            ast::ExprUnary(..) |
-            ast::ExprBox(..) |
-            ast::ExprAddrOf(..) |
-            ast::ExprBinary(..) |
-            ast::ExprCast(..) => {
+            hir::ExprCall(..) |
+            hir::ExprMethodCall(..) |
+            hir::ExprStruct(..) |
+            hir::ExprRange(..) |
+            hir::ExprTup(..) |
+            hir::ExprIf(..) |
+            hir::ExprMatch(..) |
+            hir::ExprClosure(..) |
+            hir::ExprBlock(..) |
+            hir::ExprRepeat(..) |
+            hir::ExprVec(..) |
+            hir::ExprBreak(..) |
+            hir::ExprAgain(..) |
+            hir::ExprRet(..) |
+            hir::ExprWhile(..) |
+            hir::ExprLoop(..) |
+            hir::ExprAssign(..) |
+            hir::ExprInlineAsm(..) |
+            hir::ExprAssignOp(..) |
+            hir::ExprLit(_) |
+            hir::ExprUnary(..) |
+            hir::ExprBox(..) |
+            hir::ExprAddrOf(..) |
+            hir::ExprBinary(..) |
+            hir::ExprCast(..) => {
                 false
             }
 
-            ast::ExprParen(ref e) => self.expr_is_lval(e),
-
-            ast::ExprIfLet(..) |
-            ast::ExprWhileLet(..) |
-            ast::ExprForLoop(..) |
-            ast::ExprMac(..) => {
-                self.sess.span_bug(
-                    expr.span,
-                    "macro expression remains after expansion");
-            }
+            hir::ExprParen(ref e) => self.expr_is_lval(e),
         }
     }
 
@@ -5768,7 +5764,7 @@ impl<'tcx> ctxt<'tcx> {
         if id.is_local() {
             if let ItemTrait(_, _, _, ref ms) = self.map.expect_item(id.node).node {
                 ms.iter().filter_map(|ti| {
-                    if let ast::MethodTraitItem(_, Some(_)) = ti.node {
+                    if let hir::MethodTraitItem(_, Some(_)) = ti.node {
                         match self.impl_or_trait_item(DefId::local(ti.id)) {
                             MethodTraitItem(m) => Some(m),
                             _ => {
@@ -5794,7 +5790,7 @@ impl<'tcx> ctxt<'tcx> {
             match self.map.expect_item(id.node).node {
                 ItemTrait(_, _, _, ref tis) => {
                     tis.iter().filter_map(|ti| {
-                        if let ast::ConstTraitItem(_, _) = ti.node {
+                        if let hir::ConstTraitItem(_, _) = ti.node {
                             match self.impl_or_trait_item(DefId::local(ti.id)) {
                                 ConstTraitItem(ac) => Some(ac),
                                 _ => {
@@ -5810,7 +5806,7 @@ impl<'tcx> ctxt<'tcx> {
                 }
                 ItemImpl(_, _, _, _, _, ref iis) => {
                     iis.iter().filter_map(|ii| {
-                        if let ast::ConstImplItem(_, _) = ii.node {
+                        if let hir::ConstImplItem(_, _) = ii.node {
                             match self.impl_or_trait_item(DefId::local(ii.id)) {
                                 ConstTraitItem(ac) => Some(ac),
                                 _ => {
@@ -5850,12 +5846,12 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn trait_impl_polarity(&self, id: DefId) -> Option<ast::ImplPolarity> {
+    pub fn trait_impl_polarity(&self, id: DefId) -> Option<hir::ImplPolarity> {
         if id.is_local() {
             match self.map.find(id.node) {
                 Some(ast_map::NodeItem(item)) => {
                     match item.node {
-                        ast::ItemImpl(_, polarity, _, _, _, _) => Some(polarity),
+                        hir::ItemImpl(_, polarity, _, _, _, _) => Some(polarity),
                         _ => None
                     }
                 }
@@ -5909,7 +5905,7 @@ impl<'tcx> ctxt<'tcx> {
     pub fn is_impl(&self, id: DefId) -> bool {
         if id.is_local() {
             if let Some(ast_map::NodeItem(
-                &ast::Item { node: ast::ItemImpl(..), .. })) = self.map.find(id.node) {
+                &hir::Item { node: hir::ItemImpl(..), .. })) = self.map.find(id.node) {
                 true
             } else {
                 false
@@ -5919,7 +5915,7 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn trait_ref_to_def_id(&self, tr: &ast::TraitRef) -> DefId {
+    pub fn trait_ref_to_def_id(&self, tr: &hir::TraitRef) -> DefId {
         self.def_map.borrow().get(&tr.ref_id).expect("no def-map entry for trait").def_id()
     }
 
@@ -5974,20 +5970,21 @@ impl<'tcx> ctxt<'tcx> {
             //
             // NB. Historically `fn enum_variants` generate i64 here, while
             // rustc_typeck::check would generate isize.
-            _ => SignedInt(ast::TyIs),
+            _ => SignedInt(hir::TyIs),
         };
 
         let repr_type_ty = repr_type.to_ty(self);
         let repr_type = match repr_type {
-            SignedInt(ast::TyIs) =>
+            SignedInt(hir::TyIs) =>
                 SignedInt(self.sess.target.int_type),
-            UnsignedInt(ast::TyUs) =>
+            UnsignedInt(hir::TyUs) =>
                 UnsignedInt(self.sess.target.uint_type),
             other => other
         };
 
         (repr_type, repr_type_ty)
     }
+
 
     // Register a given item type
     pub fn register_item_type(&self, did: DefId, ty: TypeScheme<'tcx>) {
@@ -6047,7 +6044,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     /// Get the attributes of a definition.
-    pub fn get_attrs(&self, did: DefId) -> Cow<'tcx, [ast::Attribute]> {
+    pub fn get_attrs(&self, did: DefId) -> Cow<'tcx, [hir::Attribute]> {
         if did.is_local() {
             Cow::Borrowed(self.map.attrs(did.node))
         } else {
@@ -6083,6 +6080,7 @@ impl<'tcx> ctxt<'tcx> {
             })
         })
     }
+
 
     /// Returns the deeply last field of nested structures, or the same type,
     /// if not a structure at all. Corresponds to the only possible unsized
@@ -6122,7 +6120,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     // Returns the repeat count for a repeating vector expression.
-    pub fn eval_repeat_count(&self, count_expr: &ast::Expr) -> usize {
+    pub fn eval_repeat_count(&self, count_expr: &hir::Expr) -> usize {
         let hint = UncheckedExprHint(self.types.usize);
         match const_eval::eval_const_expr_partial(self, count_expr, hint) {
             Ok(val) => {
@@ -6137,7 +6135,7 @@ impl<'tcx> ctxt<'tcx> {
             }
             Err(err) => {
                 let err_msg = match count_expr.node {
-                    ast::ExprPath(None, ast::Path {
+                    hir::ExprPath(None, hir::Path {
                         global: false,
                         ref segments,
                         ..
@@ -6580,7 +6578,7 @@ impl<'tcx> ctxt<'tcx> {
     /// free parameters. Since we currently represent bound/free type
     /// parameters in the same way, this only has an effect on regions.
     pub fn construct_free_substs(&self, generics: &Generics<'tcx>,
-                                 free_id: ast::NodeId) -> Substs<'tcx> {
+                                 free_id: NodeId) -> Substs<'tcx> {
         // map T => T
         let mut types = VecPerParamSpace::empty();
         for def in generics.types.as_slice() {
@@ -6612,7 +6610,7 @@ impl<'tcx> ctxt<'tcx> {
                                                span: Span,
                                                generics: &ty::Generics<'tcx>,
                                                generic_predicates: &ty::GenericPredicates<'tcx>,
-                                               free_id: ast::NodeId)
+                                               free_id: NodeId)
                                                -> ParameterEnvironment<'a, 'tcx>
     {
         //
@@ -6662,11 +6660,11 @@ impl<'tcx> ctxt<'tcx> {
         traits::normalize_param_env_or_error(unnormalized_env, cause)
     }
 
-    pub fn is_method_call(&self, expr_id: ast::NodeId) -> bool {
+    pub fn is_method_call(&self, expr_id: NodeId) -> bool {
         self.tables.borrow().method_map.contains_key(&MethodCall::expr(expr_id))
     }
 
-    pub fn is_overloaded_autoderef(&self, expr_id: ast::NodeId, autoderefs: u32) -> bool {
+    pub fn is_overloaded_autoderef(&self, expr_id: NodeId, autoderefs: u32) -> bool {
         self.tables.borrow().method_map.contains_key(&MethodCall::autoderef(expr_id,
                                                                             autoderefs))
     }
@@ -6762,7 +6760,7 @@ impl<'tcx> ctxt<'tcx> {
 pub enum ExplicitSelfCategory {
     StaticExplicitSelfCategory,
     ByValueExplicitSelfCategory,
-    ByReferenceExplicitSelfCategory(Region, ast::Mutability),
+    ByReferenceExplicitSelfCategory(Region, hir::Mutability),
     ByBoxExplicitSelfCategory,
 }
 
@@ -6778,7 +6776,7 @@ pub struct Freevar {
 
 pub type FreevarMap = NodeMap<Vec<Freevar>>;
 
-pub type CaptureModeMap = NodeMap<ast::CaptureClause>;
+pub type CaptureModeMap = NodeMap<hir::CaptureClause>;
 
 // Trait method resolution
 pub type TraitMap = NodeMap<Vec<DefId>>;
@@ -6804,7 +6802,7 @@ impl<'tcx> AutoDerefRef<'tcx> {
 }
 
 impl<'tcx> ctxt<'tcx> {
-    pub fn with_freevars<T, F>(&self, fid: ast::NodeId, f: F) -> T where
+    pub fn with_freevars<T, F>(&self, fid: NodeId, f: F) -> T where
         F: FnOnce(&[Freevar]) -> T,
     {
         match self.freevars.borrow().get(&fid) {
@@ -7226,7 +7224,7 @@ impl HasTypeFlags for abi::Abi {
     }
 }
 
-impl HasTypeFlags for ast::Unsafety {
+impl HasTypeFlags for hir::Unsafety {
     fn has_type_flags(&self, _flags: TypeFlags) -> bool {
         false
     }

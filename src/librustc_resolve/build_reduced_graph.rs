@@ -36,25 +36,25 @@ use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
 
-use syntax::ast::{Block, Crate};
-use syntax::ast::{DeclItem};
-use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic};
-use syntax::ast::{Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn};
-use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
-use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
-use syntax::ast::{Name, NamedField, NodeId};
-use syntax::ast::{PathListIdent, PathListMod, Public};
-use syntax::ast::StmtDecl;
-use syntax::ast::StructVariantKind;
-use syntax::ast::TupleVariantKind;
-use syntax::ast::UnnamedField;
-use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
-use syntax::ast::Visibility;
-use syntax::ast;
-use syntax::attr::AttrMetaMethods;
+use syntax::ast::{Name, NodeId};
 use syntax::parse::token::special_idents;
 use syntax::codemap::{Span, DUMMY_SP};
-use syntax::visit::{self, Visitor};
+
+use rustc_front::hir;
+use rustc_front::hir::{Block, Crate, DeclItem};
+use rustc_front::hir::{ForeignItem, ForeignItemFn, ForeignItemStatic};
+use rustc_front::hir::{Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn};
+use rustc_front::hir::{ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaultImpl};
+use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
+use rustc_front::hir::{NamedField, PathListIdent, PathListMod, Public};
+use rustc_front::hir::StmtDecl;
+use rustc_front::hir::StructVariantKind;
+use rustc_front::hir::TupleVariantKind;
+use rustc_front::hir::UnnamedField;
+use rustc_front::hir::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
+use rustc_front::hir::Visibility;
+use rustc_front::attr::AttrMetaMethods;
+use rustc_front::visit::{self, Visitor};
 
 use std::mem::replace;
 use std::ops::{Deref, DerefMut};
@@ -107,7 +107,7 @@ impl<'a, 'b:'a, 'tcx:'b> DerefMut for GraphBuilder<'a, 'b, 'tcx> {
 
 impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     /// Constructs the reduced graph for the entire crate.
-    fn build_reduced_graph(self, krate: &ast::Crate) {
+    fn build_reduced_graph(self, krate: &hir::Crate) {
         let parent = self.graph_root.get_module();
         let mut visitor = BuildReducedGraphVisitor {
             builder: self,
@@ -265,7 +265,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     fn build_reduced_graph_for_item(&mut self, item: &Item, parent: &Rc<Module>) -> Rc<Module> {
         let name = item.ident.name;
         let sp = item.span;
-        let is_public = item.vis == ast::Public;
+        let is_public = item.vis == hir::Public;
         let modifiers = if is_public {
             DefModifiers::PUBLIC
         } else {
@@ -426,7 +426,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             // These items live in the value namespace.
             ItemStatic(_, m, _) => {
                 let name_bindings = self.add_child(name, parent, ForbidDuplicateValues, sp);
-                let mutbl = m == ast::MutMutable;
+                let mutbl = m == hir::MutMutable;
 
                 name_bindings.define_value(DefStatic(DefId::local(item.id), mutbl), sp, modifiers);
                 parent.clone()
@@ -545,17 +545,17 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                         trait_item.span);
 
                     match trait_item.node {
-                        ast::ConstTraitItem(..) => {
+                        hir::ConstTraitItem(..) => {
                             let def = DefAssociatedConst(DefId::local(trait_item.id));
                             // NB: not DefModifiers::IMPORTABLE
                             name_bindings.define_value(def, trait_item.span, DefModifiers::PUBLIC);
                         }
-                        ast::MethodTraitItem(..) => {
+                        hir::MethodTraitItem(..) => {
                             let def = DefMethod(DefId::local(trait_item.id));
                             // NB: not DefModifiers::IMPORTABLE
                             name_bindings.define_value(def, trait_item.span, DefModifiers::PUBLIC);
                         }
-                        ast::TypeTraitItem(..) => {
+                        hir::TypeTraitItem(..) => {
                             let def = DefAssociatedTy(DefId::local(item.id),
                                                       DefId::local(trait_item.id));
                             // NB: not DefModifiers::IMPORTABLE
@@ -570,7 +570,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 name_bindings.define_type(DefTrait(def_id), sp, modifiers);
                 parent.clone()
             }
-            ItemMac(..) => parent.clone()
         }
     }
 
@@ -608,7 +607,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                             foreign_item: &ForeignItem,
                                             parent: &Rc<Module>) {
         let name = foreign_item.ident.name;
-        let is_public = foreign_item.vis == ast::Public;
+        let is_public = foreign_item.vis == hir::Public;
         let modifiers = if is_public {
             DefModifiers::PUBLIC
         } else {
@@ -660,7 +659,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         debug!("(building reduced graph for \
                 external crate) building external def {}, priv {:?}",
                final_ident, vis);
-        let is_public = vis == ast::Public;
+        let is_public = vis == hir::Public;
         let modifiers = if is_public {
             DefModifiers::PUBLIC
         } else {
@@ -1001,7 +1000,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     }
 }
 
-pub fn build_reduced_graph(resolver: &mut Resolver, krate: &ast::Crate) {
+pub fn build_reduced_graph(resolver: &mut Resolver, krate: &hir::Crate) {
     GraphBuilder {
         resolver: resolver
     }.build_reduced_graph(krate);

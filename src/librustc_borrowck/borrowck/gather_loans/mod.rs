@@ -26,9 +26,11 @@ use rustc::middle::ty;
 
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::visit;
-use syntax::visit::Visitor;
-use syntax::ast::{Expr, FnDecl, Block, NodeId, Pat};
+use syntax::ast::NodeId;
+use rustc_front::hir;
+use rustc_front::hir::{Expr, FnDecl, Block, Pat};
+use rustc_front::visit;
+use rustc_front::visit::Visitor;
 
 mod lifetime;
 mod restrictions;
@@ -37,8 +39,8 @@ mod move_error;
 
 pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                     fn_id: NodeId,
-                                    decl: &ast::FnDecl,
-                                    body: &ast::Block)
+                                    decl: &hir::FnDecl,
+                                    body: &hir::Block)
                                     -> (Vec<Loan<'tcx>>,
                                         move_data::MoveData<'tcx>) {
     let mut glcx = GatherLoanCtxt {
@@ -91,7 +93,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     }
 
     fn matched_pat(&mut self,
-                   matched_pat: &ast::Pat,
+                   matched_pat: &hir::Pat,
                    cmt: mc::cmt<'tcx>,
                    mode: euv::MatchMode) {
         debug!("matched_pat(matched_pat={:?}, cmt={:?}, mode={:?})",
@@ -107,7 +109,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     }
 
     fn consume_pat(&mut self,
-                   consume_pat: &ast::Pat,
+                   consume_pat: &hir::Pat,
                    cmt: mc::cmt<'tcx>,
                    mode: euv::ConsumeMode) {
         debug!("consume_pat(consume_pat={:?}, cmt={:?}, mode={:?})",
@@ -527,7 +529,7 @@ struct StaticInitializerCtxt<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
-        if let ast::ExprAddrOf(mutbl, ref base) = ex.node {
+        if let hir::ExprAddrOf(mutbl, ref base) = ex.node {
             let infcx = infer::new_infer_ctxt(self.bccx.tcx, &self.bccx.tcx.tables, None, false);
             let mc = mc::MemCategorizationContext::new(&infcx);
             let base_cmt = mc.cat_expr(&**base).unwrap();
@@ -544,7 +546,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     }
 }
 
-pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt, expr: &ast::Expr) {
+pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt, expr: &hir::Expr) {
 
     debug!("gather_loans_in_static_initializer(expr={:?})", expr);
 

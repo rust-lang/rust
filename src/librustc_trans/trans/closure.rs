@@ -32,6 +32,8 @@ use session::config::FullDebugInfo;
 use syntax::abi::RustCall;
 use syntax::ast;
 
+use rustc_front::hir;
+
 
 fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         arg_scope_id: ScopeId,
@@ -171,8 +173,8 @@ pub enum Dest<'a, 'tcx: 'a> {
 }
 
 pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
-                                    decl: &ast::FnDecl,
-                                    body: &ast::Block,
+                                    decl: &hir::FnDecl,
+                                    body: &hir::Block,
                                     id: ast::NodeId,
                                     closure_substs: &'tcx ty::ClosureSubsts<'tcx>)
                                     -> Option<Block<'a, 'tcx>>

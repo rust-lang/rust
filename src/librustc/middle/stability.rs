@@ -20,14 +20,15 @@ use middle::privacy::PublicItems;
 use metadata::csearch;
 use syntax::parse::token::InternedString;
 use syntax::codemap::{Span, DUMMY_SP};
-use syntax::{attr, visit};
 use syntax::ast;
-use syntax::ast::{Attribute, Block, Crate, FnDecl, NodeId, Variant};
-use syntax::ast::{Item, Generics, StructField};
-use syntax::attr::{Stability, AttrMetaMethods};
-use syntax::visit::{FnKind, Visitor};
+use syntax::ast::NodeId;
 use syntax::feature_gate::emit_feature_err;
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
+
+use rustc_front::hir;
+use rustc_front::hir::{FnDecl, Attribute, Block, Crate, Item, Generics, StructField, Variant};
+use rustc_front::attr::{self, Stability, AttrMetaMethods};
+use rustc_front::visit::{self, FnKind, Visitor};
 
 use std::mem::replace;
 use std::cmp::Ordering;
@@ -166,21 +167,21 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
         // stability of the trait. This is WRONG, but expedient to get
         // libstd stabilized for the 1.0 release.
         let use_parent = match i.node {
-            ast::ItemImpl(_, _, _, Some(_), _, _) => false,
+            hir::ItemImpl(_, _, _, Some(_), _, _) => false,
             _ => true,
         };
 
         // In case of a `pub use <mod>;`, we should not error since the stability
         // is inherited from the module itself
         let required = match i.node {
-            ast::ItemUse(_) => i.vis != ast::Public,
+            hir::ItemUse(_) => i.vis != hir::Public,
             _ => true
         };
 
         self.annotate(i.id, use_parent, &i.attrs, i.span,
                       |v| visit::walk_item(v, i), required);
 
-        if let ast::ItemStruct(ref sd, _) = i.node {
+        if let hir::ItemStruct(ref sd, _) = i.node {
             sd.ctor_id.map(|id| {
                 self.annotate(id, true, &i.attrs, i.span, |_| {}, true)
             });
@@ -193,12 +194,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
         // a stability attribute, so we don't recurse.
     }
 
-    fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &hir::TraitItem) {
         self.annotate(ti.id, true, &ti.attrs, ti.span,
                       |v| visit::walk_trait_item(v, ti), true);
     }
 
-    fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &hir::ImplItem) {
         self.annotate(ii.id, true, &ii.attrs, ii.span,
                       |v| visit::walk_impl_item(v, ii), true);
     }
@@ -213,7 +214,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Annotator<'a, 'tcx> {
                       |v| visit::walk_struct_field(v, s), true);
     }
 
-    fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
+    fn visit_foreign_item(&mut self, i: &hir::ForeignItem) {
         self.annotate(i.id, true, &i.attrs, i.span, |_| {}, true);
     }
 }
@@ -236,7 +237,7 @@ impl<'tcx> Index<'tcx> {
         for attr in &krate.attrs {
             if &attr.name()[..] == "staged_api" {
                 match attr.node.value.node {
-                    ast::MetaWord(_) => {
+                    hir::MetaWord(_) => {
                         attr::mark_used(attr);
                         is_staged_api = true;
                     }
@@ -335,7 +336,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 }
 
 impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
-    fn visit_item(&mut self, item: &ast::Item) {
+    fn visit_item(&mut self, item: &hir::Item) {
         // When compiling with --test we don't enforce stability on the
         // compiler-generated test module, demarcated with `DUMMY_SP` plus the
         // name `__test`
@@ -346,19 +347,19 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         visit::walk_item(self, item);
     }
 
-    fn visit_expr(&mut self, ex: &ast::Expr) {
+    fn visit_expr(&mut self, ex: &hir::Expr) {
         check_expr(self.tcx, ex,
                    &mut |id, sp, stab| self.check(id, sp, stab));
         visit::walk_expr(self, ex);
     }
 
-    fn visit_path(&mut self, path: &ast::Path, id: ast::NodeId) {
+    fn visit_path(&mut self, path: &hir::Path, id: ast::NodeId) {
         check_path(self.tcx, path, id,
                    &mut |id, sp, stab| self.check(id, sp, stab));
         visit::walk_path(self, path)
     }
 
-    fn visit_pat(&mut self, pat: &ast::Pat) {
+    fn visit_pat(&mut self, pat: &hir::Pat) {
         check_pat(self.tcx, pat,
                   &mut |id, sp, stab| self.check(id, sp, stab));
         visit::walk_pat(self, pat)
@@ -366,10 +367,10 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
 }
 
 /// Helper for discovering nodes to check for stability
-pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
+pub fn check_item(tcx: &ty::ctxt, item: &hir::Item, warn_about_defns: bool,
                   cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
     match item.node {
-        ast::ItemExternCrate(_) => {
+        hir::ItemExternCrate(_) => {
             // compiler-generated `extern crate` items have a dummy span.
             if item.span == DUMMY_SP { return }
 
@@ -384,7 +385,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
         // For implementations of traits, check the stability of each item
         // individually as it's possible to have a stable trait with unstable
         // items.
-        ast::ItemImpl(_, _, _, Some(ref t), _, ref impl_items) => {
+        hir::ItemImpl(_, _, _, Some(ref t), _, ref impl_items) => {
             let trait_did = tcx.def_map.borrow().get(&t.ref_id).unwrap().def_id();
             let trait_items = tcx.trait_items(trait_did);
 
@@ -403,16 +404,16 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
 }
 
 /// Helper for discovering nodes to check for stability
-pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
+pub fn check_expr(tcx: &ty::ctxt, e: &hir::Expr,
                   cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
     let span;
     let id = match e.node {
-        ast::ExprMethodCall(i, _, _) => {
+        hir::ExprMethodCall(i, _, _) => {
             span = i.span;
             let method_call = ty::MethodCall::expr(e.id);
             tcx.tables.borrow().method_map[&method_call].def_id
         }
-        ast::ExprField(ref base_e, ref field) => {
+        hir::ExprField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
                 ty::TyStruct(def, _) => def.struct_variant().field_named(field.node.name).did,
@@ -420,7 +421,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
                                        "stability::check_expr: named field access on non-struct")
             }
         }
-        ast::ExprTupField(ref base_e, ref field) => {
+        hir::ExprTupField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
                 ty::TyStruct(def, _) => def.struct_variant().fields[field.node].did,
@@ -430,7 +431,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
                                         something other than a tuple or struct")
             }
         }
-        ast::ExprStruct(_, ref expr_fields, _) => {
+        hir::ExprStruct(_, ref expr_fields, _) => {
             let type_ = tcx.expr_ty(e);
             match type_.sty {
                 ty::TyStruct(def, _) => {
@@ -464,7 +465,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
     maybe_do_stability_check(tcx, id, span, cb);
 }
 
-pub fn check_path(tcx: &ty::ctxt, path: &ast::Path, id: ast::NodeId,
+pub fn check_path(tcx: &ty::ctxt, path: &hir::Path, id: ast::NodeId,
                   cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
     match tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
         Some(def::DefPrimTy(..)) => {}
@@ -476,7 +477,7 @@ pub fn check_path(tcx: &ty::ctxt, path: &ast::Path, id: ast::NodeId,
 
 }
 
-pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
+pub fn check_pat(tcx: &ty::ctxt, pat: &hir::Pat,
                  cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
@@ -487,18 +488,18 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
     };
     match pat.node {
         // Foo(a, b, c)
-        ast::PatEnum(_, Some(ref pat_fields)) => {
+        hir::PatEnum(_, Some(ref pat_fields)) => {
             for (field, struct_field) in pat_fields.iter().zip(&v.fields) {
                 // a .. pattern is fine, but anything positional is
                 // not.
-                if let ast::PatWild(ast::PatWildMulti) = field.node {
+                if let hir::PatWild(hir::PatWildMulti) = field.node {
                     continue
                 }
                 maybe_do_stability_check(tcx, struct_field.did, field.span, cb)
             }
         }
         // Foo { a, b, c }
-        ast::PatStruct(_, ref pat_fields, _) => {
+        hir::PatStruct(_, ref pat_fields, _) => {
             for field in pat_fields {
                 let did = v.field_named(field.node.ident.name).did;
                 maybe_do_stability_check(tcx, did, field.span, cb);

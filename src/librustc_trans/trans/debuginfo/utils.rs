@@ -21,6 +21,8 @@ use trans::machine;
 use trans::common::{CrateContext, FunctionContext};
 use trans::type_::Type;
 
+use rustc_front::hir;
+
 use syntax::codemap::Span;
 use syntax::{ast, codemap};
 
@@ -44,11 +46,11 @@ pub fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     };
 }
 
-pub fn contains_nodebug_attribute(attributes: &[ast::Attribute]) -> bool {
+pub fn contains_nodebug_attribute(attributes: &[hir::Attribute]) -> bool {
     attributes.iter().any(|attr| {
-        let meta_item: &ast::MetaItem = &*attr.node.value;
+        let meta_item: &hir::MetaItem = &*attr.node.value;
         match meta_item.node {
-            ast::MetaWord(ref value) => &value[..] == "no_debug",
+            hir::MetaWord(ref value) => &value[..] == "no_debug",
             _ => false
         }
     })
