@@ -31,8 +31,8 @@ type's size is a multiple of its alignment. For instance:
 ```rust
 struct A {
     a: u8,
-    c: u32,
-    b: u16,
+    b: u32,
+    c: u16,
 }
 ```
 
