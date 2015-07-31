@@ -638,6 +638,26 @@ use something_which_doesnt_exist;
 Please verify you didn't misspell the import's name.
 "##,
 
+E0435: r##"
+A non-constant value was used in a const. Example of erroneous code:
+
+```
+let foo = 42u32;
+const FOO : u32 = foo; // error: attempt to use a non-constant value in a
+                       //        constant
+```
+
+To fix this error, please replace the value by a constant one. Example:
+
+```
+const FOO : u32 = 42u32; // ok!
+
+// or:
+const OTHER_FOO : u32 = 42u32;
+const FOO : u32 = OTHER_FOO; // ok!
+```
+"##,
+
 E0437: r##"
 Trait impls can only implement associated types that are members of the trait in
 question. This error indicates that you attempted to implement an associated
@@ -717,5 +737,4 @@ register_diagnostics! {
     E0427, // cannot use `ref` binding mode with ...
     E0429, // `self` imports are only allowed within a { } list
     E0434, // can't capture dynamic environment in a fn item
-    E0435, // attempt to use a non-constant value in a constant
 }
