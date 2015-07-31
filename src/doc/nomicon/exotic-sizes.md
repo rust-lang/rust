@@ -85,8 +85,8 @@ support values.
 Safe code need not worry about ZSTs, but *unsafe* code must be careful about the
 consequence of types with no size. In particular, pointer offsets are no-ops,
 and standard allocators (including jemalloc, the one used by default in Rust)
-generally consider passing in `0` for the size of an allocation as Undefined
-Behaviour.
+may return `nullptr` when a zero-sized allocation is requested, which is
+indistinguishable from out of memory.
 
 
 
