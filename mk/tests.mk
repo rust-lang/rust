@@ -445,7 +445,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	$$(Q)$$(RPATH_VAR$(1)_T_$(2)_H_$(3)) \
 		$$(CFG_PNACL_TOOLCHAIN)/bin/pnacl-translate \
 		--allow-llvm-bitcode-input $$< \
-		-o $$<.nexe
+		-o $$<.nexe -arch x86-64
 	@$$(call E, run: $$<.nexe)
 	$$(Q)$$(CFG_NACL_CROSS_PATH)/tools/sel_ldr.py -- $$<.nexe
 endef
