@@ -50,7 +50,7 @@ impl LintPass for LenZero {
 
 fn check_trait_items(cx: &Context, item: &Item, trait_items: &[P<TraitItem>]) {
 	fn is_named_self(item: &TraitItem, name: &str) -> bool {
-		item.ident.as_str() == name && if let MethodTraitItem(ref sig, _) =
+		item.ident.name == name && if let MethodTraitItem(ref sig, _) =
 			item.node { is_self_sig(sig) } else { false }
 	}
 
@@ -61,7 +61,7 @@ fn check_trait_items(cx: &Context, item: &Item, trait_items: &[P<TraitItem>]) {
 				span_lint(cx, LEN_WITHOUT_IS_EMPTY, i.span,
 					&format!("Trait '{}' has a '.len(_: &Self)' method, but no \
 						'.is_empty(_: &Self)' method. Consider adding one.", 
-						item.ident.as_str()));
+						item.ident.name));
 			}
 		};
 	}
@@ -69,7 +69,7 @@ fn check_trait_items(cx: &Context, item: &Item, trait_items: &[P<TraitItem>]) {
 
 fn check_impl_items(cx: &Context, item: &Item, impl_items: &[P<ImplItem>]) {
 	fn is_named_self(item: &ImplItem, name: &str) -> bool {
-		item.ident.as_str() == name && if let MethodImplItem(ref sig, _) = 
+		item.ident.name == name && if let MethodImplItem(ref sig, _) = 
 				item.node { is_self_sig(sig) } else { false }
 	}
 
@@ -81,7 +81,7 @@ fn check_impl_items(cx: &Context, item: &Item, impl_items: &[P<ImplItem>]) {
 					Span{ lo: s.lo, hi: s.lo, expn_id: s.expn_id },
 					&format!("Item '{}' has a '.len(_: &Self)' method, but no \
 						'.is_empty(_: &Self)' method. Consider adding one.", 
-						item.ident.as_str()));
+						item.ident.name));
 				return;
 			}
 		}
@@ -106,7 +106,7 @@ fn check_cmp(cx: &Context, span: Span, left: &Expr, right: &Expr, empty: &str) {
 fn check_len_zero(cx: &Context, span: Span, method: &SpannedIdent, 
 		args: &[P<Expr>], lit: &Lit, empty: &str) {
 	if let &Spanned{node: LitInt(0, _), ..} = lit {
-		if method.node.as_str() == "len" && args.len() == 1 &&
+		if method.node.name == "len" && args.len() == 1 &&
 			has_is_empty(cx, &*args[0]) {
 			span_lint(cx, LEN_ZERO, span, &format!(
 				"Consider replacing the len comparison with '{}_.is_empty()'",

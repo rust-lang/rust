@@ -25,7 +25,7 @@ pub fn match_ty_unwrap<'a>(ty: &'a Ty, segments: &[&str]) -> Option<&'a [P<Ty>]>
             // I could muck around with the maps and find the full path
             // however the more efficient way is to simply reverse the iterators and zip them
             // which will compare them in reverse until one of them runs out of segments
-            if seg.iter().rev().zip(segments.iter().rev()).all(|(a,b)| a.identifier.as_str() == *b) {
+            if seg.iter().rev().zip(segments.iter().rev()).all(|(a,b)| a.identifier.name == b) {
                 match seg[..].last() {
                     Some(&PathSegment {parameters: AngleBracketedParameters(ref a), ..}) => {
                         Some(&a.types[..])

@@ -70,7 +70,7 @@ impl LintPass for StrToStringPass {
     fn check_expr(&mut self, cx: &Context, expr: &ast::Expr) {
         match expr.node {
             ast::ExprMethodCall(ref method, _, ref args)
-                if method.node.as_str() == "to_string"
+                if method.node.name == "to_string"
                 && is_str(cx, &*args[0]) => {
                 span_lint(cx, STR_TO_STRING, expr.span, "str.to_owned() is faster");
             },
@@ -135,7 +135,7 @@ impl LintPass for CmpNan {
 }
 
 fn check_nan(cx: &Context, path: &Path, span: Span) {
-	path.segments.last().map(|seg| if seg.identifier.as_str() == "NAN" {
+	path.segments.last().map(|seg| if seg.identifier.name == "NAN" {
 		span_lint(cx, CMP_NAN, span, "Doomed comparison with NAN, use std::{f32,f64}::is_nan instead");
 	});
 }
@@ -238,7 +238,7 @@ impl LintPass for CmpOwned {
 fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
 	match &expr.node {
 		&ExprMethodCall(Spanned{node: ref ident, ..}, _, ref args) => {
-			let name = ident.as_str();
+			let name = ident.name;
 			if name == "to_string" || 
 			   name == "to_owned" && is_str_arg(cx, args) {
 				span_lint(cx, CMP_OWNED, expr.span, &format!(

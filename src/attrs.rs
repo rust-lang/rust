@@ -103,7 +103,7 @@ fn check_attrs(cx: &Context, info: Option<&ExpnInfo>, ident: &Ident,
 				span_lint(cx, INLINE_ALWAYS, attr.span, &format!(
 					"You have declared #[inline(always)] on {}. This \
 					is usually a bad idea. Are you sure?", 
-					ident.as_str()));
+					ident.name.as_str()));
 			}
 		}
 	}
