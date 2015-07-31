@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that import shadowing using globs causes errors
+pub mod a {
+    use b::fn_b;
+    use c::*;
 
-#![no_implicit_prelude]
-
-use qux::*; //~ERROR a type named `Baz` has already been imported in this module
-use foo::*;
-
-mod foo {
-    pub type Baz = isize;
+    pub fn fn_a(){
+    }
 }
 
-mod bar {
-    pub type Baz = isize;
+pub mod b {
+    use a::fn_a;
+    use c::*;
+
+    pub fn fn_b(){
+    }
 }
 
-mod qux {
-    pub use bar::Baz;
+pub mod c{
+    pub fn fn_c(){
+    }
 }
 
-fn main() {}
+use a::fn_a;
+use b::fn_b;
+
+fn main() {
+}
