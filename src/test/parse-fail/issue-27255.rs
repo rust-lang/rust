@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,12 +10,6 @@
 
 // compile-flags: -Z parse-only
 
-struct S {
- y: isize
-}
+impl A .. {} //~ ERROR
 
-impl Cmp, ToString for S {
-//~^ ERROR: expected one of `(`, `+`, `::`, `<`, `for`, `where`, or `{`, found `,`
-  fn eq(&&other: S) { false }
-  fn to_string(&self) -> String { "hi".to_string() }
-}
+fn main() {}
