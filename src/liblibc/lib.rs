@@ -1096,7 +1096,7 @@ pub mod types {
             }
             pub mod posix01 {
                 use types::common::c95::{c_void};
-                use types::common::c99::{uint8_t, uint32_t, int32_t};
+                use types::common::c99::{uint32_t, int32_t};
                 use types::os::arch::c95::{c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use types::os::arch::posix88::{mode_t, off_t};
