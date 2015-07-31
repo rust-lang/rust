@@ -5,8 +5,8 @@ multiply alias a location in memory while mutating it. Unless these types use
 synchronization to manage this access, they are absolutely not thread safe. Rust
 captures this with through the `Send` and `Sync` traits.
 
-* A type is Send if it is safe to send it to another thread. A type is Sync if
-* it is safe to share between threads (`&T` is Send).
+* A type is Send if it is safe to send it to another thread.
+* A type is Sync if it is safe to share between threads (`&T` is Send).
 
 Send and Sync are *very* fundamental to Rust's concurrency story. As such, a
 substantial amount of special tooling exists to make them work right. First and
@@ -26,8 +26,8 @@ ever interact with are Send and Sync.
 Major exceptions include:
 
 * raw pointers are neither Send nor Sync (because they have no safety guards)
-* `UnsafeCell` isn't Sync (and therefore `Cell` and `RefCell` aren't) `Rc` isn't
-* Send or Sync (because the refcount is shared and unsynchronized)
+* `UnsafeCell` isn't Sync (and therefore `Cell` and `RefCell` aren't)
+* `Rc` isn't Send or Sync (because the refcount is shared and unsynchronized)
 
 `Rc` and `UnsafeCell` are very fundamentally not thread-safe: they enable
 unsynchronized shared mutable state. However raw pointers are, strictly
