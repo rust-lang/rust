@@ -65,6 +65,7 @@
 #![allow(raw_pointer_derive)]
 #![deny(missing_docs)]
 
+#![feature(associated_type_defaults)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
 #![feature(on_unimplemented)]
