@@ -2,7 +2,7 @@
 
 It's time. We're going to fight the spectre that is zero-sized types. Safe Rust
 *never* needs to care about this, but Vec is very intensive on raw pointers and
-raw allocations, which are exactly the *only* two things that care about
+raw allocations, which are exactly the two things that care about
 zero-sized types. We need to be careful of two things:
 
 * The raw allocator API has undefined behaviour if you pass in 0 for an
@@ -22,7 +22,7 @@ So if the allocator API doesn't support zero-sized allocations, what on earth
 do we store as our allocation? Why, `heap::EMPTY` of course! Almost every operation
 with a ZST is a no-op since ZSTs have exactly one value, and therefore no state needs
 to be considered to store or load them. This actually extends to `ptr::read` and
-`ptr::write`: they won't actually look at the pointer at all. As such we *never* need
+`ptr::write`: they won't actually look at the pointer at all. As such we never need
 to change the pointer.
 
 Note however that our previous reliance on running out of memory before overflow is

@@ -130,7 +130,7 @@ impl<'a, T> Drop for Drain<'a, T> {
 impl<T> Vec<T> {
     pub fn drain(&mut self) -> Drain<T> {
         // this is a mem::forget safety thing. If Drain is forgotten, we just
-        // leak the whole Vec's contents. Also we need to do this *eventually*
+        // leak the whole Vec's contents. Also we need to do this eventually
         // anyway, so why not do it now?
         self.len = 0;
 

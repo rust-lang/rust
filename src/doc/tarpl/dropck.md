@@ -30,7 +30,7 @@ let (x, y) = (vec![], vec![]);
 ```
 
 Does either value strictly outlive the other? The answer is in fact *no*,
-neither value  strictly outlives the other. Of course, one of x or y will be
+neither value strictly outlives the other. Of course, one of x or y will be
 dropped before the other, but the actual order is not specified. Tuples aren't
 special in this regard; composite structures just don't guarantee their
 destruction order as of Rust 1.0.
@@ -100,11 +100,11 @@ fn main() {
 <anon>:15 }
 ```
 
-Implementing Drop lets the Inspector execute some arbitrary code *during* its
+Implementing Drop lets the Inspector execute some arbitrary code during its
 death. This means it can potentially observe that types that are supposed to
 live as long as it does actually were destroyed first.
 
-Interestingly, only *generic* types need to worry about this. If they aren't
+Interestingly, only generic types need to worry about this. If they aren't
 generic, then the only lifetimes they can harbor are `'static`, which will truly
 live *forever*. This is why this problem is referred to as *sound generic drop*.
 Sound generic drop is enforced by the *drop checker*. As of this writing, some
@@ -116,12 +116,12 @@ section:
 strictly outlive it.**
 
 This rule is sufficient but not necessary to satisfy the drop checker. That is,
-if your type obeys this rule then it's *definitely* sound to drop. However
+if your type obeys this rule then it's definitely sound to drop. However
 there are special cases where you can fail to satisfy this, but still
 successfully pass the borrow checker. These are the precise rules that are
 currently up in the air.
 
 It turns out that when writing unsafe code, we generally don't need to
 worry at all about doing the right thing for the drop checker. However there
-is *one* special case that you need to worry about, which we will look at in
+is one special case that you need to worry about, which we will look at in
 the next section.

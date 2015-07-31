@@ -70,7 +70,7 @@ struct B {
 Rust *does* guarantee that two instances of A have their data laid out in
 exactly the same way. However Rust *does not* guarantee that an instance of A
 has the same field ordering or padding as an instance of B (in practice there's
-no *particular* reason why they wouldn't, other than that its not currently
+no particular reason why they wouldn't, other than that its not currently
 guaranteed).
 
 With A and B as written, this is basically nonsensical, but several other
@@ -88,9 +88,9 @@ struct Foo<T, U> {
 ```
 
 Now consider the monomorphizations of `Foo<u32, u16>` and `Foo<u16, u32>`. If
-Rust lays out the fields in the order specified, we expect it to *pad* the
-values in the struct to satisfy their *alignment* requirements. So if Rust
-didn't reorder fields, we would expect Rust to produce the following:
+Rust lays out the fields in the order specified, we expect it to pad the
+values in the struct to satisfy their alignment requirements. So if Rust
+didn't reorder fields, we would expect it to produce the following:
 
 ```rust,ignore
 struct Foo<u16, u32> {
@@ -112,7 +112,7 @@ The latter case quite simply wastes space. An optimal use of space therefore
 requires different monomorphizations to have *different field orderings*.
 
 **Note: this is a hypothetical optimization that is not yet implemented in Rust
-**1.0
+1.0**
 
 Enums make this consideration even more complicated. Naively, an enum such as:
 
@@ -128,8 +128,8 @@ would be laid out as:
 
 ```rust
 struct FooRepr {
-    data: u64, // this is *really* either a u64, u32, or u8 based on `tag`
-    tag: u8, // 0 = A, 1 = B, 2 = C
+    data: u64, // this is either a u64, u32, or u8 based on `tag`
+    tag: u8,   // 0 = A, 1 = B, 2 = C
 }
 ```
 

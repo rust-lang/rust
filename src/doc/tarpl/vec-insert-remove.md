@@ -10,7 +10,7 @@ handling the case where the source and destination overlap (which will
 definitely happen here).
 
 If we insert at index `i`, we want to shift the `[i .. len]` to `[i+1 .. len+1]`
-using the *old* len.
+using the old len.
 
 ```rust,ignore
 pub fn insert(&mut self, index: usize, elem: T) {

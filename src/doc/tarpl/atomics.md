@@ -17,7 +17,7 @@ face.
 The C11 memory model is fundamentally about trying to bridge the gap between the
 semantics we want, the optimizations compilers want, and the inconsistent chaos
 our hardware wants. *We* would like to just write programs and have them do
-exactly what we said but, you know, *fast*. Wouldn't that be great?
+exactly what we said but, you know, fast. Wouldn't that be great?
 
 
 
@@ -35,20 +35,20 @@ y = 3;
 x = 2;
 ```
 
-The compiler may conclude that it would *really* be best if your program did
+The compiler may conclude that it would be best if your program did
 
 ```rust,ignore
 x = 2;
 y = 3;
 ```
 
-This has inverted the order of events *and* completely eliminated one event.
+This has inverted the order of events and completely eliminated one event.
 From a single-threaded perspective this is completely unobservable: after all
 the statements have executed we are in exactly the same state. But if our
-program is multi-threaded, we may have been relying on `x` to *actually* be
-assigned to 1 before `y` was assigned. We would *really* like the compiler to be
+program is multi-threaded, we may have been relying on `x` to actually be
+assigned to 1 before `y` was assigned. We would like the compiler to be
 able to make these kinds of optimizations, because they can seriously improve
-performance. On the other hand, we'd really like to be able to depend on our
+performance. On the other hand, we'd also like to be able to depend on our
 program *doing the thing we said*.
 
 
@@ -57,15 +57,15 @@ program *doing the thing we said*.
 # Hardware Reordering
 
 On the other hand, even if the compiler totally understood what we wanted and
-respected our wishes, our *hardware* might instead get us in trouble. Trouble
+respected our wishes, our hardware might instead get us in trouble. Trouble
 comes from CPUs in the form of memory hierarchies. There is indeed a global
 shared memory space somewhere in your hardware, but from the perspective of each
 CPU core it is *so very far away* and *so very slow*. Each CPU would rather work
-with its local cache of the data and only go through all the *anguish* of
-talking to shared memory *only* when it doesn't actually have that memory in
+with its local cache of the data and only go through all the anguish of
+talking to shared memory only when it doesn't actually have that memory in
 cache.
 
-After all, that's the whole *point* of the cache, right? If every read from the
+After all, that's the whole point of the cache, right? If every read from the
 cache had to run back to shared memory to double check that it hadn't changed,
 what would the point be? The end result is that the hardware doesn't guarantee
 that events that occur in the same order on *one* thread, occur in the same
@@ -99,13 +99,13 @@ provides weak ordering guarantees. This has two consequences for concurrent
 programming:
 
 * Asking for stronger guarantees on strongly-ordered hardware may be cheap or
-  even *free* because they already provide strong guarantees unconditionally.
+  even free because they already provide strong guarantees unconditionally.
   Weaker guarantees may only yield performance wins on weakly-ordered hardware.
 
-* Asking for guarantees that are *too* weak on strongly-ordered hardware   is
+* Asking for guarantees that are too weak on strongly-ordered hardware is
   more likely to *happen* to work, even though your program is strictly
-  incorrect. If possible, concurrent algorithms should be tested on   weakly-
-  ordered hardware.
+  incorrect. If possible, concurrent algorithms should be tested on
+  weakly-ordered hardware.
 
 
 
@@ -115,10 +115,10 @@ programming:
 
 The C11 memory model attempts to bridge the gap by allowing us to talk about the
 *causality* of our program. Generally, this is by establishing a *happens
-before* relationships between parts of the program and the threads that are
+before* relationship between parts of the program and the threads that are
 running them. This gives the hardware and compiler room to optimize the program
 more aggressively where a strict happens-before relationship isn't established,
-but forces them to be more careful where one *is* established. The way we
+but forces them to be more careful where one is established. The way we
 communicate these relationships are through *data accesses* and *atomic
 accesses*.
 
@@ -130,8 +130,10 @@ propagate the changes made in data accesses to other threads as lazily and
 inconsistently as it wants. Mostly critically, data accesses are how data races
 happen. Data accesses are very friendly to the hardware and compiler, but as
 we've seen they offer *awful* semantics to try to write synchronized code with.
-Actually, that's too weak. *It is literally impossible to write correct
-synchronized code using only data accesses*.
+Actually, that's too weak.
+
+**It is literally impossible to write correct synchronized code using only data
+accesses.**
 
 Atomic accesses are how we tell the hardware and compiler that our program is
 multi-threaded. Each atomic access can be marked with an *ordering* that
@@ -141,7 +143,10 @@ they *can't* do. For the compiler, this largely revolves around re-ordering of
 instructions. For the hardware, this largely revolves around how writes are
 propagated to other threads. The set of orderings Rust exposes are:
 
-* Sequentially Consistent (SeqCst) Release Acquire Relaxed
+* Sequentially Consistent (SeqCst)
+* Release
+* Acquire
+* Relaxed
 
 (Note: We explicitly do not expose the C11 *consume* ordering)
 
@@ -154,13 +159,13 @@ synchronize"
 
 Sequentially Consistent is the most powerful of all, implying the restrictions
 of all other orderings. Intuitively, a sequentially consistent operation
-*cannot* be reordered: all accesses on one thread that happen before and after a
-SeqCst access *stay* before and after it. A data-race-free program that uses
+cannot be reordered: all accesses on one thread that happen before and after a
+SeqCst access stay before and after it. A data-race-free program that uses
 only sequentially consistent atomics and data accesses has the very nice
 property that there is a single global execution of the program's instructions
 that all threads agree on. This execution is also particularly nice to reason
 about: it's just an interleaving of each thread's individual executions. This
-*does not* hold if you start using the weaker atomic orderings.
+does not hold if you start using the weaker atomic orderings.
 
 The relative developer-friendliness of sequential consistency doesn't come for
 free. Even on strongly-ordered platforms sequential consistency involves
@@ -170,8 +175,8 @@ In practice, sequential consistency is rarely necessary for program correctness.
 However sequential consistency is definitely the right choice if you're not
 confident about the other memory orders. Having your program run a bit slower
 than it needs to is certainly better than it running incorrectly! It's also
-*mechanically* trivial to downgrade atomic operations to have a weaker
-consistency later on. Just change `SeqCst` to e.g. `Relaxed` and you're done! Of
+mechanically trivial to downgrade atomic operations to have a weaker
+consistency later on. Just change `SeqCst` to `Relaxed` and you're done! Of
 course, proving that this transformation is *correct* is a whole other matter.
 
 
@@ -183,15 +188,15 @@ Acquire and Release are largely intended to be paired. Their names hint at their
 use case: they're perfectly suited for acquiring and releasing locks, and
 ensuring that critical sections don't overlap.
 
-Intuitively, an acquire access ensures that every access after it *stays* after
+Intuitively, an acquire access ensures that every access after it stays after
 it. However operations that occur before an acquire are free to be reordered to
 occur after it. Similarly, a release access ensures that every access before it
-*stays* before it. However operations that occur after a release are free to be
+stays before it. However operations that occur after a release are free to be
 reordered to occur before it.
 
 When thread A releases a location in memory and then thread B subsequently
 acquires *the same* location in memory, causality is established. Every write
-that happened *before* A's release will be observed by B *after* its release.
+that happened before A's release will be observed by B after its release.
 However no causality is established with any other threads. Similarly, no
 causality is established if A and B access *different* locations in memory.
 
@@ -230,7 +235,7 @@ weakly-ordered platforms.
 # Relaxed
 
 Relaxed accesses are the absolute weakest. They can be freely re-ordered and
-provide no happens-before relationship. Still, relaxed operations *are* still
+provide no happens-before relationship. Still, relaxed operations are still
 atomic. That is, they don't count as data accesses and any read-modify-write
 operations done to them occur atomically. Relaxed operations are appropriate for
 things that you definitely want to happen, but don't particularly otherwise care

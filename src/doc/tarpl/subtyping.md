@@ -1,14 +1,14 @@
 % Subtyping and Variance
 
 Although Rust doesn't have any notion of structural inheritance, it *does*
-include subtyping. In Rust, subtyping derives entirely from *lifetimes*. Since
+include subtyping. In Rust, subtyping derives entirely from lifetimes. Since
 lifetimes are scopes, we can partially order them based on the *contains*
 (outlives) relationship. We can even express this as a generic bound.
 
-Subtyping on lifetimes in terms of that relationship: if `'a: 'b` ("a contains
+Subtyping on lifetimes is in terms of that relationship: if `'a: 'b` ("a contains
 b" or "a outlives b"), then `'a` is a subtype of `'b`. This is a large source of
 confusion, because it seems intuitively backwards to many: the bigger scope is a
-*sub type* of the smaller scope.
+*subtype* of the smaller scope.
 
 This does in fact make sense, though. The intuitive reason for this is that if
 you expect an `&'a u8`, then it's totally fine for me to hand you an `&'static
@@ -72,7 +72,7 @@ to be able to pass `&&'static str` where an `&&'a str` is expected. The
 additional level of indirection does not change the desire to be able to pass
 longer lived things where shorted lived things are expected.
 
-However this logic *does not* apply to `&mut`. To see why `&mut` should
+However this logic doesn't apply to `&mut`. To see why `&mut` should
 be invariant over T, consider the following code:
 
 ```rust,ignore
@@ -109,7 +109,7 @@ between `'a` and T is that `'a` is a property of the reference itself,
 while T is something the reference is borrowing. If you change T's type, then
 the source still remembers the original type. However if you change the
 lifetime's type, no one but the reference knows this information, so it's fine.
-Put another way, `&'a mut T` owns `'a`, but only *borrows* T.
+Put another way: `&'a mut T` owns `'a`, but only *borrows* T.
 
 `Box` and `Vec` are interesting cases because they're variant, but you can
 definitely store values in them! This is where Rust gets really clever: it's
@@ -118,7 +118,7 @@ in them *via a mutable reference*! The mutable reference makes the whole type
 invariant, and therefore prevents you from smuggling a short-lived type into
 them.
 
-Being variant *does* allows `Box` and `Vec` to be weakened when shared
+Being variant allows `Box` and `Vec` to be weakened when shared
 immutably. So you can pass a `&Box<&'static str>` where a `&Box<&'a str>` is
 expected.
 
@@ -126,7 +126,7 @@ However what should happen when passing *by-value* is less obvious. It turns out
 that, yes, you can use subtyping when passing by-value. That is, this works:
 
 ```rust
-fn get_box<'a>(str: &'a u8) -> Box<&'a str> {
+fn get_box<'a>(str: &'a str) -> Box<&'a str> {
     // string literals are `&'static str`s
     Box::new("hello")
 }
@@ -150,7 +150,7 @@ signature:
 fn foo(&'a str) -> usize;
 ```
 
-This signature claims that it can handle any `&str` that lives *at least* as
+This signature claims that it can handle any `&str` that lives at least as
 long as `'a`. Now if this signature was variant over `&'a str`, that
 would mean
 
@@ -159,10 +159,12 @@ fn foo(&'static str) -> usize;
 ```
 
 could be provided in its place, as it would be a subtype. However this function
-has a *stronger* requirement: it says that it can *only* handle `&'static str`s,
-and nothing else. Therefore functions are not variant over their arguments.
+has a stronger requirement: it says that it can only handle `&'static str`s,
+and nothing else. Giving `&'a str`s to it would be unsound, as it's free to
+assume that what it's given lives forever. Therefore functions are not variant
+over their arguments.
 
-To see why `Fn(T) -> U` should be *variant* over U, consider the following
+To see why `Fn(T) -> U` should be variant over U, consider the following
 function signature:
 
 ```rust,ignore
@@ -177,7 +179,7 @@ therefore completely reasonable to provide
 fn foo(usize) -> &'static str;
 ```
 
-in its place. Therefore functions *are* variant over their return type.
+in its place. Therefore functions are variant over their return type.
 
 `*const` has the exact same semantics as `&`, so variance follows. `*mut` on the
 other hand can dereference to an `&mut` whether shared or not, so it is marked
