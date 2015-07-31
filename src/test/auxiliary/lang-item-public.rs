@@ -11,6 +11,7 @@
 #![feature(no_std)]
 #![no_std]
 #![feature(lang_items)]
+#![feature(associated_type_defaults)]
 
 #[lang="sized"]
 pub trait Sized { }
