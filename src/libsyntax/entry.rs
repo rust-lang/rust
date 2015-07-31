@@ -19,6 +19,8 @@ pub enum EntryPointType {
     OtherMain, // Not an entry point, but some other function named main
 }
 
+// Beware, this is duplicated in librustc/middle/entry.rs, make sure to keep
+// them in sync.
 pub fn entry_point_type(item: &Item, depth: usize) -> EntryPointType {
     match item.node {
         ItemFn(..) => {

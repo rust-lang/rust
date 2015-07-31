@@ -18,7 +18,7 @@ use graphviz as dot;
 
 use syntax::ast;
 
-use ast_map;
+use front::map as ast_map;
 use middle::cfg;
 
 pub type Node<'a> = (cfg::CFGIndex, &'a cfg::CFGNode);

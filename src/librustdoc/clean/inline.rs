@@ -13,7 +13,8 @@
 use std::collections::HashSet;
 
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
+use rustc_front::attr::AttrMetaMethods;
+use rustc_front::hir;
 
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
@@ -119,7 +120,7 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
         name: Some(tcx.item_name(did).to_string()),
         attrs: load_attrs(cx, tcx, did),
         inner: inner,
-        visibility: Some(ast::Public),
+        visibility: Some(hir::Public),
         stability: stability::lookup(tcx, did).clean(cx),
         def_id: did,
     });
@@ -174,7 +175,7 @@ fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean
         decl: decl,
         generics: (&t.generics, &predicates, subst::FnSpace).clean(cx),
         unsafety: style,
-        constness: ast::Constness::NotConst,
+        constness: hir::Constness::NotConst,
         abi: abi,
     }
 }
@@ -291,7 +292,7 @@ pub fn build_impl(cx: &DocContext,
         return ret.push(clean::Item {
             inner: clean::DefaultImplItem(clean::DefaultImpl {
                 // FIXME: this should be decoded
-                unsafety: ast::Unsafety::Normal,
+                unsafety: hir::Unsafety::Normal,
                 trait_: match associated_trait.as_ref().unwrap().clean(cx) {
                     clean::TraitBound(polyt, _) => polyt.trait_,
                     clean::RegionBound(..) => unreachable!(),
@@ -300,7 +301,7 @@ pub fn build_impl(cx: &DocContext,
             source: clean::Span::empty(),
             name: None,
             attrs: attrs,
-            visibility: Some(ast::Inherited),
+            visibility: Some(hir::Inherited),
             stability: stability::lookup(tcx, did).clean(cx),
             def_id: did,
         });
@@ -335,7 +336,7 @@ pub fn build_impl(cx: &DocContext,
                 })
             }
             ty::MethodTraitItem(method) => {
-                if method.vis != ast::Public && associated_trait.is_none() {
+                if method.vis != hir::Public && associated_trait.is_none() {
                     return None
                 }
                 if method.provided_source.is_some() {
@@ -348,7 +349,7 @@ pub fn build_impl(cx: &DocContext,
                     }) => {
                         clean::MethodItem(clean::Method {
                             unsafety: unsafety,
-                            constness: ast::Constness::NotConst,
+                            constness: hir::Constness::NotConst,
                             decl: decl,
                             self_: self_,
                             generics: generics,
@@ -396,7 +397,7 @@ pub fn build_impl(cx: &DocContext,
     }
     ret.push(clean::Item {
         inner: clean::ImplItem(clean::Impl {
-            unsafety: ast::Unsafety::Normal, // FIXME: this should be decoded
+            unsafety: hir::Unsafety::Normal, // FIXME: this should be decoded
             derived: clean::detect_derived(&attrs),
             trait_: trait_,
             for_: ty.ty.clean(cx),
@@ -407,7 +408,7 @@ pub fn build_impl(cx: &DocContext,
         source: clean::Span::empty(),
         name: None,
         attrs: attrs,
-        visibility: Some(ast::Inherited),
+        visibility: Some(hir::Inherited),
         stability: stability::lookup(tcx, did).clean(cx),
         def_id: did,
     });
@@ -447,7 +448,7 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
                 decoder::DlDef(def::DefForeignMod(did)) => {
                     fill_in(cx, tcx, did, items);
                 }
-                decoder::DlDef(def) if vis == ast::Public => {
+                decoder::DlDef(def) if vis == hir::Public => {
                     if !visited.insert(def) { return }
                     match try_inline_def(cx, tcx, def) {
                         Some(i) => items.extend(i),
@@ -466,7 +467,7 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
 fn build_const(cx: &DocContext, tcx: &ty::ctxt,
                did: DefId) -> clean::Constant {
     use rustc::middle::const_eval;
-    use syntax::print::pprust;
+    use rustc_front::print::pprust;
 
     let expr = const_eval::lookup_const_by_id(tcx, did, None).unwrap_or_else(|| {
         panic!("expected lookup_const_by_id to succeed for {:?}", did);

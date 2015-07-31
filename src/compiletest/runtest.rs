@@ -268,7 +268,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = vec!("-".to_owned(),
                             "-Zunstable-options".to_owned(),
-                            "--pretty".to_owned(),
+                            "--unpretty".to_owned(),
                             pretty_type,
                             format!("--target={}", config.target),
                             "-L".to_owned(),

@@ -51,15 +51,16 @@ use middle::infer::{InferCtxt, UpvarRegion};
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::visit::{self, Visitor};
+use rustc_front::hir;
+use rustc_front::visit::{self, Visitor};
 
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
 
 pub fn closure_analyze_fn(fcx: &FnCtxt,
                           _id: ast::NodeId,
-                          _decl: &ast::FnDecl,
-                          body: &ast::Block)
+                          _decl: &hir::FnDecl,
+                          body: &hir::Block)
 {
     let mut seed = SeedBorrowKind::new(fcx);
     seed.visit_block(body);
@@ -81,9 +82,9 @@ struct SeedBorrowKind<'a,'tcx:'a> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &ast::Expr) {
+    fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
-            ast::ExprClosure(cc, _, ref body) => {
+            hir::ExprClosure(cc, _, ref body) => {
                 self.check_closure(expr, cc, &**body);
             }
 
@@ -94,7 +95,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'tcx> {
     }
 
     // Skip all items; they aren't in the same context.
-    fn visit_item(&mut self, _: &'v ast::Item) { }
+    fn visit_item(&mut self, _: &'v hir::Item) { }
 }
 
 impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
@@ -111,9 +112,9 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
     }
 
     fn check_closure(&mut self,
-                     expr: &ast::Expr,
-                     capture_clause: ast::CaptureClause,
-                     _body: &ast::Block)
+                     expr: &hir::Expr,
+                     capture_clause: hir::CaptureClause,
+                     _body: &hir::Block)
     {
         let closure_def_id = DefId::local(expr.id);
         if !self.fcx.inh.tables.borrow().closure_kinds.contains_key(&closure_def_id) {
@@ -132,10 +133,10 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
                 debug!("seed upvar_id {:?}", upvar_id);
 
                 let capture_kind = match capture_clause {
-                    ast::CaptureByValue => {
+                    hir::CaptureByValue => {
                         ty::UpvarCapture::ByValue
                     }
-                    ast::CaptureByRef => {
+                    hir::CaptureByRef => {
                         let origin = UpvarRegion(upvar_id, expr.span);
                         let freevar_region = self.infcx().next_region_var(origin);
                         let upvar_borrow = ty::UpvarBorrow { kind: ty::ImmBorrow,
@@ -168,8 +169,8 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
     fn analyze_closure(&mut self,
                        id: ast::NodeId,
                        span: Span,
-                       decl: &ast::FnDecl,
-                       body: &ast::Block) {
+                       decl: &hir::FnDecl,
+                       body: &hir::Block) {
         /*!
          * Analysis starting point.
          */
@@ -496,8 +497,8 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'tcx> {
     fn visit_fn(&mut self,
                 fn_kind: visit::FnKind<'v>,
-                decl: &'v ast::FnDecl,
-                body: &'v ast::Block,
+                decl: &'v hir::FnDecl,
+                body: &'v hir::Block,
                 span: Span,
                 id: ast::NodeId)
     {
@@ -506,7 +507,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'tcx> {
     }
 
     // Skip all items; they aren't in the same context.
-    fn visit_item(&mut self, _: &'v ast::Item) { }
+    fn visit_item(&mut self, _: &'v hir::Item) { }
 }
 
 impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
@@ -521,13 +522,13 @@ impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
     }
 
     fn matched_pat(&mut self,
-                   _matched_pat: &ast::Pat,
+                   _matched_pat: &hir::Pat,
                    _cmt: mc::cmt<'tcx>,
                    _mode: euv::MatchMode)
     {}
 
     fn consume_pat(&mut self,
-                   _consume_pat: &ast::Pat,
+                   _consume_pat: &hir::Pat,
                    cmt: mc::cmt<'tcx>,
                    mode: euv::ConsumeMode)
     {

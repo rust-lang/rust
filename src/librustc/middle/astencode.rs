@@ -12,7 +12,11 @@
 // FIXME: remove this after snapshot, and Results are handled
 #![allow(unused_must_use)]
 
-use ast_map;
+use front::map as ast_map;
+use rustc_front::hir;
+use rustc_front::fold;
+use rustc_front::fold::Folder;
+
 use metadata::common as c;
 use metadata::cstore as cstore;
 use session::Session;
@@ -33,11 +37,9 @@ use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::{self, Ty};
 
-use syntax::{ast, ast_util, codemap, fold};
+use syntax::{ast, ast_util, codemap};
 use syntax::codemap::Span;
-use syntax::fold::Folder;
 use syntax::ptr::P;
-use syntax;
 
 use std::cell::Cell;
 use std::io::SeekFrom;
@@ -53,7 +55,8 @@ use serialize::EncoderHelpers;
 
 #[cfg(test)] use std::io::Cursor;
 #[cfg(test)] use syntax::parse;
-#[cfg(test)] use syntax::print::pprust;
+#[cfg(test)] use rustc_front::print::pprust;
+#[cfg(test)] use rustc_front::lowering::lower_item;
 
 struct DecodeContext<'a, 'b, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -166,7 +169,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
         match *ii {
           InlinedItem::Item(ref i) => {
             debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
-                   syntax::print::pprust::item_to_string(&**i));
+                   ::rustc_front::print::pprust::item_to_string(&**i));
           }
           _ => { }
         }
@@ -360,18 +363,17 @@ fn encode_ast(rbml_w: &mut Encoder, item: &InlinedItem) {
 struct NestedItemsDropper;
 
 impl Folder for NestedItemsDropper {
-    fn fold_block(&mut self, blk: P<ast::Block>) -> P<ast::Block> {
-        blk.and_then(|ast::Block {id, stmts, expr, rules, span, ..}| {
+    fn fold_block(&mut self, blk: P<hir::Block>) -> P<hir::Block> {
+        blk.and_then(|hir::Block {id, stmts, expr, rules, span, ..}| {
             let stmts_sans_items = stmts.into_iter().filter_map(|stmt| {
                 let use_stmt = match stmt.node {
-                    ast::StmtExpr(_, _) | ast::StmtSemi(_, _) => true,
-                    ast::StmtDecl(ref decl, _) => {
+                    hir::StmtExpr(_, _) | hir::StmtSemi(_, _) => true,
+                    hir::StmtDecl(ref decl, _) => {
                         match decl.node {
-                            ast::DeclLocal(_) => true,
-                            ast::DeclItem(_) => false,
+                            hir::DeclLocal(_) => true,
+                            hir::DeclItem(_) => false,
                         }
                     }
-                    ast::StmtMac(..) => panic!("unexpanded macro in astencode")
                 };
                 if use_stmt {
                     Some(stmt)
@@ -379,7 +381,7 @@ impl Folder for NestedItemsDropper {
                     None
                 }
             }).collect();
-            let blk_sans_items = P(ast::Block {
+            let blk_sans_items = P(hir::Block {
                 stmts: stmts_sans_items,
                 expr: expr,
                 id: id,
@@ -488,7 +490,7 @@ fn encode_freevar_entry(rbml_w: &mut Encoder, fv: &ty::Freevar) {
 trait rbml_decoder_helper {
     fn read_freevar_entry(&mut self, dcx: &DecodeContext)
                           -> ty::Freevar;
-    fn read_capture_mode(&mut self) -> ast::CaptureClause;
+    fn read_capture_mode(&mut self) -> hir::CaptureClause;
 }
 
 impl<'a> rbml_decoder_helper for reader::Decoder<'a> {
@@ -498,8 +500,8 @@ impl<'a> rbml_decoder_helper for reader::Decoder<'a> {
         fv.tr(dcx)
     }
 
-    fn read_capture_mode(&mut self) -> ast::CaptureClause {
-        let cm: ast::CaptureClause = Decodable::decode(self).unwrap();
+    fn read_capture_mode(&mut self) -> hir::CaptureClause {
+        let cm: hir::CaptureClause = Decodable::decode(self).unwrap();
         cm
     }
 }
@@ -1304,7 +1306,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                             this.read_enum_variant_arg(0, |this| {
                                 Ok(this.read_region(dcx))
                             }).unwrap();
-                        let m: ast::Mutability =
+                        let m: hir::Mutability =
                             this.read_enum_variant_arg(1, |this| {
                                 Decodable::decode(this)
                             }).unwrap();
@@ -1312,7 +1314,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                         ty::AutoPtr(dcx.tcx.mk_region(r), m)
                     }
                     1 => {
-                        let m: ast::Mutability =
+                        let m: hir::Mutability =
                             this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
 
                         ty::AutoUnsafe(m)
@@ -1506,14 +1508,14 @@ fn decode_side_tables(dcx: &DecodeContext,
 // Testing of astencode_gen
 
 #[cfg(test)]
-fn encode_item_ast(rbml_w: &mut Encoder, item: &ast::Item) {
+fn encode_item_ast(rbml_w: &mut Encoder, item: &hir::Item) {
     rbml_w.start_tag(c::tag_tree as usize);
     (*item).encode(rbml_w);
     rbml_w.end_tag();
 }
 
 #[cfg(test)]
-fn decode_item_ast(par_doc: rbml::Doc) -> ast::Item {
+fn decode_item_ast(par_doc: rbml::Doc) -> hir::Item {
     let chi_doc = par_doc.get(c::tag_tree as usize);
     let mut d = reader::Decoder::new(chi_doc);
     Decodable::decode(&mut d).unwrap()
@@ -1553,8 +1555,7 @@ fn mk_ctxt() -> parse::ParseSess {
 }
 
 #[cfg(test)]
-fn roundtrip(in_item: Option<P<ast::Item>>) {
-    let in_item = in_item.unwrap();
+fn roundtrip(in_item: P<hir::Item>) {
     let mut wr = Cursor::new(Vec::new());
     encode_item_ast(&mut Encoder::new(&mut wr), &*in_item);
     let rbml_doc = rbml::Doc::new(wr.get_ref());
@@ -1566,28 +1567,28 @@ fn roundtrip(in_item: Option<P<ast::Item>>) {
 #[test]
 fn test_basic() {
     let cx = mk_ctxt();
-    roundtrip(quote_item!(&cx,
+    roundtrip(lower_item(&quote_item!(&cx,
         fn foo() {}
-    ));
+    ).unwrap()));
 }
 
 #[test]
 fn test_smalltalk() {
     let cx = mk_ctxt();
-    roundtrip(quote_item!(&cx,
+    roundtrip(lower_item(&quote_item!(&cx,
         fn foo() -> isize { 3 + 4 } // first smalltalk program ever executed.
-    ));
+    ).unwrap()));
 }
 
 #[test]
 fn test_more() {
     let cx = mk_ctxt();
-    roundtrip(quote_item!(&cx,
+    roundtrip(lower_item(&quote_item!(&cx,
         fn foo(x: usize, y: usize) -> usize {
             let z = x + y;
             return z;
         }
-    ));
+    ).unwrap()));
 }
 
 #[test]
@@ -1599,13 +1600,14 @@ fn test_simplification() {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
     ).unwrap();
-    let item_in = InlinedItemRef::Item(&*item);
+    let hir_item = lower_item(&item);
+    let item_in = InlinedItemRef::Item(&hir_item);
     let item_out = simplify_ast(item_in);
-    let item_exp = InlinedItem::Item(quote_item!(&cx,
+    let item_exp = InlinedItem::Item(lower_item(&quote_item!(&cx,
         fn new_int_alist<B>() -> alist<isize, B> {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
-    ).unwrap());
+    ).unwrap()));
     match (item_out, item_exp) {
       (InlinedItem::Item(item_out), InlinedItem::Item(item_exp)) => {
         assert!(pprust::item_to_string(&*item_out) ==

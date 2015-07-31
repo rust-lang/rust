@@ -19,7 +19,7 @@ use middle::ty::{self, HasTypeFlags, Ty, TypeError};
 use middle::ty_fold::TypeFoldable;
 use std::rc::Rc;
 use syntax::abi;
-use syntax::ast;
+use rustc_front::hir as ast;
 
 pub type RelateResult<'tcx, T> = Result<T, ty::TypeError<'tcx>>;
 

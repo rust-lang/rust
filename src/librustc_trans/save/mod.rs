@@ -16,9 +16,11 @@ use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
-use rustc::ast_map::NodeItem;
+use rustc_front;
+use rustc::front::map::NodeItem;
+use rustc_front::hir;
 
-use syntax::{attr};
+use syntax::attr;
 use syntax::ast::{self, NodeId};
 use syntax::ast_util;
 use syntax::codemap::*;
@@ -356,9 +358,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Some(impl_id) => match self.tcx.map.get(impl_id.node) {
                 NodeItem(item) => {
                     match item.node {
-                        ast::ItemImpl(_, _, _, _, ref ty, _) => {
+                        hir::ItemImpl(_, _, _, _, ref ty, _) => {
                             let mut result = String::from("<");
-                            result.push_str(&ty_to_string(&**ty));
+                            result.push_str(&rustc_front::print::pprust::ty_to_string(&**ty));
 
                             match self.tcx.trait_of_item(DefId::local(id)) {
                                 Some(def_id) => {
@@ -446,7 +448,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
         match expr.node {
             ast::ExprField(ref sub_ex, ident) => {
-                let ty = &self.tcx.expr_ty_adjusted(&sub_ex).sty;
+                let hir_node = self.tcx.map.expect_expr(sub_ex.id);
+                let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
                 match *ty {
                     ty::TyStruct(def, _) => {
                         let f = def.struct_variant().field_named(ident.node.name);
@@ -465,7 +468,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprStruct(ref path, _, _) => {
-                let ty = &self.tcx.expr_ty_adjusted(expr).sty;
+                let hir_node = self.tcx.map.expect_expr(expr.id);
+                let ty = &self.tcx.expr_ty_adjusted(hir_node).sty;
                 match *ty {
                     ty::TyStruct(def, _) => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
@@ -605,7 +609,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
 
         let trait_item = self.tcx.map.expect_trait_item(def_id.node);
-        if let ast::TraitItem_::MethodTraitItem(_, Some(_)) = trait_item.node {
+        if let hir::TraitItem_::MethodTraitItem(_, Some(_)) = trait_item.node {
             true
         } else {
             false
@@ -705,9 +709,9 @@ impl<'v> Visitor<'v> for PathCollector {
 }
 
 pub fn process_crate(tcx: &ty::ctxt,
+                     krate: &ast::Crate,
                      analysis: &ty::CrateAnalysis,
                      odir: Option<&Path>) {
-    let krate = tcx.map.krate();
     if generated_code(krate.span) {
         return;
     }

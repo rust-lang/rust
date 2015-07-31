@@ -10,7 +10,7 @@
 
 // Searching for information from the cstore
 
-use ast_map;
+use front::map as ast_map;
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
@@ -23,7 +23,8 @@ use rbml;
 use rbml::reader;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::attr;
+use rustc_front::attr;
+use rustc_front::hir;
 use syntax::diagnostic::expect;
 
 use std::collections::hash_map::HashMap;
@@ -32,7 +33,7 @@ use std::collections::hash_map::HashMap;
 pub struct MethodInfo {
     pub name: ast::Name,
     pub def_id: DefId,
-    pub vis: ast::Visibility,
+    pub vis: hir::Visibility,
 }
 
 pub fn get_symbol(cstore: &cstore::CStore, def: DefId) -> String {
@@ -55,7 +56,7 @@ pub fn each_lang_item<F>(cstore: &cstore::CStore,
 pub fn each_child_of_item<F>(cstore: &cstore::CStore,
                              def_id: DefId,
                              callback: F) where
-    F: FnMut(decoder::DefLike, ast::Name, ast::Visibility),
+    F: FnMut(decoder::DefLike, ast::Name, hir::Visibility),
 {
     let crate_data = cstore.get_crate_data(def_id.krate);
     let get_crate_data = |cnum| {
@@ -72,7 +73,7 @@ pub fn each_child_of_item<F>(cstore: &cstore::CStore,
 pub fn each_top_level_item_of_crate<F>(cstore: &cstore::CStore,
                                        cnum: ast::CrateNum,
                                        callback: F) where
-    F: FnMut(decoder::DefLike, ast::Name, ast::Visibility),
+    F: FnMut(decoder::DefLike, ast::Name, hir::Visibility),
 {
     let crate_data = cstore.get_crate_data(cnum);
     let get_crate_data = |cnum| {
@@ -190,7 +191,7 @@ pub fn get_methods_if_impl(cstore: &cstore::CStore,
 
 pub fn get_item_attrs(cstore: &cstore::CStore,
                       def_id: DefId)
-                      -> Vec<ast::Attribute> {
+                      -> Vec<hir::Attribute> {
     let cdata = cstore.get_crate_data(def_id.krate);
     decoder::get_item_attrs(&*cdata, def_id.node)
 }
@@ -201,7 +202,7 @@ pub fn get_struct_field_names(cstore: &cstore::CStore, def: DefId) -> Vec<ast::N
 }
 
 pub fn get_struct_field_attrs(cstore: &cstore::CStore, def: DefId) -> HashMap<ast::NodeId,
-        Vec<ast::Attribute>> {
+        Vec<hir::Attribute>> {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_struct_field_attrs(&*cdata)
 }
@@ -269,7 +270,7 @@ pub fn get_field_type<'tcx>(tcx: &ty::ctxt<'tcx>, class_id: DefId,
 
 pub fn get_impl_polarity<'tcx>(tcx: &ty::ctxt<'tcx>,
                                def: DefId)
-                               -> Option<ast::ImplPolarity>
+                               -> Option<hir::ImplPolarity>
 {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);

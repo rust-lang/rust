@@ -15,7 +15,10 @@
 pub use self::DefLike::*;
 use self::Family::*;
 
-use ast_map;
+use front::map as ast_map;
+use rustc_front::print::pprust;
+use rustc_front::hir;
+
 use back::svh::Svh;
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
@@ -45,14 +48,14 @@ use std::str;
 use rbml::reader;
 use rbml;
 use serialize::Decodable;
-use syntax::abi;
-use syntax::attr;
+use rustc_front::attr;
 use syntax::parse::token::{IdentInterner, special_idents};
 use syntax::parse::token;
-use syntax::print::pprust;
 use syntax::ast;
+use syntax::abi;
 use syntax::codemap;
 use syntax::ptr::P;
+
 
 pub type Cmd<'a> = &'a crate_metadata;
 
@@ -158,26 +161,26 @@ fn item_family(item: rbml::Doc) -> Family {
     }
 }
 
-fn item_visibility(item: rbml::Doc) -> ast::Visibility {
+fn item_visibility(item: rbml::Doc) -> hir::Visibility {
     match reader::maybe_get_doc(item, tag_items_data_item_visibility) {
-        None => ast::Public,
+        None => hir::Public,
         Some(visibility_doc) => {
             match reader::doc_as_u8(visibility_doc) as char {
-                'y' => ast::Public,
-                'i' => ast::Inherited,
+                'y' => hir::Public,
+                'i' => hir::Inherited,
                 _ => panic!("unknown visibility character")
             }
         }
     }
 }
 
-fn fn_constness(item: rbml::Doc) -> ast::Constness {
+fn fn_constness(item: rbml::Doc) -> hir::Constness {
     match reader::maybe_get_doc(item, tag_items_data_item_constness) {
-        None => ast::Constness::NotConst,
+        None => hir::Constness::NotConst,
         Some(constness_doc) => {
             match reader::doc_as_u8(constness_doc) as char {
-                'c' => ast::Constness::Const,
-                'n' => ast::Constness::NotConst,
+                'c' => hir::Constness::Const,
+                'n' => hir::Constness::NotConst,
                 _ => panic!("unknown constness character")
             }
         }
@@ -343,12 +346,12 @@ fn item_to_def_like(cdata: Cmd, item: rbml::Doc, did: DefId) -> DefLike {
     }
 }
 
-fn parse_unsafety(item_doc: rbml::Doc) -> ast::Unsafety {
+fn parse_unsafety(item_doc: rbml::Doc) -> hir::Unsafety {
     let unsafety_doc = reader::get_doc(item_doc, tag_unsafety);
     if reader::doc_as_u8(unsafety_doc) != 0 {
-        ast::Unsafety::Unsafe
+        hir::Unsafety::Unsafe
     } else {
-        ast::Unsafety::Normal
+        hir::Unsafety::Normal
     }
 }
 
@@ -357,12 +360,12 @@ fn parse_paren_sugar(item_doc: rbml::Doc) -> bool {
     reader::doc_as_u8(paren_sugar_doc) != 0
 }
 
-fn parse_polarity(item_doc: rbml::Doc) -> ast::ImplPolarity {
+fn parse_polarity(item_doc: rbml::Doc) -> hir::ImplPolarity {
     let polarity_doc = reader::get_doc(item_doc, tag_polarity);
     if reader::doc_as_u8(polarity_doc) != 0 {
-        ast::ImplPolarity::Negative
+        hir::ImplPolarity::Negative
     } else {
-        ast::ImplPolarity::Positive
+        hir::ImplPolarity::Positive
     }
 }
 
@@ -560,7 +563,7 @@ pub fn get_repr_attrs(cdata: Cmd, id: ast::NodeId) -> Vec<attr::ReprAttr> {
 
 pub fn get_impl_polarity<'tcx>(cdata: Cmd,
                                id: ast::NodeId)
-                               -> Option<ast::ImplPolarity>
+                               -> Option<hir::ImplPolarity>
 {
     let item_doc = lookup_item(id, cdata.data());
     let fam = item_family(item_doc);
@@ -633,7 +636,7 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
                                      item_doc: rbml::Doc,
                                      mut get_crate_data: G,
                                      mut callback: F) where
-    F: FnMut(DefLike, ast::Name, ast::Visibility),
+    F: FnMut(DefLike, ast::Name, hir::Visibility),
     G: FnMut(ast::CrateNum) -> Rc<crate_metadata>,
 {
     // Iterate over all children.
@@ -722,7 +725,7 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
             let def_like = item_to_def_like(crate_data, child_item_doc, child_def_id);
             // These items have a public visibility because they're part of
             // a public re-export.
-            callback(def_like, token::intern(name), ast::Public);
+            callback(def_like, token::intern(name), hir::Public);
         }
     }
 }
@@ -733,7 +736,7 @@ pub fn each_child_of_item<F, G>(intr: Rc<IdentInterner>,
                                id: ast::NodeId,
                                get_crate_data: G,
                                callback: F) where
-    F: FnMut(DefLike, ast::Name, ast::Visibility),
+    F: FnMut(DefLike, ast::Name, hir::Visibility),
     G: FnMut(ast::CrateNum) -> Rc<crate_metadata>,
 {
     // Find the item.
@@ -756,7 +759,7 @@ pub fn each_top_level_item_of_crate<F, G>(intr: Rc<IdentInterner>,
                                           cdata: Cmd,
                                           get_crate_data: G,
                                           callback: F) where
-    F: FnMut(DefLike, ast::Name, ast::Visibility),
+    F: FnMut(DefLike, ast::Name, hir::Visibility),
     G: FnMut(ast::CrateNum) -> Rc<crate_metadata>,
 {
     let root_doc = rbml::Doc::new(cdata.data());
@@ -810,10 +813,10 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeI
 }
 
 fn get_explicit_self(item: rbml::Doc) -> ty::ExplicitSelfCategory {
-    fn get_mutability(ch: u8) -> ast::Mutability {
+    fn get_mutability(ch: u8) -> hir::Mutability {
         match ch as char {
-            'i' => ast::MutImmutable,
-            'm' => ast::MutMutable,
+            'i' => hir::MutImmutable,
+            'm' => hir::MutMutable,
             _ => panic!("unknown mutability character: `{}`", ch as char),
         }
     }
@@ -1074,7 +1077,7 @@ pub fn get_tuple_struct_definition_if_ctor(cdata: Cmd,
 
 pub fn get_item_attrs(cdata: Cmd,
                       orig_node_id: ast::NodeId)
-                      -> Vec<ast::Attribute> {
+                      -> Vec<hir::Attribute> {
     // The attributes for a tuple struct are attached to the definition, not the ctor;
     // we assume that someone passing in a tuple struct ctor is actually wanting to
     // look at the definition
@@ -1084,7 +1087,7 @@ pub fn get_item_attrs(cdata: Cmd,
     get_attributes(item)
 }
 
-pub fn get_struct_field_attrs(cdata: Cmd) -> HashMap<ast::NodeId, Vec<ast::Attribute>> {
+pub fn get_struct_field_attrs(cdata: Cmd) -> HashMap<ast::NodeId, Vec<hir::Attribute>> {
     let data = rbml::Doc::new(cdata.data());
     let fields = reader::get_doc(data, tag_struct_fields);
     reader::tagged_docs(fields, tag_struct_field).map(|field| {
@@ -1094,10 +1097,10 @@ pub fn get_struct_field_attrs(cdata: Cmd) -> HashMap<ast::NodeId, Vec<ast::Attri
     }).collect()
 }
 
-fn struct_field_family_to_visibility(family: Family) -> ast::Visibility {
+fn struct_field_family_to_visibility(family: Family) -> hir::Visibility {
     match family {
-      PublicField => ast::Public,
-      InheritedField => ast::Inherited,
+      PublicField => hir::Public,
+      InheritedField => hir::Inherited,
       _ => panic!()
     }
 }
@@ -1113,7 +1116,7 @@ pub fn get_struct_field_names(intr: &IdentInterner, cdata: Cmd, id: ast::NodeId)
     })).collect()
 }
 
-fn get_meta_items(md: rbml::Doc) -> Vec<P<ast::MetaItem>> {
+fn get_meta_items(md: rbml::Doc) -> Vec<P<hir::MetaItem>> {
     reader::tagged_docs(md, tag_meta_item_word).map(|meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = token::intern_and_get_ident(nd.as_str_slice());
@@ -1134,7 +1137,7 @@ fn get_meta_items(md: rbml::Doc) -> Vec<P<ast::MetaItem>> {
     })).collect()
 }
 
-fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
+fn get_attributes(md: rbml::Doc) -> Vec<hir::Attribute> {
     match reader::maybe_get_doc(md, tag_attributes) {
         Some(attrs_d) => {
             reader::tagged_docs(attrs_d, tag_attribute).map(|attr_doc| {
@@ -1147,9 +1150,9 @@ fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
                 assert_eq!(meta_items.len(), 1);
                 let meta_item = meta_items.into_iter().nth(0).unwrap();
                 codemap::Spanned {
-                    node: ast::Attribute_ {
+                    node: hir::Attribute_ {
                         id: attr::mk_attr_id(),
-                        style: ast::AttrOuter,
+                        style: hir::AttrOuter,
                         value: meta_item,
                         is_sugared_doc: is_sugared_doc,
                     },
@@ -1173,7 +1176,7 @@ fn list_crate_attributes(md: rbml::Doc, hash: &Svh,
     write!(out, "\n\n")
 }
 
-pub fn get_crate_attributes(data: &[u8]) -> Vec<ast::Attribute> {
+pub fn get_crate_attributes(data: &[u8]) -> Vec<hir::Attribute> {
     get_attributes(rbml::Doc::new(data))
 }
 
@@ -1371,7 +1374,7 @@ pub fn get_plugin_registrar_fn(data: &[u8]) -> Option<ast::NodeId> {
 }
 
 pub fn each_exported_macro<F>(data: &[u8], intr: &IdentInterner, mut f: F) where
-    F: FnMut(ast::Name, Vec<ast::Attribute>, String) -> bool,
+    F: FnMut(ast::Name, Vec<hir::Attribute>, String) -> bool,
 {
     let macros = reader::get_doc(rbml::Doc::new(data), tag_macro_defs);
     for macro_doc in reader::tagged_docs(macros, tag_macro_def) {
@@ -1453,8 +1456,8 @@ pub fn is_typedef(cdata: Cmd, id: ast::NodeId) -> bool {
 pub fn is_const_fn(cdata: Cmd, id: ast::NodeId) -> bool {
     let item_doc = lookup_item(id, cdata.data());
     match fn_constness(item_doc) {
-        ast::Constness::Const => true,
-        ast::Constness::NotConst => false,
+        hir::Constness::Const => true,
+        hir::Constness::NotConst => false,
     }
 }
 

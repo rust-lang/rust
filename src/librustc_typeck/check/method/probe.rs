@@ -27,6 +27,7 @@ use middle::infer;
 use middle::infer::InferCtxt;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
+use rustc_front::hir;
 use std::collections::HashSet;
 use std::mem;
 use std::rc::Rc;
@@ -92,7 +93,7 @@ pub struct Pick<'tcx> {
     // Indicates that an autoref is applied after the optional autoderefs
     //
     // B = A | &A | &mut A
-    pub autoref: Option<ast::Mutability>,
+    pub autoref: Option<hir::Mutability>,
 
     // Indicates that the source expression should be "unsized" to a
     // target type. This should probably eventually go away in favor
@@ -311,59 +312,59 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 let lang_def_id = self.tcx().lang_items.slice_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: ast::MutImmutable }) => {
+            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
                 let lang_def_id = self.tcx().lang_items.const_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: ast::MutMutable }) => {
+            ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
                 let lang_def_id = self.tcx().lang_items.mut_ptr_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyInt(ast::TyI8) => {
+            ty::TyInt(hir::TyI8) => {
                 let lang_def_id = self.tcx().lang_items.i8_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyInt(ast::TyI16) => {
+            ty::TyInt(hir::TyI16) => {
                 let lang_def_id = self.tcx().lang_items.i16_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyInt(ast::TyI32) => {
+            ty::TyInt(hir::TyI32) => {
                 let lang_def_id = self.tcx().lang_items.i32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyInt(ast::TyI64) => {
+            ty::TyInt(hir::TyI64) => {
                 let lang_def_id = self.tcx().lang_items.i64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyInt(ast::TyIs) => {
+            ty::TyInt(hir::TyIs) => {
                 let lang_def_id = self.tcx().lang_items.isize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyUint(ast::TyU8) => {
+            ty::TyUint(hir::TyU8) => {
                 let lang_def_id = self.tcx().lang_items.u8_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyUint(ast::TyU16) => {
+            ty::TyUint(hir::TyU16) => {
                 let lang_def_id = self.tcx().lang_items.u16_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyUint(ast::TyU32) => {
+            ty::TyUint(hir::TyU32) => {
                 let lang_def_id = self.tcx().lang_items.u32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyUint(ast::TyU64) => {
+            ty::TyUint(hir::TyU64) => {
                 let lang_def_id = self.tcx().lang_items.u64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyUint(ast::TyUs) => {
+            ty::TyUint(hir::TyUs) => {
                 let lang_def_id = self.tcx().lang_items.usize_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyFloat(ast::TyF32) => {
+            ty::TyFloat(hir::TyF32) => {
                 let lang_def_id = self.tcx().lang_items.f32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
-            ty::TyFloat(ast::TyF64) => {
+            ty::TyFloat(hir::TyF64) => {
                 let lang_def_id = self.tcx().lang_items.f64_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
@@ -952,7 +953,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let region = tcx.mk_region(ty::ReStatic);
 
         // Search through mutabilities in order to find one where pick works:
-        [ast::MutImmutable, ast::MutMutable].iter().filter_map(|&m| {
+        [hir::MutImmutable, hir::MutMutable].iter().filter_map(|&m| {
             let autoref_ty = tcx.mk_ref(region, ty::TypeAndMut {
                 ty: step.self_ty,
                 mutbl: m

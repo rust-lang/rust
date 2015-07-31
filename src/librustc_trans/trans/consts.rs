@@ -38,28 +38,31 @@ use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use util::nodemap::NodeMap;
 
+use rustc_front::hir;
+use rustc_front::attr;
+
 use std::ffi::{CStr, CString};
 use libc::c_uint;
-use syntax::{ast, attr};
+use syntax::ast;
 use syntax::parse::token;
 use syntax::ptr::P;
 
 pub type FnArgMap<'a> = Option<&'a NodeMap<ValueRef>>;
 
-pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
+pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &hir::Lit)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
     debug!("const_lit: {:?}", lit);
     match lit.node {
-        ast::LitByte(b) => C_integral(Type::uint_from_ty(cx, ast::TyU8), b as u64, false),
-        ast::LitChar(i) => C_integral(Type::char(cx), i as u64, false),
-        ast::LitInt(i, ast::SignedIntLit(t, _)) => {
+        hir::LitByte(b) => C_integral(Type::uint_from_ty(cx, hir::TyU8), b as u64, false),
+        hir::LitChar(i) => C_integral(Type::char(cx), i as u64, false),
+        hir::LitInt(i, hir::SignedIntLit(t, _)) => {
             C_integral(Type::int_from_ty(cx, t), i, true)
         }
-        ast::LitInt(u, ast::UnsignedIntLit(t)) => {
+        hir::LitInt(u, hir::UnsignedIntLit(t)) => {
             C_integral(Type::uint_from_ty(cx, t), u, false)
         }
-        ast::LitInt(i, ast::UnsuffixedIntLit(_)) => {
+        hir::LitInt(i, hir::UnsuffixedIntLit(_)) => {
             let lit_int_ty = cx.tcx().node_id_to_type(e.id);
             match lit_int_ty.sty {
                 ty::TyInt(t) => {
@@ -74,10 +77,10 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
                                 lit_int_ty))
             }
         }
-        ast::LitFloat(ref fs, t) => {
+        hir::LitFloat(ref fs, t) => {
             C_floating(&fs, Type::float_from_ty(cx, t))
         }
-        ast::LitFloatUnsuffixed(ref fs) => {
+        hir::LitFloatUnsuffixed(ref fs) => {
             let lit_float_ty = cx.tcx().node_id_to_type(e.id);
             match lit_float_ty.sty {
                 ty::TyFloat(t) => {
@@ -89,9 +92,9 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
                 }
             }
         }
-        ast::LitBool(b) => C_bool(cx, b),
-        ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
-        ast::LitBinary(ref data) => {
+        hir::LitBool(b) => C_bool(cx, b),
+        hir::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
+        hir::LitBinary(ref data) => {
             addr_of(cx, C_bytes(cx, &data[..]), "binary")
         }
     }
@@ -194,8 +197,8 @@ fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 def_id: DefId,
-                                ref_expr: &ast::Expr)
-                                -> &'tcx ast::Expr {
+                                ref_expr: &hir::Expr)
+                                -> &'tcx hir::Expr {
     let def_id = inline::maybe_instantiate_inline(ccx, def_id);
 
     if def_id.krate != LOCAL_CRATE {
@@ -213,21 +216,21 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 fn get_const_val(ccx: &CrateContext,
                  def_id: DefId,
-                 ref_expr: &ast::Expr) -> ValueRef {
+                 ref_expr: &hir::Expr) -> ValueRef {
     let expr = get_const_expr(ccx, def_id, ref_expr);
     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
     get_const_expr_as_global(ccx, expr, check_const::ConstQualif::empty(), empty_substs)
 }
 
 pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                          expr: &ast::Expr,
+                                          expr: &hir::Expr,
                                           qualif: check_const::ConstQualif,
                                           param_substs: &'tcx Substs<'tcx>)
                                           -> ValueRef {
     debug!("get_const_expr_as_global: {:?}", expr.id);
     // Special-case constants to cache a common global for all uses.
     match expr.node {
-        ast::ExprPath(..) => {
+        hir::ExprPath(..) => {
             let def = ccx.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
             match def {
                 def::DefConst(def_id) | def::DefAssociatedConst(def_id) => {
@@ -274,7 +277,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                            e: &ast::Expr,
+                            e: &hir::Expr,
                             param_substs: &'tcx Substs<'tcx>,
                             fn_args: FnArgMap)
                             -> (ValueRef, Ty<'tcx>) {
@@ -378,11 +381,11 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     (llconst, ety_adjusted)
 }
 
-fn check_unary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
+fn check_unary_expr_validity(cx: &CrateContext, e: &hir::Expr, t: Ty,
                              te: ValueRef) {
     // The only kind of unary expression that we check for validity
     // here is `-expr`, to check if it "overflows" (e.g. `-i32::MIN`).
-    if let ast::ExprUnary(ast::UnNeg, ref inner_e) = e.node {
+    if let hir::ExprUnary(hir::UnNeg, ref inner_e) = e.node {
 
         // An unfortunate special case: we parse e.g. -128 as a
         // negation of the literal 128, which means if we're expecting
@@ -392,7 +395,7 @@ fn check_unary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
         //
         // Catch this up front by looking for ExprLit directly,
         // and just accepting it.
-        if let ast::ExprLit(_) = inner_e.node { return; }
+        if let hir::ExprLit(_) = inner_e.node { return; }
 
         let result = match t.sty {
             ty::TyInt(int_type) => {
@@ -421,9 +424,9 @@ fn check_unary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
     }
 }
 
-fn check_binary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
+fn check_binary_expr_validity(cx: &CrateContext, e: &hir::Expr, t: Ty,
                               te1: ValueRef, te2: ValueRef) {
-    let b = if let ast::ExprBinary(b, _, _) = e.node { b } else { return };
+    let b = if let hir::ExprBinary(b, _, _) = e.node { b } else { return };
 
     let result = match t.sty {
         ty::TyInt(int_type) => {
@@ -435,13 +438,13 @@ fn check_binary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
 
             let opt_ety = Some(const_eval::IntTy::from(cx.tcx(), int_type));
             match b.node {
-                ast::BiAdd => const_int_checked_add(lhs, rhs, e, opt_ety),
-                ast::BiSub => const_int_checked_sub(lhs, rhs, e, opt_ety),
-                ast::BiMul => const_int_checked_mul(lhs, rhs, e, opt_ety),
-                ast::BiDiv => const_int_checked_div(lhs, rhs, e, opt_ety),
-                ast::BiRem => const_int_checked_rem(lhs, rhs, e, opt_ety),
-                ast::BiShl => const_int_checked_shl(lhs, rhs, e, opt_ety),
-                ast::BiShr => const_int_checked_shr(lhs, rhs, e, opt_ety),
+                hir::BiAdd => const_int_checked_add(lhs, rhs, e, opt_ety),
+                hir::BiSub => const_int_checked_sub(lhs, rhs, e, opt_ety),
+                hir::BiMul => const_int_checked_mul(lhs, rhs, e, opt_ety),
+                hir::BiDiv => const_int_checked_div(lhs, rhs, e, opt_ety),
+                hir::BiRem => const_int_checked_rem(lhs, rhs, e, opt_ety),
+                hir::BiShl => const_int_checked_shl(lhs, rhs, e, opt_ety),
+                hir::BiShr => const_int_checked_shr(lhs, rhs, e, opt_ety),
                 _ => return,
             }
         }
@@ -454,13 +457,13 @@ fn check_binary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
 
             let opt_ety = Some(const_eval::UintTy::from(cx.tcx(), uint_type));
             match b.node {
-                ast::BiAdd => const_uint_checked_add(lhs, rhs, e, opt_ety),
-                ast::BiSub => const_uint_checked_sub(lhs, rhs, e, opt_ety),
-                ast::BiMul => const_uint_checked_mul(lhs, rhs, e, opt_ety),
-                ast::BiDiv => const_uint_checked_div(lhs, rhs, e, opt_ety),
-                ast::BiRem => const_uint_checked_rem(lhs, rhs, e, opt_ety),
-                ast::BiShl => const_uint_checked_shl(lhs, rhs, e, opt_ety),
-                ast::BiShr => const_uint_checked_shr(lhs, rhs, e, opt_ety),
+                hir::BiAdd => const_uint_checked_add(lhs, rhs, e, opt_ety),
+                hir::BiSub => const_uint_checked_sub(lhs, rhs, e, opt_ety),
+                hir::BiMul => const_uint_checked_mul(lhs, rhs, e, opt_ety),
+                hir::BiDiv => const_uint_checked_div(lhs, rhs, e, opt_ety),
+                hir::BiRem => const_uint_checked_rem(lhs, rhs, e, opt_ety),
+                hir::BiShl => const_uint_checked_shl(lhs, rhs, e, opt_ety),
+                hir::BiShr => const_uint_checked_shr(lhs, rhs, e, opt_ety),
                 _ => return,
             }
         }
@@ -473,7 +476,7 @@ fn check_binary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
 }
 
 fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                   e: &ast::Expr,
+                                   e: &hir::Expr,
                                    ety: Ty<'tcx>,
                                    param_substs: &'tcx Substs<'tcx>,
                                    fn_args: FnArgMap)
@@ -484,17 +487,17 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
            ety,
            param_substs);
 
-    let map_list = |exprs: &[P<ast::Expr>]| -> Vec<ValueRef> {
+    let map_list = |exprs: &[P<hir::Expr>]| -> Vec<ValueRef> {
         exprs.iter()
              .map(|e| const_expr(cx, &**e, param_substs, fn_args).0)
              .collect()
     };
     let _icx = push_ctxt("const_expr");
     match e.node {
-        ast::ExprLit(ref lit) => {
+        hir::ExprLit(ref lit) => {
             const_lit(cx, e, &**lit)
         },
-        ast::ExprBinary(b, ref e1, ref e2) => {
+        hir::ExprBinary(b, ref e1, ref e2) => {
             /* Neither type is bottom, and we expect them to be unified
              * already, so the following is safe. */
             let (te1, ty) = const_expr(cx, &**e1, param_substs, fn_args);
@@ -510,38 +513,38 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             check_binary_expr_validity(cx, e, ty, te1, te2);
 
             unsafe { match b.node {
-                ast::BiAdd if is_float => llvm::LLVMConstFAdd(te1, te2),
-                ast::BiAdd             => llvm::LLVMConstAdd(te1, te2),
+                hir::BiAdd if is_float => llvm::LLVMConstFAdd(te1, te2),
+                hir::BiAdd             => llvm::LLVMConstAdd(te1, te2),
 
-                ast::BiSub if is_float => llvm::LLVMConstFSub(te1, te2),
-                ast::BiSub             => llvm::LLVMConstSub(te1, te2),
+                hir::BiSub if is_float => llvm::LLVMConstFSub(te1, te2),
+                hir::BiSub             => llvm::LLVMConstSub(te1, te2),
 
-                ast::BiMul if is_float => llvm::LLVMConstFMul(te1, te2),
-                ast::BiMul             => llvm::LLVMConstMul(te1, te2),
+                hir::BiMul if is_float => llvm::LLVMConstFMul(te1, te2),
+                hir::BiMul             => llvm::LLVMConstMul(te1, te2),
 
-                ast::BiDiv if is_float => llvm::LLVMConstFDiv(te1, te2),
-                ast::BiDiv if signed   => llvm::LLVMConstSDiv(te1, te2),
-                ast::BiDiv             => llvm::LLVMConstUDiv(te1, te2),
+                hir::BiDiv if is_float => llvm::LLVMConstFDiv(te1, te2),
+                hir::BiDiv if signed   => llvm::LLVMConstSDiv(te1, te2),
+                hir::BiDiv             => llvm::LLVMConstUDiv(te1, te2),
 
-                ast::BiRem if is_float => llvm::LLVMConstFRem(te1, te2),
-                ast::BiRem if signed   => llvm::LLVMConstSRem(te1, te2),
-                ast::BiRem             => llvm::LLVMConstURem(te1, te2),
+                hir::BiRem if is_float => llvm::LLVMConstFRem(te1, te2),
+                hir::BiRem if signed   => llvm::LLVMConstSRem(te1, te2),
+                hir::BiRem             => llvm::LLVMConstURem(te1, te2),
 
-                ast::BiAnd    => llvm::LLVMConstAnd(te1, te2),
-                ast::BiOr     => llvm::LLVMConstOr(te1, te2),
-                ast::BiBitXor => llvm::LLVMConstXor(te1, te2),
-                ast::BiBitAnd => llvm::LLVMConstAnd(te1, te2),
-                ast::BiBitOr  => llvm::LLVMConstOr(te1, te2),
-                ast::BiShl    => {
+                hir::BiAnd    => llvm::LLVMConstAnd(te1, te2),
+                hir::BiOr     => llvm::LLVMConstOr(te1, te2),
+                hir::BiBitXor => llvm::LLVMConstXor(te1, te2),
+                hir::BiBitAnd => llvm::LLVMConstAnd(te1, te2),
+                hir::BiBitOr  => llvm::LLVMConstOr(te1, te2),
+                hir::BiShl    => {
                     let te2 = base::cast_shift_const_rhs(b.node, te1, te2);
                     llvm::LLVMConstShl(te1, te2)
                 },
-                ast::BiShr    => {
+                hir::BiShr    => {
                     let te2 = base::cast_shift_const_rhs(b.node, te1, te2);
                     if signed { llvm::LLVMConstAShr(te1, te2) }
                     else      { llvm::LLVMConstLShr(te1, te2) }
                 },
-                ast::BiEq | ast::BiNe | ast::BiLt | ast::BiLe | ast::BiGt | ast::BiGe => {
+                hir::BiEq | hir::BiNe | hir::BiLt | hir::BiLe | hir::BiGt | hir::BiGe => {
                     if is_float {
                         let cmp = base::bin_op_to_fcmp_predicate(cx, b.node);
                         ConstFCmp(cmp, te1, te2)
@@ -552,34 +555,34 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 },
             } } // unsafe { match b.node {
         },
-        ast::ExprUnary(u, ref inner_e) => {
+        hir::ExprUnary(u, ref inner_e) => {
             let (te, ty) = const_expr(cx, &**inner_e, param_substs, fn_args);
 
             check_unary_expr_validity(cx, e, ty, te);
 
             let is_float = ty.is_fp();
             unsafe { match u {
-                ast::UnUniq | ast::UnDeref => const_deref(cx, te, ty).0,
-                ast::UnNot                 => llvm::LLVMConstNot(te),
-                ast::UnNeg if is_float     => llvm::LLVMConstFNeg(te),
-                ast::UnNeg                 => llvm::LLVMConstNeg(te),
+                hir::UnUniq | hir::UnDeref => const_deref(cx, te, ty).0,
+                hir::UnNot                 => llvm::LLVMConstNot(te),
+                hir::UnNeg if is_float     => llvm::LLVMConstFNeg(te),
+                hir::UnNeg                 => llvm::LLVMConstNeg(te),
             } }
         },
-        ast::ExprField(ref base, field) => {
+        hir::ExprField(ref base, field) => {
             let (bv, bt) = const_expr(cx, &**base, param_substs, fn_args);
             let brepr = adt::represent_type(cx, bt);
             let vinfo = VariantInfo::from_ty(cx.tcx(), bt, None);
             let ix = vinfo.field_index(field.node.name);
             adt::const_get_field(cx, &*brepr, bv, vinfo.discr, ix)
         },
-        ast::ExprTupField(ref base, idx) => {
+        hir::ExprTupField(ref base, idx) => {
             let (bv, bt) = const_expr(cx, &**base, param_substs, fn_args);
             let brepr = adt::represent_type(cx, bt);
             let vinfo = VariantInfo::from_ty(cx.tcx(), bt, None);
             adt::const_get_field(cx, &*brepr, bv, vinfo.discr, idx.node)
         },
 
-        ast::ExprIndex(ref base, ref index) => {
+        hir::ExprIndex(ref base, ref index) => {
             let (bv, bt) = const_expr(cx, &**base, param_substs, fn_args);
             let iv = match eval_const_expr_partial(cx.tcx(), &index, ExprTypeChecked) {
                 Ok(ConstVal::Int(i)) => i as u64,
@@ -629,7 +632,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 const_get_elt(cx, arr, &[iv as c_uint])
             }
         },
-        ast::ExprCast(ref base, _) => {
+        hir::ExprCast(ref base, _) => {
             let t_cast = ety;
             let llty = type_of::type_of(cx, t_cast);
             let (v, t_expr) = const_expr(cx, &**base, param_substs, fn_args);
@@ -690,15 +693,15 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 },
             } } // unsafe { match ( ... ) {
         },
-        ast::ExprAddrOf(ast::MutImmutable, ref sub) => {
+        hir::ExprAddrOf(hir::MutImmutable, ref sub) => {
             // If this is the address of some static, then we need to return
             // the actual address of the static itself (short circuit the rest
             // of const eval).
             let mut cur = sub;
             loop {
                 match cur.node {
-                    ast::ExprParen(ref sub) => cur = sub,
-                    ast::ExprBlock(ref blk) => {
+                    hir::ExprParen(ref sub) => cur = sub,
+                    hir::ExprBlock(ref blk) => {
                         if let Some(ref sub) = blk.expr {
                             cur = sub;
                         } else {
@@ -718,16 +721,16 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 addr_of(cx, v, "ref")
             }
         },
-        ast::ExprAddrOf(ast::MutMutable, ref sub) => {
+        hir::ExprAddrOf(hir::MutMutable, ref sub) => {
             let (v, _) = const_expr(cx, &**sub, param_substs, fn_args);
             addr_of_mut(cx, v, "ref_mut_slice")
         },
-        ast::ExprTup(ref es) => {
+        hir::ExprTup(ref es) => {
             let repr = adt::represent_type(cx, ety);
             let vals = map_list(&es[..]);
             adt::trans_const(cx, &*repr, 0, &vals[..])
         },
-        ast::ExprStruct(_, ref fs, ref base_opt) => {
+        hir::ExprStruct(_, ref fs, ref base_opt) => {
             let repr = adt::represent_type(cx, ety);
 
             let base_val = match *base_opt {
@@ -749,7 +752,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 adt::trans_const(cx, &*repr, discr, &cs[..])
             }
         },
-        ast::ExprVec(ref es) => {
+        hir::ExprVec(ref es) => {
             let unit_ty = ety.sequence_element_type(cx.tcx());
             let llunitty = type_of::type_of(cx, unit_ty);
             let vs = es.iter()
@@ -762,7 +765,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 C_array(llunitty, &vs[..])
             }
         },
-        ast::ExprRepeat(ref elem, ref count) => {
+        hir::ExprRepeat(ref elem, ref count) => {
             let unit_ty = ety.sequence_element_type(cx.tcx());
             let llunitty = type_of::type_of(cx, unit_ty);
             let n = cx.tcx().eval_repeat_count(count);
@@ -774,7 +777,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 C_array(llunitty, &vs[..])
             }
         },
-        ast::ExprPath(..) => {
+        hir::ExprPath(..) => {
             let def = cx.tcx().def_map.borrow().get(&e.id).unwrap().full_def();
             match def {
                 def::DefLocal(id) => {
@@ -820,12 +823,12 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         },
-        ast::ExprCall(ref callee, ref args) => {
+        hir::ExprCall(ref callee, ref args) => {
             let mut callee = &**callee;
             loop {
                 callee = match callee.node {
-                    ast::ExprParen(ref inner) => &**inner,
-                    ast::ExprBlock(ref block) => match block.expr {
+                    hir::ExprParen(ref inner) => &**inner,
+                    hir::ExprBlock(ref block) => match block.expr {
                         Some(ref tail) => &**tail,
                         None => break,
                     },
@@ -857,21 +860,21 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 _ => cx.sess().span_bug(e.span, "expected a struct, variant, or const fn def"),
             }
         },
-        ast::ExprMethodCall(_, _, ref args) => {
+        hir::ExprMethodCall(_, _, ref args) => {
             let arg_vals = map_list(args);
             let method_call = ty::MethodCall::expr(e.id);
             let method_did = cx.tcx().tables.borrow().method_map[&method_call].def_id;
             const_fn_call(cx, MethodCallKey(method_call),
                           method_did, &arg_vals, param_substs)
         },
-        ast::ExprParen(ref e) => const_expr(cx, &**e, param_substs, fn_args).0,
-        ast::ExprBlock(ref block) => {
+        hir::ExprParen(ref e) => const_expr(cx, &**e, param_substs, fn_args).0,
+        hir::ExprBlock(ref block) => {
             match block.expr {
                 Some(ref expr) => const_expr(cx, &**expr, param_substs, fn_args).0,
                 None => C_nil(cx),
             }
         },
-        ast::ExprClosure(_, ref decl, ref body) => {
+        hir::ExprClosure(_, ref decl, ref body) => {
             match ety.sty {
                 ty::TyClosure(_, ref substs) => {
                     closure::trans_closure_expr(closure::Dest::Ignore(cx), decl,
@@ -889,10 +892,10 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 pub fn trans_static(ccx: &CrateContext,
-                    m: ast::Mutability,
-                    expr: &ast::Expr,
+                    m: hir::Mutability,
+                    expr: &hir::Expr,
                     id: ast::NodeId,
-                    attrs: &Vec<ast::Attribute>)
+                    attrs: &Vec<hir::Attribute>)
                     -> ValueRef {
     unsafe {
         let _icx = push_ctxt("trans_static");
@@ -934,7 +937,7 @@ pub fn trans_static(ccx: &CrateContext,
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
-        if m != ast::MutMutable {
+        if m != hir::MutMutable {
             let tcontents = ty.type_contents(ccx.tcx());
             if !tcontents.interior_unsafe() {
                 llvm::LLVMSetGlobalConstant(g, llvm::True);

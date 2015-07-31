@@ -40,7 +40,8 @@ use middle::traits;
 use middle::ty::{self, HasTypeFlags, Ty};
 use middle::ty_fold;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
-use rustc::ast_map::{PathElem, PathName};
+use rustc::front::map::{PathElem, PathName};
+use rustc_front::hir;
 use util::nodemap::{FnvHashMap, NodeMap};
 
 use arena::TypedArena;
@@ -266,7 +267,7 @@ pub struct NodeIdAndSpan {
     pub span: Span,
 }
 
-pub fn expr_info(expr: &ast::Expr) -> NodeIdAndSpan {
+pub fn expr_info(expr: &hir::Expr) -> NodeIdAndSpan {
     NodeIdAndSpan { id: expr.id, span: expr.span }
 }
 
@@ -1024,11 +1025,11 @@ pub fn node_id_type<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, id: ast::NodeId) -> Ty
     monomorphize_type(bcx, t)
 }
 
-pub fn expr_ty<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &ast::Expr) -> Ty<'tcx> {
+pub fn expr_ty<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &hir::Expr) -> Ty<'tcx> {
     node_id_type(bcx, ex.id)
 }
 
-pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &ast::Expr) -> Ty<'tcx> {
+pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &hir::Expr) -> Ty<'tcx> {
     monomorphize_type(bcx, bcx.tcx().expr_ty_adjusted(ex))
 }
 

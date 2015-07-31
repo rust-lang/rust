@@ -29,7 +29,7 @@ use rustc_typeck::middle::infer;
 use rustc_typeck::middle::infer::lub::Lub;
 use rustc_typeck::middle::infer::glb::Glb;
 use rustc_typeck::middle::infer::sub::Sub;
-use rustc::ast_map;
+use rustc::front::map as hir_map;
 use rustc::session::{self,config};
 use syntax::{abi, ast};
 use syntax::codemap;
@@ -37,6 +37,9 @@ use syntax::codemap::{Span, CodeMap, DUMMY_SP};
 use syntax::diagnostic::{Level, RenderSpan, Bug, Fatal, Error, Warning, Note, Help};
 use syntax::parse::token;
 use syntax::feature_gate::UnstableFeatures;
+
+use rustc_front::lowering::lower_crate;
+use rustc_front::hir;
 
 struct Env<'a, 'tcx: 'a> {
     infcx: &'a infer::InferCtxt<'a, 'tcx>,
@@ -120,9 +123,10 @@ fn test_env<F>(source_string: &str,
     let krate = driver::phase_2_configure_and_expand(&sess, krate, "test", None)
                     .expect("phase 2 aborted");
 
-    let mut forest = ast_map::Forest::new(krate);
+    let krate = driver::assign_node_ids(&sess, krate);
+    let mut hir_forest = hir_map::Forest::new(lower_crate(&krate));
     let arenas = ty::CtxtArenas::new();
-    let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
+    let ast_map = driver::make_map(&sess, &mut hir_forest);
     let krate = ast_map.krate();
 
     // run just enough stuff to build a tcx:
@@ -185,7 +189,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         };
 
         fn search_mod(this: &Env,
-                      m: &ast::Mod,
+                      m: &hir::Mod,
                       idx: usize,
                       names: &[String])
                       -> Option<ast::NodeId> {
@@ -199,7 +203,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         }
 
         fn search(this: &Env,
-                  it: &ast::Item,
+                  it: &hir::Item,
                   idx: usize,
                   names: &[String])
                   -> Option<ast::NodeId> {
@@ -208,19 +212,19 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
             }
 
             return match it.node {
-                ast::ItemUse(..) | ast::ItemExternCrate(..) |
-                ast::ItemConst(..) | ast::ItemStatic(..) | ast::ItemFn(..) |
-                ast::ItemForeignMod(..) | ast::ItemTy(..) => {
+                hir::ItemUse(..) | hir::ItemExternCrate(..) |
+                hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
+                hir::ItemForeignMod(..) | hir::ItemTy(..) => {
                     None
                 }
 
-                ast::ItemEnum(..) | ast::ItemStruct(..) |
-                ast::ItemTrait(..) | ast::ItemImpl(..) |
-                ast::ItemMac(..) | ast::ItemDefaultImpl(..) => {
+                hir::ItemEnum(..) | hir::ItemStruct(..) |
+                hir::ItemTrait(..) | hir::ItemImpl(..) |
+                hir::ItemDefaultImpl(..) => {
                     None
                 }
 
-                ast::ItemMod(ref m) => {
+                hir::ItemMod(ref m) => {
                     search_mod(this, m, idx, names)
                 }
             };
@@ -260,7 +264,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         let input_args = input_tys.iter().cloned().collect();
         self.infcx.tcx.mk_fn(None,
             self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
-                unsafety: ast::Unsafety::Normal,
+                unsafety: hir::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: input_args,

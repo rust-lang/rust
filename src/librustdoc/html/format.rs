@@ -21,6 +21,7 @@ use std::iter::repeat;
 use rustc::middle::def_id::{DefId, LOCAL_CRATE};
 use syntax::abi::Abi;
 use syntax::ast;
+use rustc_front::hir;
 
 use clean;
 use html::item_type::ItemType;
@@ -30,15 +31,15 @@ use html::render::{cache, CURRENT_LOCATION_KEY};
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
 #[derive(Copy, Clone)]
-pub struct VisSpace(pub Option<ast::Visibility>);
+pub struct VisSpace(pub Option<hir::Visibility>);
 /// Similarly to VisSpace, this structure is used to render a function style with a
 /// space after it.
 #[derive(Copy, Clone)]
-pub struct UnsafetySpace(pub ast::Unsafety);
+pub struct UnsafetySpace(pub hir::Unsafety);
 /// Similarly to VisSpace, this structure is used to render a function constness
 /// with a space after it.
 #[derive(Copy, Clone)]
-pub struct ConstnessSpace(pub ast::Constness);
+pub struct ConstnessSpace(pub hir::Constness);
 /// Wrapper struct for properly emitting a method declaration.
 pub struct Method<'a>(pub &'a clean::SelfTy, pub &'a clean::FnDecl);
 /// Similar to VisSpace, but used for mutability
@@ -56,19 +57,19 @@ pub struct CommaSep<'a, T: 'a>(pub &'a [T]);
 pub struct AbiSpace(pub Abi);
 
 impl VisSpace {
-    pub fn get(&self) -> Option<ast::Visibility> {
+    pub fn get(&self) -> Option<hir::Visibility> {
         let VisSpace(v) = *self; v
     }
 }
 
 impl UnsafetySpace {
-    pub fn get(&self) -> ast::Unsafety {
+    pub fn get(&self) -> hir::Unsafety {
         let UnsafetySpace(v) = *self; v
     }
 }
 
 impl ConstnessSpace {
-    pub fn get(&self) -> ast::Constness {
+    pub fn get(&self) -> hir::Constness {
         let ConstnessSpace(v) = *self; v
     }
 }
@@ -201,8 +202,8 @@ impl fmt::Display for clean::TyParamBound {
             }
             clean::TraitBound(ref ty, modifier) => {
                 let modifier_str = match modifier {
-                    ast::TraitBoundModifier::None => "",
-                    ast::TraitBoundModifier::Maybe => "?",
+                    hir::TraitBoundModifier::None => "",
+                    hir::TraitBoundModifier::Maybe => "?",
                 };
                 write!(f, "{}{}", modifier_str, *ty)
             }
@@ -618,8 +619,8 @@ impl<'a> fmt::Display for Method<'a> {
 impl fmt::Display for VisSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
-            Some(ast::Public) => write!(f, "pub "),
-            Some(ast::Inherited) | None => Ok(())
+            Some(hir::Public) => write!(f, "pub "),
+            Some(hir::Inherited) | None => Ok(())
         }
     }
 }
@@ -627,8 +628,8 @@ impl fmt::Display for VisSpace {
 impl fmt::Display for UnsafetySpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
-            ast::Unsafety::Unsafe => write!(f, "unsafe "),
-            ast::Unsafety::Normal => Ok(())
+            hir::Unsafety::Unsafe => write!(f, "unsafe "),
+            hir::Unsafety::Normal => Ok(())
         }
     }
 }
@@ -636,8 +637,8 @@ impl fmt::Display for UnsafetySpace {
 impl fmt::Display for ConstnessSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
-            ast::Constness::Const => write!(f, "const "),
-            ast::Constness::NotConst => Ok(())
+            hir::Constness::Const => write!(f, "const "),
+            hir::Constness::NotConst => Ok(())
         }
     }
 }

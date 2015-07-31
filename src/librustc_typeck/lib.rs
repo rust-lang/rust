@@ -97,6 +97,7 @@ extern crate arena;
 extern crate fmt_macros;
 extern crate rustc;
 extern crate rustc_platform_intrinsics as intrinsics;
+extern crate rustc_front;
 
 pub use rustc::lint;
 pub use rustc::metadata;
@@ -109,9 +110,10 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::subst;
 use middle::ty::{self, Ty, HasTypeFlags};
-use rustc::ast_map;
 use session::config;
 use util::common::time;
+use rustc::front::map as hir_map;
+use rustc_front::hir;
 
 use syntax::codemap::Span;
 use syntax::print::pprust::*;
@@ -178,7 +180,7 @@ fn lookup_full_def(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
 }
 
 fn require_c_abi_if_variadic(tcx: &ty::ctxt,
-                             decl: &ast::FnDecl,
+                             decl: &hir::FnDecl,
                              abi: abi::Abi,
                              span: Span) {
     if decl.variadic && abi != abi::C {
@@ -225,9 +227,9 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
     match main_t.sty {
         ty::TyBareFn(..) => {
             match tcx.map.find(main_id) {
-                Some(ast_map::NodeItem(it)) => {
+                Some(hir_map::NodeItem(it)) => {
                     match it.node {
-                        ast::ItemFn(_, _, _, _, ref ps, _)
+                        hir::ItemFn(_, _, _, _, ref ps, _)
                         if ps.is_parameterized() => {
                             span_err!(ccx.tcx.sess, main_span, E0131,
                                       "main function is not allowed to have type parameters");
@@ -239,7 +241,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
             let se_ty = tcx.mk_fn(Some(DefId::local(main_id)), tcx.mk_bare_fn(ty::BareFnTy {
-                unsafety: ast::Unsafety::Normal,
+                unsafety: hir::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: Vec::new(),
@@ -270,9 +272,9 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
     match start_t.sty {
         ty::TyBareFn(..) => {
             match tcx.map.find(start_id) {
-                Some(ast_map::NodeItem(it)) => {
+                Some(hir_map::NodeItem(it)) => {
                     match it.node {
-                        ast::ItemFn(_,_,_,_,ref ps,_)
+                        hir::ItemFn(_,_,_,_,ref ps,_)
                         if ps.is_parameterized() => {
                             span_err!(tcx.sess, start_span, E0132,
                                       "start function is not allowed to have type parameters");
@@ -285,7 +287,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             }
 
             let se_ty = tcx.mk_fn(Some(DefId::local(start_id)), tcx.mk_bare_fn(ty::BareFnTy {
-                unsafety: ast::Unsafety::Normal,
+                unsafety: hir::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: vec!(

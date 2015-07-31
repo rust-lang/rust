@@ -48,8 +48,8 @@
 
 use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
-use syntax::ast;
-use syntax::visit;
+use rustc_front::hir;
+use rustc_front::visit;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Svh {
@@ -66,7 +66,7 @@ impl Svh {
         &self.hash
     }
 
-    pub fn calculate(metadata: &Vec<String>, krate: &ast::Crate) -> Svh {
+    pub fn calculate(metadata: &Vec<String>, krate: &hir::Crate) -> Svh {
         // FIXME (#14132): This is better than it used to be, but it still not
         // ideal. We now attempt to hash only the relevant portions of the
         // Crate AST as well as the top-level crate attributes. (However,
@@ -131,13 +131,13 @@ mod svh_visitor {
     pub use self::SawExprComponent::*;
     pub use self::SawStmtComponent::*;
     use self::SawAbiComponent::*;
-    use syntax::ast;
-    use syntax::ast::*;
+    use syntax::ast::{self, NodeId, Ident};
     use syntax::codemap::Span;
     use syntax::parse::token;
-    use syntax::print::pprust;
-    use syntax::visit;
-    use syntax::visit::{Visitor, FnKind};
+    use rustc_front::visit;
+    use rustc_front::visit::{Visitor, FnKind};
+    use rustc_front::hir::*;
+    use rustc_front::hir;
 
     use std::hash::{Hash, SipHasher};
 
@@ -230,9 +230,9 @@ mod svh_visitor {
         SawExprCall,
         SawExprMethodCall,
         SawExprTup,
-        SawExprBinary(ast::BinOp_),
-        SawExprUnary(ast::UnOp),
-        SawExprLit(ast::Lit_),
+        SawExprBinary(hir::BinOp_),
+        SawExprUnary(hir::UnOp),
+        SawExprLit(hir::Lit_),
         SawExprCast,
         SawExprIf,
         SawExprWhile,
@@ -240,13 +240,13 @@ mod svh_visitor {
         SawExprClosure,
         SawExprBlock,
         SawExprAssign,
-        SawExprAssignOp(ast::BinOp_),
+        SawExprAssignOp(hir::BinOp_),
         SawExprIndex,
         SawExprRange,
         SawExprPath(Option<usize>),
-        SawExprAddrOf(ast::Mutability),
+        SawExprAddrOf(hir::Mutability),
         SawExprRet,
-        SawExprInlineAsm(&'a ast::InlineAsm),
+        SawExprInlineAsm(&'a hir::InlineAsm),
         SawExprStruct,
         SawExprRepeat,
         SawExprParen,
@@ -284,12 +284,6 @@ mod svh_visitor {
             ExprStruct(..)           => SawExprStruct,
             ExprRepeat(..)           => SawExprRepeat,
             ExprParen(..)            => SawExprParen,
-
-            // just syntactic artifacts, expanded away by time of SVH.
-            ExprForLoop(..)          => unreachable!(),
-            ExprIfLet(..)            => unreachable!(),
-            ExprWhileLet(..)         => unreachable!(),
-            ExprMac(..)              => unreachable!(),
         }
     }
 
@@ -306,51 +300,10 @@ mod svh_visitor {
             StmtDecl(..) => SawStmtDecl,
             StmtExpr(..) => SawStmtExpr,
             StmtSemi(..) => SawStmtSemi,
-            StmtMac(..)  => unreachable!(),
         }
     }
 
     impl<'a, 'v> Visitor<'v> for StrictVersionHashVisitor<'a> {
-
-        fn visit_mac(&mut self, mac: &Mac) {
-            // macro invocations, namely macro_rules definitions,
-            // *can* appear as items, even in the expanded crate AST.
-
-            if &macro_name(mac)[..] == "macro_rules" {
-                // Pretty-printing definition to a string strips out
-                // surface artifacts (currently), such as the span
-                // information, yielding a content-based hash.
-
-                // FIXME (#14132): building temporary string is
-                // expensive; a direct content-based hash on token
-                // trees might be faster. Implementing this is far
-                // easier in short term.
-                let macro_defn_as_string = pprust::to_string(|pp_state| {
-                    pp_state.print_mac(mac, token::Paren)
-                });
-                macro_defn_as_string.hash(self.st);
-            } else {
-                // It is not possible to observe any kind of macro
-                // invocation at this stage except `macro_rules!`.
-                panic!("reached macro somehow: {}",
-                      pprust::to_string(|pp_state| {
-                          pp_state.print_mac(mac, token::Paren)
-                      }));
-            }
-
-            visit::walk_mac(self, mac);
-
-            fn macro_name(mac: &Mac) -> token::InternedString {
-                match &mac.node {
-                    &MacInvocTT(ref path, ref _tts, ref _stx_ctxt) => {
-                        let s = &path.segments;
-                        assert_eq!(s.len(), 1);
-                        s[0].identifier.name.as_str()
-                    }
-                }
-            }
-        }
-
         fn visit_struct_def(&mut self, s: &StructDef, ident: Ident,
                             g: &Generics, _: NodeId) {
             SawStructDef(ident.name.as_str()).hash(self.st);

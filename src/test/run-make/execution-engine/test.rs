@@ -14,6 +14,7 @@
 extern crate libc;
 extern crate rustc;
 extern crate rustc_driver;
+extern crate rustc_front;
 extern crate rustc_lint;
 extern crate rustc_resolve;
 extern crate syntax;
@@ -23,13 +24,14 @@ use std::mem::transmute;
 use std::path::PathBuf;
 use std::thread::Builder;
 
-use rustc::ast_map;
+use rustc::front::map as ast_map;
 use rustc::llvm;
 use rustc::metadata::cstore::RequireDynamic;
 use rustc::middle::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Input, Options};
 use rustc::session::build_session;
 use rustc_driver::driver;
+use rustc_front::lowering::lower_crate;
 use rustc_resolve::MakeGlobMap;
 use libc::c_void;
 
@@ -220,12 +222,13 @@ fn compile_program(input: &str, sysroot: PathBuf)
         let krate = driver::phase_2_configure_and_expand(&sess, krate, &id, None)
             .expect("phase_2 returned `None`");
 
-        let mut forest = ast_map::Forest::new(krate);
+        let krate = driver::assign_node_ids(&sess, krate);
+        let mut hir_forest = ast_map::Forest::new(lower_crate(&krate));
         let arenas = ty::CtxtArenas::new();
-        let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
+        let ast_map = driver::make_map(&sess, &mut hir_forest);
 
         driver::phase_3_run_analysis_passes(
-            sess, ast_map, &arenas, id, MakeGlobMap::No, |tcx, analysis| {
+            sess, ast_map, &krate, &arenas, id, MakeGlobMap::No, |tcx, analysis| {
 
             let trans = driver::phase_4_translate_to_llvm(tcx, analysis);
 

@@ -48,6 +48,7 @@ extern crate syntax;
 extern crate libc;
 extern crate serialize;
 extern crate rustc_llvm;
+extern crate rustc_front;
 #[macro_use] extern crate log;
 
 pub mod abi;

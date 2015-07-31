@@ -24,8 +24,9 @@ use middle::ty::ParamTy;
 use middle::ty::{self, Ty};
 use util::nodemap::FnvHashMap;
 
+use rustc_front::hir;
+
 use syntax::abi::Abi;
-use syntax::ast;
 use syntax::diagnostic::SpanHandler;
 
 use rbml::writer::Encoder;
@@ -64,26 +65,26 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
         ty::TyChar => mywrite!(w, "c"),
         ty::TyInt(t) => {
             match t {
-                ast::TyIs => mywrite!(w, "is"),
-                ast::TyI8 => mywrite!(w, "MB"),
-                ast::TyI16 => mywrite!(w, "MW"),
-                ast::TyI32 => mywrite!(w, "ML"),
-                ast::TyI64 => mywrite!(w, "MD")
+                hir::TyIs => mywrite!(w, "is"),
+                hir::TyI8 => mywrite!(w, "MB"),
+                hir::TyI16 => mywrite!(w, "MW"),
+                hir::TyI32 => mywrite!(w, "ML"),
+                hir::TyI64 => mywrite!(w, "MD")
             }
         }
         ty::TyUint(t) => {
             match t {
-                ast::TyUs => mywrite!(w, "us"),
-                ast::TyU8 => mywrite!(w, "Mb"),
-                ast::TyU16 => mywrite!(w, "Mw"),
-                ast::TyU32 => mywrite!(w, "Ml"),
-                ast::TyU64 => mywrite!(w, "Md")
+                hir::TyUs => mywrite!(w, "us"),
+                hir::TyU8 => mywrite!(w, "Mb"),
+                hir::TyU16 => mywrite!(w, "Mw"),
+                hir::TyU32 => mywrite!(w, "Ml"),
+                hir::TyU64 => mywrite!(w, "Md")
             }
         }
         ty::TyFloat(t) => {
             match t {
-                ast::TyF32 => mywrite!(w, "Mf"),
-                ast::TyF64 => mywrite!(w, "MF"),
+                hir::TyF32 => mywrite!(w, "Mf"),
+                hir::TyF64 => mywrite!(w, "MF"),
             }
         }
         ty::TyEnum(def, substs) => {
@@ -179,10 +180,10 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
     }
 }
 
-fn enc_mutability(w: &mut Encoder, mt: ast::Mutability) {
+fn enc_mutability(w: &mut Encoder, mt: hir::Mutability) {
     match mt {
-        ast::MutImmutable => (),
-        ast::MutMutable => mywrite!(w, "m"),
+        hir::MutImmutable => (),
+        hir::MutMutable => mywrite!(w, "m"),
     }
 }
 
@@ -314,10 +315,10 @@ pub fn enc_trait_ref<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>,
     enc_substs(w, cx, s.substs);
 }
 
-fn enc_unsafety(w: &mut Encoder, p: ast::Unsafety) {
+fn enc_unsafety(w: &mut Encoder, p: hir::Unsafety) {
     match p {
-        ast::Unsafety::Normal => mywrite!(w, "n"),
-        ast::Unsafety::Unsafe => mywrite!(w, "u"),
+        hir::Unsafety::Normal => mywrite!(w, "n"),
+        hir::Unsafety::Unsafe => mywrite!(w, "u"),
     }
 }
 

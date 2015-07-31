@@ -25,6 +25,7 @@ use rustc_lint;
 use rustc::session::{self, config};
 use rustc::session::config::get_unstable_features_setting;
 use rustc::session::search_paths::{SearchPaths, PathKind};
+use rustc_front::lowering::lower_crate;
 use rustc_back::tempdir::TempDir;
 use rustc_driver::{driver, Compilation};
 use syntax::codemap::CodeMap;
@@ -80,6 +81,8 @@ pub fn run(input: &str,
     let krate = driver::phase_2_configure_and_expand(&sess, krate,
                                                      "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
+    let krate = driver::assign_node_ids(&sess, krate);
+    let krate = lower_crate(&krate);
 
     let opts = scrape_test_config(&krate);
 
@@ -120,9 +123,9 @@ pub fn run(input: &str,
 }
 
 // Look for #![doc(test(no_crate_inject))], used by crates in the std facade
-fn scrape_test_config(krate: &::syntax::ast::Crate) -> TestOptions {
-    use syntax::attr::AttrMetaMethods;
-    use syntax::print::pprust;
+fn scrape_test_config(krate: &::rustc_front::hir::Crate) -> TestOptions {
+    use rustc_front::attr::AttrMetaMethods;
+    use rustc_front::print::pprust;
 
     let mut opts = TestOptions {
         no_crate_inject: false,

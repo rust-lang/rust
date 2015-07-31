@@ -26,9 +26,10 @@ use lint;
 use metadata::cstore;
 
 use syntax::ast;
-use syntax::ast::{IntTy, UintTy};
+use rustc_front::hir::{IntTy, UintTy};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
+use rustc_front::hir;
 use syntax::diagnostic::{ColorConfig, Auto, Always, Never, SpanHandler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
@@ -664,8 +665,8 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
     };
 
     let (int_type, uint_type) = match &target.target_pointer_width[..] {
-        "32" => (ast::TyI32, ast::TyU32),
-        "64" => (ast::TyI64, ast::TyU64),
+        "32" => (hir::TyI32, hir::TyU32),
+        "64" => (hir::TyI64, hir::TyU64),
         w    => sp.handler().fatal(&format!("target specification was invalid: unrecognized \
                                              target-pointer-width {}", w))
     };
@@ -824,15 +825,16 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
         opt::flagopt_u("", "pretty",
                    "Pretty-print the input instead of compiling;
                    valid types are: `normal` (un-annotated source),
-                   `expanded` (crates expanded),
-                   `typed` (crates expanded, with type annotations), or
+                   `expanded` (crates expanded), or
                    `expanded,identified` (fully parenthesized, AST nodes with IDs).",
                  "TYPE"),
         opt::flagopt_u("", "unpretty",
                      "Present the input source, unstable (and less-pretty) variants;
                       valid types are any of the types for `--pretty`, as well as:
-                      `flowgraph=<nodeid>` (graphviz formatted flowgraph for node), or
-                      `everybody_loops` (all function bodies replaced with `loop {}`).",
+                      `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
+                      `everybody_loops` (all function bodies replaced with `loop {}`),
+                      `hir` (the HIR), `hir,identified`, or
+                      `hir,typed` (HIR with types for each node).",
                      "TYPE"),
         opt::opt_u("", "show-span", "Show spans for compiler debugging", "expr|pat|ty"),
     ]);

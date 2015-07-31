@@ -13,7 +13,6 @@
 #![allow(unused_must_use)] // everything is just a MemWriter, can't fail
 #![allow(non_camel_case_types)]
 
-use ast_map::{self, LinkedPath, PathElem, PathElems};
 use back::svh::Svh;
 use session::config;
 use metadata::common::*;
@@ -35,16 +34,19 @@ use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
 use std::rc::Rc;
 use syntax::abi;
-use syntax::ast::{self, NodeId};
-use syntax::attr;
-use syntax::attr::AttrMetaMethods;
+use syntax::ast::{NodeId, Name, CRATE_NODE_ID, CrateNum};
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::special_idents;
-use syntax::print::pprust;
-use syntax::visit::Visitor;
-use syntax::visit;
 use syntax;
 use rbml::writer::Encoder;
+
+use rustc_front::hir as ast;
+use rustc_front::visit::Visitor;
+use rustc_front::visit;
+use rustc_front::attr;
+use rustc_front::attr::AttrMetaMethods;
+use front::map::{LinkedPath, PathElem, PathElems};
+use front::map as ast_map;
 
 pub type EncodeInlinedItem<'a> =
     Box<FnMut(&EncodeContext, &mut Encoder, InlinedItemRef) + 'a>;
@@ -72,11 +74,11 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     pub reachable: &'a NodeSet,
 }
 
-fn encode_name(rbml_w: &mut Encoder, name: ast::Name) {
+fn encode_name(rbml_w: &mut Encoder, name: Name) {
     rbml_w.wr_tagged_str(tag_paths_data_name, &name.as_str());
 }
 
-fn encode_impl_type_basename(rbml_w: &mut Encoder, name: ast::Name) {
+fn encode_impl_type_basename(rbml_w: &mut Encoder, name: Name) {
     rbml_w.wr_tagged_str(tag_item_impl_type_basename, &name.as_str());
 }
 
@@ -130,7 +132,7 @@ fn encode_item_variances(rbml_w: &mut Encoder,
 
 fn encode_bounds_and_type_for_item<'a, 'tcx>(rbml_w: &mut Encoder,
                                              ecx: &EncodeContext<'a, 'tcx>,
-                                             id: ast::NodeId) {
+                                             id: NodeId) {
     encode_bounds_and_type(rbml_w,
                            ecx,
                            &ecx.tcx.lookup_item_type(DefId::local(id)),
@@ -343,7 +345,7 @@ fn encode_path<PI: Iterator<Item=PathElem>>(rbml_w: &mut Encoder, path: PI) {
 fn encode_reexported_static_method(rbml_w: &mut Encoder,
                                    exp: &def::Export,
                                    method_def_id: DefId,
-                                   method_name: ast::Name) {
+                                   method_name: Name) {
     debug!("(encode reexported static method) {}::{}",
             exp.name, method_name);
     rbml_w.start_tag(tag_items_data_item_reexport);
@@ -500,7 +502,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
                        attrs: &[ast::Attribute],
                        id: NodeId,
                        path: PathElems,
-                       name: ast::Name,
+                       name: Name,
                        vis: ast::Visibility) {
     rbml_w.start_tag(tag_items_data_item);
     encode_def_id(rbml_w, DefId::local(id));
@@ -655,7 +657,7 @@ fn encode_info_for_struct<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
 fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                rbml_w: &mut Encoder,
-                               name: ast::Name,
+                               name: Name,
                                ctor_id: NodeId,
                                index: &mut Vec<entry<i64>>,
                                struct_id: NodeId) {
@@ -1475,7 +1477,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             rbml_w.end_tag();
         }
       }
-      ast::ItemExternCrate(_) | ast::ItemUse(_) |ast::ItemMac(..) => {
+      ast::ItemExternCrate(_) | ast::ItemUse(_) => {
         // these are encoded separately
       }
     }
@@ -1588,14 +1590,14 @@ fn encode_info_for_items(ecx: &EncodeContext,
     let mut index = Vec::new();
     rbml_w.start_tag(tag_items_data);
     index.push(entry {
-        val: ast::CRATE_NODE_ID as i64,
+        val: CRATE_NODE_ID as i64,
         pos: rbml_w.mark_stable_position(),
     });
     encode_info_for_mod(ecx,
                         rbml_w,
                         &krate.module,
                         &[],
-                        ast::CRATE_NODE_ID,
+                        CRATE_NODE_ID,
                         [].iter().cloned().chain(LinkedPath::empty()),
                         syntax::parse::token::special_idents::invalid.name,
                         ast::Public);
@@ -1727,7 +1729,7 @@ fn encode_defaulted(rbml_w: &mut Encoder, is_defaulted: bool) {
     rbml_w.wr_tagged_u8(tag_defaulted_trait, byte);
 }
 
-fn encode_associated_type_names(rbml_w: &mut Encoder, names: &[ast::Name]) {
+fn encode_associated_type_names(rbml_w: &mut Encoder, names: &[Name]) {
     rbml_w.start_tag(tag_associated_type_names);
     for &name in names {
         rbml_w.wr_tagged_str(tag_associated_type_name, &name.as_str());
@@ -1745,7 +1747,7 @@ fn encode_polarity(rbml_w: &mut Encoder, polarity: ast::ImplPolarity) {
 
 fn encode_crate_deps(rbml_w: &mut Encoder, cstore: &cstore::CStore) {
     fn get_ordered_deps(cstore: &cstore::CStore)
-                        -> Vec<(ast::CrateNum, Rc<cstore::crate_metadata>)> {
+                        -> Vec<(CrateNum, Rc<cstore::crate_metadata>)> {
         // Pull the cnums and name,vers,hash out of cstore
         let mut deps = Vec::new();
         cstore.iter_crate_data(|cnum, val| {
@@ -1856,7 +1858,7 @@ fn encode_macro_defs(rbml_w: &mut Encoder,
         encode_attributes(rbml_w, &def.attrs);
 
         rbml_w.wr_tagged_str(tag_macro_def_body,
-                             &pprust::tts_to_string(&def.body));
+                             &::syntax::print::pprust::tts_to_string(&def.body));
 
         rbml_w.end_tag();
     }
