@@ -27,19 +27,27 @@ However borrowck doesn't understand arrays or slices in any way, so this doesn't
 work:
 
 ```rust,ignore
-let x = [1, 2, 3];
+let mut x = [1, 2, 3];
 let a = &mut x[0];
 let b = &mut x[1];
 println!("{} {}", a, b);
 ```
 
 ```text
-<anon>:3:18: 3:22 error: cannot borrow immutable indexed content `x[..]` as mutable
-<anon>:3     let a = &mut x[0];
-                          ^~~~
-<anon>:4:18: 4:22 error: cannot borrow immutable indexed content `x[..]` as mutable
-<anon>:4     let b = &mut x[1];
-                          ^~~~
+<anon>:4:14: 4:18 error: cannot borrow `x[..]` as mutable more than once at a time
+<anon>:4 let b = &mut x[1];
+                      ^~~~
+<anon>:3:14: 3:18 note: previous borrow of `x[..]` occurs here; the mutable borrow prevents subsequent moves, borrows, or modification of `x[..]` until the borrow ends
+<anon>:3 let a = &mut x[0];
+                      ^~~~
+<anon>:6:2: 6:2 note: previous borrow ends here
+<anon>:1 fn main() {
+<anon>:2 let mut x = [1, 2, 3];
+<anon>:3 let a = &mut x[0];
+<anon>:4 let b = &mut x[1];
+<anon>:5 println!("{} {}", a, b);
+<anon>:6 }
+         ^
 error: aborting due to 2 previous errors
 ```
 
