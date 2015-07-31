@@ -103,4 +103,13 @@ On the other hand, this alternative does not change the behavior of existing cod
 
 # Unresolved questions
 
-How to implement this?
+## How to implement this?
+
+## Const-eval the body of `const fn` that are never used in a constant environment
+
+Currently a `const fn` that is called in non-const code is treated just like a normal function.
+
+In case there is a statically known erroneous situation in the body of the function,
+the compiler should raise an error, even if the function is never called.
+
+The same applies to unused associated constants.
