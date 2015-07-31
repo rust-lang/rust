@@ -21,8 +21,8 @@ read out the value pointed to at that end and move the pointer over by one. When
 the two pointers are equal, we know we're done.
 
 Note that the order of read and offset are reversed for `next` and `next_back`
-For `next_back` the pointer is always *after* the element it wants to read next,
-while for `next` the pointer is always *at* the element it wants to read next.
+For `next_back` the pointer is always after the element it wants to read next,
+while for `next` the pointer is always at the element it wants to read next.
 To see why this is, consider the case where every element but one has been
 yielded.
 
@@ -124,7 +124,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 ```
 
 Because IntoIter takes ownership of its allocation, it needs to implement Drop
-to free it. However it *also* wants to implement Drop to drop any elements it
+to free it. However it also wants to implement Drop to drop any elements it
 contains that weren't yielded.
 
 
