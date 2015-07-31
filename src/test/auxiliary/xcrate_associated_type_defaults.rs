@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_type_defaults)]
+
 pub trait Foo {
     type Input = usize;
     fn bar(&self, _: Self::Input) {}
