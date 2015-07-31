@@ -4610,7 +4610,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        if try!(self.eat(&token::DotDot) ){
+        if opt_trait.is_some() && try!(self.eat(&token::DotDot) ){
             if generics.is_parameterized() {
                 self.span_err(impl_span, "default trait implementations are not \
                                           allowed to have generics");
