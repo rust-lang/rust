@@ -14,7 +14,6 @@ use rewrite::{Rewrite, RewriteContext};
 use config::Config;
 
 use syntax::ast;
-use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::codemap::{CodeMap, Span};
 
@@ -52,11 +51,10 @@ impl Rewrite for ast::ViewPath {
 
 fn rewrite_single_use_list(path_str: String, vpi: ast::PathListItem) -> String {
     if let ast::PathListItem_::PathListIdent{ name, .. } = vpi.node {
-        let name_str = token::get_ident(name).to_string();
         if path_str.len() == 0 {
-            name_str
+            name.to_string()
         } else {
-            format!("{}::{}", path_str, name_str)
+            format!("{}::{}", path_str, name)
         }
     } else {
         if path_str.len() != 0 {
@@ -121,7 +119,7 @@ pub fn rewrite_use_list(width: usize,
                                  |vpi| vpi.span.hi,
                                  |vpi| match vpi.node {
                                      ast::PathListItem_::PathListIdent{ name, .. } => {
-                                         token::get_ident(name).to_string()
+                                         name.to_string()
                                      }
                                      ast::PathListItem_::PathListMod{ .. } => {
                                          "self".to_owned()

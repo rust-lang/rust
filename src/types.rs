@@ -11,7 +11,6 @@
 use visitor::FmtVisitor;
 
 use syntax::ast;
-use syntax::parse::token;
 use syntax::print::pprust;
 
 impl<'a> FmtVisitor<'a> {
@@ -79,7 +78,7 @@ impl<'a> FmtVisitor<'a> {
 
     pub fn rewrite_ty_param(&self, ty_param: &ast::TyParam) -> String {
         let mut result = String::with_capacity(128);
-        result.push_str(&token::get_ident(ty_param.ident));
+        result.push_str(&ty_param.ident.to_string());
         if ty_param.bounds.len() > 0 {
             result.push_str(": ");
             result.push_str(&ty_param.bounds.iter().map(|b| self.rewrite_ty_bound(b))

@@ -124,7 +124,7 @@ impl<'a> FmtVisitor<'a> {
 
         // fn foo
         result.push_str("fn ");
-        result.push_str(&token::get_ident(ident));
+        result.push_str(&ident.to_string());
 
         // Generics.
         let generics_indent = indent + result.len();
@@ -626,7 +626,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn format_header(&self, item_name: &str, ident: ast::Ident, vis: ast::Visibility) -> String {
-        format!("{}{}{}", format_visibility(vis), item_name, &token::get_ident(ident))
+        format!("{}{}{}", format_visibility(vis), item_name, ident)
     }
 
     fn format_generics(&self,
@@ -658,7 +658,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let name = match field.node.kind {
-            ast::StructFieldKind::NamedField(ident, _) => Some(token::get_ident(ident)),
+            ast::StructFieldKind::NamedField(ident, _) => Some(ident.to_string()),
             ast::StructFieldKind::UnnamedField(_) => None,
         };
         let vis = match field.node.kind {

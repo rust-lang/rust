@@ -18,7 +18,6 @@ use config::BlockIndentStyle;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{Pos, Span, BytePos, mk_sp};
-use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::visit::Visitor;
 
@@ -539,7 +538,7 @@ fn rewrite_field(context: &RewriteContext,
                  width: usize,
                  offset: usize)
                  -> Option<String> {
-    let name = &token::get_ident(field.ident.node);
+    let name = &field.ident.node.to_string();
     let overhead = name.len() + 2;
     let expr = field.expr.rewrite(context, width - overhead, offset + overhead);
     expr.map(|s| format!("{}: {}", name, s))
