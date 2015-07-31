@@ -81,3 +81,30 @@ create_config! {
     closure_indent_style: BlockIndentStyle,
     single_line_if_else: bool,
 }
+
+impl Default for Config {
+
+    fn default() -> Config {
+        Config {
+            max_width: 100,
+            ideal_width: 80,
+            leeway: 5,
+            tab_spaces: 4,
+            newline_style: NewlineStyle::Unix,
+            fn_brace_style: BraceStyle::SameLineWhere,
+            fn_return_indent: ReturnIndent::WithArgs,
+            fn_args_paren_newline: true,
+            struct_trailing_comma: SeparatorTactic::Vertical,
+            struct_lit_trailing_comma: SeparatorTactic::Vertical,
+            struct_lit_style: StructLitStyle::BlockIndent,
+            enum_trailing_comma: true,
+            report_todo: ReportTactic::Always,
+            report_fixme: ReportTactic::Never,
+            reorder_imports: false,
+            expr_indent_style: BlockIndentStyle::Tabbed,
+            closure_indent_style: BlockIndentStyle::Visual,
+            single_line_if_else: false,
+        }
+    }
+
+}

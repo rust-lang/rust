@@ -121,12 +121,14 @@ pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, String>>
 
 // Reads test config file from comments and reads its contents.
 fn get_config(config_file: Option<&str>) -> Box<Config> {
-    let config_file_name = config_file.map(|file_name| {
-                                           let mut full_path = "tests/config/".to_owned();
-                                           full_path.push_str(&file_name);
-                                           full_path
-                                       })
-                                       .unwrap_or("default.toml".to_owned());
+    let config_file_name = match config_file {
+        None => return Box::new(Default::default()),
+        Some(file_name) => {
+            let mut full_path = "tests/config/".to_owned();
+            full_path.push_str(&file_name);
+            full_path
+        }
+    };
 
     let mut def_config_file = fs::File::open(config_file_name).ok().expect("Couldn't open config.");
     let mut def_config = String::new();
