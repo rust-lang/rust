@@ -583,9 +583,10 @@ Please verify you didn't misspell the import's name.
 "##,
 
 E0437: r##"
-Trait impls can only implement associated types that are members of the trait in
-question. This error indicates that you attempted to implement an associated
-type whose name does not match the name of any associated type in the trait.
+Trait implementations can only implement associated types that are members of
+the trait in question. This error indicates that you attempted to implement
+an associated type whose name does not match the name of any associated type
+in the trait.
 
 Here is an example that demonstrates the error:
 
@@ -607,10 +608,10 @@ impl Foo for i32 {}
 "##,
 
 E0438: r##"
-Trait impls can only implement associated constants that are members of the
-trait in question. This error indicates that you attempted to implement an
-associated constant whose name does not match the name of any associated
-constant in the trait.
+Trait implementations can only implement associated constants that are
+members of the trait in question. This error indicates that you
+attempted to implement an associated constant whose name does not
+match the name of any associated constant in the trait.
 
 Here is an example that demonstrates the error:
 
