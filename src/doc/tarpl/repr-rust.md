@@ -50,10 +50,10 @@ struct A {
 }
 ```
 
-There is *no indirection* for these types; all data is stored contiguously as
-you would expect in C. However with the exception of arrays (which are densely
-packed and in-order), the layout of data is not by default specified in Rust.
-Given the two following struct definitions:
+There is *no indirection* for these types; all data is stored within the struct,
+as you would expect in C. However with the exception of arrays (which are
+densely packed and in-order), the layout of data is not by default specified in
+Rust. Given the two following struct definitions:
 
 ```rust
 struct A {
