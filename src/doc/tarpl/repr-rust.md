@@ -62,7 +62,7 @@ struct A {
 }
 
 struct B {
-    x: i32,
+    a: i32,
     b: u64,
 }
 ```
