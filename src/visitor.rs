@@ -11,7 +11,7 @@
 use syntax::ast;
 use syntax::codemap::{self, CodeMap, Span, BytePos};
 use syntax::visit;
-use syntax::parse::{token, parser};
+use syntax::parse::parser;
 use std::path::PathBuf;
 
 use utils;
@@ -365,7 +365,7 @@ impl<'a> FmtVisitor<'a> {
 
         match parser::Parser::default_submod_path(id, &dir_path, &self.codemap).result {
             Ok(parser::ModulePathSuccess { path, .. }) => path,
-            _ => panic!("Couldn't find module {}", token::get_ident(id))
+            _ => panic!("Couldn't find module {}", id)
         }
     }
 
