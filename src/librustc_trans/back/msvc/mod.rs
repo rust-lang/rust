@@ -206,7 +206,7 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
         return max_key
     }
 
-    fn get_windows_sdk_path() -> Option<(PathBuf, usize)> {
+    fn get_windows_sdk_path() -> Option<(PathBuf, usize, Option<OsString>)> {
         let key = r"SOFTWARE\Microsoft\Microsoft SDKs\Windows";
         let key = LOCAL_MACHINE.open(key.as_ref());
         let (n, k) = match key.ok().as_ref().and_then(max_version) {
@@ -217,19 +217,20 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
         let major = parts.next().unwrap().parse::<usize>().unwrap();
         let _minor = parts.next().unwrap().parse::<usize>().unwrap();
         k.query_str("InstallationFolder").ok().map(|folder| {
-            (PathBuf::from(folder), major)
+            let ver = k.query_str("ProductVersion");
+            (PathBuf::from(folder), major, ver.ok())
         })
     }
 
     fn get_windows_sdk_lib_path(sess: &Session) -> Option<PathBuf> {
-        let (mut path, major) = match get_windows_sdk_path() {
+        let (mut path, major, ver) = match get_windows_sdk_path() {
             Some(p) => p,
             None => return None,
         };
         path.push("Lib");
         if major <= 7 {
             // In Windows SDK 7.x, x86 libraries are directly in the Lib folder,
-            // x64 libraries are inside, and it's not necessary to link agains
+            // x64 libraries are inside, and it's not necessary to link against
             // the SDK 7.x when targeting ARM or other architectures.
             let x86 = match &sess.target.target.arch[..] {
                 "x86" => true,
@@ -237,8 +238,8 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
                 _ => return None,
             };
             Some(if x86 {path} else {path.join("x64")})
-        } else {
-            // Windows SDK 8.x installes libraries in a folder whose names
+        } else if major <= 8 {
+            // Windows SDK 8.x installs libraries in a folder whose names
             // depend on the version of the OS you're targeting. By default
             // choose the newest, which usually corresponds to the version of
             // the OS you've installed the SDK on.
@@ -251,7 +252,25 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
             }).map(|path| {
                 path.join("um").join(extra)
             })
-        }
+        } else if let Some(mut ver) = ver {
+            // Windows SDK 10 splits the libraries into architectures the same
+            // as Windows SDK 8.x, except for the addition of arm64.
+            // Additionally, the SDK 10 is split by Windows 10 build numbers
+            // rather than the OS version like the SDK 8.x does.
+            let extra = match windows_sdk_v10_subdir(sess) {
+                Some(e) => e,
+                None => return None,
+            };
+            // To get the correct directory we need to get the Windows SDK 10
+            // version, and so far it looks like the "ProductVersion" of the SDK
+            // corresponds to the folder name that the libraries are located in
+            // except that the folder contains an extra ".0". For now just
+            // append a ".0" to look for find the directory we're in. This logic
+            // will likely want to be refactored one day.
+            ver.push(".0");
+            let p = path.join(ver).join("um").join(extra);
+            fs::metadata(&p).ok().map(|_| p)
+        } else { None }
     }
 
     fn windows_sdk_v8_subdir(sess: &Session) -> Option<&'static str> {
@@ -259,6 +278,16 @@ pub fn link_exe_cmd(sess: &Session) -> Command {
             "x86" => Some("x86"),
             "x86_64" => Some("x64"),
             "arm" => Some("arm"),
+            _ => return None,
+        }
+    }
+
+    fn windows_sdk_v10_subdir(sess: &Session) -> Option<&'static str> {
+        match &sess.target.target.arch[..] {
+            "x86" => Some("x86"),
+            "x86_64" => Some("x64"),
+            "arm" => Some("arm"),
+            "aarch64" => Some("arm64"), // FIXME - Check if aarch64 is correct
             _ => return None,
         }
     }
