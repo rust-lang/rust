@@ -278,7 +278,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                                 Some((&*import_path_to_string(
                                                         &import_directive.module_path,
                                                         import_directive.subclass),
-                                                      Some(&*help))))
+                                                      &*help)))
                                    );
                 }
                 ResolveResult::Indeterminate => break, // Bail out. We'll come around next time.
