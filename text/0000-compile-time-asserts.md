@@ -9,6 +9,20 @@ If the compiler can detect at compile-time that something will always
 cause a `debug_assert` or an `assert` it should instead
 insert an unconditional runtime-panic and issue a warning.
 
+# Definition of constant evaluation context
+
+There are exactly three places where an expression needs to be constant.
+
+- the initializer of a constant `const foo: ty = EXPR` or `static foo: ty = EXPR`
+- the size of an array `[T; EXPR]`
+- the length of a repeat expression `[VAL; LEN_EXPR]`
+
+In the future the body of `const fn` might also be interpreted as a constant
+evaluation context.
+
+Any other expression might still be constant evaluated, but it could just
+as well be compiled normally and executed at runtime.
+
 # Motivation
 
 Expressions are const-evaluated even when they are not in a const environment.
