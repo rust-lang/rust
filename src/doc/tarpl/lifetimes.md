@@ -6,11 +6,11 @@ and anything that contains a reference, is tagged with a lifetime specifying
 the scope it's valid for.
 
 Within a function body, Rust generally doesn't let you explicitly name the
-lifetimes involved. This is because it's generally not really *necessary*
+lifetimes involved. This is because it's generally not really necessary
 to talk about lifetimes in a local context; Rust has all the information and
 can work out everything as optimally as possible. Many anonymous scopes and
 temporaries that you would otherwise have to write are often introduced to
-make your code *just work*.
+make your code Just Work.
 
 However once you cross the function boundary, you need to start talking about
 lifetimes. Lifetimes are denoted with an apostrophe: `'a`, `'static`. To dip
@@ -42,7 +42,7 @@ likely desugar to the following:
 'a: {
     let x: i32 = 0;
     'b: {
-        // lifetime used is 'b because that's *good enough*.
+        // lifetime used is 'b because that's good enough.
         let y: &'b i32 = &'b x;
         'c: {
             // ditto on 'c
@@ -107,8 +107,9 @@ fn as_str<'a>(data: &'a u32) -> &'a str {
 This signature of `as_str` takes a reference to a u32 with *some* lifetime, and
 promises that it can produce a reference to a str that can live *just as long*.
 Already we can see why this signature might be trouble. That basically implies
-that we're going to *find* a str somewhere in the scope the scope the reference
-to the u32 originated in, or somewhere *even* earlier. That's a *bit* of a big ask.
+that we're going to find a str somewhere in the scope the reference
+to the u32 originated in, or somewhere *even earlier*. That's a bit of a big
+ask.
 
 We then proceed to compute the string `s`, and return a reference to it. Since
 the contract of our function says the reference must outlive `'a`, that's the
@@ -135,7 +136,7 @@ fn main() {
         'd: {
             // An anonymous scope is introduced because the borrow does not
             // need to last for the whole scope x is valid for. The return
-            // of as_str must find a str somewhere *before* this function
+            // of as_str must find a str somewhere before this function
             // call. Obviously not happening.
             println!("{}", as_str::<'d>(&'d x));
         }
@@ -195,21 +196,21 @@ println!("{}", x);
 
 The problem here is is bit more subtle and interesting. We want Rust to
 reject this program for the following reason: We have a live shared reference `x`
-to a descendent of `data` when try to take a *mutable* reference to `data`
-when we call `push`. This would create an aliased mutable reference, which would
+to a descendent of `data` when we try to take a mutable reference to `data`
+to `push`. This would create an aliased mutable reference, which would
 violate the *second* rule of references.
 
 However this is *not at all* how Rust reasons that this program is bad. Rust
 doesn't understand that `x` is a reference to a subpath of `data`. It doesn't
 understand Vec at all. What it *does* see is that `x` has to live for `'b` to
 be printed. The signature of `Index::index` subsequently demands that the
-reference we take to *data* has to survive for `'b`. When we try to call `push`,
+reference we take to `data` has to survive for `'b`. When we try to call `push`,
 it then sees us try to make an `&'c mut data`. Rust knows that `'c` is contained
 within `'b`, and rejects our program because the `&'b data` must still be live!
 
-Here we see that the lifetime system is *much* more coarse than the reference
+Here we see that the lifetime system is much more coarse than the reference
 semantics we're actually interested in preserving. For the most part, *that's
 totally ok*, because it keeps us from spending all day explaining our program
-to the compiler. However it does mean that several programs that are *totally*
+to the compiler. However it does mean that several programs that are totally
 correct with respect to Rust's *true* semantics are rejected because lifetimes
 are too dumb.

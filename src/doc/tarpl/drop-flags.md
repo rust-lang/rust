@@ -10,7 +10,7 @@ How can it do this with conditional initialization?
 
 Note that this is not a problem that all assignments need worry about. In
 particular, assigning through a dereference unconditionally drops, and assigning
-in a `let` unconditionally *doesn't* drop:
+in a `let` unconditionally doesn't drop:
 
 ```
 let mut x = Box::new(0); // let makes a fresh variable, so never need to drop
@@ -23,11 +23,11 @@ one of its subfields.
 
 It turns out that Rust actually tracks whether a type should be dropped or not
 *at runtime*. As a variable becomes initialized and uninitialized, a *drop flag*
-for that variable is toggled. When a variable *might* need to be dropped, this
-flag is evaluated to determine if it *should* be dropped.
+for that variable is toggled. When a variable might need to be dropped, this
+flag is evaluated to determine if it should be dropped.
 
-Of course, it is *often* the case that a value's initialization state can be
-*statically* known at every point in the program. If this is the case, then the
+Of course, it is often the case that a value's initialization state can be
+statically known at every point in the program. If this is the case, then the
 compiler can theoretically generate more efficient code! For instance, straight-
 line code has such *static drop semantics*:
 
@@ -40,8 +40,8 @@ y = x;                   // y was init; Drop y, overwrite it, and make x uninit!
                          // x goes out of scope; x was uninit; do nothing.
 ```
 
-And even branched code where all branches have the same behaviour with respect
-to initialization:
+Similarly, branched code where all branches have the same behaviour with respect
+to initialization has static drop semantics:
 
 ```rust
 # let condition = true;
@@ -65,7 +65,7 @@ if condition {
     x = Box::new(0);        // x was uninit; just overwrite.
     println!("{}", x);
 }
-                            // x goes out of scope; x *might* be uninit;
+                            // x goes out of scope; x might be uninit;
                             // check the flag!
 ```
 
@@ -81,7 +81,7 @@ if condition {
 
 As of Rust 1.0, the drop flags are actually not-so-secretly stashed in a hidden
 field of any type that implements Drop. Rust sets the drop flag by overwriting
-the *entire* value with a particular bit pattern. This is pretty obviously Not
+the entire value with a particular bit pattern. This is pretty obviously Not
 The Fastest and causes a bunch of trouble with optimizing code. It's legacy from
 a time when you could do much more complex conditional initialization.
 
@@ -92,4 +92,4 @@ as it requires fairly substantial changes to the compiler.
 Regardless, Rust programs don't need to worry about uninitialized values on
 the stack for correctness. Although they might care for performance. Thankfully,
 Rust makes it easy to take control here! Uninitialized values are there, and
-you can work with them in Safe Rust, but you're *never* in danger.
+you can work with them in Safe Rust, but you're never in danger.

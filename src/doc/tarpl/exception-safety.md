@@ -1,8 +1,8 @@
 % Exception Safety
 
-Although programs should use unwinding sparingly, there's *a lot* of code that
+Although programs should use unwinding sparingly, there's a lot of code that
 *can* panic. If you unwrap a None, index out of bounds, or divide by 0, your
-program *will* panic. On debug builds, *every* arithmetic operation can panic
+program will panic. On debug builds, every arithmetic operation can panic
 if it overflows. Unless you are very careful and tightly control what code runs,
 pretty much everything can unwind, and you need to be ready for it.
 
@@ -22,7 +22,7 @@ unsound states must be careful that a panic does not cause that state to be
 used. Generally this means ensuring that only non-panicking code is run while
 these states exist, or making a guard that cleans up the state in the case of
 a panic. This does not necessarily mean that the state a panic witnesses is a
-fully *coherent* state. We need only guarantee that it's a *safe* state.
+fully coherent state. We need only guarantee that it's a *safe* state.
 
 Most Unsafe code is leaf-like, and therefore fairly easy to make exception-safe.
 It controls all the code that runs, and most of that code can't panic. However
@@ -58,17 +58,16 @@ impl<T: Clone> Vec<T> {
 We bypass `push` in order to avoid redundant capacity and `len` checks on the
 Vec that we definitely know has capacity. The logic is totally correct, except
 there's a subtle problem with our code: it's not exception-safe! `set_len`,
-`offset`, and `write` are all fine, but *clone* is the panic bomb we over-
-looked.
+`offset`, and `write` are all fine; `clone` is the panic bomb we over-looked.
 
 Clone is completely out of our control, and is totally free to panic. If it
 does, our function will exit early with the length of the Vec set too large. If
 the Vec is looked at or dropped, uninitialized memory will be read!
 
 The fix in this case is fairly simple. If we want to guarantee that the values
-we *did* clone are dropped we can set the len *in* the loop. If we just want to
-guarantee that uninitialized memory can't be observed, we can set the len
-*after* the loop.
+we *did* clone are dropped, we can set the `len` every loop iteration. If we
+just want to guarantee that uninitialized memory can't be observed, we can set
+the `len` after the loop.
 
 
 
@@ -89,7 +88,7 @@ bubble_up(heap, index):
 
 A literal transcription of this code to Rust is totally fine, but has an annoying
 performance characteristic: the `self` element is swapped over and over again
-uselessly. We would *rather* have the following:
+uselessly. We would rather have the following:
 
 ```text
 bubble_up(heap, index):
@@ -128,7 +127,7 @@ actually touched the state of the heap yet. Once we do start messing with the
 heap, we're working with only data and functions that we trust, so there's no
 concern of panics.
 
-Perhaps you're not happy with this design. Surely, it's cheating! And we have
+Perhaps you're not happy with this design. Surely it's cheating! And we have
 to do the complex heap traversal *twice*! Alright, let's bite the bullet. Let's
 intermix untrusted and unsafe code *for reals*.
 

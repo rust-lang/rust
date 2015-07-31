@@ -8,7 +8,7 @@ a different type. Because Rust encourages encoding important properties in the
 type system, these problems are incredibly pervasive. As such, Rust
 consequently gives you several ways to solve them.
 
-First we'll look at the ways that *Safe Rust* gives you to reinterpret values.
+First we'll look at the ways that Safe Rust gives you to reinterpret values.
 The most trivial way to do this is to just destructure a value into its
 constituent parts and then build a new type out of them. e.g.
 

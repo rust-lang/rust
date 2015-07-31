@@ -29,7 +29,7 @@ Rust, you will never have to worry about type-safety or memory-safety. You will
 never endure a null or dangling pointer, or any of that Undefined Behaviour
 nonsense.
 
-*That's totally awesome*.
+*That's totally awesome.*
 
 The standard library also gives you enough utilities out-of-the-box that you'll
 be able to write awesome high-performance applications and libraries in pure
@@ -41,7 +41,7 @@ low-level abstraction not exposed by the standard library. Maybe you're
 need to do something the type-system doesn't understand and just *frob some dang
 bits*. Maybe you need Unsafe Rust.
 
-Unsafe Rust is exactly like Safe Rust with *all* the same rules and semantics.
+Unsafe Rust is exactly like Safe Rust with all the same rules and semantics.
 However Unsafe Rust lets you do some *extra* things that are Definitely Not Safe.
 
 The only things that are different in Unsafe Rust are that you can:
