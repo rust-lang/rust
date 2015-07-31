@@ -141,7 +141,7 @@ such a representation is inefficient. The classic case of this is Rust's
 by using null as a special value. The net result is that
 `size_of::<Option<&T>>() == size_of::<&T>()`
 
-There are many types in Rust that are, or contain, "not null" pointers such as
+There are many types in Rust that are, or contain, non-nullable pointers such as
 `Box<T>`, `Vec<T>`, `String`, `&T`, and `&mut T`. Similarly, one can imagine
 nested enums pooling their tags into a single discriminant, as they are by
 definition known to have a limited range of valid values. In principle enums can
