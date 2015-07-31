@@ -20,6 +20,7 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(associated_consts)]
+#![feature(borrow_state)]
 #![feature(rc_weak)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -538,8 +539,8 @@ enum ResolveResult<T> {
 }
 
 impl<T> ResolveResult<T> {
-    fn indeterminate(&self) -> bool {
-        match *self { Indeterminate => true, _ => false }
+    fn success(&self) -> bool {
+        match *self { Success(_) => true, _ => false }
     }
 }
 
@@ -731,7 +732,12 @@ impl Module {
     }
 
     fn all_imports_resolved(&self) -> bool {
-        self.imports.borrow().len() == self.resolved_import_count.get()
+        if self.imports.borrow_state() == ::std::cell::BorrowState::Writing {
+            // it is currently being resolved ! so nope
+            false
+        } else {
+            self.imports.borrow().len() == self.resolved_import_count.get()
+        }
     }
 }
 
