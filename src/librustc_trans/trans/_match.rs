@@ -1031,7 +1031,7 @@ fn set_lllocals_hints<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let lllocals = bcx.fcx.lllocals.borrow();
     for (&ident, &binding_info) in bindings_map {
         let datum = lllocals.get(&binding_info.id).unwrap();
-        if let Some(hint) = datum.kind.dropflag_hint(bcx) { 
+        if let Some(hint) = datum.kind.dropflag_hint(bcx) {
             let hint_value = drop_flag_hint_value as usize;
             debug!("set_lllocals_hints store hint_value={} for hint={:?} ident={}",
                    hint_value, hint, ident);
