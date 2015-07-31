@@ -78,7 +78,8 @@ call    __gnat_rcheck_CE_Range_Check
 The PRs https://github.com/rust-lang/rust/pull/26848 and https://github.com/rust-lang/rust/pull/25570 will be setting a precedent
 for warning about such situations (WIP, not pushed yet).
 All future additions to the const-evaluator need to notify the const evaluator
-that when it encounters a statically known erroneous situation, the
+that when it encounters a statically known erroneous situation while evaluating
+an expression outside of a constant evaluation environment, the
 entire expression must be replaced by a panic and a warning must be emitted.
 
 # Drawbacks
@@ -93,9 +94,12 @@ Let the compiler error on things that will unconditionally panic at runtime.
 
 ## only warn, don't influence code generation
 
+The const evaluator should simply issue a warning and notify it's caller that the expression cannot be evaluated and should be translated.
 This has the disadvantage, that in release-mode statically known issues like
 overflow or shifting more than the number of bits available will not be
 caught even at runtime.
+
+On the other hand, this alternative does not change the behavior of existing code.
 
 # Unresolved questions
 
