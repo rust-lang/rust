@@ -91,7 +91,6 @@ use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
-use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::visit;
 
@@ -795,7 +794,7 @@ fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
 
 fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
     let tcx = ccx.tcx;
-    debug!("convert: item {} with id {}", token::get_ident(it.ident), it.id);
+    debug!("convert: item {} with id {}", it.ident, it.id);
     match it.node {
         // These don't define types.
         ast::ItemExternCrate(_) | ast::ItemUse(_) |
@@ -1086,7 +1085,7 @@ fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 Some(prev_span) => {
                     span_err!(tcx.sess, f.span, E0124,
                               "field `{}` is already declared",
-                              token::get_name(result.name));
+                              result.name);
                     span_note!(tcx.sess, *prev_span, "previously declared here");
                     true
                 },

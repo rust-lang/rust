@@ -41,7 +41,7 @@ arms.
 "##,
 
 E0002: r##"
-This error indicates that an empty match expression is illegal because the type
+This error indicates that an empty match expression is invalid because the type
 it is matching on is non-empty (there exist values of this type). In safe code
 it is impossible to create an instance of an empty type, so empty match
 expressions are almost never desired.  This error is typically fixed by adding
@@ -1055,7 +1055,7 @@ because the `'static` lifetime is a special built-in lifetime name denoting
 the lifetime of the entire program, this is an error:
 
 ```
-// error, illegal lifetime parameter name `'static`
+// error, invalid lifetime parameter name `'static`
 fn foo<'static>(x: &'static str) { }
 ```
 "##,
@@ -1805,7 +1805,7 @@ For more information about `const fn`'s, see [RFC 911].
 E0394: r##"
 From [RFC 246]:
 
- > It is illegal for a static to reference another static by value. It is
+ > It is invalid for a static to reference another static by value. It is
  > required that all references be borrowed.
 
 [RFC 246]: https://github.com/rust-lang/rfcs/pull/246

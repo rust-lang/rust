@@ -1107,7 +1107,7 @@ impl error::Error for TryRecvError {
 mod tests {
     use prelude::v1::*;
 
-    use std::env;
+    use env;
     use super::*;
     use thread;
 
@@ -1655,7 +1655,7 @@ mod tests {
 mod sync_tests {
     use prelude::v1::*;
 
-    use std::env;
+    use env;
     use thread;
     use super::*;
 

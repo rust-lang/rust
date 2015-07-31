@@ -16,38 +16,6 @@ use intrinsics;
 use sync::atomic::{self, Ordering};
 use sys::stdio::Stderr;
 
-/// Dynamically inquire about whether we're running under V.
-/// You should usually not use this unless your test definitely
-/// can't run correctly un-altered. Valgrind is there to help
-/// you notice weirdness in normal, un-doctored code paths!
-pub fn running_on_valgrind() -> bool {
-    return on_valgrind();
-    #[cfg(windows)]
-    fn on_valgrind() -> bool { false }
-
-    #[cfg(unix)]
-    fn on_valgrind() -> bool {
-        use libc::uintptr_t;
-        extern {
-            fn rust_running_on_valgrind() -> uintptr_t;
-        }
-        unsafe { rust_running_on_valgrind() != 0 }
-    }
-}
-
-/// Valgrind has a fixed-sized array (size around 2000) of segment descriptors
-/// wired into it; this is a hard limit and requires rebuilding valgrind if you
-/// want to go beyond it. Normally this is not a problem, but in some tests, we
-/// produce a lot of threads casually.  Making lots of threads alone might not
-/// be a problem _either_, except on OSX, the segments produced for new threads
-/// _take a while_ to get reclaimed by the OS. Combined with the fact that libuv
-/// schedulers fork off a separate thread for polling fsevents on OSX, we get a
-/// perfect storm of creating "too many mappings" for valgrind to handle when
-/// running certain stress tests in the runtime.
-pub fn limit_thread_creation_due_to_osx_and_valgrind() -> bool {
-    (cfg!(target_os="macos")) && running_on_valgrind()
-}
-
 pub fn min_stack() -> usize {
     static MIN: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
     match MIN.load(Ordering::SeqCst) {

@@ -255,7 +255,7 @@ impl Stdin {
     //    in which case it will wait for the Enter key to be pressed before
     ///   continuing
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
+    pub fn read_line(&self, buf: &mut String) -> io::Result<usize> {
         self.lock().read_line(buf)
     }
 }

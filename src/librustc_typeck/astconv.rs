@@ -69,6 +69,7 @@ use util::nodemap::FnvHashSet;
 use std::slice;
 use syntax::{abi, ast, ast_util};
 use syntax::codemap::{Span, Pos};
+use syntax::feature_gate::emit_feature_err;
 use syntax::parse::token;
 use syntax::print::pprust;
 
@@ -791,12 +792,11 @@ fn create_substs_for_ast_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
             // For now, require that parenthetical notation be used
             // only with `Fn()` etc.
             if !this.tcx().sess.features.borrow().unboxed_closures && trait_def.paren_sugar {
-                span_err!(this.tcx().sess, span, E0215,
-                                         "angle-bracket notation is not stable when \
-                                         used with the `Fn` family of traits, use parentheses");
-                fileline_help!(this.tcx().sess, span,
-                           "add `#![feature(unboxed_closures)]` to \
-                            the crate attributes to enable");
+                emit_feature_err(&this.tcx().sess.parse_sess.span_diagnostic,
+                                 "unboxed_closures", span,
+                                 "\
+                    the precise format of `Fn`-family traits' type parameters is \
+                    subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead");
             }
 
             convert_angle_bracketed_parameters(this, rscope, span, &trait_def.generics, data)
@@ -805,12 +805,10 @@ fn create_substs_for_ast_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
             // For now, require that parenthetical notation be used
             // only with `Fn()` etc.
             if !this.tcx().sess.features.borrow().unboxed_closures && !trait_def.paren_sugar {
-                span_err!(this.tcx().sess, span, E0216,
-                                         "parenthetical notation is only stable when \
-                                         used with the `Fn` family of traits");
-                fileline_help!(this.tcx().sess, span,
-                           "add `#![feature(unboxed_closures)]` to \
-                            the crate attributes to enable");
+                emit_feature_err(&this.tcx().sess.parse_sess.span_diagnostic,
+                                 "unboxed_closures", span,
+                                 "\
+                    parenthetical notation is only stable when used with `Fn`-family traits");
             }
 
             convert_parenthesized_parameters(this, rscope, span, &trait_def.generics, data)
@@ -903,7 +901,7 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
     let candidate = try!(one_bound_for_assoc_type(tcx,
                                                   candidates,
                                                   &trait_ref.to_string(),
-                                                  &token::get_name(binding.item_name),
+                                                  &binding.item_name.as_str(),
                                                   binding.span));
 
     Ok(ty::Binder(ty::ProjectionPredicate {             // <-------------------------+
@@ -1150,8 +1148,8 @@ fn find_bound_for_assoc_item<'tcx>(this: &AstConv<'tcx>,
 
     one_bound_for_assoc_type(tcx,
                              suitable_bounds,
-                             &token::get_name(ty_param_name),
-                             &token::get_name(assoc_name),
+                             &ty_param_name.as_str(),
+                             &assoc_name.as_str(),
                              span)
 }
 
@@ -1236,7 +1234,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             match one_bound_for_assoc_type(tcx,
                                            candidates,
                                            "Self",
-                                           &token::get_name(assoc_name),
+                                           &assoc_name.as_str(),
                                            span) {
                 Ok(bound) => bound,
                 Err(ErrorReported) => return (tcx.types.err, ty_path_def),
@@ -1269,7 +1267,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                              span,
                                              &ty.to_string(),
                                              "Trait",
-                                             &token::get_name(assoc_name));
+                                             &assoc_name.as_str());
             return (tcx.types.err, ty_path_def);
         }
     };
@@ -1320,7 +1318,7 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
                                          span,
                                          "Type",
                                          &path_str,
-                                         &token::get_ident(item_segment.identifier));
+                                         &item_segment.identifier.name.as_str());
         return tcx.types.err;
     };
 

@@ -40,7 +40,6 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::special_idents;
-use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::visit::Visitor;
@@ -83,11 +82,11 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
 }
 
 fn encode_name(rbml_w: &mut Encoder, name: ast::Name) {
-    rbml_w.wr_tagged_str(tag_paths_data_name, &token::get_name(name));
+    rbml_w.wr_tagged_str(tag_paths_data_name, &name.as_str());
 }
 
 fn encode_impl_type_basename(rbml_w: &mut Encoder, name: ast::Name) {
-    rbml_w.wr_tagged_str(tag_item_impl_type_basename, &token::get_name(name));
+    rbml_w.wr_tagged_str(tag_item_impl_type_basename, &name.as_str());
 }
 
 fn encode_def_id(rbml_w: &mut Encoder, id: DefId) {
@@ -349,7 +348,7 @@ fn encode_path<PI: Iterator<Item=PathElem>>(rbml_w: &mut Encoder, path: PI) {
             ast_map::PathMod(_) => tag_path_elem_mod,
             ast_map::PathName(_) => tag_path_elem_name
         };
-        rbml_w.wr_tagged_str(tag, &token::get_name(pe.name()));
+        rbml_w.wr_tagged_str(tag, &pe.name().as_str());
     }
     rbml_w.end_tag();
 }
@@ -359,13 +358,13 @@ fn encode_reexported_static_method(rbml_w: &mut Encoder,
                                    method_def_id: DefId,
                                    method_name: ast::Name) {
     debug!("(encode reexported static method) {}::{}",
-            exp.name, token::get_name(method_name));
+            exp.name, method_name);
     rbml_w.start_tag(tag_items_data_item_reexport);
     rbml_w.wr_tagged_u64(tag_items_data_item_reexport_def_id,
                          def_to_u64(method_def_id));
     rbml_w.wr_tagged_str(tag_items_data_item_reexport_name,
                          &format!("{}::{}", exp.name,
-                                            token::get_name(method_name)));
+                                            method_name));
     rbml_w.end_tag();
 }
 
@@ -499,15 +498,12 @@ fn encode_reexports(ecx: &EncodeContext,
                 rbml_w.wr_tagged_u64(tag_items_data_item_reexport_def_id,
                                      def_to_u64(exp.def_id));
                 rbml_w.wr_tagged_str(tag_items_data_item_reexport_name,
-                                     exp.name.as_str());
+                                     &exp.name.as_str());
                 rbml_w.end_tag();
                 encode_reexported_static_methods(ecx, rbml_w, path.clone(), exp);
             }
-        }
-        None => {
-            debug!("(encoding info for module) found no reexports for {}",
-                   id);
-        }
+        },
+        None => debug!("(encoding info for module) found no reexports for {}", id),
     }
 }
 
@@ -539,7 +535,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
         if let ast::ItemImpl(..) = item.node {
             let (ident, did) = (item.ident, item.id);
             debug!("(encoding info for module) ... encoding impl {} ({}/{})",
-                   token::get_ident(ident),
+                   ident,
                    did, ecx.tcx.map.node_to_string(did));
 
             rbml_w.wr_tagged_u64(tag_mod_impl, def_to_u64(local_def(did)));
@@ -656,7 +652,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
         });
         rbml_w.start_tag(tag_items_data_item);
         debug!("encode_info_for_struct: doing {} {}",
-               token::get_name(nm), id);
+               nm, id);
         encode_struct_field_family(rbml_w, field.vis);
         encode_name(rbml_w, nm);
         encode_bounds_and_type_for_item(rbml_w, ecx, id);
@@ -816,7 +812,7 @@ fn encode_info_for_associated_const(ecx: &EncodeContext,
                                     impl_item_opt: Option<&ast::ImplItem>) {
     debug!("encode_info_for_associated_const({:?},{:?})",
            associated_const.def_id,
-           token::get_name(associated_const.name));
+           associated_const.name);
 
     rbml_w.start_tag(tag_items_data_item);
 
@@ -854,7 +850,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                     impl_item_opt: Option<&ast::ImplItem>) {
 
     debug!("encode_info_for_method: {:?} {:?}", m.def_id,
-           token::get_name(m.name));
+           m.name);
     rbml_w.start_tag(tag_items_data_item);
 
     encode_method_ty_fields(ecx, rbml_w, m);
@@ -899,7 +895,7 @@ fn encode_info_for_associated_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                              impl_item_opt: Option<&ast::ImplItem>) {
     debug!("encode_info_for_associated_type({:?},{:?})",
            associated_type.def_id,
-           token::get_name(associated_type.name));
+           associated_type.name);
 
     rbml_w.start_tag(tag_items_data_item);
 
@@ -937,7 +933,7 @@ fn encode_method_argument_names(rbml_w: &mut Encoder,
     for arg in &decl.inputs {
         let tag = tag_method_argument_name;
         if let ast::PatIdent(_, ref path1, _) = arg.pat.node {
-            let name = token::get_name(path1.node.name);
+            let name = path1.node.name.as_str();
             rbml_w.wr_tagged_bytes(tag, name.as_bytes());
         } else {
             rbml_w.wr_tagged_bytes(tag, &[]);
@@ -1562,7 +1558,7 @@ fn my_visit_foreign_item(ni: &ast::ForeignItem,
                          index: &mut Vec<entry<i64>>) {
     debug!("writing foreign item {}::{}",
             ecx.tcx.map.path_to_string(ni.id),
-            token::get_ident(ni.ident));
+            ni.ident);
 
     let abi = ecx.tcx.map.get_foreign_abi(ni.id);
     ecx.tcx.map.with_path(ni.id, |path| {
@@ -1748,7 +1744,7 @@ fn encode_defaulted(rbml_w: &mut Encoder, is_defaulted: bool) {
 fn encode_associated_type_names(rbml_w: &mut Encoder, names: &[ast::Name]) {
     rbml_w.start_tag(tag_associated_type_names);
     for &name in names {
-        rbml_w.wr_tagged_str(tag_associated_type_name, &token::get_name(name));
+        rbml_w.wr_tagged_str(tag_associated_type_name, &name.as_str());
     }
     rbml_w.end_tag();
 }

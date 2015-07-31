@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: illegal recursive enum type
+// error-pattern: invalid recursive enum type
 
 enum list<T> { cons(T, list<T>), nil }
 

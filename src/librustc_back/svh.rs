@@ -265,20 +265,20 @@ mod svh_visitor {
             ExprCast(..)             => SawExprCast,
             ExprIf(..)               => SawExprIf,
             ExprWhile(..)            => SawExprWhile,
-            ExprLoop(_, id)          => SawExprLoop(id.map(content)),
+            ExprLoop(_, id)          => SawExprLoop(id.map(|id| id.name.as_str())),
             ExprMatch(..)            => SawExprMatch,
             ExprClosure(..)          => SawExprClosure,
             ExprBlock(..)            => SawExprBlock,
             ExprAssign(..)           => SawExprAssign,
             ExprAssignOp(op, _, _)   => SawExprAssignOp(op.node),
-            ExprField(_, id)         => SawExprField(content(id.node)),
+            ExprField(_, id)         => SawExprField(id.node.name.as_str()),
             ExprTupField(_, id)      => SawExprTupField(id.node),
             ExprIndex(..)            => SawExprIndex,
             ExprRange(..)            => SawExprRange,
             ExprPath(ref qself, _)   => SawExprPath(qself.as_ref().map(|q| q.position)),
             ExprAddrOf(m, _)         => SawExprAddrOf(m),
-            ExprBreak(id)            => SawExprBreak(id.map(content)),
-            ExprAgain(id)            => SawExprAgain(id.map(content)),
+            ExprBreak(id)            => SawExprBreak(id.map(|id| id.name.as_str())),
+            ExprAgain(id)            => SawExprAgain(id.map(|id| id.name.as_str())),
             ExprRet(..)              => SawExprRet,
             ExprInlineAsm(ref asm)   => SawExprInlineAsm(asm),
             ExprStruct(..)           => SawExprStruct,
@@ -309,16 +309,6 @@ mod svh_visitor {
             StmtMac(..)  => unreachable!(),
         }
     }
-
-    // Ad-hoc overloading between Ident and Name to their intern table lookups.
-    trait InternKey { fn get_content(self) -> token::InternedString; }
-    impl InternKey for Ident {
-        fn get_content(self) -> token::InternedString { token::get_ident(self) }
-    }
-    impl InternKey for Name {
-        fn get_content(self) -> token::InternedString { token::get_name(self) }
-    }
-    fn content<K:InternKey>(k: K) -> token::InternedString { k.get_content() }
 
     impl<'a, 'v> Visitor<'v> for StrictVersionHashVisitor<'a> {
 
@@ -355,7 +345,7 @@ mod svh_visitor {
                     &MacInvocTT(ref path, ref _tts, ref _stx_ctxt) => {
                         let s = &path.segments;
                         assert_eq!(s.len(), 1);
-                        content(s[0].identifier)
+                        s[0].identifier.name.as_str()
                     }
                 }
             }
@@ -363,7 +353,7 @@ mod svh_visitor {
 
         fn visit_struct_def(&mut self, s: &StructDef, ident: Ident,
                             g: &Generics, _: NodeId) {
-            SawStructDef(content(ident)).hash(self.st);
+            SawStructDef(ident.name.as_str()).hash(self.st);
             visit::walk_generics(self, g);
             visit::walk_struct_def(self, s)
         }
@@ -401,15 +391,15 @@ mod svh_visitor {
         // pattern, please move that method up above this comment.)
 
         fn visit_ident(&mut self, _: Span, ident: Ident) {
-            SawIdent(content(ident)).hash(self.st);
+            SawIdent(ident.name.as_str()).hash(self.st);
         }
 
         fn visit_lifetime_ref(&mut self, l: &Lifetime) {
-            SawLifetimeRef(content(l.name)).hash(self.st);
+            SawLifetimeRef(l.name.as_str()).hash(self.st);
         }
 
         fn visit_lifetime_def(&mut self, l: &LifetimeDef) {
-            SawLifetimeDef(content(l.lifetime.name)).hash(self.st);
+            SawLifetimeDef(l.lifetime.name.as_str()).hash(self.st);
         }
 
         // We do recursively walk the bodies of functions/methods

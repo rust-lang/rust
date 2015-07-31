@@ -85,9 +85,9 @@
 //! format!("{a} {c} {b}", a="a", b='b', c=3);  // => "a 3 b"
 //! ```
 //!
-//! It is illegal to put positional parameters (those without names) after
-//! arguments which have names. Like with positional parameters, it is illegal
-//! to provide named parameters that are unused by the format string.
+//! It is not valid to put positional parameters (those without names) after
+//! arguments which have names. Like with positional parameters, it is not
+//! valid to provide named parameters that are unused by the format string.
 //!
 //! ## Argument types
 //!
@@ -103,8 +103,9 @@
 //! hexadecimal as well as an
 //! octal.
 //!
-//! There are various parameters which do require a particular type, however. Namely, the `{:.*}`
-//! syntax, which sets the number of numbers after the decimal in floating-point types:
+//! There are various parameters which do require a particular type, however.
+//! Namely, the `{:.*}` syntax, which sets the number of numbers after the
+//! decimal in floating-point types:
 //!
 //! ```
 //! let formatted_number = format!("{:.*}", 2, 1.234567);
@@ -112,10 +113,11 @@
 //! assert_eq!("1.23", formatted_number)
 //! ```
 //!
-//! If this syntax is used, then the number of characters to print precedes the actual object being
-//! formatted, and the number of characters must have the type `usize`. Although a `usize` can be
-//! printed with `{}`, it is illegal to reference an argument as such. For example this is another
-//! invalid format string:
+//! If this syntax is used, then the number of characters to print precedes the
+//! actual object being formatted, and the number of characters must have the
+//! type `usize`. Although a `usize` can be printed with `{}`, it is invalid to
+//! reference an argument as such. For example this is another invalid format
+//! string:
 //!
 //! ```text
 //! {:.*} {0}
@@ -172,7 +174,7 @@
 //! like:
 //!
 //! ```
-//! # #![feature(fmt_flags)]
+//! #![feature(fmt_flags)]
 //! use std::fmt;
 //!
 //! #[derive(Debug)]

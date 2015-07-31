@@ -17,7 +17,7 @@ macro_rules! panic {
     );
     ($msg:expr) => ({
         static _MSG_FILE_LINE: (&'static str, &'static str, u32) = ($msg, file!(), line!());
-        ::core::panicking::panic(&_MSG_FILE_LINE)
+        $crate::panicking::panic(&_MSG_FILE_LINE)
     });
     ($fmt:expr, $($arg:tt)*) => ({
         // The leading _'s are to avoid dead code warnings if this is
@@ -25,7 +25,7 @@ macro_rules! panic {
         // insufficient, since the user may have
         // `#[forbid(dead_code)]` and which cannot be overridden.
         static _FILE_LINE: (&'static str, u32) = (file!(), line!());
-        ::core::panicking::panic_fmt(format_args!($fmt, $($arg)*), &_FILE_LINE)
+        $crate::panicking::panic_fmt(format_args!($fmt, $($arg)*), &_FILE_LINE)
     });
 }
 

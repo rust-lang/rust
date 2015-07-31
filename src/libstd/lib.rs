@@ -281,28 +281,23 @@ extern crate libc;
 
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 
-// Make std testable by not duplicating lang items. See #2912
+// Make std testable by not duplicating lang items and other globals. See #2912
 #[cfg(test)] extern crate std as realstd;
-#[cfg(test)] pub use realstd::marker;
-#[cfg(test)] pub use realstd::ops;
-#[cfg(test)] pub use realstd::cmp;
-#[cfg(test)] pub use realstd::boxed;
-
 
 // NB: These reexports are in the order they should be listed in rustdoc
 
 pub use core::any;
 pub use core::cell;
 pub use core::clone;
-#[cfg(not(test))] pub use core::cmp;
+pub use core::cmp;
 pub use core::convert;
 pub use core::default;
 pub use core::hash;
 pub use core::intrinsics;
 pub use core::iter;
-#[cfg(not(test))] pub use core::marker;
+pub use core::marker;
 pub use core::mem;
-#[cfg(not(test))] pub use core::ops;
+pub use core::ops;
 pub use core::ptr;
 pub use core::raw;
 pub use core::simd;
@@ -310,7 +305,7 @@ pub use core::result;
 pub use core::option;
 pub mod error;
 
-#[cfg(not(test))] pub use alloc::boxed;
+pub use alloc::boxed;
 pub use alloc::rc;
 
 pub use core_collections::borrow;
@@ -421,27 +416,10 @@ pub mod __rand {
 // because rustdoc only looks for these modules at the crate level.
 include!("primitive_docs.rs");
 
-// A curious inner-module that's not exported that contains the binding
-// 'std' so that macro-expanded references to std::error and such
-// can be resolved within libstd.
-#[doc(hidden)]
+// The expansion of --test has a few references to `::std::$foo` so this module
+// is necessary to get things to compile.
+#[cfg(test)]
 mod std {
-    pub use sync; // used for select!()
-    pub use error; // used for try!()
-    pub use fmt; // used for any formatting strings
-    pub use option; // used for thread_local!{}
-    pub use rt; // used for panic!()
-    pub use vec; // used for vec![]
-    pub use cell; // used for tls!
-    pub use thread; // used for thread_local!
-    pub use marker;  // used for tls!
-
-    // The test runner calls ::std::env::args() but really wants realstd
-    #[cfg(test)] pub use realstd::env as env;
-    // The test runner requires std::slice::Vector, so re-export std::slice just for it.
-    //
-    // It is also used in vec![]
-    pub use slice;
-
-    pub use boxed; // used for vec![]
+    pub use option;
+    pub use realstd::env;
 }

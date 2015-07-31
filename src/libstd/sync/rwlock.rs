@@ -81,7 +81,8 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 /// # Examples
 ///
 /// ```
-/// # #![feature(static_rwlock)]
+/// #![feature(static_rwlock)]
+///
 /// use std::sync::{StaticRwLock, RW_LOCK_INIT};
 ///
 /// static LOCK: StaticRwLock = RW_LOCK_INIT;

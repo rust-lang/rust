@@ -149,8 +149,7 @@ impl<'a> MacroLoader<'a> {
         let mut seen = HashSet::new();
 
         for mut def in macros {
-            let name = token::get_ident(def.ident);
-            seen.insert(name.clone());
+            let name = def.ident.name.as_str();
 
             def.use_locally = match import.as_ref() {
                 None => true,
@@ -161,18 +160,19 @@ impl<'a> MacroLoader<'a> {
                                                               "allow_internal_unstable");
             debug!("load_macros: loaded: {:?}", def);
             self.macros.push(def);
+            seen.insert(name);
         }
 
         if let Some(sel) = import.as_ref() {
             for (name, span) in sel {
-                if !seen.contains(name) {
+                if !seen.contains(&name) {
                     self.sess.span_err(*span, "imported macro not found");
                 }
             }
         }
 
         for (name, span) in &reexport {
-            if !seen.contains(name) {
+            if !seen.contains(&name) {
                 self.sess.span_err(*span, "reexported macro not found");
             }
         }

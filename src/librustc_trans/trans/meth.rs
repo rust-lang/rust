@@ -39,7 +39,6 @@ use trans::type_of::*;
 use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty::MethodCall;
 
-use syntax::parse::token;
 use syntax::{ast, attr, visit};
 use syntax::codemap::DUMMY_SP;
 use syntax::ptr::P;
@@ -175,7 +174,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         csearch::get_item_path(tcx, method_id).last().unwrap().name()
     };
     debug!("trans_static_method_callee: method_id={:?}, expr_id={}, \
-            name={}", method_id, expr_id, token::get_name(mname));
+            name={}", method_id, expr_id, mname);
 
     // Find the substitutions for the fn itself. This includes
     // type parameters that belong to the trait but also some that

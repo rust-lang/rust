@@ -141,7 +141,8 @@ macro_rules! try {
 /// # Examples
 ///
 /// ```
-/// # #![feature(mpsc_select)]
+/// #![feature(mpsc_select)]
+///
 /// use std::thread;
 /// use std::sync::mpsc;
 ///

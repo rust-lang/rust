@@ -25,7 +25,8 @@ use sync::{Mutex, Condvar};
 /// # Examples
 ///
 /// ```
-/// # #![feature(semaphore)]
+/// #![feature(semaphore)]
+///
 /// use std::sync::Semaphore;
 ///
 /// // Create a semaphore that represents 5 resources

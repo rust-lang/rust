@@ -34,10 +34,6 @@
 #endif
 #endif
 
-/* Foreign builtins. */
-//include valgrind.h after stdint.h so that uintptr_t is defined for msys2 w64
-#include "valgrind/valgrind.h"
-
 char*
 rust_list_dir_val(struct dirent* entry_ptr) {
     return entry_ptr->d_name;
@@ -116,11 +112,6 @@ get_num_cpus() {
 uintptr_t
 rust_get_num_cpus() {
     return get_num_cpus();
-}
-
-uintptr_t
-rust_running_on_valgrind() {
-    return RUNNING_ON_VALGRIND;
 }
 
 #if defined(__DragonFly__)

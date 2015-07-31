@@ -11,5 +11,5 @@
 // compile-flags: -Z parse-only
 
 pub fn main() {
-    let s = "\u{d805}"; //~ ERROR illegal unicode character escape
+    let s = "\u{d805}"; //~ ERROR invalid unicode character escape
 }

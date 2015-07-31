@@ -333,7 +333,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Get_template_parameters() will append a `<...>` clause to the function
     // name if necessary.
-    let mut function_name = String::from(&*token::get_name(name));
+    let mut function_name = name.to_string();
     let template_parameters = get_template_parameters(cx,
                                                       generics,
                                                       param_substs,
@@ -494,7 +494,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                               actual_self_type,
                                                               codemap::DUMMY_SP);
 
-                let name = token::get_name(special_idents::type_self.name);
+                let name = special_idents::type_self.name.as_str();
 
                 let name = CString::new(name.as_bytes()).unwrap();
                 let param_metadata = unsafe {
@@ -529,8 +529,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // Again, only create type information if full debuginfo is enabled
             if cx.sess().opts.debuginfo == FullDebugInfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
-                let ident = token::get_ident(ident);
-                let name = CString::new(ident.as_bytes()).unwrap();
+                let name = CString::new(ident.name.as_str().as_bytes()).unwrap();
                 let param_metadata = unsafe {
                     llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),
@@ -563,7 +562,6 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let filename = span_start(cx, span).file.name.clone();
     let file_metadata = file_metadata(cx, &filename[..]);
 
-    let name = token::get_name(variable_name);
     let loc = span_start(cx, span);
     let type_metadata = type_metadata(cx, variable_type, span);
 
@@ -573,7 +571,7 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         CapturedVariable => (0, DW_TAG_auto_variable)
     };
 
-    let name = CString::new(name.as_bytes()).unwrap();
+    let name = CString::new(variable_name.as_str().as_bytes()).unwrap();
     match (variable_access, &[][..]) {
         (DirectVariable { alloca }, address_operations) |
         (IndirectVariable {alloca, address_operations}, _) => {

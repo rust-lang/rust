@@ -20,7 +20,7 @@ use mem;
 use clone::Clone;
 use intrinsics;
 use ops::Deref;
-use core::fmt;
+use fmt;
 use option::Option::{self, Some, None};
 use marker::{PhantomData, Send, Sized, Sync};
 use nonzero::NonZero;

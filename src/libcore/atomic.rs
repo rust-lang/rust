@@ -72,7 +72,7 @@
 
 use self::Ordering::*;
 
-use marker::Sync;
+use marker::{Send, Sync};
 
 use intrinsics;
 use cell::UnsafeCell;
@@ -134,6 +134,7 @@ impl<T> Default for AtomicPtr<T> {
     }
 }
 
+unsafe impl<T> Send for AtomicPtr<T> {}
 unsafe impl<T> Sync for AtomicPtr<T> {}
 
 /// Atomic memory orderings
@@ -145,7 +146,7 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// "relaxed" atomics allow all reorderings.
 ///
 /// Rust's memory orderings are [the same as
-/// C++'s](http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync).
+/// LLVM's](http://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone)]
 pub enum Ordering {

@@ -129,6 +129,9 @@ impl TcpStream {
     }
 
     /// Sets the nodelay flag on this connection to the boolean specified.
+    #[deprecated(since = "1.3.0",
+                 reason = "available through the `net2` crate on crates.io")]
+    #[unstable(feature = "tcp_extras", reason = "available externally")]
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         self.0.set_nodelay(nodelay)
     }
@@ -138,6 +141,9 @@ impl TcpStream {
     /// If the value specified is `None`, then the keepalive flag is cleared on
     /// this connection. Otherwise, the keepalive timeout will be set to the
     /// specified time, in seconds.
+    #[unstable(feature = "tcp_extras", reason = "available externally")]
+    #[deprecated(since = "1.3.0",
+                 reason = "available through the `net2` crate on crates.io")]
     pub fn set_keepalive(&self, seconds: Option<u32>) -> io::Result<()> {
         self.0.set_keepalive(seconds)
     }

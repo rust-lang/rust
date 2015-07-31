@@ -12,7 +12,7 @@ use std::marker;
 
 struct Foo { foo: Bar<Foo> }
 struct Bar<T> { x: Bar<Foo> , marker: marker::PhantomData<T> }
-//~^ ERROR illegal recursive struct type; wrap the inner value in a box to make it representable
+//~^ ERROR invalid recursive struct type
 
 impl Foo { fn foo(&self) {} }
 

@@ -223,11 +223,10 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
                         *idx += 1;
                     }
                     Occupied(..) => {
-                        let string = token::get_ident(bind_name);
                         panic!(p_s.span_diagnostic
                            .span_fatal(sp,
                                        &format!("duplicated bind name: {}",
-                                               &string)))
+                                               bind_name)))
                     }
                 }
             }
@@ -460,9 +459,7 @@ pub fn parse(sess: &ParseSess,
                 let nts = bb_eis.iter().map(|ei| {
                     match ei.top_elts.get_tt(ei.idx) {
                       TtToken(_, MatchNt(bind, name, _, _)) => {
-                        (format!("{} ('{}')",
-                                token::get_ident(name),
-                                token::get_ident(bind))).to_string()
+                        format!("{} ('{}')", name, bind)
                       }
                       _ => panic!()
                     } }).collect::<Vec<String>>().join(" or ");
@@ -484,11 +481,10 @@ pub fn parse(sess: &ParseSess,
 
                 let mut ei = bb_eis.pop().unwrap();
                 match ei.top_elts.get_tt(ei.idx) {
-                  TtToken(span, MatchNt(_, name, _, _)) => {
-                    let name_string = token::get_ident(name);
+                  TtToken(span, MatchNt(_, ident, _, _)) => {
                     let match_cur = ei.match_cur;
                     (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
-                        parse_nt(&mut rust_parser, span, &name_string))));
+                        parse_nt(&mut rust_parser, span, &ident.name.as_str()))));
                     ei.idx += 1;
                     ei.match_cur += 1;
                   }

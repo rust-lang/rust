@@ -584,7 +584,7 @@ extern "C" {
 ```
 
 Using this declaration, it must be called with at least one argument, so
-simply calling `printf()` is illegal. But the following uses are allowed:
+simply calling `printf()` is invalid. But the following uses are allowed:
 
 ```
 unsafe {
@@ -778,7 +778,7 @@ the pointer the size of the type would need to be unbounded.
 Consider the following erroneous definition of a type for a list of bytes:
 
 ```
-// error, illegal recursive struct type
+// error, invalid recursive struct type
 struct ListNode {
     head: u8,
     tail: Option<ListNode>,
@@ -1264,7 +1264,7 @@ impl From<Foo> for i32 { // or you use a type from your crate as
 
 E0119: r##"
 There are conflicting trait implementations for the same type.
-Erroneous code example:
+Example of erroneous code:
 
 ```
 trait MyTrait {
@@ -1285,7 +1285,10 @@ impl MyTrait for Foo { // error: conflicting implementations for trait
 }
 ```
 
-When you write:
+When looking for the implementation for the trait, the compiler finds
+both the `impl<T> MyTrait for T` where T is all types and the `impl
+MyTrait for Foo`. Since a trait cannot be implemented multiple times,
+this is an error. So, when you write:
 
 ```
 impl<T> MyTrait for T {
@@ -2215,6 +2218,23 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 -lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
 "##,
 
+E0391: r##"
+This error indicates that some types or traits depend on each other
+and therefore cannot be constructed.
+
+The following example contains a circular dependency between two traits:
+
+```
+trait FirstTrait : SecondTrait {
+
+}
+
+trait SecondTrait : FirstTrait {
+
+}
+```
+"##,
+
 E0392: r##"
 This error indicates that a type or lifetime parameter has been declared
 but not actually used.  Here is an example that demonstrates the error:
@@ -2319,14 +2339,14 @@ register_diagnostics! {
     E0212, // cannot extract an associated type from a higher-ranked trait bound
     E0213, // associated types are not accepted in this context
     E0214, // parenthesized parameters may only be used with a trait
-    E0215, // angle-bracket notation is not stable with `Fn`
-    E0216, // parenthetical notation is only stable with `Fn`
+//  E0215, // angle-bracket notation is not stable with `Fn`
+//  E0216, // parenthetical notation is only stable with `Fn`
     E0217, // ambiguous associated type, defined in multiple supertraits
     E0218, // no associated type defined
     E0219, // associated type defined in higher-ranked supertrait
     E0221, // ambiguous associated type in bounds
-    //E0222, // Error code E0045 (variadic function must have C calling
-             // convention) duplicate
+//  E0222, // Error code E0045 (variadic function must have C calling
+           // convention) duplicate
     E0224, // at least one non-builtin train is required for an object type
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
@@ -2345,7 +2365,7 @@ register_diagnostics! {
     E0241,
     E0242, // internal error looking up a definition
     E0245, // not a trait
-    E0246, // illegal recursive type
+    E0246, // invalid recursive type
     E0247, // found module name used as a type
     E0248, // found value name used as a type
     E0319, // trait impls for defaulted traits allowed just for structs/enums
@@ -2370,7 +2390,6 @@ register_diagnostics! {
            // between structures with the same definition
     E0390, // only a single inherent implementation marked with
            // `#[lang = \"{}\"]` is allowed for the `{}` primitive
-    E0391, // unsupported cyclic reference between types/traits detected
     E0393, // the type parameter `{}` must be explicitly specified in an object
            // type because its default value `{}` references the type `Self`"
     E0399, // trait items need to be implemented because the associated

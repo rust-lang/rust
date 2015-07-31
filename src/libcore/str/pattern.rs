@@ -17,7 +17,7 @@
             reason = "API not fully fleshed out and ready to be stabilized")]
 
 use prelude::*;
-use core::cmp;
+use cmp;
 use usize;
 
 // Pattern

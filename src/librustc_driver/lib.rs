@@ -339,7 +339,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             None
         };
         if pretty.is_none() && sess.unstable_options() {
-            matches.opt_str("xpretty").map(|a| {
+            matches.opt_str("unpretty").map(|a| {
                 // extended with unstable pretty-print variants
                 pretty::parse_pretty(sess, &a, true)
             })
