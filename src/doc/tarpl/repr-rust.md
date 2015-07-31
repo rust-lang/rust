@@ -36,9 +36,9 @@ struct A {
 }
 ```
 
-will be 32-bit aligned assuming these primitives are aligned to their size.
-It will therefore have a size that is a multiple of 32-bits. It will potentially
-*really* become:
+will be 32-bit aligned on an architecture that aligns these primitives to their
+respective sizes. The whole struct will therefore have a size that is a multiple
+of 32-bits. It will potentially become:
 
 ```rust
 struct A {
