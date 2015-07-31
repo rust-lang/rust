@@ -313,10 +313,12 @@ impl ModuleConfig {
         // slp vectorization at O3. Otherwise configure other optimization aspects
         // of this pass manager builder.
         self.vectorize_loop = !sess.opts.cg.no_vectorize_loops &&
-                             (sess.opts.optimize == config::Default ||
-                              sess.opts.optimize == config::Aggressive);
+            (sess.opts.optimize == config::Default ||
+             sess.opts.optimize == config::Aggressive) &&
+            !sess.target.target.options.is_like_pnacl;
         self.vectorize_slp = !sess.opts.cg.no_vectorize_slp &&
-                            sess.opts.optimize == config::Aggressive;
+            sess.opts.optimize == config::Aggressive &&
+            !sess.target.target.options.is_like_pnacl;
 
         self.merge_functions = sess.opts.optimize == config::Default ||
                                sess.opts.optimize == config::Aggressive;
