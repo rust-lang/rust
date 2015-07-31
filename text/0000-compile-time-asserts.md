@@ -11,11 +11,13 @@ insert an unconditional runtime-panic and issue a warning.
 
 # Definition of constant evaluation context
 
-There are exactly three places where an expression needs to be constant.
+There are exactly five places where an expression needs to be constant.
 
 - the initializer of a constant `const foo: ty = EXPR` or `static foo: ty = EXPR`
 - the size of an array `[T; EXPR]`
 - the length of a repeat expression `[VAL; LEN_EXPR]`
+- C-Like enum variant discriminant values
+- patterns
 
 In the future the body of `const fn` might also be interpreted as a constant
 evaluation context.
