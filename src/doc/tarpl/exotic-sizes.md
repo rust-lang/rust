@@ -48,7 +48,7 @@ a variable position based on its alignment][dst-issue].**
 
 # Zero Sized Types (ZSTs)
 
-Rust actually allows types to be specified that occupy *no* space:
+Rust actually allows types to be specified that occupy no space:
 
 ```rust
 struct Foo; // No fields = no size
@@ -124,7 +124,7 @@ let res: Result<u32, Void> = Ok(0);
 let Ok(num) = res;
 ```
 
-But neither of these tricks work today, so all Void types get you today is
+But neither of these tricks work today, so all Void types get you is
 the ability to be confident that certain situations are statically impossible.
 
 One final subtle detail about empty types is that raw pointers to them are

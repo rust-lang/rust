@@ -14,11 +14,11 @@ struct Iter<'a, T: 'a> {
 
 However because `'a` is unused within the struct's body, it's *unbounded*.
 Because of the troubles this has historically caused, unbounded lifetimes and
-types are *illegal* in struct definitions. Therefore we must somehow refer
+types are *forbidden* in struct definitions. Therefore we must somehow refer
 to these types in the body. Correctly doing this is necessary to have
 correct variance and drop checking.
 
-We do this using *PhantomData*, which is a special marker type. PhantomData
+We do this using `PhantomData`, which is a special marker type. `PhantomData`
 consumes no space, but simulates a field of the given type for the purpose of
 static analysis. This was deemed to be less error-prone than explicitly telling
 the type-system the kind of variance that you want, while also providing other
@@ -57,7 +57,7 @@ Good to go!
 Nope.
 
 The drop checker will generously determine that Vec<T> does not own any values
-of type T. This will in turn make it conclude that it does *not* need to worry
+of type T. This will in turn make it conclude that it doesn't need to worry
 about Vec dropping any T's in its destructor for determining drop check
 soundness. This will in turn allow people to create unsoundness using
 Vec's destructor.

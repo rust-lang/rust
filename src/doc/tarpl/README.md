@@ -9,15 +9,15 @@ nitty-gritty details of the language. You want to know those weird corner-cases.
 You want to know what the heck `unsafe` really means, and how to properly use
 it. This is the book for you.
 
-To be clear, this book goes into *serious* detail. We're going to dig into
+To be clear, this book goes into serious detail. We're going to dig into
 exception-safety and pointer aliasing. We're going to talk about memory
 models. We're even going to do some type-theory. This is stuff that you
-absolutely *don't* need to know to write fast and safe Rust programs.
+absolutely don't need to know to write fast and safe Rust programs.
 You could probably close this book *right now* and still have a productive
 and happy career in Rust.
 
-However if you intend to write unsafe code -- or just *really* want to dig into
-the guts of the language -- this book contains *invaluable* information.
+However if you intend to write unsafe code -- or just really want to dig into
+the guts of the language -- this book contains invaluable information.
 
 Unlike TRPL we will be assuming considerable prior knowledge. In particular, you
 should be comfortable with basic systems programming and basic Rust. If you

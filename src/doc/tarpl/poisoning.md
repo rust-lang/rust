@@ -20,7 +20,7 @@ standard library's Mutex type. A Mutex will poison itself if one of its
 MutexGuards (the thing it returns when a lock is obtained) is dropped during a
 panic. Any future attempts to lock the Mutex will return an `Err` or panic.
 
-Mutex poisons not for *true* safety in the sense that Rust normally cares about. It
+Mutex poisons not for true safety in the sense that Rust normally cares about. It
 poisons as a safety-guard against blindly using the data that comes out of a Mutex
 that has witnessed a panic while locked. The data in such a Mutex was likely in the
 middle of being modified, and as such may be in an inconsistent or incomplete state.

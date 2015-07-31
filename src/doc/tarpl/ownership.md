@@ -12,7 +12,7 @@ language?
 
 Regardless of your feelings on GC, it is pretty clearly a *massive* boon to
 making code safe. You never have to worry about things going away *too soon*
-(although whether you still *wanted* to be pointing at that thing is a different
+(although whether you still wanted to be pointing at that thing is a different
 issue...). This is a pervasive problem that C and C++ programs need to deal
 with. Consider this simple mistake that all of us who have used a non-GC'd
 language have made at one point:

@@ -7,16 +7,19 @@ What the language *does* provide is full-blown automatic destructors through the
 fn drop(&mut self);
 ```
 
-This method gives the type time to somehow finish what it was doing. **After
-`drop` is run, Rust will recursively try to drop all of the fields of `self`**.
+This method gives the type time to somehow finish what it was doing.
+
+**After `drop` is run, Rust will recursively try to drop all of the fields
+of `self`.**
+
 This is a convenience feature so that you don't have to write "destructor
 boilerplate" to drop children. If a struct has no special logic for being
 dropped other than dropping its children, then it means `Drop` doesn't need to
 be implemented at all!
 
-**There is no stable way to prevent this behaviour in Rust 1.0.
+**There is no stable way to prevent this behaviour in Rust 1.0.**
 
-Note that taking `&mut self` means that even if you *could* suppress recursive
+Note that taking `&mut self` means that even if you could suppress recursive
 Drop, Rust will prevent you from e.g. moving fields out of self. For most types,
 this is totally fine.
 
@@ -90,7 +93,7 @@ After we deallocate the `box`'s ptr in SuperBox's destructor, Rust will
 happily proceed to tell the box to Drop itself and everything will blow up with
 use-after-frees and double-frees.
 
-Note that the recursive drop behaviour applies to *all* structs and enums
+Note that the recursive drop behaviour applies to all structs and enums
 regardless of whether they implement Drop. Therefore something like
 
 ```rust
@@ -114,7 +117,7 @@ enum Link {
 }
 ```
 
-will have its inner Box field dropped *if and only if* an instance stores the
+will have its inner Box field dropped if and only if an instance stores the
 Next variant.
 
 In general this works really nice because you don't need to worry about
@@ -165,7 +168,7 @@ impl<T> Drop for SuperBox<T> {
 ```
 
 However this has fairly odd semantics: you're saying that a field that *should*
-always be Some may be None, just because that happens in the destructor. Of
+always be Some *may* be None, just because that happens in the destructor. Of
 course this conversely makes a lot of sense: you can call arbitrary methods on
 self during the destructor, and this should prevent you from ever doing so after
 deinitializing the field. Not that it will prevent you from producing any other
