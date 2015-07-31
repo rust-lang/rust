@@ -133,13 +133,15 @@ struct FooRepr {
 }
 ```
 
-And indeed this is approximately how it would be laid out in general
-(modulo the size and position of `tag`). However there are several cases where
-such a representation is inefficient. The classic case of this is Rust's
-"null pointer optimization". Given a pointer that is known to not be null
-(e.g. `&u32`), an enum can *store* a discriminant bit *inside* the pointer
-by using null as a special value. The net result is that
-`size_of::<Option<&T>>() == size_of::<&T>()`
+And indeed this is approximately how it would be laid out in general (modulo the
+size and position of `tag`). 
+
+However there are several cases where such a representation is inefficient. The
+classic case of this is Rust's "null pointer optimization": an enum consisting
+of a unit variant and a non-nullable pointer variant (e.g. `&u32`) makes the tag
+unnecessary, because a null pointer value can safely be interpreted to mean that
+the unit variant is chosen instead. The net result is that, for example,
+`size_of::<Option<&T>>() == size_of::<&T>()`.
 
 There are many types in Rust that are, or contain, non-nullable pointers such as
 `Box<T>`, `Vec<T>`, `String`, `&T`, and `&mut T`. Similarly, one can imagine
