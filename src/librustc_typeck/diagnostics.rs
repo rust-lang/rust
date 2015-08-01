@@ -1227,30 +1227,28 @@ impl Bytes { ... } // error, same as above
 "##,
 
 E0117: r##"
-You got this error because because you tried to implement a foreign
-trait for a foreign type (with maybe a foreign type parameter). Erroneous
-code example:
+This error indicates a violation of one of Rust's orphan rules for trait
+implementations. The rule prohibits any implementation of a foreign trait (a
+trait defined in another crate) where
+
+ - the type that is implementing the trait is foreign
+ - all of the parameters being passed to the trait (if there are any) are also
+   foreign.
+
+Here's one example of this error:
 
 ```
 impl Drop for u32 {}
 ```
 
-The type, trait or the type parameter (or all of them) has to be defined
-in your crate. Example:
+To avoid this kind of error, ensure that at least one local type is referenced
+by the `impl`:
 
 ```
 pub struct Foo; // you define your type in your crate
 
 impl Drop for Foo { // and you can implement the trait on it!
     // code of trait implementation here
-}
-
-trait Bar { // or define your trait in your crate
-    fn get(&self) -> usize;
-}
-
-impl Bar for u32 { // and then you implement it on a foreign type
-    fn get(&self) -> usize { 0 }
 }
 
 impl From<Foo> for i32 { // or you use a type from your crate as
@@ -1260,6 +1258,22 @@ impl From<Foo> for i32 { // or you use a type from your crate as
     }
 }
 ```
+
+Alternatively, define a trait locally and implement that instead:
+
+```
+trait Bar {
+    fn get(&self) -> usize;
+}
+
+impl Bar for u32 {
+    fn get(&self) -> usize { 0 }
+}
+```
+
+For information on the design of the orphan rules, see [RFC 1023].
+
+[RFC 1023]: https://github.com/rust-lang/rfcs/pull/1023
 "##,
 
 E0119: r##"
@@ -1889,6 +1903,71 @@ impl MyTrait for Foo {
 ```
 "##,
 
+E0210: r##"
+This error indicates a violation of one of Rust's orphan rules for trait
+implementations. The rule concerns the use of type parameters in an
+implementation of a foreign trait (a trait defined in another crate), and
+states that type parameters must be "covered" by a local type. To understand
+what this means, it is perhaps easiest to consider a few examples.
+
+If `ForeignTrait` is a trait defined in some external crate `foo`, then the
+following trait `impl` is an error:
+
+```
+extern crate foo;
+use foo::ForeignTrait;
+
+impl<T> ForeignTrait for T { ... } // error
+```
+
+To work around this, it can be covered with a local type, `MyType`:
+
+```
+struct MyType<T>(T);
+impl<T> ForeignTrait for MyType<T> { ... } // Ok
+```
+
+For another example of an error, suppose there's another trait defined in `foo`
+named `ForeignTrait2` that takes two type parameters. Then this `impl` results
+in the same rule violation:
+
+```
+struct MyType2;
+impl<T> ForeignTrait2<T, MyType<T>> for MyType2 { ... } // error
+```
+
+The reason for this is that there are two appearances of type parameter `T` in
+the `impl` header, both as parameters for `ForeignTrait2`. The first appearance
+is uncovered, and so runs afoul of the orphan rule.
+
+Consider one more example:
+
+```
+impl<T> ForeignTrait2<MyType<T>, T> for MyType2 { ... } // Ok
+```
+
+This only differs from the previous `impl` in that the parameters `T` and
+`MyType<T>` for `ForeignTrait2` have been swapped. This example does *not*
+violate the orphan rule; it is permitted.
+
+To see why that last example was allowed, you need to understand the general
+rule. Unfortunately this rule is a bit tricky to state. Consider an `impl`:
+
+```
+impl<P1, ..., Pm> ForeignTrait<T1, ..., Tn> for T0 { ... }
+```
+
+where `P1, ..., Pm` are the type parameters of the `impl` and `T0, ..., Tn`
+are types. One of the types `T0, ..., Tn` must be a local type (this is another
+orphan rule, see the explanation for E0117). Let `i` be the smallest integer
+such that `Ti` is a local type. Then no type parameter can appear in any of the
+`Tj` for `j < i`.
+
+For information on the design of the orphan rules, see [RFC 1023].
+
+[RFC 1023]: https://github.com/rust-lang/rfcs/pull/1023
+"##,
+
 E0211: r##"
 You used an intrinsic function which doesn't correspond to its
 definition. Erroneous code example:
@@ -2335,7 +2414,6 @@ register_diagnostics! {
            // and only one is supported
     E0208,
     E0209, // builtin traits can only be implemented on structs or enums
-    E0210, // type parameter is not constrained by any local type
     E0212, // cannot extract an associated type from a higher-ranked trait bound
     E0213, // associated types are not accepted in this context
     E0214, // parenthesized parameters may only be used with a trait
