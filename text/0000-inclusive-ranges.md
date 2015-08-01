@@ -31,13 +31,18 @@ pub struct RangeInclusive<T> {
     pub end: T,
     pub finished: bool,
 }
+
+pub struct RangeToInclusive<T> {
+    pub end: T,
+}
 ```
 
 Writing `a...b` in an expression desugars to `std::ops::RangeInclusive
-{ start: a, end: b, finished: false }`.
+{ start: a, end: b, finished: false }`. Writing `...b` in an
+expression desugars to `std::ops::RangeToInclusive { end: b }`.
 
-This struct implements the standard traits (`Clone`, `Debug` etc.),
-and implements `Iterator`. The `finished` field is to allow the
+`RangeInclusive` implements the standard traits (`Clone`, `Debug`
+etc.), and implements `Iterator`. The `finished` field is to allow the
 `Iterator` implementation to work without hacks (see Alternatives).
 
 The use of `...` in a pattern remains as testing for inclusion
@@ -59,7 +64,9 @@ semantically.)
 The `...` vs. `..` distinction is the exact inversion of Ruby's syntax.
 
 Having an extra field in a language-level desugaring, catering to one
-library use-case is a little non-"hygienic".
+library use-case is a little non-"hygienic". It is especially strange
+that the field isn't consistent across the different `...`
+desugarings.
 
 # Alternatives
 
