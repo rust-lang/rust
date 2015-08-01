@@ -57,8 +57,8 @@ impl<'a> FmtVisitor<'a> {
         let snippet = self.snippet(span);
 
         self.write_snippet(&snippet,
-                               true,
-                               &process_last_snippet);
+                           true,
+                           &process_last_snippet);
     }
 
     fn write_snippet<F: Fn(&mut FmtVisitor, &str, &str)>(&mut self,

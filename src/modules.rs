@@ -20,9 +20,9 @@ use syntax::parse::parser;
 
 /// List all the files containing modules of a crate.
 /// If a file is used twice in a crate, it appears only once.
-pub fn list_modules<'a>(krate: &'a ast::Crate,
-                        codemap: &codemap::CodeMap)
-                        -> HashMap<PathBuf, &'a ast::Mod> {
+pub fn list_files<'a>(krate: &'a ast::Crate,
+                      codemap: &codemap::CodeMap)
+                      -> HashMap<PathBuf, &'a ast::Mod> {
     let mut result = HashMap::new();
     let root_filename: PathBuf = codemap.span_to_filename(krate.span).into();
     list_submodules(&krate.module, root_filename.parent().unwrap(), codemap, &mut result);
