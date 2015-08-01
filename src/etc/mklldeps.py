@@ -49,6 +49,8 @@ f.write("\n")
 # LLVM libs
 args = [llvm_config, '--libs', '--system-libs']
 
+llvm_shared = len(run([llvm_config, '--libs']).strip().split(' ')) == 1
+
 args.extend(components)
 out = run(args)
 for lib in out.strip().replace("\n", ' ').split(' '):
@@ -63,6 +65,8 @@ for lib in out.strip().replace("\n", ' ').split(' '):
     elif lib[0] == '-':
         lib = lib.strip()[1:]
     f.write("#[link(name = \"" + lib + "\"")
+    if not llvm_shared:
+        f.write(", kind = \"static\"")
     f.write(")]\n")
 
 # LLVM ldflags
