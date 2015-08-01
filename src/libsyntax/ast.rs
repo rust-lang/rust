@@ -1656,14 +1656,29 @@ pub type Variant = Spanned<Variant_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum PathListItem_ {
-    PathListIdent { name: Ident, id: NodeId },
-    PathListMod { id: NodeId }
+    PathListIdent {
+        name: Ident,
+        /// renamed in list, eg `use foo::{bar as baz};`
+        rename: Option<Ident>,
+        id: NodeId
+    },
+    PathListMod {
+        /// renamed in list, eg `use foo::{self as baz};`
+        rename: Option<Ident>,
+        id: NodeId
+    }
 }
 
 impl PathListItem_ {
     pub fn id(&self) -> NodeId {
         match *self {
-            PathListIdent { id, .. } | PathListMod { id } => id
+            PathListIdent { id, .. } | PathListMod { id, .. } => id
+        }
+    }
+
+    pub fn rename(&self) -> Option<Ident> {
+        match *self {
+            PathListIdent { rename, .. } | PathListMod { rename, .. } => rename
         }
     }
 }
