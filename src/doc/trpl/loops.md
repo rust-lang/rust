@@ -6,7 +6,7 @@ Rust currently provides three approaches to performing some kind of iterative ac
 
 The infinite `loop` is the simplest form of loop available in Rust. Using the keyword `loop`, Rust provides a way to loop indefinitely until some terminating statement is reached. Rust's infinite `loop`s look like this:
 
-```rust
+```rust,ignore
 loop {
     println!("Loop forever!");
 }
