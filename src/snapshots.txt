@@ -1,5 +1,6 @@
 S 2015-07-26 a5c12f4
   bitrig-x86_64 8734eb41ffbe6ddc1120aa2910db4162ec9cf270
+  freebsd-i386 2fee22adec101e2f952a5548fd1437ce1bd8d26f
   freebsd-x86_64 bc50b0f8d7f6d62f4f5ffa136f5387f5bf6524fd
   linux-i386 3459275cdf3896f678e225843fa56f0d9fdbabe8
   linux-x86_64 e451e3bd6e5fcef71e41ae6f3da9fb1cf0e13a0c
