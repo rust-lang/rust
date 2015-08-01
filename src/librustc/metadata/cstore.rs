@@ -28,7 +28,10 @@ use std::path::PathBuf;
 use flate::Bytes;
 use syntax::ast;
 use syntax::codemap;
+use syntax::parse::token;
 use syntax::parse::token::IdentInterner;
+use syntax::util::small_vector::SmallVector;
+use ast_map;
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -54,6 +57,7 @@ pub struct ImportedFileMap {
 
 pub struct crate_metadata {
     pub name: String,
+    pub local_path: RefCell<SmallVector<ast_map::PathElem>>,
     pub data: MetadataBlob,
     pub cnum_map: cnum_map,
     pub cnum: ast::CrateNum,
@@ -253,6 +257,30 @@ impl crate_metadata {
             self.codemap_import_info.borrow()
         } else {
             filemaps
+        }
+    }
+    pub fn with_local_path<T, F>(&self, f: F) -> T
+    where F: Fn(&[ast_map::PathElem]) -> T {
+        let cpath = self.local_path.borrow();
+        if cpath.is_empty() {
+            let name = ast_map::PathMod(token::intern(&self.name));
+            f(&[name])
+        } else {
+            f(cpath.as_slice())
+        }
+    }
+    pub fn update_local_path<'a, 'b>(&self, candidate: ast_map::PathElems<'a, 'b>) {
+        let mut cpath = self.local_path.borrow_mut();
+        let cap = cpath.len();
+        match cap {
+            0 => *cpath = candidate.collect(),
+            1 => (),
+            _ => {
+                let candidate: SmallVector<_> = candidate.collect();
+                if candidate.len() < cap {
+                    *cpath = candidate;
+                }
+            },
         }
     }
 }
