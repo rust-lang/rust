@@ -36,22 +36,6 @@ RUSTLLVM_OBJS_OBJS_$(1) := $$(RUSTLLVM_OBJS_CS_$(1):rustllvm/%.cpp=$(1)/rustllvm
 # handling flag with the `EHsc` argument here as well.
 ifeq ($$(findstring msvc,$(1)),msvc)
 EXTRA_RUSTLLVM_CXXFLAGS_$(1) := //EHsc
-else
-
-ifneq ($(filter-out le32-unknown-nacl,$(CFG_TARGET)),$(CFG_TARGET))
-
-ifneq ($(CFG_LLVM_ROOT),)
-# The toolchain's LLVM is built against a version of libc++ that might be
-# different than the host libc++:
-EXTRA_RUSTLLVM_CXXFLAGS_$(1) := -DENABLE_PNACL=1 -nostdinc++ -isystem $$(CFG_PNACL_TOOLCHAIN)/include/c++/v1
-else
-EXTRA_RUSTLLVM_CXXFLAGS_$(1) := -DENABLE_PNACL=0
-endif
-
-else
-EXTRA_RUSTLLVM_CXXFLAGS_$(1) := -DENABLE_PNACL=0
-endif
-
 endif
 
 $$(RT_OUTPUT_DIR_$(1))/$$(call CFG_STATIC_LIB_NAME_$(1),rustllvm): \
