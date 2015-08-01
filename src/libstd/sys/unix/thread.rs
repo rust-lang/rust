@@ -129,7 +129,7 @@ impl Thread {
             pthread_setname_np(cname.as_ptr());
         }
     }
-    #[cfg(target_libc = "newlib")]
+    #[cfg(target_env = "newlib")]
     pub unsafe fn set_name(_name: &str) {
         // Newlib has no way to set a thread name.
     }

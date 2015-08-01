@@ -34,7 +34,7 @@ SHARED_LIBS_DISABLED_le32-unknown-nacl := 1
 RUNTIME_CFLAGS_le32-unknown-nacl:= -I$(CFG_NACL_CROSS_PATH)/include/pnacl
 RUNTIME_DISABLE_ASM_le32-unknown-nacl := 1
 RUSTC_FLAGS_le32-unknown-nacl:=
-RUSTC_CROSS_FLAGS_le32-unknown-nacl=-C cross-path=$(CFG_NACL_CROSS_PATH) --cfg "target_libc=\"newlib\"" -L $(CFG_NACL_CROSS_PATH)/lib/pnacl/Release -L $(CFG_PNACL_TOOLCHAIN)/lib/clang/3.7.0/lib/le32-nacl -L $(CFG_PNACL_TOOLCHAIN)/le32-nacl/usr/lib -L $(CFG_PNACL_TOOLCHAIN)/le32-nacl/lib
+RUSTC_CROSS_FLAGS_le32-unknown-nacl=-C cross-path=$(CFG_NACL_CROSS_PATH) -L $(CFG_NACL_CROSS_PATH)/lib/pnacl/Release -L $(CFG_PNACL_TOOLCHAIN)/lib/clang/3.7.0/lib/le32-nacl -L $(CFG_PNACL_TOOLCHAIN)/le32-nacl/usr/lib -L $(CFG_PNACL_TOOLCHAIN)/le32-nacl/lib
 CFG_GNU_TRIPLE_le32-unknown-nacl := le32-unknown-nacl
 
 # strdup isn't defined unless -std=gnu++11 is used

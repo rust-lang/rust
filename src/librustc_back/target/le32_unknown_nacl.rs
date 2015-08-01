@@ -40,7 +40,7 @@ pub fn target() -> Target {
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
         target_os: "nacl".to_string(),
-        target_env: "".to_string(),
+        target_env: "newlib".to_string(),
         arch: "le32".to_string(),
         options: opts,
     }

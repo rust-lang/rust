@@ -462,11 +462,11 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    #[cfg(not(target_libc = "newlib"))]
+    #[cfg(not(target_env = "newlib"))]
     unsafe fn pathconf(p: *mut libc::c_char) -> i64 {
         libc::pathconf(p, libc::_PC_NAME_MAX) as i64
     }
-    #[cfg(target_libc = "newlib")]
+    #[cfg(target_env = "newlib")]
     unsafe fn pathconf(_: *mut libc::c_char) -> i64 {
         libc::sysconf(libc::_PC_NAME_MAX) as i64
     }

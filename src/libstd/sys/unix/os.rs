@@ -60,7 +60,7 @@ pub fn errno() -> i32 {
         extern { fn __errno_location() -> *const c_int; }
         __errno_location()
     }
-    #[cfg(target_libc = "newlib")]
+    #[cfg(target_env = "newlib")]
     fn errno_location() -> *const c_int {
         extern {
             fn __errno() -> *const c_int;
