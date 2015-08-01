@@ -862,11 +862,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             if let ast::ViewPathList(ref prefix, ref list) = vpath.node {
                 for pid in list {
                     match pid.node {
-                        ast::PathListIdent { id, name } => {
+                        ast::PathListIdent { id, name, .. } => {
                             debug!("privacy - ident item {}", id);
                             self.check_path(pid.span, id, name.name);
                         }
-                        ast::PathListMod { id } => {
+                        ast::PathListMod { id, .. } => {
                             debug!("privacy - mod item {}", id);
                             let name = prefix.segments.last().unwrap().identifier.name;
                             self.check_path(pid.span, id, name);

@@ -2362,7 +2362,7 @@ impl Clean<Vec<Item>> for doctree::Import {
                 let remaining = if !denied {
                     let mut remaining = vec![];
                     for path in list {
-                        match inline::try_inline(cx, path.node.id(), None) {
+                        match inline::try_inline(cx, path.node.id(), path.node.rename()) {
                             Some(items) => {
                                 ret.extend(items);
                             }
@@ -2424,18 +2424,21 @@ pub struct ImportSource {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ViewListIdent {
     pub name: String,
+    pub rename: Option<String>,
     pub source: Option<ast::DefId>,
 }
 
 impl Clean<ViewListIdent> for ast::PathListItem {
     fn clean(&self, cx: &DocContext) -> ViewListIdent {
         match self.node {
-            ast::PathListIdent { id, name } => ViewListIdent {
+            ast::PathListIdent { id, name, rename } => ViewListIdent {
                 name: name.clean(cx),
+                rename: rename.map(|r| r.clean(cx)),
                 source: resolve_def(cx, id)
             },
-            ast::PathListMod { id } => ViewListIdent {
+            ast::PathListMod { id, rename } => ViewListIdent {
                 name: "self".to_string(),
+                rename: rename.map(|r| r.clean(cx)),
                 source: resolve_def(cx, id)
             }
         }
