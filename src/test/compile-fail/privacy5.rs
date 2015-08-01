@@ -101,30 +101,30 @@ fn xcrate() {
     let c = other::C(2, 3); //~ ERROR: cannot invoke tuple struct constructor
     let d = other::D(4);
 
-    let other::A(()) = a; //~ ERROR: field #1 of struct `privacy_tuple_struct::A` is private
+    let other::A(()) = a; //~ ERROR: field #1 of struct `other::A` is private
     let other::A(_) = a;
     match a { other::A(()) => {} }
-    //~^ ERROR: field #1 of struct `privacy_tuple_struct::A` is private
+    //~^ ERROR: field #1 of struct `other::A` is private
     match a { other::A(_) => {} }
 
     let other::B(_) = b;
-    let other::B(_b) = b; //~ ERROR: field #1 of struct `privacy_tuple_struct::B` is private
+    let other::B(_b) = b; //~ ERROR: field #1 of struct `other::B` is private
     match b { other::B(_) => {} }
     match b { other::B(_b) => {} }
-    //~^ ERROR: field #1 of struct `privacy_tuple_struct::B` is private
+    //~^ ERROR: field #1 of struct `other::B` is private
     match b { other::B(1) => {} other::B(_) => {} }
-    //~^ ERROR: field #1 of struct `privacy_tuple_struct::B` is private
+    //~^ ERROR: field #1 of struct `other::B` is private
 
     let other::C(_, _) = c;
     let other::C(_a, _) = c;
-    let other::C(_, _b) = c; //~ ERROR: field #2 of struct `privacy_tuple_struct::C` is private
-    let other::C(_a, _b) = c; //~ ERROR: field #2 of struct `privacy_tuple_struct::C` is private
+    let other::C(_, _b) = c; //~ ERROR: field #2 of struct `other::C` is private
+    let other::C(_a, _b) = c; //~ ERROR: field #2 of struct `other::C` is private
     match c { other::C(_, _) => {} }
     match c { other::C(_a, _) => {} }
     match c { other::C(_, _b) => {} }
-    //~^ ERROR: field #2 of struct `privacy_tuple_struct::C` is private
+    //~^ ERROR: field #2 of struct `other::C` is private
     match c { other::C(_a, _b) => {} }
-    //~^ ERROR: field #2 of struct `privacy_tuple_struct::C` is private
+    //~^ ERROR: field #2 of struct `other::C` is private
 
     let other::D(_) = d;
     let other::D(_d) = d;

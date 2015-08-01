@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test
+//! Test that when a crate is linked under another name that that name is used in global paths
 
-//! Test that makes sure wrongly-typed bench functions are rejected
+extern crate core as bar;
 
-#[bench]
-fn bar(x: isize) { }
-//~^ ERROR mismatched types
-//~| expected `fn(&mut __test::test::Bencher)`
-//~| found `fn(isize) {bar}`
-//~| expected &-ptr
-//~| found isize
+fn assert_clone<T>() where T : Clone { }
+
+fn main() {
+    assert_clone::<bar::atomic::AtomicBool>();
+    //~^ ERROR the trait `bar::clone::Clone` is not implemented for the type `bar::atomic::
+}
