@@ -316,10 +316,10 @@ LLVM_LDFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --ldflags)
 ifeq ($$(findstring freebsd,$(1)),freebsd)
 # On FreeBSD, it may search wrong headers (that are for pre-installed LLVM),
 # so we replace -I with -iquote to ensure that it searches bundled LLVM first.
-LLVM_CXXFLAGS_$(1)=$$(subst -I, -iquote , $$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags))
+LLVM_CXXFLAGS_$(1)=$$(subst -I, -iquote , $$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags) $$(CXXFLAGS))
 else
 LLVM_CXXFLAGS_$(1)=$$(filter-out $$(LLVM_FILTER_CXXFLAGS_$(1)),      \
-			$$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags)) \
+			$$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags) $$(CXXFLAGS)) \
 		   $$(LLVM_EXTRA_CXXFLAGS_$(1))
 endif
 LLVM_HOST_TRIPLE_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --host-target)
