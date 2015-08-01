@@ -16,6 +16,7 @@ use llvm::{SequentiallyConsistent, Acquire, Release, AtomicXchg, ValueRef, TypeK
 use middle::subst;
 use middle::subst::FnSpace;
 use trans::adt;
+use trans::attributes;
 use trans::base::*;
 use trans::build::*;
 use trans::callee;
@@ -1189,6 +1190,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         //      ret ptr
 
         let rust_try = declare::define_internal_rust_fn(ccx, "__rust_try", try_fn_ty);
+        attributes::emit_uwtable(rust_try, true);
         let catch_pers = match bcx.tcx().lang_items.eh_personality_catch() {
             Some(did) => callee::trans_fn_ref(ccx, did, ExprId(0),
                                               bcx.fcx.param_substs).val,
@@ -1219,6 +1221,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         AddClause(catch, vals, C_null(Type::i8p(ccx)));
         let ptr = ExtractValue(catch, vals, 0);
         Ret(catch, ptr, dloc);
+        fcx.cleanup();
 
         return rust_try
     });
