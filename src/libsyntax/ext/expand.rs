@@ -1567,7 +1567,6 @@ pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
                 };
 
                 // Keep going, outside-in.
-                //
                 let fully_expanded = fld.fold_ty(expanded_ty);
                 fld.cx.bt_pop();
 
