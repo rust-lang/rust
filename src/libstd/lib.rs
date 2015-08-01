@@ -15,7 +15,7 @@
 //! for the [broader Rust ecosystem](https://crates.io). It offers
 //! core types (e.g. [`Vec`](vec/index.html)
 //! and [`Option`](option/index.html)), library-defined [operations on
-//! language primitives](#primitive) (e.g. [`u32`](u32/index.html) and
+//! language primitives](#primitives) (e.g. [`u32`](u32/index.html) and
 //! [`str`](str/index.html)), [standard macros](#macros),
 //! [I/O](io/index.html) and [multithreading](thread/index.html), among
 //! [many other lovely
