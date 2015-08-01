@@ -36,6 +36,11 @@ typedef Archive RustArchive;
 #define GET_ARCHIVE(a) (a)
 #endif
 
+extern "C" bool
+LLVMRustUseArchiveWriter() {
+  return LLVM_VERSION_MINOR >= 7 && !PNACL_LLVM;
+}
+
 extern "C" void*
 LLVMRustOpenArchive(char *path) {
     ErrorOr<std::unique_ptr<MemoryBuffer>> buf_or = MemoryBuffer::getFile(path,

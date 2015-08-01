@@ -2109,6 +2109,7 @@ extern {
 
     pub fn LLVMWriteSMDiagnosticToString(d: SMDiagnosticRef, s: RustStringRef);
 
+    pub fn LLVMRustUseArchiveWriter() -> bool;
     pub fn LLVMRustWriteArchive(Dst: *const c_char,
                                 NumMembers: size_t,
                                 Members: *const RustArchiveMemberRef,
