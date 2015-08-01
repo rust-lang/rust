@@ -56,6 +56,10 @@
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/Linker/Linker.h"
 
+#ifndef PNACL_LLVM
+#define PNACL_LLVM 0
+#endif
+
 void LLVMRustSetLastError(const char*);
 
 typedef struct OpaqueRustString *RustStringRef;

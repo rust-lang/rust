@@ -12,7 +12,7 @@
 
 #include "llvm/Object/Archive.h"
 
-#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
+#if LLVM_VERSION_MINOR >= 7 && !PNACL_LLVM
 #include "llvm/Object/ArchiveWriter.h"
 #endif
 
@@ -156,7 +156,7 @@ LLVMRustWriteArchive(char *Dst,
                      const LLVMRustArchiveMember **NewMembers,
                      bool WriteSymbtab,
                      Archive::Kind Kind) {
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 7 && !PNACL_LLVM
   std::vector<NewArchiveIterator> Members;
 
   for (size_t i = 0; i < NumMembers; i++) {

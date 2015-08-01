@@ -280,7 +280,7 @@ DIT unwrapDI(LLVMMetadataRef ref) {
     }                                                   \
   }
 
-#  if ENABLE_PNACL
+#  if PNACL_LLVM
 // The NaCl SDK and Rust use slightly different LLVM 3.7 versions.
 // In the small space between these two revisions, LLVM has managed to modify
 // just about every DIBuilder function.
@@ -375,9 +375,9 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateSubroutineType(
     LLVMMetadataRef ParameterTypes) {
     return wrap(Builder->createSubroutineType(
         unwrapDI<DIFile>(File),
-#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
+#if LLVM_VERSION_MINOR >= 7 && !PNACL_LLVM
         DITypeRefArray(unwrap<MDTuple>(ParameterTypes))));
-#elif LLVM_VERSION_MINOR >= 6 || ENABLE_PNACL
+#elif LLVM_VERSION_MINOR >= 6 || PNACL_LLVM
         unwrapDI<DITypeArray>(ParameterTypes)));
 #else
         unwrapDI<DIArray>(ParameterTypes)));
@@ -618,7 +618,7 @@ extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareAtEnd(
     LLVMBasicBlockRef InsertAtEnd) {
     return wrap(Builder->insertDeclare(
         unwrap(Val),
-#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
+#if LLVM_VERSION_MINOR >= 7 && !PNACL_LLVM
         unwrap<DILocalVariable>(VarInfo),
 #else
         unwrapDI<DIVariable>(VarInfo),
@@ -645,7 +645,7 @@ extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareBefore(
 #endif
     return wrap(Builder->insertDeclare(
         unwrap(Val),
-#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
+#if LLVM_VERSION_MINOR >= 7 && !PNACL_LLVM
         unwrap<DILocalVariable>(VarInfo),
 #else
         unwrapDI<DIVariable>(VarInfo),
@@ -836,7 +836,7 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     Module *Dst = unwrap(dst);
 #if LLVM_VERSION_MINOR >= 6
     std::unique_ptr<MemoryBuffer> buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
-#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
+#if LLVM_VERSION_MINOR >= 7 && !PNACL_LLVM
     ErrorOr<std::unique_ptr<Module>> Src =
         llvm::getLazyBitcodeModule(std::move(buf), Dst->getContext());
 #else
@@ -863,7 +863,7 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
 #if LLVM_VERSION_MINOR >= 6
     raw_string_ostream Stream(Err);
     DiagnosticPrinterRawOStream DP(Stream);
-#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
+#if LLVM_VERSION_MINOR >= 7 && !PNACL_LLVM
     if (Linker::LinkModules(Dst, Src->get(), [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
 #else
     if (Linker::LinkModules(Dst, *Src, [&](const DiagnosticInfo &DI) { DI.print(DP); })) {
@@ -1002,7 +1002,7 @@ LLVMRustBuildLandingPad(LLVMBuilderRef Builder,
                         unsigned NumClauses,
                         const char* Name,
                         LLVMValueRef F) {
-#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
+#if LLVM_VERSION_MINOR >= 7 && !PNACL_LLVM
     unwrap<Function>(F)->setPersonalityFn(unwrap<Constant>(PersFn));
     return LLVMBuildLandingPad(Builder, Ty, NumClauses, Name);
 #else
