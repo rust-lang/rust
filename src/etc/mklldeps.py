@@ -65,7 +65,7 @@ for lib in out.strip().replace("\n", ' ').split(' '):
     elif lib[0] == '-':
         lib = lib.strip()[1:]
     f.write("#[link(name = \"" + lib + "\"")
-    if not llvm_shared:
+    if not llvm_shared and 'LLVM' in lib:
         f.write(", kind = \"static\"")
     f.write(")]\n")
 
