@@ -22,9 +22,9 @@ struct A {
 fn main () {
     // external crate struct
     let k = B {
-        aa: 20, //~ ERROR structure `struct_field_privacy::B` has no field named `aa`
+        aa: 20, //~ ERROR structure `xc::B` has no field named `aa`
         //~^ HELP did you mean `a`?
-        bb: 20, //~ ERROR structure `struct_field_privacy::B` has no field named `bb`
+        bb: 20, //~ ERROR structure `xc::B` has no field named `bb`
     };
     // local crate struct
     let l = A {
