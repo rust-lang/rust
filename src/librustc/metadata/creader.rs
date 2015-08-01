@@ -34,6 +34,7 @@ use syntax::codemap::{self, Span, mk_sp, Pos};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::visit;
+use syntax::util::small_vector::SmallVector;
 use ast_map;
 use log;
 
@@ -263,6 +264,7 @@ impl<'a> CrateReader<'a> {
 
         let cmeta = Rc::new( cstore::crate_metadata {
             name: name.to_string(),
+            local_path: RefCell::new(SmallVector::zero()),
             data: metadata,
             cnum_map: cnum_map,
             cnum: cnum,
@@ -520,12 +522,14 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
 
                 match self.creader.extract_crate_info(i) {
                     Some(info) => {
-                        let (cnum, _, _) = self.creader.resolve_crate(&None,
+                        let (cnum, cmeta, _) = self.creader.resolve_crate(&None,
                                                               &info.ident,
                                                               &info.name,
                                                               None,
                                                               i.span,
                                                               PathKind::Crate);
+                        self.ast_map.with_path(i.id, |path|
+                            cmeta.update_local_path(path));
                         self.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
                     }
                     None => ()
