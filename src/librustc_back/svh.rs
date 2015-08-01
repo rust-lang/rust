@@ -87,19 +87,6 @@ impl Svh {
             visit::walk_crate(&mut visit, krate);
         }
 
-        // FIXME (#14132): This hash is still sensitive to e.g. the
-        // spans of the crate Attributes and their underlying
-        // MetaItems; we should make ContentHashable impl for those
-        // types and then use hash_content.  But, since all crate
-        // attributes should appear near beginning of the file, it is
-        // not such a big deal to be sensitive to their spans for now.
-        //
-        // We hash only the MetaItems instead of the entire Attribute
-        // to avoid hashing the AttrId
-        for attr in &krate.attrs {
-            attr.node.value.hash(&mut state);
-        }
-
         let hash = state.finish();
         return Svh {
             hash: (0..64).step_by(4).map(|i| hex(hash >> i)).collect()
@@ -198,6 +185,9 @@ mod svh_visitor {
         SawPat,
         SawLocal,
         SawArm,
+        SawAttrWord,
+        SawAttrList,
+        SawAttrNameValue,
         SawExpr(SawExprComponent<'a>),
         SawStmt(SawStmtComponent),
     }
@@ -486,6 +476,27 @@ mod svh_visitor {
 
         fn visit_arm(&mut self, a: &Arm) {
             SawArm.hash(self.st); visit::walk_arm(self, a)
+        }
+
+        fn visit_attribute(&mut self, a: &Attribute) {
+            let ref val = a.node.value;
+
+            match val.node {
+                MetaItem_::MetaWord(ref s) => {
+                    SawAttrWord.hash(self.st);
+                    s.hash(self.st);
+                },
+                MetaItem_::MetaList(ref s, ref items) => {
+                    SawAttrList.hash(self.st);
+                    s.hash(self.st);
+                    items.hash(self.st);
+                },
+                MetaItem_::MetaNameValue(ref s, ref lit) => {
+                    SawAttrNameValue.hash(self.st);
+                    s.hash(self.st);
+                    lit.hash(self.st);
+                },
+            }
         }
     }
 }
