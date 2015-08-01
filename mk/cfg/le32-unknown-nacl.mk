@@ -40,4 +40,3 @@ CFG_GNU_TRIPLE_le32-unknown-nacl := le32-unknown-nacl
 # strdup isn't defined unless -std=gnu++11 is used
 LLVM_FILTER_CXXFLAGS_le32-unknown-nacl := -std=c++11
 LLVM_EXTRA_CXXFLAGS_le32-unknown-nacl := -std=gnu++11
-LLVM_HAS_TARGETMACHINE_le32-unknown-nacl := 0

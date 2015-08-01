@@ -96,7 +96,6 @@ pub mod diagnostics;
 
 pub mod back {
     pub use rustc_back::abi;
-    pub use rustc_back::le32;
     pub use rustc_back::rpath;
     pub use rustc_back::svh;
 }

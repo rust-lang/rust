@@ -12,7 +12,7 @@
 
 #include "llvm/Object/Archive.h"
 
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
 #include "llvm/Object/ArchiveWriter.h"
 #endif
 

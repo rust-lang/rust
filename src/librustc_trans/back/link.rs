@@ -37,11 +37,9 @@ use std::fs::{self, PathExt};
 use std::io::{self, Read, Write};
 use std::mem;
 use std::path::{Path, PathBuf};
-use std::ptr;
 use std::process::Command;
 use std::str;
 use flate;
-use llvm;
 use serialize::hex::ToHex;
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
@@ -77,34 +75,6 @@ pub const RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: usize =
 pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: usize =
     RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
 
-
-pub fn llvm_actual_err(sess: &Session, msg: String) {
-    unsafe {
-        let cstr = llvm::LLVMRustGetLastError();
-        if cstr == ptr::null() {
-            sess.err(&msg[..]);
-        } else {
-            let err = ffi::CStr::from_ptr(cstr).to_bytes();
-            let err = String::from_utf8_lossy(&err[..]).to_string();
-            sess.err(&format!("{}: {}",
-                              msg, err)[..]);
-        }
-    }
-}
-pub fn llvm_warn(sess: &Session, msg: String) {
-    use llvm;
-    unsafe {
-        let cstr = llvm::LLVMRustGetLastError();
-        if cstr == ptr::null() {
-            sess.warn(&msg[..]);
-        } else {
-            let err = ffi::CStr::from_ptr(cstr).to_bytes();
-            let err = String::from_utf8_lossy(&err[..]).to_string();
-            sess.warn(&format!("{}: {}",
-                               msg, err)[..]);
-        }
-    }
-}
 /*
  * Name mangling and its relationship to metadata. This is complex. Read
  * carefully.
@@ -529,6 +499,21 @@ fn link_binary_output(sess: &Session,
                       crate_name: &str) -> PathBuf {
     let objects = object_filenames(sess, outputs);
 
+    let out_filename = match outputs.single_output_file {
+        Some(ref file) => file.clone(),
+        None => filename_for_input(sess, crate_type, crate_name, outputs),
+    };
+
+    // Make sure files are writeable.  Mac, FreeBSD, and Windows system linkers
+    // check this already -- however, the Linux linker will happily overwrite a
+    // read-only file.  We should be consistent.
+    for file in objects.iter().chain(Some(&out_filename)) {
+        if !is_writeable(file) {
+            sess.fatal(&format!("output file {} is not writeable -- check its \
+                                permissions", file.display()));
+        }
+    }
+
     let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
     match crate_type {
         config::CrateTypeRlib => {
@@ -549,8 +534,6 @@ fn link_binary_output(sess: &Session,
     }
 
     out_filename
-}
-
 }
 
 fn object_filenames(sess: &Session, outputs: &OutputFilenames) -> Vec<PathBuf> {
@@ -598,7 +581,6 @@ fn link_rlib<'a>(sess: &'a Session,
     for obj in objects {
         ab.add_file(obj);
     }
-        gold_plugin: None,
 
     for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
         match kind {
@@ -660,7 +642,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.  If codegen_units > 1, we insert each of the
             // bitcode files.
-            if !sess.target.target.options.is_like_pnacl {
+            if sess.target.target.options.lto_supported {
                 for obj in objects {
                     // Note that we make sure that the bytecode filename in the
                     // archive is never exactly 16 bytes long by adding a 16 byte
@@ -702,21 +684,22 @@ fn link_rlib<'a>(sess: &'a Session,
 
                     ab.add_file(&bc_deflated_filename);
 
-                // See the bottom of back::write::run_passes for an explanation
-                // of when we do and don't keep .0.bc files around.
-                let user_wants_numbered_bitcode =
+                    // See the bottom of back::write::run_passes for an explanation
+                    // of when we do and don't keep .0.bc files around.
+                    let user_wants_numbered_bitcode =
                         sess.opts.output_types.contains(&OutputTypeBitcode) &&
                         sess.opts.cg.codegen_units > 1;
-                if !sess.opts.cg.save_temps && !user_wants_numbered_bitcode {
-                    remove(sess, &bc_filename);
+                    if !sess.opts.cg.save_temps && !user_wants_numbered_bitcode {
+                        remove(sess, &bc_filename);
+                    }
                 }
-            }
 
-            // After adding all files to the archive, we need to update the
-            // symbol table of the archive. This currently dies on OSX (see
-            // #11162), and isn't necessary there anyway
-            if !sess.target.target.options.is_like_osx || ab.using_llvm() {
-                ab.update_symbols();
+                // After adding all files to the archive, we need to update the
+                // symbol table of the archive. This currently dies on OSX (see
+                // #11162), and isn't necessary there anyway
+                if !sess.target.target.options.is_like_osx || ab.using_llvm() {
+                    ab.update_symbols();
+                }
             }
         }
 
@@ -840,8 +823,6 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
 
     // The compiler's sysroot often has some bundled tools, so add it to the
     // PATH for the child.
-    let mut new_path = sess.host_filesearch(PathKind::All)
-                           .get_tools_search_paths();
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
     for obj in &sess.target.target.options.pre_link_objects {
@@ -1242,7 +1223,6 @@ fn add_upstream_rust_crates(cmd: &mut Linker, sess: &Session,
             if any_objects {
                 archive.build();
                 cmd.link_whole_rlib(&fix_windows_verbatim_for_gcc(&dst));
-                    gold_plugin: None,
             }
         });
     }

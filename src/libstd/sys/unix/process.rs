@@ -17,7 +17,6 @@ use ffi::{OsString, OsStr, CString, CStr};
 use fmt;
 use io::{self, Error, ErrorKind};
 use libc::{self, pid_t, c_void, c_int, gid_t, uid_t};
-use mem;
 use ptr;
 use sys::fd::FileDesc;
 use sys::fs::{File, OpenOptions};
@@ -315,21 +314,31 @@ impl Process {
             *sys::os::environ() = envp as *const _;
         }
 
-        // Reset signal handling so the child process starts in a
-        // standardized state. libstd ignores SIGPIPE, and signal-handling
-        // libraries often set a mask. Child processes inherit ignored
-        // signals and the signal mask from their parent, but most
-        // UNIX programs do not reset these things on their own, so we
-        // need to clean things up now to avoid confusing the program
-        // we're about to run.
-        let mut set: c::sigset_t = mem::uninitialized();
-        if c::sigemptyset(&mut set) != 0 ||
-           c::pthread_sigmask(c::SIG_SETMASK, &set, ptr::null_mut()) != 0 ||
-           libc::funcs::posix01::signal::signal(
-               libc::SIGPIPE, mem::transmute(c::SIG_DFL)
-           ) == mem::transmute(c::SIG_ERR) {
-            fail(&mut output);
+        #[cfg(not(target_os = "nacl"))]
+        unsafe fn reset_signal_handling(output: &mut AnonPipe) {
+            use mem;
+            // Reset signal handling so the child process starts in a
+            // standardized state. libstd ignores SIGPIPE, and signal-handling
+            // libraries often set a mask. Child processes inherit ignored
+            // signals and the signal mask from their parent, but most
+            // UNIX programs do not reset these things on their own, so we
+            // need to clean things up now to avoid confusing the program
+            // we're about to run.
+            let mut set: c::sigset_t = mem::uninitialized();
+            if c::sigemptyset(&mut set) != 0 ||
+                c::pthread_sigmask(c::SIG_SETMASK, &set, ptr::null_mut()) != 0 ||
+                libc::funcs::posix01::signal::signal(
+                    libc::SIGPIPE, mem::transmute(c::SIG_DFL)
+                        ) == mem::transmute(c::SIG_ERR)
+            {
+                fail(output);
+            }
         }
+        #[cfg(target_os = "nacl")]
+        unsafe fn reset_signal_handling(_output: &mut AnonPipe) {
+            // NaCl has no signal support.
+        }
+        reset_signal_handling(&mut output);
 
         let _ = libc::execvp(*argv, argv);
         fail(&mut output)

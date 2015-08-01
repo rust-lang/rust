@@ -53,15 +53,13 @@ NATIVE_DEPS_hoedown_$(1) := hoedown/src/autolink.c \
 NATIVE_DEPS_miniz_$(1) = miniz.c
 NATIVE_DEPS_rust_builtin_$(1) := rust_builtin.c \
 			rust_android_dummy.c
-NATIVE_DEPS_rustrt_native_$(1) := \
-			rust_try.ll
+NATIVE_DEPS_rustrt_native_$(1) :=
 
 NATIVE_DEPS_rust_test_helpers_$(1) := rust_test_helpers.c
 
 ifneq ($$(RUNTIME_DISABLE_ASM_$(1)), 1)
 NATIVE_DEPS_rustrt_native_$(1)	+= arch/$$(HOST_$(1))/record_sp.S
 NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
-
 endif
 
 ################################################################################
@@ -73,26 +71,6 @@ endif
 
 RT_OUTPUT_DIR_$(1) := $(1)/rt
 
-ifneq ($$(LLVM_HAS_TARGETMACHINE_$(1)),0)
-else
-# le32-unknown-nacl doesn't have a target machine, so llc chokes.
-# Fortunately, PNaCl object files are just bitcode.
-$$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.ll \
-            $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
-	@mkdir -p $$(@D)
-	@$$(call E, compile: $$@)
-	$$(OPT_$$(CFG_BUILD)) -Oz -o $$@ $$<
-$$(RT_OUTPUT_DIR_$(1))/%.o: $(CFG_PNACL_TOOLCHAIN)/lib/clang/3.7.0/lib/le32-nacl/%.bc \
-            $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
-	@mkdir -p $$(@D)
-	@$$(call E, compile: $$@)
-	$$(OPT_$$(CFG_BUILD)) -Oz -o $$@ $$<
-$$(RT_OUTPUT_DIR_$(1))/%.o: $(CFG_PNACL_TOOLCHAIN)/le32-nacl/lib/%.bc \
-            $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
-	@mkdir -p $$(@D)
-	@$$(call E, compile: $$@)
-	$$(OPT_$$(CFG_BUILD)) -Oz -o $$@ $$<
-endif
 $$(RT_OUTPUT_DIR_$(1))/%.o: $(S)src/rt/%.c $$(MKFILE_DEPS)
 	@mkdir -p $$(@D)
 	@$$(call E, compile: $$@)
@@ -132,7 +110,6 @@ OBJS_$(2)_$(1) := $$(NATIVE_DEPS_$(2)_$(1):%=$$(RT_OUTPUT_DIR_$(1))/%)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.c=.o)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.cpp=.o)
 OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.S=.o)
-OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.bc=.o)
 NATIVE_$(2)_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),$(2))
 $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1)): $$(OBJS_$(2)_$(1))
 	@$$(call E, link: $$@)

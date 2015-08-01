@@ -87,7 +87,9 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
                                 let link_name =
                                     attr::first_attr_value_str_by_name(&item.attrs,
                                                                        "main_link_name")
-                                    .unwrap_or_else(|| token::get_name(ctxt.main_name));
+                                    .unwrap_or_else(|| {
+                                        token::InternedString::new_from_name(ctxt.main_name)
+                                    });
                                 ctxt.main_fn = Some((item.id, link_name, item.span));
                             } else {
                                 span_err!(ctxt.session, item.span, E0136,
@@ -104,7 +106,9 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
                 if ctxt.attr_main_fn.is_none() {
                     let link_name = attr::first_attr_value_str_by_name(&item.attrs,
                                                                        "main_link_name")
-                        .unwrap_or_else(|| token::get_name(ctxt.main_name));
+                        .unwrap_or_else(|| {
+                            token::InternedString::new_from_name(ctxt.main_name)
+                        });
                     ctxt.attr_main_fn = Some((item.id, link_name, item.span));
                 } else {
                     span_err!(ctxt.session, item.span, E0137,
@@ -116,7 +120,9 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
                 if ctxt.start_fn.is_none() {
                     let link_name = attr::first_attr_value_str_by_name(&item.attrs,
                                                                        "main_link_name")
-                        .unwrap_or_else(|| token::get_name(ctxt.main_name));
+                        .unwrap_or_else(|| {
+                            token::InternedString::new_from_name(ctxt.main_name)
+                        });
                     ctxt.start_fn = Some((item.id, link_name, item.span));
                 } else {
                     span_err!(ctxt.session, item.span, E0138,

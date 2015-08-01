@@ -11,7 +11,6 @@
 pub use rustc_back::abi;
 pub use rustc_back::rpath;
 pub use rustc_back::svh;
-pub use rustc_back::target_strs;
 
 pub mod archive;
 pub mod linker;

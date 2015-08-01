@@ -1002,7 +1002,7 @@ LLVMRustBuildLandingPad(LLVMBuilderRef Builder,
                         unsigned NumClauses,
                         const char* Name,
                         LLVMValueRef F) {
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 7 && !ENABLE_PNACL
     unwrap<Function>(F)->setPersonalityFn(unwrap<Constant>(PersFn));
     return LLVMBuildLandingPad(Builder, Ty, NumClauses, Name);
 #else

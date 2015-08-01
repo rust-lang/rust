@@ -24,7 +24,6 @@
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
-pub use self::signal_os::{sigaction, siginfo, sigset_t, sigaltstack};
 pub use self::signal_os::*;
 
 use libc;
@@ -51,9 +50,6 @@ pub const FIOCLEX: libc::c_ulong = 0x5451;
               target_arch = "mipsel",
               target_arch = "powerpc")))]
 pub const FIOCLEX: libc::c_ulong = 0x6601;
-
-#[cfg(target_os = "nacl")]
-mod consts { }
 
 
 pub const WNOHANG: libc::c_int = 1;
@@ -151,6 +147,7 @@ extern {
                      act: *const sigaction,
                      oldact: *mut sigaction) -> libc::c_int;
 
+    #[cfg(not(target_os = "nacl"))]
     pub fn sigaltstack(ss: *const sigaltstack,
                        oss: *mut sigaltstack) -> libc::c_int;
 
@@ -334,6 +331,8 @@ mod signal_os {
         }
     }
 }
+
+/// Note: Although the signal functions are defined on NaCl, they always fail.
 #[cfg(target_os = "nacl")]
 mod signal_os {
     use libc;
@@ -354,6 +353,7 @@ mod signal_os {
         pub handler:  extern fn(libc::c_int),
     }
 }
+
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",

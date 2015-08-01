@@ -812,7 +812,7 @@ fn write_out_deps(sess: &Session,
                         continue;
                     }
                     let p = link::filename_for_input(sess, *output,
-                                                     id, &file);
+                                                     id, outputs);
                     out_filenames.push(p);
                 }
             }

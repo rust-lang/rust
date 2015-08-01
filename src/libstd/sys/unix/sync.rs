@@ -253,8 +253,7 @@ mod os {
 mod os {
     use libc;
 
-    #[repr(C)]
-    pub struct __nc_basic_thread_data;
+    pub type __nc_basic_thread_data = libc::c_void;
 
     #[repr(C)]
     pub struct pthread_mutex_t {
