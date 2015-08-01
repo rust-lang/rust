@@ -73,7 +73,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         debug!("visit_block: {:?} {:?}",
                self.codemap.lookup_char_pos(b.span.lo),
                self.codemap.lookup_char_pos(b.span.hi));
-        self.format_missing(b.span.lo);
 
         self.changes.push_str_span(b.span, "{");
         self.last_pos = self.last_pos + BytePos(1);
@@ -82,6 +81,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         for stmt in &b.stmts {
             self.visit_stmt(&stmt)
         }
+
         match b.expr {
             Some(ref e) => {
                 self.format_missing_with_indent(e.span.lo);

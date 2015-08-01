@@ -15,6 +15,7 @@ use StructLitStyle;
 use utils::{span_after, make_indent};
 use visitor::FmtVisitor;
 use config::BlockIndentStyle;
+use comment::{FindUncommented, rewrite_comment};
 
 use syntax::{ast, ptr};
 use syntax::codemap::{Pos, Span, BytePos, mk_sp};
@@ -104,10 +105,34 @@ impl Rewrite for ast::Expr {
 }
 
 impl Rewrite for ast::Block {
-    fn rewrite(&self, context: &RewriteContext, _: usize, _: usize) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
         let mut visitor = FmtVisitor::from_codemap(context.codemap, context.config);
-        visitor.last_pos = self.span.lo;
         visitor.block_indent = context.block_indent;
+
+        let prefix = match self.rules {
+            ast::BlockCheckMode::PushUnsafeBlock(..) |
+            ast::BlockCheckMode::UnsafeBlock(..) => {
+                let snippet = try_opt!(context.codemap.span_to_snippet(self.span).ok());
+                let open_pos = try_opt!(snippet.find_uncommented("{"));
+                visitor.last_pos = self.span.lo + BytePos(open_pos as u32);
+
+                // Extract comment between unsafe and block start.
+                let trimmed = &snippet[6..open_pos].trim();
+
+                if trimmed.len() > 0 {
+                    // 9 = "unsafe  {".len(), 7 = "unsafe ".len()
+                    format!("unsafe {} ", rewrite_comment(trimmed, true, width - 9, offset + 7))
+                } else {
+                    "unsafe ".to_owned()
+                }
+            }
+            ast::BlockCheckMode::PopUnsafeBlock(..) |
+            ast::BlockCheckMode::DefaultBlock => {
+                visitor.last_pos = self.span.lo;
+
+                String::new()
+            }
+        };
 
         visitor.visit_block(self);
 
@@ -119,7 +144,7 @@ impl Rewrite for ast::Block {
         let file_name = context.codemap.span_to_filename(self.span);
         let string_buffer = visitor.changes.get(&file_name);
 
-        Some(string_buffer.to_string())
+        Some(format!("{}{}", prefix, string_buffer))
     }
 }
 

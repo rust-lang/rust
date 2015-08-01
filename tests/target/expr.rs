@@ -102,3 +102,22 @@ fn bar() {
     let x = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa && aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
              a);
 }
+
+fn baz() {
+    unsafe /* {}{}{}{{{{}} */ {
+        let foo = 1u32;
+    }
+
+    unsafe /* very looooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooong
+            * comment */ {
+    }
+
+    unsafe /* So this is a very long comment.
+            * Multi-line, too.
+            * Will it still format correctly? */ {
+    }
+
+    unsafe {
+        // Regular unsafe block
+    }
+}
