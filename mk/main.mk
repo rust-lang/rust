@@ -326,7 +326,6 @@ LLVM_HOST_TRIPLE_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --host-target)
 
 LLVM_AS_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-as$$(X_$(1))
 LLC_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/llc$$(X_$(1))
-OPT_$(1)=$$(CFG_LLVM_INST_DIR_$(1))/bin/opt$$(X_$(1))
 
 endef
 
