@@ -72,7 +72,13 @@ fn is_exps_equal(left : &[P<Expr>], right : &[P<Expr>]) -> bool {
 }
 
 fn is_path_equal(left : &Path, right : &Path) -> bool {
-	left.global == right.global && left.segments == right.segments
+    // The == of idents doesn't work with different contexts,
+    // we have to be explicit about hygeine
+	left.global == right.global
+    && left.segments.iter().zip(right.segments.iter())
+           .all( |(l,r)| l.identifier.name == r.identifier.name
+                         && l.identifier.ctxt == r.identifier.ctxt
+                         && l.parameters == r.parameters)
 }
 
 fn is_qself_equal(left : &QSelf, right : &QSelf) -> bool {
