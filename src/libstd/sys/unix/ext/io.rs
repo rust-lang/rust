@@ -101,6 +101,10 @@ impl AsRawFd for net::TcpListener {
 impl AsRawFd for net::UdpSocket {
     fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
 }
+#[unstable(feature = "raw_dirfd", reason = "recently added")]
+impl AsRawFd for fs::ReadDir {
+    fn as_raw_fd(&self) -> RawFd { self.as_inner().as_inner().dirfd() }
+}
 
 #[stable(feature = "from_raw_os", since = "1.1.0")]
 impl FromRawFd for net::TcpStream {

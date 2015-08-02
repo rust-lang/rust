@@ -158,6 +158,16 @@ impl Iterator for ReadDir {
     }
 }
 
+impl AsInner<Dir> for ReadDir {
+    fn as_inner(&self) -> &Dir { &self.dirp }
+}
+
+impl Dir {
+    pub fn dirfd(&self) -> RawFd {
+        unsafe { ::libc::dirfd(self.0) }
+    }
+}
+
 impl Drop for Dir {
     fn drop(&mut self) {
         let r = unsafe { libc::closedir(self.0) };

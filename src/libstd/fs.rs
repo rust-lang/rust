@@ -674,6 +674,10 @@ impl Iterator for ReadDir {
     }
 }
 
+impl AsInner<fs_imp::ReadDir> for ReadDir {
+    fn as_inner(&self) -> &fs_imp::ReadDir { &self.0 }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl DirEntry {
     /// Returns the full path to the file that this entry represents.
