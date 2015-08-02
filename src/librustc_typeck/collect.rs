@@ -1174,33 +1174,50 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
             Ok(ConstVal::Int(val)) => Some(val as ty::Disr),
             Ok(ConstVal::Uint(val)) => Some(val as ty::Disr),
             Ok(_) => {
-//                let sign_desc = if repr_type.is_signed() {
-//                    "signed"
-//                } else {
-//                    "unsigned"
-//                };
-//                span_err!(self.sess, e.span, E0079,
-//                          "expected {} integer constant",
-//                          sign_desc);
+                let sign_desc = if repr_ty.is_signed() {
+                    "signed"
+                } else {
+                    "unsigned"
+                };
+                span_err!(tcx.sess, e.span, E0079,
+                          "expected {} integer constant",
+                          sign_desc);
                 None
             },
-            Err(_) => {
-//              span_err!(self.sess, err.span, E0080,
-//                        "constant evaluation error: {}",
-//                        err.description());
+            Err(err) => {
+              span_err!(tcx.sess, err.span, E0080,
+                        "constant evaluation error: {}",
+                        err.description());
                 None
             }
         }
     }
 
-    fn next_disr(repr_type: attr::IntType,
+    fn report_discrim_overflow(tcx: &ty::ctxt,
+                               variant_span: Span,
+                               variant_name: &str,
+                               repr_type: attr::IntType,
+                               prev_val: ty::Disr) {
+        let computed_value = repr_type.disr_wrap_incr(Some(prev_val));
+        let computed_value = repr_type.disr_string(computed_value);
+        let prev_val = repr_type.disr_string(prev_val);
+        let repr_type = repr_type.to_ty(tcx);
+        span_err!(tcx.sess, variant_span, E0370,
+                  "enum discriminant overflowed on value after {}: {}; \
+                   set explicitly via {} = {} if that is desired outcome",
+                  prev_val, repr_type, variant_name, computed_value);
+    }
+
+    fn next_disr(tcx: &ty::ctxt,
+                 v: &ast::Variant,
+                 repr_type: attr::IntType,
                  prev_disr_val: Option<ty::Disr>) -> Option<ty::Disr> {
         if let Some(prev_disr_val) = prev_disr_val {
             let result = repr_type.disr_incr(prev_disr_val);
-//          if let None = result {
-//              self.report_discrim_overflow(v.span, &v.node.name.name.as_str(),
-//                                           repr_type, prev_disr_val);
-//          }
+            if let None = result {
+                report_discrim_overflow(tcx, v.span, &v.node.name.name.as_str(),
+                                             repr_type, prev_disr_val);
+            }
             result
         } else {
             Some(ty::INITIAL_DISCRIMINANT_VALUE)
@@ -1240,7 +1257,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
     let variants = def.variants.iter().map(|v| {
         let disr = match v.node.disr_expr {
             Some(ref e) => evaluate_disr_expr(tcx, repr_type_ty, e),
-            None => next_disr(repr_type, prev_disr)
+            None => next_disr(tcx, v, repr_type, prev_disr)
         }.unwrap_or(repr_type.disr_wrap_incr(prev_disr));
 
         let v = convert_enum_variant(tcx, v, disr);

@@ -483,10 +483,9 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                     }
 
                     let origin = infer::Misc(span);
-                    let fields = tcx.lookup_struct_fields(def_a.did);
+                    let fields = &def_a.struct_variant().fields;
                     let diff_fields = fields.iter().enumerate().filter_map(|(i, f)| {
-                        let ty = tcx.lookup_field_type_unsubstituted(def_a.did, f.id);
-                        let (a, b) = (ty.subst(tcx, substs_a), ty.subst(tcx, substs_b));
+                        let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
                         if infcx.sub_types(false, origin, b, a).is_ok() {
                             None
                         } else {

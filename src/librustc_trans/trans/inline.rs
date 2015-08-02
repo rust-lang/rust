@@ -100,30 +100,32 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             ccx.external().borrow_mut().insert(parent_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, parent_id);
 
-          let mut my_id = 0;
-          match item.node {
-            ast::ItemEnum(_, _) => {
-              let vs_here = ccx.tcx().enum_variants(local_def(item.id));
-              let vs_there = ccx.tcx().enum_variants(parent_id);
-              for (here, there) in vs_here.iter().zip(vs_there.iter()) {
-                  if there.id == fn_id { my_id = here.id.node; }
-                  ccx.external().borrow_mut().insert(there.id, Some(here.id.node));
-              }
-            }
-            ast::ItemStruct(ref struct_def, _) => {
-              match struct_def.ctor_id {
-                None => {}
-                Some(ctor_id) => {
-                    ccx.external().borrow_mut().insert(fn_id, Some(ctor_id));
-                    my_id = ctor_id;
+            let mut my_id = 0;
+            match item.node {
+                ast::ItemEnum(ref ast_def, _) => {
+                    let ast_vs = &ast_def.variants;
+                    let ty_vs = &ccx.tcx().lookup_adt_def(parent_id).variants;
+                    assert_eq!(ast_vs.len(), ty_vs.len());
+                    for (ast_v, ty_v) in ast_vs.iter().zip(ty_vs.iter()) {
+                        if ty_v.did == fn_id { my_id = ast_v.node.id; }
+                        ccx.external().borrow_mut().insert(ty_v.did, Some(ast_v.node.id));
+                    }
                 }
-              }
-            }
-            _ => ccx.sess().bug("instantiate_inline: item has a \
+                ast::ItemStruct(ref struct_def, _) => {
+                    match struct_def.ctor_id {
+                        None => ccx.sess().bug("instantiate_inline: called on a \
+                                                non-tuple struct"),
+                        Some(ctor_id) => {
+                            ccx.external().borrow_mut().insert(fn_id, Some(ctor_id));
+                            my_id = ctor_id;
+                        }
+                    }
+                }
+                _ => ccx.sess().bug("instantiate_inline: item has a \
                                  non-enum, non-struct parent")
-          }
-          trans_item(ccx, &**item);
-          my_id
+            }
+            trans_item(ccx, &**item);
+            my_id
         }
         csearch::FoundAst::FoundParent(_, _) => {
             ccx.sess().bug("maybe_get_item_ast returned a FoundParent \

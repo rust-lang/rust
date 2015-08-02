@@ -432,9 +432,8 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
-            let fields = bcx.tcx().struct_fields(def.did, substs);
-            let last_field = fields[fields.len()-1];
-            let field_ty = last_field.mt.ty;
+            let last_field = def.struct_variant().fields.last().unwrap();
+            let field_ty = monomorphize::field_ty(bcx.tcx(), substs, last_field);
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
             let dbloc = DebugLoc::None;

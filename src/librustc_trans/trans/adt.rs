@@ -246,10 +246,8 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             Univariant(mk_struct(cx, &elems[..], false, t), 0)
         }
         ty::TyStruct(def, substs) => {
-            let fields = cx.tcx().lookup_struct_fields(def.did);
-            let mut ftys = fields.iter().map(|field| {
-                let fty = cx.tcx().lookup_field_type(def.did, field.id, substs);
-                monomorphize::normalize_associated_type(cx.tcx(), &fty)
+            let mut ftys = def.struct_variant().fields.iter().map(|field| {
+                monomorphize::field_ty(cx.tcx(), substs, field)
             }).collect::<Vec<_>>();
             let packed = cx.tcx().lookup_packed(def.did);
             let dtor = cx.tcx().ty_dtor(def.did).has_drop_flag();
@@ -263,7 +261,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             Univariant(mk_struct(cx, &substs.upvar_tys, false, t), 0)
         }
         ty::TyEnum(def, substs) => {
-            let cases = get_cases(cx.tcx(), def.did, substs);
+            let cases = get_cases(cx.tcx(), def, substs);
             let hint = *cx.tcx().lookup_repr_hints(def.did).get(0)
                 .unwrap_or(&attr::ReprAny);
 
@@ -444,10 +442,10 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         // Is this the NonZero lang item wrapping a pointer or integer type?
         ty::TyStruct(def, substs) if Some(def.did) == tcx.lang_items.non_zero() => {
-            let nonzero_fields = tcx.lookup_struct_fields(def.did);
+            let nonzero_fields = &def.struct_variant().fields;
             assert_eq!(nonzero_fields.len(), 1);
-            let nonzero_field = tcx.lookup_field_type(def.did, nonzero_fields[0].id, substs);
-            match nonzero_field.sty {
+            let field_ty = monomorphize::field_ty(tcx, substs, &nonzero_fields[0]);
+            match field_ty.sty {
                 ty::TyRawPtr(ty::TypeAndMut { ty, .. }) if !type_is_sized(tcx, ty) => {
                     path.push_all(&[0, FAT_PTR_ADDR]);
                     Some(path)
@@ -463,9 +461,9 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
         // Perhaps one of the fields of this struct is non-zero
         // let's recurse and find out
         ty::TyStruct(def, substs) => {
-            let fields = tcx.lookup_struct_fields(def.did);
-            for (j, field) in fields.iter().enumerate() {
-                let field_ty = tcx.lookup_field_type(def.did, field.id, substs);
+            for (j, field) in def.struct_variant().fields.iter().enumerate() {
+                // TODO(#27532)
+                let field_ty = field.ty(tcx, substs);
                 if let Some(mut fpath) = find_discr_field_candidate(tcx, field_ty, path.clone()) {
                     fpath.push(j);
                     return Some(fpath);
@@ -530,14 +528,14 @@ impl<'tcx> Case<'tcx> {
 }
 
 fn get_cases<'tcx>(tcx: &ty::ctxt<'tcx>,
-                   def_id: ast::DefId,
+                   adt: &ty::ADTDef<'tcx>,
                    substs: &subst::Substs<'tcx>)
                    -> Vec<Case<'tcx>> {
-    tcx.enum_variants(def_id).iter().map(|vi| {
-        let arg_tys = vi.args.iter().map(|&raw_ty| {
-            monomorphize::apply_param_substs(tcx, substs, &raw_ty)
+    adt.variants.iter().map(|vi| {
+        let field_tys = vi.fields.iter().map(|field| {
+            monomorphize::field_ty(tcx, substs, field)
         }).collect();
-        Case { discr: vi.disr_val, tys: arg_tys }
+        Case { discr: vi.disr_val, tys: field_tys }
     }).collect()
 }
 
