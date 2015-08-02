@@ -12,6 +12,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use collections::HashSet;
 use os::unix::raw::{uid_t, gid_t};
 use os::unix::io::{FromRawFd, RawFd, AsRawFd, IntoRawFd};
 #[cfg(stage0)]
@@ -44,6 +45,18 @@ pub trait CommandExt {
     /// spawn another process (the daemon) in the same session.
     #[unstable(feature = "process_session_leader", reason = "recently added")]
     fn session_leader(&mut self, on: bool) -> &mut process::Command;
+
+    /// Set to `false` to prevent file descriptors leak (default is `true`).
+    #[unstable(feature = "process_leak_fds", reason = "recently added")]
+    fn leak_fds(&mut self, on: bool) -> &mut process::Command;
+
+    /// Allow to prevent file descriptors leak except for an authorized whitelist.
+    ///
+    /// The file descriptors in the whitelist will leak through *all* the subsequent executions
+    /// (cf. `open(2)` and `O_CLOEXEC`). The new process should change the property of this file
+    /// descriptors to avoid unintended leaks (cf. `fcntl(2)` and `FD_CLOEXEC`).
+    #[unstable(feature = "process_leak_fds", reason = "recently added")]
+    fn leak_fds_whitelist(&mut self, leak: HashSet<RawFd>) -> &mut process::Command;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -60,6 +73,18 @@ impl CommandExt for process::Command {
 
     fn session_leader(&mut self, on: bool) -> &mut process::Command {
         self.as_inner_mut().session_leader = on;
+        self
+    }
+
+    fn leak_fds(&mut self, on: bool) -> &mut process::Command {
+        self.as_inner_mut().leak_fds = on;
+        self
+    }
+
+    fn leak_fds_whitelist(&mut self, whitelist: HashSet<RawFd>) -> &mut process::Command {
+        self.as_inner_mut().leak_fds_whitelist = whitelist;
+        // Do not leak any FDs except those from the whitelist
+        self.as_inner_mut().leak_fds = false;
         self
     }
 }
