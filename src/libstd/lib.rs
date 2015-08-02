@@ -13,12 +13,11 @@
 //! The Rust Standard Library is the foundation of portable Rust
 //! software, a set of minimal and battle-tested shared abstractions
 //! for the [broader Rust ecosystem](https://crates.io). It offers
-//! core types (e.g. [`Vec`](vec/index.html)
-//! and [`Option`](option/index.html)), library-defined [operations on
-//! language primitives](#primitives) (e.g. [`u32`](u32/index.html) and
-//! [`str`](str/index.html)), [standard macros](#macros),
+//! core types, like [`Vec`](vec/index.html)
+//! and [`Option`](option/index.html), library-defined [operations on
+//! language primitives](#primitives), [standard macros](#macros),
 //! [I/O](io/index.html) and [multithreading](thread/index.html), among
-//! [many other lovely
+//! [many other
 //! things](#what-is-in-the-standard-library-documentation?).
 //!
 //! `std` is available to all Rust crates by default, just as if each
@@ -65,8 +64,6 @@
 //!
 //! # What is in the standard library documentation?
 //!
-//! Lots of stuff. Well, broadly four things actually.
-//!
 //! First of all, The Rust Standard Library is divided into a number
 //! of focused modules, [all listed further down this page](#modules).
 //! These modules are the bedrock upon which all of Rust is forged,
@@ -89,7 +86,7 @@
 //!
 //! So for example there is a [page for the primitive type
 //! `i32`](primitive.i32.html) that lists all the methods that can be
-//! called on 32-bit integers (mega useful), and there is a [page for
+//! called on 32-bit integers (very useful), and there is a [page for
 //! the module `std::i32`](i32/index.html) that documents the constant
 //! values `MIN` and `MAX` (rarely useful).
 //!
@@ -99,9 +96,7 @@
 //! [`String`](string/struct.String.html) and
 //! [`Vec`](vec/struct.Vec.html) are actually calls to methods on
 //! `str` and `[T]` respectively, via [deref
-//! coercions](../book/deref-coercions.html). *Accepting that
-//! primitive types are documented on their own pages will bring you a
-//! deep inner wisdom. Embrace it now before proceeding.*
+//! coercions](../book/deref-coercions.html).
 //!
 //! Third, the standard library defines [The Rust
 //! Prelude](prelude/index.html), a small collection of items - mostly
