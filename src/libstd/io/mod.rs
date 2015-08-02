@@ -1060,8 +1060,9 @@ pub trait Seek {
     /// The behavior when seeking past the end of the stream is implementation
     /// defined.
     ///
-    /// This method returns the new position within the stream if the seek
-    /// operation completed successfully.
+    /// If the seek operation completed successfully,
+    /// this method returns the new position from the start of the stream.
+    /// That position can be used later with `SeekFrom::Start`.
     ///
     /// # Errors
     ///
