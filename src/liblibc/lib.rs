@@ -5795,6 +5795,7 @@ pub mod funcs {
 
             extern {
                 pub fn closedir(dirp: *mut DIR) -> c_int;
+                pub fn dirfd(dirp: *const DIR) -> c_int;
                 pub fn rewinddir(dirp: *mut DIR);
                 pub fn seekdir(dirp: *mut DIR, loc: c_long);
                 pub fn telldir(dirp: *mut DIR) -> c_long;
