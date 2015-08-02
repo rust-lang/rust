@@ -308,6 +308,7 @@ scope.
 
 Both of these provide safe shared mutability across threads, however they are prone to deadlocks.
 Some level of additional protocol safety can be obtained via the type system.
+
 #### Costs
 
 These use internal atomic-like types to maintain the locks, which are pretty costly (they can block
