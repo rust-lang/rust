@@ -19,6 +19,9 @@ enable_static = sys.argv[3]
 enable_libcpp = sys.argv[4]
 llvm_config = sys.argv[5]
 
+if enable_libcpp == '':
+    enable_libcpp = '0'
+
 f.write("""// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
