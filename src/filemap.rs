@@ -13,8 +13,8 @@
 
 use strings::string_buffer::StringBuffer;
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{Write, stdout};
+use std::fs::{self, File};
+use std::io::{self, Write, stdout};
 use WriteMode;
 use NewlineStyle;
 use config::Config;
@@ -32,10 +32,10 @@ pub fn append_newlines(file_map: &mut FileMap) {
 pub fn write_all_files(file_map: &FileMap,
                        mode: WriteMode,
                        config: &Config)
-                       -> Result<(HashMap<String, String>), ::std::io::Error> {
+                       -> Result<(HashMap<String, String>), io::Error> {
     let mut result = HashMap::new();
     for filename in file_map.keys() {
-        let one_result = try!(write_file(file_map, filename, mode, config));
+        let one_result = try!(write_file(&file_map[filename], filename, mode, config));
         if let Some(r) = one_result {
             result.insert(filename.clone(), r);
         }
@@ -44,18 +44,17 @@ pub fn write_all_files(file_map: &FileMap,
     Ok(result)
 }
 
-fn write_file(file_map: &FileMap,
+fn write_file(text: &StringBuffer,
               filename: &str,
               mode: WriteMode,
               config: &Config)
-              -> Result<Option<String>, ::std::io::Error> {
-    let text = &file_map[filename];
+              -> Result<Option<String>, io::Error> {
 
-        // prints all newlines either as `\n` or as `\r\n`
+    // prints all newlines either as `\n` or as `\r\n`
     fn write_system_newlines<T>(mut writer: T,
                                 text: &StringBuffer,
                                 config: &Config)
-                                -> Result<(), ::std::io::Error>
+                                -> Result<(), io::Error>
         where T: Write
     {
         match config.newline_style {
@@ -86,8 +85,8 @@ fn write_file(file_map: &FileMap,
                     try!(write_system_newlines(tmp_file, text, config));
                 }
 
-                try!(::std::fs::rename(filename, bk_name));
-                try!(::std::fs::rename(tmp_name, filename));
+                try!(fs::rename(filename, bk_name));
+                try!(fs::rename(tmp_name, filename));
             }
             WriteMode::NewFile(extn) => {
                 let filename = filename.to_owned() + "." + extn;
