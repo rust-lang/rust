@@ -3410,6 +3410,8 @@ pub mod consts {
             pub const F_GETFL : c_int = 3;
             pub const F_SETFL : c_int = 4;
 
+            pub const FD_CLOEXEC : c_int = 1;
+
             pub const O_ACCMODE : c_int = 3;
 
             pub const SIGTRAP : c_int = 5;
@@ -3521,6 +3523,8 @@ pub mod consts {
             pub const F_SETFD : c_int = 2;
             pub const F_GETFL : c_int = 3;
             pub const F_SETFL : c_int = 4;
+
+            pub const FD_CLOEXEC : c_int = 1;
 
             pub const SIGTRAP : c_int = 5;
             pub const SIG_IGN: size_t = 1;
@@ -4174,6 +4178,8 @@ pub mod consts {
             pub const F_GETFL : c_int = 3;
             pub const F_SETFL : c_int = 4;
 
+            pub const FD_CLOEXEC : c_int = 1;
+
             pub const SIGTRAP : c_int = 5;
             pub const SIG_IGN: size_t = 1;
 
@@ -4633,6 +4639,8 @@ pub mod consts {
             pub const F_SETLKW : c_int = 9;
             pub const F_DUPFD_CLOEXEC : c_int = 10;
 
+            pub const FD_CLOEXEC : c_int = 1;
+
             pub const SIGTRAP : c_int = 5;
             pub const SIG_IGN: size_t = 1;
 
@@ -5071,6 +5079,8 @@ pub mod consts {
             pub const F_SETFD : c_int = 2;
             pub const F_GETFL : c_int = 3;
             pub const F_SETFL : c_int = 4;
+
+            pub const FD_CLOEXEC : c_int = 1;
 
             pub const O_ACCMODE : c_int = 3;
 
