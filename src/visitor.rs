@@ -11,18 +11,16 @@
 use syntax::ast;
 use syntax::codemap::{self, CodeMap, Span, BytePos};
 use syntax::visit;
-use syntax::parse::parser;
-use std::path::PathBuf;
+
+use strings::string_buffer::StringBuffer;
 
 use utils;
 use config::Config;
-
-use changes::ChangeSet;
 use rewrite::{Rewrite, RewriteContext};
 
 pub struct FmtVisitor<'a> {
     pub codemap: &'a CodeMap,
-    pub changes: ChangeSet<'a>,
+    pub buffer: StringBuffer,
     pub last_pos: BytePos,
     // TODO RAII util for indenting
     pub block_indent: usize,
@@ -35,7 +33,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                self.codemap.lookup_char_pos(ex.span.lo),
                self.codemap.lookup_char_pos(ex.span.hi));
         self.format_missing(ex.span.lo);
-        let offset = self.changes.cur_offset_span(ex.span);
+        let offset = self.buffer.cur_offset();
         let context = RewriteContext {
             codemap: self.codemap,
             config: self.config,
@@ -44,7 +42,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         let rewrite = ex.rewrite(&context, self.config.max_width - offset, offset);
 
         if let Some(new_str) = rewrite {
-            self.changes.push_str_span(ex.span, &new_str);
+            self.buffer.push_str(&new_str);
             self.last_pos = ex.span.hi;
         }
     }
@@ -74,7 +72,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                self.codemap.lookup_char_pos(b.span.lo),
                self.codemap.lookup_char_pos(b.span.hi));
 
-        self.changes.push_str_span(b.span, "{");
+        self.buffer.push_str("{");
         self.last_pos = self.last_pos + BytePos(1);
         self.block_indent += self.config.tab_spaces;
 
@@ -93,7 +91,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         self.block_indent -= self.config.tab_spaces;
         // TODO we should compress any newlines here to just one
         self.format_missing_with_indent(b.span.hi - BytePos(1));
-        self.changes.push_str_span(b.span, "}");
+        self.buffer.push_str("}");
         self.last_pos = b.span.hi;
     }
 
@@ -126,7 +124,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              abi,
                                              vis,
                                              codemap::mk_sp(s.lo, b.span.lo));
-                self.changes.push_str_span(s, &new_fn);
+                self.buffer.push_str(&new_fn);
             }
             visit::FkMethod(ident, ref sig, vis) => {
                 let new_fn = self.rewrite_fn(indent,
@@ -139,7 +137,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              &sig.abi,
                                              vis.unwrap_or(ast::Visibility::Inherited),
                                              codemap::mk_sp(s.lo, b.span.lo));
-                self.changes.push_str_span(s, &new_fn);
+                self.buffer.push_str(&new_fn);
             }
             visit::FkFnBlock(..) => {}
         }
@@ -175,7 +173,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             ast::Item_::ItemExternCrate(_) => {
                 self.format_missing_with_indent(item.span.lo);
                 let new_str = self.snippet(item.span);
-                self.changes.push_str_span(item.span, &new_str);
+                self.buffer.push_str(&new_str);
                 self.last_pos = item.span.hi;
             }
             ast::Item_::ItemStruct(ref def, ref generics) => {
@@ -197,7 +195,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             }
             ast::Item_::ItemMod(ref module) => {
                 self.format_missing_with_indent(item.span.lo);
-                self.format_mod(module, item.span, item.ident, &item.attrs);
+                self.format_mod(module, item.span, item.ident);
             }
             _ => {
                 visit::walk_item(self, item);
@@ -219,7 +217,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                                   sig,
                                                   ti.span);
 
-            self.changes.push_str_span(ti.span, &new_fn);
+            self.buffer.push_str(&new_fn);
             self.last_pos = ti.span.hi;
         }
         // TODO format trait types
@@ -237,19 +235,13 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     fn visit_mac(&mut self, mac: &'v ast::Mac) {
         visit::walk_mac(self, mac)
     }
-
-    fn visit_mod(&mut self, m: &'v ast::Mod, s: Span, _: ast::NodeId) {
-        // This is only called for the root module
-        let filename = self.codemap.span_to_filename(s);
-        self.format_separate_mod(m, &filename);
-    }
 }
 
 impl<'a> FmtVisitor<'a> {
     pub fn from_codemap<'b>(codemap: &'b CodeMap, config: &'b Config) -> FmtVisitor<'b> {
         FmtVisitor {
             codemap: codemap,
-            changes: ChangeSet::from_codemap(codemap),
+            buffer: StringBuffer::new(),
             last_pos: BytePos(0),
             block_indent: 0,
             config: config,
@@ -281,7 +273,7 @@ impl<'a> FmtVisitor<'a> {
             true
         } else {
             let rewrite = self.rewrite_attrs(attrs, self.block_indent);
-            self.changes.push_str_span(first.span, &rewrite);
+            self.buffer.push_str(&rewrite);
             let last = attrs.last().unwrap();
             self.last_pos = last.span.hi;
             false
@@ -322,7 +314,7 @@ impl<'a> FmtVisitor<'a> {
         result
     }
 
-    fn format_mod(&mut self, m: &ast::Mod, s: Span, ident: ast::Ident, attrs: &[ast::Attribute]) {
+    fn format_mod(&mut self, m: &ast::Mod, s: Span, ident: ast::Ident) {
         debug!("FmtVisitor::format_mod: ident: {:?}, span: {:?}", ident, s);
 
         // Decide whether this is an inline mod or an external mod.
@@ -337,49 +329,15 @@ impl<'a> FmtVisitor<'a> {
             visit::walk_mod(self, m);
             debug!("... last_pos after: {:?}", self.last_pos);
             self.block_indent -= self.config.tab_spaces;
-        } else {
-            debug!("FmtVisitor::format_mod: external mod");
-            let file_path = self.module_file(ident, attrs, local_file_name);
-            let filename = file_path.to_str().unwrap();
-            if self.changes.is_changed(filename) {
-                // The file has already been reformatted, do nothing
-            } else {
-                self.format_separate_mod(m, filename);
-            }
-        }
-
-        debug!("FmtVisitor::format_mod: exit");
-    }
-
-    /// Find the file corresponding to an external mod
-    fn module_file(&self, id: ast::Ident, attrs: &[ast::Attribute], filename: String) -> PathBuf {
-        let dir_path = {
-            let mut path = PathBuf::from(&filename);
-            path.pop();
-            path
-        };
-
-        if let Some(path) = parser::Parser::submod_path_from_attr(attrs, &dir_path) {
-            return path;
-        }
-
-        match parser::Parser::default_submod_path(id, &dir_path, &self.codemap).result {
-            Ok(parser::ModulePathSuccess { path, .. }) => path,
-            _ => panic!("Couldn't find module {}", id)
         }
     }
 
-    /// Format the content of a module into a separate file
-    fn format_separate_mod(&mut self, m: &ast::Mod, filename: &str) {
-        let last_pos = self.last_pos;
-        let block_indent = self.block_indent;
+    pub fn format_separate_mod(&mut self, m: &ast::Mod, filename: &str) {
         let filemap = self.codemap.get_filemap(filename);
         self.last_pos = filemap.start_pos;
         self.block_indent = 0;
         visit::walk_mod(self, m);
         self.format_missing(filemap.end_pos);
-        self.last_pos = last_pos;
-        self.block_indent = block_indent;
     }
 
     fn format_import(&mut self, vis: ast::Visibility, vp: &ast::ViewPath, span: Span) {
@@ -405,7 +363,7 @@ impl<'a> FmtVisitor<'a> {
             Some(ref s) => {
                 let s = format!("{}use {};", vis, s);
                 self.format_missing_with_indent(span.lo);
-                self.changes.push_str_span(span, &s);
+                self.buffer.push_str(&s);
                 self.last_pos = span.hi;
             }
             None => {

@@ -4,6 +4,7 @@ mod mod2b;
 
 mod mymod1 {
     use mod2a::{Foo, Bar};
+    mod mod3a;
 }
 
 #[path="mod2c.rs"]

@@ -37,7 +37,6 @@ use rustc_driver::{driver, CompilerCalls, Compilation};
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::diagnostics;
-use syntax::visit;
 
 use std::path::PathBuf;
 use std::collections::HashMap;
@@ -45,14 +44,14 @@ use std::fmt;
 use std::mem::swap;
 
 use issues::{BadIssueSeeker, Issue};
-use changes::ChangeSet;
+use filemap::FileMap;
 use visitor::FmtVisitor;
 use config::Config;
 
 #[macro_use]
 mod utils;
 pub mod config;
-mod changes;
+mod filemap;
 mod visitor;
 mod items;
 mod missed_spans;
@@ -64,6 +63,7 @@ mod issues;
 mod rewrite;
 mod string;
 mod comment;
+mod modules;
 
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.
@@ -196,21 +196,26 @@ impl fmt::Display for FormatReport {
 }
 
 // Formatting which depends on the AST.
-fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap, config: &'a Config) -> ChangeSet<'a> {
-    let mut visitor = FmtVisitor::from_codemap(codemap, config);
-    visit::walk_crate(&mut visitor, krate);
-    visitor.changes
+fn fmt_ast(krate: &ast::Crate, codemap: &CodeMap, config: &Config) -> FileMap {
+    let mut file_map = FileMap::new();
+    for (path, module) in modules::list_files(krate, codemap) {
+        let path = path.to_str().unwrap();
+        let mut visitor = FmtVisitor::from_codemap(codemap, config);
+        visitor.format_separate_mod(module, path);
+        file_map.insert(path.to_owned(), visitor.buffer);
+    }
+    file_map
 }
 
 // Formatting done on a char by char or line by line basis.
 // TODO warn on bad license
 // TODO other stuff for parity with make tidy
-fn fmt_lines(changes: &mut ChangeSet, config: &Config) -> FormatReport {
+fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     let mut truncate_todo = Vec::new();
     let mut report = FormatReport { file_error_map: HashMap::new() };
 
-    // Iterate over the chars in the change set.
-    for (f, text) in changes.text() {
+    // Iterate over the chars in the file map.
+    for (f, text) in file_map.iter() {
         let mut trims = vec![];
         let mut last_wspace: Option<usize> = None;
         let mut line_len = 0;
@@ -278,7 +283,7 @@ fn fmt_lines(changes: &mut ChangeSet, config: &Config) -> FormatReport {
     }
 
     for (f, l) in truncate_todo {
-        changes.get_mut(&f).truncate(l);
+        file_map.get_mut(&f).unwrap().truncate(l);
     }
 
     report
@@ -312,13 +317,13 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
         control.after_parse.callback = Box::new(move |state| {
             let krate = state.krate.unwrap();
             let codemap = state.session.codemap();
-            let mut changes = fmt_ast(krate, codemap, &*config);
+            let mut file_map = fmt_ast(krate, codemap, &*config);
             // For some reason, the codemap does not include terminating newlines
             // so we must add one on for each file. This is sad.
-            changes.append_newlines();
-            println!("{}", fmt_lines(&mut changes, &*config));
+            filemap::append_newlines(&mut file_map);
+            println!("{}", fmt_lines(&mut file_map, &*config));
 
-            let result = changes.write_all_files(write_mode, &*config);
+            let result = filemap::write_all_files(&file_map, write_mode, &*config);
 
             match result {
                 Err(msg) => println!("Error writing files: {}", msg),

@@ -138,13 +138,9 @@ impl Rewrite for ast::Block {
 
         // Push text between last block item and end of block
         let snippet = visitor.snippet(mk_sp(visitor.last_pos, self.span.hi));
-        visitor.changes.push_str_span(self.span, &snippet);
+        visitor.buffer.push_str(&snippet);
 
-        // Stringify visitor
-        let file_name = context.codemap.span_to_filename(self.span);
-        let string_buffer = visitor.changes.get(&file_name);
-
-        Some(format!("{}{}", prefix, string_buffer))
+        Some(format!("{}{}", prefix, visitor.buffer))
     }
 }
 
