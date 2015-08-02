@@ -285,26 +285,28 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
                     // no need for an additional note if the overflow
                     // was somehow on the root.
                 }
-                TypeContext::EnumVariant { def_id, variant, arg_index } => {
+                TypeContext::ADT { def_id, variant, field, field_index } => {
                     // FIXME (pnkfelix): eventually lookup arg_name
                     // for the given index on struct variants.
-                    span_note!(
-                        rcx.tcx().sess,
-                        span,
-                        "overflowed on enum {} variant {} argument {} type: {}",
-                        tcx.item_path_str(def_id),
-                        variant,
-                        arg_index,
-                        detected_on_typ);
-                }
-                TypeContext::Struct { def_id, field } => {
-                    span_note!(
-                        rcx.tcx().sess,
-                        span,
-                        "overflowed on struct {} field {} type: {}",
-                        tcx.item_path_str(def_id),
-                        field,
-                        detected_on_typ);
+                    // TODO: be saner
+                    if let ty::ADTKind::Enum = tcx.lookup_adt_def(def_id).adt_kind() {
+                        span_note!(
+                            rcx.tcx().sess,
+                            span,
+                            "overflowed on enum {} variant {} argument {} type: {}",
+                            tcx.item_path_str(def_id),
+                            variant,
+                            field_index,
+                            detected_on_typ);
+                    } else {
+                        span_note!(
+                            rcx.tcx().sess,
+                            span,
+                            "overflowed on struct {} field {} type: {}",
+                            tcx.item_path_str(def_id),
+                            field,
+                            detected_on_typ);
+                    }
                 }
             }
         }
@@ -318,14 +320,11 @@ enum Error<'tcx> {
 #[derive(Copy, Clone)]
 enum TypeContext {
     Root,
-    EnumVariant {
+    ADT {
         def_id: ast::DefId,
         variant: ast::Name,
-        arg_index: usize,
-    },
-    Struct {
-        def_id: ast::DefId,
         field: ast::Name,
+        field_index: usize
     }
 }
 
@@ -437,41 +436,23 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
                 cx, context, ity, depth+1)
         }
 
-        ty::TyStruct(def, substs) => {
+        ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
             let did = def.did;
-            let fields = tcx.lookup_struct_fields(did);
-            for field in &fields {
-                let fty = tcx.lookup_field_type(did, field.id, substs);
-                let fty = cx.rcx.fcx.resolve_type_vars_if_possible(
-                    cx.rcx.fcx.normalize_associated_types_in(cx.span, &fty));
-                try!(iterate_over_potentially_unsafe_regions_in_type(
-                    cx,
-                    TypeContext::Struct {
-                        def_id: did,
-                        field: field.name,
-                    },
-                    fty,
-                    depth+1))
-            }
-            Ok(())
-        }
-
-        ty::TyEnum(def, substs) => {
-            let did = def.did;
-            let all_variant_info = tcx.substd_enum_variants(did, substs);
-            for variant_info in &all_variant_info {
-                for (i, fty) in variant_info.args.iter().enumerate() {
+            for variant in &def.variants {
+                for (i, field) in variant.fields.iter().enumerate() {
+                    let fty = field.ty(tcx, substs);
                     let fty = cx.rcx.fcx.resolve_type_vars_if_possible(
                         cx.rcx.fcx.normalize_associated_types_in(cx.span, &fty));
                     try!(iterate_over_potentially_unsafe_regions_in_type(
                         cx,
-                        TypeContext::EnumVariant {
+                        TypeContext::ADT {
                             def_id: did,
-                            variant: variant_info.name,
-                            arg_index: i,
+                            field: field.name,
+                            variant: variant.name,
+                            field_index: i
                         },
                         fty,
-                        depth+1));
+                        depth+1))
                 }
             }
             Ok(())

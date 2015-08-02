@@ -1721,21 +1721,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ok_if(substs.upvar_tys.clone())
             }
 
-            ty::TyStruct(def, substs) => {
-                let types: Vec<Ty> =
-                    self.tcx().struct_fields(def.did, substs).iter()
-                                                             .map(|f| f.mt.ty)
-                                                             .collect();
-                nominal(bound, types)
-            }
-
-            ty::TyEnum(def, substs) => {
-                let types: Vec<Ty> =
-                    self.tcx().substd_enum_variants(def.did, substs)
-                    .iter()
-                    .flat_map(|variant| &variant.args)
-                    .cloned()
-                    .collect();
+            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+                let types: Vec<Ty> = def.all_fields().map(|f| {
+                    f.ty(self.tcx(), substs)
+                }).collect();
                 nominal(bound, types)
             }
 
@@ -1865,18 +1854,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 substs.types.get_slice(TypeSpace).to_vec()
             }
 
-            ty::TyStruct(def, substs) => {
-                self.tcx().struct_fields(def.did, substs)
-                          .iter()
-                          .map(|f| f.mt.ty)
-                          .collect()
-            }
-
-            ty::TyEnum(def, substs) => {
-                self.tcx().substd_enum_variants(def.did, substs)
-                    .iter()
-                    .flat_map(|variant| &variant.args)
-                    .map(|&ty| ty)
+            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+                def.all_fields()
+                    .map(|f| f.ty(self.tcx(), substs))
                     .collect()
             }
         }
@@ -2522,9 +2502,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // Struct<T> -> Struct<U>.
             (&ty::TyStruct(def, substs_a), &ty::TyStruct(_, substs_b)) => {
-                let fields = tcx.lookup_struct_fields(def.did).iter().map(|f| {
-                    tcx.lookup_field_type_unsubstituted(def.did, f.id)
-                }).collect::<Vec<_>>();
+                let fields = def
+                    .all_fields()
+                    .map(|f| f.unsubst_ty())
+                    .collect::<Vec<_>>();
 
                 // The last field of the structure has to exist and contain type parameters.
                 let field = if let Some(&field) = fields.last() {

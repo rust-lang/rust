@@ -448,22 +448,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 let ty = &self.tcx.expr_ty_adjusted(&sub_ex).sty;
                 match *ty {
                     ty::TyStruct(def, _) => {
-                        let fields = self.tcx.lookup_struct_fields(def.did);
-                        for f in &fields {
-                            if f.name == ident.node.name {
-                                let sub_span = self.span_utils.span_for_last_ident(expr.span);
-                                return Some(Data::VariableRefData(VariableRefData {
-                                    name: ident.node.to_string(),
-                                    span: sub_span.unwrap(),
-                                    scope: self.enclosing_scope(expr.id),
-                                    ref_id: f.id,
-                                }));
-                            }
-                        }
-
-                        self.tcx.sess.span_bug(expr.span,
-                                               &format!("Couldn't find field {} on {:?}",
-                                                        ident.node, ty))
+                        let f = def.struct_variant().field_named(ident.node.name);
+                        let sub_span = self.span_utils.span_for_last_ident(expr.span);
+                        return Some(Data::VariableRefData(VariableRefData {
+                            name: ident.node.to_string(),
+                            span: sub_span.unwrap(),
+                            scope: self.enclosing_scope(expr.id),
+                            ref_id: f.did,
+                        }));
                     }
                     _ => {
                         debug!("Expected struct type, found {:?}", ty);
@@ -621,26 +613,18 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_field_ref_data(&self,
                               field_ref: &ast::Field,
-                              struct_id: DefId,
+                              variant: &ty::VariantDef,
                               parent: NodeId)
                               -> VariableRefData {
-        let fields = self.tcx.lookup_struct_fields(struct_id);
-        let field_name = field_ref.ident.node.to_string();
-        for f in &fields {
-            if f.name == field_ref.ident.node.name {
-                // We don't really need a sub-span here, but no harm done
-                let sub_span = self.span_utils.span_for_last_ident(field_ref.ident.span);
-                return VariableRefData {
-                    name: field_name,
-                    span: sub_span.unwrap(),
-                    scope: parent,
-                    ref_id: f.id,
-                };
-            }
+        let f = variant.field_named(field_ref.ident.node.name);
+        // We don't really need a sub-span here, but no harm done
+        let sub_span = self.span_utils.span_for_last_ident(field_ref.ident.span);
+        VariableRefData {
+            name: field_ref.ident.node.to_string(),
+            span: sub_span.unwrap(),
+            scope: parent,
+            ref_id: f.did,
         }
-
-        self.tcx.sess.span_bug(field_ref.span,
-                               &format!("Couldn't find field {}", field_name));
     }
 
     pub fn get_data_for_id(&self, _id: &NodeId) -> Data {

@@ -692,64 +692,6 @@ There's no easy fix for this, generally code will need to be refactored so that
 you no longer need to derive from `Super<Self>`.
 "####,
 
-E0079: r##"
-Enum variants which contain no data can be given a custom integer
-representation. This error indicates that the value provided is not an integer
-literal and is therefore invalid.
-
-For example, in the following code,
-
-```
-enum Foo {
-    Q = "32"
-}
-```
-
-we try to set the representation to a string.
-
-There's no general fix for this; if you can work with an integer then just set
-it to one:
-
-```
-enum Foo {
-    Q = 32
-}
-```
-
-however if you actually wanted a mapping between variants and non-integer
-objects, it may be preferable to use a method with a match instead:
-
-```
-enum Foo { Q }
-impl Foo {
-    fn get_str(&self) -> &'static str {
-        match *self {
-            Foo::Q => "32",
-        }
-    }
-}
-```
-"##,
-
-E0080: r##"
-This error indicates that the compiler was unable to sensibly evaluate an
-integer expression provided as an enum discriminant. Attempting to divide by 0
-or causing integer overflow are two ways to induce this error. For example:
-
-```
-enum Enum {
-    X = (1 << 500),
-    Y = (1 / 0)
-}
-```
-
-Ensure that the expressions given can be evaluated as the desired integer type.
-See the FFI section of the Reference for more information about using a custom
-integer type:
-
-https://doc.rust-lang.org/reference.html#ffi-attributes
-"##,
-
 E0109: r##"
 You tried to give a type parameter to a type which doesn't need it. Erroneous
 code example:
@@ -1937,6 +1879,5 @@ register_diagnostics! {
     E0314, // closure outlives stack frame
     E0315, // cannot invoke closure outside of its lifetime
     E0316, // nested quantification of lifetimes
-    E0370, // discriminant overflow
     E0400  // overloaded derefs are not allowed in constants
 }

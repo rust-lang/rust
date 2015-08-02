@@ -1674,34 +1674,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    // FIXME(arielb1): use this instead of field.ty everywhere
+    pub fn field_ty(&self,
+                    span: Span,
+                    field: &ty::FieldDef<'tcx>,
+                    substs: &Substs<'tcx>)
+                    -> Ty<'tcx>
+    {
+        self.normalize_associated_types_in(span,
+                                           &field.ty(self.tcx(), substs))
+    }
+
     // Only for fields! Returns <none> for methods>
     // Indifferent to privacy flags
-    pub fn lookup_field_ty(&self,
-                           span: Span,
-                           struct_def: &'tcx ty::ADTDef<'tcx>,
-                           items: &[ty::FieldTy],
-                           fieldname: ast::Name,
-                           substs: &subst::Substs<'tcx>)
-                           -> Option<Ty<'tcx>>
-    {
-        let o_field = items.iter().find(|f| f.name == fieldname);
-        o_field.map(|f| self.tcx().lookup_field_type(struct_def.did, f.id, substs))
-               .map(|t| self.normalize_associated_types_in(span, &t))
-    }
-
-    pub fn lookup_tup_field_ty(&self,
-                               span: Span,
-                               struct_def: &'tcx ty::ADTDef<'tcx>,
-                               items: &[ty::FieldTy],
-                               idx: usize,
-                               substs: &subst::Substs<'tcx>)
-                               -> Option<Ty<'tcx>>
-    {
-        let o_field = if idx < items.len() { Some(&items[idx]) } else { None };
-        o_field.map(|f| self.tcx().lookup_field_type(struct_def.did, f.id, substs))
-               .map(|t| self.normalize_associated_types_in(span, &t))
-    }
-
     fn check_casts(&self) {
         let mut deferred_cast_checks = self.inh.deferred_cast_checks.borrow_mut();
         for cast in deferred_cast_checks.drain(..) {
@@ -2880,9 +2865,9 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 match base_t.sty {
                     ty::TyStruct(base_def, substs) => {
                         debug!("struct named {:?}",  base_t);
-                        let fields = tcx.lookup_struct_fields(base_def.did);
-                        fcx.lookup_field_ty(expr.span, base_def, &fields[..],
-                                            field.node.name, &(*substs))
+                        base_def.struct_variant()
+                                .find_field_named(field.node.name)
+                                .map(|f| fcx.field_ty(expr.span, f, substs))
                     }
                     _ => None
                 }
@@ -2920,7 +2905,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 },
                 expr_t, None);
             if let ty::TyStruct(def, _) = expr_t.sty {
-                suggest_field_names(def.did, field, tcx, vec![]);
+                suggest_field_names(def.struct_variant(), field, tcx, vec![]);
             }
         }
 
@@ -2928,23 +2913,22 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
     // displays hints about the closest matches in field names
-    fn suggest_field_names<'tcx>(variant_id: ast::DefId,
+    fn suggest_field_names<'tcx>(variant: &ty::VariantDef<'tcx>,
                                  field: &ast::SpannedIdent,
                                  tcx: &ty::ctxt<'tcx>,
                                  skip : Vec<InternedString>) {
         let name = field.node.name.as_str();
         // only find fits with at least one matching letter
         let mut best_dist = name.len();
-        let fields = tcx.lookup_struct_fields(variant_id);
         let mut best = None;
-        for elem in &fields {
+        for elem in &variant.fields {
             let n = elem.name.as_str();
             // ignore already set fields
             if skip.iter().any(|x| *x == n) {
                 continue;
             }
             // ignore private fields from non-local crates
-            if variant_id.krate != ast::LOCAL_CRATE && elem.vis != Visibility::Public {
+            if variant.did.krate != ast::LOCAL_CRATE && elem.vis != Visibility::Public {
                 continue;
             }
             let dist = lev_distance(&n, &name);
@@ -2965,7 +2949,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                 lvalue_pref: LvaluePreference,
                                 base: &'tcx ast::Expr,
                                 idx: codemap::Spanned<usize>) {
-        let tcx = fcx.ccx.tcx;
         check_expr_with_lvalue_pref(fcx, base, lvalue_pref);
         let expr_t = structurally_resolved_type(fcx, expr.span,
                                                 fcx.expr_ty(base));
@@ -2983,9 +2966,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                         tuple_like = base_def.struct_variant().is_tuple_struct();
                         if tuple_like {
                             debug!("tuple struct named {:?}",  base_t);
-                            let fields = tcx.lookup_struct_fields(base_def.did);
-                            fcx.lookup_tup_field_ty(expr.span, base_def, &fields[..],
-                                                    idx.node, &(*substs))
+                            base_def.struct_variant()
+                                    .fields
+                                    .get(idx.node)
+                                    .map(|f| fcx.field_ty(expr.span, f, substs))
                         } else {
                             None
                         }
@@ -3025,71 +3009,63 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.write_error(expr.id);
     }
 
+    fn report_unknown_field<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                      ty: Ty<'tcx>,
+                                      variant: &ty::VariantDef<'tcx>,
+                                      field: &ast::Field,
+                                      skip_fields: &[ast::Field]) {
+        fcx.type_error_message(
+            field.ident.span,
+            |actual| if let ty::TyEnum(..) = ty.sty {
+                format!("struct variant `{}::{}` has no field named `{}`",
+                        actual, variant.name.as_str(), field.ident.node)
+            } else {
+                format!("structure `{}` has no field named `{}`",
+                        actual, field.ident.node)
+            },
+            ty,
+            None);
+        // prevent all specified fields from being suggested
+        let skip_fields = skip_fields.iter().map(|ref x| x.ident.node.name.as_str());
+        suggest_field_names(variant, &field.ident, fcx.tcx(), skip_fields.collect());
+    }
+
+
     fn check_struct_or_variant_fields<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                 adt_ty: Ty<'tcx>,
                                                 span: Span,
                                                 variant_id: ast::DefId,
-                                                substitutions: &'tcx subst::Substs<'tcx>,
-                                                field_types: &[ty::FieldTy],
                                                 ast_fields: &'tcx [ast::Field],
                                                 check_completeness: bool) -> Result<(),()> {
         let tcx = fcx.ccx.tcx;
-        let (adt_def, is_enum) = match adt_ty.sty {
-            ty::TyStruct(def, _) => (def, false),
-            ty::TyEnum(def, _) => (def, true),
+        let (adt_def, substs) = match adt_ty.sty {
+            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => (def, substs),
             _ => tcx.sess.span_bug(span, "non-ADT passed to check_struct_or_variant_fields")
         };
+        let variant = adt_def.variant_with_id(variant_id);
 
-        let mut class_field_map = FnvHashMap();
-        let mut fields_found = 0;
-        for field in field_types {
-            class_field_map.insert(field.name, (field.id, false));
+        let mut remaining_fields = FnvHashMap();
+        for field in &variant.fields {
+            remaining_fields.insert(field.name, field);
         }
 
         let mut error_happened = false;
 
         // Typecheck each field.
         for field in ast_fields {
-            let mut expected_field_type = tcx.types.err;
+            let expected_field_type;
 
-            let pair = class_field_map.get(&field.ident.node.name).cloned();
-            match pair {
-                None => {
-                    fcx.type_error_message(
-                        field.ident.span,
-                        |actual| if is_enum {
-                            let variant_type = tcx.enum_variant_with_id(adt_def.did,
-                                                                        variant_id);
-                            format!("struct variant `{}::{}` has no field named `{}`",
-                                    actual, variant_type.name.as_str(),
-                                        field.ident.node)
-                        } else {
-                            format!("structure `{}` has no field named `{}`",
-                                    actual,
-                                        field.ident.node)
-                        },
-                        adt_ty,
-                        None);
-                    // prevent all specified fields from being suggested
-                    let skip_fields = ast_fields.iter().map(|ref x| x.ident.node.name.as_str());
-                    suggest_field_names(variant_id, &field.ident, tcx, skip_fields.collect());
-                    error_happened = true;
-                }
-                Some((_, true)) => {
+            if let Some(v_field) = remaining_fields.remove(&field.ident.node.name) {
+                expected_field_type = fcx.field_ty(field.span, v_field, substs);
+            } else {
+                error_happened = true;
+                expected_field_type = tcx.types.err;
+                if let Some(_) = variant.find_field_named(field.ident.node.name) {
                     span_err!(fcx.tcx().sess, field.ident.span, E0062,
                         "field `{}` specified more than once",
                         field.ident.node);
-                    error_happened = true;
-                }
-                Some((field_id, false)) => {
-                    expected_field_type =
-                        tcx.lookup_field_type(variant_id, field_id, substitutions);
-                    expected_field_type =
-                        fcx.normalize_associated_types_in(
-                            field.span, &expected_field_type);
-                    class_field_map.insert(
-                        field.ident.node.name, (field_id, true));
-                    fields_found += 1;
+                } else {
+                    report_unknown_field(fcx, adt_ty, variant, field, ast_fields);
                 }
             }
 
@@ -3098,25 +3074,19 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             check_expr_coercable_to_type(fcx, &*field.expr, expected_field_type);
         }
 
-        if check_completeness && !error_happened {
             // Make sure the programmer specified all the fields.
-            assert!(fields_found <= field_types.len());
-            if fields_found < field_types.len() {
-                let mut missing_fields = Vec::new();
-                for class_field in field_types {
-                    let name = class_field.name;
-                    let (_, seen) = *class_field_map.get(&name).unwrap();
-                    if !seen {
-                        missing_fields.push(
-                            format!("`{}`", name))
-                    }
-                }
-
-                span_err!(tcx.sess, span, E0063,
-                    "missing field{}: {}",
-                    if missing_fields.len() == 1 {""} else {"s"},
-                    missing_fields.join(", "));
-             }
+        if check_completeness &&
+            !error_happened &&
+            !remaining_fields.is_empty()
+        {
+            error_happened = true;
+            span_err!(tcx.sess, span, E0063,
+                      "missing field{}: {}",
+                      if remaining_fields.len() == 1 {""} else {"s"},
+                      remaining_fields.keys()
+                                      .map(|n| format!("`{}`", n))
+                                      .collect::<Vec<_>>()
+                                      .join(", "));
         }
 
         if error_happened { Err(()) } else { Ok(()) }
@@ -3133,17 +3103,14 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         // Generate the struct type.
         let TypeAndSubsts {
             ty: mut struct_type,
-            substs: struct_substs
+            substs: _
         } = fcx.instantiate_type(span, struct_def.did);
 
         // Look up and check the fields.
-        let class_fields = tcx.lookup_struct_fields(struct_def.did);
         let res = check_struct_or_variant_fields(fcx,
                                                  struct_type,
                                                  span,
                                                  struct_def.did,
-                                                 fcx.ccx.tcx.mk_substs(struct_substs),
-                                                 &class_fields[..],
                                                  fields,
                                                  base_expr.is_none());
         if res.is_err() {
@@ -3168,23 +3135,18 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                           enum_id: ast::DefId,
                                           variant_id: ast::DefId,
                                           fields: &'tcx [ast::Field]) {
-        let tcx = fcx.ccx.tcx;
-
         // Look up the number of type parameters and the raw type, and
         // determine whether the enum is region-parameterized.
         let TypeAndSubsts {
             ty: enum_type,
-            substs: substitutions
+            substs: _
         } = fcx.instantiate_type(span, enum_id);
 
         // Look up and check the enum variant fields.
-        let variant_fields = tcx.lookup_struct_fields(variant_id);
         let _ = check_struct_or_variant_fields(fcx,
                                                enum_type,
                                                span,
                                                variant_id,
-                                               fcx.ccx.tcx.mk_substs(substitutions),
-                                               &variant_fields[..],
                                                fields,
                                                true);
         fcx.write_ty(id, enum_type);
@@ -4295,14 +4257,13 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
     }
     match t.sty {
         ty::TyStruct(def, substs) => {
-            let fields = tcx.lookup_struct_fields(def.did);
+            let fields = &def.struct_variant().fields;
             if fields.is_empty() {
                 span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty");
                 return;
             }
-            let e = tcx.lookup_field_type(def.did, fields[0].id, substs);
-            if !fields.iter().all(
-                         |f| tcx.lookup_field_type(def.did, f.id, substs) == e) {
+            let e = fields[0].ty(tcx, substs);
+            if !fields.iter().all(|f| f.ty(tcx, substs) == e) {
                 span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous");
                 return;
             }
@@ -4370,10 +4331,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
         let def_id = local_def(id);
 
-        // ty::enum_variants guards against discriminant overflows, so
-        // we need not check for that.
-        let variants = ccx.tcx.enum_variants(def_id);
-
+        let variants = &ccx.tcx.lookup_adt_def(def_id).variants;
         for (v, variant) in vs.iter().zip(variants.iter()) {
             let current_disr_val = variant.disr_val;
 
@@ -4382,7 +4340,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 Some(i) => {
                     span_err!(ccx.tcx.sess, v.span, E0081,
                         "discriminant value `{}` already exists", disr_vals[i]);
-                    span_note!(ccx.tcx.sess, ccx.tcx.map.span(variants[i].id.node),
+                    span_note!(ccx.tcx.sess, ccx.tcx.map.span(variants[i].did.node),
                         "conflicting discriminant here")
                 }
                 None => {}

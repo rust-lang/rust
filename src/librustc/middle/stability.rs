@@ -415,16 +415,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         ast::ExprField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
-                ty::TyStruct(def, _) => {
-                    tcx.lookup_struct_fields(def.did)
-                        .iter()
-                        .find(|f| f.name == field.node.name)
-                        .unwrap_or_else(|| {
-                            tcx.sess.span_bug(field.span,
-                                              "stability::check_expr: unknown named field access")
-                        })
-                        .id
-                }
+                ty::TyStruct(def, _) => def.struct_variant().field_named(field.node.name).did,
                 _ => tcx.sess.span_bug(e.span,
                                        "stability::check_expr: named field access on non-struct")
             }
@@ -432,15 +423,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
         ast::ExprTupField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
-                ty::TyStruct(def, _) => {
-                    tcx.lookup_struct_fields(def.did)
-                        .get(field.node)
-                        .unwrap_or_else(|| {
-                            tcx.sess.span_bug(field.span,
-                                              "stability::check_expr: unknown unnamed field access")
-                        })
-                        .id
-                }
+                ty::TyStruct(def, _) => def.struct_variant().fields[field.node].did,
                 ty::TyTuple(..) => return,
                 _ => tcx.sess.span_bug(e.span,
                                        "stability::check_expr: unnamed field access on \
@@ -451,19 +434,12 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
             let type_ = tcx.expr_ty(e);
             match type_.sty {
                 ty::TyStruct(def, _) => {
-                    let struct_fields = tcx.lookup_struct_fields(def.did);
                     // check the stability of each field that appears
                     // in the construction expression.
                     for field in expr_fields {
-                        let did = struct_fields
-                            .iter()
-                            .find(|f| f.name == field.ident.node.name)
-                            .unwrap_or_else(|| {
-                                tcx.sess.span_bug(field.span,
-                                                  "stability::check_expr: unknown named \
-                                                   field access")
-                            })
-                            .id;
+                        let did = def.struct_variant()
+                            .field_named(field.ident.node.name)
+                            .did;
                         maybe_do_stability_check(tcx, did, field.span, cb);
                     }
 
@@ -505,34 +481,26 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
 
-    let def = match tcx.pat_ty_opt(pat) {
-        Some(&ty::TyS { sty: ty::TyStruct(def, _), .. }) => def,
+    let v = match tcx.pat_ty_opt(pat) {
+        Some(&ty::TyS { sty: ty::TyStruct(def, _), .. }) => def.struct_variant(),
         Some(_) | None => return,
     };
-    let struct_fields = tcx.lookup_struct_fields(def.did);
     match pat.node {
         // Foo(a, b, c)
         ast::PatEnum(_, Some(ref pat_fields)) => {
-            for (field, struct_field) in pat_fields.iter().zip(&struct_fields) {
+            for (field, struct_field) in pat_fields.iter().zip(&v.fields) {
                 // a .. pattern is fine, but anything positional is
                 // not.
                 if let ast::PatWild(ast::PatWildMulti) = field.node {
                     continue
                 }
-                maybe_do_stability_check(tcx, struct_field.id, field.span, cb)
+                maybe_do_stability_check(tcx, struct_field.did, field.span, cb)
             }
         }
         // Foo { a, b, c }
         ast::PatStruct(_, ref pat_fields, _) => {
             for field in pat_fields {
-                let did = struct_fields
-                    .iter()
-                    .find(|f| f.name == field.node.ident.name)
-                    .unwrap_or_else(|| {
-                        tcx.sess.span_bug(field.span,
-                                          "stability::check_pat: unknown named field access")
-                    })
-                    .id;
+                let did = v.field_named(field.node.ident.name).did;
                 maybe_do_stability_check(tcx, did, field.span, cb);
             }
         }

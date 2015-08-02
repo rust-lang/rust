@@ -45,7 +45,6 @@ use std::collections::{HashSet, BitSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
-use std::rc::Rc;
 
 use syntax::{abi, ast};
 use syntax::ast_util::{self, is_shift_binop, local_def};
@@ -413,18 +412,23 @@ enum FfiResult {
 /// to function pointers and references, but could be
 /// expanded to cover NonZero raw pointers and newtypes.
 /// FIXME: This duplicates code in trans.
-fn is_repr_nullable_ptr<'tcx>(variants: &Vec<Rc<ty::VariantInfo<'tcx>>>) -> bool {
-    if variants.len() == 2 {
-        let mut data_idx = 0;
+fn is_repr_nullable_ptr<'tcx>(tcx: &ty::ctxt<'tcx>,
+                              def: &ty::ADTDef<'tcx>,
+                              substs: &Substs<'tcx>)
+                              -> bool {
+    if def.variants.len() == 2 {
+        let data_idx;
 
-        if variants[0].args.is_empty() {
+        if def.variants[0].fields.is_empty() {
             data_idx = 1;
-        } else if !variants[1].args.is_empty() {
+        } else if def.variants[1].fields.is_empty() {
+            data_idx = 0;
+        } else {
             return false;
         }
 
-        if variants[data_idx].args.len() == 1 {
-            match variants[data_idx].args[0].sty {
+        if def.variants[data_idx].fields.len() == 1 {
+            match def.variants[data_idx].fields[0].ty(tcx, substs).sty {
                 ty::TyBareFn(None, _) => { return true; }
                 ty::TyRef(..) => { return true; }
                 _ => { }
@@ -474,16 +478,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                 // We can't completely trust repr(C) markings; make sure the
                 // fields are actually safe.
-                let fields = cx.struct_fields(def.did, substs);
-
-                if fields.is_empty() {
+                if def.struct_variant().fields.is_empty() {
                     return FfiUnsafe(
                         "found zero-size struct in foreign module, consider \
                          adding a member to this struct");
                 }
 
-                for field in fields {
-                    let field_ty = infer::normalize_associated_type(cx, &field.mt.ty);
+                for field in &def.struct_variant().fields {
+                    let field_ty = infer::normalize_associated_type(cx, &field.ty(cx, substs));
                     let r = self.check_type_for_ffi(cache, field_ty);
                     match r {
                         FfiSafe => {}
@@ -494,8 +496,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
             ty::TyEnum(def, substs) => {
-                let variants = cx.substd_enum_variants(def.did, substs);
-                if variants.is_empty() {
+                if def.variants.is_empty() {
                     // Empty enums are okay... although sort of useless.
                     return FfiSafe
                 }
@@ -506,7 +507,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 match &**repr_hints {
                     [] => {
                         // Special-case types like `Option<extern fn()>`.
-                        if !is_repr_nullable_ptr(&variants) {
+                        if !is_repr_nullable_ptr(cx, def, substs) {
                             return FfiUnsafe(
                                 "found enum without foreign-function-safe \
                                  representation annotation in foreign module, \
@@ -537,9 +538,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
 
                 // Check the contained variants.
-                for variant in variants {
-                    for arg in &variant.args {
-                        let arg = infer::normalize_associated_type(cx, arg);
+                for variant in &def.variants {
+                    for field in &variant.fields {
+                        let arg = infer::normalize_associated_type(cx, &field.ty(cx, substs));
                         let r = self.check_type_for_ffi(cache, arg);
                         match r {
                             FfiSafe => {}

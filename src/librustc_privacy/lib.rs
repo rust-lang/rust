@@ -34,7 +34,6 @@ use self::FieldName::*;
 use std::mem::replace;
 
 use rustc::ast_map;
-use rustc::metadata::csearch;
 use rustc::middle::def;
 use rustc::middle::privacy::ImportUse::*;
 use rustc::middle::privacy::LastPrivate::*;
@@ -688,29 +687,26 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     // Checks that a field is in scope.
     fn check_field(&mut self,
                    span: Span,
-                   id: ast::DefId,
+                   def: &'tcx ty::ADTDef<'tcx>,
+                   v: &'tcx ty::VariantDef<'tcx>,
                    name: FieldName) {
-        // TODO: refactor to variant API
-        let fields = self.tcx.lookup_struct_fields(id);
         let field = match name {
             NamedField(f_name) => {
-                debug!("privacy - check named field {} in struct {:?}", f_name, id);
-                fields.iter().find(|f| f.name == f_name).unwrap()
+                debug!("privacy - check named field {} in struct {:?}", f_name, def);
+                v.field_named(f_name)
             }
-            UnnamedField(idx) => &fields[idx]
+            UnnamedField(idx) => &v.fields[idx]
         };
         if field.vis == ast::Public ||
-            (is_local(field.id) && self.private_accessible(field.id.node)) {
+            (is_local(field.did) && self.private_accessible(field.did.node)) {
             return
         }
 
-        let struct_type = self.tcx.lookup_item_type(id).ty;
-        let struct_desc = match struct_type.sty {
-            ty::TyStruct(_, _) =>
-                format!("struct `{}`", self.tcx.item_path_str(id)),
+        let struct_desc = match def.adt_kind() {
+            ty::ADTKind::Struct =>
+                format!("struct `{}`", self.tcx.item_path_str(def.did)),
             // struct variant fields have inherited visibility
-            ty::TyEnum(..) => return,
-            _ => self.tcx.sess.span_bug(span, "can't find struct for field")
+            ty::ADTKind::Enum => return
         };
         let msg = match name {
             NamedField(name) => format!("field `{}` of {} is private",
@@ -885,12 +881,18 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
         match expr.node {
             ast::ExprField(ref base, ident) => {
                 if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(&**base).sty {
-                    self.check_field(expr.span, def.did, NamedField(ident.node.name));
+                    self.check_field(expr.span,
+                                     def,
+                                     def.struct_variant(),
+                                     NamedField(ident.node.name));
                 }
             }
             ast::ExprTupField(ref base, idx) => {
                 if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(&**base).sty {
-                    self.check_field(expr.span, def.did, UnnamedField(idx.node));
+                    self.check_field(expr.span,
+                                     def,
+                                     def.struct_variant(),
+                                     UnnamedField(idx.node));
                 }
             }
             ast::ExprMethodCall(ident, _, _) => {
@@ -899,67 +901,36 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 debug!("(privacy checking) checking impl method");
                 self.check_method(expr.span, method.def_id, ident.node.name);
             }
-            ast::ExprStruct(_, ref fields, _) => {
-                match self.tcx.expr_ty(expr).sty {
-                    ty::TyStruct(ctor_def, _) => {
-                        // RFC 736: ensure all unmentioned fields are visible.
-                        // Rather than computing the set of unmentioned fields
-                        // (i.e. `all_fields - fields`), just check them all.
-                        let all_fields = self.tcx.lookup_struct_fields(ctor_def.did);
-                        for field in all_fields {
-                            self.check_field(expr.span, ctor_def.did,
-                                             NamedField(field.name));
-                        }
-                    }
-                    ty::TyEnum(_, _) => {
-                        match self.tcx.def_map.borrow().get(&expr.id).unwrap().full_def() {
-                            def::DefVariant(_, variant_id, _) => {
-                                for field in fields {
-                                    self.check_field(expr.span, variant_id,
-                                                     NamedField(field.ident.node.name));
-                                }
-                            }
-                            _ => self.tcx.sess.span_bug(expr.span,
-                                                        "resolve didn't \
-                                                         map enum struct \
-                                                         constructor to a \
-                                                         variant def"),
-                        }
-                    }
-                    _ => self.tcx.sess.span_bug(expr.span, "struct expr \
-                                                            didn't have \
-                                                            struct type?!"),
+            ast::ExprStruct(..) => {
+                let adt = self.tcx.expr_ty(expr).ty_adt_def().unwrap();
+                let variant = adt.variant_of_def(self.tcx.resolve_expr(expr));
+                // RFC 736: ensure all unmentioned fields are visible.
+                // Rather than computing the set of unmentioned fields
+                // (i.e. `all_fields - fields`), just check them all.
+                for field in &variant.fields {
+                    self.check_field(expr.span, adt, variant, NamedField(field.name));
                 }
             }
             ast::ExprPath(..) => {
-                let guard = |did: ast::DefId| {
-                    let fields = self.tcx.lookup_struct_fields(did);
-                    let any_priv = fields.iter().any(|f| {
+
+                if let def::DefStruct(_) = self.tcx.resolve_expr(expr) {
+                    let expr_ty = self.tcx.expr_ty(expr);
+                    let def = match expr_ty.sty {
+                        ty::TyBareFn(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
+                            output: ty::FnConverging(ty), ..
+                        }), ..}) => ty,
+                        _ => expr_ty
+                    }.ty_adt_def().unwrap();
+                    let any_priv = def.struct_variant().fields.iter().any(|f| {
                         f.vis != ast::Public && (
-                            !is_local(f.id) ||
-                            !self.private_accessible(f.id.node))
-                    });
+                            !is_local(f.did) ||
+                                    !self.private_accessible(f.did.node))
+                        });
                     if any_priv {
                         self.tcx.sess.span_err(expr.span,
-                            "cannot invoke tuple struct constructor \
-                             with private fields");
+                                               "cannot invoke tuple struct constructor \
+                                                with private fields");
                     }
-                };
-                match self.tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def()) {
-                    Some(def::DefStruct(did)) => {
-                        guard(if is_local(did) {
-                            local_def(self.tcx.map.get_parent(did.node))
-                        } else {
-                            // "tuple structs" with zero fields (such as
-                            // `pub struct Foo;`) don't have a ctor_id, hence
-                            // the unwrap_or to the same struct id.
-                            let maybe_did =
-                                csearch::get_tuple_struct_definition_if_ctor(
-                                    &self.tcx.sess.cstore, did);
-                            maybe_did.unwrap_or(did)
-                        })
-                    }
-                    _ => {}
                 }
             }
             _ => {}
@@ -977,31 +948,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
         match pattern.node {
             ast::PatStruct(_, ref fields, _) => {
-                match self.tcx.pat_ty(pattern).sty {
-                    ty::TyStruct(def, _) => {
-                        for field in fields {
-                            self.check_field(pattern.span, def.did,
-                                             NamedField(field.node.ident.name));
-                        }
-                    }
-                    ty::TyEnum(_, _) => {
-                        match self.tcx.def_map.borrow().get(&pattern.id).map(|d| d.full_def()) {
-                            Some(def::DefVariant(_, variant_id, _)) => {
-                                for field in fields {
-                                    self.check_field(pattern.span, variant_id,
-                                                     NamedField(field.node.ident.name));
-                                }
-                            }
-                            _ => self.tcx.sess.span_bug(pattern.span,
-                                                        "resolve didn't \
-                                                         map enum struct \
-                                                         pattern to a \
-                                                         variant def"),
-                        }
-                    }
-                    _ => self.tcx.sess.span_bug(pattern.span,
-                                                "struct pattern didn't have \
-                                                 struct type?!"),
+                let adt = self.tcx.pat_ty(pattern).ty_adt_def().unwrap();
+                let def = self.tcx.def_map.borrow().get(&pattern.id).unwrap().full_def();
+                let variant = adt.variant_of_def(def);
+                for field in fields {
+                    self.check_field(pattern.span, adt, variant,
+                                     NamedField(field.node.ident.name));
                 }
             }
 
@@ -1014,7 +966,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                             if let ast::PatWild(..) = field.node {
                                 continue
                             }
-                            self.check_field(field.span, def.did, UnnamedField(i));
+                            self.check_field(field.span,
+                                             def,
+                                             def.struct_variant(),
+                                             UnnamedField(i));
                         }
                     }
                     ty::TyEnum(..) => {
