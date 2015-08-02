@@ -115,6 +115,26 @@ fn test_find_str() {
     assert_eq!(data[43..86].find("ย中"), Some(67 - 43));
     assert_eq!(data[43..86].find("iệt"), Some(77 - 43));
     assert_eq!(data[43..86].find("Nam"), Some(83 - 43));
+
+    // find every substring -- assert that it finds it, or an earlier occurence.
+    let string = "Việt Namacbaabcaabaaba";
+    for (i, ci) in string.char_indices() {
+        let ip = i + ci.len_utf8();
+        for j in string[ip..].char_indices()
+                             .map(|(i, _)| i)
+                             .chain(Some(string.len() - ip))
+        {
+            let pat = &string[i..ip + j];
+            assert!(match string.find(pat) {
+                None => false,
+                Some(x) => x <= i,
+            });
+            assert!(match string.rfind(pat) {
+                None => false,
+                Some(x) => x >= i,
+            });
+        }
+    }
 }
 
 #[test]
