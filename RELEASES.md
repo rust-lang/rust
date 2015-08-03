@@ -79,7 +79,7 @@ Libraries
   are used by code generators to emit implementations of [`Debug`].
 * `str` has new [`to_uppercase`][strup] and [`to_lowercase`][strlow]
   methods that convert case, following Unicode case mapping.
-* It is now easier to handle to poisoned locks. The [`PoisonError`]
+* It is now easier to handle poisoned locks. The [`PoisonError`]
   type, returned by failing lock operations, exposes `into_inner`,
   `get_ref`, and `get_mut`, which all give access to the inner lock
   guard, and allow the poisoned lock to continue to operate. The
