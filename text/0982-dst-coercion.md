@@ -113,7 +113,7 @@ in the `Target` type. Assuming `Fs` is the type of a field in `Self` and `Ft` is
 the type of the corresponding field in `Target`, then either `Ft <: Fs` or
 `Fs: CoerceUnsized<Ft>` (note that this includes some built-in coercions, coercions
 unrelated to unsizing are excluded, these could probably be added later, if needed).
-* There must be only one field that is coerced.
+* There must be only one non-PhantomData field that is coerced.
 * We record for each impl, the index of the field in the `Self` type which is
 coerced.
 
@@ -135,7 +135,7 @@ is auto-deref'ed, but not autoref'ed.
 ### On encountering an adjustment (translation phase)
 
 * In trans (which is post-monomorphisation) we should always be able to find an
-impl for any `CoerceUnsized` bound. 
+impl for any `CoerceUnsized` bound.
 * If the impl is for a built-in pointer type, then we use the current coercion
 code for the various pointer kinds (`Box<T>` has different behaviour than `&` and
 `*` pointers).
