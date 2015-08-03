@@ -166,8 +166,8 @@ but will be shimmed as efficiently as possible.
 
 - shuffles and extracting/inserting elements
 - comparisons
-
-Lastly, arithmetic and conversions are supported via built-in operators.
+- arithmetic
+- conversions
 
 ### Shuffles & element operations
 
@@ -260,21 +260,28 @@ shuffles. Ensuring that `T` and `U` has the same length, and that `U`
 is appropriately "boolean"-y. Libraries can use traits to ensure that
 these will be enforced by the type checker too.
 
-### Built-in functionality
+### Arithmetic
 
-Any type marked `repr(simd)` automatically has the `+`, `-` and `*`
-operators work. The `/` operator works for floating point, and the
-`<<` and `>>` ones work for integers.
+Intrinsics will be provided for arithmetic operations like addition
+and multiplication.
 
-SIMD vectors can be converted with `as`. As with intrinsics, this is
-"duck-typed" it is possible to cast a vector type `V` to a type `W` if
-their lengths match and their elements are castable (i.e. are
-primitives), there's no enforcement of nominal types.
+```rust
+extern {
+    fn simd_add<T>(x: T, y: T) -> T;
+    fn simd_mul<T>(x: T, y: T) -> T;
+    // ...
+}
+```
 
-All of these operators and conversions are never checked (in the sense
-of the arithmetic overflow checks of `-C debug-assertions`): explicit
-SIMD is essentially only required for speed, and checking inflates one
-instruction to 5 or more.
+These will have codegen time checks that the element type is correct:
+
+- `add`, `sub`, `mul`: any float or integer type
+- `div`: any float type
+- `and`, `or`, `xor`, `shl` (shift left), `shr` (shift right): any
+  integer type
+
+(The integer types are `i8`, ..., `i64`, `u8`, ..., `u64` and the
+float types are `f32` and `f64`.)
 
 ### Why not inline asm?
 
