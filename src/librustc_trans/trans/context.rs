@@ -146,6 +146,7 @@ pub struct LocalCrateContext<'tcx> {
 
     eh_personality: RefCell<Option<ValueRef>>,
     rust_try_fn: RefCell<Option<ValueRef>>,
+    unwind_resume_hooked: Cell<bool>,
 
     intrinsics: RefCell<FnvHashMap<&'static str, ValueRef>>,
 
@@ -466,6 +467,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 dbg_cx: dbg_cx,
                 eh_personality: RefCell::new(None),
                 rust_try_fn: RefCell::new(None),
+                unwind_resume_hooked: Cell::new(false),
                 intrinsics: RefCell::new(FnvHashMap()),
                 n_llvm_insns: Cell::new(0),
                 trait_cache: RefCell::new(FnvHashMap()),
@@ -733,6 +735,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn rust_try_fn<'a>(&'a self) -> &'a RefCell<Option<ValueRef>> {
         &self.local.rust_try_fn
+    }
+
+    pub fn unwind_resume_hooked<'a>(&'a self) -> &'a Cell<bool> {
+        &self.local.unwind_resume_hooked
     }
 
     fn intrinsics<'a>(&'a self) -> &'a RefCell<FnvHashMap<&'static str, ValueRef>> {
