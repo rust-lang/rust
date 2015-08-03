@@ -63,7 +63,7 @@ building tools that can be wrapped into a more uniform API later.
 
 ## Types
 
-There is a new attributes: `repr(simd)`.
+There is a new attribute: `repr(simd)`.
 
 ```rust
 #[repr(simd)]
@@ -135,7 +135,7 @@ enforce a specific nominal type.
 NB. The structural typing is just for the declaration: if a SIMD intrinsic
 is declared to take a type `X`, it must always be called with `X`,
 even if other types are structurally equal to `X`. Also, within a
-signature, SIMD types that must be structurally equal must be nominal
+signature, SIMD types that must be structurally equal must be nominally
 equal. I.e. if the `add_...` all refer to the same intrinsic to add a
 SIMD vector of bytes,
 
@@ -256,7 +256,7 @@ extern "rust-intrinsic" {
 ```
 
 These are type checked during code-generation similarly to the
-shuffles. Ensuring that `T` and `U` has the same length, and that `U`
+shuffles: ensuring that `T` and `U` have the same length, and that `U`
 is appropriately "boolean"-y. Libraries can use traits to ensure that
 these will be enforced by the type checker too.
 
@@ -406,6 +406,6 @@ cfg_if_else! {
 
 # Unresolved questions
 
-- Should integer vectors get `/` and `%` automatically? Most CPUs
-  don't support them for vectors. However
+- Should integer vectors get division automatically? Most CPUs
+  don't support them for vectors.
 - How should out-of-bounds shuffle and insert/extract indices be handled?
