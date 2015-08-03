@@ -35,8 +35,8 @@ $ rm main  # or main.exe on Windows
 
 Note that since we're creating an executable, we retain `main.rs` as the source
 filename. If we want to make a library instead, we should use `lib.rs`. This
-convention is required for Cargo to successfully compile our projects, but it
-can be overridden if we wish. Custom file locations for the entry point can be
+convention is used by Cargo to successfully compile our projects, but it can be
+overridden if we wish. Custom file locations for the entry point can be
 specified with a [`[lib]` or `[[bin]]`][crates-custom] key in the TOML file.
 
 [crates-custom]: http://doc.crates.io/manifest.html#configuring-a-target
@@ -74,7 +74,7 @@ extra goodies. According to the TOML docs,
 
 [toml]: https://github.com/toml-lang/toml
 
-Once you have this file in place in your project's root directory, we should be
+Once we have this file in place in our project's root directory, we should be
 ready to build! To do so, run:
 
 ```bash
