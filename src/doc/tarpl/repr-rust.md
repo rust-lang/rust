@@ -137,10 +137,11 @@ size and position of `tag`).
 
 However there are several cases where such a representation is inefficient. The
 classic case of this is Rust's "null pointer optimization": an enum consisting
-of a unit variant and a non-nullable pointer variant (e.g. `&u32`) makes the tag
-unnecessary, because a null pointer value can safely be interpreted to mean that
-the unit variant is chosen instead. The net result is that, for example,
-`size_of::<Option<&T>>() == size_of::<&T>()`.
+of a single outer unit variant (e.g. `None`) and a (potentially nested) non-
+nullable pointer variant (e.g. `&T`) makes the tag unnecessary, because a null
+pointer value can safely be interpreted tos mean that the unit variant is chosen
+instead. The net result is that, for example, `size_of::<Option<&T>>() ==
+size_of::<&T>()`.
 
 There are many types in Rust that are, or contain, non-nullable pointers such as
 `Box<T>`, `Vec<T>`, `String`, `&T`, and `&mut T`. Similarly, one can imagine
