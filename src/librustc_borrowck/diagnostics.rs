@@ -73,6 +73,28 @@ fn main() {
 
 To fix this, ensure that any declared variables are initialized before being
 used.
+"##,
+
+E0384: r##"
+This error occurs when an attempt is made to reassign an immutable variable.
+For example:
+
+```
+fn main(){
+    let x = 3;
+    x = 5; // error, reassignment of immutable variable
+}
+```
+
+By default, variables in Rust are immutable. To fix this error, add the keyword
+`mut` after the keyword `let` when declaring the variable. For example:
+
+```
+fn main(){
+    let mut x = 3;
+    x = 5;
+}
+```
 "##
 
 }
@@ -80,7 +102,6 @@ used.
 register_diagnostics! {
     E0382, // use of partially/collaterally moved value
     E0383, // partial reinitialization of uninitialized structure
-    E0384, // reassignment of immutable variable
     E0385, // {} in an aliasable location
     E0386, // {} in an immutable container
     E0387, // {} in a captured outer variable in an `Fn` closure
