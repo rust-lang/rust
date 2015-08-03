@@ -650,7 +650,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                     }
                 }
                 Some(def::DefConst(did)) |
-                Some(def::DefAssociatedConst(did, _)) => {
+                Some(def::DefAssociatedConst(did)) => {
                     if let Some(expr) = const_eval::lookup_const_by_id(v.tcx, did,
                                                                        Some(e.id)) {
                         let inner = v.global_expr(Mode::Const, expr);
@@ -696,9 +696,16 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                     true
                 }
-                Some(def::DefMethod(did, def::FromImpl(_))) |
                 Some(def::DefFn(did, _)) => {
                     v.handle_const_fn_call(e, did, node_ty)
+                }
+                Some(def::DefMethod(did)) => {
+                    match v.tcx.impl_or_trait_item(did).container() {
+                        ty::ImplContainer(_) => {
+                            v.handle_const_fn_call(e, did, node_ty)
+                        }
+                        ty::TraitContainer(_) => false
+                    }
                 }
                 _ => false
             };

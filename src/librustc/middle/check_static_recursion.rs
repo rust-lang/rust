@@ -238,7 +238,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
             ast::ExprPath(..) => {
                 match self.def_map.borrow().get(&e.id).map(|d| d.base_def) {
                     Some(DefStatic(def_id, _)) |
-                    Some(DefAssociatedConst(def_id, _)) |
+                    Some(DefAssociatedConst(def_id)) |
                     Some(DefConst(def_id))
                            if ast_util::is_local(def_id) => {
                         match self.ast_map.get(def_id.node) {

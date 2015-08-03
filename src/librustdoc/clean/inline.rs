@@ -107,7 +107,7 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
             record_extern_fqn(cx, did, clean::TypeStatic);
             clean::StaticItem(build_static(cx, tcx, did, mtbl))
         }
-        def::DefConst(did) | def::DefAssociatedConst(did, _) => {
+        def::DefConst(did) | def::DefAssociatedConst(did) => {
             record_extern_fqn(cx, did, clean::TypeConst);
             clean::ConstantItem(build_const(cx, tcx, did))
         }

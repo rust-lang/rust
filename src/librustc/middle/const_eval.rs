@@ -41,7 +41,7 @@ fn lookup_const<'a>(tcx: &'a ty::ctxt, e: &Expr) -> Option<&'a Expr> {
     let opt_def = tcx.def_map.borrow().get(&e.id).map(|d| d.full_def());
     match opt_def {
         Some(def::DefConst(def_id)) |
-        Some(def::DefAssociatedConst(def_id, _)) => {
+        Some(def::DefAssociatedConst(def_id)) => {
             lookup_const_by_id(tcx, def_id, Some(e.id))
         }
         Some(def::DefVariant(enum_def, variant_def, _)) => {
@@ -929,10 +929,10 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                       (lookup_const_by_id(tcx, def_id, Some(e.id)), None)
                   }
               }
-              Some(def::DefAssociatedConst(def_id, provenance)) => {
+              Some(def::DefAssociatedConst(def_id)) => {
                   if ast_util::is_local(def_id) {
-                      match provenance {
-                          def::FromTrait(trait_id) => match tcx.map.find(def_id.node) {
+                      match tcx.impl_or_trait_item(def_id).container() {
+                          ty::TraitContainer(trait_id) => match tcx.map.find(def_id.node) {
                               Some(ast_map::NodeTraitItem(ti)) => match ti.node {
                                   ast::ConstTraitItem(ref ty, _) => {
                                       if let ExprTypeChecked = ty_hint {
@@ -950,7 +950,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                               },
                               _ => (None, None)
                           },
-                          def::FromImpl(_) => match tcx.map.find(def_id.node) {
+                          ty::ImplContainer(_) => match tcx.map.find(def_id.node) {
                               Some(ast_map::NodeImplItem(ii)) => match ii.node {
                                   ast::ConstImplItem(ref ty, ref expr) => {
                                       (Some(&**expr), Some(&**ty))
