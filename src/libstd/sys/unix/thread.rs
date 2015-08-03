@@ -14,6 +14,7 @@ use prelude::v1::*;
 
 use alloc::boxed::FnBox;
 use cmp;
+#[cfg(not(target_os = "nacl"))]
 use ffi::CString;
 use io;
 use libc::consts::os::posix01::PTHREAD_STACK_MIN;
@@ -128,6 +129,10 @@ impl Thread {
             pthread_setname_np(cname.as_ptr());
         }
     }
+    #[cfg(target_env = "newlib")]
+    pub unsafe fn set_name(_name: &str) {
+        // Newlib has no way to set a thread name.
+    }
 
     pub fn sleep(dur: Duration) {
         let mut ts = libc::timespec {
@@ -202,7 +207,7 @@ pub mod guard {
         current().map(|s| s as *mut libc::c_void)
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "nacl"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         use super::pthread_attr_init;
 

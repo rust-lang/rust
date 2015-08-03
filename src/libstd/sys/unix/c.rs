@@ -24,8 +24,7 @@
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
-pub use self::signal_os::{sigaction, siginfo, sigset_t, sigaltstack};
-pub use self::signal_os::{SA_ONSTACK, SA_SIGINFO, SIGBUS, SIGSTKSZ, SIG_SETMASK};
+pub use self::signal_os::*;
 
 use libc;
 
@@ -74,6 +73,18 @@ pub struct passwd {
     pub pw_passwd: *mut libc::c_char,
     pub pw_uid: libc::uid_t,
     pub pw_gid: libc::gid_t,
+    pub pw_gecos: *mut libc::c_char,
+    pub pw_dir: *mut libc::c_char,
+    pub pw_shell: *mut libc::c_char,
+}
+#[repr(C)]
+#[cfg(target_os = "nacl")]
+pub struct passwd {
+    pub pw_name: *mut libc::c_char,
+    pub pw_passwd: *mut libc::c_char,
+    pub pw_uid: libc::uid_t,
+    pub pw_gid: libc::gid_t,
+    pub pw_comment: *mut libc::c_char,
     pub pw_gecos: *mut libc::c_char,
     pub pw_dir: *mut libc::c_char,
     pub pw_shell: *mut libc::c_char,
@@ -135,6 +146,7 @@ extern {
                      act: *const sigaction,
                      oldact: *mut sigaction) -> libc::c_int;
 
+    #[cfg(not(target_os = "nacl"))]
     pub fn sigaltstack(ss: *const sigaltstack,
                        oss: *mut sigaltstack) -> libc::c_int;
 
@@ -316,6 +328,28 @@ mod signal_os {
             pub ss_size: libc::size_t,
             pub ss_flags: libc::c_int,
         }
+    }
+}
+
+/// Note: Although the signal functions are defined on NaCl, they always fail.
+#[cfg(target_os = "nacl")]
+mod signal_os {
+    use libc;
+
+    pub static SA_NOCLDSTOP: libc::c_ulong = 1;
+    pub static SA_SIGINFO:   libc::c_ulong = 2;
+    #[repr(C)]
+    pub struct siginfo {
+        pub si_signo: libc::c_int,
+        pub si_code:  libc::c_int,
+        pub si_val:   usize,
+    }
+    pub type sigset_t = libc::c_ulong;
+    #[repr(C)]
+    pub struct sigaction {
+        pub sa_flags: libc::c_int,
+        pub sa_mask:  sigset_t,
+        pub handler:  extern fn(libc::c_int),
     }
 }
 

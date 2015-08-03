@@ -21,3 +21,19 @@ print-%:
 
 S := $(CFG_SRC_DIR)
 SREL := $(CFG_SRC_DIR_RELATIVE)
+
+ifeq ($(CFG_OSTYPE),pc-windows-gnu)
+  NACL_TOOLCHAIN_OS_PATH:=win
+else ifeq ($(CFG_OSTYPE),apple-darwin)
+  NACL_TOOLCHAIN_OS_PATH:=mac
+else
+  NACL_TOOLCHAIN_OS_PATH:=linux
+endif
+
+ifneq ("$(wildcard $(CFG_NACL_CROSS_PATH)/REV)","")
+# The user is using a toolchain built from source, or otherwise pointed
+# CFG_NACL_CROSS_PATH directly at the PNaCl toolchain root.
+CFG_PNACL_TOOLCHAIN:=$(CFG_NACL_CROSS_PATH)
+else
+CFG_PNACL_TOOLCHAIN:=$(CFG_NACL_CROSS_PATH)/toolchain/$(NACL_TOOLCHAIN_OS_PATH)_pnacl
+endif

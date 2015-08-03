@@ -273,6 +273,12 @@ endif
 LLVM_COMPONENTS=x86 arm aarch64 mips powerpc ipo bitreader bitwriter linker asmparser mcjit \
                 interpreter instrumentation
 
+ifneq ($(CFG_LLVM_ROOT),)
+# Ensure we only try to link components that the installed LLVM actually has:
+LLVM_COMPONENTS:=$(filter $(shell $(CFG_LLVM_ROOT)/bin/llvm-config$(X_$(CFG_BUILD)) --components),\
+			$(LLVM_COMPONENTS))
+endif
+
 # Only build these LLVM tools
 LLVM_TOOLS=bugpoint llc llvm-ar llvm-as llvm-dis llvm-mc opt llvm-extract
 
@@ -282,12 +288,22 @@ define DEF_LLVM_VARS
 ifeq ($$(CFG_LLVM_ROOT),)
 CFG_LLVM_BUILD_DIR_$(1):=$$(CFG_LLVM_BUILD_DIR_$(subst -,_,$(1)))
 CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_INST_DIR_$(subst -,_,$(1)))
-else
-CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_ROOT)
-endif
 
+# We need to use a copy of llvm-config that can run on the build machine:
+ifneq ($$(CFG_BUILD),$(1))
+LLVM_CONFIG_$(1):=$$(CFG_LLVM_BUILD_DIR_$(subst -,_,$(1)))/BuildTools/$$(CFG_LLVM_BUILD_SUBDIR_$(subst -,_,$(1)))/bin/llvm-config$$(X_$$(CFG_BUILD))
+else
 # Any rules that depend on LLVM should depend on LLVM_CONFIG
 LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config$$(X_$(1))
+endif
+
+else
+CFG_LLVM_INST_DIR_$(1):=$$(CFG_LLVM_ROOT)
+# Any rules that depend on LLVM should depend on LLVM_CONFIG
+LLVM_CONFIG_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-config$$(X_$(1))
+endif
+
+
 LLVM_MC_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-mc$$(X_$(1))
 LLVM_AR_$(1):=$$(CFG_LLVM_INST_DIR_$(1))/bin/llvm-ar$$(X_$(1))
 LLVM_VERSION_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --version)
@@ -295,13 +311,16 @@ LLVM_BINDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --bindir)
 LLVM_INCDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --includedir)
 LLVM_LIBDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libdir)
 LLVM_LIBDIR_RUSTFLAGS_$(1)=-L "$$(LLVM_LIBDIR_$(1))"
+LLVM_LIBS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libs $$(LLVM_COMPONENTS))
 LLVM_LDFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --ldflags)
 ifeq ($$(findstring freebsd,$(1)),freebsd)
 # On FreeBSD, it may search wrong headers (that are for pre-installed LLVM),
 # so we replace -I with -iquote to ensure that it searches bundled LLVM first.
-LLVM_CXXFLAGS_$(1)=$$(subst -I, -iquote , $$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags))
+LLVM_CXXFLAGS_$(1)=$$(subst -I, -iquote , $$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags) $$(CXXFLAGS))
 else
-LLVM_CXXFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags)
+LLVM_CXXFLAGS_$(1)=$$(filter-out $$(LLVM_FILTER_CXXFLAGS_$(1)),      \
+			$$(shell "$$(LLVM_CONFIG_$(1))" --cxxflags) $$(CXXFLAGS)) \
+		   $$(LLVM_EXTRA_CXXFLAGS_$(1))
 endif
 LLVM_HOST_TRIPLE_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --host-target)
 
@@ -458,9 +477,9 @@ endif
 endif
 
 LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3) := \
-    $$(CURDIR)/$$(HLIB$(1)_H_$(3))
+    $$(CURDIR)/$$(HLIB$(1)_H_$(3)):$$(CFG_LLVM_INST_DIR_$(3))/lib
 LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3) := \
-    $$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD))
+    $$(CURDIR)/$$(TLIB1_T_$(2)_H_$(CFG_BUILD)):$$(CFG_LLVM_INST_DIR_$(CFG_BUILD))/lib
 
 HOST_RPATH_VAR$(1)_T_$(2)_H_$(3) := \
   $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))=$$(LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3)):$$$$$$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))

@@ -12,6 +12,7 @@
 
 #include "rustllvm.h"
 
+#include "llvm/MC/MCTargetOptionsCommandFlags.h"
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
@@ -103,6 +104,7 @@ LLVMRustCreateTargetMachine(const char *triple,
     if (UseSoftFloat) {
         Options.FloatABIType = FloatABI::Soft;
     }
+    Options.MCOptions = InitMCTargetOptionsFromFlags();
     Options.DataSections = DataSections;
     Options.FunctionSections = FunctionSections;
 
@@ -138,7 +140,9 @@ LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
 #else
     PM->add(new DataLayoutPass(unwrap(M)));
 #endif
-    unwrap(TM)->addAnalysisPasses(*PM);
+    if(TM != NULL) {
+      unwrap(TM)->addAnalysisPasses(*PM);
+    }
 #endif
 }
 

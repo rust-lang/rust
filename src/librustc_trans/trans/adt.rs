@@ -735,12 +735,19 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             //
             // FIXME #10604: this breaks when vector types are present.
             let (size, align) = union_size_and_align(&sts[..]);
-            let align_s = align as u64;
-            assert_eq!(size % align_s, 0);
-            let align_units = size / align_s - 1;
-
+            let align_s = if align > 8 && cx.sess().target.target.options.is_like_pnacl {
+                // On PNaCl, we have no way to represent any alignment larger
+                // than 8 (well, we do, but the common 16 byte vector is out).
+                // Fortunately, due to PNaCl's restricted IR, we don't have to
+                // worry about alignment (I think).
+                8u64
+            } else {
+                align as u64
+            };
             let discr_ty = ll_inttype(cx, ity);
             let discr_size = machine::llsize_of_alloc(cx, discr_ty);
+            assert_eq!(size % align_s, 0);
+            let align_units = size / align_s - 1;
             let fill_ty = match align_s {
                 1 => Type::array(&Type::i8(cx), align_units),
                 2 => Type::array(&Type::i16(cx), align_units),
@@ -751,6 +758,13 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                               align_units),
                 _ => panic!("unsupported enum alignment: {}", align)
             };
+
+            // This check will fail in the presence of SIMD types while
+            // targeting PNaCl. This is because the DataLayout PNaCl uses
+            // specifies that vectors of 128 bits get an alignment of only 32
+            // bits, preventing us from using them to force alignment.
+            // However, on PNaCl, it shouldn't matter anyway, hence the hack
+            // above.
             assert_eq!(machine::llalign_of_min(cx, fill_ty), align);
             assert_eq!(align_s % discr_size, 0);
             let fields = [discr_ty,

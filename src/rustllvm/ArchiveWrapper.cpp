@@ -12,7 +12,7 @@
 
 #include "llvm/Object/Archive.h"
 
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 7 && !PNACL_LLVM
 #include "llvm/Object/ArchiveWriter.h"
 #endif
 
@@ -35,6 +35,11 @@ typedef OwningBinary<Archive> RustArchive;
 typedef Archive RustArchive;
 #define GET_ARCHIVE(a) (a)
 #endif
+
+extern "C" bool
+LLVMRustUseArchiveWriter() {
+  return LLVM_VERSION_MINOR >= 7 && !PNACL_LLVM;
+}
 
 extern "C" void*
 LLVMRustOpenArchive(char *path) {
@@ -156,7 +161,7 @@ LLVMRustWriteArchive(char *Dst,
                      const LLVMRustArchiveMember **NewMembers,
                      bool WriteSymbtab,
                      Archive::Kind Kind) {
-#if LLVM_VERSION_MINOR >= 7
+#if LLVM_VERSION_MINOR >= 7 && !PNACL_LLVM
   std::vector<NewArchiveIterator> Members;
 
   for (size_t i = 0; i < NumMembers; i++) {

@@ -60,6 +60,15 @@ pub fn errno() -> i32 {
         extern { fn __errno_location() -> *const c_int; }
         __errno_location()
     }
+    #[cfg(target_env = "newlib")]
+    fn errno_location() -> *const c_int {
+        extern {
+            fn __errno() -> *const c_int;
+        }
+        unsafe {
+            __errno()
+        }
+    }
 
     unsafe {
         (*errno_location()) as i32
@@ -68,13 +77,13 @@ pub fn errno() -> i32 {
 
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "nacl"))]
     extern {
         #[link_name = "__xpg_strerror_r"]
         fn strerror_r(errnum: c_int, buf: *mut c_char,
                       buflen: libc::size_t) -> c_int;
     }
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "nacl")))]
     extern {
         fn strerror_r(errnum: c_int, buf: *mut c_char,
                       buflen: libc::size_t) -> c_int;
@@ -233,7 +242,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
+#[cfg(any(target_os = "linux", target_os = "android", target_os = "nacl"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     ::fs::read_link("/proc/self/exe")
 }
@@ -354,7 +363,8 @@ pub fn args() -> Args {
           target_os = "dragonfly",
           target_os = "bitrig",
           target_os = "netbsd",
-          target_os = "openbsd"))]
+          target_os = "openbsd",
+          target_os = "nacl"))]
 pub fn args() -> Args {
     use rt;
     let bytes = rt::args::clone().unwrap_or(Vec::new());
@@ -466,10 +476,12 @@ pub fn home_dir() -> Option<PathBuf> {
     }).map(PathBuf::from);
 
     #[cfg(any(target_os = "android",
-              target_os = "ios"))]
+              target_os = "ios",
+              target_os = "nacl"))]
     unsafe fn fallback() -> Option<OsString> { None }
     #[cfg(not(any(target_os = "android",
-                  target_os = "ios")))]
+                  target_os = "ios",
+                  target_os = "nacl")))]
     unsafe fn fallback() -> Option<OsString> {
         let amt = match libc::sysconf(c::_SC_GETPW_R_SIZE_MAX) {
             n if n < 0 => 512 as usize,

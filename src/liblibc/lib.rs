@@ -169,9 +169,6 @@ extern {}
 // pnaclmm provides a number of functions that the toolchain's Clang emits calls
 // to when codegening atomic ops. All the functions within wrap various atomic
 // operations.
-// Yes, it could be linked by rustc explicitly, however by linking it here
-// instead we save a bit of time where bins are involved (by not running the
-// optimizations on the whole pnaclmm foreach binary built).
 #[cfg(all(target_os = "nacl", not(feature = "cargo-build"), not(test)))]
 #[link(name = "pnaclmm", kind = "static")]
 extern {}
@@ -486,7 +483,7 @@ pub mod types {
                 pub type blksize_t = i32;
                 pub type blkcnt_t = i32;
 
-                #[repr(C)]
+                #[repr(C)] #[cfg(not(target_os = "nacl"))]
                 #[derive(Copy, Clone)] pub struct stat {
                     pub st_dev: dev_t,
                     pub __pad1: c_short,
@@ -508,6 +505,25 @@ pub mod types {
                     pub st_ctime_nsec: c_long,
                     pub __unused4: c_long,
                     pub __unused5: c_long,
+                }
+                #[repr(C)] #[cfg(target_os = "nacl")]
+                #[derive(Copy, Clone)] pub struct stat {
+                    pub st_dev: dev_t,
+                    pub st_ino: ino_t,
+                    pub st_mode: mode_t,
+                    pub st_nlink: nlink_t,
+                    pub st_uid: uid_t,
+                    pub st_gid: gid_t,
+                    pub st_rdev: dev_t,
+                    pub st_size: off_t,
+                    pub st_blksize: blksize_t,
+                    pub st_blocks: blkcnt_t,
+                    pub st_atime: time_t,
+                    pub st_atime_nsec: c_long,
+                    pub st_mtime: time_t,
+                    pub st_mtime_nsec: c_long,
+                    pub st_ctime: time_t,
+                    pub st_ctime_nsec: c_long,
                 }
 
                 #[repr(C)]
@@ -5914,6 +5930,7 @@ pub mod funcs {
                             -> ssize_t;
                 pub fn rmdir(path: *const c_char) -> c_int;
                 pub fn setgid(gid: gid_t) -> c_int;
+                pub fn setsid() -> pid_t;
                 pub fn setuid(uid: uid_t) -> c_int;
                 pub fn sleep(secs: c_uint) -> c_uint;
                 pub fn usleep(secs: c_uint) -> c_int;
