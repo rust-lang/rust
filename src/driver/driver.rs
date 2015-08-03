@@ -24,7 +24,7 @@ fn main() { this::main() }
 // On PNaCl, `libcli_main` defines `main` and in it calls the function
 // `nacl_main`, which we define here, by setting the `main_link_name`
 // attribute.
-#[cfg(target_os = "nacl")] #[main_link_name = "nacl_main"]
+#[cfg(target_os = "nacl")] #[link_name = "nacl_main"]
 fn main() { this::main() }
 
 // All of the following libraries are used so "normal" `main` based programs can

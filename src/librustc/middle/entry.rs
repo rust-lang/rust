@@ -86,7 +86,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
                             if ctxt.main_fn.is_none() {
                                 let link_name =
                                     attr::first_attr_value_str_by_name(&item.attrs,
-                                                                       "main_link_name")
+                                                                       "link_name")
                                     .unwrap_or_else(|| {
                                         token::InternedString::new_from_name(ctxt.main_name)
                                     });
@@ -105,7 +105,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
             if attr::contains_name(&item.attrs, "main") {
                 if ctxt.attr_main_fn.is_none() {
                     let link_name = attr::first_attr_value_str_by_name(&item.attrs,
-                                                                       "main_link_name")
+                                                                       "link_name")
                         .unwrap_or_else(|| {
                             token::InternedString::new_from_name(ctxt.main_name)
                         });
@@ -119,7 +119,7 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
             if attr::contains_name(&item.attrs, "start") {
                 if ctxt.start_fn.is_none() {
                     let link_name = attr::first_attr_value_str_by_name(&item.attrs,
-                                                                       "main_link_name")
+                                                                       "link_name")
                         .unwrap_or_else(|| {
                             token::InternedString::new_from_name(ctxt.main_name)
                         });

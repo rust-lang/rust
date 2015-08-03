@@ -303,7 +303,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("no_main", CrateLevel),
     ("no_builtins", CrateLevel),
     ("recursion_limit", CrateLevel),
-    ("main_link_name", Normal),
 ];
 
 #[derive(PartialEq, Copy, Clone, Debug)]
