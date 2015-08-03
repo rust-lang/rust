@@ -1580,7 +1580,7 @@ pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
                     &fld.cx.parse_sess.span_diagnostic,
                     "type_macros",
                     t.span,
-                    "type macros are experimental (see tracking issue: 27336)");
+                    "type macros are experimental (see issue: #27336)");
                 t
             }
         }
