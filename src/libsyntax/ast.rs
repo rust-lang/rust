@@ -1097,6 +1097,17 @@ impl TokenTree {
             }
             (&TtToken(sp, token::DocComment(name)), _) => {
                 let stripped = strip_doc_comment_decoration(&name.as_str());
+
+                // Count number of consecutive characters in string.
+                fn max_consecutive(s: &str, c: char) -> usize {
+                    let it = s.chars().scan(0, |count, x| {
+                        if x == c { *count += 1 } else { *count = 0 }
+                        Some(*count)
+                    });
+                    it.max().unwrap_or(0)
+                }
+                let delims = max_consecutive(&stripped, '#') + 1;
+
                 TtDelimited(sp, Rc::new(Delimited {
                     delim: token::Bracket,
                     open_span: sp,
@@ -1104,7 +1115,7 @@ impl TokenTree {
                                                        token::Plain)),
                               TtToken(sp, token::Eq),
                               TtToken(sp, token::Literal(
-                                  token::StrRaw(token::intern(&stripped), 0), None))],
+                                  token::StrRaw(token::intern(&stripped), delims), None))],
                     close_span: sp,
                 }))
             }
