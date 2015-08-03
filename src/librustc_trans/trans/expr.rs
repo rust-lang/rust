@@ -1293,14 +1293,22 @@ pub fn trans_def_fn_unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     match def {
         def::DefFn(did, _) |
-        def::DefStruct(did) | def::DefVariant(_, did, _) |
-        def::DefMethod(did, def::FromImpl(_)) => {
+        def::DefStruct(did) | def::DefVariant(_, did, _) => {
             callee::trans_fn_ref(ccx, did, ExprId(ref_expr.id), param_substs)
         }
-        def::DefMethod(impl_did, def::FromTrait(trait_did)) => {
-            meth::trans_static_method_callee(ccx, impl_did,
-                                             trait_did, ref_expr.id,
-                                             param_substs)
+        def::DefMethod(method_did) => {
+            match ccx.tcx().impl_or_trait_item(method_did).container() {
+                ty::ImplContainer(_) => {
+                    callee::trans_fn_ref(ccx, method_did,
+                                         ExprId(ref_expr.id),
+                                         param_substs)
+                }
+                ty::TraitContainer(trait_did) => {
+                    meth::trans_static_method_callee(ccx, method_did,
+                                                     trait_did, ref_expr.id,
+                                                     param_substs)
+                }
+            }
         }
         _ => {
             ccx.tcx().sess.span_bug(ref_expr.span, &format!(

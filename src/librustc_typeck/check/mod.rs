@@ -4447,9 +4447,9 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             (ty::TypeScheme { generics: ty::Generics::empty(), ty: typ },
              ty::GenericPredicates::empty())
         }
-        def::DefFn(id, _) | def::DefMethod(id, _) |
+        def::DefFn(id, _) | def::DefMethod(id) |
         def::DefStatic(id, _) | def::DefVariant(_, id, _) |
-        def::DefStruct(id) | def::DefConst(id) | def::DefAssociatedConst(id, _) => {
+        def::DefStruct(id) | def::DefConst(id) | def::DefAssociatedConst(id) => {
             (fcx.tcx().lookup_item_type(id), fcx.tcx().lookup_predicates(id))
         }
         def::DefTrait(_) |
@@ -4555,7 +4555,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     assert!(!segments.is_empty());
 
-    let mut ufcs_method = None;
+    let mut ufcs_associated = None;
     let mut segment_spaces: Vec<_>;
     match def {
         // Case 1 and 1b. Reference to a *type* or *enum variant*.
@@ -4582,12 +4582,13 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         // Case 3. Reference to a method.
-        def::DefMethod(_, provenance) => {
-            match provenance {
-                def::FromTrait(trait_did) => {
+        def::DefMethod(def_id) => {
+            let container = fcx.tcx().impl_or_trait_item(def_id).container();
+            match container {
+                ty::TraitContainer(trait_did) => {
                     callee::check_legal_trait_for_method_call(fcx.ccx, span, trait_did)
                 }
-                def::FromImpl(_) => {}
+                ty::ImplContainer(_) => {}
             }
 
             if segments.len() >= 2 {
@@ -4598,16 +4599,17 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 // `<T>::method` will end up here, and so can `T::method`.
                 let self_ty = opt_self_ty.expect("UFCS sugared method missing Self");
                 segment_spaces = vec![Some(subst::FnSpace)];
-                ufcs_method = Some((provenance, self_ty));
+                ufcs_associated = Some((container, self_ty));
             }
         }
 
-        def::DefAssociatedConst(_, provenance) => {
-            match provenance {
-                def::FromTrait(trait_did) => {
+        def::DefAssociatedConst(def_id) => {
+            let container = fcx.tcx().impl_or_trait_item(def_id).container();
+            match container {
+                ty::TraitContainer(trait_did) => {
                     callee::check_legal_trait_for_method_call(fcx.ccx, span, trait_did)
                 }
-                def::FromImpl(_) => {}
+                ty::ImplContainer(_) => {}
             }
 
             if segments.len() >= 2 {
@@ -4615,7 +4617,10 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 segment_spaces.push(Some(subst::TypeSpace));
                 segment_spaces.push(None);
             } else {
+                // `<T>::CONST` will end up here, and so can `T::CONST`.
+                let self_ty = opt_self_ty.expect("UFCS sugared const missing Self");
                 segment_spaces = vec![None];
+                ufcs_associated = Some((container, self_ty));
             }
         }
 
@@ -4637,7 +4642,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // In `<T as Trait<A, B>>::method`, `A` and `B` are mandatory, but
     // `opt_self_ty` can also be Some for `Foo::method`, where Foo's
     // type parameters are not mandatory.
-    let require_type_space = opt_self_ty.is_some() && ufcs_method.is_none();
+    let require_type_space = opt_self_ty.is_some() && ufcs_associated.is_none();
 
     debug!("segment_spaces={:?}", segment_spaces);
 
@@ -4707,7 +4712,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let ty_substituted = fcx.instantiate_type_scheme(span, &substs, &type_scheme.ty);
 
 
-    if let Some((def::FromImpl(impl_def_id), self_ty)) = ufcs_method {
+    if let Some((ty::ImplContainer(impl_def_id), self_ty)) = ufcs_associated {
         // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
         // is inherent, there is no `Self` parameter, instead, the impl needs
         // type parameters, which we can infer by unifying the provided `Self`

@@ -3448,7 +3448,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Look for a method in the current self type's impl module.
         if let Some(module) = get_module(self, path.span, &name_path) {
             if let Some(binding) = module.children.borrow().get(&name) {
-                if let Some(DefMethod(did, _)) = binding.def_for_namespace(ValueNS) {
+                if let Some(DefMethod(did)) = binding.def_for_namespace(ValueNS) {
                     if is_static_method(self, did) {
                         return StaticMethod(path_names_to_string(&path, 0))
                     }

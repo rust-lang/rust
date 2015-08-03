@@ -551,12 +551,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     scope: self.enclosing_scope(id),
                 }))
             }
-            def::DefMethod(decl_id, provenence) => {
+            def::DefMethod(decl_id) => {
                 let sub_span = self.span_utils.sub_span_for_meth_name(path.span);
                 let def_id = if decl_id.krate == ast::LOCAL_CRATE {
                     let ti = self.tcx.impl_or_trait_item(decl_id);
-                    match provenence {
-                        def::FromTrait(def_id) => {
+                    match ti.container() {
+                        ty::TraitContainer(def_id) => {
                             self.tcx.trait_items(def_id)
                                 .iter()
                                 .find(|mr| {
@@ -564,7 +564,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 })
                                 .map(|mr| mr.def_id())
                         }
-                        def::FromImpl(def_id) => {
+                        ty::ImplContainer(def_id) => {
                             let impl_items = self.tcx.impl_items.borrow();
                             Some(impl_items.get(&def_id)
                                            .unwrap()
