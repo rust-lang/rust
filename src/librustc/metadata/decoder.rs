@@ -299,15 +299,7 @@ fn item_to_def_like(cdata: Cmd, item: rbml::Doc, did: ast::DefId) -> DefLike {
         Constant  => {
             // Check whether we have an associated const item.
             if item_sort(item) == Some('C') {
-                // Check whether the associated const is from a trait or impl.
-                // See the comment for methods below.
-                let provenance = if reader::maybe_get_doc(
-                      item, tag_item_trait_parent_sort).is_some() {
-                    def::FromTrait(item_require_parent_item(cdata, item))
-                } else {
-                    def::FromImpl(item_require_parent_item(cdata, item))
-                };
-                DlDef(def::DefAssociatedConst(did, provenance))
+                DlDef(def::DefAssociatedConst(did))
             } else {
                 // Regular const item.
                 DlDef(def::DefConst(did))
@@ -319,18 +311,7 @@ fn item_to_def_like(cdata: Cmd, item: rbml::Doc, did: ast::DefId) -> DefLike {
         Fn        => DlDef(def::DefFn(did, false)),
         CtorFn    => DlDef(def::DefFn(did, true)),
         Method | StaticMethod => {
-            // def_static_method carries an optional field of its enclosing
-            // trait or enclosing impl (if this is an inherent static method).
-            // So we need to detect whether this is in a trait or not, which
-            // we do through the mildly hacky way of checking whether there is
-            // a trait_parent_sort.
-            let provenance = if reader::maybe_get_doc(
-                  item, tag_item_trait_parent_sort).is_some() {
-                def::FromTrait(item_require_parent_item(cdata, item))
-            } else {
-                def::FromImpl(item_require_parent_item(cdata, item))
-            };
-            DlDef(def::DefMethod(did, provenance))
+            DlDef(def::DefMethod(did))
         }
         Type => {
             if item_sort(item) == Some('t') {

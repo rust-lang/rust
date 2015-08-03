@@ -229,7 +229,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ast::ExprPath(..) => {
             let def = ccx.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
             match def {
-                def::DefConst(def_id) | def::DefAssociatedConst(def_id, _) => {
+                def::DefConst(def_id) | def::DefAssociatedConst(def_id) => {
                     if !ccx.tcx().tables.borrow().adjustments.contains_key(&expr.id) {
                         debug!("get_const_expr_as_global ({:?}): found const {:?}",
                                expr.id, def_id);
@@ -802,7 +802,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 def::DefFn(..) | def::DefMethod(..) => {
                     expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                 }
-                def::DefConst(def_id) | def::DefAssociatedConst(def_id, _) => {
+                def::DefConst(def_id) | def::DefAssociatedConst(def_id) => {
                     const_deref_ptr(cx, get_const_val(cx, def_id, e))
                 }
                 def::DefVariant(enum_did, variant_did, _) => {
@@ -846,9 +846,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let def = cx.tcx().def_map.borrow()[&callee.id].full_def();
             let arg_vals = map_list(args);
             match def {
-                def::DefFn(did, _) | def::DefMethod(did, _) => {
+                def::DefFn(did, _) | def::DefMethod(did) => {
                     const_fn_call(cx, ExprId(callee.id), did, &arg_vals, param_substs)
-                },
+                }
                 def::DefStruct(_) => {
                     if ety.is_simd(cx.tcx()) {
                         C_vector(&arg_vals[..])
@@ -856,7 +856,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         let repr = adt::represent_type(cx, ety);
                         adt::trans_const(cx, &*repr, 0, &arg_vals[..])
                     }
-                },
+                }
                 def::DefVariant(enum_did, variant_did, _) => {
                     let repr = adt::represent_type(cx, ety);
                     let vinfo = cx.tcx().enum_variant_with_id(enum_did, variant_did);
@@ -864,14 +864,14 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                      &*repr,
                                      vinfo.disr_val,
                                      &arg_vals[..])
-                },
+                }
                 _ => cx.sess().span_bug(e.span, "expected a struct, variant, or const fn def"),
             }
         },
         ast::ExprMethodCall(_, _, ref args) => {
             let arg_vals = map_list(args);
             let method_call = ty::MethodCall::expr(e.id);
-              let method_did = cx.tcx().tables.borrow().method_map[&method_call].def_id;
+            let method_did = cx.tcx().tables.borrow().method_map[&method_call].def_id;
             const_fn_call(cx, MethodCallKey(method_call),
                           method_did, &arg_vals, param_substs)
         },

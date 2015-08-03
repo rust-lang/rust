@@ -719,7 +719,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         let def_map = self.tcx.def_map.borrow();
         let def = def_map.get(&id).unwrap().full_def();
         match def {
-            def::DefMethod(did, _) => {
+            def::DefMethod(did) => {
                 let ti = self.tcx.impl_or_trait_item(did);
                 if let ty::MethodTraitItem(m) = ti {
                     if m.explicit_self == ty::StaticExplicitSelfCategory {
