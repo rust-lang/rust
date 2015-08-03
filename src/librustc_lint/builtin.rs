@@ -33,7 +33,6 @@
 
 use metadata::{csearch, decoder};
 use middle::{cfg, def, infer, pat_util, stability, traits};
-use middle::def::*;
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use middle::const_eval::{eval_const_expr_partial, ConstVal};
@@ -2251,34 +2250,73 @@ impl LintPass for UnconditionalRecursion {
             }
         }
 
-        // Check if the method call `id` refers to method `method`.
+        // Check if the expression `id` performs a call to `method`.
         fn expr_refers_to_this_method(tcx: &ty::ctxt,
                                       method: &ty::Method,
                                       id: ast::NodeId) -> bool {
-            let method_call = ty::MethodCall::expr(id);
-            let callee = match tcx.tables.borrow().method_map.get(&method_call) {
-                Some(&m) => m,
-                None => return false
-            };
-            let callee_item = tcx.impl_or_trait_item(callee.def_id);
+            let tables = tcx.tables.borrow();
+
+            // Check for method calls and overloaded operators.
+            if let Some(m) = tables.method_map.get(&ty::MethodCall::expr(id)) {
+                if method_call_refers_to_method(tcx, method, m.def_id, m.substs, id) {
+                    return true;
+                }
+            }
+
+            // Check for overloaded autoderef method calls.
+            if let Some(&ty::AdjustDerefRef(ref adj)) = tables.adjustments.get(&id) {
+                for i in 0..adj.autoderefs {
+                    let method_call = ty::MethodCall::autoderef(id, i as u32);
+                    if let Some(m) = tables.method_map.get(&method_call) {
+                        if method_call_refers_to_method(tcx, method, m.def_id, m.substs, id) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            // Check for calls to methods via explicit paths (e.g. `T::method()`).
+            match tcx.map.get(id) {
+                ast_map::NodeExpr(&ast::Expr { node: ast::ExprCall(ref callee, _), .. }) => {
+                    match tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def()) {
+                        Some(def::DefMethod(def_id)) => {
+                            let no_substs = &ty::ItemSubsts::empty();
+                            let ts = tables.item_substs.get(&callee.id).unwrap_or(no_substs);
+                            method_call_refers_to_method(tcx, method, def_id, &ts.substs, id)
+                        }
+                        _ => false
+                    }
+                }
+                _ => false
+            }
+        }
+
+        // Check if the method call to the method with the ID `callee_id`
+        // and instantiated with `callee_substs` refers to method `method`.
+        fn method_call_refers_to_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                              method: &ty::Method,
+                                              callee_id: ast::DefId,
+                                              callee_substs: &Substs<'tcx>,
+                                              expr_id: ast::NodeId) -> bool {
+            let callee_item = tcx.impl_or_trait_item(callee_id);
 
             match callee_item.container() {
                 // This is an inherent method, so the `def_id` refers
                 // directly to the method definition.
                 ty::ImplContainer(_) => {
-                    callee.def_id == method.def_id
+                    callee_id == method.def_id
                 }
 
                 // A trait method, from any number of possible sources.
                 // Attempt to select a concrete impl before checking.
                 ty::TraitContainer(trait_def_id) => {
-                    let trait_substs = callee.substs.clone().method_to_trait();
+                    let trait_substs = callee_substs.clone().method_to_trait();
                     let trait_substs = tcx.mk_substs(trait_substs);
                     let trait_ref = ty::TraitRef::new(trait_def_id, trait_substs);
                     let trait_ref = ty::Binder(trait_ref);
-                    let span = tcx.map.span(id);
+                    let span = tcx.map.span(expr_id);
                     let obligation =
-                        traits::Obligation::new(traits::ObligationCause::misc(span, id),
+                        traits::Obligation::new(traits::ObligationCause::misc(span, expr_id),
                                                 trait_ref.to_poly_trait_predicate());
 
                     let param_env = ty::ParameterEnvironment::for_item(tcx, method.def_id.node);
@@ -2289,12 +2327,12 @@ impl LintPass for UnconditionalRecursion {
                         // If `T` is `Self`, then this call is inside
                         // a default method definition.
                         Ok(Some(traits::VtableParam(_))) => {
-                            let self_ty = callee.substs.self_ty();
+                            let self_ty = callee_substs.self_ty();
                             let on_self = self_ty.map_or(false, |t| t.is_self());
                             // We can only be recurring in a default
                             // method if we're being called literally
                             // on the `Self` type.
-                            on_self && callee.def_id == method.def_id
+                            on_self && callee_id == method.def_id
                         }
 
                         // The `impl` is known, so we check that with a
@@ -2454,7 +2492,7 @@ impl LintPass for MutableTransmutes {
                 ast::ExprPath(..) => (),
                 _ => return None
             }
-            if let DefFn(did, _) = cx.tcx.resolve_expr(expr) {
+            if let def::DefFn(did, _) = cx.tcx.resolve_expr(expr) {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
