@@ -28,8 +28,8 @@ use syntax::print::pprust::ty_to_string;
 use self::span_utils::SpanUtils;
 
 
-mod span_utils;
-mod recorder;
+pub mod span_utils;
+pub mod recorder;
 
 mod dump_csv;
 
@@ -661,7 +661,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     #[inline]
-    fn enclosing_scope(&self, id: NodeId) -> NodeId {
+    pub fn enclosing_scope(&self, id: NodeId) -> NodeId {
         self.tcx.map.get_enclosing_scope(id).unwrap_or(0)
     }
 }
