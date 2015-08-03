@@ -545,14 +545,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                     match trait_item.node {
                         ast::ConstTraitItem(..) => {
-                            let def = DefAssociatedConst(local_def(trait_item.id),
-                                                         FromTrait(local_def(item.id)));
+                            let def = DefAssociatedConst(local_def(trait_item.id));
                             // NB: not DefModifiers::IMPORTABLE
                             name_bindings.define_value(def, trait_item.span, DefModifiers::PUBLIC);
                         }
                         ast::MethodTraitItem(..) => {
-                            let def = DefMethod(local_def(trait_item.id),
-                                                FromTrait(local_def(item.id)));
+                            let def = DefMethod(local_def(trait_item.id));
                             // NB: not DefModifiers::IMPORTABLE
                             name_bindings.define_value(def, trait_item.span, DefModifiers::PUBLIC);
                         }

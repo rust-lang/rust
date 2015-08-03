@@ -444,9 +444,7 @@ impl tr for def::Def {
     fn tr(&self, dcx: &DecodeContext) -> def::Def {
         match *self {
           def::DefFn(did, is_ctor) => def::DefFn(did.tr(dcx), is_ctor),
-          def::DefMethod(did, p) => {
-            def::DefMethod(did.tr(dcx), p.map(|did2| did2.tr(dcx)))
-          }
+          def::DefMethod(did) => def::DefMethod(did.tr(dcx)),
           def::DefSelfTy(opt_did, impl_ids) => { def::DefSelfTy(opt_did.map(|did| did.tr(dcx)),
                                                                 impl_ids.map(|(nid1, nid2)| {
                                                                     (dcx.tr_id(nid1),
@@ -456,9 +454,7 @@ impl tr for def::Def {
           def::DefForeignMod(did) => { def::DefForeignMod(did.tr(dcx)) }
           def::DefStatic(did, m) => { def::DefStatic(did.tr(dcx), m) }
           def::DefConst(did) => { def::DefConst(did.tr(dcx)) }
-          def::DefAssociatedConst(did, p) => {
-              def::DefAssociatedConst(did.tr(dcx), p.map(|did2| did2.tr(dcx)))
-          }
+          def::DefAssociatedConst(did) => def::DefAssociatedConst(did.tr(dcx)),
           def::DefLocal(nid) => { def::DefLocal(dcx.tr_id(nid)) }
           def::DefVariant(e_did, v_did, is_s) => {
             def::DefVariant(e_did.tr(dcx), v_did.tr(dcx), is_s)

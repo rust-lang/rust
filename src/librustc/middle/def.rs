@@ -9,7 +9,6 @@
 // except according to those terms.
 
 pub use self::Def::*;
-pub use self::MethodProvenance::*;
 
 use middle::privacy::LastPrivate;
 use middle::subst::ParamSpace;
@@ -28,7 +27,7 @@ pub enum Def {
     DefForeignMod(ast::DefId),
     DefStatic(ast::DefId, bool /* is_mutbl */),
     DefConst(ast::DefId),
-    DefAssociatedConst(ast::DefId /* const */, MethodProvenance),
+    DefAssociatedConst(ast::DefId),
     DefLocal(ast::NodeId),
     DefVariant(ast::DefId /* enum */, ast::DefId /* variant */, bool /* is_structure */),
     DefTy(ast::DefId, bool /* is_enum */),
@@ -51,7 +50,7 @@ pub enum Def {
     DefStruct(ast::DefId),
     DefRegion(ast::NodeId),
     DefLabel(ast::NodeId),
-    DefMethod(ast::DefId /* method */, MethodProvenance),
+    DefMethod(ast::DefId),
 }
 
 /// The result of resolving a path.
@@ -112,23 +111,6 @@ pub struct Export {
     pub def_id: ast::DefId, // The definition of the target.
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum MethodProvenance {
-    FromTrait(ast::DefId),
-    FromImpl(ast::DefId),
-}
-
-impl MethodProvenance {
-    pub fn map<F>(self, f: F) -> MethodProvenance where
-        F: FnOnce(ast::DefId) -> ast::DefId,
-    {
-        match self {
-            FromTrait(did) => FromTrait(f(did)),
-            FromImpl(did) => FromImpl(f(did))
-        }
-    }
-}
-
 impl Def {
     pub fn local_node_id(&self) -> ast::NodeId {
         let def_id = self.def_id();
@@ -141,7 +123,7 @@ impl Def {
             DefFn(id, _) | DefMod(id) | DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(_, id) |
             DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
-            DefMethod(id, _) | DefConst(id) | DefAssociatedConst(id, _) |
+            DefMethod(id) | DefConst(id) | DefAssociatedConst(id) |
             DefSelfTy(Some(id), None)=> {
                 id
             }

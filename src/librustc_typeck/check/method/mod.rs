@@ -334,19 +334,14 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
     let def_id = pick.item.def_id();
     let mut lp = LastMod(AllPublic);
-    let container_def_id = pick.item.container().id();
-    let provenance = match pick.kind {
-        probe::InherentImplPick => {
-            if pick.item.vis() != ast::Public {
-                lp = LastMod(DependsOn(def_id));
-            }
-            def::FromImpl(container_def_id)
+    if let probe::InherentImplPick = pick.kind {
+        if pick.item.vis() != ast::Public {
+            lp = LastMod(DependsOn(def_id));
         }
-        _ => def::FromTrait(container_def_id)
-    };
+    }
     let def_result = match pick.item {
-        ty::ImplOrTraitItem::MethodTraitItem(..) => def::DefMethod(def_id, provenance),
-        ty::ImplOrTraitItem::ConstTraitItem(..) => def::DefAssociatedConst(def_id, provenance),
+        ty::ImplOrTraitItem::MethodTraitItem(..) => def::DefMethod(def_id),
+        ty::ImplOrTraitItem::ConstTraitItem(..) => def::DefAssociatedConst(def_id),
         ty::ImplOrTraitItem::TypeTraitItem(..) => {
             fcx.tcx().sess.span_bug(span, "resolve_ufcs: probe picked associated type");
         }

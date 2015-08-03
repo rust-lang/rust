@@ -159,16 +159,27 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 let def_id = inline::maybe_instantiate_inline(bcx.ccx(), did);
                 Callee { bcx: bcx, data: Intrinsic(def_id.node, substs), ty: expr_ty }
             }
-            def::DefFn(did, _) | def::DefMethod(did, def::FromImpl(_)) => {
+            def::DefFn(did, _) => {
                 fn_callee(bcx, trans_fn_ref(bcx.ccx(), did, ExprId(ref_expr.id),
                                             bcx.fcx.param_substs))
             }
-            def::DefMethod(meth_did, def::FromTrait(trait_did)) => {
-                fn_callee(bcx, meth::trans_static_method_callee(bcx.ccx(),
-                                                                meth_did,
-                                                                trait_did,
-                                                                ref_expr.id,
-                                                                bcx.fcx.param_substs))
+            def::DefMethod(meth_did) => {
+                let method_item = bcx.tcx().impl_or_trait_item(meth_did);
+                let fn_datum = match method_item.container() {
+                    ty::ImplContainer(_) => {
+                        trans_fn_ref(bcx.ccx(), meth_did,
+                                     ExprId(ref_expr.id),
+                                     bcx.fcx.param_substs)
+                    }
+                    ty::TraitContainer(trait_did) => {
+                        meth::trans_static_method_callee(bcx.ccx(),
+                                                         meth_did,
+                                                         trait_did,
+                                                         ref_expr.id,
+                                                         bcx.fcx.param_substs)
+                    }
+                };
+                fn_callee(bcx, fn_datum)
             }
             def::DefVariant(tid, vid, _) => {
                 let vinfo = bcx.tcx().enum_variant_with_id(tid, vid);
