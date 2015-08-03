@@ -1199,8 +1199,8 @@ An example of an `enum` item and its use:
 
 ```
 enum Animal {
-  Dog,
-  Cat
+    Dog,
+    Cat,
 }
 
 let mut a: Animal = Animal::Dog;
