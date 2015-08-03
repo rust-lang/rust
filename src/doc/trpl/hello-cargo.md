@@ -8,13 +8,13 @@ so it is assumed that Rust projects will use Cargo from the beginning.
 [cratesio]: http://doc.crates.io
 
 Cargo manages three things: building your code, downloading the dependencies
-your code needs, and building those dependencies. At first, your
-program doesn’t have any dependencies, so we’ll only be using the first part of
-its functionality. Eventually, we’ll add more. Since we started off by using
-Cargo, it'll be easy to add later.
+your code needs, and building those dependencies. At first, your program doesn’t
+have any dependencies, so we’ll only be using the first part of its
+functionality. Eventually, we’ll add more. Since we started off by using Cargo,
+it'll be easy to add later.
 
-If you installed Rust via the official installers you will also have Cargo. If
-you installed Rust some other way, you may want to [check the Cargo
+If we installed Rust via the official installers we will also have Cargo. If we
+installed Rust some other way, we may want to [check the Cargo
 README][cargoreadme] for specific instructions about installing it.
 
 [cargoreadme]: https://github.com/rust-lang/cargo#installing-cargo-from-nightlies
@@ -25,18 +25,18 @@ Let’s convert Hello World to Cargo.
 
 To Cargo-ify our project, we need to do three things: Make a `Cargo.toml`
 configuration file, put our source file in the right place, and get rid of the
-old  `main.exe`. Let's do that part first:
+old executable (`main.exe` on Windows, `main` everywhere else). Let's do that part first:
 
 ```bash
 $ mkdir src
 $ mv main.rs src/main.rs
-$ rm main.exe
+$ rm main  # or main.exe on Windows
 ```
 
 Note that since we're creating an executable, we retain `main.rs` as the source
 filename. If we want to make a library instead, we should use `lib.rs`. This
 convention is required for Cargo to successfully compile our projects, but it
-can be overridden if we wish.  Custom file locations for the entry point can be
+can be overridden if we wish. Custom file locations for the entry point can be
 specified with a [`[lib]` or `[[bin]]`][crates-custom] key in the TOML file.
 
 [crates-custom]: http://doc.crates.io/manifest.html#configuring-a-target
