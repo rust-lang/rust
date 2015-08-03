@@ -179,8 +179,8 @@ pub mod eabi {
         }
         else { // cleanup phase
             unsafe {
-                __gcc_personality_sj0(_version, actions, _exception_class, _ue_header,
-                                      _context)
+                __gcc_personality_sj0(version, actions, exception_class, ue_header,
+                                      context)
             }
         }
     }
