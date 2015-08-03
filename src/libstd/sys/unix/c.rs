@@ -51,7 +51,6 @@ pub const FIOCLEX: libc::c_ulong = 0x5451;
               target_arch = "powerpc")))]
 pub const FIOCLEX: libc::c_ulong = 0x6601;
 
-
 pub const WNOHANG: libc::c_int = 1;
 
 #[cfg(target_os = "linux")]

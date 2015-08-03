@@ -29,7 +29,6 @@
 #include <errno.h>
 #endif
 
-
 #ifdef __APPLE__
 #include <TargetConditionals.h>
 #include <mach/mach_time.h>
@@ -71,11 +70,6 @@ rust_opendir(char *dirname) {
 }
 
 int
-rust_dirent_t_size() {
-    return sizeof(struct dirent);
-}
-
-int
 rust_readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result) {
 #if _POSIX_C_SOURCE < 1
     /// This is needed for Newlib.
@@ -89,13 +83,18 @@ rust_readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result) {
     if(next_entry == NULL) {
         *result = NULL;
     } else {
-        memcpy(entry, next_entry, rust_dirent_t_size());
+        memcpy(entry, next_entry, sizeof(struct dirent));
         *result = next_entry;
     }
     return 0;
 #else
     return readdir_r(dirp, entry, result);
 #endif
+}
+
+int
+rust_dirent_t_size() {
+    return sizeof(struct dirent);
 }
 
 #if defined(__BSD__)

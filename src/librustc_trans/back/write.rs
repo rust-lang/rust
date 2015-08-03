@@ -214,7 +214,7 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
         }
     };
 
-    let triple = &sess.target.target.llvm_target[..];
+    let triple = &sess.target.target.llvm_target;
 
     let tm = unsafe {
         let triple = CString::new(triple.as_bytes()).unwrap();
@@ -280,7 +280,7 @@ pub struct ModuleConfig {
 unsafe impl Send for ModuleConfig { }
 
 impl ModuleConfig {
-    pub fn new(tm: TargetMachineRef, passes: Vec<String>) -> ModuleConfig {
+    fn new(tm: TargetMachineRef, passes: Vec<String>) -> ModuleConfig {
         ModuleConfig {
             tm: tm,
             passes: passes,
@@ -303,7 +303,7 @@ impl ModuleConfig {
         }
     }
 
-    pub fn set_flags(&mut self, sess: &Session, trans: &CrateTranslation) {
+    fn set_flags(&mut self, sess: &Session, trans: &CrateTranslation) {
         self.no_verify = sess.no_verify();
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
         self.no_builtins = trans.no_builtins;
@@ -430,7 +430,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                                config: ModuleConfig,
                                name_extra: String,
                                output_names: OutputFilenames) {
-    let ModuleTranslation { llmod, llcx, .. } = mtrans;
+    let ModuleTranslation { llmod, llcx } = mtrans;
     let tm = config.tm;
 
     // llcx doesn't outlive this function, so we can put this on the stack.
@@ -602,8 +602,7 @@ pub fn run_passes(sess: &Session,
     }
 
     // Sanity check
-    assert!(trans.modules.len() == sess.opts.cg.codegen_units ||
-            sess.target.target.options.is_like_pnacl);
+    assert!(trans.modules.len() == sess.opts.cg.codegen_units);
 
     let tm = create_target_machine(sess);
 
@@ -666,7 +665,7 @@ pub fn run_passes(sess: &Session,
 
     {
         let work = build_work_item(sess,
-                                   trans.metadata_module.clone(),
+                                   trans.metadata_module,
                                    metadata_config.clone(),
                                    crate_output.clone(),
                                    "metadata".to_string());
@@ -675,7 +674,7 @@ pub fn run_passes(sess: &Session,
 
     for (index, mtrans) in trans.modules.iter().enumerate() {
         let work = build_work_item(sess,
-                                   mtrans.clone(),
+                                   *mtrans,
                                    modules_config.clone(),
                                    crate_output.clone(),
                                    format!("{}", index));
@@ -684,9 +683,14 @@ pub fn run_passes(sess: &Session,
 
     // Process the work items, optionally using worker threads.
     if sess.opts.cg.codegen_units == 1 {
-        run_work_singlethreaded(sess, &trans.reachable[..], work_items);
+        run_work_singlethreaded(sess, &trans.reachable, work_items);
     } else {
         run_work_multithreaded(sess, work_items, sess.opts.cg.codegen_units);
+    }
+
+    // All codegen is finished.
+    unsafe {
+        llvm::LLVMRustDisposeTargetMachine(tm);
     }
 
     // Produce final compile outputs.
@@ -977,8 +981,8 @@ pub unsafe fn configure_llvm(sess: &Session) {
     // using --llvm-root will have multiple platforms that rustllvm
     // doesn't actually link to and it's pointless to put target info
     // into the registry that Rust cannot generate machine code for.
-        // `librustc_llvm` provides no-op wrappers of these functions for
-        // targets LLVM can't codegen for.
+    // `librustc_llvm` provides no-op wrappers of these functions for
+    // targets LLVM can't codegen for.
     llvm::LLVMInitializeX86TargetInfo();
     llvm::LLVMInitializeX86Target();
     llvm::LLVMInitializeX86TargetMC();
@@ -991,17 +995,17 @@ pub unsafe fn configure_llvm(sess: &Session) {
     llvm::LLVMInitializeARMAsmPrinter();
     llvm::LLVMInitializeARMAsmParser();
 
-    llvm::LLVMInitializeMipsTargetInfo();
-    llvm::LLVMInitializeMipsTarget();
-    llvm::LLVMInitializeMipsTargetMC();
-    llvm::LLVMInitializeMipsAsmPrinter();
-    llvm::LLVMInitializeMipsAsmParser();
-
     llvm::LLVMInitializeAArch64TargetInfo();
     llvm::LLVMInitializeAArch64Target();
     llvm::LLVMInitializeAArch64TargetMC();
     llvm::LLVMInitializeAArch64AsmPrinter();
     llvm::LLVMInitializeAArch64AsmParser();
+
+    llvm::LLVMInitializeMipsTargetInfo();
+    llvm::LLVMInitializeMipsTarget();
+    llvm::LLVMInitializeMipsTargetMC();
+    llvm::LLVMInitializeMipsAsmPrinter();
+    llvm::LLVMInitializeMipsAsmParser();
 
     llvm::LLVMInitializePowerPCTargetInfo();
     llvm::LLVMInitializePowerPCTarget();
