@@ -23,4 +23,5 @@ fn main() {
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
+#[lang = "eh_unwind_resume"] extern fn eh_unwind_resume() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }

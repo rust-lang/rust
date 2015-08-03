@@ -45,6 +45,10 @@ pub fn check_crate(krate: &ast::Crate,
     if items.eh_personality().is_none() {
         items.missing.push(lang_items::EhPersonalityLangItem);
     }
+    if sess.target.target.options.custom_unwind_resume &
+       items.eh_unwind_resume().is_none() {
+        items.missing.push(lang_items::EhUnwindResumeLangItem);
+    }
 
     {
         let mut cx = Context { sess: sess, items: items };
@@ -122,4 +126,5 @@ weak_lang_items! {
     panic_fmt,          PanicFmtLangItem,           rust_begin_unwind;
     stack_exhausted,    StackExhaustedLangItem,     rust_stack_exhausted;
     eh_personality,     EhPersonalityLangItem,      rust_eh_personality;
+    eh_unwind_resume,   EhUnwindResumeLangItem,     rust_eh_unwind_resume;
 }

@@ -171,6 +171,11 @@ pub struct TargetOptions {
     /// currently only "gnu" is used to fall into LLVM. Unknown strings cause
     /// the system linker to be used.
     pub archive_format: String,
+    /// Whether the target uses a custom unwind resumption routine.
+    /// By default LLVM lowers `resume` instructions into calls to `_Unwind_Resume`
+    /// defined in libgcc.  If this option is enabled, the target must provide
+    /// `eh_unwind_resume` lang item.
+    pub custom_unwind_resume: bool,
 }
 
 impl Default for TargetOptions {
@@ -209,6 +214,7 @@ impl Default for TargetOptions {
             pre_link_objects: Vec::new(),
             post_link_objects: Vec::new(),
             archive_format: String::new(),
+            custom_unwind_resume: false,
         }
     }
 }

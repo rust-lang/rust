@@ -36,6 +36,7 @@ pub enum _Unwind_Action {
 
 #[cfg(target_arch = "arm")]
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub enum _Unwind_State {
     _US_VIRTUAL_UNWIND_FRAME = 0,
     _US_UNWIND_FRAME_STARTING = 1,
@@ -46,6 +47,7 @@ pub enum _Unwind_State {
 }
 
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub enum _Unwind_Reason_Code {
     _URC_NO_REASON = 0,
     _URC_FOREIGN_EXCEPTION_CAUGHT = 1,

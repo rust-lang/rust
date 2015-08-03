@@ -19,4 +19,6 @@ pub extern fn foo() {}
 
 #[lang = "stack_exhausted"] fn stack_exhausted() {}
 #[lang = "eh_personality"] fn eh_personality() {}
+#[lang = "eh_unwind_resume"] fn eh_unwind_resume() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
+

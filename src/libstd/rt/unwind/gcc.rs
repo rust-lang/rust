@@ -74,14 +74,7 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 //   so the behavior of __gcc_personality_v0 is perfectly adequate there, and
 // - rust_eh_personality_catch, used only by rust_try(), which always catches.
 //
-// Note, however, that for implementation simplicity, rust_eh_personality_catch
-// lacks code to install a landing pad, so in order to obtain exception object
-// pointer (which it needs to return upstream), rust_try() employs another trick:
-// it calls into the nested rust_try_inner(), whose landing pad does not resume
-// unwinds.  Instead, it extracts the exception pointer and performs a "normal"
-// return.
-//
-// See also: rt/rust_try.ll
+// See also: rustc_trans::trans::intrinsic::trans_gnu_try
 
 #[cfg(all(not(target_arch = "arm"),
           not(all(windows, target_arch = "x86_64")),
@@ -118,11 +111,11 @@ pub mod eabi {
     #[lang = "eh_personality_catch"]
     #[no_mangle]
     pub extern fn rust_eh_personality_catch(
-        _version: c_int,
+        version: c_int,
         actions: uw::_Unwind_Action,
-        _exception_class: uw::_Unwind_Exception_Class,
-        _ue_header: *mut uw::_Unwind_Exception,
-        _context: *mut uw::_Unwind_Context
+        exception_class: uw::_Unwind_Exception_Class,
+        ue_header: *mut uw::_Unwind_Exception,
+        context: *mut uw::_Unwind_Context
     ) -> uw::_Unwind_Reason_Code
     {
 
@@ -130,7 +123,10 @@ pub mod eabi {
             uw::_URC_HANDLER_FOUND // catch!
         }
         else { // cleanup phase
-            uw::_URC_INSTALL_CONTEXT
+            unsafe {
+                __gcc_personality_v0(version, actions, exception_class, ue_header,
+                                     context)
+            }
         }
     }
 }
@@ -171,11 +167,11 @@ pub mod eabi {
     #[lang = "eh_personality_catch"]
     #[no_mangle]
     pub extern fn rust_eh_personality_catch(
-        _version: c_int,
+        version: c_int,
         actions: uw::_Unwind_Action,
-        _exception_class: uw::_Unwind_Exception_Class,
-        _ue_header: *mut uw::_Unwind_Exception,
-        _context: *mut uw::_Unwind_Context
+        exception_class: uw::_Unwind_Exception_Class,
+        ue_header: *mut uw::_Unwind_Exception,
+        context: *mut uw::_Unwind_Context
     ) -> uw::_Unwind_Reason_Code
     {
         if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 { // search phase
@@ -183,8 +179,8 @@ pub mod eabi {
         }
         else { // cleanup phase
             unsafe {
-                __gcc_personality_sj0(_version, actions, _exception_class, _ue_header,
-                                      _context)
+                __gcc_personality_sj0(version, actions, exception_class, ue_header,
+                                      context)
             }
         }
     }
@@ -222,8 +218,8 @@ pub mod eabi {
     #[no_mangle]
     pub extern fn rust_eh_personality_catch(
         state: uw::_Unwind_State,
-        _ue_header: *mut uw::_Unwind_Exception,
-        _context: *mut uw::_Unwind_Context
+        ue_header: *mut uw::_Unwind_Exception,
+        context: *mut uw::_Unwind_Context
     ) -> uw::_Unwind_Reason_Code
     {
         if (state as c_int & uw::_US_ACTION_MASK as c_int)
@@ -231,112 +227,9 @@ pub mod eabi {
             uw::_URC_HANDLER_FOUND // catch!
         }
         else { // cleanup phase
-            uw::_URC_INSTALL_CONTEXT
+            unsafe {
+                __gcc_personality_v0(state, ue_header, context)
+            }
         }
     }
 }
-
-// Win64 SEH (see http://msdn.microsoft.com/en-us/library/1eyas8tf.aspx)
-//
-// This looks a bit convoluted because rather than implementing a native SEH
-// handler, GCC reuses the same personality routine as for the other
-// architectures by wrapping it with an "API translator" layer
-// (_GCC_specific_handler).
-
-#[cfg(all(windows, target_arch = "x86_64", not(test)))]
-#[doc(hidden)]
-#[allow(non_camel_case_types, non_snake_case)]
-pub mod eabi {
-    pub use self::EXCEPTION_DISPOSITION::*;
-    use rt::libunwind as uw;
-    use libc::{c_void, c_int};
-
-    // Fake definitions; these are actually complicated structs,
-    // but we don't use the contents here.
-    pub type EXCEPTION_RECORD = c_void;
-    pub type CONTEXT = c_void;
-    pub type DISPATCHER_CONTEXT = c_void;
-
-    #[repr(C)]
-    #[derive(Copy, Clone)]
-    pub enum EXCEPTION_DISPOSITION {
-        ExceptionContinueExecution,
-        ExceptionContinueSearch,
-        ExceptionNestedException,
-        ExceptionCollidedUnwind
-    }
-
-    type _Unwind_Personality_Fn =
-        extern fn(
-            version: c_int,
-            actions: uw::_Unwind_Action,
-            exception_class: uw::_Unwind_Exception_Class,
-            ue_header: *mut uw::_Unwind_Exception,
-            context: *mut uw::_Unwind_Context
-        ) -> uw::_Unwind_Reason_Code;
-
-    extern {
-        fn __gcc_personality_seh0(
-            exceptionRecord: *mut EXCEPTION_RECORD,
-            establisherFrame: *mut c_void,
-            contextRecord: *mut CONTEXT,
-            dispatcherContext: *mut DISPATCHER_CONTEXT
-        ) -> EXCEPTION_DISPOSITION;
-
-        fn _GCC_specific_handler(
-            exceptionRecord: *mut EXCEPTION_RECORD,
-            establisherFrame: *mut c_void,
-            contextRecord: *mut CONTEXT,
-            dispatcherContext: *mut DISPATCHER_CONTEXT,
-            personality: _Unwind_Personality_Fn
-        ) -> EXCEPTION_DISPOSITION;
-    }
-
-    #[lang = "eh_personality"]
-    #[no_mangle]
-    extern fn rust_eh_personality(
-        exceptionRecord: *mut EXCEPTION_RECORD,
-        establisherFrame: *mut c_void,
-        contextRecord: *mut CONTEXT,
-        dispatcherContext: *mut DISPATCHER_CONTEXT
-    ) -> EXCEPTION_DISPOSITION
-    {
-        unsafe {
-            __gcc_personality_seh0(exceptionRecord, establisherFrame,
-                                   contextRecord, dispatcherContext)
-        }
-    }
-
-    #[lang = "eh_personality_catch"]
-    #[no_mangle]
-    pub extern fn rust_eh_personality_catch(
-        exceptionRecord: *mut EXCEPTION_RECORD,
-        establisherFrame: *mut c_void,
-        contextRecord: *mut CONTEXT,
-        dispatcherContext: *mut DISPATCHER_CONTEXT
-    ) -> EXCEPTION_DISPOSITION
-    {
-        extern fn inner(
-                _version: c_int,
-                actions: uw::_Unwind_Action,
-                _exception_class: uw::_Unwind_Exception_Class,
-                _ue_header: *mut uw::_Unwind_Exception,
-                _context: *mut uw::_Unwind_Context
-            ) -> uw::_Unwind_Reason_Code
-        {
-            if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 { // search phase
-                uw::_URC_HANDLER_FOUND // catch!
-            }
-            else { // cleanup phase
-                uw::_URC_INSTALL_CONTEXT
-            }
-        }
-
-        unsafe {
-            _GCC_specific_handler(exceptionRecord, establisherFrame,
-                                  contextRecord, dispatcherContext,
-                                  inner)
-        }
-    }
-}
-

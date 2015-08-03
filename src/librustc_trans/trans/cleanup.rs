@@ -846,6 +846,8 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
 
         debug!("get_or_create_landing_pad");
 
+        self.inject_unwind_resume_hook();
+
         // Check if a landing pad block exists; if not, create one.
         {
             let mut scopes = self.scopes.borrow_mut();

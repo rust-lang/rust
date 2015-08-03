@@ -16,6 +16,7 @@ use llvm::{SequentiallyConsistent, Acquire, Release, AtomicXchg, ValueRef, TypeK
 use middle::subst;
 use middle::subst::FnSpace;
 use trans::adt;
+use trans::attributes;
 use trans::base::*;
 use trans::build::*;
 use trans::callee;
@@ -1159,26 +1160,14 @@ fn trans_msvc_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // of exceptions (e.g. the normal semantics of LLVM's landingpad and invoke
 // instructions).
 //
-// This translation is a little surprising for two reasons:
+// This translation is a little surprising because
+// we always call a shim function instead of inlining the call to `invoke`
+// manually here. This is done because in LLVM we're only allowed to have one
+// personality per function definition. The call to the `try` intrinsic is
+// being inlined into the function calling it, and that function may already
+// have other personality functions in play. By calling a shim we're
+// guaranteed that our shim will have the right personality function.
 //
-// 1. We always call a shim function instead of inlining the call to `invoke`
-//    manually here. This is done because in LLVM we're only allowed to have one
-//    personality per function definition. The call to the `try` intrinsic is
-//    being inlined into the function calling it, and that function may already
-//    have other personality functions in play. By calling a shim we're
-//    guaranteed that our shim will have the right personality function.
-//
-// 2. Instead of making one shim (explained above), we make two shims! The
-//    reason for this has to do with the technical details about the
-//    implementation of unwinding in the runtime, but the tl;dr; is that the
-//    outer shim's personality function says "catch rust exceptions" and the
-//    inner shim's landing pad will not `resume` the exception being thrown.
-//    This means that the outer shim's landing pad is never run and the inner
-//    shim's return value is the return value of the whole call.
-//
-// The double-shim aspect is currently done for implementation ease on the
-// runtime side of things, and more info can be found in
-// src/libstd/rt/unwind/gcc.rs.
 fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              func: ValueRef,
                              data: ValueRef,
@@ -1188,38 +1177,52 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let ccx = bcx.ccx();
         let dloc = DebugLoc::None;
 
-        // Type indicator for the exception being thrown, not entirely sure
-        // what's going on here but it's what all the examples in LLVM use.
-        let lpad_ty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)],
-                                    false);
+        // Translates the shims described above:
+        //
+        //   bcx:
+        //      invoke %func(%args...) normal %normal unwind %catch
+        //
+        //   normal:
+        //      ret null
+        //
+        //   catch:
+        //      (ptr, _) = landingpad
+        //      ret ptr
 
-        // Define the "inner try" shim
-        let rust_try_inner = declare::define_internal_rust_fn(ccx,
-                                                              "__rust_try_inner",
-                                                              try_fn_ty);
-        trans_rust_try(ccx, rust_try_inner, lpad_ty, bcx.fcx.eh_personality(),
-                       output, dloc, &mut |bcx, then, catch| {
-            let func = llvm::get_param(rust_try_inner, 0);
-            let data = llvm::get_param(rust_try_inner, 1);
-            Invoke(bcx, func, &[data], then.llbb, catch.llbb, None, dloc);
-            C_null(Type::i8p(ccx))
-        });
-
-        // Define the "outer try" shim.
-        let rust_try = declare::define_internal_rust_fn(ccx, "__rust_try",
-                                                        try_fn_ty);
+        let rust_try = declare::define_internal_rust_fn(ccx, "__rust_try", try_fn_ty);
+        attributes::emit_uwtable(rust_try, true);
         let catch_pers = match bcx.tcx().lang_items.eh_personality_catch() {
             Some(did) => callee::trans_fn_ref(ccx, did, ExprId(0),
                                               bcx.fcx.param_substs).val,
             None => bcx.tcx().sess.bug("eh_personality_catch not defined"),
         };
-        trans_rust_try(ccx, rust_try, lpad_ty, catch_pers, output, dloc,
-                       &mut |bcx, then, catch| {
-            let func = llvm::get_param(rust_try, 0);
-            let data = llvm::get_param(rust_try, 1);
-            Invoke(bcx, rust_try_inner, &[func, data], then.llbb, catch.llbb,
-                   None, dloc)
-        });
+
+        let (fcx, block_arena);
+        block_arena = TypedArena::new();
+        fcx = new_fn_ctxt(ccx, rust_try, ast::DUMMY_NODE_ID, false,
+                          output, ccx.tcx().mk_substs(Substs::trans_empty()),
+                          None, &block_arena);
+        let bcx = init_function(&fcx, true, output);
+        let then = bcx.fcx.new_temp_block("then");
+        let catch = bcx.fcx.new_temp_block("catch");
+
+        let func = llvm::get_param(rust_try, 0);
+        let data = llvm::get_param(rust_try, 1);
+        Invoke(bcx, func, &[data], then.llbb, catch.llbb, None, dloc);
+        Ret(then, C_null(Type::i8p(ccx)), dloc);
+
+        // Type indicator for the exception being thrown.
+        // The first value in this tuple is a pointer to the exception object being thrown.
+        // The second value is a "selector" indicating which of the landing pad clauses
+        // the exception's type had been matched to.  rust_try ignores the selector.
+        let lpad_ty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)],
+                                    false);
+        let vals = LandingPad(catch, lpad_ty, catch_pers, 1);
+        AddClause(catch, vals, C_null(Type::i8p(ccx)));
+        let ptr = ExtractValue(catch, vals, 0);
+        Ret(catch, ptr, dloc);
+        fcx.cleanup();
+
         return rust_try
     });
 
@@ -1228,68 +1231,9 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ret = Call(bcx, llfn, &[func, data], None, dloc);
     Store(bcx, ret, dest);
     return bcx;
-
-    // Translates both the inner and outer shims described above. The only
-    // difference between these two is the function invoked and the personality
-    // involved, so a common routine is shared.
-    //
-    //   bcx:
-    //      invoke %func(%args...) normal %normal unwind %unwind
-    //
-    //   normal:
-    //      ret null
-    //
-    //   unwind:
-    //      (ptr, _) = landingpad
-    //      br (ptr != null), done, reraise
-    //
-    //   done:
-    //      ret ptr
-    //
-    //   reraise:
-    //      resume
-    //
-    // Note that the branch checking for `null` here isn't actually necessary,
-    // it's just an unfortunate hack to make sure that LLVM doesn't optimize too
-    // much. If this were not present, then LLVM would correctly deduce that our
-    // inner shim should be tagged with `nounwind` (as it catches all
-    // exceptions) and then the outer shim's `invoke` will be translated to just
-    // a simple call, destroying that entry for the personality function.
-    //
-    // To ensure that both shims always have an `invoke` this check against null
-    // confuses LLVM enough to the point that it won't infer `nounwind` and
-    // we'll proceed as normal.
-    fn trans_rust_try<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                llfn: ValueRef,
-                                lpad_ty: Type,
-                                personality: ValueRef,
-                                output: ty::FnOutput<'tcx>,
-                                dloc: DebugLoc,
-                                invoke: &mut FnMut(Block, Block, Block) -> ValueRef) {
-        let (fcx, block_arena);
-        block_arena = TypedArena::new();
-        fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
-                          output, ccx.tcx().mk_substs(Substs::trans_empty()),
-                          None, &block_arena);
-        let bcx = init_function(&fcx, true, output);
-        let then = bcx.fcx.new_temp_block("then");
-        let catch = bcx.fcx.new_temp_block("catch");
-        let reraise = bcx.fcx.new_temp_block("reraise");
-        let catch_return = bcx.fcx.new_temp_block("catch-return");
-
-        let invoke_ret = invoke(bcx, then, catch);
-        Ret(then, invoke_ret, dloc);
-        let vals = LandingPad(catch, lpad_ty, personality, 1);
-        AddClause(catch, vals, C_null(Type::i8p(ccx)));
-        let ptr = ExtractValue(catch, vals, 0);
-        let valid = ICmp(catch, llvm::IntNE, ptr, C_null(Type::i8p(ccx)), dloc);
-        CondBr(catch, valid, catch_return.llbb, reraise.llbb, dloc);
-        Ret(catch_return, ptr, dloc);
-        Resume(reraise, vals);
-    }
 }
 
-// Helper to generate the `Ty` associated with `rust_Try`
+// Helper to generate the `Ty` associated with `rust_try`
 fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                              f: &mut FnMut(Ty<'tcx>,
                                            ty::FnOutput<'tcx>) -> ValueRef)
@@ -1299,8 +1243,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         return llfn
     }
 
-    // Define the types up front for the signatures of the rust_try and
-    // rust_try_inner functions.
+    // Define the type up front for the signature of the rust_try function.
     let tcx = ccx.tcx();
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
     let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
