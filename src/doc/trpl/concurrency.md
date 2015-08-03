@@ -135,28 +135,34 @@ This gives us an error:
         ^~~~
 ```
 
-In this case, we know that our code _should_ be safe, but Rust isn't sure. And
-it's actually not safe: if we had a reference to `data` in each thread, and the
-thread takes ownership of the reference, we have three owners! That's bad. We
-can fix this by using the `Arc<T>` type, which is an atomic reference counted
-pointer. The 'atomic' part means that it's safe to share across threads.
+Rust knows this wouldn't be safe! If we had a reference to `data` in each
+thread, and the thread takes ownership of the reference, we'd have three
+owners!
 
-`Arc<T>` assumes one more property about its contents to ensure that it is safe
-to share across threads: it assumes its contents are `Sync`. But in our
-case, we want to be able to mutate the value. We need a type that can ensure
-only one person at a time can mutate what's inside. For that, we can use the
-`Mutex<T>` type. Here's the second version of our code. It still doesn't work,
-but for a different reason:
+So, we need some type that lets us have more than one reference to a value and
+that we can share between threads, that is it must implement `Sync`.
+
+We'll use `Arc<T>`, rust's standard atomic reference count type, which
+wraps a value up with some extra runtime bookkeeping which allows us to
+share the ownership of the value between multiple references at the same time.
+
+The bookkeeping consists of a count of how many of these references exist to
+the value, hence the reference count part of the name.
+
+The Atomic part means `Arc<T>` can safely be accessed from multiple threads.
+To do this the compiler guarantees that mutations of the internal count use
+indivisible operations which can't have data races.
+
 
 ```ignore
 use std::thread;
-use std::sync::Mutex;
+use std::sync::Arc;
 
 fn main() {
-    let mut data = Mutex::new(vec![1, 2, 3]);
+    let mut data = Arc::new(vec![1, 2, 3]);
 
     for i in 0..3 {
-        let data = data.lock().unwrap();
+        let data = data.clone();
         thread::spawn(move || {
             data[i] += 1;
         });
@@ -166,29 +172,29 @@ fn main() {
 }
 ```
 
-Here's the error:
+We now call `clone()` on our `Arc<T>`, which increases the internal count.
+This handle is then moved into the new thread.
+
+And... still gives us an error.
 
 ```text
-<anon>:9:9: 9:22 error: the trait `core::marker::Send` is not implemented for the type `std::sync::mutex::MutexGuard<'_, collections::vec::Vec<u32>>` [E0277]
-<anon>:11         thread::spawn(move || {
-                  ^~~~~~~~~~~~~
-<anon>:9:9: 9:22 note: `std::sync::mutex::MutexGuard<'_, collections::vec::Vec<u32>>` cannot be sent between threads safely
-<anon>:11         thread::spawn(move || {
-                  ^~~~~~~~~~~~~
+<anon>:11:24 error: cannot borrow immutable borrowed content as mutable
+<anon>:11                    data[i] += 1;
+                             ^~~~
 ```
 
-You see, [`Mutex`](../std/sync/struct.Mutex.html) has a
-[`lock`](../std/sync/struct.Mutex.html#method.lock)
-method which has this signature:
+`Arc<T>` assumes one more property about its contents to ensure that it is safe
+to share across threads: it assumes its contents are `Sync`. This is true for
+our value if it's immutable, but we want to be able to mutate it, so we need
+something else to persuade the borrow checker we know what we're doing.
 
-```ignore
-fn lock(&self) -> LockResult<MutexGuard<T>>
-```
+It looks like we need some type that allows us to safely mutate a shared value,
+for example a type that that can ensure only one thread at a time is able to
+mutate the value inside it at any one time.
 
-Because `Send` is not implemented for `MutexGuard<T>`, we can't transfer the
-guard across thread boundaries, which gives us our error.
+For that, we can use the `Mutex<T>` type!
 
-We can use `Arc<T>` to fix this. Here's the working version:
+Here's the working version:
 
 ```rust
 use std::sync::{Arc, Mutex};
@@ -209,9 +215,31 @@ fn main() {
 }
 ```
 
-We now call `clone()` on our `Arc`, which increases the internal count. This
-handle is then moved into the new thread. Let's examine the body of the
-thread more closely:
+
+If we'd tried to use `Mutex<T>` without wrapping it in an `Arc<T>` we would have
+seen another error like:
+
+```text
+error: the trait `core::marker::Send` is not implemented for the type `std::sync::mutex::MutexGuard<'_, collections::vec::Vec<u32>>` [E0277]
+ thread::spawn(move || {
+                  ^~~~~~~~~~~~~
+note: `std::sync::mutex::MutexGuard<'_, collections::vec::Vec<u32>>` cannot be sent between threads safely
+ thread::spawn(move || {
+                  ^~~~~~~~~~~~~
+```
+
+You see, [`Mutex`](../std/sync/struct.Mutex.html) has a
+[`lock`](../std/sync/struct.Mutex.html#method.lock)
+method which has this signature:
+
+```ignore
+fn lock(&self) -> LockResult<MutexGuard<T>>
+```
+
+and because `Send` is not implemented for `MutexGuard<T>`, we couldn't have
+transferred the guard across thread boundaries on it's own.
+
+Let's examine the body of the thread more closely:
 
 ```rust
 # use std::sync::{Arc, Mutex};
