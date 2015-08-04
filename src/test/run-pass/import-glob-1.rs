@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unused_imports, dead_code)]
+// This should resolve fine. Prior to fix, the last import
+// was being tried too early, and marked as unrsolved before
+// the glob import had a chance to be resolved.
 
 mod bar {
     pub use self::middle::*;

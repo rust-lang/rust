@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// These crossed imports should resolve fine, and not block on
+// each other and be reported as unresolved.
+
 mod a {
     use b::{B};
     pub use self::inner::A;
