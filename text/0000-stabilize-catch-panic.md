@@ -50,78 +50,61 @@ worried about, but this form of control flow can often be surprising and
 unexpected. If an exception ends up causing unexpected behavior or a bug then
 code is said to not be **exception safe**.
 
-Unexpected bugs arising because of an exception typically boil down to an
-invariant being broken at runtime which is then observed later on. For example
-many data structures often have a number of invariants that are dynamically
-upheld for correctness, but if these invariants are broken then an observation
-of the data structure may result in unexpected behavior. Routines inside these
-data structures tend to temporarily break invariants as an inherent part of the
-implementation, fixing up the state before a function returns, but if an
-exception being thrown could cause the function to return early and expose the
-broken invariant. The observation of this broken invariant can happen because
-of:
+The idea of throwing an exception causing bugs may sound a bit alien, so it's
+helpful to drill down into exactly why this is the case. Bugs related to
+exception safety are comprised of two critical components:
 
-* A finally block (code run on a normal or exceptional return) may still have
-  access to the broken data structure.
-* If an exception can be caught in the language, then the broken data structure
-  may still be accessible after the exception is caught.
+1. An invariant of a data structure is broken.
+2. This broken invariant is the later observed.
 
-To be exception safe, code needs to be prepared for an exception to possibly be
-thrown whenever an invariant it relies on is broken. There are a number of
-tactics to do this, such as:
+Exceptional control flow often exacerbates this first component of breaking
+invariants. For example many data structures often have a number of invariants
+that are dynamically upheld for correctness, and the type's routines can
+temporarily break these invariants to be fixed up before the function returns.
+If, however, an exception is thrown in this interim period the broken invariant
+could be accidentally exposed.
 
-* Audit code to ensure it only calls functions which are known to not throw an
-  exception.
-* Place local "cleanup" handlers on the stack to restore invariants whenever a
-  function returns, either normally or exceptionally. This can be done through
-  finally blocks in some languages for via destructors in others.
-* Catch exceptions locally to perform cleanup before possibly re-raising the
-  exception.
+The second component, observing a broken invariant, can sometimes be difficult
+in the face of exceptions, but languages often have constructs to enable these
+sorts of witnesses. Two primary methods of doing so are something akin to
+finally blocks (code run on a normal or exceptional return) or just catching the
+exception. In both cases code which later runs that has access to the original
+data structure then it will see the broken invariants.
 
+Now that we've got a better understanding of how an exception might cause a bug
+(e.g. how code can be "exception unsafe"), let's take a look how we can make
+code exception safe. To be exception safe, code needs to be prepared for an
+exception to be thrown whenever an invariant it relies on is broken, for
+example:
 
+* Code can be audited to ensure it only calls functions which are statically
+  known to not throw an exception.
+* Local "cleanup" handlers can be placed on the stack to restore invariants
+  whenever a function returns, either normally or exceptionally. This can be
+  done through finally blocks in some languages for via destructors in others.
+* Exceptions can be caught locally to perform cleanup before possibly re-raising
+  the exception.
 
+With all that in mind, we've now identified problems that can arise via
+exceptions (an invariant is broken and then observed) as well as methods to
+ensure that prevent this from happening. In languages like C++ this means that
+we can be memory safe in the face of exceptions and in languages like Java we
+can ensure that our logical invariants are upheld. Given this background let's
+take a look at how any of this applies to Rust.
 
+# Background: What is exception safety in Rust?
 
+> Note: This section describes the current state of Rust today without this RFC
+>       implemented
 
+Up to now we've been talking about exceptions and exception safety, but from a
+Rust perspective we can just replace this with panics and panic safety. Panics
+in Rust are currently implemented essentially as a C++ exception under the hood.
+As a result, **exception safety is something that needs to be handled in Rust
+code**.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-The problem of exception safety often plagues many C++ programmers (and other
-languages), and it essentially means that code needs to be ready to handle
-exceptional control flow. This primarily matters when an invariant is
-temporarily broken in a region of code which can have exceptional control flow.
-What this largely boils down to is that a block of code having only one entry
-point but possibly many exit points, and invariants need to be upheld on all
-exit points.
-
-For Rust this means that code needs to be prepared to handle panics as any
-unknown function call can cause a thread to panic. For example:
-
-```rust
-let mut foo = true;
-bar();
-foo = false;
-```
-
-It may be intuitive to say that this block of code returns that `foo`'s value is
-always `false` (e.g. a local invariant of ours). If, however, the `bar` function
-panics, then the block of code will "return" (because of unwinding), but the
-value of `foo` is still `true`.  Let's take a look at a more harmful example to
-see how this can go wrong:
+One of the primary examples where panics need to be handled in Rust is unsafe
+code. Let's take a look at an example where this matters:
 
 ```rust
 pub fn push_ten_more<T: Clone>(v: &mut Vec<T>, t: T) {
@@ -136,169 +119,108 @@ pub fn push_ten_more<T: Clone>(v: &mut Vec<T>, t: T) {
 }
 ```
 
-While this code may look correct, it's actually not memory safe. If the type
-`T`'s `clone` method panics, then this vector will point to uninitialized data.
-`Vec` has an internal invariant that the first `len` elements are safe to drop
-at any time, and we have broken that invariant temporarily with a call to
-`set_len`. If a call to `clone` panics then we'll exit this block before
-reaching the end, causing the invariant breakage to be leaked.
+While this code may look correct, it's actually not memory safe.
+`Vec` has an internal invariant that its first `len` elements are safe to drop
+at any time. Our function above has temporarily broken this invariant with the
+call to `set_len` (the next 10 elements are uninitialized). If the type `T`'s
+`clone` method panics then this broken invariant will escape the function. The
+broken `Vec` is then observed during its destructor, leading to the eventual
+memory unsafety.
 
-The problem with this code is that it's not **exception safe**. There are a
-number of common strategies to help mitigate this problem:
+It's important to keep in mind that panic safety in Rust is not solely limited
+to memory safety. *Logical invariants* are often just as critical to keep correct
+during execution and no `unsafe` code in Rust is needed to break a logical
+invariant. In practice, however, these sorts of bugs are rarely observed due to
+Rust's design:
 
-* Use a "finally" block or some other equivalent mechanism to restore invariants
-  on all exit paths. In Rust this typically manifests itself as a destructor on
-  a structure as the compiler will ensure that this is run whenever a panic
-  happens.
-* Avoid calling code which can panic (e.g. functions with assertions or
-  functions with statically unknown implementations) whenever an invariant is
-  broken.
+* Rust doesn't expose uninitialized memory
+* Panics cannot be caught in a thread
+* Across threads data is poisoned by default on panics
+* Idiomatic Rust must opt in to extra amounts of sharing data across boundaries
 
-In our example of `push_ten_more` we can take the second round of avoiding code
-which can panic when an invariant is broken. If we call `set_len` on each
-iteration of the loop with `len + i` then the vector's invariant will always bee
-respected.
+With these mitigation tactics, it ends up being the case that **safe Rust code
+can mostly ignore exception safety concerns**. That being said, it does not mean
+that safe Rust code can *always* ignore exception safety issues. There are a
+number of methods to subvert the mitigation strategies listed above:
 
-### Catching Exceptions
+1. When poisoning data across threads, antidotes are available to access
+   poisoned data. Namely the [`PoisonError` type][pet] allows safe access to the
+   poisoned information.
+2. Single-threaded types with interior mutability, such as `RefCell`, allow for
+   sharing data across stack frames such that a broken invariant could
+   eventually be observed.
+3. Whenever a thread panics, the destructors for its stack variables will be run
+   as the thread unwinds. Destructors may have access to data which was also
+   accessible lower on the stack (such as through `RefCell` or `Rc`) which has a
+   broken invariant, and the destructor may then witness this.
 
-In languages with `catch` blocks exception unsafe code can often cause problems
-more frequently. The core problem here is that shared state in the "try" block
-and the "catch" block can end up getting corrupted. Due to a panic possibly
-happening at any time, data may not often prepare for the panic and the catch
-(or finally) block will then read this corrupt data.
+[pet]: http://doc.rust-lang.org/std/sync/struct.PoisonError.html
 
-Rust has not had to deal with this problem much because there's no stable way to
-catch a panic. One primary area this comes up is dealing with cross-thread
-panics, and the standard library poisons mutexes and rwlocks by default to help
-deal with this situation. The `catch_panic` function proposed in this RFC,
-however, is exactly "catch for Rust". To see how this function is not making
-Rust memory unsafe, let's take a look at how memory safety and exception safety
-interact.
+Despite these methods to subvert the mitigations placed by default in Rust, a
+key part of exception safety in Rust is that **safe code can never lead to
+memory unsafety**, regardless of whether it panics or not. Memory unsafety
+triggered as part of a panic can always be traced back to an `unsafe` block.
 
-### Exception Safety and Memory Safety
-
-If this is the first time you've ever heard about exception safety, this may
-sound pretty bad! Chances are you haven't considered how Rust code can "exit" at
-many points in a function beyond just the points where you wrote down `return`.
-The good news is that Rust by default **is still memory safe** in the face of
-this exception safety problem.
-
-All safe code in Rust is guaranteed to not cause any memory unsafety due to a
-panic. There is never any invalid intermediate state which can then be read due
-to a destructor running on a panic. As we've also seen, however, it's possible
-to cause memory unsafety through panics when dealing with `unsafe` code. The key
-part of this is that you have to have `unsafe` somewhere to inject the memory
-unsafety, and you largely just need to worry about exception safety in the
-context of unsafe code.
-
-Even though mixing safe Rust and panics cannot cause undefined behavior, it's
-possible for a **logical** invariant to be violated as a result of a panic.
-These sorts of situations can often become serious bugs and are difficult to
-audit for, so it means that exception safety in Rust is unfortunately not a
-situation that can be completely sidestepped.
-
-### Exception Safety in Rust
-
-Rust does not provide many primitives today to deal with exception safety, but
-it's a situation you'll see handled in many locations when browsing unsafe
-collections-related code, for example. One case where Rust does help you with
-this is an aspect of Mutexes called [**poisoining**][poison].
-
-[poison]: http://doc.rust-lang.org/std/sync/struct.Mutex.html#poisoning
-
-Poisoning is a mechanism for propagating panics among threads to ensure that
-inconsistent state is not read. A mutex becomes poisoned if a thread holds the
-lock and then panics. Most usage of a mutex simply `unwrap`s the result of
-`lock()`, causing a panic in one thread to be propagated to all others that are
-reachable.
-
-A key design aspect of poisoning, however, is that you can opt-out of poisoning.
-The `Err` variant of the [`lock` method] provides the ability to gain access to
-the mutex anyway. As explained above, exception safety can only lead to memory
-unsafety when intermingled with unsafe code. This means that fundamentally
-poisoning a Mutex is **not** guaranteeing memory safety, and hence getting
-access to a poisoned mutex is not an unsafe operation.
-
-[`lock` method]: http://doc.rust-lang.org/std/sync/struct.Mutex.html#method.lock
-
-Exception safety is rarely considered when writing code in Rust, so the standard
-library strives to help out as much as possible when it can. Poisoning mutexes
-is a good example of this where ignoring panics in remote threads means that
-mutexes could very commonly contain corrupted data (not memory unsafe, just
-logically corrupt). There's typically an opt-out to these mechanisms, but by
-default the standard library provides them.
-
-### `Send` and `'static` on `catch_panic`
-
-Alright, now that we've got a bit of background, let's explore why these bounds
-were originally added to the `catch_panic` function. It was thought that these
-two bounds would provide basically the same level of exception safety protection
-that spawning a new thread does (e.g. today this requires both of these bounds).
-This in theory meant that the addition of `catch_panic` to the standard library
-would not exascerbate the concerns of exception safety.
-
-It [was discovered][cp-issue], however, that TLS can be used to bypass this
-theoretical "this is the same as spawning a thread" boundary. Using TLS means
-that you can share non-`Send` data across the `catch_panic` boundary, meaning
-the caller of `catch_panic` may see invalid state.
-
-[cp-issue]: https://github.com/rust-lang/rust/issues/25662
-
-As a result, these two bounds have been called into question, and this RFC is
-recommending removing both bounds from the `catch_panic` function.
-
-### Is `catch_panic` unsafe?
-
-With the removal of the two bounds on this function, we can freely share state
-across a "panic boundary". This means that we don't always know for sure if
-arbitrary data is corrupted or not. As we've seen above, however, if we're only
-dealing with safe Rust then this will not lead to memory unsafety. For memory
-unsafety to happen it would require interaction with `unsafe` code at which
-point the `unsafe` code is responsible for dealing with exception safety.
-
-The standard library has a clear definition for what functions are `unsafe`, and
-it's precisely those which can lead to memory unsafety in otherwise safe Rust.
-Because that is not the case for `catch_panic` it will not be declared as an
-`unsafe` function.
-
-### What about other bounds?
-
-It has been discussed that there may be possible other bounds or mitigation
-strategies for `catch_panic` (to help with the TLS problem described above), and
-although it's somewhat unclear as to what this may precisely mean it's still the
-case that the standard library will want a `catch_panic` with no bounds in
-*some* form or another.
-
-The standard library is providing the lowest-level tools to create robust APIs,
-and inevitably it should not forbid patterns that are safe. Rust itself does
-this via the `unsafe` subset by allowing you to build up a safe abstraction on
-unsafe underpinnings. Similarly any bound on `catch_panic` will eventually be
-too restrictive for someone even though their usage is 100% safe. As a result
-the standard library will always want (and was always going to have) a no-bounds
-version of this function.
-
-As a result this RFC proposes not attempting to go through hoops to find a more
-restrictive, but more helpful with exception safety, set of bounds for this
-function and instead stabilize the no-bounds version.
+With all that background out of the way now, let's take a look at the guts of
+this RFC.
 
 # Detailed design
 
-Stabilize `std::thread::catch_panic` after removing the `Send` and `'static`
-bounds from the closure parameter, modifying the signature to be:
+At its heard, the change this RFC is proposing is to stabilize
+`std::thread::catch_panic` after removing the `Send` and `'static` bounds from
+the closure parameter, modifying the signature to be:
 
 ```rust
-fn catch_panic<F, R>(f: F) -> thread::Result<R> where F: FnOnce() -> R
+fn catch_panic<F: FnOnce() -> R, R>(f: F) -> thread::Result<R>
 ```
+
+More generally, however, this RFC also claims that this stable function does
+not radically alter Rust's exception safety story (explained above).
+
+### Exception safety mitigation
+
+A mitigation strategy for exception safety listed above is that a panic cannot
+be caught within a thread, and this change would move that bullet to the list of
+"methods to subvert the mitigation strategies" instead. Catching a panic (and
+not having `'static` on the bounds list) makes it easier to observe broken
+invariants of data structures shared across the `catch_panic` boundary, which
+can possibly increase the likelihood of exception safety issues arising.
+
+One of the key reasons Rust doesn't provide an exhaustive set of mitigation
+strategies is that the design of the language and standard library lead to
+idiomatic code not having to worry about exception safety. The use cases for
+`catch_panic` are relatively niche, and it is not expected for `catch_panic` to
+overnight become the idiomatic method of handling errors in Rust.
+
+Essentially, the addition of `catch_panic`:
+
+* Does not mean that *only now* does Rust code need to consider exception
+  safety. This is something that already must be handled today.
+* Does not mean that safe code everywhere must start worrying about exception
+  safety. This function is not the primary method to signal errors in Rust
+  (discussed later) and only adds a minor bullet to the list of situations that
+  safe Rust already needs to worry about exception safety in.
+
+### Will Rust have exceptions?
+
+In a technical sense this RFC is not "adding exceptions to Rust" as they
+already exist in the form of panics. What this RFC is adding, however, is a
+construct via which to catch these exceptions, bringing the standard library
+closer to the exception support in other languages. Idiomatic usage of Rust,
+however, will continue to follow the guidelines listed below for using a Result
+vs using a panic (which also do not need to change to account for this RC).
+
+It's likely that the `catch_panic` function will only be used where it's
+absolutely necessary, like FFI boundaries, instead of a general-purpose error
+handling mechanism in all code.
 
 # Drawbacks
 
-A major drawback of this RFC is that it can mitigate Rust's error handling
-story. On one hand this function can be seen as adding exceptions to Rust as
-it's now possible to both throw (panic) and catch (`catch_panic`). The track
-record of exceptions in languages like C++, Java, and Python hasn't been great,
-and a drawing point of Rust for many has been the lack of exceptions. To help
-understand what's going on, let's go through a brief overview of error handling
-in Rust today:
+A drawback of this RFC is that it can water down Rust's error handling story.
+With the addition of a "catch" construct for exceptions, it may be unclear to
+library authors whether to use panics or `Result` for their error types. There
+are fairly clear guidelines and conventions about using a `Result` vs a `panic`
+today, however, and they're summarized below for completeness.
 
 ### Result vs Panic
 
@@ -316,13 +238,11 @@ Another way to put this division is that:
 * `Result`s represent errors that carry additional contextual information. This
   information allows them to be handled by the caller of the function producing
   the error, modified with additional contextual information, and eventually
-  converted into an error message fit for a human consumer of the top-level
-  program.
+  converted into an error message fit for a top-level program.
 * `panic`s represent errors that carry no contextual information (except,
   perhaps, debug information). Because they represented an unexpected error,
-  they cannot be easily handled by the caller of the function or presented to a
-  human consumer of the top-level program (except to say "something unexpected
-  has gone wrong").
+  they cannot be easily handled by the caller of the function or presented to
+  the top-level program (except to say "something unexpected has gone wrong").
 
 Some pros of `Result` are that it signals specific edge cases that you as a
 consumer should think about handling and it allows the caller to decide
@@ -338,43 +258,23 @@ determine when a panic can happen or handle it in a custom fashion.
 These divisions justify the use of `panic`s for things like out-of-bounds
 indexing: such an error represents a programming mistake that (1) the author of
 the library was not aware of, by definition, and (2) cannot be easily handled by
-the caller, except perhaps to indicate to the human user that an unexpected
-error has occurred.
+the caller.
 
-In terms of heuristics for use:
-
-* `panic`s should rarely if ever be used to report errors that occurred through
-  communication with the system or through IO. For example, if a Rust program
-  shells out to `rustc`, and `rustc` is not found, it might be tempting to use a
-  panic, because the error is unexpected and hard to recover from. However, a
-  human consumer of the program would benefit from intermediate code adding
-  contextual information about the in-progress operation, and the program could
-  report the error in terms a human can understand. While the error is rare,
-  **when it happens it is not a programmer error**.
-* assertions can produce `panic`s, because the programmer is saying that if the
-  assertion fails, it means that he has made an unexpected mistake.
-
-In short, if it would make sense to report an error as a context-free `500
-Internal Server Error` or a red an unknown error has occurred in all cases, it's
-an appropriate panic.
+In terms of heuristics for use, `panic`s should rarely if ever be used to report
+routine errors for example through communication with the system or through IO.
+If a Rust program shells out to `rustc`, and `rustc` is not found, it might be
+tempting to use a panic because the error is unexpected and hard to recover
+from. A user of the program, however, would benefit from intermediate code
+adding contextual information about the in-progress operation, and the program
+could report the error in terms a they can understand. While the error is
+rare, **when it happens it is not a programmer error**. In short, panics are
+roughly analogous to an opaque "an unexpected error has occurred" message.
 
 Another key reason to choose `Result` over a panic is that the compiler is
 likely to soon grow an option to map a panic to an abort. This is motivated for
-portability, compile time, binary size, and a number of factors, but it
+portability, compile time, binary size, and a number of other factors, but it
 fundamentally means that a library which signals errors via panics (and relies
 on consumers using `catch_panic`) will not be usable in this context.
-
-### Will Rust have exceptions?
-
-After reviewing the cases for `Result` and `panic`, there's still clearly a
-niche that both of these two systems are filling, so it's not the case that we
-want to scrap one for the other. Rust will indeed have the ability to catch
-exceptions to a greater extent than it does today with this RFC, but idiomatic
-Rust will continue to follow the above rules for when to use a panic vs a result.
-
-It's likely that the `catch_panic` function will only be used where it's
-absolutely necessary, like FFI boundaries, instead of a general-purpose error
-handling mechanism in all code.
 
 # Alternatives
 
@@ -383,72 +283,26 @@ library entirely abandon all exception safety mitigation tactics. As explained
 in the motivation section, exception safety will not lead to memory unsafety
 unless paired with unsafe code, so it is perhaps within the realm of possibility
 to remove the tactics of poisoning from mutexes and simply require that
-consumers deal with exception safety 100%.
+consumers deal with exception safety 100% of the time.
 
-This alternative is often motivated by saying that there are holes in our
-poisoning story or the problem space is too large to tackle via targeted APIs.
-This section will look a little bit more in detail about what's going on here.
+This alternative is often motivated by saying that there are enough methods to
+subvert the default mitigation tactics that it's not worth trying to plug some
+holes and not others. Upon closer inspection, however, the areas where safe code
+needs to worry about exception safety are isolated to the single-threaded
+situations. For example `RefCell`, destructors, and `catch_panic` all only
+expose data possibly broken through a panic in a single thread.
 
-For the purpose of this discussion, let's use the term *dangerous* to
-refer to code that can produce problems related to exception safety. Exception
-safety means we're exposing the following possibly dangerous situation:
+Once a thread boundary is crossed, the only current way to share data mutably is
+via `Mutex` or `RwLock`, both of which are poisoned by default. This sort of
+sharing is fundamental to threaded code, and poisoning by default allows safe
+code to freely use many threads without having to consider exception safety
+across threads (as poisoned data will tear down all connected threads).
 
-> Dangerous code allows code that uses interior mutability to be interrupted in
-> the process of making a mutation, and then allow other code to see the
-> incomplete change.
-
-Today, most Rust code is protected from this danger from two angles:
-
-* If a piece of code acquires interior mutability through &mut and a panic
-  occurs, that panic will propagate through the owner of the original value.
-  Since there can be no outstanding & references to the same value, nobody can
-  see the incomplete change.
-* If a piece of code acquires interior mutability through Mutex and a
-  panic occurs, attempts by another thread to read the value through
-  normal means will propagate the panic.
-
-There are areas in Rust that are not covered by these cases:
-
-* RefCell (especially with destructors) allows code to get access to a value
-  with an incomplete change.
-* Generally speaking, destructors can observe an incomplete change.
-* The Mutex API provides an alternate mechanism of reading a value with an
-  incomplete change.
-* The proposed `catch_panic` API allows the propagation of panics to a boundary
-  that does not have any ownership restrictions.
-
-One open question that this question affects:
-
-* Should a theoretical `Thread::scoped` API propagate panics?
-
-Looking at these cases that aren't covered in Rust by default, and assuming that
-`Thread::scoped` propagates panics by default (with an analogous API to
-`PoisonError::into_inner`), we get a table that looks like:
-
-![img](https://www.evernote.com/l/AAJdvryuzOVFrakUiK6i0IBASP7wysYHN0sB/image.png)
-
-The main point here is that although this problem space seems sprawling, it is,
-in reality, restricted to interior mutability. Enumerating the "dangerous" APIs
-seems to be a tractable problem. Calling `RefCell` and `catch_panic` "dangerous"
-(with the incomplete mutation problem) would not be problematic. `Mutex` or
-`Thread::scoped` would not be dangerous because of the benefits associated with
-detecting panics across threads, and this aligns with the table above. Note that
-implementations of Drop, because they run during stack unwinding, should be
-considered "dangerous" for the purposes of this summary.
-
-It may not be surprising that the threaded APIs ended up being protected via
-APIs, because this kind of sharing is fundamental to threaded code. Making
-them "dangerous" would make almost anything you would want to do with threads
-"dangerous", and instead we ask users to learn about the danger only when they
-try to access the possibly dangerous data.
-
-In contrast, both `RefCell` and `catch_panic` are more niche tools, making it
-reasonable to ask users to learn about the danger when they begin using the
-tools in the first place, and then making the access more ergonomic. Despite
-labeling being "dangerous" there are strategies to mitigate this such as
-building abstractions on top of these primitive which only use `RefCell` or
-`catch_panic` as an implementation detail. These higher-level abstractions will
-have fewer edge cases and risks associated with them.
+This property of multithreaded programming in Rust is seen as strong enough that
+poisoning should not be removed by default, and in fact a new hypothetical
+`thread::scoped` API (a rough counterpart of `catch_panic`) could also propagate
+panics by default (like poisoning) with an ability to opt out (like
+`PoisonError`).
 
 # Unresolved questions
 
