@@ -397,6 +397,23 @@ impl Bar {
 ```
 "##,
 
+E0412: r##"
+An undeclared type name was used. Example of erroneous code:
+
+```
+impl Something {} // error: use of undeclared type name `Something`
+```
+
+To fix this error, please verify you didn't misspell the type name or
+you did declare it. Example:
+
+```
+struct Something;
+
+impl Something {}
+```
+"##,
+
 E0413: r##"
 A declaration shadows an enum variant or unit-like struct in scope.
 Example of erroneous code:
@@ -725,7 +742,6 @@ register_diagnostics! {
            // pattern #1
     E0410, // variable from pattern is not bound in pattern 1
     E0411, // use of `Self` outside of an impl or trait
-    E0412, // use of undeclared
     E0414, // only irrefutable patterns allowed here
     E0415, // identifier is bound more than once in this parameter list
     E0416, // identifier is bound more than once in the same pattern
