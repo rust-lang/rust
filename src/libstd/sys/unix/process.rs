@@ -463,7 +463,11 @@ mod tests {
         return 0;
     }
 
+    // See #14232 for more information, but it appears that signal delivery to a
+    // newly spawned process may just be raced in the OSX, so to prevent this
+    // test from being flaky we ignore it on OSX.
     #[test]
+    #[cfg_attr(target_os = "macos", ignore)]
     fn test_process_mask() {
         unsafe {
             // Test to make sure that a signal mask does not get inherited.
