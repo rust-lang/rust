@@ -826,6 +826,63 @@ struct Foo { x: Option<Box<Foo>> }
 Now it's possible to create at least one instance of `Foo`: `Foo { x: None }`.
 "##,
 
+E0074: r##"
+When using the `#[simd]` attribute on a tuple struct, the components of the
+tuple struct must all be of a concrete, nongeneric type so the compiler can
+reason about how to use SIMD with them. This error will occur if the types
+are generic.
+
+```
+#[simd]
+struct Bad<T>(T, T, T); // This will cause an error
+
+#[simd]
+struct Good(u32, u32, u32); // This will not
+```
+"##,
+
+E0075: r##"
+The `#[simd]` attribute can only be applied to non empty tuple structs, because
+it doesn't make sense to try to use SIMD operations when there are no values to
+operate on.
+
+```
+#[simd]
+struct Bad; // This will cause an error
+
+#[simd]
+struct Good(u32); // This will not
+```
+"##,
+
+E0076: r##"
+When using the `#[simd]` attribute to automatically use SIMD operations in tuple
+struct, the types in the struct must all be of the same type, or the compiler
+will trigger this error.
+
+```
+#[simd]
+struct Bad(u16, u32, u32); // This will cause an error
+
+#[simd]
+struct Good(u32, u32, u32); // This will not
+```
+
+"##,
+
+E0077: r##"
+When using the `#[simd]` attribute on a tuple struct, the elements in the tuple
+must be machine types so SIMD operations can be applied to them.
+
+```
+#[simd]
+struct Bad(String); // This will cause an error
+
+#[simd]
+struct Good(u32, u32, u32); // This will not
+```
+"##,
+
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -2378,10 +2435,6 @@ https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 
 register_diagnostics! {
     E0068,
-    E0074,
-    E0075,
-    E0076,
-    E0077,
     E0085,
     E0086,
     E0090,
