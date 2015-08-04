@@ -10,14 +10,15 @@ bounds from the closure parameter.
 
 # Motivation
 
-In today's stable Rust it's not currently possible to catch a panic. There are a
-number of situations, however, where catching a panic is either required for
-correctness or necessary for building a useful abstraction:
+In today's stable Rust it's not possible to catch a panic on the thread that
+caused it. There are a number of situations, however, where catching a panic is
+either required for correctness or necessary for building a useful abstraction:
 
 * It is currently defined as undefined behavior to have a Rust program panic
   across an FFI boundary. For example if C calls into Rust and Rust panics, then
   this is undefined behavior. Being able to catch a panic will allow writing
-  robust C apis in Rust.
+  C apis in Rust that do not risk aborting the process they are embedded into.
+
 * Abstactions like thread pools want to catch the panics of tasks being run
   instead of having the thread torn down (and having to spawn a new thread).
 
@@ -32,9 +33,9 @@ fn catch_panic<F, R>(f: F) -> thread::Result<R>
 This function will run the closure `f` and if it panics return `Err(Box<Any>)`.
 If the closure doesn't panic it will return `Ok(val)` where `val` is the
 returned value of the closure. The closure, however, is restricted to only close
-over `Send` and `'static` data. This can be overly restrictive at times and it's
-also not clear what purpose the bounds are serving today, hence the desire to
-remove these bounds.
+over `Send` and `'static` data. These bounds can be overly restrictive, and due
+to thread-local storage they can be subverted, making it unclear what purpose
+they serve. This RFC proposes to remove the bounds as well.
 
 Historically Rust has purposefully avoided the foray into the situation of
 catching panics, largely because of a problem typically referred to as
@@ -45,10 +46,11 @@ Rust.
 # Background: What is exception safety?
 
 Languages with exceptions have the property that a function can "return" early
-if an exception is thrown. This is normally not something that needs to be
-worried about, but this form of control flow can often be surprising and
-unexpected. If an exception ends up causing unexpected behavior or a bug then
-code is said to not be **exception safe**.
+if an exception is thrown. While exceptions aren't too hard to reason about when
+thrown explicitly, they can be problematic when they are thrown by code being
+called -- especially when that code isn't known in advance. Code is **exception
+safe** if it works correctly even when the functions it calls into throw
+exceptions.
 
 The idea of throwing an exception causing bugs may sound a bit alien, so it's
 helpful to drill down into exactly why this is the case. Bugs related to
@@ -58,11 +60,11 @@ exception safety are comprised of two critical components:
 2. This broken invariant is the later observed.
 
 Exceptional control flow often exacerbates this first component of breaking
-invariants. For example many data structures often have a number of invariants
-that are dynamically upheld for correctness, and the type's routines can
-temporarily break these invariants to be fixed up before the function returns.
-If, however, an exception is thrown in this interim period the broken invariant
-could be accidentally exposed.
+invariants. For example many data structures have a number of invariants that
+are dynamically upheld for correctness, and the type's routines can temporarily
+break these invariants to be fixed up before the function returns.  If, however,
+an exception is thrown in this interim period the broken invariant could be
+accidentally exposed.
 
 The second component, observing a broken invariant, can sometimes be difficult
 in the face of exceptions, but languages often have constructs to enable these
@@ -81,7 +83,7 @@ example:
   known to not throw an exception.
 * Local "cleanup" handlers can be placed on the stack to restore invariants
   whenever a function returns, either normally or exceptionally. This can be
-  done through finally blocks in some languages for via destructors in others.
+  done through finally blocks in some languages or via destructors in others.
 * Exceptions can be caught locally to perform cleanup before possibly re-raising
   the exception.
 
@@ -101,7 +103,7 @@ Up to now we've been talking about exceptions and exception safety, but from a
 Rust perspective we can just replace this with panics and panic safety. Panics
 in Rust are currently implemented essentially as a C++ exception under the hood.
 As a result, **exception safety is something that needs to be handled in Rust
-code**.
+code today**.
 
 One of the primary examples where panics need to be handled in Rust is unsafe
 code. Let's take a look at an example where this matters:
@@ -136,12 +138,15 @@ Rust's design:
 * Rust doesn't expose uninitialized memory
 * Panics cannot be caught in a thread
 * Across threads data is poisoned by default on panics
-* Idiomatic Rust must opt in to extra amounts of sharing data across boundaries
+* Idiomatic Rust must opt in to extra sharing across boundaries (e.g. `RefCell`)
+* Destructors are relatively rare and uninteresting in safe code
 
-With these mitigation tactics, it ends up being the case that **safe Rust code
-can mostly ignore exception safety concerns**. That being said, it does not mean
-that safe Rust code can *always* ignore exception safety issues. There are a
-number of methods to subvert the mitigation strategies listed above:
+These mitigations all address the *second* aspect of exception unsafety:
+observation of broken invariants. With the tactics in place, it ends up being
+the case that **safe Rust code can largely ignore exception safety
+concerns**. That being said, it does not mean that safe Rust code can *always*
+ignore exception safety issues. There are a number of methods to subvert the
+mitigation strategies listed above:
 
 1. When poisoning data across threads, antidotes are available to access
    poisoned data. Namely the [`PoisonError` type][pet] allows safe access to the
@@ -156,6 +161,11 @@ number of methods to subvert the mitigation strategies listed above:
 
 [pet]: http://doc.rust-lang.org/std/sync/struct.PoisonError.html
 
+But all of these "subversions" fall outside the realm of normal, idiomatic, safe
+Rust code, and so they all serve as a "heads up" that panic safety might be an
+issue. Thus, in practice, Rust programmers worry about exception safety far less
+than in languages with full-blown exceptions.
+
 Despite these methods to subvert the mitigations placed by default in Rust, a
 key part of exception safety in Rust is that **safe code can never lead to
 memory unsafety**, regardless of whether it panics or not. Memory unsafety
@@ -166,7 +176,7 @@ this RFC.
 
 # Detailed design
 
-At its heard, the change this RFC is proposing is to stabilize
+At its heart, the change this RFC is proposing is to stabilize
 `std::thread::catch_panic` after removing the `Send` and `'static` bounds from
 the closure parameter, modifying the signature to be:
 
@@ -177,50 +187,39 @@ fn catch_panic<F: FnOnce() -> R, R>(f: F) -> thread::Result<R>
 More generally, however, this RFC also claims that this stable function does
 not radically alter Rust's exception safety story (explained above).
 
-### Exception safety mitigation
+## Will Rust have exceptions?
 
-A mitigation strategy for exception safety listed above is that a panic cannot
-be caught within a thread, and this change would move that bullet to the list of
-"methods to subvert the mitigation strategies" instead. Catching a panic (and
-not having `'static` on the bounds list) makes it easier to observe broken
-invariants of data structures shared across the `catch_panic` boundary, which
-can possibly increase the likelihood of exception safety issues arising.
+In a technical sense this RFC is not "adding exceptions to Rust" as they already
+exist in the form of panics. What this RFC is adding, however, is a construct
+via which to catch these exceptions within a thread, bringing the standard
+library closer to the exception support in other languages.
 
-One of the key reasons Rust doesn't provide an exhaustive set of mitigation
-strategies is that the design of the language and standard library lead to
-idiomatic code not having to worry about exception safety. The use cases for
-`catch_panic` are relatively niche, and it is not expected for `catch_panic` to
-overnight become the idiomatic method of handling errors in Rust.
+Catching a panic (and especially not having `'static` on the bounds list) makes
+it easier to observe broken invariants of data structures shared across the
+`catch_panic` boundary, which can possibly increase the likelihood of exception
+safety issues arising.
 
-Essentially, the addition of `catch_panic`:
+The risk of this step is that catching panics becomes an idiomatic way to deal
+with error-handling, thereby making exception safety much more of a headache
+than it is today. Whereas we intend for the `catch_panic` function to only be
+used where it's absolutely necessary, e.g. for FFI boundaries. How do we ensure
+that `catch_panic` isn't overused?
 
-* Does not mean that *only now* does Rust code need to consider exception
-  safety. This is something that already must be handled today.
-* Does not mean that safe code everywhere must start worrying about exception
-  safety. This function is not the primary method to signal errors in Rust
-  (discussed later) and only adds a minor bullet to the list of situations that
-  safe Rust already needs to worry about exception safety in.
+There are two key reasons we don't except `catch_panic` to become idiomatic:
 
-### Will Rust have exceptions?
+1. We have already established very strong conventions around error handling,
+   and in particular around the use of panic and `Result`, and stabilized usage
+   around them in the standard library. There is little chance these conventions
+   would change overnight.
 
-In a technical sense this RFC is not "adding exceptions to Rust" as they
-already exist in the form of panics. What this RFC is adding, however, is a
-construct via which to catch these exceptions, bringing the standard library
-closer to the exception support in other languages. Idiomatic usage of Rust,
-however, will continue to follow the guidelines listed below for using a Result
-vs using a panic (which also do not need to change to account for this RC).
+2. We have long intended to provide an option to treat every use of `panic!` as
+   an abort, which is motivated by portability, compile time, binary size, and a
+   number of other factors. Assuming we take this step, it would be extremely
+   unwise for a library to signal expected errors via panics and rely on
+   consumers using `catch_panic` to handle them.
 
-It's likely that the `catch_panic` function will only be used where it's
-absolutely necessary, like FFI boundaries, instead of a general-purpose error
-handling mechanism in all code.
-
-# Drawbacks
-
-A drawback of this RFC is that it can water down Rust's error handling story.
-With the addition of a "catch" construct for exceptions, it may be unclear to
-library authors whether to use panics or `Result` for their error types. There
-are fairly clear guidelines and conventions about using a `Result` vs a `panic`
-today, however, and they're summarized below for completeness.
+For reference, here's a summary of the conventions around `Result` and `panic`,
+which still hold good after this RFC:
 
 ### Result vs Panic
 
@@ -229,9 +228,10 @@ today:
 
 * `Results` represent errors/edge-cases that the author of the library knew
   about, and expects the consumer of the library to handle.
+
 * `panic`s represent errors that the author of the library did not expect to
-  occur, and therefore does not expect the consumer to handle in any particular
-  way.
+  occur, such as a contract violation, and therefore does not expect the
+  consumer to handle in any particular way.
 
 Another way to put this division is that:
 
@@ -239,6 +239,7 @@ Another way to put this division is that:
   information allows them to be handled by the caller of the function producing
   the error, modified with additional contextual information, and eventually
   converted into an error message fit for a top-level program.
+
 * `panic`s represent errors that carry no contextual information (except,
   perhaps, debug information). Because they represented an unexpected error,
   they cannot be easily handled by the caller of the function or presented to
@@ -251,14 +252,13 @@ and writing down `Result` + `try!` is not always the most ergonomic.
 
 The pros and cons of `panic` are essentially the opposite of `Result`, being
 easy to use (nothing to write down other than the panic) but difficult to
-determine when a panic can happen or handle it in a custom fashion.
-
-### Result? Or panic?
+determine when a panic can happen or handle it in a custom fashion, even with
+`catch_panic`.
 
 These divisions justify the use of `panic`s for things like out-of-bounds
 indexing: such an error represents a programming mistake that (1) the author of
-the library was not aware of, by definition, and (2) cannot be easily handled by
-the caller.
+the library was not aware of, by definition, and (2) cannot be meaningfully
+handled by the caller.
 
 In terms of heuristics for use, `panic`s should rarely if ever be used to report
 routine errors for example through communication with the system or through IO.
@@ -270,11 +270,28 @@ could report the error in terms a they can understand. While the error is
 rare, **when it happens it is not a programmer error**. In short, panics are
 roughly analogous to an opaque "an unexpected error has occurred" message.
 
-Another key reason to choose `Result` over a panic is that the compiler is
-likely to soon grow an option to map a panic to an abort. This is motivated for
-portability, compile time, binary size, and a number of other factors, but it
-fundamentally means that a library which signals errors via panics (and relies
-on consumers using `catch_panic`) will not be usable in this context.
+Stabilizing `catch_panic` does little to change the tradeoffs around `Result`
+and `panic` that led to these conventions.
+
+## Why remove the bounds?
+
+The main reason to remove the `'static` and `Send` bounds on `catch_panic` is
+that they don't actually enforce anything. Using thread-local storage, it's
+possible to share mutable data across a call to `catch_panic` even if that data
+isn't `'static` or `Send`. And allowing borrowed data, in particular, is helpful
+for thread pools that need to execute closures with borrowed data within them;
+essentially, the worker threads are executing multiple "semantic threads" over
+their lifetime, and the `catch_panic` boundary represents the end of these
+"semantic threads".
+
+# Drawbacks
+
+A drawback of this RFC is that it can water down Rust's error handling story.
+With the addition of a "catch" construct for exceptions, it may be unclear to
+library authors whether to use panics or `Result` for their error types. As we
+discussed above, however, Rust's design around error handling has always had to
+deal with these two strategies, and our conventions don't materially change by
+stabilizing `catch_panic`.
 
 # Alternatives
 
@@ -306,4 +323,9 @@ panics by default (like poisoning) with an ability to opt out (like
 
 # Unresolved questions
 
-None currently.
+- Is it worth keeping the `'static` and `Send` bounds as a mitigation measure in
+  practice, even if they aren't enforceable in theory? That would require thread
+  pools to use unsafe code, but that could be acceptable.
+
+- Should `catch_panic` be stabilized within `std::thread` where it lives today,
+  or somewhere else?
