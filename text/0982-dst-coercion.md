@@ -176,3 +176,9 @@ indicate the field type which is coerced, for example).
 # Unresolved questions
 
 None
+
+# Updates since being accepted
+
+Since it was accepted, the RFC has been updated as follows:
+
+1. `CoerceUnsized` was specified to ingore PhantomData fields.
