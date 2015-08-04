@@ -1,7 +1,7 @@
 % Drop Check
 
 We have seen how lifetimes provide us some fairly simple rules for ensuring
-that never read dangling references. However up to this point we have only ever
+that we never read dangling references. However up to this point we have only ever
 interacted with the *outlives* relationship in an inclusive manner. That is,
 when we talked about `'a: 'b`, it was ok for `'a` to live *exactly* as long as
 `'b`. At first glance, this seems to be a meaningless distinction. Nothing ever
