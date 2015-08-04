@@ -11,15 +11,15 @@ bounds from the closure parameter.
 # Motivation
 
 In today's stable Rust it's not possible to catch a panic on the thread that
-caused it. There are a number of situations, however, where catching a panic is
+caused it. There are a number of situations, however, where this is
 either required for correctness or necessary for building a useful abstraction:
 
 * It is currently defined as undefined behavior to have a Rust program panic
   across an FFI boundary. For example if C calls into Rust and Rust panics, then
   this is undefined behavior. Being able to catch a panic will allow writing
-  C apis in Rust that do not risk aborting the process they are embedded into.
+  C APIs in Rust that do not risk aborting the process they are embedded into.
 
-* Abstactions like thread pools want to catch the panics of tasks being run
+* Abstractions like thread pools want to catch the panics of tasks being run
   instead of having the thread torn down (and having to spawn a new thread).
 
 Stabilizing the `catch_panic` function would enable these two use cases, but
@@ -73,7 +73,7 @@ in the face of exceptions, but languages often have constructs to enable these
 sorts of witnesses. Two primary methods of doing so are something akin to
 finally blocks (code run on a normal or exceptional return) or just catching the
 exception. In both cases code which later runs that has access to the original
-data structure then it will see the broken invariants.
+data structure will see the broken invariants.
 
 Now that we've got a better understanding of how an exception might cause a bug
 (e.g. how code can be "exception unsafe"), let's take a look how we can make
@@ -203,22 +203,23 @@ safety issues arising.
 
 The risk of this step is that catching panics becomes an idiomatic way to deal
 with error-handling, thereby making exception safety much more of a headache
-than it is today. Whereas we intend for the `catch_panic` function to only be
-used where it's absolutely necessary, e.g. for FFI boundaries. How do we ensure
-that `catch_panic` isn't overused?
+than it is today (as it's more likely that a broken invariant is later
+witnessed). The `catch_panic` function is intended to only be used
+where it's absolutely necessary, e.g. for FFI boundaries, but how can it be
+ensured that `catch_panic` isn't overused?
 
-There are two key reasons we don't except `catch_panic` to become idiomatic:
+There are two key reasons `catch_panic` likely won't become idiomatic:
 
-1. We have already established very strong conventions around error handling,
-   and in particular around the use of panic and `Result`, and stabilized usage
-   around them in the standard library. There is little chance these conventions
+1. There are already strong and established conventions around error handling,
+   and in particular around the use of panic and `Result` with stabilized usage
+   of them in the standard library. There is little chance these conventions
    would change overnight.
 
-2. We have long intended to provide an option to treat every use of `panic!` as
-   an abort, which is motivated by portability, compile time, binary size, and a
-   number of other factors. Assuming we take this step, it would be extremely
-   unwise for a library to signal expected errors via panics and rely on
-   consumers using `catch_panic` to handle them.
+2. There has long been a desire to treat every use of `panic!` as an abort
+   which is motivated by portability, compile time, binary size, and a number of
+   other factors. Assuming this step is taken, it would be extremely unwise for
+   a library to signal expected errors via panics and rely on consumers using
+   `catch_panic` to handle them.
 
 For reference, here's a summary of the conventions around `Result` and `panic`,
 which still hold good after this RFC:
