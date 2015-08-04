@@ -82,18 +82,6 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     check_expr(fcx, lhs_expr);
     let lhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
 
-    // Annoyingly, SIMD ops don't fit into the PartialEq/PartialOrd
-    // traits, because their return type is not bool. Perhaps this
-    // should change, but for now if LHS is SIMD we go down a
-    // different path that bypassess all traits.
-    if lhs_ty.is_simd() {
-        check_expr_coercable_to_type(fcx, rhs_expr, lhs_ty);
-        let rhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
-        let return_ty = enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
-        fcx.write_ty(expr.id, return_ty);
-        return;
-    }
-
     match BinOpCategory::from(op) {
         BinOpCategory::Shortcircuit => {
             // && and || are a simple case.
@@ -154,12 +142,6 @@ fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         BinOpCategory::Shift => {
-            // For integers, the shift amount can be of any integral
-            // type. For simd, the type must match exactly.
-            if lhs_ty.is_simd() {
-                demand::suptype(fcx, rhs_expr.span, lhs_ty, rhs_ty);
-            }
-
             // result type is same as LHS always
             lhs_ty
         }
@@ -174,27 +156,7 @@ fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         BinOpCategory::Comparison => {
             // both LHS and RHS and result will have the same type
             demand::suptype(fcx, rhs_expr.span, lhs_ty, rhs_ty);
-
-            // if this is simd, result is same as lhs, else bool
-            if lhs_ty.is_simd() {
-                let unit_ty = lhs_ty.simd_type(tcx);
-                debug!("enforce_builtin_binop_types: lhs_ty={:?} unit_ty={:?}",
-                       lhs_ty,
-                       unit_ty);
-                if !unit_ty.is_integral() {
-                    tcx.sess.span_err(
-                        lhs_expr.span,
-                        &format!("binary comparison operation `{}` not supported \
-                                  for floating point SIMD vector `{}`",
-                                 ast_util::binop_to_string(op.node),
-                                 lhs_ty));
-                    tcx.types.err
-                } else {
-                    lhs_ty
-                }
-            } else {
-                tcx.mk_bool()
-            }
+            tcx.mk_bool()
         }
     }
 }
@@ -427,29 +389,25 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>,
 
         BinOpCategory::Shift => {
             lhs.references_error() || rhs.references_error() ||
-                lhs.is_integral() && rhs.is_integral() ||
-                lhs.is_simd() && rhs.is_simd()
+                lhs.is_integral() && rhs.is_integral()
         }
 
         BinOpCategory::Math => {
             lhs.references_error() || rhs.references_error() ||
                 lhs.is_integral() && rhs.is_integral() ||
-                lhs.is_floating_point() && rhs.is_floating_point() ||
-                lhs.is_simd() && rhs.is_simd()
+                lhs.is_floating_point() && rhs.is_floating_point()
         }
 
         BinOpCategory::Bitwise => {
             lhs.references_error() || rhs.references_error() ||
                 lhs.is_integral() && rhs.is_integral() ||
                 lhs.is_floating_point() && rhs.is_floating_point() ||
-                lhs.is_simd() && rhs.is_simd() ||
                 lhs.is_bool() && rhs.is_bool()
         }
 
         BinOpCategory::Comparison => {
             lhs.references_error() || rhs.references_error() ||
-                lhs.is_scalar() && rhs.is_scalar() ||
-                lhs.is_simd() && rhs.is_simd()
+                lhs.is_scalar() && rhs.is_scalar()
         }
     }
 }
