@@ -2032,6 +2032,23 @@ pub fn update_linkage(ccx: &CrateContext,
     }
 }
 
+fn set_global_section(ccx: &CrateContext, llval: ValueRef, i: &ast::Item) {
+    match attr::first_attr_value_str_by_name(&i.attrs,
+                                             "link_section") {
+        Some(sect) => {
+            if contains_null(&sect) {
+                ccx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`",
+                                            &sect));
+            }
+            unsafe {
+                let buf = CString::new(sect.as_bytes()).unwrap();
+                llvm::LLVMSetSection(llval, buf.as_ptr());
+            }
+        },
+        None => ()
+    }
+}
+
 pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
     let _icx = push_ctxt("trans_item");
 
@@ -2054,6 +2071,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                 } else {
                     trans_fn(ccx, &**decl, &**body, llfn, empty_substs, item.id, &item.attrs);
                 }
+                set_global_section(ccx, llfn, item);
                 update_linkage(ccx, llfn, Some(item.id),
                                if is_origin { OriginalTranslation } else { InlinedCopy });
 
@@ -2103,6 +2121,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
           v.visit_expr(&**expr);
 
           let g = consts::trans_static(ccx, m, expr, item.id, &item.attrs);
+          set_global_section(ccx, g, item);
           update_linkage(ccx, g, Some(item.id), OriginalTranslation);
       },
       ast::ItemForeignMod(ref foreign_mod) => {
@@ -2386,21 +2405,6 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                 _ => ccx.sess().bug("get_item_val: weird result in table")
             };
-
-            match attr::first_attr_value_str_by_name(&i.attrs,
-                                                     "link_section") {
-                Some(sect) => {
-                    if contains_null(&sect) {
-                        ccx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`",
-                                                 &sect));
-                    }
-                    unsafe {
-                        let buf = CString::new(sect.as_bytes()).unwrap();
-                        llvm::LLVMSetSection(v, buf.as_ptr());
-                    }
-                },
-                None => ()
-            }
 
             v
         }
