@@ -60,6 +60,7 @@ pub fn opts() -> TargetOptions {
             "/NOLOGO".to_string(),
             "/NXCOMPAT".to_string(),
         ],
+        archive_format: "gnu".to_string(),
 
         .. Default::default()
     }

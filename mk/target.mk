@@ -206,6 +206,9 @@ $(foreach host,$(CFG_HOST), \
 # $(3) - triple snapshot is built for
 # $(4) - crate
 # $(5) - tool
+#
+# FIXME(stage0): remove this and all other relevant support in the makefiles
+#                after a snapshot is made
 define MOVE_TOOLS_TO_SNAPSHOT_HOST_DIR
 ifneq (,$(3))
 $$(TLIB$(1)_T_$(2)_H_$(2))/stamp.$(4): $$(HLIB$(1)_H_$(2))/rustlib/$(3)/bin/$(5)
@@ -230,6 +233,9 @@ $(foreach target,$(CFG_TARGET), \
 #   path instead of MinGW's /usr/bin/link.exe (entirely unrelated)
 #
 # The values for these variables are detected by the configure script.
+#
+# FIXME(stage0): remove this and all other relevant support in the makefiles
+#                after a snapshot is made
 define SETUP_LIB_MSVC_ENV_VARS
 ifeq ($$(findstring msvc,$(2)),msvc)
 $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
