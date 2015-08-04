@@ -278,14 +278,24 @@ and `panic` that led to these conventions.
 
 ## Why remove the bounds?
 
-The main reason to remove the `'static` and `Send` bounds on `catch_panic` is
-that they don't actually enforce anything. Using thread-local storage, it's
-possible to share mutable data across a call to `catch_panic` even if that data
-isn't `'static` or `Send`. And allowing borrowed data, in particular, is helpful
-for thread pools that need to execute closures with borrowed data within them;
-essentially, the worker threads are executing multiple "semantic threads" over
-their lifetime, and the `catch_panic` boundary represents the end of these
-"semantic threads".
+There are a few reasons to remove the `'static` and `Send` bounds on the
+`catch_panic` function:
+
+* One of the primary use cases of `catch_panic` is in an FFI context, where lots
+  of `*mut` and `*const` pointers are flying around. These two types aren't
+  `Send` by default, so having their values cross the `catch_panic` boundary
+  would be highly un-ergonomic (albeit still possible). As a result, this RFC
+  proposes removing the `Send` bound from the function.
+
+* A reason to remove the `'static` bound is that it doesn't provide rock-solid
+  exception-safety mitigation. Using thread-local storage it's possible to
+  share mutable data across a call to `catch_panic` even if that data isn't
+  `'static`.
+
+* Borrowed data, in particular, is helpful for thread pools that need
+  to execute closures with borrowed data within them; essentially, the worker
+  threads are executing multiple "semantic threads" over their lifetime, and the
+  `catch_panic` boundary represents the end of these "semantic threads".
 
 # Drawbacks
 
