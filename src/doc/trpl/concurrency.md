@@ -115,7 +115,7 @@ languages. It will not compile:
 use std::thread;
 
 fn main() {
-    let mut data = vec![1u32, 2, 3];
+    let mut data = vec![1, 2, 3];
 
     for i in 0..3 {
         thread::spawn(move || {
@@ -153,7 +153,7 @@ use std::thread;
 use std::sync::Mutex;
 
 fn main() {
-    let mut data = Mutex::new(vec![1u32, 2, 3]);
+    let mut data = Mutex::new(vec![1, 2, 3]);
 
     for i in 0..3 {
         let data = data.lock().unwrap();
@@ -195,7 +195,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 
 fn main() {
-    let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
+    let data = Arc::new(Mutex::new(vec![1, 2, 3]));
 
     for i in 0..3 {
         let data = data.clone();
@@ -217,7 +217,7 @@ thread more closely:
 # use std::sync::{Arc, Mutex};
 # use std::thread;
 # fn main() {
-#     let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
+#     let data = Arc::new(Mutex::new(vec![1, 2, 3]));
 #     for i in 0..3 {
 #         let data = data.clone();
 thread::spawn(move || {
@@ -255,7 +255,7 @@ use std::thread;
 use std::sync::mpsc;
 
 fn main() {
-    let data = Arc::new(Mutex::new(0u32));
+    let data = Arc::new(Mutex::new(0));
 
     let (tx, rx) = mpsc::channel();
 
@@ -293,7 +293,7 @@ fn main() {
         let tx = tx.clone();
 
         thread::spawn(move || {
-            let answer = 42u32;
+            let answer = 42;
 
             tx.send(answer);
         });
