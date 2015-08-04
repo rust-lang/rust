@@ -50,6 +50,12 @@ impl Type {
         self.rf
     }
 
+    pub fn to_string(self: Type) -> String {
+        llvm::build_string(|s| unsafe {
+            llvm::LLVMWriteTypeToString(self.to_ref(), s);
+        }).expect("non-UTF8 type description from LLVM")
+    }
+
     pub fn void(ccx: &CrateContext) -> Type {
         ty!(llvm::LLVMVoidTypeInContext(ccx.llcx()))
     }
@@ -315,9 +321,7 @@ impl TypeNames {
     }
 
     pub fn type_to_string(&self, ty: Type) -> String {
-        llvm::build_string(|s| unsafe {
-                llvm::LLVMWriteTypeToString(ty.to_ref(), s);
-            }).expect("non-UTF8 type description from LLVM")
+        ty.to_string()
     }
 
     pub fn types_to_str(&self, tys: &[Type]) -> String {
