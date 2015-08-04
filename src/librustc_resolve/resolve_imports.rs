@@ -184,6 +184,11 @@ impl ImportResolution {
     }
 }
 
+struct ImportResolvingError {
+    span: Span,
+    path: String,
+    help: String,
+}
 
 struct ImportResolver<'a, 'b:'a, 'tcx:'b> {
     resolver: &'a mut Resolver<'b, 'tcx>
@@ -218,16 +223,16 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             if self.resolver.unresolved_imports == prev_unresolved_imports {
                 // resolving failed
                 if errors.len() > 0 {
-                    for (span, path, help) in errors {
+                    for e in errors {
                         resolve_error(self.resolver,
-                                      span,
-                                      ResolutionError::UnresolvedImport(Some((&*path, &*help))));
+                                      e.span,
+                                      ResolutionError::UnresolvedImport(Some((&e.path, &e.help))));
                     }
                 } else {
-                    // report unresolved imports only if no hard error was already reported
-                    // to avoid generating multiple errors on the same import
-                    // imports that are still undeterminate at this point are actually blocked
-                    // by errored imports, so there is no point reporting them
+                    // Report unresolved imports only if no hard error was already reported
+                    // to avoid generating multiple errors on the same import.
+                    // Imports that are still indeterminate at this point are actually blocked
+                    // by errored imports, so there is no point reporting them.
                     self.resolver.report_unresolved_imports(module_root);
                 }
                 break;
@@ -241,7 +246,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     /// Attempts to resolve imports for the given module and all of its
     /// submodules.
     fn resolve_imports_for_module_subtree(&mut self, module_: Rc<Module>)
-                                          -> Vec<(Span, String, String)> {
+                                          -> Vec<ImportResolvingError> {
         let mut errors = Vec::new();
         debug!("(resolving imports for module subtree) resolving {}",
                module_to_string(&*module_));
@@ -269,7 +274,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     }
 
     /// Attempts to resolve imports for the given module only.
-    fn resolve_imports_for_module(&mut self, module: Rc<Module>) -> Vec<(Span, String, String)> {
+    fn resolve_imports_for_module(&mut self, module: Rc<Module>) -> Vec<ImportResolvingError> {
         let mut errors = Vec::new();
 
         if module.all_imports_resolved() {
@@ -292,12 +297,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         Some((span, msg)) => (span, format!(". {}", msg)),
                         None => (import_directive.span, String::new())
                     };
-                    errors.push((span,
-                                 import_path_to_string(
-                                    &import_directive.module_path,
-                                    import_directive.subclass
-                                 ),
-                                 help))
+                    errors.push(ImportResolvingError {
+                                    span: span,
+                                    path: import_path_to_string(
+                                            &import_directive.module_path,
+                                            import_directive.subclass
+                                         ),
+                                    help: help
+                                });
                 }
                 ResolveResult::Indeterminate => {}
                 ResolveResult::Success(()) => {

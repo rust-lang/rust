@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// This should resolve fine.
+// Prior to fix, the crossed imports between a and b
+// would block on the glob import, itself never being resolved
+// because these previous imports were not resolved.
+
 pub mod a {
     use b::fn_b;
     use c::*;
