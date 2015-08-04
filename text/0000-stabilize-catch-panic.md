@@ -34,8 +34,10 @@ This function will run the closure `f` and if it panics return `Err(Box<Any>)`.
 If the closure doesn't panic it will return `Ok(val)` where `val` is the
 returned value of the closure. The closure, however, is restricted to only close
 over `Send` and `'static` data. These bounds can be overly restrictive, and due
-to thread-local storage they can be subverted, making it unclear what purpose
-they serve. This RFC proposes to remove the bounds as well.
+to thread-local storage [they can be subverted][tls-subvert], making it unclear
+what purpose they serve. This RFC proposes to remove the bounds as well.
+
+[tls-subvert]: https://github.com/rust-lang/rust/issues/25662
 
 Historically Rust has purposefully avoided the foray into the situation of
 catching panics, largely because of a problem typically referred to as
