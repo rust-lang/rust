@@ -1581,7 +1581,8 @@ pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
                     "type_macros",
                     t.span,
                     "type macros are experimental (see issue: #27336)");
-                t
+
+                DummyResult::raw_ty(t.span)
             }
         }
         _ => t
