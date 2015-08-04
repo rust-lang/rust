@@ -36,7 +36,7 @@ pub struct Command {
     pub cwd: Option<CString>,
     pub uid: Option<uid_t>,
     pub gid: Option<gid_t>,
-    pub detach: bool, // not currently exposed in std::process
+    pub session_leader: bool,
 }
 
 impl Command {
@@ -48,7 +48,7 @@ impl Command {
             cwd: None,
             uid: None,
             gid: None,
-            detach: false,
+            session_leader: false,
         }
     }
 
@@ -302,7 +302,7 @@ impl Process {
                 fail(&mut output);
             }
         }
-        if cfg.detach {
+        if cfg.session_leader {
             // Don't check the error of setsid because it fails if we're the
             // process leader already. We just forked so it shouldn't return
             // error, but ignore it anyway.
