@@ -313,8 +313,8 @@ fn resolve_error<'b, 'a:'b, 'tcx:'a>(resolver: &'b Resolver<'a, 'tcx>, span: syn
         },
         ResolutionError::StructVariantUsedAsFunction(path_name) => {
             span_err!(resolver.session, span, E0423,
-                         "`{}` is a struct variant name, but \
-                          this expression \
+                         "`{}` is the name of a struct or struct variant, \
+                          but this expression \
                           uses it like a function name",
                           path_name);
         },
