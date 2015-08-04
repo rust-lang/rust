@@ -455,7 +455,8 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                 let def = self.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def());
                 match def {
                     Some(DefAssociatedConst(did)) |
-                    Some(DefConst(did)) => match lookup_const_by_id(self.tcx, did, Some(pat.id)) {
+                    Some(DefConst(did)) => match lookup_const_by_id(self.tcx, did,
+                                                                    Some(pat.id), None) {
                         Some(const_expr) => {
                             const_expr_to_pat(self.tcx, const_expr, pat.span).map(|new_pat| {
 
