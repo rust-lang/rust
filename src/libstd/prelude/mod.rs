@@ -11,8 +11,8 @@
 //! The Rust Prelude
 //!
 //! Because `std` is required by most serious Rust software, it is
-//! imported at the topmost level of every crate by default, as if the
-//! first line of each crate was
+//! imported at the topmost level of every crate by default, as if
+//! each crate contains the following:
 //!
 //! ```ignore
 //! extern crate std;
@@ -23,7 +23,7 @@
 //! etc.
 //!
 //! Additionally, `std` contains a versioned *prelude* that reexports many of the
-//! most common traits, types and functions. *The contents of the prelude are
+//! most common traits, types, and functions. *The contents of the prelude are
 //! imported into every module by default*.  Implicitly, all modules behave as if
 //! they contained the following [`use` statement][book-use]:
 //!

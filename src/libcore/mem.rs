@@ -322,20 +322,16 @@ pub unsafe fn dropped<T>() -> T {
 /// println!("{:?}", &data[0]);
 /// ```
 ///
-/// Hopefully this example emphasizes to you exactly how delicate
-/// and dangerous doing this is. Note that the `vec!` macro
-/// *does* let you initialize every element with a value that
-/// is only `Clone`, so the following is equivalent and vastly
-/// less dangerous, as long as you can live with an extra heap
+/// This example emphasizes exactly how delicate and dangerous doing this is.
+/// Note that the `vec!` macro *does* let you initialize every element with a
+/// value that is only `Clone`, so the following is semantically equivalent and
+/// vastly less dangerous, as long as you can live with an extra heap
 /// allocation:
 ///
 /// ```
 /// let data: Vec<Vec<u32>> = vec![Vec::new(); 1000];
 /// println!("{:?}", &data[0]);
 /// ```
-///
-/// For large arrays this is probably advisable
-/// anyway to avoid blowing the stack.
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn uninitialized<T>() -> T {
