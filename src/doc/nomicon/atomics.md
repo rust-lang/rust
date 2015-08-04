@@ -127,7 +127,7 @@ fundamentally unsynchronized and compilers are free to aggressively optimize
 them. In particular, data accesses are free to be reordered by the compiler on
 the assumption that the program is single-threaded. The hardware is also free to
 propagate the changes made in data accesses to other threads as lazily and
-inconsistently as it wants. Mostly critically, data accesses are how data races
+inconsistently as it wants. Most critically, data accesses are how data races
 happen. Data accesses are very friendly to the hardware and compiler, but as
 we've seen they offer *awful* semantics to try to write synchronized code with.
 Actually, that's too weak.
