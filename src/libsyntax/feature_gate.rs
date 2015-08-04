@@ -169,7 +169,8 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows associated type defaults
     ("associated_type_defaults", "1.2.0", Active),
-// Allows macros to appear in the type position.
+    // Allows macros to appear in the type position.
+
     ("type_macros", "1.3.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
@@ -230,7 +231,8 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
                      "no_std is experimental")),
     ("lang", Gated("lang_items",
                      "language items are subject to change")),
-    ("linkage", Gated("linkage", "the `linkage` attribute is experimental \
+    ("linkage", Gated("linkage",
+                      "the `linkage` attribute is experimental \
                        and not portable across platforms")),
     ("thread_local", Gated("thread_local",
                             "`#[thread_local]` is an experimental feature, and does not \
