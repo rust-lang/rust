@@ -143,8 +143,11 @@ way of importing them.
 At some point a library may become stale -- either because it failed to make it
 out of the nursery, or else because it was supplanted by a superior library. The
 libs subteam can deprecate nursery crates at any time, and can deprecate
-rust-lang crates through an RFC. Deprecated crates move to rust-lang-deprecated
-and are subsequently minimally maintained.
+rust-lang crates through an RFC. This is expected to be a rare occurrence.
+
+Deprecated crates move to rust-lang-deprecated and are subsequently minimally
+maintained. Alternatively, if someone volunteers to maintain the crate,
+ownership can be transferred externally.
 
 ## Advertising
 
@@ -161,6 +164,39 @@ This RFC doesn't specify the complete details, but proposes a basic direction:
 - The crates should also be published on crates.io, and should somehow be
 *badged*. But the design of a badging/curation system for crates.io is out of
 scope for this RFC.
+
+## Plan for existing crates
+
+There are already a number of non-`std` crates in rust-lang. Below, we give the
+full list along with recommended actions:
+
+### Unsure
+
+- fourcc
+- getopts
+- glob
+- hexfloat
+- rlibc
+- rustc-serialize
+- semver
+- tempdir
+- term
+- threadpool
+- time
+- uuid
+
+### Move to rust-lang-nursery
+
+- rand
+- regex
+- libc
+- bitflags
+- log
+
+### Move to rust-lang-deprecated
+
+- url
+- num
 
 # Drawbacks
 
