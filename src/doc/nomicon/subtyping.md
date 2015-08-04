@@ -93,8 +93,8 @@ fn main() {
 
 The signature of `overwrite` is clearly valid: it takes mutable references to
 two values of the same type, and overwrites one with the other. If `&mut T` was
-variant over T, then `&mut &'a str` would be a subtype of `&mut &'static str`,
-since `&'a str` is a subtype of `&'static str`. Therefore the lifetime of
+variant over T, then `&mut &'static str` would be a subtype of `&mut &'a str`,
+since `&'static str` is a subtype of `&'a str`. Therefore the lifetime of
 `forever_str` would successfully be "shrunk" down to the shorter lifetime of
 `string`, and `overwrite` would be called successfully. `string` would
 subsequently be dropped, and `forever_str` would point to freed memory when we
