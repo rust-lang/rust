@@ -321,7 +321,7 @@ pub fn build_impl(cx: &DocContext,
                 let did = assoc_const.def_id;
                 let type_scheme = tcx.lookup_item_type(did);
                 let default = if assoc_const.has_value {
-                    Some(const_eval::lookup_const_by_id(tcx, did, None)
+                    Some(const_eval::lookup_const_by_id(tcx, did, None, None)
                          .unwrap().span.to_src(cx))
                 } else {
                     None
@@ -479,7 +479,7 @@ fn build_const(cx: &DocContext, tcx: &ty::ctxt,
     use rustc::middle::const_eval;
     use rustc_front::print::pprust;
 
-    let expr = const_eval::lookup_const_by_id(tcx, did, None).unwrap_or_else(|| {
+    let expr = const_eval::lookup_const_by_id(tcx, did, None, None).unwrap_or_else(|| {
         panic!("expected lookup_const_by_id to succeed for {:?}", did);
     });
     debug!("converting constant expr {:?} to snippet", expr);

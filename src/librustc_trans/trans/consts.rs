@@ -217,7 +217,8 @@ fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 def_id: DefId,
-                                ref_expr: &hir::Expr)
+                                ref_expr: &hir::Expr,
+                                param_substs: &'tcx Substs<'tcx>)
                                 -> &'tcx hir::Expr {
     let def_id = inline::maybe_instantiate_inline(ccx, def_id);
 
@@ -226,7 +227,7 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                             "cross crate constant could not be inlined");
     }
 
-    match const_eval::lookup_const_by_id(ccx.tcx(), def_id, Some(ref_expr.id)) {
+    match const_eval::lookup_const_by_id(ccx.tcx(), def_id, Some(ref_expr.id), Some(param_substs)) {
         Some(ref expr) => expr,
         None => {
             ccx.sess().span_bug(ref_expr.span, "constant item not found")
@@ -264,10 +265,12 @@ pub enum TrueConst {
 
 use self::ConstEvalFailure::*;
 
-fn get_const_val(ccx: &CrateContext,
-                 def_id: DefId,
-                 ref_expr: &hir::Expr) -> Result<ValueRef, ConstEvalFailure> {
-    let expr = get_const_expr(ccx, def_id, ref_expr);
+fn get_const_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                           def_id: DefId,
+                           ref_expr: &hir::Expr,
+                           param_substs: &'tcx Substs<'tcx>)
+                           -> Result<ValueRef, ConstEvalFailure> {
+    let expr = get_const_expr(ccx, def_id, ref_expr, param_substs);
     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
     match get_const_expr_as_global(ccx, expr, check_const::ConstQualif::empty(),
                                    empty_substs, TrueConst::Yes) {
@@ -297,7 +300,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 if !ccx.tcx().tables.borrow().adjustments.contains_key(&expr.id) {
                     debug!("get_const_expr_as_global ({:?}): found const {:?}",
                            expr.id, def_id);
-                    return get_const_val(ccx, def_id, expr);
+                    return get_const_val(ccx, def_id, expr, param_substs);
                 }
             },
             _ => {},
@@ -888,7 +891,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                 }
                 def::DefConst(def_id) | def::DefAssociatedConst(def_id) => {
-                    const_deref_ptr(cx, try!(get_const_val(cx, def_id, e)))
+                    const_deref_ptr(cx, try!(get_const_val(cx, def_id, e, param_substs)))
                 }
                 def::DefVariant(enum_did, variant_did, _) => {
                     let vinfo = cx.tcx().lookup_adt_def(enum_did).variant_with_id(variant_did);

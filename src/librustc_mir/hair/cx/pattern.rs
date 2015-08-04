@@ -85,7 +85,8 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                 let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
                 match def {
                     def::DefConst(def_id) | def::DefAssociatedConst(def_id) =>
-                        match const_eval::lookup_const_by_id(self.cx.tcx, def_id, Some(pat.id)) {
+                        match const_eval::lookup_const_by_id(self.cx.tcx, def_id,
+                                                             Some(pat.id), None) {
                             Some(const_expr) => {
                                 let pat = const_eval::const_expr_to_pat(self.cx.tcx, const_expr,
                                                                         pat.span);

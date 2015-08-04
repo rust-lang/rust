@@ -657,13 +657,10 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 Some(def::DefConst(did)) |
                 Some(def::DefAssociatedConst(did)) => {
                     if let Some(expr) = const_eval::lookup_const_by_id(v.tcx, did,
-                                                                       Some(e.id)) {
+                                                                       Some(e.id),
+                                                                       None) {
                         let inner = v.global_expr(Mode::Const, expr);
                         v.add_qualif(inner);
-                    } else {
-                        v.tcx.sess.span_bug(e.span,
-                                            "DefConst or DefAssociatedConst \
-                                             doesn't point to a constant");
                     }
                 }
                 Some(def::DefLocal(..)) if v.mode == Mode::ConstFn => {
