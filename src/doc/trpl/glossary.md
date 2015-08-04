@@ -63,3 +63,9 @@ themselves form part of larger expressions.
 
 In computer programming, a statement is the smallest standalone element of a
 programming language that commands a computer to perform an action.
+
+### Verboten
+
+*adjective*
+
+1. forbidden, as by law; prohibited.
