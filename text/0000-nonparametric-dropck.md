@@ -211,7 +211,7 @@ Much like the `unsafe_destructor` attribute that we had in the past,
 this attribute relies on the programmer to ensure that the destructor
 cannot actually be used unsoundly. It states an (unproven) assumption
 that the given implementation of `drop` (and all functions that this
-`drop` may transitively calls) will never read or modify a value of
+ `drop` may transitively call) will never read or modify a value of
 any type parameter, apart from the trivial operations of either
 dropping the value or moving the value from one location to another.
 
