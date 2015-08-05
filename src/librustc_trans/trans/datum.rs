@@ -409,7 +409,7 @@ impl KindOps for Lvalue {
             //    aware of drop-hint won't bother calling the
             //    drop-glue itself.
             if let Some(hint_datum) = self.drop_flag_info.hint_datum(bcx) {
-                let moved_hint_byte = adt::DTOR_MOVED_HINT as usize;
+                let moved_hint_byte = adt::DTOR_MOVED_HINT;
                 let hint_llval = hint_datum.to_value().value();
                 Store(bcx, C_u8(bcx.fcx.ccx, moved_hint_byte), hint_llval);
             }

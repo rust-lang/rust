@@ -1021,7 +1021,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 //    its drop-hint (if any) says "initialized."
                 if let Some(hint_val) = opt_hint_val {
                     let hint_llval = hint_val.value();
-                    let drop_needed = C_u8(bcx.fcx.ccx, adt::DTOR_NEEDED_HINT as usize);
+                    let drop_needed = C_u8(bcx.fcx.ccx, adt::DTOR_NEEDED_HINT);
                     Store(bcx, drop_needed, hint_llval);
                 }
                 src_datum.store_to(bcx, dst_datum.val)
