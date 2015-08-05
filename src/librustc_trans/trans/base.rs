@@ -999,7 +999,7 @@ fn memfill<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>, byte:
 
     let llintrinsicfn = ccx.get_intrinsic(&intrinsic_key);
     let llptr = b.pointercast(llptr, Type::i8(ccx).ptr_to());
-    let llzeroval = C_u8(ccx, byte as usize);
+    let llzeroval = C_u8(ccx, byte);
     let size = machine::llsize_of(ccx, llty);
     let align = C_i32(ccx, type_of::align_of(ccx, ty) as i32);
     let volatile = C_bool(ccx, false);
@@ -1296,7 +1296,7 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
         for &info in fragment_infos {
 
             let make_datum = |id| {
-                let init_val = C_u8(fcx.ccx, adt::DTOR_NEEDED_HINT as usize);
+                let init_val = C_u8(fcx.ccx, adt::DTOR_NEEDED_HINT);
                 let llname = &format!("dropflag_hint_{}", id);
                 debug!("adding hint {}", llname);
                 let ptr = alloc_ty(entry_bcx, tcx.types.u8, llname);
