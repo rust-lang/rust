@@ -77,7 +77,7 @@ contain any `Drop` types.
 However when working with uninitialized memory you need to be ever-vigilant for
 Rust trying to drop values you make like this before they're fully initialized.
 Every control path through that variable's scope must initialize the value
-before it ends, if has a destructor.
+before it ends, if it has a destructor.
 *[This includes code panicking](unwinding.html)*.
 
 And that's about it for working with uninitialized memory! Basically nothing
