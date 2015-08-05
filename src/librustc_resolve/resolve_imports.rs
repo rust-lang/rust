@@ -409,10 +409,18 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 GlobImport => {
                     assert!(module_.glob_count.get() >= 1);
                     module_.glob_count.set(module_.glob_count.get() - 1);
+                    if import_directive.is_public {
+                        assert!(module_.pub_glob_count.get() >= 1);
+                        module_.pub_glob_count.set(module_.pub_glob_count.get() - 1);
+                    }
                 }
                 SingleImport(..) => {
                     // Ignore.
                 }
+            }
+            if import_directive.is_public {
+                assert!(module_.pub_count.get() >= 1);
+                module_.pub_count.set(module_.pub_count.get() - 1);
             }
         }
 
@@ -503,8 +511,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 // containing module, bail out. We don't know enough to be
                 // able to resolve this import.
 
-                if target_module.glob_count.get() > 0 {
-                    debug!("(resolving single import) unresolved glob; \
+                if target_module.pub_glob_count.get() > 0 {
+                    debug!("(resolving single import) unresolved pub glob; \
                             bailing out");
                     return ResolveResult::Indeterminate;
                 }
@@ -767,16 +775,22 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         // We must bail out if the node has unresolved imports of any kind
         // (including globs).
-        if !(*target_module).all_imports_resolved() {
+        if (*target_module).pub_count.get() > 0 {
             debug!("(resolving glob import) target module has unresolved \
-                    imports; bailing out");
+                    pub imports; bailing out");
             return ResolveResult::Indeterminate;
         }
 
-        assert_eq!(target_module.glob_count.get(), 0);
-
         // Add all resolved imports from the containing module.
         let import_resolutions = target_module.import_resolutions.borrow();
+
+        if module_.import_resolutions.borrow_state() != ::std::cell::BorrowState::Unused {
+            // In this case, target_module == module_
+            // This means we are trying to glob import a module into itself,
+            // and it is a no-go
+            return ResolveResult::Indeterminate;
+        }
+
         for (ident, target_import_resolution) in import_resolutions.iter() {
             debug!("(resolving glob import) writing module resolution \
                     {} into `{}`",

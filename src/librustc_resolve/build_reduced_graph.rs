@@ -926,6 +926,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                                is_public,
                                                                shadowable));
         self.unresolved_imports += 1;
+
+        if is_public {
+            module_.pub_count.set(module_.pub_count.get() + 1);
+        }
+
         // Bump the reference count on the name. Or, if this is a glob, set
         // the appropriate flag.
 
@@ -959,6 +964,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 // module's exports ahead of time.
 
                 module_.glob_count.set(module_.glob_count.get() + 1);
+                if is_public {
+                    module_.pub_glob_count.set(module_.pub_glob_count.get() + 1);
+                }
             }
         }
     }

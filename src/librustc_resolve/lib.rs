@@ -699,6 +699,12 @@ pub struct Module {
     // The number of unresolved globs that this module exports.
     glob_count: Cell<usize>,
 
+    // The number of unresolved pub imports (both regular and globs) in this module
+    pub_count: Cell<usize>,
+
+    // The number of unresolved pub glob imports in this module
+    pub_glob_count: Cell<usize>,
+
     // The index of the import we're resolving.
     resolved_import_count: Cell<usize>,
 
@@ -726,6 +732,8 @@ impl Module {
             anonymous_children: RefCell::new(NodeMap()),
             import_resolutions: RefCell::new(HashMap::new()),
             glob_count: Cell::new(0),
+            pub_count: Cell::new(0),
+            pub_glob_count: Cell::new(0),
             resolved_import_count: Cell::new(0),
             populated: Cell::new(!external),
         }
