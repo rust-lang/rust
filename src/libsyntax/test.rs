@@ -258,6 +258,7 @@ fn generate_test_harness(sess: &ParseSess,
         config: krate.config.clone(),
         toplevel_reexport: None,
     };
+    cx.ext_cx.crate_root = Some("std");
 
     cx.ext_cx.bt_push(ExpnInfo {
         call_site: DUMMY_SP,
@@ -449,18 +450,11 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     // test::test_main_static
     let test_main_path = ecx.path(sp, vec![token::str_to_ident("test"),
                                            token::str_to_ident("test_main_static")]);
-    // ::std::env::args
-    let os_args_path = ecx.path_global(sp, vec![token::str_to_ident("std"),
-                                                token::str_to_ident("env"),
-                                                token::str_to_ident("args")]);
-    // ::std::env::args()
-    let os_args_path_expr = ecx.expr_path(os_args_path);
-    let call_os_args = ecx.expr_call(sp, os_args_path_expr, vec![]);
     // test::test_main_static(...)
     let test_main_path_expr = ecx.expr_path(test_main_path);
     let tests_ident_expr = ecx.expr_ident(sp, token::str_to_ident("TESTS"));
     let call_test_main = ecx.expr_call(sp, test_main_path_expr,
-                                       vec![call_os_args, tests_ident_expr]);
+                                       vec![tests_ident_expr]);
     let call_test_main = ecx.stmt_expr(call_test_main);
     // #![main]
     let main_meta = ecx.meta_word(sp, token::intern_and_get_ident("main"));
@@ -633,12 +627,14 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     let fail_expr = match test.should_panic {
         ShouldPanic::No => ecx.expr_path(should_panic_path("No")),
         ShouldPanic::Yes(ref msg) => {
-            let path = should_panic_path("Yes");
-            let arg = match *msg {
-                Some(ref msg) => ecx.expr_some(span, ecx.expr_str(span, msg.clone())),
-                None => ecx.expr_none(span),
-            };
-            ecx.expr_call(span, ecx.expr_path(path), vec![arg])
+            match *msg {
+                Some(ref msg) => {
+                    let msg = ecx.expr_str(span, msg.clone());
+                    let path = should_panic_path("YesWithMessage");
+                    ecx.expr_call(span, ecx.expr_path(path), vec![msg])
+                }
+                None => ecx.expr_path(should_panic_path("Yes")),
+            }
         }
     };
 

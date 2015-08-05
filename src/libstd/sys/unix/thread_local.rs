@@ -10,6 +10,7 @@
 
 #![allow(dead_code)] // sys isn't exported yet
 
+#[cfg(stage0)]
 use prelude::v1::*;
 use libc::c_int;
 

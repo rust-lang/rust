@@ -11,7 +11,8 @@
 // This is pretty much entirely stolen from TreeSet, since BTreeMap has an identical interface
 // to TreeMap
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
 
 use core::cmp::Ordering::{self, Less, Greater, Equal};
 use core::fmt::Debug;

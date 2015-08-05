@@ -16,7 +16,8 @@ Rust adaptation of Grisu3 algorithm described in [1]. It uses about
     accurately with integers. SIGPLAN Not. 45, 6 (June 2010), 233-243.
 */
 
-use prelude::*;
+use prelude::v1::*;
+
 use num::Float;
 
 use num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};

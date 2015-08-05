@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, start, no_std, core, collections)]
+#![feature(lang_items, start, no_std, collections)]
 #![no_std]
 
 extern crate std as other;
 
-#[macro_use] extern crate core;
 #[macro_use] extern crate collections;
 
 use collections::string::ToString;

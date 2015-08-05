@@ -40,7 +40,8 @@
 
 pub use self::PopResult::*;
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
 
 use alloc::boxed::Box;
 use core::ptr;

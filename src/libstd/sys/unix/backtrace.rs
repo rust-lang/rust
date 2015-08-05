@@ -83,6 +83,7 @@
 /// to symbols. This is a bit of a hokey implementation as-is, but it works for
 /// all unix platforms we support right now, so it at least gets the job done.
 
+#[cfg(stage0)]
 use prelude::v1::*;
 use io::prelude::*;
 

@@ -108,19 +108,11 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
               substr: &Substructure) -> P<Expr> {
     let test_id = cx.ident_of("__test");
     let ordering = cx.path_global(span,
-                                  vec!(cx.ident_of_std("core"),
-                                       cx.ident_of("cmp"),
-                                       cx.ident_of("Ordering"),
-                                       cx.ident_of("Equal")));
+                                  cx.std_path(&["cmp", "Ordering", "Equal"]));
     let ordering = cx.expr_path(ordering);
     let equals_expr = cx.expr_some(span, ordering);
 
-    let partial_cmp_path = vec![
-        cx.ident_of_std("core"),
-        cx.ident_of("cmp"),
-        cx.ident_of("PartialOrd"),
-        cx.ident_of("partial_cmp"),
-    ];
+    let partial_cmp_path = cx.std_path(&["cmp", "PartialOrd", "partial_cmp"]);
 
     /*
     Builds:

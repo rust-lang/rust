@@ -10,8 +10,6 @@
 
 // Various examples of structs whose fields are not well-formed.
 
-#![feature(no_std)]
-#![no_std]
 #![allow(dead_code)]
 
 struct Ref<'a, T> { //~ ERROR the parameter type `T` may not live long enough

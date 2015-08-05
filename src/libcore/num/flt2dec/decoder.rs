@@ -10,7 +10,7 @@
 
 //! Decodes a floating-point value into individual parts and error ranges.
 
-use prelude::*;
+use prelude::v1::*;
 
 use {f32, f64};
 use num::{Float, FpCategory};

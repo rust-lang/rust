@@ -58,6 +58,7 @@
 #![unstable(feature = "thread_local_internals")]
 #![allow(dead_code)] // sys isn't exported yet
 
+#[cfg(stage0)]
 use prelude::v1::*;
 
 use sync::atomic::{self, AtomicUsize, Ordering};

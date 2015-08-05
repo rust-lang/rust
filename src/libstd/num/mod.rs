@@ -43,7 +43,8 @@ pub fn test_num<T>(ten: T, two: T) where
 
 #[cfg(test)]
 mod tests {
-    use core::prelude::*;
+    #[cfg(stage0)]
+    use core::prelude::v1::*;
     use super::*;
     use i8;
     use i16;
