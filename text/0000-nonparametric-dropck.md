@@ -465,7 +465,8 @@ All `fn drop` methods would be required to be `#[unspecialized]`.
 
 It is the second bullet that makes this an ad-hoc effect system: it provides
 a recursive property ensuring that during the extent of the call to `foo`,
-we will never invoke a function marked as `default`.
+we will never invoke a function marked as `default` (and therefore, I *think*,
+will never even potentially invoke a method that has been specialized).
 
 It is also this second bullet that represents a signficant burden on
 the destructor implementor. In particular, it immediately rules out
