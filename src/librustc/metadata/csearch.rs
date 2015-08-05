@@ -24,7 +24,6 @@ use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::expect;
-use syntax::parse::token;
 
 use std::collections::hash_map::HashMap;
 
@@ -89,11 +88,12 @@ pub fn get_item_path(tcx: &ty::ctxt, def: ast::DefId) -> Vec<ast_map::PathElem> 
     let cdata = cstore.get_crate_data(def.krate);
     let path = decoder::get_item_path(&*cdata, def.node);
 
-    // FIXME #1920: This path is not always correct if the crate is not linked
-    // into the root namespace.
-    let mut r = vec![ast_map::PathMod(token::intern(&cdata.name))];
-    r.push_all(&path);
-    r
+    cdata.with_local_path(|cpath| {
+        let mut r = Vec::with_capacity(cpath.len() + path.len());
+        r.push_all(cpath);
+        r.push_all(&path);
+        r
+    })
 }
 
 pub enum FoundAst<'ast> {

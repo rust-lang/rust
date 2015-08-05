@@ -34,14 +34,22 @@ use syntax::codemap::{self, Span, mk_sp, Pos};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::visit;
+use syntax::util::small_vector::SmallVector;
+use ast_map;
 use log;
+
+pub struct LocalCrateReader<'a, 'b:'a> {
+    sess: &'a Session,
+    creader: CrateReader<'a>,
+    ast_map: &'a ast_map::Map<'b>,
+}
 
 pub struct CrateReader<'a> {
     sess: &'a Session,
     next_crate_num: ast::CrateNum,
 }
 
-impl<'a, 'v> visit::Visitor<'v> for CrateReader<'a> {
+impl<'a, 'b, 'v> visit::Visitor<'v> for LocalCrateReader<'a, 'b> {
     fn visit_item(&mut self, a: &ast::Item) {
         self.process_item(a);
         visit::walk_item(self, a);
@@ -152,31 +160,6 @@ impl<'a> CrateReader<'a> {
         }
     }
 
-    // Traverses an AST, reading all the information about use'd crates and
-    // extern libraries necessary for later resolving, typechecking, linking,
-    // etc.
-    pub fn read_crates(&mut self, krate: &ast::Crate) {
-        self.process_crate(krate);
-        visit::walk_crate(self, krate);
-
-        if log_enabled!(log::DEBUG) {
-            dump_crates(&self.sess.cstore);
-        }
-
-        for &(ref name, kind) in &self.sess.opts.libs {
-            register_native_lib(self.sess, None, name.clone(), kind);
-        }
-    }
-
-    fn process_crate(&self, c: &ast::Crate) {
-        for a in c.attrs.iter().filter(|m| m.name() == "link_args") {
-            match a.value_str() {
-                Some(ref linkarg) => self.sess.cstore.add_used_link_args(&linkarg),
-                None => { /* fallthrough */ }
-            }
-        }
-    }
-
     fn extract_crate_info(&self, i: &ast::Item) -> Option<CrateInfo> {
         match i.node {
             ast::ItemExternCrate(ref path_opt) => {
@@ -198,103 +181,6 @@ impl<'a> CrateReader<'a> {
                 })
             }
             _ => None
-        }
-    }
-
-    fn process_item(&mut self, i: &ast::Item) {
-        match i.node {
-            ast::ItemExternCrate(_) => {
-                if !should_link(i) {
-                    return;
-                }
-
-                match self.extract_crate_info(i) {
-                    Some(info) => {
-                        let (cnum, _, _) = self.resolve_crate(&None,
-                                                              &info.ident,
-                                                              &info.name,
-                                                              None,
-                                                              i.span,
-                                                              PathKind::Crate);
-                        self.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
-                    }
-                    None => ()
-                }
-            }
-            ast::ItemForeignMod(ref fm) => {
-                if fm.abi == abi::Rust || fm.abi == abi::RustIntrinsic {
-                    return;
-                }
-
-                // First, add all of the custom link_args attributes
-                let link_args = i.attrs.iter()
-                    .filter_map(|at| if at.name() == "link_args" {
-                        Some(at)
-                    } else {
-                        None
-                    })
-                    .collect::<Vec<&ast::Attribute>>();
-                for m in &link_args {
-                    match m.value_str() {
-                        Some(linkarg) => self.sess.cstore.add_used_link_args(&linkarg),
-                        None => { /* fallthrough */ }
-                    }
-                }
-
-                // Next, process all of the #[link(..)]-style arguments
-                let link_args = i.attrs.iter()
-                    .filter_map(|at| if at.name() == "link" {
-                        Some(at)
-                    } else {
-                        None
-                    })
-                    .collect::<Vec<&ast::Attribute>>();
-                for m in &link_args {
-                    match m.meta_item_list() {
-                        Some(items) => {
-                            let kind = items.iter().find(|k| {
-                                k.name() == "kind"
-                            }).and_then(|a| a.value_str());
-                            let kind = match kind {
-                                Some(k) => {
-                                    if k == "static" {
-                                        cstore::NativeStatic
-                                    } else if self.sess.target.target.options.is_like_osx
-                                              && k == "framework" {
-                                        cstore::NativeFramework
-                                    } else if k == "framework" {
-                                        cstore::NativeFramework
-                                    } else if k == "dylib" {
-                                        cstore::NativeUnknown
-                                    } else {
-                                        self.sess.span_err(m.span,
-                                            &format!("unknown kind: `{}`",
-                                                    k));
-                                        cstore::NativeUnknown
-                                    }
-                                }
-                                None => cstore::NativeUnknown
-                            };
-                            let n = items.iter().find(|n| {
-                                n.name() == "name"
-                            }).and_then(|a| a.value_str());
-                            let n = match n {
-                                Some(n) => n,
-                                None => {
-                                    self.sess.span_err(m.span,
-                                        "#[link(...)] specified without \
-                                         `name = \"foo\"`");
-                                    InternedString::new("foo")
-                                }
-                            };
-                            register_native_lib(self.sess, Some(m.span),
-                                                n.to_string(), kind);
-                        }
-                        None => {}
-                    }
-                }
-            }
-            _ => { }
         }
     }
 
@@ -378,6 +264,7 @@ impl<'a> CrateReader<'a> {
 
         let cmeta = Rc::new( cstore::crate_metadata {
             name: name.to_string(),
+            local_path: RefCell::new(SmallVector::zero()),
             data: metadata,
             cnum_map: cnum_map,
             cnum: cnum,
@@ -588,6 +475,140 @@ impl<'a> CrateReader<'a> {
                 None
             }
             _ => None,
+        }
+    }
+}
+
+impl<'a, 'b> LocalCrateReader<'a, 'b> {
+    pub fn new(sess: &'a Session, map: &'a ast_map::Map<'b>) -> LocalCrateReader<'a, 'b> {
+        LocalCrateReader {
+            sess: sess,
+            creader: CrateReader::new(sess),
+            ast_map: map,
+        }
+    }
+
+    // Traverses an AST, reading all the information about use'd crates and
+    // extern libraries necessary for later resolving, typechecking, linking,
+    // etc.
+    pub fn read_crates(&mut self, krate: &ast::Crate) {
+        self.process_crate(krate);
+        visit::walk_crate(self, krate);
+
+        if log_enabled!(log::DEBUG) {
+            dump_crates(&self.sess.cstore);
+        }
+
+        for &(ref name, kind) in &self.sess.opts.libs {
+            register_native_lib(self.sess, None, name.clone(), kind);
+        }
+    }
+
+    fn process_crate(&self, c: &ast::Crate) {
+        for a in c.attrs.iter().filter(|m| m.name() == "link_args") {
+            match a.value_str() {
+                Some(ref linkarg) => self.sess.cstore.add_used_link_args(&linkarg),
+                None => { /* fallthrough */ }
+            }
+        }
+    }
+
+    fn process_item(&mut self, i: &ast::Item) {
+        match i.node {
+            ast::ItemExternCrate(_) => {
+                if !should_link(i) {
+                    return;
+                }
+
+                match self.creader.extract_crate_info(i) {
+                    Some(info) => {
+                        let (cnum, cmeta, _) = self.creader.resolve_crate(&None,
+                                                              &info.ident,
+                                                              &info.name,
+                                                              None,
+                                                              i.span,
+                                                              PathKind::Crate);
+                        self.ast_map.with_path(i.id, |path|
+                            cmeta.update_local_path(path));
+                        self.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
+                    }
+                    None => ()
+                }
+            }
+            ast::ItemForeignMod(ref fm) => {
+                if fm.abi == abi::Rust || fm.abi == abi::RustIntrinsic {
+                    return;
+                }
+
+                // First, add all of the custom link_args attributes
+                let link_args = i.attrs.iter()
+                    .filter_map(|at| if at.name() == "link_args" {
+                        Some(at)
+                    } else {
+                        None
+                    })
+                    .collect::<Vec<&ast::Attribute>>();
+                for m in &link_args {
+                    match m.value_str() {
+                        Some(linkarg) => self.sess.cstore.add_used_link_args(&linkarg),
+                        None => { /* fallthrough */ }
+                    }
+                }
+
+                // Next, process all of the #[link(..)]-style arguments
+                let link_args = i.attrs.iter()
+                    .filter_map(|at| if at.name() == "link" {
+                        Some(at)
+                    } else {
+                        None
+                    })
+                    .collect::<Vec<&ast::Attribute>>();
+                for m in &link_args {
+                    match m.meta_item_list() {
+                        Some(items) => {
+                            let kind = items.iter().find(|k| {
+                                k.name() == "kind"
+                            }).and_then(|a| a.value_str());
+                            let kind = match kind {
+                                Some(k) => {
+                                    if k == "static" {
+                                        cstore::NativeStatic
+                                    } else if self.sess.target.target.options.is_like_osx
+                                              && k == "framework" {
+                                        cstore::NativeFramework
+                                    } else if k == "framework" {
+                                        cstore::NativeFramework
+                                    } else if k == "dylib" {
+                                        cstore::NativeUnknown
+                                    } else {
+                                        self.sess.span_err(m.span,
+                                            &format!("unknown kind: `{}`",
+                                                    k));
+                                        cstore::NativeUnknown
+                                    }
+                                }
+                                None => cstore::NativeUnknown
+                            };
+                            let n = items.iter().find(|n| {
+                                n.name() == "name"
+                            }).and_then(|a| a.value_str());
+                            let n = match n {
+                                Some(n) => n,
+                                None => {
+                                    self.sess.span_err(m.span,
+                                        "#[link(...)] specified without \
+                                         `name = \"foo\"`");
+                                    InternedString::new("foo")
+                                }
+                            };
+                            register_native_lib(self.sess, Some(m.span),
+                                                n.to_string(), kind);
+                        }
+                        None => {}
+                    }
+                }
+            }
+            _ => { }
         }
     }
 }
