@@ -1023,6 +1023,25 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     bcx
 }
 
+// Sets each dropflag hint (if any) for bindings to `dropflag_hint_val`.
+fn set_lllocals_hints<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                  bindings_map: &BindingsMap<'tcx>,
+                                  drop_flag_hint_value: u8)
+                                  -> Block<'blk, 'tcx> {
+    let lllocals = bcx.fcx.lllocals.borrow();
+    for (&ident, &binding_info) in bindings_map {
+        let datum = lllocals.get(&binding_info.id).unwrap();
+        if let Some(hint) = datum.kind.dropflag_hint(bcx) {
+            let hint_value = drop_flag_hint_value as usize;
+            debug!("set_lllocals_hints store hint_value={} for hint={:?} ident={}",
+                   hint_value, hint, ident);
+            Store(bcx, C_u8(bcx.fcx.ccx, hint_value), hint.to_value().value());
+        }
+    }
+
+    bcx
+}
+
 fn compile_guard<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      guard_expr: &ast::Expr,
                                      data: &ArmData<'p, 'blk, 'tcx>,
@@ -1635,6 +1654,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
         // insert bindings into the lllocals map and add cleanups
         let cs = fcx.push_custom_cleanup_scope();
         bcx = insert_lllocals(bcx, &arm_data.bindings_map, Some(cleanup::CustomScope(cs)));
+        bcx = set_lllocals_hints(bcx, &arm_data.bindings_map, adt::DTOR_NEEDED_HINT);
         bcx = expr::trans_into(bcx, &*arm_data.arm.body, dest);
         bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, cs);
         arm_cxs.push(bcx);
@@ -1666,16 +1686,10 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx = mk_binding_alloca(
                 bcx, p_id, path1.node.name, scope, (),
                 "_match::store_local::create_dummy_locals",
+                // Dummy-locals start out uninitialized, so set their
+                // drop-flag hints (if any) to "moved."
+                adt::DTOR_MOVED_HINT,
                 |(), bcx, Datum { val: llval, ty, kind }| {
-                    // Dummy-locals start out uninitialized, so set their
-                    // drop-flag hints (if any) to "moved."
-                    if let Some(hint) = kind.dropflag_hint(bcx) {
-                        let moved_hint = adt::DTOR_MOVED_HINT as usize;
-                        debug!("store moved_hint={} for hint={:?}, uninitialized dummy",
-                               moved_hint, hint);
-                        Store(bcx, C_u8(bcx.fcx.ccx, moved_hint), hint.to_value().value());
-                    }
-
                     if kind.drop_flag_info.must_zero() {
                         // if no drop-flag hint, or the hint requires
                         // we maintain the embedded drop-flag, then
@@ -1707,6 +1721,9 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     return mk_binding_alloca(
                         bcx, pat.id, ident.name, var_scope, (),
                         "_match::store_local",
+                        // Issue #27401: `let x = expr;` means drop
+                        // flag hint needs to be (re-)initialized.
+                        adt::DTOR_NEEDED_HINT,
                         |(), bcx, Datum { val: v, .. }| expr::trans_into(bcx, &**init_expr,
                                                                          expr::SaveIn(v)));
                 }
@@ -1735,6 +1752,7 @@ fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
                                        cleanup_scope: cleanup::ScopeId,
                                        arg: A,
                                        caller_name: &'static str,
+                                       drop_flag_hint_value: u8,
                                        populate: F)
                                        -> Block<'blk, 'tcx> where
     F: FnOnce(A, Block<'blk, 'tcx>, Datum<'tcx, Lvalue>) -> Block<'blk, 'tcx>,
@@ -1749,6 +1767,15 @@ fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
     let bcx = populate(arg, bcx, datum);
+
+    // Set the drop-flag hint, if any, to the value provided by context
+    if let Some(hint) = datum.kind.dropflag_hint(bcx) {
+        let hint_value = drop_flag_hint_value as usize;
+        debug!("mk_binding_alloca store hint_value={} for hint={:?}, name={}",
+               hint_value, hint, name);
+        Store(bcx, C_u8(bcx.fcx.ccx, hint_value), hint.to_value().value());
+    }
+
     bcx.fcx.schedule_lifetime_end(cleanup_scope, llval);
     bcx.fcx.schedule_drop_mem(cleanup_scope, llval, var_ty, lvalue.dropflag_hint(bcx));
 
@@ -1799,6 +1826,10 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx = mk_binding_alloca(
                     bcx, pat.id, path1.node.name, cleanup_scope, (),
                     "_match::bind_irrefutable_pat",
+                    // Issue #27401: `match ... { PAT[x] => ... }`
+                    // means drop flag hint for `x` needs to be
+                    // (re-)initialized.
+                    adt::DTOR_NEEDED_HINT,
                     |(), bcx, Datum { val: llval, ty, kind: _ }| {
                         match pat_binding_mode {
                             ast::BindByValue(_) => {
