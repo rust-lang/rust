@@ -872,13 +872,11 @@ pub struct ctxt<'tcx> {
     pub rcache: RefCell<FnvHashMap<CReaderCacheKey, Ty<'tcx>>>,
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, TypeContents>>,
     pub ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
-    pub enum_var_cache: RefCell<DefIdMap<Rc<Vec<Rc<VariantInfo<'tcx>>>>>>,
     pub ty_param_defs: RefCell<NodeMap<TypeParameterDef<'tcx>>>,
     pub normalized_cache: RefCell<FnvHashMap<Ty<'tcx>, Ty<'tcx>>>,
     pub lang_items: middle::lang_items::LanguageItems,
     /// A mapping of fake provided method def_ids to the default implementation
     pub provided_method_sources: RefCell<DefIdMap<ast::DefId>>,
-    pub struct_fields: RefCell<DefIdMap<Rc<Vec<FieldTy>>>>,
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
@@ -3816,7 +3814,6 @@ impl<'tcx> ctxt<'tcx> {
             rcache: RefCell::new(FnvHashMap()),
             tc_cache: RefCell::new(FnvHashMap()),
             ast_ty_to_ty_cache: RefCell::new(NodeMap()),
-            enum_var_cache: RefCell::new(DefIdMap()),
             impl_or_trait_items: RefCell::new(DefIdMap()),
             trait_item_def_ids: RefCell::new(DefIdMap()),
             trait_items_cache: RefCell::new(DefIdMap()),
@@ -3824,7 +3821,6 @@ impl<'tcx> ctxt<'tcx> {
             normalized_cache: RefCell::new(FnvHashMap()),
             lang_items: lang_items,
             provided_method_sources: RefCell::new(DefIdMap()),
-            struct_fields: RefCell::new(DefIdMap()),
             destructor_for_type: RefCell::new(DefIdMap()),
             destructors: RefCell::new(DefIdSet()),
             inherent_impls: RefCell::new(DefIdMap()),
