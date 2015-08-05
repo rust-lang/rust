@@ -245,7 +245,7 @@ programmer to prove.
 
    It may be possible for future language changes to allow us to
    directly express the necessary parametricity properties.
-   See further discussion in [Alternatives][].
+   See further discussion in the [continue supporting parametricity][] alternative.
 
    The suggested attribute name (`unsafe_destructor_blind_to_params`
    above) was deliberately selected to be long and ugly, in order to
