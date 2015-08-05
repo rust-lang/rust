@@ -18,6 +18,10 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 trait Trait { fn dummy(&self) { } }
+trait Mirror { type Image; }
+impl<T> Mirror for T { type Image = T; }
+struct ParamTypeStruct<T>(T);
+struct AssocTypeStruct<T>(<T as Mirror>::Image);
 
 fn main() {
     // Functions
@@ -66,4 +70,6 @@ fn main() {
     // Should apply to types that have NonZero transitively
     assert_eq!(size_of::<String>(), size_of::<Option<String>>());
 
+    assert_eq!(size_of::<&u8>(), size_of::<Option<ParamTypeStruct<&u8>>>());
+    assert_eq!(size_of::<&u8>(), size_of::<Option<AssocTypeStruct<&u8>>>());
 }

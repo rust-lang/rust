@@ -447,6 +447,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
             let nonzero_fields = tcx.lookup_struct_fields(did);
             assert_eq!(nonzero_fields.len(), 1);
             let nonzero_field = tcx.lookup_field_type(did, nonzero_fields[0].id, substs);
+            let nonzero_field = monomorphize::normalize_associated_type(tcx, &nonzero_field);
             match nonzero_field.sty {
                 ty::TyRawPtr(ty::TypeAndMut { ty, .. }) if !type_is_sized(tcx, ty) => {
                     path.push_all(&[0, FAT_PTR_ADDR]);
@@ -466,6 +467,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
             let fields = tcx.lookup_struct_fields(def_id);
             for (j, field) in fields.iter().enumerate() {
                 let field_ty = tcx.lookup_field_type(def_id, field.id, substs);
+                let field_ty = monomorphize::normalize_associated_type(tcx, &field_ty);
                 if let Some(mut fpath) = find_discr_field_candidate(tcx, field_ty, path.clone()) {
                     fpath.push(j);
                     return Some(fpath);
@@ -509,7 +511,22 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
         },
 
         // Anything else is not a pointer
-        _ => None
+        ty::TyBool |
+        ty::TyChar |
+        ty::TyInt(_) |
+        ty::TyUint(_) |
+        ty::TyFloat(_) |
+        ty::TyEnum(..) |
+        ty::TyStr |
+        ty::TyArray(..) |
+        ty::TySlice(_) |
+        ty::TyRawPtr(_) |
+        ty::TyTrait(_) => None,
+
+        ty::TyError |
+        ty::TyInfer(_) |
+        ty::TyParam(_) |
+        ty::TyProjection(_) => panic!("Unexpected type"),
     }
 }
 
