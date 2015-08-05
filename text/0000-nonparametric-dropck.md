@@ -129,7 +129,9 @@ will start assuming that a destructor for a data-type definition such
 as `struct Parametri<C>` may read from data held in its `C` parameter,
 even though the `fn drop` formerly appeared to be parametric with
 respect to `C`. This will cause `rustc` to reject code that it had
-previously accepted.
+previously accepted (below are some examples that
+[continue to work][examples-continue-to-work] and
+some that [start being rejected][examples-start-reject]).
 
 ### CAP stabilization details
 [CAP stabilization details]: #cap-stabilization-details
@@ -261,6 +263,7 @@ code that will start being rejected, and ending with an example of the
 UGEH attribute.
 
 ### Examples of code that must continue to work
+[examples-continue-to-work]: #examples-of-code-that-must-continue-to-work
 
 Here is some code that works today and must continue to work in the future:
 
@@ -305,6 +308,7 @@ fn main() {
 ```
 
 ### Examples of code that will start to be rejected
+[examples-start-reject]: #examples-of-code-that-will-start-to-be-rejected
 
 The main change injected by this RFC is this: due to `cannot-assume-parametricity`,
 an attempt to add a destructor to the `struct Foo` above will cause the
@@ -342,6 +346,7 @@ everything that compiled before the change continued to compile after
 it.
 
 ### Example of the unguarded-escape-hatch
+[examples-escape-hatch]: #example-of-the-unguarded-escape-hatch
 
 If the developer of `Foo` has access to the feature-gated
 escape-hatch, and is willing to assert that the destructor for `Foo`
