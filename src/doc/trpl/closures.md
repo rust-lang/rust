@@ -316,6 +316,35 @@ assert_eq!(3, answer);
 Now we take a trait object, a `&Fn`. And we have to make a reference
 to our closure when we pass it to `call_with_one`, so we use `&||`.
 
+# Function pointers and closures
+
+A function pointer is kind of like a closure that has no environment. As such,
+you can pass a function pointer to any function expecting a closure argument,
+and it will work:
+
+```rust
+fn call_with_one(some_closure: &Fn(i32) -> i32) -> i32 {
+    some_closure(1)
+}
+
+fn add_one(i: i32) -> i32 {
+    i + 1
+}
+
+let f = add_one;
+
+let answer = call_with_one(&f);
+
+assert_eq!(2, answer);
+```
+
+In this example, we don’t strictly need the intermediate variable `f`,
+the name of the function works just fine too:
+
+```ignore
+let answer = call_with_one(&add_one);
+```
+
 # Returning closures
 
 It’s very common for functional-style code to return closures in various
