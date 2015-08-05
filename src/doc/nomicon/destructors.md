@@ -120,7 +120,7 @@ enum Link {
 will have its inner Box field dropped if and only if an instance stores the
 Next variant.
 
-In general this works really nice because you don't need to worry about
+In general this works really nicely because you don't need to worry about
 adding/removing drops when you refactor your data layout. Still there's
 certainly many valid usecases for needing to do trickier things with
 destructors.

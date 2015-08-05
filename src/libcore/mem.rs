@@ -29,6 +29,19 @@ pub use intrinsics::transmute;
 /// `mem::drop` function in that it **does not run the destructor**, leaking the
 /// value and any resources that it owns.
 ///
+/// There's only a few reasons to use this function. They mainly come
+/// up in unsafe code or FFI code.
+///
+/// * You have an uninitialized value, perhaps for performance reasons, and
+///   need to prevent the destructor from running on it.
+/// * You have two copies of a value (like when writing something like
+///   [`mem::swap`][swap]), but need the destructor to only run once to
+///   prevent a double `free`.
+/// * Transferring resources across [FFI][ffi] boundries.
+///
+/// [swap]: fn.swap.html
+/// [ffi]: ../../book/ffi.html
+///
 /// # Safety
 ///
 /// This function is not marked as `unsafe` as Rust does not guarantee that the
@@ -52,20 +65,9 @@ pub use intrinsics::transmute;
 /// * `mpsc::{Sender, Receiver}` cycles (they use `Arc` internally)
 /// * Panicking destructors are likely to leak local resources
 ///
-/// # When To Use
-///
-/// There's only a few reasons to use this function. They mainly come
-/// up in unsafe code or FFI code.
-///
-/// * You have an uninitialized value, perhaps for performance reasons, and
-///   need to prevent the destructor from running on it.
-/// * You have two copies of a value (like `std::mem::swap`), but need the
-///   destructor to only run once to prevent a double free.
-/// * Transferring resources across FFI boundries.
-///
 /// # Example
 ///
-/// Leak some heap memory by never deallocating it.
+/// Leak some heap memory by never deallocating it:
 ///
 /// ```rust
 /// use std::mem;
@@ -74,7 +76,7 @@ pub use intrinsics::transmute;
 /// mem::forget(heap_memory);
 /// ```
 ///
-/// Leak an I/O object, never closing the file.
+/// Leak an I/O object, never closing the file:
 ///
 /// ```rust,no_run
 /// use std::mem;
@@ -84,7 +86,7 @@ pub use intrinsics::transmute;
 /// mem::forget(file);
 /// ```
 ///
-/// The swap function uses forget to good effect.
+/// The `mem::swap` function uses `mem::forget` to good effect:
 ///
 /// ```rust
 /// use std::mem;
