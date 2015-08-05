@@ -273,7 +273,11 @@ macro_rules! impls{
 /// even though it does not. This allows you to inform the compiler about certain safety properties
 /// of your code.
 ///
-/// Though they both have scary names, `PhantomData<T>` and "phantom types" are unrelated. 👻👻👻
+/// # A ghastly note 👻👻👻
+///
+/// Though they both have scary names, `PhantomData<T>` and 'phantom types' are related, but not
+/// identical. Phantom types are a more general concept that don't require `PhantomData<T>` to
+/// implement, but `PhantomData<T>` is the most common way to implement them in a correct manner.
 ///
 /// # Examples
 ///
