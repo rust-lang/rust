@@ -1,7 +1,7 @@
 % Drop Flags
 
 The examples in the previous section introduce an interesting problem for Rust.
-We have seen that's possible to conditionally initialize, deinitialize, and
+We have seen that it's possible to conditionally initialize, deinitialize, and
 reinitialize locations of memory totally safely. For Copy types, this isn't
 particularly notable since they're just a random pile of bits. However types
 with destructors are a different story: Rust needs to know whether to call a
