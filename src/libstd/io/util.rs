@@ -45,7 +45,9 @@ use io::{self, Read, Write, ErrorKind, BufRead};
 /// # }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn copy<R: Read, W: Write>(reader: &mut R, writer: &mut W) -> io::Result<u64> {
+pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<u64>
+    where R: Read, W: Write
+{
     let mut buf = [0; super::DEFAULT_BUF_SIZE];
     let mut written = 0;
     loop {
@@ -153,7 +155,17 @@ mod tests {
     use prelude::v1::*;
 
     use io::prelude::*;
-    use io::{sink, empty, repeat};
+    use io::{copy, sink, empty, repeat};
+
+    #[test]
+    fn copy_copies() {
+        let mut r = repeat(0).take(4);
+        let mut w = sink();
+        assert_eq!(copy(&mut r, &mut w).unwrap(), 4);
+
+        let mut r = repeat(0).take(1 << 17);
+        assert_eq!(copy(&mut r as &mut Read, &mut w as &mut Write).unwrap(), 1 << 17);
+    }
 
     #[test]
     fn sink_sinks() {
