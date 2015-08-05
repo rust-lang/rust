@@ -39,203 +39,6 @@ match x {
 
 This prints `one or two`.
 
-# Ranges
-
-You can match a range of values with `...`:
-
-```rust
-let x = 1;
-
-match x {
-    1 ... 5 => println!("one through five"),
-    _ => println!("anything"),
-}
-```
-
-This prints `one through five`.
-
-Ranges are mostly used with integers and `char`s:
-
-```rust
-let x = '💅';
-
-match x {
-    'a' ... 'j' => println!("early letter"),
-    'k' ... 'z' => println!("late letter"),
-    _ => println!("something else"),
-}
-```
-
-This prints `something else`.
-
-# Bindings
-
-You can bind values to names with `@`:
-
-```rust
-let x = 1;
-
-match x {
-    e @ 1 ... 5 => println!("got a range element {}", e),
-    _ => println!("anything"),
-}
-```
-
-This prints `got a range element 1`. This is useful when you want to
-do a complicated match of part of a data structure:
-
-```rust
-#[derive(Debug)]
-struct Person {
-    name: Option<String>,
-}
-
-let name = "Steve".to_string();
-let mut x: Option<Person> = Some(Person { name: Some(name) });
-match x {
-    Some(Person { name: ref a @ Some(_), .. }) => println!("{:?}", a),
-    _ => {}
-}
-```
-
-This prints `Some("Steve")`: We’ve bound the inner `name` to `a`.
-
-If you use `@` with `|`, you need to make sure the name is bound in each part
-of the pattern:
-
-```rust
-let x = 5;
-
-match x {
-    e @ 1 ... 5 | e @ 8 ... 10 => println!("got a range element {}", e),
-    _ => println!("anything"),
-}
-```
-
-# Ignoring bindings
-
-You can use `_` in a pattern to disregard the type and value.
-For example, here’s a `match` against a `Result<T, E>`:
-
-```rust
-# let some_value: Result<i32, &'static str> = Err("There was an error");
-match some_value {
-    Ok(value) => println!("got a value: {}", value),
-    Err(_) => println!("an error occurred"),
-}
-```
-
-In the first arm, we bind the value inside the `Ok` variant to `value`. But
-in the `Err` arm, we use `_` to disregard the specific error, and just print
-a general error message.
-
-`_` is valid in any pattern that creates a binding. This can be useful to
-ignore parts of a larger structure:
-
-```rust
-fn coordinate() -> (i32, i32, i32) {
-    // generate and return some sort of triple tuple
-# (1, 2, 3)
-}
-
-let (x, _, z) = coordinate();
-```
-
-Here, we bind the first and last element of the tuple to `x` and `z`, but
-ignore the middle element.
-
-Similarly, you can use `..` in a pattern to disregard multiple values.
-
-```rust
-enum OptionalTuple {
-    Value(i32, i32, i32),
-    Missing,
-}
-
-let x = OptionalTuple::Value(5, -2, 3);
-
-match x {
-    OptionalTuple::Value(..) => println!("Got a tuple!"),
-    OptionalTuple::Missing => println!("No such luck."),
-}
-```
-
-This prints `Got a tuple!`.
-
-# Guards
-
-You can introduce ‘match guards’ with `if`:
-
-```rust
-enum OptionalInt {
-    Value(i32),
-    Missing,
-}
-
-let x = OptionalInt::Value(5);
-
-match x {
-    OptionalInt::Value(i) if i > 5 => println!("Got an int bigger than five!"),
-    OptionalInt::Value(..) => println!("Got an int!"),
-    OptionalInt::Missing => println!("No such luck."),
-}
-```
-
-This prints `Got an int!`.
-
-If you’re using `if` with multiple patterns, the `if` applies to both sides:
-
-```rust
-let x = 4;
-let y = false;
-
-match x {
-    4 | 5 if y => println!("yes"),
-    _ => println!("no"),
-}
-```
-
-This prints `no`, because the `if` applies to the whole of `4 | 5`, and not to
-just the `5`, In other words, the the precedence of `if` behaves like this:
-
-```text
-(4 | 5) if y => ...
-```
-
-not this:
-
-```text
-4 | (5 if y) => ...
-```
-
-# ref and ref mut
-
-If you want to get a [reference][ref], use the `ref` keyword:
-
-```rust
-let x = 5;
-
-match x {
-    ref r => println!("Got a reference to {}", r),
-}
-```
-
-This prints `Got a reference to 5`.
-
-[ref]: references-and-borrowing.html
-
-Here, the `r` inside the `match` has the type `&i32`. In other words, the `ref`
-keyword _creates_ a reference, for use in the pattern. If you need a mutable
-reference, `ref mut` will work in the same way:
-
-```rust
-let mut x = 5;
-
-match x {
-    ref mut mr => println!("Got a mutable reference to {}", mr),
-}
-```
-
 # Destructuring
 
 If you have a compound data type, like a [`struct`][struct], you can destructure it
@@ -310,6 +113,203 @@ This ‘destructuring’ behavior works on any compound data type, like
 
 [tuples]: primitive-types.html#tuples
 [enums]: enums.html
+
+# Ignoring bindings
+
+You can use `_` in a pattern to disregard the type and value.
+For example, here’s a `match` against a `Result<T, E>`:
+
+```rust
+# let some_value: Result<i32, &'static str> = Err("There was an error");
+match some_value {
+    Ok(value) => println!("got a value: {}", value),
+    Err(_) => println!("an error occurred"),
+}
+```
+
+In the first arm, we bind the value inside the `Ok` variant to `value`. But
+in the `Err` arm, we use `_` to disregard the specific error, and just print
+a general error message.
+
+`_` is valid in any pattern that creates a binding. This can be useful to
+ignore parts of a larger structure:
+
+```rust
+fn coordinate() -> (i32, i32, i32) {
+    // generate and return some sort of triple tuple
+# (1, 2, 3)
+}
+
+let (x, _, z) = coordinate();
+```
+
+Here, we bind the first and last element of the tuple to `x` and `z`, but
+ignore the middle element.
+
+Similarly, you can use `..` in a pattern to disregard multiple values.
+
+```rust
+enum OptionalTuple {
+    Value(i32, i32, i32),
+    Missing,
+}
+
+let x = OptionalTuple::Value(5, -2, 3);
+
+match x {
+    OptionalTuple::Value(..) => println!("Got a tuple!"),
+    OptionalTuple::Missing => println!("No such luck."),
+}
+```
+
+This prints `Got a tuple!`.
+
+# ref and ref mut
+
+If you want to get a [reference][ref], use the `ref` keyword:
+
+```rust
+let x = 5;
+
+match x {
+    ref r => println!("Got a reference to {}", r),
+}
+```
+
+This prints `Got a reference to 5`.
+
+[ref]: references-and-borrowing.html
+
+Here, the `r` inside the `match` has the type `&i32`. In other words, the `ref`
+keyword _creates_ a reference, for use in the pattern. If you need a mutable
+reference, `ref mut` will work in the same way:
+
+```rust
+let mut x = 5;
+
+match x {
+    ref mut mr => println!("Got a mutable reference to {}", mr),
+}
+```
+
+# Ranges
+
+You can match a range of values with `...`:
+
+```rust
+let x = 1;
+
+match x {
+    1 ... 5 => println!("one through five"),
+    _ => println!("anything"),
+}
+```
+
+This prints `one through five`.
+
+Ranges are mostly used with integers and `char`s:
+
+```rust
+let x = '💅';
+
+match x {
+    'a' ... 'j' => println!("early letter"),
+    'k' ... 'z' => println!("late letter"),
+    _ => println!("something else"),
+}
+```
+
+This prints `something else`.
+
+# Bindings
+
+You can bind values to names with `@`:
+
+```rust
+let x = 1;
+
+match x {
+    e @ 1 ... 5 => println!("got a range element {}", e),
+    _ => println!("anything"),
+}
+```
+
+This prints `got a range element 1`. This is useful when you want to
+do a complicated match of part of a data structure:
+
+```rust
+#[derive(Debug)]
+struct Person {
+    name: Option<String>,
+}
+
+let name = "Steve".to_string();
+let mut x: Option<Person> = Some(Person { name: Some(name) });
+match x {
+    Some(Person { name: ref a @ Some(_), .. }) => println!("{:?}", a),
+    _ => {}
+}
+```
+
+This prints `Some("Steve")`: We’ve bound the inner `name` to `a`.
+
+If you use `@` with `|`, you need to make sure the name is bound in each part
+of the pattern:
+
+```rust
+let x = 5;
+
+match x {
+    e @ 1 ... 5 | e @ 8 ... 10 => println!("got a range element {}", e),
+    _ => println!("anything"),
+}
+```
+
+# Guards
+
+You can introduce ‘match guards’ with `if`:
+
+```rust
+enum OptionalInt {
+    Value(i32),
+    Missing,
+}
+
+let x = OptionalInt::Value(5);
+
+match x {
+    OptionalInt::Value(i) if i > 5 => println!("Got an int bigger than five!"),
+    OptionalInt::Value(..) => println!("Got an int!"),
+    OptionalInt::Missing => println!("No such luck."),
+}
+```
+
+This prints `Got an int!`.
+
+If you’re using `if` with multiple patterns, the `if` applies to both sides:
+
+```rust
+let x = 4;
+let y = false;
+
+match x {
+    4 | 5 if y => println!("yes"),
+    _ => println!("no"),
+}
+```
+
+This prints `no`, because the `if` applies to the whole of `4 | 5`, and not to
+just the `5`, In other words, the the precedence of `if` behaves like this:
+
+```text
+(4 | 5) if y => ...
+```
+
+not this:
+
+```text
+4 | (5 if y) => ...
+```
 
 # Mix and Match
 
