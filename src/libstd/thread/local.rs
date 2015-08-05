@@ -12,6 +12,7 @@
 
 #![unstable(feature = "thread_local_internals")]
 
+#[cfg(stage0)]
 use prelude::v1::*;
 
 use cell::UnsafeCell;
@@ -271,6 +272,7 @@ impl<T: 'static> LocalKey<T> {
           not(no_elf_tls)))]
 #[doc(hidden)]
 mod imp {
+    #[cfg(stage0)]
     use prelude::v1::*;
 
     use cell::{Cell, UnsafeCell};
@@ -327,6 +329,7 @@ mod imp {
     // Due to rust-lang/rust#18804, make sure this is not generic!
     #[cfg(target_os = "linux")]
     unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
+        use prelude::v1::*;
         use mem;
         use libc;
         use sys_common::thread_local as os;

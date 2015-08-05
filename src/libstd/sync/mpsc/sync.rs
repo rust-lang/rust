@@ -33,7 +33,8 @@
 /// of a synchronous channel. There are a few branches for the unbuffered case,
 /// but they're mostly just relevant to blocking senders.
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
 
 pub use self::Failure::*;
 use self::Blocker::*;

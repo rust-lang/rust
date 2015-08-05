@@ -12,7 +12,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use prelude::*;
+use prelude::v1::*;
 
 use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
 use marker::PhantomData;

@@ -10,8 +10,8 @@
 
 // error-pattern: requires `copy` lang_item
 
-#![feature(lang_items, start, no_std)]
-#![no_std]
+#![feature(lang_items, start, no_core)]
+#![no_core]
 
 #[lang = "sized"]
 trait Sized { }

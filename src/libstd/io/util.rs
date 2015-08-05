@@ -10,6 +10,7 @@
 
 #![allow(missing_copy_implementations)]
 
+#[cfg(stage0)]
 use prelude::v1::*;
 
 use io::{self, Read, Write, ErrorKind, BufRead};

@@ -8,17 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
-
-#![feature(lang_items, start, no_std, core_slice_ext, core, collections)]
+#![feature(lang_items, start, no_std, core_slice_ext, collections)]
 #![no_std]
 
 extern crate std as other;
 
-#[macro_use] extern crate core;
 #[macro_use] extern crate collections;
-
-use core::slice::SliceExt;
 
 #[start]
 fn start(_argc: isize, _argv: *const *const u8) -> isize {

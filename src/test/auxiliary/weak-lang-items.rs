@@ -13,12 +13,9 @@
 // This aux-file will require the eh_personality function to be codegen'd, but
 // it hasn't been defined just yet. Make sure we don't explode.
 
-#![feature(no_std, core)]
+#![feature(no_std)]
 #![no_std]
 #![crate_type = "rlib"]
-
-#[macro_use]
-extern crate core;
 
 struct A;
 

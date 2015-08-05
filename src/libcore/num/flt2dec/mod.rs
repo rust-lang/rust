@@ -129,7 +129,7 @@ functions.
 #![unstable(feature = "flt2dec",
             reason = "internal routines only exposed for testing")]
 
-use prelude::*;
+use prelude::v1::*;
 use i16;
 use num::Float;
 use slice::bytes;

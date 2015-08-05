@@ -12,6 +12,7 @@
 
 #![allow(non_camel_case_types)]
 
+#[cfg(stage0)]
 use prelude::v1::*;
 
 use env;

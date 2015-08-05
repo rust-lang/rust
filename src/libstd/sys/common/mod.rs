@@ -10,6 +10,7 @@
 
 #![allow(missing_docs)]
 
+#[cfg(stage0)]
 use prelude::v1::*;
 
 pub mod backtrace;

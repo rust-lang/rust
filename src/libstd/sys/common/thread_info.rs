@@ -10,7 +10,8 @@
 
 #![allow(dead_code)] // stack_guard isn't used right now on all platforms
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
 
 use cell::RefCell;
 use string::String;

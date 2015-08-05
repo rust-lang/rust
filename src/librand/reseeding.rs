@@ -11,7 +11,8 @@
 //! A wrapper around another RNG that reseeds it after it
 //! generates a certain number of random bytes.
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
 
 use {Rng, SeedableRng};
 

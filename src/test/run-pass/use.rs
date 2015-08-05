@@ -11,8 +11,8 @@
 // pretty-expanded FIXME #23616
 
 #![allow(unused_imports)]
-#![feature(start, no_std)]
-#![no_std]
+#![feature(start, no_core, core)]
+#![no_core]
 
 extern crate std;
 extern crate std as zed;

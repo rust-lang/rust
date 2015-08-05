@@ -75,7 +75,6 @@
 #![feature(coerce_unsized)]
 #![feature(core)]
 #![feature(core_intrinsics)]
-#![feature(core_prelude)]
 #![feature(core_slice_ext)]
 #![feature(custom_attribute)]
 #![feature(fundamental)]
@@ -93,16 +92,16 @@
 #![feature(unsize)]
 #![feature(core_slice_ext)]
 #![feature(core_str_ext)]
+#![cfg_attr(stage0, feature(core, core_prelude))]
 
 #![cfg_attr(test, feature(test, alloc, rustc_private, box_raw))]
 #![cfg_attr(all(not(feature = "external_funcs"), not(feature = "external_crate")),
             feature(libc))]
 
-#[macro_use]
-extern crate core;
-
 #[cfg(all(not(feature = "external_funcs"), not(feature = "external_crate")))]
 extern crate libc;
+
+#[cfg(stage0)] #[macro_use] extern crate core;
 
 // Allow testing this library
 

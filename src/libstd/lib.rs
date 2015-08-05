@@ -213,7 +213,6 @@
 #![feature(core)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
-#![feature(core_prelude)]
 #![feature(core_simd)]
 #![feature(drain)]
 #![feature(fnbox)]
@@ -250,6 +249,7 @@
 #![cfg_attr(test, feature(float_from_str_radix, range_inclusive, float_extras, hash_default))]
 #![cfg_attr(test, feature(test, rustc_private, float_consts))]
 #![cfg_attr(target_env = "msvc", feature(link_args))]
+#![cfg_attr(stage0, feature(core, core_prelude))]
 
 // Don't link to std. We are std.
 #![no_std]
@@ -257,13 +257,17 @@
 #![allow(trivial_casts)]
 #![deny(missing_docs)]
 
+#[cfg(stage0)] #[macro_use] extern crate core;
+
 #[cfg(test)] extern crate test;
 #[cfg(test)] #[macro_use] extern crate log;
 
-#[macro_use]
+// We want to reexport a few macros from core but libcore has already been
+// imported by the compiler (via our #[no_std] attribute) In this case we just
+// add a new crate name so we can attach the reexports to it.
 #[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
     unreachable, unimplemented, write, writeln)]
-extern crate core;
+extern crate core as __core;
 
 #[macro_use]
 #[macro_reexport(vec, format)]
@@ -410,11 +414,3 @@ pub mod __rand {
 // the rustdoc documentation for primitive types. Using `include!`
 // because rustdoc only looks for these modules at the crate level.
 include!("primitive_docs.rs");
-
-// The expansion of --test has a few references to `::std::$foo` so this module
-// is necessary to get things to compile.
-#[cfg(test)]
-mod std {
-    pub use option;
-    pub use realstd::env;
-}

@@ -53,7 +53,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
 
 use heap;
 use raw_vec::RawVec;

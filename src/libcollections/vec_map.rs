@@ -20,7 +20,8 @@
 
 use self::Entry::*;
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
 
 use core::cmp::{max, Ordering};
 use core::fmt;

@@ -12,8 +12,8 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(intrinsics, lang_items, start, no_std, libc)]
-#![no_std]
+#![feature(intrinsics, lang_items, start, no_core, libc)]
+#![no_core]
 
 extern crate libc;
 

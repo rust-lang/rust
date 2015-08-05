@@ -16,7 +16,8 @@ pub use self::SearchResult::*;
 pub use self::ForceResult::*;
 pub use self::TraversalItem::*;
 
-use core::prelude::*;
+#[cfg(stage0)]
+use core::prelude::v1::*;
 
 use core::cmp::Ordering::{Greater, Less, Equal};
 use core::intrinsics::arith_offset;

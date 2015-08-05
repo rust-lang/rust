@@ -41,52 +41,57 @@ fn ignored_span(sess: &ParseSess, sp: Span) -> Span {
 
 pub fn maybe_inject_crates_ref(krate: ast::Crate, alt_std_name: Option<String>)
                                -> ast::Crate {
-    if use_std(&krate) {
-        inject_crates_ref(krate, alt_std_name)
-    } else {
+    if no_core(&krate) {
         krate
+    } else {
+        let name = if no_std(&krate) {"core"} else {"std"};
+        let mut fold = CrateInjector {
+            item_name: token::str_to_ident(name),
+            crate_name: token::intern(&alt_std_name.unwrap_or(name.to_string())),
+        };
+        fold.fold_crate(krate)
     }
 }
 
 pub fn maybe_inject_prelude(sess: &ParseSess, krate: ast::Crate) -> ast::Crate {
-    if use_std(&krate) {
+    if no_core(&krate) {
+        krate
+    } else {
+        let name = if no_std(&krate) {"core"} else {"std"};
         let mut fold = PreludeInjector {
-            span: ignored_span(sess, DUMMY_SP)
+            span: ignored_span(sess, DUMMY_SP),
+            crate_identifier: token::str_to_ident(name),
         };
         fold.fold_crate(krate)
-    } else {
-        krate
     }
 }
 
-pub fn use_std(krate: &ast::Crate) -> bool {
-    !attr::contains_name(&krate.attrs, "no_std")
+pub fn no_core(krate: &ast::Crate) -> bool {
+    attr::contains_name(&krate.attrs, "no_core")
+}
+
+pub fn no_std(krate: &ast::Crate) -> bool {
+    attr::contains_name(&krate.attrs, "no_std") || no_core(krate)
 }
 
 fn no_prelude(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "no_implicit_prelude")
 }
 
-struct StandardLibraryInjector {
-    alt_std_name: Option<String>,
+struct CrateInjector {
+    item_name: ast::Ident,
+    crate_name: ast::Name,
 }
 
-impl fold::Folder for StandardLibraryInjector {
+impl fold::Folder for CrateInjector {
     fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
-
-        // The name to use in `extern crate name as std;`
-        let actual_crate_name = match self.alt_std_name {
-            Some(ref s) => token::intern(&s),
-            None => token::intern("std"),
-        };
-
         krate.module.items.insert(0, P(ast::Item {
             id: ast::DUMMY_NODE_ID,
-            ident: token::str_to_ident("std"),
+            ident: self.item_name,
             attrs: vec!(
                 attr::mk_attr_outer(attr::mk_attr_id(), attr::mk_word_item(
                         InternedString::new("macro_use")))),
-            node: ast::ItemExternCrate(Some(actual_crate_name)),
+            node: ast::ItemExternCrate(Some(self.crate_name)),
             vis: ast::Inherited,
             span: DUMMY_SP
         }));
@@ -95,15 +100,9 @@ impl fold::Folder for StandardLibraryInjector {
     }
 }
 
-fn inject_crates_ref(krate: ast::Crate, alt_std_name: Option<String>) -> ast::Crate {
-    let mut fold = StandardLibraryInjector {
-        alt_std_name: alt_std_name
-    };
-    fold.fold_crate(krate)
-}
-
 struct PreludeInjector {
-    span: Span
+    span: Span,
+    crate_identifier: ast::Ident,
 }
 
 impl fold::Folder for PreludeInjector {
@@ -134,7 +133,7 @@ impl fold::Folder for PreludeInjector {
             global: false,
             segments: vec![
                 ast::PathSegment {
-                    identifier: token::str_to_ident("std"),
+                    identifier: self.crate_identifier,
                     parameters: ast::PathParameters::none(),
                 },
                 ast::PathSegment {
