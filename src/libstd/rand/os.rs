@@ -205,9 +205,7 @@ mod imp {
         _dummy: (),
     }
 
-    // Fake definition; this is actually a struct, but we don't use the
-    // contents here.
-    type SecRandom = c_void;
+    enum SecRandom {}
 
     #[allow(non_upper_case_globals)]
     const kSecRandomDefault: *const SecRandom = 0 as *const SecRandom;
