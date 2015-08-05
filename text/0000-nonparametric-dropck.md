@@ -96,7 +96,7 @@ named `cannot-assume-parametricity` (CAP) and `unguarded-escape-hatch` (UGEH).
 
 Though the revisions are given distinct names, they both fall under
 the feature gate `dropck_parametricity`. (Note however that this
-might be irrelevant to CAP; see [CAP stabilization details][].
+might be irrelevant to CAP; see [CAP stabilization details][]).
 
 ## cannot-assume-parametricity
 
