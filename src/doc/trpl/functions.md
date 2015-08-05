@@ -227,3 +227,34 @@ as any type:
 let x: i32 = diverges();
 let x: String = diverges();
 ```
+
+## Function pointers
+
+We can also create variable bindings which point to functions:
+
+```rust
+let f: fn(i32) -> i32;
+```
+
+`f` is a variable binding which points to a function that takes an `i32` as
+an argument and returns an `i32`. For example:
+
+```rust
+fn plus_one(i: i32) -> i32 {
+    i + 1
+}
+
+// without type inference
+let f: fn(i32) -> i32 = plus_one;
+
+// with type inference
+let f = plus_one;
+```
+
+We can then use `f` to call the function:
+
+```rust
+# fn plus_one(i: i32) -> i32 { i + 1 }
+# let f = plus_one;
+let six = f(5);
+```
