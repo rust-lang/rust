@@ -11,14 +11,14 @@
 use foo::baz;
 use bar::baz; //~ ERROR a module named `baz` has already been imported
 
-use bar::Quux; //~ ERROR a trait named `Quux` has already been imported
 use foo::Quux;
+use bar::Quux; //~ ERROR a trait named `Quux` has already been imported
 
-use foo::blah; //~ ERROR a type named `blah` has already been imported
-use bar::blah;
+use foo::blah;
+use bar::blah; //~ ERROR a type named `blah` has already been imported
 
-use foo::WOMP; //~ ERROR a value named `WOMP` has already been imported
-use bar::WOMP;
+use foo::WOMP;
+use bar::WOMP; //~ ERROR a value named `WOMP` has already been imported
 
 fn main() {}
 
