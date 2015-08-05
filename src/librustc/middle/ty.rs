@@ -87,8 +87,7 @@ use std::collections::{HashMap, HashSet};
 use rustc_data_structures::ivar;
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
-use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
-use syntax::ast::{StructField, UnnamedField, Visibility};
+use syntax::ast::{MutImmutable, MutMutable, Name, NodeId, Visibility};
 use syntax::ast_util::{self, is_local, local_def};
 use syntax::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
 use syntax::codemap::Span;
@@ -110,83 +109,6 @@ pub struct CrateAnalysis {
     pub reachable: NodeSet,
     pub name: String,
     pub glob_map: Option<GlobMap>,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Field<'tcx> {
-    pub name: ast::Name,
-    pub mt: TypeAndMut<'tcx>
-}
-
-// Enum information
-#[derive(Clone)]
-pub struct VariantInfo<'tcx> {
-    pub args: Vec<Ty<'tcx>>,
-    pub arg_names: Option<Vec<ast::Name>>,
-    pub ctor_ty: Option<Ty<'tcx>>,
-    pub name: ast::Name,
-    pub id: ast::DefId,
-    pub disr_val: Disr,
-    pub vis: Visibility
-}
-
-impl<'tcx> VariantInfo<'tcx> {
-
-    /// Creates a new VariantInfo from the corresponding ast representation.
-    ///
-    /// Does not do any caching of the value in the type context.
-    pub fn from_ast_variant(cx: &ctxt<'tcx>,
-                            ast_variant: &ast::Variant,
-                            discriminant: Disr) -> VariantInfo<'tcx> {
-        let ctor_ty = cx.node_id_to_type(ast_variant.node.id);
-
-        match ast_variant.node.kind {
-            ast::TupleVariantKind(ref args) => {
-                let arg_tys = if !args.is_empty() {
-                    // the regions in the argument types come from the
-                    // enum def'n, and hence will all be early bound
-                    cx.no_late_bound_regions(&ctor_ty.fn_args()).unwrap()
-                } else {
-                    Vec::new()
-                };
-
-                return VariantInfo {
-                    args: arg_tys,
-                    arg_names: None,
-                    ctor_ty: Some(ctor_ty),
-                    name: ast_variant.node.name.name,
-                    id: ast_util::local_def(ast_variant.node.id),
-                    disr_val: discriminant,
-                    vis: ast_variant.node.vis
-                };
-            },
-            ast::StructVariantKind(ref struct_def) => {
-                let fields: &[StructField] = &struct_def.fields;
-
-                assert!(!fields.is_empty());
-
-                let arg_tys = struct_def.fields.iter()
-                    .map(|field| cx.node_id_to_type(field.node.id)).collect();
-                let arg_names = fields.iter().map(|field| {
-                    match field.node.kind {
-                        NamedField(ident, _) => ident.name,
-                        UnnamedField(..) => cx.sess.bug(
-                            "enum_variants: all fields in struct must have a name")
-                    }
-                }).collect();
-
-                return VariantInfo {
-                    args: arg_tys,
-                    arg_names: Some(arg_names),
-                    ctor_ty: None,
-                    name: ast_variant.node.name.name,
-                    id: ast_util::local_def(ast_variant.node.id),
-                    disr_val: discriminant,
-                    vis: ast_variant.node.vis
-                };
-            }
-        }
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -493,14 +415,6 @@ pub struct AssociatedType<'tcx> {
 pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: ast::Mutability,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct FieldTy {
-    pub name: Name,
-    pub id: DefId,
-    pub vis: ast::Visibility,
-    pub origin: ast::DefId,  // The DefId of the struct in which the field is declared.
 }
 
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable)]
@@ -5667,18 +5581,6 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn field_idx_strict(&self, name: ast::Name, fields: &[Field<'tcx>])
-                            -> usize {
-        let mut i = 0;
-        for f in fields { if f.name == name { return i; } i += 1; }
-        self.sess.bug(&format!(
-            "no field named `{}` found in the list of fields `{:?}`",
-            name,
-            fields.iter()
-                  .map(|f| f.name.to_string())
-                  .collect::<Vec<String>>()));
-    }
-
     pub fn note_and_explain_type_err(&self, err: &TypeError<'tcx>, sp: Span) {
         use self::TypeError::*;
 
@@ -7341,12 +7243,6 @@ impl<'tcx> HasTypeFlags for FnSig<'tcx> {
     }
 }
 
-impl<'tcx> HasTypeFlags for Field<'tcx> {
-    fn has_type_flags(&self, flags: TypeFlags) -> bool {
-        self.mt.ty.has_type_flags(flags)
-    }
-}
-
 impl<'tcx> HasTypeFlags for BareFnTy<'tcx> {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self.sig.has_type_flags(flags)
@@ -7374,12 +7270,6 @@ impl<'tcx> fmt::Debug for ClosureUpvar<'tcx> {
         write!(f, "ClosureUpvar({:?},{:?})",
                self.def,
                self.ty)
-    }
-}
-
-impl<'tcx> fmt::Debug for Field<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "field({},{})", self.name, self.mt)
     }
 }
 

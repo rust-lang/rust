@@ -113,13 +113,6 @@ pub fn maybe_get_item_ast<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId,
     decoder::maybe_get_item_ast(&*cdata, tcx, def.node, decode_inlined_item)
 }
 
-pub fn get_enum_variants<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId)
-                               -> Vec<Rc<ty::VariantInfo<'tcx>>> {
-    let cstore = &tcx.sess.cstore;
-    let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_enum_variants(cstore.intr.clone(), &*cdata, def.node, tcx)
-}
-
 /// Returns information about the given implementation.
 pub fn get_impl_items(cstore: &cstore::CStore, impl_def_id: ast::DefId)
                       -> Vec<ty::ImplOrTraitItemId> {
@@ -195,11 +188,9 @@ pub fn get_item_attrs(cstore: &cstore::CStore,
     decoder::get_item_attrs(&*cdata, def_id.node)
 }
 
-pub fn get_struct_fields(cstore: &cstore::CStore,
-                         def: ast::DefId)
-                      -> Vec<ty::FieldTy> {
+pub fn get_struct_field_names(cstore: &cstore::CStore, def: ast::DefId) -> Vec<ast::Name> {
     let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_struct_fields(cstore.intr.clone(), &*cdata, def.node)
+    decoder::get_struct_field_names(&cstore.intr, &*cdata, def.node)
 }
 
 pub fn get_struct_field_attrs(cstore: &cstore::CStore, def: ast::DefId) -> HashMap<ast::NodeId,

@@ -275,15 +275,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitRef<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::Field<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::Field<'tcx> {
-        ty::Field {
-            name: self.name,
-            mt: self.mt.fold_with(folder),
-        }
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for ty::Region {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::Region {
         folder.fold_region(*self)
