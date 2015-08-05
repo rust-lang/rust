@@ -47,8 +47,11 @@ As you can see, the `trait` block looks very similar to the `impl` block,
 but we don’t define a body, just a type signature. When we `impl` a trait,
 we use `impl Trait for Item`, rather than just `impl Item`.
 
-We can use traits to constrain our generics. Consider this function, which
-does not compile:
+## Traits bounds for generic functions
+
+Traits are useful because they allow a type to make certain promises about its
+behavior. Generic functions can exploit this to constrain the types they
+accept. Consider this function, which does not compile:
 
 ```rust,ignore
 fn print_area<T>(shape: T) {
@@ -75,7 +78,7 @@ fn print_area<T: HasArea>(shape: T) {
 }
 ```
 
-The syntax `<T: HasArea>` means `any type that implements the HasArea trait`.
+The syntax `<T: HasArea>` means “any type that implements the `HasArea` trait.”
 Because traits define function type signatures, we can be sure that any type
 which implements `HasArea` will have an `.area()` method.
 
@@ -152,6 +155,63 @@ We get a compile-time error:
 error: the trait `HasArea` is not implemented for the type `_` [E0277]
 ```
 
+## Traits bounds for generic structs
+
+Your generic structs can also benefit from trait constraints. All you need to
+do is append the constraint when you declare type parameters. Here is a new
+type `Rectangle<T>` and its operation `is_square()`:
+
+```rust
+struct Rectangle<T> {
+    x: T,
+    y: T,
+    width: T,
+    height: T,
+}
+
+impl<T: PartialEq> Rectangle<T> {
+    fn is_square(&self) -> bool {
+        self.width == self.height
+    }
+}
+
+fn main() {
+    let mut r = Rectangle {
+        x: 0,
+        y: 0,
+        width: 47,
+        height: 47,
+    };
+
+    assert!(r.is_square());
+
+    r.height = 42;
+    assert!(!r.is_square());
+}
+```
+
+`is_square()` needs to check that the sides are equal, so the sides must be of
+a type that implements the [`core::cmp::PartialEq`][PartialEq] trait:
+
+```ignore
+impl<T: PartialEq> Rectangle<T> { ... }
+```
+
+Now, a rectangle can be defined in terms of any type that can be compared for
+equality.
+
+[PartialEq]: ../core/cmp/trait.PartialEq.html
+
+Here we defined a new struct `Rectangle` that accepts numbers of any
+precision—really, objects of pretty much any type—as long as they can be
+compared for equality. Could we do the same for our `HasArea` structs, `Square`
+and `Circle`? Yes, but they need multiplication, and to work with that we need
+to know more about [operator traits][operators-and-overloading].
+
+[operators-and-overloading]: operators-and-overloading.html
+
+# Rules for implementing traits
+
 So far, we’ve only added trait implementations to structs, but you can
 implement a trait for any type. So technically, we _could_ implement `HasArea`
 for `i32`:
@@ -175,7 +235,7 @@ impl HasArea for i32 {
 It is considered poor style to implement methods on such primitive types, even
 though it is possible.
 
-This may seem like the Wild West, but there are two other restrictions around
+This may seem like the Wild West, but there are two restrictions around
 implementing traits that prevent this from getting out of hand. The first is
 that if the trait isn’t defined in your scope, it doesn’t apply. Here’s an
 example: the standard library provides a [`Write`][write] trait which adds
@@ -340,10 +400,10 @@ This shows off the additional feature of `where` clauses: they allow bounds
 where the left-hand side is an arbitrary type (`i32` in this case), not just a
 plain type parameter (like `T`).
 
-## Default methods
+# Default methods
 
-There’s one last feature of traits we should cover: default methods. It’s
-easiest just to show an example:
+If you already know how a typical implementor will define a method, you can
+let your trait supply a default:
 
 ```rust
 trait Foo {
