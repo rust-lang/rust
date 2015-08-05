@@ -807,7 +807,7 @@ impl AsU64 for u64  { fn as_u64(self) -> u64 { self as u64 }}
 impl AsU64 for u32  { fn as_u64(self) -> u64 { self as u64 }}
 impl AsU64 for usize { fn as_u64(self) -> u64 { self as u64 }}
 
-pub fn C_u8(ccx: &CrateContext, i: usize) -> ValueRef {
+pub fn C_u8(ccx: &CrateContext, i: u8) -> ValueRef {
     C_integral(Type::i8(ccx), i as u64, false)
 }
 
