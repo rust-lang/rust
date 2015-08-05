@@ -184,6 +184,11 @@ impl ImportResolution {
     }
 }
 
+struct ImportResolvingError {
+    span: Span,
+    path: String,
+    help: String,
+}
 
 struct ImportResolver<'a, 'b:'a, 'tcx:'b> {
     resolver: &'a mut Resolver<'b, 'tcx>
@@ -208,7 +213,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                    i, self.resolver.unresolved_imports);
 
             let module_root = self.resolver.graph_root.get_module();
-            self.resolve_imports_for_module_subtree(module_root.clone());
+            let errors = self.resolve_imports_for_module_subtree(module_root.clone());
 
             if self.resolver.unresolved_imports == 0 {
                 debug!("(resolving imports) success");
@@ -216,7 +221,20 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             }
 
             if self.resolver.unresolved_imports == prev_unresolved_imports {
-                self.resolver.report_unresolved_imports(module_root);
+                // resolving failed
+                if errors.len() > 0 {
+                    for e in errors {
+                        resolve_error(self.resolver,
+                                      e.span,
+                                      ResolutionError::UnresolvedImport(Some((&e.path, &e.help))));
+                    }
+                } else {
+                    // Report unresolved imports only if no hard error was already reported
+                    // to avoid generating multiple errors on the same import.
+                    // Imports that are still indeterminate at this point are actually blocked
+                    // by errored imports, so there is no point reporting them.
+                    self.resolver.report_unresolved_imports(module_root);
+                }
                 break;
             }
 
@@ -227,11 +245,13 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
     /// Attempts to resolve imports for the given module and all of its
     /// submodules.
-    fn resolve_imports_for_module_subtree(&mut self, module_: Rc<Module>) {
+    fn resolve_imports_for_module_subtree(&mut self, module_: Rc<Module>)
+                                          -> Vec<ImportResolvingError> {
+        let mut errors = Vec::new();
         debug!("(resolving imports for module subtree) resolving {}",
                module_to_string(&*module_));
         let orig_module = replace(&mut self.resolver.current_module, module_.clone());
-        self.resolve_imports_for_module(module_.clone());
+        errors.extend(self.resolve_imports_for_module(module_.clone()));
         self.resolver.current_module = orig_module;
 
         build_reduced_graph::populate_module_if_necessary(self.resolver, &module_);
@@ -241,53 +261,67 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     // Nothing to do.
                 }
                 Some(child_module) => {
-                    self.resolve_imports_for_module_subtree(child_module);
+                    errors.extend(self.resolve_imports_for_module_subtree(child_module));
                 }
             }
         }
 
         for (_, child_module) in module_.anonymous_children.borrow().iter() {
-            self.resolve_imports_for_module_subtree(child_module.clone());
+            errors.extend(self.resolve_imports_for_module_subtree(child_module.clone()));
         }
+
+        errors
     }
 
     /// Attempts to resolve imports for the given module only.
-    fn resolve_imports_for_module(&mut self, module: Rc<Module>) {
+    fn resolve_imports_for_module(&mut self, module: Rc<Module>) -> Vec<ImportResolvingError> {
+        let mut errors = Vec::new();
+
         if module.all_imports_resolved() {
             debug!("(resolving imports for module) all imports resolved for \
                    {}",
                    module_to_string(&*module));
-            return;
+            return errors;
         }
 
-        let imports = module.imports.borrow();
+        let mut imports = module.imports.borrow_mut();
         let import_count = imports.len();
-        while module.resolved_import_count.get() < import_count {
+        let mut indeterminate_imports = Vec::new();
+        while module.resolved_import_count.get() + indeterminate_imports.len() < import_count {
             let import_index = module.resolved_import_count.get();
-            let import_directive = &(*imports)[import_index];
             match self.resolve_import_for_module(module.clone(),
-                                                 import_directive) {
+                                                 &imports[import_index]) {
                 ResolveResult::Failed(err) => {
+                    let import_directive = &imports[import_index];
                     let (span, help) = match err {
                         Some((span, msg)) => (span, format!(". {}", msg)),
                         None => (import_directive.span, String::new())
                     };
-                    resolve_error(self.resolver,
-                                    span,
-                                    ResolutionError::UnresolvedImport(
-                                                Some((&*import_path_to_string(
-                                                        &import_directive.module_path,
-                                                        import_directive.subclass),
-                                                      Some(&*help))))
-                                   );
+                    errors.push(ImportResolvingError {
+                                    span: span,
+                                    path: import_path_to_string(
+                                            &import_directive.module_path,
+                                            import_directive.subclass
+                                         ),
+                                    help: help
+                                });
                 }
-                ResolveResult::Indeterminate => break, // Bail out. We'll come around next time.
-                ResolveResult::Success(()) => () // Good. Continue.
+                ResolveResult::Indeterminate => {}
+                ResolveResult::Success(()) => {
+                    // count success
+                    module.resolved_import_count
+                          .set(module.resolved_import_count.get() + 1);
+                    continue;
+                }
             }
+            // This resolution was not successful, keep it for later
+            indeterminate_imports.push(imports.swap_remove(import_index));
 
-            module.resolved_import_count
-                  .set(module.resolved_import_count.get() + 1);
         }
+
+        imports.extend(indeterminate_imports);
+
+        errors
     }
 
     /// Attempts to resolve the given import. The return value indicates
@@ -367,11 +401,10 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
 
         // Decrement the count of unresolved globs if necessary. But only if
-        // the resolution result is indeterminate -- otherwise we'll stop
-        // processing imports here. (See the loop in
-        // resolve_imports_for_module).
+        // the resolution result is a success -- other cases will
+        // be handled by the main loop.
 
-        if !resolution_result.indeterminate() {
+        if resolution_result.success() {
             match import_directive.subclass {
                 GlobImport => {
                     assert!(module_.glob_count.get() >= 1);

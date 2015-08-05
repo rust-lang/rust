@@ -20,6 +20,7 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(associated_consts)]
+#![feature(borrow_state)]
 #![feature(rc_weak)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -176,7 +177,7 @@ pub enum ResolutionError<'a> {
     /// error E0431: `self` import can only appear in an import list with a non-empty prefix
     SelfImportOnlyInImportListWithNonEmptyPrefix,
     /// error E0432: unresolved import
-    UnresolvedImport(Option<(&'a str, Option<&'a str>)>),
+    UnresolvedImport(Option<(&'a str, &'a str)>),
     /// error E0433: failed to resolve
     FailedToResolve(&'a str),
     /// error E0434: can't capture dynamic environment in a fn item
@@ -359,8 +360,7 @@ fn resolve_error<'b, 'a:'b, 'tcx:'a>(resolver: &'b Resolver<'a, 'tcx>, span: syn
         }
         ResolutionError::UnresolvedImport(name) => {
             let msg = match name {
-                Some((n, Some(p))) => format!("unresolved import `{}`{}", n, p),
-                Some((n, None)) => format!("unresolved import (maybe you meant `{}::*`?)", n),
+                Some((n, p)) => format!("unresolved import `{}`{}", n, p),
                 None => "unresolved import".to_owned()
             };
             span_err!(resolver.session, span, E0432, "{}", msg);
@@ -539,8 +539,8 @@ enum ResolveResult<T> {
 }
 
 impl<T> ResolveResult<T> {
-    fn indeterminate(&self) -> bool {
-        match *self { Indeterminate => true, _ => false }
+    fn success(&self) -> bool {
+        match *self { Success(_) => true, _ => false }
     }
 }
 
@@ -732,7 +732,12 @@ impl Module {
     }
 
     fn all_imports_resolved(&self) -> bool {
-        self.imports.borrow().len() == self.resolved_import_count.get()
+        if self.imports.borrow_state() == ::std::cell::BorrowState::Writing {
+            // it is currently being resolved ! so nope
+            false
+        } else {
+            self.imports.borrow().len() == self.resolved_import_count.get()
+        }
     }
 }
 
@@ -1815,19 +1820,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let imports = module_.imports.borrow();
         let import_count = imports.len();
         if index != import_count {
-            let sn = self.session
-                         .codemap()
-                         .span_to_snippet((*imports)[index].span)
-                         .unwrap();
-            if sn.contains("::") {
-                resolve_error(self,
-                              (*imports)[index].span,
-                              ResolutionError::UnresolvedImport(None));
-            } else {
-                resolve_error(self,
-                              (*imports)[index].span,
-                              ResolutionError::UnresolvedImport(Some((&*sn, None))));
-            }
+            resolve_error(self,
+                          (*imports)[index].span,
+                          ResolutionError::UnresolvedImport(None));
         }
 
         // Descend into children and anonymous children.
