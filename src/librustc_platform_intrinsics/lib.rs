@@ -28,7 +28,7 @@ pub struct Intrinsic {
     pub definition: IntrinsicDef,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hash, Eq, PartialEq)]
 pub enum Type {
     Integer(u8),
     Float(u8),

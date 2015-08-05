@@ -75,7 +75,7 @@ DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_bo
 
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
 	                log syntax serialize rustc_llvm rustc_platform_intrinsics
-DEPS_rustc_typeck := rustc syntax
+DEPS_rustc_typeck := rustc syntax rustc_platform_intrinsics
 DEPS_rustc_borrowck := rustc log graphviz syntax
 DEPS_rustc_resolve := rustc log syntax
 DEPS_rustc_privacy := rustc log syntax
