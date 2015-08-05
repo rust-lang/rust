@@ -38,6 +38,9 @@ use self::Cow::*;
 /// type can be borrowed as multiple different types. In particular, `Vec<T>:
 /// Borrow<Vec<T>>` and `Vec<T>: Borrow<[T]>`.
 ///
+/// If you are implementing `Borrow` and both `Self` and `Borrowed` implement
+/// `Hash`, `Eq`, and/or `Ord`, they must produce the same result.
+///
 /// `Borrow` is very similar to, but different than, `AsRef`. See
 /// [the book][book] for more.
 ///

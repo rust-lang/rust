@@ -6,7 +6,7 @@ Generics are called ‘parametric polymorphism’ in type theory,
 which means that they are types or functions that have multiple forms (‘poly’
 is multiple, ‘morph’ is form) over a given parameter (‘parametric’).
 
-Anyway, enough with type theory, let’s check out some generic code. Rust’s
+Anyway, enough type theory, let’s check out some generic code. Rust’s
 standard library provides a type, `Option<T>`, that’s generic:
 
 ```rust
@@ -27,7 +27,7 @@ let x: Option<i32> = Some(5);
 
 In the type declaration, we say `Option<i32>`. Note how similar this looks to
 `Option<T>`. So, in this particular `Option`, `T` has the value of `i32`. On
-the right-hand side of the binding, we do make a `Some(T)`, where `T` is `5`.
+the right-hand side of the binding, we make a `Some(T)`, where `T` is `5`.
 Since that’s an `i32`, the two sides match, and Rust is happy. If they didn’t
 match, we’d get an error:
 
@@ -101,11 +101,6 @@ fn takes_two_things<T, U>(x: T, y: U) {
 }
 ```
 
-Generic functions are most useful with ‘trait bounds’, which we’ll cover in the
-[section on traits][traits].
-
-[traits]: traits.html
-
 ## Generic structs
 
 You can store a generic type in a `struct` as well:
@@ -122,3 +117,28 @@ let float_origin = Point { x: 0.0, y: 0.0 };
 
 Similarly to functions, the `<T>` is where we declare the generic parameters,
 and we then use `x: T` in the type declaration, too.
+
+When you want to add an implementation for the generic struct, you just
+declare the type parameter after the `impl`:
+
+```rust
+# struct Point<T> {
+#     x: T,
+#     y: T,
+# }
+#
+impl<T> Point<T> {
+    fn swap(&mut self) {
+        std::mem::swap(&mut self.x, &mut self.y);
+    }
+}
+```
+
+So far you’ve seen generics that take absolutely any type. These are useful in
+many cases: you’ve already seen `Option<T>`, and later you’ll meet universal
+container types like [`Vec<T>`][Vec]. On the other hand, often you want to
+trade that flexibility for increased expressive power. Read about [trait
+bounds][traits] to see why and how.
+
+[traits]: traits.html
+[Vec]: ../std/vec/struct.Vec.html

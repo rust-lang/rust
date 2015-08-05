@@ -77,8 +77,18 @@ Before we get to that, though, let’s break the explicit example down:
 fn bar<'a>(...)
 ```
 
-This part declares our lifetimes. This says that `bar` has one lifetime, `'a`.
-If we had two reference parameters, it would look like this:
+We previously talked a little about [function syntax][functions], but we didn’t
+discuss the `<>`s after a function’s name. A function can have ‘generic
+parameters’ between the `<>`s, of which lifetimes are one kind. We’ll discuss
+other kinds of generics [later in the book][generics], but for now, let’s
+just focus on the lifteimes aspect.
+
+[functions]: functions.html
+[generics]: generics.html
+
+We use `<>` to declare our lifetimes. This says that `bar` has one lifetime,
+`'a`. If we had two reference parameters, it would look like this:
+
 
 ```rust,ignore
 fn bar<'a, 'b>(...)
