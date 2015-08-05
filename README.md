@@ -29,6 +29,7 @@ Lints included in this crate:
  - `inline_always`: Warns on `#[inline(always)]`, because in most cases it is a bad idea
  - `collapsible_if`: Warns on cases where two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` can be written as `if x && y { foo() }`
  - `zero_width_space`: Warns on encountering a unicode zero-width space
+ - `string_add_assign`: Warns on `x = x + ..` where `x` is a `String` and suggests using `push_str(..)` instead.
 
 To use, add the following lines to your Cargo.toml:
 
