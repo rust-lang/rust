@@ -158,7 +158,11 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     #[unstable(feature = "btree_range",
                reason = "matches collection reform specification, waiting for dust to settle")]
-    pub fn range<'a>(&'a self, min: Bound<&T>, max: Bound<&T>) -> Range<'a, T> {
+    pub fn range<'a, Min: ?Sized + Ord = T, Max: ?Sized + Ord = T>(&'a self, min: Bound<&Min>,
+                                                                   max: Bound<&Max>)
+        -> Range<'a, T> where
+        T: Borrow<Min> + Borrow<Max>,
+    {
         fn first<A, B>((a, _): (A, B)) -> A { a }
         let first: fn((&'a T, &'a ())) -> &'a T = first; // coerce to fn pointer
 
