@@ -620,9 +620,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            struct_generics: &ty::Generics<'tcx>,
                            struct_predicates: &ty::GenericPredicates<'tcx>,
                            v: &ast::StructField,
-                           ty_f: &'tcx ty::FieldDef_<'tcx, 'tcx>,
-                           origin: ast::DefId)
-                           -> ty::FieldTy
+                           ty_f: &'tcx ty::FieldDef_<'tcx, 'tcx>)
 {
     let tt = ccx.icx(struct_predicates).to_ty(&ExplicitRscope, &*v.node.ty);
     ty_f.fulfill_ty(tt);
@@ -636,25 +634,6 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                });
     ccx.tcx.predicates.borrow_mut().insert(local_def(v.node.id),
                                            struct_predicates.clone());
-
-    match v.node.kind {
-        ast::NamedField(ident, visibility) => {
-            ty::FieldTy {
-                name: ident.name,
-                id: local_def(v.node.id),
-                vis: visibility,
-                origin: origin,
-            }
-        }
-        ast::UnnamedField(visibility) => {
-            ty::FieldTy {
-                name: special_idents::unnamed_field.name,
-                id: local_def(v.node.id),
-                vis: visibility,
-                origin: origin,
-            }
-        }
-    }
 }
 
 fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -1018,7 +997,11 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             write_ty_to_tcx(tcx, it.id, scheme.ty);
 
             let variant = tcx.lookup_adt_def(local_def(it.id)).struct_variant();
-            convert_struct_variant_types(ccx, &struct_def, variant, &scheme, &predicates);
+
+            for (f, ty_f) in struct_def.fields.iter().zip(variant.fields.iter()) {
+                convert_field(ccx, &scheme.generics, &predicates, f, ty_f)
+            }
+
             if let Some(ctor_id) = struct_def.ctor_id {
                 convert_variant_ctor(tcx, ctor_id, variant, scheme, predicates);
             }
@@ -1065,17 +1048,6 @@ fn convert_variant_ctor<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
                            });
 }
 
-fn convert_struct_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                          def: &ast::StructDef,
-                                          variant: &'tcx ty::VariantDef_<'tcx, 'tcx>,
-                                          scheme: &ty::TypeScheme<'tcx>,
-                                          predicates: &ty::GenericPredicates<'tcx>) {
-    let field_tys = def.fields.iter().zip(variant.fields.iter()).map(|(f, ty_f)| {
-        convert_field(ccx, &scheme.generics, &predicates, f, ty_f, variant.did)
-    }).collect();
-    ccx.tcx.struct_fields.borrow_mut().insert(variant.did, Rc::new(field_tys));
-}
-
 fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                         def: &'tcx ty::ADTDef_<'tcx, 'tcx>,
                                         scheme: ty::TypeScheme<'tcx>,
@@ -1084,7 +1056,7 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let tcx = ccx.tcx;
     let icx = ccx.icx(&predicates);
 
-    // Create a set of parameter types shared among all the variants.
+    // fill the field types
     for (variant, ty_variant) in variants.iter().zip(def.variants.iter()) {
         match variant.node.kind {
             ast::TupleVariantKind(ref args) => {
@@ -1096,10 +1068,14 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             }
 
             ast::StructVariantKind(ref struct_def) => {
-                convert_struct_variant_types(ccx, &struct_def, ty_variant, &scheme, &predicates);
+                for (f, ty_f) in struct_def.fields.iter().zip(ty_variant.fields.iter()) {
+                    convert_field(ccx, &scheme.generics, &predicates, f, ty_f)
+                }
             }
         };
 
+        // Convert the ctor, if any. This also registers the variant as
+        // an item.
         convert_variant_ctor(
             tcx,
             variant.node.id,
