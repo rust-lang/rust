@@ -983,7 +983,7 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
             if dtor_active(dtor) {
                 let ptr = trans_field_ptr(bcx, r, val, discr,
                                           cases[discr as usize].fields.len() - 2);
-                Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED as usize), ptr);
+                Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED), ptr);
             }
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
                   GEPi(bcx, val, &[0, 0]));
@@ -991,7 +991,7 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
         Univariant(ref st, dtor) => {
             assert_eq!(discr, 0);
             if dtor_active(dtor) {
-                Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED as usize),
+                Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED),
                     GEPi(bcx, val, &[0, st.fields.len() - 1]));
             }
         }

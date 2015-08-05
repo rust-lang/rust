@@ -1670,7 +1670,7 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     // Dummy-locals start out uninitialized, so set their
                     // drop-flag hints (if any) to "moved."
                     if let Some(hint) = kind.dropflag_hint(bcx) {
-                        let moved_hint = adt::DTOR_MOVED_HINT as usize;
+                        let moved_hint = adt::DTOR_MOVED_HINT;
                         debug!("store moved_hint={} for hint={:?}, uninitialized dummy",
                                moved_hint, hint);
                         Store(bcx, C_u8(bcx.fcx.ccx, moved_hint), hint.to_value().value());
