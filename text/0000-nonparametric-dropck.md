@@ -49,16 +49,6 @@ circles as *Parametricity*.
    `foo` cannot actually read any `u32` data out of the vector. More
    details about this are available on the [Sound Generic Drop][] RFC.
 
-### Reynolds
-[Rey83]: #reynolds
-John C. Reynolds. "Types, abstraction and parametric polymorphism". IFIP 1983
-http://www.cse.chalmers.se/edu/year/2010/course/DAT140_Types/Reynolds_typesabpara.pdf
-
-### Wadler
-[Wad89]: #wadler
-Philip Wadler. "Theorems for free!". FPCA 1989
-http://ttic.uchicago.edu/~dreyer/course/papers/wadler.pdf
-
 ## "Mistakes were made"
 
 The parametricity-based reasoning in the
@@ -530,3 +520,16 @@ developer is making a destructor that calls it in tandem.
 
  * Should we consider merging the discussion of alternatives
    into the [impl specialization] RFC?
+
+# Bibliography
+
+### Reynolds
+[Rey83]: #reynolds
+John C. Reynolds. "Types, abstraction and parametric polymorphism". IFIP 1983
+http://www.cse.chalmers.se/edu/year/2010/course/DAT140_Types/Reynolds_typesabpara.pdf
+
+### Wadler
+[Wad89]: #wadler
+Philip Wadler. "Theorems for free!". FPCA 1989
+http://ttic.uchicago.edu/~dreyer/course/papers/wadler.pdf
+
