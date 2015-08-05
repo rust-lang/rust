@@ -3,7 +3,7 @@
 Not everything obeys inherited mutability, though. Some types allow you to
 multiply alias a location in memory while mutating it. Unless these types use
 synchronization to manage this access, they are absolutely not thread safe. Rust
-captures this with through the `Send` and `Sync` traits.
+captures this through the `Send` and `Sync` traits.
 
 * A type is Send if it is safe to send it to another thread.
 * A type is Sync if it is safe to share between threads (`&T` is Send).
@@ -11,7 +11,7 @@ captures this with through the `Send` and `Sync` traits.
 Send and Sync are fundamental to Rust's concurrency story. As such, a
 substantial amount of special tooling exists to make them work right. First and
 foremost, they're [unsafe traits][]. This means that they are unsafe to
-implement, and other unsafe code can  that they are correctly
+implement, and other unsafe code can assume that they are correctly
 implemented. Since they're *marker traits* (they have no associated items like
 methods), correctly implemented simply means that they have the intrinsic
 properties an implementor should have. Incorrectly implementing Send or Sync can
