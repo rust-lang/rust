@@ -533,7 +533,7 @@ Great! Next up: let’s compare our guess to the secret guess.
 # Comparing guesses
 
 Now that we’ve got user input, let’s compare our guess to the random guess.
-Here’s our next step, though it doesn’t quite work yet:
+Here’s our next step, though it doesn’t quite compile yet:
 
 ```rust,ignore
 extern crate rand;
@@ -617,7 +617,7 @@ match guess.cmp(&secret_number) {
 If it’s `Less`, we print `Too small!`, if it’s `Greater`, `Too big!`, and if
 `Equal`, `You win!`. `match` is really useful, and is used often in Rust.
 
-I did mention that this won’t quite work yet, though. Let’s try it:
+I did mention that this won’t quite compile yet, though. Let’s try it:
 
 ```bash
 $ cargo build
