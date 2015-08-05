@@ -445,7 +445,7 @@ parametric destructors, as we will see.
 
 (Also, if we go down this path, we will need to fix other bugs in the
 Drop Check rule, where, as previously noted, parametricity is a
-necessary but *insufficient* condition for soundness.)
+[necessary but *insufficient* condition][parametricity-insufficient] for soundness.)
 
 ### Parametricity via effect-system attributes
 
