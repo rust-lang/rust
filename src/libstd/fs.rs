@@ -854,6 +854,8 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// Note that if `from` and `to` both point to the same file, then the file
 /// will likely get truncated by this operation.
 ///
+/// On success, the total number of bytes copied is returned.
+///
 /// # Errors
 ///
 /// This function will return an error in the following situations, but is not
