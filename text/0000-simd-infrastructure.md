@@ -1,4 +1,4 @@
-- Feature Name: simd_basics, cfg_target_feature
+- Feature Name: simd_basics, platform_intrinsics, cfg_target_feature
 - Start Date: 2015-06-02
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -45,7 +45,7 @@ those features enabled.
 The design comes in three parts, all on the path to stabilisation:
 
 - types (`feature(simd_basics)`)
-- operations (`feature(simd_basics)`)
+- operations (`feature(platform_intrinsics)`)
 - platform detection (`feature(cfg_target_feature)`)
 
 The general idea is to avoid bad performance cliffs, so that an
@@ -116,8 +116,10 @@ intrinsics would be on the path to stabilisation (that is, one can
 "import" them with `extern` in stable code), and would not be exported
 by `std`.
 
+Example:
+
 ```rust
-extern "rust-intrinsic" {
+extern "platform-intrinsic" {
     fn x86_mm_abs_epi16(a: Simd8<i16>) -> Simd8<i16>;
     // ...
 }
@@ -144,7 +146,7 @@ SIMD vector of bytes,
 struct A(u8, u8, ..., u8);
 struct B(u8, u8, ..., u8);
 
-extern "rust-intrinsic" {
+extern "platform-intrinsic" {
     fn add_aaa(x: A, y: A) -> A; // ok
     fn add_bbb(x: B, y: B) -> B; // ok
     fn add_aab(x: A, y: A) -> B; // error, expected B, found A
@@ -169,6 +171,16 @@ but will be shimmed as efficiently as possible.
 - arithmetic
 - conversions
 
+All of these intrinsics are imported via an `extern` directive similar
+to the process for pre-existing intrinsics like `transmute`, however,
+the SIMD operations are provided under a special ABI:
+`platform-intrinsic`. Use of this ABI (and hence the intrinsics) is
+initially feature-gated under the `platform_intrinsics` feature
+name. Why `platform-intrinsic` rather than say `simd-intrinsic`? There
+are non-SIMD platform-specific instructions that may be nice to expose
+(for example, Intel defines an `_addcarry_u32` intrinsic corresponding
+to the `ADC` instruction).
+
 ### Shuffles & element operations
 
 One of the most powerful features of SIMD is the ability to rearrange
@@ -185,7 +197,7 @@ shuffles without having to understand all the details of every
 platform specific intrinsic for shuffling.
 
 ```rust
-extern "rust-intrinsic" {
+extern "platform-intrinsic" {
     fn simd_shuffle2<T, Elem>(v: T, w: T, i0: u32, i1: u32) -> Simd2<Elem>;
     fn simd_shuffle4<T, Elem>(v: T, w: T, i0: u32, i1: u32, i2: u32, i3: u32) -> Sidm4<Elem>;
     fn simd_shuffle8<T, Elem>(v: T, w: T,
@@ -226,7 +238,7 @@ vectors are provided, to allow modelling the SIMD vectors as actual
 CPU registers as much as possible:
 
 ```rust
-extern "rust-intrinsic" {
+extern "platform-intrinsic" {
     fn simd_insert<T, Elem>(v: T, i0: u32, elem: Elem) -> T;
     fn simd_extract<T, Elem>(v: T, i0: u32) -> Elem;
 }
@@ -245,7 +257,7 @@ return vectors, as required.
 The raw signatures would look like:
 
 ```rust
-extern "rust-intrinsic" {
+extern "platform-intrinsic" {
     fn simd_eq<T, U>(v: T, w: T) -> U;
     fn simd_ne<T, U>(v: T, w: T) -> U;
     fn simd_lt<T, U>(v: T, w: T) -> U;
@@ -266,7 +278,7 @@ Intrinsics will be provided for arithmetic operations like addition
 and multiplication.
 
 ```rust
-extern {
+extern "platform-intrinsic" {
     fn simd_add<T>(x: T, y: T) -> T;
     fn simd_mul<T>(x: T, y: T) -> T;
     // ...
@@ -363,7 +375,6 @@ cfg_if_else! {
 
 # Alternatives
 
-- The SIMD on-route-to-stable intrinsics could have their own ABI
 - Intrinsics could instead by namespaced by ABI, `extern
   "x86-intrinsic"`, `extern "arm-intrinsic"`.
 - There could be more syntactic support for shuffles, either with true
