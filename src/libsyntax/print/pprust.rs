@@ -1753,7 +1753,7 @@ impl<'a> State<'a> {
                 try!(self.print_literal(&**lit));
             }
             ast::ExprCast(ref expr, ref ty) => {
-                try!(self.print_expr(&**expr));
+                try!(self.print_expr_maybe_paren(&**expr));
                 try!(space(&mut self.s));
                 try!(self.word_space("as"));
                 try!(self.print_type(&**ty));
