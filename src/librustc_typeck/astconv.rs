@@ -1662,6 +1662,9 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             // handled specially and will not descend into this routine.
             this.ty_infer(None, None, None, ast_ty.span)
         }
+        ast::TyMac(_) => {
+            tcx.sess.span_bug(ast_ty.span, "unexpanded type macro found conversion")
+        }
     };
 
     tcx.ast_ty_to_ty_cache.borrow_mut().insert(ast_ty.id, typ);

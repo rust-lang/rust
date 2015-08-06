@@ -734,6 +734,9 @@ impl<'a> State<'a> {
             ast::TyInfer => {
                 try!(word(&mut self.s, "_"));
             }
+            ast::TyMac(ref m) => {
+                try!(self.print_mac(m, token::Paren));
+            }
         }
         self.end()
     }

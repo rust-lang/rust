@@ -429,6 +429,9 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             TyPolyTraitRef(bounds) => {
                 TyPolyTraitRef(bounds.move_map(|b| fld.fold_ty_param_bound(b)))
             }
+            TyMac(mac) => {
+                TyMac(fld.fold_mac(mac))
+            }
         },
         span: fld.new_span(span)
     })

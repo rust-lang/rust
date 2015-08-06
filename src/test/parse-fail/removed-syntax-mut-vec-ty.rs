@@ -12,4 +12,4 @@
 
 type v = [mut isize];
     //~^  ERROR expected identifier, found keyword `mut`
-    //~^^ ERROR expected one of `(`, `+`, `::`, `;`, `<`, or `]`, found `isize`
+    //~^^ ERROR expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `]`, found `isize`
