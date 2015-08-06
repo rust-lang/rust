@@ -150,6 +150,27 @@ pub enum PubBaz3 {
 #[doc(hidden)]
 pub fn baz() {}
 
+
+const FOO: u32 = 0;
+/// dox
+pub const FOO1: u32 = 0;
+#[allow(missing_docs)]
+pub const FOO2: u32 = 0;
+#[doc(hidden)]
+pub const FOO3: u32 = 0;
+pub const FOO4: u32 = 0; //~ ERROR: missing documentation for a const
+
+
+static BAR: u32 = 0;
+/// dox
+pub static BAR1: u32 = 0;
+#[allow(missing_docs)]
+pub static BAR2: u32 = 0;
+#[doc(hidden)]
+pub static BAR3: u32 = 0;
+pub static BAR4: u32 = 0; //~ ERROR: missing documentation for a static
+
+
 mod internal_impl {
     /// dox
     pub fn documented() {}
