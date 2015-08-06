@@ -192,7 +192,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     let simple = ty.is_scalar() ||
         ty.is_unique() || ty.is_region_ptr() ||
         type_is_newtype_immediate(ccx, ty) ||
-        ty.is_simd(tcx);
+        ty.is_simd();
     if simple && !type_is_fat_ptr(tcx, ty) {
         return true;
     }

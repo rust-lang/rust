@@ -621,7 +621,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
             let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0, false);
             (ICmp(cx, llvm::IntEQ, rhs, zero, debug_loc), false)
         }
-        ty::TyStruct(_, _) if rhs_t.is_simd(cx.tcx()) => {
+        ty::TyStruct(def, _) if def.is_simd() => {
             let mut res = C_bool(cx.ccx(), false);
             for i in 0 .. rhs_t.simd_size(cx.tcx()) {
                 res = Or(cx, res,

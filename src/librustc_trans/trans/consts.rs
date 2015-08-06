@@ -500,7 +500,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             debug!("const_expr_unadjusted: te1={}, ty={:?}",
                    cx.tn().val_to_string(te1),
                    ty);
-            let is_simd = ty.is_simd(cx.tcx());
+            let is_simd = ty.is_simd();
             let intype = if is_simd {
                 ty.simd_type(cx.tcx())
             } else {
@@ -754,7 +754,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     (_, None) => cx.sess().span_bug(e.span, "missing struct field"),
                 }
             }).collect::<Vec<_>>();
-            if ety.is_simd(cx.tcx()) {
+            if ety.is_simd() {
                 C_vector(&cs[..])
             } else {
                 adt::trans_const(cx, &*repr, discr, &cs[..])
@@ -850,7 +850,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     const_fn_call(cx, ExprId(callee.id), did, &arg_vals, param_substs)
                 }
                 def::DefStruct(_) => {
-                    if ety.is_simd(cx.tcx()) {
+                    if ety.is_simd() {
                         C_vector(&arg_vals[..])
                     } else {
                         let repr = adt::represent_type(cx, ety);

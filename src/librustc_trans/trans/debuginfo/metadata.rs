@@ -1175,7 +1175,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         StructMDF(StructMemberDescriptionFactory {
             variant: variant,
             substs: substs,
-            is_simd: struct_type.is_simd(cx.tcx()),
+            is_simd: struct_type.is_simd(),
             span: span,
         })
     )

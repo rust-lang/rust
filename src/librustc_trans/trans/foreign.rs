@@ -449,7 +449,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn gate_simd_ffi(tcx: &ty::ctxt, decl: &ast::FnDecl, ty: &ty::BareFnTy) {
     if !tcx.sess.features.borrow().simd_ffi {
         let check = |ast_ty: &ast::Ty, ty: ty::Ty| {
-            if ty.is_simd(tcx) {
+            if ty.is_simd() {
                 tcx.sess.span_err(ast_ty.span,
                               &format!("use of SIMD type `{}` in FFI is highly experimental and \
                                         may result in invalid code",
