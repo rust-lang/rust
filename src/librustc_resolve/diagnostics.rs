@@ -457,6 +457,22 @@ let Foo = 12i32; // ok!
 The goal here is to avoid a conflict of names.
 "##,
 
+E0415: r##"
+More than one parameter have the same name. Example of erroneous
+code:
+
+```
+fn foo(f: i32, f: i32) {} // error: identifier `f` is bound more than
+                          //        once in this parameter list
+```
+
+Please verify you didn't misspell parameters' name. Example:
+
+```
+fn foo(f: i32, g: i32) {} // ok!
+```
+"##,
+
 E0417: r##"
 A static variable was referenced in a pattern. Example of erroneous code:
 
@@ -780,7 +796,6 @@ register_diagnostics! {
     E0410, // variable from pattern is not bound in pattern 1
     E0411, // use of `Self` outside of an impl or trait
     E0414, // only irrefutable patterns allowed here
-    E0415, // identifier is bound more than once in this parameter list
     E0416, // identifier is bound more than once in the same pattern
     E0418, // is not an enum variant, struct or const
     E0420, // is not an associated const
