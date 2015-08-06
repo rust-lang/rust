@@ -485,6 +485,33 @@ match 0 {
 ```
 "##,
 
+E0419: r##"
+An unknown enum variant, struct or const was used. Example of
+erroneous code:
+
+```
+match 0 {
+    Something::Foo => {} // error: unresolved enum variant, struct
+                         //        or const `Foo`
+}
+```
+
+Please verify you didn't misspell it or the enum variant, struct
+or const was well declared and/or imported. Example:
+
+```
+enum Something {
+    Foo,
+    NotFoo,
+}
+
+match Something::NotFoo {
+    Something::Foo => {} // ok!
+    _ => {}
+}
+```
+"##,
+
 E0423: r##"
 A `struct` variant name was used like a function name. Example of
 erroneous code:
@@ -756,7 +783,6 @@ register_diagnostics! {
     E0415, // identifier is bound more than once in this parameter list
     E0416, // identifier is bound more than once in the same pattern
     E0418, // is not an enum variant, struct or const
-    E0419, // unresolved enum variant, struct or const
     E0420, // is not an associated const
     E0421, // unresolved associated const
     E0422, // does not name a structure
