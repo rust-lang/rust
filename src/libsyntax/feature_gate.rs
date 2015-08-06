@@ -184,6 +184,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows cfg(target_feature = "...").
     ("cfg_target_feature", "1.3.0", Active),
+
+    // allow `extern "platform-intrinsic" { ... }`
+    ("platform_intrinsics", "1.4.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -694,10 +697,16 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                        across platforms, it is recommended to \
                                        use `#[link(name = \"foo\")]` instead")
                 }
-                if foreign_module.abi == Abi::RustIntrinsic {
-                    self.gate_feature("intrinsics",
-                                      i.span,
-                                      "intrinsics are subject to change")
+                let maybe_feature = match foreign_module.abi {
+                    Abi::RustIntrinsic => Some(("intrinsics", "intrinsics are subject to change")),
+                    Abi::PlatformIntrinsic => {
+                        Some(("platform_intrinsics",
+                              "platform intrinsics are experimental and possibly buggy"))
+                    }
+                    _ => None
+                };
+                if let Some((feature, msg)) = maybe_feature {
+                    self.gate_feature(feature, i.span, msg)
                 }
             }
 

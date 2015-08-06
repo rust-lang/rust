@@ -720,6 +720,10 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
             for item in &m.items {
                 check_intrinsic_type(ccx, &**item);
             }
+        } else if m.abi == abi::PlatformIntrinsic {
+            for item in &m.items {
+                check_platform_intrinsic_type(ccx, &**item);
+            }
         } else {
             for item in &m.items {
                 let pty = ccx.tcx.lookup_item_type(local_def(item.id));
@@ -5093,7 +5097,6 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
 
     let tcx = ccx.tcx;
     let name = it.ident.name.as_str();
-    let mut infer_ctxt = None;
     let (n_tps, inputs, output) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic not correct format");
@@ -5342,35 +5345,6 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
                                                                   ty::BrAnon(0))),
                                    param(ccx, 0))], tcx.types.u64),
-            "simd_eq" | "simd_ne" | "simd_lt" | "simd_le" | "simd_gt" | "simd_ge" => {
-                (2, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 1))
-            }
-            "simd_add" | "simd_sub" | "simd_mul" |
-            "simd_div" | "simd_shl" | "simd_shr" |
-            "simd_and" | "simd_or" | "simd_xor" => {
-                (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0))
-            }
-            "simd_insert" => (2, vec![param(ccx, 0), tcx.types.u32, param(ccx, 1)], param(ccx, 0)),
-            "simd_extract" => (2, vec![param(ccx, 0), tcx.types.u32], param(ccx, 1)),
-            "simd_cast" => (2, vec![param(ccx, 0)], param(ccx, 1)),
-            name if name.starts_with("simd_shuffle") => {
-                match name["simd_shuffle".len()..].parse() {
-                    Ok(n) => {
-                        let mut params = vec![param(ccx, 0), param(ccx, 0)];
-                        params.extend(iter::repeat(tcx.types.u32).take(n));
-
-                        let ictxt = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
-                        let ret = ictxt.next_ty_var();
-                        infer_ctxt = Some(ictxt);
-                        (2, params, ret)
-                    }
-                    Err(_) => {
-                        span_err!(tcx.sess, it.span, E0439,
-                                  "invalid `simd_shuffle`, needs length: `{}`", name);
-                        return
-                    }
-                }
-            }
 
             "try" => {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
@@ -5388,17 +5362,9 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             }
 
             ref other => {
-                match intrinsics::Intrinsic::find(tcx, other) {
-                    Some(intr) => {
-                        check_platform_intrinsic_type(ccx, intr, it);
-                        return
-                    }
-                    None => {
-                        span_err!(tcx.sess, it.span, E0093,
-                                  "unrecognized intrinsic function: `{}`", *other);
-                        return;
-                    }
-                }
+                span_err!(tcx.sess, it.span, E0093,
+                          "unrecognized intrinsic function: `{}`", *other);
+                return;
             }
         };
         (n_tps, inputs, ty::FnConverging(output))
@@ -5421,7 +5387,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
              i_n_tps, n_tps);
     } else {
         require_same_types(tcx,
-                           infer_ctxt.as_ref(),
+                           None,
                            false,
                            it.span,
                            i_ty.ty,
@@ -5434,95 +5400,177 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
 }
 
 fn check_platform_intrinsic_type(ccx: &CrateCtxt,
-                                 expected: intrinsics::Intrinsic, it: &ast::ForeignItem) {
+                                 it: &ast::ForeignItem) {
+    let param = |n| {
+        let name = token::intern(&format!("P{}", n));
+        ccx.tcx.mk_param(subst::FnSpace, n, name)
+    };
+
     let tcx = ccx.tcx;
     let i_ty = tcx.lookup_item_type(local_def(it.id));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
-    if i_n_tps != 0 {
-        tcx.sess.span_err(it.span,
-                          &format!("intrinsic has wrong number of type parameters: \
-                                    found {}, expected 0",
-                                   i_n_tps));
-        return
-    }
+    let name = it.ident.name.as_str();
+    let mut infer_ctxt = None;
 
-    let mut structural_to_nomimal = HashMap::new();
+    let (n_tps, inputs, output) = match &*name {
+        "simd_eq" | "simd_ne" | "simd_lt" | "simd_le" | "simd_gt" | "simd_ge" => {
+            (2, vec![param(0), param(0)], param(1))
+        }
+        "simd_add" | "simd_sub" | "simd_mul" |
+        "simd_div" | "simd_shl" | "simd_shr" |
+        "simd_and" | "simd_or" | "simd_xor" => {
+            (1, vec![param(0), param(0)], param(0))
+        }
+        "simd_insert" => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
+        "simd_extract" => (2, vec![param(0), tcx.types.u32], param(1)),
+        "simd_cast" => (2, vec![param(0)], param(1)),
+        name if name.starts_with("simd_shuffle") => {
+            match name["simd_shuffle".len()..].parse() {
+                Ok(n) => {
+                    let mut params = vec![param(0), param(0)];
+                    params.extend(iter::repeat(tcx.types.u32).take(n));
 
-    let sig = tcx.no_late_bound_regions(i_ty.ty.fn_sig()).unwrap();
-    for (i, (expected_arg, arg)) in expected.inputs.iter().zip(&sig.inputs).enumerate() {
-        match_types(tcx, &format!("argument {}", i + 1), it.span,
-                    &mut structural_to_nomimal, expected_arg, arg);
-    }
-    match_types(tcx, "return value", it.span, &mut structural_to_nomimal,
-                &expected.output, sig.output.unwrap());
-
-    // walk the expected type and the actual type in lock step, checking they're
-    // the same, in a kinda-structural way, i.e. `Vector`s have to be simd structs with
-    // exactly the right element type
-    fn match_types<'tcx, 'a>(tcx: &ty::ctxt<'tcx>,
-                             position: &str,
-                             span: Span,
-                             structural_to_nominal: &mut HashMap<&'a intrinsics::Type,
-                                                                 ty::Ty<'tcx>>,
-                             expected: &'a intrinsics::Type, t: ty::Ty<'tcx>) {
-        use intrinsics::Type::*;
-        match *expected {
-            Integer(bits) => match (bits, &t.sty) {
-                (8, &ty::TyInt(ast::TyI8)) | (8, &ty::TyUint(ast::TyU8)) |
-                (16, &ty::TyInt(ast::TyI16)) | (16, &ty::TyUint(ast::TyU16)) |
-                (32, &ty::TyInt(ast::TyI32)) | (32, &ty::TyUint(ast::TyU32)) |
-                (64, &ty::TyInt(ast::TyI64)) | (64, &ty::TyUint(ast::TyU64)) => {},
-                _ => tcx.sess.span_err(span,
-                                       &format!("intrinsic {} has wrong type: found `{}`, \
-                                                 expected `i{n}` or `u{n}`",
-                                                position,
-                                                t, n = bits)),
-            },
-            Float(bits) => match (bits, &t.sty) {
-                (32, &ty::TyFloat(ast::TyF32)) |
-                (64, &ty::TyFloat(ast::TyF64)) => {},
-                _ => tcx.sess.span_err(span,
-                                       &format!("intrinsic {} has wrong type: found `{}`, \
-                                                 expected `f{n}`",
-                                                position,
-                                                t, n = bits)),
-            },
-            Pointer(_) => unimplemented!(),
-            Vector(ref inner_expected, len) => {
-                if t.is_simd(tcx) {
-                    let t_len = t.simd_size(tcx);
-                    if len as usize != t_len {
-                        tcx.sess.span_err(span,
-                                          &format!("intrinsic {} has wrong type: found \
-                                                    vector with length {}, expected length {}",
-                                                   position,
-                                                   t_len, len));
-                        return;
-                    }
-                    let t_ty = t.simd_type(tcx);
-                    {
-                        let previous = structural_to_nominal.entry(expected).or_insert(t);
-                        if *previous != t {
-                            tcx.sess.span_err(span,
-                                              &format!("intrinsic {} has wrong type: found `{}`, \
-                                                        but already seen this vector type as `{}`",
-                                                       position, t, previous));
-                            return;
-                        }
-                    }
-                    match_types(tcx,
-                                position,
-                                span,
-                                structural_to_nominal,
-                                inner_expected,
-                                t_ty)
-                } else {
-                    tcx.sess.span_err(span,
-                                      &format!("intrinsic {} has wrong type: found non-simd type {}, \
-                                               expected simd type",
-                                               position, t));
+                    let ictxt = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
+                    let ret = ictxt.next_ty_var();
+                    infer_ctxt = Some(ictxt);
+                    (2, params, ret)
+                }
+                Err(_) => {
+                    span_err!(tcx.sess, it.span, E0439,
+                              "invalid `simd_shuffle`, needs length: `{}`", name);
+                    return
                 }
             }
+        }
+        _ => {
+            match intrinsics::Intrinsic::find(tcx, &name) {
+                Some(intr) => {
+                    // this function is a platform specific intrinsic
+                    if i_n_tps != 0 {
+                        tcx.sess.span_err(it.span,
+                                         &format!("intrinsic has wrong number of type parameters: \
+                                                    found {}, expected 0",
+                                                   i_n_tps));
+                        return
+                    }
+
+                    let mut structural_to_nomimal = HashMap::new();
+
+                    let sig = tcx.no_late_bound_regions(i_ty.ty.fn_sig()).unwrap();
+                    let input_pairs = intr.inputs.iter().zip(&sig.inputs);
+                    for (i, (expected_arg, arg)) in input_pairs.enumerate() {
+                        match_intrinsic_type_to_type(tcx, &format!("argument {}", i + 1), it.span,
+                                                     &mut structural_to_nomimal, expected_arg, arg);
+                    }
+                    match_intrinsic_type_to_type(tcx, "return value", it.span,
+                                                 &mut structural_to_nomimal,
+                                                 &intr.output, sig.output.unwrap());
+                    return
+                }
+                None => {
+                    tcx.sess.span_err(it.span,
+                                      &format!("unrecognized intrinsic function: `{}`", name));
+                    return;
+                }
+            }
+        }
+    };
+
+    let fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
+        unsafety: ast::Unsafety::Unsafe,
+        abi: abi::PlatformIntrinsic,
+        sig: ty::Binder(FnSig {
+            inputs: inputs,
+            output: ty::FnConverging(output),
+            variadic: false,
+        }),
+    }));
+    if i_n_tps != n_tps {
+        span_err!(tcx.sess, it.span, E0094,
+            "intrinsic has wrong number of type \
+             parameters: found {}, expected {}",
+             i_n_tps, n_tps);
+    } else {
+        require_same_types(tcx,
+                           infer_ctxt.as_ref(),
+                           false,
+                           it.span,
+                           i_ty.ty,
+                           fty,
+                           || {
+                format!("intrinsic has wrong type: expected `{}`",
+                         fty)
+            });
+    }
+}
+
+// walk the expected type and the actual type in lock step, checking they're
+// the same, in a kinda-structural way, i.e. `Vector`s have to be simd structs with
+// exactly the right element type
+fn match_intrinsic_type_to_type<'tcx, 'a>(
+        tcx: &ty::ctxt<'tcx>,
+        position: &str,
+        span: Span,
+        structural_to_nominal: &mut HashMap<&'a intrinsics::Type, ty::Ty<'tcx>>,
+        expected: &'a intrinsics::Type, t: ty::Ty<'tcx>)
+{
+    use intrinsics::Type::*;
+    match *expected {
+        Integer(bits) => match (bits, &t.sty) {
+            (8, &ty::TyInt(ast::TyI8)) | (8, &ty::TyUint(ast::TyU8)) |
+            (16, &ty::TyInt(ast::TyI16)) | (16, &ty::TyUint(ast::TyU16)) |
+            (32, &ty::TyInt(ast::TyI32)) | (32, &ty::TyUint(ast::TyU32)) |
+            (64, &ty::TyInt(ast::TyI64)) | (64, &ty::TyUint(ast::TyU64)) => {},
+            _ => tcx.sess.span_err(span,
+                                   &format!("intrinsic {} has wrong type: found `{}`, \
+                                             expected `i{n}` or `u{n}`",
+                                            position,
+                                            t, n = bits)),
+        },
+        Float(bits) => match (bits, &t.sty) {
+            (32, &ty::TyFloat(ast::TyF32)) |
+            (64, &ty::TyFloat(ast::TyF64)) => {},
+            _ => tcx.sess.span_err(span,
+                                   &format!("intrinsic {} has wrong type: found `{}`, \
+                                             expected `f{n}`",
+                                            position,
+                                            t, n = bits)),
+        },
+        Pointer(_) => unimplemented!(),
+        Vector(ref inner_expected, len) => {
+            if !t.is_simd(tcx) {
+                tcx.sess.span_err(span,
+                                  &format!("intrinsic {} has wrong type: found non-simd type {}, \
+                                           expected simd type",
+                                           position, t));
+                return;
+            }
+            let t_len = t.simd_size(tcx);
+            if len as usize != t_len {
+                tcx.sess.span_err(span,
+                                  &format!("intrinsic {} has wrong type: found \
+                                            vector with length {}, expected length {}",
+                                           position,
+                                           t_len, len));
+                return;
+            }
+            let t_ty = t.simd_type(tcx);
+            {
+                let previous = structural_to_nominal.entry(expected).or_insert(t);
+                if *previous != t {
+                    tcx.sess.span_err(span,
+                                      &format!("intrinsic {} has wrong type: found `{}`, \
+                                                but already seen this vector type as `{}`",
+                                               position, t, previous));
+                    return;
+                }
+            }
+            match_intrinsic_type_to_type(tcx,
+                                         position,
+                                         span,
+                                         structural_to_nominal,
+                                         inner_expected,
+                                         t_ty)
         }
     }
 }
