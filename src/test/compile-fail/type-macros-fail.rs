@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+macro_rules! Id {
+    { $T:tt } => $T
+}
 
-type v = [isize * 3]; //~ ERROR expected one of `!`, `(`, `+`, `::`, `;`, `<`, or `]`, found `*`
+struct Foo<T> {
+    x: Id!(T)
+    //~^ ERROR: type macros are experimental (see issue: #27336)
+}
+
+fn main() {
+    let foo = Foo { x: i32 };
+}

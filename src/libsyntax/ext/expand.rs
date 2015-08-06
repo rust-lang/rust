@@ -1542,6 +1542,45 @@ fn expand_and_rename_method(sig: ast::MethodSig, body: P<ast::Block>,
     }, rewritten_body)
 }
 
+pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
+    let t = match t.node.clone() {
+        ast::Ty_::TyMac(mac) => {
+            if fld.cx.ecfg.features.unwrap().type_macros {
+                let expanded_ty = match expand_mac_invoc(mac, t.span,
+                                                         |r| r.make_ty(),
+                                                         mark_ty,
+                                                         fld) {
+                    Some(ty) => ty,
+                    None => {
+                        return DummyResult::raw_ty(t.span);
+                    }
+                };
+
+                // Keep going, outside-in.
+                let fully_expanded = fld.fold_ty(expanded_ty);
+                fld.cx.bt_pop();
+
+                fully_expanded.map(|t| ast::Ty {
+                    id: ast::DUMMY_NODE_ID,
+                    node: t.node,
+                    span: t.span,
+                    })
+            } else {
+                feature_gate::emit_feature_err(
+                    &fld.cx.parse_sess.span_diagnostic,
+                    "type_macros",
+                    t.span,
+                    "type macros are experimental (see issue: #27336)");
+
+                DummyResult::raw_ty(t.span)
+            }
+        }
+        _ => t
+    };
+
+    fold::noop_fold_ty(t, fld)
+}
+
 /// A tree-folder that performs macro expansion
 pub struct MacroExpander<'a, 'b:'a> {
     pub cx: &'a mut ExtCtxt<'b>,
@@ -1590,6 +1629,10 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     fn fold_impl_item(&mut self, i: P<ast::ImplItem>) -> SmallVector<P<ast::ImplItem>> {
         expand_annotatable(Annotatable::ImplItem(i), self)
             .into_iter().map(|i| i.expect_impl_item()).collect()
+    }
+
+    fn fold_ty(&mut self, ty: P<ast::Ty>) -> P<ast::Ty> {
+        expand_type(ty, self)
     }
 
     fn new_span(&mut self, span: Span) -> Span {
@@ -1742,6 +1785,10 @@ fn mark_item(expr: P<ast::Item>, m: Mrk) -> P<ast::Item> {
 fn mark_impl_item(ii: P<ast::ImplItem>, m: Mrk) -> P<ast::ImplItem> {
     Marker{mark:m}.fold_impl_item(ii)
         .expect_one("marking an impl item didn't return exactly one impl item")
+}
+
+fn mark_ty(ty: P<ast::Ty>, m: Mrk) -> P<ast::Ty> {
+    Marker { mark: m }.fold_ty(ty)
 }
 
 /// Check that there are no macro invocations left in the AST:

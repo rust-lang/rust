@@ -172,6 +172,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows associated type defaults
     ("associated_type_defaults", "1.2.0", Active),
+    // Allows macros to appear in the type position.
+
+    ("type_macros", "1.3.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -354,6 +357,7 @@ pub struct Features {
     pub const_fn: bool,
     pub static_recursion: bool,
     pub default_type_parameter_fallback: bool,
+    pub type_macros: bool,
 }
 
 impl Features {
@@ -380,6 +384,7 @@ impl Features {
             const_fn: false,
             static_recursion: false,
             default_type_parameter_fallback: false,
+            type_macros: false,
         }
     }
 }
@@ -883,6 +888,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         const_fn: cx.has_feature("const_fn"),
         static_recursion: cx.has_feature("static_recursion"),
         default_type_parameter_fallback: cx.has_feature("default_type_parameter_fallback"),
+        type_macros: cx.has_feature("type_macros"),
     }
 }
 
