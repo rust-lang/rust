@@ -1528,7 +1528,9 @@ macro_rules! node_slice_impl {
             }
 
             /// Returns a sub-slice with elements starting with `min_key`.
-            pub fn slice_from(self, min_key: &K) -> $NodeSlice<'a, K, V> {
+            pub fn slice_from<Q: ?Sized + Ord>(self, min_key: &Q) -> $NodeSlice<'a, K, V> where
+                K: Borrow<Q>,
+            {
                 //  _______________
                 // |_1_|_3_|_5_|_7_|
                 // |   |   |   |   |
@@ -1556,7 +1558,9 @@ macro_rules! node_slice_impl {
             }
 
             /// Returns a sub-slice with elements up to and including `max_key`.
-            pub fn slice_to(self, max_key: &K) -> $NodeSlice<'a, K, V> {
+            pub fn slice_to<Q: ?Sized + Ord>(self, max_key: &Q) -> $NodeSlice<'a, K, V> where
+                K: Borrow<Q>,
+            {
                 //  _______________
                 // |_1_|_3_|_5_|_7_|
                 // |   |   |   |   |
