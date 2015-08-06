@@ -125,6 +125,10 @@ This will print `6`. We make `y` a mutable reference to `x`, then add one to
 the thing `y` points at. You’ll notice that `x` had to be marked `mut` as well,
 if it wasn’t, we couldn’t take a mutable borrow to an immutable value.
 
+You'll also notice we added an asterisk (`*`) in front of `y`, making it `*y`,
+this is because `y` is an `&mut` reference. You'll also need to use them for
+accessing the contents of a reference as well.
+
 Otherwise, `&mut` references are just like references. There _is_ a large
 difference between the two, and how they interact, though. You can tell
 something is fishy in the above example, because we need that extra scope, with
