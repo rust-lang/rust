@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --crate-type=lib
+
 // A bunch of tests for syntactic forms involving blocks that were
 // previously ambiguous (e.g. 'if true { } *val;' gets parsed as a
 // binop)

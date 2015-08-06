@@ -315,7 +315,6 @@ actual:\n\
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = vec!("-".to_string(),
                             "-Zno-trans".to_string(),
-                            "--crate-type=lib".to_string(),
                             format!("--target={}", target),
                             "-L".to_string(),
                             config.build_base.to_str().unwrap().to_string(),
