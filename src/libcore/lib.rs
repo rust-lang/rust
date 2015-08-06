@@ -79,7 +79,7 @@
 #![feature(reflect)]
 #![feature(rustc_attrs)]
 #![cfg_attr(stage0, feature(simd))]
-#![cfg_attr(not(stage0), feature(simd_basics))]
+#![cfg_attr(not(stage0), feature(repr_simd))]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 
