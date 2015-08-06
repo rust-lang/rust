@@ -1670,10 +1670,10 @@ impl<'a> State<'a> {
                          op: ast::BinOp,
                          lhs: &ast::Expr,
                          rhs: &ast::Expr) -> io::Result<()> {
-        try!(self.print_expr(lhs));
+        try!(self.print_expr_maybe_paren(lhs));
         try!(space(&mut self.s));
         try!(self.word_space(ast_util::binop_to_string(op.node)));
-        self.print_expr(rhs)
+        self.print_expr_maybe_paren(rhs)
     }
 
     fn print_expr_unary(&mut self,
