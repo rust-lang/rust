@@ -55,17 +55,17 @@ flexible, so that e.g. we can deduce that `T::Foo: 'a` if `T: 'a`, and
 similarly that `T::Foo` is well-formed if `T` is well-formed. As a
 bonus, the new rules are also sound. ;)
 
-**The outlives relation is simpler.** The older definition for the
-outlives relation `T: 'a` was rather subtle. The new rule basically
-says that if all type/lifetime parameters appearing in the type `T`
-must outlive `'a`, then `T: 'a` (though there can also be other ways
-for us to decide that `T: 'a` is valid, such as in-scope where
-clauses). So for example `fn(&'x X): 'a` if `'x: 'a` and `X: 'a`
-(presuming that `X` is a type parameter). The older rules were based
-on what kind of data was actually *reachable*, and hence accepted this
-type (since no data of `&'x X` is reachable from a function pointer).
-This change primarily affects struct declarations, since they may now
-require additional outlives bounds:
+**Simpler outlives relation.** The older definition for the outlives
+relation `T: 'a` was rather subtle. The new rule basically says that
+if all type/lifetime parameters appearing in the type `T` must outlive
+`'a`, then `T: 'a` (though there can also be other ways for us to
+decide that `T: 'a` is valid, such as in-scope where clauses). So for
+example `fn(&'x X): 'a` if `'x: 'a` and `X: 'a` (presuming that `X` is
+a type parameter). The older rules were based on what kind of data was
+actually *reachable*, and hence accepted this type (since no data of
+`&'x X` is reachable from a function pointer).  This change primarily
+affects struct declarations, since they may now require additional
+outlives bounds:
 
 ```rust
 // OK now, but after this RFC requires `X: 'a`:
@@ -89,7 +89,7 @@ doesn't check this in associated type definitions:
 
 ```rust
 impl Iterator for SomethingElse {
-    type Item = SomeStruct<f32>; // OK now, not after this RFC
+    type Item = SomeStruct<f32>; // accepted now, not after this RFC
 }
 ```
 
@@ -107,16 +107,86 @@ traits like the following were found in the wild:
 ```rust
 trait Foo {
     // currently accepted, but should require that Self: Sized
-    fn method(&self, value: Option<Self>) {
-         // note: default implement here
-    }
+    fn method(&self, value: Option<Self>);
 }
 ```
 
-Because this method supplies a default implementation, it requires
-that the argument types are well-formed, which in turn means that
-`Self: Sized` must hold. But for some reason (of which I am actually
-not entirely sure) this is not checked now.
+To be well-formed, an `Option<T>` type requires that `T: Sized`.  In
+this case, though `T=Self`, and `Self` is not `Sized` by
+default. Therefore, this trait should be declared `trait Foo: Sized`
+to be legal. The compiler is currently *attempting* to enforce these
+rules, but many cases were overlooked in practice.
+
+### Impact on crates.io
+
+This RFC has been largely implemented and tested against crates.io. A
+[total of 43 (root) crates are affected][crater-all] by the
+changes. Interestingly, **the vast majority of warnings/errors that
+occur are not due to new rules introduced by this RFC**, but rather
+due to older rules being more correctly enforced.
+
+Of the affected crates, **40 are receiving future compatibility
+warnings and hence continue to build for the time being**. In the
+[remaining three cases][crater-errors], it was not possible to isolate
+the effects of the new rules, and hence the compiler reports an error
+rather than a future compatibility warning.
+
+What follows is a breakdown of the reason that crates on crates.io are
+receiving errors or warnings. Each row in the table corresponds to one
+of the explanations above.
+
+Problem                       | Future-compat. warnings | Errors |
+----------------------------- | ----------------------- | ------ |
+More types are sanity checked |           35            |    3   |
+Simpler outlives relation     |            5            |        |
+
+As you can see, by far the largest source of problems is simply that
+we are now sanity checking more types. This was always the intent, but
+there were bugs in the compiler that led to it either skipping
+checking altogether or only partially applying the rules. It is
+interesting to drill down a bit further into the 38 warnings/errors
+that resulted from more types being sanity checked in order to see
+what kinds of mistakes are being caught:
+
+Case | Problem                       | Number |
+---- | ----------------------------- | ------ |
+ 1   | `Self: Sized` required        |   26   |
+ 2   | `Foo: Bar` required           |   11   |
+ 3   | Not object safe               |    1   |
+
+An example of each case follows:
+
+**Cases 1 and 2.** In the compiler today, types appearing in trait methods
+are incompletely checked. This leads to a lot of traits with
+insufficient bounds.  By far the most common example was that the
+`Self` parameter would appear in a context where it must be sized,
+usually when it is embedded within another type (e.g.,
+`Option<Self>`). Here is an example:
+
+```rust
+trait Test {
+    fn test(&self) -> Option<Self>;
+    //                ~~~~~~~~~~~~
+    //            Incorrectly permitted before.
+}
+```
+
+Because `Option<T>` requires that `T: Sized`, this trait should be
+declared as follows:
+
+```rust
+trait Test: Sized {
+    fn test(&self) -> Option<Self>;
+}
+```
+
+**Case 2.** Case 2 is the same as case 1, except that the missing
+bound is some trait other than `Sized`, or in some cases an outlives
+bound like `T: 'a`.
+
+**Case 3.** The compiler currently permits non-object-safe traits to
+be used as types, even if objects could never actually be created
+([#21953]).
 
 ### Projections and the outlives relation
 
@@ -148,10 +218,10 @@ still lead to [annoying errors in some situations][#23442]. Finding a
 better solution has been on the agenda for some time.
 
 Simultaneously, we realized in [#24622] that the compiler had a bug
-that caused it erroneously assume that every projection like `I::Item`
-outlived the current function body, just as it assumes that type
-parameters like `I` outlive the current function body. **This bug can
-lead to unsound behavior.** Unfortunately, simply implementing the
+that caused it to erroneously assume that every projection like
+`I::Item` outlived the current function body, just as it assumes that
+type parameters like `I` outlive the current function body. **This bug
+can lead to unsound behavior.** Unfortunately, simply implementing the
 naive fix for #24622 exacerbates the shortcomings of the current rules
 for projections, causing widespread compilation failures in all sorts
 of reasonable and obviously correct code.
@@ -978,3 +1048,7 @@ then `R ⊢ P': 'a`. Proceed by induction and by cases over the form of `P`:
 'a`. In other words, if all the type/lifetime parameters that appear
 in a type outlive `'a`, then the type outlives `'a`. Follows by
 inspection of the outlives rules.
+
+[crater-errors]: https://gist.github.com/nikomatsakis/2f851e2accfa7ba2830d#root-regressions-sorted-by-rank
+[crater-all]: https://gist.github.com/nikomatsakis/364fae49de18268680f2#root-regressions-sorted-by-rank
+[#21953]: https://github.com/rust-lang/rust/issues/21953
