@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// This should resolve fine even with the circular imports as
+// they are not `pub`.
+
 pub mod a {
-  use b::*;
+    use b::*;
 }
 
 pub mod b {
-  use a::*;
+    use a::*;
 }
 
 use a::*;
