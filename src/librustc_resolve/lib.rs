@@ -749,6 +749,30 @@ impl Module {
     }
 }
 
+impl Module {
+    pub fn inc_glob_count(&self) {
+        self.glob_count.set(self.glob_count.get() + 1);
+    }
+    pub fn dec_glob_count(&self) {
+        assert!(self.glob_count.get() > 0);
+        self.glob_count.set(self.glob_count.get() - 1);
+    }
+    pub fn inc_pub_count(&self) {
+        self.pub_count.set(self.pub_count.get() + 1);
+    }
+    pub fn dec_pub_count(&self) {
+        assert!(self.pub_count.get() > 0);
+        self.pub_count.set(self.pub_count.get() - 1);
+    }
+    pub fn inc_pub_glob_count(&self) {
+        self.pub_glob_count.set(self.pub_glob_count.get() + 1);
+    }
+    pub fn dec_pub_glob_count(&self) {
+        assert!(self.pub_glob_count.get() > 0);
+        self.pub_glob_count.set(self.pub_glob_count.get() - 1);
+    }
+}
+
 impl fmt::Debug for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}, kind: {:?}, {}",

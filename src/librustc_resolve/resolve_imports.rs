@@ -407,11 +407,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         if resolution_result.success() {
             match import_directive.subclass {
                 GlobImport => {
-                    assert!(module_.glob_count.get() >= 1);
-                    module_.glob_count.set(module_.glob_count.get() - 1);
+                    module_.dec_glob_count();
                     if import_directive.is_public {
-                        assert!(module_.pub_glob_count.get() >= 1);
-                        module_.pub_glob_count.set(module_.pub_glob_count.get() - 1);
+                        module_.dec_pub_glob_count();
                     }
                 }
                 SingleImport(..) => {
@@ -419,8 +417,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 }
             }
             if import_directive.is_public {
-                assert!(module_.pub_count.get() >= 1);
-                module_.pub_count.set(module_.pub_count.get() - 1);
+                module_.dec_pub_count();
             }
         }
 
