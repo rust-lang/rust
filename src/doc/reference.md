@@ -1501,7 +1501,29 @@ have an implementation for `Shape`. Multiple supertraits are separated by `+`,
 `trait Circle : Shape + PartialEq { }`. In an implementation of `Circle` for a
 given type `T`, methods can refer to `Shape` methods, since the typechecker
 checks that any type with an implementation of `Circle` also has an
-implementation of `Shape`.
+implementation of `Shape`:
+
+```rust
+struct Foo;
+
+trait Shape { fn area(&self) -> f64; }
+trait Circle : Shape { fn radius(&self) -> f64; }
+# impl Shape for Foo {
+#     fn area(&self) -> f64 {
+#         0.0
+#     }
+# }
+impl Circle for Foo {
+    fn radius(&self) -> f64 {
+        println!("calling area: {}", self.area());
+
+        0.0
+    }
+}
+
+let c = Foo;
+c.radius();
+```
 
 In type-parameterized functions, methods of the supertrait may be called on
 values of subtrait-bound type parameters. Referring to the previous example of
