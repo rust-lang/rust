@@ -406,6 +406,8 @@ impl Something {} // error: use of undeclared type name `Something`
 trait Foo {
     fn bar(N); // error: use of undeclared type name `N`
 }
+// or:
+fn foo(x: T) {} // error: use of undeclared type name `T`
 ```
 
 To fix this error, please verify you didn't misspell the type name,
@@ -414,13 +416,15 @@ you did declare it or imported it into the scope. Examples:
 ```
 struct Something;
 
-impl Something {}
+impl Something {} // ok!
 // or:
 trait Foo {
     type N;
 
-    fn bar(Self::N);
+    fn bar(Self::N); // ok!
 }
+//or:
+fn foo<T>(x: T) {} // ok!
 ```
 "##,
 
@@ -436,9 +440,8 @@ let Foo = 12i32; // error: declaration of `Foo` shadows an enum variant or
 ```
 
 
-To fix this error, make sure declarations do not shadow any enum variants or
-structures in the scope. Please also verify that neither name was misspelled.
-Example:
+To fix this error, rename the variable such that it doesn't shadow any enum
+variable or structure in scope. Example:
 
 ```
 struct Foo;
