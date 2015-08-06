@@ -81,7 +81,7 @@ We previously talked a little about [function syntax][functions], but we didn’
 discuss the `<>`s after a function’s name. A function can have ‘generic
 parameters’ between the `<>`s, of which lifetimes are one kind. We’ll discuss
 other kinds of generics [later in the book][generics], but for now, let’s
-just focus on the lifteimes aspect.
+just focus on the lifetimes aspect.
 
 [functions]: functions.html
 [generics]: generics.html
