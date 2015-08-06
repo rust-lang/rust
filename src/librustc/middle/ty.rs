@@ -3179,11 +3179,12 @@ impl<'tcx> TraitDef<'tcx> {
 bitflags! {
     flags ADTFlags: u32 {
         const NO_ADT_FLAGS        = 0,
-        const IS_FUNDAMENTAL      = 1 << 0,
-        const IS_PHANTOM_DATA     = 1 << 1,
-        const IS_DTORCK           = 1 << 2, // is this a dtorck type?
-        const IS_DTORCK_VALID     = 1 << 3,
-        const IS_ENUM             = 1 << 4
+        const IS_ENUM             = 1 << 0,
+        const IS_DTORCK           = 1 << 1, // is this a dtorck type?
+        const IS_DTORCK_VALID     = 1 << 2,
+        const IS_PHANTOM_DATA     = 1 << 3,
+        const IS_SIMD             = 1 << 4,
+        const IS_FUNDAMENTAL      = 1 << 5,
     }
 }
 
@@ -3244,8 +3245,12 @@ impl<'tcx, 'lt> ADTDef_<'tcx, 'lt> {
            kind: ADTKind,
            variants: Vec<VariantDef_<'tcx, 'lt>>) -> Self {
         let mut flags = ADTFlags::NO_ADT_FLAGS;
-        if tcx.has_attr(did, "fundamental") {
+        let attrs = tcx.get_attrs(did);
+        if attrs.iter().any(|item| item.check_name("fundamental")) {
             flags = flags | ADTFlags::IS_FUNDAMENTAL;
+        }
+        if attrs.iter().any(|item| item.check_name("simd")) {
+            flags = flags | ADTFlags::IS_SIMD;
         }
         if Some(did) == tcx.lang_items.phantom_data() {
             flags = flags | ADTFlags::IS_PHANTOM_DATA;
@@ -3287,6 +3292,11 @@ impl<'tcx, 'lt> ADTDef_<'tcx, 'lt> {
     #[inline]
     pub fn is_fundamental(&self) -> bool {
         self.flags.get().intersects(ADTFlags::IS_FUNDAMENTAL)
+    }
+
+    #[inline]
+    pub fn is_simd(&self) -> bool {
+        self.flags.get().intersects(ADTFlags::IS_SIMD)
     }
 
     #[inline]
@@ -4203,9 +4213,10 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_simd(&self, cx: &ctxt) -> bool {
+    #[inline]
+    pub fn is_simd(&self) -> bool {
         match self.sty {
-            TyStruct(def, _) => cx.lookup_simd(def.did),
+            TyStruct(def, _) => def.is_simd(),
             _ => false
         }
     }
@@ -5979,7 +5990,6 @@ impl<'tcx> ctxt<'tcx> {
 
     /// Obtain the representation annotation for a struct definition.
     pub fn lookup_repr_hints(&self, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
-        // TODO: remove
         memoized(&self.repr_hint_cache, did, |did: DefId| {
             Rc::new(if did.krate == LOCAL_CRATE {
                 self.get_attrs(did).iter().flat_map(|meta| {

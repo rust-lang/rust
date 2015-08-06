@@ -1453,7 +1453,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // panic occur before the ADT as a whole is ready.
     let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
 
-    if ty.is_simd(bcx.tcx()) {
+    if ty.is_simd() {
         // Issue 23112: The original logic appeared vulnerable to same
         // order-of-eval bug. But, SIMD values are tuple-structs;
         // i.e. functional record update (FRU) syntax is unavailable.
@@ -1697,7 +1697,7 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_eager_binop");
 
     let tcx = bcx.tcx();
-    let is_simd = lhs_t.is_simd(tcx);
+    let is_simd = lhs_t.is_simd();
     let intype = if is_simd {
         lhs_t.simd_type(tcx)
     } else {
@@ -2502,7 +2502,7 @@ fn build_unchecked_rshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bcx, rhs, binop_debug_loc);
     let tcx = bcx.tcx();
-    let is_simd = lhs_t.is_simd(tcx);
+    let is_simd = lhs_t.is_simd();
     let intype = if is_simd {
         lhs_t.simd_type(tcx)
     } else {
