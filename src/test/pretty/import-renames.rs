@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --crate-type=lib
+
 // pp-exact
 
 use std::io::{self, Error as IoError};
