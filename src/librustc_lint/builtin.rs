@@ -603,6 +603,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 match bare_fn.abi {
                     abi::Rust |
                     abi::RustIntrinsic |
+                    abi::PlatformIntrinsic |
                     abi::RustCall => {
                         return FfiUnsafe(
                             "found function pointer with Rust calling \
@@ -717,7 +718,9 @@ impl LintPass for ImproperCTypes {
         }
 
         match it.node {
-            ast::ItemForeignMod(ref nmod) if nmod.abi != abi::RustIntrinsic => {
+            ast::ItemForeignMod(ref nmod)
+                if nmod.abi != abi::RustIntrinsic &&
+                   nmod.abi != abi::PlatformIntrinsic => {
                 for ni in &nmod.items {
                     match ni.node {
                         ast::ForeignItemFn(ref decl, _) => check_foreign_fn(cx, &**decl),

@@ -91,7 +91,7 @@ use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::str;
 use std::{i8, i16, i32, i64};
-use syntax::abi::{Rust, RustCall, RustIntrinsic, Abi};
+use syntax::abi::{Rust, RustCall, RustIntrinsic, PlatformIntrinsic, Abi};
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
@@ -671,7 +671,7 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 Rust | RustCall => {
                     get_extern_rust_fn(ccx, t, &name[..], did)
                 }
-                RustIntrinsic => {
+                RustIntrinsic | PlatformIntrinsic => {
                     ccx.sess().bug("unexpected intrinsic in trans_external_path")
                 }
                 _ => {
