@@ -1119,8 +1119,8 @@ fn main() {
 "##,
 
 E0102: r##"
-You hit this error because the compiler the compiler lacks information
-to determine a type for this variable. Erroneous code example:
+You hit this error because the compiler lacks information to
+determine a type for this variable. Erroneous code example:
 
 ```
 fn main() {
