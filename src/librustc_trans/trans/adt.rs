@@ -462,8 +462,7 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
         // let's recurse and find out
         ty::TyStruct(def, substs) => {
             for (j, field) in def.struct_variant().fields.iter().enumerate() {
-                // TODO(#27532)
-                let field_ty = field.ty(tcx, substs);
+                let field_ty = monomorphize::field_ty(tcx, substs, field);
                 if let Some(mut fpath) = find_discr_field_candidate(tcx, field_ty, path.clone()) {
                     fpath.push(j);
                     return Some(fpath);
