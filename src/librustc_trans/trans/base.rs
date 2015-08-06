@@ -1299,12 +1299,11 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
                 let init_val = C_u8(fcx.ccx, adt::DTOR_NEEDED_HINT);
                 let llname = &format!("dropflag_hint_{}", id);
                 debug!("adding hint {}", llname);
-                let ptr = alloc_ty(entry_bcx, tcx.types.u8, llname);
+                let ty = tcx.types.u8;
+                let ptr = alloc_ty(entry_bcx, ty, llname);
                 Store(entry_bcx, init_val, ptr);
-                let ty = tcx.mk_ptr(ty::TypeAndMut { ty: tcx.types.u8, mutbl: ast::MutMutable });
                 let flag = datum::Lvalue::new_dropflag_hint("base::init_function");
-                let datum = datum::Datum::new(ptr, ty, flag);
-                datum
+                datum::Datum::new(ptr, ty, flag)
             };
 
             let (var, datum) = match info {
