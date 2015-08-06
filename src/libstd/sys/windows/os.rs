@@ -84,9 +84,13 @@ pub fn error_string(errnum: i32) -> String {
         }
 
         let b = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
-        let msg = String::from_utf16(&buf[..b]);
-        match msg {
-            Ok(msg) => msg,
+        match String::from_utf16(&buf[..b]) {
+            Ok(mut msg) => {
+                // Trim trailing CRLF inserted by FormatMessageW
+                let len = msg.trim_right().len();
+                msg.truncate(len);
+                msg
+            },
             Err(..) => format!("OS Error {} (FormatMessageW() returned \
                                 invalid UTF-16)", errnum),
         }
