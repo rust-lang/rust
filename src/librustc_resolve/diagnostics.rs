@@ -473,6 +473,26 @@ fn foo(f: i32, g: i32) {} // ok!
 ```
 "##,
 
+E0416: r##"
+An identifier is bound more than once in a pattern. Example of erroneous
+code:
+
+```
+match (1, 2) {
+    (x, x) => {} // error: identifier `x` is bound more than once in the
+                 //        same pattern
+}
+```
+
+Please verify you didn't misspell identifiers' name. Example:
+
+```
+match (1, 2) {
+    (x, y) => {} // ok!
+}
+```
+"##,
+
 E0417: r##"
 A static variable was referenced in a pattern. Example of erroneous code:
 
@@ -796,7 +816,6 @@ register_diagnostics! {
     E0410, // variable from pattern is not bound in pattern 1
     E0411, // use of `Self` outside of an impl or trait
     E0414, // only irrefutable patterns allowed here
-    E0416, // identifier is bound more than once in the same pattern
     E0418, // is not an enum variant, struct or const
     E0420, // is not an associated const
     E0421, // unresolved associated const
