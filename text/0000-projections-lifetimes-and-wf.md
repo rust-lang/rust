@@ -710,14 +710,15 @@ lifetime names. Let's start with the rule for fn types:
       --------------------------------------------------
       R ⊢ for<r..> fn(T1..Tn) -> T0 WF
 
-Basically, this rule says that a `fn` type is *always* WF, regardless
-of what types it references.  This certainly accepts a type like
-`for<'a> fn(x: &'a T)`.  However, it also accepts some types that it
-probably shouldn't. Consider for example if we had a type like
-`NoHash` that is not hashable; in that case, it'd be nice if
-`fn(HashMap<NoHash, u32>)` were not considered well-formed. But these
-rules would accept it, because `HashMap<NoHash,u32>` appears inside a
-fn signature.
+Basically, this rule adds the bound lifetimes to the set `R` and then
+checks whether the argument and return type are well-formed. We'll see
+in the next section that means that any requirements on those types
+which reference bound identifiers are just assumed to hold, but the
+remainder are checked. For example, if we have a type `HashSet<K>`
+which requires that `K: Hash`, then `fn(HashSet<NoHash>)` would be
+illegal since `NoHash: Hash` does not hold, but `for<'a>
+fn(HashSet<&'a NoHash>)` *would* be legal, since `&'a NoHash: Hash`
+involves a bound region `'a`. See the next section for details.
 
 Note that `fn` types do not require that `T0..Tn` be `Sized`.  This is
 intentional. The limitation that only sized values can be passed as
