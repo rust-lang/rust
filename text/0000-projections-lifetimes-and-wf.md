@@ -412,8 +412,8 @@ These are inference rules written in a primitive ASCII notation. :) As
 part of defining the outlives relation, we need to track the set of
 lifetimes that are bound within the type we are looking at.  Let's
 call that set `R=<r0..rn>`. Initially, this set `R` is empty, but it
-will grow as we traverse through types like fns or objects, which can
-bind region names.
+will grow as we traverse through types like fns or object fragments,
+which can bind region names via `for<..>`.
 
 #### Simple outlives rules
 
@@ -455,22 +455,29 @@ or projections are involved:
 
 The outlives relation for lifetimes depends on whether the lifetime in
 question was bound within a type or not. In the usual case, we decide
-the relationship between two lifetimes by consulting the environment.
-Lifetimes representing scopes within the current fn have a
-relationship derived from the code itself, while lifetime parameters
-have relationships defined by where-clauses and implied bounds.
+the relationship between two lifetimes by consulting the environment,
+or using the reflexive property. Lifetimes representing scopes within
+the current fn have a relationship derived from the code itself, while
+lifetime parameters have relationships defined by where-clauses and
+implied bounds.
 
+    OutlivesRegionEnv:
       'x ∉ R               // not a bound region
       ('x: 'a) in Env      // derivable from where-clauses etc
       --------------------------------------------------
       R ⊢ 'x: 'a
-      
+
+    OutlivesRegionReflexive:
+      --------------------------------------------------
+      R ⊢ 'a: 'a
+
 For higher-ranked lifetimes, we simply ignore the relation, since the
-lifetime is not yet known. This means for example that `fn<'a> fn(&'a
+lifetime is not yet known. This means for example that `for<'a> fn(&'a
 i32): 'x` holds, even though we do not yet know what region `'a` is
 (and in fact it may be instantiated many times with different values
 on each call to the fn).
       
+    OutlivesRegionBound:
       'x ∈ R               // bound region
       --------------------------------------------------
       R ⊢ 'x: 'a
