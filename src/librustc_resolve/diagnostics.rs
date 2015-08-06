@@ -408,8 +408,8 @@ trait Foo {
 }
 ```
 
-To fix this error, please verify you didn't misspell the type name or
-you did declare it. Examples:
+To fix this error, please verify you didn't misspell the type name,
+you did declare it or imported it into the scope. Examples:
 
 ```
 struct Something;
@@ -436,8 +436,8 @@ let Foo = 12i32; // error: declaration of `Foo` shadows an enum variant or
 ```
 
 
-To fix this error, you have to change the name of the declaration of the
-shadowed object. Please also verify that neither name was misspelled.
+To fix this error, make sure declarations do not shadow any enum variants or
+structures in the scope. Please also verify that neither name was misspelled.
 Example:
 
 ```
@@ -458,7 +458,7 @@ The goal here is to avoid a conflict of names.
 "##,
 
 E0415: r##"
-More than one parameter have the same name. Example of erroneous
+More than one function parameter have the same name. Example of erroneous
 code:
 
 ```
@@ -532,8 +532,8 @@ match 0 {
 }
 ```
 
-Please verify you didn't misspell it or the enum variant, struct
-or const was well declared and/or imported. Example:
+Please verify you didn't misspell it and the enum variant, struct or const has
+been declared and imported into scope. Example:
 
 ```
 enum Something {
@@ -555,7 +555,7 @@ erroneous code:
 ```
 struct Foo { a: bool};
 
-println!("I am {}", Foo);
+let f = Foo();
 // error: `Foo` is a struct variant name, but this expression uses
 //        it like a function name
 ```
@@ -564,10 +564,9 @@ Please verify you didn't misspell the name of what you actually wanted
 to use here. Example:
 
 ```
-struct Foo { a: bool};
+fn Foo() -> u32 { 0 }
 
-let foo = Foo { a: true };
-println!("I am {}", foo); // ok!
+let f = Foo(); // ok!
 ```
 "##,
 
@@ -729,7 +728,8 @@ Please verify you didn't misspell the import's name.
 "##,
 
 E0435: r##"
-A non-constant value was used in a const. Example of erroneous code:
+A non-constant value was used to initialise a constant. Example of erroneous
+code:
 
 ```
 let foo = 42u32;
@@ -737,7 +737,7 @@ const FOO : u32 = foo; // error: attempt to use a non-constant value in a
                        //        constant
 ```
 
-To fix this error, please replace the value by a constant one. Example:
+To fix this error, please replace the value with a constant. Example:
 
 ```
 const FOO : u32 = 42u32; // ok!
