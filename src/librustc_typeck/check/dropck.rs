@@ -18,6 +18,7 @@ use util::nodemap::FnvHashSet;
 
 use syntax::ast;
 use syntax::codemap::{self, Span};
+use syntax::parse::token::special_idents;
 
 /// check_drop_impl confirms that the Drop implementation identfied by
 /// `drop_impl_did` is not any more specialized than the type it is
@@ -286,27 +287,26 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
                     // was somehow on the root.
                 }
                 TypeContext::ADT { def_id, variant, field, field_index } => {
-                    // FIXME (pnkfelix): eventually lookup arg_name
-                    // for the given index on struct variants.
-                    // TODO: be saner
-                    if let ty::ADTKind::Enum = tcx.lookup_adt_def(def_id).adt_kind() {
-                        span_note!(
-                            rcx.tcx().sess,
-                            span,
-                            "overflowed on enum {} variant {} argument {} type: {}",
-                            tcx.item_path_str(def_id),
-                            variant,
-                            field_index,
-                            detected_on_typ);
+                    let adt = tcx.lookup_adt_def(def_id);
+                    let variant_name = match adt.adt_kind() {
+                        ty::ADTKind::Enum => format!("enum {} variant {}",
+                                                     tcx.item_path_str(def_id),
+                                                     variant),
+                        ty::ADTKind::Struct => format!("struct {}",
+                                                       tcx.item_path_str(def_id))
+                    };
+                    let field_name = if field == special_idents::unnamed_field.name {
+                        format!("#{}", field_index)
                     } else {
-                        span_note!(
-                            rcx.tcx().sess,
-                            span,
-                            "overflowed on struct {} field {} type: {}",
-                            tcx.item_path_str(def_id),
-                            field,
-                            detected_on_typ);
-                    }
+                        format!("`{}`", field)
+                    };
+                    span_note!(
+                        rcx.tcx().sess,
+                        span,
+                        "overflowed on {} field {} type: {}",
+                        variant_name,
+                        field_name,
+                        detected_on_typ);
                 }
             }
         }
