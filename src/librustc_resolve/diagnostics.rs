@@ -398,19 +398,29 @@ impl Bar {
 "##,
 
 E0412: r##"
-An undeclared type name was used. Example of erroneous code:
+An undeclared type name was used. Example of erroneous codes:
 
 ```
 impl Something {} // error: use of undeclared type name `Something`
+// or:
+trait Foo {
+    fn bar(N); // error: use of undeclared type name `N`
+}
 ```
 
 To fix this error, please verify you didn't misspell the type name or
-you did declare it. Example:
+you did declare it. Examples:
 
 ```
 struct Something;
 
 impl Something {}
+// or:
+trait Foo {
+    type N;
+
+    fn bar(Self::N);
+}
 ```
 "##,
 
