@@ -2801,5 +2801,10 @@ register_diagnostics! {
     E0399, // trait items need to be implemented because the associated
            // type `{}` was overridden
     E0436,  // functional record update requires a struct
-    E0439 // invalid `simd_shuffle`, needs length: `{}`
+    E0439, // invalid `simd_shuffle`, needs length: `{}`
+    E0440, // platform-specific intrinsic has wrong number of type parameters
+    E0441, // unrecognized platform-specific intrinsic function
+    E0442, // intrinsic {} has wrong type: found {}, expected {}
+    E0443, // intrinsic {} has wrong type: found `{}`, expected `{}` which
+           // was used for this vector type previously in this signature
 }

@@ -29,6 +29,41 @@ use syntax::ast_util::local_def;
 use syntax::codemap::Span;
 use syntax::parse::token;
 
+fn equate_intrinsic_type<'a, 'tcx>(tcx: &ty::ctxt<'tcx>, it: &ast::ForeignItem,
+                                   maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx>>,
+                                   n_tps: usize,
+                                   abi: abi::Abi,
+                                   inputs: Vec<ty::Ty<'tcx>>,
+                                   output: ty::FnOutput<'tcx>) {
+    let fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
+        unsafety: ast::Unsafety::Unsafe,
+        abi: abi,
+        sig: ty::Binder(FnSig {
+            inputs: inputs,
+            output: output,
+            variadic: false,
+        }),
+    }));
+    let i_ty = tcx.lookup_item_type(local_def(it.id));
+    let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
+    if i_n_tps != n_tps {
+        span_err!(tcx.sess, it.span, E0094,
+            "intrinsic has wrong number of type \
+             parameters: found {}, expected {}",
+             i_n_tps, n_tps);
+    } else {
+        require_same_types(tcx,
+                           maybe_infcx,
+                           false,
+                           it.span,
+                           i_ty.ty,
+                           fty,
+                           || {
+                format!("intrinsic has wrong type: expected `{}`",
+                         fty)
+            });
+    }
+}
 
 /// Remember to add all intrinsics here, in librustc_trans/trans/intrinsic.rs,
 /// and in libcore/intrinsics.rs
@@ -312,34 +347,15 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         };
         (n_tps, inputs, ty::FnConverging(output))
     };
-    let fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: ast::Unsafety::Unsafe,
-        abi: abi::RustIntrinsic,
-        sig: ty::Binder(FnSig {
-            inputs: inputs,
-            output: output,
-            variadic: false,
-        }),
-    }));
-    let i_ty = ccx.tcx.lookup_item_type(local_def(it.id));
-    let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
-    if i_n_tps != n_tps {
-        span_err!(tcx.sess, it.span, E0094,
-            "intrinsic has wrong number of type \
-             parameters: found {}, expected {}",
-             i_n_tps, n_tps);
-    } else {
-        require_same_types(tcx,
-                           None,
-                           false,
-                           it.span,
-                           i_ty.ty,
-                           fty,
-                           || {
-                format!("intrinsic has wrong type: expected `{}`",
-                         fty)
-            });
-    }
+    equate_intrinsic_type(
+        tcx,
+        it,
+        None,
+        n_tps,
+        abi::RustIntrinsic,
+        inputs,
+        output
+        )
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
@@ -391,10 +407,10 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                 Some(intr) => {
                     // this function is a platform specific intrinsic
                     if i_n_tps != 0 {
-                        tcx.sess.span_err(it.span,
-                                         &format!("intrinsic has wrong number of type parameters: \
-                                                    found {}, expected 0",
-                                                   i_n_tps));
+                        span_err!(tcx.sess, it.span, E0440,
+                                  "platform-specific intrinsic has wrong number of type \
+                                   parameters: found {}, expected 0",
+                                  i_n_tps);
                         return
                     }
 
@@ -412,40 +428,23 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                     return
                 }
                 None => {
-                    tcx.sess.span_err(it.span,
-                                      &format!("unrecognized intrinsic function: `{}`", name));
+                    span_err!(tcx.sess, it.span, E0441,
+                              "unrecognized platform-specific intrinsic function: `{}`", name);
                     return;
                 }
             }
         }
     };
 
-    let fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: ast::Unsafety::Unsafe,
-        abi: abi::PlatformIntrinsic,
-        sig: ty::Binder(FnSig {
-            inputs: inputs,
-            output: ty::FnConverging(output),
-            variadic: false,
-        }),
-    }));
-    if i_n_tps != n_tps {
-        span_err!(tcx.sess, it.span, E0094,
-            "intrinsic has wrong number of type \
-             parameters: found {}, expected {}",
-             i_n_tps, n_tps);
-    } else {
-        require_same_types(tcx,
-                           infer_ctxt.as_ref(),
-                           false,
-                           it.span,
-                           i_ty.ty,
-                           fty,
-                           || {
-                format!("intrinsic has wrong type: expected `{}`",
-                         fty)
-            });
-    }
+    equate_intrinsic_type(
+        tcx,
+        it,
+        infer_ctxt.as_ref(),
+        n_tps,
+        abi::PlatformIntrinsic,
+        inputs,
+        ty::FnConverging(output)
+        )
 }
 
 // walk the expected type and the actual type in lock step, checking they're
@@ -459,53 +458,53 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
         expected: &'a intrinsics::Type, t: ty::Ty<'tcx>)
 {
     use intrinsics::Type::*;
+
+    let simple_error = |real: &str, expected: &str| {
+        span_err!(tcx.sess, span, E0442,
+                  "intrinsic {} has wrong type: found {}, expected {}",
+                  position, real, expected)
+    };
+
     match *expected {
         Integer(bits) => match (bits, &t.sty) {
             (8, &ty::TyInt(ast::TyI8)) | (8, &ty::TyUint(ast::TyU8)) |
             (16, &ty::TyInt(ast::TyI16)) | (16, &ty::TyUint(ast::TyU16)) |
             (32, &ty::TyInt(ast::TyI32)) | (32, &ty::TyUint(ast::TyU32)) |
             (64, &ty::TyInt(ast::TyI64)) | (64, &ty::TyUint(ast::TyU64)) => {},
-            _ => tcx.sess.span_err(span,
-                                   &format!("intrinsic {} has wrong type: found `{}`, \
-                                             expected `i{n}` or `u{n}`",
-                                            position,
-                                            t, n = bits)),
+            _ => simple_error(&format!("`{}`", t),
+                              &format!("`i{n}` or `u{n}`", n = bits)),
         },
         Float(bits) => match (bits, &t.sty) {
             (32, &ty::TyFloat(ast::TyF32)) |
             (64, &ty::TyFloat(ast::TyF64)) => {},
-            _ => tcx.sess.span_err(span,
-                                   &format!("intrinsic {} has wrong type: found `{}`, \
-                                             expected `f{n}`",
-                                            position,
-                                            t, n = bits)),
+            _ => simple_error(&format!("`{}`", t),
+                              &format!("`f{n}`", n = bits)),
         },
         Pointer(_) => unimplemented!(),
         Vector(ref inner_expected, len) => {
             if !t.is_simd(tcx) {
-                tcx.sess.span_err(span,
-                                  &format!("intrinsic {} has wrong type: found non-simd type {}, \
-                                           expected simd type",
-                                           position, t));
+                simple_error(&format!("non-simd type `{}`", t),
+                             "simd type");
                 return;
             }
             let t_len = t.simd_size(tcx);
             if len as usize != t_len {
-                tcx.sess.span_err(span,
-                                  &format!("intrinsic {} has wrong type: found \
-                                            vector with length {}, expected length {}",
-                                           position,
-                                           t_len, len));
+                simple_error(&format!("vector with length {}", t_len),
+                             &format!("length {}", len));
                 return;
             }
             let t_ty = t.simd_type(tcx);
             {
+                // check that a given structural type always has the same an intrinsic definition
                 let previous = structural_to_nominal.entry(expected).or_insert(t);
                 if *previous != t {
-                    tcx.sess.span_err(span,
-                                      &format!("intrinsic {} has wrong type: found `{}`, \
-                                                but already seen this vector type as `{}`",
-                                               position, t, previous));
+                    // this gets its own error code because it is non-trivial
+                    span_err!(tcx.sess, span, E0443,
+                              "intrinsic {} has wrong type: found `{}`, expected `{}` which \
+                               was used for this vector type previously in this signature",
+                              position,
+                              t,
+                              *previous);
                     return;
                 }
             }
