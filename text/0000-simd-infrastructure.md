@@ -1,4 +1,4 @@
-- Feature Name: simd_basics, platform_intrinsics, cfg_target_feature
+- Feature Name: repr_simd, platform_intrinsics, cfg_target_feature
 - Start Date: 2015-06-02
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -44,7 +44,7 @@ those features enabled.
 
 The design comes in three parts, all on the path to stabilisation:
 
-- types (`feature(simd_basics)`)
+- types (`feature(repr_simd)`)
 - operations (`feature(platform_intrinsics)`)
 - platform detection (`feature(cfg_target_feature)`)
 
