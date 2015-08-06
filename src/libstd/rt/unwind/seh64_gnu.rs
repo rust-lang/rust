@@ -60,8 +60,8 @@ pub struct EXCEPTION_RECORD {
     ExceptionInformation: [ULONG_PTR; 15],
 }
 
-pub type CONTEXT = c_void;
-pub type UNWIND_HISTORY_TABLE = c_void;
+pub enum CONTEXT {}
+pub enum UNWIND_HISTORY_TABLE {}
 
 #[repr(C)]
 pub struct RUNTIME_FUNCTION {
