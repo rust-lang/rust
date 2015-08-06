@@ -36,9 +36,9 @@ struct A {
 }
 ```
 
-will be 32-bit aligned assuming these primitives are aligned to their size.
-It will therefore have a size that is a multiple of 32-bits. It will potentially
-*really* become:
+will be 32-bit aligned on an architecture that aligns these primitives to their
+respective sizes. The whole struct will therefore have a size that is a multiple
+of 32-bits. It will potentially become:
 
 ```rust
 struct A {
@@ -50,10 +50,10 @@ struct A {
 }
 ```
 
-There is *no indirection* for these types; all data is stored contiguously as
-you would expect in C. However with the exception of arrays (which are densely
-packed and in-order), the layout of data is not by default specified in Rust.
-Given the two following struct definitions:
+There is *no indirection* for these types; all data is stored within the struct,
+as you would expect in C. However with the exception of arrays (which are
+densely packed and in-order), the layout of data is not by default specified in
+Rust. Given the two following struct definitions:
 
 ```rust
 struct A {
@@ -62,18 +62,17 @@ struct A {
 }
 
 struct B {
-    x: i32,
+    a: i32,
     b: u64,
 }
 ```
 
 Rust *does* guarantee that two instances of A have their data laid out in
-exactly the same way. However Rust *does not* guarantee that an instance of A
-has the same field ordering or padding as an instance of B (in practice there's
-no particular reason why they wouldn't, other than that its not currently
-guaranteed).
+exactly the same way. However Rust *does not* currently guarantee that an
+instance of A has the same field ordering or padding as an instance of B, though
+in practice there's no reason why they wouldn't.
 
-With A and B as written, this is basically nonsensical, but several other
+With A and B as written, this point would seem to be pedantic, but several other
 features of Rust make it desirable for the language to play with data layout in
 complex ways.
 
@@ -133,18 +132,21 @@ struct FooRepr {
 }
 ```
 
-And indeed this is approximately how it would be laid out in general
-(modulo the size and position of `tag`). However there are several cases where
-such a representation is inefficient. The classic case of this is Rust's
-"null pointer optimization". Given a pointer that is known to not be null
-(e.g. `&u32`), an enum can *store* a discriminant bit *inside* the pointer
-by using null as a special value. The net result is that
-`size_of::<Option<&T>>() == size_of::<&T>()`
+And indeed this is approximately how it would be laid out in general (modulo the
+size and position of `tag`).
 
-There are many types in Rust that are, or contain, "not null" pointers such as
+However there are several cases where such a representation is inefficient. The
+classic case of this is Rust's "null pointer optimization": an enum consisting
+of a single outer unit variant (e.g. `None`) and a (potentially nested) non-
+nullable pointer variant (e.g. `&T`) makes the tag unnecessary, because a null
+pointer value can safely be interpreted to mean that the unit variant is chosen
+instead. The net result is that, for example, `size_of::<Option<&T>>() ==
+size_of::<&T>()`.
+
+There are many types in Rust that are, or contain, non-nullable pointers such as
 `Box<T>`, `Vec<T>`, `String`, `&T`, and `&mut T`. Similarly, one can imagine
 nested enums pooling their tags into a single discriminant, as they are by
-definition known to have a limited range of valid values. In principle enums can
+definition known to have a limited range of valid values. In principle enums could
 use fairly elaborate algorithms to cache bits throughout nested types with
 special constrained representations. As such it is *especially* desirable that
 we leave enum layout unspecified today.
