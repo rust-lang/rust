@@ -180,10 +180,10 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("type_macros", "1.3.0", Active),
 
     // allow `repr(simd)`, and importing the various simd intrinsics
-    ("simd_basics", "1.3.0", Active),
+    ("repr_simd", "1.4.0", Active),
 
     // Allows cfg(target_feature = "...").
-    ("cfg_target_feature", "1.3.0", Active),
+    ("cfg_target_feature", "1.4.0", Active),
 
     // allow `extern "platform-intrinsic" { ... }`
     ("platform_intrinsics", "1.4.0", Active),
@@ -422,7 +422,6 @@ pub struct Features {
     pub allow_box: bool,
     pub allow_pushpop_unsafe: bool,
     pub simd_ffi: bool,
-    pub simd_basics: bool,
     pub unmarked_api: bool,
     pub negate_unsigned: bool,
     /// spans of #![feature] attrs for stable language features. for error reporting
@@ -453,7 +452,6 @@ impl Features {
             allow_box: false,
             allow_pushpop_unsafe: false,
             simd_ffi: false,
-            simd_basics: false,
             unmarked_api: false,
             negate_unsigned: false,
             declared_stable_lang_features: Vec::new(),
@@ -741,7 +739,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                     if attr.name() == "repr" {
                         for item in attr.meta_item_list().unwrap_or(&[]) {
                             if item.name() == "simd" {
-                                self.gate_feature("simd_basics", i.span,
+                                self.gate_feature("repr_simd", i.span,
                                                   "SIMD types are experimental and possibly buggy");
 
                             }
@@ -979,7 +977,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         allow_box: cx.has_feature("box_syntax"),
         allow_pushpop_unsafe: cx.has_feature("pushpop_unsafe"),
         simd_ffi: cx.has_feature("simd_ffi"),
-        simd_basics: cx.has_feature("simd_basics"),
         unmarked_api: cx.has_feature("unmarked_api"),
         negate_unsigned: cx.has_feature("negate_unsigned"),
         declared_stable_lang_features: accepted_features,
