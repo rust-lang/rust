@@ -288,8 +288,7 @@ endif
 
 dist: $(MAYBE_DIST_TAR_SRC) dist-tar-bins $(MAYBE_DIST_DOCS)
 
-distcheck: $(MAYBE_DISTCHECK_TAR_SRC) distcheck-tar-bins $(MAYBE_DISTCHECK_DOCS)
-	$(Q)rm -Rf tmp/distcheck
+distcheck:
 	@echo
 	@echo -----------------------------------------------
 	@echo "Rust ready for distribution (see ./dist)"
