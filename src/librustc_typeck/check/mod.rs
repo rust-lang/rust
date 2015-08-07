@@ -2432,6 +2432,12 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         1
     };
 
+    // All the input types from the fn signature must outlive the call
+    // so as to validate implied bounds.
+    for &fn_input_ty in fn_inputs {
+        fcx.register_wf_obligation(fn_input_ty, sp, traits::MiscObligation);
+    }
+
     let mut expected_arg_tys = expected_arg_tys;
     let expected_arg_count = fn_inputs.len();
     let formal_tys = if tuple_arguments == TupleArguments {
@@ -3541,16 +3547,18 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       }
       ast::ExprCall(ref callee, ref args) => {
           callee::check_call(fcx, expr, &**callee, &args[..], expected);
+
+          // we must check that return type of called functions is WF:
+          let ret_ty = fcx.expr_ty(expr);
+          fcx.register_wf_obligation(ret_ty, expr.span, traits::MiscObligation);
       }
       ast::ExprMethodCall(ident, ref tps, ref args) => {
-        check_method_call(fcx, expr, ident, &args[..], &tps[..], expected, lvalue_pref);
-        let arg_tys = args.iter().map(|a| fcx.expr_ty(&**a));
-        let  args_err = arg_tys.fold(false,
-             |rest_err, a| {
-              rest_err || a.references_error()});
-        if args_err {
-            fcx.write_error(id);
-        }
+          check_method_call(fcx, expr, ident, &args[..], &tps[..], expected, lvalue_pref);
+          let arg_tys = args.iter().map(|a| fcx.expr_ty(&**a));
+          let args_err = arg_tys.fold(false, |rest_err, a| rest_err || a.references_error());
+          if args_err {
+              fcx.write_error(id);
+          }
       }
       ast::ExprCast(ref e, ref t) => {
         if let ast::TyFixedLengthVec(_, ref count_expr) = t.node {
