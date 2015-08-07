@@ -86,15 +86,19 @@ use astconv::AstConv;
 use check::dropck;
 use check::FnCtxt;
 use middle::free_region::FreeRegionMap;
-use middle::implicator;
+use middle::implicator::{self, Implication};
 use middle::mem_categorization as mc;
+use middle::outlives;
 use middle::region::CodeExtent;
+use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, ReScope, Ty, MethodCall, HasTypeFlags};
-use middle::infer::{self, GenericKind};
+use middle::ty::{self, RegionEscape, ReScope, Ty, MethodCall, HasTypeFlags};
+use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, VerifyBound};
 use middle::pat_util;
+use middle::wf::{self, ImpliedBound};
 
 use std::mem;
+use std::rc::Rc;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
 use syntax::visit;
@@ -120,12 +124,19 @@ pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
     rcx.resolve_regions_and_report_errors();
 }
 
-pub fn regionck_item(fcx: &FnCtxt, item: &ast::Item) {
-    let mut rcx = Rcx::new(fcx, RepeatingScope(item.id), item.id, Subject(item.id));
+/// Region checking during the WF phase for items. `wf_tys` are the
+/// types from which we should derive implied bounds, if any.
+pub fn regionck_item<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                              item_id: ast::NodeId,
+                              span: Span,
+                              wf_tys: &[Ty<'tcx>]) {
+    debug!("regionck_item(item.id={:?}, wf_tys={:?}", item_id, wf_tys);
+    let mut rcx = Rcx::new(fcx, RepeatingScope(item_id), item_id, Subject(item_id));
     let tcx = fcx.tcx();
     rcx.free_region_map
        .relate_free_regions_from_predicates(tcx, &fcx.infcx().parameter_environment.caller_bounds);
-    rcx.visit_region_obligations(item.id);
+    rcx.relate_free_regions(wf_tys, item_id, span);
+    rcx.visit_region_obligations(item_id);
     rcx.resolve_regions_and_report_errors();
 }
 
@@ -152,22 +163,6 @@ pub fn regionck_fn(fcx: &FnCtxt,
     // any map for closures; they just share the same map as the
     // function that created them.
     fcx.tcx().store_free_region_map(fn_id, rcx.free_region_map);
-}
-
-/// Checks that the types in `component_tys` are well-formed. This will add constraints into the
-/// region graph. Does *not* run `resolve_regions_and_report_errors` and so forth.
-pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                                  span: Span,
-                                                  component_tys: &[Ty<'tcx>]) {
-    let mut rcx = Rcx::new(fcx, RepeatingScope(0), 0, SubjectNode::None);
-    for &component_ty in component_tys {
-        // Check that each type outlives the empty region. Since the
-        // empty region is a subregion of all others, this can't fail
-        // unless the type does not meet the well-formedness
-        // requirements.
-        type_must_outlive(&mut rcx, infer::RelateParamBound(span, component_ty),
-                          component_ty, ty::ReEmpty);
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -211,6 +206,10 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
 
     pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
         self.fcx.ccx.tcx
+    }
+
+    pub fn infcx(&self) -> &InferCtxt<'a,'tcx> {
+        self.fcx.infcx()
     }
 
     fn set_body_id(&mut self, body_id: ast::NodeId) -> ast::NodeId {
@@ -325,16 +324,77 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                 .to_vec();
 
         for r_o in &region_obligations {
-            debug!("visit_region_obligations: r_o={:?}",
-                   r_o);
+            debug!("visit_region_obligations: r_o={:?} cause={:?}",
+                   r_o, r_o.cause);
             let sup_type = self.resolve_type(r_o.sup_type);
-            let origin = infer::RelateParamBound(r_o.cause.span, sup_type);
-            type_must_outlive(self, origin, sup_type, r_o.sub_region);
+            let origin = self.code_to_origin(r_o.cause.span, sup_type, &r_o.cause.code);
+
+            if r_o.sub_region != ty::ReEmpty {
+                type_must_outlive(self, origin, sup_type, r_o.sub_region);
+            } else {
+                self.visit_old_school_wf(node_id, sup_type, origin);
+            }
         }
 
         // Processing the region obligations should not cause the list to grow further:
         assert_eq!(region_obligations.len(),
                    self.fcx.inh.infcx.fulfillment_cx.borrow().region_obligations(node_id).len());
+    }
+
+    fn visit_old_school_wf(&mut self,
+                           body_id: ast::NodeId,
+                           ty: Ty<'tcx>,
+                           origin: infer::SubregionOrigin<'tcx>) {
+        // As a weird kind of hack, we use a region of empty as a signal
+        // to mean "old-school WF rules". The only reason the old-school
+        // WF rules are not encoded using WF is that this leads to errors,
+        // and we want to phase those in gradually.
+
+        // FIXME(#27579) remove this weird special case once we phase in new WF rules completely
+        let implications = implicator::implications(self.infcx(),
+                                                    body_id,
+                                                    ty,
+                                                    ty::ReEmpty,
+                                                    origin.span());
+        let origin_for_ty = |ty: Option<Ty<'tcx>>| match ty {
+            None => origin.clone(),
+            Some(ty) => infer::ReferenceOutlivesReferent(ty, origin.span()),
+        };
+        for implication in implications {
+            match implication {
+                Implication::RegionSubRegion(ty, r1, r2) => {
+                    self.fcx.mk_subr(origin_for_ty(ty), r1, r2);
+                }
+                Implication::RegionSubGeneric(ty, r1, GenericKind::Param(param_ty)) => {
+                    param_ty_must_outlive(self, origin_for_ty(ty), r1, param_ty);
+                }
+                Implication::RegionSubGeneric(ty, r1, GenericKind::Projection(proj_ty)) => {
+                    projection_must_outlive(self, origin_for_ty(ty), r1, proj_ty);
+                }
+                Implication::Predicate(def_id, predicate) => {
+                    let cause = traits::ObligationCause::new(origin.span(),
+                                                             body_id,
+                                                             traits::ItemObligation(def_id));
+                    let obligation = traits::Obligation::new(cause, predicate);
+                    self.fcx.register_predicate(obligation);
+                }
+            }
+        }
+    }
+
+    fn code_to_origin(&self,
+                      span: Span,
+                      sup_type: Ty<'tcx>,
+                      code: &traits::ObligationCauseCode<'tcx>)
+                      -> SubregionOrigin<'tcx> {
+        match *code {
+            traits::ObligationCauseCode::RFC1214(ref code) =>
+                infer::RFC1214Subregion(Rc::new(self.code_to_origin(span, sup_type, code))),
+            traits::ObligationCauseCode::ReferenceOutlivesReferent(ref_type) =>
+                infer::ReferenceOutlivesReferent(ref_type, span),
+            _ =>
+                infer::RelateParamBound(span, sup_type),
+        }
     }
 
     /// This method populates the region map's `free_region_map`. It walks over the transformed
@@ -356,33 +416,28 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         for &ty in fn_sig_tys {
             let ty = self.resolve_type(ty);
             debug!("relate_free_regions(t={:?})", ty);
-            let body_scope = CodeExtent::from_node_id(body_id);
-            let body_scope = ty::ReScope(body_scope);
-            let implications = implicator::implications(self.fcx.infcx(), body_id,
-                                                        ty, body_scope, span);
+            let implied_bounds = wf::implied_bounds(self.fcx.infcx(), body_id, ty, span);
 
             // Record any relations between free regions that we observe into the free-region-map.
-            self.free_region_map.relate_free_regions_from_implications(&implications);
+            self.free_region_map.relate_free_regions_from_implied_bounds(&implied_bounds);
 
             // But also record other relationships, such as `T:'x`,
             // that don't go into the free-region-map but which we use
             // here.
-            for implication in implications {
+            for implication in implied_bounds {
                 debug!("implication: {:?}", implication);
                 match implication {
-                    implicator::Implication::RegionSubRegion(_,
-                                                             ty::ReFree(free_a),
-                                                             ty::ReInfer(ty::ReVar(vid_b))) => {
+                    ImpliedBound::RegionSubRegion(ty::ReFree(free_a),
+                                                  ty::ReInfer(ty::ReVar(vid_b))) => {
                         self.fcx.inh.infcx.add_given(free_a, vid_b);
                     }
-                    implicator::Implication::RegionSubGeneric(_, r_a, ref generic_b) => {
-                        debug!("RegionSubGeneric: {:?} <= {:?}",
-                               r_a, generic_b);
-
-                        self.region_bound_pairs.push((r_a, generic_b.clone()));
+                    ImpliedBound::RegionSubParam(r_a, param_b) => {
+                        self.region_bound_pairs.push((r_a, GenericKind::Param(param_b)));
                     }
-                    implicator::Implication::RegionSubRegion(..) |
-                    implicator::Implication::Predicate(..) => {
+                    ImpliedBound::RegionSubProjection(r_a, projection_b) => {
+                        self.region_bound_pairs.push((r_a, GenericKind::Projection(projection_b)));
+                    }
+                    ImpliedBound::RegionSubRegion(..) => {
                         // In principle, we could record (and take
                         // advantage of) every relationship here, but
                         // we are also free not to -- it simply means
@@ -492,12 +547,11 @@ fn constrain_bindings_in_pat(pat: &ast::Pat, rcx: &mut Rcx) {
         // that the lifetime of any regions that appear in a
         // variable's type enclose at least the variable's scope.
 
-        let var_region = tcx.region_maps.var_region(id);
-        type_of_node_must_outlive(
-            rcx, infer::BindingTypeIsNotValidAtDecl(span),
-            id, var_region);
-
         let var_scope = tcx.region_maps.var_scope(id);
+
+        let origin = infer::BindingTypeIsNotValidAtDecl(span);
+        type_of_node_must_outlive(rcx, origin, id, ty::ReScope(var_scope));
+
         let typ = rcx.resolve_node_type(id);
         dropck::check_safety_of_destructor_if_necessary(rcx, typ, span, var_scope);
     })

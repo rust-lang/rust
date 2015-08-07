@@ -345,8 +345,22 @@ pub fn check_crate(tcx: &ty::ctxt, trait_map: ty::TraitMap) {
     time(time_passes, "coherence checking", (), |_|
         coherence::check_coherence(&ccx));
 
-    time(time_passes, "type checking", (), |_|
+    time(time_passes, "wf checking (old)", (), |_|
+        check::check_wf_old(&ccx));
+
+    time(time_passes, "item-types checking", (), |_|
         check::check_item_types(&ccx));
+
+    time(time_passes, "item-bodies checking", (), |_|
+        check::check_item_bodies(&ccx));
+
+    time(time_passes, "drop-impl checking", (), |_|
+        check::check_drop_impls(&ccx));
+
+    // Do this last so that if there are errors in the old code, they
+    // get reported, and we don't get extra warnings.
+    time(time_passes, "wf checking (new)", (), |_|
+        check::check_wf_new(&ccx));
 
     check_for_entry_fn(&ccx);
     tcx.sess.abort_if_errors();
