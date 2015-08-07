@@ -485,12 +485,24 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
                     let origin = infer::Misc(span);
                     let fields = tcx.lookup_struct_fields(def_id_a);
+
                     let diff_fields = fields.iter().enumerate().filter_map(|(i, f)| {
                         let ty = tcx.lookup_field_type_unsubstituted(def_id_a, f.id);
                         let (a, b) = (ty.subst(tcx, substs_a), ty.subst(tcx, substs_b));
+
+                        // Ignore PhantomData -- doesn't matter
+                        if let &ty::TyStruct(def_id, _) = &ty.sty {
+                            if Some(def_id) == tcx.lang_items.phantom_data() {
+                                return None;
+                            }
+                        }
+
                         if infcx.sub_types(false, origin, b, a).is_ok() {
+                            // Ignore fields that aren't significantly changed
                             None
                         } else {
+                            // Collect up all fields that were significantly changed
+                            // i.e. those that contain T in coerce_unsized T -> U
                             Some((i, a, b))
                         }
                     }).collect::<Vec<_>>();

@@ -538,7 +538,12 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                               Rvalue::new(ByRef)));
                 } else {
                     // Otherwise, simply copy the data from the source.
-                    assert_eq!(src_ty, target_ty);
+                    let is_phantom = if let &ty::TyStruct(def_id, _) = &src_ty.sty {
+                        Some(def_id) == bcx.tcx().lang_items.phantom_data()
+                    } else {
+                        false
+                    };
+                    assert!(is_phantom || src_ty == target_ty);
                     memcpy_ty(bcx, ll_target, ll_source, src_ty);
                 }
             }
