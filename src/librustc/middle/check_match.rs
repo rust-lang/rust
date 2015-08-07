@@ -234,12 +234,12 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
         match p.node {
             ast::PatIdent(ast::BindByValue(ast::MutImmutable), ident, None) => {
                 let pat_ty = cx.tcx.pat_ty(p);
-                if let ty::TyEnum(def_id, _) = pat_ty.sty {
+                if let ty::TyEnum(edef, _) = pat_ty.sty {
                     let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
                     if let Some(DefLocal(_)) = def {
-                        if cx.tcx.enum_variants(def_id).iter().any(|variant|
+                        if edef.variants.iter().any(|variant|
                             variant.name == ident.node.name
-                                && variant.args.is_empty()
+                                && variant.kind() == VariantKind::Unit
                         ) {
                             span_warn!(cx.tcx.sess, p.span, E0170,
                                 "pattern binding `{}` is named the same as one \
@@ -501,23 +501,17 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
 ///
 /// left_ty: struct X { a: (bool, &'static str), b: usize}
 /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
-fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
-                     pats: Vec<&Pat>, left_ty: Ty) -> P<Pat> {
+fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
+                              pats: Vec<&Pat>, left_ty: Ty<'tcx>) -> P<Pat> {
     let pats_len = pats.len();
     let mut pats = pats.into_iter().map(|p| P((*p).clone()));
     let pat = match left_ty.sty {
         ty::TyTuple(_) => ast::PatTup(pats.collect()),
 
-        ty::TyEnum(cid, _) | ty::TyStruct(cid, _)  => {
-            let (vid, is_structure) = match ctor {
-                &Variant(vid) =>
-                    (vid, cx.tcx.enum_variant_with_id(cid, vid).arg_names.is_some()),
-                _ =>
-                    (cid, !cx.tcx.is_tuple_struct(cid))
-            };
-            if is_structure {
-                let fields = cx.tcx.lookup_struct_fields(vid);
-                let field_pats: Vec<_> = fields.into_iter()
+        ty::TyEnum(adt, _) | ty::TyStruct(adt, _)  => {
+            let v = adt.variant_of_ctor(ctor);
+            if let VariantKind::Dict = v.kind() {
+                let field_pats: Vec<_> = v.fields.iter()
                     .zip(pats)
                     .filter(|&(_, ref pat)| pat.node != ast::PatWild(ast::PatWildSingle))
                     .map(|(field, pat)| Spanned {
@@ -529,9 +523,9 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
                         }
                     }).collect();
                 let has_more_fields = field_pats.len() < pats_len;
-                ast::PatStruct(def_to_path(cx.tcx, vid), field_pats, has_more_fields)
+                ast::PatStruct(def_to_path(cx.tcx, v.did), field_pats, has_more_fields)
             } else {
-                ast::PatEnum(def_to_path(cx.tcx, vid), Some(pats.collect()))
+                ast::PatEnum(def_to_path(cx.tcx, v.did), Some(pats.collect()))
             }
         }
 
@@ -580,6 +574,17 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
     })
 }
 
+impl<'tcx, 'container> ty::AdtDefData<'tcx, 'container> {
+    fn variant_of_ctor(&self,
+                       ctor: &Constructor)
+                       -> &VariantDefData<'tcx, 'container> {
+        match ctor {
+            &Variant(vid) => self.variant_with_id(vid),
+            _ => self.struct_variant()
+        }
+    }
+}
+
 fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
                        left_ty: Ty, max_slice_length: usize) -> Option<Constructor> {
     let used_constructors: Vec<Constructor> = rows.iter()
@@ -594,7 +599,7 @@ fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
 /// values of type `left_ty`. For vectors, this would normally be an infinite set
 /// but is instead bounded by the maximum fixed length of slice patterns in
 /// the column of patterns being analyzed.
-fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
+fn all_constructors(_cx: &MatchCheckCtxt, left_ty: Ty,
                     max_slice_length: usize) -> Vec<Constructor> {
     match left_ty.sty {
         ty::TyBool =>
@@ -603,17 +608,11 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
         ty::TyRef(_, ty::TypeAndMut { ty, .. }) => match ty.sty {
             ty::TySlice(_) =>
                 range_inclusive(0, max_slice_length).map(|length| Slice(length)).collect(),
-            _ => vec!(Single)
+            _ => vec![Single]
         },
 
-        ty::TyEnum(eid, _) =>
-            cx.tcx.enum_variants(eid)
-                .iter()
-                .map(|va| Variant(va.id))
-                .collect(),
-
-        _ =>
-            vec!(Single)
+        ty::TyEnum(def, _) => def.variants.iter().map(|v| Variant(v.did)).collect(),
+        _ => vec![Single]
     }
 }
 
@@ -804,7 +803,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 ///
 /// For instance, a tuple pattern (_, 42, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
-pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
+pub fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
     match ty.sty {
         ty::TyTuple(ref fs) => fs.len(),
         ty::TyBox(_) => 1,
@@ -817,13 +816,9 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usi
             ty::TyStr => 0,
             _ => 1
         },
-        ty::TyEnum(eid, _) => {
-            match *ctor {
-                Variant(id) => cx.tcx.enum_variant_with_id(eid, id).args.len(),
-                _ => unreachable!()
-            }
+        ty::TyEnum(adt, _) | ty::TyStruct(adt, _) => {
+            adt.variant_of_ctor(ctor).fields.len()
         }
-        ty::TyStruct(cid, _) => cx.tcx.lookup_struct_fields(cid).len(),
         ty::TyArray(_, n) => n,
         _ => 0
     }
@@ -902,39 +897,20 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
 
         ast::PatStruct(_, ref pattern_fields, _) => {
-            // Is this a struct or an enum variant?
             let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
-            let class_id = match def {
-                DefConst(..) | DefAssociatedConst(..) =>
-                    cx.tcx.sess.span_bug(pat_span, "const pattern should've \
-                                                    been rewritten"),
-                DefVariant(_, variant_id, _) => if *constructor == Variant(variant_id) {
-                    Some(variant_id)
-                } else {
-                    None
-                },
-                _ => {
-                    // Assume this is a struct.
-                    match cx.tcx.node_id_to_type(pat_id).ty_to_def_id() {
-                        None => {
-                            cx.tcx.sess.span_bug(pat_span,
-                                                 "struct pattern wasn't of a \
-                                                  type with a def ID?!")
-                        }
-                        Some(def_id) => Some(def_id),
-                    }
-                }
-            };
-            class_id.map(|variant_id| {
-                let struct_fields = cx.tcx.lookup_struct_fields(variant_id);
-                let args = struct_fields.iter().map(|sf| {
+            let adt = cx.tcx.node_id_to_type(pat_id).ty_adt_def().unwrap();
+            let variant = adt.variant_of_ctor(constructor);
+            let def_variant = adt.variant_of_def(def);
+            if variant.did == def_variant.did {
+                Some(variant.fields.iter().map(|sf| {
                     match pattern_fields.iter().find(|f| f.node.ident.name == sf.name) {
                         Some(ref f) => &*f.node.pat,
                         _ => DUMMY_WILD_PAT
                     }
-                }).collect();
-                args
-            })
+                }).collect())
+            } else {
+                None
+            }
         }
 
         ast::PatTup(ref args) =>

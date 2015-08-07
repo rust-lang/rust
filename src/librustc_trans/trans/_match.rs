@@ -656,7 +656,7 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let opt_def = tcx.def_map.borrow().get(&cur.id).map(|d| d.full_def());
                 match opt_def {
                     Some(def::DefVariant(enum_id, var_id, _)) => {
-                        let variant = tcx.enum_variant_with_id(enum_id, var_id);
+                        let variant = tcx.lookup_adt_def(enum_id).variant_with_id(var_id);
                         Variant(variant.disr_val,
                                 adt::represent_node(bcx, cur.id),
                                 var_id,
@@ -1186,14 +1186,12 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         ).collect();
 
         match left_ty.sty {
-            ty::TyStruct(def_id, substs) if !type_is_sized(bcx.tcx(), left_ty) => {
+            ty::TyStruct(def, substs) if !type_is_sized(bcx.tcx(), left_ty) => {
                 // The last field is technically unsized but
                 // since we can only ever match that field behind
                 // a reference we construct a fat ptr here.
-                let fields = bcx.tcx().lookup_struct_fields(def_id);
-                let unsized_ty = fields.iter().last().map(|field| {
-                    let fty = bcx.tcx().lookup_field_type(def_id, field.id, substs);
-                    monomorphize::normalize_associated_type(bcx.tcx(), &fty)
+                let unsized_ty = def.struct_variant().fields.last().map(|field| {
+                    monomorphize::field_ty(bcx.tcx(), substs, field)
                 }).unwrap();
                 let llty = type_of::type_of(bcx.ccx(), unsized_ty);
                 let scratch = alloca_no_lifetime(bcx, llty, "__struct_field_fat_ptr");
@@ -1833,7 +1831,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match opt_def {
                 Some(def::DefVariant(enum_id, var_id, _)) => {
                     let repr = adt::represent_node(bcx, pat.id);
-                    let vinfo = ccx.tcx().enum_variant_with_id(enum_id, var_id);
+                    let vinfo = ccx.tcx().lookup_adt_def(enum_id).variant_with_id(var_id);
                     let args = extract_variant_args(bcx,
                                                     &*repr,
                                                     vinfo.disr_val,
@@ -1877,21 +1875,20 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let tcx = bcx.tcx();
             let pat_ty = node_id_type(bcx, pat.id);
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
-            expr::with_field_tys(tcx, pat_ty, Some(pat.id), |discr, field_tys| {
-                for f in fields {
-                    let ix = tcx.field_idx_strict(f.node.ident.name, field_tys);
-                    let fldptr = adt::trans_field_ptr(
-                        bcx,
-                        &*pat_repr,
-                        val.val,
-                        discr,
-                        ix);
-                    bcx = bind_irrefutable_pat(bcx,
-                                               &*f.node.pat,
-                                               MatchInput::from_val(fldptr),
-                                               cleanup_scope);
-                }
-            })
+            let pat_v = VariantInfo::of_node(tcx, pat_ty, pat.id);
+            for f in fields {
+                let name = f.node.ident.name;
+                let fldptr = adt::trans_field_ptr(
+                    bcx,
+                    &*pat_repr,
+                    val.val,
+                    pat_v.discr,
+                    pat_v.field_index(name));
+                bcx = bind_irrefutable_pat(bcx,
+                                           &*f.node.pat,
+                                           MatchInput::from_val(fldptr),
+                                           cleanup_scope);
+            }
         }
         ast::PatTup(ref elems) => {
             let repr = adt::represent_node(bcx, pat.id);

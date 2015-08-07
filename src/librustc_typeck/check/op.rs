@@ -21,7 +21,7 @@ use super::{
     structurally_resolved_type,
 };
 use middle::traits;
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{Ty, HasTypeFlags};
 use syntax::ast;
 use syntax::ast_util;
 use syntax::parse::token;
@@ -41,7 +41,7 @@ pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     let lhs_ty = structurally_resolved_type(fcx, lhs_expr.span, fcx.expr_ty(lhs_expr));
     let rhs_ty = structurally_resolved_type(fcx, rhs_expr.span, fcx.expr_ty(rhs_expr));
 
-    if is_builtin_binop(fcx.tcx(), lhs_ty, rhs_ty, op) {
+    if is_builtin_binop(lhs_ty, rhs_ty, op) {
         enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
         fcx.write_nil(expr.id);
     } else {
@@ -86,7 +86,7 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // traits, because their return type is not bool. Perhaps this
     // should change, but for now if LHS is SIMD we go down a
     // different path that bypassess all traits.
-    if lhs_ty.is_simd(fcx.tcx()) {
+    if lhs_ty.is_simd() {
         check_expr_coercable_to_type(fcx, rhs_expr, lhs_ty);
         let rhs_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs_expr));
         let return_ty = enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
@@ -123,7 +123,7 @@ pub fn check_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let rhs_ty = fcx.resolve_type_vars_if_possible(rhs_ty);
             if
                 !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() &&
-                is_builtin_binop(fcx.tcx(), lhs_ty, rhs_ty, op)
+                is_builtin_binop(lhs_ty, rhs_ty, op)
             {
                 let builtin_return_ty =
                     enforce_builtin_binop_types(fcx, lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
@@ -143,7 +143,7 @@ fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          op: ast::BinOp)
                                          -> Ty<'tcx>
 {
-    debug_assert!(is_builtin_binop(fcx.tcx(), lhs_ty, rhs_ty, op));
+    debug_assert!(is_builtin_binop(lhs_ty, rhs_ty, op));
 
     let tcx = fcx.tcx();
     match BinOpCategory::from(op) {
@@ -156,7 +156,7 @@ fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         BinOpCategory::Shift => {
             // For integers, the shift amount can be of any integral
             // type. For simd, the type must match exactly.
-            if lhs_ty.is_simd(tcx) {
+            if lhs_ty.is_simd() {
                 demand::suptype(fcx, rhs_expr.span, lhs_ty, rhs_ty);
             }
 
@@ -176,7 +176,7 @@ fn enforce_builtin_binop_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             demand::suptype(fcx, rhs_expr.span, lhs_ty, rhs_ty);
 
             // if this is simd, result is same as lhs, else bool
-            if lhs_ty.is_simd(tcx) {
+            if lhs_ty.is_simd() {
                 let unit_ty = lhs_ty.simd_type(tcx);
                 debug!("enforce_builtin_binop_types: lhs_ty={:?} unit_ty={:?}",
                        lhs_ty,
@@ -415,8 +415,7 @@ impl BinOpCategory {
 /// Reason #2 is the killer. I tried for a while to always use
 /// overloaded logic and just check the types in constants/trans after
 /// the fact, and it worked fine, except for SIMD types. -nmatsakis
-fn is_builtin_binop<'tcx>(cx: &ty::ctxt<'tcx>,
-                          lhs: Ty<'tcx>,
+fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>,
                           rhs: Ty<'tcx>,
                           op: ast::BinOp)
                           -> bool
@@ -429,28 +428,28 @@ fn is_builtin_binop<'tcx>(cx: &ty::ctxt<'tcx>,
         BinOpCategory::Shift => {
             lhs.references_error() || rhs.references_error() ||
                 lhs.is_integral() && rhs.is_integral() ||
-                lhs.is_simd(cx) && rhs.is_simd(cx)
+                lhs.is_simd() && rhs.is_simd()
         }
 
         BinOpCategory::Math => {
             lhs.references_error() || rhs.references_error() ||
                 lhs.is_integral() && rhs.is_integral() ||
                 lhs.is_floating_point() && rhs.is_floating_point() ||
-                lhs.is_simd(cx) && rhs.is_simd(cx)
+                lhs.is_simd() && rhs.is_simd()
         }
 
         BinOpCategory::Bitwise => {
             lhs.references_error() || rhs.references_error() ||
                 lhs.is_integral() && rhs.is_integral() ||
                 lhs.is_floating_point() && rhs.is_floating_point() ||
-                lhs.is_simd(cx) && rhs.is_simd(cx) ||
+                lhs.is_simd() && rhs.is_simd() ||
                 lhs.is_bool() && rhs.is_bool()
         }
 
         BinOpCategory::Comparison => {
             lhs.references_error() || rhs.references_error() ||
                 lhs.is_scalar() && rhs.is_scalar() ||
-                lhs.is_simd(cx) && rhs.is_simd(cx)
+                lhs.is_simd() && rhs.is_simd()
         }
     }
 }

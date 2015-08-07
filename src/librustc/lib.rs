@@ -32,6 +32,7 @@
 #![feature(clone_from_slice)]
 #![feature(collections)]
 #![feature(const_fn)]
+#![feature(core)]
 #![feature(duration)]
 #![feature(duration_span)]
 #![feature(dynamic_lib)]
@@ -42,6 +43,7 @@
 #![feature(iter_cmp)]
 #![feature(iter_arith)]
 #![feature(libc)]
+#![feature(nonzero)]
 #![feature(num_bits_bytes)]
 #![feature(path_ext)]
 #![feature(quote)]
@@ -65,6 +67,7 @@
 #![allow(trivial_casts)]
 
 extern crate arena;
+extern crate core;
 extern crate flate;
 extern crate fmt_macros;
 extern crate getopts;

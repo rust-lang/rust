@@ -45,7 +45,6 @@ use std::collections::{HashSet, BitSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
-use std::rc::Rc;
 
 use syntax::{abi, ast};
 use syntax::ast_util::{self, is_shift_binop, local_def};
@@ -413,18 +412,23 @@ enum FfiResult {
 /// to function pointers and references, but could be
 /// expanded to cover NonZero raw pointers and newtypes.
 /// FIXME: This duplicates code in trans.
-fn is_repr_nullable_ptr<'tcx>(variants: &Vec<Rc<ty::VariantInfo<'tcx>>>) -> bool {
-    if variants.len() == 2 {
-        let mut data_idx = 0;
+fn is_repr_nullable_ptr<'tcx>(tcx: &ty::ctxt<'tcx>,
+                              def: ty::AdtDef<'tcx>,
+                              substs: &Substs<'tcx>)
+                              -> bool {
+    if def.variants.len() == 2 {
+        let data_idx;
 
-        if variants[0].args.is_empty() {
+        if def.variants[0].fields.is_empty() {
             data_idx = 1;
-        } else if !variants[1].args.is_empty() {
+        } else if def.variants[1].fields.is_empty() {
+            data_idx = 0;
+        } else {
             return false;
         }
 
-        if variants[data_idx].args.len() == 1 {
-            match variants[data_idx].args[0].sty {
+        if def.variants[data_idx].fields.len() == 1 {
+            match def.variants[data_idx].fields[0].ty(tcx, substs).sty {
                 ty::TyBareFn(None, _) => { return true; }
                 ty::TyRef(..) => { return true; }
                 _ => { }
@@ -463,8 +467,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         match ty.sty {
-            ty::TyStruct(did, substs) => {
-                if !cx.lookup_repr_hints(did).contains(&attr::ReprExtern) {
+            ty::TyStruct(def, substs) => {
+                if !cx.lookup_repr_hints(def.did).contains(&attr::ReprExtern) {
                     return FfiUnsafe(
                         "found struct without foreign-function-safe \
                          representation annotation in foreign module, \
@@ -474,39 +478,36 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                 // We can't completely trust repr(C) markings; make sure the
                 // fields are actually safe.
-                let fields = cx.struct_fields(did, substs);
-
-                if fields.is_empty() {
+                if def.struct_variant().fields.is_empty() {
                     return FfiUnsafe(
                         "found zero-size struct in foreign module, consider \
                          adding a member to this struct");
                 }
 
-                for field in fields {
-                    let field_ty = infer::normalize_associated_type(cx, &field.mt.ty);
+                for field in &def.struct_variant().fields {
+                    let field_ty = infer::normalize_associated_type(cx, &field.ty(cx, substs));
                     let r = self.check_type_for_ffi(cache, field_ty);
                     match r {
                         FfiSafe => {}
                         FfiBadStruct(..) | FfiBadEnum(..) => { return r; }
-                        FfiUnsafe(s) => { return FfiBadStruct(did, s); }
+                        FfiUnsafe(s) => { return FfiBadStruct(def.did, s); }
                     }
                 }
                 FfiSafe
             }
-            ty::TyEnum(did, substs) => {
-                let variants = cx.substd_enum_variants(did, substs);
-                if variants.is_empty() {
+            ty::TyEnum(def, substs) => {
+                if def.variants.is_empty() {
                     // Empty enums are okay... although sort of useless.
                     return FfiSafe
                 }
 
                 // Check for a repr() attribute to specify the size of the
                 // discriminant.
-                let repr_hints = cx.lookup_repr_hints(did);
+                let repr_hints = cx.lookup_repr_hints(def.did);
                 match &**repr_hints {
                     [] => {
                         // Special-case types like `Option<extern fn()>`.
-                        if !is_repr_nullable_ptr(&variants) {
+                        if !is_repr_nullable_ptr(cx, def, substs) {
                             return FfiUnsafe(
                                 "found enum without foreign-function-safe \
                                  representation annotation in foreign module, \
@@ -537,14 +538,14 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
 
                 // Check the contained variants.
-                for variant in variants {
-                    for arg in &variant.args {
-                        let arg = infer::normalize_associated_type(cx, arg);
+                for variant in &def.variants {
+                    for field in &variant.fields {
+                        let arg = infer::normalize_associated_type(cx, &field.ty(cx, substs));
                         let r = self.check_type_for_ffi(cache, arg);
                         match r {
                             FfiSafe => {}
                             FfiBadStruct(..) | FfiBadEnum(..) => { return r; }
-                            FfiUnsafe(s) => { return FfiBadEnum(did, s); }
+                            FfiUnsafe(s) => { return FfiBadEnum(def.did, s); }
                         }
                     }
                 }
@@ -842,8 +843,8 @@ impl LintPass for RawPointerDerive {
                 }
 
                 match cx.tcx.node_id_to_type(item.id).sty {
-                    ty::TyEnum(did, _) => did,
-                    ty::TyStruct(did, _) => did,
+                    ty::TyEnum(def, _) => def.did,
+                    ty::TyStruct(def, _) => def.did,
                     _ => return,
                 }
             }
@@ -989,16 +990,16 @@ impl LintPass for UnusedResults {
         let warned = match t.sty {
             ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyBool => return,
-            ty::TyStruct(did, _) |
-            ty::TyEnum(did, _) => {
-                if ast_util::is_local(did) {
-                    if let ast_map::NodeItem(it) = cx.tcx.map.get(did.node) {
+            ty::TyStruct(def, _) |
+            ty::TyEnum(def, _) => {
+                if ast_util::is_local(def.did) {
+                    if let ast_map::NodeItem(it) = cx.tcx.map.get(def.did.node) {
                         check_must_use(cx, &it.attrs, s.span)
                     } else {
                         false
                     }
                 } else {
-                    let attrs = csearch::get_item_attrs(&cx.sess().cstore, did);
+                    let attrs = csearch::get_item_attrs(&cx.sess().cstore, def.did);
                     check_must_use(cx, &attrs[..], s.span)
                 }
             }
@@ -1956,14 +1957,14 @@ impl LintPass for MissingCopyImplementations {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                cx.tcx.mk_struct(local_def(item.id),
+                cx.tcx.mk_struct(cx.tcx.lookup_adt_def(local_def(item.id)),
                                  cx.tcx.mk_substs(Substs::empty()))
             }
             ast::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                cx.tcx.mk_enum(local_def(item.id),
+                cx.tcx.mk_enum(cx.tcx.lookup_adt_def(local_def(item.id)),
                                cx.tcx.mk_substs(Substs::empty()))
             }
             _ => return,
@@ -2575,9 +2576,9 @@ impl LintPass for DropWithReprExtern {
                 };
 
             match dtor_self_type.sty {
-                ty::TyEnum(self_type_did, _) |
-                ty::TyStruct(self_type_did, _) |
-                ty::TyClosure(self_type_did, _) => {
+                ty::TyEnum(self_type_def, _) |
+                ty::TyStruct(self_type_def, _) => {
+                    let self_type_did = self_type_def.did;
                     let hints = ctx.tcx.lookup_repr_hints(self_type_did);
                     if hints.iter().any(|attr| *attr == attr::ReprExtern) &&
                         ctx.tcx.ty_dtor(self_type_did).has_drop_flag() {

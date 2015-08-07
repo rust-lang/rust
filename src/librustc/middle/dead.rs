@@ -100,51 +100,32 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn handle_field_access(&mut self, lhs: &ast::Expr, name: ast::Name) {
-        match self.tcx.expr_ty_adjusted(lhs).sty {
-            ty::TyStruct(id, _) => {
-                let fields = self.tcx.lookup_struct_fields(id);
-                let field_id = fields.iter()
-                    .find(|field| field.name == name).unwrap().id;
-                self.live_symbols.insert(field_id.node);
-            },
-            _ => ()
+        if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(lhs).sty {
+            self.live_symbols.insert(def.struct_variant().field_named(name).did.node);
+        } else {
+            self.tcx.sess.span_bug(lhs.span, "named field access on non-struct")
         }
     }
 
     fn handle_tup_field_access(&mut self, lhs: &ast::Expr, idx: usize) {
-        match self.tcx.expr_ty_adjusted(lhs).sty {
-            ty::TyStruct(id, _) => {
-                let fields = self.tcx.lookup_struct_fields(id);
-                let field_id = fields[idx].id;
-                self.live_symbols.insert(field_id.node);
-            },
-            _ => ()
+        if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(lhs).sty {
+            self.live_symbols.insert(def.struct_variant().fields[idx].did.node);
         }
     }
 
     fn handle_field_pattern_match(&mut self, lhs: &ast::Pat,
                                   pats: &[codemap::Spanned<ast::FieldPat>]) {
-        let id = match self.tcx.def_map.borrow().get(&lhs.id).unwrap().full_def() {
-            def::DefVariant(_, id, _) => id,
-            _ => {
-                match self.tcx.node_id_to_type(lhs.id).ty_to_def_id() {
-                    None => {
-                        self.tcx.sess.span_bug(lhs.span,
-                                               "struct pattern wasn't of a \
-                                                type with a def ID?!")
-                    }
-                    Some(def_id) => def_id,
-                }
-            }
+        let def = self.tcx.def_map.borrow().get(&lhs.id).unwrap().full_def();
+        let pat_ty = self.tcx.node_id_to_type(lhs.id);
+        let variant = match pat_ty.sty {
+            ty::TyStruct(adt, _) | ty::TyEnum(adt, _) => adt.variant_of_def(def),
+            _ => self.tcx.sess.span_bug(lhs.span, "non-ADT in struct pattern")
         };
-        let fields = self.tcx.lookup_struct_fields(id);
         for pat in pats {
             if let ast::PatWild(ast::PatWildSingle) = pat.node.pat.node {
                 continue;
             }
-            let field_id = fields.iter()
-                .find(|field| field.name == pat.node.ident.name).unwrap().id;
-            self.live_symbols.insert(field_id.node);
+            self.live_symbols.insert(variant.field_named(pat.node.ident.name).did.node);
         }
     }
 

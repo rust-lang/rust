@@ -485,11 +485,11 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             Ok(a)
         }
 
-        (&ty::TyEnum(a_id, a_substs), &ty::TyEnum(b_id, b_substs))
-            if a_id == b_id =>
+        (&ty::TyEnum(a_def, a_substs), &ty::TyEnum(b_def, b_substs))
+            if a_def == b_def =>
         {
-            let substs = try!(relate_item_substs(relation, a_id, a_substs, b_substs));
-            Ok(tcx.mk_enum(a_id, tcx.mk_substs(substs)))
+            let substs = try!(relate_item_substs(relation, a_def.did, a_substs, b_substs));
+            Ok(tcx.mk_enum(a_def, tcx.mk_substs(substs)))
         }
 
         (&ty::TyTrait(ref a_), &ty::TyTrait(ref b_)) =>
@@ -499,11 +499,11 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             Ok(tcx.mk_trait(principal, bounds))
         }
 
-        (&ty::TyStruct(a_id, a_substs), &ty::TyStruct(b_id, b_substs))
-            if a_id == b_id =>
+        (&ty::TyStruct(a_def, a_substs), &ty::TyStruct(b_def, b_substs))
+            if a_def == b_def =>
         {
-            let substs = try!(relate_item_substs(relation, a_id, a_substs, b_substs));
-            Ok(tcx.mk_struct(a_id, tcx.mk_substs(substs)))
+            let substs = try!(relate_item_substs(relation, a_def.did, a_substs, b_substs));
+            Ok(tcx.mk_struct(a_def, tcx.mk_substs(substs)))
         }
 
         (&ty::TyClosure(a_id, ref a_substs),

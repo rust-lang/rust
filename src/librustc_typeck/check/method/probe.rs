@@ -286,10 +286,9 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 self.assemble_inherent_candidates_from_object(self_ty, data);
                 self.assemble_inherent_impl_candidates_for_type(data.principal_def_id());
             }
-            ty::TyEnum(did, _) |
-            ty::TyStruct(did, _) |
-            ty::TyClosure(did, _) => {
-                self.assemble_inherent_impl_candidates_for_type(did);
+            ty::TyEnum(def, _) |
+            ty::TyStruct(def, _) => {
+                self.assemble_inherent_impl_candidates_for_type(def.did);
             }
             ty::TyBox(_) => {
                 if let Some(box_did) = self.tcx().lang_items.owned_box() {

@@ -49,6 +49,7 @@ use std::cell::{Cell, RefCell};
 use std::result::Result as StdResult;
 use std::vec::Vec;
 use syntax::ast;
+use syntax::ast_util::local_def;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
@@ -173,12 +174,10 @@ fn type_needs_drop_given_env<'a,'tcx>(cx: &ty::ctxt<'tcx>,
 
 fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
-        ty::TyStruct(def_id, substs) => {
-            let fields = ccx.tcx().lookup_struct_fields(def_id);
+        ty::TyStruct(def, substs) => {
+            let fields = &def.struct_variant().fields;
             fields.len() == 1 && {
-                let ty = ccx.tcx().lookup_field_type(def_id, fields[0].id, substs);
-                let ty = monomorphize::normalize_associated_type(ccx.tcx(), &ty);
-                type_is_immediate(ccx, ty)
+                type_is_immediate(ccx, monomorphize::field_ty(ccx.tcx(), substs, &fields[0]))
             }
         }
         _ => false
@@ -193,7 +192,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     let simple = ty.is_scalar() ||
         ty.is_unique() || ty.is_region_ptr() ||
         type_is_newtype_immediate(ccx, ty) ||
-        ty.is_simd(tcx);
+        ty.is_simd();
     if simple && !type_is_fat_ptr(tcx, ty) {
         return true;
     }
@@ -269,6 +268,67 @@ pub struct NodeIdAndSpan {
 
 pub fn expr_info(expr: &ast::Expr) -> NodeIdAndSpan {
     NodeIdAndSpan { id: expr.id, span: expr.span }
+}
+
+/// The concrete version of ty::FieldDef. The name is the field index if
+/// the field is numeric.
+pub struct Field<'tcx>(pub ast::Name, pub Ty<'tcx>);
+
+/// The concrete version of ty::VariantDef
+pub struct VariantInfo<'tcx> {
+    pub discr: ty::Disr,
+    pub fields: Vec<Field<'tcx>>
+}
+
+impl<'tcx> VariantInfo<'tcx> {
+    pub fn from_ty(tcx: &ty::ctxt<'tcx>,
+                   ty: Ty<'tcx>,
+                   opt_def: Option<def::Def>)
+                   -> Self
+    {
+        match ty.sty {
+            ty::TyStruct(adt, substs) | ty::TyEnum(adt, substs) => {
+                let variant = match opt_def {
+                    None => adt.struct_variant(),
+                    Some(def) => adt.variant_of_def(def)
+                };
+
+                VariantInfo {
+                    discr: variant.disr_val,
+                    fields: variant.fields.iter().map(|f| {
+                        Field(f.name, monomorphize::field_ty(tcx, substs, f))
+                    }).collect()
+                }
+            }
+
+            ty::TyTuple(ref v) => {
+                VariantInfo {
+                    discr: 0,
+                    fields: v.iter().enumerate().map(|(i, &t)| {
+                        Field(token::intern(&i.to_string()), t)
+                    }).collect()
+                }
+            }
+
+            _ => {
+                tcx.sess.bug(&format!(
+                    "cannot get field types from the type {:?}",
+                    ty));
+            }
+        }
+    }
+
+    /// Return the variant corresponding to a given node (e.g. expr)
+    pub fn of_node(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>, id: ast::NodeId) -> Self {
+        let node_def = tcx.def_map.borrow().get(&id).map(|v| v.full_def());
+        Self::from_ty(tcx, ty, node_def)
+    }
+
+    pub fn field_index(&self, name: ast::Name) -> usize {
+        self.fields.iter().position(|&Field(n,_)| n == name).unwrap_or_else(|| {
+            panic!("unknown field `{}`", name)
+        })
+    }
 }
 
 pub struct BuilderRef_res {
@@ -1177,4 +1237,27 @@ pub fn langcall(bcx: Block,
             }
         }
     }
+}
+
+/// Return the VariantDef corresponding to an inlined variant node
+pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                     inlined_vid: ast::NodeId)
+                                     -> ty::VariantDef<'tcx>
+{
+
+    let ctor_ty = ccx.tcx().node_id_to_type(inlined_vid);
+    debug!("inlined_variant_def: ctor_ty={:?} inlined_vid={:?}", ctor_ty,
+           inlined_vid);
+    let adt_def = match ctor_ty.sty {
+        ty::TyBareFn(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
+            output: ty::FnConverging(ty), ..
+        }), ..}) => ty,
+        _ => ctor_ty
+    }.ty_adt_def().unwrap();
+    adt_def.variants.iter().find(|v| {
+        local_def(inlined_vid) == v.did ||
+            ccx.external().borrow().get(&v.did) == Some(&Some(inlined_vid))
+    }).unwrap_or_else(|| {
+        ccx.sess().bug(&format!("no variant for {:?}::{}", adt_def, inlined_vid))
+    })
 }
