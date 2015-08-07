@@ -261,6 +261,7 @@ impl<'a> CrateReader<'a> {
         let loader::Library { dylib, rlib, metadata } = lib;
 
         let cnum_map = self.resolve_crate_deps(root, metadata.as_slice(), span);
+        let staged_api = self.is_staged_api(metadata.as_slice());
 
         let cmeta = Rc::new( cstore::crate_metadata {
             name: name.to_string(),
@@ -270,6 +271,7 @@ impl<'a> CrateReader<'a> {
             cnum: cnum,
             codemap_import_info: RefCell::new(vec![]),
             span: span,
+            staged_api: staged_api
         });
 
         let source = cstore::CrateSource {
@@ -281,6 +283,17 @@ impl<'a> CrateReader<'a> {
         self.sess.cstore.set_crate_data(cnum, cmeta.clone());
         self.sess.cstore.add_used_crate_source(source.clone());
         (cnum, cmeta, source)
+    }
+
+    fn is_staged_api(&self, data: &[u8]) -> bool {
+        let attrs = decoder::get_crate_attributes(data);
+        for attr in &attrs {
+            if &attr.name()[..] == "staged_api" {
+                match attr.node.value.node { ast::MetaWord(_) => return true, _ => (/*pass*/) }
+            }
+        }
+
+        return false;
     }
 
     fn resolve_crate(&mut self,
