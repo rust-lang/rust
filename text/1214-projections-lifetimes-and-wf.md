@@ -449,7 +449,7 @@ or projections are involved:
     OutlivesFunction:
       ∀i. R,r.. ⊢ Ti: 'a
       --------------------------------------------------
-      R ⊢ for<r..> fn(T1..Tn) -> T0
+      R ⊢ for<r..> fn(T1..Tn) -> T0: 'a
 
     OutlivesFragment:
       ∀i. R,r.. ⊢ Pi: 'a
