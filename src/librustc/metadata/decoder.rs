@@ -30,7 +30,7 @@ use middle::def;
 use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
-use middle::ty::{self, Ty};
+use middle::ty::{self, RegionEscape, Ty};
 use util::nodemap::FnvHashMap;
 
 use std::cell::{Cell, RefCell};
@@ -477,7 +477,13 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                    variant.name,
                    ctor_ty);
             let field_tys = match ctor_ty.sty {
-                ty::TyBareFn(_, ref f) => &f.sig.skip_binder().inputs,
+                ty::TyBareFn(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
+                    ref inputs, ..
+                }), ..}) => {
+                    // tuple-struct constructors don't have escaping regions
+                    assert!(!inputs.has_escaping_regions());
+                    inputs
+                },
                 _ => tcx.sess.bug("tuple-variant ctor is not an ADT")
             };
             for (field, &ty) in variant.fields.iter().zip(field_tys.iter()) {
