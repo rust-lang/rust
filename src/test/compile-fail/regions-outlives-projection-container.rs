@@ -59,11 +59,10 @@ fn with_assoc1<'a,'b>() where 'b : 'a {
 }
 
 fn without_assoc<'a,'b>() {
-    // Here there are no associated types and the `'b` appearing in
-    // `TheType<'b>` is purely covariant, so there is no requirement
-    // that `'b:'a` holds.
+    // Here there are no associated types but there is a requirement
+    // that `'b:'a` holds because the `'b` appears in `TheType<'b>`.
 
-    let _: &'a WithoutAssoc<TheType<'b>> = loop { };
+    let _: &'a WithoutAssoc<TheType<'b>> = loop { }; //~ ERROR reference has a longer lifetime
 }
 
 fn call_with_assoc<'a,'b>() {
@@ -72,13 +71,13 @@ fn call_with_assoc<'a,'b>() {
     // no data.
 
     call::<&'a WithAssoc<TheType<'b>>>();
-    //~^ ERROR cannot infer
+    //~^ ERROR reference has a longer lifetime
 }
 
 fn call_without_assoc<'a,'b>() {
     // As `without_assoc`, but in a distinct scenario.
 
-    call::<&'a WithoutAssoc<TheType<'b>>>();
+    call::<&'a WithoutAssoc<TheType<'b>>>(); //~ ERROR reference has a longer lifetime
 }
 
 fn call<T>() { }
