@@ -446,7 +446,7 @@ or projections are involved:
       --------------------------------------------------
       R ⊢ for<r..> fn(T1..Tn) -> T0
 
-    OutlivesTraitRef:
+    OutlivesFragment:
       ∀i. R,r.. ⊢ Pi: 'a
       --------------------------------------------------
       R ⊢ for<r..> TraitId<P0..Pn>: 'a      
@@ -470,6 +470,12 @@ implied bounds.
     OutlivesRegionReflexive:
       --------------------------------------------------
       R ⊢ 'a: 'a
+
+    OutlivesRegionTransitive:
+      R ⊢ 'a: 'c
+      R ⊢ 'c: 'b
+      --------------------------------------------------
+      R ⊢ 'a: 'b
 
 For higher-ranked lifetimes, we simply ignore the relation, since the
 lifetime is not yet known. This means for example that `for<'a> fn(&'a
@@ -508,13 +514,15 @@ higher-ranked lifetimes. (This is somewhat stricter than necessary,
 but reflects the behavior of my prototype implementation.)
 
     OutlivesProjectionEnv:
-      <P0 as Trait<P1..Pn>>::Id: 'a in Env
+      <P0 as Trait<P1..Pn>>::Id: 'b in Env
+      <> ⊢ 'b: 'a
       --------------------------------------------------
       <> ⊢ <P0 as Trait<P1..Pn>>::Id: 'a
 
     OutlivesProjectionTraitDef:
       WC = [Xi => Pi] WhereClauses(Trait) 
-      <P0 as Trait<P1..Pn>>::Id: 'a in WC
+      <P0 as Trait<P1..Pn>>::Id: 'b in WC
+      <> ⊢ 'b: 'a
       --------------------------------------------------
       <> ⊢ <P0 as Trait<P1..Pn>>::Id: 'a
 
@@ -624,16 +632,46 @@ any lifetime or type parameters.
 
 #### Implementation complications
 
-One complication for the implementation is that there are so many
-potential outlives rules for projections. In particular, the rule that
-says `<P0 as Trait<P1..Pn>>>: 'a` holds if `Pi: 'a` is not an "if and
-only if" rule. So, for example, if we know that `T: 'a` and `'b: 'a`,
-then we know that `<T as Trait<'b>>:: Item: 'a` (for any trait and
-item), but not vice versa. This complicates inference significantly,
-since if variables are involved, we do not know whether to create
-edges between the variables or not (put another way, the simple
-dataflow model we are currently using doesn't truly suffice for these
-rules).
+The current region inference code only permits constraints of the
+form:
+
+```
+C = r0: r1
+  | C AND C
+```  
+
+This is convenient because a simple fixed-point iteration suffices to
+find the minimal regions which satisfy the constraints.
+
+Unfortunately, this constraint model does not scale to the outlives
+rules for projections. Consider a trait reference like `<T as
+Trait<'X>>::Item: 'Y`, where `'X` and `'Y` are both region variables
+whose value is being inferred. At this point, there are several
+inference rules which could potentially apply. Let us assume that
+there is a where-clause in the environment like `<T as
+Trait<'a>>::Item: 'b`. In that case, *if* `'X == 'a` and `'b: 'Y`,
+then we could employ the `OutlivesProjectionEnv` rule. This would
+correspond to a constraint set like:
+
+```
+C = 'X:'a AND 'a:'X AND 'b:'Y
+```
+
+Otherwise, if `T: 'a` and `'X: 'Y`, then we could use the
+`OutlivesProjectionComponents` rule, which would require a constraint
+set like:
+
+```
+C = C1 AND 'X:'Y
+```
+
+where `C1` is the constraint set for `T:'a`.
+
+As you can see, these two rules yielded distinct constraint sets.
+Ideally, we would combine them with an `OR` constraint, but no such
+constraint is available. Adding such a constraint complicates how
+inference works, since a fixed-point iteration is no longer
+sufficient.
 
 This complication is unfortunate, but to a large extent already exists
 with where-clauses and trait matching (see e.g. [#21974]). (Moreover,
@@ -642,11 +680,17 @@ take several inputs (the parameters to the trait) which may or may not
 be related to the actual type definition in question.)
 
 For the time being, the current implementation takes a pragmatic
-approach based on heuristics. It tries to avoid adding edges to the
-region graph in various common scenarios, and in the end falls back to
-enforcing conditions that may be stricter than necessary, but which
-certainly suffice. We have not yet encountered an example in practice
-where the current implementation rules do not suffice.
+approach based on heuristics. It first examines whether any region
+bounds are declared in the trait and, if so, prefers to use
+those. Otherwise, if there are region variables in the projection,
+then it falls back to the `OutlivesProjectionComponents` rule. This is
+always sufficient but may be stricter than necessary. If there are no
+region variables in the projection, then it can simply run inference
+to completion and check each of the other two rules in turn. (It is
+still necessary to run inference because the bound may be a region
+variable.) So far this approach has sufficed for all situations
+encountered in practice. Eventually, we should extend the region
+inferencer to a richer model that includes "OR" constraints.
 
 ### The WF relation
 
@@ -718,7 +762,8 @@ remainder are checked. For example, if we have a type `HashSet<K>`
 which requires that `K: Hash`, then `fn(HashSet<NoHash>)` would be
 illegal since `NoHash: Hash` does not hold, but `for<'a>
 fn(HashSet<&'a NoHash>)` *would* be legal, since `&'a NoHash: Hash`
-involves a bound region `'a`. See the next section for details.
+involves a bound region `'a`. See the "Checking Conditions" section
+for details.
 
 Note that `fn` types do not require that `T0..Tn` be `Sized`.  This is
 intentional. The limitation that only sized values can be passed as
