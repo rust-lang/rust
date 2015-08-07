@@ -1,7 +1,7 @@
-- Feature Name: read_exact and ErrorKind::UnexpectedEOF
+- Feature Name: read_exact
 - Start Date: 2015-03-15
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/980
+- Rust Issue: https://github.com/rust-lang/rust/issues/27585
 
 # Summary
 
@@ -282,4 +282,3 @@ the following reasons:
   compressed file where the uncompressed size was given in a header),
   `read_full` has to always write to the output buffer, so there's not
   much to gain over a generic looping implementation calling `read`.
-
