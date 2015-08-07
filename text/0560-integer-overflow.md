@@ -128,11 +128,12 @@ defined results today. The only change is that now a panic may result.
 - The operations `+`, `-`, `*`, can underflow and overflow. When checking is
   enabled this will panic. When checking is disabled this will two's complement
   wrap.
-- The operations `/`, `%` are nonsensical for the arguments `INT_MIN` and `-1`.
-  When this occurs there is an unconditional panic.
-- Shift operations (`<<`, `>>`) can shift a value of width `N` by more
-  than `N` bits. This is prevented by unconditionally masking the bits
-  of the right-hand-side to wrap modulo `N`.
+- The operations `/`, `%` for the arguments `INT_MIN` and `-1`
+  will unconditionally panic. This is unconditional for legacy reasons.
+- Shift operations (`<<`, `>>`) on a value of with `N` can be passed a shift value
+  >= `N`. It is unclear what behaviour should result from this, so the shift value 
+  is unconditionally masked to be modulo `N` to ensure that the argument is always 
+  in range.
 
 ## Enabling overflow checking
 
