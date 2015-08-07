@@ -38,12 +38,12 @@ Static linking refers to the process of creating output that contain all
 required libraries and so don't need libraries installed on every system where
 you want to use your compiled project. Pure-Rust dependencies are statically
 linked by default so you can use created binaries and libraries without
-installing the Rust everywhere. By contrast, native libraries
-(e.g. `libc` and `libm`) usually dynamically linked, but it is possible to
+installing Rust everywhere. By contrast, native libraries
+(e.g. `libc` and `libm`) are usually dynamically linked, but it is possible to
 change this and statically link them as well.
 
-Linking is a very platform dependent topic — on some platforms, static linking
-may not be possible at all! This section assumes some basic familiarity with
+Linking is a very platform-dependent topic, and static linking may not even be
+possible on some platforms! This section assumes some basic familiarity with
 linking on your platform of choice.
 
 ## Linux
@@ -71,8 +71,7 @@ Dynamic linking on Linux can be undesirable if you wish to use new library
 features on old systems or target systems which do not have the required
 dependencies for your program to run.
 
-Static linking is supported via an alternative `libc`, `musl` - this must be
-enabled at Rust compile-time with some prerequisites available. You can compile
+Static linking is supported via an alternative `libc`, `musl`. You can compile
 your own version of Rust with `musl` enabled and install it into a custom
 directory with the instructions below:
 
@@ -123,7 +122,7 @@ $ du -h musldist/bin/rustc
 ```
 
 You now have a build of a `musl`-enabled Rust! Because we've installed it to a
-custom prefix we need to make sure our system can the binaries and appropriate
+custom prefix we need to make sure our system can find the binaries and appropriate
 libraries when we try and run it:
 
 ```text
