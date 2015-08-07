@@ -25,11 +25,13 @@ enum RefOk<'a, T:'a> {
     RefOkVariant1(&'a T)
 }
 
-enum RefIndirect<'a, T> { //~ ERROR the parameter type `T` may not live long enough
+enum RefIndirect<'a, T> {
+        //~^ ERROR the parameter type `T` may not live long enough
     RefIndirectVariant1(isize, RefOk<'a,T>)
 }
 
-enum RefDouble<'a, 'b, T> { //~ ERROR reference has a longer lifetime than the data
+enum RefDouble<'a, 'b, T> {
+        //~^ ERROR reference has a longer lifetime than the data
     RefDoubleVariant1(&'a &'b T)
 }
 
