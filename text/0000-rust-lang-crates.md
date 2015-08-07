@@ -170,33 +170,35 @@ scope for this RFC.
 There are already a number of non-`std` crates in rust-lang. Below, we give the
 full list along with recommended actions:
 
-### Unsure
+### Transfer ownership
 
-- fourcc
-- getopts
-- glob
-- hexfloat
+Please volunteer if you're interested in taking one of these on!
+
 - rlibc
-- rustc-serialize
 - semver
-- tempdir
-- term
 - threadpool
-- time
-- uuid
 
 ### Move to rust-lang-nursery
 
-- rand
-- regex
-- libc
 - bitflags
+- getopts
+- glob
+- libc
 - log
+- rand (note, @huonw has a major revamp in the works)
+- regex
+- rustc-serialize (but will likely be replaced by serde or other approach eventually)
+- tempdir (destined for `std` after reworking)
+- uuid
 
 ### Move to rust-lang-deprecated
 
-- url
-- num
+- fourcc: highly niche
+- hexfloat: niche
+- num: this is essentially a dumping ground from 1.0 stabilization; needs a complete re-think.
+- term: API needs total overhaul
+- time: needs total overhaul destined for std
+- url: replaced by https://github.com/servo/rust-url
 
 # Drawbacks
 
