@@ -602,7 +602,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
         debug!("visit_item item={}", tcx.map.node_to_string(item.id));
 
         match item.node {
-            ast::ItemEnum(ref enum_definition, _) => {
+            ast::ItemEnum(..) | ast::ItemStruct(..) => {
                 let scheme = tcx.lookup_item_type(did);
 
                 // Not entirely obvious: constraints on structs/enums do not
@@ -611,44 +611,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
                 //
                 // self.add_constraints_from_generics(&scheme.generics);
 
-                // Hack: If we directly call `ty::enum_variants`, it
-                // annoyingly takes it upon itself to run off and
-                // evaluate the discriminants eagerly (*grumpy* that's
-                // not the typical pattern). This results in double
-                // error messages because typeck goes off and does
-                // this at a later time. All we really care about is
-                // the types of the variant arguments, so we just call
-                // `ty::VariantInfo::from_ast_variant()` ourselves
-                // here, mainly so as to mask the differences between
-                // struct-like enums and so forth.
-                for ast_variant in &enum_definition.variants {
-                    let variant =
-                        ty::VariantInfo::from_ast_variant(tcx,
-                                                          &**ast_variant,
-                                                          /*discriminant*/ 0);
-                    for arg_ty in &variant.args {
-                        self.add_constraints_from_ty(&scheme.generics, *arg_ty, self.covariant);
-                    }
+                for field in tcx.lookup_adt_def(did).all_fields() {
+                    self.add_constraints_from_ty(&scheme.generics,
+                                                 field.unsubst_ty(),
+                                                 self.covariant);
                 }
             }
-
-            ast::ItemStruct(..) => {
-                let scheme = tcx.lookup_item_type(did);
-
-                // Not entirely obvious: constraints on structs/enums do not
-                // affect the variance of their type parameters. See discussion
-                // in comment at top of module.
-                //
-                // self.add_constraints_from_generics(&scheme.generics);
-
-                let struct_fields = tcx.lookup_struct_fields(did);
-                for field_info in &struct_fields {
-                    assert_eq!(field_info.id.krate, ast::LOCAL_CRATE);
-                    let field_ty = tcx.node_id_to_type(field_info.id.node);
-                    self.add_constraints_from_ty(&scheme.generics, field_ty, self.covariant);
-                }
-            }
-
             ast::ItemTrait(..) => {
                 let trait_def = tcx.lookup_trait_def(did);
                 self.add_constraints_from_trait_ref(&trait_def.generics,
@@ -902,9 +870,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::TyEnum(def_id, substs) |
-            ty::TyStruct(def_id, substs) => {
-                let item_type = self.tcx().lookup_item_type(def_id);
+            ty::TyEnum(def, substs) |
+            ty::TyStruct(def, substs) => {
+                let item_type = self.tcx().lookup_item_type(def.did);
 
                 // All type parameters on enums and structs should be
                 // in the TypeSpace.
@@ -915,7 +883,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
                 self.add_constraints_from_substs(
                     generics,
-                    def_id,
+                    def.did,
                     item_type.generics.types.get_slice(subst::TypeSpace),
                     item_type.generics.regions.get_slice(subst::TypeSpace),
                     substs,

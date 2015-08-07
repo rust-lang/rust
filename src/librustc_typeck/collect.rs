@@ -71,9 +71,12 @@ use middle::lang_items::SizedTraitLangItem;
 use middle::free_region::FreeRegionMap;
 use middle::region;
 use middle::resolve_lifetime;
+use middle::const_eval::{self, ConstVal};
+use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
 use middle::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
-use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty, TypeScheme};
+use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty, TypeScheme, IntTypeExt};
+use middle::ty::{VariantKind};
 use middle::ty_fold::{self, TypeFolder, TypeFoldable};
 use middle::infer;
 use rscope::*;
@@ -89,8 +92,10 @@ use std::rc::Rc;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_util::local_def;
+use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
+use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::visit;
 
@@ -563,48 +568,6 @@ fn is_param<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
-fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                    enum_scheme: ty::TypeScheme<'tcx>,
-                                    enum_predicates: ty::GenericPredicates<'tcx>,
-                                    variants: &[P<ast::Variant>]) {
-    let tcx = ccx.tcx;
-    let icx = ccx.icx(&enum_predicates);
-
-    // Create a set of parameter types shared among all the variants.
-    for variant in variants {
-        let variant_def_id = local_def(variant.node.id);
-
-        // Nullary enum constructors get turned into constants; n-ary enum
-        // constructors get turned into functions.
-        let result_ty = match variant.node.kind {
-            ast::TupleVariantKind(ref args) if !args.is_empty() => {
-                let rs = ExplicitRscope;
-                let input_tys: Vec<_> = args.iter().map(|va| icx.to_ty(&rs, &*va.ty)).collect();
-                tcx.mk_ctor_fn(variant_def_id, &input_tys, enum_scheme.ty)
-            }
-
-            ast::TupleVariantKind(_) => {
-                enum_scheme.ty
-            }
-
-            ast::StructVariantKind(ref struct_def) => {
-                convert_struct(ccx, &**struct_def, enum_scheme.clone(),
-                               enum_predicates.clone(), variant.node.id);
-                enum_scheme.ty
-            }
-        };
-
-        let variant_scheme = TypeScheme {
-            generics: enum_scheme.generics.clone(),
-            ty: result_ty
-        };
-
-        tcx.register_item_type(variant_def_id, variant_scheme.clone());
-        tcx.predicates.borrow_mut().insert(variant_def_id, enum_predicates.clone());
-        write_ty_to_tcx(tcx, variant.node.id, result_ty);
-    }
-}
-
 fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             container: ImplOrTraitItemContainer,
                             sig: &ast::MethodSig,
@@ -657,10 +620,10 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            struct_generics: &ty::Generics<'tcx>,
                            struct_predicates: &ty::GenericPredicates<'tcx>,
                            v: &ast::StructField,
-                           origin: ast::DefId)
-                           -> ty::FieldTy
+                           ty_f: ty::FieldDefMaster<'tcx>)
 {
     let tt = ccx.icx(struct_predicates).to_ty(&ExplicitRscope, &*v.node.ty);
+    ty_f.fulfill_ty(tt);
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
 
     /* add the field to the tcache */
@@ -671,25 +634,6 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                });
     ccx.tcx.predicates.borrow_mut().insert(local_def(v.node.id),
                                            struct_predicates.clone());
-
-    match v.node.kind {
-        ast::NamedField(ident, visibility) => {
-            ty::FieldTy {
-                name: ident.name,
-                id: local_def(v.node.id),
-                vis: visibility,
-                origin: origin,
-            }
-        }
-        ast::UnnamedField(visibility) => {
-            ty::FieldTy {
-                name: special_idents::unnamed_field.name,
-                id: local_def(v.node.id),
-                vis: visibility,
-                origin: origin,
-            }
-        }
-    }
 }
 
 fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -803,10 +747,11 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
         ast::ItemEnum(ref enum_definition, _) => {
             let (scheme, predicates) = convert_typed_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, scheme.ty);
-            get_enum_variant_types(ccx,
-                                   scheme,
-                                   predicates,
-                                   &enum_definition.variants);
+            convert_enum_variant_types(ccx,
+                                       tcx.lookup_adt_def_master(local_def(it.id)),
+                                       scheme,
+                                       predicates,
+                                       &enum_definition.variants);
         },
         ast::ItemDefaultImpl(_, ref ast_trait_ref) => {
             let trait_ref =
@@ -1048,10 +993,18 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             }
         },
         ast::ItemStruct(ref struct_def, _) => {
-            // Write the class type.
             let (scheme, predicates) = convert_typed_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, scheme.ty);
-            convert_struct(ccx, &**struct_def, scheme, predicates, it.id);
+
+            let variant = tcx.lookup_adt_def_master(local_def(it.id)).struct_variant();
+
+            for (f, ty_f) in struct_def.fields.iter().zip(variant.fields.iter()) {
+                convert_field(ccx, &scheme.generics, &predicates, f, ty_f)
+            }
+
+            if let Some(ctor_id) = struct_def.ctor_id {
+                convert_variant_ctor(tcx, ctor_id, variant, scheme, predicates);
+            }
         },
         ast::ItemTy(_, ref generics) => {
             ensure_no_ty_param_bounds(ccx, it.span, generics, "type");
@@ -1068,76 +1021,226 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
     }
 }
 
-fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                            struct_def: &ast::StructDef,
-                            scheme: ty::TypeScheme<'tcx>,
-                            predicates: ty::GenericPredicates<'tcx>,
-                            id: ast::NodeId) {
+fn convert_variant_ctor<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
+                                  ctor_id: ast::NodeId,
+                                  variant: ty::VariantDef<'tcx>,
+                                  scheme: ty::TypeScheme<'tcx>,
+                                  predicates: ty::GenericPredicates<'tcx>) {
+    let ctor_ty = match variant.kind() {
+        VariantKind::Unit | VariantKind::Dict => scheme.ty,
+        VariantKind::Tuple => {
+            let inputs: Vec<_> =
+                variant.fields
+                .iter()
+                .map(|field| field.unsubst_ty())
+                .collect();
+            tcx.mk_ctor_fn(local_def(ctor_id),
+                           &inputs[..],
+                           scheme.ty)
+        }
+    };
+    write_ty_to_tcx(tcx, ctor_id, ctor_ty);
+    tcx.predicates.borrow_mut().insert(local_def(ctor_id), predicates);
+    tcx.register_item_type(local_def(ctor_id),
+                           TypeScheme {
+                               generics: scheme.generics,
+                               ty: ctor_ty
+                           });
+}
+
+fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                        def: ty::AdtDefMaster<'tcx>,
+                                        scheme: ty::TypeScheme<'tcx>,
+                                        predicates: ty::GenericPredicates<'tcx>,
+                                        variants: &[P<ast::Variant>]) {
     let tcx = ccx.tcx;
+    let icx = ccx.icx(&predicates);
 
-    // Write the type of each of the members and check for duplicate fields.
+    // fill the field types
+    for (variant, ty_variant) in variants.iter().zip(def.variants.iter()) {
+        match variant.node.kind {
+            ast::TupleVariantKind(ref args) => {
+                let rs = ExplicitRscope;
+                let input_tys: Vec<_> = args.iter().map(|va| icx.to_ty(&rs, &*va.ty)).collect();
+                for (field, &ty) in ty_variant.fields.iter().zip(input_tys.iter()) {
+                    field.fulfill_ty(ty);
+                }
+            }
+
+            ast::StructVariantKind(ref struct_def) => {
+                for (f, ty_f) in struct_def.fields.iter().zip(ty_variant.fields.iter()) {
+                    convert_field(ccx, &scheme.generics, &predicates, f, ty_f)
+                }
+            }
+        };
+
+        // Convert the ctor, if any. This also registers the variant as
+        // an item.
+        convert_variant_ctor(
+            tcx,
+            variant.node.id,
+            ty_variant,
+            scheme.clone(),
+            predicates.clone()
+        );
+    }
+}
+
+fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                did: ast::DefId,
+                                name: ast::Name,
+                                disr_val: ty::Disr,
+                                def: &ast::StructDef) -> ty::VariantDefData<'tcx, 'tcx> {
     let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap();
-    let field_tys = struct_def.fields.iter().map(|f| {
-        let result = convert_field(ccx, &scheme.generics, &predicates, f, local_def(id));
-
-        if result.name != special_idents::unnamed_field.name {
-            let dup = match seen_fields.get(&result.name) {
-                Some(prev_span) => {
+    let fields = def.fields.iter().map(|f| {
+        let fid = local_def(f.node.id);
+        match f.node.kind {
+            ast::NamedField(ident, vis) => {
+                let dup_span = seen_fields.get(&ident.name).cloned();
+                if let Some(prev_span) = dup_span {
                     span_err!(tcx.sess, f.span, E0124,
                               "field `{}` is already declared",
-                              result.name);
-                    span_note!(tcx.sess, *prev_span, "previously declared here");
-                    true
-                },
-                None => false,
-            };
-            // FIXME(#6393) this whole dup thing is just to satisfy
-            // the borrow checker :-(
-            if !dup {
-                seen_fields.insert(result.name, f.span);
+                              ident.name);
+                    span_note!(tcx.sess, prev_span, "previously declared here");
+                } else {
+                    seen_fields.insert(ident.name, f.span);
+                }
+
+                ty::FieldDefData::new(fid, ident.name, vis)
+            },
+            ast::UnnamedField(vis) => {
+                ty::FieldDefData::new(fid, special_idents::unnamed_field.name, vis)
             }
         }
-
-        result
     }).collect();
+    ty::VariantDefData {
+        did: did,
+        name: name,
+        disr_val: disr_val,
+        fields: fields
+    }
+}
 
-    tcx.struct_fields.borrow_mut().insert(local_def(id), Rc::new(field_tys));
+fn convert_struct_def<'tcx>(tcx: &ty::ctxt<'tcx>,
+                            it: &ast::Item,
+                            def: &ast::StructDef)
+                            -> ty::AdtDefMaster<'tcx>
+{
 
-    let substs = mk_item_substs(ccx, &scheme.generics);
-    let selfty = tcx.mk_struct(local_def(id), tcx.mk_substs(substs));
+    let did = local_def(it.id);
+    tcx.intern_adt_def(
+        did,
+        ty::AdtKind::Struct,
+        vec![convert_struct_variant(tcx, did, it.ident.name, 0, def)]
+    )
+}
 
-    // If this struct is enum-like or tuple-like, create the type of its
-    // constructor.
-    match struct_def.ctor_id {
-        None => {}
-        Some(ctor_id) => {
-            if struct_def.fields.is_empty() {
-                // Enum-like.
-                write_ty_to_tcx(tcx, ctor_id, selfty);
+fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
+                          it: &ast::Item,
+                          def: &ast::EnumDef)
+                          -> ty::AdtDefMaster<'tcx>
+{
+    fn evaluate_disr_expr<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                repr_ty: Ty<'tcx>,
+                                e: &ast::Expr) -> Option<ty::Disr> {
+        debug!("disr expr, checking {}", pprust::expr_to_string(e));
 
-                tcx.register_item_type(local_def(ctor_id), scheme);
-                tcx.predicates.borrow_mut().insert(local_def(ctor_id), predicates);
-            } else if struct_def.fields[0].node.kind.is_unnamed() {
-                // Tuple-like.
-                let inputs: Vec<_> =
-                    struct_def.fields
-                              .iter()
-                              .map(|field| tcx.lookup_item_type(
-                                  local_def(field.node.id)).ty)
-                              .collect();
-                let ctor_fn_ty = tcx.mk_ctor_fn(local_def(ctor_id),
-                                                &inputs[..],
-                                                selfty);
-                write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
-                tcx.register_item_type(local_def(ctor_id),
-                                       TypeScheme {
-                                           generics: scheme.generics,
-                                           ty: ctor_fn_ty
-                                       });
-                tcx.predicates.borrow_mut().insert(local_def(ctor_id), predicates);
+        let hint = UncheckedExprHint(repr_ty);
+        match const_eval::eval_const_expr_partial(tcx, e, hint) {
+            Ok(ConstVal::Int(val)) => Some(val as ty::Disr),
+            Ok(ConstVal::Uint(val)) => Some(val as ty::Disr),
+            Ok(_) => {
+                let sign_desc = if repr_ty.is_signed() {
+                    "signed"
+                } else {
+                    "unsigned"
+                };
+                span_err!(tcx.sess, e.span, E0079,
+                          "expected {} integer constant",
+                          sign_desc);
+                None
+            },
+            Err(err) => {
+              span_err!(tcx.sess, err.span, E0080,
+                        "constant evaluation error: {}",
+                        err.description());
+                None
             }
         }
     }
+
+    fn report_discrim_overflow(tcx: &ty::ctxt,
+                               variant_span: Span,
+                               variant_name: &str,
+                               repr_type: attr::IntType,
+                               prev_val: ty::Disr) {
+        let computed_value = repr_type.disr_wrap_incr(Some(prev_val));
+        let computed_value = repr_type.disr_string(computed_value);
+        let prev_val = repr_type.disr_string(prev_val);
+        let repr_type = repr_type.to_ty(tcx);
+        span_err!(tcx.sess, variant_span, E0370,
+                  "enum discriminant overflowed on value after {}: {}; \
+                   set explicitly via {} = {} if that is desired outcome",
+                  prev_val, repr_type, variant_name, computed_value);
+    }
+
+    fn next_disr(tcx: &ty::ctxt,
+                 v: &ast::Variant,
+                 repr_type: attr::IntType,
+                 prev_disr_val: Option<ty::Disr>) -> Option<ty::Disr> {
+        if let Some(prev_disr_val) = prev_disr_val {
+            let result = repr_type.disr_incr(prev_disr_val);
+            if let None = result {
+                report_discrim_overflow(tcx, v.span, &v.node.name.name.as_str(),
+                                             repr_type, prev_disr_val);
+            }
+            result
+        } else {
+            Some(ty::INITIAL_DISCRIMINANT_VALUE)
+        }
+    }
+    fn convert_enum_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                  v: &ast::Variant,
+                                  disr: ty::Disr)
+                                  -> ty::VariantDefData<'tcx, 'tcx>
+    {
+        let did = local_def(v.node.id);
+        let name = v.node.name.name;
+        match v.node.kind {
+            ast::TupleVariantKind(ref va) => {
+                ty::VariantDefData {
+                    did: did,
+                    name: name,
+                    disr_val: disr,
+                    fields: va.iter().map(|&ast::VariantArg { id, .. }| {
+                        ty::FieldDefData::new(
+                            local_def(id),
+                            special_idents::unnamed_field.name,
+                            ast::Visibility::Public
+                        )
+                    }).collect()
+                }
+            }
+            ast::StructVariantKind(ref def) => {
+                convert_struct_variant(tcx, did, name, disr, &def)
+            }
+        }
+    }
+    let did = local_def(it.id);
+    let repr_hints = tcx.lookup_repr_hints(did);
+    let (repr_type, repr_type_ty) = tcx.enum_repr_type(repr_hints.get(0));
+    let mut prev_disr = None;
+    let variants = def.variants.iter().map(|v| {
+        let disr = match v.node.disr_expr {
+            Some(ref e) => evaluate_disr_expr(tcx, repr_type_ty, e),
+            None => next_disr(tcx, v, repr_type, prev_disr)
+        }.unwrap_or(repr_type.disr_wrap_incr(prev_disr));
+
+        let v = convert_enum_variant(tcx, v, disr);
+        prev_disr = Some(disr);
+        v
+    }).collect();
+    tcx.intern_adt_def(local_def(it.id), ty::AdtKind::Enum, variants)
 }
 
 /// Ensures that the super-predicates of the trait with def-id
@@ -1471,17 +1574,18 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             let ty = ccx.icx(generics).to_ty(&ExplicitRscope, &**t);
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
-        ast::ItemEnum(_, ref generics) => {
-            // Create a new generic polytype.
+        ast::ItemEnum(ref ei, ref generics) => {
             let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let t = tcx.mk_enum(local_def(it.id), tcx.mk_substs(substs));
+            let def = convert_enum_def(tcx, it, ei);
+            let t = tcx.mk_enum(def, tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
-        ast::ItemStruct(_, ref generics) => {
+        ast::ItemStruct(ref si, ref generics) => {
             let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let t = tcx.mk_struct(local_def(it.id), tcx.mk_substs(substs));
+            let def = convert_struct_def(tcx, it, si);
+            let t = tcx.mk_struct(def, tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
         ast::ItemDefaultImpl(..) |

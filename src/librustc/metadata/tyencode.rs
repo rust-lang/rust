@@ -86,7 +86,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
             }
         }
         ty::TyEnum(def, substs) => {
-            mywrite!(w, "t[{}|", (cx.ds)(def));
+            mywrite!(w, "t[{}|", (cx.ds)(def.did));
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
@@ -138,7 +138,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
             mywrite!(w, "p[{}|{}|{}]", idx, space.to_uint(), name)
         }
         ty::TyStruct(def, substs) => {
-            mywrite!(w, "a[{}|", (cx.ds)(def));
+            mywrite!(w, "a[{}|", (cx.ds)(def.did));
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }

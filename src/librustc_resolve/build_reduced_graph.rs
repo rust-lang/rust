@@ -791,9 +791,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     crate) building type and value for {}",
                    final_ident);
             child_name_bindings.define_type(def, DUMMY_SP, modifiers);
-            let fields = csearch::get_struct_fields(&self.session.cstore, def_id).iter().map(|f| {
-                f.name
-            }).collect::<Vec<_>>();
+            let fields = csearch::get_struct_field_names(&self.session.cstore, def_id);
 
             if fields.is_empty() {
                 child_name_bindings.define_value(def, DUMMY_SP, modifiers);

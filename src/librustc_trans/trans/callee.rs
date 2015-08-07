@@ -182,10 +182,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 fn_callee(bcx, fn_datum)
             }
             def::DefVariant(tid, vid, _) => {
-                let vinfo = bcx.tcx().enum_variant_with_id(tid, vid);
-
-                // Nullary variants are not callable
-                assert!(!vinfo.args.is_empty());
+                let vinfo = bcx.tcx().lookup_adt_def(tid).variant_with_id(vid);
+                assert_eq!(vinfo.kind(), ty::VariantKind::Tuple);
 
                 Callee {
                     bcx: bcx,

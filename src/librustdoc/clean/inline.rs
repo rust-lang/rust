@@ -185,17 +185,17 @@ fn build_struct(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Stru
 
     let t = tcx.lookup_item_type(did);
     let predicates = tcx.lookup_predicates(did);
-    let fields = tcx.lookup_struct_fields(did);
+    let variant = tcx.lookup_adt_def(did).struct_variant();
 
     clean::Struct {
-        struct_type: match &*fields {
+        struct_type: match &*variant.fields {
             [] => doctree::Unit,
             [ref f] if f.name == unnamed_field.name => doctree::Newtype,
             [ref f, ..] if f.name == unnamed_field.name => doctree::Tuple,
             _ => doctree::Plain,
         },
         generics: (&t.generics, &predicates, subst::TypeSpace).clean(cx),
-        fields: fields.clean(cx),
+        fields: variant.fields.clean(cx),
         fields_stripped: false,
     }
 }
@@ -204,11 +204,11 @@ fn build_type(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEn
     let t = tcx.lookup_item_type(did);
     let predicates = tcx.lookup_predicates(did);
     match t.ty.sty {
-        ty::TyEnum(edid, _) if !csearch::is_typedef(&tcx.sess.cstore, did) => {
+        ty::TyEnum(edef, _) if !csearch::is_typedef(&tcx.sess.cstore, did) => {
             return clean::EnumItem(clean::Enum {
                 generics: (&t.generics, &predicates, subst::TypeSpace).clean(cx),
                 variants_stripped: false,
-                variants: tcx.enum_variants(edid).clean(cx),
+                variants: edef.variants.clean(cx),
             })
         }
         _ => {}

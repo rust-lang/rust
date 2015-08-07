@@ -883,6 +883,64 @@ struct Good(u32, u32, u32); // This will not
 ```
 "##,
 
+E0079: r##"
+Enum variants which contain no data can be given a custom integer
+representation. This error indicates that the value provided is not an integer
+literal and is therefore invalid.
+
+For example, in the following code,
+
+```
+enum Foo {
+    Q = "32"
+}
+```
+
+we try to set the representation to a string.
+
+There's no general fix for this; if you can work with an integer then just set
+it to one:
+
+```
+enum Foo {
+    Q = 32
+}
+```
+
+however if you actually wanted a mapping between variants and non-integer
+objects, it may be preferable to use a method with a match instead:
+
+```
+enum Foo { Q }
+impl Foo {
+    fn get_str(&self) -> &'static str {
+        match *self {
+            Foo::Q => "32",
+        }
+    }
+}
+```
+"##,
+
+E0080: r##"
+This error indicates that the compiler was unable to sensibly evaluate an
+integer expression provided as an enum discriminant. Attempting to divide by 0
+or causing integer overflow are two ways to induce this error. For example:
+
+```
+enum Enum {
+    X = (1 << 500),
+    Y = (1 / 0)
+}
+```
+
+Ensure that the expressions given can be evaluated as the desired integer type.
+See the FFI section of the Reference for more information about using a custom
+integer type:
+
+https://doc.rust-lang.org/reference.html#ffi-attributes
+"##,
+
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -2510,6 +2568,7 @@ register_diagnostics! {
     E0366, // dropck forbid specialization to concrete type or region
     E0367, // dropck forbid specialization to predicate not in struct/enum
     E0369, // binary operation `<op>` cannot be applied to types
+    E0370, // discriminant overflow
     E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with one field being coerced, none found
     E0375, // the trait `CoerceUnsized` may only be implemented for a coercion

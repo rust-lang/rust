@@ -74,22 +74,24 @@ use std::cell::{Cell, RefCell, Ref};
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
+use std::iter;
+use std::marker::PhantomData;
 use std::mem;
 use std::ops;
 use std::rc::Rc;
+use std::slice;
 use std::vec::IntoIter;
 use collections::enum_set::{self, EnumSet, CLike};
+use core::nonzero::NonZero;
 use std::collections::{HashMap, HashSet};
+use rustc_data_structures::ivar;
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
-use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
-use syntax::ast::{StructField, UnnamedField, Visibility};
+use syntax::ast::{MutImmutable, MutMutable, Name, NodeId, Visibility};
 use syntax::ast_util::{self, is_local, local_def};
 use syntax::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
 use syntax::codemap::Span;
-use syntax::parse::token::{self, InternedString, special_idents};
-use syntax::print::pprust;
-use syntax::ptr::P;
+use syntax::parse::token::{InternedString, special_idents};
 use syntax::ast;
 
 pub type Disr = u64;
@@ -107,83 +109,6 @@ pub struct CrateAnalysis {
     pub reachable: NodeSet,
     pub name: String,
     pub glob_map: Option<GlobMap>,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Field<'tcx> {
-    pub name: ast::Name,
-    pub mt: TypeAndMut<'tcx>
-}
-
-// Enum information
-#[derive(Clone)]
-pub struct VariantInfo<'tcx> {
-    pub args: Vec<Ty<'tcx>>,
-    pub arg_names: Option<Vec<ast::Name>>,
-    pub ctor_ty: Option<Ty<'tcx>>,
-    pub name: ast::Name,
-    pub id: ast::DefId,
-    pub disr_val: Disr,
-    pub vis: Visibility
-}
-
-impl<'tcx> VariantInfo<'tcx> {
-
-    /// Creates a new VariantInfo from the corresponding ast representation.
-    ///
-    /// Does not do any caching of the value in the type context.
-    pub fn from_ast_variant(cx: &ctxt<'tcx>,
-                            ast_variant: &ast::Variant,
-                            discriminant: Disr) -> VariantInfo<'tcx> {
-        let ctor_ty = cx.node_id_to_type(ast_variant.node.id);
-
-        match ast_variant.node.kind {
-            ast::TupleVariantKind(ref args) => {
-                let arg_tys = if !args.is_empty() {
-                    // the regions in the argument types come from the
-                    // enum def'n, and hence will all be early bound
-                    cx.no_late_bound_regions(&ctor_ty.fn_args()).unwrap()
-                } else {
-                    Vec::new()
-                };
-
-                return VariantInfo {
-                    args: arg_tys,
-                    arg_names: None,
-                    ctor_ty: Some(ctor_ty),
-                    name: ast_variant.node.name.name,
-                    id: ast_util::local_def(ast_variant.node.id),
-                    disr_val: discriminant,
-                    vis: ast_variant.node.vis
-                };
-            },
-            ast::StructVariantKind(ref struct_def) => {
-                let fields: &[StructField] = &struct_def.fields;
-
-                assert!(!fields.is_empty());
-
-                let arg_tys = struct_def.fields.iter()
-                    .map(|field| cx.node_id_to_type(field.node.id)).collect();
-                let arg_names = fields.iter().map(|field| {
-                    match field.node.kind {
-                        NamedField(ident, _) => ident.name,
-                        UnnamedField(..) => cx.sess.bug(
-                            "enum_variants: all fields in struct must have a name")
-                    }
-                }).collect();
-
-                return VariantInfo {
-                    args: arg_tys,
-                    arg_names: Some(arg_names),
-                    ctor_ty: None,
-                    name: ast_variant.node.name.name,
-                    id: ast_util::local_def(ast_variant.node.id),
-                    disr_val: discriminant,
-                    vis: ast_variant.node.vis
-                };
-            }
-        }
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -208,7 +133,7 @@ impl DtorKind {
     }
 }
 
-trait IntTypeExt {
+pub trait IntTypeExt {
     fn to_ty<'tcx>(&self, cx: &ctxt<'tcx>) -> Ty<'tcx>;
     fn i64_to_disr(&self, val: i64) -> Option<Disr>;
     fn u64_to_disr(&self, val: u64) -> Option<Disr>;
@@ -492,14 +417,6 @@ pub struct TypeAndMut<'tcx> {
     pub mutbl: ast::Mutability,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct FieldTy {
-    pub name: Name,
-    pub id: DefId,
-    pub vis: ast::Visibility,
-    pub origin: ast::DefId,  // The DefId of the struct in which the field is declared.
-}
-
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable)]
 pub struct ItemVariances {
     pub types: VecPerParamSpace<Variance>,
@@ -721,6 +638,7 @@ pub struct CtxtArenas<'tcx> {
 
     // references
     trait_defs: TypedArena<TraitDef<'tcx>>,
+    adt_defs: TypedArena<AdtDefData<'tcx, 'tcx>>,
 }
 
 impl<'tcx> CtxtArenas<'tcx> {
@@ -732,7 +650,8 @@ impl<'tcx> CtxtArenas<'tcx> {
             region: TypedArena::new(),
             stability: TypedArena::new(),
 
-            trait_defs: TypedArena::new()
+            trait_defs: TypedArena::new(),
+            adt_defs: TypedArena::new()
         }
     }
 }
@@ -847,6 +766,7 @@ pub struct ctxt<'tcx> {
 
     pub impl_trait_refs: RefCell<DefIdMap<Option<TraitRef<'tcx>>>>,
     pub trait_defs: RefCell<DefIdMap<&'tcx TraitDef<'tcx>>>,
+    pub adt_defs: RefCell<DefIdMap<AdtDefMaster<'tcx>>>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated predicates.
@@ -866,13 +786,11 @@ pub struct ctxt<'tcx> {
     pub rcache: RefCell<FnvHashMap<CReaderCacheKey, Ty<'tcx>>>,
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, TypeContents>>,
     pub ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
-    pub enum_var_cache: RefCell<DefIdMap<Rc<Vec<Rc<VariantInfo<'tcx>>>>>>,
     pub ty_param_defs: RefCell<NodeMap<TypeParameterDef<'tcx>>>,
     pub normalized_cache: RefCell<FnvHashMap<Ty<'tcx>, Ty<'tcx>>>,
     pub lang_items: middle::lang_items::LanguageItems,
     /// A mapping of fake provided method def_ids to the default implementation
     pub provided_method_sources: RefCell<DefIdMap<ast::DefId>>,
-    pub struct_fields: RefCell<DefIdMap<Rc<Vec<FieldTy>>>>,
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
@@ -1014,6 +932,18 @@ impl<'tcx> ctxt<'tcx> {
         let did = def.trait_ref.def_id;
         let interned = self.arenas.trait_defs.alloc(def);
         self.trait_defs.borrow_mut().insert(did, interned);
+        interned
+    }
+
+    pub fn intern_adt_def(&self,
+                          did: DefId,
+                          kind: AdtKind,
+                          variants: Vec<VariantDefData<'tcx, 'tcx>>)
+                          -> AdtDefMaster<'tcx> {
+        let def = AdtDefData::new(self, did, kind, variants);
+        let interned = self.arenas.adt_defs.alloc(def);
+        // this will need a transmute when reverse-variance is removed
+        self.adt_defs.borrow_mut().insert(did, interned);
         interned
     }
 
@@ -1384,6 +1314,61 @@ impl<'tcx> Hash for TyS<'tcx> {
 }
 
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
+
+/// An IVar that contains a Ty. 'lt is a (reverse-variant) upper bound
+/// on the lifetime of the IVar. This is required because of variance
+/// problems: the IVar needs to be variant with respect to 'tcx (so
+/// it can be referred to from Ty) but can only be modified if its
+/// lifetime is exactly 'tcx.
+///
+/// Safety invariants:
+///     (A) self.0, if fulfilled, is a valid Ty<'tcx>
+///     (B) no aliases to this value with a 'tcx longer than this
+///         value's 'lt exist
+///
+/// NonZero is used rather than Unique because Unique isn't Copy.
+pub struct TyIVar<'tcx, 'lt: 'tcx>(ivar::Ivar<NonZero<*const TyS<'static>>>,
+                                   PhantomData<fn(TyS<'lt>)->TyS<'tcx>>);
+
+impl<'tcx, 'lt> TyIVar<'tcx, 'lt> {
+    #[inline]
+    pub fn new() -> Self {
+        // Invariant (A) satisfied because the IVar is unfulfilled
+        // Invariant (B) because 'lt : 'tcx
+        TyIVar(ivar::Ivar::new(), PhantomData)
+    }
+
+    #[inline]
+    pub fn get(&self) -> Option<Ty<'tcx>> {
+        match self.0.get() {
+            None => None,
+            // valid because of invariant (A)
+            Some(v) => Some(unsafe { &*(*v as *const TyS<'tcx>) })
+        }
+    }
+    #[inline]
+    pub fn unwrap(&self) -> Ty<'tcx> {
+        self.get().unwrap()
+    }
+
+    pub fn fulfill(&self, value: Ty<'lt>) {
+        // Invariant (A) is fulfilled, because by (B), every alias
+        // of this has a 'tcx longer than 'lt.
+        let value: *const TyS<'lt> = value;
+        // FIXME(27214): unneeded [as *const ()]
+        let value = value as *const () as *const TyS<'static>;
+        self.0.fulfill(unsafe { NonZero::new(value) })
+    }
+}
+
+impl<'tcx, 'lt> fmt::Debug for TyIVar<'tcx, 'lt> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.get() {
+            Some(val) => write!(f, "TyIVar({:?})", val),
+            None => f.write_str("TyIVar(<unfulfilled>)")
+        }
+    }
+}
 
 /// An entry in the type interner.
 pub struct InternedTy<'tcx> {
@@ -1761,12 +1746,12 @@ pub enum TypeVariants<'tcx> {
     /// from the tcx, use the `NodeId` from the `ast::Ty` and look it up in
     /// the `ast_ty_to_ty_cache`. This is probably true for `TyStruct` as
     /// well.
-    TyEnum(DefId, &'tcx Substs<'tcx>),
+    TyEnum(AdtDef<'tcx>, &'tcx Substs<'tcx>),
 
     /// A structure type, defined with `struct`.
     ///
     /// See warning about substitutions for enumerated types.
-    TyStruct(DefId, &'tcx Substs<'tcx>),
+    TyStruct(AdtDef<'tcx>, &'tcx Substs<'tcx>),
 
     /// `Box<T>`; this is nominally a struct in the documentation, but is
     /// special-cased internally. For example, it is possible to implicitly
@@ -2121,7 +2106,7 @@ pub struct ExistentialBounds<'tcx> {
 pub struct BuiltinBounds(EnumSet<BuiltinBound>);
 
 impl BuiltinBounds {
-       pub fn empty() -> BuiltinBounds {
+    pub fn empty() -> BuiltinBounds {
         BuiltinBounds(EnumSet::new())
     }
 
@@ -2984,33 +2969,31 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         // FIXME: (@jroesch) float this code up
         let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(self.clone()), false);
 
-        let did = match self_type.sty {
-            ty::TyStruct(struct_did, substs) => {
-                let fields = tcx.struct_fields(struct_did, substs);
-                for field in &fields {
-                    if infcx.type_moves_by_default(field.mt.ty, span) {
+        let adt = match self_type.sty {
+            ty::TyStruct(struct_def, substs) => {
+                for field in struct_def.all_fields() {
+                    let field_ty = field.ty(tcx, substs);
+                    if infcx.type_moves_by_default(field_ty, span) {
                         return Err(FieldDoesNotImplementCopy(field.name))
                     }
                 }
-                struct_did
+                struct_def
             }
-            ty::TyEnum(enum_did, substs) => {
-                let enum_variants = tcx.enum_variants(enum_did);
-                for variant in enum_variants.iter() {
-                    for variant_arg_type in &variant.args {
-                        let substd_arg_type =
-                            variant_arg_type.subst(tcx, substs);
-                        if infcx.type_moves_by_default(substd_arg_type, span) {
+            ty::TyEnum(enum_def, substs) => {
+                for variant in &enum_def.variants {
+                    for field in &variant.fields {
+                        let field_ty = field.ty(tcx, substs);
+                        if infcx.type_moves_by_default(field_ty, span) {
                             return Err(VariantDoesNotImplementCopy(variant.name))
                         }
                     }
                 }
-                enum_did
+                enum_def
             }
             _ => return Err(TypeIsStructural),
         };
 
-        if tcx.has_dtor(did) {
+        if adt.has_dtor(tcx) {
             return Err(TypeHasDestructor)
         }
 
@@ -3191,6 +3174,286 @@ impl<'tcx> TraitDef<'tcx> {
         }
     }
 
+}
+
+bitflags! {
+    flags AdtFlags: u32 {
+        const NO_ADT_FLAGS        = 0,
+        const IS_ENUM             = 1 << 0,
+        const IS_DTORCK           = 1 << 1, // is this a dtorck type?
+        const IS_DTORCK_VALID     = 1 << 2,
+        const IS_PHANTOM_DATA     = 1 << 3,
+        const IS_SIMD             = 1 << 4,
+        const IS_FUNDAMENTAL      = 1 << 5,
+    }
+}
+
+pub type AdtDef<'tcx> = &'tcx AdtDefData<'tcx, 'static>;
+pub type VariantDef<'tcx> = &'tcx VariantDefData<'tcx, 'static>;
+pub type FieldDef<'tcx> = &'tcx FieldDefData<'tcx, 'static>;
+
+// See comment on AdtDefData for explanation
+pub type AdtDefMaster<'tcx> = &'tcx AdtDefData<'tcx, 'tcx>;
+pub type VariantDefMaster<'tcx> = &'tcx VariantDefData<'tcx, 'tcx>;
+pub type FieldDefMaster<'tcx> = &'tcx FieldDefData<'tcx, 'tcx>;
+
+pub struct VariantDefData<'tcx, 'container: 'tcx> {
+    pub did: DefId,
+    pub name: Name, // struct's name if this is a struct
+    pub disr_val: Disr,
+    pub fields: Vec<FieldDefData<'tcx, 'container>>
+}
+
+pub struct FieldDefData<'tcx, 'container: 'tcx> {
+    /// The field's DefId. NOTE: the fields of tuple-like enum variants
+    /// are not real items, and don't have entries in tcache etc.
+    pub did: DefId,
+    /// special_idents::unnamed_field.name
+    /// if this is a tuple-like field
+    pub name: Name,
+    pub vis: ast::Visibility,
+    /// TyIVar is used here to allow for variance (see the doc at
+    /// AdtDefData).
+    ty: TyIVar<'tcx, 'container>
+}
+
+/// The definition of an abstract data type - a struct or enum.
+///
+/// These are all interned (by intern_adt_def) into the adt_defs
+/// table.
+///
+/// Because of the possibility of nested tcx-s, this type
+/// needs 2 lifetimes: the traditional variant lifetime ('tcx)
+/// bounding the lifetime of the inner types is of course necessary.
+/// However, it is not sufficient - types from a child tcx must
+/// not be leaked into the master tcx by being stored in an AdtDefData.
+///
+/// The 'container lifetime ensures that by outliving the container
+/// tcx and preventing shorter-lived types from being inserted. When
+/// write access is not needed, the 'container lifetime can be
+/// erased to 'static, which can be done by the AdtDef wrapper.
+pub struct AdtDefData<'tcx, 'container: 'tcx> {
+    pub did: DefId,
+    pub variants: Vec<VariantDefData<'tcx, 'container>>,
+    flags: Cell<AdtFlags>,
+}
+
+impl<'tcx, 'container> PartialEq for AdtDefData<'tcx, 'container> {
+    // AdtDefData are always interned and this is part of TyS equality
+    #[inline]
+    fn eq(&self, other: &Self) -> bool { self as *const _ == other as *const _ }
+}
+
+impl<'tcx, 'container> Eq for AdtDefData<'tcx, 'container> {}
+
+impl<'tcx, 'container> Hash for AdtDefData<'tcx, 'container> {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        (self as *const AdtDefData).hash(s)
+    }
+}
+
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum AdtKind { Struct, Enum }
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum VariantKind { Dict, Tuple, Unit }
+
+impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
+    fn new(tcx: &ctxt<'tcx>,
+           did: DefId,
+           kind: AdtKind,
+           variants: Vec<VariantDefData<'tcx, 'container>>) -> Self {
+        let mut flags = AdtFlags::NO_ADT_FLAGS;
+        let attrs = tcx.get_attrs(did);
+        if attrs.iter().any(|item| item.check_name("fundamental")) {
+            flags = flags | AdtFlags::IS_FUNDAMENTAL;
+        }
+        if attrs.iter().any(|item| item.check_name("simd")) {
+            flags = flags | AdtFlags::IS_SIMD;
+        }
+        if Some(did) == tcx.lang_items.phantom_data() {
+            flags = flags | AdtFlags::IS_PHANTOM_DATA;
+        }
+        if let AdtKind::Enum = kind {
+            flags = flags | AdtFlags::IS_ENUM;
+        }
+        AdtDefData {
+            did: did,
+            variants: variants,
+            flags: Cell::new(flags),
+        }
+    }
+
+    fn calculate_dtorck(&'tcx self, tcx: &ctxt<'tcx>) {
+        if tcx.is_adt_dtorck(self) {
+            self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK);
+        }
+        self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK_VALID)
+    }
+
+    /// Returns the kind of the ADT - Struct or Enum.
+    #[inline]
+    pub fn adt_kind(&self) -> AdtKind {
+        if self.flags.get().intersects(AdtFlags::IS_ENUM) {
+            AdtKind::Enum
+        } else {
+            AdtKind::Struct
+        }
+    }
+
+    /// Returns whether this is a dtorck type. If this returns
+    /// true, this type being safe for destruction requires it to be
+    /// alive; Otherwise, only the contents are required to be.
+    #[inline]
+    pub fn is_dtorck(&'tcx self, tcx: &ctxt<'tcx>) -> bool {
+        if !self.flags.get().intersects(AdtFlags::IS_DTORCK_VALID) {
+            self.calculate_dtorck(tcx)
+        }
+        self.flags.get().intersects(AdtFlags::IS_DTORCK)
+    }
+
+    /// Returns whether this type is #[fundamental] for the purposes
+    /// of coherence checking.
+    #[inline]
+    pub fn is_fundamental(&self) -> bool {
+        self.flags.get().intersects(AdtFlags::IS_FUNDAMENTAL)
+    }
+
+    #[inline]
+    pub fn is_simd(&self) -> bool {
+        self.flags.get().intersects(AdtFlags::IS_SIMD)
+    }
+
+    /// Returns true if this is PhantomData<T>.
+    #[inline]
+    pub fn is_phantom_data(&self) -> bool {
+        self.flags.get().intersects(AdtFlags::IS_PHANTOM_DATA)
+    }
+
+    /// Returns whether this type has a destructor.
+    pub fn has_dtor(&self, tcx: &ctxt<'tcx>) -> bool {
+        tcx.destructor_for_type.borrow().contains_key(&self.did)
+    }
+
+    /// Asserts this is a struct and returns the struct's unique
+    /// variant.
+    pub fn struct_variant(&self) -> &VariantDefData<'tcx, 'container> {
+        assert!(self.adt_kind() == AdtKind::Struct);
+        &self.variants[0]
+    }
+
+    #[inline]
+    pub fn type_scheme(&self, tcx: &ctxt<'tcx>) -> TypeScheme<'tcx> {
+        tcx.lookup_item_type(self.did)
+    }
+
+    #[inline]
+    pub fn predicates(&self, tcx: &ctxt<'tcx>) -> GenericPredicates<'tcx> {
+        tcx.lookup_predicates(self.did)
+    }
+
+    /// Returns an iterator over all fields contained
+    /// by this ADT.
+    #[inline]
+    pub fn all_fields(&self) ->
+            iter::FlatMap<
+                slice::Iter<VariantDefData<'tcx, 'container>>,
+                slice::Iter<FieldDefData<'tcx, 'container>>,
+                for<'s> fn(&'s VariantDefData<'tcx, 'container>)
+                    -> slice::Iter<'s, FieldDefData<'tcx, 'container>>
+            > {
+        self.variants.iter().flat_map(VariantDefData::fields_iter)
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.variants.is_empty()
+    }
+
+    #[inline]
+    pub fn is_univariant(&self) -> bool {
+        self.variants.len() == 1
+    }
+
+    pub fn is_payloadfree(&self) -> bool {
+        !self.variants.is_empty() &&
+            self.variants.iter().all(|v| v.fields.is_empty())
+    }
+
+    pub fn variant_with_id(&self, vid: DefId) -> &VariantDefData<'tcx, 'container> {
+        self.variants
+            .iter()
+            .find(|v| v.did == vid)
+            .expect("variant_with_id: unknown variant")
+    }
+
+    pub fn variant_of_def(&self, def: def::Def) -> &VariantDefData<'tcx, 'container> {
+        match def {
+            def::DefVariant(_, vid, _) => self.variant_with_id(vid),
+            def::DefStruct(..) | def::DefTy(..) => self.struct_variant(),
+            _ => panic!("unexpected def {:?} in variant_of_def", def)
+        }
+    }
+}
+
+impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
+    #[inline]
+    fn fields_iter(&self) -> slice::Iter<FieldDefData<'tcx, 'container>> {
+        self.fields.iter()
+    }
+
+    pub fn kind(&self) -> VariantKind {
+        match self.fields.get(0) {
+            None => VariantKind::Unit,
+            Some(&FieldDefData { name, .. }) if name == special_idents::unnamed_field.name => {
+                VariantKind::Tuple
+            }
+            Some(_) => VariantKind::Dict
+        }
+    }
+
+    pub fn is_tuple_struct(&self) -> bool {
+        self.kind() == VariantKind::Tuple
+    }
+
+    #[inline]
+    pub fn find_field_named(&self,
+                            name: ast::Name)
+                            -> Option<&FieldDefData<'tcx, 'container>> {
+        self.fields.iter().find(|f| f.name == name)
+    }
+
+    #[inline]
+    pub fn field_named(&self, name: ast::Name) -> &FieldDefData<'tcx, 'container> {
+        self.find_field_named(name).unwrap()
+    }
+}
+
+impl<'tcx, 'container> FieldDefData<'tcx, 'container> {
+    pub fn new(did: DefId,
+               name: Name,
+               vis: ast::Visibility) -> Self {
+        FieldDefData {
+            did: did,
+            name: name,
+            vis: vis,
+            ty: TyIVar::new()
+        }
+    }
+
+    pub fn ty(&self, tcx: &ctxt<'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
+        self.unsubst_ty().subst(tcx, subst)
+    }
+
+    pub fn unsubst_ty(&self) -> Ty<'tcx> {
+        self.ty.unwrap()
+    }
+
+    pub fn fulfill_ty(&self, ty: Ty<'container>) {
+        self.ty.fulfill(ty);
+    }
 }
 
 /// Records the substitutions used to translate the polytype for an
@@ -3498,6 +3761,7 @@ impl<'tcx> ctxt<'tcx> {
             tables: RefCell::new(Tables::empty()),
             impl_trait_refs: RefCell::new(DefIdMap()),
             trait_defs: RefCell::new(DefIdMap()),
+            adt_defs: RefCell::new(DefIdMap()),
             predicates: RefCell::new(DefIdMap()),
             super_predicates: RefCell::new(DefIdMap()),
             fulfilled_predicates: RefCell::new(traits::FulfilledPredicates::new()),
@@ -3507,7 +3771,6 @@ impl<'tcx> ctxt<'tcx> {
             rcache: RefCell::new(FnvHashMap()),
             tc_cache: RefCell::new(FnvHashMap()),
             ast_ty_to_ty_cache: RefCell::new(NodeMap()),
-            enum_var_cache: RefCell::new(DefIdMap()),
             impl_or_trait_items: RefCell::new(DefIdMap()),
             trait_item_def_ids: RefCell::new(DefIdMap()),
             trait_items_cache: RefCell::new(DefIdMap()),
@@ -3515,7 +3778,6 @@ impl<'tcx> ctxt<'tcx> {
             normalized_cache: RefCell::new(FnvHashMap()),
             lang_items: lang_items,
             provided_method_sources: RefCell::new(DefIdMap()),
-            struct_fields: RefCell::new(DefIdMap()),
             destructor_for_type: RefCell::new(DefIdMap()),
             destructors: RefCell::new(DefIdSet()),
             inherent_impls: RefCell::new(DefIdMap()),
@@ -3679,9 +3941,9 @@ impl<'tcx> ctxt<'tcx> {
         self.mk_imm_ref(self.mk_region(ty::ReStatic), self.mk_str())
     }
 
-    pub fn mk_enum(&self, did: ast::DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    pub fn mk_enum(&self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         // take a copy of substs so that we own the vectors inside
-        self.mk_ty(TyEnum(did, substs))
+        self.mk_ty(TyEnum(def, substs))
     }
 
     pub fn mk_box(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -3781,10 +4043,9 @@ impl<'tcx> ctxt<'tcx> {
         self.mk_ty(TyProjection(inner))
     }
 
-    pub fn mk_struct(&self, struct_id: ast::DefId,
-                     substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    pub fn mk_struct(&self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         // take a copy of substs so that we own the vectors inside
-        self.mk_ty(TyStruct(struct_id, substs))
+        self.mk_ty(TyStruct(def, substs))
     }
 
     pub fn mk_closure(&self,
@@ -3944,9 +4205,10 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_empty(&self, cx: &ctxt) -> bool {
+    pub fn is_empty(&self, _cx: &ctxt) -> bool {
+        // FIXME(#24885): be smarter here
         match self.sty {
-            TyEnum(did, _) => cx.enum_variants(did).is_empty(),
+            TyEnum(def, _) | TyStruct(def, _) => def.is_empty(),
             _ => false
         }
     }
@@ -3985,9 +4247,10 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_simd(&self, cx: &ctxt) -> bool {
+    #[inline]
+    pub fn is_simd(&self) -> bool {
         match self.sty {
-            TyStruct(did, _) => cx.lookup_simd(did),
+            TyStruct(def, _) => def.is_simd(),
             _ => false
         }
     }
@@ -4003,19 +4266,16 @@ impl<'tcx> TyS<'tcx> {
 
     pub fn simd_type(&self, cx: &ctxt<'tcx>) -> Ty<'tcx> {
         match self.sty {
-            TyStruct(did, substs) => {
-                let fields = cx.lookup_struct_fields(did);
-                cx.lookup_field_type(did, fields[0].id, substs)
+            TyStruct(def, substs) => {
+                def.struct_variant().fields[0].ty(cx, substs)
             }
             _ => panic!("simd_type called on invalid type")
         }
     }
 
-    pub fn simd_size(&self, cx: &ctxt) -> usize {
+    pub fn simd_size(&self, _cx: &ctxt) -> usize {
         match self.sty {
-            TyStruct(did, _) => {
-                cx.lookup_struct_fields(did).len()
-            }
+            TyStruct(def, _) => def.struct_variant().fields.len(),
             _ => panic!("simd_size called on invalid type")
         }
     }
@@ -4067,9 +4327,16 @@ impl<'tcx> TyS<'tcx> {
     pub fn ty_to_def_id(&self) -> Option<ast::DefId> {
         match self.sty {
             TyTrait(ref tt) => Some(tt.principal_def_id()),
-            TyStruct(id, _) |
-            TyEnum(id, _) |
+            TyStruct(def, _) |
+            TyEnum(def, _) => Some(def.did),
             TyClosure(id, _) => Some(id),
+            _ => None
+        }
+    }
+
+    pub fn ty_adt_def(&self) -> Option<AdtDef<'tcx>> {
+        match self.sty {
+            TyStruct(adt, _) | TyEnum(adt, _) => Some(adt),
             _ => None
         }
     }
@@ -4275,18 +4542,6 @@ impl<'tcx> TyS<'tcx> {
                 }
                 TyStr => TC::None,
 
-                TyStruct(did, substs) => {
-                    let flds = cx.struct_fields(did, substs);
-                    let mut res =
-                        TypeContents::union(&flds[..],
-                                            |f| tc_ty(cx, f.mt.ty, cache));
-
-                    if cx.has_dtor(did) {
-                        res = res | TC::OwnsDtor;
-                    }
-                    apply_lang_items(cx, did, res)
-                }
-
                 TyClosure(_, ref substs) => {
                     TypeContents::union(&substs.upvar_tys, |ty| tc_ty(cx, &ty, cache))
                 }
@@ -4296,21 +4551,19 @@ impl<'tcx> TyS<'tcx> {
                                         |ty| tc_ty(cx, *ty, cache))
                 }
 
-                TyEnum(did, substs) => {
-                    let variants = cx.substd_enum_variants(did, substs);
+                TyStruct(def, substs) | TyEnum(def, substs) => {
                     let mut res =
-                        TypeContents::union(&variants[..], |variant| {
-                            TypeContents::union(&variant.args,
-                                                |arg_ty| {
-                                tc_ty(cx, *arg_ty, cache)
+                        TypeContents::union(&def.variants, |v| {
+                            TypeContents::union(&v.fields, |f| {
+                                tc_ty(cx, f.ty(cx, substs), cache)
                             })
                         });
 
-                    if cx.has_dtor(did) {
+                    if def.has_dtor(cx) {
                         res = res | TC::OwnsDtor;
                     }
 
-                    apply_lang_items(cx, did, res)
+                    apply_lang_items(cx, def.did, res)
                 }
 
                 TyProjection(..) |
@@ -4431,7 +4684,7 @@ impl<'tcx> TyS<'tcx> {
 
     // True if instantiating an instance of `r_ty` requires an instance of `r_ty`.
     pub fn is_instantiable(&'tcx self, cx: &ctxt<'tcx>) -> bool {
-        fn type_requires<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<DefId>,
+        fn type_requires<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<AdtDef<'tcx>>,
                                r_ty: Ty<'tcx>, ty: Ty<'tcx>) -> bool {
             debug!("type_requires({:?}, {:?})?",
                    r_ty, ty);
@@ -4443,7 +4696,7 @@ impl<'tcx> TyS<'tcx> {
             return r;
         }
 
-        fn subtypes_require<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<DefId>,
+        fn subtypes_require<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<AdtDef<'tcx>>,
                                   r_ty: Ty<'tcx>, ty: Ty<'tcx>) -> bool {
             debug!("subtypes_require({:?}, {:?})?",
                    r_ty, ty);
@@ -4482,16 +4735,22 @@ impl<'tcx> TyS<'tcx> {
                     false
                 }
 
-                TyStruct(ref did, _) if seen.contains(did) => {
-                    false
-                }
-
-                TyStruct(did, substs) => {
-                    seen.push(did);
-                    let fields = cx.struct_fields(did, substs);
-                    let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
-                    seen.pop().unwrap();
-                    r
+                TyStruct(def, substs) | TyEnum(def, substs) => {
+                    if seen.contains(&def) {
+                        // FIXME(#27497) ???
+                        false
+                    } else if def.is_empty() {
+                        // HACK: required for empty types to work. This
+                        // check is basically a lint anyway.
+                        false
+                    } else {
+                        seen.push(def);
+                        let r = def.variants.iter().all(|v| v.fields.iter().any(|f| {
+                            type_requires(cx, seen, r_ty, f.ty(cx, substs))
+                        }));
+                        seen.pop().unwrap();
+                        r
+                    }
                 }
 
                 TyError |
@@ -4504,23 +4763,6 @@ impl<'tcx> TyS<'tcx> {
 
                 TyTuple(ref ts) => {
                     ts.iter().any(|ty| type_requires(cx, seen, r_ty, *ty))
-                }
-
-                TyEnum(ref did, _) if seen.contains(did) => {
-                    false
-                }
-
-                TyEnum(did, substs) => {
-                    seen.push(did);
-                    let vs = cx.enum_variants(did);
-                    let r = !vs.is_empty() && vs.iter().all(|variant| {
-                        variant.args.iter().any(|aty| {
-                            let sty = aty.subst(cx, substs);
-                            type_requires(cx, seen, r_ty, sty)
-                        })
-                    });
-                    seen.pop().unwrap();
-                    r
                 }
             };
 
@@ -4576,17 +4818,11 @@ impl<'tcx> TyS<'tcx> {
                 TyArray(ty, _) => {
                     is_type_structurally_recursive(cx, sp, seen, ty)
                 }
-                TyStruct(did, substs) => {
-                    let fields = cx.struct_fields(did, substs);
-                    find_nonrepresentable(cx, sp, seen, fields.iter().map(|f| f.mt.ty))
-                }
-                TyEnum(did, substs) => {
-                    let vs = cx.enum_variants(did);
-                    let iter = vs.iter()
-                        .flat_map(|variant| &variant.args)
-                        .map(|aty| { aty.subst_spanned(cx, substs, Some(sp)) });
-
-                    find_nonrepresentable(cx, sp, seen, iter)
+                TyStruct(def, substs) | TyEnum(def, substs) => {
+                    find_nonrepresentable(cx,
+                                          sp,
+                                          seen,
+                                          def.all_fields().map(|f| f.ty(cx, substs)))
                 }
                 TyClosure(..) => {
                     // this check is run on type definitions, so we don't expect
@@ -4597,10 +4833,10 @@ impl<'tcx> TyS<'tcx> {
             }
         }
 
-        fn same_struct_or_enum_def_id(ty: Ty, did: DefId) -> bool {
+        fn same_struct_or_enum<'tcx>(ty: Ty<'tcx>, def: AdtDef<'tcx>) -> bool {
             match ty.sty {
-                TyStruct(ty_did, _) | TyEnum(ty_did, _) => {
-                     ty_did == did
+                TyStruct(ty_def, _) | TyEnum(ty_def, _) => {
+                     ty_def == def
                 }
                 _ => false
             }
@@ -4635,7 +4871,7 @@ impl<'tcx> TyS<'tcx> {
             debug!("is_type_structurally_recursive: {:?}", ty);
 
             match ty.sty {
-                TyStruct(did, _) | TyEnum(did, _) => {
+                TyStruct(def, _) | TyEnum(def, _) => {
                     {
                         // Iterate through stack of previously seen types.
                         let mut iter = seen.iter();
@@ -4650,7 +4886,7 @@ impl<'tcx> TyS<'tcx> {
 
                         match iter.next() {
                             Some(&seen_type) => {
-                                if same_struct_or_enum_def_id(seen_type, did) {
+                                if same_struct_or_enum(seen_type, def) {
                                     debug!("SelfRecursive: {:?} contains {:?}",
                                            seen_type,
                                            ty);
@@ -4778,22 +5014,6 @@ impl<'tcx> TyS<'tcx> {
         match self.sty {
             TyInt(ast::TyIs) | TyUint(ast::TyUs) => false,
             TyInt(..) | TyUint(..) | TyFloat(..) => true,
-            _ => false
-        }
-    }
-
-    // Whether a type is enum like, that is an enum type with only nullary
-    // constructors
-    pub fn is_c_like_enum(&self, cx: &ctxt) -> bool {
-        match self.sty {
-            TyEnum(did, _) => {
-                let variants = cx.enum_variants(did);
-                if variants.is_empty() {
-                    false
-                } else {
-                    variants.iter().all(|v| v.args.is_empty())
-                }
-            }
             _ => false
         }
     }
@@ -4959,7 +5179,7 @@ impl<'tcx> TyS<'tcx> {
             TyUint(_) | TyFloat(_) | TyStr => self.to_string(),
             TyTuple(ref tys) if tys.is_empty() => self.to_string(),
 
-            TyEnum(id, _) => format!("enum `{}`", cx.item_path_str(id)),
+            TyEnum(def, _) => format!("enum `{}`", cx.item_path_str(def.did)),
             TyBox(_) => "box".to_string(),
             TyArray(_, n) => format!("array of {} elements", n),
             TySlice(_) => "slice".to_string(),
@@ -4970,8 +5190,8 @@ impl<'tcx> TyS<'tcx> {
             TyTrait(ref inner) => {
                 format!("trait {}", cx.item_path_str(inner.principal_def_id()))
             }
-            TyStruct(id, _) => {
-                format!("struct `{}`", cx.item_path_str(id))
+            TyStruct(def, _) => {
+                format!("struct `{}`", cx.item_path_str(def.did))
             }
             TyClosure(..) => "closure".to_string(),
             TyTuple(_) => "tuple".to_string(),
@@ -5196,27 +5416,18 @@ impl<'tcx> ctxt<'tcx> {
                                  ty: Ty<'tcx>,
                                  i: usize,
                                  variant: Option<ast::DefId>) -> Option<Ty<'tcx>> {
-
         match (&ty.sty, variant) {
+            (&TyStruct(def, substs), None) => {
+                def.struct_variant().fields.get(i).map(|f| f.ty(self, substs))
+            }
+            (&TyEnum(def, substs), Some(vid)) => {
+                def.variant_with_id(vid).fields.get(i).map(|f| f.ty(self, substs))
+            }
+            (&TyEnum(def, substs), None) => {
+                assert!(def.is_univariant());
+                def.variants[0].fields.get(i).map(|f| f.ty(self, substs))
+            }
             (&TyTuple(ref v), None) => v.get(i).cloned(),
-
-
-            (&TyStruct(def_id, substs), None) => self.lookup_struct_fields(def_id)
-                .get(i)
-                .map(|&t| self.lookup_item_type(t.id).ty.subst(self, substs)),
-
-            (&TyEnum(def_id, substs), Some(variant_def_id)) => {
-                let variant_info = self.enum_variant_with_id(def_id, variant_def_id);
-                variant_info.args.get(i).map(|t|t.subst(self, substs))
-            }
-
-            (&TyEnum(def_id, substs), None) => {
-                assert!(self.enum_is_univariant(def_id));
-                let enum_variants = self.enum_variants(def_id);
-                let variant_info = &enum_variants[0];
-                variant_info.args.get(i).map(|t|t.subst(self, substs))
-            }
-
             _ => None
         }
     }
@@ -5227,22 +5438,14 @@ impl<'tcx> ctxt<'tcx> {
                             ty: Ty<'tcx>,
                             n: ast::Name,
                             variant: Option<ast::DefId>) -> Option<Ty<'tcx>> {
-
         match (&ty.sty, variant) {
-            (&TyStruct(def_id, substs), None) => {
-                let r = self.lookup_struct_fields(def_id);
-                r.iter().find(|f| f.name == n)
-                    .map(|&f| self.lookup_field_type(def_id, f.id, substs))
+            (&TyStruct(def, substs), None) => {
+                def.struct_variant().find_field_named(n).map(|f| f.ty(self, substs))
             }
-            (&TyEnum(def_id, substs), Some(variant_def_id)) => {
-                let variant_info = self.enum_variant_with_id(def_id, variant_def_id);
-                variant_info.arg_names.as_ref()
-                    .expect("must have struct enum variant if accessing a named fields")
-                    .iter().zip(&variant_info.args)
-                    .find(|&(&name, _)| name == n)
-                    .map(|(_name, arg_t)| arg_t.subst(self, substs))
+            (&TyEnum(def, substs), Some(vid)) => {
+                def.variant_with_id(vid).find_field_named(n).map(|f| f.ty(self, substs))
             }
-            _ => None
+            _ => return None
         }
     }
 
@@ -5421,18 +5624,6 @@ impl<'tcx> ctxt<'tcx> {
                     "macro expression remains after expansion");
             }
         }
-    }
-
-    pub fn field_idx_strict(&self, name: ast::Name, fields: &[Field<'tcx>])
-                            -> usize {
-        let mut i = 0;
-        for f in fields { if f.name == name { return i; } i += 1; }
-        self.sess.bug(&format!(
-            "no field named `{}` found in the list of fields `{:?}`",
-            name,
-            fields.iter()
-                  .map(|f| f.name.to_string())
-                  .collect::<Vec<String>>()));
     }
 
     pub fn note_and_explain_type_err(&self, err: &TypeError<'tcx>, sp: Span) {
@@ -5710,24 +5901,6 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn substd_enum_variants(&self,
-                                id: ast::DefId,
-                                substs: &Substs<'tcx>)
-                                -> Vec<Rc<VariantInfo<'tcx>>> {
-        self.enum_variants(id).iter().map(|variant_info| {
-            let substd_args = variant_info.args.iter()
-                .map(|aty| aty.subst(self, substs)).collect::<Vec<_>>();
-
-            let substd_ctor_ty = variant_info.ctor_ty.subst(self, substs);
-
-            Rc::new(VariantInfo {
-                args: substd_args,
-                ctor_ty: substd_ctor_ty,
-                ..(**variant_info).clone()
-            })
-        }).collect()
-    }
-
     pub fn item_path_str(&self, id: ast::DefId) -> String {
         self.with_path(id, |path| ast_map::path_to_string(path))
     }
@@ -5744,10 +5917,6 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
-    pub fn has_dtor(&self, struct_id: DefId) -> bool {
-        self.destructor_for_type.borrow().contains_key(&struct_id)
-    }
-
     pub fn with_path<T, F>(&self, id: ast::DefId, f: F) -> T where
         F: FnOnce(ast_map::PathElems) -> T,
     {
@@ -5756,10 +5925,6 @@ impl<'tcx> ctxt<'tcx> {
         } else {
             f(csearch::get_item_path(self, id).iter().cloned().chain(LinkedPath::empty()))
         }
-    }
-
-    pub fn enum_is_univariant(&self, id: ast::DefId) -> bool {
-        self.enum_variants(id).len() == 1
     }
 
     /// Returns `(normalized_type, ty)`, where `normalized_type` is the
@@ -5790,133 +5955,6 @@ impl<'tcx> ctxt<'tcx> {
         (repr_type, repr_type_ty)
     }
 
-    fn report_discrim_overflow(&self,
-                               variant_span: Span,
-                               variant_name: &str,
-                               repr_type: attr::IntType,
-                               prev_val: Disr) {
-        let computed_value = repr_type.disr_wrap_incr(Some(prev_val));
-        let computed_value = repr_type.disr_string(computed_value);
-        let prev_val = repr_type.disr_string(prev_val);
-        let repr_type = repr_type.to_ty(self);
-        span_err!(self.sess, variant_span, E0370,
-                  "enum discriminant overflowed on value after {}: {}; \
-                   set explicitly via {} = {} if that is desired outcome",
-                  prev_val, repr_type, variant_name, computed_value);
-    }
-
-    // This computes the discriminant values for the sequence of Variants
-    // attached to a particular enum, taking into account the #[repr] (if
-    // any) provided via the `opt_hint`.
-    fn compute_enum_variants(&self,
-                             vs: &'tcx [P<ast::Variant>],
-                             opt_hint: Option<&attr::ReprAttr>)
-                             -> Vec<Rc<ty::VariantInfo<'tcx>>> {
-        let mut variants: Vec<Rc<ty::VariantInfo>> = Vec::new();
-        let mut prev_disr_val: Option<ty::Disr> = None;
-
-        let (repr_type, repr_type_ty) = self.enum_repr_type(opt_hint);
-
-        for v in vs {
-            // If the discriminant value is specified explicitly in the
-            // enum, check whether the initialization expression is valid,
-            // otherwise use the last value plus one.
-            let current_disr_val;
-
-            // This closure marks cases where, when an error occurs during
-            // the computation, attempt to assign a (hopefully) fresh
-            // value to avoid spurious error reports downstream.
-            let attempt_fresh_value = move || -> Disr {
-                repr_type.disr_wrap_incr(prev_disr_val)
-            };
-
-            match v.node.disr_expr {
-                Some(ref e) => {
-                    debug!("disr expr, checking {}", pprust::expr_to_string(&**e));
-
-                    let hint = UncheckedExprHint(repr_type_ty);
-                    match const_eval::eval_const_expr_partial(self, &**e, hint) {
-                        Ok(ConstVal::Int(val)) => current_disr_val = val as Disr,
-                        Ok(ConstVal::Uint(val)) => current_disr_val = val as Disr,
-                        Ok(_) => {
-                            let sign_desc = if repr_type.is_signed() {
-                                "signed"
-                            } else {
-                                "unsigned"
-                            };
-                            span_err!(self.sess, e.span, E0079,
-                                      "expected {} integer constant",
-                                      sign_desc);
-                            current_disr_val = attempt_fresh_value();
-                        },
-                        Err(ref err) => {
-                            span_err!(self.sess, err.span, E0080,
-                                      "constant evaluation error: {}",
-                                      err.description());
-                            current_disr_val = attempt_fresh_value();
-                        },
-                    }
-                },
-                None => {
-                    current_disr_val = match prev_disr_val {
-                        Some(prev_disr_val) => {
-                            if let Some(v) = repr_type.disr_incr(prev_disr_val) {
-                                v
-                            } else {
-                                self.report_discrim_overflow(v.span, &v.node.name.name.as_str(),
-                                                             repr_type, prev_disr_val);
-                                attempt_fresh_value()
-                            }
-                        }
-                        None => ty::INITIAL_DISCRIMINANT_VALUE,
-                    }
-                },
-            }
-
-            let variant_info = Rc::new(VariantInfo::from_ast_variant(self, &**v, current_disr_val));
-            prev_disr_val = Some(current_disr_val);
-
-            variants.push(variant_info);
-        }
-
-        variants
-    }
-
-    pub fn enum_variants(&self, id: ast::DefId) -> Rc<Vec<Rc<VariantInfo<'tcx>>>> {
-        memoized(&self.enum_var_cache, id, |id: ast::DefId| {
-            if ast::LOCAL_CRATE != id.krate {
-                Rc::new(csearch::get_enum_variants(self, id))
-            } else {
-                match self.map.get(id.node) {
-                    ast_map::NodeItem(ref item) => {
-                        match item.node {
-                            ast::ItemEnum(ref enum_definition, _) => {
-                                Rc::new(self.compute_enum_variants(
-                                    &enum_definition.variants,
-                                    self.lookup_repr_hints(id).get(0)))
-                            }
-                            _ => {
-                                self.sess.bug("enum_variants: id not bound to an enum")
-                            }
-                        }
-                    }
-                    _ => self.sess.bug("enum_variants: id not bound to an enum")
-                }
-            }
-        })
-    }
-
-    // Returns information about the enum variant with the given ID:
-    pub fn enum_variant_with_id(&self,
-                                enum_id: ast::DefId,
-                                variant_id: ast::DefId)
-                                -> Rc<VariantInfo<'tcx>> {
-        self.enum_variants(enum_id).iter()
-                                   .find(|variant| variant.id == variant_id)
-                                   .expect("enum_variant_with_id(): no variant exists with that ID")
-                                   .clone()
-    }
-
     // Register a given item type
     pub fn register_item_type(&self, did: ast::DefId, ty: TypeScheme<'tcx>) {
         self.tcache.borrow_mut().insert(did, ty);
@@ -5936,6 +5974,23 @@ impl<'tcx> ctxt<'tcx> {
             "trait_defs", did, &self.trait_defs,
             || self.arenas.trait_defs.alloc(csearch::get_trait_def(self, did))
         )
+    }
+
+    /// Given the did of an ADT, return a master reference to its
+    /// definition. Unless you are planning on fulfilling the ADT's fields,
+    /// use lookup_adt_def instead.
+    pub fn lookup_adt_def_master(&self, did: ast::DefId) -> AdtDefMaster<'tcx> {
+        lookup_locally_or_in_crate_store(
+            "adt_defs", did, &self.adt_defs,
+            || csearch::get_adt_def(self, did)
+        )
+    }
+
+    /// Given the did of an ADT, return a reference to its definition.
+    pub fn lookup_adt_def(&self, did: ast::DefId) -> AdtDef<'tcx> {
+        // when reverse-variance goes away, a transmute::<AdtDefMaster,AdtDef>
+        // woud be needed here.
+        self.lookup_adt_def_master(did)
     }
 
     /// Given the did of an item, returns its full set of predicates.
@@ -5989,75 +6044,13 @@ impl<'tcx> ctxt<'tcx> {
         })
     }
 
-    // Look up a field ID, whether or not it's local
-    pub fn lookup_field_type_unsubstituted(&self,
-                                           struct_id: DefId,
-                                           id: DefId)
-                                           -> Ty<'tcx> {
-        if id.krate == ast::LOCAL_CRATE {
-            self.node_id_to_type(id.node)
-        } else {
-            memoized(&self.tcache, id,
-                     |id| csearch::get_field_type(self, struct_id, id)).ty
-        }
-    }
-
-
-    // Look up a field ID, whether or not it's local
-    // Takes a list of type substs in case the struct is generic
-    pub fn lookup_field_type(&self,
-                             struct_id: DefId,
-                             id: DefId,
-                             substs: &Substs<'tcx>)
-                             -> Ty<'tcx> {
-        self.lookup_field_type_unsubstituted(struct_id, id).subst(self, substs)
-    }
-
-    // Look up the list of field names and IDs for a given struct.
-    // Panics if the id is not bound to a struct.
-    pub fn lookup_struct_fields(&self, did: ast::DefId) -> Vec<FieldTy> {
-        if did.krate == ast::LOCAL_CRATE {
-            let struct_fields = self.struct_fields.borrow();
-            match struct_fields.get(&did) {
-                Some(fields) => (**fields).clone(),
-                _ => {
-                    self.sess.bug(
-                        &format!("ID not mapped to struct fields: {}",
-                                self.map.node_to_string(did.node)));
-                }
-            }
-        } else {
-            csearch::get_struct_fields(&self.sess.cstore, did)
-        }
-    }
-
-    pub fn is_tuple_struct(&self, did: ast::DefId) -> bool {
-        let fields = self.lookup_struct_fields(did);
-        !fields.is_empty() && fields.iter().all(|f| f.name == token::special_names::unnamed_field)
-    }
-
-    // Returns a list of fields corresponding to the struct's items. trans uses
-    // this. Takes a list of substs with which to instantiate field types.
-    pub fn struct_fields(&self, did: ast::DefId, substs: &Substs<'tcx>)
-                         -> Vec<Field<'tcx>> {
-        self.lookup_struct_fields(did).iter().map(|f| {
-           Field {
-                name: f.name,
-                mt: TypeAndMut {
-                    ty: self.lookup_field_type(did, f.id, substs),
-                    mutbl: MutImmutable
-                }
-            }
-        }).collect()
-    }
-
     /// Returns the deeply last field of nested structures, or the same type,
     /// if not a structure at all. Corresponds to the only possible unsized
     /// field, and its type can be used to determine unsizing strategy.
     pub fn struct_tail(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
-        while let TyStruct(def_id, substs) = ty.sty {
-            match self.struct_fields(def_id, substs).last() {
-                Some(f) => ty = f.mt.ty,
+        while let TyStruct(def, substs) = ty.sty {
+            match def.struct_variant().fields.last() {
+                Some(f) => ty = f.ty(self, substs),
                 None => break
             }
         }
@@ -6074,17 +6067,13 @@ impl<'tcx> ctxt<'tcx> {
                                  target: Ty<'tcx>)
                                  -> (Ty<'tcx>, Ty<'tcx>) {
         let (mut a, mut b) = (source, target);
-        while let (&TyStruct(a_did, a_substs), &TyStruct(b_did, b_substs)) = (&a.sty, &b.sty) {
-            if a_did != b_did {
+        while let (&TyStruct(a_def, a_substs), &TyStruct(b_def, b_substs)) = (&a.sty, &b.sty) {
+            if a_def != b_def {
                 break;
             }
-            if let Some(a_f) = self.struct_fields(a_did, a_substs).last() {
-                if let Some(b_f) = self.struct_fields(b_did, b_substs).last() {
-                    a = a_f.mt.ty;
-                    b = b_f.mt.ty;
-                } else {
-                    break;
-                }
+            if let Some(f) = a_def.struct_variant().fields.last() {
+                a = f.ty(self, a_substs);
+                b = f.ty(self, b_substs);
             } else {
                 break;
             }
@@ -6452,7 +6441,7 @@ impl<'tcx> ctxt<'tcx> {
                     }
                     TyEnum(d, _) => {
                         byte!(8);
-                        did(state, d);
+                        did(state, d.did);
                     }
                     TyBox(_) => {
                         byte!(9);
@@ -6495,7 +6484,7 @@ impl<'tcx> ctxt<'tcx> {
                     }
                     TyStruct(d, _) => {
                         byte!(18);
-                        did(state, d);
+                        did(state, d.did);
                     }
                     TyTuple(ref inner) => {
                         byte!(19);
@@ -6632,6 +6621,85 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
         Some(self.tables.borrow().upvar_capture_map.get(&upvar_id).unwrap().clone())
+    }
+
+
+    /// Returns true if this ADT is a dtorck type, i.e. whether it being
+    /// safe for destruction requires it to be alive
+    fn is_adt_dtorck(&self, adt: AdtDef<'tcx>) -> bool {
+        let dtor_method = match self.destructor_for_type.borrow().get(&adt.did) {
+            Some(dtor) => *dtor,
+            None => return false
+        };
+        let impl_did = self.impl_of_method(dtor_method).unwrap_or_else(|| {
+            self.sess.bug(&format!("no Drop impl for the dtor of `{:?}`", adt))
+        });
+        let generics = adt.type_scheme(self).generics;
+
+        // In `impl<'a> Drop ...`, we automatically assume
+        // `'a` is meaningful and thus represents a bound
+        // through which we could reach borrowed data.
+        //
+        // FIXME (pnkfelix): In the future it would be good to
+        // extend the language to allow the user to express,
+        // in the impl signature, that a lifetime is not
+        // actually used (something like `where 'a: ?Live`).
+        if generics.has_region_params(subst::TypeSpace) {
+            debug!("typ: {:?} has interesting dtor due to region params",
+                   adt);
+            return true;
+        }
+
+        let mut seen_items = Vec::new();
+        let mut items_to_inspect = vec![impl_did];
+        while let Some(item_def_id) = items_to_inspect.pop() {
+            if seen_items.contains(&item_def_id) {
+                continue;
+            }
+
+            for pred in self.lookup_predicates(item_def_id).predicates {
+                let result = match pred {
+                    ty::Predicate::Equate(..) |
+                    ty::Predicate::RegionOutlives(..) |
+                    ty::Predicate::TypeOutlives(..) |
+                    ty::Predicate::Projection(..) => {
+                        // For now, assume all these where-clauses
+                        // may give drop implementation capabilty
+                        // to access borrowed data.
+                        true
+                    }
+
+                    ty::Predicate::Trait(ty::Binder(ref t_pred)) => {
+                        let def_id = t_pred.trait_ref.def_id;
+                        if self.trait_items(def_id).len() != 0 {
+                            // If trait has items, assume it adds
+                            // capability to access borrowed data.
+                            true
+                        } else {
+                            // Trait without items is itself
+                            // uninteresting from POV of dropck.
+                            //
+                            // However, may have parent w/ items;
+                            // so schedule checking of predicates,
+                            items_to_inspect.push(def_id);
+                            // and say "no capability found" for now.
+                            false
+                        }
+                    }
+                };
+
+                if result {
+                    debug!("typ: {:?} has interesting dtor due to generic preds, e.g. {:?}",
+                           adt, pred);
+                    return true;
+                }
+            }
+
+            seen_items.push(item_def_id);
+        }
+
+        debug!("typ: {:?} is dtorck-safe", adt);
+        false
     }
 }
 
@@ -7228,12 +7296,6 @@ impl<'tcx> HasTypeFlags for FnSig<'tcx> {
     }
 }
 
-impl<'tcx> HasTypeFlags for Field<'tcx> {
-    fn has_type_flags(&self, flags: TypeFlags) -> bool {
-        self.mt.ty.has_type_flags(flags)
-    }
-}
-
 impl<'tcx> HasTypeFlags for BareFnTy<'tcx> {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self.sig.has_type_flags(flags)
@@ -7261,12 +7323,6 @@ impl<'tcx> fmt::Debug for ClosureUpvar<'tcx> {
         write!(f, "ClosureUpvar({:?},{:?})",
                self.def,
                self.ty)
-    }
-}
-
-impl<'tcx> fmt::Debug for Field<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "field({},{})", self.name, self.mt)
     }
 }
 

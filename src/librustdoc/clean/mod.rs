@@ -1661,8 +1661,9 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 decl: (ast_util::local_def(0), &fty.sig).clean(cx),
                 abi: fty.abi.to_string(),
             }),
-            ty::TyStruct(did, substs) |
-            ty::TyEnum(did, substs) => {
+            ty::TyStruct(def, substs) |
+            ty::TyEnum(def, substs) => {
+                let did = def.did;
                 let fqn = csearch::get_item_path(cx.tcx(), did);
                 let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
                 let kind = match self.sty {
@@ -1732,29 +1733,27 @@ impl Clean<Item> for ast::StructField {
     }
 }
 
-impl Clean<Item> for ty::FieldTy {
+impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
         use syntax::parse::token::special_idents::unnamed_field;
         use rustc::metadata::csearch;
 
-        let attr_map = csearch::get_struct_field_attrs(&cx.tcx().sess.cstore, self.id);
+        let attr_map = csearch::get_struct_field_attrs(&cx.tcx().sess.cstore, self.did);
 
         let (name, attrs) = if self.name == unnamed_field.name {
             (None, None)
         } else {
-            (Some(self.name), Some(attr_map.get(&self.id.node).unwrap()))
+            (Some(self.name), Some(attr_map.get(&self.did.node).unwrap()))
         };
-
-        let ty = cx.tcx().lookup_item_type(self.id);
 
         Item {
             name: name.clean(cx),
             attrs: attrs.unwrap_or(&Vec::new()).clean(cx),
             source: Span::empty(),
             visibility: Some(self.vis),
-            stability: get_stability(cx, self.id),
-            def_id: self.id,
-            inner: StructFieldItem(TypedStructField(ty.ty.clean(cx))),
+            stability: get_stability(cx, self.did),
+            def_id: self.did,
+            inner: StructFieldItem(TypedStructField(self.unsubst_ty().clean(cx))),
         }
     }
 }
@@ -1860,22 +1859,24 @@ impl Clean<Item> for doctree::Variant {
     }
 }
 
-impl<'tcx> Clean<Item> for ty::VariantInfo<'tcx> {
+impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
         // use syntax::parse::token::special_idents::unnamed_field;
-        let kind = match self.arg_names.as_ref().map(|s| &**s) {
-            None | Some([]) if self.args.is_empty() => CLikeVariant,
-            None | Some([]) => {
-                TupleVariant(self.args.clean(cx))
+        let kind = match self.kind() {
+            ty::VariantKind::Unit => CLikeVariant,
+            ty::VariantKind::Tuple => {
+                TupleVariant(
+                    self.fields.iter().map(|f| f.unsubst_ty().clean(cx)).collect()
+                )
             }
-            Some(s) => {
+            ty::VariantKind::Dict => {
                 StructVariant(VariantStruct {
                     struct_type: doctree::Plain,
                     fields_stripped: false,
-                    fields: s.iter().zip(&self.args).map(|(name, ty)| {
+                    fields: self.fields.iter().map(|field| {
                         Item {
                             source: Span::empty(),
-                            name: Some(name.clean(cx)),
+                            name: Some(field.name.clean(cx)),
                             attrs: Vec::new(),
                             visibility: Some(ast::Public),
                             // FIXME: this is not accurate, we need an id for
@@ -1885,10 +1886,10 @@ impl<'tcx> Clean<Item> for ty::VariantInfo<'tcx> {
                             //        Struct variants are experimental and need
                             //        more infrastructure work before we can get
                             //        at the needed information here.
-                            def_id: self.id,
-                            stability: get_stability(cx, self.id),
+                            def_id: self.did,
+                            stability: get_stability(cx, self.did),
                             inner: StructFieldItem(
-                                TypedStructField(ty.clean(cx))
+                                TypedStructField(field.unsubst_ty().clean(cx))
                             )
                         }
                     }).collect()
@@ -1897,12 +1898,12 @@ impl<'tcx> Clean<Item> for ty::VariantInfo<'tcx> {
         };
         Item {
             name: Some(self.name.clean(cx)),
-            attrs: inline::load_attrs(cx, cx.tcx(), self.id),
+            attrs: inline::load_attrs(cx, cx.tcx(), self.did),
             source: Span::empty(),
             visibility: Some(ast::Public),
-            def_id: self.id,
+            def_id: self.did,
             inner: VariantItem(Variant { kind: kind }),
-            stability: get_stability(cx, self.id),
+            stability: get_stability(cx, self.did),
         }
     }
 }

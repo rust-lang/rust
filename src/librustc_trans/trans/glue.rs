@@ -415,11 +415,11 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
         return (size, align);
     }
     match t.sty {
-        ty::TyStruct(id, substs) => {
+        ty::TyStruct(def, substs) => {
             let ccx = bcx.ccx();
             // First get the size of all statically known fields.
             // Don't use type_of::sizing_type_of because that expects t to be sized.
-            assert!(!t.is_simd(bcx.tcx()));
+            assert!(!t.is_simd());
             let repr = adt::represent_type(ccx, t);
             let sizing_type = adt::sizing_type_context_of(ccx, &*repr, true);
             debug!("DST {} sizing_type: {}", t, sizing_type.to_string());
@@ -432,9 +432,8 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
-            let fields = bcx.tcx().struct_fields(id, substs);
-            let last_field = fields[fields.len()-1];
-            let field_ty = last_field.mt.ty;
+            let last_field = def.struct_variant().fields.last().unwrap();
+            let field_ty = monomorphize::field_ty(bcx.tcx(), substs, last_field);
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
             let dbloc = DebugLoc::None;
@@ -562,27 +561,27 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                 })
             }
         }
-        ty::TyStruct(did, substs) | ty::TyEnum(did, substs) => {
+        ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
             let tcx = bcx.tcx();
-            match (tcx.ty_dtor(did), skip_dtor) {
+            match (tcx.ty_dtor(def.did), skip_dtor) {
                 (ty::TraitDtor(dtor, true), false) => {
                     // FIXME(16758) Since the struct is unsized, it is hard to
                     // find the drop flag (which is at the end of the struct).
                     // Lets just ignore the flag and pretend everything will be
                     // OK.
                     if type_is_sized(bcx.tcx(), t) {
-                        trans_struct_drop_flag(bcx, t, v0, dtor, did, substs)
+                        trans_struct_drop_flag(bcx, t, v0, dtor, def.did, substs)
                     } else {
                         // Give the user a heads up that we are doing something
                         // stupid and dangerous.
                         bcx.sess().warn(&format!("Ignoring drop flag in destructor for {}\
                                                  because the struct is unsized. See issue\
                                                  #16758", t));
-                        trans_struct_drop(bcx, t, v0, dtor, did, substs)
+                        trans_struct_drop(bcx, t, v0, dtor, def.did, substs)
                     }
                 }
                 (ty::TraitDtor(dtor, false), false) => {
-                    trans_struct_drop(bcx, t, v0, dtor, did, substs)
+                    trans_struct_drop(bcx, t, v0, dtor, def.did, substs)
                 }
                 (ty::NoDtor, _) | (_, true) => {
                     // No dtor? Just the default case

@@ -571,9 +571,9 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
         }
 
         match t.sty{
-            ty::TyStruct(type_id, substs) |
-            ty::TyEnum(type_id, substs) => {
-                let type_predicates = self.fcx.tcx().lookup_predicates(type_id);
+            ty::TyStruct(def, substs) |
+            ty::TyEnum(def, substs) => {
+                let type_predicates = def.predicates(self.fcx.tcx());
                 let bounds = self.fcx.instantiate_bounds(self.span, substs,
                                                          &type_predicates);
 
@@ -581,7 +581,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                     self.fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(self.span,
                                                      self.fcx.body_id,
-                                                     traits::ItemObligation(type_id)),
+                                                     traits::ItemObligation(def.did)),
                         &bounds);
                 } else {
                     // There are two circumstances in which we ignore
@@ -610,7 +610,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
                     self.fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(self.span,
                                                      self.fcx.body_id,
-                                                     traits::ItemObligation(type_id)),
+                                                     traits::ItemObligation(def.did)),
                         &bounds);
                 }
 

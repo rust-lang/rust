@@ -65,10 +65,8 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 None);
 
             // If the item has the name of a field, give a help note
-            if let (&ty::TyStruct(did, substs), Some(expr)) = (&rcvr_ty.sty, rcvr_expr) {
-                let fields = cx.lookup_struct_fields(did);
-
-                if let Some(field) = fields.iter().find(|f| f.name == item_name) {
+            if let (&ty::TyStruct(def, substs), Some(expr)) = (&rcvr_ty.sty, rcvr_expr) {
+                if let Some(field) = def.struct_variant().find_field_named(item_name) {
                     let expr_string = match cx.sess.codemap().span_to_snippet(expr.span) {
                         Ok(expr_string) => expr_string,
                         _ => "s".into() // Default to a generic placeholder for the
@@ -89,7 +87,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     };
 
                     // Determine if the field can be used as a function in some way
-                    let field_ty = cx.lookup_field_type(did, field.id, substs);
+                    let field_ty = field.ty(cx, substs);
                     if let Ok(fn_once_trait_did) = cx.lang_items.require(FnOnceTraitLangItem) {
                         let infcx = fcx.infcx();
                         infcx.probe(|_| {
@@ -303,7 +301,7 @@ fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   rcvr_expr: Option<&ast::Expr>) -> bool {
     fn is_local(ty: Ty) -> bool {
         match ty.sty {
-            ty::TyEnum(did, _) | ty::TyStruct(did, _) => ast_util::is_local(did),
+            ty::TyEnum(def, _) | ty::TyStruct(def, _) => ast_util::is_local(def.did),
 
             ty::TyTrait(ref tr) => ast_util::is_local(tr.principal_def_id()),
 

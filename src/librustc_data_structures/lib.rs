@@ -36,4 +36,5 @@ extern crate serialize as rustc_serialize; // used by deriving
 pub mod snapshot_vec;
 pub mod graph;
 pub mod bitvec;
+pub mod ivar;
 pub mod unify;

@@ -278,8 +278,8 @@ fn fundamental_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool
     match ty.sty {
         ty::TyBox(..) | ty::TyRef(..) =>
             true,
-        ty::TyEnum(def_id, _) | ty::TyStruct(def_id, _) =>
-            tcx.has_attr(def_id, "fundamental"),
+        ty::TyEnum(def, _) | ty::TyStruct(def, _) =>
+            def.is_fundamental(),
         ty::TyTrait(ref data) =>
             tcx.has_attr(data.principal_def_id(), "fundamental"),
         _ =>
@@ -316,9 +316,9 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
             infer_is_local.0
         }
 
-        ty::TyEnum(def_id, _) |
-        ty::TyStruct(def_id, _) => {
-            def_id.krate == ast::LOCAL_CRATE
+        ty::TyEnum(def, _) |
+        ty::TyStruct(def, _) => {
+            def.did.krate == ast::LOCAL_CRATE
         }
 
         ty::TyBox(_) => { // Box<T>
