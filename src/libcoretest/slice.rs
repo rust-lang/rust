@@ -64,3 +64,123 @@ fn test_iterator_count() {
     iter2.next();
     assert_eq!(iter2.count(), 3);
 }
+
+#[test]
+fn test_chunks_count() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.chunks(3);
+    assert_eq!(c.count(), 2);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.chunks(2);
+    assert_eq!(c2.count(), 3);
+
+    let v3: &[i32] = &[];
+    let c3 = v3.chunks(2);
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_chunks_nth() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks(2);
+    assert_eq!(c.nth(1).unwrap()[1], 3);
+    assert_eq!(c.next().unwrap()[0], 4);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c2 = v2.chunks(3);
+    assert_eq!(c2.nth(1).unwrap()[1], 4);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_chunks_last() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.chunks(2);
+    assert_eq!(c.last().unwrap()[1], 5);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.chunks(2);
+    assert_eq!(c2.last().unwrap()[0], 4);
+}
+
+#[test]
+fn test_chunks_mut_count() {
+    let mut v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let c = v.chunks_mut(3);
+    assert_eq!(c.count(), 2);
+
+    let mut v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c2 = v2.chunks_mut(2);
+    assert_eq!(c2.count(), 3);
+
+    let mut v3: &mut [i32] = &mut [];
+    let c3 = v3.chunks_mut(2);
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_chunks_mut_nth() {
+    let mut v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let mut c = v.chunks_mut(2);
+    assert_eq!(c.nth(1).unwrap()[1], 3);
+    assert_eq!(c.next().unwrap()[0], 4);
+
+    let mut v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let mut c2 = v2.chunks_mut(3);
+    assert_eq!(c2.nth(1).unwrap()[1], 4);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_chunks_mut_last() {
+    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
+    let c = v.chunks_mut(2);
+    assert_eq!(c.last().unwrap()[1], 5);
+
+    let v2: &mut [i32] = &mut [0, 1, 2, 3, 4];
+    let c2 = v2.chunks_mut(2);
+    assert_eq!(c2.last().unwrap()[0], 4);
+}
+
+
+
+
+#[test]
+fn test_windows_count() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.windows(3);
+    assert_eq!(c.count(), 4);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.windows(6);
+    assert_eq!(c2.count(), 0);
+
+    let v3: &[i32] = &[];
+    let c3 = v3.windows(2);
+    assert_eq!(c3.count(), 0);
+}
+
+#[test]
+fn test_windows_nth() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let mut c = v.windows(2);
+    assert_eq!(c.nth(2).unwrap()[1], 3);
+    assert_eq!(c.next().unwrap()[0], 3);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let mut c2 = v2.windows(4);
+    assert_eq!(c2.nth(1).unwrap()[1], 2);
+    assert_eq!(c2.next(), None);
+}
+
+#[test]
+fn test_windows_last() {
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
+    let c = v.windows(2);
+    assert_eq!(c.last().unwrap()[1], 5);
+
+    let v2: &[i32] = &[0, 1, 2, 3, 4];
+    let c2 = v2.windows(2);
+    assert_eq!(c2.last().unwrap()[0], 3);
+}
