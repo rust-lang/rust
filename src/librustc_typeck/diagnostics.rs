@@ -1123,27 +1123,39 @@ You hit this error because the compiler lacks information to
 determine a type for this variable. Erroneous code example:
 
 ```
+fn demo(devil: fn () -> !) {
+    let x: &_ = devil();
+    // error: cannot determine a type for this local variable
+}
+
+fn oh_no() -> ! { panic!("the devil is in the details") }
+
 fn main() {
-    let x: &_; // error: cannot determine a type for this local variable
+    demo(oh_no);
 }
 ```
 
-You have two possibilities to solve this situation:
- * Give an explicit definition of the variable
- * Infer the variable
-
+To solve this situation, constrain the type of the variable.
 Examples:
 
 ```
-fn some_func(x: u32) {
+fn some_func(x: &u32) {
     // some code
 }
 
-fn main() {
-    let x = 0u32; // ok!
-    // or:
-    let x = 0;
+fn demo(devil: fn () -> !) {
+    let x: &u32 = devil();
+    // Here we defined the type at the variable creation
+
+    let x: &_ = devil();
     some_func(x);
+    // Here, the type is determined by the function argument type
+}
+
+fn oh_no() -> ! { panic!("the devil is in the details") }
+
+fn main() {
+    demo(oh_no);
 }
 ```
 "##,
