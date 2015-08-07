@@ -44,6 +44,7 @@ use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
 use middle::ty_match;
 use middle::ty_relate::TypeRelation;
+use middle::wf;
 
 use std::cell::RefCell;
 use std::fmt;
@@ -465,10 +466,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
+            ty::Predicate::WellFormed(ty) => {
+                match wf::obligations(self.infcx, obligation.cause.body_id,
+                                      ty, obligation.cause.span,
+                                      obligation.cause.code.is_rfc1214()) {
+                    Some(obligations) =>
+                        self.evaluate_predicates_recursively(previous_stack, obligations.iter()),
+                    None =>
+                        EvaluatedToAmbig,
+                }
+            }
+
             ty::Predicate::TypeOutlives(..) | ty::Predicate::RegionOutlives(..) => {
                 // we do not consider region relationships when
                 // evaluating trait matches
                 EvaluatedToOk
+            }
+
+            ty::Predicate::ObjectSafe(trait_def_id) => {
+                if object_safety::is_object_safe(self.tcx(), trait_def_id) {
+                    EvaluatedToOk
+                } else {
+                    EvaluatedToErr(Unimplemented)
+                }
             }
 
             ty::Predicate::Projection(ref data) => {

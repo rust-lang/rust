@@ -10,6 +10,7 @@
 
 use middle::infer::InferCtxt;
 use middle::ty::{self, RegionEscape, Ty, HasTypeFlags};
+use middle::wf;
 
 use std::collections::HashSet;
 use std::fmt;
@@ -20,8 +21,10 @@ use util::nodemap::NodeMap;
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
 use super::CodeSelectionError;
+use super::is_object_safe;
 use super::FulfillmentError;
 use super::ObligationCause;
+use super::ObligationCauseCode;
 use super::PredicateObligation;
 use super::project;
 use super::select::SelectionContext;
@@ -472,6 +475,32 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                 }
             }
         }
+
+        ty::Predicate::ObjectSafe(trait_def_id) => {
+            if !is_object_safe(selcx.tcx(), trait_def_id) {
+                errors.push(FulfillmentError::new(
+                    obligation.clone(),
+                    CodeSelectionError(Unimplemented)));
+            }
+            true
+        }
+
+        ty::Predicate::WellFormed(ty) => {
+            let rfc1214 = match obligation.cause.code {
+                ObligationCauseCode::RFC1214(_) => true,
+                _ => false,
+            };
+            match wf::obligations(selcx.infcx(), obligation.cause.body_id,
+                                  ty, obligation.cause.span, rfc1214) {
+                Some(obligations) => {
+                    new_obligations.extend(obligations);
+                    true
+                }
+                None => {
+                    false
+                }
+            }
+        }
     }
 }
 
@@ -492,11 +521,12 @@ fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
                                                sub_region: r_b,
                                                cause: cause };
 
-    debug!("register_region_obligation({:?})",
-           region_obligation);
+    debug!("register_region_obligation({:?}, cause={:?})",
+           region_obligation, region_obligation.cause);
 
-    region_obligations.entry(region_obligation.cause.body_id).or_insert(vec![])
-        .push(region_obligation);
+    region_obligations.entry(region_obligation.cause.body_id)
+                      .or_insert(vec![])
+                      .push(region_obligation);
 
 }
 

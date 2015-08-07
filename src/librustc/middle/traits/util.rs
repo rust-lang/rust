@@ -10,7 +10,7 @@
 
 use middle::subst::Substs;
 use middle::infer::InferCtxt;
-use middle::ty::{self, Ty, ToPredicate, ToPolyTraitRef};
+use middle::ty::{self, HasTypeFlags, Ty, ToPredicate, ToPolyTraitRef};
 use std::fmt;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -56,6 +56,12 @@ impl<'a,'tcx> PredicateSet<'a,'tcx> {
 
             ty::Predicate::Projection(ref data) =>
                 ty::Predicate::Projection(self.tcx.anonymize_late_bound_regions(data)),
+
+            ty::Predicate::WellFormed(data) =>
+                ty::Predicate::WellFormed(data),
+
+            ty::Predicate::ObjectSafe(data) =>
+                ty::Predicate::ObjectSafe(data),
         };
         self.set.insert(normalized_pred)
     }
@@ -135,6 +141,14 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
                 predicates.retain(|r| self.visited.insert(r));
 
                 self.stack.extend(predicates);
+            }
+            ty::Predicate::WellFormed(..) => {
+                // Currently, we do not elaborate WF predicates,
+                // although we easily could.
+            }
+            ty::Predicate::ObjectSafe(..) => {
+                // Currently, we do not elaborate object-safe
+                // predicates.
             }
             ty::Predicate::Equate(..) => {
                 // Currently, we do not "elaborate" predicates like
@@ -560,5 +574,11 @@ impl<'tcx> fmt::Debug for super::FulfillmentErrorCode<'tcx> {
 impl<'tcx> fmt::Debug for super::MismatchedProjectionTypes<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "MismatchedProjectionTypes({:?})", self.err)
+    }
+}
+
+impl<'tcx, T: HasTypeFlags> HasTypeFlags for Obligation<'tcx, T> {
+    fn has_type_flags(&self, flags: ty::TypeFlags) -> bool {
+        self.predicate.has_type_flags(flags)
     }
 }
