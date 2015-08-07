@@ -1233,6 +1233,48 @@ fn main() {
 ```
 "##,
 
+E0102: r##"
+You hit this error because the compiler lacks information to
+determine a type for this variable. Erroneous code example:
+
+```
+fn demo(devil: fn () -> !) {
+    let x: &_ = devil();
+    // error: cannot determine a type for this local variable
+}
+
+fn oh_no() -> ! { panic!("the devil is in the details") }
+
+fn main() {
+    demo(oh_no);
+}
+```
+
+To solve this situation, constrain the type of the variable.
+Examples:
+
+```
+fn some_func(x: &u32) {
+    // some code
+}
+
+fn demo(devil: fn () -> !) {
+    let x: &u32 = devil();
+    // Here we defined the type at the variable creation
+
+    let x: &_ = devil();
+    some_func(x);
+    // Here, the type is determined by the function argument type
+}
+
+fn oh_no() -> ! { panic!("the devil is in the details") }
+
+fn main() {
+    demo(oh_no);
+}
+```
+"##,
+
 E0106: r##"
 This error indicates that a lifetime is missing from a type. If it is an error
 inside a function signature, the problem may be with failing to adhere to the
@@ -2496,7 +2538,6 @@ register_diagnostics! {
     E0085,
     E0086,
     E0090,
-    E0102,
     E0103,
     E0104,
     E0118,
