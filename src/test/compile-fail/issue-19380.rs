@@ -18,11 +18,11 @@ impl Qiz for Foo {
 }
 
 struct Bar {
+//~^ ERROR E0038
   foos: &'static [&'static (Qiz + 'static)]
 }
 
 const FOO : Foo = Foo;
 const BAR : Bar = Bar { foos: &[&FOO]};
-//~^ ERROR: cannot convert to a trait object because trait `Qiz` is not object-safe [E0038]
 
 fn main() { }
