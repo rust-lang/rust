@@ -906,19 +906,25 @@ impl TwoWaySearcher {
     {
         // `next()` uses `self.position` as its cursor
         let old_pos = self.position;
+        let needle_last = needle.len() - 1;
         'search: loop {
             // Check that we have room to search in
-            if needle.len() > haystack.len() - self.position {
-                self.position = haystack.len();
-                return S::rejecting(old_pos, self.position);
-            }
+            // position + needle_last can not overflow if we assume slices
+            // are bounded by isize's range.
+            let tail_byte = match haystack.get(self.position + needle_last) {
+                Some(&b) => b,
+                None => {
+                    self.position = haystack.len();
+                    return S::rejecting(old_pos, self.position);
+                }
+            };
 
             if S::use_early_reject() && old_pos != self.position {
                 return S::rejecting(old_pos, self.position);
             }
 
             // Quickly skip by large portions unrelated to our substring
-            if !self.byteset_contains(haystack[self.position + needle.len() - 1]) {
+            if !self.byteset_contains(tail_byte) {
                 self.position += needle.len();
                 if !long_period {
                     self.memory = 0;
@@ -986,17 +992,23 @@ impl TwoWaySearcher {
         let old_end = self.end;
         'search: loop {
             // Check that we have room to search in
-            if needle.len() > self.end {
-                self.end = 0;
-                return S::rejecting(0, old_end);
-            }
+            // end - needle.len() will wrap around when there is no more room,
+            // but due to slice length limits it can never wrap all the way back
+            // into the length of haystack.
+            let front_byte = match haystack.get(self.end.wrapping_sub(needle.len())) {
+                Some(&b) => b,
+                None => {
+                    self.end = 0;
+                    return S::rejecting(0, old_end);
+                }
+            };
 
             if S::use_early_reject() && old_end != self.end {
                 return S::rejecting(self.end, old_end);
             }
 
             // Quickly skip by large portions unrelated to our substring
-            if !self.byteset_contains(haystack[self.end - needle.len()]) {
+            if !self.byteset_contains(front_byte) {
                 self.end -= needle.len();
                 if !long_period {
                     self.memory_back = needle.len();
