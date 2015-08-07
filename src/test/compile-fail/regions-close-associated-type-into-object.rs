@@ -72,13 +72,12 @@ fn meh1<'a, T: Iter>(v: &'a T) -> Box<X+'a>
     where T::Item : Clone
 {
     // This case is kind of interesting. It's the same as `ok3` but
-    // without the explicit declaration. In principle, it seems like
-    // we ought to be able to infer that `T::Item : 'a` because we
-    // invoked `v.as_self()` which yielded a value of type `&'a
-    // T::Item`. But we're not that smart at present.
+    // without the explicit declaration. This is valid because `T: 'a
+    // => T::Item: 'a`, and the former we can deduce from our argument
+    // of type `&'a T`.
 
     let item = Clone::clone(v.as_item());
-    Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live
+    Box::new(item)
 }
 
 fn main() {}
