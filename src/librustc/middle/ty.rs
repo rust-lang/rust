@@ -2833,6 +2833,15 @@ pub struct ParameterEnvironment<'a, 'tcx:'a> {
     /// Caches the results of trait selection. This cache is used
     /// for things that have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache<'tcx>,
+
+    /// Scope that is attached to free regions for this scope. This
+    /// is usually the id of the fn body, but for more abstract scopes
+    /// like structs we often use the node-id of the struct.
+    ///
+    /// FIXME(#3696). It would be nice to refactor so that free
+    /// regions don't have this implicit scope and instead introduce
+    /// relationships in the environment.
+    pub free_id: ast::NodeId,
 }
 
 impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
@@ -2846,6 +2855,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             implicit_region_bound: self.implicit_region_bound,
             caller_bounds: caller_bounds,
             selection_cache: traits::SelectionCache::new(),
+            free_id: self.free_id,
         }
     }
 
@@ -2853,6 +2863,18 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
+                    ast::TypeImplItem(_) => {
+                        // associated types don't have their own entry (for some reason),
+                        // so for now just grab environment for the impl
+                        let impl_id = cx.map.get_parent(id);
+                        let impl_def_id = ast_util::local_def(impl_id);
+                        let scheme = cx.lookup_item_type(impl_def_id);
+                        let predicates = cx.lookup_predicates(impl_def_id);
+                        cx.construct_parameter_environment(impl_item.span,
+                                                           &scheme.generics,
+                                                           &predicates,
+                                                           id)
+                    }
                     ast::ConstImplItem(_, _) => {
                         let def_id = ast_util::local_def(id);
                         let scheme = cx.lookup_item_type(def_id);
@@ -2881,42 +2903,37 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                             }
                         }
                     }
-                    ast::TypeImplItem(_) => {
-                        cx.sess.bug("ParameterEnvironment::for_item(): \
-                                     can't create a parameter environment \
-                                     for type impl items")
-                    }
                     ast::MacImplItem(_) => cx.sess.bug("unexpanded macro")
                 }
             }
             Some(ast_map::NodeTraitItem(trait_item)) => {
                 match trait_item.node {
-                    ast::ConstTraitItem(_, ref default) => {
-                        match *default {
-                            Some(_) => {
-                                let def_id = ast_util::local_def(id);
-                                let scheme = cx.lookup_item_type(def_id);
-                                let predicates = cx.lookup_predicates(def_id);
-                                cx.construct_parameter_environment(trait_item.span,
-                                                                   &scheme.generics,
-                                                                   &predicates,
-                                                                   id)
-                            }
-                            None => {
-                                cx.sess.bug("ParameterEnvironment::from_item(): \
-                                             can't create a parameter environment \
-                                             for const trait items without defaults")
-                            }
-                        }
+                    ast::TypeTraitItem(..) => {
+                        // associated types don't have their own entry (for some reason),
+                        // so for now just grab environment for the trait
+                        let trait_id = cx.map.get_parent(id);
+                        let trait_def_id = ast_util::local_def(trait_id);
+                        let trait_def = cx.lookup_trait_def(trait_def_id);
+                        let predicates = cx.lookup_predicates(trait_def_id);
+                        cx.construct_parameter_environment(trait_item.span,
+                                                           &trait_def.generics,
+                                                           &predicates,
+                                                           id)
                     }
-                    ast::MethodTraitItem(_, None) => {
-                        cx.sess.span_bug(trait_item.span,
-                                         "ParameterEnvironment::for_item():
-                                          can't create a parameter \
-                                          environment for required trait \
-                                          methods")
+                    ast::ConstTraitItem(..) => {
+                        let def_id = ast_util::local_def(id);
+                        let scheme = cx.lookup_item_type(def_id);
+                        let predicates = cx.lookup_predicates(def_id);
+                        cx.construct_parameter_environment(trait_item.span,
+                                                           &scheme.generics,
+                                                           &predicates,
+                                                           id)
                     }
-                    ast::MethodTraitItem(_, Some(ref body)) => {
+                    ast::MethodTraitItem(_, ref body) => {
+                        // for the body-id, use the id of the body
+                        // block, unless this is a trait method with
+                        // no default, then fallback to the method id.
+                        let body_id = body.as_ref().map(|b| b.id).unwrap_or(id);
                         let method_def_id = ast_util::local_def(id);
                         match cx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
@@ -2926,7 +2943,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                     trait_item.span,
                                     method_generics,
                                     method_bounds,
-                                    body.id)
+                                    body_id)
                             }
                             _ => {
                                 cx.sess
@@ -2935,11 +2952,6 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                         method?!")
                             }
                         }
-                    }
-                    ast::TypeTraitItem(..) => {
-                        cx.sess.bug("ParameterEnvironment::from_item(): \
-                                     can't create a parameter environment \
-                                     for type trait items")
                     }
                 }
             }
@@ -2966,6 +2978,15 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         let predicates = cx.lookup_predicates(def_id);
                         cx.construct_parameter_environment(item.span,
                                                            &scheme.generics,
+                                                           &predicates,
+                                                           id)
+                    }
+                    ast::ItemTrait(..) => {
+                        let def_id = ast_util::local_def(id);
+                        let trait_def = cx.lookup_trait_def(def_id);
+                        let predicates = cx.lookup_predicates(def_id);
+                        cx.construct_parameter_environment(item.span,
+                                                           &trait_def.generics,
                                                            &predicates,
                                                            id)
                     }
@@ -6587,12 +6608,19 @@ impl<'tcx> ctxt<'tcx> {
 
     /// Construct a parameter environment suitable for static contexts or other contexts where there
     /// are no free type/lifetime parameters in scope.
-    pub fn empty_parameter_environment<'a>(&'a self) -> ParameterEnvironment<'a,'tcx> {
+    pub fn empty_parameter_environment<'a>(&'a self)
+                                           -> ParameterEnvironment<'a,'tcx> {
         ty::ParameterEnvironment { tcx: self,
                                    free_substs: Substs::empty(),
                                    caller_bounds: Vec::new(),
                                    implicit_region_bound: ty::ReEmpty,
-                                   selection_cache: traits::SelectionCache::new(), }
+                                   selection_cache: traits::SelectionCache::new(),
+
+                                   // for an empty parameter
+                                   // environment, there ARE no free
+                                   // regions, so it shouldn't matter
+                                   // what we use for the free id
+                                   free_id: ast::DUMMY_NODE_ID }
     }
 
     /// Constructs and returns a substitution that can be applied to move from
@@ -6676,6 +6704,7 @@ impl<'tcx> ctxt<'tcx> {
             implicit_region_bound: ty::ReScope(free_id_outlive.to_code_extent()),
             caller_bounds: predicates,
             selection_cache: traits::SelectionCache::new(),
+            free_id: free_id,
         };
 
         let cause = traits::ObligationCause::misc(span, free_id);
