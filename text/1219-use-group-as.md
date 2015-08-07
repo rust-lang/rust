@@ -18,7 +18,7 @@ use std::io::{
 
 # Motivation
 
-THe current design requires the above example to be written like this:
+The current design requires the above example to be written like this:
 
 ```rust
 use std::io::Error as IoError;
