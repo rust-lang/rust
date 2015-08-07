@@ -35,6 +35,7 @@ use middle::ty_relate::{Relate, RelateResult, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{RefCell, Ref};
 use std::fmt;
+use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::{Span, DUMMY_SP};
@@ -188,6 +189,8 @@ pub struct TypeTrace<'tcx> {
 /// See `error_reporting.rs` for more details
 #[derive(Clone, Debug)]
 pub enum SubregionOrigin<'tcx> {
+    RFC1214Subregion(Rc<SubregionOrigin<'tcx>>),
+
     // Arose from a subtyping relation
     Subtype(TypeTrace<'tcx>),
 
@@ -229,8 +232,14 @@ pub enum SubregionOrigin<'tcx> {
     // Creating a pointer `b` to contents of an upvar
     ReborrowUpvar(Span, ty::UpvarId),
 
+    // Data with type `Ty<'tcx>` was borrowed
+    DataBorrowed(Ty<'tcx>, Span),
+
     // (&'a &'b T) where a >= b
     ReferenceOutlivesReferent(Ty<'tcx>, Span),
+
+    // Type or region parameters must be in scope.
+    ParameterInScope(ParameterOrigin, Span),
 
     // The type T of an expression E must outlive the lifetime for E.
     ExprTypeIsNotInScope(Ty<'tcx>, Span),
@@ -258,6 +267,15 @@ pub enum SubregionOrigin<'tcx> {
 
     // Region constraint arriving from destructor safety
     SafeDestructor(Span),
+}
+
+/// Places that type/region parameters can appear.
+#[derive(Clone, Copy, Debug)]
+pub enum ParameterOrigin {
+    Path, // foo::bar
+    MethodCall, // foo.bar() <-- parameters on impl providing bar()
+    OverloadedOperator, // a + b when overloaded
+    OverloadedDeref, // *a when overloaded
 }
 
 /// Times when we replace late-bound regions with variables:
@@ -1565,6 +1583,7 @@ impl TypeOrigin {
 impl<'tcx> SubregionOrigin<'tcx> {
     pub fn span(&self) -> Span {
         match *self {
+            RFC1214Subregion(ref a) => a.span(),
             Subtype(ref a) => a.span(),
             InfStackClosure(a) => a,
             InvokeClosure(a) => a,
@@ -1577,7 +1596,9 @@ impl<'tcx> SubregionOrigin<'tcx> {
             RelateDefaultParamBound(a, _) => a,
             Reborrow(a) => a,
             ReborrowUpvar(a, _) => a,
+            DataBorrowed(_, a) => a,
             ReferenceOutlivesReferent(_, a) => a,
+            ParameterInScope(_, a) => a,
             ExprTypeIsNotInScope(_, a) => a,
             BindingTypeIsNotValidAtDecl(a) => a,
             CallRcvr(a) => a,
