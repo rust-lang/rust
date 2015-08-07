@@ -19,6 +19,7 @@ trait To {
         self //~ error: the trait `core::marker::Sized` is not implemented
     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
         From::from( //~ error: the trait `core::marker::Sized` is not implemented
+            //~^ ERROR E0277
             self
         )
     }

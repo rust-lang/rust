@@ -52,7 +52,7 @@ pub trait MyTrait<T> {
     fn dummy(&self, t: T) -> T { panic!() }
 }
 
-pub struct MyContainer<'a, T> {
+pub struct MyContainer<'a, T:'a> {
     foos: Vec<&'a (MyTrait<T>+'a)> ,
 }
 

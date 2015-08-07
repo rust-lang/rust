@@ -12,7 +12,7 @@
 #![allow(warnings)]
 
 trait A<T> { }
-struct B<'a, T>(&'a (A<T>+'a));
+struct B<'a, T:'a>(&'a (A<T>+'a));
 
 trait X { }
 impl<'a, T> X for B<'a, T> {}

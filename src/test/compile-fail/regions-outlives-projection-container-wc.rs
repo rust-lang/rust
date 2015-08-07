@@ -41,7 +41,8 @@ fn with_assoc<'a,'b>() {
     // outlive 'a. In this case, that means TheType<'b>::TheAssocType,
     // which is &'b (), must outlive 'a.
 
-    let _: &'a WithAssoc<TheType<'b>> = loop { }; //~ ERROR cannot infer
+    let _: &'a WithAssoc<TheType<'b>> = loop { };
+    //~^ ERROR reference has a longer lifetime
 }
 
 fn main() {
