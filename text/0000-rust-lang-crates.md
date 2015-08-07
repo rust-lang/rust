@@ -228,4 +228,4 @@ full Rust community in taking care of additional crates.
 # Unresolved questions
 
 Part of the maintenance standard for Rust is the CI infrastructure, including
-bors/homu,
+bors/homu. What level of CI should we provide for these crates, and how do we do it?
