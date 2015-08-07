@@ -42,7 +42,7 @@ fn field_invoke1<'f, 'g>(x: &'g Struct1<'f>) -> (isize,isize) {
     (l,s)
 }
 
-struct Struct2<'h, 'i> {
+struct Struct2<'h, 'i:'h> {
     f: &'h (Trait<'i>+'h)
 }
 
@@ -126,7 +126,10 @@ pub fn main() {
     assert_eq!(field_invoke2(&s2), 3);
 
     let m : Box<Trait> = make_val();
-    assert_eq!(object_invoke1(&*m), (4,5));
+    // assert_eq!(object_invoke1(&*m), (4,5));
+    //            ~~~~~~~~~~~~~~~~~~~
+    // this call yields a compilation error; see compile-fail/dropck-object-cycle.rs
+    // for details.
     assert_eq!(object_invoke2(&*m), 5);
 
     // The RefMakerTrait above is pretty strange (i.e. it is strange
