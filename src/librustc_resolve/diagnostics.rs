@@ -494,6 +494,15 @@ match (1, 2) {
     (x, y) => {} // ok!
 }
 ```
+
+Or maybe did you mean to unify? Consider using a guard:
+
+```
+match (A, B, C) {
+    (x, x2, see) if x == x2 => { /* A and B are equal, do one thing */ }
+    (y, z, see) => { /* A and B unequal; do another thing */ }
+}
+```
 "##,
 
 E0417: r##"
