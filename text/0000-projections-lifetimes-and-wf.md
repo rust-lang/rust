@@ -404,6 +404,11 @@ types:
     r = 'x                            // Region name
     
 We'll use this to describe the rules in detail.
+
+A quick note on terminology: an "object type fragment" is part of an
+object type: so if you have `Box<FnMut()+Send>`, `FnMut()` and `Send`
+are object type fragments. Object type fragments are identical to full
+trait references, except that they do not have a self type (no `P0`).
     
 ### Syntactic definition of the outlives relation
 
@@ -799,10 +804,8 @@ and a trait object like `Foo+'x`, when we require that `'static: 'x`
 (which is true, clearly, but in some cases the implicit bounds from
 traits are not `'static` but rather some named lifetime).
 
-The next clause states that all object type fragments must be WF (an
-"object type fragment" is part of an object type: so if you have
-`Box<FnMut()+Send>`, `FnMut()` and `Send` are object type
-fragments). An object type fragment is WF if its components are WF:
+The next clause states that all object type fragments must be WF. An
+object type fragment is WF if its components are WF:
 
     WfObjectFragment:
       ∀i. R, r.. ⊢ Pi
