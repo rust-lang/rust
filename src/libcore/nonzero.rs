@@ -14,6 +14,9 @@
 
 use marker::Sized;
 use ops::{CoerceUnsized, Deref};
+use mem;
+use option::Option;
+use ptr;
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
 pub unsafe trait Zeroable {}
@@ -43,6 +46,20 @@ impl<T: Zeroable> NonZero<T> {
     #[inline(always)]
     pub unsafe fn new(inner: T) -> NonZero<T> {
         NonZero(inner)
+    }
+    /// Tries to create an instance of NonZero with the provided value.
+    /// If the value is actually "non-zero", the function will succeed,
+    /// returning `Some(NonZero(value))`. Otherwise, `None` will be
+    /// returned.
+    #[inline(always)]
+    pub fn new_option(inner: T) -> Option<NonZero<T>> {
+        unsafe {
+            // Work around the fact that `mem::transmute` will
+            // complain about generic types:
+            let result = ptr::read(&inner as *const T as *const Option<NonZero<T>>);
+            mem::forget(inner);
+            result
+        }
     }
 }
 
