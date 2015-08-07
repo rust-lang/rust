@@ -1677,7 +1677,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // FIXME(arielb1): use this instead of field.ty everywhere
     pub fn field_ty(&self,
                     span: Span,
-                    field: &ty::FieldDef<'tcx>,
+                    field: ty::FieldDef<'tcx>,
                     substs: &Substs<'tcx>)
                     -> Ty<'tcx>
     {
@@ -2913,7 +2913,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
     // displays hints about the closest matches in field names
-    fn suggest_field_names<'tcx>(variant: &ty::VariantDef<'tcx>,
+    fn suggest_field_names<'tcx>(variant: ty::VariantDef<'tcx>,
                                  field: &ast::SpannedIdent,
                                  tcx: &ty::ctxt<'tcx>,
                                  skip : Vec<InternedString>) {
@@ -3011,7 +3011,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
     fn report_unknown_field<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                       ty: Ty<'tcx>,
-                                      variant: &ty::VariantDef<'tcx>,
+                                      variant: ty::VariantDef<'tcx>,
                                       field: &ast::Field,
                                       skip_fields: &[ast::Field]) {
         fcx.type_error_message(
@@ -3095,7 +3095,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
     fn check_struct_constructor<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                          id: ast::NodeId,
                                          span: codemap::Span,
-                                         struct_def: &'tcx ty::ADTDef<'tcx>,
+                                         struct_def: ty::AdtDef<'tcx>,
                                          fields: &'tcx [ast::Field],
                                          base_expr: Option<&'tcx ast::Expr>) {
         let tcx = fcx.ccx.tcx;

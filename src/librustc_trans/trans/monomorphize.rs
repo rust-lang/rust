@@ -291,7 +291,7 @@ pub fn apply_param_substs<'tcx,T>(tcx: &ty::ctxt<'tcx>,
 /// Returns the normalized type of a struct field
 pub fn field_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
                       param_substs: &Substs<'tcx>,
-                      f: &ty::FieldDef<'tcx>)
+                      f: ty::FieldDef<'tcx>)
                       -> Ty<'tcx>
 {
     normalize_associated_type(tcx, &f.ty(tcx, param_substs))

@@ -527,7 +527,7 @@ impl<'tcx> Case<'tcx> {
 }
 
 fn get_cases<'tcx>(tcx: &ty::ctxt<'tcx>,
-                   adt: &ty::ADTDef<'tcx>,
+                   adt: ty::AdtDef<'tcx>,
                    substs: &subst::Substs<'tcx>)
                    -> Vec<Case<'tcx>> {
     adt.variants.iter().map(|vi| {

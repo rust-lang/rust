@@ -687,8 +687,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     // Checks that a field is in scope.
     fn check_field(&mut self,
                    span: Span,
-                   def: &'tcx ty::ADTDef<'tcx>,
-                   v: &'tcx ty::VariantDef<'tcx>,
+                   def: ty::AdtDef<'tcx>,
+                   v: ty::VariantDef<'tcx>,
                    name: FieldName) {
         let field = match name {
             NamedField(f_name) => {
@@ -703,10 +703,10 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         }
 
         let struct_desc = match def.adt_kind() {
-            ty::ADTKind::Struct =>
+            ty::AdtKind::Struct =>
                 format!("struct `{}`", self.tcx.item_path_str(def.did)),
             // struct variant fields have inherited visibility
-            ty::ADTKind::Enum => return
+            ty::AdtKind::Enum => return
         };
         let msg = match name {
             NamedField(name) => format!("field `{}` of {} is private",

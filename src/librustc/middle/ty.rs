@@ -638,7 +638,7 @@ pub struct CtxtArenas<'tcx> {
 
     // references
     trait_defs: TypedArena<TraitDef<'tcx>>,
-    adt_defs: TypedArena<ADTDef_<'tcx, 'tcx>>,
+    adt_defs: TypedArena<AdtDefData<'tcx, 'tcx>>,
 }
 
 impl<'tcx> CtxtArenas<'tcx> {
@@ -766,7 +766,7 @@ pub struct ctxt<'tcx> {
 
     pub impl_trait_refs: RefCell<DefIdMap<Option<TraitRef<'tcx>>>>,
     pub trait_defs: RefCell<DefIdMap<&'tcx TraitDef<'tcx>>>,
-    pub adt_defs: RefCell<DefIdMap<&'tcx ADTDef_<'tcx, 'tcx>>>,
+    pub adt_defs: RefCell<DefIdMap<AdtDefMaster<'tcx>>>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated predicates.
@@ -937,10 +937,10 @@ impl<'tcx> ctxt<'tcx> {
 
     pub fn intern_adt_def(&self,
                           did: DefId,
-                          kind: ADTKind,
-                          variants: Vec<VariantDef_<'tcx, 'tcx>>)
-                          -> &'tcx ADTDef_<'tcx, 'tcx> {
-        let def = ADTDef_::new(self, did, kind, variants);
+                          kind: AdtKind,
+                          variants: Vec<VariantDefData<'tcx, 'tcx>>)
+                          -> AdtDefMaster<'tcx> {
+        let def = AdtDefData::new(self, did, kind, variants);
         let interned = self.arenas.adt_defs.alloc(def);
         // this will need a transmute when reverse-variance is removed
         self.adt_defs.borrow_mut().insert(did, interned);
@@ -1746,12 +1746,12 @@ pub enum TypeVariants<'tcx> {
     /// from the tcx, use the `NodeId` from the `ast::Ty` and look it up in
     /// the `ast_ty_to_ty_cache`. This is probably true for `TyStruct` as
     /// well.
-    TyEnum(&'tcx ADTDef<'tcx>, &'tcx Substs<'tcx>),
+    TyEnum(AdtDef<'tcx>, &'tcx Substs<'tcx>),
 
     /// A structure type, defined with `struct`.
     ///
     /// See warning about substitutions for enumerated types.
-    TyStruct(&'tcx ADTDef<'tcx>, &'tcx Substs<'tcx>),
+    TyStruct(AdtDef<'tcx>, &'tcx Substs<'tcx>),
 
     /// `Box<T>`; this is nominally a struct in the documentation, but is
     /// special-cased internally. For example, it is possible to implicitly
@@ -3177,7 +3177,7 @@ impl<'tcx> TraitDef<'tcx> {
 }
 
 bitflags! {
-    flags ADTFlags: u32 {
+    flags AdtFlags: u32 {
         const NO_ADT_FLAGS        = 0,
         const IS_ENUM             = 1 << 0,
         const IS_DTORCK           = 1 << 1, // is this a dtorck type?
@@ -3188,18 +3188,23 @@ bitflags! {
     }
 }
 
-pub type ADTDef<'tcx> = ADTDef_<'tcx, 'static>;
-pub type VariantDef<'tcx> = VariantDef_<'tcx, 'static>;
-pub type FieldDef<'tcx> = FieldDef_<'tcx, 'static>;
+pub type AdtDef<'tcx> = &'tcx AdtDefData<'tcx, 'static>;
+pub type VariantDef<'tcx> = &'tcx VariantDefData<'tcx, 'static>;
+pub type FieldDef<'tcx> = &'tcx FieldDefData<'tcx, 'static>;
 
-pub struct VariantDef_<'tcx, 'container: 'tcx> {
+// See comment on AdtDefData for explanation
+pub type AdtDefMaster<'tcx> = &'tcx AdtDefData<'tcx, 'tcx>;
+pub type VariantDefMaster<'tcx> = &'tcx VariantDefData<'tcx, 'tcx>;
+pub type FieldDefMaster<'tcx> = &'tcx FieldDefData<'tcx, 'tcx>;
+
+pub struct VariantDefData<'tcx, 'container: 'tcx> {
     pub did: DefId,
     pub name: Name, // struct's name if this is a struct
     pub disr_val: Disr,
-    pub fields: Vec<FieldDef_<'tcx, 'container>>
+    pub fields: Vec<FieldDefData<'tcx, 'container>>
 }
 
-pub struct FieldDef_<'tcx, 'container: 'tcx> {
+pub struct FieldDefData<'tcx, 'container: 'tcx> {
     /// The field's DefId. NOTE: the fields of tuple-like enum variants
     /// are not real items, and don't have entries in tcache etc.
     pub did: DefId,
@@ -3208,7 +3213,7 @@ pub struct FieldDef_<'tcx, 'container: 'tcx> {
     pub name: Name,
     pub vis: ast::Visibility,
     /// TyIVar is used here to allow for variance (see the doc at
-    /// ADTDef_).
+    /// AdtDefData).
     ty: TyIVar<'tcx, 'container>
 }
 
@@ -3221,60 +3226,60 @@ pub struct FieldDef_<'tcx, 'container: 'tcx> {
 /// needs 2 lifetimes: the traditional variant lifetime ('tcx)
 /// bounding the lifetime of the inner types is of course necessary.
 /// However, it is not sufficient - types from a child tcx must
-/// not be leaked into the master tcx by being stored in an ADTDef_.
+/// not be leaked into the master tcx by being stored in an AdtDefData.
 ///
 /// The 'container lifetime ensures that by outliving the container
 /// tcx and preventing shorter-lived types from being inserted. When
 /// write access is not needed, the 'container lifetime can be
-/// erased to 'static, which can be done by the ADTDef wrapper.
-pub struct ADTDef_<'tcx, 'container: 'tcx> {
+/// erased to 'static, which can be done by the AdtDef wrapper.
+pub struct AdtDefData<'tcx, 'container: 'tcx> {
     pub did: DefId,
-    pub variants: Vec<VariantDef_<'tcx, 'container>>,
-    flags: Cell<ADTFlags>,
+    pub variants: Vec<VariantDefData<'tcx, 'container>>,
+    flags: Cell<AdtFlags>,
 }
 
-impl<'tcx, 'container> PartialEq for ADTDef_<'tcx, 'container> {
-    // ADTDef are always interned and this is part of TyS equality
+impl<'tcx, 'container> PartialEq for AdtDefData<'tcx, 'container> {
+    // AdtDefData are always interned and this is part of TyS equality
     #[inline]
     fn eq(&self, other: &Self) -> bool { self as *const _ == other as *const _ }
 }
 
-impl<'tcx, 'container> Eq for ADTDef_<'tcx, 'container> {}
+impl<'tcx, 'container> Eq for AdtDefData<'tcx, 'container> {}
 
-impl<'tcx, 'container> Hash for ADTDef_<'tcx, 'container> {
+impl<'tcx, 'container> Hash for AdtDefData<'tcx, 'container> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
-        (self as *const ADTDef).hash(s)
+        (self as *const AdtDefData).hash(s)
     }
 }
 
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum ADTKind { Struct, Enum }
+pub enum AdtKind { Struct, Enum }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum VariantKind { Dict, Tuple, Unit }
 
-impl<'tcx, 'container> ADTDef_<'tcx, 'container> {
+impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     fn new(tcx: &ctxt<'tcx>,
            did: DefId,
-           kind: ADTKind,
-           variants: Vec<VariantDef_<'tcx, 'container>>) -> Self {
-        let mut flags = ADTFlags::NO_ADT_FLAGS;
+           kind: AdtKind,
+           variants: Vec<VariantDefData<'tcx, 'container>>) -> Self {
+        let mut flags = AdtFlags::NO_ADT_FLAGS;
         let attrs = tcx.get_attrs(did);
         if attrs.iter().any(|item| item.check_name("fundamental")) {
-            flags = flags | ADTFlags::IS_FUNDAMENTAL;
+            flags = flags | AdtFlags::IS_FUNDAMENTAL;
         }
         if attrs.iter().any(|item| item.check_name("simd")) {
-            flags = flags | ADTFlags::IS_SIMD;
+            flags = flags | AdtFlags::IS_SIMD;
         }
         if Some(did) == tcx.lang_items.phantom_data() {
-            flags = flags | ADTFlags::IS_PHANTOM_DATA;
+            flags = flags | AdtFlags::IS_PHANTOM_DATA;
         }
-        if let ADTKind::Enum = kind {
-            flags = flags | ADTFlags::IS_ENUM;
+        if let AdtKind::Enum = kind {
+            flags = flags | AdtFlags::IS_ENUM;
         }
-        ADTDef {
+        AdtDefData {
             did: did,
             variants: variants,
             flags: Cell::new(flags),
@@ -3283,18 +3288,18 @@ impl<'tcx, 'container> ADTDef_<'tcx, 'container> {
 
     fn calculate_dtorck(&'tcx self, tcx: &ctxt<'tcx>) {
         if tcx.is_adt_dtorck(self) {
-            self.flags.set(self.flags.get() | ADTFlags::IS_DTORCK);
+            self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK);
         }
-        self.flags.set(self.flags.get() | ADTFlags::IS_DTORCK_VALID)
+        self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK_VALID)
     }
 
     /// Returns the kind of the ADT - Struct or Enum.
     #[inline]
-    pub fn adt_kind(&self) -> ADTKind {
-        if self.flags.get().intersects(ADTFlags::IS_ENUM) {
-            ADTKind::Enum
+    pub fn adt_kind(&self) -> AdtKind {
+        if self.flags.get().intersects(AdtFlags::IS_ENUM) {
+            AdtKind::Enum
         } else {
-            ADTKind::Struct
+            AdtKind::Struct
         }
     }
 
@@ -3303,28 +3308,28 @@ impl<'tcx, 'container> ADTDef_<'tcx, 'container> {
     /// alive; Otherwise, only the contents are required to be.
     #[inline]
     pub fn is_dtorck(&'tcx self, tcx: &ctxt<'tcx>) -> bool {
-        if !self.flags.get().intersects(ADTFlags::IS_DTORCK_VALID) {
+        if !self.flags.get().intersects(AdtFlags::IS_DTORCK_VALID) {
             self.calculate_dtorck(tcx)
         }
-        self.flags.get().intersects(ADTFlags::IS_DTORCK)
+        self.flags.get().intersects(AdtFlags::IS_DTORCK)
     }
 
     /// Returns whether this type is #[fundamental] for the purposes
     /// of coherence checking.
     #[inline]
     pub fn is_fundamental(&self) -> bool {
-        self.flags.get().intersects(ADTFlags::IS_FUNDAMENTAL)
+        self.flags.get().intersects(AdtFlags::IS_FUNDAMENTAL)
     }
 
     #[inline]
     pub fn is_simd(&self) -> bool {
-        self.flags.get().intersects(ADTFlags::IS_SIMD)
+        self.flags.get().intersects(AdtFlags::IS_SIMD)
     }
 
     /// Returns true if this is PhantomData<T>.
     #[inline]
     pub fn is_phantom_data(&self) -> bool {
-        self.flags.get().intersects(ADTFlags::IS_PHANTOM_DATA)
+        self.flags.get().intersects(AdtFlags::IS_PHANTOM_DATA)
     }
 
     /// Returns whether this type has a destructor.
@@ -3334,8 +3339,8 @@ impl<'tcx, 'container> ADTDef_<'tcx, 'container> {
 
     /// Asserts this is a struct and returns the struct's unique
     /// variant.
-    pub fn struct_variant(&self) -> &ty::VariantDef_<'tcx, 'container> {
-        assert!(self.adt_kind() == ADTKind::Struct);
+    pub fn struct_variant(&self) -> &VariantDefData<'tcx, 'container> {
+        assert!(self.adt_kind() == AdtKind::Struct);
         &self.variants[0]
     }
 
@@ -3354,12 +3359,12 @@ impl<'tcx, 'container> ADTDef_<'tcx, 'container> {
     #[inline]
     pub fn all_fields(&self) ->
             iter::FlatMap<
-                slice::Iter<VariantDef_<'tcx, 'container>>,
-                slice::Iter<FieldDef_<'tcx, 'container>>,
-                for<'s> fn(&'s VariantDef_<'tcx, 'container>)
-                    -> slice::Iter<'s, FieldDef_<'tcx, 'container>>
+                slice::Iter<VariantDefData<'tcx, 'container>>,
+                slice::Iter<FieldDefData<'tcx, 'container>>,
+                for<'s> fn(&'s VariantDefData<'tcx, 'container>)
+                    -> slice::Iter<'s, FieldDefData<'tcx, 'container>>
             > {
-        self.variants.iter().flat_map(VariantDef_::fields_iter)
+        self.variants.iter().flat_map(VariantDefData::fields_iter)
     }
 
     #[inline]
@@ -3377,14 +3382,14 @@ impl<'tcx, 'container> ADTDef_<'tcx, 'container> {
             self.variants.iter().all(|v| v.fields.is_empty())
     }
 
-    pub fn variant_with_id(&self, vid: DefId) -> &VariantDef_<'tcx, 'container> {
+    pub fn variant_with_id(&self, vid: DefId) -> &VariantDefData<'tcx, 'container> {
         self.variants
             .iter()
             .find(|v| v.did == vid)
             .expect("variant_with_id: unknown variant")
     }
 
-    pub fn variant_of_def(&self, def: def::Def) -> &VariantDef_<'tcx, 'container> {
+    pub fn variant_of_def(&self, def: def::Def) -> &VariantDefData<'tcx, 'container> {
         match def {
             def::DefVariant(_, vid, _) => self.variant_with_id(vid),
             def::DefStruct(..) | def::DefTy(..) => self.struct_variant(),
@@ -3393,16 +3398,16 @@ impl<'tcx, 'container> ADTDef_<'tcx, 'container> {
     }
 }
 
-impl<'tcx, 'container> VariantDef_<'tcx, 'container> {
+impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
     #[inline]
-    fn fields_iter(&self) -> slice::Iter<FieldDef_<'tcx, 'container>> {
+    fn fields_iter(&self) -> slice::Iter<FieldDefData<'tcx, 'container>> {
         self.fields.iter()
     }
 
     pub fn kind(&self) -> VariantKind {
         match self.fields.get(0) {
             None => VariantKind::Unit,
-            Some(&FieldDef_ { name, .. }) if name == special_idents::unnamed_field.name => {
+            Some(&FieldDefData { name, .. }) if name == special_idents::unnamed_field.name => {
                 VariantKind::Tuple
             }
             Some(_) => VariantKind::Dict
@@ -3414,21 +3419,23 @@ impl<'tcx, 'container> VariantDef_<'tcx, 'container> {
     }
 
     #[inline]
-    pub fn find_field_named(&self, name: ast::Name) -> Option<&FieldDef_<'tcx, 'container>> {
+    pub fn find_field_named(&self,
+                            name: ast::Name)
+                            -> Option<&FieldDefData<'tcx, 'container>> {
         self.fields.iter().find(|f| f.name == name)
     }
 
     #[inline]
-    pub fn field_named(&self, name: ast::Name) -> &FieldDef_<'tcx, 'container> {
+    pub fn field_named(&self, name: ast::Name) -> &FieldDefData<'tcx, 'container> {
         self.find_field_named(name).unwrap()
     }
 }
 
-impl<'tcx, 'container> FieldDef_<'tcx, 'container> {
+impl<'tcx, 'container> FieldDefData<'tcx, 'container> {
     pub fn new(did: DefId,
                name: Name,
                vis: ast::Visibility) -> Self {
-        FieldDef_ {
+        FieldDefData {
             did: did,
             name: name,
             vis: vis,
@@ -3934,7 +3941,7 @@ impl<'tcx> ctxt<'tcx> {
         self.mk_imm_ref(self.mk_region(ty::ReStatic), self.mk_str())
     }
 
-    pub fn mk_enum(&self, def: &'tcx ADTDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    pub fn mk_enum(&self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         // take a copy of substs so that we own the vectors inside
         self.mk_ty(TyEnum(def, substs))
     }
@@ -4036,7 +4043,7 @@ impl<'tcx> ctxt<'tcx> {
         self.mk_ty(TyProjection(inner))
     }
 
-    pub fn mk_struct(&self, def: &'tcx ADTDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    pub fn mk_struct(&self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         // take a copy of substs so that we own the vectors inside
         self.mk_ty(TyStruct(def, substs))
     }
@@ -4327,7 +4334,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn ty_adt_def(&self) -> Option<&'tcx ADTDef<'tcx>> {
+    pub fn ty_adt_def(&self) -> Option<AdtDef<'tcx>> {
         match self.sty {
             TyStruct(adt, _) | TyEnum(adt, _) => Some(adt),
             _ => None
@@ -4677,7 +4684,7 @@ impl<'tcx> TyS<'tcx> {
 
     // True if instantiating an instance of `r_ty` requires an instance of `r_ty`.
     pub fn is_instantiable(&'tcx self, cx: &ctxt<'tcx>) -> bool {
-        fn type_requires<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<&'tcx ADTDef<'tcx>>,
+        fn type_requires<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<AdtDef<'tcx>>,
                                r_ty: Ty<'tcx>, ty: Ty<'tcx>) -> bool {
             debug!("type_requires({:?}, {:?})?",
                    r_ty, ty);
@@ -4689,7 +4696,7 @@ impl<'tcx> TyS<'tcx> {
             return r;
         }
 
-        fn subtypes_require<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<&'tcx ADTDef<'tcx>>,
+        fn subtypes_require<'tcx>(cx: &ctxt<'tcx>, seen: &mut Vec<AdtDef<'tcx>>,
                                   r_ty: Ty<'tcx>, ty: Ty<'tcx>) -> bool {
             debug!("subtypes_require({:?}, {:?})?",
                    r_ty, ty);
@@ -4826,7 +4833,7 @@ impl<'tcx> TyS<'tcx> {
             }
         }
 
-        fn same_struct_or_enum<'tcx>(ty: Ty<'tcx>, def: &'tcx ADTDef<'tcx>) -> bool {
+        fn same_struct_or_enum<'tcx>(ty: Ty<'tcx>, def: AdtDef<'tcx>) -> bool {
             match ty.sty {
                 TyStruct(ty_def, _) | TyEnum(ty_def, _) => {
                      ty_def == def
@@ -5969,12 +5976,21 @@ impl<'tcx> ctxt<'tcx> {
         )
     }
 
-    /// Given the did of a trait, returns its canonical trait ref.
-    pub fn lookup_adt_def(&self, did: ast::DefId) -> &'tcx ADTDef_<'tcx, 'tcx> {
+    /// Given the did of an ADT, return a master reference to its
+    /// definition. Unless you are planning on fulfilling the ADT's fields,
+    /// use lookup_adt_def instead.
+    pub fn lookup_adt_def_master(&self, did: ast::DefId) -> AdtDefMaster<'tcx> {
         lookup_locally_or_in_crate_store(
             "adt_defs", did, &self.adt_defs,
             || csearch::get_adt_def(self, did)
         )
+    }
+
+    /// Given the did of an ADT, return a reference to its definition.
+    pub fn lookup_adt_def(&self, did: ast::DefId) -> AdtDef<'tcx> {
+        // when reverse-variance goes away, a transmute::<AdtDefMaster,AdtDef>
+        // woud be needed here.
+        self.lookup_adt_def_master(did)
     }
 
     /// Given the did of an item, returns its full set of predicates.
@@ -6610,7 +6626,7 @@ impl<'tcx> ctxt<'tcx> {
 
     /// Returns true if this ADT is a dtorck type, i.e. whether it being
     /// safe for destruction requires it to be alive
-    fn is_adt_dtorck(&self, adt: &'tcx ADTDef<'tcx>) -> bool {
+    fn is_adt_dtorck(&self, adt: AdtDef<'tcx>) -> bool {
         let dtor_method = match self.destructor_for_type.borrow().get(&adt.did) {
             Some(dtor) => *dtor,
             None => return false

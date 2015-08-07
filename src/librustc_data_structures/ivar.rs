@@ -20,6 +20,10 @@ use std::cell::Cell;
 /// if you attempt to read the value before it has been set. It is also
 /// not `Sync`, but may be extended in the future to be usable as a true
 /// concurrency type.
+///
+/// The `T: Copy` bound is not strictly needed, but it is required by
+/// Cell (so removing it would require using UnsafeCell), and it
+/// suffices for the current purposes.
 #[derive(PartialEq)]
 pub struct Ivar<T: Copy> {
     data: Cell<Option<T>>

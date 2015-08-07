@@ -289,10 +289,10 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
                 TypeContext::ADT { def_id, variant, field, field_index } => {
                     let adt = tcx.lookup_adt_def(def_id);
                     let variant_name = match adt.adt_kind() {
-                        ty::ADTKind::Enum => format!("enum {} variant {}",
+                        ty::AdtKind::Enum => format!("enum {} variant {}",
                                                      tcx.item_path_str(def_id),
                                                      variant),
-                        ty::ADTKind::Struct => format!("struct {}",
+                        ty::AdtKind::Struct => format!("struct {}",
                                                        tcx.item_path_str(def_id))
                     };
                     let field_name = if field == special_idents::unnamed_field.name {

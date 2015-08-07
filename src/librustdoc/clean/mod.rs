@@ -1730,7 +1730,7 @@ impl Clean<Item> for ast::StructField {
     }
 }
 
-impl<'tcx> Clean<Item> for ty::FieldDef<'tcx> {
+impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
         use syntax::parse::token::special_idents::unnamed_field;
         use rustc::metadata::csearch;
@@ -1856,7 +1856,7 @@ impl Clean<Item> for doctree::Variant {
     }
 }
 
-impl<'tcx> Clean<Item> for ty::VariantDef<'tcx> {
+impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
     fn clean(&self, cx: &DocContext) -> Item {
         // use syntax::parse::token::special_idents::unnamed_field;
         let kind = match self.kind() {

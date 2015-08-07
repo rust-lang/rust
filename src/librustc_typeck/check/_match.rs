@@ -717,7 +717,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                                          span: Span,
                                          fields: &'tcx [Spanned<ast::FieldPat>],
-                                         variant: &ty::VariantDef<'tcx>,
+                                         variant: ty::VariantDef<'tcx>,
                                          substs: &Substs<'tcx>,
                                          etc: bool) {
     let tcx = pcx.fcx.ccx.tcx;
