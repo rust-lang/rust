@@ -14,7 +14,7 @@ use ext::base::{ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
-use ext::tt::macro_parser::{parse, parse_or_else};
+use ext::tt::macro_parser::parse;
 use parse::lexer::new_tt_reader;
 use parse::parser::Parser;
 use parse::token::{self, special_idents, gensym_ident, NtTT, Token};
@@ -211,12 +211,23 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 best_fail_spot = sp;
                 best_fail_msg = (*msg).clone();
               },
-              Error(sp, ref msg) => panic!(cx.span_fatal(sp, &msg[..]))
+              Error(mut spp, ref msg) => {
+                if spp == DUMMY_SP {
+                    spp = sp;
+                }
+
+                panic!(cx.span_fatal(spp, &msg[..]))
+              }
             }
           }
           _ => cx.bug("non-matcher found in parsed lhses")
         }
     }
+
+    if best_fail_spot == DUMMY_SP {
+        best_fail_spot = sp;
+    }
+
     panic!(cx.span_fatal(best_fail_spot, &best_fail_msg[..]));
 }
 
@@ -266,10 +277,20 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
                                    None,
                                    None,
                                    def.body.clone());
-    let argument_map = parse_or_else(cx.parse_sess(),
-                                     cx.cfg(),
-                                     arg_reader,
-                                     argument_gram);
+
+    let argument_map = match parse(cx.parse_sess(),
+                                   cx.cfg(),
+                                   arg_reader,
+                                   &argument_gram) {
+        Success(m) => m,
+        Failure(mut sp, str) | Error(mut sp, str) => {
+            if sp == DUMMY_SP {
+                sp = def.span;
+            }
+
+            panic!(cx.parse_sess().span_diagnostic.span_fatal(sp, &str[..]));
+        }
+    };
 
     // Extract the arguments:
     let lhses = match **argument_map.get(&lhs_nm).unwrap() {
