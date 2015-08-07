@@ -26,26 +26,28 @@ trait Quux {
 
 fn make_bar<T:Bar>(t: &T) -> &Bar {
     t
-        //~^ ERROR `Bar` is not object-safe
+        //~^ ERROR E0038
         //~| NOTE method `bar` references the `Self` type in its arguments or return type
 }
 
 fn make_bar_explicit<T:Bar>(t: &T) -> &Bar {
     t as &Bar
-        //~^ ERROR `Bar` is not object-safe
+        //~^ ERROR E0038
         //~| NOTE method `bar` references the `Self` type in its arguments or return type
+        //~| ERROR E0038
 }
 
 fn make_baz<T:Baz>(t: &T) -> &Baz {
     t
-        //~^ ERROR `Baz` is not object-safe
+        //~^ ERROR E0038
         //~| NOTE method `bar` references the `Self` type in its arguments or return type
 }
 
 fn make_baz_explicit<T:Baz>(t: &T) -> &Baz {
     t as &Baz
-        //~^ ERROR `Baz` is not object-safe
+        //~^ ERROR E0038
         //~| NOTE method `bar` references the `Self` type in its arguments or return type
+        //~| ERROR E0038
 }
 
 fn make_quux<T:Quux>(t: &T) -> &Quux {

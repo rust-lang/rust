@@ -25,5 +25,6 @@ impl Bar for Thing { }
 fn main() {
     let mut thing = Thing;
     let test: &mut Bar = &mut thing;
-    //~^ ERROR cannot convert to a trait object because trait `Bar` is not object-safe
+    //~^ ERROR E0038
+    //~| ERROR E0038
 }
