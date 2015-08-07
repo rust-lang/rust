@@ -13,7 +13,7 @@
 use middle::infer::{InferCtxt, GenericKind};
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, RegionEscape, ToPolyTraitRef, ToPredicate, Ty};
+use middle::ty::{self, RegionEscape, ToPredicate, Ty};
 use middle::ty_fold::{TypeFoldable, TypeFolder};
 
 use syntax::ast;
@@ -298,6 +298,9 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                             self.stack.pop().unwrap();
                         }
                     }
+                }
+                ty::Predicate::ObjectSafe(_) |
+                ty::Predicate::WellFormed(_) => {
                 }
             }
         }

@@ -475,7 +475,7 @@ pub enum WherePredicate {
     /// A lifetime predicate, e.g. `'a: 'b+'c`
     RegionPredicate(WhereRegionPredicate),
     /// An equality predicate (unsupported)
-    EqPredicate(WhereEqPredicate)
+    EqPredicate(WhereEqPredicate),
 }
 
 /// A type bound, eg `for<'c> Foo: Send+Clone+'c`
