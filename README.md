@@ -61,6 +61,7 @@ the direction the language is evolving in.
 * [1131-likely-intrinsic.md](text/1131-likely-intrinsic.md)
 * [1156-adjust-default-object-bounds.md](text/1156-adjust-default-object-bounds.md)
 * [1184-stabilize-no_std.md](text/1184-stabilize-no_std.md)
+* [1214-projections-lifetimes-and-wf.md](text/1214-projections-lifetimes-and-wf.md)
 * [1219-use-group-as.md](text/1219-use-group-as.md)
 
 ## Table of Contents
