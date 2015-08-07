@@ -5,9 +5,9 @@
 
 # Summary
 
-If the compiler can detect at compile-time that something will always
-cause a `debug_assert` or an `assert` it should instead
-insert an unconditional runtime-panic and issue a warning.
+If the constant evaluator encounters erronous code during the evaluation of
+an expression that is not part of a true constant evaluation context a warning
+must be emitted and the expression needs to be translated normally.
 
 # Definition of constant evaluation context
 
@@ -40,6 +40,26 @@ will not cause a compiler error currently, while `5 << 42` will.
 If the constant evaluator gets smart enough, it will be able to const evaluate
 the `blub` function. This would be a breaking change, since the code would not
 compile anymore. (this occurred in https://github.com/rust-lang/rust/pull/26848).
+
+# Detailed design
+
+The PRs https://github.com/rust-lang/rust/pull/26848 and https://github.com/rust-lang/rust/pull/25570 will be setting a precedent
+for warning about such situations (WIP, not pushed yet).
+
+When the constant evaluator fails while evaluating a normal expression,
+a warning will be emitted and normal translation needs to be resumed.
+
+# Drawbacks
+
+None, if we don't do anything, the const evaluator cannot get much smarter.
+
+# Alternatives
+
+## allow breaking changes
+
+Let the compiler error on things that will unconditionally panic at runtime.
+
+## insert an unconditional panic instead of generating regular code
 
 GNAT (an Ada compiler) does this already:
 
@@ -75,37 +95,7 @@ call    __gnat_rcheck_CE_Range_Check
 ```
 
 
-# Detailed design
-
-The PRs https://github.com/rust-lang/rust/pull/26848 and https://github.com/rust-lang/rust/pull/25570 will be setting a precedent
-for warning about such situations (WIP, not pushed yet).
-All future additions to the const-evaluator need to notify the const evaluator
-that when it encounters a statically known erroneous situation while evaluating
-an expression outside of a constant evaluation environment, the
-entire expression must be replaced by a panic and a warning must be emitted.
-
-# Drawbacks
-
-None, if we don't do anything, the const evaluator cannot get much smarter.
-
-# Alternatives
-
-## allow breaking changes
-
-Let the compiler error on things that will unconditionally panic at runtime.
-
-## only warn, don't influence code generation
-
-The const evaluator should simply issue a warning and notify it's caller that the expression cannot be evaluated and should be translated.
-This has the disadvantage, that in release-mode statically known issues like
-overflow or shifting more than the number of bits available will not be
-caught even at runtime.
-
-On the other hand, this alternative does not change the behavior of existing code.
-
 # Unresolved questions
-
-## How to implement this?
 
 ## Const-eval the body of `const fn` that are never used in a constant environment
 
