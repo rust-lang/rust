@@ -30,6 +30,8 @@ use core::cmp;
 
 use alloc::raw_vec::RawVec;
 
+use super::range::RangeArgument;
+
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1
 
@@ -157,6 +159,117 @@ impl<T> VecDeque<T> {
             self.ptr().offset(src as isize),
             self.ptr().offset(dst as isize),
             len);
+    }
+
+    /// Copies a potentially wrapping block of memory len long from src to dest.
+    /// (abs(dst - src) + len) must be no larger than cap() (There must be at
+    /// most one continuous overlapping region between src and dest).
+    unsafe fn wrap_copy(&self, dst: usize, src: usize, len: usize) {
+        debug_assert!(
+            (if src <= dst { dst - src } else { src - dst }) + len <= self.cap(),
+            "dst={} src={} len={} cap={}", dst, src, len, self.cap());
+
+        if src == dst || len == 0 { return }
+
+        let dst_after_src = self.wrap_sub(dst, src) < len;
+
+        let src_pre_wrap_len = self.cap() - src;
+        let dst_pre_wrap_len = self.cap() - dst;
+        let src_wraps = src_pre_wrap_len < len;
+        let dst_wraps = dst_pre_wrap_len < len;
+
+        match (dst_after_src, src_wraps, dst_wraps) {
+            (_, false, false) => {
+                // src doesn't wrap, dst doesn't wrap
+                //
+                //        S . . .
+                // 1 [_ _ A A B B C C _]
+                // 2 [_ _ A A A A B B _]
+                //            D . . .
+                //
+                self.copy(dst, src, len);
+            }
+            (false, false, true) => {
+                // dst before src, src doesn't wrap, dst wraps
+                //
+                //    S . . .
+                // 1 [A A B B _ _ _ C C]
+                // 2 [A A B B _ _ _ A A]
+                // 3 [B B B B _ _ _ A A]
+                //    . .           D .
+                //
+                self.copy(dst, src, dst_pre_wrap_len);
+                self.copy(0, src + dst_pre_wrap_len, len - dst_pre_wrap_len);
+            }
+            (true, false, true) => {
+                // src before dst, src doesn't wrap, dst wraps
+                //
+                //              S . . .
+                // 1 [C C _ _ _ A A B B]
+                // 2 [B B _ _ _ A A B B]
+                // 3 [B B _ _ _ A A A A]
+                //    . .           D .
+                //
+                self.copy(0, src + dst_pre_wrap_len, len - dst_pre_wrap_len);
+                self.copy(dst, src, dst_pre_wrap_len);
+            }
+            (false, true, false) => {
+                // dst before src, src wraps, dst doesn't wrap
+                //
+                //    . .           S .
+                // 1 [C C _ _ _ A A B B]
+                // 2 [C C _ _ _ B B B B]
+                // 3 [C C _ _ _ B B C C]
+                //              D . . .
+                //
+                self.copy(dst, src, src_pre_wrap_len);
+                self.copy(dst + src_pre_wrap_len, 0, len - src_pre_wrap_len);
+            }
+            (true, true, false) => {
+                // src before dst, src wraps, dst doesn't wrap
+                //
+                //    . .           S .
+                // 1 [A A B B _ _ _ C C]
+                // 2 [A A A A _ _ _ C C]
+                // 3 [C C A A _ _ _ C C]
+                //    D . . .
+                //
+                self.copy(dst + src_pre_wrap_len, 0, len - src_pre_wrap_len);
+                self.copy(dst, src, src_pre_wrap_len);
+            }
+            (false, true, true) => {
+                // dst before src, src wraps, dst wraps
+                //
+                //    . . .         S .
+                // 1 [A B C D _ E F G H]
+                // 2 [A B C D _ E G H H]
+                // 3 [A B C D _ E G H A]
+                // 4 [B C C D _ E G H A]
+                //    . .         D . .
+                //
+                debug_assert!(dst_pre_wrap_len > src_pre_wrap_len);
+                let delta = dst_pre_wrap_len - src_pre_wrap_len;
+                self.copy(dst, src, src_pre_wrap_len);
+                self.copy(dst + src_pre_wrap_len, 0, delta);
+                self.copy(0, delta, len - dst_pre_wrap_len);
+            }
+            (true, true, true) => {
+                // src before dst, src wraps, dst wraps
+                //
+                //    . .         S . .
+                // 1 [A B C D _ E F G H]
+                // 2 [A A B D _ E F G H]
+                // 3 [H A B D _ E F G H]
+                // 4 [H A B D _ E F F G]
+                //    . . .         D .
+                //
+                debug_assert!(src_pre_wrap_len > dst_pre_wrap_len);
+                let delta = src_pre_wrap_len - dst_pre_wrap_len;
+                self.copy(delta, 0, len - src_pre_wrap_len);
+                self.copy(0, self.cap() - delta, delta);
+                self.copy(dst, src, dst_pre_wrap_len);
+            }
+        }
     }
 
     /// Frobs the head and tail sections around to handle the fact that we
@@ -601,8 +714,18 @@ impl<T> VecDeque<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
-    /// Creates a draining iterator that clears the `VecDeque` and iterates over
-    /// the removed items from start to end.
+    /// Create a draining iterator that removes the specified range in the
+    /// `VecDeque` and yields the removed items from start to end. The element
+    /// range is removed even if the iterator is not consumed until the end.
+    ///
+    /// Note: It is unspecified how many elements are removed from the deque,
+    /// if the `Drain` value is not dropped, but the borrow it holds expires
+    /// (eg. due to mem::forget).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting point is greater than the end point or if
+    /// the end point is greater than the length of the vector.
     ///
     /// # Examples
     ///
@@ -611,18 +734,66 @@ impl<T> VecDeque<T> {
     ///
     /// use std::collections::VecDeque;
     ///
+    /// // draining using `..` clears the whole deque.
     /// let mut v = VecDeque::new();
     /// v.push_back(1);
-    /// assert_eq!(v.drain().next(), Some(1));
+    /// assert_eq!(v.drain(..).next(), Some(1));
     /// assert!(v.is_empty());
     /// ```
     #[inline]
     #[unstable(feature = "drain",
                reason = "matches collection reform specification, waiting for dust to settle",
                issue = "27711")]
-    pub fn drain(&mut self) -> Drain<T> {
+    pub fn drain<R>(&mut self, range: R) -> Drain<T> where R: RangeArgument<usize> {
+        // Memory safety
+        //
+        // When the Drain is first created, the source deque is shortened to
+        // make sure no uninitialized or moved-from elements are accessible at
+        // all if the Drain's destructor never gets to run.
+        //
+        // Drain will ptr::read out the values to remove.
+        // When finished, the remaining data will be copied back to cover the hole,
+        // and the head/tail values will be restored correctly.
+        //
+        let len = self.len();
+        let start = *range.start().unwrap_or(&0);
+        let end = *range.end().unwrap_or(&len);
+        assert!(start <= end, "drain lower bound was too large");
+        assert!(end <= len, "drain upper bound was too large");
+
+        // The deque's elements are parted into three segments:
+        // * self.tail  -> drain_tail
+        // * drain_tail -> drain_head
+        // * drain_head -> self.head
+        //
+        // T = self.tail; H = self.head; t = drain_tail; h = drain_head
+        //
+        // We store drain_tail as self.head, and drain_head and self.head as
+        // after_tail and after_head respectively on the Drain. This also
+        // truncates the effective array such that if the Drain is leaked, we
+        // have forgotten about the potentially moved values after the start of
+        // the drain.
+        //
+        //        T   t   h   H
+        // [. . . o o x x o o . . .]
+        //
+        let drain_tail = self.wrap_add(self.tail, start);
+        let drain_head = self.wrap_add(self.tail, end);
+        let head = self.head;
+
+        // "forget" about the values after the start of the drain until after
+        // the drain is complete and the Drain destructor is run.
+        self.head = drain_tail;
+
         Drain {
-            inner: self,
+            deque: self as *mut _,
+            after_tail: drain_head,
+            after_head: head,
+            iter: Iter {
+                tail: drain_tail,
+                head: drain_head,
+                ring: unsafe { self.buffer_as_mut_slice() },
+            },
         }
     }
 
@@ -641,7 +812,7 @@ impl<T> VecDeque<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn clear(&mut self) {
-        self.drain();
+        self.drain(..);
     }
 
     /// Provides a reference to the front element, or `None` if the sequence is
@@ -1386,7 +1557,7 @@ impl<T> VecDeque<T> {
                issue = "27765")]
     pub fn append(&mut self, other: &mut Self) {
         // naive impl
-        self.extend(other.drain());
+        self.extend(other.drain(..));
     }
 
     /// Retains only the elements specified by the predicate.
@@ -1623,15 +1794,56 @@ impl<T> ExactSizeIterator for IntoIter<T> {}
            reason = "matches collection reform specification, waiting for dust to settle",
            issue = "27711")]
 pub struct Drain<'a, T: 'a> {
-    inner: &'a mut VecDeque<T>,
+    after_tail: usize,
+    after_head: usize,
+    iter: Iter<'a, T>,
+    deque: *mut VecDeque<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         for _ in self.by_ref() {}
-        self.inner.head = 0;
-        self.inner.tail = 0;
+
+        let source_deque = unsafe { &mut *self.deque };
+
+        // T = source_deque_tail; H = source_deque_head; t = drain_tail; h = drain_head
+        //
+        //        T   t   h   H
+        // [. . . o o x x o o . . .]
+        //
+        let orig_tail = source_deque.tail;
+        let drain_tail = source_deque.head;
+        let drain_head = self.after_tail;
+        let orig_head = self.after_head;
+
+        let tail_len = count(orig_tail, drain_tail, source_deque.cap());
+        let head_len = count(drain_head, orig_head, source_deque.cap());
+
+        // Restore the original head value
+        source_deque.head = orig_head;
+
+        match (tail_len, head_len) {
+            (0, 0) => {
+                source_deque.head = 0;
+                source_deque.tail = 0;
+            }
+            (0, _) => {
+                source_deque.tail = drain_head;
+            }
+            (_, 0) => {
+                source_deque.head = drain_tail;
+            }
+            _ => unsafe {
+                if tail_len <= head_len {
+                    source_deque.tail = source_deque.wrap_sub(drain_head, tail_len);
+                    source_deque.wrap_copy(source_deque.tail, orig_tail, tail_len);
+                } else {
+                    source_deque.head = source_deque.wrap_add(drain_tail, head_len);
+                    source_deque.wrap_copy(drain_tail, drain_head, head_len);
+                }
+            }
+        }
     }
 }
 
@@ -1641,13 +1853,16 @@ impl<'a, T: 'a> Iterator for Drain<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        self.inner.pop_front()
+        self.iter.next().map(|elt|
+            unsafe {
+                ptr::read(elt)
+            }
+        )
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.inner.len();
-        (len, Some(len))
+        self.iter.size_hint()
     }
 }
 
@@ -1655,7 +1870,11 @@ impl<'a, T: 'a> Iterator for Drain<'a, T> {
 impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
-        self.inner.pop_back()
+        self.iter.next_back().map(|elt|
+            unsafe {
+                ptr::read(elt)
+            }
+        )
     }
 }
 
@@ -1960,6 +2179,44 @@ mod tests {
                     assert!(tester.tail < tester.cap());
                     assert!(tester.head < tester.cap());
                     assert_eq!(tester, expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_drain() {
+        let mut tester: VecDeque<usize> = VecDeque::with_capacity(7);
+
+        let cap = tester.capacity();
+        for len in 0..cap + 1 {
+            for tail in 0..cap + 1 {
+                for drain_start in 0..len + 1 {
+                    for drain_end in drain_start..len + 1 {
+                        tester.tail = tail;
+                        tester.head = tail;
+                        for i in 0..len {
+                            tester.push_back(i);
+                        }
+
+                        // Check that we drain the correct values
+                        let drained: VecDeque<_> =
+                            tester.drain(drain_start..drain_end).collect();
+                        let drained_expected: VecDeque<_> =
+                            (drain_start..drain_end).collect();
+                        assert_eq!(drained, drained_expected);
+
+                        // We shouldn't have changed the capacity or made the
+                        // head or tail out of bounds
+                        assert_eq!(tester.capacity(), cap);
+                        assert!(tester.tail < tester.cap());
+                        assert!(tester.head < tester.cap());
+
+                        // We should see the correct values in the VecDeque
+                        let expected: VecDeque<_> =
+                            (0..drain_start).chain(drain_end..len).collect();
+                        assert_eq!(expected, tester);
+                    }
                 }
             }
         }
