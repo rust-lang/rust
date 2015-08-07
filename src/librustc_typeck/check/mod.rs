@@ -445,9 +445,8 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
             fcx.select_all_obligations_and_apply_defaults();
             upvar::closure_analyze_fn(&fcx, fn_id, decl, body);
-            fcx.select_all_obligations_or_error();
+            fcx.select_obligations_where_possible();
             fcx.check_casts();
-
             fcx.select_all_obligations_or_error(); // Casts can introduce new obligations.
 
             regionck::regionck_fn(&fcx, fn_id, fn_span, decl, body);
