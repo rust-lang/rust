@@ -620,7 +620,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            struct_generics: &ty::Generics<'tcx>,
                            struct_predicates: &ty::GenericPredicates<'tcx>,
                            v: &ast::StructField,
-                           ty_f: &'tcx ty::FieldDef_<'tcx, 'tcx>)
+                           ty_f: ty::FieldDefMaster<'tcx>)
 {
     let tt = ccx.icx(struct_predicates).to_ty(&ExplicitRscope, &*v.node.ty);
     ty_f.fulfill_ty(tt);
@@ -748,7 +748,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             let (scheme, predicates) = convert_typed_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, scheme.ty);
             convert_enum_variant_types(ccx,
-                                       tcx.lookup_adt_def(local_def(it.id)),
+                                       tcx.lookup_adt_def_master(local_def(it.id)),
                                        scheme,
                                        predicates,
                                        &enum_definition.variants);
@@ -996,7 +996,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             let (scheme, predicates) = convert_typed_item(ccx, it);
             write_ty_to_tcx(tcx, it.id, scheme.ty);
 
-            let variant = tcx.lookup_adt_def(local_def(it.id)).struct_variant();
+            let variant = tcx.lookup_adt_def_master(local_def(it.id)).struct_variant();
 
             for (f, ty_f) in struct_def.fields.iter().zip(variant.fields.iter()) {
                 convert_field(ccx, &scheme.generics, &predicates, f, ty_f)
@@ -1023,7 +1023,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
 
 fn convert_variant_ctor<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
                                   ctor_id: ast::NodeId,
-                                  variant: &'tcx ty::VariantDef<'tcx>,
+                                  variant: ty::VariantDef<'tcx>,
                                   scheme: ty::TypeScheme<'tcx>,
                                   predicates: ty::GenericPredicates<'tcx>) {
     let ctor_ty = match variant.kind() {
@@ -1049,7 +1049,7 @@ fn convert_variant_ctor<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                        def: &'tcx ty::ADTDef_<'tcx, 'tcx>,
+                                        def: ty::AdtDefMaster<'tcx>,
                                         scheme: ty::TypeScheme<'tcx>,
                                         predicates: ty::GenericPredicates<'tcx>,
                                         variants: &[P<ast::Variant>]) {
@@ -1090,7 +1090,7 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
                                 did: ast::DefId,
                                 name: ast::Name,
                                 disr_val: ty::Disr,
-                                def: &ast::StructDef) -> ty::VariantDef_<'tcx, 'tcx> {
+                                def: &ast::StructDef) -> ty::VariantDefData<'tcx, 'tcx> {
     let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap();
     let fields = def.fields.iter().map(|f| {
         let fid = local_def(f.node.id);
@@ -1106,14 +1106,14 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
                     seen_fields.insert(ident.name, f.span);
                 }
 
-                ty::FieldDef_::new(fid, ident.name, vis)
+                ty::FieldDefData::new(fid, ident.name, vis)
             },
             ast::UnnamedField(vis) => {
-                ty::FieldDef_::new(fid, special_idents::unnamed_field.name, vis)
+                ty::FieldDefData::new(fid, special_idents::unnamed_field.name, vis)
             }
         }
     }).collect();
-    ty::VariantDef_ {
+    ty::VariantDefData {
         did: did,
         name: name,
         disr_val: disr_val,
@@ -1124,13 +1124,13 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
 fn convert_struct_def<'tcx>(tcx: &ty::ctxt<'tcx>,
                             it: &ast::Item,
                             def: &ast::StructDef)
-                            -> &'tcx ty::ADTDef_<'tcx, 'tcx>
+                            -> ty::AdtDefMaster<'tcx>
 {
 
     let did = local_def(it.id);
     tcx.intern_adt_def(
         did,
-        ty::ADTKind::Struct,
+        ty::AdtKind::Struct,
         vec![convert_struct_variant(tcx, did, it.ident.name, 0, def)]
     )
 }
@@ -1138,7 +1138,7 @@ fn convert_struct_def<'tcx>(tcx: &ty::ctxt<'tcx>,
 fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
                           it: &ast::Item,
                           def: &ast::EnumDef)
-                          -> &'tcx ty::ADTDef_<'tcx, 'tcx>
+                          -> ty::AdtDefMaster<'tcx>
 {
     fn evaluate_disr_expr<'tcx>(tcx: &ty::ctxt<'tcx>,
                                 repr_ty: Ty<'tcx>,
@@ -1202,18 +1202,18 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
     fn convert_enum_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
                                   v: &ast::Variant,
                                   disr: ty::Disr)
-                                  -> ty::VariantDef_<'tcx, 'tcx>
+                                  -> ty::VariantDefData<'tcx, 'tcx>
     {
         let did = local_def(v.node.id);
         let name = v.node.name.name;
         match v.node.kind {
             ast::TupleVariantKind(ref va) => {
-                ty::VariantDef_ {
+                ty::VariantDefData {
                     did: did,
                     name: name,
                     disr_val: disr,
                     fields: va.iter().map(|&ast::VariantArg { id, .. }| {
-                        ty::FieldDef_::new(
+                        ty::FieldDefData::new(
                             local_def(id),
                             special_idents::unnamed_field.name,
                             ast::Visibility::Public
@@ -1240,7 +1240,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
         prev_disr = Some(disr);
         v
     }).collect();
-    tcx.intern_adt_def(local_def(it.id), ty::ADTKind::Enum, variants)
+    tcx.intern_adt_def(local_def(it.id), ty::AdtKind::Enum, variants)
 }
 
 /// Ensures that the super-predicates of the trait with def-id

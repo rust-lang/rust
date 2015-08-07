@@ -742,7 +742,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                           ex: &ast::Expr,
                           path: &ast::Path,
                           fields: &Vec<ast::Field>,
-                          variant: &ty::VariantDef,
+                          variant: ty::VariantDef,
                           base: &Option<P<ast::Expr>>) {
         if generated_code(path.span) {
             return

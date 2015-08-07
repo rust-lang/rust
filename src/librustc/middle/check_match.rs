@@ -574,8 +574,10 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
     })
 }
 
-impl<'tcx> ADTDef<'tcx> {
-    fn variant_of_ctor(&'tcx self, ctor: &Constructor) -> &'tcx VariantDef<'tcx> {
+impl<'tcx, 'container> ty::AdtDefData<'tcx, 'container> {
+    fn variant_of_ctor(&self,
+                       ctor: &Constructor)
+                       -> &VariantDefData<'tcx, 'container> {
         match ctor {
             &Variant(vid) => self.variant_with_id(vid),
             _ => self.struct_variant()

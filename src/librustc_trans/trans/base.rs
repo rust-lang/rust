@@ -386,7 +386,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
     fn iter_variant<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                                    repr: &adt::Repr<'tcx>,
                                    av: ValueRef,
-                                   variant: &ty::VariantDef<'tcx>,
+                                   variant: ty::VariantDef<'tcx>,
                                    substs: &Substs<'tcx>,
                                    f: &mut F)
                                    -> Block<'blk, 'tcx> where

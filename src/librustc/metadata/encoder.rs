@@ -265,9 +265,9 @@ fn encode_parent_item(rbml_w: &mut Encoder, id: DefId) {
 }
 
 fn encode_struct_fields(rbml_w: &mut Encoder,
-                        fields: &[ty::FieldDef],
+                        variant: ty::VariantDef,
                         origin: DefId) {
-    for f in fields {
+    for f in &variant.fields {
         if f.name == special_idents::unnamed_field.name {
             rbml_w.start_tag(tag_item_unnamed_field);
         } else {
@@ -315,14 +315,11 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         encode_stability(rbml_w, stab);
 
         if let ty::VariantKind::Dict = variant.kind() {
-            let idx = encode_info_for_struct(ecx,
-                                             rbml_w,
-                                             &variant.fields,
-                                             index);
+            let idx = encode_info_for_struct(ecx, rbml_w, variant, index);
             encode_index(rbml_w, idx, write_i64);
         }
 
-        encode_struct_fields(rbml_w, &variant.fields, vid);
+        encode_struct_fields(rbml_w, variant, vid);
 
         let specified_disr_val = variant.disr_val;
         if specified_disr_val != disr_val {
@@ -630,7 +627,7 @@ fn encode_provided_source(rbml_w: &mut Encoder,
 /* Returns an index of items in this class */
 fn encode_info_for_struct<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                     rbml_w: &mut Encoder,
-                                    fields: &[ty::FieldDef<'tcx>],
+                                    variant: ty::VariantDef<'tcx>,
                                     global_index: &mut Vec<entry<i64>>)
                                     -> Vec<entry<i64>> {
     /* Each class has its own index, since different classes
@@ -638,7 +635,7 @@ fn encode_info_for_struct<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     let mut index = Vec::new();
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
-    for field in fields {
+    for field in &variant.fields {
         let nm = field.name;
         let id = field.did.node;
 
@@ -1153,13 +1150,13 @@ fn encode_info_for_item(ecx: &EncodeContext,
       }
       ast::ItemStruct(ref struct_def, _) => {
         let def = ecx.tcx.lookup_adt_def(def_id);
-        let fields = &def.struct_variant().fields;
+        let variant = def.struct_variant();
 
         /* First, encode the fields
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
            class itself */
-        let idx = encode_info_for_struct(ecx, rbml_w, &fields, index);
+        let idx = encode_info_for_struct(ecx, rbml_w, variant, index);
 
         /* Index the class*/
         add_to_index(item, rbml_w, index);
@@ -1181,7 +1178,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_trait_method
         needs to know*/
-        encode_struct_fields(rbml_w, &fields, def_id);
+        encode_struct_fields(rbml_w, variant, def_id);
 
         encode_inlined_item(ecx, rbml_w, IIItemRef(item));
 

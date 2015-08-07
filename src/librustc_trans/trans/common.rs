@@ -1242,7 +1242,7 @@ pub fn langcall(bcx: Block,
 /// Return the VariantDef corresponding to an inlined variant node
 pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      inlined_vid: ast::NodeId)
-                                     -> &'tcx ty::VariantDef<'tcx>
+                                     -> ty::VariantDef<'tcx>
 {
 
     let ctor_ty = ccx.tcx().node_id_to_type(inlined_vid);

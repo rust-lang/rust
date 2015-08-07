@@ -1094,7 +1094,7 @@ impl<'tcx> MemberDescriptionFactory<'tcx> {
 
 // Creates MemberDescriptions for the fields of a struct
 struct StructMemberDescriptionFactory<'tcx> {
-    variant: &'tcx ty::VariantDef<'tcx>,
+    variant: ty::VariantDef<'tcx>,
     substs: &'tcx subst::Substs<'tcx>,
     is_simd: bool,
     span: Span,
@@ -1489,7 +1489,7 @@ enum EnumDiscriminantInfo {
 fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    enum_type: Ty<'tcx>,
                                    struct_def: &adt::Struct<'tcx>,
-                                   variant: &ty::VariantDef<'tcx>,
+                                   variant: ty::VariantDef<'tcx>,
                                    discriminant_info: EnumDiscriminantInfo,
                                    containing_scope: DIScope,
                                    span: Span)
