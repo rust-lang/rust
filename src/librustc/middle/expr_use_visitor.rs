@@ -273,7 +273,9 @@ enum PassArgs {
 impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
     pub fn new(delegate: &'d mut Delegate<'tcx>,
                typer: &'t infer::InferCtxt<'a, 'tcx>)
-               -> ExprUseVisitor<'d,'t,'a, 'tcx> {
+               -> ExprUseVisitor<'d,'t,'a,'tcx>
+        where 'tcx: 't // FIXME(#27583) workaround apparent stage0 bug
+    {
         ExprUseVisitor {
             typer: typer,
             mc: mc::MemCategorizationContext::new(typer),
