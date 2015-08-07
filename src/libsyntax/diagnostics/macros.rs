@@ -31,6 +31,18 @@ macro_rules! span_err {
 }
 
 #[macro_export]
+macro_rules! span_err_or_warn {
+    ($is_warning:expr, $session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
+        __diagnostic_used!($code);
+        if $is_warning {
+            $session.span_warn_with_code($span, &format!($($message)*), stringify!($code))
+        } else {
+            $session.span_err_with_code($span, &format!($($message)*), stringify!($code))
+        }
+    })
+}
+
+#[macro_export]
 macro_rules! span_warn {
     ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
