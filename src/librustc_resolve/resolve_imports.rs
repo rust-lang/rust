@@ -785,7 +785,11 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             // In this case, target_module == module_
             // This means we are trying to glob import a module into itself,
             // and it is a no-go
-            return ResolveResult::Indeterminate;
+            debug!("(resolving glob imports) target module is current module; giving up");
+            return ResolveResult::Failed(Some((
+                        import_directive.span,
+                        "Cannot glob-import a module into itself.".into()
+                    )));
         }
 
         for (ident, target_import_resolution) in import_resolutions.iter() {

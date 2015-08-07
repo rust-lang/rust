@@ -8,7 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use self::*; //~ ERROR: unresolved import
+use self::*; //~ ERROR: unresolved import `self::*`. Cannot glob-import a module into itself.
+
+mod foo {
+    use foo::*; //~ ERROR: unresolved import `foo::*`. Cannot glob-import a module into itself.
+
+    mod bar {
+        use super::bar::*;
+        //~^ ERROR: unresolved import `super::bar::*`. Cannot glob-import a module into itself.
+    }
+
+}
 
 fn main() {
 }
