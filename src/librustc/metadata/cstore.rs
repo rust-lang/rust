@@ -63,6 +63,7 @@ pub struct crate_metadata {
     pub cnum: ast::CrateNum,
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
     pub span: codemap::Span,
+    pub staged_api: bool
 }
 
 #[derive(Copy, Debug, PartialEq, Clone)]

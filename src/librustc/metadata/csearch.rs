@@ -22,7 +22,6 @@ use rbml::reader;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax::diagnostic::expect;
 
 use std::collections::hash_map::HashMap;
@@ -386,15 +385,7 @@ pub fn get_stability(cstore: &cstore::CStore,
 }
 
 pub fn is_staged_api(cstore: &cstore::CStore, krate: ast::CrateNum) -> bool {
-    let cdata = cstore.get_crate_data(krate);
-    let attrs = decoder::get_crate_attributes(cdata.data());
-    for attr in &attrs {
-        if &attr.name()[..] == "staged_api" {
-            match attr.node.value.node { ast::MetaWord(_) => return true, _ => (/*pass*/) }
-        }
-    }
-
-    return false;
+    cstore.get_crate_data(krate).staged_api
 }
 
 pub fn get_repr_attrs(cstore: &cstore::CStore, def: ast::DefId)
