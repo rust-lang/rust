@@ -272,7 +272,7 @@ impl<'tcx,K> UnificationTable<K>
 
 impl<'tcx,K,V> UnificationTable<K>
     where K: UnifyKey<Value=Option<V>>,
-          V: Clone+PartialEq,
+          V: Clone+PartialEq+Debug,
 {
     pub fn unify_var_var(&mut self,
                          a_id: K,

@@ -19,7 +19,7 @@ use char::CharExt;
 use cmp::{Eq, PartialOrd};
 use fmt;
 use intrinsics;
-use marker::Copy;
+use marker::{Copy, Sized};
 use mem::size_of;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
@@ -1264,7 +1264,7 @@ pub enum FpCategory {
 #[doc(hidden)]
 #[unstable(feature = "core_float",
            reason = "stable interface is via `impl f{32,64}` in later crates")]
-pub trait Float {
+pub trait Float: Sized {
     /// Returns the NaN value.
     fn nan() -> Self;
     /// Returns the infinite value.
