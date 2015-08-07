@@ -41,7 +41,7 @@ pub fn match_def_path(cx: &Context, def_id: DefId, path: &[&str]) -> bool {
 /// `match_path(path, &["std", "rt", "begin_unwind"])`
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
 	path.segments.iter().rev().zip(segments.iter().rev()).all(
-		|(a,b)| a.identifier.name == b)
+		|(a,b)| &a.identifier.name.as_str() == b)
 }
 
 /// convert a span to a code snippet if available, otherwise use default, e.g.
