@@ -574,7 +574,7 @@ and `T: 'x` (from the rule `OutlivesReference`).
 
 But often we are in a situation where we can't normalize the
 projection (for example, a projection like `I::Item` where we only
-know that `I: Iterator`). (For example, What can we do then? The rule
+know that `I: Iterator`). What can we do then? The rule
 `OutlivesProjectionComponents` says that if we can conclude that every
 lifetime/type parameter `Pi` to the trait reference outlives `'x`,
 then we know that a projection from those parameters outlives `'x`. In
