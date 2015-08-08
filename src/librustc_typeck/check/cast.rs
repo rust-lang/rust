@@ -100,6 +100,7 @@ enum CastError {
     DifferingKinds,
     IllegalCast,
     NeedViaPtr,
+    NeedViaThinPtr,
     NeedViaInt,
     NeedViaUsize,
     NonScalar,
@@ -120,6 +121,7 @@ impl<'tcx> CastCheck<'tcx> {
                              e: CastError) {
         match e {
             CastError::NeedViaPtr |
+            CastError::NeedViaThinPtr |
             CastError::NeedViaInt |
             CastError::NeedViaUsize => {
                 fcx.type_error_message(self.span, |actual| {
@@ -130,6 +132,7 @@ impl<'tcx> CastCheck<'tcx> {
                 fcx.ccx.tcx.sess.fileline_help(self.span,
                     &format!("cast through {} first", match e {
                         CastError::NeedViaPtr => "a raw pointer",
+                        CastError::NeedViaThinPtr => "a thin pointer",
                         CastError::NeedViaInt => "an integer",
                         CastError::NeedViaUsize => "a usize",
                         _ => unreachable!()
@@ -324,7 +327,7 @@ impl<'tcx> CastCheck<'tcx> {
         if fcx.type_is_known_to_be_sized(m_expr.ty, self.span) {
             Ok(CastKind::PtrAddrCast)
         } else {
-            Err(CastError::NeedViaPtr)
+            Err(CastError::NeedViaThinPtr)
         }
     }
 
