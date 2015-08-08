@@ -21,7 +21,7 @@ fn main() {
     b as usize; //~ ERROR non-scalar cast
     p as usize;
     //~^ ERROR casting
-    //~^^ HELP cast through a raw pointer
+    //~^^ HELP cast through a thin pointer
 
     // #22955
     q as *const [i32]; //~ ERROR casting
