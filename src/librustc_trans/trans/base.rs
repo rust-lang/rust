@@ -54,7 +54,7 @@ use trans::callee;
 use trans::cleanup::{self, CleanupMethods, DropHint};
 use trans::closure;
 use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_integral};
-use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
+use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef, C_nil};
 use trans::common::{CrateContext, DropFlagHintsMap, Field, FunctionContext};
 use trans::common::{Result, NodeIdAndSpan, VariantInfo};
 use trans::common::{node_id_type, return_type_is_void};
@@ -699,8 +699,22 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                           debug_loc: DebugLoc)
                           -> (ValueRef, Block<'blk, 'tcx>) {
     let _icx = push_ctxt("invoke_");
+
+    let ret_ty = match fn_ty.sty {
+        ty::TyBareFn(_, ref f) => {
+            let output = bcx.tcx().erase_late_bound_regions(&f.sig.output());
+            output
+        }
+        _ => panic!("expected bare rust fn or closure in trans_call_inner")
+    };
+
     if bcx.unreachable.get() {
-        return (C_null(Type::i8(bcx.ccx())), bcx);
+        if let ty::FnConverging(ty) = ret_ty {
+            let llty = type_of::arg_type_of(bcx.ccx(), ty);
+            return (C_undef(llty), bcx);
+        } else {
+            return (C_nil(bcx.ccx()), bcx);
+        }
     }
 
     let attributes = attributes::from_fn_type(bcx.ccx(), fn_ty);
@@ -722,13 +736,20 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let normal_bcx = bcx.fcx.new_temp_block("normal-return");
         let landing_pad = bcx.fcx.get_landing_pad();
 
-        let llresult = Invoke(bcx,
+        let mut llresult = Invoke(bcx,
                               llfn,
                               &llargs[..],
                               normal_bcx.llbb,
                               landing_pad,
                               Some(attributes),
                               debug_loc);
+        if let ty::FnConverging(ty) = ret_ty {
+            if return_type_is_void(bcx.ccx(), ty) {
+                llresult = C_nil(bcx.ccx());
+            }
+        } else {
+            llresult = C_nil(bcx.ccx());
+        }
         return (llresult, normal_bcx);
     } else {
         debug!("calling {} at {:?}", bcx.val_to_string(llfn), bcx.llbb);
@@ -736,11 +757,18 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             debug!("arg: {}", bcx.val_to_string(llarg));
         }
 
-        let llresult = Call(bcx,
-                            llfn,
-                            &llargs[..],
-                            Some(attributes),
-                            debug_loc);
+        let mut llresult = Call(bcx,
+                                llfn,
+                                &llargs[..],
+                                Some(attributes),
+                                debug_loc);
+        if let ty::FnConverging(ty) = ret_ty {
+            if return_type_is_void(bcx.ccx(), ty) {
+                llresult = C_nil(bcx.ccx());
+            }
+        } else {
+            llresult = C_nil(bcx.ccx());
+        }
         return (llresult, bcx);
     }
 }
@@ -775,15 +803,33 @@ pub fn load_if_immediate<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 /// gives us better information about what we are loading.
 pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                            ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
+    use trans::basic_block::BasicBlock;
+
     if cx.unreachable.get() || type_is_zero_size(cx.ccx(), t) {
         return C_undef(type_of::type_of(cx.ccx(), t));
     }
 
     let ptr = to_arg_ty_ptr(cx, ptr, t);
+    let ptr = Value(ptr);
     let align = type_of::align_of(cx.ccx(), t);
 
+    let bb = BasicBlock(cx.llbb);
+
     if type_is_immediate(cx.ccx(), t) && type_of::type_of(cx.ccx(), t).is_aggregate() {
-        let load = Load(cx, ptr);
+        if let Some(val) = ptr.get_dominating_store(cx) {
+            let valbb = val.get_parent();
+
+            if Some(bb) == valbb {
+                if let Some(val) = val.get_operand(0) {
+                    debug!("Eliding load from {}", cx.ccx().tn().val_to_string(ptr.get()));
+                    debug!("    Using previous stored value: {}",
+                           cx.ccx().tn().val_to_string(val.get()));
+                    return val.get();
+                }
+            }
+        }
+
+        let load = Load(cx, ptr.get());
         unsafe {
             llvm::LLVMSetAlignment(load, align);
         }
@@ -791,7 +837,7 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     }
 
     unsafe {
-        let global = llvm::LLVMIsAGlobalVariable(ptr);
+        let global = llvm::LLVMIsAGlobalVariable(ptr.get());
         if !global.is_null() && llvm::LLVMIsGlobalConstant(global) == llvm::True {
             let val = llvm::LLVMGetInitializer(global);
             if !val.is_null() {
@@ -800,17 +846,30 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         }
     }
 
+    if let Some(val) = ptr.get_dominating_store(cx) {
+        let valbb = val.get_parent();
+
+        if Some(bb) == valbb {
+            if let Some(val) = val.get_operand(0) {
+                debug!("Eliding load from {}", cx.ccx().tn().val_to_string(ptr.get()));
+                debug!("    Using previous stored value: {}",
+                       cx.ccx().tn().val_to_string(val.get()));
+                return to_arg_ty(cx, val.get(), t);
+            }
+        }
+    }
+
     let val =  if t.is_bool() {
-        LoadRangeAssert(cx, ptr, 0, 2, llvm::False)
+        LoadRangeAssert(cx, ptr.get(), 0, 2, llvm::False)
     } else if t.is_char() {
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
-        LoadRangeAssert(cx, ptr, 0, 0x10FFFF + 1, llvm::False)
+        LoadRangeAssert(cx, ptr.get(), 0, 0x10FFFF + 1, llvm::False)
     } else if (t.is_region_ptr() || t.is_unique())
         && !common::type_is_fat_ptr(cx.tcx(), t) {
-            LoadNonNull(cx, ptr)
+            LoadNonNull(cx, ptr.get())
     } else {
-        Load(cx, ptr)
+        Load(cx, ptr.get())
     };
 
     unsafe {
@@ -831,7 +890,18 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
         Store(cx, ExtractValue(cx, v, abi::FAT_PTR_ADDR), expr::get_dataptr(cx, dst));
         Store(cx, ExtractValue(cx, v, abi::FAT_PTR_EXTRA), expr::get_len(cx, dst));
     } else {
-        let store = Store(cx, from_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t));
+        let vty = val_ty(v);
+        let dstty = val_ty(dst).element_type();
+
+        // If the source and destination have the same type, then don't try any conversion,
+        // this can happen with the return values of functions, as they don't touch an alloca
+        let (v, dst) = if vty == dstty {
+            (v, dst)
+        } else {
+            (from_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t))
+        };
+
+        let store = Store(cx, v, dst);
         unsafe {
             llvm::LLVMSetAlignment(store, type_of::align_of(cx.ccx(), t));
         }
@@ -848,7 +918,16 @@ pub fn from_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
 
 pub fn to_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
     if ty.is_bool() {
-        Trunc(bcx, val, Type::i1(bcx.ccx()))
+        let val = Value(val);
+        if let Some(zext) = val.as_zext_inst() {
+            if let Some(val) = zext.get_operand(0) {
+                let valty = val_ty(val.get());
+                if valty == Type::i1(bcx.ccx()) {
+                    return val.get();
+                }
+            }
+        }
+        Trunc(bcx, val.get(), Type::i1(bcx.ccx()))
     } else {
         val
     }
@@ -1709,8 +1788,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                  disr: ty::Disr,
                                                  args: callee::CallArgs,
                                                  dest: expr::Dest,
-                                                 debug_loc: DebugLoc)
-                                                 -> Result<'blk, 'tcx> {
+                                                 debug_loc: DebugLoc) -> Result<'blk, 'tcx> {
 
     let ccx = bcx.fcx.ccx;
 
@@ -1753,6 +1831,12 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     }
 
+    let llretval = if type_is_immediate(bcx.ccx(), result_ty) {
+        load_ty(bcx, llresult, result_ty)
+    } else {
+        C_undef(type_of::type_of(bcx.ccx(), result_ty))
+    };
+
     // If the caller doesn't care about the result
     // drop the temporary we made
     let bcx = match dest {
@@ -1766,7 +1850,8 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     };
 
-    Result::new(bcx, llresult)
+
+    Result::new(bcx, llretval)
 }
 
 pub fn trans_tuple_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,

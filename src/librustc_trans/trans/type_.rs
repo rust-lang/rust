@@ -227,6 +227,10 @@ impl Type {
         }
     }
 
+    pub fn is_pointer(&self) -> bool {
+        self.kind() == TypeKind::Pointer
+    }
+
     pub fn is_packed(&self) -> bool {
         unsafe {
             llvm::LLVMIsPackedStruct(self.to_ref()) == True
@@ -270,10 +274,21 @@ impl Type {
     }
 
     pub fn func_params(&self) -> Vec<Type> {
+        let mut this = *self;
+        loop {
+            let kind = this.kind();
+            if kind == TypeKind::Function {
+                break;
+            } else if kind == TypeKind::Pointer {
+                this = this.element_type();
+            } else {
+                panic!("Type is not a function or function pointer");
+            }
+        }
         unsafe {
-            let n_args = llvm::LLVMCountParamTypes(self.to_ref()) as usize;
+            let n_args = llvm::LLVMCountParamTypes(this.to_ref()) as usize;
             let mut args = vec![Type { rf: ptr::null_mut() }; n_args];
-            llvm::LLVMGetParamTypes(self.to_ref(),
+            llvm::LLVMGetParamTypes(this.to_ref(),
                                     args.as_mut_ptr() as *mut TypeRef);
             args
         }

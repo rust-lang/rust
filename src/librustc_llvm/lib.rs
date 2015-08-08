@@ -1559,6 +1559,7 @@ extern {
     /* Selected entries from the downcasts. */
     pub fn LLVMIsATerminatorInst(Inst: ValueRef) -> ValueRef;
     pub fn LLVMIsAStoreInst(Inst: ValueRef) -> ValueRef;
+    pub fn LLVMIsAZExtInst(Inst: ValueRef) -> ValueRef;
 
     /// Writes a module to the specified path. Returns 0 on success.
     pub fn LLVMWriteBitcodeToFile(M: ModuleRef, Path: *const c_char) -> c_int;

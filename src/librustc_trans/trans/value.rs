@@ -14,7 +14,7 @@ use trans::basic_block::BasicBlock;
 use trans::common::Block;
 use libc::c_uint;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Value(pub ValueRef);
 
 macro_rules! opt_val { ($e:expr) => (
@@ -57,6 +57,13 @@ impl Value {
     pub fn get_dominating_store(self, bcx: Block) -> Option<Value> {
         match self.get_single_user().and_then(|user| user.as_store_inst()) {
             Some(store) => {
+                // Make sure that the store instruction is /to/ this value,
+                // not *of* this value
+                if let Some(loc) = store.get_operand(1) {
+                    if loc != self {
+                        return None;
+                    }
+                }
                 store.get_parent().and_then(|store_bb| {
                     let mut bb = BasicBlock(bcx.llbb);
                     let mut ret = Some(store);
@@ -114,6 +121,10 @@ impl Value {
     /// Returns the Store represent by this value, if any
     pub fn as_store_inst(self) -> Option<Value> {
         opt_val!(llvm::LLVMIsAStoreInst(self.get()))
+    }
+
+    pub fn as_zext_inst(self) -> Option<Value> {
+        opt_val!(llvm::LLVMIsAZExtInst(self.get()))
     }
 
     /// Tests if this value is a terminator instruction

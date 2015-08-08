@@ -21,7 +21,7 @@ pub use self::CallArgs::*;
 use arena::TypedArena;
 use back::link;
 use session;
-use llvm::{self, ValueRef, get_params};
+use llvm::{ValueRef, get_params};
 use middle::def;
 use middle::subst;
 use middle::subst::{Subst, Substs};
@@ -45,7 +45,6 @@ use trans::foreign;
 use trans::intrinsic;
 use trans::meth;
 use trans::monomorphize;
-use trans::type_::Type;
 use trans::type_of;
 use middle::ty::{self, Ty, HasTypeFlags, RegionEscape};
 use middle::ty::MethodCall;
@@ -583,6 +582,23 @@ pub fn trans_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                      Some(dest)).bcx
 }
 
+pub fn trans_datum_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
+                                        call_expr: &ast::Expr,
+                                        f: &ast::Expr,
+                                        args: CallArgs<'a, 'tcx>) -> DatumBlock<'blk, 'tcx, Expr> {
+    let ty = common::expr_ty(bcx, call_expr);
+
+    let _icx = push_ctxt("trans_call");
+    let val = unpack_result!(
+        bcx, trans_call_inner(bcx,
+                              call_expr.debug_loc(),
+                              |bcx, _| trans(bcx, f),
+                              args,
+                              Some(expr::Ignore)));
+
+    immediate_rvalue_bcx(bcx, val, ty).to_expr_datumblock()
+}
+
 pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                          call_expr: &ast::Expr,
                                          rcvr: &ast::Expr,
@@ -705,6 +721,14 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
     let is_rust_fn = abi == synabi::Rust || abi == synabi::RustCall;
 
+    let llretty = {
+        let ret_ty = match ret_ty {
+            ty::FnConverging(ret_ty) => ret_ty,
+            ty::FnDiverging => ccx.tcx().mk_nil()
+        };
+        type_of::type_of(ccx, ret_ty)
+    };
+
     // Generate a location to store the result. If the user does
     // not care about the result, just make a stack slot.
     let opt_llretslot = dest.and_then(|dest| match dest {
@@ -715,13 +739,12 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                 ty::FnDiverging => ccx.tcx().mk_nil()
             };
             if !is_rust_fn ||
-              type_of::return_uses_outptr(ccx, ret_ty) ||
-              bcx.fcx.type_needs_drop(ret_ty) {
+                type_of::return_uses_outptr(ccx, ret_ty) ||
+                bcx.fcx.type_needs_drop(ret_ty) {
                 // Push the out-pointer if we use an out-pointer for this
                 // return type, otherwise push "undef".
                 if common::type_is_zero_size(ccx, ret_ty) {
-                    let llty = type_of::type_of(ccx, ret_ty);
-                    Some(common::C_undef(llty.ptr_to()))
+                    Some(common::C_undef(llretty.ptr_to()))
                 } else {
                     Some(alloc_ty(bcx, ret_ty, "__llret"))
                 }
@@ -731,9 +754,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         }
     });
 
-    let mut llresult = unsafe {
-        llvm::LLVMGetUndef(Type::nil(ccx).ptr_to().to_ref())
-    };
+    let llresult;
 
     // The code below invokes the function, using either the Rust
     // conventions (if it is a rust fn) or the native conventions
@@ -814,13 +835,16 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                          abi);
         fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
 
-        bcx = foreign::trans_native_call(bcx,
-                                         callee.ty,
-                                         llfn,
-                                         opt_llretslot.unwrap(),
-                                         &llargs[..],
-                                         arg_tys,
-                                         debug_loc);
+        let (llret, b) = foreign::trans_native_call(bcx,
+                                                    callee.ty,
+                                                    llfn,
+                                                    opt_llretslot.unwrap(),
+                                                    &llargs[..],
+                                                    arg_tys,
+                                                    debug_loc);
+
+        bcx = b;
+        llresult = llret;
     }
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_cleanup_scope);
@@ -1126,8 +1150,8 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("--- trans_arg_datum passing {}", bcx.val_to_string(val));
 
     if common::type_is_fat_ptr(bcx.tcx(), formal_arg_ty) {
-        llargs.push(Load(bcx, expr::get_dataptr(bcx, val)));
-        llargs.push(Load(bcx, expr::get_len(bcx, val)));
+        llargs.push(expr::extract_dataptr(bcx, val));
+        llargs.push(expr::extract_len(bcx, val));
     } else {
         llargs.push(val);
     }

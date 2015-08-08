@@ -184,7 +184,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                                           false);
     bcx.fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
-    let kind = expr_kind(bcx.tcx(), expr);
+    let kind = expr_kind(bcx, expr);
     bcx = match kind {
         ExprKind::Lvalue | ExprKind::RvalueDatum => {
             trans_unadjusted(bcx, expr).store_to_dest(dest, expr.id)
@@ -289,9 +289,27 @@ pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
     GEPi(bcx, fat_ptr, &[0, abi::FAT_PTR_ADDR])
 }
 
-pub fn copy_fat_ptr(bcx: Block, src_ptr: ValueRef, dst_ptr: ValueRef) {
-    Store(bcx, Load(bcx, get_dataptr(bcx, src_ptr)), get_dataptr(bcx, dst_ptr));
-    Store(bcx, Load(bcx, get_len(bcx, src_ptr)), get_len(bcx, dst_ptr));
+pub fn extract_len(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
+    let llty = val_ty(fat_ptr);
+    if llty.is_pointer() {
+        Load(bcx, get_len(bcx, fat_ptr))
+    } else {
+        ExtractValue(bcx, fat_ptr, abi::FAT_PTR_EXTRA)
+    }
+}
+
+pub fn extract_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
+    let llty = val_ty(fat_ptr);
+    if llty.is_pointer() {
+        Load(bcx, get_dataptr(bcx, fat_ptr))
+    } else {
+        ExtractValue(bcx, fat_ptr, abi::FAT_PTR_ADDR)
+    }
+}
+
+pub fn copy_fat_ptr(bcx: Block, src: ValueRef, dst_ptr: ValueRef) {
+    Store(bcx, extract_dataptr(bcx, src), get_dataptr(bcx, dst_ptr));
+    Store(bcx, extract_len(bcx, src), get_len(bcx, dst_ptr));
 }
 
 /// Retrieve the information we are losing (making dynamic) in an unsizing
@@ -452,8 +470,8 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // to use a different vtable. In that case, we want to
                 // load out the original data pointer so we can repackage
                 // it.
-                (Load(bcx, get_dataptr(bcx, source.val)),
-                Some(Load(bcx, get_len(bcx, source.val))))
+                (extract_dataptr(bcx, source.val),
+                Some(extract_len(bcx, source.val)))
             } else {
                 let val = if source.kind.is_by_ref() {
                     load_ty(bcx, source.val, source.ty)
@@ -577,7 +595,7 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
-    return match expr_kind(bcx.tcx(), expr) {
+    return match expr_kind(bcx, expr) {
         ExprKind::Lvalue | ExprKind::RvalueDatum => {
             let datum = unpack_datum!(bcx, {
                 trans_datum_unadjusted(bcx, expr)
@@ -692,6 +710,19 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprCast(ref val, _) => {
             // Datum output mode means this is a scalar cast:
             trans_imm_cast(bcx, &**val, expr.id)
+        }
+        ast::ExprCall(ref f, ref args) => {
+            if bcx.tcx().is_method_call(expr.id) {
+                trans_overloaded_datum_call(bcx,
+                                            expr,
+                                            &**f,
+                                            &args[..])
+            } else {
+                callee::trans_datum_call(bcx,
+                                         expr,
+                                         &**f,
+                                         callee::ArgExprs(&args[..]))
+            }
         }
         _ => {
             bcx.tcx().sess.span_bug(
@@ -1494,7 +1525,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         // Second, trans the base to the dest.
         assert_eq!(discr, 0);
 
-        match expr_kind(bcx.tcx(), &*base.expr) {
+        match expr_kind(bcx, &*base.expr) {
             ExprKind::RvalueDps | ExprKind::RvalueDatum if !bcx.fcx.type_needs_drop(ty) => {
                 bcx = trans_into(bcx, &*base.expr, SaveIn(addr));
             },
@@ -1942,6 +1973,36 @@ fn trans_overloaded_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     bcx
 }
 
+fn trans_overloaded_datum_call<'a, 'blk, 'tcx>(
+    mut bcx: Block<'blk, 'tcx>,
+    expr: &ast::Expr,
+    callee: &'a ast::Expr,
+    args: &'a [P<ast::Expr>]) -> DatumBlock<'blk, 'tcx, Expr> {
+
+    let ty = expr_ty(bcx, expr);
+
+    debug!("trans_overloaded_call_datum {}", expr.id);
+    let method_call = MethodCall::expr(expr.id);
+    let mut all_args = vec!(callee);
+    all_args.extend(args.iter().map(|e| &**e));
+
+    let val = unpack_result!(
+        bcx,
+        callee::trans_call_inner(bcx,
+                                 expr.debug_loc(),
+                                 |bcx, arg_cleanup_scope| {
+                                     meth::trans_method_callee(
+                                         bcx,
+                                         method_call,
+                                         None,
+                                         arg_cleanup_scope)
+                                 },
+                                 callee::ArgOverloadedCall(all_args),
+                                 Some(Ignore)));
+
+    immediate_rvalue_bcx(bcx, val, ty).to_expr_datumblock()
+}
+
 pub fn cast_is_noop<'tcx>(tcx: &ty::ctxt<'tcx>,
                           expr: &ast::Expr,
                           t_in: Ty<'tcx>,
@@ -2031,18 +2092,36 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     if type_is_fat_ptr(bcx.tcx(), t_in) {
-        assert!(datum.kind.is_by_ref());
         if type_is_fat_ptr(bcx.tcx(), t_out) {
-            return DatumBlock::new(bcx, Datum::new(
-                PointerCast(bcx, datum.val, ll_t_out.ptr_to()),
-                t_out,
-                Rvalue::new(ByRef)
-            )).to_expr_datumblock();
+            // If the datum is by-ref, just do a pointer cast, otherwise
+            // construct the casted fat pointer manually
+            if datum.kind.is_by_ref() {
+                return DatumBlock::new(bcx, Datum::new(
+                    PointerCast(bcx, datum.val, ll_t_out.ptr_to()),
+                    t_out,
+                    Rvalue::new(ByRef))).to_expr_datumblock();
+            } else {
+                let ftys = ll_t_out.field_types();
+
+                let val = C_undef(ll_t_out);
+                let val = InsertValue(bcx, val,
+                                      BitCast(bcx,
+                                              extract_dataptr(bcx, datum.val),
+                                              ftys[abi::FAT_PTR_ADDR]),
+                                      abi::FAT_PTR_ADDR);
+                let val = InsertValue(bcx, val,
+                                      BitCast(bcx,
+                                              extract_len(bcx, datum.val),
+                                              ftys[abi::FAT_PTR_EXTRA]),
+                                      abi::FAT_PTR_EXTRA);
+
+                return immediate_rvalue_bcx(bcx, val, t_out).to_expr_datumblock();
+            }
         } else {
             // Return the address
             return immediate_rvalue_bcx(bcx,
                                         PointerCast(bcx,
-                                                    Load(bcx, get_dataptr(bcx, datum.val)),
+                                                    extract_dataptr(bcx, datum.val),
                                                     ll_t_out),
                                         t_out).to_expr_datumblock();
         }
@@ -2379,13 +2458,10 @@ impl OverflowOpViaIntrinsic {
 
         let val = Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc);
         let result = ExtractValue(bcx, val, 0); // iN operation result
-        let overflow = ExtractValue(bcx, val, 1); // i1 "did it overflow?"
-
-        let cond = ICmp(bcx, llvm::IntEQ, overflow, C_integral(Type::i1(bcx.ccx()), 1, false),
-                        binop_debug_loc);
+        let cond = ExtractValue(bcx, val, 1); // i1 "did it overflow?"
 
         let expect = bcx.ccx().get_intrinsic(&"llvm.expect.i1");
-        Call(bcx, expect, &[cond, C_integral(Type::i1(bcx.ccx()), 0, false)],
+        let cond = Call(bcx, expect, &[cond, C_integral(Type::i1(bcx.ccx()), 0, false)],
              None, binop_debug_loc);
 
         let bcx =
@@ -2565,7 +2641,9 @@ enum ExprKind {
     RvalueStmt
 }
 
-fn expr_kind(tcx: &ty::ctxt, expr: &ast::Expr) -> ExprKind {
+fn expr_kind(bcx: Block, expr: &ast::Expr) -> ExprKind {
+    let tcx = bcx.tcx();
+
     if tcx.is_method_call(expr.id) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS, but there are a few exceptions:
@@ -2632,7 +2710,15 @@ fn expr_kind(tcx: &ty::ctxt, expr: &ast::Expr) -> ExprKind {
             ExprKind::Lvalue
         }
 
-        ast::ExprCall(..) |
+        ast::ExprCall(..) => {
+            let ty = expr_ty(bcx, expr);
+
+            if type_of::return_uses_outptr(bcx.ccx(), ty) || bcx.fcx.type_needs_drop(ty) {
+                ExprKind::RvalueDps
+            } else {
+                ExprKind::RvalueDatum
+            }
+        }
         ast::ExprMethodCall(..) |
         ast::ExprStruct(..) |
         ast::ExprRange(..) |
@@ -2694,7 +2780,7 @@ fn expr_kind(tcx: &ty::ctxt, expr: &ast::Expr) -> ExprKind {
             }
         }
 
-        ast::ExprParen(ref e) => expr_kind(tcx, &**e),
+        ast::ExprParen(ref e) => expr_kind(bcx, &**e),
 
         ast::ExprMac(..) => {
             tcx.sess.span_bug(

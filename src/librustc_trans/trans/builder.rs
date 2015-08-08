@@ -16,6 +16,7 @@ use llvm::{Opcode, IntPredicate, RealPredicate, False};
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
 use trans::base;
 use trans::common::*;
+use trans::llrepr::LlvmRepr;
 use trans::machine::llalign_of_pref;
 use trans::type_::Type;
 use util::nodemap::FnvHashMap;
@@ -158,8 +159,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                   args: &[ValueRef],
                   then: BasicBlockRef,
                   catch: BasicBlockRef,
-                  attributes: Option<AttrBuilder>)
-                  -> ValueRef {
+                  attributes: Option<AttrBuilder>) -> ValueRef {
         self.count_insn("invoke");
 
         debug!("Invoke {} with args ({})",
@@ -168,6 +168,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                    .map(|&v| self.ccx.tn().val_to_string(v))
                    .collect::<Vec<String>>()
                    .join(", "));
+
+        let llfnty = val_ty(llfn);
+
+        for (i, (pty, &a)) in llfnty.func_params().into_iter().zip(args.iter()).enumerate() {
+            let aty = val_ty(a);
+            assert!(pty == aty, "Type mismatch for arg {}. {} is not of type {}",
+                    i, self.ccx.tn().val_to_string(a), self.ccx.tn().type_to_string(pty));
+        }
 
         unsafe {
             let v = llvm::LLVMBuildInvoke(self.llbuilder,
@@ -499,9 +507,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn volatile_store(&self, val: ValueRef, ptr: ValueRef) -> ValueRef {
-        debug!("Store {} -> {}",
-               self.ccx.tn().val_to_string(val),
-               self.ccx.tn().val_to_string(ptr));
         assert!(!self.llbuilder.is_null());
         self.count_insn("store.volatile");
         unsafe {
@@ -524,6 +529,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn gep(&self, ptr: ValueRef, indices: &[ValueRef]) -> ValueRef {
+        debug!("GEP from {}, indices: {}",
+               self.ccx.tn().val_to_string(ptr),
+               indices.llrepr(self.ccx));
         self.count_insn("gep");
         unsafe {
             llvm::LLVMBuildGEP(self.llbuilder, ptr, indices.as_ptr(),
@@ -535,6 +543,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // in C_i32()
     #[inline]
     pub fn gepi(&self, base: ValueRef, ixs: &[usize]) -> ValueRef {
+        debug!("GEPi from {}, indices: {:?}",
+               self.ccx.tn().val_to_string(base),
+               ixs);
         // Small vector optimization. This should catch 100% of the cases that
         // we care about.
         if ixs.len() < 16 {
@@ -559,6 +570,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn struct_gep(&self, ptr: ValueRef, idx: usize) -> ValueRef {
+        debug!("Struct GEP from {}, index: {}",
+               self.ccx.tn().val_to_string(ptr),
+               idx);
         self.count_insn("structgep");
         unsafe {
             llvm::LLVMBuildStructGEP(self.llbuilder, ptr, idx as c_uint, noname())
