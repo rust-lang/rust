@@ -96,7 +96,7 @@ fn main()
     let _ = &f as *const f64; //~ ERROR casting
     let _ = fat_v as usize;
     //~^ ERROR casting
-    //~^^ HELP through a raw pointer first
+    //~^^ HELP through a thin pointer first
 
     let a : *const str = "hello";
     let _ = a as *const Foo;
