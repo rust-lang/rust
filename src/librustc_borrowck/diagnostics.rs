@@ -75,6 +75,69 @@ To fix this, ensure that any declared variables are initialized before being
 used.
 "##,
 
+E0382: r##"
+This error occurs when an attempt is made to use a variable after its contents
+have been moved elsewhere. For example:
+
+```
+struct MyStruct { s: u32 }
+
+fn main() {
+    let mut x = MyStruct{ s: 5u32 };
+    let y = x;
+    x.s = 6;
+    println!("{}", x.s);
+}
+```
+
+Since `MyStruct` is a type that is not marked `Copy`, the data gets moved out
+of `x` when we set `y`. This is fundamental to Rust's ownership system: outside
+of workarounds like `Rc`, a value cannot be owned by more than one variable.
+
+If we own the type, the easiest way to address this problem is to implement
+`Copy` and `Clone` on it, as shown below. This allows `y` to copy the
+information in `x`, while leaving the original version owned by `x`. Subsequent
+changes to `x` will not be reflected when accessing `y`.
+
+```
+#[derive(Copy, Clone)]
+struct MyStruct { s: u32 }
+
+fn main() {
+    let mut x = MyStruct{ s: 5u32 };
+    let y = x;
+    x.s = 6;
+    println!("{}", x.s);
+}
+```
+
+Alternatively, if we don't control the struct's definition, or mutable shared
+ownership is truly required, we can use `Rc` and `RefCell`:
+
+```
+use std::cell::RefCell;
+use std::rc::Rc;
+
+struct MyStruct { s: u32 }
+
+fn main() {
+    let mut x = Rc::new(RefCell::new(MyStruct{ s: 5u32 }));
+    let y = x.clone();
+    x.borrow_mut().s = 6;
+    println!("{}", x.borrow.s);
+}
+```
+
+With this approach, x and y share ownership of the data via the `Rc` (reference
+count type). `RefCell` essentially performs runtime borrow checking: ensuring
+that at most one writer or multiple readers can access the data at any one time.
+
+If you wish to learn more about ownership in Rust, start with the chapter in the
+Book:
+
+https://doc.rust-lang.org/book/ownership.html
+"##,
+
 E0384: r##"
 This error occurs when an attempt is made to reassign an immutable variable.
 For example:
@@ -100,7 +163,6 @@ fn main(){
 }
 
 register_diagnostics! {
-    E0382, // use of partially/collaterally moved value
     E0383, // partial reinitialization of uninitialized structure
     E0385, // {} in an aliasable location
     E0386, // {} in an immutable container
