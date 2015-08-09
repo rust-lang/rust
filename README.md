@@ -13,8 +13,8 @@ as standard libraries, tools and documentation for Rust.
 
 Read ["Installing Rust"] from [The Book].
 
-["Installing Rust"]: http://doc.rust-lang.org/book/installing-rust.html
-[The Book]: http://doc.rust-lang.org/book/index.html
+["Installing Rust"]: https://doc.rust-lang.org/book/installing-rust.html
+[The Book]: https://doc.rust-lang.org/book/index.html
 
 ## Building from Source
 
@@ -117,7 +117,7 @@ The Rust community congregates in a few places:
 
 [Stack Overflow]: http://stackoverflow.com/questions/tagged/rust
 [/r/rust]: http://reddit.com/r/rust
-[users.rust-lang.org]: http://users.rust-lang.org/
+[users.rust-lang.org]: https://users.rust-lang.org/
 
 ## Contributing
 

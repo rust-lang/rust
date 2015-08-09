@@ -598,7 +598,7 @@ mod tests {
             assert_eq!(output, expect);
         }
 
-        t("hello [Rust](http://rust-lang.org) :)", "hello Rust :)");
+        t("hello [Rust](https://www.rust-lang.org) :)", "hello Rust :)");
         t("code `let x = i32;` ...", "code `let x = i32;` ...");
         t("type `Type<'static>` ...", "type `Type<'static>` ...");
         t("# top header", "top header");
