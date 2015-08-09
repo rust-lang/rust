@@ -144,7 +144,7 @@ fn has_is_empty(cx: &Context, expr: &Expr) -> bool {
 		ty::TyProjection(_) => ty.ty_to_def_id().map_or(false, 
 			|id| has_is_empty_impl(cx, &id)),
 		ty::TyEnum(ref id, _) | ty::TyStruct(ref id, _) => 
-			has_is_empty_impl(cx, id),
+			has_is_empty_impl(cx, &id.did),
 		ty::TyArray(..) => true,
 		_ => false,
 	}

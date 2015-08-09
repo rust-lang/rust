@@ -38,8 +38,8 @@ impl LintPass for StringAdd {
 }
 
 fn is_string(cx: &Context, e: &Expr) -> bool {
-    if let TyStruct(def_id, _) = walk_ty(cx.tcx.expr_ty(e)).sty {
-        match_def_path(cx, def_id, &["std", "string", "String"])
+    if let TyStruct(did, _) = walk_ty(cx.tcx.expr_ty(e)).sty {
+        match_def_path(cx, did.did, &["std", "string", "String"])
     } else { false }
 }
 
