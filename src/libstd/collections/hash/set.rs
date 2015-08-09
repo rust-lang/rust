@@ -11,7 +11,7 @@
 use borrow::Borrow;
 use clone::Clone;
 use cmp::{Eq, PartialEq};
-use core::marker::Sized;
+use core::marker::{Sized, Send, Sync};
 use default::Default;
 use fmt::Debug;
 use fmt;
@@ -764,17 +764,26 @@ pub struct Iter<'a, K: 'a> {
     iter: Keys<'a, K, ()>
 }
 
+unsafe impl<'a, K: Send> Send for Iter<'a, K> {}
+unsafe impl<'a, K: Sync> Sync for Iter<'a, K> {}
+
 /// HashSet move iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K> {
     iter: Map<map::IntoIter<K, ()>, fn((K, ())) -> K>
 }
 
+unsafe impl<K: Send> Send for IntoIter<K> {}
+unsafe impl<K: Sync> Sync for IntoIter<K> {}
+
 /// HashSet drain iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Drain<'a, K: 'a> {
     iter: Map<map::Drain<'a, K, ()>, fn((K, ())) -> K>,
 }
+
+unsafe impl<'a, K: Send> Send for Drain<'a, K> {}
+unsafe impl<'a, K: Sync> Sync for Drain<'a, K> {}
 
 /// Intersection iterator
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -785,6 +794,9 @@ pub struct Intersection<'a, T: 'a, S: 'a> {
     other: &'a HashSet<T, S>,
 }
 
+unsafe impl<'a, K: Send, S: Send> Send for Intersection<'a, K, S> {}
+unsafe impl<'a, K: Sync, S: Send> Sync for Intersection<'a, K, S> {}
+
 /// Difference iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T: 'a, S: 'a> {
@@ -794,17 +806,26 @@ pub struct Difference<'a, T: 'a, S: 'a> {
     other: &'a HashSet<T, S>,
 }
 
+unsafe impl<'a, K: Send, S: Send> Send for Difference<'a, K, S> {}
+unsafe impl<'a, K: Sync, S: Send> Sync for Difference<'a, K, S> {}
+
 /// Symmetric difference iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
     iter: Chain<Difference<'a, T, S>, Difference<'a, T, S>>
 }
 
+unsafe impl<'a, K: Send, S: Send> Send for SymmetricDifference<'a, K, S> {}
+unsafe impl<'a, K: Sync, S: Send> Sync for SymmetricDifference<'a, K, S> {}
+
 /// Set union iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T: 'a, S: 'a> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S>>
 }
+
+unsafe impl<'a, K: Send, S: Send> Send for Union<'a, K, S> {}
+unsafe impl<'a, K: Sync, S: Send> Sync for Union<'a, K, S> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S> IntoIterator for &'a HashSet<T, S>
