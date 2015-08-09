@@ -741,6 +741,9 @@ struct RawBuckets<'a, K, V> {
     marker: marker::PhantomData<&'a ()>,
 }
 
+unsafe impl<'a, K: Send, V: Send> Send for RawBuckets<'a, K, V> {}
+unsafe impl<'a, K: Sync, V: Sync> Sync for RawBuckets<'a, K, V> {}
+
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, K, V> Clone for RawBuckets<'a, K, V> {
     fn clone(&self) -> RawBuckets<'a, K, V> {
