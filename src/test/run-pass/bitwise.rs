@@ -10,7 +10,7 @@
 
 #![feature(negate_unsigned)]
 
-#[cfg(any(target_arch = "x86", target_arch = "arm"))]
+#[cfg(any(target_arch = "x86", target_arch = "arm", target_arch = "le32"))]
 fn target() {
     assert_eq!(-1000 as usize >> 3_usize, 536870787_usize);
 }

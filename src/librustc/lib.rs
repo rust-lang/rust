@@ -115,6 +115,7 @@ pub mod middle {
     pub mod check_loop;
     pub mod check_match;
     pub mod check_rvalues;
+    pub mod check_no_asm;
     pub mod const_eval;
     pub mod dataflow;
     pub mod dead;

@@ -110,14 +110,16 @@ macro_rules! thread_local {
     (static $name:ident: $t:ty = $init:expr) => (
         static $name: $crate::thread::LocalKey<$t> =
             __thread_local_inner!($t, $init,
-                #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
+                #[cfg_attr(all(any(target_os = "macos", target_os = "linux",
+                                   target_os = "nacl"),
                                not(target_arch = "aarch64")),
                            thread_local)]);
     );
     (pub static $name:ident: $t:ty = $init:expr) => (
         pub static $name: $crate::thread::LocalKey<$t> =
             __thread_local_inner!($t, $init,
-                #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
+                #[cfg_attr(all(any(target_os = "macos", target_os = "linux",
+                                   target_os = "nacl"),
                                not(target_arch = "aarch64")),
                            thread_local)]);
     );
@@ -267,7 +269,8 @@ impl<T: 'static> LocalKey<T> {
     }
 }
 
-#[cfg(all(any(target_os = "macos", target_os = "linux"),
+#[cfg(all(any(target_os = "macos", target_os = "linux",
+              target_os = "nacl"),
           not(target_arch = "aarch64"),
           not(no_elf_tls)))]
 #[doc(hidden)]
@@ -327,7 +330,7 @@ mod imp {
     // fallback implementation to use as well.
     //
     // Due to rust-lang/rust#18804, make sure this is not generic!
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "nacl"))]
     unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
         use prelude::v1::*;
         use mem;
@@ -418,7 +421,8 @@ mod imp {
     }
 }
 
-#[cfg(any(not(any(target_os = "macos", target_os = "linux")),
+#[cfg(any(not(any(target_os = "macos", target_os = "linux",
+                  target_os = "nacl")),
           target_arch = "aarch64",
           no_elf_tls))]
 #[doc(hidden)]

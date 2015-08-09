@@ -13,7 +13,7 @@
 #[cfg(stage0)]
 use prelude::v1::*;
 
-pub mod backtrace;
+#[cfg_attr(target_os = "nacl", allow(dead_code))] pub mod backtrace;
 pub mod condvar;
 pub mod mutex;
 pub mod net;

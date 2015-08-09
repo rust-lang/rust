@@ -43,7 +43,7 @@ pub struct Session {
     pub cstore: CStore,
     pub parse_sess: ParseSess,
     // For a library crate, this is always none
-    pub entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
+    pub entry_fn: RefCell<Option<(NodeId, token::InternedString, codemap::Span)>>,
     pub entry_type: Cell<Option<config::EntryFnType>>,
     pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
@@ -261,7 +261,7 @@ impl Session {
         self.opts.debugging_opts.print_llvm_passes
     }
     pub fn lto(&self) -> bool {
-        self.opts.cg.lto
+        self.opts.cg.lto && self.target.target.options.lto_supported
     }
     pub fn no_landing_pads(&self) -> bool {
         self.opts.debugging_opts.no_landing_pads

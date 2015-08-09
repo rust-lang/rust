@@ -44,6 +44,10 @@
                       they should be used through stabilized interfaces \
                       in the rest of the standard library")]
 #![allow(missing_docs)]
+#![allow(unused_imports)]
+
+use f32;
+use f64;
 
 use marker::Sized;
 
@@ -398,11 +402,6 @@ extern "rust-intrinsic" {
     /// Returns the square root of an `f64`
     pub fn sqrtf64(x: f64) -> f64;
 
-    /// Raises an `f32` to an integer power.
-    pub fn powif32(a: f32, x: i32) -> f32;
-    /// Raises an `f64` to an integer power.
-    pub fn powif64(a: f64, x: i32) -> f64;
-
     /// Returns the sine of an `f32`.
     pub fn sinf32(x: f32) -> f32;
     /// Returns the sine of an `f64`.
@@ -490,28 +489,16 @@ extern "rust-intrinsic" {
     /// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
     pub fn roundf64(x: f64) -> f64;
 
-    /// Returns the number of bits set in a `u8`.
-    pub fn ctpop8(x: u8) -> u8;
-    /// Returns the number of bits set in a `u16`.
-    pub fn ctpop16(x: u16) -> u16;
     /// Returns the number of bits set in a `u32`.
     pub fn ctpop32(x: u32) -> u32;
     /// Returns the number of bits set in a `u64`.
     pub fn ctpop64(x: u64) -> u64;
 
-    /// Returns the number of leading bits unset in a `u8`.
-    pub fn ctlz8(x: u8) -> u8;
-    /// Returns the number of leading bits unset in a `u16`.
-    pub fn ctlz16(x: u16) -> u16;
     /// Returns the number of leading bits unset in a `u32`.
     pub fn ctlz32(x: u32) -> u32;
     /// Returns the number of leading bits unset in a `u64`.
     pub fn ctlz64(x: u64) -> u64;
 
-    /// Returns the number of trailing bits unset in a `u8`.
-    pub fn cttz8(x: u8) -> u8;
-    /// Returns the number of trailing bits unset in a `u16`.
-    pub fn cttz16(x: u16) -> u16;
     /// Returns the number of trailing bits unset in a `u32`.
     pub fn cttz32(x: u32) -> u32;
     /// Returns the number of trailing bits unset in a `u64`.
@@ -523,6 +510,35 @@ extern "rust-intrinsic" {
     pub fn bswap32(x: u32) -> u32;
     /// Reverses the bytes in a `u64`.
     pub fn bswap64(x: u64) -> u64;
+}
+/// The following intrinsics are disallowed on PNaCl:
+/// We sneakily redirect them to libm or to a larger sized intrinsic.
+#[cfg(not(target_os = "nacl"))]
+extern "rust-intrinsic" {
+
+    /// Raises an `f32` to an `f32` power.
+    pub fn powif32(a: f32, x: i32) -> f32;
+    /// Raises an `f64` to an `f64` power.
+    pub fn powif64(a: f64, x: i32) -> f64;
+
+    /// Returns the number of bits set in a `u8`.
+    pub fn ctpop8(x: u8) -> u8;
+    /// Returns the number of bits set in a `u16`.
+    pub fn ctpop16(x: u16) -> u16;
+
+    /// Returns the number of leading bits unset in a `u8`.
+    pub fn ctlz8(x: u8) -> u8;
+    /// Returns the number of leading bits unset in a `u16`.
+    pub fn ctlz16(x: u16) -> u16;
+
+    /// Returns the number of trailing bits unset in a `u8`.
+    pub fn cttz8(x: u8) -> u8;
+    /// Returns the number of trailing bits unset in a `u16`.
+    pub fn cttz16(x: u16) -> u16;
+
+}
+
+extern "rust-intrinsic" {
 
     /// Performs checked `i8` addition.
     pub fn i8_add_with_overflow(x: i8, y: i8) -> (i8, bool);
@@ -608,3 +624,23 @@ extern "rust-intrinsic" {
     /// is thrown (aka the thread panics).
     pub fn try(f: fn(*mut u8), data: *mut u8) -> *mut u8;
 }
+
+#[cfg(target_os = "nacl")]
+#[inline] pub unsafe fn powif32(a: f32, x: i32) -> f32 { powf64(a as f64, x as f64) as f32 }
+#[cfg(target_os = "nacl")]
+#[inline] pub unsafe fn powif64(a: f64, x: i32) -> f64 { powf64(a, x as f64) }
+
+#[cfg(target_os = "nacl")]
+#[inline] pub unsafe fn ctpop8(x: u8) -> u8 { ctpop32(x as u32) as u8 }
+#[cfg(target_os = "nacl")]
+#[inline] pub unsafe fn ctpop16(x: u16) -> u16 { ctpop32(x as u32) as u16 }
+
+#[cfg(target_os = "nacl")]
+#[inline] pub unsafe fn ctlz8(x: u8) -> u8 { ctlz32((x as u32) << 24) as u8 }
+#[cfg(target_os = "nacl")]
+#[inline] pub unsafe fn ctlz16(x: u16) -> u16 { ctlz32((x as u32) << 16) as u16 }
+
+#[cfg(target_os = "nacl")]
+#[inline] pub unsafe fn cttz8(x: u8) -> u8 { cttz32(x as u32) as u8 }
+#[cfg(target_os = "nacl")]
+#[inline] pub unsafe fn cttz16(x: u16) -> u16 { cttz32(x as u32) as u16 }

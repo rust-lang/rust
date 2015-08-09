@@ -12,6 +12,7 @@
 // ignore-bitrig system ulimit (Too many open files)
 // ignore-netbsd system ulimit (Too many open files)
 // ignore-openbsd system ulimit (Too many open files)
+// ignore-pnacl sandboxed
 
 use std::io::prelude::*;
 use std::net::{TcpListener, TcpStream};

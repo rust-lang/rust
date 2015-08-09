@@ -159,14 +159,13 @@ pub fn compile_input(sess: Session,
         })
     };
 
-    let (outputs, trans) = if let Ok(out) = result {
+    let (outputs, mut trans) = if let Ok(out) = result {
         out
     } else {
         return;
     };
 
-    phase_5_run_llvm_passes(&sess, &trans, &outputs);
-
+    phase_5_run_llvm_passes(&sess, &mut trans, &outputs);
     controller_entry_point!(after_llvm,
                             sess,
                             CompileState::state_after_llvm(input,
@@ -552,6 +551,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     time(time_passes, "checking that all macro invocations are gone", &krate, |krate|
          syntax::ext::expand::check_for_macros(&sess.parse_sess, krate));
 
+    time(time_passes, "checking for inline asm in case the target doesn't support it", &krate,
+         |krate| middle::check_no_asm::check_crate(sess, krate) );
+
     // One final feature gating of the true AST that gets compiled
     // later, to make sure we've got everything (e.g. configuration
     // can insert new attributes via `cfg_attr`)
@@ -750,9 +752,9 @@ pub fn phase_4_translate_to_llvm(tcx: &ty::ctxt, analysis: ty::CrateAnalysis)
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
 /// as a side effect.
 pub fn phase_5_run_llvm_passes(sess: &Session,
-                               trans: &trans::CrateTranslation,
+                               trans: &mut trans::CrateTranslation,
                                outputs: &OutputFilenames) {
-    if sess.opts.cg.no_integrated_as {
+    if sess.opts.cg.no_integrated_as && !sess.target.target.options.is_like_pnacl {
         let output_type = config::OutputTypeAssembly;
 
         time(sess.time_passes(), "LLVM passes", (), |_|
@@ -780,11 +782,12 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 pub fn phase_6_link_output(sess: &Session,
                            trans: &trans::CrateTranslation,
                            outputs: &OutputFilenames) {
-    time(sess.time_passes(), "linking", (), |_|
-         link::link_binary(sess,
-                           trans,
-                           outputs,
-                           &trans.link.crate_name));
+    time(sess.time_passes(), "linking", (), |_| {
+        link::link_binary(sess,
+                          trans,
+                          outputs,
+                          &trans.link.crate_name);
+    });
 }
 
 fn escape_dep_filename(filename: &str) -> String {
@@ -804,8 +807,12 @@ fn write_out_deps(sess: &Session,
         match *output_type {
             config::OutputTypeExe => {
                 for output in sess.crate_types.borrow().iter() {
-                    let p = link::filename_for_input(sess, *output, id,
-                                                     outputs);
+                    if !sess.target.target.options.dynamic_linking &&
+                        *output == config::CrateTypeDylib {
+                        continue;
+                    }
+                    let p = link::filename_for_input(sess, *output,
+                                                     id, outputs);
                     out_filenames.push(p);
                 }
             }

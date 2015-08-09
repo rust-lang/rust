@@ -151,6 +151,15 @@ pub struct Config {
     // the path containing LLDB's Python module
     pub lldb_python_dir: Option<String>,
 
+    // NaCl Pepper SDK path
+    pub nacl_cross_path: Option<PathBuf>,
+
     // Explain what's going on
     pub verbose: bool
+}
+
+impl Config {
+    pub fn targeting_pnacl(&self) -> bool {
+        "le32-unknown-nacl" == &self.target[..]
+    }
 }

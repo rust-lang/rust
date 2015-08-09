@@ -10,6 +10,7 @@
 
 // compile-flags:-g
 // ignore-pretty as this critically relies on line numbers
+// ignore-pnacl no child processes allowed
 
 use std::io;
 use std::io::prelude::*;

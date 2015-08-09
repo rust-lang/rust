@@ -82,7 +82,7 @@ endif
 # LLVM linkage:
 LLVM_LINKAGE_PATH_$(1):=$$(abspath $$(RT_OUTPUT_DIR_$(1))/llvmdeps.rs)
 $$(LLVM_LINKAGE_PATH_$(1)): $(S)src/etc/mklldeps.py $$(LLVM_CONFIG_$(1))
-	$(Q)$(CFG_PYTHON) "$$<" "$$@" "$$(LLVM_COMPONENTS)" "$$(CFG_ENABLE_LLVM_STATIC_STDCPP)" \
+	$(Q)$(CFG_PYTHON) "$$<" "$$@" "$$(filter-out $$(LLVM_DISABLED_TARGETS_$(1)),$$(LLVM_COMPONENTS))" "$$(CFG_ENABLE_LLVM_STATIC_STDCPP)" "$$(CFG_ENABLE_LLVM_LIBCPP)" \
 		$$(LLVM_CONFIG_$(1))
 endef
 
@@ -95,6 +95,8 @@ $(foreach host,$(CFG_HOST), \
 # This can't be done in target.mk because it's included before this file.
 define LLVM_LINKAGE_DEPS
 $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.rustc_llvm: $$(LLVM_LINKAGE_PATH_$(2))
+RUSTFLAGS_rustc_llvm_T_$(3) += $$(shell $$(LLVM_CONFIG_$(3)) --components | tr '-' '_' | \
+               sed 's/ \([^ ]*\)/\-\-cfg have_component_\1 /g')
 endef
 
 $(foreach source,$(CFG_HOST), \

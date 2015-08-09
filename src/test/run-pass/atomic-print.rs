@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pnacl no child processes allowed
+
 use std::{env, fmt, process, sync, thread};
 
 struct SlowFmt(u32);

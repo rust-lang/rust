@@ -798,22 +798,37 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 /// Declare any llvm intrinsics that you might need
 fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef> {
     macro_rules! ifn {
-        ($name:expr, fn() -> $ret:expr) => (
-            if *key == $name {
-                let f = declare::declare_cfn(ccx, $name, Type::func(&[], &$ret),
+        ($name:expr, fn() -> $ret:expr, if ($cond:expr)) => ({
+            let is_key = *key == $name;
+            if $cond && is_key {
+                let name = $name;
+                let f = declare::declare_cfn(ccx, name, Type::func(&[], &$ret),
                                              ccx.tcx().mk_nil());
-                ccx.intrinsics().borrow_mut().insert($name, f.clone());
+                if ccx.sess().target.target.options.is_like_pnacl {
+                    llvm::SetUnnamedAddr(f, false);
+                }
+                ccx.intrinsics().borrow_mut().insert(name, f);
                 return Some(f);
-            }
-        );
-        ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
-            if *key == $name {
-                let f = declare::declare_cfn(ccx, $name, Type::func(&[$($arg),*], &$ret),
-                                             ccx.tcx().mk_nil());
-                ccx.intrinsics().borrow_mut().insert($name, f.clone());
-                return Some(f);
-            }
-        )
+            } else if is_key { return None; }
+        });
+        ($name:expr, fn() -> $ret:expr) => (ifn!($name, fn() -> $ret, if (true)));
+        ($name:expr, fn($($arg:expr),*) -> $ret:expr,
+         if ($cond:expr)) => ({
+             let is_key = *key == $name;
+             if $cond && is_key {
+                 let name = $name;
+                 let f = declare::declare_cfn(ccx, name,
+                                              Type::func(&[$($arg),*], &$ret),
+                                              ccx.tcx().mk_nil());
+                 if ccx.sess().target.target.options.is_like_pnacl {
+                     llvm::SetUnnamedAddr(f, false);
+                 }
+                 ccx.intrinsics().borrow_mut().insert(name, f);
+                 return Some(f);
+             } else if is_key { return None; }
+        });
+        ($name:expr, fn($($arg:expr),*) -> $ret:expr) =>
+            (ifn!($name, fn($($arg),*) -> $ret, if (true)))
     }
     macro_rules! mk_struct {
         ($($field_ty:expr),*) => (Type::struct_(ccx, &[$($field_ty),*], false))
@@ -838,65 +853,35 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
 
     ifn!("llvm.trap", fn() -> void);
     ifn!("llvm.debugtrap", fn() -> void);
-    ifn!("llvm.frameaddress", fn(t_i32) -> i8p);
+    ifn!("llvm.frameaddress", fn(t_i32) -> i8p,
+         if (!ccx.sess().target.target.options.is_like_pnacl));
 
-    ifn!("llvm.powi.f32", fn(t_f32, t_i32) -> t_f32);
-    ifn!("llvm.powi.f64", fn(t_f64, t_i32) -> t_f64);
-    ifn!("llvm.pow.f32", fn(t_f32, t_f32) -> t_f32);
-    ifn!("llvm.pow.f64", fn(t_f64, t_f64) -> t_f64);
+    ifn!("llvm.powi.f32", fn(t_f32, t_i32) -> t_f32,
+         if (!ccx.sess().target.target.options.is_like_pnacl));
+    ifn!("llvm.powi.f64", fn(t_f64, t_i32) -> t_f64,
+         if (!ccx.sess().target.target.options.is_like_pnacl));
 
     ifn!("llvm.sqrt.f32", fn(t_f32) -> t_f32);
     ifn!("llvm.sqrt.f64", fn(t_f64) -> t_f64);
-    ifn!("llvm.sin.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.sin.f64", fn(t_f64) -> t_f64);
-    ifn!("llvm.cos.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.cos.f64", fn(t_f64) -> t_f64);
-    ifn!("llvm.exp.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.exp.f64", fn(t_f64) -> t_f64);
-    ifn!("llvm.exp2.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.exp2.f64", fn(t_f64) -> t_f64);
-    ifn!("llvm.log.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.log.f64", fn(t_f64) -> t_f64);
-    ifn!("llvm.log10.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.log10.f64", fn(t_f64) -> t_f64);
-    ifn!("llvm.log2.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.log2.f64", fn(t_f64) -> t_f64);
 
-    ifn!("llvm.fma.f32", fn(t_f32, t_f32, t_f32) -> t_f32);
-    ifn!("llvm.fma.f64", fn(t_f64, t_f64, t_f64) -> t_f64);
-
-    ifn!("llvm.fabs.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.fabs.f64", fn(t_f64) -> t_f64);
-
-    ifn!("llvm.floor.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.floor.f64", fn(t_f64) -> t_f64);
-    ifn!("llvm.ceil.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.ceil.f64", fn(t_f64) -> t_f64);
-    ifn!("llvm.trunc.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.trunc.f64", fn(t_f64) -> t_f64);
-
-    ifn!("llvm.copysign.f32", fn(t_f32, t_f32) -> t_f32);
-    ifn!("llvm.copysign.f64", fn(t_f64, t_f64) -> t_f64);
-    ifn!("llvm.round.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.round.f64", fn(t_f64) -> t_f64);
-
-    ifn!("llvm.rint.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.rint.f64", fn(t_f64) -> t_f64);
-    ifn!("llvm.nearbyint.f32", fn(t_f32) -> t_f32);
-    ifn!("llvm.nearbyint.f64", fn(t_f64) -> t_f64);
-
-    ifn!("llvm.ctpop.i8", fn(t_i8) -> t_i8);
-    ifn!("llvm.ctpop.i16", fn(t_i16) -> t_i16);
+    ifn!("llvm.ctpop.i8", fn(t_i8) -> t_i8,
+         if (!ccx.sess().target.target.options.is_like_pnacl));
+    ifn!("llvm.ctpop.i16", fn(t_i16) -> t_i16,
+         if (!ccx.sess().target.target.options.is_like_pnacl));
     ifn!("llvm.ctpop.i32", fn(t_i32) -> t_i32);
     ifn!("llvm.ctpop.i64", fn(t_i64) -> t_i64);
 
-    ifn!("llvm.ctlz.i8", fn(t_i8 , i1) -> t_i8);
-    ifn!("llvm.ctlz.i16", fn(t_i16, i1) -> t_i16);
+    ifn!("llvm.ctlz.i8", fn(t_i8 , i1) -> t_i8,
+         if (!ccx.sess().target.target.options.is_like_pnacl));
+    ifn!("llvm.ctlz.i16", fn(t_i16, i1) -> t_i16,
+         if (!ccx.sess().target.target.options.is_like_pnacl));
     ifn!("llvm.ctlz.i32", fn(t_i32, i1) -> t_i32);
     ifn!("llvm.ctlz.i64", fn(t_i64, i1) -> t_i64);
 
-    ifn!("llvm.cttz.i8", fn(t_i8 , i1) -> t_i8);
-    ifn!("llvm.cttz.i16", fn(t_i16, i1) -> t_i16);
+    ifn!("llvm.cttz.i8", fn(t_i8 , i1) -> t_i8,
+         if (!ccx.sess().target.target.options.is_like_pnacl));
+    ifn!("llvm.cttz.i16", fn(t_i16, i1) -> t_i16,
+         if (!ccx.sess().target.target.options.is_like_pnacl));
     ifn!("llvm.cttz.i32", fn(t_i32, i1) -> t_i32);
     ifn!("llvm.cttz.i64", fn(t_i64, i1) -> t_i64);
 
@@ -942,6 +927,8 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
 
     // Some intrinsics were introduced in later versions of LLVM, but they have
     // fallbacks in libc or libm and such.
+    // Additionally, PNaCl disallows quite a large percentage of LLVM's intrinsics,
+    // so when targeting PNaCl we redirect these functions to their libm counterparts.
     macro_rules! compatible_ifn {
         ($name:expr, noop($cname:ident ($($arg:expr),*) -> void), $llvm_version:expr) => (
             if unsafe { llvm::LLVMVersionMinor() >= $llvm_version } {
@@ -967,7 +954,20 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
             }
         );
         ($name:expr, $cname:ident ($($arg:expr),*) -> $ret:expr, $llvm_version:expr) => (
-            if unsafe { llvm::LLVMVersionMinor() >= $llvm_version } {
+            if unsafe { llvm::LLVMVersionMinor() >= $llvm_version } &&
+                !ccx.sess().target.target.options.is_like_pnacl {
+                // The `if key == $name` is already in ifn!
+                ifn!($name, fn($($arg),*) -> $ret);
+            } else if *key == $name {
+                let f = declare::declare_cfn(ccx, stringify!($cname),
+                                             Type::func(&[$($arg),*], &$ret),
+                                             ty::mk_nil(ccx.tcx()));
+                ccx.intrinsics().borrow_mut().insert($name, f.clone());
+                return Some(f);
+            }
+        );
+        ($name:expr, $cname:ident ($($arg:expr),*) -> $ret:expr) => (
+            if !ccx.sess().target.target.options.is_like_pnacl {
                 // The `if key == $name` is already in ifn!
                 ifn!($name, fn($($arg),*) -> $ret);
             } else if *key == $name {
@@ -980,7 +980,47 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
         )
     }
 
+    compatible_ifn!("llvm.copysign.f32", copysignf(t_f32, t_f32) -> t_f32);
+    compatible_ifn!("llvm.copysign.f64", copysign(t_f64, t_f64) -> t_f64);
+    compatible_ifn!("llvm.round.f32", roundf(t_f32) -> t_f32);
+    compatible_ifn!("llvm.round.f64", round(t_f64) -> t_f64);
+
     compatible_ifn!("llvm.assume", noop(llvmcompat_assume(i1) -> void), 6);
+    compatible_ifn!("llvm.pow.f32",  powf(t_f32, t_f32) -> t_f32);
+    compatible_ifn!("llvm.pow.f64",  pow (t_f64, t_f64) -> t_f64);
+
+    compatible_ifn!("llvm.sin.f32",  sinf(t_f32) -> t_f32);
+    compatible_ifn!("llvm.sin.f64",  sin (t_f64) -> t_f64);
+    compatible_ifn!("llvm.cos.f32",  cosf(t_f32) -> t_f32);
+    compatible_ifn!("llvm.cos.f64",  cos (t_f64) -> t_f64);
+    compatible_ifn!("llvm.exp.f32",  expf(t_f32) -> t_f32);
+    compatible_ifn!("llvm.exp.f64",  exp (t_f64) -> t_f64);
+    compatible_ifn!("llvm.exp2.f32", exp2f(t_f32) -> t_f32);
+    compatible_ifn!("llvm.exp2.f64", exp2(t_f64) -> t_f64);
+    compatible_ifn!("llvm.log.f32",  logf(t_f32) -> t_f32);
+    compatible_ifn!("llvm.log.f64",  log (t_f64) -> t_f64);
+    compatible_ifn!("llvm.log10.f32",log10f(t_f32) -> t_f32);
+    compatible_ifn!("llvm.log10.f64",log10(t_f64) -> t_f64);
+    compatible_ifn!("llvm.log2.f32", log2f(t_f32) -> t_f32);
+    compatible_ifn!("llvm.log2.f64", log2(t_f64) -> t_f64);
+
+    compatible_ifn!("llvm.fma.f32",  fmaf(t_f32, t_f32, t_f32) -> t_f32);
+    compatible_ifn!("llvm.fma.f64",  fma (t_f64, t_f64, t_f64) -> t_f64);
+
+    compatible_ifn!("llvm.fabs.f32", fabsf(t_f32) -> t_f32);
+    compatible_ifn!("llvm.fabs.f64", fabs(t_f64) -> t_f64);
+
+    compatible_ifn!("llvm.floor.f32",floorf(t_f32) -> t_f32);
+    compatible_ifn!("llvm.floor.f64",floor(t_f64) -> t_f64);
+    compatible_ifn!("llvm.ceil.f32", ceilf(t_f32) -> t_f32);
+    compatible_ifn!("llvm.ceil.f64", ceil(t_f64) -> t_f64);
+    compatible_ifn!("llvm.trunc.f32",truncf(t_f32) -> t_f32);
+    compatible_ifn!("llvm.trunc.f64",trunc(t_f64) -> t_f64);
+
+    compatible_ifn!("llvm.rint.f32", rintf(t_f32) -> t_f32);
+    compatible_ifn!("llvm.rint.f64", rint(t_f64) -> t_f64);
+    compatible_ifn!("llvm.nearbyint.f32", nearbyintf(t_f32) -> t_f32);
+    compatible_ifn!("llvm.nearbyint.f64", nearbyint(t_f64) -> t_f64);
 
     if ccx.sess().opts.debuginfo != NoDebugInfo {
         ifn!("llvm.dbg.declare", fn(Type::metadata(ccx), Type::metadata(ccx)) -> void);

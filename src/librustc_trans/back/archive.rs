@@ -218,7 +218,7 @@ impl<'a> ArchiveBuilder<'a> {
     }
 
     pub fn llvm_archive_kind(&self) -> Option<ArchiveKind> {
-        if unsafe { llvm::LLVMVersionMinor() < 7 } {
+        if !unsafe { llvm::LLVMRustUseArchiveWriter() } {
             return None
         }
 

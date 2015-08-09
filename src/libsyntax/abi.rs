@@ -27,6 +27,7 @@ pub enum Os {
     OsBitrig,
     OsNetbsd,
     OsOpenbsd,
+    OsNaCl,
 }
 
 #[derive(PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Debug)]
@@ -56,7 +57,8 @@ pub enum Architecture {
     X86_64,
     Arm,
     Mips,
-    Mipsel
+    Mipsel,
+    Le32,
 }
 
 #[derive(Copy, Clone)]
@@ -141,6 +143,7 @@ impl fmt::Display for Os {
             OsBitrig => "bitrig".fmt(f),
             OsNetbsd => "netbsd".fmt(f),
             OsOpenbsd => "openbsd".fmt(f),
+            OsNaCl => "nacl".fmt(f),
         }
     }
 }

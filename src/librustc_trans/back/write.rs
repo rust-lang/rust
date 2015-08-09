@@ -313,10 +313,12 @@ impl ModuleConfig {
         // slp vectorization at O3. Otherwise configure other optimization aspects
         // of this pass manager builder.
         self.vectorize_loop = !sess.opts.cg.no_vectorize_loops &&
-                             (sess.opts.optimize == config::Default ||
-                              sess.opts.optimize == config::Aggressive);
+            (sess.opts.optimize == config::Default ||
+             sess.opts.optimize == config::Aggressive) &&
+            !sess.target.target.options.is_like_pnacl;
         self.vectorize_slp = !sess.opts.cg.no_vectorize_slp &&
-                            sess.opts.optimize == config::Aggressive;
+            sess.opts.optimize == config::Aggressive &&
+            !sess.target.target.options.is_like_pnacl;
 
         self.merge_functions = sess.opts.optimize == config::Default ||
                                sess.opts.optimize == config::Aggressive;
@@ -334,6 +336,8 @@ struct CodegenContext<'a> {
     plugin_passes: Vec<String>,
     // LLVM optimizations for which we want to print remarks.
     remark: Passes,
+
+    is_like_pnacl: bool,
 }
 
 impl<'a> CodegenContext<'a> {
@@ -343,6 +347,8 @@ impl<'a> CodegenContext<'a> {
             handler: sess.diagnostic().handler(),
             plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
             remark: sess.opts.cg.remark.clone(),
+
+            is_like_pnacl: sess.target.target.options.is_like_pnacl,
         }
     }
 }
@@ -560,9 +566,14 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
         if config.emit_obj {
             let path = output_names.with_extension(&format!("{}.o", name_extra));
-            with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::ObjectFileType);
-            });
+            if !cgcx.is_like_pnacl {
+                with_codegen(tm, llmod, config.no_builtins, |cpm| {
+                    write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::ObjectFileType);
+                });
+            } else {
+                let out = path2cstr(&path);
+                llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
+            }
         }
     });
 
@@ -572,7 +583,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 }
 
 pub fn run_passes(sess: &Session,
-                  trans: &CrateTranslation,
+                  trans: &mut CrateTranslation,
                   output_types: &[config::OutputType],
                   crate_output: &OutputFilenames) {
     // It's possible that we have `codegen_units > 1` but only one item in
@@ -580,7 +591,9 @@ pub fn run_passes(sess: &Session,
     // case, but it would be confusing to have the validity of
     // `-Z lto -C codegen-units=2` depend on details of the crate being
     // compiled, so we complain regardless.
-    if sess.lto() && sess.opts.cg.codegen_units > 1 {
+    // PNaCl uses a bitcode linker, so this isn't an issue.
+    if sess.lto() && sess.opts.cg.codegen_units > 1 &&
+        !sess.target.target.options.is_like_pnacl {
         // This case is impossible to handle because LTO expects to be able
         // to combine the entire crate and all its dependencies into a
         // single compilation unit, but each codegen unit is in a separate
@@ -616,7 +629,7 @@ pub fn run_passes(sess: &Session,
             sess.opts.output_types.contains(&config::OutputTypeExe);
     let needs_crate_object =
             sess.opts.output_types.contains(&config::OutputTypeExe);
-    if needs_crate_bitcode {
+    if needs_crate_bitcode || sess.target.target.options.is_like_pnacl {
         modules_config.emit_bc = true;
     }
 
@@ -644,7 +657,6 @@ pub fn run_passes(sess: &Session,
 
     modules_config.set_flags(sess, trans);
     metadata_config.set_flags(sess, trans);
-
 
     // Populate a buffer with a list of codegen threads.  Items are processed in
     // LIFO order, just because it's a tiny bit simpler that way.  (The order
@@ -854,6 +866,7 @@ fn run_work_multithreaded(sess: &Session,
     let work_items_arc = Arc::new(Mutex::new(work_items));
     let mut diag_emitter = SharedEmitter::new();
     let mut futures = Vec::with_capacity(num_workers);
+    let is_like_pnacl = sess.target.target.options.is_like_pnacl;
 
     for i in 0..num_workers {
         let work_items_arc = work_items_arc.clone();
@@ -875,6 +888,7 @@ fn run_work_multithreaded(sess: &Session,
                 handler: &diag_handler,
                 plugin_passes: plugin_passes,
                 remark: remark,
+                is_like_pnacl: is_like_pnacl,
             };
 
             loop {
@@ -967,6 +981,8 @@ pub unsafe fn configure_llvm(sess: &Session) {
     // using --llvm-root will have multiple platforms that rustllvm
     // doesn't actually link to and it's pointless to put target info
     // into the registry that Rust cannot generate machine code for.
+    // `librustc_llvm` provides no-op wrappers of these functions for
+    // targets LLVM can't codegen for.
     llvm::LLVMInitializeX86TargetInfo();
     llvm::LLVMInitializeX86Target();
     llvm::LLVMInitializeX86TargetMC();

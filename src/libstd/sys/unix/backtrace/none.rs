@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-12133-rlib.rs
-// aux-build:issue-12133-dylib.rs
-// aux-build:issue-12133-dylib2.rs
-// ignore-musl
-// ignore-pnacl
+// No backtraces support.
 
-// pretty-expanded FIXME #23616
+use io;
+use io::prelude::*;
+use result::Result::Err;
 
-extern crate issue_12133_dylib2 as other;
-
-fn main() {}
+#[inline(always)]
+pub fn write(_w: &mut Write) -> io::Result<()> {
+    use io::ErrorKind;
+    Err(io::Error::new(ErrorKind::Other,
+                       "no library is available to print stack backtraces"))
+}

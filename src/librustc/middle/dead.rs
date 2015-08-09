@@ -375,7 +375,7 @@ fn create_and_seed_worklist(tcx: &ty::ctxt,
 
     // Seed entry point
     match *tcx.sess.entry_fn.borrow() {
-        Some((id, _)) => worklist.push(id),
+        Some((id, _, _)) => worklist.push(id),
         None => ()
     }
 

@@ -153,6 +153,8 @@ pub struct TargetOptions {
     /// Whether the target toolchain is like Android's. Only useful for compiling against Android.
     /// Defaults to false.
     pub is_like_android: bool,
+    /// Whether the target is like PNaCl/JS. Defaults to false.
+    pub is_like_pnacl: bool,
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
     /// Whether the linker support rpaths or not. Defaults to false.
@@ -171,6 +173,10 @@ pub struct TargetOptions {
     /// currently only "gnu" is used to fall into LLVM. Unknown strings cause
     /// the system linker to be used.
     pub archive_format: String,
+    /// Is asm!() not allowed? Defaults to false
+    pub no_asm: bool,
+    /// Is LTO allowed? Defaults to true.
+    pub lto_supported: bool,
     /// Whether the target uses a custom unwind resumption routine.
     /// By default LLVM lowers `resume` instructions into calls to `_Unwind_Resume`
     /// defined in libgcc.  If this option is enabled, the target must provide
@@ -207,6 +213,7 @@ impl Default for TargetOptions {
             is_like_windows: false,
             is_like_android: false,
             is_like_msvc: false,
+            is_like_pnacl: false,
             linker_is_gnu: false,
             has_rpath: false,
             no_compiler_rt: false,
@@ -215,6 +222,8 @@ impl Default for TargetOptions {
             post_link_objects: Vec::new(),
             archive_format: String::new(),
             custom_unwind_resume: false,
+            no_asm: false,
+            lto_supported: true,
         }
     }
 }
@@ -304,11 +313,13 @@ impl Target {
         key!(function_sections, bool);
         key!(is_like_osx, bool);
         key!(is_like_windows, bool);
+        key!(is_like_pnacl, bool);
         key!(linker_is_gnu, bool);
         key!(has_rpath, bool);
         key!(no_compiler_rt, bool);
         key!(pre_link_args, list);
         key!(post_link_args, list);
+        key!(no_asm, bool);
 
         base
     }
@@ -398,7 +409,9 @@ impl Target {
             i686_pc_windows_gnu,
 
             x86_64_pc_windows_msvc,
-            i686_pc_windows_msvc
+            i686_pc_windows_msvc,
+
+            le32_unknown_nacl
         );
 
 

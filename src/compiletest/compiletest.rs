@@ -88,6 +88,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
           optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH"),
+          optopt("", "nacl-cross-path", "path to NaCl Pepper sdk", "PATH"),
           optflag("h", "help", "show this message"));
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -149,6 +150,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         gdb_version: extract_gdb_version(matches.opt_str("gdb-version")),
         lldb_version: extract_lldb_version(matches.opt_str("lldb-version")),
         android_cross_path: opt_path(matches, "android-cross-path"),
+        nacl_cross_path: matches.opt_str("nacl-cross-path").map(|s| Path::new(&s).to_path_buf() ),
         adb_path: opt_str2(matches.opt_str("adb-path")),
         adb_test_dir: format!("{}/{}",
             opt_str2(matches.opt_str("adb-test-dir")),
@@ -223,6 +225,11 @@ pub fn run_tests(config: &Config) {
         // so, we test 1 thread at once.
         // also trying to isolate problems with adb_run_wrapper.sh ilooping
         env::set_var("RUST_TEST_THREADS","1");
+    }
+
+    if config.targeting_pnacl() && config.mode == DebugInfoGdb {
+        // Like android, PNaCl/NaCl also uses a remote debugger.
+        env::set_var("RUST_TEST_TASKS","1");
     }
 
     match config.mode {

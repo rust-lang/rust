@@ -83,6 +83,7 @@ pub mod eabi {
     use rt::libunwind as uw;
     use libc::c_int;
 
+    #[cfg(not(target_os = "nacl"))]
     extern {
         fn __gcc_personality_v0(version: c_int,
                                 actions: uw::_Unwind_Action,
@@ -90,6 +91,20 @@ pub mod eabi {
                                 ue_header: *mut uw::_Unwind_Exception,
                                 context: *mut uw::_Unwind_Context)
             -> uw::_Unwind_Reason_Code;
+    }
+    #[cfg(target_os = "nacl")]
+    unsafe fn __gcc_personality_v0(_version: c_int,
+                                   _actions: uw::_Unwind_Action,
+                                   _exception_class: uw::_Unwind_Exception_Class,
+                                   _ue_header: *mut uw::_Unwind_Exception,
+                                   _context: *mut uw::_Unwind_Context) ->
+        uw::_Unwind_Reason_Code
+    {
+        // we just need to be here to prevent linker errors.
+        // based on my analysis of PNaClSJLJ.cpp and ExceptionInfoWriter.cpp,
+        // the personality functions are just discarded without any consultation.
+        use core::intrinsics::abort;
+        abort()
     }
 
     #[lang = "eh_personality"]
