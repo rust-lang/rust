@@ -26,6 +26,7 @@ use collections::Vec;
 use collections::VecDeque;
 use collections::VecMap;
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use collections::Bound::Included;
 use collections::enum_set::CLike;
@@ -78,7 +79,12 @@ fn main() {
     is_sync_send!(BTreeSet::<usize>::new(), intersection(&BTreeSet::<usize>::new()));
     is_sync_send!(BTreeSet::<usize>::new(), union(&BTreeSet::<usize>::new()));
 
-    all_sync_send!(HashMap::<usize, usize>::new(), keys, values, iter, iter_mut);
+    all_sync_send!(HashMap::<usize, usize>::new(), iter, iter_mut, drain, into_iter, keys, values);
+    all_sync_send!(HashSet::<usize>::new(), iter, drain, into_iter);
+    is_sync_send!(HashSet::<usize>::new(), difference(&HashSet::<usize>::new()));
+    is_sync_send!(HashSet::<usize>::new(), symmetric_difference(&HashSet::<usize>::new()));
+    is_sync_send!(HashSet::<usize>::new(), intersection(&HashSet::<usize>::new()));
+    is_sync_send!(HashSet::<usize>::new(), union(&HashSet::<usize>::new()));
 
     all_sync_send!(LinkedList::<usize>::new(), iter, iter_mut, into_iter);
 
