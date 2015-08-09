@@ -39,6 +39,13 @@ rust_list_dir_val(struct dirent* entry_ptr) {
     return entry_ptr->d_name;
 }
 
+// Android's struct dirent does have d_type from the very beginning
+// (android-3). _DIRENT_HAVE_D_TYPE is not defined all the way to android-21
+// though...
+#if defined(__ANDROID__)
+# define _DIRENT_HAVE_D_TYPE
+#endif
+
 int
 rust_dir_get_mode(struct dirent* entry_ptr) {
 #if defined(_DIRENT_HAVE_D_TYPE) || defined(__APPLE__)
