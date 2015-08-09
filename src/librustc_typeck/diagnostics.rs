@@ -1803,6 +1803,43 @@ information see the [opt-in builtin traits RFC](https://github.com/rust-lang/
 rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
 "##,
 
+E0193: r##"
+`where` clauses must use generic type parameters: it does not make sense to use
+them otherwise.  An example causing this error:
+
+```
+trait Foo {
+    fn bar(&self);
+}
+
+#[derive(Copy,Clone)]
+struct Wrapper<T> {
+    Wrapped: T
+}
+
+impl Foo for Wrapper<u32> where Wrapper<u32>: Clone {
+    fn bar(&self) { }
+}
+```
+
+This use of a `where` clause is strange - a more common usage would look
+something like the following:
+
+```
+impl <T> Foo for Wrapper<T> where Wrapper<T>: Clone {
+    fn bar(&self) { }
+}
+```
+
+Here, we're saying that the implementation exists on Wrapper only when the
+wrapped type `T` implements `Clone`. The `where` clause is important because
+some types will not implement `Clone`, and thus will not get this method.
+
+In our erroneous example, however, we're referencing a single concrete type.
+Since we know for certain that Wrapper<u32> implements Clone, there's no reason
+to also specify it in a `where` clause.
+"##,
+
 E0195: r##"
 Your method's lifetime parameters do not match the trait declaration.
 Erroneous code example:
@@ -2558,8 +2595,6 @@ register_diagnostics! {
     E0188, // can not cast a immutable reference to a mutable pointer
     E0189, // deprecated: can only cast a boxed pointer to a boxed object
     E0190, // deprecated: can only cast a &-pointer to an &-object
-    E0193, // cannot bound type where clause bounds may only be attached to types
-           // involving type parameters
     E0194,
     E0196, // cannot determine a type for this closure
     E0203, // type parameter has more than one relaxed default bound,
