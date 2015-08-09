@@ -4034,6 +4034,14 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     }
 }
 
+/// Builds a name resolution walker to be used within this module,
+/// or used externally, with an optional callback function.
+///
+/// The callback takes a &mut bool which allows callbacks to end a
+/// walk when set to true, passing through the rest of the walk, while
+/// preserving the ribs + current module. This allows resolve_path
+/// calls to be made with the correct scope info. The node in the
+/// callback corresponds to the current node in the walk.
 pub fn create_resolver<'a, 'tcx>(session: &'a Session,
                                  ast_map: &'a ast_map::Map<'tcx>,
                                  krate: &'a Crate,
