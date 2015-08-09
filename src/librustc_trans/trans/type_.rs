@@ -20,11 +20,8 @@ use util::nodemap::FnvHashMap;
 use syntax::ast;
 
 use std::ffi::CString;
-#[cfg(stage0)]
 use std::mem;
 use std::ptr;
-#[cfg(not(stage0))]
-use std::slice;
 use std::cell::RefCell;
 
 use libc::c_uint;
