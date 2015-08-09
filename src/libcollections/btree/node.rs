@@ -390,7 +390,7 @@ impl<K, V> Node<K, V> {
 
     #[inline]
     pub fn as_slices_internal_mut<'b>(&'b mut self) -> MutNodeSlice<'b, K, V> {
-        // TODO: Bad: This relies on structure layout!
+        // FIXME(#27620): Bad: This relies on structure layout!
         unsafe { mem::transmute(self.as_slices_internal()) }
     }
 
