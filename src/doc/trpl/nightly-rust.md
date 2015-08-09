@@ -50,7 +50,7 @@ documentation on [building Rust from Source][from-source], or [the official
 binary downloads][install-page].
 
 [from-source]: https://github.com/rust-lang/rust#building-from-source
-[install-page]: http://www.rust-lang.org/install.html
+[install-page]: https://www.rust-lang.org/install.html
 
 Oh, we should also mention the officially supported platforms:
 
@@ -95,5 +95,5 @@ resources include [the user’s forum][users], and [Stack Overflow][stackoverflo
 
 [irc]: irc://irc.mozilla.org/#rust
 [mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
-[users]: http://users.rust-lang.org/ 
+[users]: https://users.rust-lang.org/
 [stackoverflow]: http://stackoverflow.com/questions/tagged/rust

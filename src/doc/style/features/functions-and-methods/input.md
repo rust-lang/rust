@@ -124,7 +124,7 @@ that the caller already owns, for example to re-use a buffer:
 fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize>
 ```
 
-(From the [Reader trait](http://static.rust-lang.org/doc/master/std/io/trait.Reader.html#tymethod.read).)
+(From the [Read trait](https://doc.rust-lang.org/stable/std/io/trait.Read.html#tymethod.read).)
 
 ### Consider validating arguments, statically or dynamically. [FIXME: needs RFC]
 
@@ -132,7 +132,7 @@ _Note: this material is closely related to
   [library-level guarantees](../../safety/lib-guarantees.md)._
 
 Rust APIs do _not_ generally follow the
-[robustness principle](http://en.wikipedia.org/wiki/Robustness_principle): "be
+[robustness principle](https://en.wikipedia.org/wiki/Robustness_principle): "be
 conservative in what you send; be liberal in what you accept".
 
 Instead, Rust code should _enforce_ the validity of input whenever practical.
@@ -156,8 +156,7 @@ over
 fn foo(a: u8) { ... }
 ```
 
-Note that
-[`ascii::Ascii`](http://static.rust-lang.org/doc/master/std/ascii/struct.Ascii.html)
+Note that `ascii::Ascii`
 is a _wrapper_ around `u8` that guarantees the highest bit is zero; see
 [newtype patterns](../types/newtype.md) for more details on creating typesafe wrappers.
 

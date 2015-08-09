@@ -94,7 +94,7 @@ aspects of the input that are not covered by the contract.
 ### For obstructions, use `Result`
 
 The
-[`Result<T,E>` type](http://static.rust-lang.org/doc/master/std/result/index.html)
+[`Result<T,E>` type](https://doc.rust-lang.org/stable/std/result/index.html)
 represents either a success (yielding `T`) or failure (yielding `E`). By
 returning a `Result`, a function allows its clients to discover and react to
 obstructions in a fine-grained way.

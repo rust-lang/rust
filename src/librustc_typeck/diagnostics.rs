@@ -190,7 +190,7 @@ trait_obj.method_two();
 You can read more about trait objects in the Trait Object section of the
 Reference:
 
-http://doc.rust-lang.org/reference.html#trait-objects
+https://doc.rust-lang.org/reference.html#trait-objects
 "##,
 
 E0034: r##"
@@ -1322,7 +1322,7 @@ fn bar(x: &str, y: &str) -> &str { ... }
 fn baz<'a>(x: &'a str, y: &str) -> &str { ... }
 ```
 
-[book-le]: http://doc.rust-lang.org/nightly/book/lifetimes.html#lifetime-elision
+[book-le]: https://doc.rust-lang.org/nightly/book/lifetimes.html#lifetime-elision
 "##,
 
 E0107: r##"
