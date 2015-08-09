@@ -27,7 +27,6 @@
 
 #![feature(associated_consts)]
 #![feature(bitset)]
-#![feature(copy_lifetime)]
 #![feature(drain)]
 #![feature(filling_drop)]
 #![feature(libc)]
