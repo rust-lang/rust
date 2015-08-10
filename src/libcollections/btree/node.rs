@@ -390,8 +390,29 @@ impl<K, V> Node<K, V> {
 
     #[inline]
     pub fn as_slices_internal_mut<'b>(&'b mut self) -> MutNodeSlice<'b, K, V> {
-        // FIXME(#27620): Bad: This relies on structure layout!
-        unsafe { mem::transmute(self.as_slices_internal()) }
+        let len = self.len();
+        let is_leaf = self.is_leaf();
+        let keys = unsafe { slice::from_raw_parts_mut(*self.keys, len) };
+        let vals = unsafe { slice::from_raw_parts_mut(*self.vals, len) };
+        let edges: &mut [_] = if is_leaf {
+            &mut []
+        } else {
+            unsafe {
+                let data = match self.edges {
+                    None => heap::EMPTY as *mut Node<K,V>,
+                    Some(ref mut p) => **p as *mut Node<K,V>,
+                };
+                slice::from_raw_parts_mut(data, len + 1)
+            }
+        };
+        MutNodeSlice {
+            keys: keys,
+            vals: vals,
+            edges: edges,
+            head_is_edge: true,
+            tail_is_edge: true,
+            has_edges: !is_leaf,
+        }
     }
 
     #[inline]
