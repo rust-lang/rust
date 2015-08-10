@@ -8,7 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-g
+// We disable tail merging here because it can't preserve debuginfo and thus
+// potentially breaks the backtraces. Also, subtle changes can decide whether
+// tail merging suceeds, so the test might work today but fail tomorrow due to a
+// seemingly completely unrelated change.
+// Unfortunately, LLVM has no "disable" option for this, so we have to set
+// "enable" to 0 instead.
+// compile-flags:-g -Cllvm-args=-enable-tail-merge=0
 // ignore-pretty as this critically relies on line numbers
 
 use std::io;
@@ -97,6 +103,10 @@ fn inner_inlined(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
     let inner_pos = pos!(); aux::callback_inlined(|aux_pos| {
         check!(counter; main_pos, outer_pos, inner_pos, aux_pos);
     });
+
+    // this tests a distinction between two independent calls to the inlined function.
+    // (un)fortunately, LLVM somehow merges two consecutive such calls into one node.
+    inner_further_inlined(counter, main_pos, outer_pos, pos!());
 }
 
 #[inline(never)]
