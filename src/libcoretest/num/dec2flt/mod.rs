@@ -91,6 +91,13 @@ fn zero() {
 }
 
 #[test]
+fn fast_path_correct() {
+    // This number triggers the fast path and is handled incorrectly when compiling on
+    // x86 without SSE2 (i.e., using the x87 FPU stack).
+    test_literal!(1.448997445238699);
+}
+
+#[test]
 fn lonely_dot() {
     assert_eq!(to_f64("."), Ok(0.0));
 }
