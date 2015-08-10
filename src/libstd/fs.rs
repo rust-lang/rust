@@ -748,7 +748,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
     fn as_inner(&self) -> &fs_imp::DirEntry { &self.0 }
 }
 
-/// Removes a file from the underlying filesystem.
+/// Removes a file from the filesystem.
 ///
 /// Note that, just because an unlink call was successful, it is not
 /// guaranteed that a file is immediately deleted (e.g. depending on
