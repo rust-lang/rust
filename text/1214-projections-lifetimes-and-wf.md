@@ -825,7 +825,7 @@ In some contexts, we want to check a trait reference, such as the ones
 that appear in where clauses or type parameter bounds. The rules for
 this are given here:
 
-    WfObjectFragment:
+    WfTraitReference:
       ∀i. R, r.. ⊢ Pi
       C = WhereClauses(Id)      // and the conditions declared on Id must hold...
       R, r0...rn ⊢ [P0..Pn] C   // ...after substituting parameters, of course
