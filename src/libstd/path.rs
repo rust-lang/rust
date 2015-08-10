@@ -965,7 +965,7 @@ impl PathBuf {
     ///
     /// * if `path` has a root but no prefix (e.g. `\windows`), it
     ///   replaces everything except for the prefix (if any) of `self`.
-    /// * if `path` has a prefix but no root, it replaces `self.
+    /// * if `path` has a prefix but no root, it replaces `self`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push<P: AsRef<Path>>(&mut self, path: P) {
         let path = path.as_ref();
