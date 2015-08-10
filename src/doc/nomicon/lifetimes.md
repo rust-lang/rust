@@ -46,7 +46,7 @@ likely desugar to the following:
         let y: &'b i32 = &'b x;
         'c: {
             // ditto on 'c
-            let z: &'c &'b i32 = &'c y;
+            let z: &'c i32 = &'c y;
         }
     }
 }
