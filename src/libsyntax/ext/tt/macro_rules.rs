@@ -211,12 +211,8 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 best_fail_spot = sp;
                 best_fail_msg = (*msg).clone();
               },
-              Error(mut spp, ref msg) => {
-                if spp == DUMMY_SP {
-                    spp = sp;
-                }
-
-                panic!(cx.span_fatal(spp, &msg[..]))
+              Error(err_sp, ref msg) => {
+                panic!(cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..]))
               }
             }
           }
@@ -224,11 +220,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
         }
     }
 
-    if best_fail_spot == DUMMY_SP {
-        best_fail_spot = sp;
-    }
-
-    panic!(cx.span_fatal(best_fail_spot, &best_fail_msg[..]));
+    panic!(cx.span_fatal(best_fail_spot.substitute_dummy(sp), &best_fail_msg[..]));
 }
 
 // Note that macro-by-example's input is also matched against a token tree:
@@ -283,12 +275,9 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
                                    arg_reader,
                                    &argument_gram) {
         Success(m) => m,
-        Failure(mut sp, str) | Error(mut sp, str) => {
-            if sp == DUMMY_SP {
-                sp = def.span;
-            }
-
-            panic!(cx.parse_sess().span_diagnostic.span_fatal(sp, &str[..]));
+        Failure(sp, str) | Error(sp, str) => {
+            panic!(cx.parse_sess().span_diagnostic
+                     .span_fatal(sp.substitute_dummy(def.span), &str[..]));
         }
     };
 

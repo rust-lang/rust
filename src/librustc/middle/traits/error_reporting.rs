@@ -29,7 +29,7 @@ use middle::ty::{self, ToPredicate, HasTypeFlags, ToPolyTraitRef, TraitRef};
 use middle::ty_fold::TypeFoldable;
 use std::collections::HashMap;
 use std::fmt;
-use syntax::codemap::{DUMMY_SP, Span};
+use syntax::codemap::Span;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 
 pub fn report_fulfillment_errors<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
@@ -81,11 +81,7 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     let mut report = None;
     for item in infcx.tcx.get_attrs(def_id).iter() {
         if item.check_name("rustc_on_unimplemented") {
-            let err_sp = if item.meta().span == DUMMY_SP {
-                span
-            } else {
-                item.meta().span
-            };
+            let err_sp = item.meta().span.substitute_dummy(span);
             let def = infcx.tcx.lookup_trait_def(def_id);
             let trait_str = def.trait_ref.to_string();
             if let Some(ref istring) = item.value_str() {
