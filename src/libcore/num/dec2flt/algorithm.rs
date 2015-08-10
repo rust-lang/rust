@@ -21,9 +21,8 @@ use super::num::{self, Big};
 /// Number of significand bits in Fp
 const P: u32 = 64;
 
-// We simply store the best approximation for *all* exponents, so
-// the variable "h" and the associated conditions can be omitted.
-// This trades performance for space (11 KiB versus... 5 KiB or so?)
+// We simply store the best approximation for *all* exponents, so the variable "h" and the
+// associated conditions can be omitted. This trades performance for a couple kilobytes of space.
 
 fn power_of_ten(e: i16) -> Fp {
     assert!(e >= table::MIN_E);
@@ -37,6 +36,15 @@ fn power_of_ten(e: i16) -> Fp {
 ///
 /// This is extracted into a separate function so that it can be attempted before constructing
 /// a bignum.
+///
+/// The fast path crucially depends on arithmetic being correctly rounded, so on x86
+/// without SSE or SSE2 it will be **wrong** (as in, off by one ULP occasionally), because the x87
+/// FPU stack will round to 80 bit first before rounding to 64/32 bit. However, as such hardware
+/// is extremely rare nowadays and in fact all in-tree target triples assume an SSE2-capable
+/// microarchitecture, there is little incentive to deal with that. There's a test that will fail
+/// when SSE or SSE2 is disabled, so people building their own non-SSE copy will get a heads up.
+///
+/// FIXME: It would nevertheless be nice if we had a good way to detect and deal with x87.
 pub fn fast_path<T: RawFloat>(integral: &[u8], fractional: &[u8], e: i64) -> Option<T> {
     let num_digits = integral.len() + fractional.len();
     // log_10(f64::max_sig) ~ 15.95. We compare the exact value to max_sig near the end,
