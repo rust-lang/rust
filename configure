@@ -607,6 +607,10 @@ valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
 valopt release-channel "dev" "the name of the release channel to build"
 valopt musl-root "/usr/local" "MUSL root installation directory"
 
+# Used on systems where "cc" and "ar" are unavailable
+valopt default-linker "cc" "the default linker"
+valopt default-ar     "ar" "the default ar"
+
 # Many of these are saved below during the "writing configuration" step
 # (others are conditionally saved).
 opt_nosave manage-submodules 1 "let the build manage the git submodules"
