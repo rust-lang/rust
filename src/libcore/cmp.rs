@@ -19,6 +19,7 @@
 
 use self::Ordering::*;
 
+use mem;
 use marker::Sized;
 use option::Option::{self, Some, None};
 
@@ -114,6 +115,10 @@ pub enum Ordering {
 }
 
 impl Ordering {
+    unsafe fn from_i8_unchecked(v: i8) -> Ordering {
+        mem::transmute(v)
+    }
+
     /// Reverse the `Ordering`.
     ///
     /// * `Less` becomes `Greater`.
@@ -155,7 +160,7 @@ impl Ordering {
             //
             // NB. it is safe because of the explicit discriminants
             // given above.
-            ::mem::transmute::<_, Ordering>(-(self as i8))
+            Ordering::from_i8_unchecked(-(self as i8))
         }
     }
 }

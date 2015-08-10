@@ -14,8 +14,8 @@
 
 use prelude::v1::*;
 
-use ops::Range;
 use mem;
+use ops::Range;
 
 /// Extension methods for ASCII-subset only operations on owned strings
 #[unstable(feature = "owned_ascii_ext",

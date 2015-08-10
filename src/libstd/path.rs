@@ -942,7 +942,7 @@ pub struct PathBuf {
 
 impl PathBuf {
     fn as_mut_vec(&mut self) -> &mut Vec<u8> {
-        unsafe { mem::transmute(self) }
+        unsafe { &mut *(self as *mut PathBuf as *mut Vec<u8>) }
     }
 
     /// Allocates an empty `PathBuf`.
@@ -1126,7 +1126,7 @@ impl ops::Deref for PathBuf {
     type Target = Path;
 
     fn deref(&self) -> &Path {
-        unsafe { mem::transmute(&self.inner[..]) }
+        Path::new(&self.inner)
     }
 }
 
@@ -1227,11 +1227,11 @@ impl Path {
     // The following (private!) function allows construction of a path from a u8
     // slice, which is only safe when it is known to follow the OsStr encoding.
     unsafe fn from_u8_slice(s: &[u8]) -> &Path {
-        mem::transmute(s)
+        Path::new(u8_slice_as_os_str(s))
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
     fn as_u8_slice(&self) -> &[u8] {
-        unsafe { mem::transmute(self) }
+        os_str_as_u8_slice(&self.inner)
     }
 
     /// Directly wrap a string slice as a `Path` slice.

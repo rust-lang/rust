@@ -20,7 +20,6 @@ use core::prelude::v1::*;
 use core::char;
 use core::cmp;
 use core::iter::Filter;
-use core::mem;
 use core::slice;
 use core::str::Split;
 
@@ -454,7 +453,7 @@ impl<'a> Iterator for Utf16Items<'a> {
 
         if u < 0xD800 || 0xDFFF < u {
             // not a surrogate
-            Some(Utf16Item::ScalarValue(unsafe {mem::transmute(u as u32)}))
+            Some(Utf16Item::ScalarValue(unsafe { char::from_u32_unchecked(u as u32) }))
         } else if u >= 0xDC00 {
             // a trailing surrogate
             Some(Utf16Item::LoneSurrogate(u))
@@ -476,7 +475,7 @@ impl<'a> Iterator for Utf16Items<'a> {
 
             // all ok, so lets decode it.
             let c = (((u - 0xD800) as u32) << 10 | (u2 - 0xDC00) as u32) + 0x1_0000;
-            Some(Utf16Item::ScalarValue(unsafe {mem::transmute(c)}))
+            Some(Utf16Item::ScalarValue(unsafe { char::from_u32_unchecked(c) }))
         }
     }
 

@@ -504,8 +504,7 @@ impl str {
     /// # Unsafety
     ///
     /// Caller must check both UTF-8 sequence boundaries and the boundaries
-    /// of the entire slice as
-    /// well.
+    /// of the entire slice as well.
     ///
     /// # Examples
     ///
