@@ -138,8 +138,10 @@ interior mutability through a shared reference. Our example's `mutable` function
 could be redefined as below:
 
 ```
+use std::cell::Cell;
+
 fn mutable() {
-    let x = std::cell::Cell::new(0u32);
+    let x = Cell::new(0u32);
     foo(|| x.set(2));
 }
 ```
