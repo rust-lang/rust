@@ -627,6 +627,9 @@ trait Foo {
         Self; // error: unresolved name `Self`
     }
 }
+
+// or:
+let x = unknown_variable;  // error: unresolved name `unknown_variable`
 ```
 
 Please verify you didn't misspell the name or that you're not using an
@@ -636,12 +639,17 @@ invalid object. Example:
 enum something_that_does_exist {
     foo
 }
+
 // or:
 mod something_that_does_exist {
     pub static foo : i32 = 0i32;
 }
 
 something_that_does_exist::foo; // ok!
+
+// or:
+let unknown_variable = 12u32;
+let x = unknown_variable; // ok!
 ```
 "##,
 
