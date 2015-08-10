@@ -108,6 +108,17 @@ mod record_exports;
 mod build_reduced_graph;
 mod resolve_imports;
 
+// Perform the callback, not walking deeper if the return is true
+macro_rules! execute_callback {
+    ($node: expr, $walker: expr) => (
+        if let Some(ref callback) = $walker.callback {
+            if callback($node, &mut $walker.resolved) {
+                return;
+            }
+        }
+    )
+}
+
 pub enum ResolutionError<'a> {
     /// error E0401: can't use type parameters from outer function
     TypeParametersFromOuterFunction,
@@ -445,38 +456,22 @@ enum NameDefinition {
 
 impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
-        if let Some(ref callback) = self.callback {
-            if callback(ast_map::Node::NodeItem(item), &mut self.resolved) {
-                return;
-            }
-        }
+        execute_callback!(ast_map::Node::NodeItem(item), self);
         self.resolve_item(item);
     }
     fn visit_arm(&mut self, arm: &Arm) {
         self.resolve_arm(arm);
     }
     fn visit_block(&mut self, block: &Block) {
-        if let Some(ref callback) = self.callback {
-            if callback(ast_map::Node::NodeBlock(block), &mut self.resolved) {
-                return;
-            }
-        }
+        execute_callback!(ast_map::Node::NodeBlock(block), self);
         self.resolve_block(block);
     }
     fn visit_expr(&mut self, expr: &Expr) {
-        if let Some(ref callback) = self.callback {
-            if callback(ast_map::Node::NodeExpr(expr), &mut self.resolved) {
-                return;
-            }
-        }
+        execute_callback!(ast_map::Node::NodeExpr(expr), self);
         self.resolve_expr(expr);
     }
     fn visit_local(&mut self, local: &Local) {
-        if let Some(ref callback) = self.callback {
-            if callback(ast_map::Node::NodeLocal(&*local.pat), &mut self.resolved) {
-                return;
-            }
-        }
+        execute_callback!(ast_map::Node::NodeLocal(&*local.pat), self);
         self.resolve_local(local);
     }
     fn visit_ty(&mut self, ty: &Ty) {
@@ -495,11 +490,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         visit::walk_poly_trait_ref(self, tref, m);
     }
     fn visit_variant(&mut self, variant: &ast::Variant, generics: &Generics) {
-        if let Some(ref callback) = self.callback {
-            if callback(ast_map::Node::NodeVariant(variant), &mut self.resolved) {
-                return;
-            }
-        }
+        execute_callback!(ast_map::Node::NodeVariant(variant), self);
         if let Some(ref dis_expr) = variant.node.disr_expr {
             // resolve the discriminator expr as a constant
             self.with_constant_rib(|this| {
@@ -523,11 +514,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         }
     }
     fn visit_foreign_item(&mut self, foreign_item: &ast::ForeignItem) {
-        if let Some(ref callback) = self.callback {
-            if callback(ast_map::Node::NodeForeignItem(foreign_item), &mut self.resolved) {
-                return;
-            }
-        }
+        execute_callback!(ast_map::Node::NodeForeignItem(foreign_item), self);
         let type_parameters = match foreign_item.node {
             ForeignItemFn(_, ref generics) => {
                 HasTypeParameters(generics, FnSpace, ItemRibKind)
