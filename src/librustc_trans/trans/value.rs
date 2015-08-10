@@ -80,6 +80,19 @@ impl Value {
         }
     }
 
+    pub fn get_stored_value_opt(self, bcx: Block) -> Option<Value> {
+        let bb = Some(BasicBlock(bcx.llbb));
+        if let Some(val) = self.get_dominating_store(bcx) {
+            let valbb = val.get_parent();
+
+            if bb == valbb {
+                return val.get_operand(0);
+            }
+        }
+
+        None
+    }
+
     /// Returns the first use of this value, if any
     pub fn get_first_use(self) -> Option<Use> {
         unsafe {

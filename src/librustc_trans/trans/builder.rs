@@ -507,6 +507,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn volatile_store(&self, val: ValueRef, ptr: ValueRef) -> ValueRef {
+        debug!("Volatile Store {} -> {}",
+               self.ccx.tn().val_to_string(val),
+               self.ccx.tn().val_to_string(ptr));
         assert!(!self.llbuilder.is_null());
         self.count_insn("store.volatile");
         unsafe {

@@ -728,7 +728,7 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
-    if need_invoke(bcx) {
+    let (mut llresult, bcx) = if need_invoke(bcx) {
         debug!("invoking {} at {:?}", bcx.val_to_string(llfn), bcx.llbb);
         for &llarg in llargs {
             debug!("arg: {}", bcx.val_to_string(llarg));
@@ -736,41 +736,37 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let normal_bcx = bcx.fcx.new_temp_block("normal-return");
         let landing_pad = bcx.fcx.get_landing_pad();
 
-        let mut llresult = Invoke(bcx,
+        let llresult = Invoke(bcx,
                               llfn,
                               &llargs[..],
                               normal_bcx.llbb,
                               landing_pad,
                               Some(attributes),
                               debug_loc);
-        if let ty::FnConverging(ty) = ret_ty {
-            if return_type_is_void(bcx.ccx(), ty) {
-                llresult = C_nil(bcx.ccx());
-            }
-        } else {
-            llresult = C_nil(bcx.ccx());
-        }
-        return (llresult, normal_bcx);
+        (llresult, normal_bcx)
     } else {
         debug!("calling {} at {:?}", bcx.val_to_string(llfn), bcx.llbb);
         for &llarg in llargs {
             debug!("arg: {}", bcx.val_to_string(llarg));
         }
 
-        let mut llresult = Call(bcx,
+        let llresult = Call(bcx,
                                 llfn,
                                 &llargs[..],
                                 Some(attributes),
                                 debug_loc);
-        if let ty::FnConverging(ty) = ret_ty {
-            if return_type_is_void(bcx.ccx(), ty) {
-                llresult = C_nil(bcx.ccx());
-            }
-        } else {
+        (llresult, bcx)
+    };
+
+    if let ty::FnConverging(ty) = ret_ty {
+        if return_type_is_void(bcx.ccx(), ty) {
             llresult = C_nil(bcx.ccx());
         }
-        return (llresult, bcx);
+    } else {
+        llresult = C_nil(bcx.ccx());
     }
+
+    (llresult, bcx)
 }
 
 pub fn need_invoke(bcx: Block) -> bool {
@@ -803,33 +799,22 @@ pub fn load_if_immediate<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 /// gives us better information about what we are loading.
 pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                            ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
-    use trans::basic_block::BasicBlock;
-
     if cx.unreachable.get() || type_is_zero_size(cx.ccx(), t) {
         return C_undef(type_of::type_of(cx.ccx(), t));
     }
 
     let ptr = to_arg_ty_ptr(cx, ptr, t);
-    let ptr = Value(ptr);
     let align = type_of::align_of(cx.ccx(), t);
 
-    let bb = BasicBlock(cx.llbb);
-
     if type_is_immediate(cx.ccx(), t) && type_of::type_of(cx.ccx(), t).is_aggregate() {
-        if let Some(val) = ptr.get_dominating_store(cx) {
-            let valbb = val.get_parent();
-
-            if Some(bb) == valbb {
-                if let Some(val) = val.get_operand(0) {
-                    debug!("Eliding load from {}", cx.ccx().tn().val_to_string(ptr.get()));
-                    debug!("    Using previous stored value: {}",
-                           cx.ccx().tn().val_to_string(val.get()));
-                    return val.get();
-                }
-            }
+        if let Some(val) = Value(ptr).get_stored_value_opt(cx) {
+            debug!("Eliding load from {}", cx.ccx().tn().val_to_string(ptr));
+            debug!("    Using previous stored value: {}",
+                   cx.ccx().tn().val_to_string(val.get()));
+            return val.get();
         }
 
-        let load = Load(cx, ptr.get());
+        let load = Load(cx, ptr);
         unsafe {
             llvm::LLVMSetAlignment(load, align);
         }
@@ -837,7 +822,7 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     }
 
     unsafe {
-        let global = llvm::LLVMIsAGlobalVariable(ptr.get());
+        let global = llvm::LLVMIsAGlobalVariable(ptr);
         if !global.is_null() && llvm::LLVMIsGlobalConstant(global) == llvm::True {
             let val = llvm::LLVMGetInitializer(global);
             if !val.is_null() {
@@ -846,30 +831,24 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         }
     }
 
-    if let Some(val) = ptr.get_dominating_store(cx) {
-        let valbb = val.get_parent();
-
-        if Some(bb) == valbb {
-            if let Some(val) = val.get_operand(0) {
-                debug!("Eliding load from {}", cx.ccx().tn().val_to_string(ptr.get()));
-                debug!("    Using previous stored value: {}",
-                       cx.ccx().tn().val_to_string(val.get()));
-                return to_arg_ty(cx, val.get(), t);
-            }
-        }
+    if let Some(val) = Value(ptr).get_stored_value_opt(cx) {
+        debug!("Eliding load from {}", cx.ccx().tn().val_to_string(ptr));
+        debug!("    Using previous stored value: {}",
+                cx.ccx().tn().val_to_string(val.get()));
+        return to_arg_ty(cx, val.get(), t);
     }
 
     let val =  if t.is_bool() {
-        LoadRangeAssert(cx, ptr.get(), 0, 2, llvm::False)
+        LoadRangeAssert(cx, ptr, 0, 2, llvm::False)
     } else if t.is_char() {
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
-        LoadRangeAssert(cx, ptr.get(), 0, 0x10FFFF + 1, llvm::False)
+        LoadRangeAssert(cx, ptr, 0, 0x10FFFF + 1, llvm::False)
     } else if (t.is_region_ptr() || t.is_unique())
         && !common::type_is_fat_ptr(cx.tcx(), t) {
-            LoadNonNull(cx, ptr.get())
+            LoadNonNull(cx, ptr)
     } else {
-        Load(cx, ptr.get())
+        Load(cx, ptr)
     };
 
     unsafe {
@@ -918,11 +897,16 @@ pub fn from_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
 
 pub fn to_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
     if ty.is_bool() {
+        // Look for cases where we're truncating a zext from a bool already and grab the original
+        // value. This can happen with an elided load from a boolean location. While this can be
+        // easily optimized out, the indirection can interfere with some intrinsics.
         let val = Value(val);
         if let Some(zext) = val.as_zext_inst() {
+            // `val` == zext %foo
             if let Some(val) = zext.get_operand(0) {
                 let valty = val_ty(val.get());
                 if valty == Type::i1(bcx.ccx()) {
+                    // %foo : i1
                     return val.get();
                 }
             }

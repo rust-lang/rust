@@ -2094,7 +2094,7 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     if type_is_fat_ptr(bcx.tcx(), t_in) {
         if type_is_fat_ptr(bcx.tcx(), t_out) {
             // If the datum is by-ref, just do a pointer cast, otherwise
-            // construct the casted fat pointer manually
+            // construct the casted fat pointer manually.
             if datum.kind.is_by_ref() {
                 return DatumBlock::new(bcx, Datum::new(
                     PointerCast(bcx, datum.val, ll_t_out.ptr_to()),
