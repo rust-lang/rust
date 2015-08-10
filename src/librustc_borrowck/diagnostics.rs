@@ -125,12 +125,28 @@ The problem here is that foo is defined as accepting a parameter of type `Fn`.
 Closures passed into foo will thus be inferred to be of type `Fn`, meaning that
 they capture their context immutably.
 
-The solution is to capture the data mutably. This can be done by defining `foo`
-to take FnMut rather than Fn:
+If the definition of `foo` is under your control, the simplest solution is to
+capture the data mutably. This can be done by defining `foo` to take FnMut
+rather than Fn:
 
 ```
 fn foo<F: FnMut()>(f: F) { }
 ```
+
+Alternatively, we can consider using the `Cell` and `RefCell` types to achieve
+interior mutability through a shared reference. Our example's `mutable` function
+could be redefined as below:
+
+```
+fn mutable() {
+    let x = std::cell::Cell::new(0u32);
+    foo(|| x.set(2));
+}
+```
+
+You can read more about cell types in the API documentation:
+
+https://doc.rust-lang.org/std/cell/
 "##
 
 }
