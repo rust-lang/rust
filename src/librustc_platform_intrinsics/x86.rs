@@ -34,6 +34,8 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
 
         "mm_min_ps" => p!("sse.min.ps", (f32x4, f32x4) -> f32x4),
         "mm_min_pd" => p!("sse2.min.pd", (f64x2, f64x2) -> f64x2),
+
+        "mm_shuffle_epi8" => p!("ssse3.pshuf.b.128", (i8x16, i8x16) -> i8x16),
         _ => return None
     })
 }
