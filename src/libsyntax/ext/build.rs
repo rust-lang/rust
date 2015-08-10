@@ -1141,7 +1141,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn item_use_list(&self, sp: Span, vis: ast::Visibility,
                      path: Vec<ast::Ident>, imports: &[ast::Ident]) -> P<ast::Item> {
         let imports = imports.iter().map(|id| {
-            respan(sp, ast::PathListIdent { name: *id, id: ast::DUMMY_NODE_ID })
+            respan(sp, ast::PathListIdent { name: *id, rename: None, id: ast::DUMMY_NODE_ID })
         }).collect();
 
         self.item_use(sp, vis,

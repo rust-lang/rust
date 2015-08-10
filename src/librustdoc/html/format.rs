@@ -687,10 +687,15 @@ impl fmt::Display for clean::ViewListIdent {
         match self.source {
             Some(did) => {
                 let path = clean::Path::singleton(self.name.clone());
-                resolved_path(f, did, &path, false)
+                try!(resolved_path(f, did, &path, false));
             }
-            _ => write!(f, "{}", self.name),
+            _ => try!(write!(f, "{}", self.name)),
         }
+
+        if let Some(ref name) = self.rename {
+            try!(write!(f, " as {}", name));
+        }
+        Ok(())
     }
 }
 

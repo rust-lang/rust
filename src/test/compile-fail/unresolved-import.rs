@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,6 +12,20 @@ use foo::bar; //~ ERROR unresolved import `foo::bar`. Maybe a missing `extern cr
 
 use bar::baz as x; //~ ERROR unresolved import `bar::baz`. There is no `baz` in `bar`
 
+use food::baz; //~ ERROR unresolved import `food::baz`. There is no `baz` in `food`
+
+use food::{quux as beans}; //~ ERROR unresolved import `food::quux`. There is no `quux` in `food`
+
 mod bar {
     struct bar;
+}
+
+mod food {
+    pub use self::zug::baz::{self as bag, quux as beans};
+
+    mod zug {
+        pub mod baz {
+            pub struct quux;
+        }
+    }
 }
