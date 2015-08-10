@@ -185,8 +185,8 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             data_layout: String::new(),
-            linker: "cc".to_string(),
-            ar: "ar".to_string(),
+            linker: option_env!("CFG_DEFAULT_LINKER").unwrap_or("cc").to_string(),
+            ar: option_env!("CFG_DEFAULT_AR").unwrap_or("ar").to_string(),
             pre_link_args: Vec::new(),
             post_link_args: Vec::new(),
             cpu: "generic".to_string(),
