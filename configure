@@ -1428,8 +1428,9 @@ do
         LLVM_BUILD_DIR=
         LLVM_INST_DIR=$CFG_LLVM_ROOT
         do_reconfigure=0
+        # Check that LLVm FileCheck is available. Needed for the tests
+        need_cmd $LLVM_INST_DIR/bin/FileCheck
     fi
-
 
     if [ ${do_reconfigure} -ne 0 ]
     then
