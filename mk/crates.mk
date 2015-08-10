@@ -65,7 +65,7 @@ DEPS_libc := core
 DEPS_rustc_unicode := core
 DEPS_alloc := core libc native:jemalloc
 DEPS_std := core libc rand alloc collections rustc_unicode \
-	native:rust_builtin native:backtrace native:rustrt_native \
+	native:rust_builtin native:backtrace \
 	rustc_bitflags
 DEPS_graphviz := std
 DEPS_syntax := std term serialize log fmt_macros arena libc

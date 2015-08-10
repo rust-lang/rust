@@ -16,15 +16,6 @@ using namespace llvm;
 using namespace llvm::sys;
 using namespace llvm::object;
 
-// libmorestack is not used on other platforms
-#if defined(__linux__) || defined(__APPLE__)
-extern "C" void __morestack(void);
-
-static void* morestack_addr() {
-    return reinterpret_cast<void*>(__morestack);
-}
-#endif
-
 class RustJITMemoryManager : public SectionMemoryManager
 {
     typedef SectionMemoryManager Base;
@@ -35,13 +26,6 @@ class RustJITMemoryManager : public SectionMemoryManager
 
     uint64_t getSymbolAddress(const std::string &Name) override
     {
-#if defined(__linux__) || defined(__APPLE__)
-        if (Name == "__morestack" || Name == "___morestack")
-            return reinterpret_cast<uint64_t>(__morestack);
-        if (Name == "__morestack_addr" || Name == "___morestack_addr")
-            return reinterpret_cast<uint64_t>(morestack_addr);
-#endif
-
         return Base::getSymbolAddress(Name);
     }
 };

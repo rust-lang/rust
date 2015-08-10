@@ -79,9 +79,6 @@ pub fn declare_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv,
         llvm::SetFunctionAttribute(llfn, llvm::Attribute::NoRedZone)
     }
 
-    if ccx.is_split_stack_supported() && !ccx.sess().opts.cg.no_stack_check {
-        attributes::split_stack(llfn, true);
-    }
     llfn
 }
 

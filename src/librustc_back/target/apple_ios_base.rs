@@ -87,14 +87,6 @@ pub fn opts(arch: Arch) -> TargetOptions {
         cpu: target_cpu(arch),
         dynamic_linking: false,
         executables: true,
-        // Although there is an experimental implementation of LLVM which
-        // supports SS on armv7 it wasn't approved by Apple, see:
-        // http://lists.cs.uiuc.edu/pipermail/llvm-commits/Week-of-Mon-20140505/216350.html
-        // It looks like it might be never accepted to upstream LLVM.
-        //
-        // SS might be also enabled on Arm64 as it has builtin support in LLVM
-        // but I haven't tested it through yet
-        morestack: false,
         pre_link_args: pre_link_args(arch),
         .. super::apple_base::opts()
     }

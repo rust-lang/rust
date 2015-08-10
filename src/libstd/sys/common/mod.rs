@@ -21,7 +21,6 @@ pub mod io;
 pub mod poison;
 pub mod remutex;
 pub mod rwlock;
-pub mod stack;
 pub mod thread;
 pub mod thread_info;
 pub mod thread_local;
@@ -52,3 +51,7 @@ pub trait IntoInner<Inner> {
 pub trait FromInner<Inner> {
     fn from_inner(inner: Inner) -> Self;
 }
+
+#[cfg(stage0)]
+#[lang = "stack_exhausted"]
+pub fn stack_exhausted() {}

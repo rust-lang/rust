@@ -118,9 +118,6 @@ pub struct TargetOptions {
     /// Whether executables are available on this target. iOS, for example, only allows static
     /// libraries. Defaults to false.
     pub executables: bool,
-    /// Whether LLVM's segmented stack prelude is supported by whatever runtime is available.
-    /// Will emit stack checks and calls to __morestack. Defaults to false.
-    pub morestack: bool,
     /// Relocation model to use in object file. Corresponds to `llc
     /// -relocation-model=$relocation_model`. Defaults to "pic".
     pub relocation_model: String,
@@ -192,7 +189,6 @@ impl Default for TargetOptions {
             features: "".to_string(),
             dynamic_linking: false,
             executables: false,
-            morestack: false,
             relocation_model: "pic".to_string(),
             code_model: "default".to_string(),
             disable_redzone: false,
@@ -298,7 +294,6 @@ impl Target {
         key!(data_layout);
         key!(dynamic_linking, bool);
         key!(executables, bool);
-        key!(morestack, bool);
         key!(disable_redzone, bool);
         key!(eliminate_frame_pointer, bool);
         key!(function_sections, bool);
