@@ -267,7 +267,8 @@ tidy-basic:
 .PHONY: tidy-binaries
 tidy-binaries:
 		@$(call E, check: binaries)
-		$(Q)find $(S)src -type f -perm +a+x \
+		$(Q)find $(S)src -type f \
+		    \( -perm -u+x -or -perm -g+x -or -perm -o+x \) \
 		    -not -name '*.rs' -and -not -name '*.py' \
 		    -and -not -name '*.sh' \
 		| grep '^$(S)src/jemalloc' -v \
