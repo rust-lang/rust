@@ -15,9 +15,6 @@
 extern crate core;
 extern crate libc;
 
-#[lang = "stack_exhausted"]
-extern fn stack_exhausted() {}
-
 #[lang = "eh_personality"]
 extern fn eh_personality() {}
 

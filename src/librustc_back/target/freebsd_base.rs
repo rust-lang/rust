@@ -16,7 +16,6 @@ pub fn opts() -> TargetOptions {
         linker: "cc".to_string(),
         dynamic_linking: true,
         executables: true,
-        morestack: true,
         has_rpath: true,
         archive_format: "gnu".to_string(),
 

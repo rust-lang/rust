@@ -2166,17 +2166,8 @@ fn finish_register_fn(ccx: &CrateContext, sym: String, node_id: ast::NodeId,
                       llfn: ValueRef) {
     ccx.item_symbols().borrow_mut().insert(node_id, sym);
 
-    // The stack exhaustion lang item shouldn't have a split stack because
-    // otherwise it would continue to be exhausted (bad), and both it and the
-    // eh_personality functions need to be externally linkable.
+    // The eh_personality function need to be externally linkable.
     let def = ast_util::local_def(node_id);
-    if ccx.tcx().lang_items.stack_exhausted() == Some(def) {
-        attributes::split_stack(llfn, false);
-        llvm::SetLinkage(llfn, llvm::ExternalLinkage);
-        if ccx.use_dll_storage_attrs() {
-            llvm::SetDLLStorageClass(llfn, llvm::DLLExportStorageClass);
-        }
-    }
     if ccx.tcx().lang_items.eh_personality() == Some(def) {
         llvm::SetLinkage(llfn, llvm::ExternalLinkage);
         if ccx.use_dll_storage_attrs() {
@@ -2794,13 +2785,8 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
     });
 
     // Make sure that some other crucial symbols are not eliminated from the
-    // module. This includes the main function, the crate map (used for debug
-    // log settings and I/O), and finally the curious rust_stack_exhausted
-    // symbol. This symbol is required for use by the libmorestack library that
-    // we link in, so we must ensure that this symbol is not internalized (if
-    // defined in the crate).
+    // module, including the main function.
     reachable.push("main".to_string());
-    reachable.push("rust_stack_exhausted".to_string());
 
     // referenced from .eh_frame section on some platforms
     reachable.push("rust_eh_personality".to_string());

@@ -13,8 +13,9 @@
 
 #![feature(asm)]
 
-use std::process::Command;
 use std::env;
+use std::process::Command;
+use std::thread;
 
 // lifted from the test module
 // Inlining to avoid llvm turning the recursive functions into tail calls,
@@ -23,7 +24,7 @@ use std::env;
 pub fn black_box<T>(dummy: T) { unsafe { asm!("" : : "r"(&dummy)) } }
 
 fn silent_recurse() {
-    let buf = [0; 1000];
+    let buf = [0u8; 1000];
     black_box(buf);
     silent_recurse();
 }
@@ -40,15 +41,31 @@ fn main() {
         silent_recurse();
     } else if args.len() > 1 && args[1] == "loud" {
         loud_recurse();
+    } else if args.len() > 1 && args[1] == "silent-thread" {
+        thread::spawn(silent_recurse).join();
+    } else if args.len() > 1 && args[1] == "loud-thread" {
+        thread::spawn(loud_recurse).join();
     } else {
-        let silent = Command::new(&args[0]).arg("silent").output().unwrap();
-        assert!(!silent.status.success());
-        let error = String::from_utf8_lossy(&silent.stderr);
-        assert!(error.contains("has overflowed its stack"));
+        let mut modes = vec![
+            "silent-thread",
+            "loud-thread",
+        ];
 
-        let loud = Command::new(&args[0]).arg("loud").output().unwrap();
-        assert!(!loud.status.success());
-        let error = String::from_utf8_lossy(&silent.stderr);
-        assert!(error.contains("has overflowed its stack"));
+        // On linux it looks like the main thread can sometimes grow its stack
+        // basically without bounds, so we only test the child thread cases
+        // there.
+        if !cfg!(target_os = "linux") {
+            modes.push("silent");
+            modes.push("loud");
+        }
+        for mode in modes {
+            println!("testing: {}", mode);
+
+            let silent = Command::new(&args[0]).arg(mode).output().unwrap();
+            assert!(!silent.status.success());
+            let error = String::from_utf8_lossy(&silent.stderr);
+            assert!(error.contains("has overflowed its stack"),
+                    "missing overflow message: {}", error);
+        }
     }
 }

@@ -111,10 +111,6 @@ static CALLBACK_CNT: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
 
 thread_local! { static PANICKING: Cell<bool> = Cell::new(false) }
 
-#[link(name = "rustrt_native", kind = "static")]
-#[cfg(not(test))]
-extern {}
-
 /// Invoke a closure, capturing the cause of panic if one occurs.
 ///
 /// This function will return `Ok(())` if the closure did not panic, and will

@@ -40,25 +40,17 @@ impl Drop for Handler {
           target_os = "netbsd",
           target_os = "openbsd"))]
 mod imp {
-    use sys_common::stack;
-
     use super::Handler;
     use rt::util::report_overflow;
     use mem;
     use ptr;
-    use intrinsics;
     use sys::c::{siginfo, sigaction, SIGBUS, SIG_DFL,
                  SA_SIGINFO, SA_ONSTACK, sigaltstack,
-                 SIGSTKSZ, sighandler_t, raise};
+                 SIGSTKSZ, sighandler_t};
     use libc;
     use libc::funcs::posix88::mman::{mmap, munmap};
-    use libc::funcs::posix01::signal::signal;
-    use libc::consts::os::posix88::{SIGSEGV,
-                                    PROT_READ,
-                                    PROT_WRITE,
-                                    MAP_PRIVATE,
-                                    MAP_ANON,
-                                    MAP_FAILED};
+    use libc::{SIGSEGV, PROT_READ, PROT_WRITE, MAP_PRIVATE, MAP_ANON};
+    use libc::MAP_FAILED;
 
     use sys_common::thread_info;
 
@@ -66,46 +58,48 @@ mod imp {
     // This is initialized in init() and only read from after
     static mut PAGE_SIZE: usize = 0;
 
-    #[no_stack_check]
+    // Signal handler for the SIGSEGV and SIGBUS handlers. We've got guard pages
+    // (unmapped pages) at the end of every thread's stack, so if a thread ends
+    // up running into the guard page it'll trigger this handler. We want to
+    // detect these cases and print out a helpful error saying that the stack
+    // has overflowed. All other signals, however, should go back to what they
+    // were originally supposed to do.
+    //
+    // This handler currently exists purely to print an informative message
+    // whenever a thread overflows its stack. When run the handler always
+    // un-registers itself after running and then returns (to allow the original
+    // signal to be delivered again). By returning we're ensuring that segfaults
+    // do indeed look like segfaults.
+    //
+    // Returning from this kind of signal handler is technically not defined to
+    // work when reading the POSIX spec strictly, but in practice it turns out
+    // many large systems and all implementations allow returning from a signal
+    // handler to work. For a more detailed explanation see the comments on
+    // #26458.
     unsafe extern fn signal_handler(signum: libc::c_int,
-                                     info: *mut siginfo,
-                                     _data: *mut libc::c_void) {
-
-        // We can not return from a SIGSEGV or SIGBUS signal.
-        // See: https://www.gnu.org/software/libc/manual/html_node/Handler-Returns.html
-
-        unsafe fn term(signum: libc::c_int) -> ! {
-            use core::mem::transmute;
-
-            signal(signum, transmute(SIG_DFL));
-            raise(signum);
-            intrinsics::abort();
-        }
-
-        // We're calling into functions with stack checks
-        stack::record_sp_limit(0);
-
+                                    info: *mut siginfo,
+                                    _data: *mut libc::c_void) {
         let guard = thread_info::stack_guard().unwrap_or(0);
         let addr = (*info).si_addr as usize;
 
-        if guard == 0 || addr < guard - PAGE_SIZE || addr >= guard {
-            term(signum);
+        // If the faulting address is within the guard page, then we print a
+        // message saying so.
+        if guard != 0 && guard - PAGE_SIZE <= addr && addr < guard {
+            report_overflow();
         }
 
-        report_overflow();
+        // Unregister ourselves by reverting back to the default behavior.
+        let mut action: sigaction = mem::zeroed();
+        action.sa_sigaction = SIG_DFL;
+        sigaction(signum, &action, ptr::null_mut());
 
-        intrinsics::abort()
+        // See comment above for why this function returns.
     }
 
     static mut MAIN_ALTSTACK: *mut libc::c_void = 0 as *mut libc::c_void;
 
     pub unsafe fn init() {
-        let psize = libc::sysconf(libc::consts::os::sysconf::_SC_PAGESIZE);
-        if psize == -1 {
-            panic!("failed to get page size");
-        }
-
-        PAGE_SIZE = psize as usize;
+        PAGE_SIZE = ::sys::os::page_size();
 
         let mut action: sigaction = mem::zeroed();
         action.sa_flags = SA_SIGINFO | SA_ONSTACK;

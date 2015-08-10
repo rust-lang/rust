@@ -171,7 +171,7 @@ use marker::PhantomData;
 use rt::{self, unwind};
 use sync::{Mutex, Condvar, Arc};
 use sys::thread as imp;
-use sys_common::{stack, thread_info};
+use sys_common::thread_info;
 use time::Duration;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,24 +298,11 @@ impl Builder {
         let my_packet = Arc::new(UnsafeCell::new(None));
         let their_packet = my_packet.clone();
 
-        // Spawning a new OS thread guarantees that __morestack will never get
-        // triggered, but we must manually set up the actual stack bounds once
-        // this function starts executing. This raises the lower limit by a bit
-        // because by the time that this function is executing we've already
-        // consumed at least a little bit of stack (we don't know the exact byte
-        // address at which our stack started).
         let main = move || {
-            let something_around_the_top_of_the_stack = 1;
-            let addr = &something_around_the_top_of_the_stack as *const i32;
-            let my_stack_top = addr as usize;
-            let my_stack_bottom = my_stack_top - stack_size + 1024;
-            stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
-
             if let Some(name) = their_thread.name() {
                 imp::Thread::set_name(name);
             }
             thread_info::set(imp::guard::current(), their_thread);
-
             let mut output = None;
             let try_result = {
                 let ptr = &mut output;

@@ -23,19 +23,6 @@ use trans::context::CrateContext;
 use trans::machine;
 use trans::type_of;
 
-/// Mark LLVM function to use split stack.
-#[inline]
-pub fn split_stack(val: ValueRef, set: bool) {
-    unsafe {
-        let attr = "split-stack\0".as_ptr() as *const _;
-        if set {
-            llvm::LLVMAddFunctionAttrString(val, llvm::FunctionIndex as c_uint, attr);
-        } else {
-            llvm::LLVMRemoveFunctionAttrString(val, llvm::FunctionIndex as c_uint, attr);
-        }
-    }
-}
-
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
 pub fn inline(val: ValueRef, inline: InlineAttr) {
@@ -123,9 +110,7 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRe
     }
 
     for attr in attrs {
-        if attr.check_name("no_stack_check") {
-            split_stack(llfn, false);
-        } else if attr.check_name("cold") {
+        if attr.check_name("cold") {
             unsafe {
                 llvm::LLVMAddFunctionAttribute(llfn,
                                                llvm::FunctionIndex as c_uint,
