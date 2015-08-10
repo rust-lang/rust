@@ -1457,13 +1457,73 @@ fn generic_simd_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         if in_ == out { return llargs[0]; }
 
         match (&in_.sty, &out.sty) {
+            (&ty::TyInt(lhs), &ty::TyInt(rhs)) => {
+                match (lhs, rhs) {
+                    (ast::TyI8, ast::TyI8) |
+                    (ast::TyI16, ast::TyI16) |
+                    (ast::TyI32, ast::TyI32) |
+                    (ast::TyI64, ast::TyI64) => return llargs[0],
+
+                    (ast::TyI8, ast::TyI16) |
+                    (ast::TyI8, ast::TyI32) |
+                    (ast::TyI8, ast::TyI64) |
+                    (ast::TyI16, ast::TyI32) |
+                    (ast::TyI16, ast::TyI64) |
+                    (ast::TyI32, ast::TyI64) => return SExt(bcx, llargs[0], llret_ty),
+
+                    (ast::TyI16, ast::TyI8) |
+                    (ast::TyI32, ast::TyI8) |
+                    (ast::TyI32, ast::TyI16) |
+                    (ast::TyI64, ast::TyI8) |
+                    (ast::TyI64, ast::TyI16) |
+                    (ast::TyI64, ast::TyI32) => return Trunc(bcx, llargs[0], llret_ty),
+                    _ => {}
+                }
+            }
+            (&ty::TyUint(lhs), &ty::TyUint(rhs)) => {
+                match (lhs, rhs) {
+                    (ast::TyU8, ast::TyU8) |
+                    (ast::TyU16, ast::TyU16) |
+                    (ast::TyU32, ast::TyU32) |
+                    (ast::TyU64, ast::TyU64) => return llargs[0],
+
+                    (ast::TyU8, ast::TyU16) |
+                    (ast::TyU8, ast::TyU32) |
+                    (ast::TyU8, ast::TyU64) |
+                    (ast::TyU16, ast::TyU32) |
+                    (ast::TyU16, ast::TyU64) |
+                    (ast::TyU32, ast::TyU64) => return ZExt(bcx, llargs[0], llret_ty),
+
+                    (ast::TyU16, ast::TyU8) |
+                    (ast::TyU32, ast::TyU8) |
+                    (ast::TyU32, ast::TyU16) |
+                    (ast::TyU64, ast::TyU8) |
+                    (ast::TyU64, ast::TyU16) |
+                    (ast::TyU64, ast::TyU32) => return Trunc(bcx, llargs[0], llret_ty),
+                    _ => {}
+                }
+            }
             (&ty::TyInt(lhs), &ty::TyUint(rhs)) => {
                 match (lhs, rhs) {
                     (ast::TyI8, ast::TyU8) |
                     (ast::TyI16, ast::TyU16) |
                     (ast::TyI32, ast::TyU32) |
                     (ast::TyI64, ast::TyU64) => return llargs[0],
-                    _ => {},
+
+                    (ast::TyI8, ast::TyU16) |
+                    (ast::TyI8, ast::TyU32) |
+                    (ast::TyI8, ast::TyU64) |
+                    (ast::TyI16, ast::TyU32) |
+                    (ast::TyI16, ast::TyU64) |
+                    (ast::TyI32, ast::TyU64) => return SExt(bcx, llargs[0], llret_ty),
+
+                    (ast::TyI16, ast::TyU8) |
+                    (ast::TyI32, ast::TyU8) |
+                    (ast::TyI32, ast::TyU16) |
+                    (ast::TyI64, ast::TyU8) |
+                    (ast::TyI64, ast::TyU16) |
+                    (ast::TyI64, ast::TyU32) => return Trunc(bcx, llargs[0], llret_ty),
+                    _ => {}
                 }
             }
             (&ty::TyUint(lhs), &ty::TyInt(rhs)) => {
@@ -1472,25 +1532,42 @@ fn generic_simd_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     (ast::TyU16, ast::TyI16) |
                     (ast::TyU32, ast::TyI32) |
                     (ast::TyU64, ast::TyI64) => return llargs[0],
-                    _ => {},
+
+                    (ast::TyU8, ast::TyI16) |
+                    (ast::TyU8, ast::TyI32) |
+                    (ast::TyU8, ast::TyI64) |
+                    (ast::TyU16, ast::TyI32) |
+                    (ast::TyU16, ast::TyI64) |
+                    (ast::TyU32, ast::TyI64) => return ZExt(bcx, llargs[0], llret_ty),
+
+                    (ast::TyU16, ast::TyI8) |
+                    (ast::TyU32, ast::TyI8) |
+                    (ast::TyU32, ast::TyI16) |
+                    (ast::TyU64, ast::TyI8) |
+                    (ast::TyU64, ast::TyI16) |
+                    (ast::TyU64, ast::TyI32) => return Trunc(bcx, llargs[0], llret_ty),
+                    _ => {}
                 }
             }
-            (&ty::TyInt(ast::TyI32), &ty::TyFloat(ast::TyF32)) |
-            (&ty::TyInt(ast::TyI64), &ty::TyFloat(ast::TyF64)) => {
+
+            (&ty::TyInt(_), &ty::TyFloat(_)) => {
                 return SIToFP(bcx, llargs[0], llret_ty)
             }
-            (&ty::TyUint(ast::TyU32), &ty::TyFloat(ast::TyF32)) |
-            (&ty::TyUint(ast::TyU64), &ty::TyFloat(ast::TyF64)) => {
+            (&ty::TyUint(_), &ty::TyFloat(_)) => {
                 return UIToFP(bcx, llargs[0], llret_ty)
             }
 
-            (&ty::TyFloat(ast::TyF32), &ty::TyInt(ast::TyI32)) |
-            (&ty::TyFloat(ast::TyF64), &ty::TyInt(ast::TyI64)) => {
+            (&ty::TyFloat(_), &ty::TyInt(_)) => {
                 return FPToSI(bcx, llargs[0], llret_ty)
             }
-            (&ty::TyFloat(ast::TyF32), &ty::TyUint(ast::TyU32)) |
-            (&ty::TyFloat(ast::TyF64), &ty::TyUint(ast::TyU64)) => {
+            (&ty::TyFloat(_), &ty::TyUint(_)) => {
                 return FPToUI(bcx, llargs[0], llret_ty)
+            }
+            (&ty::TyFloat(ast::TyF32), &ty::TyFloat(ast::TyF64)) => {
+                return FPExt(bcx, llargs[0], llret_ty)
+            }
+            (&ty::TyFloat(ast::TyF64), &ty::TyFloat(ast::TyF32)) => {
+                return FPTrunc(bcx, llargs[0], llret_ty)
             }
             _ => {}
         }
