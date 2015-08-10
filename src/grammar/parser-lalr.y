@@ -472,6 +472,7 @@ visibility
 
 idents_or_self
 : ident_or_self                    { $$ = mk_node("IdentsOrSelf", 1, $1); }
+| ident_or_self AS ident           { $$ = mk_node("IdentsOrSelf", 2, $1, $3); }
 | idents_or_self ',' ident_or_self { $$ = ext_node($1, 1, $3); }
 ;
 
