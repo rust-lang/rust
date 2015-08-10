@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use self::*; //~ ERROR: unresolved import `self::*`. Cannot glob-import a module into itself.
+// This should resolve fine even with the circular imports as
+// they are not `pub`.
 
-mod foo {
-    use foo::*; //~ ERROR: unresolved import `foo::*`. Cannot glob-import a module into itself.
-
-    mod bar {
-        use super::bar::*;
-        //~^ ERROR: unresolved import `super::bar::*`. Cannot glob-import a module into itself.
-    }
-
+pub mod a {
+    use b::*;
 }
+
+pub mod b {
+    use a::*;
+}
+
+use a::*;
 
 fn main() {
 }
