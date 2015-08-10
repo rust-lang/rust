@@ -62,7 +62,6 @@ use core::prelude::v1::*;
 
 use core::cell::{Cell, UnsafeCell};
 use core::marker;
-use core::mem;
 use core::ptr;
 use core::usize;
 
@@ -281,7 +280,7 @@ impl<'rx, T: Send> Handle<'rx, T> {
     pub unsafe fn add(&mut self) {
         if self.added { return }
         let selector = &mut *self.selector;
-        let me: *mut Handle<'static, ()> = mem::transmute(&*self);
+        let me = self as *mut Handle<'rx, T> as *mut Handle<'static, ()>;
 
         if selector.head.is_null() {
             selector.head = me;
@@ -302,7 +301,7 @@ impl<'rx, T: Send> Handle<'rx, T> {
         if !self.added { return }
 
         let selector = &mut *self.selector;
-        let me: *mut Handle<'static, ()> = mem::transmute(&*self);
+        let me = self as *mut Handle<'rx, T> as *mut Handle<'static, ()>;
 
         if self.prev.is_null() {
             assert_eq!(selector.head, me);

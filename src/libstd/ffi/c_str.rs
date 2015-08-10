@@ -395,7 +395,7 @@ impl CStr {
     /// > length calculation whenever this method is called.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_bytes_with_nul(&self) -> &[u8] {
-        unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.inner) }
+        unsafe { mem::transmute(&self.inner) }
     }
 
     /// Yields a `&str` slice if the `CStr` contains valid UTF-8.

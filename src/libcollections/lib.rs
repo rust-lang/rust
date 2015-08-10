@@ -47,7 +47,6 @@
 #![feature(oom)]
 #![feature(pattern)]
 #![feature(ptr_as_ref)]
-#![feature(raw)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(step_by)]

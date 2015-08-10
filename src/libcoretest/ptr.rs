@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use core::ptr::*;
-use core::mem;
 
 #[test]
 fn test() {
@@ -20,7 +19,7 @@ fn test() {
         };
         let mut p = Pair {fst: 10, snd: 20};
         let pptr: *mut Pair = &mut p;
-        let iptr: *mut isize = mem::transmute(pptr);
+        let iptr: *mut isize = pptr as *mut isize;
         assert_eq!(*iptr, 10);
         *iptr = 30;
         assert_eq!(*iptr, 30);
