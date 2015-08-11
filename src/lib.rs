@@ -51,6 +51,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box misc::CmpOwned as LintPassObject);
     reg.register_lint_pass(box attrs::AttrPass as LintPassObject);
     reg.register_lint_pass(box collapsible_if::CollapsibleIf as LintPassObject);
+    reg.register_lint_pass(box misc::ModuloOne as LintPassObject);
     reg.register_lint_pass(box unicode::Unicode as LintPassObject);
     reg.register_lint_pass(box strings::StringAdd as LintPassObject);
     reg.register_lint_pass(box misc::NeedlessReturn as LintPassObject);
@@ -75,5 +76,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            unicode::ZERO_WIDTH_SPACE,
                                            strings::STRING_ADD_ASSIGN,
                                            misc::NEEDLESS_RETURN,
+                                           misc::MODULO_ONE,
                                            ]);
 }

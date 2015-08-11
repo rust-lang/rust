@@ -337,3 +337,34 @@ impl LintPass for NeedlessReturn {
         self.check_block_return(cx, block);
     }
 }
+
+
+declare_lint!(pub MODULO_ONE, Warn, "Warn on expressions that include % 1, which is always 0");
+
+#[derive(Copy,Clone)]
+pub struct ModuloOne;
+
+impl LintPass for ModuloOne {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(MODULO_ONE)
+    }
+
+    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+        if let ExprBinary(ref cmp, _, ref right) = expr.node {
+            if let &Spanned {node: BinOp_::BiRem, ..} = cmp {
+                if is_lit_one(right) {
+                    cx.span_lint(MODULO_ONE, expr.span, "Any number modulo 1 will be 0");
+                }
+            }
+        }
+    }
+}
+
+fn is_lit_one(expr: &Expr) -> bool {
+    if let ExprLit(ref spanned) = expr.node {
+        if let LitInt(1, _) = spanned.node {
+            return true;
+        }
+    }
+    false
+}
