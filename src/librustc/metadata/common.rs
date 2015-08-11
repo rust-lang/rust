@@ -205,8 +205,8 @@ pub const tag_plugin_registrar_fn: usize = 0x10b; // top-level only
 pub const tag_method_argument_names: usize = 0x85;
 pub const tag_method_argument_name: usize = 0x86;
 
-pub const tag_reachable_extern_fns: usize = 0x10c; // top-level only
-pub const tag_reachable_extern_fn_id: usize = 0x87;
+pub const tag_reachable_ids: usize = 0x10c; // top-level only
+pub const tag_reachable_id: usize = 0x87;
 
 pub const tag_items_data_item_stability: usize = 0x88;
 

@@ -45,6 +45,7 @@ use std::str;
 use rbml::reader;
 use rbml;
 use serialize::Decodable;
+use syntax::abi;
 use syntax::attr;
 use syntax::parse::token::{IdentInterner, special_idents};
 use syntax::parse::token;
@@ -1418,10 +1419,10 @@ pub fn get_method_arg_names(cdata: Cmd, id: ast::NodeId) -> Vec<String> {
     }
 }
 
-pub fn get_reachable_extern_fns(cdata: Cmd) -> Vec<ast::DefId> {
+pub fn get_reachable_ids(cdata: Cmd) -> Vec<ast::DefId> {
     let items = reader::get_doc(rbml::Doc::new(cdata.data()),
-                                tag_reachable_extern_fns);
-    reader::tagged_docs(items, tag_reachable_extern_fn_id).map(|doc| {
+                                tag_reachable_ids);
+    reader::tagged_docs(items, tag_reachable_id).map(|doc| {
         ast::DefId {
             krate: cdata.cnum,
             node: reader::doc_as_u32(doc),
@@ -1542,4 +1543,22 @@ pub fn get_imported_filemaps(metadata: &[u8]) -> Vec<codemap::FileMap> {
         let mut decoder = reader::Decoder::new(filemap_doc);
         Decodable::decode(&mut decoder).unwrap()
     }).collect()
+}
+
+pub fn is_extern_fn(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt) -> bool {
+    let root_doc = rbml::Doc::new(cdata.data());
+    let items = reader::get_doc(root_doc, tag_items);
+    let item_doc = match maybe_find_item(id, items) {
+        Some(doc) => doc,
+        None => return false,
+    };
+    if let Fn = item_family(item_doc) {
+        let ty::TypeScheme { generics, ty } = get_type(cdata, id, tcx);
+        generics.types.is_empty() && match ty.sty {
+            ty::TyBareFn(_, fn_ty) => fn_ty.abi != abi::Rust,
+            _ => false,
+        }
+    } else {
+        false
+    }
 }

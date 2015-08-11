@@ -277,10 +277,15 @@ $(foreach target,$(CFG_TARGET), \
 # Fun times!
 #
 # [1]: https://msdn.microsoft.com/en-us/library/28d6s79h.aspx
+#
+# FIXME(stage0): remove this macro and the usage below (and the commments above)
+# 	         when a new snapshot is available. Also remove the
+# 	         RUSTFLAGS$(1)_.._T_ variable in mk/target.mk along with
+# 	         CUSTOM_DEPS (as they were only added for this)
 define ADD_RUSTC_LLVM_DEF_TO_MSVC
 ifeq ($$(findstring msvc,$(1)),msvc)
-RUSTFLAGS_rustc_llvm_T_$(1) += -C link-args="-DEF:$(1)/rt/rustc_llvm.def"
-CUSTOM_DEPS_rustc_llvm_T_$(1) += $(1)/rt/rustc_llvm.def
+RUSTFLAGS0_rustc_llvm_T_$(1) += -C link-args="-DEF:$(1)/rt/rustc_llvm.def"
+CUSTOM_DEPS0_rustc_llvm_T_$(1) += $(1)/rt/rustc_llvm.def
 
 $(1)/rt/rustc_llvm.def: $$(S)src/etc/mklldef.py $$(S)src/librustc_llvm/lib.rs
 	$$(CFG_PYTHON) $$^ $$@ rustc_llvm-$$(CFG_FILENAME_EXTRA)

@@ -8,14 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
-
-#![feature(linked_from)]
-
-#![crate_type = "rlib"]
-
-#[link(name = "rust_test_helpers", kind = "static")]
-#[linked_from = "rust_test_helpers"]
+#[linked_from = "foo"] //~ ERROR experimental feature
 extern {
-    pub fn rust_dbg_extern_identity_u32(u: u32) -> u32;
+    fn foo();
 }
+
+fn main() {}

@@ -902,6 +902,12 @@ fn link_args(cmd: &mut Linker,
     }
     cmd.output_filename(out_filename);
 
+    // If we're building a dynamic library then some platforms need to make sure
+    // that all symbols are exported correctly from the dynamic library.
+    if dylib {
+        cmd.export_symbols(sess, trans, tmpdir);
+    }
+
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.

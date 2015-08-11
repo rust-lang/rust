@@ -20,7 +20,7 @@ pub use self::NativeLibraryKind::*;
 use back::svh::Svh;
 use metadata::{creader, decoder, loader};
 use session::search_paths::PathKind;
-use util::nodemap::{FnvHashMap, NodeMap};
+use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use std::cell::{RefCell, Ref};
 use std::rc::Rc;
@@ -97,6 +97,7 @@ pub struct CStore {
     used_crate_sources: RefCell<Vec<CrateSource>>,
     used_libraries: RefCell<Vec<(String, NativeLibraryKind)>>,
     used_link_args: RefCell<Vec<String>>,
+    statically_included_foreign_items: RefCell<NodeSet>,
     pub intr: Rc<IdentInterner>,
 }
 
@@ -108,7 +109,8 @@ impl CStore {
             used_crate_sources: RefCell::new(Vec::new()),
             used_libraries: RefCell::new(Vec::new()),
             used_link_args: RefCell::new(Vec::new()),
-            intr: intr
+            intr: intr,
+            statically_included_foreign_items: RefCell::new(NodeSet()),
         }
     }
 
@@ -167,6 +169,7 @@ impl CStore {
         self.used_crate_sources.borrow_mut().clear();
         self.used_libraries.borrow_mut().clear();
         self.used_link_args.borrow_mut().clear();
+        self.statically_included_foreign_items.borrow_mut().clear();
     }
 
     // This method is used when generating the command line to pass through to
@@ -239,6 +242,14 @@ impl CStore {
     pub fn find_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId)
                                      -> Option<ast::CrateNum> {
         self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
+    }
+
+    pub fn add_statically_included_foreign_item(&self, id: ast::NodeId) {
+        self.statically_included_foreign_items.borrow_mut().insert(id);
+    }
+
+    pub fn is_statically_included_foreign_item(&self, id: ast::NodeId) -> bool {
+        self.statically_included_foreign_items.borrow().contains(&id)
     }
 }
 
