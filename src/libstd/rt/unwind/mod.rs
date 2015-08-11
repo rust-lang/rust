@@ -77,18 +77,18 @@ use sys_common::mutex::Mutex;
 // implementations. One goes through SEH on Windows and the other goes through
 // libgcc via the libunwind-like API.
 
-// *-pc-windows-msvc
-#[cfg(all(windows, target_env = "msvc"))]
+// i686-pc-windows-msvc
+#[cfg(all(windows, target_arch = "x86", target_env = "msvc"))]
 #[path = "seh.rs"] #[doc(hidden)]
 pub mod imp;
 
-// x86_64-pc-windows-gnu
-#[cfg(all(windows, target_arch="x86_64", target_env="gnu"))]
+// x86_64-pc-windows-*
+#[cfg(all(windows, target_arch = "x86_64"))]
 #[path = "seh64_gnu.rs"] #[doc(hidden)]
 pub mod imp;
 
 // i686-pc-windows-gnu and all others
-#[cfg(any(unix, all(windows, target_arch="x86", target_env="gnu")))]
+#[cfg(any(unix, all(windows, target_arch = "x86", target_env = "gnu")))]
 #[path = "gcc.rs"] #[doc(hidden)]
 pub mod imp;
 
