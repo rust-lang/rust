@@ -77,6 +77,7 @@ impl OsString {
     ///
     /// On Windows system, only UTF-8 byte sequences will successfully
     /// convert; non UTF-8 data will produce `None`.
+    #[deprecated(reason = "use OsString::from_ill_formed_utf8() instead", since = "1.2.0")]
     #[unstable(feature = "convert", reason = "recently added")]
     pub fn from_bytes<B>(bytes: B) -> Option<OsString> where B: Into<Vec<u8>> {
         #[cfg(unix)]
@@ -112,6 +113,76 @@ impl OsString {
     pub fn push<T: AsRef<OsStr>>(&mut self, s: T) {
         self.inner.push_slice(&s.as_ref().inner)
     }
+
+    /// Constructs an `OsString` from potentially ill-formed utf-8.
+    ///
+    /// It is recommended to use this function only for interoperability
+    /// with existing code-bases which store paths as arbitrary `u8`
+    /// sequences.
+    ///
+    /// Since not all platforms store paths as arbitrary `u8` sequences,
+    /// this will perform a best-effort conversion. As a result, this
+    /// is only guaranteed to be reversible for valid utf-8 inputs.
+    ///
+    /// # Platform behavior
+    ///
+    /// On Unix systems, any `u8` sequence can be exactly represented
+    /// by an `OsString`.
+    ///
+    /// On Windows systems, invalid data will be replaced
+    /// with U+FFFD REPLACEMENT CHARACTER.
+    #[unstable(feature = "convert", reason = "recently added")]
+    pub fn from_ill_formed_utf8<'a>(bytes: &'a [u8]) -> Cow<'a, OsStr> {
+        #[cfg(unix)]
+        fn from_ill_formed_utf8_inner<'a>(bytes: &'a [u8]) -> Cow<'a, OsStr> {
+            use os::unix::ffi::OsStrExt;
+            Cow::Borrowed(OsStrExt::from_bytes(bytes))
+        }
+
+        #[cfg(windows)]
+        fn from_ill_formed_utf8_inner<'a>(bytes: &'a [u8]) -> Cow<'a, OsStr> {
+            match String::from_utf8_lossy(bytes) {
+                Cow::Borrowed(b) => Cow::Borrowed(OsStr::new(b)),
+                Cow::Owned(b) => Cow::Owned(OsString::from(b))
+            }
+        }
+
+        from_ill_formed_utf8_inner(bytes)
+    }
+
+    /// Constructs an `OsString` from potentially ill-formed utf-16.
+    ///
+    /// Since not all platforms store paths as arbitrary `u16` sequences,
+    /// this will perform a best-effort conversion. As a result, this
+    /// is only guaranteed to be reversible for valid utf-16 inputs.
+    ///
+    /// It is recommended to use this function only for interoperability
+    /// with existing code-bases which store paths as arbitrary `u16`
+    /// sequences.
+    ///
+    /// # Platform behavior
+    ///
+    /// On Windows systems, any `u16` sequence can be exactly represented
+    /// by an `OsString`.
+    ///
+    /// On Unix systems, invalid data will be replaced
+    /// with U+FFFD REPLACEMENT CHARACTER.
+    #[unstable(feature = "convert", reason = "recently added")]
+    pub fn from_ill_formed_utf16(wide: &[u16]) -> OsString {
+        #[cfg(unix)]
+        fn from_ill_formed_utf16_inner(wide: &[u16]) -> OsString {
+            OsString::from(String::from_utf16_lossy(wide))
+        }
+
+        #[cfg(windows)]
+        fn from_ill_formed_utf16_inner(wide: &[u16]) -> OsString {
+            use os::windows::ffi::OsStringExt;
+            OsStringExt::from_wide(wide)
+        }
+
+        from_ill_formed_utf16_inner(wide)
+    }
+
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -261,6 +332,7 @@ impl OsStr {
     /// On Windows systems, this returns `None` unless the `OsStr` is
     /// valid unicode, in which case it produces UTF-8-encoded
     /// data. This may entail checking validity.
+    #[deprecated(reason = "use os_str.to_ill_formed_utf8() instead", since = "1.2.0")]
     #[unstable(feature = "convert", reason = "recently added")]
     pub fn to_bytes(&self) -> Option<&[u8]> {
         if cfg!(windows) {
@@ -277,9 +349,68 @@ impl OsStr {
     /// This is a convenience for creating a `CString` from
     /// `self.to_bytes()`, and inherits the platform behavior of the
     /// `to_bytes` method.
+    #[deprecated(reason = "use CString::new(&*os_str.to_ill_formed_utf8()) instead", since = "1.2.0")]
     #[unstable(feature = "convert", reason = "recently added")]
     pub fn to_cstring(&self) -> Option<CString> {
         self.to_bytes().and_then(|b| CString::new(b).ok())
+    }
+
+    /// Converts an `OsStr` to potentially ill-formed utf-8.
+    ///
+    /// It is recommended to use this function only for interoperability
+    /// with existing code-bases which store paths as arbitrary `u8`
+    /// sequences.
+    ///
+    /// Since not all platforms store paths as arbitrary `u8` sequences,
+    /// this will perform a best-effort conversion. As a result, this
+    /// is only guaranteed to be reversible for `OsStr`s consisting
+    /// of valid unicode.
+    ///
+    /// # Platform behavior
+    ///
+    /// On Unix systems, any `OsString` can be exactly represented
+    /// by a `u8` sequence.
+    ///
+    /// On Windows systems, invalid data will be replaced
+    /// with U+FFFD REPLACEMENT CHARACTER.
+    #[unstable(feature = "convert", reason = "recently added")]
+    pub fn to_ill_formed_utf8<'a>(&'a self) -> Cow<'a, [u8]> {
+        if cfg!(windows) {
+            match self.to_string_lossy() {
+                Cow::Borrowed(b) => Cow::Borrowed(b.as_bytes()),
+                Cow::Owned(b) => Cow::Owned(b.into_bytes())
+            }
+        } else {
+            Cow::Borrowed(self.bytes())
+        }
+    }
+
+    /// Converts an `OsStr` to potentially ill-formed utf-16.
+    ///
+    /// It is recommended to use this function only for interoperability
+    /// with existing code-bases which store paths as arbitrary `u16`
+    /// sequences.
+    ///
+    /// Since not all platforms store paths as arbitrary `u16` sequences,
+    /// this will perform a best-effort conversion. As a result, this
+    /// is only guaranteed to be reversible for `OsStr`s consisting
+    /// of valid unicode.
+    ///
+    /// # Platform behavior
+    ///
+    /// On Windows systems, any `OsString` can be exactly represented
+    /// by a `u16` sequence.
+    ///
+    /// On Unix systems, invalid data will be replaced
+    /// with U+FFFD REPLACEMENT CHARACTER.
+    #[unstable(feature = "convert", reason = "recently added")]
+    pub fn to_ill_formed_utf16(&self) -> Vec<u16> {
+        if cfg!(windows) {
+            use os::windows::ffi::OsStrExt;
+            self.encode_wide().collect()
+        } else {
+            self.to_string_lossy().utf16_units().collect()
+        }
     }
 
     /// Gets the underlying byte representation.
