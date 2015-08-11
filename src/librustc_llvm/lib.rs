@@ -31,7 +31,7 @@
 #![feature(link_args)]
 #![feature(staged_api)]
 #![feature(vec_push_all)]
-#![cfg_attr(not(stage0), feature(linked_from))]
+#![feature(linked_from)]
 
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
@@ -599,7 +599,7 @@ pub mod debuginfo {
 // automatically updated whenever LLVM is updated to include an up-to-date
 // set of the libraries we need to link to LLVM for.
 #[link(name = "rustllvm", kind = "static")]
-#[cfg_attr(not(stage0), linked_from = "rustllvm")] // not quite true but good enough
+#[linked_from = "rustllvm"] // not quite true but good enough
 extern {
     /* Create and destroy contexts. */
     pub fn LLVMContextCreate() -> ContextRef;

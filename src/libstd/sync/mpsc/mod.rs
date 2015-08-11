@@ -265,9 +265,6 @@
 // And now that you've seen all the races that I found and attempted to fix,
 // here's the code for you to find some more!
 
-#[cfg(stage0)]
-use prelude::v1::*;
-
 use sync::Arc;
 use error;
 use fmt;
