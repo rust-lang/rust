@@ -249,22 +249,6 @@ pub enum ParseResult<T> {
 pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
 pub type PositionalParseResult = ParseResult<Vec<Rc<NamedMatch>>>;
 
-pub fn parse_or_else(sess: &ParseSess,
-                     cfg: ast::CrateConfig,
-                     rdr: TtReader,
-                     ms: Vec<TokenTree> )
-                     -> HashMap<Ident, Rc<NamedMatch>> {
-    match parse(sess, cfg, rdr, &ms[..]) {
-        Success(m) => m,
-        Failure(sp, str) => {
-            panic!(sess.span_diagnostic.span_fatal(sp, &str[..]))
-        }
-        Error(sp, str) => {
-            panic!(sess.span_diagnostic.span_fatal(sp, &str[..]))
-        }
-    }
-}
-
 /// Perform a token equality check, ignoring syntax context (that is, an
 /// unhygienic comparison)
 pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
