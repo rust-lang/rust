@@ -43,13 +43,20 @@ impl LintPass for MiscPass {
                     // an enum is extended. So we only consider cases where a `_` wildcard is used
                     if arms[1].pats[0].node == PatWild(PatWildSingle) && 
                             arms[0].pats.len() == 1 {
+                        let body_code = snippet(cx, arms[0].body.span, "..");
+                        let suggestion = if let ExprBlock(_) = arms[0].body.node {
+                            body_code.into_owned()
+                        } else {
+                            format!("{{ {} }}", body_code)
+                        };
                         span_help_and_lint(cx, SINGLE_MATCH, expr.span,
                               "You seem to be trying to use match for \
-                              destructuring a single type. Did you mean to \
+                              destructuring a single pattern. Did you mean to \
                               use `if let`?",
-                              &*format!("Try if let {} = {} {{ ... }}",
-                                      snippet(cx, arms[0].pats[0].span, ".."),
-                                      snippet(cx, ex.span, ".."))
+                              &*format!("Try\nif let {} = {} {}",
+                                        snippet(cx, arms[0].pats[0].span, ".."),
+                                        snippet(cx, ex.span, ".."),
+                                        suggestion)
                         );
                     }
                 }
