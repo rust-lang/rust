@@ -141,7 +141,7 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                 // rule, which requires that `Pi: 'a` for all `i`.
 
                 if !data.has_escaping_regions() {
-                    // best case: no escaping reions, so push the
+                    // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus
                     // generating no constraints for Pi).
                     out.push(Component::Projection(*data));
