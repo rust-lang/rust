@@ -30,6 +30,10 @@ Lints included in this crate:
  - `collapsible_if`: Warns on cases where two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` can be written as `if x && y { foo() }`
  - `zero_width_space`: Warns on encountering a unicode zero-width space
  - `string_add_assign`: Warns on `x = x + ..` where `x` is a `String` and suggests using `push_str(..)` instead.
+ - `needless_return`: Warns on using `return expr;` when a simple `expr` would suffice.
+ - `option_unwrap_used`: Warns when `Option.unwrap()` is used, and suggests `.expect()`.
+ - `result_unwrap_used`: Warns when `Result.unwrap()` is used (silent by default).
+ - `modulo_one`: Warns on taking a number modulo 1, which always has a result of 0.
 
 To use, add the following lines to your Cargo.toml:
 
