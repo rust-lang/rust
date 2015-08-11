@@ -43,6 +43,8 @@ Contributions to Clippy should be made in the form of GitHub pull requests. Each
 be reviewed by a core contributor (someone with permission to land patches) and either landed in the
 main tree or given feedback for changes that would be required.
 
+All code in this repository is under the [Mozilla Public License, 2.0](https://www.mozilla.org/MPL/2.0/)
+
 ## Conduct
 
 We follow the [Rust Code of Conduct](http://www.rust-lang.org/conduct.html).
