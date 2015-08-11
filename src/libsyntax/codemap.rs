@@ -135,6 +135,13 @@ pub const COMMAND_LINE_SP: Span = Span { lo: BytePos(0),
                                          hi: BytePos(0),
                                          expn_id: COMMAND_LINE_EXPN };
 
+impl Span {
+    /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
+    pub fn substitute_dummy(self, other: Span) -> Span {
+        if self == DUMMY_SP { other } else { self }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub struct Spanned<T> {
     pub node: T,
