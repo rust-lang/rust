@@ -51,7 +51,7 @@ fn maybe_run_test<F>(argv: &[String], name: String, test: F) where F: FnOnce() {
 
     let dur = Duration::span(test);
 
-    println!("{}:\t\t{}", name, dur);
+    println!("{}:\t\t{:?}", name, dur);
 }
 
 fn shift_push() {

@@ -16,7 +16,7 @@ use std::__rand::{Rng, thread_rng};
 use std::time::Duration;
 
 fn timed<F>(label: &str, f: F) where F: FnMut() {
-    println!("  {}: {}", label, Duration::span(f));
+    println!("  {}: {:?}", label, Duration::span(f));
 }
 
 trait MutableMap {
