@@ -555,3 +555,56 @@ pub extern fn oh_no() -> i32 {
 # fn main() {}
 ```
 
+# Representing opaque structs
+
+Sometimes, a C library wants to provide a pointer to something, but not let you
+know the internal details of the thing it wants. The simplest way is to use a
+`void *` argument:
+
+```c
+void foo(void *arg);
+void bar(void *arg);
+```
+
+We can represent this in Rust with the `c_void` type:
+
+```rust
+# #![feature(libc)]
+extern crate libc;
+
+extern "C" {
+    pub fn foo(arg: *mut libc::c_void);
+    pub fn bar(arg: *mut libc::c_void);
+}
+# fn main() {}
+```
+
+This is a perfectly valid way of handling the situation. However, we can do a bit
+better. To solve this, some C libraries will instead create a `struct`, where
+the details and memory layout of the struct are private. This gives some amount
+of type safety. These structures are called ‘opaque’. Here’s an example, in C:
+
+```c
+struct Foo; /* Foo is a structure, but its contents are not part of the public interface */
+struct Bar;
+void foo(struct Foo *arg);
+void bar(struct Bar *arg);
+```
+
+To do this in Rust, let’s create our own opaque types with `enum`:
+
+```rust
+pub enum Foo {}
+pub enum Bar {}
+
+extern "C" {
+    pub fn foo(arg: *mut Foo);
+    pub fn bar(arg: *mut Bar);
+}
+# fn main() {}
+```
+
+By using an `enum` with no variants, we create an opaque type that we can’t
+instantiate, as it has no variants. But because our `Foo` and `Bar` types are
+different, we’ll get type safety between the two of them, so we cannot
+accidentally pass a pointer to `Foo` to `bar()`.

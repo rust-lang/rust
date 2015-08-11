@@ -12,7 +12,7 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::windows_msvc_base::opts();
-    base.cpu = "i686".to_string();
+    base.cpu = "pentium4".to_string();
 
     Target {
         llvm_target: "i686-pc-windows-msvc".to_string(),
