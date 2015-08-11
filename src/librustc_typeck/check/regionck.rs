@@ -1785,7 +1785,7 @@ fn recursive_type_bound<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 
     let mut regions = ty.regions();
     regions.retain(|r| !r.is_bound()); // ignore late-bound regions
-    bounds.push(VerifyBound::AllRegions(ty.regions()));
+    bounds.push(VerifyBound::AllRegions(regions));
 
     // remove bounds that must hold, since they are not interesting
     bounds.retain(|b| !b.must_hold());
