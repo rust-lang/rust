@@ -9,8 +9,7 @@ use rustc::middle::ty::{self, TypeVariants, TypeAndMut, MethodTraitItemId, ImplO
 use rustc::middle::def::{DefTy, DefStruct, DefTrait};
 use syntax::codemap::{Span, Spanned};
 use syntax::ast::*;
-use misc::walk_ty;
-use utils::span_lint;
+use utils::{span_lint, walk_ptrs_ty};
 
 declare_lint!(pub LEN_ZERO, Warn,
               "Warn when .is_empty() could be used instead of checking .len()");
@@ -136,7 +135,7 @@ fn has_is_empty(cx: &Context, expr: &Expr) -> bool {
                 |iids| iids.iter().any(|i| is_is_empty(cx, i)))))
     }
 
-    let ty = &walk_ty(&cx.tcx.expr_ty(expr));
+    let ty = &walk_ptrs_ty(&cx.tcx.expr_ty(expr));
     match ty.sty {
         ty::TyTrait(_) => cx.tcx.trait_item_def_ids.borrow().get(
             &ty.ty_to_def_id().expect("trait impl not found")).map_or(false,

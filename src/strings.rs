@@ -8,9 +8,8 @@ use rustc::middle::ty::TypeVariants::TyStruct;
 use syntax::ast::*;
 use syntax::codemap::{Span, Spanned};
 use eq_op::is_exp_equal;
-use misc::walk_ty;
 use types::match_ty_unwrap;
-use utils::{match_def_path, span_lint};
+use utils::{match_def_path, span_lint, walk_ptrs_ty};
 
 declare_lint! {
     pub STRING_ADD_ASSIGN,
@@ -38,7 +37,7 @@ impl LintPass for StringAdd {
 }
 
 fn is_string(cx: &Context, e: &Expr) -> bool {
-    if let TyStruct(did, _) = walk_ty(cx.tcx.expr_ty(e)).sty {
+    if let TyStruct(did, _) = walk_ptrs_ty(cx.tcx.expr_ty(e)).sty {
         match_def_path(cx, did.did, &["std", "string", "String"])
     } else { false }
 }

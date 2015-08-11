@@ -84,3 +84,11 @@ pub fn span_help_and_lint(cx: &Context, lint: &'static Lint, span: Span,
         cx.sess().fileline_help(span, help);
     }
 }
+
+/// return the base type for references and raw pointers
+pub fn walk_ptrs_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
+    match ty.sty {
+        ty::TyRef(_, ref tm) | ty::TyRawPtr(ref tm) => walk_ptrs_ty(tm.ty),
+        _ => ty
+    }
+}
