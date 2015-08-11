@@ -206,13 +206,10 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             // error message, report with that message if it does
                             let custom_note = report_on_unimplemented(infcx, &trait_ref.0,
                                                                       obligation.cause.span);
-                            if is_warning {
-                                note_obligation_cause(infcx, obligation);
-                            } else if let Some(s) = custom_note {
+                            if let Some(s) = custom_note {
                                 infcx.tcx.sess.span_note(obligation.cause.span, &s);
-                            } else {
-                                note_obligation_cause(infcx, obligation);
                             }
+                            note_obligation_cause(infcx, obligation);
                         }
                     }
 
