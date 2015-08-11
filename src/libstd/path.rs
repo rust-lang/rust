@@ -409,7 +409,6 @@ fn has_physical_root(s: &[u8], prefix: Option<Prefix>) -> bool {
 }
 
 // basic workhorse for splitting stem and extension
-#[allow(unused_unsafe)] // FIXME
 fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
     unsafe {
         if os_str_as_u8_slice(file) == b".." { return (Some(file), None) }
