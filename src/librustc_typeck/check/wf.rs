@@ -178,11 +178,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 }
             }
 
-            let field_tys: Vec<Ty> =
-                variants.iter().flat_map(|v| v.fields.iter().map(|f| f.ty)).collect();
-
-            for &field_ty in &field_tys {
-                fcx.register_wf_obligation(field_ty, item.span, traits::MiscObligation);
+            for field in variants.iter().flat_map(|v| v.fields.iter()) {
+                fcx.register_old_wf_obligation(field.ty, field.span, traits::MiscObligation);
             }
         });
     }
