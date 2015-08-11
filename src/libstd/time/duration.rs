@@ -32,7 +32,6 @@ const MILLIS_PER_SEC: u64 = 1_000;
 /// # Examples
 ///
 /// ```
-/// #![feature(duration)]
 /// use std::time::Duration;
 ///
 /// let five_seconds = Duration::new(5, 0);
