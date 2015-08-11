@@ -34,24 +34,24 @@ impl LintPass for CollapsibleIf {
     fn get_lints(&self) -> LintArray {
         lint_array!(COLLAPSIBLE_IF)
     }
-    
-	fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-		cx.sess().codemap().with_expn_info(expr.span.expn_id, 
-			|info| check_expr_expd(cx, expr, info))
-	}
+
+    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+        cx.sess().codemap().with_expn_info(expr.span.expn_id,
+            |info| check_expr_expd(cx, expr, info))
+    }
 }
 
 fn check_expr_expd(cx: &Context, e: &Expr, info: Option<&ExpnInfo>) {
-	if in_macro(cx, info) { return; }
-	
-	if let ExprIf(ref check, ref then, None) = e.node {
-		if let Some(&Expr{ node: ExprIf(ref check_inner, _, None), ..}) = 
-				single_stmt_of_block(then) {
-			span_lint(cx, COLLAPSIBLE_IF, e.span, &format!(
-				"This if statement can be collapsed. Try: if {} && {}\n{:?}", 
-				check_to_string(check), check_to_string(check_inner), e));
-		}
-	}
+    if in_macro(cx, info) { return; }
+
+    if let ExprIf(ref check, ref then, None) = e.node {
+        if let Some(&Expr{ node: ExprIf(ref check_inner, _, None), ..}) =
+            single_stmt_of_block(then) {
+                span_lint(cx, COLLAPSIBLE_IF, e.span, &format!(
+                    "This if statement can be collapsed. Try: if {} && {}\n{:?}",
+                    check_to_string(check), check_to_string(check_inner), e));
+            }
+    }
 }
 
 fn requires_brackets(e: &Expr) -> bool {

@@ -11,7 +11,7 @@ use utils::{span_lint, snippet};
 
 declare_lint! { pub IDENTITY_OP, Warn,
     "Warn on identity operations, e.g. '_ + 0'"}
-    
+
 #[derive(Copy,Clone)]
 pub struct IdentityOp;
 
@@ -27,7 +27,7 @@ impl LintPass for IdentityOp {
                     check(cx, left, 0, e.span, right.span);
                     check(cx, right, 0, e.span, left.span);
                 },
-                BiShl | BiShr | BiSub => 
+                BiShl | BiShr | BiSub =>
                     check(cx, right, 0, e.span, left.span),
                 BiMul => {
                     check(cx, left, 1, e.span, right.span);
@@ -49,14 +49,14 @@ impl LintPass for IdentityOp {
 fn check(cx: &Context, e: &Expr, m: i8, span: Span, arg: Span) {
     if have_lit(cx, e, m) {
         span_lint(cx, IDENTITY_OP, span, &format!(
-            "The operation is ineffective. Consider reducing it to '{}'", 
+            "The operation is ineffective. Consider reducing it to '{}'",
            snippet(cx, arg, "..")));
     }
 }
 
 fn have_lit(cx: &Context, e : &Expr, m: i8) -> bool {
     match &e.node {
-        &ExprUnary(UnNeg, ref litexp) => have_lit(cx, litexp, -m), 
+        &ExprUnary(UnNeg, ref litexp) => have_lit(cx, litexp, -m),
         &ExprLit(ref lit) => {
             match (&lit.node, m) {
                 (&LitInt(0, _), 0) => true,
@@ -68,9 +68,9 @@ fn have_lit(cx: &Context, e : &Expr, m: i8) -> bool {
             }
         },
         &ExprParen(ref p) => have_lit(cx, p, m),
-        &ExprPath(_, _) => { 
+        &ExprPath(_, _) => {
             match cx.tcx.def_map.borrow().get(&e.id) {
-                Some(&PathResolution { base_def: DefConst(id), ..}) => 
+                Some(&PathResolution { base_def: DefConst(id), ..}) =>
                         lookup_const_by_id(cx.tcx, id, Option::None)
                         .map_or(false, |l| have_lit(cx, l, m)),
                 _ => false

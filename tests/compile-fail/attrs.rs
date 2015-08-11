@@ -5,29 +5,29 @@
 
 #[inline(always)] //~ERROR You have declared #[inline(always)] on test_attr_lint.
 fn test_attr_lint() {
-	assert!(true)
+    assert!(true)
 }
 
 #[inline(always)]
 fn false_positive_expr() {
-	unreachable!()
+    unreachable!()
 }
 
 #[inline(always)]
 fn false_positive_stmt() {
-	unreachable!();
+    unreachable!();
 }
 
 #[inline(always)]
 fn empty_and_false_positive_stmt() {
-	;
-	unreachable!();
+    ;
+    unreachable!();
 }
 
 
 fn main() {
-	test_attr_lint();
-	if false { false_positive_expr() }
-	if false { false_positive_stmt() }
-	if false { empty_and_false_positive_stmt() }
+    test_attr_lint();
+    if false { false_positive_expr() }
+    if false { false_positive_stmt() }
+    if false { empty_and_false_positive_stmt() }
 }
