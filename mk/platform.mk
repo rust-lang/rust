@@ -242,6 +242,9 @@ $(foreach target,$(CFG_TARGET), \
 # Windows MSVC in the compiler, but the gist of it is that we use `llvm-ar.exe`
 # instead of `lib.exe` for assembling archives, so we need to inject this custom
 # dependency here.
+#
+# FIXME(stage0): remove this and all other relevant support in the makefiles
+#                after a snapshot is made
 define ADD_LLVM_AR_TO_MSVC_DEPS
 ifeq ($$(findstring msvc,$(1)),msvc)
 NATIVE_TOOL_DEPS_core_T_$(1) += llvm-ar.exe
