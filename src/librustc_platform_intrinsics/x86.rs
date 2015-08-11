@@ -64,7 +64,21 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         "hsub_pd" => p!("sse3.hsub.pd", (f64x2, f64x2) -> f64x2),
         "hsub_ps" => p!("sse3.hsub.ps", (f32x4, f32x4) -> f32x4),
 
+        "abs_epi16" => p!("ssse3.pabs.w.128", (i16x8) -> i16x8),
+        "abs_epi32" => p!("ssse3.pabs.d.128", (i32x4) -> i32x4),
+        "abs_epi8" => p!("ssse3.pabs.b.128", (i8x16) -> i8x16),
+        "hadd_epi16" => p!("ssse3.phadd.w.128", (i16x8, i16x8) -> i16x8),
+        "hadd_epi32" => p!("ssse3.phadd.d.128", (i32x4, i32x4) -> i32x4),
+        "hadds_epi16" => p!("ssse3.phadd.sw.128", (i16x8, i16x8) -> i16x8),
+        "hsub_epi16" => p!("ssse3.phsub.w.128", (i16x8, i16x8) -> i16x8),
+        "hsub_epi32" => p!("ssse3.phsub.d.128", (i32x4, i32x4) -> i32x4),
+        "hsubs_epi16" => p!("ssse3.phsub.sw.128", (i16x8, i16x8) -> i16x8),
+        "maddubs_epi16" => p!("ssse3.pmadd.ub.sw.128", (i8x16, i8x16) -> i16x8),
+        "mulhrs_epi16" => p!("ssse3.pmul.hr.sw.128", (i16x8, i16x8) -> i16x8),
         "shuffle_epi8" => p!("ssse3.pshuf.b.128", (i8x16, i8x16) -> i8x16),
+        "sign_epi16" => p!("ssse3.psign.w.128", (i16x8, i16x8) -> i16x8),
+        "sign_epi32" => p!("ssse3.psign.d.128", (i32x4, i32x4) -> i32x4),
+        "sign_epi8" => p!("ssse3.psign.b.128", (i8x16, i8x16) -> i8x16),
         _ => return None
     })
 }
