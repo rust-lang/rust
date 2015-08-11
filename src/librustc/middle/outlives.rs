@@ -126,8 +126,8 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
         // maintained explicitly, because bound regions themselves can
         // be readily identified. However, because the outlives
         // relation did not used to be applied to fn/trait-object
-        // arguments, we due wrap the resulting components in an
-        // RFC1214 wrapper so we can issue warnings.
+        // arguments, we wrap the resulting components in an RFC1214
+        // wrapper so we can issue warnings.
         ty::TyBareFn(..) | ty::TyTrait(..) => {
             // OutlivesFunction, OutlivesObject, OutlivesFragment
             let subcomponents = capture_components(infcx, ty);
