@@ -13,8 +13,8 @@
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 
-struct Foo { //~ WARN E0277
-    foo: [[u8]],
+struct Foo {
+    foo: [[u8]], //~ WARN E0277
 }
 
 #[rustc_error]

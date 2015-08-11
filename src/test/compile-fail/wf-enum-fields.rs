@@ -22,11 +22,5 @@ enum SomeEnum<A> {
     SomeVariant(IsCopy<A>) //~ ERROR E0277
 }
 
-enum AnotherEnum<A> { //~ ERROR E0277
-    AnotherVariant {
-        f: IsCopy<A>
-    }
-}
-
 #[rustc_error]
 fn main() { }

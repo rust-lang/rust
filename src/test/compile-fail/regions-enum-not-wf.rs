@@ -12,13 +12,13 @@
 
 #![allow(dead_code)]
 
-enum Ref1<'a, T> { //~ ERROR the parameter type `T` may not live long enough
-    Ref1Variant1(&'a T)
+enum Ref1<'a, T> {
+    Ref1Variant1(&'a T) //~ ERROR the parameter type `T` may not live long enough
 }
 
-enum Ref2<'a, T> { //~ ERROR the parameter type `T` may not live long enough
+enum Ref2<'a, T> {
     Ref2Variant1,
-    Ref2Variant2(isize, &'a T),
+    Ref2Variant2(isize, &'a T), //~ ERROR the parameter type `T` may not live long enough
 }
 
 enum RefOk<'a, T:'a> {
@@ -26,13 +26,13 @@ enum RefOk<'a, T:'a> {
 }
 
 enum RefIndirect<'a, T> {
-        //~^ ERROR the parameter type `T` may not live long enough
     RefIndirectVariant1(isize, RefOk<'a,T>)
+        //~^ ERROR the parameter type `T` may not live long enough
 }
 
 enum RefDouble<'a, 'b, T> {
-        //~^ ERROR reference has a longer lifetime than the data
     RefDoubleVariant1(&'a &'b T)
+        //~^ ERROR reference has a longer lifetime than the data
 }
 
 fn main() { }
