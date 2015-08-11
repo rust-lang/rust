@@ -642,6 +642,7 @@ item paths (ie, namespaced variables), dereferences, indexing expressions,
 and field references.
 
 Let's start with some bad examples:
+
 ```
 use std::collections::LinkedList;
 
@@ -653,8 +654,10 @@ LinkedList::new() += 1;
 fn some_func(i: &mut i32) {
     i += 12; // Error : '+=' operation cannot be applied on a reference !
 }
+```
 
 And now some good examples:
+
 ```
 let mut i : i32 = 0;
 
@@ -665,7 +668,6 @@ i += 12; // Good !
 fn some_func(i: &mut i32) {
     *i += 12; // Good !
 }
-
 ```
 "##,
 
@@ -694,6 +696,7 @@ More details can be found here:
 https://doc.rust-lang.org/reference.html#lvalues,-rvalues-and-temporaries
 
 Now, we can go further. Here are some bad examples:
+
 ```
 struct SomeStruct {
     x: i32,
