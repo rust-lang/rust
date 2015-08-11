@@ -1562,47 +1562,6 @@ fn components_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     }
 }
 
-/// Checks that all data reachable via `ty` *strictly* outlives `scope`.
-/// This is used by dropck.
-///
-/// CAUTION: It is mostly but not entirely equivalent to `T:'parent`
-/// where `'parent` is the parent of `scope`. The difference is subtle
-/// and has to do with trait objects, primarily. In particular, if you
-/// have `Foo<'y>+'z`, then we require that `'z:'parent` but not
-/// `'y:'parent` (same with lifetimes appearing in fn arguments). This
-/// is because there is no actual reference to the trait object that
-/// outlives `scope`, so we don't need to require that the type could
-/// be named outside `scope`.  Because trait objects are always
-/// considered "suspicious" by dropck, if we don't add this special
-/// case, you wind up with some kind of annoying and odd limitations
-/// that crop up
-/// `src/test/compile-fail/regions-early-bound-trait-param.rs`.
-/// Basically there we have `&'foo Trait<'foo>+'bar`, and thus forcing
-/// `'foo` to outlive `'parent` also forces the borrow to outlive
-/// `'parent`, which is longer than should be necessary. The existence
-/// of this "the same but different" predicate is somewhat bothersome
-/// and questionable.
-pub fn type_strictly_outlives<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
-                                        origin: infer::SubregionOrigin<'tcx>,
-                                        ty: Ty<'tcx>,
-                                        scope: CodeExtent)
-{
-    debug!("type_strictly_outlives(ty={:?}, scope={:?})",
-           ty, scope);
-
-    let span = origin.span();
-
-    let parent_region =
-        match rcx.tcx().region_maps.opt_encl_scope(scope) {
-            Some(parent_scope) => ty::ReScope(parent_scope),
-            None => rcx.tcx().sess.span_bug(
-                span, &format!("no enclosing scope found for scope: {:?}",
-                               scope)),
-        };
-
-    type_must_outlive(rcx, origin, ty, parent_region);
-}
-
 fn param_ty_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                    origin: infer::SubregionOrigin<'tcx>,
                                    region: ty::Region,
