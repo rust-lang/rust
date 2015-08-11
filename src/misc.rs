@@ -322,7 +322,7 @@ impl NeedlessReturn {
     fn emit_lint(&mut self, cx: &Context, spans: (Span, Span)) {
         span_lint(cx, NEEDLESS_RETURN, spans.0, &format!(
             "unneeded return statement. Consider using {} \
-             without trailing semicolon",
+             without the trailing semicolon",
             snippet(cx, spans.1, "..")))
     }
 }
