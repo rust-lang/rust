@@ -7,14 +7,7 @@ use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
 use rustc::middle::ty;
 use syntax::codemap::{Span, Spanned};
 
-use utils::{match_path, snippet, span_lint, span_help_and_lint};
-
-pub fn walk_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
-    match ty.sty {
-        ty::TyRef(_, ref tm) | ty::TyRawPtr(ref tm) => walk_ty(tm.ty),
-        _ => ty
-    }
-}
+use utils::{match_path, snippet, span_lint, span_help_and_lint, walk_ptrs_ty};
 
 /// Handles uncategorized lints
 /// Currently handles linting of if-let-able matches
@@ -87,7 +80,7 @@ impl LintPass for StrToStringPass {
         }
 
         fn is_str(cx: &Context, expr: &ast::Expr) -> bool {
-            match walk_ty(cx.tcx.expr_ty(expr)).sty {
+            match walk_ptrs_ty(cx.tcx.expr_ty(expr)).sty {
                 ty::TyStr => true,
                 _ => false
             }
@@ -175,7 +168,7 @@ impl LintPass for FloatCmp {
 }
 
 fn is_float(cx: &Context, expr: &Expr) -> bool {
-    if let ty::TyFloat(_) = walk_ty(cx.tcx.expr_ty(expr)).sty {
+    if let ty::TyFloat(_) = walk_ptrs_ty(cx.tcx.expr_ty(expr)).sty {
         true
     } else {
         false
@@ -274,7 +267,7 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
 
 fn is_str_arg(cx: &Context, args: &[P<Expr>]) -> bool {
     args.len() == 1 && if let ty::TyStr =
-        walk_ty(cx.tcx.expr_ty(&*args[0])).sty { true } else { false }
+        walk_ptrs_ty(cx.tcx.expr_ty(&*args[0])).sty { true } else { false }
 }
 
 declare_lint!(pub NEEDLESS_RETURN, Warn,
