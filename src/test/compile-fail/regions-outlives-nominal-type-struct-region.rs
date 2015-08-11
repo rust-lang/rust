@@ -20,35 +20,8 @@ mod variant_struct_region {
     struct Foo<'a> {
         x: &'a i32,
     }
-    struct Bar<'a,'b> { //~ ERROR reference has a longer lifetime
-        f: &'a Foo<'b>
-    }
-}
-
-mod rev_variant_struct_region {
-    struct Foo<'a> {
-        x: fn(&'a i32),
-    }
-    struct Bar<'a,'b> { //~ ERROR reference has a longer lifetime
-        f: &'a Foo<'b>
-    }
-}
-
-mod variant_struct_type {
-    struct Foo<T> {
-        x: T
-    }
-    struct Bar<'a,'b> { //~ ERROR reference has a longer lifetime
-        f: &'a Foo<&'b i32>
-    }
-}
-
-mod rev_variant_struct_type {
-    struct Foo<T> {
-        x: fn(T)
-    }
-    struct Bar<'a,'b> { //~ ERROR reference has a longer lifetime
-        f: &'a Foo<&'b i32>
+    struct Bar<'a,'b> {
+        f: &'a Foo<'b> //~ ERROR reference has a longer lifetime
     }
 }
 

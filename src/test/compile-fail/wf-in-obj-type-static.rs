@@ -19,7 +19,7 @@ struct MustBeCopy<T:Copy> {
     t: T
 }
 
-struct Foo<T> { //~ WARN E0310
+struct Foo<T> {
     // needs T: 'static
     x: Object<&'static T> //~ WARN E0310
 }

@@ -18,13 +18,11 @@
 trait Trait<T> { }
 
 struct Foo<'a,T> {
-    //~^ WARN E0309
     f: &'a fn(T),
     //~^ WARN E0309
 }
 
 struct Bar<'a,T> {
-    //~^ WARN E0309
     f: &'a Trait<T>,
     //~^ WARN E0309
 }
