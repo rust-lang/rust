@@ -30,6 +30,7 @@ pub mod unicode;
 pub mod utils;
 pub mod strings;
 pub mod methods;
+pub mod returns;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -55,7 +56,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box misc::ModuloOne as LintPassObject);
     reg.register_lint_pass(box unicode::Unicode as LintPassObject);
     reg.register_lint_pass(box strings::StringAdd as LintPassObject);
-    reg.register_lint_pass(box misc::NeedlessReturn as LintPassObject);
+    reg.register_lint_pass(box returns::ReturnPass as LintPassObject);
     reg.register_lint_pass(box methods::MethodsPass as LintPassObject);
 
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
@@ -77,7 +78,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            collapsible_if::COLLAPSIBLE_IF,
                                            unicode::ZERO_WIDTH_SPACE,
                                            strings::STRING_ADD_ASSIGN,
-                                           misc::NEEDLESS_RETURN,
+                                           returns::NEEDLESS_RETURN,
                                            misc::MODULO_ONE,
                                            methods::OPTION_UNWRAP_USED,
                                            methods::RESULT_UNWRAP_USED,
