@@ -189,6 +189,9 @@ pub struct TypeTrace<'tcx> {
 /// See `error_reporting.rs` for more details
 #[derive(Clone, Debug)]
 pub enum SubregionOrigin<'tcx> {
+    // Marker to indicate a constraint that only arises due to new
+    // provisions from RFC 1214. This will result in a warning, not an
+    // error.
     RFC1214Subregion(Rc<SubregionOrigin<'tcx>>),
 
     // Arose from a subtyping relation
