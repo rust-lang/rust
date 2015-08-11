@@ -36,7 +36,6 @@
 
 #![feature(asm)]
 #![feature(box_syntax)]
-#![feature(duration)]
 #![feature(duration_span)]
 #![feature(fnbox)]
 #![feature(iter_cmp)]
@@ -1105,7 +1104,7 @@ impl Bencher {
     }
 
     pub fn ns_elapsed(&mut self) -> u64 {
-        self.dur.secs() * 1_000_000_000 + (self.dur.extra_nanos() as u64)
+        self.dur.as_secs() * 1_000_000_000 + (self.dur.subsec_nanos() as u64)
     }
 
     pub fn ns_per_iter(&mut self) -> u64 {
