@@ -1812,7 +1812,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // error reporting.
         // let type_variables = self.infcx().type_variables.clone();
 
-        // There is a possibility that this algorithm will have to run an arbitrary number of times
+        // It is a possible that this algorithm will have to run an arbitrary number of times
         // to terminate so we bound it by the compiler's recursion limit.
         for _ in (0..self.tcx().sess.recursion_limit.get()) {
             // First we try to solve all obligations, it is possible that the last iteration
@@ -1837,46 +1837,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             debug!("select_all_obligations_and_apply_defaults: defaults={:?}", default_map);
 
-            // We loop over the unsolved variables, resolving them and if they are
-            // and unconstrainted numberic type we add them to the set of unbound
-            // variables. We do this so we only apply literal fallback to type
-            // variables without defaults.
+            // Examine all unsolved variables, and narrow them to the set that have applicable
+            // defaults. We want to process any unsolved variables that have either an explicit
+            // user default, literal fallback, or are diverging.
             for ty in &unsolved_variables {
                 let resolved = self.infcx().resolve_type_vars_if_possible(ty);
-                if self.infcx().type_var_diverges(resolved) {
-                    demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
-                } else {
-                    match self.infcx().type_is_unconstrained_numeric(resolved) {
-                        UnconstrainedInt | UnconstrainedFloat => {
-                            unbound_tyvars.insert(resolved);
-                        },
-                        Neither => {}
-                    }
-                }
-            }
-
-            // We now remove any numeric types that also have defaults, and instead insert
-            // the type variable with a defined fallback.
-            for ty in &unsolved_variables {
                 if let Some(_default) = default_map.get(ty) {
-                    let resolved = self.infcx().resolve_type_vars_if_possible(ty);
 
                     debug!("select_all_obligations_and_apply_defaults: ty: {:?} with default: {:?}",
                              ty, _default);
 
                     match resolved.sty {
-                        ty::TyInfer(ty::TyVar(_)) => {
-                            unbound_tyvars.insert(ty);
+                        ty::TyInfer(_) => {
+                            unbound_tyvars.insert(*ty);
                         }
-
-                        ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) => {
-                            unbound_tyvars.insert(ty);
-                            if unbound_tyvars.contains(resolved) {
-                                unbound_tyvars.remove(resolved);
-                            }
-                        }
-
                         _ => {}
+                    }
+                } else {
+                    if self.infcx().type_var_diverges(resolved) {
+                        unbound_tyvars.insert(ty);
+                    } else {
+                        match self.infcx().type_is_unconstrained_numeric(resolved) {
+                            UnconstrainedInt | UnconstrainedFloat => {
+                                unbound_tyvars.insert(ty);
+                            },
+                            Neither => {}
+                        }
                     }
                 }
             }
@@ -1887,21 +1873,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 break;
             }
 
-            // Finally we go through each of the unbound type variables and unify them with
+            // Finally we loop through each of the unbound type variables and unify them with
             // the proper fallback, reporting a conflicting default error if any of the
-            // unifications fail. We know it must be a conflicting default because the
-            // variable would only be in `unbound_tyvars` and have a concrete value if
-            // it had been solved by previously applying a default.
+            // unifications fail.
+            //
+            // We know that a conflict must be due to multiple applicable defaults, because the
+            // variable would only be in `unbound_tyvars` and have been previously unified with
+            // another type if we had applied a default.
 
-            // We wrap this in a transaction for error reporting, if we detect a conflict
-            // we will rollback the inference context to its prior state so we can probe
-            // for conflicts and correctly report them.
-
-
+            // We wrap all of this in a transaction for error reporting. If we detect a conflict
+            // we will rollback to the previous state so we can check what conflicts and
+            // correctly report them.
             let _ = self.infcx().commit_if_ok(|_: &infer::CombinedSnapshot| {
                 for ty in &unbound_tyvars {
-                    if self.infcx().type_var_diverges(ty) {
-                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+                    if let Some(default) = default_map.get(ty) {
+                        let default = default.clone();
+                        match infer::mk_eqty(self.infcx(), false,
+                                             infer::Misc(default.origin_span),
+                                             ty, default.ty) {
+                            Ok(()) => {}
+                            Err(_) => {
+                                conflicts.push((*ty, default));
+                            }
+                        }
                     } else {
                         match self.infcx().type_is_unconstrained_numeric(ty) {
                             UnconstrainedInt => {
@@ -1910,22 +1904,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             UnconstrainedFloat => {
                                 demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
                             }
-                            Neither => {
-                                if let Some(default) = default_map.get(ty) {
-                                    let default = default.clone();
-                                    match infer::mk_eqty(self.infcx(), false,
-                                                         infer::Misc(default.origin_span),
-                                                         ty, default.ty) {
-                                        Ok(()) => {}
-                                        Err(_) => {
-                                            conflicts.push((*ty, default));
-                                        }
-                                    }
-                                }
-                            }
+                            Neither => {}
                         }
                     }
                 }
+
 
                 // If there are conflicts we rollback, otherwise commit
                 if conflicts.len() > 0 {
@@ -1934,6 +1917,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Ok(())
                 }
             });
+
+            // Finally for any leftover variables that diverage we should apply the unit fallback rules.
+            for ty in &unbound_tyvars {
+                if self.infcx().type_var_diverges(ty) {
+                    demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
+                }
+            }
 
             if conflicts.len() > 0 {
                 // Loop through each conflicting default, figuring out the default that caused

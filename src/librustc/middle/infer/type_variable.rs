@@ -27,14 +27,14 @@ pub struct TypeVariableTable<'tcx> {
 
 struct TypeVariableData<'tcx> {
     value: TypeVariableValue<'tcx>,
-    diverging: bool
+    default: Option<Default<'tcx>>,
+    diverging: bool,
 }
 
 enum TypeVariableValue<'tcx> {
     Known(Ty<'tcx>),
     Bounded {
         relations: Vec<Relation>,
-        default: Option<Default<'tcx>>
     }
 }
 
@@ -53,9 +53,9 @@ pub struct Snapshot {
     snapshot: sv::Snapshot
 }
 
-enum UndoEntry<'tcx> {
+enum UndoEntry {
     // The type of the var was specified.
-    SpecifyVar(ty::TyVid, Vec<Relation>, Option<Default<'tcx>>),
+    SpecifyVar(ty::TyVid, Vec<Relation>),
     Relate(ty::TyVid, ty::TyVid),
 }
 
@@ -89,10 +89,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     }
 
     pub fn default(&self, vid: ty::TyVid) -> Option<Default<'tcx>> {
-        match &self.values.get(vid.index as usize).value {
-            &Known(_) => None,
-            &Bounded { ref default, .. } => default.clone()
-        }
+        self.values.get(vid.index as usize).default.clone()
     }
 
     pub fn var_diverges<'a>(&'a self, vid: ty::TyVid) -> bool {
@@ -124,8 +121,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
             mem::replace(value_ptr, Known(ty))
         };
 
-        let (relations, default) = match old_value {
-            Bounded { relations, default } => (relations, default),
+        let relations = match old_value {
+            Bounded { relations } => relations ,
             Known(_) => panic!("Asked to instantiate variable that is \
                                already instantiated")
         };
@@ -134,14 +131,15 @@ impl<'tcx> TypeVariableTable<'tcx> {
             stack.push((ty, dir, vid));
         }
 
-        self.values.record(SpecifyVar(vid, relations, default));
+        self.values.record(SpecifyVar(vid, relations));
     }
 
     pub fn new_var(&mut self,
                    diverging: bool,
                    default: Option<Default<'tcx>>) -> ty::TyVid {
         let index = self.values.push(TypeVariableData {
-            value: Bounded { relations: vec![], default: default },
+            value: Bounded { relations: vec![] },
+            default: default,
             diverging: diverging
         });
         ty::TyVid { index: index as u32 }
@@ -204,7 +202,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                     debug!("NewElem({}) new_elem_threshold={}", index, new_elem_threshold);
                 }
 
-                sv::UndoLog::Other(SpecifyVar(vid, _, _)) => {
+                sv::UndoLog::Other(SpecifyVar(vid, _)) => {
                     if vid.index < new_elem_threshold {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.
@@ -226,23 +224,26 @@ impl<'tcx> TypeVariableTable<'tcx> {
             .iter()
             .enumerate()
             .filter_map(|(i, value)| match &value.value {
-                &TypeVariableValue::Known(_) => None,
-                &TypeVariableValue::Bounded { .. } => Some(ty::TyVid { index: i as u32 })
-            })
-            .collect()
+                &TypeVariableValue::Bounded { .. } => Some(ty::TyVid { index: i as u32 }),
+                &TypeVariableValue::Known(v) => match v.sty {
+                    ty::TyInfer(ty::FloatVar(_)) | ty::TyInfer(ty::IntVar(_)) =>
+                        Some(ty::TyVid { index: i as u32 }),
+                    _ => None
+                }
+           })
+           .collect()
     }
 }
 
 impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
     type Value = TypeVariableData<'tcx>;
-    type Undo = UndoEntry<'tcx>;
+    type Undo = UndoEntry;
 
-    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: UndoEntry<'tcx>) {
+    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: UndoEntry) {
         match action {
-            SpecifyVar(vid, relations, default) => {
+            SpecifyVar(vid, relations) => {
                 values[vid.index as usize].value = Bounded {
                     relations: relations,
-                    default: default
                 };
             }
 
