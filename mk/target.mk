@@ -40,7 +40,7 @@ CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4) := \
 		  $$(RT_OUTPUT_DIR_$(2))/$$(dep)) \
 		$$(foreach dep,$$(NATIVE_TOOL_DEPS_$(4)_T_$(2)), \
 		  $$(TBIN$(1)_T_$(3)_H_$(3))/$$(dep)) \
-		$$(CUSTOM_DEPS_$(4)_T_$(2))
+		$$(CUSTOM_DEPS$(1)_$(4)_T_$(2))
 endef
 
 $(foreach host,$(CFG_HOST), \
@@ -92,7 +92,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
 		$$(LLVM_LIBDIR_RUSTFLAGS_$(2)) \
 		$$(LLVM_STDCPP_RUSTFLAGS_$(2)) \
 		$$(RUSTFLAGS_$(4)) \
-		$$(RUSTFLAGS_$(4)_T_$(2)) \
+		$$(RUSTFLAGS$(1)_$(4)_T_$(2)) \
 		--out-dir $$(@D) \
 		-C extra-filename=-$$(CFG_FILENAME_EXTRA) \
 		$$<

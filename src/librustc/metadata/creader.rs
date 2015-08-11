@@ -20,6 +20,7 @@ use metadata::cstore::{CStore, CrateSource, MetadataBlob};
 use metadata::decoder;
 use metadata::loader;
 use metadata::loader::CratePaths;
+use util::nodemap::FnvHashMap;
 
 use std::cell::RefCell;
 use std::path::PathBuf;
@@ -47,6 +48,7 @@ pub struct LocalCrateReader<'a, 'b:'a> {
 pub struct CrateReader<'a> {
     sess: &'a Session,
     next_crate_num: ast::CrateNum,
+    foreign_item_map: FnvHashMap<String, Vec<ast::NodeId>>,
 }
 
 impl<'a, 'b, 'v> visit::Visitor<'v> for LocalCrateReader<'a, 'b> {
@@ -157,6 +159,7 @@ impl<'a> CrateReader<'a> {
         CrateReader {
             sess: sess,
             next_crate_num: sess.cstore.next_crate_num(),
+            foreign_item_map: FnvHashMap(),
         }
     }
 
@@ -490,6 +493,20 @@ impl<'a> CrateReader<'a> {
             _ => None,
         }
     }
+
+    fn register_statically_included_foreign_items(&mut self) {
+        let libs = self.sess.cstore.get_used_libraries();
+        for (lib, list) in self.foreign_item_map.iter() {
+            let is_static = libs.borrow().iter().any(|&(ref name, kind)| {
+                lib == name && kind == cstore::NativeStatic
+            });
+            if is_static {
+                for id in list {
+                    self.sess.cstore.add_statically_included_foreign_item(*id);
+                }
+            }
+        }
+    }
 }
 
 impl<'a, 'b> LocalCrateReader<'a, 'b> {
@@ -515,6 +532,7 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
         for &(ref name, kind) in &self.sess.opts.libs {
             register_native_lib(self.sess, None, name.clone(), kind);
         }
+        self.creader.register_statically_included_foreign_items();
     }
 
     fn process_crate(&self, c: &ast::Crate) {
@@ -541,87 +559,73 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
                                                               None,
                                                               i.span,
                                                               PathKind::Crate);
-                        self.ast_map.with_path(i.id, |path|
-                            cmeta.update_local_path(path));
+                        self.ast_map.with_path(i.id, |path| {
+                            cmeta.update_local_path(path)
+                        });
                         self.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
                     }
                     None => ()
                 }
             }
-            ast::ItemForeignMod(ref fm) => {
-                if fm.abi == abi::Rust || fm.abi == abi::RustIntrinsic {
-                    return;
-                }
-
-                // First, add all of the custom link_args attributes
-                let link_args = i.attrs.iter()
-                    .filter_map(|at| if at.name() == "link_args" {
-                        Some(at)
-                    } else {
-                        None
-                    })
-                    .collect::<Vec<&ast::Attribute>>();
-                for m in &link_args {
-                    match m.value_str() {
-                        Some(linkarg) => self.sess.cstore.add_used_link_args(&linkarg),
-                        None => { /* fallthrough */ }
-                    }
-                }
-
-                // Next, process all of the #[link(..)]-style arguments
-                let link_args = i.attrs.iter()
-                    .filter_map(|at| if at.name() == "link" {
-                        Some(at)
-                    } else {
-                        None
-                    })
-                    .collect::<Vec<&ast::Attribute>>();
-                for m in &link_args {
-                    match m.meta_item_list() {
-                        Some(items) => {
-                            let kind = items.iter().find(|k| {
-                                k.name() == "kind"
-                            }).and_then(|a| a.value_str());
-                            let kind = match kind {
-                                Some(k) => {
-                                    if k == "static" {
-                                        cstore::NativeStatic
-                                    } else if self.sess.target.target.options.is_like_osx
-                                              && k == "framework" {
-                                        cstore::NativeFramework
-                                    } else if k == "framework" {
-                                        cstore::NativeFramework
-                                    } else if k == "dylib" {
-                                        cstore::NativeUnknown
-                                    } else {
-                                        self.sess.span_err(m.span,
-                                            &format!("unknown kind: `{}`",
-                                                    k));
-                                        cstore::NativeUnknown
-                                    }
-                                }
-                                None => cstore::NativeUnknown
-                            };
-                            let n = items.iter().find(|n| {
-                                n.name() == "name"
-                            }).and_then(|a| a.value_str());
-                            let n = match n {
-                                Some(n) => n,
-                                None => {
-                                    self.sess.span_err(m.span,
-                                        "#[link(...)] specified without \
-                                         `name = \"foo\"`");
-                                    InternedString::new("foo")
-                                }
-                            };
-                            register_native_lib(self.sess, Some(m.span),
-                                                n.to_string(), kind);
-                        }
-                        None => {}
-                    }
-                }
-            }
+            ast::ItemForeignMod(ref fm) => self.process_foreign_mod(i, fm),
             _ => { }
+        }
+    }
+
+    fn process_foreign_mod(&mut self, i: &ast::Item, fm: &ast::ForeignMod) {
+        if fm.abi == abi::Rust || fm.abi == abi::RustIntrinsic {
+            return;
+        }
+
+        // First, add all of the custom #[link_args] attributes
+        for m in i.attrs.iter().filter(|a| a.check_name("link_args")) {
+            if let Some(linkarg) = m.value_str() {
+                self.sess.cstore.add_used_link_args(&linkarg);
+            }
+        }
+
+        // Next, process all of the #[link(..)]-style arguments
+        for m in i.attrs.iter().filter(|a| a.check_name("link")) {
+            let items = match m.meta_item_list() {
+                Some(item) => item,
+                None => continue,
+            };
+            let kind = items.iter().find(|k| {
+                k.check_name("kind")
+            }).and_then(|a| a.value_str());
+            let kind = match kind.as_ref().map(|s| &s[..]) {
+                Some("static") => cstore::NativeStatic,
+                Some("dylib") => cstore::NativeUnknown,
+                Some("framework") => cstore::NativeFramework,
+                Some(k) => {
+                    self.sess.span_err(m.span, &format!("unknown kind: `{}`", k));
+                    cstore::NativeUnknown
+                }
+                None => cstore::NativeUnknown
+            };
+            let n = items.iter().find(|n| {
+                n.check_name("name")
+            }).and_then(|a| a.value_str());
+            let n = match n {
+                Some(n) => n,
+                None => {
+                    self.sess.span_err(m.span, "#[link(...)] specified without \
+                                                `name = \"foo\"`");
+                    InternedString::new("foo")
+                }
+            };
+            register_native_lib(self.sess, Some(m.span), n.to_string(), kind);
+        }
+
+        // Finally, process the #[linked_from = "..."] attribute
+        for m in i.attrs.iter().filter(|a| a.check_name("linked_from")) {
+            let lib_name = match m.value_str() {
+                Some(name) => name,
+                None => continue,
+            };
+            let list = self.creader.foreign_item_map.entry(lib_name.to_string())
+                                                    .or_insert(Vec::new());
+            list.extend(fm.items.iter().map(|it| it.id));
         }
     }
 }

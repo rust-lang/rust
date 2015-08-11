@@ -9,14 +9,21 @@
 // except according to those terms.
 
 use std::ffi::OsString;
+use std::fs::{self, File};
+use std::io::{self, BufWriter};
+use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::fs;
 
 use back::archive;
+use metadata::csearch;
+use metadata::cstore;
 use session::Session;
-use session::config;
 use session::config::DebugInfoLevel::{NoDebugInfo, LimitedDebugInfo, FullDebugInfo};
+use session::config::CrateTypeDylib;
+use session::config;
+use syntax::ast;
+use trans::CrateTranslation;
 
 /// Linker abstraction used by back::link to build up the command to invoke a
 /// linker.
@@ -48,6 +55,8 @@ pub trait Linker {
     fn hint_dynamic(&mut self);
     fn whole_archives(&mut self);
     fn no_whole_archives(&mut self);
+    fn export_symbols(&mut self, sess: &Session, trans: &CrateTranslation,
+                      tmpdir: &Path);
 }
 
 pub struct GnuLinker<'a> {
@@ -192,6 +201,10 @@ impl<'a> Linker for GnuLinker<'a> {
         if !self.takes_hints() { return }
         self.cmd.arg("-Wl,-Bdynamic");
     }
+
+    fn export_symbols(&mut self, _: &Session, _: &CrateTranslation, _: &Path) {
+        // noop, visibility in object files takes care of this
+    }
 }
 
 pub struct MsvcLinker<'a> {
@@ -301,4 +314,61 @@ impl<'a> Linker for MsvcLinker<'a> {
     // we do on Unix platforms.
     fn hint_static(&mut self) {}
     fn hint_dynamic(&mut self) {}
+
+    // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
+    // export symbols from a dynamic library. When building a dynamic library,
+    // however, we're going to want some symbols exported, so this function
+    // generates a DEF file which lists all the symbols.
+    //
+    // The linker will read this `*.def` file and export all the symbols from
+    // the dynamic library. Note that this is not as simple as just exporting
+    // all the symbols in the current crate (as specified by `trans.reachable`)
+    // but rather we also need to possibly export the symbols of upstream
+    // crates. Upstream rlibs may be linked statically to this dynamic library,
+    // in which case they may continue to transitively be used and hence need
+    // their symbols exported.
+    fn export_symbols(&mut self, sess: &Session, trans: &CrateTranslation,
+                      tmpdir: &Path) {
+        let path = tmpdir.join("lib.def");
+        let res = (|| -> io::Result<()> {
+            let mut f = BufWriter::new(try!(File::create(&path)));
+
+            // Start off with the standard module name header and then go
+            // straight to exports.
+            try!(writeln!(f, "LIBRARY"));
+            try!(writeln!(f, "EXPORTS"));
+
+            // Write out all our local symbols
+            for sym in trans.reachable.iter() {
+                try!(writeln!(f, "  {}", sym));
+            }
+
+            // Take a look at how all upstream crates are linked into this
+            // dynamic library. For all statically linked libraries we take all
+            // their reachable symbols and emit them as well.
+            let cstore = &sess.cstore;
+            let symbols = trans.crate_formats[&CrateTypeDylib].iter();
+            let symbols = symbols.enumerate().filter_map(|(i, f)| {
+                if let Some(cstore::RequireStatic) = *f {
+                    Some((i + 1) as ast::CrateNum)
+                } else {
+                    None
+                }
+            }).flat_map(|cnum| {
+                csearch::get_reachable_ids(cstore, cnum)
+            }).map(|did| {
+                csearch::get_symbol(cstore, did)
+            });
+            for symbol in symbols {
+                try!(writeln!(f, "  {}", symbol));
+            }
+            Ok(())
+        })();
+        if let Err(e) = res {
+            sess.fatal(&format!("failed to write lib.def file: {}", e));
+        }
+        let mut arg = OsString::from("/DEF:");
+        arg.push(path);
+        self.cmd.arg(&arg);
+    }
 }
