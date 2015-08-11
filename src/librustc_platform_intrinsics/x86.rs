@@ -93,10 +93,42 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             "testc_si128" => p!("sse41.ptestc", (i64x2, i64x2) -> i32),
             "testnzc_si128" => p!("sse41.ptestnzc", (i64x2, i64x2) -> i32),
             "testz_si128" => p!("sse41.ptestz", (i64x2, i64x2) -> i32),
+
+            "permutevar_pd" => p!("avx.vpermilvar.pd", (f64x2, i64x2) -> f64x2),
+            "permutevar_ps" => p!("avx.vpermilvar.ps", (f32x4, i32x4) -> f32x4),
+            "testc_pd" => p!("avx.vtestc.pd", (f64x2, f64x2) -> i32),
+            "testc_ps" => p!("avx.vtestc.ps", (f32x4, f32x4) -> i32),
+            "testnzc_pd" => p!("avx.vtestnzc.pd", (f64x2, f64x2) -> i32),
+            "testnzc_ps" => p!("avx.vtestnzc.ps", (f32x4, f32x4) -> i32),
+            "testz_pd" => p!("avx.vtestz.pd", (f64x2, f64x2) -> i32),
+            "testz_ps" => p!("avx.vtestz.ps", (f32x4, f32x4) -> i32),
+
             _ => return None
         })
     } else if name.starts_with("mm256_") {
         Some(match &name["mm256_".len()..] {
+            "addsub_pd" => p!("avx.addsub.pd.256", (f64x4, f64x4) -> f64x4),
+            "addsub_ps" => p!("avx.addsub.ps.256", (f32x8, f32x8) -> f32x8),
+            "hadd_pd" => p!("avx.hadd.pd.256", (f64x4, f64x4) -> f64x4),
+            "hadd_ps" => p!("avx.hadd.ps.256", (f32x8, f32x8) -> f32x8),
+            "hsub_pd" => p!("avx.hsub.pd.256", (f64x4, f64x4) -> f64x4),
+            "hsub_ps" => p!("avx.hsub.ps.256", (f32x8, f32x8) -> f32x8),
+            "max_pd" => p!("avx.max.pd.256", (f64x4, f64x4) -> f64x4),
+            "max_ps" => p!("avx.max.ps.256", (f32x8, f32x8) -> f32x8),
+            "min_pd" => p!("avx.min.pd.256", (f64x4, f64x4) -> f64x4),
+            "min_ps" => p!("avx.min.ps.256", (f32x8, f32x8) -> f32x8),
+            "permutevar_pd" => p!("avx.vpermilvar.pd.256", (f64x4, i64x4) -> f64x4),
+            "permutevar_ps" => p!("avx.vpermilvar.ps.256", (f32x8, i32x8) -> f32x8),
+            "rcp_ps" => p!("avx.rcp.ps.256", (f32x8) -> f32x8),
+            "rsqrt_ps" => p!("avx.rsqrt.ps.256", (f32x8) -> f32x8),
+            "sqrt_pd" => p!("llvm.sqrt.v4f64", (f64x4) -> f64x4),
+            "sqrt_ps" => p!("llvm.sqrt.v8f32", (f32x8) -> f32x8),
+            "testc_pd" => p!("avx.vtestc.pd.256", (f64x4, f64x4) -> i32),
+            "testc_ps" => p!("avx.vtestc.ps.256", (f32x8, f32x8) -> i32),
+            "testnzc_pd" => p!("avx.vtestnzc.pd.256", (f64x4, f64x4) -> i32),
+            "testnzc_ps" => p!("avx.vtestnzc.ps.256", (f32x8, f32x8) -> i32),
+            "testz_pd" => p!("avx.vtestz.pd.256", (f64x4, f64x4) -> i32),
+            "testz_ps" => p!("avx.vtestz.ps.256", (f32x8, f32x8) -> i32),
             _ => return None,
         })
     } else {
