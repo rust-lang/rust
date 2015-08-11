@@ -7,14 +7,13 @@ use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
 use rustc::middle::ty;
 use syntax::codemap::{Span, Spanned};
 
-use types::span_note_and_lint;
-use utils::{match_path, snippet, span_lint};
+use utils::{match_path, snippet, span_lint, span_help_and_lint};
 
 pub fn walk_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
-	match ty.sty {
-		ty::TyRef(_, ref tm) | ty::TyRawPtr(ref tm) => walk_ty(tm.ty),
-		_ => ty
-	}
+    match ty.sty {
+        ty::TyRef(_, ref tm) | ty::TyRawPtr(ref tm) => walk_ty(tm.ty),
+        _ => ty
+    }
 }
 
 /// Handles uncategorized lints
@@ -42,9 +41,12 @@ impl LintPass for MiscPass {
                     }
                     // In some cases, an exhaustive match is preferred to catch situations when
                     // an enum is extended. So we only consider cases where a `_` wildcard is used
-                    if arms[1].pats[0].node == PatWild(PatWildSingle) && arms[0].pats.len() == 1 {
-                        span_note_and_lint(cx, SINGLE_MATCH, expr.span,
-                              "You seem to be trying to use match for destructuring a single type. Did you mean to use `if let`?",
+                    if arms[1].pats[0].node == PatWild(PatWildSingle) && 
+                            arms[0].pats.len() == 1 {
+                        span_help_and_lint(cx, SINGLE_MATCH, expr.span,
+                              "You seem to be trying to use match for \
+                              destructuring a single type. Did you mean to \
+                              use `if let`?",
                               &*format!("Try if let {} = {} {{ ... }}",
                                       snippet(cx, arms[0].pats[0].span, ".."),
                                       snippet(cx, ex.span, ".."))
@@ -79,9 +81,9 @@ impl LintPass for StrToStringPass {
 
         fn is_str(cx: &Context, expr: &ast::Expr) -> bool {
             match walk_ty(cx.tcx.expr_ty(expr)).sty { 
-				ty::TyStr => true,
-				_ => false
-			}
+                ty::TyStr => true,
+                _ => false
+            }
         }
     }
 }
@@ -116,123 +118,124 @@ declare_lint!(pub CMP_NAN, Deny, "Deny comparisons to std::f32::NAN or std::f64:
 pub struct CmpNan;
 
 impl LintPass for CmpNan {
-	fn get_lints(&self) -> LintArray {
+    fn get_lints(&self) -> LintArray {
         lint_array!(CMP_NAN)
-	}
-	
-	fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-		if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
-			if is_comparison_binop(cmp.node) {
-				if let &ExprPath(_, ref path) = &left.node {
-					check_nan(cx, path, expr.span);
-				}
-				if let &ExprPath(_, ref path) = &right.node {
-					check_nan(cx, path, expr.span);
-				}
-			}
-		}
-	}
+    }
+    
+    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+        if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
+            if is_comparison_binop(cmp.node) {
+                if let &ExprPath(_, ref path) = &left.node {
+                    check_nan(cx, path, expr.span);
+                }
+                if let &ExprPath(_, ref path) = &right.node {
+                    check_nan(cx, path, expr.span);
+                }
+            }
+        }
+    }
 }
 
 fn check_nan(cx: &Context, path: &Path, span: Span) {
 	path.segments.last().map(|seg| if seg.identifier.name == "NAN" {
-		span_lint(cx, CMP_NAN, span, "Doomed comparison with NAN, use std::{f32,f64}::is_nan instead");
+		span_lint(cx, CMP_NAN, span, 
+			"Doomed comparison with NAN, use std::{f32,f64}::is_nan instead");
 	});
 }
 
 declare_lint!(pub FLOAT_CMP, Warn,
-			  "Warn on ==/!= comparison of floaty values");
-			  
+              "Warn on ==/!= comparison of floaty values");
+              
 #[derive(Copy,Clone)]
 pub struct FloatCmp;
 
 impl LintPass for FloatCmp {
-	fn get_lints(&self) -> LintArray {
+    fn get_lints(&self) -> LintArray {
         lint_array!(FLOAT_CMP)
-	}
-	
-	fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-		if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
-			let op = cmp.node;
-			if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
-				span_lint(cx, FLOAT_CMP, expr.span, &format!(
-					"{}-Comparison of f32 or f64 detected. You may want to change this to 'abs({} - {}) < epsilon' for some suitable value of epsilon",
-					binop_to_string(op), snippet(cx, left.span, ".."), 
-					snippet(cx, right.span, "..")));
-			}
-		}
-	}
+    }
+    
+    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+        if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
+            let op = cmp.node;
+            if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
+                span_lint(cx, FLOAT_CMP, expr.span, &format!(
+                    "{}-Comparison of f32 or f64 detected. You may want to change this to 'abs({} - {}) < epsilon' for some suitable value of epsilon",
+                    binop_to_string(op), snippet(cx, left.span, ".."), 
+                    snippet(cx, right.span, "..")));
+            }
+        }
+    }
 }
 
 fn is_float(cx: &Context, expr: &Expr) -> bool {
-	if let ty::TyFloat(_) = walk_ty(cx.tcx.expr_ty(expr)).sty { 
-		true
-	} else { 
-		false 
-	}
+    if let ty::TyFloat(_) = walk_ty(cx.tcx.expr_ty(expr)).sty { 
+        true
+    } else { 
+        false 
+    }
 }
 
 declare_lint!(pub PRECEDENCE, Warn,
-			  "Warn on mixing bit ops with integer arithmetic without parenthesis");
-			  
+              "Warn on mixing bit ops with integer arithmetic without parenthesis");
+              
 #[derive(Copy,Clone)]
 pub struct Precedence;
 
 impl LintPass for Precedence {
-	fn get_lints(&self) -> LintArray {
+    fn get_lints(&self) -> LintArray {
         lint_array!(PRECEDENCE)
-	}
-	
-	fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-		if let ExprBinary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
-			if is_bit_op(op) && (is_arith_expr(left) || is_arith_expr(right)) {
-				span_lint(cx, PRECEDENCE, expr.span, 
-					"Operator precedence can trip the unwary. Consider adding parenthesis to the subexpression.");
-			}
-		}
-	}
+    }
+    
+    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+        if let ExprBinary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
+            if is_bit_op(op) && (is_arith_expr(left) || is_arith_expr(right)) {
+                span_lint(cx, PRECEDENCE, expr.span, 
+                    "Operator precedence can trip the unwary. Consider adding parenthesis to the subexpression.");
+            }
+        }
+    }
 }
 
 fn is_arith_expr(expr : &Expr) -> bool {
-	match expr.node {
-		ExprBinary(Spanned { node: op, ..}, _, _) => is_arith_op(op),
-		_ => false
-	}
+    match expr.node {
+        ExprBinary(Spanned { node: op, ..}, _, _) => is_arith_op(op),
+        _ => false
+    }
 }
 
 fn is_bit_op(op : BinOp_) -> bool {
-	match op {
-		BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr => true,
-		_ => false
-	}
+    match op {
+        BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr => true,
+        _ => false
+    }
 }
 
 fn is_arith_op(op : BinOp_) -> bool {
-	match op {
-		BiAdd | BiSub | BiMul | BiDiv | BiRem => true,
-		_ => false
-	}
+    match op {
+        BiAdd | BiSub | BiMul | BiDiv | BiRem => true,
+        _ => false
+    }
 }
 
 declare_lint!(pub CMP_OWNED, Warn,
-			  "Warn on creating an owned string just for comparison");
-			  
+              "Warn on creating an owned string just for comparison");
+              
 #[derive(Copy,Clone)]
 pub struct CmpOwned;
 
 impl LintPass for CmpOwned {
-	fn get_lints(&self) -> LintArray {
+    fn get_lints(&self) -> LintArray {
         lint_array!(CMP_OWNED)
-	}
-	
-	fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-		if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
-			if is_comparison_binop(cmp.node) {
-				check_to_owned(cx, left, right.span);
-				check_to_owned(cx, right, left.span)
-			}
-		}
-	}
+    }
+    
+    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+        if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
+            if is_comparison_binop(cmp.node) {
+                check_to_owned(cx, left, right.span);
+                check_to_owned(cx, right, left.span)
+            }
+        }
+    }
 }
 
 fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
@@ -263,6 +266,6 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
 }
 
 fn is_str_arg(cx: &Context, args: &[P<Expr>]) -> bool {
-	args.len() == 1 && if let ty::TyStr = 
-		walk_ty(cx.tcx.expr_ty(&*args[0])).sty { true } else { false }
+    args.len() == 1 && if let ty::TyStr = 
+        walk_ty(cx.tcx.expr_ty(&*args[0])).sty { true } else { false }
 }
