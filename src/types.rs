@@ -6,7 +6,7 @@ use syntax::ast::*;
 use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
 use syntax::codemap::Span;
 
-use utils::span_lint;
+use utils::{span_lint, span_help_and_lint};
 
 /// Handles all the linting of funky types
 #[allow(missing_copy_implementations)]
@@ -40,14 +40,6 @@ pub fn match_ty_unwrap<'a>(ty: &'a Ty, segments: &[&str]) -> Option<&'a [P<Ty>]>
     }
 }
 
-/// Lets me span a note only if the lint is shown
-pub fn span_note_and_lint(cx: &Context, lint: &'static Lint, span: Span, msg: &str, note: &str) {
-    span_lint(cx, lint, span, msg);
-    if cx.current_level(lint) != Level::Allow {
-        cx.sess().span_note(span, note);
-    }
-}
-
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
         lint_array!(BOX_VEC, LINKEDLIST)
@@ -62,7 +54,7 @@ impl LintPass for TypePass {
         match_ty_unwrap(ty, &["std", "boxed", "Box"]).and_then(|t| t.first())
           .and_then(|t| match_ty_unwrap(&**t, &["std", "vec", "Vec"]))
           .map(|_| {
-            span_note_and_lint(cx, BOX_VEC, ty.span,
+            span_help_and_lint(cx, BOX_VEC, ty.span,
                               "You seem to be trying to use Box<Vec<T>>. Did you mean to use Vec<T>?",
                               "Vec<T> is already on the heap, Box<Vec<T>> makes an extra allocation");
           });
@@ -77,7 +69,7 @@ impl LintPass for TypePass {
                       vec!["collections","linked_list","LinkedList"]];
         for path in dlists.iter() {
             if match_ty_unwrap(ty, &path[..]).is_some() {
-                span_note_and_lint(cx, LINKEDLIST, ty.span,
+                span_help_and_lint(cx, LINKEDLIST, ty.span,
                                    "I see you're using a LinkedList! Perhaps you meant some other data structure?",
                                    "A RingBuf might work.");
                 return;
