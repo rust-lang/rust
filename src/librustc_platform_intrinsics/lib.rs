@@ -45,6 +45,14 @@ fn f(width: u8) -> Type { Type::Float(width) }
 fn v(x: Type, length: u8) -> Type { Type::Vector(Box::new(x), length) }
 
 macro_rules! ty {
+    (f32x8) => (v(f(32), 8));
+    (f64x4) => (v(f(64), 4));
+
+    (i8x32) => (v(i(8), 32));
+    (i16x16) => (v(i(16), 16));
+    (i32x8) => (v(i(32), 8));
+    (i64x4) => (v(i(64), 4));
+
     (f32x4) => (v(f(32), 4));
     (f64x2) => (v(f(64), 2));
 
