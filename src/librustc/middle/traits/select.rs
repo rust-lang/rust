@@ -27,6 +27,7 @@ use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation
 use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
 use super::{ObjectCastObligation, Obligation};
 use super::TraitNotObjectSafe;
+use super::RFC1214Warning;
 use super::Selection;
 use super::SelectionResult;
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
@@ -445,7 +446,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // have been proven elsewhere. This cache only contains
         // predicates that are global in scope and hence unaffected by
         // the current environment.
-        if self.tcx().fulfilled_predicates.borrow().is_duplicate(&obligation.predicate) {
+        let w = RFC1214Warning(false);
+        if self.tcx().fulfilled_predicates.borrow().is_duplicate(w, &obligation.predicate) {
             return EvaluatedToOk;
         }
 
