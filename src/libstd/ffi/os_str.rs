@@ -42,6 +42,7 @@ use mem;
 use string::String;
 use ops;
 use cmp;
+use str;
 use hash::{Hash, Hasher};
 use vec::Vec;
 
@@ -77,8 +78,23 @@ impl OsString {
     ///
     /// On Windows system, only UTF-8 byte sequences will successfully
     /// convert; non UTF-8 data will produce `None`.
+    #[deprecated(reason = "Renamed to from_platform_bytes", since = "1.2.0")]
     #[unstable(feature = "convert", reason = "recently added")]
     pub fn from_bytes<B>(bytes: B) -> Option<OsString> where B: Into<Vec<u8>> {
+        OsString::from_platform_bytes(bytes)
+    }
+
+    /// Constructs an `OsString` from a byte sequence.
+    ///
+    /// # Platform behavior
+    ///
+    /// On Unix systems, any byte sequence can be successfully
+    /// converted into an `OsString`.
+    ///
+    /// On Windows system, only UTF-8 byte sequences will successfully
+    /// convert; non UTF-8 data will produce `None`.
+    #[unstable(feature = "convert", reason = "recently added")]
+    pub fn from_platform_bytes<B>(bytes: B) -> Option<OsString> where B: Into<Vec<u8>> {
         #[cfg(unix)]
         fn from_bytes_inner(vec: Vec<u8>) -> Option<OsString> {
             use os::unix::ffi::OsStringExt;
@@ -267,6 +283,24 @@ impl OsStr {
             self.to_str().map(|s| s.as_bytes())
         } else {
             Some(self.bytes())
+        }
+    }
+
+    /// Converts a byte slice to an `OsStr` slice.
+    ///
+    /// # Platform behavior
+    ///
+    /// On Unix systems, this is a no-op.
+    ///
+    /// On Windows systems, only UTF-8 byte sequences will successfully
+    /// convert; non UTF-8 data will produce `None`.
+    #[unstable(feature = "convert", reason = "recently added")]
+    pub fn from_platform_bytes(bytes: &[u8]) -> Option<&OsStr> {
+        if cfg!(windows) {
+            str::from_utf8(bytes).ok().map(|s| s.as_ref())
+        } else {
+            use os::unix::ffi::OsStrExt;
+            Some(<OsStr as OsStrExt>::from_bytes(bytes))
         }
     }
 
