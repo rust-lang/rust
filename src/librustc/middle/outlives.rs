@@ -161,9 +161,28 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                     compute_components(infcx, ty, out);
                 }
             }
-            _ => {
-                // for all other types, just constrain the regions and
-                // keep walking to find any other types.
+
+            // Most types do not introduce any region binders, nor
+            // involve any other subtle cases, and so the WF relation
+            // simply constraints any regions referenced directly by
+            // the type and then visits the types that are lexically
+            // contained within. (The comments refer to relevant rules
+            // from RFC1214.)
+            ty::TyBool(..) |        // OutlivesScalar
+            ty::TyChar(..) |        // OutlivesScalar
+            ty::TyInt(..) |         // OutlivesScalar
+            ty::TyUint(..) |        // OutlivesScalar
+            ty::TyFloat(..) |       // OutlivesScalar
+            ty::TyEnum(..) |        // OutlivesNominalType
+            ty::TyStruct(..) |      // OutlivesNominalType
+            ty::TyBox(..) |         // OutlivesNominalType (ish)
+            ty::TyStr(..) |         // OutlivesScalar (ish)
+            ty::TyArray(..) |       // ...
+            ty::TySlice(..) |       // ...
+            ty::TyRawPtr(..) |      // ...
+            ty::TyRef(..) |         // OutlivesReference
+            ty::TyTuple(..) |       // ...
+            ty::TyError(..) => {
                 push_region_constraints(out, ty.regions());
             }
         }
@@ -188,4 +207,3 @@ fn push_region_constraints<'tcx>(out: &mut Vec<Component<'tcx>>, regions: Vec<ty
         }
     }
 }
-
