@@ -122,8 +122,8 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
             }
             ty::TyBareFn(..) | ty::TyTrait(..) => {
                 subtys.skip_current_subtree();
-                let temp = capture_components(infcx, ty);
-                out.push(Component::RFC1214(temp));
+                let subcomponents = capture_components(infcx, ty);
+                out.push(Component::RFC1214(subcomponents));
             }
             ty::TyParam(p) => {
                 out.push(Component::Param(p));
@@ -148,8 +148,8 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                 } else {
                     // fallback case: continue walking through and
                     // constrain Pi.
-                    let temp = capture_components(infcx, ty);
-                    out.push(Component::EscapingProjection(temp));
+                    let subcomponents = capture_components(infcx, ty);
+                    out.push(Component::EscapingProjection(subcomponents));
                 }
                 subtys.skip_current_subtree();
             }
