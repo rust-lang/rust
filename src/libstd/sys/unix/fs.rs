@@ -536,7 +536,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use fs::{File, PathExt, set_permissions};
     if !from.is_file() {
         return Err(Error::new(ErrorKind::InvalidInput,
-                              "the source path is not an existing file"))
+                              "the source path is not an existing regular file"))
     }
 
     let mut reader = try!(File::open(from));
