@@ -748,7 +748,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
     fn as_inner(&self) -> &fs_imp::DirEntry { &self.0 }
 }
 
-/// Removes a file from the underlying filesystem.
+/// Removes a file from the filesystem.
 ///
 /// Note that there is no
 /// guarantee that the file is immediately deleted (e.g. depending on
