@@ -148,8 +148,7 @@ pub trait Iterator {
         last
     }
 
-    /// Loops through `n` iterations, returning the `n`th element of the
-    /// iterator.
+    /// Skips the `n` first elements of the iterator and returns the next one.
     ///
     /// # Examples
     ///
