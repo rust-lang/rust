@@ -81,6 +81,6 @@ pub fn span_help_and_lint(cx: &Context, lint: &'static Lint, span: Span,
         msg: &str, help: &str) {
     span_lint(cx, lint, span, msg);
     if cx.current_level(lint) != Level::Allow {
-        cx.sess().span_help(span, help);
+        cx.sess().fileline_help(span, help);
     }
 }
