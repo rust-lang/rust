@@ -57,6 +57,13 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         "subs_epu16" => p!("sse2.psubus.w", (i16x8, i16x8) -> i16x8),
         "subs_epu8" => p!("sse2.psubus.b", (i8x16, i8x16) -> i8x16),
 
+        "addsub_pd" => p!("sse3.addsub.pd", (f64x2, f64x2) -> f64x2),
+        "addsub_ps" => p!("sse3.addsub.ps", (f32x4, f32x4) -> f32x4),
+        "hadd_pd" => p!("sse3.hadd.pd", (f64x2, f64x2) -> f64x2),
+        "hadd_ps" => p!("sse3.hadd.ps", (f32x4, f32x4) -> f32x4),
+        "hsub_pd" => p!("sse3.hsub.pd", (f64x2, f64x2) -> f64x2),
+        "hsub_ps" => p!("sse3.hsub.ps", (f32x4, f32x4) -> f32x4),
+
         "shuffle_epi8" => p!("ssse3.pshuf.b.128", (i8x16, i8x16) -> i8x16),
         _ => return None
     })
