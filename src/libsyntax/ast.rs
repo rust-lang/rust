@@ -941,7 +941,7 @@ pub enum Expr_ {
     /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
     ExprStruct(Path, Vec<Field>, Option<P<Expr>>),
 
-    /// A vector literal constructed from one repeated element.
+    /// An array literal constructed from one repeated element.
     ///
     /// For example, `[1u8; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
