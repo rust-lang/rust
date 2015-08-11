@@ -115,7 +115,7 @@ You can get something similar to an index like this:
 let dog = hachiko.chars().nth(1); // kinda like hachiko[1]
 ```
 
-This emphasizes that we have to go through the whole list of `chars`.
+This emphasizes that we have to walk from the beginning of the list of `chars`.
 
 ## Slicing
 
