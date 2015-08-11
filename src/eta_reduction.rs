@@ -58,4 +58,3 @@ impl LintPass for EtaPass {
         }
     }
 }
-

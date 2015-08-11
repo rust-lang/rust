@@ -1,5 +1,5 @@
 //! This LintPass catches both string addition and string addition + assignment
-//! 
+//!
 //! Note that since we have two lints where one subsumes the other, we try to
 //! disable the subsumed lint unless it has a higher level
 
@@ -25,11 +25,11 @@ impl LintPass for StringAdd {
     fn get_lints(&self) -> LintArray {
         lint_array!(STRING_ADD_ASSIGN)
     }
-    
+
     fn check_expr(&mut self, cx: &Context, e: &Expr) {
         if let &ExprAssign(ref target, ref  src) = &e.node {
-            if is_string(cx, target) && is_add(src, target) { 
-                span_lint(cx, STRING_ADD_ASSIGN, e.span, 
+            if is_string(cx, target) && is_add(src, target) {
+                span_lint(cx, STRING_ADD_ASSIGN, e.span,
                     "You assign the result of adding something to this string. \
                     Consider using `String::push_str(..) instead.")
             }
@@ -47,7 +47,7 @@ fn is_add(src: &Expr, target: &Expr) -> bool {
     match &src.node {
         &ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) =>
             is_exp_equal(target, left),
-        &ExprBlock(ref block) => block.stmts.is_empty() && 
+        &ExprBlock(ref block) => block.stmts.is_empty() &&
             block.expr.as_ref().map_or(false, |expr| is_add(&*expr, target)),
         &ExprParen(ref expr) => is_add(&*expr, target),
         _ => false

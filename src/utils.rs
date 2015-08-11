@@ -15,7 +15,7 @@ pub fn in_macro(cx: &Context, opt_info: Option<&ExpnInfo>) -> bool {
         // no span for the callee = external macro
         info.callee.span.map_or(true, |span| {
             // no snippet = external macro or compiler-builtin expansion
-            cx.sess().codemap().span_to_snippet(span).ok().map_or(true, |code| 
+            cx.sess().codemap().span_to_snippet(span).ok().map_or(true, |code|
                 // macro doesn't start with "macro_rules"
                 // = compiler plugin
                 !code.starts_with("macro_rules")
@@ -26,7 +26,7 @@ pub fn in_macro(cx: &Context, opt_info: Option<&ExpnInfo>) -> bool {
 
 /// invokes in_macro with the expansion info of the given span
 pub fn in_external_macro(cx: &Context, span: Span) -> bool {
-    cx.sess().codemap().with_expn_info(span.expn_id, 
+    cx.sess().codemap().with_expn_info(span.expn_id,
             |info| in_macro(cx, info))
 }
 
@@ -57,7 +57,7 @@ pub fn get_parent_expr<'c>(cx: &'c Context, e: &Expr) -> Option<&'c Expr> {
     let node_id : NodeId = e.id;
     let parent_id : NodeId = map.get_parent_node(node_id);
     if node_id == parent_id { return None; }
-    map.find(parent_id).and_then(|node| 
+    map.find(parent_id).and_then(|node|
         if let NodeExpr(parent) = node { Some(parent) } else { None } )
 }
 
@@ -77,7 +77,7 @@ pub fn span_lint(cx: &Context, lint: &'static Lint, sp: Span, msg: &str) {
     cx.span_lint(lint, sp, msg);
 }
 
-pub fn span_help_and_lint(cx: &Context, lint: &'static Lint, span: Span, 
+pub fn span_help_and_lint(cx: &Context, lint: &'static Lint, span: Span,
         msg: &str, help: &str) {
     span_lint(cx, lint, span, msg);
     if cx.current_level(lint) != Level::Allow {

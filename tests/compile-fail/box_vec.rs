@@ -8,7 +8,7 @@ pub fn test(foo: Box<Vec<bool>>) { //~ ERROR You seem to be trying to use Box<Ve
 }
 
 pub fn test2(foo: Box<Fn(Vec<u32>)>) { // pass if #31 is fixed
-	foo(vec![1, 2, 3])
+    foo(vec![1, 2, 3])
 }
 
 fn main(){

@@ -87,7 +87,7 @@ You can add options  to `allow`/`warn`/`deny`:
 
 *`deny` produces error instead of warnings*
 
-To have cargo compile your crate with clippy without needing `#![plugin(clippy)]` 
+To have cargo compile your crate with clippy without needing `#![plugin(clippy)]`
 in your code, you can use:
 
 ```
