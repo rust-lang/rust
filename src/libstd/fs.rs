@@ -750,8 +750,8 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 
 /// Removes a file from the underlying filesystem.
 ///
-/// Note that, just because an unlink call was successful, it is not
-/// guaranteed that a file is immediately deleted (e.g. depending on
+/// Note that there is no
+/// guarantee that the file is immediately deleted (e.g. depending on
 /// platform, other open file descriptors may prevent immediate removal).
 ///
 /// # Errors
