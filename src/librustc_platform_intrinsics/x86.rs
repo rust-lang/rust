@@ -79,6 +79,21 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         "sign_epi16" => p!("ssse3.psign.w.128", (i16x8, i16x8) -> i16x8),
         "sign_epi32" => p!("ssse3.psign.d.128", (i32x4, i32x4) -> i32x4),
         "sign_epi8" => p!("ssse3.psign.b.128", (i8x16, i8x16) -> i8x16),
+
+        "max_epi32" => p!("sse41.pmaxsd", (i32x4, i32x4) -> i32x4),
+        "max_epi8" => p!("sse41.pmaxsb", (i8x16, i8x16) -> i8x16),
+        "max_epu16" => p!("sse41.pmaxuw", (i16x8, i16x8) -> i16x8),
+        "max_epu32" => p!("sse41.pmaxud", (i32x4, i32x4) -> i32x4),
+        "min_epi32" => p!("sse41.pminsd", (i32x4, i32x4) -> i32x4),
+        "min_epi8" => p!("sse41.pminsb", (i8x16, i8x16) -> i8x16),
+        "min_epu16" => p!("sse41.pminuw", (i16x8, i16x8) -> i16x8),
+        "min_epu32" => p!("sse41.pminud", (i32x4, i32x4) -> i32x4),
+        "minpos_epu16" => p!("sse41.phminposuw", (i16x8) -> i16x8),
+        "mul_epi32" => p!("sse41.muldq", (i32x4, i32x4) -> i64x2),
+        "packus_epi32" => p!("sse41.packusdw", (i32x4, i32x4) -> i16x8),
+        "testc_si128" => p!("sse41.ptestc", (i64x2, i64x2) -> i32),
+        "testnzc_si128" => p!("sse41.ptestnzc", (i64x2, i64x2) -> i32),
+        "testz_si128" => p!("sse41.ptestz", (i64x2, i64x2) -> i32),
         _ => return None
     })
 }
