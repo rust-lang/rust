@@ -48,4 +48,4 @@ main tree or given feedback for changes that would be required.
 We follow the [Rust Code of Conduct](http://www.rust-lang.org/conduct.html).
 
 
-<! -- adapted from https://github.com/servo/servo/blob/master/CONTRIBUTING.md -->
+<!-- adapted from https://github.com/servo/servo/blob/master/CONTRIBUTING.md -->
