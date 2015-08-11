@@ -53,6 +53,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box collapsible_if::CollapsibleIf as LintPassObject);
     reg.register_lint_pass(box unicode::Unicode as LintPassObject);
     reg.register_lint_pass(box strings::StringAdd as LintPassObject);
+    reg.register_lint_pass(box misc::NeedlessReturn as LintPassObject);
 
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
                                            misc::SINGLE_MATCH, misc::STR_TO_STRING,
@@ -73,5 +74,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            collapsible_if::COLLAPSIBLE_IF,
                                            unicode::ZERO_WIDTH_SPACE,
                                            strings::STRING_ADD_ASSIGN,
+                                           misc::NEEDLESS_RETURN,
                                            ]);
 }
