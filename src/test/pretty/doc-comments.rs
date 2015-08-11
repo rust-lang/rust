@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --crate-type=lib
+
 // pp-exact
 
 // some single-line non-doc comment
