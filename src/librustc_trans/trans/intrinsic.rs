@@ -1037,7 +1037,7 @@ fn try_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         Call(bcx, func, &[data], None, dloc);
         Store(bcx, C_null(Type::i8p(bcx.ccx())), dest);
         bcx
-    } else if bcx.sess().target.target.options.is_like_msvc {
+    } else if wants_msvc_seh(bcx.sess()) {
         trans_msvc_try(bcx, func, data, dest, dloc)
     } else {
         trans_gnu_try(bcx, func, data, dest, dloc)
