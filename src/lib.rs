@@ -29,6 +29,7 @@ pub mod collapsible_if;
 pub mod unicode;
 pub mod utils;
 pub mod strings;
+pub mod methods;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -55,6 +56,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box unicode::Unicode as LintPassObject);
     reg.register_lint_pass(box strings::StringAdd as LintPassObject);
     reg.register_lint_pass(box misc::NeedlessReturn as LintPassObject);
+    reg.register_lint_pass(box methods::MethodsPass as LintPassObject);
 
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
                                            misc::SINGLE_MATCH, misc::STR_TO_STRING,
@@ -77,5 +79,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            strings::STRING_ADD_ASSIGN,
                                            misc::NEEDLESS_RETURN,
                                            misc::MODULO_ONE,
+                                           methods::OPTION_UNWRAP_USED,
+                                           methods::RESULT_UNWRAP_USED,
                                            ]);
 }
