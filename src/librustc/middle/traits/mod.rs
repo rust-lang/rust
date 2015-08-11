@@ -528,6 +528,15 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 }
 
+/// This marker is used in some caches to record whether the
+/// predicate, if it is found to be false, will yield a warning (due
+/// to RFC1214) or an error. We separate these two cases in the cache
+/// so that if we see the same predicate twice, first resulting in a
+/// warning, and next resulting in an error, we still report the
+/// error, rather than considering it a duplicate.
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RFC1214Warning(bool);
+
 impl<'tcx> ObligationCauseCode<'tcx> {
     pub fn is_rfc1214(&self) -> bool {
         match *self {
