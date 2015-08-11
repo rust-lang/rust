@@ -14,8 +14,6 @@
 
 use os::unix::raw::{uid_t, gid_t};
 use os::unix::io::{FromRawFd, RawFd, AsRawFd, IntoRawFd};
-#[cfg(stage0)]
-use prelude::v1::*;
 use process;
 use sys;
 use sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};

@@ -10,9 +10,6 @@
 
 #![allow(missing_docs)]
 
-#[cfg(stage0)]
-use prelude::v1::*;
-
 pub mod backtrace;
 pub mod condvar;
 pub mod mutex;
@@ -51,7 +48,3 @@ pub trait IntoInner<Inner> {
 pub trait FromInner<Inner> {
     fn from_inner(inner: Inner) -> Self;
 }
-
-#[cfg(stage0)]
-#[lang = "stack_exhausted"]
-pub fn stack_exhausted() {}

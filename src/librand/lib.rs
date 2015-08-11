@@ -34,19 +34,13 @@
 #![feature(num_bits_bytes)]
 #![feature(staged_api)]
 #![feature(step_by)]
-#![cfg_attr(stage0, feature(core, core_prelude))]
 
 #![cfg_attr(test, feature(test, rand, rustc_private, iter_order))]
 
 #![allow(deprecated)]
 
-#[cfg(stage0)] #[macro_use] extern crate core;
-
 #[cfg(test)] #[macro_use] extern crate std;
 #[cfg(test)] #[macro_use] extern crate log;
-
-#[cfg(stage0)]
-use core::prelude::v1::*;
 
 use core::marker::PhantomData;
 

@@ -12,9 +12,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(stage0)]
-use prelude::v1::*;
-
 use fs::{OpenOptions, Metadata};
 use io;
 use path::Path;

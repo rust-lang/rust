@@ -12,7 +12,6 @@
 
 #![allow(dead_code)]
 
-#[cfg(stage0)] use prelude::v1::*;
 use io::prelude::*;
 use rand::Rng;
 

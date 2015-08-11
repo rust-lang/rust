@@ -150,9 +150,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 #[cfg(not(test))]
 use boxed::Box;
 #[cfg(test)]

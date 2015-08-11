@@ -60,28 +60,26 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![doc(test(no_crate_inject))]
 
-#![cfg_attr(stage0, feature(no_std))]
-#![cfg_attr(stage0, no_std)]
-#![cfg_attr(not(stage0), feature(no_core))]
-#![cfg_attr(not(stage0), no_core)]
+#![no_core]
 #![allow(raw_pointer_derive)]
 #![deny(missing_docs)]
 
+#![feature(allow_internal_unstable)]
 #![feature(associated_type_defaults)]
+#![feature(concat_idents)]
+#![feature(const_fn)]
+#![feature(custom_attribute)]
+#![feature(fundamental)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
+#![feature(no_core)]
 #![feature(on_unimplemented)]
+#![feature(optin_builtin_traits)]
+#![feature(reflect)]
+#![feature(rustc_attrs)]
 #![feature(simd)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
-#![feature(rustc_attrs)]
-#![feature(optin_builtin_traits)]
-#![feature(fundamental)]
-#![feature(concat_idents)]
-#![feature(reflect)]
-#![feature(custom_attribute)]
-#![feature(const_fn)]
-#![feature(allow_internal_unstable)]
 
 #[macro_use]
 mod macros;
@@ -159,25 +157,3 @@ pub mod fmt;
 
 // note: does not need to be public
 mod tuple;
-
-// A curious inner-module that's not exported that contains the bindings of core
-// so that compiler-expanded references to `core::$foo` can be resolved within
-// core itself.
-//
-// Note that no crate-defined macros require this module due to the existence of
-// the `$crate` meta variable, only those expansions defined in the compiler
-// require this. This is because the compiler doesn't currently know that it's
-// compiling the core library when it's compiling this library, so it expands
-// all references to `::core::$foo`
-#[doc(hidden)]
-#[cfg(stage0)]
-mod core {
-    pub use intrinsics;     // derive(PartialOrd)
-    pub use fmt;            // format_args!
-    pub use clone;          // derive(Clone)
-    pub use cmp;            // derive(Ord)
-    pub use hash;           // derive(Hash)
-    pub use marker;         // derive(Copy)
-    pub use option;         // iterator protocol
-    pub use iter;           // iterator protocol
-}

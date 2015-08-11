@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(stage0)]
-use prelude::v1::*;
-
 use sys::fd::FileDesc;
 use io;
 use libc;

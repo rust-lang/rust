@@ -37,9 +37,6 @@ pub use self::UpgradeResult::*;
 pub use self::SelectionResult::*;
 use self::MyUpgrade::*;
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 use sync::mpsc::Receiver;
 use sync::mpsc::blocking::{self, SignalToken};
 use core::mem;

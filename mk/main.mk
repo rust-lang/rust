@@ -400,11 +400,6 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(foreach obj,$$(INSTALLED_OBJECTS_$(2)),\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(obj))
 
-ifeq ($(1),0)
-TSREQ$(1)_T_$(2)_H_$(3) += \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(call CFG_STATIC_LIB_NAME_$(2),morestack)
-endif
-
 # Prerequisites for a working stageN compiler and libraries, for a specific
 # target
 SREQ$(1)_T_$(2)_H_$(3) = \

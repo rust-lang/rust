@@ -32,9 +32,6 @@
 #![unstable(feature = "os_str",
             reason = "recently added as part of path/io reform")]
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 use borrow::{Borrow, Cow, ToOwned};
 use ffi::CString;
 use fmt::{self, Debug};
