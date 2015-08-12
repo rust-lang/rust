@@ -2419,6 +2419,49 @@ for types as needed by the compiler, and it is currently disallowed to
 explicitly implement it for a type.
 "##,
 
+E0323: r##"
+An associated const was implemented when another trait item was expected.
+Erroneous code example:
+
+```Rust
+trait Foo {
+    type N;
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    const N : u32 = 0;
+    // error: item `N` is an associated const, which doesn't match its
+    //        trait `<Bar as Foo>`
+}
+```
+
+To fix this error, please check you didn't misspell the associated const
+name or you did implement the good trait item. Example:
+
+```Rust
+struct Bar;
+
+trait Foo {
+    type N;
+}
+
+impl Foo for Bar {
+    type N = u32; // ok!
+}
+
+// or:
+trait Foo {
+    const N : u32;
+}
+
+impl Foo for Bar {
+    const N : u32 = 0; // ok!
+}
+```
+"##,
+
 E0326: r##"
 The types of any associated constants in a trait implementation must match the
 types in the trait definition. This error indicates that there was a mismatch.
@@ -2790,7 +2833,6 @@ register_diagnostics! {
     E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
-    E0323, // implemented an associated const when another trait item expected
     E0324, // implemented a method when another trait item expected
     E0325, // implemented an associated type when another trait item expected
     E0328, // cannot implement Unsize explicitly
