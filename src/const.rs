@@ -26,8 +26,8 @@ pub fn constant(cx: &Context, e: &Expr) -> Option<Constant> {
         &ExprBlock(ref block) => constant_block(cx, inner),
         &ExprIf(ref cond, ref then, ref otherwise) => 
             match constant(cx, cond) {
-                Some(LitBool(true)) => constant(cx, then),
-                Some(LitBool(false)) => constant(cx, otherwise),
+                Some(ConstantBool(true)) => constant(cx, then),
+                Some(ConstantBool(false)) => constant(cx, otherwise),
                 _ => None,
             },
         &ExprLit(ref lit) => Some(lit_to_constant(lit)),
