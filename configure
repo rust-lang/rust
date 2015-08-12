@@ -1,5 +1,1381 @@
 #!/bin/sh
 
+CFG_SELF="$0"
+
+go() {
+    msg "looking for configure programs"
+    need_cmd cmp
+    need_cmd mkdir
+    need_cmd printf
+    need_cmd cut
+    need_cmd head
+    need_cmd grep
+    need_cmd xargs
+    need_cmd cp
+    need_cmd find
+    need_cmd uname
+    need_cmd date
+    need_cmd tr
+    need_cmd sed
+    need_cmd file
+    need_cmd make
+
+    msg "inspecting environment"
+
+    CFG_OSTYPE=$(uname -s)
+    CFG_CPUTYPE=$(uname -m)
+
+    if [ $CFG_OSTYPE = Darwin ] && [ $CFG_CPUTYPE = i386 ]
+    then
+        # Darwin's `uname -s` lies and always returns i386. We have to use sysctl
+        # instead.
+        if sysctl hw.optional.x86_64 | grep -q ': 1'
+        then
+            CFG_CPUTYPE=x86_64
+        fi
+    fi
+
+    # The goal here is to come up with the same triple as LLVM would,
+    # at least for the subset of platforms we're willing to target.
+
+    case $CFG_OSTYPE in
+
+        Linux)
+            CFG_OSTYPE=unknown-linux-gnu
+            ;;
+
+        FreeBSD)
+            CFG_OSTYPE=unknown-freebsd
+            ;;
+
+        DragonFly)
+            CFG_OSTYPE=unknown-dragonfly
+            ;;
+
+        Bitrig)
+            CFG_OSTYPE=unknown-bitrig
+            ;;
+
+        OpenBSD)
+            CFG_OSTYPE=unknown-openbsd
+            ;;
+
+        NetBSD)
+            CFG_OSTYPE=unknown-netbsd
+            ;;
+
+        Darwin)
+            CFG_OSTYPE=apple-darwin
+            ;;
+
+        MINGW*)
+            # msys' `uname` does not print gcc configuration, but prints msys
+            # configuration. so we cannot believe `uname -m`:
+            # msys1 is always i686 and msys2 is always x86_64.
+            # instead, msys defines $MSYSTEM which is MINGW32 on i686 and
+            # MINGW64 on x86_64.
+            CFG_CPUTYPE=i686
+            CFG_OSTYPE=pc-windows-gnu
+            if [ "$MSYSTEM" = MINGW64 ]
+            then
+                CFG_CPUTYPE=x86_64
+            fi
+            ;;
+
+        MSYS*)
+            CFG_OSTYPE=pc-windows-gnu
+            ;;
+
+        # Thad's Cygwin identifiers below
+
+        #   Vista 32 bit
+        CYGWIN_NT-6.0)
+            CFG_OSTYPE=pc-windows-gnu
+            CFG_CPUTYPE=i686
+            ;;
+
+        #   Vista 64 bit
+        CYGWIN_NT-6.0-WOW64)
+            CFG_OSTYPE=pc-windows-gnu
+            CFG_CPUTYPE=x86_64
+            ;;
+
+        #   Win 7 32 bit
+        CYGWIN_NT-6.1)
+            CFG_OSTYPE=pc-windows-gnu
+            CFG_CPUTYPE=i686
+            ;;
+
+        #   Win 7 64 bit
+        CYGWIN_NT-6.1-WOW64)
+            CFG_OSTYPE=pc-windows-gnu
+            CFG_CPUTYPE=x86_64
+            ;;
+
+        #   Win 8 # uname -s on 64-bit cygwin does not contain WOW64, so simply use uname -m to detect arch (works in my install)
+        CYGWIN_NT-6.3)
+                CFG_OSTYPE=pc-windows-gnu
+                ;;
+        # We do not detect other OS such as XP/2003 using 64 bit using uname.
+        # If we want to in the future, we will need to use Cygwin - Chuck's csih helper in /usr/lib/csih/winProductName.exe or alternative.
+        *)
+            err "unknown OS type: $CFG_OSTYPE"
+            ;;
+    esac
+
+
+    case $CFG_CPUTYPE in
+
+        i386 | i486 | i686 | i786 | x86)
+            CFG_CPUTYPE=i686
+            ;;
+
+        xscale | arm)
+            CFG_CPUTYPE=arm
+            ;;
+
+        armv7l)
+            CFG_CPUTYPE=arm
+            CFG_OSTYPE="${CFG_OSTYPE}eabihf"
+            ;;
+
+        aarch64)
+            CFG_CPUTYPE=aarch64
+            ;;
+
+        # At some point, when ppc64[le] support happens, this will need to do
+        # something clever. For now it's safe to assume that we're only ever
+        # interested in building 32 bit.
+        powerpc | ppc | ppc64)
+            CFG_CPUTYPE=powerpc
+            ;;
+
+        x86_64 | x86-64 | x64 | amd64)
+            CFG_CPUTYPE=x86_64
+            ;;
+
+        *)
+            err "unknown CPU type: $CFG_CPUTYPE"
+    esac
+
+    # Detect 64 bit linux systems with 32 bit userland and force 32 bit compilation
+    if [ $CFG_OSTYPE = unknown-linux-gnu ] && [ $CFG_CPUTYPE = x86_64 ]
+    then
+        # $SHELL does not exist in standard 'sh', so probably only exists
+        # if configure is running in an interactive bash shell. /usr/bin/env
+        # exists *everywhere*.
+        BIN_TO_PROBE="$SHELL"
+        if [ -z "$BIN_TO_PROBE" ] && [ -e "/usr/bin/env" ]; then
+            BIN_TO_PROBE="/usr/bin/env"
+        fi
+        if [ -n "$BIN_TO_PROBE" ]; then
+            file -L "$BIN_TO_PROBE" | grep -q "x86[_-]64"
+            if [ $? != 0 ]; then
+                CFG_CPUTYPE=i686
+            fi
+        fi
+    fi
+
+
+    DEFAULT_BUILD="${CFG_CPUTYPE}-${CFG_OSTYPE}"
+
+    CFG_SRC_DIR="$(abs_path $(dirname "${CFG_SELF}"))/"
+    CFG_SRC_DIR_RELATIVE="$(dirname "${CFG_SELF}")/"
+    CFG_BUILD_DIR="$(pwd)/"
+    CFG_CONFIGURE_ARGS="$@"
+
+    HELP=0
+    if [ "$1" = "--help" ]
+    then
+        HELP=1
+        shift
+        echo
+        echo "Usage: $CFG_SELF [options]"
+        echo
+        echo "Options:"
+        echo
+    else
+        msg "recreating config.tmp"
+        echo '' >config.tmp
+
+        step_msg "processing $CFG_SELF args"
+    fi
+
+    BOOL_OPTIONS=""
+    VAL_OPTIONS=""
+
+    opt debug 0 "debug mode; disables optimization unless \`--enable-optimize\` given"
+    opt valgrind 0 "run tests with valgrind (memcheck by default)"
+    opt helgrind 0 "run tests with helgrind instead of memcheck"
+    opt valgrind-rpass 1 "run rpass-valgrind tests with valgrind"
+    opt docs     1 "build standard library documentation"
+    opt compiler-docs     0 "build compiler documentation"
+    opt optimize-tests 1 "build tests with optimizations"
+    opt debuginfo-tests 0 "build tests with debugger metadata"
+    opt libcpp 1 "build with llvm with libc++ instead of libstdc++ when using clang"
+    opt llvm-assertions 0 "build LLVM with assertions"
+    opt debug-assertions 0 "build with debugging assertions"
+    opt fast-make 0 "use .gitmodules as timestamp for submodule deps"
+    opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
+    opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
+    opt llvm-static-stdcpp 0 "statically link to libstdc++ for LLVM"
+    opt rpath 0 "build rpaths into rustc itself"
+    # This is used by the automation to produce single-target nightlies
+    opt dist-host-only 0 "only install bins for the host architecture"
+    opt inject-std-version 1 "inject the current compiler version of libstd into programs"
+    opt llvm-version-check 1 "check if the LLVM version is supported, build anyway"
+
+    # Optimization and debugging options. These may be overridden by the release channel, etc.
+    opt_nosave optimize 1 "build optimized rust code"
+    opt_nosave optimize-cxx 1 "build optimized C++ code"
+    opt_nosave optimize-llvm 1 "build optimized LLVM"
+    opt_nosave llvm-assertions 0 "build LLVM with assertions"
+    opt_nosave debug-assertions 0 "build with debugging assertions"
+    opt_nosave debuginfo 0 "build with debugger metadata"
+    opt_nosave debug-jemalloc 0 "build jemalloc with --enable-debug --enable-fill"
+
+    valopt localstatedir "/var/lib" "local state directory"
+    valopt sysconfdir "/etc" "install system configuration files"
+
+    valopt datadir "${CFG_PREFIX}/share" "install data"
+    valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
+    valopt llvm-root "" "set LLVM root"
+    valopt python "" "set path to python"
+    valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
+    valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
+    valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path (deprecated)"
+    valopt arm-linux-androideabi-ndk "" "arm-linux-androideabi NDK standalone path"
+    valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
+    valopt release-channel "dev" "the name of the release channel to build"
+    valopt musl-root "/usr/local" "MUSL root installation directory"
+
+    # Many of these are saved below during the "writing configuration" step
+    # (others are conditionally saved).
+    opt_nosave manage-submodules 1 "let the build manage the git submodules"
+    opt_nosave clang 0 "prefer clang to gcc for building the runtime"
+    opt_nosave jemalloc 1 "build liballoc with jemalloc"
+    opt elf-tls 1 "elf thread local storage on platforms where supported"
+
+    valopt_nosave prefix "/usr/local" "set installation prefix"
+    valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
+    valopt_nosave host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
+    valopt_nosave target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
+    valopt_nosave mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
+
+    # Temporarily support old triples until buildbots get updated
+    CFG_BUILD=$(to_llvm_triple $CFG_BUILD)
+    putvar CFG_BUILD # Yes, this creates a duplicate entry, but the last one wins.
+    CFG_HOST=$(to_llvm_triple $CFG_HOST)
+    CFG_TARGET=$(to_llvm_triple $CFG_TARGET)
+
+    # On windows we just store the libraries in the bin directory because
+    # there's no rpath. This is where the build system itself puts libraries;
+    # --libdir is used to configure the installation directory.
+    # FIXME: This needs to parameterized over target triples. Do it in platform.mk
+    if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ]
+    then
+        CFG_LIBDIR_RELATIVE=bin
+    else
+        CFG_LIBDIR_RELATIVE=lib
+    fi
+
+    valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries (do not set it on windows platform)"
+
+    case "$CFG_LIBDIR" in
+        "$CFG_PREFIX"/*) CAT_INC=2;;
+        "$CFG_PREFIX"*)  CAT_INC=1;;
+        *)
+            err "libdir must begin with the prefix. Use --prefix to set it accordingly.";;
+    esac
+
+    CFG_LIBDIR_RELATIVE=$(echo ${CFG_LIBDIR} | cut -c$((${#CFG_PREFIX}+${CAT_INC}))-)
+
+    if ( [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ] ) \
+        && [ "$CFG_LIBDIR_RELATIVE" != "bin" ]; then
+        err "libdir on windows should be set to 'bin'"
+    fi
+
+    if [ $HELP -eq 1 ]
+    then
+        echo
+        exit 0
+    fi
+
+    # Validate Options
+    step_msg "validating $CFG_SELF args"
+    validate_opt
+
+    # Validate the release channel, and configure options
+    case "$CFG_RELEASE_CHANNEL" in
+        nightly )
+            msg "overriding settings for $CFG_RELEASE_CHANNEL"
+            CFG_ENABLE_LLVM_ASSERTIONS=1
+            ;;
+        dev | beta | stable)
+            ;;
+        *)
+            err "release channel must be 'dev', 'nightly', 'beta' or 'stable'"
+            ;;
+    esac
+
+    # Adjust perf and debug options for debug mode
+    if [ -n "$CFG_ENABLE_DEBUG" ]; then
+        msg "debug mode enabled, setting performance options"
+        if [ -z "$CFG_ENABLE_OPTIMIZE_PROVIDED" ]; then
+            msg "optimization not explicitly enabled, disabling optimization"
+            CFG_DISABLE_OPTIMIZE=1
+            CFG_DISABLE_OPTIMIZE_CXX=1
+        fi
+
+        # Set following variables to 1 unless setting already provided
+        enable_if_not_disabled debug-assertions
+        enable_if_not_disabled debug-jemalloc
+        enable_if_not_disabled debuginfo
+        enable_if_not_disabled llvm-assertions
+    fi
+
+    # OK, now write the debugging options
+    if [ -n "$CFG_DISABLE_OPTIMIZE" ]; then putvar CFG_DISABLE_OPTIMIZE; fi
+    if [ -n "$CFG_DISABLE_OPTIMIZE_CXX" ]; then putvar CFG_DISABLE_OPTIMIZE_CXX; fi
+    if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then putvar CFG_DISABLE_OPTIMIZE_LLVM; fi
+    if [ -n "$CFG_ENABLE_LLVM_ASSERTIONS" ]; then putvar CFG_ENABLE_LLVM_ASSERTIONS; fi
+    if [ -n "$CFG_ENABLE_DEBUG_ASSERTIONS" ]; then putvar CFG_ENABLE_DEBUG_ASSERTIONS; fi
+    if [ -n "$CFG_ENABLE_DEBUGINFO" ]; then putvar CFG_ENABLE_DEBUGINFO; fi
+    if [ -n "$CFG_ENABLE_DEBUG_JEMALLOC" ]; then putvar CFG_ENABLE_DEBUG_JEMALLOC; fi
+
+    # A magic value that allows the compiler to use unstable features
+    # during the bootstrap even when doing so would normally be an error
+    # because of feature staging or because the build turns on
+    # warnings-as-errors and unstable features default to warnings.  The
+    # build has to match this key in an env var. Meant to be a mild
+    # deterrent from users just turning on unstable features on the stable
+    # channel.
+    # Basing CFG_BOOTSTRAP_KEY on CFG_BOOTSTRAP_KEY lets it get picked up
+    # during a Makefile reconfig.
+    CFG_BOOTSTRAP_KEY="${CFG_BOOTSTRAP_KEY-$(date +%H:%M:%S)}"
+    putvar CFG_BOOTSTRAP_KEY
+
+    step_msg "looking for build programs"
+
+    probe_need CFG_CURLORWGET  curl wget
+    if [ -z "$CFG_PYTHON_PROVIDED" ]; then
+        probe_need CFG_PYTHON      python2.7 python2.6 python2 python
+    fi
+
+    python_version=$($CFG_PYTHON -V 2>&1)
+    if [ $(echo $python_version | grep -c '^Python 2\.[4567]') -ne 1 ]; then
+        err "Found $python_version, but LLVM requires Python 2.4-2.7"
+    fi
+
+    # If we have no git directory then we are probably a tarball distribution
+    # and shouldn't attempt to load submodules
+    if [ ! -e ${CFG_SRC_DIR}.git ]
+    then
+        probe CFG_GIT          git
+        msg "git: no git directory. disabling submodules"
+        CFG_DISABLE_MANAGE_SUBMODULES=1
+    else
+        probe_need CFG_GIT     git
+    fi
+
+    # Use `md5sum` on GNU platforms, or `md5 -q` on BSD
+    probe CFG_MD5              md5
+    probe CFG_MD5SUM           md5sum
+    if [ -n "$CFG_MD5" ]
+    then
+        CFG_HASH_COMMAND="$CFG_MD5 -q | cut -c 1-8"
+    elif [ -n "$CFG_MD5SUM" ]
+    then
+        CFG_HASH_COMMAND="$CFG_MD5SUM | cut -c 1-8"
+    else
+        err 'could not find one of: md5 md5sum'
+    fi
+    putvar CFG_HASH_COMMAND
+
+    probe CFG_CLANG            clang++
+    probe CFG_CCACHE           ccache
+    probe CFG_GCC              gcc
+    probe CFG_LD               ld
+    probe CFG_VALGRIND         valgrind
+    probe CFG_PERF             perf
+    probe CFG_ISCC             iscc
+    probe CFG_ANTLR4           antlr4
+    probe CFG_GRUN             grun
+    probe CFG_FLEX             flex
+    probe CFG_BISON            bison
+    probe CFG_PANDOC           pandoc
+    probe CFG_XELATEX          xelatex
+    probe CFG_GDB              gdb
+    probe CFG_LLDB             lldb
+
+    # On MacOS X, invoking `javac` pops up a dialog if the JDK is not
+    # installed. Since `javac` is only used if `antlr4` is available,
+    # probe for it only in this case.
+    if [ -n "$CFG_ANTLR4" ]
+    then
+        probe CFG_JAVAC            javac
+    fi
+
+    # the valgrind rpass tests will fail if you don't have a valgrind, but they're
+    # only disabled if you opt out.
+    if [ -z "$CFG_VALGRIND" ]
+    then
+        # If the user has explicitly asked for valgrind tests, then fail
+        if [ -n "$CFG_ENABLE_VALGRIND" ] && [ -n "$CFG_ENABLE_VALGRIND_PROVIDED" ]
+        then
+            err "No valgrind present, but valgrind tests explicitly requested"
+        else
+            CFG_DISABLE_VALGRIND_RPASS=1
+            putvar CFG_DISABLE_VALGRIND_RPASS
+        fi
+    fi
+
+    if [ -n "$CFG_GDB" ]
+    then
+        # Store GDB's version
+        CFG_GDB_VERSION=$($CFG_GDB --version 2>/dev/null | head -1)
+        putvar CFG_GDB_VERSION
+    fi
+
+    if [ -n "$CFG_LLDB" ]
+    then
+        # Store LLDB's version
+        CFG_LLDB_VERSION=$($CFG_LLDB --version 2>/dev/null | head -1)
+        putvar CFG_LLDB_VERSION
+
+        # If CFG_LLDB_PYTHON_DIR is not already set from the outside and valid, try to read it from
+        # LLDB via the -P commandline options.
+        if [ -z "$CFG_LLDB_PYTHON_DIR" ] || [ ! -d "$CFG_LLDB_PYTHON_DIR" ]
+        then
+            CFG_LLDB_PYTHON_DIR=$($CFG_LLDB -P)
+
+            # If CFG_LLDB_PYTHON_DIR is not a valid directory, set it to something more readable
+            if [ ! -d "$CFG_LLDB_PYTHON_DIR" ]
+            then
+                CFG_LLDB_PYTHON_DIR="LLDB_PYTHON_DIRECTORY_NOT_FOUND"
+            fi
+
+            putvar CFG_LLDB_PYTHON_DIR
+        fi
+    fi
+
+    step_msg "looking for target specific programs"
+
+    probe CFG_ADB        adb
+
+    if [ -n "$CFG_PANDOC" ]
+    then
+        # Extract "MAJOR MINOR" from Pandoc's version number
+        PV_MAJOR_MINOR=$(pandoc --version | grep '^pandoc' |
+            sed -E 's/pandoc(.exe)? ([0-9]+)\.([0-9]+).*/\2 \3/')
+
+        MIN_PV_MAJOR="1"
+        MIN_PV_MINOR="9"
+
+        # these patterns are shell globs, *not* regexps
+        PV_MAJOR=${PV_MAJOR_MINOR% *}
+        PV_MINOR=${PV_MAJOR_MINOR#* }
+
+        if [ "$PV_MAJOR" -lt "$MIN_PV_MAJOR" ] || [ "$PV_MINOR" -lt "$MIN_PV_MINOR" ]
+        then
+            step_msg "pandoc $PV_MAJOR.$PV_MINOR is too old. Need at least $MIN_PV_MAJOR.$MIN_PV_MINOR. Disabling"
+            BAD_PANDOC=1
+        fi
+    fi
+
+    BIN_SUF=
+    if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ]
+    then
+        BIN_SUF=.exe
+    fi
+
+    if [ -n "$CFG_ENABLE_LOCAL_RUST" ]
+    then
+        system_rustc=$(which rustc)
+        if [ -f ${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF} ]
+        then
+            : # everything already configured
+        elif [ -n "$system_rustc" ]
+        then
+            # we assume that rustc is in a /bin directory
+            CFG_LOCAL_RUST_ROOT=${system_rustc%/bin/rustc}
+        else
+            err "no local rust to use"
+        fi
+
+        CMD="${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF}"
+        LRV=$($CMD --version)
+        if [ $? -ne 0 ]
+        then
+            step_msg "failure while running $CMD --version"
+            exit 1
+        fi
+        step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: $LRV"
+        putvar CFG_LOCAL_RUST_ROOT
+    fi
+
+    # Force bitrig to build with clang; gcc doesn't like us there
+    if [ $CFG_OSTYPE = unknown-bitrig ]
+    then
+        step_msg "on Bitrig, forcing use of clang, disabling jemalloc"
+        CFG_ENABLE_CLANG=1
+        CFG_DISABLE_JEMALLOC=1
+    fi
+
+    # OS X 10.9, gcc is actually clang. This can cause some confusion in the build
+    # system, so if we find that gcc is clang, we should just use clang directly.
+    if [ $CFG_OSTYPE = apple-darwin ] && [ -z "$CFG_ENABLE_CLANG" ]
+    then
+        CFG_OSX_GCC_VERSION=$("$CFG_GCC" --version 2>&1 | grep "Apple LLVM version")
+        if [ $? -eq 0 ]
+        then
+            step_msg "on OS X >=10.9, forcing use of clang"
+            CFG_ENABLE_CLANG=1
+        else
+            if [ $("$CFG_GCC" --version 2>&1 | grep -c ' 4\.[0-6]') -ne 0 ]; then
+                step_msg "older GCC found, using clang instead"
+                CFG_ENABLE_CLANG=1
+            else
+                # on OS X, with xcode 5 and newer, certain developers may have
+                # cc, gcc and g++ point to a  mixture of clang and gcc
+                # if so, this will create very strange build errors
+                # this last stanza is to detect some such problems and save the future rust
+                # contributor some time solving that issue.
+                # this detection could be generalized to other OSes aside from OS X
+                # but the issue seems most likely to happen on OS X
+
+                chk_cc () {
+                    $1 --version 2> /dev/null | grep -q $2
+                }
+                # check that gcc, cc and g++ all point to the same compiler.
+                # note that for xcode 5, g++ points to clang, not clang++
+                if !((chk_cc gcc clang  && chk_cc g++ clang) ||
+                        (chk_cc gcc gcc  &&( chk_cc g++ g++ || chk g++ gcc))); then
+                    err "the gcc and g++ in your path point to different compilers.
+    Check which versions are in your path with gcc --version and g++ --version.
+    To resolve this problem, either fix your PATH  or run configure with --enable-clang"
+                fi
+
+            fi
+        fi
+    fi
+
+    # If the clang isn't already enabled, check for GCC, and if it is missing, turn
+    # on clang as a backup.
+    if [ -z "$CFG_ENABLE_CLANG" ]
+    then
+        CFG_GCC_VERSION=$("$CFG_GCC" --version 2>&1)
+        if [ $? -ne 0 ]
+        then
+            step_msg "GCC not installed, will try using Clang"
+            CFG_ENABLE_CLANG=1
+        fi
+    fi
+
+    # Okay, at this point, we have made up our minds about whether we are
+    # going to force CFG_ENABLE_CLANG or not; save the setting if so.
+    if [ -n "$CFG_ENABLE_CLANG" ]
+    then
+        putvar CFG_ENABLE_CLANG
+    fi
+
+    # Same with jemalloc.  save the setting here.
+    if [ -n "$CFG_DISABLE_JEMALLOC" ]
+    then
+        putvar CFG_DISABLE_JEMALLOC
+    fi
+
+    if [ -n "$CFG_LLVM_ROOT" ] && [ -z "$CFG_DISABLE_LLVM_VERSION_CHECK" ] && [ -e "$CFG_LLVM_ROOT/bin/llvm-config" ]
+    then
+        step_msg "using custom LLVM at $CFG_LLVM_ROOT"
+
+        LLVM_CONFIG="$CFG_LLVM_ROOT/bin/llvm-config"
+        LLVM_VERSION=$($LLVM_CONFIG --version)
+
+        case $LLVM_VERSION in
+            (3.[5-7]*)
+                msg "found ok version of LLVM: $LLVM_VERSION"
+                ;;
+            (*)
+                err "bad LLVM version: $LLVM_VERSION, need >=3.5"
+                ;;
+        esac
+    fi
+
+    # Even when the user overrides the choice of CC, still try to detect
+    # clang to disable some clang-specific warnings.  We here draw a
+    # distinction between:
+    #
+    #  CFG_ENABLE_CLANG : passed --enable-clang, or host "requires" clang,
+    #  CFG_USING_CLANG : compiler (clang / gcc / $CC) looks like clang.
+    #
+    # This distinction is important because there are some safeguards we
+    # would prefer to skip when merely CFG_USING_CLANG is set; but when
+    # CFG_ENABLE_CLANG is set, that indicates that we are opting into
+    # running such safeguards.
+
+    if [ -n "$CC" ]
+    then
+        msg "skipping compiler inference steps; using provided CC=$CC"
+        CFG_CC="$CC"
+
+        CFG_OSX_CC_VERSION=$("$CFG_CC" --version 2>&1 | grep "clang")
+        if [ $? -eq 0 ]
+        then
+            step_msg "note, user-provided CC looks like clang; CC=$CC."
+            CFG_USING_CLANG=1
+            putvar CFG_USING_CLANG
+        fi
+    else
+        if [ -n "$CFG_ENABLE_CLANG" ]
+        then
+            if [ -z "$CFG_CLANG" ]
+            then
+                err "clang requested but not found"
+            fi
+            CFG_CC="$CFG_CLANG"
+            CFG_USING_CLANG=1
+            putvar CFG_USING_CLANG
+        else
+            CFG_CC="gcc"
+        fi
+    fi
+
+    if [ -n "$CFG_ENABLE_CLANG" ]
+    then
+        case "$CC" in
+            (''|*clang)
+                CFG_CLANG_REPORTED_VERSION=$($CFG_CC --version | grep version)
+
+                if echo $CFG_CLANG_REPORTED_VERSION | grep -q "(based on LLVM "; then
+                    CFG_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*(based on LLVM \(.*\))/\1/')
+                elif echo $CFG_CLANG_REPORTED_VERSION | grep -q "Apple LLVM"; then
+                    CFG_OSX_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*version \(.*\) .*/\1/')
+                else
+                    CFG_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*version \(.*\) .*/\1/')
+                fi
+
+                if [ -n "$CFG_OSX_CLANG_VERSION" ]
+                then
+                    case $CFG_OSX_CLANG_VERSION in
+                        (7.0*)
+                            step_msg "found ok version of APPLE CLANG: $CFG_OSX_CLANG_VERSION"
+                            ;;
+                        (*)
+                            err "bad APPLE CLANG version: $CFG_OSX_CLANG_VERSION, need >=7.0"
+                            ;;
+                    esac
+                else
+                    case $CFG_CLANG_VERSION in
+                        (3.2* | 3.3* | 3.4* | 3.5* | 3.6* | 3.7*)
+                            step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
+                            ;;
+                        (*)
+                            err "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn"
+                            ;;
+                    esac
+                fi
+
+                if [ -z "$CC" ]
+                then
+                    CFG_CC="clang"
+                    CFG_CXX="clang++"
+                fi
+        esac
+    fi
+
+    if [ -n "$CFG_ENABLE_CCACHE" ]
+    then
+        if [ -z "$CFG_CCACHE" ]
+        then
+            err "ccache requested but not found"
+        fi
+
+        CFG_CC="ccache $CFG_CC"
+    fi
+
+    if [ -z "$CC" ] && [ -z "$CFG_ENABLE_CLANG" ] && [ -z "$CFG_GCC" ]
+    then
+        err "either clang or gcc is required"
+    fi
+
+    # All safeguards based on $CFG_ENABLE_CLANG should occur before this
+    # point in the script; after this point, script logic should inspect
+    # $CFG_USING_CLANG rather than $CFG_ENABLE_CLANG.
+
+    # Set CFG_{CC,CXX,CPP,CFLAGS,CXXFLAGS}
+    envopt CC
+    envopt CXX
+    envopt CPP
+    envopt CFLAGS
+    envopt CXXFLAGS
+
+    # a little post-processing of various config values
+    CFG_PREFIX=${CFG_PREFIX%/}
+    CFG_MANDIR=${CFG_MANDIR%/}
+    CFG_HOST="$(echo $CFG_HOST | tr ',' ' ')"
+    CFG_TARGET="$(echo $CFG_TARGET | tr ',' ' ')"
+    CFG_SUPPORTED_TARGET=""
+    for target_file in ${CFG_SRC_DIR}mk/cfg/*.mk; do
+        CFG_SUPPORTED_TARGET="${CFG_SUPPORTED_TARGET} $(basename "$target_file" .mk)"
+    done
+
+    # copy build-triples to host-triples so that builds are a subset of hosts
+    V_TEMP=""
+    for i in $CFG_BUILD $CFG_HOST;
+    do
+        echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
+    done
+    CFG_HOST=$V_TEMP
+
+    # copy host-triples to target-triples so that hosts are a subset of targets
+    V_TEMP=""
+    for i in $CFG_HOST $CFG_TARGET;
+    do
+        echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
+    done
+    CFG_TARGET=$V_TEMP
+
+    # check target-specific tool-chains
+    for i in $CFG_TARGET
+    do
+        L_CHECK=false
+        for j in $CFG_SUPPORTED_TARGET
+        do
+            if [ $i = $j ]
+            then
+                L_CHECK=true
+            fi
+        done
+
+        if [ $L_CHECK = false ]
+        then
+            err "unsupported target triples \"$i\" found"
+        fi
+
+        case $i in
+            *android*)
+                upper_snake_target=$(echo "$i" | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
+                eval ndk=\$"CFG_${upper_snake_target}_NDK"
+                if [ -z "$ndk" ]
+                then
+                    ndk=$CFG_ANDROID_CROSS_PATH
+                    eval "CFG_${upper_snake_target}_NDK"=$CFG_ANDROID_CROSS_PATH
+                    warn "generic/default Android NDK option is deprecated (use --$i-ndk option instead)"
+                fi
+
+                # Perform a basic sanity check of the NDK
+                for android_ndk_tool in "$ndk/bin/$i-gcc" "$ndk/bin/$i-g++" "$ndk/bin/$i-ar"
+                do
+                    if [ ! -f $android_ndk_tool ]
+                    then
+                        err "NDK tool $android_ndk_tool not found (bad or missing --$i-ndk option?)"
+                    fi
+                done
+                ;;
+
+            arm-apple-darwin)
+                if [ $CFG_OSTYPE != apple-darwin ]
+                then
+                    err "The iOS target is only supported on Mac OS X"
+                fi
+                ;;
+
+
+            *-musl)
+                if [ ! -f $CFG_MUSL_ROOT/lib/libc.a ]
+                then
+                    err "musl libc $CFG_MUSL_ROOT/lib/libc.a not found"
+                fi
+                ;;
+
+            *-msvc)
+                # Currently the build system is not configured to build jemalloc
+                # with MSVC, so we omit this optional dependency.
+                step_msg "targeting MSVC, disabling jemalloc"
+                CFG_DISABLE_JEMALLOC=1
+                putvar CFG_DISABLE_JEMALLOC
+
+                # There are some MSYS python builds which will auto-translate
+                # windows-style paths to MSYS-style paths in Python itself.
+                # Unfortunately this breaks LLVM's build system as somewhere along
+                # the line LLVM prints a path into a file from Python and then CMake
+                # later tries to interpret that path. If Python prints a MSYS path
+                # and CMake tries to use it as a Windows path, you're gonna have a
+                # Bad Time.
+                #
+                # Consequently here we try to detect when that happens and print an
+                # error if it does.
+                if $CFG_PYTHON -c 'import sys; print sys.argv[1]' $(pwd) | grep '^/'
+                then
+                    err "python is silently translating windows paths to MSYS paths \
+                     and the build will fail if this python is used.\n\n \
+                     Either an official python install must be used or an \
+                     alternative python package in MinGW must be used."
+                fi
+
+                # MSVC requires cmake because that's how we're going to build LLVM
+                probe_need CFG_CMAKE cmake
+
+                # Use the REG program to figure out where VS is installed
+                # We need to figure out where cl.exe and link.exe are, so we do some
+                # munging and some probing here. We also look for the default
+                # INCLUDE and LIB variables for MSVC so we can set those in the
+                # build system as well.
+                install=$(reg QUERY \
+                           'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\14.0' \
+                           -v InstallDir)
+                if [ -z "$install" ]; then
+                  install=$(reg QUERY \
+                             'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\12.0' \
+                             -v InstallDir)
+                fi
+                need_ok "couldn't find visual studio install root"
+                CFG_MSVC_ROOT=$(echo "$install" | grep InstallDir | sed 's/.*REG_SZ[ ]*//')
+                CFG_MSVC_ROOT=$(dirname "$CFG_MSVC_ROOT")
+                CFG_MSVC_ROOT=$(dirname "$CFG_MSVC_ROOT")
+                putvar CFG_MSVC_ROOT
+
+                case $i in
+                    x86_64-*)
+                        bits=x86_64
+                        msvc_part=amd64
+                        ;;
+                    i686-*)
+                        bits=i386
+                        msvc_part=
+                        ;;
+                    *)
+                        err "can only target x86 targets for MSVC"
+                        ;;
+                esac
+                bindir="${CFG_MSVC_ROOT}/VC/bin"
+                if [ -n "$msvc_part" ]; then
+                    bindir="$bindir/$msvc_part"
+                fi
+                eval CFG_MSVC_BINDIR_$bits="\"$bindir\""
+                eval CFG_MSVC_CL_$bits="\"$bindir/cl.exe\""
+                eval CFG_MSVC_LIB_$bits="\"$bindir/lib.exe\""
+                eval CFG_MSVC_LINK_$bits="\"$bindir/link.exe\""
+
+                vcvarsall="${CFG_MSVC_ROOT}/VC/vcvarsall.bat"
+                include_path=$(cmd /c "\"$vcvarsall\" $msvc_part && cmd /c echo %INCLUDE%")
+                need_ok "failed to learn about MSVC's INCLUDE"
+                lib_path=$(cmd /c "\"$vcvarsall\" $msvc_part && cmd /c echo %LIB%")
+                need_ok "failed to learn about MSVC's LIB"
+
+                eval CFG_MSVC_INCLUDE_PATH_${bits}="\"$include_path\""
+                eval CFG_MSVC_LIB_PATH_${bits}="\"$lib_path\""
+
+                putvar CFG_MSVC_BINDIR_${bits}
+                putvar CFG_MSVC_CL_${bits}
+                putvar CFG_MSVC_LIB_${bits}
+                putvar CFG_MSVC_LINK_${bits}
+                putvar CFG_MSVC_INCLUDE_PATH_${bits}
+                putvar CFG_MSVC_LIB_PATH_${bits}
+                ;;
+
+            *)
+                ;;
+        esac
+    done
+
+    if [ -n "$CFG_PERF" ]
+    then
+        HAVE_PERF_LOGFD=$($CFG_PERF stat --log-fd 2>&1 | grep 'unknown option')
+        if [ -z "$HAVE_PERF_LOGFD" ];
+        then
+            CFG_PERF_WITH_LOGFD=1
+            putvar CFG_PERF_WITH_LOGFD
+        fi
+    fi
+
+    step_msg "making directories"
+
+    for i in \
+        doc doc/std doc/extra \
+        dl tmp dist
+    do
+        make_dir $i
+    done
+
+    for t in $CFG_HOST
+    do
+        make_dir $t/llvm
+    done
+
+    for t in $CFG_HOST
+    do
+        make_dir $t/rustllvm
+    done
+
+    for t in $CFG_TARGET
+    do
+        make_dir $t/rt
+        for s in 0 1 2 3
+        do
+            make_dir $t/rt/stage$s
+            make_dir $t/rt/jemalloc
+            make_dir $t/rt/compiler-rt
+            for i in                                          \
+                isaac sync test \
+                arch/i386 arch/x86_64 arch/arm arch/aarch64 arch/mips arch/powerpc
+            do
+                make_dir $t/rt/stage$s/$i
+            done
+        done
+    done
+
+    for h in $CFG_HOST
+    do
+        for t in $CFG_TARGET
+        do
+            # host lib dir stage0
+            make_dir $h/stage0/lib
+
+            # target bin dir stage0
+            make_dir $h/stage0/lib/rustlib/$t/bin
+
+            # target lib dir stage0
+            make_dir $h/stage0/lib/rustlib/$t/lib
+
+            for i in 0 1 2 3
+            do
+                # host bin dir
+                make_dir $h/stage$i/bin
+
+                # host lib dir
+                make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE
+
+                # host test dir
+                make_dir $h/stage$i/test
+
+                # target bin dir
+                make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE/rustlib/$t/bin
+
+                # target lib dir
+                make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE/rustlib/$t/lib
+            done
+        done
+
+        make_dir $h/test/run-pass
+        make_dir $h/test/run-pass-valgrind
+        make_dir $h/test/run-pass-fulldeps
+        make_dir $h/test/run-fail
+        make_dir $h/test/run-fail-fulldeps
+        make_dir $h/test/compile-fail
+        make_dir $h/test/parse-fail
+        make_dir $h/test/compile-fail-fulldeps
+        make_dir $h/test/bench
+        make_dir $h/test/perf
+        make_dir $h/test/pretty
+        make_dir $h/test/debuginfo-gdb
+        make_dir $h/test/debuginfo-lldb
+        make_dir $h/test/codegen
+        make_dir $h/test/rustdoc
+    done
+
+    # Configure submodules
+    step_msg "configuring submodules"
+
+    # Have to be in the top of src directory for this
+    if [ -z $CFG_DISABLE_MANAGE_SUBMODULES ]
+    then
+        cd ${CFG_SRC_DIR}
+
+        msg "git: submodule sync"
+        "${CFG_GIT}" submodule sync
+
+        msg "git: submodule init"
+        "${CFG_GIT}" submodule init
+
+        # Disable submodules that we're not using
+        if [ -n "${CFG_LLVM_ROOT}" ]; then
+            msg "git: submodule deinit src/llvm"
+            "${CFG_GIT}" submodule deinit src/llvm
+        fi
+        if [ -n "${CFG_JEMALLOC_ROOT}" ]; then
+            msg "git: submodule deinit src/jemalloc"
+            "${CFG_GIT}" submodule deinit src/jemalloc
+        fi
+
+        msg "git: submodule update"
+        "${CFG_GIT}" submodule update
+        need_ok "git failed"
+
+        msg "git: submodule foreach sync"
+        "${CFG_GIT}" submodule foreach --recursive 'if [ -e .gitmodules ]; then git submodule sync; fi'
+        need_ok "git failed"
+
+        msg "git: submodule foreach update"
+        "${CFG_GIT}" submodule update --recursive
+        need_ok "git failed"
+
+        # NB: this is just for the sake of getting the submodule SHA1 values
+        # and status written into the build log.
+        msg "git: submodule status"
+        "${CFG_GIT}" submodule status --recursive
+
+        msg "git: submodule clobber"
+        "${CFG_GIT}" submodule foreach --recursive git clean -dxf
+        need_ok "git failed"
+        "${CFG_GIT}" submodule foreach --recursive git checkout .
+        need_ok "git failed"
+
+        cd ${CFG_BUILD_DIR}
+    fi
+
+    # Configure llvm, only if necessary
+    step_msg "looking at LLVM"
+    CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm/
+    for t in $CFG_HOST
+    do
+        do_reconfigure=1
+        is_msvc=0
+        case "$t" in
+            (*-msvc)
+                is_msvc=1
+                ;;
+        esac
+
+        if [ -z $CFG_LLVM_ROOT ]
+        then
+            LLVM_BUILD_DIR=${CFG_BUILD_DIR}$t/llvm
+            if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]
+            then
+                LLVM_DBG_OPTS="--enable-debug-symbols --disable-optimized"
+                # Just use LLVM straight from its build directory to
+                # avoid 'make install' time
+                LLVM_INST_DIR=$LLVM_BUILD_DIR/Debug
+            else
+                LLVM_DBG_OPTS="--enable-optimized"
+                LLVM_INST_DIR=$LLVM_BUILD_DIR/Release
+            fi
+            if [ -z "$CFG_ENABLE_LLVM_ASSERTIONS" ]
+            then
+                LLVM_ASSERTION_OPTS="--disable-assertions"
+            else
+                LLVM_ASSERTION_OPTS="--enable-assertions"
+
+                # Apparently even if we request assertions be enabled for MSVC,
+                # LLVM's CMake build system ignore this and outputs in `Release`
+                # anyway.
+                if [ ${is_msvc} -eq 0 ]; then
+                    LLVM_INST_DIR=${LLVM_INST_DIR}+Asserts
+                fi
+            fi
+        else
+            msg "not reconfiguring LLVM, external LLVM root"
+            # The user is using their own LLVM
+            LLVM_BUILD_DIR=
+            LLVM_INST_DIR=$CFG_LLVM_ROOT
+            do_reconfigure=0
+        fi
+
+        if [ ${do_reconfigure} -ne 0 ]
+        then
+            # because git is hilarious, it might have put the module index
+            # in a couple places.
+            index1="${CFG_SRC_DIR}.git/modules/src/llvm/index"
+            index2="${CFG_SRC_DIR}src/llvm/.git/index"
+            for index in ${index1} ${index2}
+            do
+                config_status="${LLVM_BUILD_DIR}/config.status"
+                if [ -e ${index} ] && [ -e ${config_status} ] && [ ${config_status} -nt ${index} ]
+                then
+                    msg "not reconfiguring LLVM, config.status is fresh"
+                    do_reconfigure=0
+                fi
+            done
+        fi
+
+        if [ ${do_reconfigure} -ne 0 ] && [ ${is_msvc} -ne 0 ]
+        then
+            msg "configuring LLVM for $t with cmake"
+
+            CMAKE_ARGS="-DLLVM_INCLUDE_TESTS=OFF"
+            if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then
+                CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Debug"
+            else
+                CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release"
+            fi
+            if [ -z "$CFG_ENABLE_LLVM_ASSERTIONS" ]
+            then
+                CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=OFF"
+            else
+                CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=ON"
+            fi
+
+            msg "configuring LLVM with:"
+            msg "$CMAKE_ARGS"
+            case "$CFG_MSVC_ROOT" in
+                *14.0*)
+                    generator="Visual Studio 14 2015"
+                    ;;
+                *12.0*)
+                    generator="Visual Studio 12 2013"
+                    ;;
+                *)
+                    err "can't determine generator for LLVM cmake"
+                    ;;
+            esac
+            case "$t" in
+                x86_64-*)
+                    generator="$generator Win64"
+                    ;;
+                i686-*)
+                    ;;
+                *)
+                    err "can only build LLVM for x86 platforms"
+                    ;;
+            esac
+            (cd $LLVM_BUILD_DIR && "$CFG_CMAKE" $CFG_LLVM_SRC_DIR \
+                -G "$generator" \
+                $CMAKE_ARGS)
+            need_ok "LLVM cmake configure failed"
+        fi
+
+        if [ ${do_reconfigure} -ne 0 ] && [ ${is_msvc} -eq 0 ]
+        then
+            # LLVM's configure doesn't recognize the new Windows triples yet
+            gnu_t=$(to_gnu_triple $t)
+
+            msg "configuring LLVM for $gnu_t"
+
+            LLVM_TARGETS="--enable-targets=x86,x86_64,arm,aarch64,mips,powerpc"
+            LLVM_BUILD="--build=$gnu_t"
+            LLVM_HOST="--host=$gnu_t"
+            LLVM_TARGET="--target=$gnu_t"
+
+            # Disable unused LLVM features
+            LLVM_OPTS="$LLVM_DBG_OPTS $LLVM_ASSERTION_OPTS --disable-docs --enable-bindings=none"
+            # Disable term-info, linkage of which comes in multiple forms,
+            # making our snapshots incompatible (#9334)
+            LLVM_OPTS="$LLVM_OPTS --disable-terminfo"
+            # Try to have LLVM pull in as few dependencies as possible (#9397)
+            LLVM_OPTS="$LLVM_OPTS --disable-zlib --disable-libffi"
+
+            # Use win32 native thread/lock apis instead of pthread wrapper.
+            # (llvm's configure tries to find pthread first, so we have to disable it explicitly.)
+            # Also note that pthreads works badly on mingw-w64 systems: #8996
+            case "$CFG_BUILD" in
+                (*-windows-gnu)
+                    LLVM_OPTS="$LLVM_OPTS --disable-pthreads"
+                    ;;
+            esac
+
+            case "$CFG_CC" in
+                ("ccache clang")
+                    LLVM_CXX_32="ccache clang++ -Qunused-arguments"
+                    LLVM_CC_32="ccache clang -Qunused-arguments"
+
+                    LLVM_CXX_64="ccache clang++ -Qunused-arguments"
+                    LLVM_CC_64="ccache clang -Qunused-arguments"
+                    ;;
+                ("clang")
+                    LLVM_CXX_32="clang++ -Qunused-arguments"
+                    LLVM_CC_32="clang -Qunused-arguments"
+
+                    LLVM_CXX_64="clang++ -Qunused-arguments"
+                    LLVM_CC_64="clang -Qunused-arguments"
+                    ;;
+                ("ccache gcc")
+                    LLVM_CXX_32="ccache g++"
+                    LLVM_CC_32="ccache gcc"
+
+                    LLVM_CXX_64="ccache g++"
+                    LLVM_CC_64="ccache gcc"
+                    ;;
+                ("gcc")
+                    LLVM_CXX_32="g++"
+                    LLVM_CC_32="gcc"
+
+                    LLVM_CXX_64="g++"
+                    LLVM_CC_64="gcc"
+                    ;;
+
+                (*)
+                    msg "inferring LLVM_CXX/CC from CXX/CC = $CXX/$CC"
+                    if [ -n "$CFG_ENABLE_CCACHE" ]
+                    then
+                        if [ -z "$CFG_CCACHE" ]
+                        then
+                            err "ccache requested but not found"
+                        fi
+
+                        LLVM_CXX_32="ccache $CXX"
+                        LLVM_CC_32="ccache $CC"
+
+                        LLVM_CXX_64="ccache $CXX"
+                        LLVM_CC_64="ccache $CC"
+                    else
+                        LLVM_CXX_32="$CXX"
+                        LLVM_CC_32="$CC"
+
+                        LLVM_CXX_64="$CXX"
+                        LLVM_CC_64="$CC"
+                    fi
+
+                    ;;
+            esac
+
+            case "$CFG_CPUTYPE" in
+                (x86*)
+                    LLVM_CXX_32="$LLVM_CXX_32 -m32"
+                    LLVM_CC_32="$LLVM_CC_32 -m32"
+
+                    LLVM_CFLAGS_32="-m32"
+                    LLVM_CXXFLAGS_32="-m32"
+                    LLVM_LDFLAGS_32="-m32"
+
+                    LLVM_CFLAGS_64=""
+                    LLVM_CXXFLAGS_64=""
+                    LLVM_LDFLAGS_64=""
+
+                    LLVM_CXX_32="$LLVM_CXX_32 -m32"
+                    LLVM_CC_32="$LLVM_CC_32 -m32"
+                    ;;
+
+                (*)
+                    LLVM_CFLAGS_32=""
+                    LLVM_CXXFLAGS_32=""
+                    LLVM_LDFLAGS_32=""
+
+                    LLVM_CFLAGS_64=""
+                    LLVM_CXXFLAGS_64=""
+                    LLVM_LDFLAGS_64=""
+                    ;;
+            esac
+
+            if echo $t | grep -q x86_64
+            then
+                LLVM_CXX=$LLVM_CXX_64
+                LLVM_CC=$LLVM_CC_64
+                LLVM_CFLAGS=$LLVM_CFLAGS_64
+                LLVM_CXXFLAGS=$LLVM_CXXFLAGS_64
+                LLVM_LDFLAGS=$LLVM_LDFLAGS_64
+            else
+                LLVM_CXX=$LLVM_CXX_32
+                LLVM_CC=$LLVM_CC_32
+                LLVM_CFLAGS=$LLVM_CFLAGS_32
+                LLVM_CXXFLAGS=$LLVM_CXXFLAGS_32
+                LLVM_LDFLAGS=$LLVM_LDFLAGS_32
+            fi
+
+            CXX=$LLVM_CXX
+            CC=$LLVM_CC
+            CFLAGS=$LLVM_CFLAGS
+            CXXFLAGS=$LLVM_CXXFLAGS
+            LDFLAGS=$LLVM_LDFLAGS
+
+            if [ -z "$CFG_DISABLE_LIBCPP" ] && [ -n "$CFG_USING_CLANG" ]; then
+                LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
+            fi
+
+            LLVM_FLAGS="$LLVM_TARGETS $LLVM_OPTS $LLVM_BUILD \
+                        $LLVM_HOST $LLVM_TARGET --with-python=$CFG_PYTHON"
+
+            msg "configuring LLVM with:"
+            msg "$LLVM_FLAGS"
+
+            export CXX
+            export CC
+            export CFLAGS
+            export CXXFLAGS
+            export LDFLAGS
+
+            cd $LLVM_BUILD_DIR
+            case $CFG_SRC_DIR in
+                /* | [a-z]:* | [A-Z]:*)
+                    ${CFG_LLVM_SRC_DIR}configure $LLVM_FLAGS
+                    ;;
+                *)
+                    ${CFG_BUILD_DIR}${CFG_LLVM_SRC_DIR}configure \
+                        $LLVM_FLAGS
+                    ;;
+            esac
+            need_ok "LLVM configure failed"
+
+            cd $CFG_BUILD_DIR
+        fi
+
+        # Construct variables for LLVM build and install directories for
+        # each target. These will be named
+        # CFG_LLVM_BUILD_DIR_${target_triple} but all the hyphens in
+        # target_triple will be converted to underscore, because bash
+        # variables can't contain hyphens. The makefile will then have to
+        # convert back.
+        CFG_LLVM_BUILD_DIR=$(echo CFG_LLVM_BUILD_DIR_${t} | tr - _)
+        CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)
+        eval ${CFG_LLVM_BUILD_DIR}="'$LLVM_BUILD_DIR'"
+        eval ${CFG_LLVM_INST_DIR}="'$LLVM_INST_DIR'"
+    done
+
+
+    step_msg "writing configuration"
+
+    putvar CFG_SRC_DIR
+    putvar CFG_SRC_DIR_RELATIVE
+    putvar CFG_BUILD_DIR
+    putvar CFG_OSTYPE
+    putvar CFG_CPUTYPE
+    putvar CFG_CONFIGURE_ARGS
+    putvar CFG_PREFIX
+    putvar CFG_HOST
+    putvar CFG_TARGET
+    putvar CFG_LIBDIR_RELATIVE
+    putvar CFG_DISABLE_MANAGE_SUBMODULES
+    putvar CFG_AARCH64_LINUX_ANDROID_NDK
+    putvar CFG_ARM_LINUX_ANDROIDEABI_NDK
+    putvar CFG_MANDIR
+
+    # Avoid spurious warnings from clang by feeding it original source on
+    # ccache-miss rather than preprocessed input.
+    if [ -n "$CFG_ENABLE_CCACHE" ] && [ -n "$CFG_USING_CLANG" ]
+    then
+        CFG_CCACHE_CPP2=1
+        putvar CFG_CCACHE_CPP2
+    fi
+
+    if [ -n "$CFG_ENABLE_CCACHE" ]
+    then
+        CFG_CCACHE_BASEDIR=${CFG_SRC_DIR}
+        putvar CFG_CCACHE_BASEDIR
+    fi
+
+
+    if [ -n $BAD_PANDOC ]
+    then
+        CFG_PANDOC=
+        putvar CFG_PANDOC
+    fi
+
+    putvar CFG_LLVM_SRC_DIR
+
+    for t in $CFG_HOST
+    do
+        CFG_LLVM_BUILD_DIR=$(echo CFG_LLVM_BUILD_DIR_${t} | tr - _)
+        CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)
+        putvar $CFG_LLVM_BUILD_DIR
+        putvar $CFG_LLVM_INST_DIR
+    done
+
+    msg
+    copy_if_changed ${CFG_SRC_DIR}Makefile.in ./Makefile
+    move_if_changed config.tmp config.mk
+    rm -f config.tmp
+    touch config.stamp
+
+    if [ -z "$CFG_ENABLE_DEBUG" ]; then
+        step_msg "configured in release mode. for development consider --enable-debug"
+    else
+        step_msg "complete"
+    fi
+
+    msg "run \`make help\`"
+    msg
+}
+
 msg() {
     echo "configure: $*"
 }
@@ -108,7 +1484,7 @@ probe() {
         then
             VER0=$($P --version 2>/dev/null \
                 |  grep -o '[vV]\?[0-9][0-9.][a-z0-9.-]*' | head -1 )
-            if [ $? -eq 0 -a "x${VER0}" != "x" ]
+            if [ $? -eq 0 ] && [ "x${VER0}" != "x" ]
             then
               VER="($VER0)"
             else
@@ -140,11 +1516,11 @@ validate_opt () {
         isArgValid=0
         for option in $BOOL_OPTIONS
         do
-            if test --disable-$option = $arg
+            if [ --disable-$option = $arg ]
             then
                 isArgValid=1
             fi
-            if test --enable-$option = $arg
+            if [ --enable-$option = $arg ]
             then
                 isArgValid=1
             fi
@@ -163,7 +1539,7 @@ validate_opt () {
             echo "check the Wiki or join our IRC channel"
             break
         else
-            if test $isArgValid -eq 0
+            if [ $isArgValid -eq 0 ]
             then
                 err "Option '$arg' is not recognized"
             fi
@@ -353,1385 +1729,10 @@ to_gnu_triple() {
 # Prints the absolute path of a directory to stdout
 abs_path() {
     local _path="$1"
-    # Unset CDPATH because it causes havok: it makes the destination unpredictable
-    # and triggers 'cd' to print the path to stdout. Route `cd`'s output to /dev/null
-    # for good measure.
+    # Unset CDPATH because it causes havok: it makes the destination
+    # unpredictable and triggers 'cd' to print the path to
+    # stdout. Route `cd`'s output to /dev/null for good measure.
     (unset CDPATH && cd "$_path" > /dev/null && pwd)
 }
 
-msg "looking for configure programs"
-need_cmd cmp
-need_cmd mkdir
-need_cmd printf
-need_cmd cut
-need_cmd head
-need_cmd grep
-need_cmd xargs
-need_cmd cp
-need_cmd find
-need_cmd uname
-need_cmd date
-need_cmd tr
-need_cmd sed
-need_cmd file
-need_cmd make
-
-msg "inspecting environment"
-
-CFG_OSTYPE=$(uname -s)
-CFG_CPUTYPE=$(uname -m)
-
-if [ $CFG_OSTYPE = Darwin -a $CFG_CPUTYPE = i386 ]
-then
-    # Darwin's `uname -s` lies and always returns i386. We have to use sysctl
-    # instead.
-    if sysctl hw.optional.x86_64 | grep -q ': 1'
-    then
-        CFG_CPUTYPE=x86_64
-    fi
-fi
-
-# The goal here is to come up with the same triple as LLVM would,
-# at least for the subset of platforms we're willing to target.
-
-case $CFG_OSTYPE in
-
-    Linux)
-        CFG_OSTYPE=unknown-linux-gnu
-        ;;
-
-    FreeBSD)
-        CFG_OSTYPE=unknown-freebsd
-        ;;
-
-    DragonFly)
-        CFG_OSTYPE=unknown-dragonfly
-        ;;
-
-    Bitrig)
-        CFG_OSTYPE=unknown-bitrig
-        ;;
-
-    OpenBSD)
-        CFG_OSTYPE=unknown-openbsd
-       ;;
-
-    NetBSD)
-	    CFG_OSTYPE=unknown-netbsd
-	    ;;
-
-    Darwin)
-        CFG_OSTYPE=apple-darwin
-        ;;
-
-    MINGW*)
-        # msys' `uname` does not print gcc configuration, but prints msys
-        # configuration. so we cannot believe `uname -m`:
-        # msys1 is always i686 and msys2 is always x86_64.
-        # instead, msys defines $MSYSTEM which is MINGW32 on i686 and
-        # MINGW64 on x86_64.
-        CFG_CPUTYPE=i686
-        CFG_OSTYPE=pc-windows-gnu
-        if [ "$MSYSTEM" = MINGW64 ]
-        then
-            CFG_CPUTYPE=x86_64
-        fi
-        ;;
-
-    MSYS*)
-        CFG_OSTYPE=pc-windows-gnu
-        ;;
-
-# Thad's Cygwin identifiers below
-
-#   Vista 32 bit
-    CYGWIN_NT-6.0)
-        CFG_OSTYPE=pc-windows-gnu
-        CFG_CPUTYPE=i686
-        ;;
-
-#   Vista 64 bit
-    CYGWIN_NT-6.0-WOW64)
-        CFG_OSTYPE=pc-windows-gnu
-        CFG_CPUTYPE=x86_64
-        ;;
-
-#   Win 7 32 bit
-    CYGWIN_NT-6.1)
-        CFG_OSTYPE=pc-windows-gnu
-        CFG_CPUTYPE=i686
-        ;;
-
-#   Win 7 64 bit
-    CYGWIN_NT-6.1-WOW64)
-        CFG_OSTYPE=pc-windows-gnu
-        CFG_CPUTYPE=x86_64
-        ;;
-
-#   Win 8 # uname -s on 64-bit cygwin does not contain WOW64, so simply use uname -m to detect arch (works in my install)
-    CYGWIN_NT-6.3)
-    	CFG_OSTYPE=pc-windows-gnu
-    	;;
-# We do not detect other OS such as XP/2003 using 64 bit using uname.
-# If we want to in the future, we will need to use Cygwin - Chuck's csih helper in /usr/lib/csih/winProductName.exe or alternative.
-    *)
-        err "unknown OS type: $CFG_OSTYPE"
-        ;;
-esac
-
-
-case $CFG_CPUTYPE in
-
-    i386 | i486 | i686 | i786 | x86)
-        CFG_CPUTYPE=i686
-        ;;
-
-    xscale | arm)
-        CFG_CPUTYPE=arm
-        ;;
-
-    armv7l)
-        CFG_CPUTYPE=arm
-        CFG_OSTYPE="${CFG_OSTYPE}eabihf"
-        ;;
-
-    aarch64)
-        CFG_CPUTYPE=aarch64
-        ;;
-
-    # At some point, when ppc64[le] support happens, this will need to do
-    # something clever. For now it's safe to assume that we're only ever
-    # interested in building 32 bit.
-    powerpc | ppc | ppc64)
-        CFG_CPUTYPE=powerpc
-        ;;
-
-    x86_64 | x86-64 | x64 | amd64)
-        CFG_CPUTYPE=x86_64
-        ;;
-
-    *)
-        err "unknown CPU type: $CFG_CPUTYPE"
-esac
-
-# Detect 64 bit linux systems with 32 bit userland and force 32 bit compilation
-if [ $CFG_OSTYPE = unknown-linux-gnu -a $CFG_CPUTYPE = x86_64 ]
-then
-    # $SHELL does not exist in standard 'sh', so probably only exists
-    # if configure is running in an interactive bash shell. /usr/bin/env
-    # exists *everywhere*.
-    BIN_TO_PROBE="$SHELL"
-    if [ -z "$BIN_TO_PROBE" -a -e "/usr/bin/env" ]; then
-       BIN_TO_PROBE="/usr/bin/env"
-    fi
-    if [ -n "$BIN_TO_PROBE" ]; then
-       file -L "$BIN_TO_PROBE" | grep -q "x86[_-]64"
-       if [ $? != 0 ]; then
-            CFG_CPUTYPE=i686
-       fi
-     fi
-fi
-
-
-DEFAULT_BUILD="${CFG_CPUTYPE}-${CFG_OSTYPE}"
-
-CFG_SRC_DIR="$(abs_path $(dirname $0))/"
-CFG_SRC_DIR_RELATIVE="$(dirname $0)/"
-CFG_BUILD_DIR="$(pwd)/"
-CFG_SELF="$0"
-CFG_CONFIGURE_ARGS="$@"
-
-OPTIONS=""
-HELP=0
-if [ "$1" = "--help" ]
-then
-    HELP=1
-    shift
-    echo
-    echo "Usage: $CFG_SELF [options]"
-    echo
-    echo "Options:"
-    echo
-else
-    msg "recreating config.tmp"
-    echo '' >config.tmp
-
-    step_msg "processing $CFG_SELF args"
-fi
-
-BOOL_OPTIONS=""
-VAL_OPTIONS=""
-
-opt debug 0 "debug mode; disables optimization unless \`--enable-optimize\` given"
-opt valgrind 0 "run tests with valgrind (memcheck by default)"
-opt helgrind 0 "run tests with helgrind instead of memcheck"
-opt valgrind-rpass 1 "run rpass-valgrind tests with valgrind"
-opt docs     1 "build standard library documentation"
-opt compiler-docs     0 "build compiler documentation"
-opt optimize-tests 1 "build tests with optimizations"
-opt debuginfo-tests 0 "build tests with debugger metadata"
-opt libcpp 1 "build with llvm with libc++ instead of libstdc++ when using clang"
-opt llvm-assertions 0 "build LLVM with assertions"
-opt debug-assertions 0 "build with debugging assertions"
-opt fast-make 0 "use .gitmodules as timestamp for submodule deps"
-opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
-opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
-opt llvm-static-stdcpp 0 "statically link to libstdc++ for LLVM"
-opt rpath 0 "build rpaths into rustc itself"
-# This is used by the automation to produce single-target nightlies
-opt dist-host-only 0 "only install bins for the host architecture"
-opt inject-std-version 1 "inject the current compiler version of libstd into programs"
-opt llvm-version-check 1 "check if the LLVM version is supported, build anyway"
-
-# Optimization and debugging options. These may be overridden by the release channel, etc.
-opt_nosave optimize 1 "build optimized rust code"
-opt_nosave optimize-cxx 1 "build optimized C++ code"
-opt_nosave optimize-llvm 1 "build optimized LLVM"
-opt_nosave llvm-assertions 0 "build LLVM with assertions"
-opt_nosave debug-assertions 0 "build with debugging assertions"
-opt_nosave debuginfo 0 "build with debugger metadata"
-opt_nosave debug-jemalloc 0 "build jemalloc with --enable-debug --enable-fill"
-
-valopt localstatedir "/var/lib" "local state directory"
-valopt sysconfdir "/etc" "install system configuration files"
-
-valopt datadir "${CFG_PREFIX}/share" "install data"
-valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
-valopt llvm-root "" "set LLVM root"
-valopt python "" "set path to python"
-valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
-valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
-valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path (deprecated)"
-valopt arm-linux-androideabi-ndk "" "arm-linux-androideabi NDK standalone path"
-valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
-valopt release-channel "dev" "the name of the release channel to build"
-valopt musl-root "/usr/local" "MUSL root installation directory"
-
-# Many of these are saved below during the "writing configuration" step
-# (others are conditionally saved).
-opt_nosave manage-submodules 1 "let the build manage the git submodules"
-opt_nosave clang 0 "prefer clang to gcc for building the runtime"
-opt_nosave jemalloc 1 "build liballoc with jemalloc"
-opt elf-tls 1 "elf thread local storage on platforms where supported"
-
-valopt_nosave prefix "/usr/local" "set installation prefix"
-valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
-valopt_nosave host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
-valopt_nosave target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
-valopt_nosave mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
-
-# Temporarily support old triples until buildbots get updated
-CFG_BUILD=$(to_llvm_triple $CFG_BUILD)
-putvar CFG_BUILD # Yes, this creates a duplicate entry, but the last one wins.
-CFG_HOST=$(to_llvm_triple $CFG_HOST)
-CFG_TARGET=$(to_llvm_triple $CFG_TARGET)
-
-# On windows we just store the libraries in the bin directory because
-# there's no rpath. This is where the build system itself puts libraries;
-# --libdir is used to configure the installation directory.
-# FIXME: This needs to parameterized over target triples. Do it in platform.mk
-if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ]
-then
-    CFG_LIBDIR_RELATIVE=bin
-else
-    CFG_LIBDIR_RELATIVE=lib
-fi
-
-valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries (do not set it on windows platform)"
-
-case "$CFG_LIBDIR" in
-    "$CFG_PREFIX"/*) CAT_INC=2;;
-    "$CFG_PREFIX"*)  CAT_INC=1;;
-    *)
-        err "libdir must begin with the prefix. Use --prefix to set it accordingly.";;
-esac
-
-CFG_LIBDIR_RELATIVE=`echo ${CFG_LIBDIR} | cut -c$((${#CFG_PREFIX}+${CAT_INC}))-`
-
-if ( [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ] ) \
-	&& [ "$CFG_LIBDIR_RELATIVE" != "bin" ]; then
-    err "libdir on windows should be set to 'bin'"
-fi
-
-if [ $HELP -eq 1 ]
-then
-    echo
-    exit 0
-fi
-
-# Validate Options
-step_msg "validating $CFG_SELF args"
-validate_opt
-
-# Validate the release channel, and configure options
-case "$CFG_RELEASE_CHANNEL" in
-    nightly )
-	msg "overriding settings for $CFG_RELEASE_CHANNEL"
-	CFG_ENABLE_LLVM_ASSERTIONS=1
-	;;
-    dev | beta | stable)
-	;;
-    *)
-        err "release channel must be 'dev', 'nightly', 'beta' or 'stable'"
-        ;;
-esac
-
-# Adjust perf and debug options for debug mode
-if [ -n "$CFG_ENABLE_DEBUG" ]; then
-    msg "debug mode enabled, setting performance options"
-    if [ -z "$CFG_ENABLE_OPTIMIZE_PROVIDED" ]; then
-        msg "optimization not explicitly enabled, disabling optimization"
-        CFG_DISABLE_OPTIMIZE=1
-        CFG_DISABLE_OPTIMIZE_CXX=1
-    fi
-
-    # Set following variables to 1 unless setting already provided
-    enable_if_not_disabled debug-assertions
-    enable_if_not_disabled debug-jemalloc
-    enable_if_not_disabled debuginfo
-    enable_if_not_disabled llvm-assertions
-fi
-
-# OK, now write the debugging options
-if [ -n "$CFG_DISABLE_OPTIMIZE" ]; then putvar CFG_DISABLE_OPTIMIZE; fi
-if [ -n "$CFG_DISABLE_OPTIMIZE_CXX" ]; then putvar CFG_DISABLE_OPTIMIZE_CXX; fi
-if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then putvar CFG_DISABLE_OPTIMIZE_LLVM; fi
-if [ -n "$CFG_ENABLE_LLVM_ASSERTIONS" ]; then putvar CFG_ENABLE_LLVM_ASSERTIONS; fi
-if [ -n "$CFG_ENABLE_DEBUG_ASSERTIONS" ]; then putvar CFG_ENABLE_DEBUG_ASSERTIONS; fi
-if [ -n "$CFG_ENABLE_DEBUGINFO" ]; then putvar CFG_ENABLE_DEBUGINFO; fi
-if [ -n "$CFG_ENABLE_DEBUG_JEMALLOC" ]; then putvar CFG_ENABLE_DEBUG_JEMALLOC; fi
-
-# A magic value that allows the compiler to use unstable features
-# during the bootstrap even when doing so would normally be an error
-# because of feature staging or because the build turns on
-# warnings-as-errors and unstable features default to warnings.  The
-# build has to match this key in an env var. Meant to be a mild
-# deterrent from users just turning on unstable features on the stable
-# channel.
-# Basing CFG_BOOTSTRAP_KEY on CFG_BOOTSTRAP_KEY lets it get picked up
-# during a Makefile reconfig.
-CFG_BOOTSTRAP_KEY="${CFG_BOOTSTRAP_KEY-`date +%H:%M:%S`}"
-putvar CFG_BOOTSTRAP_KEY
-
-step_msg "looking for build programs"
-
-probe_need CFG_CURLORWGET  curl wget
-if [ -z "$CFG_PYTHON_PROVIDED" ]; then
-    probe_need CFG_PYTHON      python2.7 python2.6 python2 python
-fi
-
-python_version=$($CFG_PYTHON -V 2>&1)
-if [ $(echo $python_version | grep -c '^Python 2\.[4567]') -ne 1 ]; then
-    err "Found $python_version, but LLVM requires Python 2.4-2.7"
-fi
-
-# If we have no git directory then we are probably a tarball distribution
-# and shouldn't attempt to load submodules
-if [ ! -e ${CFG_SRC_DIR}.git ]
-then
-    probe CFG_GIT          git
-    msg "git: no git directory. disabling submodules"
-    CFG_DISABLE_MANAGE_SUBMODULES=1
-else
-    probe_need CFG_GIT     git
-fi
-
-# Use `md5sum` on GNU platforms, or `md5 -q` on BSD
-probe CFG_MD5              md5
-probe CFG_MD5SUM           md5sum
-if [ -n "$CFG_MD5" ]
-then
-    CFG_HASH_COMMAND="$CFG_MD5 -q | cut -c 1-8"
-elif [ -n "$CFG_MD5SUM" ]
-then
-    CFG_HASH_COMMAND="$CFG_MD5SUM | cut -c 1-8"
-else
-    err 'could not find one of: md5 md5sum'
-fi
-putvar CFG_HASH_COMMAND
-
-probe CFG_CLANG            clang++
-probe CFG_CCACHE           ccache
-probe CFG_GCC              gcc
-probe CFG_LD               ld
-probe CFG_VALGRIND         valgrind
-probe CFG_PERF             perf
-probe CFG_ISCC             iscc
-probe CFG_ANTLR4           antlr4
-probe CFG_GRUN             grun
-probe CFG_FLEX             flex
-probe CFG_BISON            bison
-probe CFG_PANDOC           pandoc
-probe CFG_XELATEX          xelatex
-probe CFG_GDB              gdb
-probe CFG_LLDB             lldb
-
-# On MacOS X, invoking `javac` pops up a dialog if the JDK is not
-# installed. Since `javac` is only used if `antlr4` is available,
-# probe for it only in this case.
-if [ -n "$CFG_ANTLR4" ]
-then
-   probe CFG_JAVAC            javac
-fi
-
-# the valgrind rpass tests will fail if you don't have a valgrind, but they're
-# only disabled if you opt out.
-if [ -z "$CFG_VALGRIND" ]
-then
-    # If the user has explicitly asked for valgrind tests, then fail
-    if [ -n "$CFG_ENABLE_VALGRIND" ] && [ -n "$CFG_ENABLE_VALGRIND_PROVIDED" ]
-    then
-        err "No valgrind present, but valgrind tests explicitly requested"
-    else
-        CFG_DISABLE_VALGRIND_RPASS=1
-        putvar CFG_DISABLE_VALGRIND_RPASS
-    fi
-fi
-
-if [ -n "$CFG_GDB" ]
-then
-    # Store GDB's version
-    CFG_GDB_VERSION=$($CFG_GDB --version 2>/dev/null | head -1)
-    putvar CFG_GDB_VERSION
-fi
-
-if [ -n "$CFG_LLDB" ]
-then
-    # Store LLDB's version
-    CFG_LLDB_VERSION=$($CFG_LLDB --version 2>/dev/null | head -1)
-    putvar CFG_LLDB_VERSION
-
-    # If CFG_LLDB_PYTHON_DIR is not already set from the outside and valid, try to read it from
-    # LLDB via the -P commandline options.
-    if [ -z "$CFG_LLDB_PYTHON_DIR" ] || [ ! -d "$CFG_LLDB_PYTHON_DIR" ]
-    then
-        CFG_LLDB_PYTHON_DIR=$($CFG_LLDB -P)
-
-        # If CFG_LLDB_PYTHON_DIR is not a valid directory, set it to something more readable
-        if [ ! -d "$CFG_LLDB_PYTHON_DIR" ]
-        then
-            CFG_LLDB_PYTHON_DIR="LLDB_PYTHON_DIRECTORY_NOT_FOUND"
-        fi
-
-        putvar CFG_LLDB_PYTHON_DIR
-    fi
-fi
-
-step_msg "looking for target specific programs"
-
-probe CFG_ADB        adb
-
-if [ -n "$CFG_PANDOC" ]
-then
-    # Extract "MAJOR MINOR" from Pandoc's version number
-    PV_MAJOR_MINOR=$(pandoc --version | grep '^pandoc' |
-        sed -E 's/pandoc(.exe)? ([0-9]+)\.([0-9]+).*/\2 \3/')
-
-    MIN_PV_MAJOR="1"
-    MIN_PV_MINOR="9"
-
-    # these patterns are shell globs, *not* regexps
-    PV_MAJOR=${PV_MAJOR_MINOR% *}
-    PV_MINOR=${PV_MAJOR_MINOR#* }
-
-    if [ "$PV_MAJOR" -lt "$MIN_PV_MAJOR" ] || [ "$PV_MINOR" -lt "$MIN_PV_MINOR" ]
-    then
-        step_msg "pandoc $PV_MAJOR.$PV_MINOR is too old. Need at least $MIN_PV_MAJOR.$MIN_PV_MINOR. Disabling"
-        BAD_PANDOC=1
-    fi
-fi
-
-BIN_SUF=
-if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ]
-then
-    BIN_SUF=.exe
-fi
-
-if [ -n "$CFG_ENABLE_LOCAL_RUST" ]
-then
-    system_rustc=$(which rustc)
-    if [ -f ${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF} ]
-    then
-        : # everything already configured
-    elif [ -n "$system_rustc" ]
-    then
-        # we assume that rustc is in a /bin directory
-        CFG_LOCAL_RUST_ROOT=${system_rustc%/bin/rustc}
-    else
-        err "no local rust to use"
-    fi
-
-    CMD="${CFG_LOCAL_RUST_ROOT}/bin/rustc${BIN_SUF}"
-    LRV=`$CMD --version`
-    if [ $? -ne 0 ]
-    then
-        step_msg "failure while running $CMD --version"
-        exit 1
-    fi
-    step_msg "using rustc at: ${CFG_LOCAL_RUST_ROOT} with version: $LRV"
-    putvar CFG_LOCAL_RUST_ROOT
-fi
-
-# Force bitrig to build with clang; gcc doesn't like us there
-if [ $CFG_OSTYPE = unknown-bitrig ]
-then
-    step_msg "on Bitrig, forcing use of clang, disabling jemalloc"
-    CFG_ENABLE_CLANG=1
-    CFG_DISABLE_JEMALLOC=1
-fi
-
-# OS X 10.9, gcc is actually clang. This can cause some confusion in the build
-# system, so if we find that gcc is clang, we should just use clang directly.
-if [ $CFG_OSTYPE = apple-darwin -a -z "$CFG_ENABLE_CLANG" ]
-then
-    CFG_OSX_GCC_VERSION=$("$CFG_GCC" --version 2>&1 | grep "Apple LLVM version")
-    if [ $? -eq 0 ]
-    then
-        step_msg "on OS X >=10.9, forcing use of clang"
-        CFG_ENABLE_CLANG=1
-    else
-        if [ $("$CFG_GCC" --version 2>&1 | grep -c ' 4\.[0-6]') -ne 0 ]; then
-            step_msg "older GCC found, using clang instead"
-            CFG_ENABLE_CLANG=1
-        else
-            # on OS X, with xcode 5 and newer, certain developers may have
-            # cc, gcc and g++ point to a  mixture of clang and gcc
-            # if so, this will create very strange build errors
-            # this last stanza is to detect some such problems and save the future rust
-            # contributor some time solving that issue.
-            # this detection could be generalized to other OSes aside from OS X
-            # but the issue seems most likely to happen on OS X
-
-            chk_cc () {
-                $1 --version 2> /dev/null | grep -q $2
-            }
-            # check that gcc, cc and g++ all point to the same compiler.
-            # note that for xcode 5, g++ points to clang, not clang++
-            if !((chk_cc gcc clang  && chk_cc g++ clang) ||
-                (chk_cc gcc gcc  &&( chk_cc g++ g++ || chk g++ gcc))); then
-                err "the gcc and g++ in your path point to different compilers.
-    Check which versions are in your path with gcc --version and g++ --version.
-    To resolve this problem, either fix your PATH  or run configure with --enable-clang"
-            fi
-
-        fi
-    fi
-fi
-
-# If the clang isn't already enabled, check for GCC, and if it is missing, turn
-# on clang as a backup.
-if [ -z "$CFG_ENABLE_CLANG" ]
-then
-  CFG_GCC_VERSION=$("$CFG_GCC" --version 2>&1)
-  if [ $? -ne 0 ]
-  then
-    step_msg "GCC not installed, will try using Clang"
-    CFG_ENABLE_CLANG=1
-  fi
-fi
-
-# Okay, at this point, we have made up our minds about whether we are
-# going to force CFG_ENABLE_CLANG or not; save the setting if so.
-if [ -n "$CFG_ENABLE_CLANG" ]
-then
-    putvar CFG_ENABLE_CLANG
-fi
-
-# Same with jemalloc.  save the setting here.
-if [ -n "$CFG_DISABLE_JEMALLOC" ]
-then
-    putvar CFG_DISABLE_JEMALLOC
-fi
-
-if [ -n "$CFG_LLVM_ROOT" -a -z "$CFG_DISABLE_LLVM_VERSION_CHECK" -a -e "$CFG_LLVM_ROOT/bin/llvm-config" ]
-then
-    step_msg "using custom LLVM at $CFG_LLVM_ROOT"
-
-    LLVM_CONFIG="$CFG_LLVM_ROOT/bin/llvm-config"
-    LLVM_VERSION=$($LLVM_CONFIG --version)
-
-    case $LLVM_VERSION in
-        (3.[5-7]*)
-            msg "found ok version of LLVM: $LLVM_VERSION"
-            ;;
-        (*)
-            err "bad LLVM version: $LLVM_VERSION, need >=3.5"
-            ;;
-    esac
-fi
-
-# Even when the user overrides the choice of CC, still try to detect
-# clang to disable some clang-specific warnings.  We here draw a
-# distinction between:
-#
-#  CFG_ENABLE_CLANG : passed --enable-clang, or host "requires" clang,
-#  CFG_USING_CLANG : compiler (clang / gcc / $CC) looks like clang.
-#
-# This distinction is important because there are some safeguards we
-# would prefer to skip when merely CFG_USING_CLANG is set; but when
-# CFG_ENABLE_CLANG is set, that indicates that we are opting into
-# running such safeguards.
-
-if [ -n "$CC" ]
-then
-    msg "skipping compiler inference steps; using provided CC=$CC"
-    CFG_CC="$CC"
-
-    CFG_OSX_CC_VERSION=$("$CFG_CC" --version 2>&1 | grep "clang")
-    if [ $? -eq 0 ]
-    then
-        step_msg "note, user-provided CC looks like clang; CC=$CC."
-        CFG_USING_CLANG=1
-        putvar CFG_USING_CLANG
-    fi
-else
-    if [ -n "$CFG_ENABLE_CLANG" ]
-    then
-        if [ -z "$CFG_CLANG" ]
-        then
-            err "clang requested but not found"
-        fi
-        CFG_CC="$CFG_CLANG"
-        CFG_USING_CLANG=1
-        putvar CFG_USING_CLANG
-    else
-        CFG_CC="gcc"
-    fi
-fi
-
-if [ -n "$CFG_ENABLE_CLANG" ]
-then
-    case "$CC" in
-        (''|*clang)
-        CFG_CLANG_REPORTED_VERSION=$($CFG_CC --version | grep version)
-
-        if echo $CFG_CLANG_REPORTED_VERSION | grep -q "(based on LLVM "; then
-            CFG_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*(based on LLVM \(.*\))/\1/')
-        elif echo $CFG_CLANG_REPORTED_VERSION | grep -q "Apple LLVM"; then
-            CFG_OSX_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*version \(.*\) .*/\1/')
-        else
-            CFG_CLANG_VERSION=$(echo $CFG_CLANG_REPORTED_VERSION | sed 's/.*version \(.*\) .*/\1/')
-        fi
-
-        if [ -n "$CFG_OSX_CLANG_VERSION" ]
-        then
-            case $CFG_OSX_CLANG_VERSION in
-                (7.0*)
-                step_msg "found ok version of APPLE CLANG: $CFG_OSX_CLANG_VERSION"
-                ;;
-                (*)
-                err "bad APPLE CLANG version: $CFG_OSX_CLANG_VERSION, need >=7.0"
-                ;;
-            esac
-        else
-            case $CFG_CLANG_VERSION in
-                (3.2* | 3.3* | 3.4* | 3.5* | 3.6* | 3.7*)
-                step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
-                ;;
-                (*)
-                err "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn"
-                ;;
-            esac
-        fi
-
-        if [ -z "$CC" ]
-        then
-            CFG_CC="clang"
-            CFG_CXX="clang++"
-        fi
-    esac
-fi
-
-if [ -n "$CFG_ENABLE_CCACHE" ]
-then
-    if [ -z "$CFG_CCACHE" ]
-    then
-        err "ccache requested but not found"
-    fi
-
-    CFG_CC="ccache $CFG_CC"
-fi
-
-if [ -z "$CC" -a -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
-then
-    err "either clang or gcc is required"
-fi
-
-# All safeguards based on $CFG_ENABLE_CLANG should occur before this
-# point in the script; after this point, script logic should inspect
-# $CFG_USING_CLANG rather than $CFG_ENABLE_CLANG.
-
-# Set CFG_{CC,CXX,CPP,CFLAGS,CXXFLAGS}
-envopt CC
-envopt CXX
-envopt CPP
-envopt CFLAGS
-envopt CXXFLAGS
-
-# a little post-processing of various config values
-CFG_PREFIX=${CFG_PREFIX%/}
-CFG_MANDIR=${CFG_MANDIR%/}
-CFG_HOST="$(echo $CFG_HOST | tr ',' ' ')"
-CFG_TARGET="$(echo $CFG_TARGET | tr ',' ' ')"
-CFG_SUPPORTED_TARGET=""
-for target_file in ${CFG_SRC_DIR}mk/cfg/*.mk; do
-  CFG_SUPPORTED_TARGET="${CFG_SUPPORTED_TARGET} $(basename "$target_file" .mk)"
-done
-
-# copy build-triples to host-triples so that builds are a subset of hosts
-V_TEMP=""
-for i in $CFG_BUILD $CFG_HOST;
-do
-   echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
-done
-CFG_HOST=$V_TEMP
-
-# copy host-triples to target-triples so that hosts are a subset of targets
-V_TEMP=""
-for i in $CFG_HOST $CFG_TARGET;
-do
-   echo "$V_TEMP" | grep -qF $i || V_TEMP="$V_TEMP${V_TEMP:+ }$i"
-done
-CFG_TARGET=$V_TEMP
-
-# check target-specific tool-chains
-for i in $CFG_TARGET
-do
-    L_CHECK=false
-    for j in $CFG_SUPPORTED_TARGET
-    do
-        if [ $i = $j ]
-        then
-            L_CHECK=true
-        fi
-    done
-
-    if [ $L_CHECK = false ]
-    then
-        err "unsupported target triples \"$i\" found"
-    fi
-
-    case $i in
-        *android*)
-            upper_snake_target=$(echo "$i" | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
-            eval ndk=\$"CFG_${upper_snake_target}_NDK"
-            if [ -z "$ndk" ]
-            then
-                ndk=$CFG_ANDROID_CROSS_PATH
-                eval "CFG_${upper_snake_target}_NDK"=$CFG_ANDROID_CROSS_PATH
-                warn "generic/default Android NDK option is deprecated (use --$i-ndk option instead)"
-            fi
-
-            # Perform a basic sanity check of the NDK
-            for android_ndk_tool in "$ndk/bin/$i-gcc" "$ndk/bin/$i-g++" "$ndk/bin/$i-ar"
-            do
-                if [ ! -f $android_ndk_tool ]
-                then
-                    err "NDK tool $android_ndk_tool not found (bad or missing --$i-ndk option?)"
-                fi
-            done
-            ;;
-
-        arm-apple-darwin)
-            if [ $CFG_OSTYPE != apple-darwin ]
-            then
-                err "The iOS target is only supported on Mac OS X"
-            fi
-            ;;
-
-
-        *-musl)
-            if [ ! -f $CFG_MUSL_ROOT/lib/libc.a ]
-            then
-                err "musl libc $CFG_MUSL_ROOT/lib/libc.a not found"
-            fi
-            ;;
-
-        *-msvc)
-            # Currently the build system is not configured to build jemalloc
-            # with MSVC, so we omit this optional dependency.
-            step_msg "targeting MSVC, disabling jemalloc"
-            CFG_DISABLE_JEMALLOC=1
-            putvar CFG_DISABLE_JEMALLOC
-
-            # There are some MSYS python builds which will auto-translate
-            # windows-style paths to MSYS-style paths in Python itself.
-            # Unfortunately this breaks LLVM's build system as somewhere along
-            # the line LLVM prints a path into a file from Python and then CMake
-            # later tries to interpret that path. If Python prints a MSYS path
-            # and CMake tries to use it as a Windows path, you're gonna have a
-            # Bad Time.
-            #
-            # Consequently here we try to detect when that happens and print an
-            # error if it does.
-            if $CFG_PYTHON -c 'import sys; print sys.argv[1]' `pwd` | grep '^/'
-            then
-                err "python is silently translating windows paths to MSYS paths \
-                     and the build will fail if this python is used.\n\n \
-                     Either an official python install must be used or an \
-                     alternative python package in MinGW must be used."
-            fi
-
-            # MSVC requires cmake because that's how we're going to build LLVM
-            probe_need CFG_CMAKE cmake
-
-            # Use the REG program to figure out where VS is installed
-            # We need to figure out where cl.exe and link.exe are, so we do some
-            # munging and some probing here. We also look for the default
-            # INCLUDE and LIB variables for MSVC so we can set those in the
-            # build system as well.
-            install=$(reg QUERY \
-                       'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\14.0' \
-                       -v InstallDir)
-            if [ -z "$install" ]; then
-              install=$(reg QUERY \
-                         'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\12.0' \
-                         -v InstallDir)
-            fi
-            need_ok "couldn't find visual studio install root"
-            CFG_MSVC_ROOT=$(echo "$install" | grep InstallDir | sed 's/.*REG_SZ[ ]*//')
-            CFG_MSVC_ROOT=$(dirname "$CFG_MSVC_ROOT")
-            CFG_MSVC_ROOT=$(dirname "$CFG_MSVC_ROOT")
-            putvar CFG_MSVC_ROOT
-
-            case $i in
-                x86_64-*)
-                    bits=x86_64
-                    msvc_part=amd64
-                    ;;
-                i686-*)
-                    bits=i386
-                    msvc_part=
-                    ;;
-                *)
-                    err "can only target x86 targets for MSVC"
-                    ;;
-            esac
-            bindir="${CFG_MSVC_ROOT}/VC/bin"
-            if [ -n "$msvc_part" ]; then
-                bindir="$bindir/$msvc_part"
-            fi
-            eval CFG_MSVC_BINDIR_$bits="\"$bindir\""
-            eval CFG_MSVC_CL_$bits="\"$bindir/cl.exe\""
-            eval CFG_MSVC_LIB_$bits="\"$bindir/lib.exe\""
-            eval CFG_MSVC_LINK_$bits="\"$bindir/link.exe\""
-
-            vcvarsall="${CFG_MSVC_ROOT}/VC/vcvarsall.bat"
-            include_path=$(cmd /c "\"$vcvarsall\" $msvc_part && cmd /c echo %INCLUDE%")
-            need_ok "failed to learn about MSVC's INCLUDE"
-            lib_path=$(cmd /c "\"$vcvarsall\" $msvc_part && cmd /c echo %LIB%")
-            need_ok "failed to learn about MSVC's LIB"
-
-            eval CFG_MSVC_INCLUDE_PATH_${bits}="\"$include_path\""
-            eval CFG_MSVC_LIB_PATH_${bits}="\"$lib_path\""
-
-            putvar CFG_MSVC_BINDIR_${bits}
-            putvar CFG_MSVC_CL_${bits}
-            putvar CFG_MSVC_LIB_${bits}
-            putvar CFG_MSVC_LINK_${bits}
-            putvar CFG_MSVC_INCLUDE_PATH_${bits}
-            putvar CFG_MSVC_LIB_PATH_${bits}
-            ;;
-
-        *)
-            ;;
-    esac
-done
-
-if [ -n "$CFG_PERF" ]
-then
-    HAVE_PERF_LOGFD=`$CFG_PERF stat --log-fd 2>&1 | grep 'unknown option'`
-    if [ -z "$HAVE_PERF_LOGFD" ];
-    then
-        CFG_PERF_WITH_LOGFD=1
-        putvar CFG_PERF_WITH_LOGFD
-    fi
-fi
-
-step_msg "making directories"
-
-for i in \
-    doc doc/std doc/extra \
-    dl tmp dist
-do
-    make_dir $i
-done
-
-for t in $CFG_HOST
-do
-    make_dir $t/llvm
-done
-
-for t in $CFG_HOST
-do
-    make_dir $t/rustllvm
-done
-
-for t in $CFG_TARGET
-do
-  make_dir $t/rt
-  for s in 0 1 2 3
-  do
-    make_dir $t/rt/stage$s
-    make_dir $t/rt/jemalloc
-    make_dir $t/rt/compiler-rt
-    for i in                                          \
-      isaac sync test \
-      arch/i386 arch/x86_64 arch/arm arch/aarch64 arch/mips arch/powerpc
-    do
-      make_dir $t/rt/stage$s/$i
-    done
-  done
-done
-
-for h in $CFG_HOST
-do
-    for t in $CFG_TARGET
-    do
-        # host lib dir stage0
-        make_dir $h/stage0/lib
-
-        # target bin dir stage0
-        make_dir $h/stage0/lib/rustlib/$t/bin
-
-        # target lib dir stage0
-        make_dir $h/stage0/lib/rustlib/$t/lib
-
-        for i in 0 1 2 3
-        do
-            # host bin dir
-            make_dir $h/stage$i/bin
-
-            # host lib dir
-            make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE
-
-            # host test dir
-            make_dir $h/stage$i/test
-
-            # target bin dir
-            make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE/rustlib/$t/bin
-
-            # target lib dir
-            make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE/rustlib/$t/lib
-        done
-    done
-
-    make_dir $h/test/run-pass
-    make_dir $h/test/run-pass-valgrind
-    make_dir $h/test/run-pass-fulldeps
-    make_dir $h/test/run-fail
-    make_dir $h/test/run-fail-fulldeps
-    make_dir $h/test/compile-fail
-    make_dir $h/test/parse-fail
-    make_dir $h/test/compile-fail-fulldeps
-    make_dir $h/test/bench
-    make_dir $h/test/perf
-    make_dir $h/test/pretty
-    make_dir $h/test/debuginfo-gdb
-    make_dir $h/test/debuginfo-lldb
-    make_dir $h/test/codegen
-    make_dir $h/test/rustdoc
-done
-
-# Configure submodules
-step_msg "configuring submodules"
-
-# Have to be in the top of src directory for this
-if [ -z $CFG_DISABLE_MANAGE_SUBMODULES ]
-then
-    cd ${CFG_SRC_DIR}
-
-    msg "git: submodule sync"
-    "${CFG_GIT}" submodule sync
-
-    msg "git: submodule init"
-    "${CFG_GIT}" submodule init
-
-    # Disable submodules that we're not using
-    if [ -n "${CFG_LLVM_ROOT}" ]; then
-        msg "git: submodule deinit src/llvm"
-        "${CFG_GIT}" submodule deinit src/llvm
-    fi
-    if [ -n "${CFG_JEMALLOC_ROOT}" ]; then
-        msg "git: submodule deinit src/jemalloc"
-        "${CFG_GIT}" submodule deinit src/jemalloc
-    fi
-
-    msg "git: submodule update"
-    "${CFG_GIT}" submodule update
-    need_ok "git failed"
-
-    msg "git: submodule foreach sync"
-    "${CFG_GIT}" submodule foreach --recursive 'if test -e .gitmodules; then git submodule sync; fi'
-    need_ok "git failed"
-
-    msg "git: submodule foreach update"
-    "${CFG_GIT}" submodule update --recursive
-    need_ok "git failed"
-
-    # NB: this is just for the sake of getting the submodule SHA1 values
-    # and status written into the build log.
-    msg "git: submodule status"
-    "${CFG_GIT}" submodule status --recursive
-
-    msg "git: submodule clobber"
-    "${CFG_GIT}" submodule foreach --recursive git clean -dxf
-    need_ok "git failed"
-    "${CFG_GIT}" submodule foreach --recursive git checkout .
-    need_ok "git failed"
-
-    cd ${CFG_BUILD_DIR}
-fi
-
-# Configure llvm, only if necessary
-step_msg "looking at LLVM"
-CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm/
-for t in $CFG_HOST
-do
-    do_reconfigure=1
-    is_msvc=0
-    case "$t" in
-        (*-msvc)
-        is_msvc=1
-        ;;
-    esac
-
-    if [ -z $CFG_LLVM_ROOT ]
-    then
-        LLVM_BUILD_DIR=${CFG_BUILD_DIR}$t/llvm
-        if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]
-        then
-            LLVM_DBG_OPTS="--enable-debug-symbols --disable-optimized"
-            # Just use LLVM straight from its build directory to
-            # avoid 'make install' time
-            LLVM_INST_DIR=$LLVM_BUILD_DIR/Debug
-        else
-            LLVM_DBG_OPTS="--enable-optimized"
-            LLVM_INST_DIR=$LLVM_BUILD_DIR/Release
-        fi
-        if [ -z "$CFG_ENABLE_LLVM_ASSERTIONS" ]
-        then
-            LLVM_ASSERTION_OPTS="--disable-assertions"
-        else
-            LLVM_ASSERTION_OPTS="--enable-assertions"
-
-            # Apparently even if we request assertions be enabled for MSVC,
-            # LLVM's CMake build system ignore this and outputs in `Release`
-            # anyway.
-            if [ ${is_msvc} -eq 0 ]; then
-                LLVM_INST_DIR=${LLVM_INST_DIR}+Asserts
-            fi
-        fi
-    else
-        msg "not reconfiguring LLVM, external LLVM root"
-        # The user is using their own LLVM
-        LLVM_BUILD_DIR=
-        LLVM_INST_DIR=$CFG_LLVM_ROOT
-        do_reconfigure=0
-    fi
-
-
-    if [ ${do_reconfigure} -ne 0 ]
-    then
-    # because git is hilarious, it might have put the module index
-    # in a couple places.
-        index1="${CFG_SRC_DIR}.git/modules/src/llvm/index"
-        index2="${CFG_SRC_DIR}src/llvm/.git/index"
-        for index in ${index1} ${index2}
-        do
-            config_status="${LLVM_BUILD_DIR}/config.status"
-            if test -e ${index} -a \
-                    -e ${config_status} -a \
-                    ${config_status} -nt ${index}
-            then
-                msg "not reconfiguring LLVM, config.status is fresh"
-                do_reconfigure=0
-            fi
-        done
-    fi
-
-    if [ ${do_reconfigure} -ne 0 ] && [ ${is_msvc} -ne 0 ]
-    then
-        msg "configuring LLVM for $t with cmake"
-
-        CMAKE_ARGS="-DLLVM_INCLUDE_TESTS=OFF"
-        if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then
-            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Debug"
-        else
-            CMAKE_ARGS="$CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release"
-        fi
-        if [ -z "$CFG_ENABLE_LLVM_ASSERTIONS" ]
-        then
-            CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=OFF"
-        else
-            CMAKE_ARGS="$CMAKE_ARGS -DLLVM_ENABLE_ASSERTIONS=ON"
-        fi
-
-        msg "configuring LLVM with:"
-        msg "$CMAKE_ARGS"
-        case "$CFG_MSVC_ROOT" in
-            *14.0*)
-                generator="Visual Studio 14 2015"
-                ;;
-            *12.0*)
-                generator="Visual Studio 12 2013"
-                ;;
-            *)
-                err "can't determine generator for LLVM cmake"
-                ;;
-        esac
-        case "$t" in
-            x86_64-*)
-                generator="$generator Win64"
-                ;;
-            i686-*)
-                ;;
-            *)
-                err "can only build LLVM for x86 platforms"
-                ;;
-        esac
-        (cd $LLVM_BUILD_DIR && "$CFG_CMAKE" $CFG_LLVM_SRC_DIR \
-                                            -G "$generator" \
-                                            $CMAKE_ARGS)
-        need_ok "LLVM cmake configure failed"
-    fi
-
-    if [ ${do_reconfigure} -ne 0 ] && [ ${is_msvc} -eq 0 ]
-    then
-        # LLVM's configure doesn't recognize the new Windows triples yet
-        gnu_t=$(to_gnu_triple $t)
-
-        msg "configuring LLVM for $gnu_t"
-
-        LLVM_TARGETS="--enable-targets=x86,x86_64,arm,aarch64,mips,powerpc"
-        LLVM_BUILD="--build=$gnu_t"
-        LLVM_HOST="--host=$gnu_t"
-        LLVM_TARGET="--target=$gnu_t"
-
-        # Disable unused LLVM features
-        LLVM_OPTS="$LLVM_DBG_OPTS $LLVM_ASSERTION_OPTS --disable-docs --enable-bindings=none"
-        # Disable term-info, linkage of which comes in multiple forms,
-        # making our snapshots incompatible (#9334)
-        LLVM_OPTS="$LLVM_OPTS --disable-terminfo"
-        # Try to have LLVM pull in as few dependencies as possible (#9397)
-        LLVM_OPTS="$LLVM_OPTS --disable-zlib --disable-libffi"
-
-        # Use win32 native thread/lock apis instead of pthread wrapper.
-        # (llvm's configure tries to find pthread first, so we have to disable it explicitly.)
-        # Also note that pthreads works badly on mingw-w64 systems: #8996
-        case "$CFG_BUILD" in
-            (*-windows-gnu)
-            LLVM_OPTS="$LLVM_OPTS --disable-pthreads"
-            ;;
-        esac
-
-        case "$CFG_CC" in
-            ("ccache clang")
-            LLVM_CXX_32="ccache clang++ -Qunused-arguments"
-            LLVM_CC_32="ccache clang -Qunused-arguments"
-
-            LLVM_CXX_64="ccache clang++ -Qunused-arguments"
-            LLVM_CC_64="ccache clang -Qunused-arguments"
-            ;;
-            ("clang")
-            LLVM_CXX_32="clang++ -Qunused-arguments"
-            LLVM_CC_32="clang -Qunused-arguments"
-
-            LLVM_CXX_64="clang++ -Qunused-arguments"
-            LLVM_CC_64="clang -Qunused-arguments"
-            ;;
-            ("ccache gcc")
-            LLVM_CXX_32="ccache g++"
-            LLVM_CC_32="ccache gcc"
-
-            LLVM_CXX_64="ccache g++"
-            LLVM_CC_64="ccache gcc"
-            ;;
-            ("gcc")
-            LLVM_CXX_32="g++"
-            LLVM_CC_32="gcc"
-
-            LLVM_CXX_64="g++"
-            LLVM_CC_64="gcc"
-            ;;
-
-            (*)
-            msg "inferring LLVM_CXX/CC from CXX/CC = $CXX/$CC"
-            if [ -n "$CFG_ENABLE_CCACHE" ]
-            then
-                if [ -z "$CFG_CCACHE" ]
-                then
-                    err "ccache requested but not found"
-                fi
-
-                LLVM_CXX_32="ccache $CXX"
-                LLVM_CC_32="ccache $CC"
-
-                LLVM_CXX_64="ccache $CXX"
-                LLVM_CC_64="ccache $CC"
-            else
-                LLVM_CXX_32="$CXX"
-                LLVM_CC_32="$CC"
-
-                LLVM_CXX_64="$CXX"
-                LLVM_CC_64="$CC"
-            fi
-
-            ;;
-        esac
-
-        case "$CFG_CPUTYPE" in
-            (x86*)
-                LLVM_CXX_32="$LLVM_CXX_32 -m32"
-                LLVM_CC_32="$LLVM_CC_32 -m32"
-
-                LLVM_CFLAGS_32="-m32"
-                LLVM_CXXFLAGS_32="-m32"
-                LLVM_LDFLAGS_32="-m32"
-
-                LLVM_CFLAGS_64=""
-                LLVM_CXXFLAGS_64=""
-                LLVM_LDFLAGS_64=""
-
-                LLVM_CXX_32="$LLVM_CXX_32 -m32"
-                LLVM_CC_32="$LLVM_CC_32 -m32"
-                ;;
-
-            (*)
-                LLVM_CFLAGS_32=""
-                LLVM_CXXFLAGS_32=""
-                LLVM_LDFLAGS_32=""
-
-                LLVM_CFLAGS_64=""
-                LLVM_CXXFLAGS_64=""
-                LLVM_LDFLAGS_64=""
-                ;;
-        esac
-
-        if echo $t | grep -q x86_64
-        then
-            LLVM_CXX=$LLVM_CXX_64
-            LLVM_CC=$LLVM_CC_64
-            LLVM_CFLAGS=$LLVM_CFLAGS_64
-            LLVM_CXXFLAGS=$LLVM_CXXFLAGS_64
-            LLVM_LDFLAGS=$LLVM_LDFLAGS_64
-        else
-            LLVM_CXX=$LLVM_CXX_32
-            LLVM_CC=$LLVM_CC_32
-            LLVM_CFLAGS=$LLVM_CFLAGS_32
-            LLVM_CXXFLAGS=$LLVM_CXXFLAGS_32
-            LLVM_LDFLAGS=$LLVM_LDFLAGS_32
-        fi
-
-        CXX=$LLVM_CXX
-        CC=$LLVM_CC
-        CFLAGS=$LLVM_CFLAGS
-        CXXFLAGS=$LLVM_CXXFLAGS
-        LDFLAGS=$LLVM_LDFLAGS
-
-        if [ -z "$CFG_DISABLE_LIBCPP" ] && [ -n "$CFG_USING_CLANG" ]; then
-            LLVM_OPTS="$LLVM_OPTS --enable-libcpp"
-        fi
-
-        LLVM_FLAGS="$LLVM_TARGETS $LLVM_OPTS $LLVM_BUILD \
-                        $LLVM_HOST $LLVM_TARGET --with-python=$CFG_PYTHON"
-
-        msg "configuring LLVM with:"
-        msg "$LLVM_FLAGS"
-
-        export CXX
-        export CC
-        export CFLAGS
-        export CXXFLAGS
-        export LDFLAGS
-
-        cd $LLVM_BUILD_DIR
-        case $CFG_SRC_DIR in
-            /* | [a-z]:* | [A-Z]:*)
-                ${CFG_LLVM_SRC_DIR}configure $LLVM_FLAGS
-                ;;
-            *)
-                ${CFG_BUILD_DIR}${CFG_LLVM_SRC_DIR}configure \
-                    $LLVM_FLAGS
-                ;;
-        esac
-        need_ok "LLVM configure failed"
-
-        cd $CFG_BUILD_DIR
-    fi
-
-    # Construct variables for LLVM build and install directories for
-    # each target. These will be named
-    # CFG_LLVM_BUILD_DIR_${target_triple} but all the hyphens in
-    # target_triple will be converted to underscore, because bash
-    # variables can't contain hyphens. The makefile will then have to
-    # convert back.
-    CFG_LLVM_BUILD_DIR=$(echo CFG_LLVM_BUILD_DIR_${t} | tr - _)
-    CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)
-    eval ${CFG_LLVM_BUILD_DIR}="'$LLVM_BUILD_DIR'"
-    eval ${CFG_LLVM_INST_DIR}="'$LLVM_INST_DIR'"
-done
-
-
-step_msg "writing configuration"
-
-putvar CFG_SRC_DIR
-putvar CFG_SRC_DIR_RELATIVE
-putvar CFG_BUILD_DIR
-putvar CFG_OSTYPE
-putvar CFG_CPUTYPE
-putvar CFG_CONFIGURE_ARGS
-putvar CFG_PREFIX
-putvar CFG_HOST
-putvar CFG_TARGET
-putvar CFG_LIBDIR_RELATIVE
-putvar CFG_DISABLE_MANAGE_SUBMODULES
-putvar CFG_AARCH64_LINUX_ANDROID_NDK
-putvar CFG_ARM_LINUX_ANDROIDEABI_NDK
-putvar CFG_MANDIR
-
-# Avoid spurious warnings from clang by feeding it original source on
-# ccache-miss rather than preprocessed input.
-if [ -n "$CFG_ENABLE_CCACHE" ] && [ -n "$CFG_USING_CLANG" ]
-then
-    CFG_CCACHE_CPP2=1
-    putvar CFG_CCACHE_CPP2
-fi
-
-if [ -n "$CFG_ENABLE_CCACHE" ]
-then
-    CFG_CCACHE_BASEDIR=${CFG_SRC_DIR}
-    putvar CFG_CCACHE_BASEDIR
-fi
-
-
-if [ -n $BAD_PANDOC ]
-then
-    CFG_PANDOC=
-    putvar CFG_PANDOC
-fi
-
-putvar CFG_LLVM_SRC_DIR
-
-for t in $CFG_HOST
-do
-    CFG_LLVM_BUILD_DIR=$(echo CFG_LLVM_BUILD_DIR_${t} | tr - _)
-    CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)
-    putvar $CFG_LLVM_BUILD_DIR
-    putvar $CFG_LLVM_INST_DIR
-done
-
-msg
-copy_if_changed ${CFG_SRC_DIR}Makefile.in ./Makefile
-move_if_changed config.tmp config.mk
-rm -f config.tmp
-touch config.stamp
-
-if [ -z "$CFG_ENABLE_DEBUG" ]; then
-    step_msg "configured in release mode. for development consider --enable-debug"
-else
-    step_msg "complete"
-fi
-
-msg "run \`make help\`"
-msg
+go "$@"
