@@ -13,6 +13,8 @@ extern crate collections;
 use rustc::plugin::Registry;
 use rustc::lint::LintPassObject;
 
+#[macro_use]
+pub mod utils;
 pub mod types;
 pub mod misc;
 pub mod eq_op;
@@ -27,7 +29,6 @@ pub mod len_zero;
 pub mod attrs;
 pub mod collapsible_if;
 pub mod unicode;
-pub mod utils;
 pub mod strings;
 pub mod methods;
 pub mod returns;

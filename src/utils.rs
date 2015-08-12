@@ -92,3 +92,32 @@ pub fn walk_ptrs_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
         _ => ty
     }
 }
+
+/// Produce a nested chain of if-lets from the patterns:
+///
+///     if_let_chain! {[Some(y) = x, Some(z) = y],
+///         {
+///             block
+///         }
+///     }
+///
+/// becomes
+///
+///     if let Some(y) = x {
+///         if let Some(z) = y {
+///             block
+///         }
+///     }
+#[macro_export]
+macro_rules! if_let_chain {
+    ([$pat:pat = $expr:expr, $($p2:pat = $e2:expr),+], $block:block) => {
+        if let $pat = $expr {
+           if_let_chain!{ [$($p2 = $e2),+], $block }
+        }
+    };
+    ([$pat:pat = $expr:expr], $block:block) => {
+        if let $pat = $expr {
+           $block
+        }
+    };
+}
