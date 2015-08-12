@@ -32,7 +32,6 @@
 #![feature(clone_from_slice)]
 #![feature(collections)]
 #![feature(const_fn)]
-#![feature(core)]
 #![feature(duration_span)]
 #![feature(dynamic_lib)]
 #![feature(enumset)]
