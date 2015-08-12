@@ -2437,8 +2437,8 @@ impl Foo for Bar {
 }
 ```
 
-To fix this error, please check you didn't misspell the associated const
-name or you did implement the good trait item. Example:
+To fix this error, please verify you didn't misspell the associated
+const name or you did implement the good trait item. Example:
 
 ```
 struct Bar;
@@ -2482,14 +2482,14 @@ impl Foo for Bar {
 }
 ```
 
-To fix this error, please check you didn't misspell the method name. Example:
+To fix this error, please verify you didn't misspell the method name. Example:
 
 ```
 struct Bar;
 
 trait Foo {
     const N : u32;
-    
+
     fn M();
 }
 
@@ -2497,6 +2497,50 @@ impl Foo for Bar {
     const N : u32 = 0;
 
     fn M() {} // ok!
+}
+```
+"##,
+
+E0325: r##"
+An associated type was implemented when another trait item was expected.
+Erroneous code example:
+
+```
+struct Bar;
+
+trait Foo {
+    const N : u32;
+}
+
+impl Foo for Bar {
+    type N = u32;
+    // error: item `N` is an associated type, which doesn't match its
+    //        trait `<Bar as Foo>`
+}
+```
+
+To fix this error, please verify you didn't misspell the associated type name
+and that your trait item implementation corresponds to the trait definition.
+Example:
+
+```
+struct Bar;
+
+trait Foo {
+    type N;
+}
+
+impl Foo for Bar {
+    type N = u32; // ok!
+}
+
+//or:
+trait Foo {
+    const N : u32;
+}
+
+impl Foo for Bar {
+    const N : u32 = 0; // ok!
 }
 ```
 "##,
@@ -2872,8 +2916,6 @@ register_diagnostics! {
     E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
-    E0324, // implemented a method when another trait item expected
-    E0325, // implemented an associated type when another trait item expected
     E0328, // cannot implement Unsize explicitly
     E0329, // associated const depends on type parameter or Self.
     E0370, // discriminant overflow
