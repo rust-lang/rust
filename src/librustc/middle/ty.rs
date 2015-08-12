@@ -6233,13 +6233,18 @@ impl<'tcx> ctxt<'tcx> {
     /// themselves. This should really be a unique type; `FreshTy(0)` is a
     /// popular choice.
     ///
+    /// NB: in some cases, particularly around higher-ranked bounds,
+    /// this function returns a kind of conservative approximation.
+    /// That is, all regions returned by this function are definitely
+    /// required, but there may be other region bounds that are not
+    /// returned, as well as requirements like `for<'a> T: 'a`.
+    ///
     /// Requires that trait definitions have been processed so that we can
     /// elaborate predicates and walk supertraits.
     pub fn required_region_bounds(&self,
                                   erased_self_ty: Ty<'tcx>,
                                   predicates: Vec<ty::Predicate<'tcx>>)
-                                  -> Vec<ty::Region>
-    {
+                                  -> Vec<ty::Region>    {
         debug!("required_region_bounds(erased_self_ty={:?}, predicates={:?})",
                erased_self_ty,
                predicates);
@@ -6268,11 +6273,7 @@ impl<'tcx> ctxt<'tcx> {
                         // construct such an object, but this seems
                         // correct even if that code changes).
                         if t == erased_self_ty && !r.has_escaping_regions() {
-                            if r.has_escaping_regions() {
-                                Some(ty::ReStatic)
-                            } else {
-                                Some(r)
-                            }
+                            Some(r)
                         } else {
                             None
                         }
