@@ -43,10 +43,10 @@ impl LintPass for MiscPass {
                             format!("{{ {} }}", body_code)
                         };
                         span_help_and_lint(cx, SINGLE_MATCH, expr.span,
-                              "You seem to be trying to use match for \
+                              "you seem to be trying to use match for \
                               destructuring a single pattern. Did you mean to \
                               use `if let`?",
-                              &*format!("Try\nif let {} = {} {}",
+                              &*format!("try\nif let {} = {} {}",
                                         snippet(cx, arms[0].pats[0].span, ".."),
                                         snippet(cx, ex.span, ".."),
                                         suggestion)
@@ -74,7 +74,7 @@ impl LintPass for StrToStringPass {
             ast::ExprMethodCall(ref method, _, ref args)
                 if method.node.name == "to_string"
                 && is_str(cx, &*args[0]) => {
-                span_lint(cx, STR_TO_STRING, expr.span, "str.to_owned() is faster");
+                span_lint(cx, STR_TO_STRING, expr.span, "`str.to_owned()` is faster");
             },
             _ => ()
         }
@@ -105,7 +105,7 @@ impl LintPass for TopLevelRefPass {
                 span_lint(cx,
                     TOPLEVEL_REF_ARG,
                     arg.pat.span,
-                    "`ref` directly on a function argument is ignored. Have you considered using a reference type instead?"
+                    "`ref` directly on a function argument is ignored. Consider using a reference type instead."
                 );
             }
         }
@@ -139,7 +139,7 @@ impl LintPass for CmpNan {
 fn check_nan(cx: &Context, path: &Path, span: Span) {
     path.segments.last().map(|seg| if seg.identifier.name == "NAN" {
         span_lint(cx, CMP_NAN, span,
-                  "Doomed comparison with NAN, use std::{f32,f64}::is_nan instead");
+                  "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
     });
 }
 
@@ -159,7 +159,7 @@ impl LintPass for FloatCmp {
             let op = cmp.node;
             if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
                 span_lint(cx, FLOAT_CMP, expr.span, &format!(
-                    "{}-Comparison of f32 or f64 detected. You may want to change this to 'abs({} - {}) < epsilon' for some suitable value of epsilon",
+                    "{}-comparison of f32 or f64 detected. Consider changing this to `abs({} - {}) < epsilon` for some suitable value of epsilon.",
                     binop_to_string(op), snippet(cx, left.span, ".."),
                     snippet(cx, right.span, "..")));
             }
@@ -190,7 +190,7 @@ impl LintPass for Precedence {
         if let ExprBinary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
             if is_bit_op(op) && (is_arith_expr(left) || is_arith_expr(right)) {
                 span_lint(cx, PRECEDENCE, expr.span,
-                    "Operator precedence can trip the unwary. Consider adding parenthesis to the subexpression.");
+                    "operator precedence can trip the unwary. Consider adding parenthesis to the subexpression.");
             }
         }
     }
@@ -246,7 +246,7 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
                 name == "to_owned" && is_str_arg(cx, args) {
                     span_lint(cx, CMP_OWNED, expr.span, &format!(
                         "this creates an owned instance just for comparison. \
-                         Consider using {}.as_slice() to compare without allocation",
+                         Consider using `{}.as_slice()` to compare without allocation.",
                         snippet(cx, other_span, "..")))
                 }
         },
@@ -256,7 +256,7 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
                     match_path(path, &["String", "from"]) {
                         span_lint(cx, CMP_OWNED, expr.span, &format!(
                             "this creates an owned instance just for comparison. \
-                             Consider using {}.as_slice() to compare without allocation",
+                             Consider using `{}.as_slice()` to compare without allocation.",
                             snippet(cx, other_span, "..")))
                     }
             }
@@ -284,7 +284,7 @@ impl LintPass for ModuloOne {
         if let ExprBinary(ref cmp, _, ref right) = expr.node {
             if let &Spanned {node: BinOp_::BiRem, ..} = cmp {
                 if is_lit_one(right) {
-                    cx.span_lint(MODULO_ONE, expr.span, "Any number modulo 1 will be 0");
+                    cx.span_lint(MODULO_ONE, expr.span, "any number modulo 1 will be 0");
                 }
             }
         }

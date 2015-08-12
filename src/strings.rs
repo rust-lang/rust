@@ -29,8 +29,8 @@ impl LintPass for StringAdd {
         if let &ExprAssign(ref target, ref  src) = &e.node {
             if is_string(cx, target) && is_add(src, target) {
                 span_lint(cx, STRING_ADD_ASSIGN, e.span,
-                    "You assign the result of adding something to this string. \
-                    Consider using `String::push_str(..) instead.")
+                    "you assign the result of adding something to this string. \
+                    Consider using `String::push_str()` instead.")
             }
         }
     }

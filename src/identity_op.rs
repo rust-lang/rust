@@ -49,7 +49,7 @@ impl LintPass for IdentityOp {
 fn check(cx: &Context, e: &Expr, m: i8, span: Span, arg: Span) {
     if have_lit(cx, e, m) {
         span_lint(cx, IDENTITY_OP, span, &format!(
-            "The operation is ineffective. Consider reducing it to '{}'",
+            "the operation is ineffective. Consider reducing it to `{}`.",
            snippet(cx, arg, "..")));
     }
 }

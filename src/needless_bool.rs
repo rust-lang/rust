@@ -34,10 +34,10 @@ impl LintPass for NeedlessBool {
                               "your if-then-else expression will always return true"); },
                 (Option::Some(true), Option::Some(false)) => {
                     span_lint(cx, NEEDLESS_BOOL, e.span,
-                              "you can reduce your if-statement to its predicate"); },
+                              "you can reduce your if statement to its predicate"); },
                 (Option::Some(false), Option::Some(true)) => {
                     span_lint(cx, NEEDLESS_BOOL, e.span,
-                              "you can reduce your if-statement to '!' + your predicate"); },
+                              "you can reduce your if statement to `!` + your predicate"); },
                 (Option::Some(false), Option::Some(false)) => {
                     span_lint(cx, NEEDLESS_BOOL, e.span,
                               "your if-then-else expression will always return false"); },

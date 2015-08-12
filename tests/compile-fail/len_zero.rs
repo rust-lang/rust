@@ -5,14 +5,14 @@ struct One;
 
 #[deny(len_without_is_empty)]
 impl One {
-    fn len(self: &Self) -> isize { //~ERROR Item 'One' has a '.len(_: &Self)'
+    fn len(self: &Self) -> isize { //~ERROR item `One` has a `.len(_: &Self)`
         1
     }
 }
 
 #[deny(len_without_is_empty)]
 trait TraitsToo {
-    fn len(self: &Self) -> isize; //~ERROR Trait 'TraitsToo' has a '.len(_:
+    fn len(self: &Self) -> isize; //~ERROR trait `TraitsToo` has a `.len(_:
 }
 
 impl TraitsToo for One {
@@ -56,7 +56,7 @@ struct HasWrongIsEmpty;
 
 #[deny(len_without_is_empty)]
 impl HasWrongIsEmpty {
-    fn len(self: &Self) -> isize { //~ERROR Item 'HasWrongIsEmpty' has a '.len(_: &Self)'
+    fn len(self: &Self) -> isize { //~ERROR item `HasWrongIsEmpty` has a `.len(_: &Self)`
         1
     }
 
@@ -69,7 +69,7 @@ impl HasWrongIsEmpty {
 #[deny(len_zero)]
 fn main() {
     let x = [1, 2];
-    if x.len() == 0 { //~ERROR Consider replacing the len comparison
+    if x.len() == 0 { //~ERROR consider replacing the len comparison
         println!("This should not happen!");
     }
 
@@ -84,13 +84,13 @@ fn main() {
     }
 
     let hie = HasIsEmpty;
-    if hie.len() == 0 { //~ERROR Consider replacing the len comparison
+    if hie.len() == 0 { //~ERROR consider replacing the len comparison
         println!("Or this!");
     }
     assert!(!hie.is_empty());
 
     let wie : &WithIsEmpty = &Wither;
-    if wie.len() == 0 { //~ERROR Consider replacing the len comparison
+    if wie.len() == 0 { //~ERROR consider replacing the len comparison
         println!("Or this!");
     }
     assert!(!wie.is_empty());

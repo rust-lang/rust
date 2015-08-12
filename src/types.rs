@@ -1,5 +1,3 @@
-
-
 use syntax::ptr::P;
 use syntax::ast;
 use syntax::ast::*;
@@ -55,8 +53,8 @@ impl LintPass for TypePass {
           .and_then(|t| match_ty_unwrap(&**t, &["std", "vec", "Vec"]))
           .map(|_| {
             span_help_and_lint(cx, BOX_VEC, ty.span,
-                              "You seem to be trying to use Box<Vec<T>>. Did you mean to use Vec<T>?",
-                              "Vec<T> is already on the heap, Box<Vec<T>> makes an extra allocation");
+                              "you seem to be trying to use `Box<Vec<T>>`. Did you mean to use `Vec<T>`?",
+                              "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation");
           });
         {
             // In case stuff gets moved around
@@ -71,7 +69,7 @@ impl LintPass for TypePass {
             if match_ty_unwrap(ty, &path[..]).is_some() {
                 span_help_and_lint(cx, LINKEDLIST, ty.span,
                                    "I see you're using a LinkedList! Perhaps you meant some other data structure?",
-                                   "A RingBuf might work.");
+                                   "a RingBuf might work");
                 return;
             }
         }

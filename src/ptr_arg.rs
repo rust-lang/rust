@@ -60,10 +60,10 @@ fn check_ptr_subtype(cx: &Context, span: Span, ty: &Ty) {
     match_ty_unwrap(ty, &["Vec"]).map_or_else(|| match_ty_unwrap(ty,
         &["String"]).map_or((), |_| {
             span_lint(cx, PTR_ARG, span,
-                      "Writing '&String' instead of '&str' involves a new Object \
-                       where a slices will do. Consider changing the type to &str")
+                      "writing `&String` instead of `&str` involves a new object \
+                       where a slice will do. Consider changing the type to `&str`.")
         }), |_| span_lint(cx, PTR_ARG, span,
-                          "Writing '&Vec<_>' instead of \
-                           '&[_]' involves one more reference and cannot be used with \
-                           non-vec-based slices. Consider changing the type to &[...]"))
+                          "writing `&Vec<_>` instead of \
+                           `&[_]` involves one more reference and cannot be used with \
+                           non-Vec-based slices. Consider changing the type to `&[...]`."))
 }

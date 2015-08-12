@@ -58,8 +58,8 @@ fn check_trait_items(cx: &Context, item: &Item, trait_items: &[P<TraitItem>]) {
         for i in trait_items {
             if is_named_self(i, "len") {
                 span_lint(cx, LEN_WITHOUT_IS_EMPTY, i.span,
-                          &format!("Trait '{}' has a '.len(_: &Self)' method, but no \
-                                    '.is_empty(_: &Self)' method. Consider adding one.",
+                          &format!("trait `{}` has a `.len(_: &Self)` method, but no \
+                                    `.is_empty(_: &Self)` method. Consider adding one.",
                                    item.ident.name));
             }
         };
@@ -78,8 +78,8 @@ fn check_impl_items(cx: &Context, item: &Item, impl_items: &[P<ImplItem>]) {
                 let s = i.span;
                 span_lint(cx, LEN_WITHOUT_IS_EMPTY,
                           Span{ lo: s.lo, hi: s.lo, expn_id: s.expn_id },
-                          &format!("Item '{}' has a '.len(_: &Self)' method, but no \
-                                    '.is_empty(_: &Self)' method. Consider adding one.",
+                          &format!("item `{}` has a `.len(_: &Self)` method, but no \
+                                    `.is_empty(_: &Self)` method. Consider adding one.",
                                    item.ident.name));
                 return;
             }
@@ -108,7 +108,7 @@ fn check_len_zero(cx: &Context, span: Span, method: &SpannedIdent,
         if method.node.name == "len" && args.len() == 1 &&
             has_is_empty(cx, &*args[0]) {
                 span_lint(cx, LEN_ZERO, span, &format!(
-                    "Consider replacing the len comparison with '{}_.is_empty()'",
+                    "consider replacing the len comparison with `{}_.is_empty()`",
                     empty))
             }
     }

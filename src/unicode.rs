@@ -41,6 +41,6 @@ fn lint_zero_width(cx: &Context, span: Span, start: Option<usize>) {
             lo: span.lo + BytePos(index as u32),
             hi: span.lo + BytePos(index as u32),
             expn_id: span.expn_id,
-        }, "Zero-width space detected. Consider using \\u{200B}")
+        }, "zero-width space detected. Consider using `\\u{200B}`.")
     });
 }

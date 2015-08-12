@@ -5,11 +5,11 @@
 
 fn main() {
     let a = |a, b| foo(a, b);
-    //~^ ERROR Redundant closure found, consider using `foo` in its place
+    //~^ ERROR redundant closure found. Consider using `foo` in its place
     let c = |a, b| {1+2; foo}(a, b);
-    //~^ ERROR Redundant closure found, consider using `{ 1 + 2; foo }` in its place
+    //~^ ERROR redundant closure found. Consider using `{ 1 + 2; foo }` in its place
     let d = |a, b| foo((|c, d| foo2(c,d))(a,b), b);
-    //~^ ERROR Redundant closure found, consider using `foo2` in its place
+    //~^ ERROR redundant closure found. Consider using `foo2` in its place
 }
 
 fn foo(_: u8, _: u8) {

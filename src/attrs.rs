@@ -101,7 +101,7 @@ fn check_attrs(cx: &Context, info: Option<&ExpnInfo>, ident: &Ident,
             if let MetaWord(ref always) = values[0].node {
                 if always != &"always" { continue; }
                 span_lint(cx, INLINE_ALWAYS, attr.span, &format!(
-                    "You have declared #[inline(always)] on {}. This \
+                    "you have declared `#[inline(always)]` on `{}`. This \
                      is usually a bad idea. Are you sure?",
                     ident.name.as_str()));
             }
