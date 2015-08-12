@@ -59,36 +59,6 @@ impl LintPass for MiscPass {
 }
 
 
-declare_lint!(pub STR_TO_STRING, Warn, "Warn when a String could use to_owned() instead of to_string()");
-
-#[allow(missing_copy_implementations)]
-pub struct StrToStringPass;
-
-impl LintPass for StrToStringPass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(STR_TO_STRING)
-    }
-
-    fn check_expr(&mut self, cx: &Context, expr: &ast::Expr) {
-        match expr.node {
-            ast::ExprMethodCall(ref method, _, ref args)
-                if method.node.name == "to_string"
-                && is_str(cx, &*args[0]) => {
-                span_lint(cx, STR_TO_STRING, expr.span, "`str.to_owned()` is faster");
-            },
-            _ => ()
-        }
-
-        fn is_str(cx: &Context, expr: &ast::Expr) -> bool {
-            match walk_ptrs_ty(cx.tcx.expr_ty(expr)).sty {
-                ty::TyStr => true,
-                _ => false
-            }
-        }
-    }
-}
-
-
 declare_lint!(pub TOPLEVEL_REF_ARG, Warn, "Warn about pattern matches with top-level `ref` bindings");
 
 #[allow(missing_copy_implementations)]

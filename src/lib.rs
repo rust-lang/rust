@@ -37,7 +37,6 @@ pub mod returns;
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box types::TypePass as LintPassObject);
     reg.register_lint_pass(box misc::MiscPass as LintPassObject);
-    reg.register_lint_pass(box misc::StrToStringPass as LintPassObject);
     reg.register_lint_pass(box misc::TopLevelRefPass as LintPassObject);
     reg.register_lint_pass(box misc::CmpNan as LintPassObject);
     reg.register_lint_pass(box eq_op::EqOp as LintPassObject);
@@ -61,7 +60,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box methods::MethodsPass as LintPassObject);
 
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
-                                           misc::SINGLE_MATCH, misc::STR_TO_STRING,
+                                           misc::SINGLE_MATCH,
                                            misc::TOPLEVEL_REF_ARG, eq_op::EQ_OP,
                                            bit_mask::BAD_BIT_MASK,
                                            bit_mask::INEFFECTIVE_BIT_MASK,
@@ -83,5 +82,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            misc::MODULO_ONE,
                                            methods::OPTION_UNWRAP_USED,
                                            methods::RESULT_UNWRAP_USED,
+                                           methods::STR_TO_STRING,
                                            ]);
 }
