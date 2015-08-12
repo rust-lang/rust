@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 use boxed::Box;
 use cmp;
 use io::{self, SeekFrom, Read, Write, Seek, BufRead, Error, ErrorKind};

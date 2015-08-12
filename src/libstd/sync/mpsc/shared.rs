@@ -20,9 +20,6 @@
 
 pub use self::Failure::*;
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 use core::cmp;
 use core::isize;
 

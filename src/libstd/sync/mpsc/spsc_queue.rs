@@ -33,9 +33,6 @@
 //! concurrently between two threads. This data structure is safe to use and
 //! enforces the semantics that there is one pusher and one popper.
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 use alloc::boxed::Box;
 use core::ptr;
 use core::cell::UnsafeCell;

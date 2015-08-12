@@ -249,15 +249,12 @@
 #![cfg_attr(test, feature(float_from_str_radix, range_inclusive, float_extras, hash_default))]
 #![cfg_attr(test, feature(test, rustc_private, float_consts))]
 #![cfg_attr(target_env = "msvc", feature(link_args))]
-#![cfg_attr(stage0, feature(core, core_prelude))]
 
 // Don't link to std. We are std.
 #![no_std]
 
 #![allow(trivial_casts)]
 #![deny(missing_docs)]
-
-#[cfg(stage0)] #[macro_use] extern crate core;
 
 #[cfg(test)] extern crate test;
 #[cfg(test)] #[macro_use] extern crate log;

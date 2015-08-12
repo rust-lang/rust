@@ -86,9 +86,6 @@
 //! println!("There are {} primes below {}", num_primes, max_prime);
 //! ```
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 use core::cmp::Ordering;
 use core::cmp;
 use core::fmt;

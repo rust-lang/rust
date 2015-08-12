@@ -59,12 +59,9 @@
 #![feature(utf8_error)]
 #![cfg_attr(test, feature(rand, test))]
 #![cfg_attr(not(test), feature(str_words))]
-#![cfg_attr(stage0, feature(core, core_prelude))]
 
 #![feature(no_std)]
 #![no_std]
-
-#[cfg(stage0)] #[macro_use] extern crate core;
 
 extern crate rustc_unicode;
 extern crate alloc;
