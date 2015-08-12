@@ -200,6 +200,7 @@ extern "platform-intrinsic" {
     fn simd_shuffle4<T, U>(v: T, w: T, idx: [i32; 4]) -> U;
     fn simd_shuffle8<T, U>(v: T, w: T, idx: [i32; 8]) -> U;
     fn simd_shuffle16<T, U>(v: T, w: T, idx: [i32; 16]) -> U;
+    // ...
 }
 ```
 
