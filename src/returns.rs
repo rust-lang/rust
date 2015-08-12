@@ -69,17 +69,16 @@ impl ReturnPass {
         // we need both a let-binding stmt and an expr
         if_let_chain! {
             [
-                Some(stmt) = block.stmts.last(),
-                StmtDecl(ref decl, _) = stmt.node,
-                DeclLocal(ref local) = decl.node,
-                Some(ref initexpr) = local.init,
-                PatIdent(_, Spanned { node: id, .. }, _) = local.pat.node,
-                Some(ref retexpr) = block.expr,
-                ExprPath(_, ref path) = retexpr.node
+                let Some(stmt) = block.stmts.last(),
+                let StmtDecl(ref decl, _) = stmt.node,
+                let DeclLocal(ref local) = decl.node,
+                let Some(ref initexpr) = local.init,
+                let PatIdent(_, Spanned { node: id, .. }, _) = local.pat.node,
+                let Some(ref retexpr) = block.expr,
+                let ExprPath(_, ref path) = retexpr.node,
+                match_path(path, &[&*id.name.as_str()])
             ], {
-                if match_path(path, &[&*id.name.as_str()]) {
-                    self.emit_let_lint(cx, retexpr.span, initexpr.span);
-                }
+                self.emit_let_lint(cx, retexpr.span, initexpr.span);
             }
         }
     }
