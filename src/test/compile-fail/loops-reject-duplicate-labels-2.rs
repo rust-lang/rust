@@ -16,7 +16,7 @@
 //
 // This is testing the generalization (to the whole function body)
 // discussed here:
-// http://internals.rust-lang.org/t/psa-rejecting-duplicate-loop-labels/1833
+// https://internals.rust-lang.org/t/psa-rejecting-duplicate-loop-labels/1833
 
 pub fn foo() {
     { 'fl: for _ in 0..10 { break; } }   //~ NOTE shadowed label `'fl` declared here

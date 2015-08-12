@@ -32,7 +32,7 @@ install dialog and on the "Product Features" page ensure "Add to PATH" is
 installed on the local hard drive.
 
 
-[install-page]: http://www.rust-lang.org/install.html
+[install-page]: https://www.rust-lang.org/install.html
 
 ## Uninstalling
 
@@ -85,10 +85,10 @@ $ rustc --version
 ```
 
 You should see the version number, commit hash, and commit date. If you just
-installed version 1.0.0, you should see:
+installed version 1.2.0, you should see:
 
 ```bash
-rustc 1.0.0 (a59de37e9 2015-05-13)
+rustc 1.2.0 (082e47636 2015-08-03)
 ```
 
 If you did, Rust has been installed successfully! Congrats!
@@ -112,5 +112,5 @@ resources include [the user’s forum][users], and
 
 [irc]: irc://irc.mozilla.org/#rust
 [mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
-[users]: http://users.rust-lang.org/
+[users]: https://users.rust-lang.org/
 [stackoverflow]: http://stackoverflow.com/questions/tagged/rust

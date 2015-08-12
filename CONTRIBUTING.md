@@ -17,8 +17,8 @@ hop on [#rust-internals][pound-rust-internals].
 As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
 
 [pound-rust-internals]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
-[internals]: http://internals.rust-lang.org
-[coc]: http://www.rust-lang.org/conduct.html
+[internals]: https://internals.rust-lang.org
+[coc]: https://www.rust-lang.org/conduct.html
 
 ## Feature Requests
 
@@ -207,6 +207,6 @@ it to [Crates.io](http://crates.io). Easier said than done, but very, very
 valuable!
 
 [pound-rust]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
-[users]: http://users.rust-lang.org/
+[users]: https://users.rust-lang.org/
 [so]: http://stackoverflow.com/questions/tagged/rust
 [community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library

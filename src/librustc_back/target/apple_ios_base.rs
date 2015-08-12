@@ -77,8 +77,8 @@ fn target_cpu(arch: Arch) -> String {
         Armv7 => "cortex-a8", // iOS7 is supported on iPhone 4 and higher
         Armv7s => "cortex-a9",
         Arm64 => "cyclone",
-        I386 => "generic",
-        X86_64 => "x86-64",
+        I386 => "yonah",
+        X86_64 => "core2",
     }.to_string()
 }
 

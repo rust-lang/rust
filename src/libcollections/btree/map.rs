@@ -17,9 +17,6 @@
 
 use self::Entry::*;
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 use core::cmp::Ordering;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
@@ -531,8 +528,6 @@ enum Continuation<A, B> {
 /// to nodes. By using this module much better safety guarantees can be made, and more search
 /// boilerplate gets cut out.
 mod stack {
-    #[cfg(stage0)]
-    use core::prelude::v1::*;
     use core::marker;
     use core::mem;
     use core::ops::{Deref, DerefMut};

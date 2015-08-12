@@ -21,12 +21,12 @@ Some things that might be helpful to you though:
 
 # Reference
 
-* [The Rust official site](http://rust-lang.org)
-* [The Rust reference](http://doc.rust-lang.org/reference.html)
+* [The Rust official site](https://www.rust-lang.org)
+* [The Rust reference](https://doc.rust-lang.org/reference.html)
 
 # Docs
 
-* [The standard library](http://doc.rust-lang.org/std/)
+* [The standard library](https://doc.rust-lang.org/std/)
 
 <script>
 function get_url_fragments() {
@@ -58,7 +58,7 @@ function populate_rust_search() {
     // #18540, use a single token
 
     var a = document.createElement("a");
-    a.href = "http://doc.rust-lang.org/core/?search=" + encodeURIComponent(lt);
+    a.href = "https://doc.rust-lang.org/core/?search=" + encodeURIComponent(lt);
     a.textContent = lt;
     var search = document.getElementById('core-search');
     search.innerHTML = "";

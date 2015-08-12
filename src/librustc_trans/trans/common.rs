@@ -595,7 +595,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         // landing pads as "landing pads for SEH".
         let target = &self.ccx.sess().target.target;
         match self.ccx.tcx().lang_items.eh_personality() {
-            Some(def_id) if !target.options.is_like_msvc => {
+            Some(def_id) if !base::wants_msvc_seh(self.ccx.sess()) => {
                 callee::trans_fn_ref(self.ccx, def_id, ExprId(0),
                                      self.param_substs).val
             }
@@ -604,7 +604,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
                 match *personality {
                     Some(llpersonality) => llpersonality,
                     None => {
-                        let name = if !target.options.is_like_msvc {
+                        let name = if !base::wants_msvc_seh(self.ccx.sess()) {
                             "rust_eh_personality"
                         } else if target.arch == "x86" {
                             "_except_handler3"

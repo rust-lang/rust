@@ -48,7 +48,7 @@ L10N_LANGS := ja
 RUSTDOC_HTML_OPTS_NO_CSS = --html-before-content=doc/version_info.html \
 	--html-in-header=doc/favicon.inc \
 	--html-after-content=doc/footer.inc \
-	--markdown-playground-url='http://play.rust-lang.org/'
+	--markdown-playground-url='https://play.rust-lang.org/'
 
 RUSTDOC_HTML_OPTS = $(RUSTDOC_HTML_OPTS_NO_CSS) --markdown-css rust.css
 
@@ -169,7 +169,7 @@ doc/not_found.html: $(D)/not_found.md $(HTML_DEPS) | doc/
 	@$(call E, rustdoc: $@)
 	$(Q)$(RUSTDOC) $(RUSTDOC_HTML_OPTS_NO_CSS) \
 		--markdown-no-toc \
-		--markdown-css http://doc.rust-lang.org/rust.css $<
+		--markdown-css https://doc.rust-lang.org/rust.css $<
 
 define DEF_DOC
 

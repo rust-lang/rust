@@ -143,7 +143,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
             format!("-o{}", out_path.display()),
             format!("--html-before-content={}", prelude.display()),
             format!("--html-after-content={}", postlude.display()),
-            format!("--markdown-playground-url=http://play.rust-lang.org"),
+            format!("--markdown-playground-url=https://play.rust-lang.org"),
             format!("--markdown-css={}", item.path_to_root.join("rust-book.css").display()),
             "--markdown-no-toc".to_string(),
         ];

@@ -21,9 +21,9 @@
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
-#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/nightly/")]
+       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(associated_consts)]
 #![feature(box_syntax)]
@@ -31,7 +31,7 @@
 #![feature(link_args)]
 #![feature(staged_api)]
 #![feature(vec_push_all)]
-#![cfg_attr(not(stage0), feature(linked_from))]
+#![feature(linked_from)]
 
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
@@ -599,7 +599,7 @@ pub mod debuginfo {
 // automatically updated whenever LLVM is updated to include an up-to-date
 // set of the libraries we need to link to LLVM for.
 #[link(name = "rustllvm", kind = "static")]
-#[cfg_attr(not(stage0), linked_from = "rustllvm")] // not quite true but good enough
+#[linked_from = "rustllvm"] // not quite true but good enough
 extern {
     /* Create and destroy contexts. */
     pub fn LLVMContextCreate() -> ContextRef;

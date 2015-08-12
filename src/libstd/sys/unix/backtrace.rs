@@ -83,8 +83,6 @@
 /// to symbols. This is a bit of a hokey implementation as-is, but it works for
 /// all unix platforms we support right now, so it at least gets the job done.
 
-#[cfg(stage0)]
-use prelude::v1::*;
 use io::prelude::*;
 
 use ffi::CStr;
@@ -107,6 +105,8 @@ use sys_common::backtrace::*;
 #[cfg(all(target_os = "ios", target_arch = "arm"))]
 #[inline(never)]
 pub fn write(w: &mut Write) -> io::Result<()> {
+    use mem;
+
     extern {
         fn backtrace(buf: *mut *mut libc::c_void,
                      sz: libc::c_int) -> libc::c_int;
@@ -121,7 +121,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     try!(writeln!(w, "stack backtrace:"));
     // 100 lines should be enough
     const SIZE: usize = 100;
-    let mut buf: [*mut libc::c_void; SIZE] = unsafe {mem::zeroed()};
+    let mut buf: [*mut libc::c_void; SIZE] = unsafe { mem::zeroed() };
     let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE as libc::c_int) as usize};
 
     // skipping the first one as it is write itself

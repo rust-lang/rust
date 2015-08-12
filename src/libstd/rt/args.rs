@@ -19,8 +19,6 @@
 //!
 //! FIXME #7756: Would be nice for this to not exist.
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
 use vec::Vec;
 
 /// One-time global initialization.
@@ -141,8 +139,6 @@ mod imp {
           target_os = "ios",
           target_os = "windows"))]
 mod imp {
-    #[cfg(stage0)]
-    use core::prelude::v1::*;
     use vec::Vec;
 
     pub unsafe fn init(_argc: isize, _argv: *const *const u8) {

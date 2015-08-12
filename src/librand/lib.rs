@@ -20,10 +20,10 @@
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "rand"]
 #![crate_type = "rlib"]
-#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
+#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/nightly/",
-       html_playground_url = "http://play.rust-lang.org/")]
+       html_root_url = "https://doc.rust-lang.org/nightly/",
+       html_playground_url = "https://play.rust-lang.org/")]
 #![no_std]
 #![staged_api]
 #![unstable(feature = "rand",
@@ -34,19 +34,13 @@
 #![feature(num_bits_bytes)]
 #![feature(staged_api)]
 #![feature(step_by)]
-#![cfg_attr(stage0, feature(core, core_prelude))]
 
 #![cfg_attr(test, feature(test, rand, rustc_private, iter_order))]
 
 #![allow(deprecated)]
 
-#[cfg(stage0)] #[macro_use] extern crate core;
-
 #[cfg(test)] #[macro_use] extern crate std;
 #[cfg(test)] #[macro_use] extern crate log;
-
-#[cfg(stage0)]
-use core::prelude::v1::*;
 
 use core::marker::PhantomData;
 

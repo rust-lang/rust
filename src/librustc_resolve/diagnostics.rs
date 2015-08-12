@@ -46,7 +46,7 @@ fn f() {
 See the Declaration Statements section of the reference for more information
 about what constitutes an Item declaration and what does not:
 
-http://doc.rust-lang.org/reference.html#statements
+https://doc.rust-lang.org/reference.html#statements
 "##,
 
 E0251: r##"
@@ -201,7 +201,7 @@ struct abc;
 See the Declaration Statements section of the reference for more information
 about what constitutes an Item declaration and what does not:
 
-http://doc.rust-lang.org/reference.html#statements
+https://doc.rust-lang.org/reference.html#statements
 "##,
 
 E0317: r##"
@@ -212,7 +212,7 @@ name as an existing primitive type.
 See the Types section of the reference for more information about the primitive
 types:
 
-http://doc.rust-lang.org/reference.html#types
+https://doc.rust-lang.org/reference.html#types
 "##,
 
 E0364: r##"
@@ -241,7 +241,7 @@ pub use foo::X;
 See the 'Use Declarations' section of the reference for more information
 on this topic:
 
-http://doc.rust-lang.org/reference.html#use-declarations
+https://doc.rust-lang.org/reference.html#use-declarations
 "##,
 
 E0365: r##"
@@ -270,7 +270,7 @@ pub use foo as foo2;
 See the 'Use Declarations' section of the reference for more information
 on this topic:
 
-http://doc.rust-lang.org/reference.html#use-declarations
+https://doc.rust-lang.org/reference.html#use-declarations
 "##,
 
 E0403: r##"
@@ -627,21 +627,29 @@ trait Foo {
         Self; // error: unresolved name `Self`
     }
 }
+
+// or:
+let x = unknown_variable;  // error: unresolved name `unknown_variable`
 ```
 
-Please verify you didn't misspell the name or that you're not using an
-invalid object. Example:
+Please verify that the name wasn't misspelled and ensure that the
+identifier being referred to is valid for the given situation. Example:
 
 ```
 enum something_that_does_exist {
     foo
 }
+
 // or:
 mod something_that_does_exist {
     pub static foo : i32 = 0i32;
 }
 
 something_that_does_exist::foo; // ok!
+
+// or:
+let unknown_variable = 12u32;
+let x = unknown_variable; // ok!
 ```
 "##,
 

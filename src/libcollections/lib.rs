@@ -21,10 +21,10 @@
 #![unstable(feature = "collections",
             reason = "library is unlikely to be stabilized with the current \
                       layout and name, use std::collections instead")]
-#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/nightly/",
-       html_playground_url = "http://play.rust-lang.org/",
+       html_root_url = "https://doc.rust-lang.org/nightly/",
+       html_playground_url = "https://play.rust-lang.org/",
        test(no_crate_inject))]
 
 #![allow(trivial_casts)]
@@ -59,12 +59,9 @@
 #![feature(utf8_error)]
 #![cfg_attr(test, feature(rand, test))]
 #![cfg_attr(not(test), feature(str_words))]
-#![cfg_attr(stage0, feature(core, core_prelude))]
 
 #![feature(no_std)]
 #![no_std]
-
-#[cfg(stage0)] #[macro_use] extern crate core;
 
 extern crate rustc_unicode;
 extern crate alloc;
