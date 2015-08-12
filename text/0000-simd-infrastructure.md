@@ -196,17 +196,17 @@ platform specific intrinsic for shuffling.
 
 ```rust
 extern "platform-intrinsic" {
-    fn simd_shuffle2<T, Elem>(v: T, w: T, idx: [i32; 2]) -> Simd2<Elem>;
-    fn simd_shuffle4<T, Elem>(v: T, w: T, idx: [i32; 4]) -> Sidm4<Elem>;
-    fn simd_shuffle8<T, Elem>(v: T, w: T, idx: [i32; 8]) -> Simd8<Elem>;
-    fn simd_shuffle16<T, Elem>(v: T, w: T, idx: [i32; 16]) -> Simd16<Elem>;
+    fn simd_shuffle2<T, U>(v: T, w: T, idx: [i32; 2]) -> U;
+    fn simd_shuffle4<T, U>(v: T, w: T, idx: [i32; 4]) -> U;
+    fn simd_shuffle8<T, U>(v: T, w: T, idx: [i32; 8]) -> U;
+    fn simd_shuffle16<T, U>(v: T, w: T, idx: [i32; 16]) -> U;
 }
 ```
 
 The raw definitions are only checked for validity at monomorphisation
-time, ensure that `T` is a SIMD vector, `Elem` is the element type of
-`T` etc. Libraries can use traits to ensure that these will be
-enforced by the type checker too.
+time, ensure that `T` and `U` are SIMD vector with the same element
+type, `U` has the appropriate length etc. Libraries can use traits to
+ensure that these will be enforced by the type checker too.
 
 This approach has similar type "safety"/code-generation errors to the
 vectors themselves.
@@ -362,6 +362,17 @@ cfg_if_else! {
   pointers(/references?) in `repr(simd)` types.
 - allow (and ignore for everything but type checking) zero-sized types
   in `repr(simd)` structs, to allow tagging them with markers
+- the shuffle intrinsics could be made more relaxed in their type
+  checking (i.e. not require that they return their second type
+  parameter), to allow more type safety when combined with generic
+  simd types:
+
+      #[repr(simd)] struct Simd2<T>(T, T);
+      extern "platform-intrinsic" {
+          fn simd_shuffle2<T, U>(x: T, y: T, idx: [u32; 2]) -> Simd2<U>;
+      }
+
+  This should be a backwards-compatible generalisation.
 
 # Alternatives
 
@@ -403,7 +414,6 @@ cfg_if_else! {
   complicated set of traits (with compiler integration).
 - use generic intrinsics like shuffles for the arithmetic operations,
   instead of providing the operations implicitly.
-
 
 # Unresolved questions
 
