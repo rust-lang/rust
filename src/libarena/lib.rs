@@ -31,9 +31,10 @@
 #![feature(alloc)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
+#![feature(drop_in_place)]
+#![feature(raw)]
 #![feature(heap_api)]
 #![feature(oom)]
-#![feature(ptr_as_ref)]
 #![feature(raw)]
 #![feature(staged_api)]
 #![feature(dropck_parametricity)]
@@ -47,9 +48,13 @@ use std::intrinsics;
 use std::marker;
 use std::mem;
 use std::ptr;
+use std::raw;
+use std::raw::Repr;
 use std::rc::Rc;
+use std::slice;
 
-use alloc::heap::{allocate, deallocate};
+use alloc::heap;
+use alloc::raw_vec::RawVec;
 
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
@@ -366,14 +371,14 @@ fn test_arena_destructors_fail() {
 /// A faster arena that can hold objects of only one type.
 pub struct TypedArena<T> {
     /// A pointer to the next object to be allocated.
-    ptr: Cell<*const T>,
+    ptr: Cell<*mut T>,
 
     /// A pointer to the end of the allocated area. When this pointer is
     /// reached, a new chunk is allocated.
-    end: Cell<*const T>,
+    end: Cell<*mut T>,
 
-    /// A pointer to the first arena segment.
-    first: RefCell<*mut TypedArenaChunk<T>>,
+    /// A vector arena segments.
+    chunks: RefCell<Vec<TypedArenaChunk<T>>>,
 
     /// Marker indicating that dropping the arena causes its owned
     /// instances of `T` to be dropped.
@@ -381,88 +386,60 @@ pub struct TypedArena<T> {
 }
 
 struct TypedArenaChunk<T> {
-    marker: marker::PhantomData<T>,
-
     /// Pointer to the next arena segment.
-    next: *mut TypedArenaChunk<T>,
-
-    /// The number of elements that this chunk can hold.
-    capacity: usize,
-
-    // Objects follow here, suitably aligned.
-}
-
-fn calculate_size<T>(capacity: usize) -> usize {
-    let mut size = mem::size_of::<TypedArenaChunk<T>>();
-    size = round_up(size, mem::align_of::<T>());
-    let elem_size = mem::size_of::<T>();
-    let elems_size = elem_size.checked_mul(capacity).unwrap();
-    size = size.checked_add(elems_size).unwrap();
-    size
+    storage: RawVec<T>,
 }
 
 impl<T> TypedArenaChunk<T> {
     #[inline]
-    unsafe fn new(next: *mut TypedArenaChunk<T>, capacity: usize) -> *mut TypedArenaChunk<T> {
-        let size = calculate_size::<T>(capacity);
-        let chunk =
-            allocate(size, mem::align_of::<TypedArenaChunk<T>>()) as *mut TypedArenaChunk<T>;
-        if chunk.is_null() {
-            alloc::oom()
-        }
-        (*chunk).next = next;
-        (*chunk).capacity = capacity;
-        chunk
+    unsafe fn new(capacity: usize) -> TypedArenaChunk<T> {
+        TypedArenaChunk { storage: RawVec::with_capacity(capacity) }
     }
 
-    /// Destroys this arena chunk. If the type descriptor is supplied, the
-    /// drop glue is called; otherwise, drop glue is not called.
+    /// Destroys this arena chunk.
     #[inline]
     unsafe fn destroy(&mut self, len: usize) {
-        // Destroy all the allocated objects.
+        // The branch on needs_drop() is an -O1 performance optimization.
+        // Without the branch, dropping TypedArena<u8> takes linear time.
         if intrinsics::needs_drop::<T>() {
             let mut start = self.start();
+            // Destroy all allocated objects.
             for _ in 0..len {
-                ptr::read(start as *const T); // run the destructor on the pointer
-                start = start.offset(mem::size_of::<T>() as isize)
+                ptr::drop_in_place(start);
+                start = start.offset(1);
             }
-        }
-
-        // Destroy the next chunk.
-        let next = self.next;
-        let size = calculate_size::<T>(self.capacity);
-        let self_ptr: *mut TypedArenaChunk<T> = self;
-        deallocate(self_ptr as *mut u8,
-                   size,
-                   mem::align_of::<TypedArenaChunk<T>>());
-        if !next.is_null() {
-            let capacity = (*next).capacity;
-            (*next).destroy(capacity);
         }
     }
 
     // Returns a pointer to the first allocated object.
     #[inline]
-    fn start(&self) -> *const u8 {
-        let this: *const TypedArenaChunk<T> = self;
-        unsafe { round_up(this.offset(1) as usize, mem::align_of::<T>()) as *const u8 }
+    fn start(&self) -> *mut T {
+        self.storage.ptr()
     }
 
     // Returns a pointer to the end of the allocated space.
     #[inline]
-    fn end(&self) -> *const u8 {
+    fn end(&self) -> *mut T {
         unsafe {
-            let size = mem::size_of::<T>().checked_mul(self.capacity).unwrap();
-            self.start().offset(size as isize)
+            if mem::size_of::<T>() == 0 {
+                // A pointer as large as possible for zero-sized elements.
+                !0 as *mut T
+            } else {
+                self.start().offset(self.storage.cap() as isize)
+            }
         }
     }
 }
 
+const PAGE: usize = 4096;
+
 impl<T> TypedArena<T> {
-    /// Creates a new `TypedArena` with preallocated space for eight objects.
+    /// Creates a new `TypedArena` with preallocated space for many objects.
     #[inline]
     pub fn new() -> TypedArena<T> {
-        TypedArena::with_capacity(8)
+        // Reserve at least one page.
+        let elem_size = cmp::max(1, mem::size_of::<T>());
+        TypedArena::with_capacity(PAGE / elem_size)
     }
 
     /// Creates a new `TypedArena` with preallocated space for the given number of
@@ -470,11 +447,11 @@ impl<T> TypedArena<T> {
     #[inline]
     pub fn with_capacity(capacity: usize) -> TypedArena<T> {
         unsafe {
-            let chunk = TypedArenaChunk::<T>::new(ptr::null_mut(), capacity);
+            let chunk = TypedArenaChunk::<T>::new(cmp::max(1, capacity));
             TypedArena {
-                ptr: Cell::new((*chunk).start() as *const T),
-                end: Cell::new((*chunk).end() as *const T),
-                first: RefCell::new(chunk),
+                ptr: Cell::new(chunk.start()),
+                end: Cell::new(chunk.end()),
+                chunks: RefCell::new(vec![chunk]),
                 _own: marker::PhantomData,
             }
         }
@@ -488,23 +465,39 @@ impl<T> TypedArena<T> {
         }
 
         unsafe {
-            let ptr: &mut T = &mut *(self.ptr.get() as *mut T);
-            ptr::write(ptr, object);
-            self.ptr.set(self.ptr.get().offset(1));
-            ptr
+            if mem::size_of::<T>() == 0 {
+                self.ptr.set(intrinsics::arith_offset(self.ptr.get() as *mut u8, 1) as *mut T);
+                let ptr = heap::EMPTY as *mut T;
+                // Don't drop the object. This `write` is equivalent to `forget`.
+                ptr::write(ptr, object);
+                &mut *ptr
+            } else {
+                let ptr = self.ptr.get();
+                // Advance the pointer.
+                self.ptr.set(self.ptr.get().offset(1));
+                // Write into uninitialized memory.
+                ptr::write(ptr, object);
+                &mut *ptr
+            }
         }
     }
 
     /// Grows the arena.
     #[inline(never)]
+    #[cold]
     fn grow(&self) {
         unsafe {
-            let chunk = *self.first.borrow_mut();
-            let new_capacity = (*chunk).capacity.checked_mul(2).unwrap();
-            let chunk = TypedArenaChunk::<T>::new(chunk, new_capacity);
-            self.ptr.set((*chunk).start() as *const T);
-            self.end.set((*chunk).end() as *const T);
-            *self.first.borrow_mut() = chunk
+            let mut chunks = self.chunks.borrow_mut();
+            let prev_capacity = chunks.last().unwrap().storage.cap();
+            let new_capacity = prev_capacity.checked_mul(2).unwrap();
+            if chunks.last_mut().unwrap().storage.double_in_place() {
+                self.end.set(chunks.last().unwrap().end());
+            } else {
+                let chunk = TypedArenaChunk::<T>::new(new_capacity);
+                self.ptr.set(chunk.start());
+                self.end.set(chunk.end());
+                chunks.push(chunk);
+            }
         }
     }
 }
@@ -514,12 +507,26 @@ impl<T> Drop for TypedArena<T> {
     fn drop(&mut self) {
         unsafe {
             // Determine how much was filled.
-            let start = self.first.borrow().as_ref().unwrap().start() as usize;
+            let mut chunks_borrow = self.chunks.borrow_mut();
+            let mut last_chunk = chunks_borrow.pop().unwrap();
+            let start = last_chunk.start() as usize;
             let end = self.ptr.get() as usize;
-            let diff = (end - start) / mem::size_of::<T>();
+            let diff = if mem::size_of::<T>() == 0 {
+                // Avoid division by zero.
+                end - start
+            } else {
+                (end - start) / mem::size_of::<T>()
+            };
 
             // Pass that to the `destroy` method.
-            (**self.first.borrow_mut()).destroy(diff)
+            last_chunk.destroy(diff);
+            // Destroy this chunk.
+            let _: RawVec<T> = mem::transmute(last_chunk);
+
+            for chunk in chunks_borrow.iter_mut() {
+                let cap = chunk.storage.cap();
+                chunk.destroy(cap);
+            }
         }
     }
 }
@@ -656,5 +663,13 @@ mod tests {
                 }
             })
         })
+    }
+
+    #[test]
+    pub fn test_zero_sized() {
+        let arena = TypedArena::new();
+        for _ in 0..100000 {
+            arena.alloc(());
+        }
     }
 }
