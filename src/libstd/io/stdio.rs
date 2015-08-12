@@ -56,21 +56,21 @@ struct StderrRaw(stdio::Stderr);
 /// The returned handle has no external synchronization or buffering.
 fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
 
-/// Constructs a new raw handle to the standard input stream of this process.
+/// Constructs a new raw handle to the standard output stream of this process.
 ///
 /// The returned handle does not interact with any other handles created nor
 /// handles returned by `std::io::stdout`. Note that data is buffered by the
-/// `std::io::stdin` handles so writes which happen via this raw handle may
+/// `std::io::stdout` handles so writes which happen via this raw handle may
 /// appear before previous writes.
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
 fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
 
-/// Constructs a new raw handle to the standard input stream of this process.
+/// Constructs a new raw handle to the standard error stream of this process.
 ///
 /// The returned handle does not interact with any other handles created nor
-/// handles returned by `std::io::stdout`.
+/// handles returned by `std::io::stderr`.
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
