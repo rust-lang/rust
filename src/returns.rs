@@ -67,20 +67,18 @@ impl ReturnPass {
     // Check for "let x = EXPR; x"
     fn check_let_return(&mut self, cx: &Context, block: &Block) {
         // we need both a let-binding stmt and an expr
-        if let Some(stmt) = block.stmts.last() {
-            if let StmtDecl(ref decl, _) = stmt.node {
-                if let DeclLocal(ref local) = decl.node {
-                    if let Some(ref initexpr) = local.init {
-                        if let PatIdent(_, Spanned { node: id, .. }, _) = local.pat.node {
-                            if let Some(ref retexpr) = block.expr {
-                                if let ExprPath(_, ref path) = retexpr.node {
-                                    if match_path(path, &[&*id.name.as_str()]) {
-                                        self.emit_let_lint(cx, retexpr.span, initexpr.span);
-                                    }
-                                }
-                            }
-                        }
-                    }
+        if_let_chain! {
+            [
+                Some(stmt) = block.stmts.last(),
+                StmtDecl(ref decl, _) = stmt.node,
+                DeclLocal(ref local) = decl.node,
+                Some(ref initexpr) = local.init,
+                PatIdent(_, Spanned { node: id, .. }, _) = local.pat.node,
+                Some(ref retexpr) = block.expr,
+                ExprPath(_, ref path) = retexpr.node
+            ], {
+                if match_path(path, &[&*id.name.as_str()]) {
+                    self.emit_let_lint(cx, retexpr.span, initexpr.span);
                 }
             }
         }
