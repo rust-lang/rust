@@ -400,7 +400,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             // `::std::option::Option::Some(<pat>) => <body>`
             let pat_arm = {
                 let body_expr = fld.cx.expr_block(body);
-                let pat = noop_fold_pat(pat, fld);
+                let pat = fld.fold_pat(pat);
                 let some_pat = fld.cx.pat_some(pat_span, pat);
 
                 fld.cx.arm(pat_span, vec![some_pat], body_expr)
