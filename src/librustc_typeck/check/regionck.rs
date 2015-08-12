@@ -1549,10 +1549,13 @@ fn components_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
             outlives::Component::EscapingProjection(subcomponents) => {
                 components_must_outlive(rcx, origin, subcomponents, region);
             }
-            outlives::Component::UnresolvedInferenceVariable(_) => {
+            outlives::Component::UnresolvedInferenceVariable(v) => {
                 // ignore this, we presume it will yield an error
                 // later, since if a type variable is not resolved by
                 // this point it never will be
+                rcx.tcx().sess.delay_span_bug(
+                    origin.span(),
+                    &format!("unresolved inference variable in outlives: {:?}", v));
             }
             outlives::Component::RFC1214(subcomponents) => {
                 let suborigin = infer::RFC1214Subregion(Rc::new(origin));
