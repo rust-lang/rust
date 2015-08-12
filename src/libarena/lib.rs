@@ -29,13 +29,11 @@
        test(no_crate_inject, attr(deny(warnings))))]
 
 #![feature(alloc)]
-#![feature(box_syntax)]
 #![feature(core_intrinsics)]
 #![feature(drop_in_place)]
+#![feature(heap_api)]
 #![feature(raw)]
 #![feature(heap_api)]
-#![feature(oom)]
-#![feature(raw)]
 #![feature(staged_api)]
 #![feature(dropck_parametricity)]
 #![cfg_attr(test, feature(test))]
@@ -48,10 +46,6 @@ use std::intrinsics;
 use std::marker::{PhantomData, Send};
 use std::mem;
 use std::ptr;
-use std::raw;
-use std::raw::Repr;
-use std::rc::Rc;
-use std::slice;
 
 use alloc::heap;
 use alloc::raw_vec::RawVec;
@@ -59,20 +53,27 @@ use alloc::raw_vec::RawVec;
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
 // will always stay at 0.
-#[derive(Clone, PartialEq)]
 struct Chunk {
-    data: Rc<RefCell<Vec<u8>>>,
+    data: RawVec<u8>,
     fill: Cell<usize>,
     is_copy: Cell<bool>,
 }
 
 impl Chunk {
+    fn new(size: usize, is_copy: bool) -> Chunk {
+        Chunk {
+            data: RawVec::with_capacity(size),
+            fill: Cell::new(0),
+            is_copy: Cell::new(is_copy),
+        }
+    }
+
     fn capacity(&self) -> usize {
-        self.data.borrow().capacity()
+        self.data.cap()
     }
 
     unsafe fn as_ptr(&self) -> *const u8 {
-        self.data.borrow().as_ptr()
+        self.data.ptr()
     }
 }
 
@@ -115,19 +116,11 @@ impl<'a> Arena<'a> {
     /// Allocates a new Arena with `initial_size` bytes preallocated.
     pub fn new_with_size(initial_size: usize) -> Arena<'a> {
         Arena {
-            head: RefCell::new(chunk(initial_size, false)),
-            copy_head: RefCell::new(chunk(initial_size, true)),
+            head: RefCell::new(Chunk::new(initial_size, false)),
+            copy_head: RefCell::new(Chunk::new(initial_size, true)),
             chunks: RefCell::new(Vec::new()),
             _marker: PhantomData,
         }
-    }
-}
-
-fn chunk(size: usize, is_copy: bool) -> Chunk {
-    Chunk {
-        data: Rc::new(RefCell::new(Vec::with_capacity(size))),
-        fill: Cell::new(0),
-        is_copy: Cell::new(is_copy),
     }
 }
 
@@ -165,8 +158,6 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
 
         let start = round_up(after_tydesc, align);
 
-        // debug!("freeing object: idx = {}, size = {}, align = {}, done = {}",
-        //        start, size, align, is_done);
         if is_done {
             ((*tydesc).drop_glue)(buf.offset(start as isize) as *const i8);
         }
@@ -215,17 +206,20 @@ unsafe fn get_tydesc<T>() -> *const TyDesc {
 }
 
 impl<'longer_than_self> Arena<'longer_than_self> {
+    #[inline]
     fn chunk_size(&self) -> usize {
         self.copy_head.borrow().capacity()
     }
 
     // Functions for the POD part of the arena
+    #[cold]
     fn alloc_copy_grow(&self, n_bytes: usize, align: usize) -> *const u8 {
         // Allocate a new chunk.
         let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
-        self.chunks.borrow_mut().push(self.copy_head.borrow().clone());
-
-        *self.copy_head.borrow_mut() = chunk((new_min_chunk_size + 1).next_power_of_two(), true);
+        let new_chunk = Chunk::new((new_min_chunk_size + 1).next_power_of_two(), true);
+        let mut copy_head = self.copy_head.borrow_mut();
+        let old_chunk = mem::replace(&mut *copy_head, new_chunk);
+        self.chunks.borrow_mut().push(old_chunk);
 
         self.alloc_copy_inner(n_bytes, align)
     }
@@ -233,10 +227,13 @@ impl<'longer_than_self> Arena<'longer_than_self> {
     #[inline]
     fn alloc_copy_inner(&self, n_bytes: usize, align: usize) -> *const u8 {
         let start = round_up(self.copy_head.borrow().fill.get(), align);
+        let chunk_size = self.chunk_size();
 
         let end = start + n_bytes;
-        if end > self.chunk_size() {
-            return self.alloc_copy_grow(n_bytes, align);
+        if end > chunk_size {
+            if !self.copy_head.borrow_mut().data.reserve_in_place(start, n_bytes) {
+                return self.alloc_copy_grow(n_bytes, align);
+            }
         }
 
         let copy_head = self.copy_head.borrow();
@@ -261,9 +258,10 @@ impl<'longer_than_self> Arena<'longer_than_self> {
     fn alloc_noncopy_grow(&self, n_bytes: usize, align: usize) -> (*const u8, *const u8) {
         // Allocate a new chunk.
         let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
-        self.chunks.borrow_mut().push(self.head.borrow().clone());
-
-        *self.head.borrow_mut() = chunk((new_min_chunk_size + 1).next_power_of_two(), false);
+        let new_chunk = Chunk::new((new_min_chunk_size + 1).next_power_of_two(), false);
+        let mut head = self.head.borrow_mut();
+        let old_chunk = mem::replace(&mut *head, new_chunk);
+        self.chunks.borrow_mut().push(old_chunk);
 
         self.alloc_noncopy_inner(n_bytes, align)
     }
@@ -606,7 +604,11 @@ mod tests {
     #[bench]
     pub fn bench_copy_nonarena(b: &mut Bencher) {
         b.iter(|| {
-            let _: Box<_> = box Point { x: 1, y: 2, z: 3 };
+            let _: Box<_> = Box::new(Point {
+                x: 1,
+                y: 2,
+                z: 3
+            });
         })
     }
 
@@ -647,10 +649,10 @@ mod tests {
     #[bench]
     pub fn bench_noncopy_nonarena(b: &mut Bencher) {
         b.iter(|| {
-            let _: Box<_> = box Noncopy {
+            let _: Box<_> = Box::new(Noncopy {
                 string: "hello world".to_string(),
                 array: vec![1, 2, 3, 4, 5],
-            };
+            });
         })
     }
 
