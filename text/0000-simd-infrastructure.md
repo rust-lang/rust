@@ -126,11 +126,11 @@ extern "platform-intrinsic" {
 These all use entirely concrete types, and this is the core interface
 to these intrinsics: essentially it is just allowing code to exactly
 specify a CPU instruction to use. These intrinsics only actually work
-on a subset of the CPUs that Rust targets, and are only be available
-for `extern`ing on those targets. The signatures are typechecked, but
-in a "duck-typed" manner: it will just ensure that the types are SIMD
-vectors with the appropriate length and element type, it will not
-enforce a specific nominal type.
+on a subset of the CPUs that Rust targets, and will result in compile
+time errors if they are called on platforms that do not support
+them. The signatures are typechecked, but in a "duck-typed" manner: it
+will just ensure that the types are SIMD vectors with the appropriate
+length and element type, it will not enforce a specific nominal type.
 
 NB. The structural typing is just for the declaration: if a SIMD intrinsic
 is declared to take a type `X`, it must always be called with `X`,
