@@ -21,7 +21,6 @@
 
 #![feature(associated_consts)]
 #![feature(borrow_state)]
-#![feature(rc_weak)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(slice_splits)]
