@@ -270,7 +270,7 @@ tidy-binaries:
 		$(Q)find $(S)src -type f \
 		    \( -perm -u+x -or -perm -g+x -or -perm -o+x \) \
 		    -not -name '*.rs' -and -not -name '*.py' \
-		    -and -not -name '*.sh' \
+		    -and -not -name '*.sh' -and -not -name '*.pp' \
 		| grep '^$(S)src/jemalloc' -v \
 		| grep '^$(S)src/libuv' -v \
 		| grep '^$(S)src/llvm' -v \
