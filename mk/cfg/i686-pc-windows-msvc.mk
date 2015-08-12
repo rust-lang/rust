@@ -22,8 +22,3 @@ CFG_LDPATH_i686-pc-windows-msvc :=
 CFG_RUN_i686-pc-windows-msvc=$(2)
 CFG_RUN_TARG_i686-pc-windows-msvc=$(call CFG_RUN_i686-pc-windows-msvc,,$(2))
 CFG_GNU_TRIPLE_i686-pc-windows-msvc := i686-pc-win32
-
-# All windows nightiles are currently a GNU triple, so this MSVC triple is not
-# bootstrapping from itself. This is relevant during stage0, and other parts of
-# the build system take this into account.
-BOOTSTRAP_FROM_i686-pc-windows-msvc := i686-pc-windows-gnu

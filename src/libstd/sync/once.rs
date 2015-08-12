@@ -13,9 +13,6 @@
 //! This primitive is meant to be used to run one-time initialization. An
 //! example use case would be for initializing an FFI library.
 
-#[cfg(stage0)]
-use prelude::v1::*;
-
 use isize;
 use sync::atomic::{AtomicIsize, Ordering};
 use sync::StaticMutex;

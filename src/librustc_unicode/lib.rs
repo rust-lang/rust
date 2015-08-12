@@ -41,9 +41,6 @@
 #![feature(lang_items)]
 #![feature(no_std)]
 #![feature(staged_api)]
-#![cfg_attr(stage0, feature(core, core_prelude))]
-
-#[cfg(stage0)] extern crate core;
 
 mod normalize;
 mod tables;

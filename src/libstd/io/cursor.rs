@@ -292,9 +292,6 @@ impl Write for Cursor<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(stage0)]
-    use core::prelude::v1::*;
-
     use io::prelude::*;
     use io::{Cursor, SeekFrom};
     use vec::Vec;

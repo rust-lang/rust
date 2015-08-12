@@ -98,9 +98,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 use ascii::*;
 use borrow::{Borrow, IntoCow, ToOwned, Cow};
 use cmp;
@@ -135,8 +132,6 @@ use self::platform::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 #[cfg(unix)]
 mod platform {
     use super::Prefix;
-    #[cfg(stage0)]
-    use core::prelude::v1::*;
     use ffi::OsStr;
 
     #[inline]
@@ -159,8 +154,6 @@ mod platform {
 
 #[cfg(windows)]
 mod platform {
-    #[cfg(stage0)]
-    use core::prelude::v1::*;
     use ascii::*;
 
     use super::{os_str_as_u8_slice, u8_slice_as_os_str, Prefix};
@@ -1749,8 +1742,6 @@ impl AsRef<Path> for PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(stage0)]
-    use core::prelude::v1::*;
     use string::{ToString, String};
     use vec::Vec;
 

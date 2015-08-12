@@ -11,9 +11,6 @@
 #![unstable(feature = "udp", reason = "remaining functions have not been \
                                        scrutinized enough to be stabilized")]
 
-#[cfg(stage0)]
-use prelude::v1::*;
-
 use fmt;
 use io::{self, Error, ErrorKind};
 use net::{ToSocketAddrs, SocketAddr, IpAddr};

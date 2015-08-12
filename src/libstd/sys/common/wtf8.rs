@@ -25,9 +25,6 @@
 // unix (it's mostly used on windows), so don't worry about dead code here.
 #![allow(dead_code)]
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 use core::char::{encode_utf8_raw, encode_utf16_raw};
 use core::str::next_code_point;
 
