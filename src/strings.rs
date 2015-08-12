@@ -28,7 +28,7 @@ pub struct StringAdd;
 
 impl LintPass for StringAdd {
     fn get_lints(&self) -> LintArray {
-        lint_array!(STRING_ADD)
+        lint_array!(STRING_ADD, STRING_ADD_ASSIGN)
     }
 
     fn check_expr(&mut self, cx: &Context, e: &Expr) {
@@ -50,21 +50,7 @@ impl LintPass for StringAdd {
                         "you add something to a string. \
                         Consider using `String::push_str()` instead.")
             }
-        }
-    }
-}
-            
-
-#[derive(Copy, Clone)]
-pub struct StringAddAssign;
-
-impl LintPass for StringAddAssign {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(STRING_ADD_ASSIGN)
-    }
-
-    fn check_expr(&mut self, cx: &Context, e: &Expr) {
-        if let &ExprAssign(ref target, ref  src) = &e.node {
+        } else if let &ExprAssign(ref target, ref  src) = &e.node {
             if is_string(cx, target) && is_add(src, target) {
                 span_lint(cx, STRING_ADD_ASSIGN, e.span,
                     "you assign the result of adding something to this string. \
