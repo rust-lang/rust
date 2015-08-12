@@ -8,16 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_consts)]
+
 pub use self::sub::{Bar, Baz};
 
 pub trait Trait {
     fn foo(&self);
+    type Assoc;
+    const CONST: u32;
 }
 
 struct Foo;
 
 impl Foo {
     pub fn new() {}
+
+    pub const C: u32 = 0;
 }
 
 mod sub {
