@@ -62,7 +62,7 @@ macro_rules! map_insert_seq_bench {
 }
 
 macro_rules! map_find_rand_bench {
-    ($name: ident, $n: expr, $map: ident) => (
+    ($name: ident, $n: expr, $map: ident, $lookup: ident) => (
         #[bench]
         pub fn $name(b: &mut ::test::Bencher) {
             use std::iter::Iterator;
@@ -86,7 +86,7 @@ macro_rules! map_find_rand_bench {
             // measure
             let mut i = 0;
             b.iter(|| {
-                let t = map.get(&keys[i]);
+                let t = $lookup(&map, &keys[i]);
                 i = (i + 1) % n;
                 black_box(t);
             })
@@ -95,7 +95,7 @@ macro_rules! map_find_rand_bench {
 }
 
 macro_rules! map_find_seq_bench {
-    ($name: ident, $n: expr, $map: ident) => (
+    ($name: ident, $n: expr, $map: ident, $lookup: ident) => (
         #[bench]
         pub fn $name(b: &mut ::test::Bencher) {
             use test::black_box;
@@ -111,7 +111,7 @@ macro_rules! map_find_seq_bench {
             // measure
             let mut i = 0;
             b.iter(|| {
-                let x = map.get(&i);
+                let x = $lookup(&map, &i);
                 i = (i + 1) % n;
                 black_box(x);
             })

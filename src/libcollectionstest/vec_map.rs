@@ -512,15 +512,17 @@ fn test_extend_ref() {
 mod bench {
     use std::collections::VecMap;
 
+    fn get<'a, V>(map: &'a VecMap<V>, key: &usize) -> Option<&'a V> { map.get(key) }
+
     map_insert_rand_bench!{insert_rand_100,    100,    VecMap}
     map_insert_rand_bench!{insert_rand_10_000, 10_000, VecMap}
 
     map_insert_seq_bench!{insert_seq_100,    100,    VecMap}
     map_insert_seq_bench!{insert_seq_10_000, 10_000, VecMap}
 
-    map_find_rand_bench!{find_rand_100,    100,    VecMap}
-    map_find_rand_bench!{find_rand_10_000, 10_000, VecMap}
+    map_find_rand_bench!{find_rand_100,    100,    VecMap, get}
+    map_find_rand_bench!{find_rand_10_000, 10_000, VecMap, get}
 
-    map_find_seq_bench!{find_seq_100,    100,    VecMap}
-    map_find_seq_bench!{find_seq_10_000, 10_000, VecMap}
+    map_find_seq_bench!{find_seq_100,    100,    VecMap, get}
+    map_find_seq_bench!{find_seq_10_000, 10_000, VecMap, get}
 }

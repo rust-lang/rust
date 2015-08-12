@@ -307,11 +307,11 @@ impl<T: Ord> BTreeSet<T> {
         self.map.clear()
     }
 
-    /// Returns `true` if the set contains a value.
+    /// Returns `true` if the set contains the given element.
     ///
-    /// The value may be any borrowed form of the set's value type,
+    /// The element may be any borrowed form of the set's element type,
     /// but the ordering on the borrowed form *must* match the
-    /// ordering on the value type.
+    /// ordering on the element type.
     ///
     /// # Examples
     ///
@@ -323,8 +323,42 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.contains(&4), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool where T: Borrow<Q>, Q: Ord {
-        self.map.contains_key(value)
+    pub fn contains<Q: ?Sized>(&self, elem: &Q) -> bool where T: Borrow<Q>, Q: Ord {
+        self.map.contains_key(elem)
+    }
+
+    /// Gets the minimum element in the set.
+    pub fn min(&self) -> Option<&T> {
+        self.map.min().map(|r| r.0)
+    }
+
+    /// Gets the maximum element in the set.
+    pub fn max(&self) -> Option<&T> {
+        self.map.max().map(|r| r.0)
+    }
+
+    /// Gets the closest element to the given element that is less than it.
+    pub fn get_lt<Q: ?Sized>(&self, elem: &Q) -> Option<&T>
+    where T: Borrow<Q>, Q: Ord {
+        self.map.get_lt(elem).map(|r| r.0)
+    }
+
+    /// Gets the closest element to the given element that is less than or equal to it.
+    pub fn get_le<Q: ?Sized>(&self, elem: &Q) -> Option<&T>
+    where T: Borrow<Q>, Q: Ord {
+        self.map.get_le(elem).map(|r| r.0)
+    }
+
+    /// Gets the closest element to the given element that is greater than it.
+    pub fn get_gt<Q: ?Sized>(&self, elem: &Q) -> Option<&T>
+    where T: Borrow<Q>, Q: Ord {
+        self.map.get_gt(elem).map(|r| r.0)
+    }
+
+    /// Gets the closest element to the given element that is greater than or equal to it.
+    pub fn get_ge<Q: ?Sized>(&self, elem: &Q) -> Option<&T>
+    where T: Borrow<Q>, Q: Ord {
+        self.map.get_ge(elem).map(|r| r.0)
     }
 
     /// Returns `true` if the set has no elements in common with `other`.
