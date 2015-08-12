@@ -4321,10 +4321,6 @@ pub fn check_instantiable(tcx: &ty::ctxt,
 
 pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
     let t = tcx.node_id_to_type(id);
-    if t.needs_subst() {
-        span_err!(tcx.sess, sp, E0074, "SIMD vector cannot be generic");
-        return;
-    }
     match t.sty {
         ty::TyStruct(def, substs) => {
             let fields = &def.struct_variant().fields;
@@ -4337,10 +4333,14 @@ pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
                 span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous");
                 return;
             }
-            if !e.is_machine() {
-                span_err!(tcx.sess, sp, E0077,
-                    "SIMD vector element type should be machine type");
-                return;
+            match e.sty {
+                ty::TyParam(_) => { /* struct<T>(T, T, T, T) is ok */ }
+                _ if e.is_machine()  => { /* struct(u8, u8, u8, u8) is ok */ }
+                _ => {
+                    span_err!(tcx.sess, sp, E0077,
+                              "SIMD vector element type should be machine type");
+                    return;
+                }
             }
         }
         _ => ()
