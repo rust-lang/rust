@@ -546,20 +546,6 @@ impl<'b, T: ?Sized> Deref for Ref<'b, T> {
     }
 }
 
-/// Copies a `Ref`.
-///
-/// The `RefCell` is already immutably borrowed, so this cannot fail.
-///
-/// A `Clone` implementation would interfere with the widespread
-/// use of `r.borrow().clone()` to clone the contents of a `RefCell`.
-#[deprecated(since = "1.2.0", reason = "moved to a `Ref::clone` associated function")]
-#[unstable(feature = "core",
-           reason = "likely to be moved to a method, pending language changes")]
-#[inline]
-pub fn clone_ref<'b, T:Clone>(orig: &Ref<'b, T>) -> Ref<'b, T> {
-    Ref::clone(orig)
-}
-
 impl<'b, T: ?Sized> Ref<'b, T> {
     /// Copies a `Ref`.
     ///
@@ -799,14 +785,7 @@ impl<'b, T: ?Sized> DerefMut for RefMut<'b, T> {
 #[lang = "unsafe_cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct UnsafeCell<T: ?Sized> {
-    /// Wrapped value
-    ///
-    /// This field should not be accessed directly, it is made public for static
-    /// initializers.
-    #[deprecated(since = "1.2.0", reason = "use `get` to access the wrapped \
-        value or `new` to initialize `UnsafeCell` in statics")]
-    #[unstable(feature = "core")]
-    pub value: T,
+    value: T,
 }
 
 impl<T: ?Sized> !Sync for UnsafeCell<T> {}
@@ -828,7 +807,6 @@ impl<T> UnsafeCell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub const fn new(value: T) -> UnsafeCell<T> {
-        #![allow(deprecated)]
         UnsafeCell { value: value }
     }
 
@@ -851,7 +829,6 @@ impl<T> UnsafeCell<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn into_inner(self) -> T {
-        #![allow(deprecated)]
         self.value
     }
 }
@@ -871,9 +848,6 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> *mut T {
-        // FIXME(#23542) Replace with type ascription.
-        #![allow(trivial_casts)]
-        #![allow(deprecated)]
         &self.value as *const T as *mut T
     }
 }

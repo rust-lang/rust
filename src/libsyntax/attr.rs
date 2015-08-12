@@ -10,9 +10,6 @@
 
 // Functions dealing with attributes and meta items
 
-// BitSet
-#![allow(deprecated)]
-
 pub use self::StabilityLevel::*;
 pub use self::ReprAttr::*;
 pub use self::IntType::*;
@@ -28,20 +25,33 @@ use parse::token;
 use ptr::P;
 
 use std::cell::{RefCell, Cell};
-use std::collections::BitSet;
 use std::collections::HashSet;
 use std::fmt;
 
-thread_local! { static USED_ATTRS: RefCell<BitSet> = RefCell::new(BitSet::new()) }
+thread_local! {
+    static USED_ATTRS: RefCell<Vec<u64>> = RefCell::new(Vec::new())
+}
 
 pub fn mark_used(attr: &Attribute) {
     let AttrId(id) = attr.node.id;
-    USED_ATTRS.with(|slot| slot.borrow_mut().insert(id));
+    USED_ATTRS.with(|slot| {
+        let idx = (id / 64) as usize;
+        let shift = id % 64;
+        if slot.borrow().len() <= idx {
+            slot.borrow_mut().resize(idx + 1, 0);
+        }
+        slot.borrow_mut()[idx] |= 1 << shift;
+    });
 }
 
 pub fn is_used(attr: &Attribute) -> bool {
     let AttrId(id) = attr.node.id;
-    USED_ATTRS.with(|slot| slot.borrow().contains(&id))
+    USED_ATTRS.with(|slot| {
+        let idx = (id / 64) as usize;
+        let shift = id % 64;
+        slot.borrow().get(idx).map(|bits| bits & (1 << shift) != 0)
+            .unwrap_or(false)
+    })
 }
 
 pub trait AttrMetaMethods {

@@ -80,12 +80,6 @@ pub mod consts {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const PI: f64 = 3.14159265358979323846264338327950288_f64;
 
-    /// pi * 2.0
-    #[unstable(feature = "float_consts",
-               reason = "unclear naming convention/usefulness")]
-    #[deprecated(since = "1.2.0", reason = "unclear on usefulness")]
-    pub const PI_2: f64 = 6.28318530717958647692528676655900576_f64;
-
     /// pi/2.0
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_PI_2: f64 = 1.57079632679489661923132169163975144_f64;

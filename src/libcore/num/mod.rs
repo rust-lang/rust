@@ -136,7 +136,6 @@ macro_rules! int_impl {
         /// assert_eq!(u32::from_str_radix("A", 16), Ok(10));
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[allow(deprecated)]
         pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
             from_str_radix(src, radix)
         }
@@ -691,7 +690,6 @@ macro_rules! uint_impl {
         /// `Err(ParseIntError)` if the string did not represent a valid number.
         /// Otherwise, `Ok(n)` where `n` is the integer represented by `src`.
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[allow(deprecated)]
         pub fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
             from_str_radix(src, radix)
         }
@@ -1395,7 +1393,6 @@ macro_rules! from_str_float_impl {
             /// number.  Otherwise, `Ok(n)` where `n` is the floating-point
             /// number represented by `src`.
             #[inline]
-            #[allow(deprecated)]
             fn from_str(src: &str) -> Result<Self, ParseFloatError> {
                 Self::from_str_radix(src, 10)
             }
@@ -1408,7 +1405,6 @@ from_str_float_impl!(f64);
 macro_rules! from_str_radix_int_impl {
     ($($t:ty)*) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]
-        #[allow(deprecated)]
         impl FromStr for $t {
             type Err = ParseIntError;
             fn from_str(src: &str) -> Result<Self, ParseIntError> {

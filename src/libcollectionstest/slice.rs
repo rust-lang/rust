@@ -10,11 +10,9 @@
 
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::default::Default;
-use std::iter::RandomAccessIterator;
 use std::mem;
 use std::__rand::{Rng, thread_rng};
 use std::rc::Rc;
-use std::slice::ElementSwaps;
 
 fn square(n: usize) -> usize { n * n }
 
@@ -367,97 +365,6 @@ fn test_retain() {
 }
 
 #[test]
-fn test_element_swaps() {
-    let mut v = [1, 2, 3];
-    for (i, (a, b)) in ElementSwaps::new(v.len()).enumerate() {
-        v.swap(a, b);
-        match i {
-            0 => assert!(v == [1, 3, 2]),
-            1 => assert!(v == [3, 1, 2]),
-            2 => assert!(v == [3, 2, 1]),
-            3 => assert!(v == [2, 3, 1]),
-            4 => assert!(v == [2, 1, 3]),
-            5 => assert!(v == [1, 2, 3]),
-            _ => panic!(),
-        }
-    }
-}
-
-#[test]
-fn test_lexicographic_permutations() {
-    let v : &mut[_] = &mut[1, 2, 3, 4, 5];
-    assert!(v.prev_permutation() == false);
-    assert!(v.next_permutation());
-    let b: &mut[_] = &mut[1, 2, 3, 5, 4];
-    assert!(v == b);
-    assert!(v.prev_permutation());
-    let b: &mut[_] = &mut[1, 2, 3, 4, 5];
-    assert!(v == b);
-    assert!(v.next_permutation());
-    assert!(v.next_permutation());
-    let b: &mut[_] = &mut[1, 2, 4, 3, 5];
-    assert!(v == b);
-    assert!(v.next_permutation());
-    let b: &mut[_] = &mut[1, 2, 4, 5, 3];
-    assert!(v == b);
-
-    let v : &mut[_] = &mut[1, 0, 0, 0];
-    assert!(v.next_permutation() == false);
-    assert!(v.prev_permutation());
-    let b: &mut[_] = &mut[0, 1, 0, 0];
-    assert!(v == b);
-    assert!(v.prev_permutation());
-    let b: &mut[_] = &mut[0, 0, 1, 0];
-    assert!(v == b);
-    assert!(v.prev_permutation());
-    let b: &mut[_] = &mut[0, 0, 0, 1];
-    assert!(v == b);
-    assert!(v.prev_permutation() == false);
-}
-
-#[test]
-fn test_lexicographic_permutations_empty_and_short() {
-    let empty : &mut[i32] = &mut[];
-    assert!(empty.next_permutation() == false);
-    let b: &mut[i32] = &mut[];
-    assert!(empty == b);
-    assert!(empty.prev_permutation() == false);
-    assert!(empty == b);
-
-    let one_elem : &mut[_] = &mut[4];
-    assert!(one_elem.prev_permutation() == false);
-    let b: &mut[_] = &mut[4];
-    assert!(one_elem == b);
-    assert!(one_elem.next_permutation() == false);
-    assert!(one_elem == b);
-
-    let two_elem : &mut[_] = &mut[1, 2];
-    assert!(two_elem.prev_permutation() == false);
-    let b : &mut[_] = &mut[1, 2];
-    let c : &mut[_] = &mut[2, 1];
-    assert!(two_elem == b);
-    assert!(two_elem.next_permutation());
-    assert!(two_elem == c);
-    assert!(two_elem.next_permutation() == false);
-    assert!(two_elem == c);
-    assert!(two_elem.prev_permutation());
-    assert!(two_elem == b);
-    assert!(two_elem.prev_permutation() == false);
-    assert!(two_elem == b);
-}
-
-#[test]
-fn test_position_elem() {
-    assert!([].position_elem(&1).is_none());
-
-    let v1 = vec![1, 2, 3, 3, 2, 5];
-    assert_eq!(v1.position_elem(&1), Some(0));
-    assert_eq!(v1.position_elem(&2), Some(1));
-    assert_eq!(v1.position_elem(&5), Some(5));
-    assert!(v1.position_elem(&4).is_none());
-}
-
-#[test]
 fn test_binary_search() {
     assert_eq!([1,2,3,4,5].binary_search(&5).ok(), Some(4));
     assert_eq!([1,2,3,4,5].binary_search(&4).ok(), Some(3));
@@ -669,21 +576,6 @@ fn test_slice_2() {
 }
 
 #[test]
-#[should_panic]
-fn test_permute_fail() {
-    let v: [(Box<_>, Rc<_>); 4] =
-        [(box 0, Rc::new(0)), (box 0, Rc::new(0)),
-         (box 0, Rc::new(0)), (box 0, Rc::new(0))];
-    let mut i = 0;
-    for _ in v.permutations() {
-        if i == 2 {
-            panic!()
-        }
-        i += 1;
-    }
-}
-
-#[test]
 fn test_total_ord() {
     let c = &[1, 2, 3];
     [1, 2, 3, 4][..].cmp(c) == Greater;
@@ -712,44 +604,6 @@ fn test_iterator() {
     assert_eq!(it.size_hint(), (1, Some(1)));
     assert_eq!(it.next().unwrap(), &11);
     assert_eq!(it.size_hint(), (0, Some(0)));
-    assert!(it.next().is_none());
-}
-
-#[test]
-fn test_random_access_iterator() {
-    let xs = [1, 2, 5, 10, 11];
-    let mut it = xs.iter();
-
-    assert_eq!(it.indexable(), 5);
-    assert_eq!(it.idx(0).unwrap(), &1);
-    assert_eq!(it.idx(2).unwrap(), &5);
-    assert_eq!(it.idx(4).unwrap(), &11);
-    assert!(it.idx(5).is_none());
-
-    assert_eq!(it.next().unwrap(), &1);
-    assert_eq!(it.indexable(), 4);
-    assert_eq!(it.idx(0).unwrap(), &2);
-    assert_eq!(it.idx(3).unwrap(), &11);
-    assert!(it.idx(4).is_none());
-
-    assert_eq!(it.next().unwrap(), &2);
-    assert_eq!(it.indexable(), 3);
-    assert_eq!(it.idx(1).unwrap(), &10);
-    assert!(it.idx(3).is_none());
-
-    assert_eq!(it.next().unwrap(), &5);
-    assert_eq!(it.indexable(), 2);
-    assert_eq!(it.idx(1).unwrap(), &11);
-
-    assert_eq!(it.next().unwrap(), &10);
-    assert_eq!(it.indexable(), 1);
-    assert_eq!(it.idx(0).unwrap(), &11);
-    assert!(it.idx(1).is_none());
-
-    assert_eq!(it.next().unwrap(), &11);
-    assert_eq!(it.indexable(), 0);
-    assert!(it.idx(0).is_none());
-
     assert!(it.next().is_none());
 }
 
@@ -933,15 +787,6 @@ fn test_windowsator() {
 
     let wins: &[&[_]] = &[&[3,4], &[2,3], &[1,2]];
     assert_eq!(v.windows(2).rev().collect::<Vec<&[_]>>(), wins);
-    let mut it = v.windows(2);
-    assert_eq!(it.indexable(), 3);
-    let win: &[_] = &[1,2];
-    assert_eq!(it.idx(0).unwrap(), win);
-    let win: &[_] = &[2,3];
-    assert_eq!(it.idx(1).unwrap(), win);
-    let win: &[_] = &[3,4];
-    assert_eq!(it.idx(2).unwrap(), win);
-    assert_eq!(it.idx(3), None);
 }
 
 #[test]
@@ -966,16 +811,6 @@ fn test_chunksator() {
 
     let chunks: &[&[_]] = &[&[5], &[3,4], &[1,2]];
     assert_eq!(v.chunks(2).rev().collect::<Vec<_>>(), chunks);
-    let mut it = v.chunks(2);
-    assert_eq!(it.indexable(), 3);
-
-    let chunk: &[_] = &[1,2];
-    assert_eq!(it.idx(0).unwrap(), chunk);
-    let chunk: &[_] = &[3,4];
-    assert_eq!(it.idx(1).unwrap(), chunk);
-    let chunk: &[_] = &[5];
-    assert_eq!(it.idx(2).unwrap(), chunk);
-    assert_eq!(it.idx(3), None);
 }
 
 #[test]
@@ -983,26 +818,6 @@ fn test_chunksator() {
 fn test_chunksator_0() {
     let v = &[1,2,3,4];
     let _it = v.chunks(0);
-}
-
-#[test]
-fn test_move_from() {
-    let mut a = [1,2,3,4,5];
-    let b = vec![6,7,8];
-    assert_eq!(a.move_from(b, 0, 3), 3);
-    assert!(a == [6,7,8,4,5]);
-    let mut a = [7,2,8,1];
-    let b = vec![3,1,4,1,5,9];
-    assert_eq!(a.move_from(b, 0, 6), 4);
-    assert!(a == [3,1,4,1]);
-    let mut a = [1,2,3,4];
-    let b = vec![5,6,7,8,9,0];
-    assert_eq!(a.move_from(b, 2, 3), 1);
-    assert!(a == [7,2,3,4]);
-    let mut a = [1,2,3,4,5];
-    let b = vec![5,6,7,8,9,0];
-    assert_eq!(a[2..4].move_from(b,1,6), 2);
-    assert!(a == [1,2,6,7,5]);
 }
 
 #[test]
@@ -1324,7 +1139,6 @@ fn test_box_slice_clone_panics() {
 }
 
 mod bench {
-    use std::iter::repeat;
     use std::{mem, ptr};
     use std::__rand::{Rng, thread_rng};
 

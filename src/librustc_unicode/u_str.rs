@@ -13,21 +13,10 @@
 //! This module provides functionality to `str` that requires the Unicode methods provided by the
 //! unicode parts of the CharExt trait.
 
-use self::GraphemeState::*;
-
 use core::char;
-use core::cmp;
 use core::iter::Filter;
 use core::slice;
 use core::str::Split;
-
-use tables::grapheme::GraphemeCat;
-
-#[deprecated(reason = "struct Words is being replaced by struct SplitWhitespace",
-             since = "1.1.0")]
-#[unstable(feature = "str_words",
-           reason = "words() will be replaced by split_whitespace() in 1.1.0")]
-pub type Words<'a> = SplitWhitespace<'a>;
 
 /// An iterator over the non-whitespace substrings of a string,
 /// separated by any amount of whitespace.
@@ -39,36 +28,15 @@ pub struct SplitWhitespace<'a> {
 /// Methods for Unicode string slices
 #[allow(missing_docs)] // docs in libcollections
 pub trait UnicodeStr {
-    fn graphemes<'a>(&'a self, is_extended: bool) -> Graphemes<'a>;
-    fn grapheme_indices<'a>(&'a self, is_extended: bool) -> GraphemeIndices<'a>;
-    #[allow(deprecated)]
-    fn words<'a>(&'a self) -> Words<'a>;
     fn split_whitespace<'a>(&'a self) -> SplitWhitespace<'a>;
     fn is_whitespace(&self) -> bool;
     fn is_alphanumeric(&self) -> bool;
-    fn width(&self, is_cjk: bool) -> usize;
     fn trim<'a>(&'a self) -> &'a str;
     fn trim_left<'a>(&'a self) -> &'a str;
     fn trim_right<'a>(&'a self) -> &'a str;
 }
 
 impl UnicodeStr for str {
-    #[inline]
-    fn graphemes(&self, is_extended: bool) -> Graphemes {
-        Graphemes { string: self, extended: is_extended, cat: None, catb: None }
-    }
-
-    #[inline]
-    fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices {
-        GraphemeIndices { start_offset: self.as_ptr() as usize, iter: self.graphemes(is_extended) }
-    }
-
-    #[allow(deprecated)]
-    #[inline]
-    fn words(&self) -> Words {
-        self.split_whitespace()
-    }
-
     #[inline]
     fn split_whitespace(&self) -> SplitWhitespace {
         fn is_not_empty(s: &&str) -> bool { !s.is_empty() }
@@ -86,12 +54,6 @@ impl UnicodeStr for str {
     #[inline]
     fn is_alphanumeric(&self) -> bool { self.chars().all(|c| c.is_alphanumeric()) }
 
-    #[allow(deprecated)]
-    #[inline]
-    fn width(&self, is_cjk: bool) -> usize {
-        self.chars().map(|c| c.width(is_cjk).unwrap_or(0)).sum()
-    }
-
     #[inline]
     fn trim(&self) -> &str {
         self.trim_matches(|c: char| c.is_whitespace())
@@ -105,264 +67,6 @@ impl UnicodeStr for str {
     #[inline]
     fn trim_right(&self) -> &str {
         self.trim_right_matches(|c: char| c.is_whitespace())
-    }
-}
-
-/// External iterator for grapheme clusters and byte offsets.
-#[derive(Clone)]
-pub struct GraphemeIndices<'a> {
-    start_offset: usize,
-    iter: Graphemes<'a>,
-}
-
-impl<'a> Iterator for GraphemeIndices<'a> {
-    type Item = (usize, &'a str);
-
-    #[inline]
-    fn next(&mut self) -> Option<(usize, &'a str)> {
-        self.iter.next().map(|s| (s.as_ptr() as usize - self.start_offset, s))
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-}
-
-impl<'a> DoubleEndedIterator for GraphemeIndices<'a> {
-    #[inline]
-    fn next_back(&mut self) -> Option<(usize, &'a str)> {
-        self.iter.next_back().map(|s| (s.as_ptr() as usize - self.start_offset, s))
-    }
-}
-
-/// External iterator for a string's
-/// [grapheme clusters](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries).
-#[derive(Clone)]
-pub struct Graphemes<'a> {
-    string: &'a str,
-    extended: bool,
-    cat: Option<GraphemeCat>,
-    catb: Option<GraphemeCat>,
-}
-
-// state machine for cluster boundary rules
-#[derive(PartialEq,Eq)]
-enum GraphemeState {
-    Start,
-    FindExtend,
-    HangulL,
-    HangulLV,
-    HangulLVT,
-    Regional,
-}
-
-impl<'a> Iterator for Graphemes<'a> {
-    type Item = &'a str;
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let slen = self.string.len();
-        (cmp::min(slen, 1), Some(slen))
-    }
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        use tables::grapheme as gr;
-        if self.string.is_empty() {
-            return None;
-        }
-
-        let mut take_curr = true;
-        let mut idx = 0;
-        let mut state = Start;
-        let mut cat = gr::GC_Any;
-        for (curr, ch) in self.string.char_indices() {
-            idx = curr;
-
-            // retrieve cached category, if any
-            // We do this because most of the time we would end up
-            // looking up each character twice.
-            cat = match self.cat {
-                None => gr::grapheme_category(ch),
-                _ => self.cat.take().unwrap()
-            };
-
-            if match cat {
-                gr::GC_Extend => true,
-                gr::GC_SpacingMark if self.extended => true,
-                _ => false
-            } {
-                    state = FindExtend;     // rule GB9/GB9a
-                    continue;
-            }
-
-            state = match state {
-                Start if '\r' == ch => {
-                    let slen = self.string.len();
-                    let nidx = idx + 1;
-                    if nidx != slen && self.string.char_at(nidx) == '\n' {
-                        idx = nidx;             // rule GB3
-                    }
-                    break;                      // rule GB4
-                }
-                Start => match cat {
-                    gr::GC_Control => break,
-                    gr::GC_L => HangulL,
-                    gr::GC_LV | gr::GC_V => HangulLV,
-                    gr::GC_LVT | gr::GC_T => HangulLVT,
-                    gr::GC_Regional_Indicator => Regional,
-                    _ => FindExtend
-                },
-                FindExtend => {         // found non-extending when looking for extending
-                    take_curr = false;
-                    break;
-                },
-                HangulL => match cat {      // rule GB6: L x (L|V|LV|LVT)
-                    gr::GC_L => continue,
-                    gr::GC_LV | gr::GC_V => HangulLV,
-                    gr::GC_LVT => HangulLVT,
-                    _ => {
-                        take_curr = false;
-                        break;
-                    }
-                },
-                HangulLV => match cat {     // rule GB7: (LV|V) x (V|T)
-                    gr::GC_V => continue,
-                    gr::GC_T => HangulLVT,
-                    _ => {
-                        take_curr = false;
-                        break;
-                    }
-                },
-                HangulLVT => match cat {    // rule GB8: (LVT|T) x T
-                    gr::GC_T => continue,
-                    _ => {
-                        take_curr = false;
-                        break;
-                    }
-                },
-                Regional => match cat {     // rule GB8a
-                    gr::GC_Regional_Indicator => continue,
-                    _ => {
-                        take_curr = false;
-                        break;
-                    }
-                }
-            }
-        }
-
-        self.cat = if take_curr {
-            idx = idx + self.string.char_at(idx).len_utf8();
-            None
-        } else {
-            Some(cat)
-        };
-
-        let retstr = &self.string[..idx];
-        self.string = &self.string[idx..];
-        Some(retstr)
-    }
-}
-
-impl<'a> DoubleEndedIterator for Graphemes<'a> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str> {
-        use tables::grapheme as gr;
-        if self.string.is_empty() {
-            return None;
-        }
-
-        let mut take_curr = true;
-        let mut idx = self.string.len();
-        let mut previdx = idx;
-        let mut state = Start;
-        let mut cat = gr::GC_Any;
-        for (curr, ch) in self.string.char_indices().rev() {
-            previdx = idx;
-            idx = curr;
-
-            // cached category, if any
-            cat = match self.catb {
-                None => gr::grapheme_category(ch),
-                _ => self.catb.take().unwrap()
-            };
-
-            // a matching state machine that runs *backwards* across an input string
-            // note that this has some implications for the Hangul matching, since
-            // we now need to know what the rightward letter is:
-            //
-            // Right to left, we have:
-            //      L x L
-            //      V x (L|V|LV)
-            //      T x (V|T|LV|LVT)
-            // HangulL means the letter to the right is L
-            // HangulLV means the letter to the right is V
-            // HangulLVT means the letter to the right is T
-            state = match state {
-                Start if '\n' == ch => {
-                    if idx > 0 && '\r' == self.string.char_at_reverse(idx) {
-                        idx -= 1;       // rule GB3
-                    }
-                    break;              // rule GB4
-                },
-                Start | FindExtend => match cat {
-                    gr::GC_Extend => FindExtend,
-                    gr::GC_SpacingMark if self.extended => FindExtend,
-                    gr::GC_L | gr::GC_LV | gr::GC_LVT => HangulL,
-                    gr::GC_V => HangulLV,
-                    gr::GC_T => HangulLVT,
-                    gr::GC_Regional_Indicator => Regional,
-                    gr::GC_Control => {
-                        take_curr = Start == state;
-                        break;
-                    },
-                    _ => break
-                },
-                HangulL => match cat {      // char to right is an L
-                    gr::GC_L => continue,               // L x L is the only legal match
-                    _ => {
-                        take_curr = false;
-                        break;
-                    }
-                },
-                HangulLV => match cat {     // char to right is a V
-                    gr::GC_V => continue,               // V x V, right char is still V
-                    gr::GC_L | gr::GC_LV => HangulL,    // (L|V) x V, right char is now L
-                    _ => {
-                        take_curr = false;
-                        break;
-                    }
-                },
-                HangulLVT => match cat {    // char to right is a T
-                    gr::GC_T => continue,               // T x T, right char is still T
-                    gr::GC_V => HangulLV,               // V x T, right char is now V
-                    gr::GC_LV | gr::GC_LVT => HangulL,  // (LV|LVT) x T, right char is now L
-                    _ => {
-                        take_curr = false;
-                        break;
-                    }
-                },
-                Regional => match cat {     // rule GB8a
-                    gr::GC_Regional_Indicator => continue,
-                    _ => {
-                        take_curr = false;
-                        break;
-                    }
-                }
-            }
-        }
-
-        self.catb = if take_curr {
-            None
-        } else  {
-            idx = previdx;
-            Some(cat)
-        };
-
-        let retstr = &self.string[idx..];
-        self.string = &self.string[..idx];
-        Some(retstr)
     }
 }
 

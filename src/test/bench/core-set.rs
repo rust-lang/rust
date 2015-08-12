@@ -17,7 +17,6 @@ extern crate collections;
 extern crate rand;
 
 use std::collections::BTreeSet;
-use std::collections::BitSet;
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::env;
@@ -52,11 +51,6 @@ impl<T: Ord> MutableSet<T> for BTreeSet<T> {
     fn insert(&mut self, k: T) { self.insert(k); }
     fn remove(&mut self, k: &T) -> bool { self.remove(k) }
     fn contains(&self, k: &T) -> bool { self.contains(k) }
-}
-impl MutableSet<usize> for BitSet {
-    fn insert(&mut self, k: usize) { self.insert(k); }
-    fn remove(&mut self, k: &usize) -> bool { self.remove(k) }
-    fn contains(&self, k: &usize) -> bool { self.contains(k) }
 }
 
 impl Results {
@@ -217,12 +211,5 @@ fn main() {
             s
         });
         write_results("collections::BTreeSet", &results);
-    }
-
-    {
-        let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(seed);
-        let mut results = empty_results();
-        results.bench_int(&mut rng, num_keys, max, || BitSet::new());
-        write_results("collections::bit_vec::BitSet", &results);
     }
 }

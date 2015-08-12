@@ -82,7 +82,6 @@ pub fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
     }
 }
 
-#[allow(deprecated)]
 pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
     where T: One + PartialEq + Neg<Output=T>, F: FnMut() -> T
 {
@@ -91,12 +90,5 @@ pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
             other => return other,
         }
-    }
-}
-
-pub fn ms_to_timeval(ms: u64) -> libc::timeval {
-    libc::timeval {
-        tv_sec: (ms / 1000) as libc::time_t,
-        tv_usec: ((ms % 1000) * 1000) as libc::suseconds_t,
     }
 }

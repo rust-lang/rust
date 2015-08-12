@@ -86,7 +86,6 @@ use core::raw::{TraitObject};
 #[lang = "exchange_heap"]
 #[unstable(feature = "box_heap",
            reason = "may be renamed; uncertain about custom allocator design")]
-#[allow(deprecated)]
 pub const HEAP: ExchangeHeapSingleton =
     ExchangeHeapSingleton { _force_singleton: () };
 
@@ -252,31 +251,6 @@ impl<T : ?Sized> Box<T> {
     pub fn into_raw(b: Box<T>) -> *mut T {
         unsafe { mem::transmute(b) }
     }
-}
-
-/// Consumes the `Box`, returning the wrapped raw pointer.
-///
-/// After call to this function, caller is responsible for the memory
-/// previously managed by `Box`, in particular caller should properly
-/// destroy `T` and release memory. The proper way to do it is to
-/// convert pointer back to `Box` with `Box::from_raw` function, because
-/// `Box` does not specify, how memory is allocated.
-///
-/// # Examples
-/// ```
-/// #![feature(box_raw)]
-///
-/// use std::boxed;
-///
-/// let seventeen = Box::new(17u32);
-/// let raw = boxed::into_raw(seventeen);
-/// let boxed_again = unsafe { Box::from_raw(raw) };
-/// ```
-#[unstable(feature = "box_raw", reason = "may be renamed")]
-#[deprecated(since = "1.2.0", reason = "renamed to Box::into_raw")]
-#[inline]
-pub fn into_raw<T : ?Sized>(b: Box<T>) -> *mut T {
-    Box::into_raw(b)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -15,17 +15,13 @@
 // when this bug was opened. The cases where the compiler
 // panics before the fix have a comment.
 
-#![feature(thunk)]
-
-use std::thunk::Thunk;
-
 struct S {x:()}
 
-fn test(slot: &mut Option<Thunk<(),Thunk>>) -> () {
+fn test(slot: &mut Option<Box<FnMut() -> Box<FnMut()>>>) -> () {
   let a = slot.take();
   let _a = match a {
     // `{let .. a(); }` would break
-    Some(a) => { let _a = a(); },
+    Some(mut a) => { let _a = a(); },
     None => (),
   };
 }

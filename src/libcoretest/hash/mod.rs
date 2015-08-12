@@ -36,7 +36,9 @@ impl Hasher for MyHasher {
 #[test]
 fn test_writer_hasher() {
     fn hash<T: Hash>(t: &T) -> u64 {
-        ::std::hash::hash::<_, MyHasher>(t)
+        let mut s = MyHasher { hash: 0 };
+        t.hash(&mut s);
+        s.finish()
     }
 
     assert_eq!(hash(&()), 0);
@@ -102,7 +104,9 @@ impl Hash for Custom {
 #[test]
 fn test_custom_state() {
     fn hash<T: Hash>(t: &T) -> u64 {
-        ::std::hash::hash::<_, CustomHasher>(t)
+        let mut c = CustomHasher { output: 0 };
+        t.hash(&mut c);
+        c.finish()
     }
 
     assert_eq!(hash(&Custom { hash: 5 }), 5);

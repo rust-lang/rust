@@ -59,7 +59,6 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
     use prelude::v1::*;
 
     use mem;
-    use env;
     use rt;
     use sys_common::thread_info::{self, NewThread};
     use thread::Thread;
@@ -105,9 +104,7 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
     if failed {
         rt::DEFAULT_ERROR_CODE
     } else {
-        #[allow(deprecated)]
-        fn exit_status() -> isize { env::get_exit_status() as isize }
-        exit_status()
+        0
     }
 }
 

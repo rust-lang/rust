@@ -253,36 +253,6 @@ impl Builder {
         }
     }
 
-    /// Spawns a new child thread that must be joined within a given
-    /// scope, and returns a `JoinGuard`.
-    ///
-    /// The join guard can be used to explicitly join the child thread (via
-    /// `join`), returning `Result<T>`, or it will implicitly join the child
-    /// upon being dropped. Because the child thread may refer to data on the
-    /// current thread's stack (hence the "scoped" name), it cannot be detached;
-    /// it *must* be joined before the relevant stack frame is popped. See the
-    /// documentation on `thread::scoped` for additional details.
-    ///
-    /// # Errors
-    ///
-    /// Unlike the `scoped` free function, this method yields an
-    /// `io::Result` to capture any failure to create the thread at
-    /// the OS level.
-    #[unstable(feature = "scoped",
-               reason = "memory unsafe if destructor is avoided, see #24292")]
-    #[deprecated(since = "1.2.0",
-                 reason = "this unsafe API is unlikely to ever be stabilized \
-                           in this form")]
-    pub fn scoped<'a, T, F>(self, f: F) -> io::Result<JoinGuard<'a, T>> where
-        T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
-    {
-        unsafe {
-            self.spawn_inner(Box::new(f)).map(|inner| {
-                JoinGuard { inner: inner, _marker: PhantomData }
-            })
-        }
-    }
-
     // NB: this function is unsafe as the lifetime parameter of the code to run
     //     in the new thread is not tied into the return value, and the return
     //     value must not outlast that lifetime.
@@ -344,50 +314,6 @@ pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
     F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
 {
     Builder::new().spawn(f).unwrap()
-}
-
-/// Spawns a new *scoped* thread, returning a `JoinGuard` for it.
-///
-/// The `spawn` method does not allow the child and parent threads to
-/// share any stack data, since that is not safe in general. However,
-/// `scoped` makes it possible to share the parent's stack by forcing
-/// a join before any relevant stack frames are popped:
-///
-/// ```rust
-/// #![feature(scoped)]
-///
-/// use std::thread;
-///
-/// let guard = thread::scoped(move || {
-///     // some work here
-/// });
-///
-/// // do some other work in the meantime
-/// let output = guard.join();
-/// ```
-///
-/// The `scoped` function doesn't return a `Thread` directly; instead, it
-/// returns a *join guard*. The join guard can be used to explicitly join
-/// the child thread (via `join`), returning `Result<T>`, or it will
-/// implicitly join the child upon being dropped. Because the child thread
-/// may refer to data on the current thread's stack (hence the "scoped"
-/// name), it cannot be detached; it *must* be joined before the relevant
-/// stack frame is popped.
-///
-/// # Panics
-///
-/// Panics if the OS fails to create a thread; use `Builder::scoped`
-/// to recover from such errors.
-#[unstable(feature = "scoped",
-           reason = "memory unsafe if destructor is avoided, see #24292")]
-#[deprecated(since = "1.2.0",
-             reason = "this unsafe API is unlikely to ever be stabilized \
-                       in this form")]
-#[allow(deprecated)]
-pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
-    T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
-{
-    Builder::new().scoped(f).unwrap()
 }
 
 /// Gets a handle to the thread that invokes it.
@@ -769,7 +695,6 @@ mod tests {
     use result;
     use super::{Builder};
     use thread;
-    use thunk::Thunk;
     use time::Duration;
     use u32;
 
@@ -785,9 +710,9 @@ mod tests {
 
     #[test]
     fn test_named_thread() {
-        Builder::new().name("ada lovelace".to_string()).scoped(move|| {
+        Builder::new().name("ada lovelace".to_string()).spawn(move|| {
             assert!(thread::current().name().unwrap() == "ada lovelace".to_string());
-        }).unwrap().join();
+        }).unwrap().join().unwrap();
     }
 
     #[test]
@@ -800,13 +725,6 @@ mod tests {
     }
 
     #[test]
-    fn test_join_success() {
-        assert!(thread::scoped(move|| -> String {
-            "Success!".to_string()
-        }).join() == "Success!");
-    }
-
-    #[test]
     fn test_join_panic() {
         match thread::spawn(move|| {
             panic!()
@@ -814,26 +732,6 @@ mod tests {
             result::Result::Err(_) => (),
             result::Result::Ok(()) => panic!()
         }
-    }
-
-    #[test]
-    fn test_scoped_success() {
-        let res = thread::scoped(move|| -> String {
-            "Success!".to_string()
-        }).join();
-        assert!(res == "Success!");
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_scoped_panic() {
-        thread::scoped(|| panic!()).join();
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_scoped_implicit_panic() {
-        let _ = thread::scoped(|| panic!());
     }
 
     #[test]
@@ -870,7 +768,7 @@ mod tests {
         rx.recv().unwrap();
     }
 
-    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk<'static>) {
+    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Box<Fn() + Send>) {
         let (tx, rx) = channel();
 
         let x: Box<_> = box 1;
@@ -917,7 +815,7 @@ mod tests {
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
         const GENERATIONS: u32 = 16;
-        fn child_no(x: u32) -> Thunk<'static> {
+        fn child_no(x: u32) -> Box<Fn() + Send> {
             return Box::new(move|| {
                 if x < GENERATIONS {
                     thread::spawn(move|| child_no(x+1)());

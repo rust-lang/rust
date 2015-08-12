@@ -15,10 +15,8 @@
 #![allow(unknown_features)]
 #![feature(box_syntax, core)]
 
-use std::marker::NoCopy as NP;
-
-struct ncint { np: NP, v: isize }
-fn ncint(v: isize) -> ncint { ncint { np: NP, v: v } }
+struct ncint { v: isize }
+fn ncint(v: isize) -> ncint { ncint { v: v } }
 
 struct NoFoo { copied: isize, nocopy: ncint, }
 impl NoFoo {

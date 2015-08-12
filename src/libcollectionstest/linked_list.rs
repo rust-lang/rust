@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::collections::LinkedList;
-use std::hash::{SipHasher, self};
 
 use test;
 
@@ -257,7 +256,7 @@ fn test_hash() {
   let mut x = LinkedList::new();
   let mut y = LinkedList::new();
 
-  assert!(hash::hash::<_, SipHasher>(&x) == hash::hash::<_, SipHasher>(&y));
+  assert!(::hash(&x) == ::hash(&y));
 
   x.push_back(1);
   x.push_back(2);
@@ -267,7 +266,7 @@ fn test_hash() {
   y.push_front(2);
   y.push_front(1);
 
-  assert!(hash::hash::<_, SipHasher>(&x) == hash::hash::<_, SipHasher>(&y));
+  assert!(::hash(&x) == ::hash(&y));
 }
 
 #[test]
