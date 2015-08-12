@@ -597,6 +597,10 @@ CTEST_DISABLE_debuginfo-gdb =
 CTEST_DISABLE_debuginfo-lldb = "lldb tests are disabled on android"
 endif
 
+ifeq ($(findstring msvc,$(CFG_TARGET)),msvc)
+CTEST_DISABLE_debuginfo-gdb = "gdb tests are disabled on MSVC"
+endif
+
 # CTEST_DISABLE_NONSELFHOST_$(TEST_GROUP), if set, will cause that
 # test group to be disabled *unless* the target is able to build a
 # compiler (i.e. when the target triple is in the set of of host
@@ -1050,7 +1054,8 @@ $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
         $$(MAKE) \
 	    $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
 	    $(3)/test/run-make/$$* \
-	    "$$(CC_$(3)) $$(CFG_GCCISH_CFLAGS_$(3))" \
+	    $$(CC_$(3)) \
+	    "$$(CFG_GCCISH_CFLAGS_$(3))" \
 	    $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
 	    "$$(TESTNAME)" \
 	    $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3)) \

@@ -38,3 +38,7 @@ pub mod graph;
 pub mod bitvec;
 pub mod ivar;
 pub mod unify;
+
+// See comments in src/librustc/lib.rs
+#[doc(hidden)]
+pub fn __noop_fix_for_27438() {}
