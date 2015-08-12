@@ -59,7 +59,7 @@ impl ReturnPass {
 
     fn emit_return_lint(&mut self, cx: &Context, spans: (Span, Span)) {
         span_lint(cx, NEEDLESS_RETURN, spans.0, &format!(
-            "unneeded return statement. Consider using {} \
+            "unneeded return statement. Consider using `{}` \
              without the trailing semicolon",
             snippet(cx, spans.1, "..")))
     }

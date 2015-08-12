@@ -48,7 +48,7 @@ fn check_expr_expd(cx: &Context, e: &Expr, info: Option<&ExpnInfo>) {
         if let Some(&Expr{ node: ExprIf(ref check_inner, _, None), ..}) =
             single_stmt_of_block(then) {
                 span_lint(cx, COLLAPSIBLE_IF, e.span, &format!(
-                    "This if statement can be collapsed. Try: if {} && {}\n{:?}",
+                    "this if statement can be collapsed. Try: `if {} && {}`\n{:?}",
                     check_to_string(check), check_to_string(check_inner), e));
             }
     }

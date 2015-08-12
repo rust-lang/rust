@@ -5,8 +5,8 @@
 
 fn main(){
     let x = Some(1u8);
-    match x {  //~ ERROR You seem to be trying to use match
-               //~^ HELP Try
+    match x {  //~ ERROR you seem to be trying to use match
+               //~^ HELP try
         Some(y) => {
             println!("{:?}", y);
         }
@@ -18,8 +18,8 @@ fn main(){
         None => ()
     }
     let z = (1u8,1u8);
-    match z { //~ ERROR You seem to be trying to use match
-              //~^ HELP Try
+    match z { //~ ERROR you seem to be trying to use match
+              //~^ HELP try
         (2...3, 7...9) => println!("{:?}", z),
         _ => {}
     }
