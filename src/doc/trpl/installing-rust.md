@@ -32,7 +32,7 @@ install dialog and on the "Product Features" page ensure "Add to PATH" is
 installed on the local hard drive.
 
 
-[install-page]: http://www.rust-lang.org/install.html
+[install-page]: https://www.rust-lang.org/install.html
 
 ## Uninstalling
 
@@ -112,5 +112,5 @@ resources include [the user’s forum][users], and
 
 [irc]: irc://irc.mozilla.org/#rust
 [mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
-[users]: http://users.rust-lang.org/
+[users]: https://users.rust-lang.org/
 [stackoverflow]: http://stackoverflow.com/questions/tagged/rust

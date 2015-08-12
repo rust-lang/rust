@@ -76,7 +76,7 @@ This [unfortunate error](https://github.com/rust-lang/rust/issues/22547) is
 correct: documentation comments apply to the thing after them, and there's no
 thing after that last comment.
 
-[rc-new]: http://doc.rust-lang.org/nightly/std/rc/struct.Rc.html#method.new
+[rc-new]: https://doc.rust-lang.org/nightly/std/rc/struct.Rc.html#method.new
 
 ### Writing documentation comments
 
@@ -544,9 +544,9 @@ You can control a few aspects of the HTML that `rustdoc` generates through the
 `#![doc]` version of the attribute:
 
 ```rust
-#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/")]
+#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+       html_favicon_url = "https://www.rust-lang.org/favicon.ico",
+       html_root_url = "https://doc.rust-lang.org/")]
 ```
 
 This sets a few different options, with a logo, favicon, and a root URL.

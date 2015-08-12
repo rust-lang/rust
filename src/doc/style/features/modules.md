@@ -58,13 +58,13 @@ For modules that themselves have submodules, place the module in a separate
 directory (e.g., `bar/mod.rs` for a module `bar`) rather than the same directory.
 
 Note the structure of
-[`std::io`](http://doc.rust-lang.org/std/io/). Many of the submodules lack
+[`std::io`](https://doc.rust-lang.org/std/io/). Many of the submodules lack
 children, like
-[`io::fs`](http://doc.rust-lang.org/std/io/fs/)
+[`io::fs`](https://doc.rust-lang.org/std/io/fs/)
 and
-[`io::stdio`](http://doc.rust-lang.org/std/io/stdio/).
+[`io::stdio`](https://doc.rust-lang.org/std/io/stdio/).
 On the other hand,
-[`io::net`](http://doc.rust-lang.org/std/io/net/)
+[`io::net`](https://doc.rust-lang.org/std/io/net/)
 contains submodules, so it lives in a separate directory:
 
 ```
@@ -88,7 +88,7 @@ submodules of `io::net` easier to find.
 ### Consider top-level definitions or reexports. [FIXME: needs RFC]
 
 For modules with submodules,
-define or [reexport](http://doc.rust-lang.org/std/io/#reexports) commonly used
+define or [reexport](https://doc.rust-lang.org/std/io/#reexports) commonly used
 definitions at the top level:
 
 * Functionality relevant to the module itself or to many of its
@@ -98,10 +98,10 @@ definitions at the top level:
   common definitions.
 
 For example,
-[`IoError`](http://doc.rust-lang.org/std/io/struct.IoError.html)
+[`IoError`](https://doc.rust-lang.org/std/io/struct.IoError.html)
 is defined in `io/mod.rs`, since it pertains to the entirety of `io`,
 while
-[`TcpStream`](http://doc.rust-lang.org/std/io/net/tcp/struct.TcpStream.html)
+[`TcpStream`](https://doc.rust-lang.org/std/io/net/tcp/struct.TcpStream.html)
 is defined in `io/net/tcp.rs` and reexported in the `io` module.
 
 ### Use internal module hirearchies for organization. [FIXME: needs RFC]
@@ -113,11 +113,11 @@ is defined in `io/net/tcp.rs` and reexported in the `io` module.
 Internal module hirearchies (i.e., private submodules) may be used to
 hide implementation details that are not part of the module's API.
 
-For example, in [`std::io`](http://doc.rust-lang.org/std/io/), `mod mem`
+For example, in [`std::io`](https://doc.rust-lang.org/std/io/), `mod mem`
 provides implementations for
-[`BufReader`](http://doc.rust-lang.org/std/io/struct.BufReader.html)
+[`BufReader`](https://doc.rust-lang.org/std/io/struct.BufReader.html)
 and
-[`BufWriter`](http://doc.rust-lang.org/std/io/struct.BufWriter.html),
+[`BufWriter`](https://doc.rust-lang.org/std/io/struct.BufWriter.html),
 but these are re-exported in `io/mod.rs` at the top level of the module:
 
 ```rust

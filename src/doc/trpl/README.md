@@ -13,7 +13,7 @@ even though some of these abstractions feel like those of a high-level
 language. Even then, Rust still allows precise control like a low-level
 language would.
 
-[rust]: http://rust-lang.org
+[rust]: https://www.rust-lang.org
 
 “The Rust Programming Language” is split into eight sections. This introduction
 is the first. After this:
