@@ -324,7 +324,6 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
 pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               did: ast::DefId,
-                              t: Ty<'tcx>,
                               parent_id: ast::DefId,
                               substs: &Substs<'tcx>)
                               -> ValueRef {
@@ -347,11 +346,8 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let name = csearch::get_symbol(&ccx.sess().cstore, did);
         let class_ty = tcx.lookup_item_type(parent_id).ty.subst(tcx, substs);
         let llty = type_of_dtor(ccx, class_ty);
-        let dtor_ty = ccx.tcx().mk_ctor_fn(did,
-                                           &[get_drop_glue_type(ccx, t)],
-                                           ccx.tcx().mk_nil());
         foreign::get_extern_fn(ccx, &mut *ccx.externs().borrow_mut(), &name[..], llvm::CCallConv,
-                               llty, dtor_ty)
+                               llty, ccx.tcx().mk_nil())
     }
 }
 
@@ -366,7 +362,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("trans_struct_drop t: {}", t);
 
     // Find and call the actual destructor
-    let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, t, class_did, substs);
+    let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, class_did, substs);
 
     // Class dtors have no explicit args, so the params should
     // just consist of the environment (self).
