@@ -85,10 +85,10 @@ $ rustc --version
 ```
 
 You should see the version number, commit hash, and commit date. If you just
-installed version 1.0.0, you should see:
+installed version 1.2.0, you should see:
 
 ```bash
-rustc 1.0.0 (a59de37e9 2015-05-13)
+rustc 1.2.0 (082e47636 2015-08-03)
 ```
 
 If you did, Rust has been installed successfully! Congrats!
