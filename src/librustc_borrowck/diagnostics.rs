@@ -138,6 +138,30 @@ Book:
 https://doc.rust-lang.org/book/ownership.html
 "##,
 
+E0383: r##"
+This error occurs when an attempt is made to partially reinitialize a
+structure that is currently uninitialized.
+
+For example, this can happen when a transfer of ownership has taken place:
+
+```
+let mut t = Test { a: 1, b: None};
+let mut u = Test { a: 2, b: Some(Box::new(t))}; // `t` is now uninitialized
+                                                // because ownership has been
+                                                // transferred
+t.b = Some(Box::new(u)); // error, partial reinitialization of uninitialized
+                         //        structure `t`
+```
+
+This error can be fixed by fully reinitializing the structure in question:
+
+```
+let mut t = Test { a: 1, b: None};
+let mut u = Test { a: 2, b: Some(Box::new(t))};
+t = Test { a: 1, b: Some(Box::new(u))};
+```
+"##,
+
 E0384: r##"
 This error occurs when an attempt is made to reassign an immutable variable.
 For example:
@@ -217,7 +241,6 @@ https://doc.rust-lang.org/std/cell/
 }
 
 register_diagnostics! {
-    E0383, // partial reinitialization of uninitialized structure
     E0385, // {} in an aliasable location
     E0386, // {} in an immutable container
     E0388, // {} in a static location
