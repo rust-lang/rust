@@ -87,16 +87,12 @@ static HOMO_SAPIENS: [AminoAcid;4] = [
     AminoAcid { c: 't' as u8, p: 0.3015094502008 },
 ];
 
-// FIXME: Use map().
 fn sum_and_scale(a: &'static [AminoAcid]) -> Vec<AminoAcid> {
-    let mut result = Vec::new();
     let mut p = 0f32;
-    for a_i in a {
-        let mut a_i = *a_i;
+    let mut result: Vec<AminoAcid> = a.iter().map(|a_i| {
         p += a_i.p;
-        a_i.p = p * LOOKUP_SCALE;
-        result.push(a_i);
-    }
+        AminoAcid { c: a_i.c, p: p * LOOKUP_SCALE }
+    }).collect();
     let result_len = result.len();
     result[result_len - 1].p = LOOKUP_SCALE;
     result
@@ -177,17 +173,17 @@ impl<'a, W: Write> RandomFasta<'a, W> {
 
     fn rng(&mut self, max: f32) -> f32 {
         self.seed = (self.seed * IA + IC) % IM;
-        max * (self.seed as f32) / (IM as f32)
+        (max * self.seed as f32) / (IM as f32)
     }
 
     fn nextc(&mut self) -> u8 {
-        let r = self.rng(1.0);
-        for a in &self.lookup[..] {
-            if a.p >= r {
-                return a.c;
+        let r = self.rng(LOOKUP_SCALE);
+        for i in (r as usize..LOOKUP_SIZE) {
+            if self.lookup[i].p >= r {
+                return self.lookup[i].c;
             }
         }
-        0
+        unreachable!();
     }
 
     fn make(&mut self, n: usize) -> io::Result<()> {
@@ -217,7 +213,8 @@ fn main() {
         5
     };
 
-    let mut out = io::stdout();
+    let stdout = io::stdout();
+    let mut out = stdout.lock();
 
     out.write_all(b">ONE Homo sapiens alu\n").unwrap();
     {

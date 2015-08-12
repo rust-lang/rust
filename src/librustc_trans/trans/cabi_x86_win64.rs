@@ -42,10 +42,10 @@ pub fn compute_abi_info(ccx: &CrateContext,
         let ty = match t.kind() {
             Struct => {
                 match llsize_of_alloc(ccx, t) {
-                    1 => ArgType::direct(rty, Some(Type::i8(ccx)), None, None),
-                    2 => ArgType::direct(rty, Some(Type::i16(ccx)), None, None),
-                    4 => ArgType::direct(rty, Some(Type::i32(ccx)), None, None),
-                    8 => ArgType::direct(rty, Some(Type::i64(ccx)), None, None),
+                    1 => ArgType::direct(t, Some(Type::i8(ccx)), None, None),
+                    2 => ArgType::direct(t, Some(Type::i16(ccx)), None, None),
+                    4 => ArgType::direct(t, Some(Type::i32(ccx)), None, None),
+                    8 => ArgType::direct(t, Some(Type::i64(ccx)), None, None),
                     _ => ArgType::indirect(t, Some(Attribute::ByVal))
                 }
             }

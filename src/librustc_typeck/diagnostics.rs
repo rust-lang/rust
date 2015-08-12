@@ -642,6 +642,7 @@ item paths (ie, namespaced variables), dereferences, indexing expressions,
 and field references.
 
 Let's start with some bad examples:
+
 ```
 use std::collections::LinkedList;
 
@@ -653,8 +654,10 @@ LinkedList::new() += 1;
 fn some_func(i: &mut i32) {
     i += 12; // Error : '+=' operation cannot be applied on a reference !
 }
+```
 
 And now some good examples:
+
 ```
 let mut i : i32 = 0;
 
@@ -665,7 +668,6 @@ i += 12; // Good !
 fn some_func(i: &mut i32) {
     *i += 12; // Good !
 }
-
 ```
 "##,
 
@@ -694,6 +696,7 @@ More details can be found here:
 https://doc.rust-lang.org/reference.html#lvalues,-rvalues-and-temporaries
 
 Now, we can go further. Here are some bad examples:
+
 ```
 struct SomeStruct {
     x: i32,
@@ -1840,6 +1843,22 @@ Since we know for certain that Wrapper<u32> implements Clone, there's no reason
 to also specify it in a `where` clause.
 "##,
 
+E0194: r##"
+A type parameter was declared which shadows an existing one. An example of this
+error:
+
+```
+trait Foo<T> {
+    fn do_something(&self) -> T;
+    fn do_something_else<T: Clone>(&self, bar: T);
+}
+```
+
+In this example, the trait `Foo` and the trait method `do_something_else` both
+define a type parameter `T`. This is not allowed: if the method wishes to
+define a type parameter, it must use a different name for it.
+"##,
+
 E0195: r##"
 Your method's lifetime parameters do not match the trait declaration.
 Erroneous code example:
@@ -2595,7 +2614,6 @@ register_diagnostics! {
     E0188, // can not cast a immutable reference to a mutable pointer
     E0189, // deprecated: can only cast a boxed pointer to a boxed object
     E0190, // deprecated: can only cast a &-pointer to an &-object
-    E0194,
     E0196, // cannot determine a type for this closure
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
