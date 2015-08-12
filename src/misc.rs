@@ -7,7 +7,7 @@ use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
 use rustc::middle::ty;
 use syntax::codemap::{Span, Spanned};
 
-use utils::{match_path, snippet, span_lint, span_help_and_lint, walk_ptrs_ty};
+use utils::{match_path, snippet, snippet_block, span_lint, span_help_and_lint, walk_ptrs_ty};
 
 /// Handles uncategorized lints
 /// Currently handles linting of if-let-able matches
@@ -37,7 +37,7 @@ impl LintPass for MiscPass {
                     // an enum is extended. So we only consider cases where a `_` wildcard is used
                     if arms[1].pats[0].node == PatWild(PatWildSingle) &&
                             arms[0].pats.len() == 1 {
-                        let body_code = snippet(cx, arms[0].body.span, "..");
+                        let body_code = snippet_block(cx, arms[0].body.span, "..");
                         let suggestion = if let ExprBlock(_) = arms[0].body.node {
                             body_code.into_owned()
                         } else {

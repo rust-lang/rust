@@ -18,7 +18,7 @@ use rustc::middle::def::*;
 use syntax::ast::*;
 use syntax::ptr::P;
 use syntax::codemap::{Span, Spanned, ExpnInfo};
-use utils::{in_macro, span_help_and_lint, snippet};
+use utils::{in_macro, span_help_and_lint, snippet, snippet_block};
 
 declare_lint! {
     pub COLLAPSIBLE_IF,
@@ -55,7 +55,7 @@ fn check_expr_expd(cx: &Context, e: &Expr, info: Option<&ExpnInfo>) {
                     "this if statement can be collapsed",
                     &format!("try\nif {} && {} {}",
                              check_to_string(cx, check), check_to_string(cx, check_inner),
-                             snippet(cx, content.span, "..")));
+                             snippet_block(cx, content.span, "..")));
             }
     }
 }

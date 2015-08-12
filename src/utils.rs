@@ -51,6 +51,35 @@ pub fn snippet<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, str> {
     cx.sess().codemap().span_to_snippet(span).map(From::from).unwrap_or(Cow::Borrowed(default))
 }
 
+/// convert a span (from a block) to a code snippet if available, otherwise use default, e.g.
+/// `snippet(cx, expr.span, "..")`
+/// This trims the code of indentation, except for the first line
+/// Use it for blocks or block-like things which need to be printed as such
+pub fn snippet_block<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, str> {
+    let snip = snippet(cx, span, default);
+    trim_multiline(snip, true)
+}
+
+/// Trim indentation from a multiline string
+/// with possibility of ignoring the first line
+pub fn trim_multiline<'a>(s: Cow<'a, str>, ignore_first: bool) -> Cow<'a, str> {
+    let x = s.lines().skip(ignore_first as usize)
+             .map(|l| l.char_indices()
+                       .find(|&(_,x)| x != ' ')
+                       .unwrap_or((l.len(),' ')).0)
+             .min().unwrap_or(0);
+    if x > 0 {
+        Cow::Owned(s.lines().enumerate().map(|(i,l)| if ignore_first && i==0 {
+                                                        l
+                                                     } else {
+                                                        l.split_at(x).1
+                                                     }).collect::<Vec<_>>()
+                                       .join("\n"))
+    } else {
+        s
+    }
+}
+
 /// get a parent expr if any – this is useful to constrain a lint
 pub fn get_parent_expr<'c>(cx: &'c Context, e: &Expr) -> Option<&'c Expr> {
     let map = &cx.tcx.map;
