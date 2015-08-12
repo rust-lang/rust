@@ -9,7 +9,7 @@ use syntax::ast::*;
 use syntax::codemap::{Span, Spanned};
 use eq_op::is_exp_equal;
 use types::match_ty_unwrap;
-use utils::{match_def_path, span_lint, walk_ptrs_ty};
+use utils::{match_def_path, span_lint, walk_ptrs_ty, get_parent_expr};
 
 declare_lint! {
     pub STRING_ADD_ASSIGN,
@@ -17,10 +17,48 @@ declare_lint! {
     "Warn on `x = x + ..` where x is a `String`"
 }
 
-#[derive(Copy,Clone)]
+declare_lint! {
+	pub STRING_ADD,
+	Allow,
+	"Warn on `x + ..` where x is a `String`"
+}
+
+#[derive(Copy, Clone)]
 pub struct StringAdd;
 
 impl LintPass for StringAdd {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(STRING_ADD)
+    }
+
+    fn check_expr(&mut self, cx: &Context, e: &Expr) {
+		if let &ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) = &e.node {
+			if is_string(cx, left) {
+				if let Allow = cx.current_level(STRING_ADD_ASSIGN) {
+					// the string_add_assign is allow, so no duplicates
+				} else {
+					let parent = get_parent_expr(cx, e);
+					if let Some(ref p) = parent {
+						if let &ExprAssign(ref target, _) = &p.node {
+							// avoid duplicate matches
+							if is_exp_equal(target, left) { return; }
+						}
+					}
+				}
+				//TODO check for duplicates
+				 span_lint(cx, STRING_ADD, e.span,
+						"you add something to a string. \
+						Consider using `String::push_str()` instead.")
+			}
+		}
+	}
+}
+            
+
+#[derive(Copy, Clone)]
+pub struct StringAddAssign;
+
+impl LintPass for StringAddAssign {
     fn get_lints(&self) -> LintArray {
         lint_array!(STRING_ADD_ASSIGN)
     }
@@ -37,8 +75,9 @@ impl LintPass for StringAdd {
 }
 
 fn is_string(cx: &Context, e: &Expr) -> bool {
-    if let TyStruct(did, _) = walk_ptrs_ty(cx.tcx.expr_ty(e)).sty {
-        match_def_path(cx, did.did, &["std", "string", "String"])
+	let ty = walk_ptrs_ty(cx.tcx.expr_ty(e));
+    if let TyStruct(did, _) = ty.sty {
+        match_def_path(cx, did.did, &["collections", "string", "String"])
     } else { false }
 }
 
