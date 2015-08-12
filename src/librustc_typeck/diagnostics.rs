@@ -2423,7 +2423,7 @@ E0323: r##"
 An associated const was implemented when another trait item was expected.
 Erroneous code example:
 
-```Rust
+```
 trait Foo {
     type N;
 }
@@ -2440,7 +2440,7 @@ impl Foo for Bar {
 To fix this error, please check you didn't misspell the associated const
 name or you did implement the good trait item. Example:
 
-```Rust
+```
 struct Bar;
 
 trait Foo {
@@ -2458,6 +2458,45 @@ trait Foo {
 
 impl Foo for Bar {
     const N : u32 = 0; // ok!
+}
+```
+"##,
+
+E0324: r##"
+A method was implemented when another trait item was expected. Erroneous
+code example:
+
+```
+struct Bar;
+
+trait Foo {
+    const N : u32;
+
+    fn M();
+}
+
+impl Foo for Bar {
+    fn N() {}
+    // error: item `N` is an associated method, which doesn't match its
+    //        trait `<Bar as Foo>`
+}
+```
+
+To fix this error, please check you didn't misspell the method name. Example:
+
+```
+struct Bar;
+
+trait Foo {
+    const N : u32;
+    
+    fn M();
+}
+
+impl Foo for Bar {
+    const N : u32 = 0;
+
+    fn M() {} // ok!
 }
 ```
 "##,
