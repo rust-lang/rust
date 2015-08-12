@@ -59,6 +59,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box strings::StringAdd as LintPassObject);
     reg.register_lint_pass(box returns::ReturnPass as LintPassObject);
     reg.register_lint_pass(box methods::MethodsPass as LintPassObject);
+    reg.register_lint_pass(box types::LetPass as LintPassObject);
 
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
                                            misc::SINGLE_MATCH, misc::STR_TO_STRING,
@@ -83,5 +84,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            misc::MODULO_ONE,
                                            methods::OPTION_UNWRAP_USED,
                                            methods::RESULT_UNWRAP_USED,
+                                           types::LET_UNIT_VALUE,
                                            ]);
 }
