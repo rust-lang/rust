@@ -13,9 +13,6 @@
 #
 # The DOCS variable is their names (with no file extension).
 #
-# PDF_DOCS lists the targets for which PDF documentation should be
-# build.
-#
 # RUSTDOC_FLAGS_xyz variables are extra arguments to pass to the
 # rustdoc invocation for xyz.
 #
@@ -35,8 +32,6 @@ DOCS += guide-crates guide-error-handling guide-ffi guide-macros guide \
     guide-testing
 
 
-PDF_DOCS := reference
-
 RUSTDOC_DEPS_reference := doc/full-toc.inc
 RUSTDOC_FLAGS_reference := --html-in-header=doc/full-toc.inc
 
@@ -51,13 +46,6 @@ RUSTDOC_HTML_OPTS_NO_CSS = --html-before-content=doc/version_info.html \
 	--markdown-playground-url='http://play.rust-lang.org/'
 
 RUSTDOC_HTML_OPTS = $(RUSTDOC_HTML_OPTS_NO_CSS) --markdown-css rust.css
-
-PANDOC_BASE_OPTS := --standalone --toc --number-sections
-PANDOC_TEX_OPTS = $(PANDOC_BASE_OPTS) --from=markdown --to=latex \
-	--include-before-body=doc/version.tex \
-	--include-before-body=doc/footer.tex \
-	--include-in-header=doc/uptack.tex
-PANDOC_EPUB_OPTS = $(PANDOC_BASE_OPTS) --to=epub
 
 # The rustdoc executable...
 RUSTDOC_EXE = $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
@@ -89,29 +77,9 @@ else
 HTML_DEPS :=
 endif
 
-# Check for xelatex
-
-ifneq ($(CFG_XELATEX),)
-    CFG_LATEX := $(CFG_XELATEX)
-    XELATEX = 1
-  else
-    $(info cfg: no xelatex found, disabling LaTeX docs)
-    NO_PDF_DOCS = 1
-endif
-
-ifeq ($(CFG_PANDOC),)
-$(info cfg: no pandoc found, omitting PDF and EPUB docs)
-ONLY_HTML_DOCS = 1
-endif
-
-
 ######################################################################
 # Rust version
 ######################################################################
-
-doc/version.tex: $(MKFILE_DEPS) $(wildcard $(D)/*.*) | doc/
-	@$(call E, version-stamp: $@)
-	$(Q)echo "$(CFG_VERSION)" >$@
 
 HTML_DEPS += doc/version_info.html
 doc/version_info.html: $(D)/version_info.html.template $(MKFILE_DEPS) \
@@ -121,10 +89,10 @@ doc/version_info.html: $(D)/version_info.html.template $(MKFILE_DEPS) \
                 s/SHORT_HASH/$(CFG_SHORT_VER_HASH)/; \
                 s/STAMP/$(CFG_VER_HASH)/;" $< >$@
 
-GENERATED += doc/version.tex doc/version_info.html
+GENERATED += doc/version_info.html
 
 ######################################################################
-# Docs, from rustdoc and sometimes pandoc
+# Docs from rustdoc
 ######################################################################
 
 doc/:
@@ -150,20 +118,6 @@ doc/footer.inc: $(D)/footer.inc | doc/
 	$(Q)cp -PRp $< $@ 2> /dev/null
 
 # The (english) documentation for each doc item.
-
-define DEF_SHOULD_BUILD_PDF_DOC
-SHOULD_BUILD_PDF_DOC_$(1) = 1
-endef
-$(foreach docname,$(PDF_DOCS),$(eval $(call DEF_SHOULD_BUILD_PDF_DOC,$(docname))))
-
-doc/footer.tex: $(D)/footer.inc | doc/
-	@$(call E, pandoc: $@)
-	$(CFG_PANDOC) --from=html --to=latex $< --output=$@
-
-doc/uptack.tex: $(D)/uptack.tex | doc/
-	$(Q)cp $< $@
-
-# HTML (rustdoc)
 DOC_TARGETS += doc/not_found.html
 doc/not_found.html: $(D)/not_found.md $(HTML_DEPS) | doc/
 	@$(call E, rustdoc: $@)
@@ -178,47 +132,6 @@ DOC_TARGETS += doc/$(1).html
 doc/$(1).html: $$(D)/$(1).md $$(HTML_DEPS) $$(RUSTDOC_DEPS_$(1)) | doc/
 	@$$(call E, rustdoc: $$@)
 	$$(Q)$$(RUSTDOC) $$(RUSTDOC_HTML_OPTS) $$(RUSTDOC_FLAGS_$(1)) $$<
-
-ifneq ($(ONLY_HTML_DOCS),1)
-
-# EPUB (pandoc directly)
-DOC_TARGETS += doc/$(1).epub
-doc/$(1).epub: $$(D)/$(1).md | doc/
-	@$$(call E, pandoc: $$@)
-	$$(CFG_PANDOC) $$(PANDOC_EPUB_OPTS) $$< --output=$$@
-
-# PDF (md =(pandoc)=> tex =(pdflatex)=> pdf)
-DOC_TARGETS += doc/$(1).tex
-doc/$(1).tex: $$(D)/$(1).md doc/uptack.tex doc/footer.tex doc/version.tex | doc/
-	@$$(call E, pandoc: $$@)
-	$$(CFG_PANDOC) $$(PANDOC_TEX_OPTS) $$< --output=$$@
-
-ifneq ($(NO_PDF_DOCS),1)
-ifeq ($$(SHOULD_BUILD_PDF_DOC_$(1)),1)
-DOC_TARGETS += doc/$(1).pdf
-ifneq ($(XELATEX),1)
-doc/$(1).pdf: doc/$(1).tex
-	@$$(call E, latex compiler: $$@)
-	$$(Q)$$(CFG_LATEX) \
-	-interaction=batchmode \
-	-output-directory=doc \
-	$$<
-else
-# The version of xelatex on the snap bots seemingly ingores -output-directory
-# So we'll output to . and move to the doc directory manually.
-# This will leave some intermediate files in the build directory.
-doc/$(1).pdf: doc/$(1).tex
-	@$$(call E, latex compiler: $$@)
-	$$(Q)$$(CFG_LATEX) \
-	-interaction=batchmode \
-	-output-directory=. \
-	$$<
-	$$(Q)mv ./$(1).pdf $$@
-endif # XELATEX
-endif # SHOULD_BUILD_PDF_DOCS_$(1)
-endif # NO_PDF_DOCS
-
-endif # ONLY_HTML_DOCS
 
 endef
 
