@@ -78,11 +78,8 @@ src/main.rs:8     match x {
 src/main.rs:9         Some(y) => println!("{:?}", y),
 src/main.rs:10         _ => ()
 src/main.rs:11     }
-src/main.rs:8:5: 11:6 note: Try if let Some(y) = x { ... }
-src/main.rs:8     match x {
-src/main.rs:9         Some(y) => println!("{:?}", y),
-src/main.rs:10         _ => ()
-src/main.rs:11     }
+src/main.rs:8:5: 11:6 help: Try
+if let Some(y) = x { println!("{:?}", y) }
 ```
 
 You can add options  to `allow`/`warn`/`deny`:
