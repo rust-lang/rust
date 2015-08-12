@@ -21,7 +21,6 @@ use middle::ty_fold::TypeFolder;
 use {CrateCtxt, require_same_types};
 
 use std::collections::{HashMap};
-use std::iter;
 use syntax::abi;
 use syntax::attr::AttrMetaMethods;
 use syntax::ast;
@@ -387,8 +386,8 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
         name if name.starts_with("simd_shuffle") => {
             match name["simd_shuffle".len()..].parse() {
                 Ok(n) => {
-                    let mut params = vec![param(0), param(0)];
-                    params.extend(iter::repeat(tcx.types.u32).take(n));
+                    let params = vec![param(0), param(0),
+                                      tcx.mk_ty(ty::TyArray(tcx.types.u32, n))];
 
                     let ictxt = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
                     let ret = ictxt.next_ty_var();
