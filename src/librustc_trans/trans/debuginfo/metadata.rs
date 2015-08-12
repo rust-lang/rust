@@ -2078,7 +2078,7 @@ pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// This function assumes that there's a datum for each pattern component of the
 /// argument in `bcx.fcx.lllocals`.
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
+pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg, indirect: bool) {
     if bcx.unreachable.get() ||
        fn_should_be_ignored(bcx.fcx) ||
        bcx.sess().opts.debuginfo != FullDebugInfo {
@@ -2103,11 +2103,6 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
             }
         };
 
-        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
-            bcx.sess().span_bug(span, "debuginfo::create_argument_metadata() - \
-                                       Referenced variable location is not an alloca!");
-        }
-
         let argument_index = {
             let counter = &bcx
                           .fcx
@@ -2119,11 +2114,21 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
             argument_index
         };
 
+        let deref = unsafe { [llvm::LLVMDIBuilderCreateOpDeref()] };
+        let access = if indirect {
+            VariableAccess::IndirectVariable {
+                alloca: datum.val,
+                address_operations: &deref,
+            }
+        } else {
+            VariableAccess::DirectVariable { alloca: datum.val }
+        };
+
         declare_local(bcx,
                       var_ident.node.name,
                       datum.ty,
                       scope_metadata,
-                      VariableAccess::DirectVariable { alloca: datum.val },
+                      access,
                       VariableKind::ArgumentVariable(argument_index),
                       span);
     })

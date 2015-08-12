@@ -43,7 +43,7 @@ use middle::pat_util::simple_identifier;
 use middle::subst::Substs;
 use middle::ty::{self, Ty, HasTypeFlags};
 use rustc::ast_map;
-use session::config::{self, NoDebugInfo, FullDebugInfo};
+use session::config::{self, NoDebugInfo};
 use session::Session;
 use trans::_match;
 use trans::adt;
@@ -1370,12 +1370,11 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
     // the event it's not truly needed.
     let mut idx = fcx.arg_offset() as c_uint;
     for (i, &arg_ty) in arg_tys.iter().enumerate() {
+        let mut indirect_arg = type_of::arg_is_indirect(bcx.ccx(), arg_ty);
         let arg_datum = if !has_tupled_arg || i < arg_tys.len() - 1 {
-            if type_of::arg_is_indirect(bcx.ccx(), arg_ty)
-                    && bcx.sess().opts.debuginfo != FullDebugInfo {
+            if indirect_arg {
                 // Don't copy an indirect argument to an alloca, the caller
-                // already put it in a temporary alloca and gave it up, unless
-                // we emit extra-debug-info, which requires local allocas :(.
+                // already put it in a temporary alloca and gave it up
                 let llarg = get_param(fcx.llfn, idx);
                 idx += 1;
                 bcx.fcx.schedule_lifetime_end(arg_scope_id, llarg);
@@ -1450,11 +1449,13 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
             bcx.fcx.lllocals.borrow_mut().insert(pat.id, arg_datum);
             bcx
         } else {
-            // General path. Copy out the values that are used in the
-            // pattern.
+            // General path. Copy out the values that are used in the pattern.
+            // Since we're copying the values out, the argument is not indirect
+            // as far as debug info is concerned
+            indirect_arg = false;
             _match::bind_irrefutable_pat(bcx, pat, arg_datum.match_input(), arg_scope_id)
         };
-        debuginfo::create_argument_metadata(bcx, &args[i]);
+        debuginfo::create_argument_metadata(bcx, &args[i], indirect_arg);
     }
 
     bcx
