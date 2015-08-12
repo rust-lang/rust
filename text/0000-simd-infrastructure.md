@@ -221,7 +221,7 @@ return [z[idx[0]], z[idx[1]], z[idx[2]], ...]
 ```
 
 The index array `idx` has to be compile time constants. Out of bounds
-indices yield unspecified results.
+indices yield errors.
 
 Similarly, intrinsics for inserting/extracting elements into/out of
 vectors are provided, to allow modelling the SIMD vectors as actual
