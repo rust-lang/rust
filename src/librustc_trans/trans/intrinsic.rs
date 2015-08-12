@@ -12,6 +12,7 @@
 
 use arena::TypedArena;
 use intrinsics::{self, Intrinsic};
+use libc;
 use llvm;
 use llvm::{SequentiallyConsistent, Acquire, Release, AtomicXchg, ValueRef, TypeKind};
 use middle::subst;
@@ -24,6 +25,7 @@ use trans::callee;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::common::*;
+use trans::consts;
 use trans::datum::*;
 use trans::debuginfo::DebugLoc;
 use trans::declare;
@@ -38,6 +40,7 @@ use middle::ty::{self, Ty, HasTypeFlags};
 use middle::subst::Substs;
 use syntax::abi::{self, RustIntrinsic};
 use syntax::ast;
+use syntax::ptr::P;
 use syntax::parse::token;
 
 pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
@@ -342,6 +345,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                             `try` intrinsic");
         }
     }
+
+    // save the actual AST arguments for later (some places need to do
+    // const-evaluation on them)
+    let expr_arguments = match args {
+        callee::ArgExprs(args) => Some(args),
+        _ => None,
+    };
 
     // Push the arguments.
     let mut llargs = Vec::new();
@@ -805,6 +815,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             generic_simd_intrinsic(bcx, name,
                                    substs,
                                    callee_ty,
+                                   expr_arguments,
                                    &llargs,
                                    ret_ty, llret_ty,
                                    call_debug_location,
@@ -1307,15 +1318,18 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     return rust_try
 }
 
-fn generic_simd_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                      name: &str,
-                                      _substs: subst::Substs<'tcx>,
-                                      callee_ty: Ty<'tcx>,
-                                      llargs: &[ValueRef],
-                                      ret_ty: Ty<'tcx>,
-                                      llret_ty: Type,
-                                      call_debug_location: DebugLoc,
-                                      call_info: NodeIdAndSpan) -> ValueRef {
+fn generic_simd_intrinsic<'blk, 'tcx, 'a>
+    (bcx: Block<'blk, 'tcx>,
+     name: &str,
+     substs: subst::Substs<'tcx>,
+     callee_ty: Ty<'tcx>,
+     args: Option<&[P<ast::Expr>]>,
+     llargs: &[ValueRef],
+     ret_ty: Ty<'tcx>,
+     llret_ty: Type,
+     call_debug_location: DebugLoc,
+     call_info: NodeIdAndSpan) -> ValueRef
+{
     let tcx = bcx.tcx();
     let arg_tys = match callee_ty.sty {
         ty::TyBareFn(_, ref f) => {
@@ -1376,7 +1390,6 @@ fn generic_simd_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             Err(_) => tcx.sess.span_bug(call_info.span,
                                           "bad `simd_shuffle` instruction only caught in trans?")
         };
-        assert_eq!(llargs.len(), 2 + n);
 
         require!(arg_tys[0] == arg_tys[1],
                  "SIMD shuffle intrinsic monomorphised with different input types");
@@ -1394,12 +1407,18 @@ fn generic_simd_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         let total_len = in_len as u64 * 2;
 
-        let indices: Option<Vec<_>> = llargs[2..]
-            .iter()
-            .enumerate()
-            .map(|(i, val)| {
-                let arg_idx = i + 2;
-                let c = const_to_opt_uint(*val);
+        let vector = match args {
+            Some(args) => &args[2],
+            None => bcx.sess().span_bug(call_info.span,
+                                        "intrinsic call with unexpected argument shape"),
+        };
+        let vector = consts::const_expr(bcx.ccx(), vector, tcx.mk_substs(substs), None).0;
+
+        let indices: Option<Vec<_>> = (0..n)
+            .map(|i| {
+                let arg_idx = i;
+                let val = const_get_elt(bcx.ccx(), vector, &[i as libc::c_uint]);
+                let c = const_to_opt_uint(val);
                 match c {
                     None => {
                         bcx.sess().span_err(call_info.span,
