@@ -9,7 +9,7 @@ use rustc::middle::ty::{self, TypeVariants, TypeAndMut, MethodTraitItemId, ImplO
 use rustc::middle::def::{DefTy, DefStruct, DefTrait};
 use syntax::codemap::{Span, Spanned};
 use syntax::ast::*;
-use utils::{span_lint, walk_ptrs_ty};
+use utils::{span_lint, walk_ptrs_ty, snippet};
 
 declare_lint!(pub LEN_ZERO, Warn,
               "Warn when .is_empty() could be used instead of checking .len()");
@@ -92,24 +92,24 @@ fn is_self_sig(sig: &MethodSig) -> bool {
         false } else { sig.decl.inputs.len() == 1 }
 }
 
-fn check_cmp(cx: &Context, span: Span, left: &Expr, right: &Expr, empty: &str) {
+fn check_cmp(cx: &Context, span: Span, left: &Expr, right: &Expr, op: &str) {
     match (&left.node, &right.node) {
         (&ExprLit(ref lit), &ExprMethodCall(ref method, _, ref args)) =>
-            check_len_zero(cx, span, method, args, lit, empty),
+            check_len_zero(cx, span, method, args, lit, op),
         (&ExprMethodCall(ref method, _, ref args), &ExprLit(ref lit)) =>
-            check_len_zero(cx, span, method, args, lit, empty),
+            check_len_zero(cx, span, method, args, lit, op),
         _ => ()
     }
 }
 
 fn check_len_zero(cx: &Context, span: Span, method: &SpannedIdent,
-                  args: &[P<Expr>], lit: &Lit, empty: &str) {
+                  args: &[P<Expr>], lit: &Lit, op: &str) {
     if let &Spanned{node: LitInt(0, _), ..} = lit {
         if method.node.name == "len" && args.len() == 1 &&
             has_is_empty(cx, &*args[0]) {
                 span_lint(cx, LEN_ZERO, span, &format!(
-                    "consider replacing the len comparison with `{}_.is_empty()`",
-                    empty))
+                    "consider replacing the len comparison with `{}{}.is_empty()`",
+                    op, snippet(cx, args[0].span, "_")))
             }
     }
 }
