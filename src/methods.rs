@@ -13,10 +13,12 @@ declare_lint!(pub RESULT_UNWRAP_USED, Allow,
               "Warn on using unwrap() on a Result value");
 declare_lint!(pub STR_TO_STRING, Warn,
               "Warn when a String could use to_owned() instead of to_string()");
+declare_lint!(pub STRING_TO_STRING, Warn,
+              "Warn when calling String.to_string()");
 
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(OPTION_UNWRAP_USED, RESULT_UNWRAP_USED, STR_TO_STRING)
+        lint_array!(OPTION_UNWRAP_USED, RESULT_UNWRAP_USED, STR_TO_STRING, STRING_TO_STRING)
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
@@ -40,6 +42,12 @@ impl LintPass for MethodsPass {
             else if ident.node.name == "to_string" {
                 if let ty::TyStr = *obj_ty {
                     span_lint(cx, STR_TO_STRING, expr.span, "`str.to_owned()` is faster");
+                }
+                else if let ty::TyStruct(did, _) = *obj_ty {
+                    if match_def_path(cx, did.did, &["collections", "string", "String"]) {
+                        span_lint(cx, STRING_TO_STRING, expr.span,
+                                  "`String.to_string()` is a no-op")
+                    }
                 }
             }
         }

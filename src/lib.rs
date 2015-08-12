@@ -83,5 +83,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            methods::OPTION_UNWRAP_USED,
                                            methods::RESULT_UNWRAP_USED,
                                            methods::STR_TO_STRING,
+                                           methods::STRING_TO_STRING,
                                            ]);
 }
