@@ -785,6 +785,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
               debug!("(building reduced graph for external \
                       crate) building type {}", final_ident);
 
+              let modifiers = match new_parent.kind.get() {
+                  NormalModuleKind => modifiers,
+                  _ => modifiers & !DefModifiers::IMPORTABLE
+              };
+
               child_name_bindings.define_type(def, DUMMY_SP, modifiers);
           }
           DefStruct(def_id) => {
