@@ -58,7 +58,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box misc::ModuloOne as LintPassObject);
     reg.register_lint_pass(box unicode::Unicode as LintPassObject);
     reg.register_lint_pass(box strings::StringAdd as LintPassObject);
-    reg.register_lint_pass(box strings::StringAddAssign as LintPassObject);
     reg.register_lint_pass(box returns::ReturnPass as LintPassObject);
     reg.register_lint_pass(box methods::MethodsPass as LintPassObject);
     reg.register_lint_pass(box types::LetPass as LintPassObject);
