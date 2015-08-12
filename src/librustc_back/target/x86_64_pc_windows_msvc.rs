@@ -13,6 +13,7 @@ use target::Target;
 pub fn target() -> Target {
     let mut base = super::windows_msvc_base::opts();
     base.cpu = "x86-64".to_string();
+    base.custom_unwind_resume = true;
 
     Target {
         llvm_target: "x86_64-pc-windows-msvc".to_string(),

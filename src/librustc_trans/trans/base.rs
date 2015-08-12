@@ -745,13 +745,22 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
+/// Returns whether this session's target will use SEH-based unwinding.
+///
+/// This is only true for MSVC targets, and even then the 64-bit MSVC target
+/// currently uses SEH-ish unwinding with DWARF info tables to the side (same as
+/// 64-bit MinGW) instead of "full SEH".
+pub fn wants_msvc_seh(sess: &Session) -> bool {
+    sess.target.target.options.is_like_msvc && sess.target.target.arch == "x86"
+}
+
 pub fn need_invoke(bcx: Block) -> bool {
-    // FIXME(#25869) currently unwinding is not implemented for MSVC and our
-    //               normal unwinding infrastructure ends up just causing linker
-    //               errors with the current LLVM implementation, so landing
-    //               pads are disabled entirely for MSVC targets
-    if bcx.sess().no_landing_pads() ||
-       bcx.sess().target.target.options.is_like_msvc {
+    // FIXME(#25869) currently SEH-based unwinding is pretty buggy in LLVM and
+    //               is being overhauled as this is being written. Until that
+    //               time such that upstream LLVM's implementation is more solid
+    //               and we start binding it we need to skip invokes for any
+    //               target which wants SEH-based unwinding.
+    if bcx.sess().no_landing_pads() || wants_msvc_seh(bcx.sess()) {
         return false;
     }
 
