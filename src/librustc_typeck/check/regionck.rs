@@ -1580,116 +1580,60 @@ fn param_ty_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 fn projection_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                      origin: infer::SubregionOrigin<'tcx>,
                                      region: ty::Region,
-                                     projection_ty: ty::ProjectionTy<'tcx>) {
+                                     projection_ty: ty::ProjectionTy<'tcx>)
+{
     debug!("projection_must_outlive(region={:?}, projection_ty={:?}, origin={:?})",
            region, projection_ty, origin);
 
-    // This is a particularly thorny situation for inference, and for
-    // now we don't have a complete solution, we just do the best we
-    // can. The problem is that there are multiple ways for `<P0 as
-    // TraitRef<P1..Pn>>::Foo: 'r` to be satisfied:
-    //
-    // 1. If `Pi: 'r` forall i, it is satisfied.
-    // 2. If there is a suitable where-clause, it can be satisfied.
-    // 3. The trait declaration may declare `'static` bounds on `Foo` as well.
-    //
-    // The fact that there are so many options here makes this thorny.
-    // In the case of parameter relations like `T: 'r`, it's somewhat
-    // simpler, because checking such a relation does not affect
-    // inference.  This is true because the region bounds we can
-    // derive for `T` never involve region variables -- they are
-    // always free regions.  The only place a region variable can come
-    // is on the RHS, and in that case, the smaller the region, the
-    // better. This means that our current inference, which always
-    // infers the smallest region it can, can just be used, and we'll
-    // know what the smallest value for `'r` is when it's done. We can
-    // then compare that to the regions in the LHS, which are already
-    // as big as possible, and we're all done.
-    //
-    // Projections can in fact be this simple as well. In particular,
-    // if the parameters `P0..Pn` do not involve any region variables,
-    // that's the same situation.
-    //
-    // Where things get thorny is when region variables are involved,
-    // because in that case relating `Pi: 'r` may influence the
-    // inference process, since it could cause `'r` to be inferred to
-    // a larger value. But the problem is that if we add that as a
-    // constraint into our dataflow graph, we've essentially committed
-    // to using option 1 (above) to show that `<P0 as
-    // Trait<P1..Pn>>::Foo: 'r` is satisfied, and it may be that
-    // Option 1 does not apply, but Option 2 or 3 does. But we can't
-    // know that now.
-    //
-    // For now we choose to accept this. It's a conservative choice,
-    // so we can move to a more sophisticated inference model later.
-    // And it's sometimes possible to workaround by introducing
-    // explicit type parameters or type annotations. But it ain't
-    // great!
+    // This case is thorny for inference. The fundamental problem is
+    // that there are many cases where we have choice, and inference
+    // doesn't like choice (the current region inference in
+    // particular). :) First off, we have to choose between using the
+    // OutlivesProjectionEnv, OutlivesProjectionTraitDef, and
+    // OutlivesProjectionComponent rules, any one of which is
+    // sufficient.  If there are no inference variables involved, it's
+    // not hard to pick the right rule, but if there are, we're in a
+    // bit of a catch 22: if we picked which rule we were going to
+    // use, we could add constraints to the region inference graph
+    // that make it apply, but if we don't add those constraints, the
+    // rule might not apply (but another rule might). For now, we err
+    // on the side of adding too few edges into the graph.
 
-    let declared_bounds = projection_declared_bounds(rcx, origin.span(), projection_ty);
+    // Compute the bounds we can derive from the environment or trait
+    // definition.  We know that the projection outlives all the
+    // regions in this list.
+    let env_bounds = projection_declared_bounds(rcx, origin.span(), projection_ty);
 
-    debug!("projection_must_outlive: declared_bounds={:?}",
-           declared_bounds);
+    debug!("projection_must_outlive: env_bounds={:?}",
+           env_bounds);
 
-    // If we know that the projection outlives 'static, then we're done here.
-    if declared_bounds.contains(&ty::ReStatic) {
+    // If we know that the projection outlives 'static, then we're
+    // done here.
+    if env_bounds.contains(&ty::ReStatic) {
+        debug!("projection_must_outlive: 'static as declared bound");
         return;
     }
 
-    // Determine whether any of regions that appear in the projection
-    // were declared as bounds by the user. This is typically a situation
-    // like this:
+    // If declared bounds list is empty, the only applicable rule is
+    // OutlivesProjectionComponent. If there are inference variables,
+    // then, we can break down the outlives into more primitive
+    // components without adding unnecessary edges.
     //
-    //     trait Foo<'a> {
-    //         type Bar: 'a;
-    //     }
-    //
-    // where we are checking `<T as Foo<'_#0r>>: '_#1r`. In such a
-    // case, if we use the conservative rule, we will check that
-    // BOTH of the following hold:
-    //
-    //     T: _#1r
-    //     _#0r: _#1r
-    //
-    // This is overkill, since the declared bounds tell us that the
-    // the latter is sufficient.
-    let intersection_bounds: Vec<_> =
-        projection_ty.trait_ref.substs.regions()
-                                      .iter()
-                                      .filter(|r| declared_bounds.contains(r))
-                                      .collect();
-    let intersection_bounds_needs_infer =
-        intersection_bounds.iter()
-                           .any(|r| r.needs_infer());
-    if intersection_bounds_needs_infer {
-        // If the upper bound(s) (`_#0r` in the above example) are
-        // region variables, then introduce edges into the inference
-        // graph, because we need to ensure that `_#0r` is inferred to
-        // something big enough. But if the upper bound has no
-        // inference, then fallback (below) to the verify path, where
-        // we just check after the fact that it was big enough. This
-        // is more flexible, because it only requires that there
-        // exists SOME intersection bound that is big enough, whereas
-        // this path requires that ALL intersection bounds be big
-        // enough.
-        debug!("projection_must_outlive: intersection_bounds={:?}",
-               intersection_bounds);
-        for &r in intersection_bounds {
-            rcx.fcx.mk_subr(origin.clone(), region, r);
-        }
-        return;
-    }
-
-    // If there are no intersection bounds, but there are still
-    // inference variables involves, then fallback to the most
-    // conservative rule, where we require all components of the
-    // projection outlive the bound.
-    if
-        intersection_bounds.is_empty() && (
-            projection_ty.trait_ref.substs.types.iter().any(|t| t.needs_infer()) ||
-                projection_ty.trait_ref.substs.regions().iter().any(|r| r.needs_infer()))
-    {
-        debug!("projection_must_outlive: fallback to rule #1");
+    // If there are *no* inference variables, however, we COULD do
+    // this, but we choose not to, because the error messages are less
+    // good. For example, a requirement like `T::Item: 'r` would be
+    // translated to a requirement that `T: 'r`; when this is reported
+    // to the user, it will thus say "T: 'r must hold so that T::Item:
+    // 'r holds". But that makes it sound like the only way to fix
+    // the problem is to add `T: 'r`, which isn't true. So, if there are no
+    // inference variables, we use a verify constraint instead of adding
+    // edges, which winds up enforcing the same condition.
+    let needs_infer = {
+        projection_ty.trait_ref.substs.types.iter().any(|t| t.needs_infer()) ||
+            projection_ty.trait_ref.substs.regions().iter().any(|r| r.needs_infer())
+    };
+    if env_bounds.is_empty() && needs_infer {
+        debug!("projection_must_outlive: no declared bounds");
 
         for &component_ty in &projection_ty.trait_ref.substs.types {
             type_must_outlive(rcx, origin.clone(), component_ty, region);
@@ -1702,9 +1646,32 @@ fn projection_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
         return;
     }
 
-    // Inform region inference that this generic must be properly
-    // bounded.
-    let verify_bound = projection_bound(rcx, origin.span(), declared_bounds, projection_ty);
+    // If we find that there is a unique declared bound `'b`, and this bound
+    // appears in the trait reference, then the best action is to require that `'b:'r`,
+    // so do that. This is best no matter what rule we use:
+    //
+    // - OutlivesProjectionEnv or OutlivesProjectionTraitDef: these would translate to
+    // the requirement that `'b:'r`
+    // - OutlivesProjectionComponent: this would require `'b:'r` in addition to other conditions
+    if !env_bounds.is_empty() && env_bounds[1..].iter().all(|b| *b == env_bounds[0]) {
+        let unique_bound = env_bounds[0];
+        debug!("projection_must_outlive: unique declared bound = {:?}", unique_bound);
+        if projection_ty.trait_ref.substs.regions()
+                                         .iter()
+                                         .any(|r| env_bounds.contains(r))
+        {
+            debug!("projection_must_outlive: unique declared bound appears in trait ref");
+            rcx.fcx.mk_subr(origin.clone(), region, unique_bound);
+            return;
+        }
+    }
+
+    // Fallback to verifying after the fact that there exists a
+    // declared bound, or that all the components appearing in the
+    // projection outlive; in some cases, this may add insufficient
+    // edges into the inference graph, leading to inference failures
+    // even though a satisfactory solution exists.
+    let verify_bound = projection_bound(rcx, origin.span(), env_bounds, projection_ty);
     let generic = GenericKind::Projection(projection_ty);
     rcx.fcx.infcx().verify_generic_bound(origin, generic.clone(), region, verify_bound);
 }
