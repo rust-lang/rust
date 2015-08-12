@@ -5927,6 +5927,14 @@ impl<'tcx> ctxt<'tcx> {
         }
     }
 
+    pub fn item_name(&self, id: ast::DefId) -> ast::Name {
+        if id.krate == ast::LOCAL_CRATE {
+            self.map.get_path_elem(id.node).name()
+        } else {
+            csearch::get_item_name(self, id)
+        }
+    }
+
     /// Returns `(normalized_type, ty)`, where `normalized_type` is the
     /// IntType representation of one of {i64,i32,i16,i8,u64,u32,u16,u8},
     /// and `ty` is the original type (i.e. may include `isize` or
