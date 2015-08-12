@@ -196,16 +196,10 @@ platform specific intrinsic for shuffling.
 
 ```rust
 extern "platform-intrinsic" {
-    fn simd_shuffle2<T, Elem>(v: T, w: T, i0: u32, i1: u32) -> Simd2<Elem>;
-    fn simd_shuffle4<T, Elem>(v: T, w: T, i0: u32, i1: u32, i2: u32, i3: u32) -> Sidm4<Elem>;
-    fn simd_shuffle8<T, Elem>(v: T, w: T,
-                              i0: u32, i1: u32, i2: u32, i3: u32,
-                              i4: u32, i5: u32, i6: u32, i7: u32) -> Simd8<Elem>;
-    fn simd_shuffle16<T, Elem>(v: T, w: T,
-                               i0: u32, i1: u32, i2: u32, i3: u32,
-                               i4: u32, i5: u32, i6: u32, i7: u32
-                               i8: u32, i9: u32, i10: u32, i11: u32,
-                               i12: u32, i13: u32, i14: u32, i15: u32) -> Simd16<Elem>;
+    fn simd_shuffle2<T, Elem>(v: T, w: T, idx: [i32; 2]) -> Simd2<Elem>;
+    fn simd_shuffle4<T, Elem>(v: T, w: T, idx: [i32; 4]) -> Sidm4<Elem>;
+    fn simd_shuffle8<T, Elem>(v: T, w: T, idx: [i32; 8]) -> Simd8<Elem>;
+    fn simd_shuffle16<T, Elem>(v: T, w: T, idx: [i32; 16]) -> Simd16<Elem>;
 }
 ```
 
@@ -214,10 +208,8 @@ time, ensure that `T` is a SIMD vector, `Elem` is the element type of
 `T` etc. Libraries can use traits to ensure that these will be
 enforced by the type checker too.
 
-This approach has some downsides: `simd_shuffle32` (e.g. `Simd32<u8>`
-on AVX, and `Simd32<u16>` on AVX-512) and especially `simd_shuffle64`
-(e.g. `Simd64<u8>` on AVX-512) are unwieldy. These have similar type
-"safety"/code-generation errors to the vectors themselves.
+This approach has similar type "safety"/code-generation errors to the
+vectors themselves.
 
 These operations are semantically:
 
@@ -225,10 +217,10 @@ These operations are semantically:
 // vector of double length
 let z = concat(v, w);
 
-return [z[i0], z[i1], z[i2], ...]
+return [z[idx[0]], z[idx[1]], z[idx[2]], ...]
 ```
 
-The indices `iN` have to be compile time constants. Out of bounds
+The index array `idx` has to be compile time constants. Out of bounds
 indices yield unspecified results.
 
 Similarly, intrinsics for inserting/extracting elements into/out of
