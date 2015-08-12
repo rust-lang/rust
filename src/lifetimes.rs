@@ -2,7 +2,7 @@ use syntax::ast::*;
 use rustc::lint::{Context, LintPass, LintArray, Lint};
 use syntax::codemap::Span;
 use syntax::visit::{Visitor, FnKind, walk_ty};
-use utils::{in_macro, span_lint};
+use utils::{in_external_macro, span_lint};
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
@@ -19,16 +19,17 @@ impl LintPass for LifetimePass {
 
     fn check_fn(&mut self, cx: &Context, kind: FnKind, decl: &FnDecl,
                 _: &Block, span: Span, _: NodeId) {
-        if cx.sess().codemap().with_expn_info(span.expn_id, |info| in_macro(cx, info)) {
+        if in_external_macro(cx, span) {
             return;
         }
         if could_use_elision(kind, decl) {
             span_lint(cx, NEEDLESS_LIFETIMES, span,
-                      "explicit lifetimes given where they could be inferred");
+                      "explicit lifetimes given in parameter types where they could be elided");
         }
     }
 }
 
+/// The lifetime of a &-reference.
 #[derive(PartialEq, Eq, Hash, Debug)]
 enum RefLt {
     Unnamed,
@@ -42,24 +43,24 @@ fn could_use_elision(kind: FnKind, func: &FnDecl) -> bool {
     // * no output references, all input references have different LT
     // * output references, exactly one input reference with same LT
 
+    // these will collect all the lifetimes for references in arg/return types
     let mut input_visitor = RefVisitor(Vec::new());
     let mut output_visitor = RefVisitor(Vec::new());
 
-    // extract lifetimes of input argument types
-    for arg in &func.inputs {
-        walk_ty(&mut input_visitor, &*arg.ty);
-    }
-    // extract lifetime of "self" argument for methods
+    // extract lifetime in "self" argument for methods (there is a "self" argument
+    // in func.inputs, but its type is TyInfer)
     if let FnKind::FkMethod(_, sig, _) = kind {
         match sig.explicit_self.node {
-            SelfRegion(ref lt_opt, _, _) =>
-                input_visitor.visit_opt_lifetime_ref(sig.explicit_self.span, lt_opt),
-            SelfExplicit(ref ty, _) =>
-                walk_ty(&mut input_visitor, ty),
+            SelfRegion(ref opt_lt, _, _) => input_visitor.record(opt_lt),
+            SelfExplicit(ref ty, _) => walk_ty(&mut input_visitor, ty),
             _ => { }
         }
     }
-    // extract lifetimes of output type
+    // extract lifetimes in input argument types
+    for arg in &func.inputs {
+        walk_ty(&mut input_visitor, &*arg.ty);
+    }
+    // extract lifetimes in output type
     if let Return(ref ty) = func.output {
         walk_ty(&mut output_visitor, ty);
     }
@@ -100,19 +101,16 @@ fn could_use_elision(kind: FnKind, func: &FnDecl) -> bool {
     false
 }
 
+/// Number of unique lifetimes in the given vector.
 fn unique_lifetimes(lts: &Vec<RefLt>) -> usize {
-    let set: HashSet<&RefLt> = HashSet::from_iter(lts.iter());
-    set.len()
+    lts.iter().collect::<HashSet<_>>().len()
 }
 
+/// A visitor usable for syntax::visit::walk_ty().
 struct RefVisitor(Vec<RefLt>);
 
 impl RefVisitor {
-    fn into_vec(self) -> Vec<RefLt> { self.0 }
-}
-
-impl<'v> Visitor<'v> for RefVisitor {
-    fn visit_opt_lifetime_ref(&mut self, _: Span, lifetime: &'v Option<Lifetime>) {
+    fn record(&mut self, lifetime: &Option<Lifetime>) {
         if let &Some(ref lt) = lifetime {
             if lt.name.as_str() == "'static" {
                 self.0.push(Static);
@@ -122,5 +120,15 @@ impl<'v> Visitor<'v> for RefVisitor {
         } else {
             self.0.push(Unnamed);
         }
+    }
+
+    fn into_vec(self) -> Vec<RefLt> {
+        self.0
+    }
+}
+
+impl<'v> Visitor<'v> for RefVisitor {
+    fn visit_opt_lifetime_ref(&mut self, _: Span, lifetime: &'v Option<Lifetime>) {
+        self.record(lifetime);
     }
 }
