@@ -87,7 +87,7 @@ You can add options  to `allow`/`warn`/`deny`:
 - only some lints (`#![deny(single_match, box_vec)]`, etc)
 - `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc
 
-*`deny` produces error instead of warnings*
+Note: `deny` produces errors instead of warnings
 
 To have cargo compile your crate with clippy without needing `#![plugin(clippy)]`
 in your code, you can use:
