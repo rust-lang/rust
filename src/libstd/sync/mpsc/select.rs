@@ -57,9 +57,6 @@
                       but no guarantees beyond this are being made")]
 
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 use core::cell::{Cell, UnsafeCell};
 use core::marker;
 use core::ptr;

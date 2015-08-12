@@ -115,7 +115,7 @@ In addition to procedural macros, you can define new
 extensions.  See
 [`Registry::register_syntax_extension`](../rustc/plugin/registry/struct.Registry.html#method.register_syntax_extension)
 and the [`SyntaxExtension`
-enum](http://doc.rust-lang.org/syntax/ext/base/enum.SyntaxExtension.html).  For
+enum](https://doc.rust-lang.org/syntax/ext/base/enum.SyntaxExtension.html).  For
 a more involved macro example, see
 [`regex_macros`](https://github.com/rust-lang/regex/blob/master/regex_macros/src/lib.rs).
 
@@ -156,7 +156,7 @@ so that the compiler can continue and find further errors.
 To print syntax fragments for debugging, you can use
 [`span_note`](../syntax/ext/base/struct.ExtCtxt.html#method.span_note) together
 with
-[`syntax::print::pprust::*_to_string`](http://doc.rust-lang.org/syntax/print/pprust/index.html#functions).
+[`syntax::print::pprust::*_to_string`](https://doc.rust-lang.org/syntax/print/pprust/index.html#functions).
 
 The example above produced an integer literal using
 [`AstBuilder::expr_usize`](../syntax/ext/build/trait.AstBuilder.html#tymethod.expr_usize).

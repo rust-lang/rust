@@ -17,9 +17,6 @@
             reason = "matches collection reform specification, \
                       waiting for dust to settle")]
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 use core::marker;
 use core::fmt;
 use core::iter::{FromIterator};

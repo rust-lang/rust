@@ -95,5 +95,4 @@ languages:
 - [Russian](https://github.com/kgv/rust_book_ru)
 - [Korean](https://github.com/rust-kr/doc.rust-kr.org)
 - [Chinese](https://github.com/KaiserY/rust-book-chinese)
-- [Spanish](https://github.com/goyox86/elpr)
-
+- [Spanish](https://goyox86.github.io/elpr)

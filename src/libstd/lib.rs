@@ -191,10 +191,10 @@
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
-#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/nightly/",
-       html_playground_url = "http://play.rust-lang.org/",
+       html_root_url = "https://doc.rust-lang.org/nightly/",
+       html_playground_url = "https://play.rust-lang.org/",
        test(no_crate_inject, attr(deny(warnings))),
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
@@ -249,15 +249,12 @@
 #![cfg_attr(test, feature(float_from_str_radix, range_inclusive, float_extras, hash_default))]
 #![cfg_attr(test, feature(test, rustc_private, float_consts))]
 #![cfg_attr(target_env = "msvc", feature(link_args))]
-#![cfg_attr(stage0, feature(core, core_prelude))]
 
 // Don't link to std. We are std.
 #![no_std]
 
 #![allow(trivial_casts)]
 #![deny(missing_docs)]
-
-#[cfg(stage0)] #[macro_use] extern crate core;
 
 #[cfg(test)] extern crate test;
 #[cfg(test)] #[macro_use] extern crate log;

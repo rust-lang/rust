@@ -21,9 +21,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(stage0)]
-use core::prelude::v1::*;
-
 use alloc::boxed::Box;
 use core::cmp::Ordering;
 use core::fmt;

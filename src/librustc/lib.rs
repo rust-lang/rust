@@ -21,9 +21,9 @@
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
-#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-      html_root_url = "http://doc.rust-lang.org/nightly/")]
+      html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(append)]
 #![feature(associated_consts)]
@@ -178,6 +178,19 @@ pub mod lib {
 mod rustc {
     pub use lint;
 }
+
+// FIXME(#27438): right now the unit tests of librustc don't refer to any actual
+//                functions generated in librustc_data_structures (all
+//                references are through generic functions), but statics are
+//                referenced from time to time. Due to this bug we won't
+//                actually correctly link in the statics unless we also
+//                reference a function, so be sure to reference a dummy
+//                function.
+#[test]
+fn noop() {
+    rustc_data_structures::__noop_fix_for_27438();
+}
+
 
 // Build the diagnostics array at the end so that the metadata includes error use sites.
 __build_diagnostic_array! { librustc, DIAGNOSTICS }

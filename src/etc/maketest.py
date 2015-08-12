@@ -41,14 +41,14 @@ def convert_path_spec(name, value):
 make = sys.argv[2]
 putenv('RUSTC', os.path.abspath(sys.argv[3]))
 putenv('TMPDIR', os.path.abspath(sys.argv[4]))
-putenv('CC', sys.argv[5])
-putenv('RUSTDOC', os.path.abspath(sys.argv[6]))
-filt = sys.argv[7]
-putenv('LD_LIB_PATH_ENVVAR', sys.argv[8])
-putenv('HOST_RPATH_DIR', os.path.abspath(sys.argv[9]))
-putenv('TARGET_RPATH_DIR', os.path.abspath(sys.argv[10]))
-putenv('RUST_BUILD_STAGE', sys.argv[11])
-putenv('S', os.path.abspath(sys.argv[12]))
+putenv('CC', sys.argv[5] + ' ' + sys.argv[6])
+putenv('RUSTDOC', os.path.abspath(sys.argv[7]))
+filt = sys.argv[8]
+putenv('LD_LIB_PATH_ENVVAR', sys.argv[9])
+putenv('HOST_RPATH_DIR', os.path.abspath(sys.argv[10]))
+putenv('TARGET_RPATH_DIR', os.path.abspath(sys.argv[11]))
+putenv('RUST_BUILD_STAGE', sys.argv[12])
+putenv('S', os.path.abspath(sys.argv[13]))
 putenv('PYTHON', sys.executable)
 
 if filt not in sys.argv[1]:

@@ -23,9 +23,9 @@
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![staged_api]
-#![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://doc.rust-lang.org/nightly/")]
+#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+      html_favicon_url = "https://www.rust-lang.org/favicon.ico",
+      html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(rustc_private, staged_api)]
 #![cfg_attr(test, feature(test))]
@@ -38,3 +38,7 @@ pub mod graph;
 pub mod bitvec;
 pub mod ivar;
 pub mod unify;
+
+// See comments in src/librustc/lib.rs
+#[doc(hidden)]
+pub fn __noop_fix_for_27438() {}

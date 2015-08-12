@@ -124,7 +124,7 @@ that the caller already owns, for example to re-use a buffer:
 fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize>
 ```
 
-(From the [Reader trait](http://static.rust-lang.org/doc/master/std/io/trait.Reader.html#tymethod.read).)
+(From the [Read trait](https://doc.rust-lang.org/stable/std/io/trait.Read.html#tymethod.read).)
 
 ### Consider validating arguments, statically or dynamically. [FIXME: needs RFC]
 
@@ -132,7 +132,7 @@ _Note: this material is closely related to
   [library-level guarantees](../../safety/lib-guarantees.md)._
 
 Rust APIs do _not_ generally follow the
-[robustness principle](http://en.wikipedia.org/wiki/Robustness_principle): "be
+[robustness principle](https://en.wikipedia.org/wiki/Robustness_principle): "be
 conservative in what you send; be liberal in what you accept".
 
 Instead, Rust code should _enforce_ the validity of input whenever practical.
@@ -147,24 +147,26 @@ Choose an argument type that rules out bad inputs.
 For example, prefer
 
 ```rust
-fn foo(a: ascii::Ascii) { ... }
+enum FooMode {
+    Mode1,
+    Mode2,
+    Mode3,
+}
+fn foo(mode: FooMode) { ... }
 ```
 
 over
 
 ```rust
-fn foo(a: u8) { ... }
+fn foo(mode2: bool, mode3: bool) {
+    assert!(!mode2 || !mode3);
+    ...
+}
 ```
 
-Note that
-[`ascii::Ascii`](http://static.rust-lang.org/doc/master/std/ascii/struct.Ascii.html)
-is a _wrapper_ around `u8` that guarantees the highest bit is zero; see
-[newtype patterns](../types/newtype.md) for more details on creating typesafe wrappers.
-
 Static enforcement usually comes at little run-time cost: it pushes the
-costs to the boundaries (e.g. when a `u8` is first converted into an
-`Ascii`). It also catches bugs early, during compilation, rather than through
-run-time failures.
+costs to the boundaries. It also catches bugs early, during compilation,
+rather than through run-time failures.
 
 On the other hand, some properties are difficult or impossible to
 express using types.
@@ -177,7 +179,7 @@ downsides:
 
 1. Runtime overhead (unless checking can be done as part of processing the input).
 2. Delayed detection of bugs.
-3. Introduces failure cases, either via `fail!` or `Result`/`Option` types (see
+3. Introduces failure cases, either via `panic!` or `Result`/`Option` types (see
    the [error handling guidelines](../../errors/README.md)), which must then be
    dealt with by client code.
 

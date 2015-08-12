@@ -163,9 +163,6 @@ impl Drop for Thread {
           not(target_os = "netbsd"),
           not(target_os = "openbsd")))]
 pub mod guard {
-    #[cfg(stage0)]
-    use prelude::v1::*;
-
     pub unsafe fn current() -> Option<usize> { None }
     pub unsafe fn init() -> Option<usize> { None }
 }

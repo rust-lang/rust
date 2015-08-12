@@ -15,7 +15,6 @@ pub use self::imp::OsRng;
 
 #[cfg(all(unix, not(target_os = "ios")))]
 mod imp {
-    #[cfg(stage0)] use prelude::v1::*;
     use self::OsRngInner::*;
 
     use fs::File;
@@ -182,12 +181,12 @@ mod imp {
 
 #[cfg(target_os = "ios")]
 mod imp {
-    use prelude::v1::*;
+    #[cfg(stage0)] use prelude::v1::*;
 
     use io;
     use mem;
     use rand::Rng;
-    use libc::{c_int, c_void, size_t};
+    use libc::{c_int, size_t};
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
@@ -249,9 +248,6 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    #[cfg(stage0)]
-    use prelude::v1::*;
-
     use io;
     use mem;
     use rand::Rng;

@@ -1,1 +1,1 @@
-<link rel="shortcut icon" href="http://www.rust-lang.org/favicon.ico">
+<link rel="shortcut icon" href="https://www.rust-lang.org/favicon.ico">
