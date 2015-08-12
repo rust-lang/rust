@@ -161,7 +161,7 @@ use core::fmt;
 use core::hash::{Hasher, Hash};
 use core::intrinsics::{assume, drop_in_place, abort};
 use core::marker::{self, Unsize};
-use core::mem::{self, align_of, size_of, align_of_val, size_of_val, forget};
+use core::mem::{self, align_of_val, size_of_val, forget};
 use core::nonzero::NonZero;
 use core::ops::{CoerceUnsized, Deref};
 use core::ptr;
@@ -218,10 +218,10 @@ impl<T> Rc<T> {
         }
     }
 
-    /// Unwraps the contained value if the `Rc<T>` is unique.
+    /// Unwraps the contained value if the `Rc<T>` has only one strong reference.
+    /// This will succeed even if there are outstanding weak references.
     ///
-    /// If the `Rc<T>` is not unique, an `Err` is returned with the same
-    /// `Rc<T>`.
+    /// Otherwise, an `Err` is returned with the same `Rc<T>`.
     ///
     /// # Examples
     ///
@@ -238,15 +238,22 @@ impl<T> Rc<T> {
     /// assert_eq!(Rc::try_unwrap(x), Err(Rc::new(4)));
     /// ```
     #[inline]
-    #[unstable(feature = "rc_unique")]
+    #[stable(feature = "rc_unique", since="1.4.0")]
     pub fn try_unwrap(rc: Rc<T>) -> Result<T, Rc<T>> {
-        if Rc::is_unique(&rc) {
+        if Rc::strong_count(&rc) == 1 {
             unsafe {
+                let ptr = *rc._ptr;
                 let val = ptr::read(&*rc); // copy the contained object
-                // destruct the box and skip our Drop
-                // we can ignore the refcounts because we know we're unique
-                deallocate(*rc._ptr as *mut u8, size_of::<RcBox<T>>(),
-                            align_of::<RcBox<T>>());
+
+                // remove the implicit "strong weak" pointer now that we've
+                // destroyed the contents.
+                rc.dec_weak();
+
+                if rc.weak() == 0 {
+                    deallocate(ptr as *mut u8,
+                               size_of_val(&*ptr),
+                               align_of_val(&*ptr))
+                }
                 forget(rc);
                 Ok(val)
             }
@@ -270,8 +277,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// let weak_five = five.downgrade();
     /// ```
-    #[unstable(feature = "rc_weak",
-               reason = "Weak pointers may not belong in this module")]
+    #[stable(feature = "rc_weak", since = "1.4.0")]
     pub fn downgrade(&self) -> Weak<T> {
         self.inc_weak();
         Weak { _ptr: self._ptr }
@@ -279,12 +285,12 @@ impl<T: ?Sized> Rc<T> {
 
     /// Get the number of weak references to this value.
     #[inline]
-    #[unstable(feature = "rc_counts")]
+    #[unstable(feature = "rc_counts", reason = "not clearly useful", issue = "27718")]
     pub fn weak_count(this: &Rc<T>) -> usize { this.weak() - 1 }
 
     /// Get the number of strong references to this value.
     #[inline]
-    #[unstable(feature = "rc_counts")]
+    #[unstable(feature = "rc_counts", reason = "not clearly useful", issue = "27718")]
     pub fn strong_count(this: &Rc<T>) -> usize { this.strong() }
 
     /// Returns true if there are no other `Rc` or `Weak<T>` values that share
@@ -302,13 +308,13 @@ impl<T: ?Sized> Rc<T> {
     /// assert!(Rc::is_unique(&five));
     /// ```
     #[inline]
-    #[unstable(feature = "rc_unique")]
+    #[unstable(feature = "rc_counts", reason = "uniqueness has unclear meaning", issue = "27718")]
     pub fn is_unique(rc: &Rc<T>) -> bool {
         Rc::weak_count(rc) == 0 && Rc::strong_count(rc) == 1
     }
 
-    /// Returns a mutable reference to the contained value if the `Rc<T>` is
-    /// unique.
+    /// Returns a mutable reference to the contained value if the `Rc<T>` has
+    /// one strong reference and no weak references.
     ///
     /// Returns `None` if the `Rc<T>` is not unique.
     ///
@@ -327,7 +333,7 @@ impl<T: ?Sized> Rc<T> {
     /// assert!(Rc::get_mut(&mut x).is_none());
     /// ```
     #[inline]
-    #[unstable(feature = "rc_unique")]
+    #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn get_mut(rc: &mut Rc<T>) -> Option<&mut T> {
         if Rc::is_unique(rc) {
             let inner = unsafe { &mut **rc._ptr };
@@ -339,25 +345,40 @@ impl<T: ?Sized> Rc<T> {
 }
 
 impl<T: Clone> Rc<T> {
-    /// Make a mutable reference from the given `Rc<T>`.
+    #[inline]
+    #[unstable(feature = "renamed_rc_unique", reason = "renamed to make_mut", issue = "27718")]
+    #[deprecated(since = "1.4.0", reason = "renamed to make_mut")]
+    pub fn make_unique(&mut self) -> &mut T {
+        Rc::make_mut(self)
+    }
+
+    /// Make a mutable reference into the given `Rc<T>` by cloning the inner
+    /// data if the `Rc<T>` doesn't have one strong reference and no weak
+    /// references.
     ///
-    /// This is also referred to as a copy-on-write operation because the inner
-    /// data is cloned if the reference count is greater than one.
+    /// This is also referred to as a copy-on-write.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_unique)]
-    ///
     /// use std::rc::Rc;
     ///
-    /// let mut five = Rc::new(5);
+    /// let mut data = Rc::new(5);
     ///
-    /// let mut_five = five.make_unique();
+    /// *data.make_mut() += 1;             // Won't clone anything
+    /// let mut other_data = data.clone(); // Won't clone inner data
+    /// *data.make_mut() += 1;             // Clones inner data
+    /// *data.make_mut() += 1;             // Won't clone anything
+    /// *other_data.make_mut() *= 2;       // Won't clone anything
+    ///
+    /// // Note: data and other_data now point to different numbers
+    /// assert_eq!(*data, 8);
+    /// assert_eq!(*other_data, 12);
+    ///
     /// ```
     #[inline]
-    #[unstable(feature = "rc_unique")]
-    pub fn make_unique(&mut self) -> &mut T {
+    #[stable(feature = "rc_unique", since = "1.4.0")]
+    pub fn make_mut(&mut self) -> &mut T {
         if !Rc::is_unique(self) {
             *self = Rc::new((**self).clone())
         }
@@ -412,7 +433,7 @@ impl<T: ?Sized> Drop for Rc<T> {
         unsafe {
             let ptr = *self._ptr;
             if !(*(&ptr as *const _ as *const *const ())).is_null() &&
-               ptr as *const () as usize != mem::POST_DROP_USIZE {
+                ptr as *const () as usize != mem::POST_DROP_USIZE {
                 self.dec_strong();
                 if self.strong() == 0 {
                     // destroy the contained object
@@ -652,8 +673,7 @@ impl<T> fmt::Pointer for Rc<T> {
 ///
 /// See the [module level documentation](./index.html) for more.
 #[unsafe_no_drop_flag]
-#[unstable(feature = "rc_weak",
-           reason = "Weak pointers may not belong in this module.")]
+#[stable(feature = "rc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     // FIXME #12808: strange names to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -665,8 +685,6 @@ impl<T: ?Sized> !marker::Sync for Weak<T> {}
 
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
-#[unstable(feature = "rc_weak",
-           reason = "Weak pointers may not belong in this module.")]
 impl<T: ?Sized> Weak<T> {
 
     /// Upgrades a weak reference to a strong reference.
@@ -689,6 +707,7 @@ impl<T: ?Sized> Weak<T> {
     ///
     /// let strong_five: Option<Rc<_>> = weak_five.upgrade();
     /// ```
+    #[stable(feature = "rc_weak", since = "1.4.0")]
     pub fn upgrade(&self) -> Option<Rc<T>> {
         if self.strong() == 0 {
             None
@@ -745,8 +764,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     }
 }
 
-#[unstable(feature = "rc_weak",
-           reason = "Weak pointers may not belong in this module.")]
+#[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized> Clone for Weak<T> {
 
     /// Makes a clone of the `Weak<T>`.
