@@ -818,6 +818,9 @@ pub struct Iter<'a, K: 'a, V: 'a> {
     elems_left: usize,
 }
 
+unsafe impl<'a, K: Sync, V: Sync> Sync for Iter<'a, K, V> {}
+unsafe impl<'a, K: Sync, V: Sync> Send for Iter<'a, K, V> {}
+
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 impl<'a, K, V> Clone for Iter<'a, K, V> {
     fn clone(&self) -> Iter<'a, K, V> {
@@ -835,17 +838,28 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
     elems_left: usize,
 }
 
+unsafe impl<'a, K: Sync, V: Sync> Sync for IterMut<'a, K, V> {}
+// Both K: Sync and K: Send are correct for IterMut's Send impl,
+// but Send is the more useful bound
+unsafe impl<'a, K: Send, V: Send> Send for IterMut<'a, K, V> {}
+
 /// Iterator over the entries in a table, consuming the table.
 pub struct IntoIter<K, V> {
     table: RawTable<K, V>,
     iter: RawBuckets<'static, K, V>
 }
 
+unsafe impl<K: Sync, V: Sync> Sync for IntoIter<K, V> {}
+unsafe impl<K: Send, V: Send> Send for IntoIter<K, V> {}
+
 /// Iterator over the entries in a table, clearing the table.
 pub struct Drain<'a, K: 'a, V: 'a> {
     table: &'a mut RawTable<K, V>,
     iter: RawBuckets<'static, K, V>,
 }
+
+unsafe impl<'a, K: Sync, V: Sync> Sync for Drain<'a, K, V> {}
+unsafe impl<'a, K: Send, V: Send> Send for Drain<'a, K, V> {}
 
 impl<'a, K, V> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
