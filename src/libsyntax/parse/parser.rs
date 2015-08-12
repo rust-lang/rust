@@ -2075,7 +2075,7 @@ impl<'a> Parser<'a> {
                     // Nonempty vector.
                     let first_expr = try!(self.parse_expr_nopanic());
                     if self.check(&token::Semi) {
-                        // Repeating vector syntax: [ 0; 512 ]
+                        // Repeating array syntax: [ 0; 512 ]
                         try!(self.bump());
                         let count = try!(self.parse_expr_nopanic());
                         try!(self.expect(&token::CloseDelim(token::Bracket)));
@@ -3260,7 +3260,7 @@ impl<'a> Parser<'a> {
             pat = PatTup(fields);
           }
           token::OpenDelim(token::Bracket) => {
-            // Parse [pat,pat,...] as vector pattern
+            // Parse [pat,pat,...] as slice pattern
             try!(self.bump());
             let (before, slice, after) = try!(self.parse_pat_vec_elements());
             try!(self.expect(&token::CloseDelim(token::Bracket)));
