@@ -76,9 +76,7 @@ struct Simd2<T>(T, T);
 The `simd` `repr` can be attached to a struct and will cause such a
 struct to be compiled to a SIMD vector. It can be generic, but it is
 required that any fully monomorphised instance of the type consist of
-only a single "primitive" type, repeated some number of times. Types
-are flattened, so, for `struct Bar(u64);`, `Simd2<Bar>` has the same
-representation as `Simd2<u64>`.
+only a single "primitive" type, repeated some number of times.
 
 The `repr(simd)` may not enforce that any trait bounds exists/does the
 right thing at the type checking level for generic `repr(simd)`
