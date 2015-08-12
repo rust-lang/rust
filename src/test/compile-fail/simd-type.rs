@@ -8,18 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
-struct vec4<T>(T, T, T, T); //~ ERROR SIMD vector cannot be generic
-
-#[simd]
+#[repr(simd)]
 struct empty; //~ ERROR SIMD vector cannot be empty
 
-#[simd]
+#[repr(simd)]
 struct i64f64(i64, f64); //~ ERROR SIMD vector should be homogeneous
 
-#[simd]
+#[repr(simd)]
 struct int4(isize, isize, isize, isize); //~ ERROR SIMD vector element type should be machine type
 
 fn main() {}

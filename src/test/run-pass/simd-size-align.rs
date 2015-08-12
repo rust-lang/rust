@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#![feature(simd)]
+#![feature(repr_simd)]
 #![allow(non_camel_case_types)]
 
 use std::mem;
@@ -46,26 +46,26 @@ fn main() {
     check::<f32x8>();
 }
 
-#[simd] struct u8x2(u8, u8);
-#[simd] struct u8x3(u8, u8, u8);
-#[simd] struct u8x4(u8, u8, u8, u8);
-#[simd] struct u8x5(u8, u8, u8, u8, u8);
-#[simd] struct u8x6(u8, u8, u8, u8, u8, u8);
-#[simd] struct u8x7(u8, u8, u8, u8, u8, u8, u8);
-#[simd] struct u8x8(u8, u8, u8, u8, u8, u8, u8, u8);
+#[repr(simd)] struct u8x2(u8, u8);
+#[repr(simd)] struct u8x3(u8, u8, u8);
+#[repr(simd)] struct u8x4(u8, u8, u8, u8);
+#[repr(simd)] struct u8x5(u8, u8, u8, u8, u8);
+#[repr(simd)] struct u8x6(u8, u8, u8, u8, u8, u8);
+#[repr(simd)] struct u8x7(u8, u8, u8, u8, u8, u8, u8);
+#[repr(simd)] struct u8x8(u8, u8, u8, u8, u8, u8, u8, u8);
 
-#[simd] struct i16x2(i16, i16);
-#[simd] struct i16x3(i16, i16, i16);
-#[simd] struct i16x4(i16, i16, i16, i16);
-#[simd] struct i16x5(i16, i16, i16, i16, i16);
-#[simd] struct i16x6(i16, i16, i16, i16, i16, i16);
-#[simd] struct i16x7(i16, i16, i16, i16, i16, i16, i16);
-#[simd] struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+#[repr(simd)] struct i16x2(i16, i16);
+#[repr(simd)] struct i16x3(i16, i16, i16);
+#[repr(simd)] struct i16x4(i16, i16, i16, i16);
+#[repr(simd)] struct i16x5(i16, i16, i16, i16, i16);
+#[repr(simd)] struct i16x6(i16, i16, i16, i16, i16, i16);
+#[repr(simd)] struct i16x7(i16, i16, i16, i16, i16, i16, i16);
+#[repr(simd)] struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
 
-#[simd] struct f32x2(f32, f32);
-#[simd] struct f32x3(f32, f32, f32);
-#[simd] struct f32x4(f32, f32, f32, f32);
-#[simd] struct f32x5(f32, f32, f32, f32, f32);
-#[simd] struct f32x6(f32, f32, f32, f32, f32, f32);
-#[simd] struct f32x7(f32, f32, f32, f32, f32, f32, f32);
-#[simd] struct f32x8(f32, f32, f32, f32, f32, f32, f32, f32);
+#[repr(simd)] struct f32x2(f32, f32);
+#[repr(simd)] struct f32x3(f32, f32, f32);
+#[repr(simd)] struct f32x4(f32, f32, f32, f32);
+#[repr(simd)] struct f32x5(f32, f32, f32, f32, f32);
+#[repr(simd)] struct f32x6(f32, f32, f32, f32, f32, f32);
+#[repr(simd)] struct f32x7(f32, f32, f32, f32, f32, f32, f32);
+#[repr(simd)] struct f32x8(f32, f32, f32, f32, f32, f32, f32, f32);
