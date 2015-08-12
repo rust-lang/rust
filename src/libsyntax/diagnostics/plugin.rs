@@ -115,7 +115,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         }
 
         // URLs can be unavoidably longer than the line limit, so we allow them.
-        // Allowed format is: `[name]: http://rust-lang.org/`
+        // Allowed format is: `[name]: https://www.rust-lang.org/`
         let is_url = |l: &str| l.starts_with('[') && l.contains("]:") && l.contains("http");
 
         if msg.lines().any(|line| line.len() > MAX_DESCRIPTION_WIDTH && !is_url(line)) {

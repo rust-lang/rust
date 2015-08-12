@@ -26,7 +26,7 @@ Every guideline has a status:
 
 One purpose of these guidelines is to reach decisions on a number of
 cross-cutting API and stylistic choices. Discussion and development of
-the guidelines will happen primarily on http://discuss.rust-lang.org/,
+the guidelines will happen primarily on https://internals.rust-lang.org/,
 using the Guidelines category. Discussion can also occur on the
 [guidelines issue tracker](https://github.com/rust-lang/rust-guidelines).
 

@@ -4,7 +4,7 @@ An informal guide to reading and working on the rustc compiler.
 If you wish to expand on this document, or have a more experienced
 Rust contributor add anything else to it, please get in touch:
 
-* http://internals.rust-lang.org/
+* https://internals.rust-lang.org/
 * https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
 
 or file a bug:
