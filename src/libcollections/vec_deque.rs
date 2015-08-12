@@ -20,7 +20,7 @@
 
 use core::cmp::Ordering;
 use core::fmt;
-use core::iter::{self, repeat, FromIterator, RandomAccessIterator};
+use core::iter::{self, repeat, FromIterator};
 use core::ops::{Index, IndexMut};
 use core::ptr;
 use core::slice;
@@ -1521,26 +1521,6 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-impl<'a, T> RandomAccessIterator for Iter<'a, T> {
-    #[inline]
-    fn indexable(&self) -> usize {
-        let (len, _) = self.size_hint();
-        len
-    }
-
-    #[inline]
-    fn idx(&mut self, j: usize) -> Option<&'a T> {
-        if j >= self.indexable() {
-            None
-        } else {
-            let idx = wrap_index(self.tail.wrapping_add(j), self.ring.len());
-            unsafe { Some(self.ring.get_unchecked(idx)) }
-        }
-    }
-}
 
 /// `VecDeque` mutable iterator.
 #[stable(feature = "rust1", since = "1.0.0")]

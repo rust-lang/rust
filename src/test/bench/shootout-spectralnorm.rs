@@ -114,11 +114,10 @@ fn parallel<'a,T, F>(v: &mut [T], ref f: F)
                   where T: Send + Sync + 'a,
                         F: Fn(usize, &mut [T]) + Sync + 'a {
     // FIXME: pick a more appropriate parallel factor
+    // FIXME: replace with thread::scoped when it exists again
     let parallelism = 4;
     let size = v.len() / parallelism + 1;
     v.chunks_mut(size).enumerate().map(|(i, chunk)| {
-        thread::scoped(move|| {
-            f(i * size, chunk)
-        })
+        f(i * size, chunk)
     }).collect::<Vec<_>>();
 }

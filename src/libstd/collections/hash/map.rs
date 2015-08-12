@@ -24,7 +24,7 @@ use mem::{self, replace};
 use ops::{Deref, FnMut, FnOnce, Index};
 use option::Option::{self, Some, None};
 use rand::{self, Rng};
-use result::Result::{self, Ok, Err};
+use result::Result;
 
 use super::table::{
     self,
@@ -1482,18 +1482,6 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 }
 
 impl<'a, K, V> Entry<'a, K, V> {
-    #[unstable(feature = "entry",
-               reason = "will soon be replaced by or_insert")]
-    #[deprecated(since = "1.0",
-                reason = "replaced with more ergonomic `or_insert` and `or_insert_with`")]
-    /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
-    pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, K, V>> {
-        match self {
-            Occupied(entry) => Ok(entry.into_mut()),
-            Vacant(entry) => Err(entry),
-        }
-    }
-
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
@@ -1610,7 +1598,7 @@ pub struct RandomState {
 impl RandomState {
     /// Constructs a new `RandomState` that is initialized with random keys.
     #[inline]
-    #[allow(deprecated)]
+    #[allow(deprecated)] // rand
     pub fn new() -> RandomState {
         let mut r = rand::thread_rng();
         RandomState { k0: r.gen(), k1: r.gen() }

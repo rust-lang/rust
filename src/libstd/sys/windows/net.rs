@@ -67,7 +67,6 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 }
 
 /// Provides the functionality of `cvt` for a closure.
-#[allow(deprecated)]
 pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
     where F: FnMut() -> T, T: One + Neg<Output=T> + PartialEq
 {

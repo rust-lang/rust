@@ -17,14 +17,12 @@
 extern crate collections;
 
 use collections::BinaryHeap;
-use collections::{BitSet, BitVec};
 use collections::{BTreeMap, BTreeSet};
 use collections::EnumSet;
 use collections::LinkedList;
 use collections::String;
 use collections::Vec;
 use collections::VecDeque;
-use collections::VecMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -59,14 +57,6 @@ fn main() {
     // The iterator "generator" list should exhaust what corresponding
     // implementations have where `Sync` and `Send` semantics apply.
     all_sync_send!(BinaryHeap::<usize>::new(), iter, drain, into_iter);
-
-    all_sync_send!(BitVec::new(), iter);
-
-    all_sync_send!(BitSet::new(), iter);
-    is_sync_send!(BitSet::new(), union(&BitSet::new()));
-    is_sync_send!(BitSet::new(), intersection(&BitSet::new()));
-    is_sync_send!(BitSet::new(), difference(&BitSet::new()));
-    is_sync_send!(BitSet::new(), symmetric_difference(&BitSet::new()));
 
     all_sync_send!(BTreeMap::<usize, usize>::new(), iter, iter_mut, into_iter, keys, values);
     is_sync_send!(BTreeMap::<usize, usize>::new(), range(Included(&0), Included(&9)));
@@ -104,8 +94,6 @@ fn main() {
     all_sync_send!(EnumSet::<Foo>::new(), iter);
 
     all_sync_send!(VecDeque::<usize>::new(), iter, iter_mut, drain, into_iter);
-
-    all_sync_send!(VecMap::<usize>::new(), iter, iter_mut, drain, into_iter, keys, values);
 
     all_sync_send!(Vec::<usize>::new(), into_iter);
     is_sync_send!(Vec::<usize>::new(), drain(..));

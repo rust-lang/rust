@@ -826,27 +826,6 @@ impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { Iter { ptr: self.ptr, end: self.end, _marker: self._marker } }
 }
 
-#[unstable(feature = "iter_idx", reason = "trait is experimental")]
-#[allow(deprecated)]
-impl<'a, T> RandomAccessIterator for Iter<'a, T> {
-    #[inline]
-    fn indexable(&self) -> usize {
-        let (exact, _) = self.size_hint();
-        exact
-    }
-
-    #[inline]
-    fn idx(&mut self, index: usize) -> Option<&'a T> {
-        unsafe {
-            if index < self.indexable() {
-                Some(slice_ref!(self.ptr.offset(index as isize)))
-            } else {
-                None
-            }
-        }
-    }
-}
-
 /// Mutable slice iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
@@ -1199,24 +1178,6 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Windows<'a, T> {}
 
-#[unstable(feature = "iter_idx", reason = "trait is experimental")]
-#[allow(deprecated)]
-impl<'a, T> RandomAccessIterator for Windows<'a, T> {
-    #[inline]
-    fn indexable(&self) -> usize {
-        self.size_hint().0
-    }
-
-    #[inline]
-    fn idx(&mut self, index: usize) -> Option<&'a [T]> {
-        if index + self.size > self.v.len() {
-            None
-        } else {
-            Some(&self.v[index .. index+self.size])
-        }
-    }
-}
-
 /// An iterator over a slice in (non-overlapping) chunks (`size` elements at a
 /// time).
 ///
@@ -1286,28 +1247,6 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Chunks<'a, T> {}
-
-#[unstable(feature = "iter_idx", reason = "trait is experimental")]
-#[allow(deprecated)]
-impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
-    #[inline]
-    fn indexable(&self) -> usize {
-        self.v.len()/self.size + if self.v.len() % self.size != 0 { 1 } else { 0 }
-    }
-
-    #[inline]
-    fn idx(&mut self, index: usize) -> Option<&'a [T]> {
-        if index < self.indexable() {
-            let lo = index * self.size;
-            let mut hi = lo + self.size;
-            if hi < lo || hi > self.v.len() { hi = self.v.len(); }
-
-            Some(&self.v[lo..hi])
-        } else {
-            None
-        }
-    }
-}
 
 /// An iterator over a slice in (non-overlapping) mutable chunks (`size`
 /// elements at a time). When the slice len is not evenly divided by the chunk
@@ -1439,37 +1378,6 @@ pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
     mem::transmute(RawSlice { data: p, len: len })
 }
 
-#[inline]
-fn check_types<T,U>() {
-    assert!(mem::size_of::<T>() == mem::size_of::<U>());
-    assert!(mem::align_of::<T>() % mem::align_of::<U>() == 0)
-}
-
-/// Reinterprets a slice of one type as a slice of another type.
-///
-/// Both types have to have the same size and the type that is converted to
-/// must have equal or less restrictive alignment.
-///
-/// # Panics
-///
-/// This functions panics if the above preconditions about the types are not
-/// met.
-#[inline]
-unsafe fn transmute<T,U>(slice: &[T]) -> &[U] {
-    check_types::<T,U>();
-    from_raw_parts(slice.as_ptr() as *const U, slice.len())
-}
-
-/// Reinterprets a mutable slice of one type as a mutable slice of another
-/// type.
-///
-/// Equivalent of `slice::transmute` for mutable slices.
-#[inline]
-unsafe fn transmute_mut<T,U>(slice: &mut [T]) -> &mut [U] {
-    check_types::<T,U>();
-    from_raw_parts_mut(slice.as_mut_ptr() as *mut U, slice.len())
-}
-
 //
 // Submodules
 //
@@ -1579,51 +1487,3 @@ impl<T: PartialOrd> PartialOrd for [T] {
         order::gt(self.iter(), other.iter())
     }
 }
-
-/// Extension methods for slices containing integers.
-#[unstable(feature = "int_slice")]
-#[deprecated(since = "1.2.0",
-             reason = "has not seen much usage and may want to live in the \
-                       standard library now that most slice methods are \
-                       on an inherent implementation block")]
-pub trait IntSliceExt<U, S> {
-    /// Converts the slice to an immutable slice of unsigned integers with the same width.
-    fn as_unsigned<'a>(&'a self) -> &'a [U];
-    /// Converts the slice to an immutable slice of signed integers with the same width.
-    fn as_signed<'a>(&'a self) -> &'a [S];
-
-    /// Converts the slice to a mutable slice of unsigned integers with the same width.
-    fn as_unsigned_mut<'a>(&'a mut self) -> &'a mut [U];
-    /// Converts the slice to a mutable slice of signed integers with the same width.
-    fn as_signed_mut<'a>(&'a mut self) -> &'a mut [S];
-}
-
-macro_rules! impl_int_slice {
-    ($u:ty, $s:ty, $t:ty) => {
-        #[unstable(feature = "int_slice")]
-        #[allow(deprecated)]
-        impl IntSliceExt<$u, $s> for [$t] {
-            #[inline]
-            fn as_unsigned(&self) -> &[$u] { unsafe { transmute(self) } }
-            #[inline]
-            fn as_signed(&self) -> &[$s] { unsafe { transmute(self) } }
-            #[inline]
-            fn as_unsigned_mut(&mut self) -> &mut [$u] { unsafe { transmute_mut(self) } }
-            #[inline]
-            fn as_signed_mut(&mut self) -> &mut [$s] { unsafe { transmute_mut(self) } }
-        }
-    }
-}
-
-macro_rules! impl_int_slices {
-    ($u:ty, $s:ty) => {
-        impl_int_slice! { $u, $s, $u }
-        impl_int_slice! { $u, $s, $s }
-    }
-}
-
-impl_int_slices! { u8,   i8  }
-impl_int_slices! { u16,  i16 }
-impl_int_slices! { u32,  i32 }
-impl_int_slices! { u64,  i64 }
-impl_int_slices! { usize, isize }

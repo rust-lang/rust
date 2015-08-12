@@ -19,9 +19,6 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![allow(unused_imports)]
 
-use self::RecompositionState::*;
-use self::DecompositionType::*;
-
 use core::clone::Clone;
 use core::iter::{Iterator, Extend};
 use core::option::Option::{self, Some, None};
@@ -49,7 +46,7 @@ pub use core::str::{Matches, RMatches};
 pub use core::str::{MatchIndices, RMatchIndices};
 pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
 pub use core::str::{from_utf8_unchecked, ParseBoolError};
-pub use rustc_unicode::str::{SplitWhitespace, Words, Graphemes, GraphemeIndices};
+pub use rustc_unicode::str::{SplitWhitespace};
 pub use core::str::pattern;
 
 impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
@@ -101,230 +98,6 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
 
     fn connect(&self, sep: &str) -> String {
         self.join(sep)
-    }
-}
-
-// Helper functions used for Unicode normalization
-fn canonical_sort(comb: &mut [(char, u8)]) {
-    let len = comb.len();
-    for i in 0..len {
-        let mut swapped = false;
-        for j in 1..len-i {
-            let class_a = comb[j-1].1;
-            let class_b = comb[j].1;
-            if class_a != 0 && class_b != 0 && class_a > class_b {
-                comb.swap(j-1, j);
-                swapped = true;
-            }
-        }
-        if !swapped { break; }
-    }
-}
-
-#[derive(Clone)]
-enum DecompositionType {
-    Canonical,
-    Compatible
-}
-
-/// External iterator for a string decomposition's characters.
-///
-/// For use with the `std::iter` module.
-#[allow(deprecated)]
-#[deprecated(reason = "use the crates.io `unicode-normalization` library instead",
-             since = "1.0.0")]
-#[derive(Clone)]
-#[unstable(feature = "unicode",
-           reason = "this functionality may be replaced with a more generic \
-                     unicode crate on crates.io")]
-pub struct Decompositions<'a> {
-    kind: DecompositionType,
-    iter: Chars<'a>,
-    buffer: Vec<(char, u8)>,
-    sorted: bool
-}
-
-#[allow(deprecated)]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for Decompositions<'a> {
-    type Item = char;
-
-    #[inline]
-    fn next(&mut self) -> Option<char> {
-        match self.buffer.first() {
-            Some(&(c, 0)) => {
-                self.sorted = false;
-                self.buffer.remove(0);
-                return Some(c);
-            }
-            Some(&(c, _)) if self.sorted => {
-                self.buffer.remove(0);
-                return Some(c);
-            }
-            _ => self.sorted = false
-        }
-
-        if !self.sorted {
-            for ch in self.iter.by_ref() {
-                let buffer = &mut self.buffer;
-                let sorted = &mut self.sorted;
-                {
-                    let callback = |d| {
-                        let class =
-                            rustc_unicode::char::canonical_combining_class(d);
-                        if class == 0 && !*sorted {
-                            canonical_sort(buffer);
-                            *sorted = true;
-                        }
-                        buffer.push((d, class));
-                    };
-                    match self.kind {
-                        Canonical => {
-                            rustc_unicode::char::decompose_canonical(ch, callback)
-                        }
-                        Compatible => {
-                            rustc_unicode::char::decompose_compatible(ch, callback)
-                        }
-                    }
-                }
-                if *sorted {
-                    break
-                }
-            }
-        }
-
-        if !self.sorted {
-            canonical_sort(&mut self.buffer);
-            self.sorted = true;
-        }
-
-        if self.buffer.is_empty() {
-            None
-        } else {
-            match self.buffer.remove(0) {
-                (c, 0) => {
-                    self.sorted = false;
-                    Some(c)
-                }
-                (c, _) => Some(c),
-            }
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let (lower, _) = self.iter.size_hint();
-        (lower, None)
-    }
-}
-
-#[derive(Clone)]
-enum RecompositionState {
-    Composing,
-    Purging,
-    Finished
-}
-
-/// External iterator for a string recomposition's characters.
-///
-/// For use with the `std::iter` module.
-#[allow(deprecated)]
-#[deprecated(reason = "use the crates.io `unicode-normalization` library instead",
-             since = "1.0.0")]
-#[derive(Clone)]
-#[unstable(feature = "unicode",
-           reason = "this functionality may be replaced with a more generic \
-                     unicode crate on crates.io")]
-pub struct Recompositions<'a> {
-    iter: Decompositions<'a>,
-    state: RecompositionState,
-    buffer: VecDeque<char>,
-    composee: Option<char>,
-    last_ccc: Option<u8>
-}
-
-#[allow(deprecated)]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for Recompositions<'a> {
-    type Item = char;
-
-    #[inline]
-    fn next(&mut self) -> Option<char> {
-        loop {
-            match self.state {
-                Composing => {
-                    for ch in self.iter.by_ref() {
-                        let ch_class = rustc_unicode::char::canonical_combining_class(ch);
-                        if self.composee.is_none() {
-                            if ch_class != 0 {
-                                return Some(ch);
-                            }
-                            self.composee = Some(ch);
-                            continue;
-                        }
-                        let k = self.composee.clone().unwrap();
-
-                        match self.last_ccc {
-                            None => {
-                                match rustc_unicode::char::compose(k, ch) {
-                                    Some(r) => {
-                                        self.composee = Some(r);
-                                        continue;
-                                    }
-                                    None => {
-                                        if ch_class == 0 {
-                                            self.composee = Some(ch);
-                                            return Some(k);
-                                        }
-                                        self.buffer.push_back(ch);
-                                        self.last_ccc = Some(ch_class);
-                                    }
-                                }
-                            }
-                            Some(l_class) => {
-                                if l_class >= ch_class {
-                                    // `ch` is blocked from `composee`
-                                    if ch_class == 0 {
-                                        self.composee = Some(ch);
-                                        self.last_ccc = None;
-                                        self.state = Purging;
-                                        return Some(k);
-                                    }
-                                    self.buffer.push_back(ch);
-                                    self.last_ccc = Some(ch_class);
-                                    continue;
-                                }
-                                match rustc_unicode::char::compose(k, ch) {
-                                    Some(r) => {
-                                        self.composee = Some(r);
-                                        continue;
-                                    }
-                                    None => {
-                                        self.buffer.push_back(ch);
-                                        self.last_ccc = Some(ch_class);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    self.state = Finished;
-                    if self.composee.is_some() {
-                        return self.composee.take();
-                    }
-                }
-                Purging => {
-                    match self.buffer.pop_front() {
-                        None => self.state = Composing,
-                        s => return s
-                    }
-                }
-                Finished => {
-                    match self.buffer.pop_front() {
-                        None => return self.composee.take(),
-                        s => return s
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -406,28 +179,6 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
         core_str::StrExt::is_empty(self)
-    }
-
-    /// Returns a string's displayed width in columns.
-    ///
-    /// Control characters have zero width.
-    ///
-    /// `is_cjk` determines behavior for characters in the Ambiguous category:
-    /// if `is_cjk` is
-    /// `true`, these are 2 columns wide; otherwise, they are 1.
-    /// In CJK locales, `is_cjk` should be
-    /// `true`, else it should be `false`.
-    /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
-    /// recommends that these
-    /// characters be treated as 1 column (i.e., `is_cjk = false`) if the
-    /// locale is unknown.
-    #[deprecated(reason = "use the crates.io `unicode-width` library instead",
-                 since = "1.0.0")]
-    #[unstable(feature = "unicode",
-               reason = "this functionality may only be provided by libunicode")]
-    #[inline]
-    pub fn width(&self, is_cjk: bool) -> usize {
-        UnicodeStr::width(self, is_cjk)
     }
 
     /// Checks that `index`-th byte lies at the start and/or end of a
@@ -530,42 +281,6 @@ impl str {
         core_str::StrExt::slice_mut_unchecked(self, begin, end)
     }
 
-    /// Returns a slice of the string from the range [`begin`..`end`) where indices
-    /// are counted in code points.
-    ///
-    /// That is, start at the `begin`-th code point of the string and continue
-    /// to the `end`-th code point. This does not detect or handle edge cases
-    /// such as leaving a combining character as the first `char` of the
-    /// string.
-    ///
-    /// Due to the design of UTF-8, this operation is `O(end)`. Use slicing
-    /// syntax if you want to use `O(1)` byte indices instead.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `begin` > `end` or the either `begin` or `end` are beyond the
-    /// last character of the string.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(slice_chars)]
-    ///
-    /// let s = "Löwe 老虎 Léopard";
-    ///
-    /// assert_eq!(s.slice_chars(0, 4), "Löwe");
-    /// assert_eq!(s.slice_chars(5, 7), "老虎");
-    /// ```
-    #[unstable(feature = "slice_chars",
-               reason = "may have yet to prove its worth")]
-    #[deprecated(since = "1.3.0",
-                 reason = "can be implemented with char_indices and \
-                           hasn't seen enough use to justify inclusion")]
-    #[inline]
-    pub fn slice_chars(&self, begin: usize, end: usize) -> &str {
-        core_str::StrExt::slice_chars(self, begin, end)
-    }
-
     /// Given a byte position, return the next code point and its index.
     ///
     /// This can be used to iterate over the Unicode code points of a string.
@@ -603,8 +318,8 @@ impl str {
     /// 6: V
     /// 7: i
     /// 8: e
-    /// 9: ̣
-    /// 11: ̂
+    /// 9:
+    /// 11:
     /// 13: t
     /// 14:
     /// 15: N
@@ -662,8 +377,8 @@ impl str {
     /// 16: N
     /// 15:
     /// 14: t
-    /// 13: ̂
-    /// 11: ̣
+    /// 13:
+    /// 11:
     /// 9: e
     /// 8: i
     /// 7: V
@@ -880,30 +595,6 @@ impl str {
         UnicodeStr::split_whitespace(self)
     }
 
-    /// An iterator over the non-empty substrings of `self` which contain no whitespace,
-    /// and which are separated by any amount of whitespace.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(str_words)]
-    /// #![allow(deprecated)]
-    ///
-    /// let some_words = " Mary   had\ta\u{2009}little  \n\t lamb";
-    /// let v: Vec<&str> = some_words.words().collect();
-    ///
-    /// assert_eq!(v, ["Mary", "had", "a", "little", "lamb"]);
-    /// ```
-    #[deprecated(reason = "words() will be removed. Use split_whitespace() instead",
-                 since = "1.1.0")]
-    #[unstable(feature = "str_words",
-               reason = "the precise algorithm to use is unclear")]
-    #[allow(deprecated)]
-    #[inline]
-    pub fn words(&self) -> Words {
-        UnicodeStr::words(self)
-    }
-
     /// An iterator over the lines of a string, separated by `\n`.
     ///
     /// This does not include the empty string after a trailing `\n`.
@@ -957,135 +648,6 @@ impl str {
     #[inline]
     pub fn lines_any(&self) -> LinesAny {
         core_str::StrExt::lines_any(self)
-    }
-
-    /// Returns an iterator over the string in Unicode Normalization Form D
-    /// (canonical decomposition).
-    #[allow(deprecated)]
-    #[deprecated(reason = "use the crates.io `unicode-normalization` library instead",
-             since = "1.0.0")]
-    #[inline]
-    #[unstable(feature = "unicode",
-               reason = "this functionality may be replaced with a more generic \
-                         unicode crate on crates.io")]
-    pub fn nfd_chars(&self) -> Decompositions {
-        Decompositions {
-            iter: self[..].chars(),
-            buffer: Vec::new(),
-            sorted: false,
-            kind: Canonical
-        }
-    }
-
-    /// Returns an iterator over the string in Unicode Normalization Form KD
-    /// (compatibility decomposition).
-    #[allow(deprecated)]
-    #[deprecated(reason = "use the crates.io `unicode-normalization` library instead",
-             since = "1.0.0")]
-    #[inline]
-    #[unstable(feature = "unicode",
-               reason = "this functionality may be replaced with a more generic \
-                         unicode crate on crates.io")]
-    pub fn nfkd_chars(&self) -> Decompositions {
-        Decompositions {
-            iter: self[..].chars(),
-            buffer: Vec::new(),
-            sorted: false,
-            kind: Compatible
-        }
-    }
-
-    /// An Iterator over the string in Unicode Normalization Form C
-    /// (canonical decomposition followed by canonical composition).
-    #[allow(deprecated)]
-    #[deprecated(reason = "use the crates.io `unicode-normalization` library instead",
-             since = "1.0.0")]
-    #[inline]
-    #[unstable(feature = "unicode",
-               reason = "this functionality may be replaced with a more generic \
-                         unicode crate on crates.io")]
-    pub fn nfc_chars(&self) -> Recompositions {
-        Recompositions {
-            iter: self.nfd_chars(),
-            state: Composing,
-            buffer: VecDeque::new(),
-            composee: None,
-            last_ccc: None
-        }
-    }
-
-    /// An Iterator over the string in Unicode Normalization Form KC
-    /// (compatibility decomposition followed by canonical composition).
-    #[allow(deprecated)]
-    #[deprecated(reason = "use the crates.io `unicode-normalization` library instead",
-             since = "1.0.0")]
-    #[inline]
-    #[unstable(feature = "unicode",
-               reason = "this functionality may be replaced with a more generic \
-                         unicode crate on crates.io")]
-    pub fn nfkc_chars(&self) -> Recompositions {
-        Recompositions {
-            iter: self.nfkd_chars(),
-            state: Composing,
-            buffer: VecDeque::new(),
-            composee: None,
-            last_ccc: None
-        }
-    }
-
-    /// Returns an iterator over the [grapheme clusters][graphemes] of `self`.
-    ///
-    /// [graphemes]: http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries
-    ///
-    /// If `is_extended` is true, the iterator is over the
-    /// *extended grapheme clusters*;
-    /// otherwise, the iterator is over the *legacy grapheme clusters*.
-    /// [UAX#29](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries)
-    /// recommends extended grapheme cluster boundaries for general processing.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(unicode, core)]
-    ///
-    /// let gr1 = "a\u{310}e\u{301}o\u{308}\u{332}".graphemes(true).collect::<Vec<&str>>();
-    /// let b: &[_] = &["a\u{310}", "e\u{301}", "o\u{308}\u{332}"];
-    ///
-    /// assert_eq!(&gr1[..], b);
-    ///
-    /// let gr2 = "a\r\nb🇷🇺🇸🇹".graphemes(true).collect::<Vec<&str>>();
-    /// let b: &[_] = &["a", "\r\n", "b", "🇷🇺🇸🇹"];
-    ///
-    /// assert_eq!(&gr2[..], b);
-    /// ```
-    #[deprecated(reason = "use the crates.io `unicode-segmentation` library instead",
-             since = "1.0.0")]
-    #[unstable(feature = "unicode",
-               reason = "this functionality may only be provided by libunicode")]
-    pub fn graphemes(&self, is_extended: bool) -> Graphemes {
-        UnicodeStr::graphemes(self, is_extended)
-    }
-
-    /// Returns an iterator over the grapheme clusters of `self` and their
-    /// byte offsets. See
-    /// `graphemes()` for more information.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(unicode, core)]
-    ///
-    /// let gr_inds = "a̐éö̲\r\n".grapheme_indices(true).collect::<Vec<(usize, &str)>>();
-    /// let b: &[_] = &[(0, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
-    ///
-    /// assert_eq!(&gr_inds[..], b);
-    /// ```
-    #[deprecated(reason = "use the crates.io `unicode-segmentation` library instead",
-             since = "1.0.0")]
-    #[unstable(feature = "unicode",
-               reason = "this functionality may only be provided by libunicode")]
-    pub fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices {
-        UnicodeStr::grapheme_indices(self, is_extended)
     }
 
     /// Returns an iterator of `u16` over the string encoded as UTF-16.
@@ -1676,33 +1238,6 @@ impl str {
         where P::Searcher: ReverseSearcher<'a>
     {
         core_str::StrExt::rmatch_indices(self, pat)
-    }
-
-    /// Returns the byte offset of an inner slice relative to an enclosing
-    /// outer slice.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `inner` is not a direct slice contained within self.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(subslice_offset)]
-    ///
-    /// let string = "a\nb\nc";
-    /// let lines: Vec<&str> = string.lines().collect();
-    ///
-    /// assert!(string.subslice_offset(lines[0]) == 0); // &"a"
-    /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"
-    /// assert!(string.subslice_offset(lines[2]) == 4); // &"c"
-    /// ```
-    #[unstable(feature = "subslice_offset",
-               reason = "awaiting convention about comparability of arbitrary slices")]
-    #[deprecated(since = "1.3.0",
-                 reason = "replaced with other pattern-related methods")]
-    pub fn subslice_offset(&self, inner: &str) -> usize {
-        core_str::StrExt::subslice_offset(self, inner)
     }
 
     /// Returns a `&str` with leading and trailing whitespace removed.

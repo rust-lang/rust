@@ -11,11 +11,8 @@
 // Issue 4691: Ensure that functional-struct-update can only copy, not
 // move, when the struct implements Drop.
 
-// NoCopy
-use std::marker::NoCopy as NP;
-
-
-struct S { a: isize, np: NP }
+struct B;
+struct S { a: isize, b: B }
 impl Drop for S { fn drop(&mut self) { } }
 
 struct T { a: isize, mv: Box<isize> }

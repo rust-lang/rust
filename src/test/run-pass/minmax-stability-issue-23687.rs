@@ -12,7 +12,6 @@
 
 use std::fmt::Debug;
 use std::cmp::{self, PartialOrd, Ordering};
-use std::iter::MinMaxResult::MinMax;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 struct Foo {
@@ -47,21 +46,12 @@ fn main() {
     assert_eq!(data.iter().min_by(|a| a.n), Some(&a));
     assert_eq!(cmp::min(a, b), a);
     assert_eq!(cmp::min(b, a), b);
-    assert_eq!(cmp::partial_min(a, b), Some(a));
-    assert_eq!(cmp::partial_min(b, a), Some(b));
 
     // `max` should return the right when the values are equal
     assert_eq!(data.iter().max(), Some(&f));
     assert_eq!(data.iter().max_by(|a| a.n), Some(&f));
     assert_eq!(cmp::max(e, f), f);
     assert_eq!(cmp::max(f, e), e);
-    assert_eq!(cmp::partial_max(e, f), Some(f));
-    assert_eq!(cmp::partial_max(f, e), Some(e));
-
-    // Similar for `min_max`
-    assert_eq!(data.iter().min_max(), MinMax(&a, &f));
-    assert_eq!(data[1..5].iter().min_max(), MinMax(&b, &e));
-    assert_eq!(data[2..4].iter().min_max(), MinMax(&c, &d));
 
     let mut presorted = data.to_vec();
     presorted.sort();

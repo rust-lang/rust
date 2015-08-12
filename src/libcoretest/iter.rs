@@ -10,10 +10,8 @@
 
 use core::iter::*;
 use core::iter::order::*;
-use core::iter::MinMaxResult::*;
 use core::{i8, i16, isize};
 use core::usize;
-use core::cmp;
 
 use test::Bencher;
 
@@ -452,27 +450,6 @@ fn test_inspect() {
 }
 
 #[test]
-fn test_unfoldr() {
-    fn count(st: &mut usize) -> Option<usize> {
-        if *st < 10 {
-            let ret = Some(*st);
-            *st += 1;
-            ret
-        } else {
-            None
-        }
-    }
-
-    let it = Unfold::new(0, count);
-    let mut i = 0;
-    for counted in it {
-        assert_eq!(counted, i);
-        i += 1;
-    }
-    assert_eq!(i, 10);
-}
-
-#[test]
 fn test_cycle() {
     let cycle_len = 3;
     let it = (0..).step_by(1).take(cycle_len).cycle();
@@ -781,28 +758,6 @@ fn test_rposition_panic() {
 }
 
 
-#[cfg(test)]
-fn check_randacc_iter<A, T>(a: T, len: usize) where
-    A: PartialEq,
-    T: Clone + RandomAccessIterator + Iterator<Item=A>,
-{
-    let mut b = a.clone();
-    assert_eq!(len, b.indexable());
-    let mut n = 0;
-    for (i, elt) in a.enumerate() {
-        assert!(Some(elt) == b.idx(i));
-        n += 1;
-    }
-    assert_eq!(n, len);
-    assert!(None == b.idx(n));
-    // call recursively to check after picking off an element
-    if len > 0 {
-        b.next();
-        check_randacc_iter(b, len-1);
-    }
-}
-
-
 #[test]
 fn test_double_ended_flat_map() {
     let u = [0,1];
@@ -818,101 +773,6 @@ fn test_double_ended_flat_map() {
     assert_eq!(it.next_back(), None);
     assert_eq!(it.next(),      None);
     assert_eq!(it.next_back(), None);
-}
-
-#[test]
-fn test_random_access_chain() {
-    let xs = [1, 2, 3, 4, 5];
-    let ys = [7, 9, 11];
-    let mut it = xs.iter().chain(&ys);
-    assert_eq!(it.idx(0).unwrap(), &1);
-    assert_eq!(it.idx(5).unwrap(), &7);
-    assert_eq!(it.idx(7).unwrap(), &11);
-    assert!(it.idx(8).is_none());
-
-    it.next();
-    it.next();
-    it.next_back();
-
-    assert_eq!(it.idx(0).unwrap(), &3);
-    assert_eq!(it.idx(4).unwrap(), &9);
-    assert!(it.idx(6).is_none());
-
-    check_randacc_iter(it, xs.len() + ys.len() - 3);
-}
-
-#[test]
-fn test_random_access_enumerate() {
-    let xs = [1, 2, 3, 4, 5];
-    check_randacc_iter(xs.iter().enumerate(), xs.len());
-}
-
-#[test]
-fn test_random_access_rev() {
-    let xs = [1, 2, 3, 4, 5];
-    check_randacc_iter(xs.iter().rev(), xs.len());
-    let mut it = xs.iter().rev();
-    it.next();
-    it.next_back();
-    it.next();
-    check_randacc_iter(it, xs.len() - 3);
-}
-
-#[test]
-fn test_random_access_zip() {
-    let xs = [1, 2, 3, 4, 5];
-    let ys = [7, 9, 11];
-    check_randacc_iter(xs.iter().zip(&ys), cmp::min(xs.len(), ys.len()));
-}
-
-#[test]
-fn test_random_access_take() {
-    let xs = [1, 2, 3, 4, 5];
-    let empty: &[isize] = &[];
-    check_randacc_iter(xs.iter().take(3), 3);
-    check_randacc_iter(xs.iter().take(20), xs.len());
-    check_randacc_iter(xs.iter().take(0), 0);
-    check_randacc_iter(empty.iter().take(2), 0);
-}
-
-#[test]
-fn test_random_access_skip() {
-    let xs = [1, 2, 3, 4, 5];
-    let empty: &[isize] = &[];
-    check_randacc_iter(xs.iter().skip(2), xs.len() - 2);
-    check_randacc_iter(empty.iter().skip(2), 0);
-}
-
-#[test]
-fn test_random_access_inspect() {
-    let xs = [1, 2, 3, 4, 5];
-
-    // test .map and .inspect that don't implement Clone
-    let mut it = xs.iter().inspect(|_| {});
-    assert_eq!(xs.len(), it.indexable());
-    for (i, elt) in xs.iter().enumerate() {
-        assert_eq!(Some(elt), it.idx(i));
-    }
-
-}
-
-#[test]
-fn test_random_access_map() {
-    let xs = [1, 2, 3, 4, 5];
-
-    let mut it = xs.iter().cloned();
-    assert_eq!(xs.len(), it.indexable());
-    for (i, elt) in xs.iter().enumerate() {
-        assert_eq!(Some(*elt), it.idx(i));
-    }
-}
-
-#[test]
-fn test_random_access_cycle() {
-    let xs = [1, 2, 3, 4, 5];
-    let empty: &[isize] = &[];
-    check_randacc_iter(xs.iter().cycle().take(27), 27);
-    check_randacc_iter(empty.iter().cycle(), 0);
 }
 
 #[test]
@@ -985,58 +845,12 @@ fn test_range_step() {
 }
 
 #[test]
-fn test_reverse() {
-    let mut ys = [1, 2, 3, 4, 5];
-    ys.iter_mut().reverse_in_place();
-    assert!(ys == [5, 4, 3, 2, 1]);
-}
-
-#[test]
 fn test_peekable_is_empty() {
     let a = [1];
     let mut it = a.iter().peekable();
     assert!( !it.is_empty() );
     it.next();
     assert!( it.is_empty() );
-}
-
-#[test]
-fn test_min_max() {
-    let v: [isize; 0] = [];
-    assert_eq!(v.iter().min_max(), NoElements);
-
-    let v = [1];
-    assert!(v.iter().min_max() == OneElement(&1));
-
-    let v = [1, 2, 3, 4, 5];
-    assert!(v.iter().min_max() == MinMax(&1, &5));
-
-    let v = [1, 2, 3, 4, 5, 6];
-    assert!(v.iter().min_max() == MinMax(&1, &6));
-
-    let v = [1, 1, 1, 1];
-    assert!(v.iter().min_max() == MinMax(&1, &1));
-}
-
-#[test]
-fn test_min_max_result() {
-    let r: MinMaxResult<isize> = NoElements;
-    assert_eq!(r.into_option(), None);
-
-    let r = OneElement(1);
-    assert_eq!(r.into_option(), Some((1,1)));
-
-    let r = MinMax(1,2);
-    assert_eq!(r.into_option(), Some((1,2)));
-}
-
-#[test]
-fn test_iterate() {
-    let mut it = iterate(1, |x| x * 2);
-    assert_eq!(it.next(), Some(1));
-    assert_eq!(it.next(), Some(2));
-    assert_eq!(it.next(), Some(4));
-    assert_eq!(it.next(), Some(8));
 }
 
 #[test]

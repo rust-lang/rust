@@ -40,9 +40,7 @@
 
 // ignore-android: FIXME(#10393) hangs without output
 
-#![feature(box_syntax, owned_ascii_ext, vec_push_all)]
-
-use std::ascii::OwnedAsciiExt;
+use std::ascii::AsciiExt;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
@@ -146,11 +144,11 @@ impl Table {
     fn search_remainder<C:TableCallback>(item: &mut Entry, key: Code, c: C) {
         match item.next {
             None => {
-                let mut entry: Box<_> = box Entry {
+                let mut entry = Box::new(Entry {
                     code: key,
                     count: 0,
                     next: None,
-                };
+                });
                 c.f(&mut *entry);
                 item.next = Some(entry);
             }
@@ -170,11 +168,11 @@ impl Table {
 
         {
             if self.items[index as usize].is_none() {
-                let mut entry: Box<_> = box Entry {
+                let mut entry = Box::new(Entry {
                     code: key,
                     count: 0,
                     next: None,
-                };
+                });
                 c.f(&mut *entry);
                 self.items[index as usize] = Some(entry);
                 return;
@@ -285,13 +283,16 @@ fn print_occurrences(frequencies: &mut Table, occurrence: &'static str) {
 }
 
 fn get_sequence<R: BufRead>(r: &mut R, key: &str) -> Vec<u8> {
-    let mut res = Vec::new();
+    let mut res = Vec::<u8>::new();
     for l in r.lines().map(|l| l.unwrap())
         .skip_while(|l| key != &l[..key.len()]).skip(1)
     {
-        res.push_all(l.trim().as_bytes());
+        res.extend(l.trim().as_bytes());
     }
-    res.into_ascii_uppercase()
+    for s in &mut res {
+        *s = s.to_ascii_uppercase();
+    }
+    return res
 }
 
 fn main() {

@@ -23,7 +23,6 @@ use ffi::{OsStr, OsString};
 use fmt;
 use io;
 use path::{Path, PathBuf};
-use sync::atomic::{AtomicIsize, Ordering};
 use sync::StaticMutex;
 use sys::os as os_imp;
 
@@ -474,30 +473,6 @@ pub fn current_exe() -> io::Result<PathBuf> {
     os_imp::current_exe()
 }
 
-static EXIT_STATUS: AtomicIsize = AtomicIsize::new(0);
-
-/// Sets the process exit code
-///
-/// Sets the exit code returned by the process if all supervised threads
-/// terminate successfully (without panicking). If the current root thread panics
-/// and is supervised by the scheduler then any user-specified exit status is
-/// ignored and the process exits with the default panic status.
-///
-/// Note that this is not synchronized against modifications of other threads.
-#[unstable(feature = "exit_status", reason = "managing the exit status may change")]
-#[deprecated(since = "1.2.0", reason = "use process::exit instead")]
-pub fn set_exit_status(code: i32) {
-    EXIT_STATUS.store(code as isize, Ordering::SeqCst)
-}
-
-/// Fetches the process's current exit code. This defaults to 0 and can change
-/// by calling `set_exit_status`.
-#[unstable(feature = "exit_status", reason = "managing the exit status may change")]
-#[deprecated(since = "1.2.0", reason = "use process::exit instead")]
-pub fn get_exit_status() -> i32 {
-    EXIT_STATUS.load(Ordering::SeqCst) as i32
-}
-
 /// An iterator over the arguments of a process, yielding a `String` value
 /// for each argument.
 ///
@@ -586,14 +561,6 @@ impl Iterator for ArgsOs {
 #[stable(feature = "env", since = "1.0.0")]
 impl ExactSizeIterator for ArgsOs {
     fn len(&self) -> usize { self.inner.len() }
-}
-
-/// Returns the page size of the current architecture in bytes.
-#[unstable(feature = "page_size", reason = "naming and/or location may change")]
-#[deprecated(since = "1.3.0",
-             reason = "hasn't seen enough usage to justify inclusion")]
-pub fn page_size() -> usize {
-    os_imp::page_size()
 }
 
 /// Constants associated with the current target

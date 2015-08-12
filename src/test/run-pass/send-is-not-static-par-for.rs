@@ -8,21 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(core, std_misc, scoped)]
 use std::thread;
 use std::sync::Mutex;
 
 fn par_for<I, F>(iter: I, f: F)
     where I: Iterator,
-          <I as Iterator>::Item: Send,
-          F: Fn(<I as Iterator>::Item) + Sync
+          I::Item: Send,
+          F: Fn(I::Item) + Sync
 {
-    let f = &f;
-    let _guards: Vec<_> = iter.map(|elem| {
-        thread::scoped(move || {
-            f(elem)
-        })
-    }).collect();
+    for item in iter {
+        f(item)
+    }
 }
 
 fn sum(x: &[i32]) {

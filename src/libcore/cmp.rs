@@ -21,7 +21,7 @@ use self::Ordering::*;
 
 use mem;
 use marker::Sized;
-use option::Option::{self, Some, None};
+use option::Option::{self, Some};
 
 /// Trait for equality comparisons which are [partial equivalence
 /// relations](http://en.wikipedia.org/wiki/Partial_equivalence_relation).
@@ -379,78 +379,6 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn max<T: Ord>(v1: T, v2: T) -> T {
     if v2 >= v1 { v2 } else { v1 }
-}
-
-/// Compare and return the minimum of two values if there is one.
-///
-/// Returns the first argument if the comparison determines them to be equal.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(cmp_partial)]
-///
-/// use std::cmp;
-///
-/// assert_eq!(Some(1), cmp::partial_min(1, 2));
-/// assert_eq!(Some(2), cmp::partial_min(2, 2));
-/// ```
-///
-/// When comparison is impossible:
-///
-/// ```
-/// #![feature(cmp_partial)]
-///
-/// use std::cmp;
-///
-/// let result = cmp::partial_min(std::f64::NAN, 1.0);
-/// assert_eq!(result, None);
-/// ```
-#[inline]
-#[unstable(feature = "cmp_partial")]
-#[deprecated(since = "1.3.0", reason = "has not proven itself worthwhile")]
-pub fn partial_min<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
-    match v1.partial_cmp(&v2) {
-        Some(Less) | Some(Equal) => Some(v1),
-        Some(Greater) => Some(v2),
-        None => None
-    }
-}
-
-/// Compare and return the maximum of two values if there is one.
-///
-/// Returns the second argument if the comparison determines them to be equal.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(cmp_partial)]
-///
-/// use std::cmp;
-///
-/// assert_eq!(Some(2), cmp::partial_max(1, 2));
-/// assert_eq!(Some(2), cmp::partial_max(2, 2));
-/// ```
-///
-/// When comparison is impossible:
-///
-/// ```
-/// #![feature(cmp_partial)]
-///
-/// use std::cmp;
-///
-/// let result = cmp::partial_max(std::f64::NAN, 1.0);
-/// assert_eq!(result, None);
-/// ```
-#[inline]
-#[unstable(feature = "cmp_partial")]
-#[deprecated(since = "1.3.0", reason = "has not proven itself worthwhile")]
-pub fn partial_max<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
-    match v1.partial_cmp(&v2) {
-        Some(Equal) | Some(Less) => Some(v2),
-        Some(Greater) => Some(v1),
-        None => None
-    }
 }
 
 // Implementation of PartialEq, Eq, PartialOrd and Ord for primitive types

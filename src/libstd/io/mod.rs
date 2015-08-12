@@ -255,7 +255,7 @@ use string::String;
 use str;
 use vec::Vec;
 
-pub use self::buffered::{BufReader, BufWriter, BufStream, LineWriter};
+pub use self::buffered::{BufReader, BufWriter, LineWriter};
 pub use self::buffered::IntoInnerError;
 pub use self::cursor::Cursor;
 pub use self::error::{Result, Error, ErrorKind};

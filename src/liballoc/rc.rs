@@ -338,84 +338,6 @@ impl<T: ?Sized> Rc<T> {
     }
 }
 
-/// Get the number of weak references to this value.
-#[inline]
-#[unstable(feature = "rc_counts")]
-#[deprecated(since = "1.2.0", reason = "renamed to Rc::weak_count")]
-pub fn weak_count<T: ?Sized>(this: &Rc<T>) -> usize { Rc::weak_count(this) }
-
-/// Get the number of strong references to this value.
-#[inline]
-#[unstable(feature = "rc_counts")]
-#[deprecated(since = "1.2.0", reason = "renamed to Rc::strong_count")]
-pub fn strong_count<T: ?Sized>(this: &Rc<T>) -> usize { Rc::strong_count(this) }
-
-/// Returns true if there are no other `Rc` or `Weak<T>` values that share the
-/// same inner value.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(rc_unique)]
-///
-/// use std::rc;
-/// use std::rc::Rc;
-///
-/// let five = Rc::new(5);
-///
-/// rc::is_unique(&five);
-/// ```
-#[inline]
-#[unstable(feature = "rc_unique")]
-#[deprecated(since = "1.2.0", reason = "renamed to Rc::is_unique")]
-pub fn is_unique<T>(rc: &Rc<T>) -> bool { Rc::is_unique(rc) }
-
-/// Unwraps the contained value if the `Rc<T>` is unique.
-///
-/// If the `Rc<T>` is not unique, an `Err` is returned with the same `Rc<T>`.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(rc_unique)]
-///
-/// use std::rc::{self, Rc};
-///
-/// let x = Rc::new(3);
-/// assert_eq!(rc::try_unwrap(x), Ok(3));
-///
-/// let x = Rc::new(4);
-/// let _y = x.clone();
-/// assert_eq!(rc::try_unwrap(x), Err(Rc::new(4)));
-/// ```
-#[inline]
-#[unstable(feature = "rc_unique")]
-#[deprecated(since = "1.2.0", reason = "renamed to Rc::try_unwrap")]
-pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> { Rc::try_unwrap(rc) }
-
-/// Returns a mutable reference to the contained value if the `Rc<T>` is unique.
-///
-/// Returns `None` if the `Rc<T>` is not unique.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(rc_unique)]
-///
-/// use std::rc::{self, Rc};
-///
-/// let mut x = Rc::new(3);
-/// *rc::get_mut(&mut x).unwrap() = 4;
-/// assert_eq!(*x, 4);
-///
-/// let _y = x.clone();
-/// assert!(rc::get_mut(&mut x).is_none());
-/// ```
-#[inline]
-#[unstable(feature = "rc_unique")]
-#[deprecated(since = "1.2.0", reason = "renamed to Rc::get_mut")]
-pub fn get_mut<T>(rc: &mut Rc<T>) -> Option<&mut T> { Rc::get_mut(rc) }
-
 impl<T: Clone> Rc<T> {
     /// Make a mutable reference from the given `Rc<T>`.
     ///
@@ -922,7 +844,7 @@ impl<T: ?Sized> RcBoxPtr<T> for Weak<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Rc, Weak, weak_count, strong_count};
+    use super::{Rc, Weak};
     use std::boxed::Box;
     use std::cell::RefCell;
     use std::option::Option;
@@ -990,74 +912,74 @@ mod tests {
     #[test]
     fn is_unique() {
         let x = Rc::new(3);
-        assert!(super::is_unique(&x));
+        assert!(Rc::is_unique(&x));
         let y = x.clone();
-        assert!(!super::is_unique(&x));
+        assert!(!Rc::is_unique(&x));
         drop(y);
-        assert!(super::is_unique(&x));
+        assert!(Rc::is_unique(&x));
         let w = x.downgrade();
-        assert!(!super::is_unique(&x));
+        assert!(!Rc::is_unique(&x));
         drop(w);
-        assert!(super::is_unique(&x));
+        assert!(Rc::is_unique(&x));
     }
 
     #[test]
     fn test_strong_count() {
         let a = Rc::new(0u32);
-        assert!(strong_count(&a) == 1);
+        assert!(Rc::strong_count(&a) == 1);
         let w = a.downgrade();
-        assert!(strong_count(&a) == 1);
+        assert!(Rc::strong_count(&a) == 1);
         let b = w.upgrade().expect("upgrade of live rc failed");
-        assert!(strong_count(&b) == 2);
-        assert!(strong_count(&a) == 2);
+        assert!(Rc::strong_count(&b) == 2);
+        assert!(Rc::strong_count(&a) == 2);
         drop(w);
         drop(a);
-        assert!(strong_count(&b) == 1);
+        assert!(Rc::strong_count(&b) == 1);
         let c = b.clone();
-        assert!(strong_count(&b) == 2);
-        assert!(strong_count(&c) == 2);
+        assert!(Rc::strong_count(&b) == 2);
+        assert!(Rc::strong_count(&c) == 2);
     }
 
     #[test]
     fn test_weak_count() {
         let a = Rc::new(0u32);
-        assert!(strong_count(&a) == 1);
-        assert!(weak_count(&a) == 0);
+        assert!(Rc::strong_count(&a) == 1);
+        assert!(Rc::weak_count(&a) == 0);
         let w = a.downgrade();
-        assert!(strong_count(&a) == 1);
-        assert!(weak_count(&a) == 1);
+        assert!(Rc::strong_count(&a) == 1);
+        assert!(Rc::weak_count(&a) == 1);
         drop(w);
-        assert!(strong_count(&a) == 1);
-        assert!(weak_count(&a) == 0);
+        assert!(Rc::strong_count(&a) == 1);
+        assert!(Rc::weak_count(&a) == 0);
         let c = a.clone();
-        assert!(strong_count(&a) == 2);
-        assert!(weak_count(&a) == 0);
+        assert!(Rc::strong_count(&a) == 2);
+        assert!(Rc::weak_count(&a) == 0);
         drop(c);
     }
 
     #[test]
     fn try_unwrap() {
         let x = Rc::new(3);
-        assert_eq!(super::try_unwrap(x), Ok(3));
+        assert_eq!(Rc::try_unwrap(x), Ok(3));
         let x = Rc::new(4);
         let _y = x.clone();
-        assert_eq!(super::try_unwrap(x), Err(Rc::new(4)));
+        assert_eq!(Rc::try_unwrap(x), Err(Rc::new(4)));
         let x = Rc::new(5);
         let _w = x.downgrade();
-        assert_eq!(super::try_unwrap(x), Err(Rc::new(5)));
+        assert_eq!(Rc::try_unwrap(x), Err(Rc::new(5)));
     }
 
     #[test]
     fn get_mut() {
         let mut x = Rc::new(3);
-        *super::get_mut(&mut x).unwrap() = 4;
+        *Rc::get_mut(&mut x).unwrap() = 4;
         assert_eq!(*x, 4);
         let y = x.clone();
-        assert!(super::get_mut(&mut x).is_none());
+        assert!(Rc::get_mut(&mut x).is_none());
         drop(y);
-        assert!(super::get_mut(&mut x).is_some());
+        assert!(Rc::get_mut(&mut x).is_some());
         let _w = x.downgrade();
-        assert!(super::get_mut(&mut x).is_none());
+        assert!(Rc::get_mut(&mut x).is_none());
     }
 
     #[test]

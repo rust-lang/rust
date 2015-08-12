@@ -10,17 +10,11 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(std_misc, libc)]
-
-extern crate libc;
-
-use std::thunk::Thunk;
-
-fn foo(_: Thunk) {}
+fn foo(_: Box<FnMut()>) {}
 
 fn main() {
     foo(loop {
-        unsafe { libc::exit(0 as libc::c_int); }
+        std::process::exit(0);
     });
     2_usize + (loop {});
     //~^ ERROR E0277

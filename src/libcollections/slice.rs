@@ -98,14 +98,13 @@ use core::option::Option::{self, Some, None};
 use core::ptr;
 use core::result::Result;
 use core::slice as core_slice;
-use self::Direction::*;
 
 use borrow::{Borrow, BorrowMut, ToOwned};
 use vec::Vec;
 
 pub use core::slice::{Chunks, Windows};
 pub use core::slice::{Iter, IterMut};
-pub use core::slice::{IntSliceExt, SplitMut, ChunksMut, Split};
+pub use core::slice::{SplitMut, ChunksMut, Split};
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
 pub use core::slice::{bytes, mut_ref_slice, ref_slice};
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
@@ -141,8 +140,6 @@ mod hack {
     use string::ToString;
     use vec::Vec;
 
-    use super::{ElementSwaps, Permutations};
-
     pub fn into_vec<T>(mut b: Box<[T]>) -> Vec<T> {
         unsafe {
             let xs = Vec::from_raw_parts(b.as_mut_ptr(), b.len(), b.len());
@@ -151,75 +148,11 @@ mod hack {
         }
     }
 
-    #[allow(deprecated)]
-    pub fn permutations<T>(s: &[T]) -> Permutations<T> where T: Clone {
-        Permutations{
-            swaps: ElementSwaps::new(s.len()),
-            v: to_vec(s),
-        }
-    }
-
     #[inline]
     pub fn to_vec<T>(s: &[T]) -> Vec<T> where T: Clone {
         let mut vector = Vec::with_capacity(s.len());
         vector.push_all(s);
         vector
-    }
-
-    // NB we can remove this hack if we move this test to libcollectionstest -
-    // but that can't be done right now because the test needs access to the
-    // private fields of Permutations
-    #[test]
-    fn test_permutations() {
-        {
-            let v: [i32; 0] = [];
-            let mut it = permutations(&v);
-            let (min_size, max_opt) = it.size_hint();
-            assert_eq!(min_size, 1);
-            assert_eq!(max_opt.unwrap(), 1);
-            assert_eq!(it.next(), Some(to_vec(&v)));
-            assert_eq!(it.next(), None);
-        }
-        {
-            let v = ["Hello".to_string()];
-            let mut it = permutations(&v);
-            let (min_size, max_opt) = it.size_hint();
-            assert_eq!(min_size, 1);
-            assert_eq!(max_opt.unwrap(), 1);
-            assert_eq!(it.next(), Some(to_vec(&v)));
-            assert_eq!(it.next(), None);
-        }
-        {
-            let v = [1, 2, 3];
-            let mut it = permutations(&v);
-            let (min_size, max_opt) = it.size_hint();
-            assert_eq!(min_size, 3*2);
-            assert_eq!(max_opt.unwrap(), 3*2);
-            assert_eq!(it.next().unwrap(), [1,2,3]);
-            assert_eq!(it.next().unwrap(), [1,3,2]);
-            assert_eq!(it.next().unwrap(), [3,1,2]);
-            let (min_size, max_opt) = it.size_hint();
-            assert_eq!(min_size, 3);
-            assert_eq!(max_opt.unwrap(), 3);
-            assert_eq!(it.next().unwrap(), [3,2,1]);
-            assert_eq!(it.next().unwrap(), [2,3,1]);
-            assert_eq!(it.next().unwrap(), [2,1,3]);
-            assert_eq!(it.next(), None);
-        }
-        {
-            // check that we have N! permutations
-            let v = ['A', 'B', 'C', 'D', 'E', 'F'];
-            let mut amt = 0;
-            let mut it = permutations(&v);
-            let (min_size, max_opt) = it.size_hint();
-            for _perm in it.by_ref() {
-                amt += 1;
-            }
-            assert_eq!(amt, it.swaps.swaps_made);
-            assert_eq!(amt, min_size);
-            assert_eq!(amt, 2 * 3 * 4 * 5 * 6);
-            assert_eq!(amt, max_opt.unwrap());
-        }
     }
 }
 
@@ -280,27 +213,11 @@ impl<T> [T] {
         core_slice::SliceExt::first_mut(self)
     }
 
-    /// Returns all but the first element of a slice.
-    #[unstable(feature = "slice_extras", reason = "likely to be renamed")]
-    #[deprecated(since = "1.3.0", reason = "superseded by split_first")]
-    #[inline]
-    pub fn tail(&self) -> &[T] {
-        core_slice::SliceExt::tail(self)
-    }
-
     /// Returns the first and all the rest of the elements of a slice.
     #[unstable(feature = "slice_splits", reason = "new API")]
     #[inline]
     pub fn split_first(&self) -> Option<(&T, &[T])> {
         core_slice::SliceExt::split_first(self)
-    }
-
-    /// Returns all but the first element of a mutable slice
-    #[unstable(feature = "slice_extras", reason = "likely to be renamed or removed")]
-    #[deprecated(since = "1.3.0", reason = "superseded by split_first_mut")]
-    #[inline]
-    pub fn tail_mut(&mut self) -> &mut [T] {
-        core_slice::SliceExt::tail_mut(self)
     }
 
     /// Returns the first and all the rest of the elements of a slice.
@@ -310,28 +227,12 @@ impl<T> [T] {
         core_slice::SliceExt::split_first_mut(self)
     }
 
-    /// Returns all but the last element of a slice.
-    #[unstable(feature = "slice_extras", reason = "likely to be renamed")]
-    #[deprecated(since = "1.3.0", reason = "superseded by split_last")]
-    #[inline]
-    pub fn init(&self) -> &[T] {
-        core_slice::SliceExt::init(self)
-    }
-
     /// Returns the last and all the rest of the elements of a slice.
     #[unstable(feature = "slice_splits", reason = "new API")]
     #[inline]
     pub fn split_last(&self) -> Option<(&T, &[T])> {
         core_slice::SliceExt::split_last(self)
 
-    }
-
-    /// Returns all but the last element of a mutable slice
-    #[unstable(feature = "slice_extras", reason = "likely to be renamed or removed")]
-    #[deprecated(since = "1.3.0", reason = "superseded by split_last_mut")]
-    #[inline]
-    pub fn init_mut(&mut self) -> &mut [T] {
-        core_slice::SliceExt::init_mut(self)
     }
 
     /// Returns the last and all the rest of the elements of a slice.
@@ -760,22 +661,6 @@ impl<T> [T] {
         core_slice::SliceExt::ends_with(self, needle)
     }
 
-    /// Find the first index containing a matching value.
-    #[unstable(feature = "slice_position_elem")]
-    #[deprecated(since = "1.3.0",
-                 reason = "less idiomatic than .iter().position()")]
-    pub fn position_elem(&self, t: &T) -> Option<usize> where T: PartialEq {
-        core_slice::SliceExt::position_elem(self, t)
-    }
-
-    /// Find the last index containing a matching value.
-    #[unstable(feature = "slice_position_elem")]
-    #[deprecated(since = "1.3.0",
-                 reason = "less idiomatic than .iter().rev().position()")]
-    pub fn rposition_elem(&self, t: &T) -> Option<usize> where T: PartialEq {
-        core_slice::SliceExt::rposition_elem(self, t)
-    }
-
     /// Binary search a sorted slice for a given element.
     ///
     /// If the value is found then `Ok` is returned, containing the
@@ -881,95 +766,6 @@ impl<T> [T] {
         merge_sort(self, compare)
     }
 
-    /// Creates an iterator that yields every possible permutation of the
-    /// vector in succession.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// #![feature(permutations)]
-    ///
-    /// let v = [1, 2, 3];
-    /// let mut perms = v.permutations();
-    ///
-    /// for p in perms {
-    ///   println!("{:?}", p);
-    /// }
-    /// ```
-    ///
-    /// Iterating through permutations one by one.
-    ///
-    /// ```rust
-    /// #![feature(permutations)]
-    ///
-    /// let v = [1, 2, 3];
-    /// let mut perms = v.permutations();
-    ///
-    /// assert_eq!(Some(vec![1, 2, 3]), perms.next());
-    /// assert_eq!(Some(vec![1, 3, 2]), perms.next());
-    /// assert_eq!(Some(vec![3, 1, 2]), perms.next());
-    /// ```
-    #[allow(deprecated)]
-    #[unstable(feature = "permutations")]
-    #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
-    #[inline]
-    pub fn permutations(&self) -> Permutations<T> where T: Clone {
-        // NB see hack module in this file
-        hack::permutations(self)
-    }
-
-    /// Mutates the slice to the next lexicographic permutation.
-    ///
-    /// Returns `true` if successful and `false` if the slice is at the
-    /// last-ordered permutation.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// #![feature(permutations)]
-    ///
-    /// let v: &mut [_] = &mut [0, 1, 2];
-    /// v.next_permutation();
-    /// let b: &mut [_] = &mut [0, 2, 1];
-    /// assert!(v == b);
-    /// v.next_permutation();
-    /// let b: &mut [_] = &mut [1, 0, 2];
-    /// assert!(v == b);
-    /// ```
-    #[allow(deprecated)]
-    #[unstable(feature = "permutations",
-               reason = "uncertain if this merits inclusion in std")]
-    #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
-    pub fn next_permutation(&mut self) -> bool where T: Ord {
-        core_slice::SliceExt::next_permutation(self)
-    }
-
-    /// Mutates the slice to the previous lexicographic permutation.
-    ///
-    /// Returns `true` if successful and `false` if the slice is at the
-    /// first-ordered permutation.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// #![feature(permutations)]
-    ///
-    /// let v: &mut [_] = &mut [1, 0, 2];
-    /// v.prev_permutation();
-    /// let b: &mut [_] = &mut [0, 2, 1];
-    /// assert!(v == b);
-    /// v.prev_permutation();
-    /// let b: &mut [_] = &mut [0, 1, 2];
-    /// assert!(v == b);
-    /// ```
-    #[allow(deprecated)]
-    #[unstable(feature = "permutations",
-               reason = "uncertain if this merits inclusion in std")]
-    #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
-    pub fn prev_permutation(&mut self) -> bool where T: Ord {
-        core_slice::SliceExt::prev_permutation(self)
-    }
-
     /// Copies as many elements from `src` as it can into `self` (the
     /// shorter of `self.len()` and `src.len()`). Returns the number
     /// of elements copied.
@@ -992,41 +788,6 @@ impl<T> [T] {
     #[unstable(feature = "clone_from_slice")]
     pub fn clone_from_slice(&mut self, src: &[T]) -> usize where T: Clone {
         core_slice::SliceExt::clone_from_slice(self, src)
-    }
-
-    /// Consumes `src` and moves as many elements as it can into `self`
-    /// from the range [start,end).
-    ///
-    /// Returns the number of elements copied (the shorter of `self.len()`
-    /// and `end - start`).
-    ///
-    /// # Arguments
-    ///
-    /// * src - A mutable vector of `T`
-    /// * start - The index into `src` to start copying from
-    /// * end - The index into `src` to stop copying from
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// #![feature(move_from)]
-    ///
-    /// let mut a = [1, 2, 3, 4, 5];
-    /// let b = vec![6, 7, 8];
-    /// let num_moved = a.move_from(b, 0, 3);
-    /// assert_eq!(num_moved, 3);
-    /// assert!(a == [6, 7, 8, 4, 5]);
-    /// ```
-    #[unstable(feature = "move_from",
-               reason = "uncertain about this API approach")]
-    #[deprecated(since = "1.3.0",
-                 reason = "unclear that it must belong in the standard library")]
-    #[inline]
-    pub fn move_from(&mut self, mut src: Vec<T>, start: usize, end: usize) -> usize {
-        for (a, b) in self.iter_mut().zip(&mut src[start .. end]) {
-            mem::swap(a, b);
-        }
-        cmp::min(self.len(), end-start)
     }
 
     /// Copies `self` into a new `Vec`.
@@ -1120,45 +881,6 @@ impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
     }
 }
 
-/// An iterator that yields the element swaps needed to produce
-/// a sequence of all possible permutations for an indexed sequence of
-/// elements. Each permutation is only a single swap apart.
-///
-/// The Steinhaus-Johnson-Trotter algorithm is used.
-///
-/// Generates even and odd permutations alternately.
-///
-/// The last generated swap is always (0, 1), and it returns the
-/// sequence to its initial order.
-#[allow(deprecated)]
-#[unstable(feature = "permutations")]
-#[derive(Clone)]
-#[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
-pub struct ElementSwaps {
-    sdir: Vec<SizeDirection>,
-    /// If `true`, emit the last swap that returns the sequence to initial
-    /// state.
-    emit_reset: bool,
-    swaps_made : usize,
-}
-
-#[allow(deprecated)]
-impl ElementSwaps {
-    /// Creates an `ElementSwaps` iterator for a sequence of `length` elements.
-    #[unstable(feature = "permutations")]
-    #[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
-    pub fn new(length: usize) -> ElementSwaps {
-        // Initialize `sdir` with a direction that position should move in
-        // (all negative at the beginning) and the `size` of the
-        // element (equal to the original index).
-        ElementSwaps{
-            emit_reset: true,
-            sdir: (0..length).map(|i| SizeDirection{ size: i, dir: Neg }).collect(),
-            swaps_made: 0
-        }
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Standard trait implementations for slices
 ////////////////////////////////////////////////////////////////////////////////
@@ -1185,120 +907,6 @@ impl<T: Clone> ToOwned for [T] {
     // NB see the slice::hack module in slice.rs for more information
     #[cfg(test)]
     fn to_owned(&self) -> Vec<T> { panic!("not available with cfg(test)") }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Iterators
-////////////////////////////////////////////////////////////////////////////////
-
-#[derive(Copy, Clone)]
-enum Direction { Pos, Neg }
-
-/// An `Index` and `Direction` together.
-#[derive(Copy, Clone)]
-struct SizeDirection {
-    size: usize,
-    dir: Direction,
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-impl Iterator for ElementSwaps {
-    type Item = (usize, usize);
-
-    // #[inline]
-    fn next(&mut self) -> Option<(usize, usize)> {
-        fn new_pos_wrapping(i: usize, s: Direction) -> usize {
-            i.wrapping_add(match s { Pos => 1, Neg => !0 /* aka -1 */ })
-        }
-
-        fn new_pos(i: usize, s: Direction) -> usize {
-            match s { Pos => i + 1, Neg => i - 1 }
-        }
-
-        // Find the index of the largest mobile element:
-        // The direction should point into the vector, and the
-        // swap should be with a smaller `size` element.
-        let max = self.sdir.iter().cloned().enumerate()
-                           .filter(|&(i, sd)|
-                                new_pos_wrapping(i, sd.dir) < self.sdir.len() &&
-                                self.sdir[new_pos(i, sd.dir)].size < sd.size)
-                           .max_by(|&(_, sd)| sd.size);
-        match max {
-            Some((i, sd)) => {
-                let j = new_pos(i, sd.dir);
-                self.sdir.swap(i, j);
-
-                // Swap the direction of each larger SizeDirection
-                for x in &mut self.sdir {
-                    if x.size > sd.size {
-                        x.dir = match x.dir { Pos => Neg, Neg => Pos };
-                    }
-                }
-                self.swaps_made += 1;
-                Some((i, j))
-            },
-            None => if self.emit_reset {
-                self.emit_reset = false;
-                if self.sdir.len() > 1 {
-                    // The last swap
-                    self.swaps_made += 1;
-                    Some((0, 1))
-                } else {
-                    // Vector is of the form [] or [x], and the only permutation is itself
-                    self.swaps_made += 1;
-                    Some((0,0))
-                }
-            } else { None }
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        // For a vector of size n, there are exactly n! permutations.
-        let n: usize = (2..self.sdir.len() + 1).product();
-        (n - self.swaps_made, Some(n - self.swaps_made))
-    }
-}
-
-/// An iterator that uses `ElementSwaps` to iterate through
-/// all possible permutations of a vector.
-///
-/// The first iteration yields a clone of the vector as it is,
-/// then each successive element is the vector with one
-/// swap applied.
-///
-/// Generates even and odd permutations alternately.
-#[unstable(feature = "permutations")]
-#[deprecated(since = "1.2.0", reason = "not clear this should be in the stdlib")]
-#[allow(deprecated)]
-pub struct Permutations<T> {
-    swaps: ElementSwaps,
-    v: Vec<T>,
-}
-
-#[unstable(feature = "permutations", reason = "trait is unstable")]
-#[allow(deprecated)]
-impl<T: Clone> Iterator for Permutations<T> {
-    type Item = Vec<T>;
-
-    #[inline]
-    fn next(&mut self) -> Option<Vec<T>> {
-        match self.swaps.next() {
-            None => None,
-            Some((0,0)) => Some(self.v.clone()),
-            Some((a, b)) => {
-                let elt = self.v.clone();
-                self.v.swap(a, b);
-                Some(elt)
-            }
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.swaps.size_hint()
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
