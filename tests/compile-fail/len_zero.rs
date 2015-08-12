@@ -87,6 +87,12 @@ fn main() {
     if hie.len() == 0 { //~ERROR consider replacing the len comparison
         println!("Or this!");
     }
+    if hie.len() != 0 { //~ERROR consider replacing the len comparison
+        println!("Or this!");
+    }
+    if hie.len() > 0 { //~ERROR consider replacing the len comparison
+        println!("Or this!");
+    }
     assert!(!hie.is_empty());
 
     let wie : &WithIsEmpty = &Wither;
