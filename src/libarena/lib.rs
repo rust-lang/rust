@@ -50,12 +50,11 @@ use std::ptr;
 use alloc::heap;
 use alloc::raw_vec::RawVec;
 
-// The way arena uses arrays is really deeply awful. The arrays are
-// allocated, and have capacities reserved, but the fill for the array
-// will always stay at 0.
 struct Chunk {
     data: RawVec<u8>,
+    /// Index of the first unused byte.
     fill: Cell<usize>,
+    /// Indicates whether objects with destructors are stored in this chunk.
     is_copy: Cell<bool>,
 }
 
@@ -75,12 +74,37 @@ impl Chunk {
     unsafe fn as_ptr(&self) -> *const u8 {
         self.data.ptr()
     }
+
+    // Walk down a chunk, running the destructors for any objects stored
+    // in it.
+    unsafe fn destroy(&self) {
+        let mut idx = 0;
+        let buf = self.as_ptr();
+        let fill = self.fill.get();
+
+        while idx < fill {
+            let tydesc_data = buf.offset(idx as isize) as *const usize;
+            let (tydesc, is_done) = un_bitpack_tydesc_ptr(*tydesc_data);
+            let (size, align) = ((*tydesc).size, (*tydesc).align);
+
+            let after_tydesc = idx + mem::size_of::<*const TyDesc>();
+
+            let start = round_up(after_tydesc, align);
+
+            if is_done {
+                ((*tydesc).drop_glue)(buf.offset(start as isize) as *const i8);
+            }
+
+            // Find where the next tydesc lives
+            idx = round_up(start + size, mem::align_of::<*const TyDesc>());
+        }
+    }
 }
 
 /// A slower reflection-based arena that can allocate objects of any type.
 ///
-/// This arena uses `Vec<u8>` as a backing store to allocate objects from. For
-/// each allocated object, the arena stores a pointer to the type descriptor
+/// This arena uses `RawVec<u8>` as a backing store to allocate objects from.
+/// For each allocated object, the arena stores a pointer to the type descriptor
 /// followed by the object (potentially with alignment padding after each
 /// element). When the arena is destroyed, it iterates through all of its
 /// chunks, and uses the tydesc information to trace through the objects,
@@ -127,10 +151,10 @@ impl<'a> Arena<'a> {
 impl<'longer_than_self> Drop for Arena<'longer_than_self> {
     fn drop(&mut self) {
         unsafe {
-            destroy_chunk(&*self.head.borrow());
+            self.head.borrow().destroy();
             for chunk in self.chunks.borrow().iter() {
                 if !chunk.is_copy.get() {
-                    destroy_chunk(chunk);
+                    chunk.destroy();
                 }
             }
         }
@@ -140,31 +164,6 @@ impl<'longer_than_self> Drop for Arena<'longer_than_self> {
 #[inline]
 fn round_up(base: usize, align: usize) -> usize {
     (base.checked_add(align - 1)).unwrap() & !(align - 1)
-}
-
-// Walk down a chunk, running the destructors for any objects stored
-// in it.
-unsafe fn destroy_chunk(chunk: &Chunk) {
-    let mut idx = 0;
-    let buf = chunk.as_ptr();
-    let fill = chunk.fill.get();
-
-    while idx < fill {
-        let tydesc_data = buf.offset(idx as isize) as *const usize;
-        let (tydesc, is_done) = un_bitpack_tydesc_ptr(*tydesc_data);
-        let (size, align) = ((*tydesc).size, (*tydesc).align);
-
-        let after_tydesc = idx + mem::size_of::<*const TyDesc>();
-
-        let start = round_up(after_tydesc, align);
-
-        if is_done {
-            ((*tydesc).drop_glue)(buf.offset(start as isize) as *const i8);
-        }
-
-        // Find where the next tydesc lives
-        idx = round_up(start + size, mem::align_of::<*const TyDesc>());
-    }
 }
 
 // We encode whether the object a tydesc describes has been
@@ -183,6 +182,9 @@ fn un_bitpack_tydesc_ptr(p: usize) -> (*const TyDesc, bool) {
 // HACK(eddyb) TyDesc replacement using a trait object vtable.
 // This could be replaced in the future with a custom DST layout,
 // or `&'static (drop_glue, size, align)` created by a `const fn`.
+// Requirements:
+// * rvalue promotion (issue #1056)
+// * mem::{size_of, align_of} must be const fns
 struct TyDesc {
     drop_glue: fn(*const i8),
     size: usize,
@@ -198,7 +200,7 @@ impl<T: ?Sized> AllTypes for T {}
 unsafe fn get_tydesc<T>() -> *const TyDesc {
     use std::raw::TraitObject;
 
-    let ptr = &*(1 as *const T);
+    let ptr = &*(heap::EMPTY as *const T);
 
     // Can use any trait that is implemented for all types.
     let obj = mem::transmute::<&AllTypes, TraitObject>(ptr);
@@ -206,37 +208,44 @@ unsafe fn get_tydesc<T>() -> *const TyDesc {
 }
 
 impl<'longer_than_self> Arena<'longer_than_self> {
-    #[inline]
-    fn chunk_size(&self) -> usize {
-        self.copy_head.borrow().capacity()
-    }
-
-    // Functions for the POD part of the arena
+    // Grows a given chunk and returns `false`, or replaces it with a bigger
+    // chunk and returns `true`.
+    // This method is shared by both parts of the arena.
     #[cold]
-    fn alloc_copy_grow(&self, n_bytes: usize, align: usize) -> *const u8 {
-        // Allocate a new chunk.
-        let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
-        let new_chunk = Chunk::new((new_min_chunk_size + 1).next_power_of_two(), true);
-        let mut copy_head = self.copy_head.borrow_mut();
-        let old_chunk = mem::replace(&mut *copy_head, new_chunk);
-        self.chunks.borrow_mut().push(old_chunk);
-
-        self.alloc_copy_inner(n_bytes, align)
+    fn alloc_grow(&self, head: &mut Chunk, used_cap: usize, n_bytes: usize) -> bool {
+        if head.data.reserve_in_place(used_cap, n_bytes) {
+            // In-place reallocation succeeded.
+            false
+        } else {
+            // Allocate a new chunk.
+            let new_min_chunk_size = cmp::max(n_bytes, head.capacity());
+            let new_chunk = Chunk::new((new_min_chunk_size + 1).next_power_of_two(), false);
+            let old_chunk = mem::replace(head, new_chunk);
+            if old_chunk.fill.get() != 0 {
+                self.chunks.borrow_mut().push(old_chunk);
+            }
+            true
+        }
     }
+
+    // Functions for the copyable part of the arena.
 
     #[inline]
     fn alloc_copy_inner(&self, n_bytes: usize, align: usize) -> *const u8 {
-        let start = round_up(self.copy_head.borrow().fill.get(), align);
-        let chunk_size = self.chunk_size();
+        let mut copy_head = self.copy_head.borrow_mut();
+        let fill = copy_head.fill.get();
+        let mut start = round_up(fill, align);
+        let mut end = start + n_bytes;
 
-        let end = start + n_bytes;
-        if end > chunk_size {
-            if !self.copy_head.borrow_mut().data.reserve_in_place(start, n_bytes) {
-                return self.alloc_copy_grow(n_bytes, align);
+        if end > copy_head.capacity() {
+            if self.alloc_grow(&mut *copy_head, fill, end - fill) {
+                // Continuing with a newly allocated chunk
+                start = 0;
+                end = n_bytes;
+                copy_head.is_copy.set(true);
             }
         }
 
-        let copy_head = self.copy_head.borrow();
         copy_head.fill.set(end);
 
         unsafe { copy_head.as_ptr().offset(start as isize) }
@@ -254,40 +263,28 @@ impl<'longer_than_self> Arena<'longer_than_self> {
         }
     }
 
-    // Functions for the non-POD part of the arena
-    fn alloc_noncopy_grow(&self, n_bytes: usize, align: usize) -> (*const u8, *const u8) {
-        // Allocate a new chunk.
-        let new_min_chunk_size = cmp::max(n_bytes, self.chunk_size());
-        let new_chunk = Chunk::new((new_min_chunk_size + 1).next_power_of_two(), false);
-        let mut head = self.head.borrow_mut();
-        let old_chunk = mem::replace(&mut *head, new_chunk);
-        self.chunks.borrow_mut().push(old_chunk);
-
-        self.alloc_noncopy_inner(n_bytes, align)
-    }
+    // Functions for the non-copyable part of the arena.
 
     #[inline]
     fn alloc_noncopy_inner(&self, n_bytes: usize, align: usize) -> (*const u8, *const u8) {
-        // Be careful to not maintain any `head` borrows active, because
-        // `alloc_noncopy_grow` borrows it mutably.
-        let (start, end, tydesc_start, head_capacity) = {
-            let head = self.head.borrow();
-            let fill = head.fill.get();
+        let mut head = self.head.borrow_mut();
+        let fill = head.fill.get();
 
-            let tydesc_start = fill;
-            let after_tydesc = fill + mem::size_of::<*const TyDesc>();
-            let start = round_up(after_tydesc, align);
-            let end = start + n_bytes;
+        let mut tydesc_start = fill;
+        let after_tydesc = fill + mem::size_of::<*const TyDesc>();
+        let mut start = round_up(after_tydesc, align);
+        let mut end = round_up(start + n_bytes, mem::align_of::<*const TyDesc>());
 
-            (start, end, tydesc_start, head.capacity())
-        };
-
-        if end > head_capacity {
-            return self.alloc_noncopy_grow(n_bytes, align);
+        if end > head.capacity() {
+            if self.alloc_grow(&mut *head, tydesc_start, end - tydesc_start) {
+                // Continuing with a newly allocated chunk
+                tydesc_start = 0;
+                start = round_up(mem::size_of::<*const TyDesc>(), align);
+                end = round_up(start + n_bytes, mem::align_of::<*const TyDesc>());
+            }
         }
 
-        let head = self.head.borrow();
-        head.fill.set(round_up(end, mem::align_of::<*const TyDesc>()));
+        head.fill.set(end);
 
         unsafe {
             let buf = head.as_ptr();
