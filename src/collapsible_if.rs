@@ -18,8 +18,7 @@ use rustc::middle::def::*;
 use syntax::ast::*;
 use syntax::ptr::P;
 use syntax::codemap::{Span, Spanned, ExpnInfo};
-use syntax::print::pprust::{block_to_string, expr_to_string};
-use utils::{in_macro, span_help_and_lint};
+use utils::{in_macro, span_help_and_lint, snippet};
 
 declare_lint! {
     pub COLLAPSIBLE_IF,
@@ -50,8 +49,8 @@ fn check_expr_expd(cx: &Context, e: &Expr, info: Option<&ExpnInfo>) {
                 span_help_and_lint(cx, COLLAPSIBLE_IF, e.span,
                     "this if statement can be collapsed",
                     &format!("try\nif {} && {} {}",
-                             check_to_string(check), check_to_string(check_inner),
-                             block_to_string(&*content)));
+                             check_to_string(cx, check), check_to_string(cx, check_inner),
+                             snippet(cx, content.span, "..")));
             }
     }
 }
@@ -63,11 +62,11 @@ fn requires_brackets(e: &Expr) -> bool {
     }
 }
 
-fn check_to_string(e: &Expr) -> String {
+fn check_to_string(cx: &Context, e: &Expr) -> String {
     if requires_brackets(e) {
-        format!("({})", expr_to_string(e))
+        format!("({})", snippet(cx, e.span, ".."))
     } else {
-        format!("{}", expr_to_string(e))
+        format!("{}", snippet(cx, e.span, ".."))
     }
 }
 
