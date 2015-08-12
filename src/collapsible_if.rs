@@ -18,8 +18,8 @@ use rustc::middle::def::*;
 use syntax::ast::*;
 use syntax::ptr::P;
 use syntax::codemap::{Span, Spanned, ExpnInfo};
-use syntax::print::pprust::expr_to_string;
-use utils::{in_macro, span_lint};
+use syntax::print::pprust::{block_to_string, expr_to_string};
+use utils::{in_macro, span_help_and_lint};
 
 declare_lint! {
     pub COLLAPSIBLE_IF,
@@ -45,11 +45,13 @@ fn check_expr_expd(cx: &Context, e: &Expr, info: Option<&ExpnInfo>) {
     if in_macro(cx, info) { return; }
 
     if let ExprIf(ref check, ref then, None) = e.node {
-        if let Some(&Expr{ node: ExprIf(ref check_inner, _, None), ..}) =
+        if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), ..}) =
             single_stmt_of_block(then) {
-                span_lint(cx, COLLAPSIBLE_IF, e.span, &format!(
-                    "this if statement can be collapsed. Try: `if {} && {}`\n{:?}",
-                    check_to_string(check), check_to_string(check_inner), e));
+                span_help_and_lint(cx, COLLAPSIBLE_IF, e.span,
+                    "this if statement can be collapsed",
+                    &format!("try\nif {} && {} {}",
+                             check_to_string(check), check_to_string(check_inner),
+                             block_to_string(&*content)));
             }
     }
 }
