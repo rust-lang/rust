@@ -84,6 +84,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            unicode::ZERO_WIDTH_SPACE,
                                            unicode::NON_ASCII_LITERAL,
                                            strings::STRING_ADD_ASSIGN,
+                                           strings::STRING_ADD,
                                            returns::NEEDLESS_RETURN,
                                            misc::MODULO_ONE,
                                            methods::OPTION_UNWRAP_USED,
