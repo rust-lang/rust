@@ -472,6 +472,9 @@ fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn type_of_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, self_ty: Ty<'tcx>) -> Type {
-    let self_ty = type_of(ccx, self_ty).ptr_to();
-    Type::func(&[self_ty], &Type::void(ccx))
+    if type_is_sized(ccx.tcx(), self_ty) {
+        Type::func(&[type_of(ccx, self_ty).ptr_to()], &Type::void(ccx))
+    } else {
+        Type::func(&type_of(ccx, self_ty).field_types(), &Type::void(ccx))
+    }
 }
