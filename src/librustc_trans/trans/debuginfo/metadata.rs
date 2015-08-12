@@ -23,7 +23,6 @@ use super::{declare_local, VariableKind, VariableAccess};
 use llvm::{self, ValueRef};
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 
-use metadata::csearch;
 use middle::pat_util;
 use middle::subst::{self, Substs};
 use rustc::ast_map;
@@ -1686,13 +1685,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     fn get_enum_discriminant_name(cx: &CrateContext,
                                   def_id: ast::DefId)
                                   -> token::InternedString {
-        let name = if def_id.krate == ast::LOCAL_CRATE {
-            cx.tcx().map.get_path_elem(def_id.node).name()
-        } else {
-            csearch::get_item_path(cx.tcx(), def_id).last().unwrap().name()
-        };
-
-        name.as_str()
+        cx.tcx().item_name(def_id).as_str()
     }
 }
 

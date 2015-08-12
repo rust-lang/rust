@@ -12,12 +12,10 @@ use arena::TypedArena;
 use back::abi;
 use back::link;
 use llvm::{ValueRef, get_params};
-use metadata::csearch;
 use middle::subst::{Subst, Substs};
 use middle::subst::VecPerParamSpace;
 use middle::subst;
 use middle::traits;
-use rustc::ast_map;
 use trans::base::*;
 use trans::build::*;
 use trans::callee::*;
@@ -165,14 +163,8 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            tcx.item_path_str(trait_id),
            expr_id);
 
-    let mname = if method_id.krate == ast::LOCAL_CRATE {
-        match tcx.map.get(method_id.node) {
-            ast_map::NodeTraitItem(trait_item) => trait_item.ident.name,
-            _ => panic!("callee is not a trait method")
-        }
-    } else {
-        csearch::get_item_path(tcx, method_id).last().unwrap().name()
-    };
+    let mname = tcx.item_name(method_id);
+
     debug!("trans_static_method_callee: method_id={:?}, expr_id={}, \
             name={}", method_id, expr_id, mname);
 

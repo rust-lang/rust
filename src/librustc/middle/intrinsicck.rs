@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast_map::NodeForeignItem;
-use metadata::csearch;
 use middle::def::DefFn;
 use middle::subst::{Subst, Substs, EnumeratedItems};
 use middle::ty::{TransmuteRestriction, ctxt, TyBareFn};
@@ -57,21 +55,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
             ty::TyBareFn(_, ref bfty) => bfty.abi == RustIntrinsic,
             _ => return false
         };
-        if def_id.krate == ast::LOCAL_CRATE {
-            match self.tcx.map.get(def_id.node) {
-                NodeForeignItem(ref item) if intrinsic => {
-                    item.ident.name == "transmute"
-                }
-                _ => false,
-            }
-        } else {
-            match csearch::get_item_path(self.tcx, def_id).last() {
-                Some(ref last) if intrinsic => {
-                    last.name() == "transmute"
-                }
-                _ => false,
-            }
-        }
+        intrinsic && self.tcx.item_name(def_id) == "transmute"
     }
 
     fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>, id: ast::NodeId) {
