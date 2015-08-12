@@ -191,6 +191,45 @@ impl<T> Arc<T> {
         };
         Arc { _ptr: unsafe { NonZero::new(Box::into_raw(x)) } }
     }
+
+    /// Unwraps the contained value if the `Arc<T>` has only one strong reference.
+    /// This will succeed even if there are outstanding weak references.
+    ///
+    /// Otherwise, an `Err` is returned with the same `Arc<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    ///
+    /// let x = Arc::new(3);
+    /// assert_eq!(Arc::try_unwrap(x), Ok(3));
+    ///
+    /// let x = Arc::new(4);
+    /// let _y = x.clone();
+    /// assert_eq!(Arc::try_unwrap(x), Err(Arc::new(4)));
+    /// ```
+    #[inline]
+    #[unstable(feature = "arc_unwrap", reason = "was missing, so is technically new")]
+    pub fn try_unwrap(this: Arc<T>) -> Result<T, Arc<T>> {
+        // See `drop` for impl details
+        if self.inner().strong.compare_and_swap(1, 0, Release) != 1 { return Err(self) }
+
+        // ~~ magic ~~
+        atomic::fence(Acquire);
+
+        unsafe {
+            let ptr = *self._ptr;
+
+            let elem = ptr::read(&(*ptr).data);
+
+            if self.inner().weak.fetch_sub(1, Release) == 1 {
+                atomic::fence(Acquire);
+                deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
+            }
+            Ok(elem)
+        }
+    }
 }
 
 impl<T: ?Sized> Arc<T> {
@@ -883,6 +922,18 @@ mod tests {
         assert!(Arc::get_mut(&mut x).is_some());
         let _w = x.downgrade();
         assert!(Arc::get_mut(&mut x).is_none());
+    }
+
+    #[test]
+    fn try_unwrap() {
+        let x = Arc::new(3);
+        assert_eq!(Arc::try_unwrap(x), Ok(3));
+        let x = Arc::new(4);
+        let _y = x.clone();
+        assert_eq!(Arc::try_unwrap(x), Err(Arc::new(4)));
+        let x = Arc::new(5);
+        let _w = x.downgrade();
+        assert_eq!(Arc::try_unwrap(x), Ok(5));
     }
 
     #[test]
