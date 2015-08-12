@@ -6263,11 +6263,22 @@ pub mod funcs {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     pub mod bsd44 {
         use types::common::c95::{c_void};
-        use types::os::arch::c95::{c_uchar, c_int, c_ulong, size_t};
+        use types::os::arch::c95::{c_uchar, c_int, size_t};
+        #[cfg(not(feature = "cargo-build"))]
+        use types::os::arch::c95::c_ulong;
 
         extern {
             #[cfg(not(all(target_os = "android", target_arch = "aarch64")))]
             pub fn getdtablesize() -> c_int;
+
+            // Note that the correct signature of ioctl broke some crates on
+            // crates.io, so for now we keep the broken signature for crates.io
+            // but we fix it locally in the main Rust distribution. Once a new
+            // major version of libc is released on crates.io this #[cfg] should
+            // go away.
+            #[cfg(feature = "cargo-build")]
+            pub fn ioctl(fd: c_int, request: c_int, ...) -> c_int;
+            #[cfg(not(feature = "cargo-build"))]
             pub fn ioctl(fd: c_int, request: c_ulong, ...) -> c_int;
             pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int)
                            -> c_int;
