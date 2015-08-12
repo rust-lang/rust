@@ -240,11 +240,8 @@ similarly to the shuffles.
 
 ### Comparisons
 
-Comparisons are implemented via intrinsics, because the current
-comparison operator infrastructure doesn't easily lend itself to
-return vectors, as required.
-
-The raw signatures would look like:
+Comparisons are implemented via intrinsics. The raw signatures would
+look like:
 
 ```rust
 extern "platform-intrinsic" {
@@ -412,8 +409,6 @@ cfg_if_else! {
 - have 100% guaranteed type-safety for generic `#[repr(simd)]` types
   and the generic intrinsics. This would probably require a relatively
   complicated set of traits (with compiler integration).
-- use generic intrinsics like shuffles for the arithmetic operations,
-  instead of providing the operations implicitly.
 
 # Unresolved questions
 
