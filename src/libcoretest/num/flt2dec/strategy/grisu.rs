@@ -77,7 +77,11 @@ fn shortest_f64_hard_random_equivalence_test() {
 
 #[test]
 fn exact_sanity_test() {
-    f64_exact_sanity_test(format_exact);
+    // See comments in dragon.rs's exact_sanity_test for why this test is
+    // ignored on MSVC
+    if !cfg!(target_env = "msvc") {
+        f64_exact_sanity_test(format_exact);
+    }
     f32_exact_sanity_test(format_exact);
 }
 
