@@ -78,6 +78,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            attrs::INLINE_ALWAYS,
                                            collapsible_if::COLLAPSIBLE_IF,
                                            unicode::ZERO_WIDTH_SPACE,
+                                           unicode::NON_ASCII_LITERAL,
                                            strings::STRING_ADD_ASSIGN,
                                            returns::NEEDLESS_RETURN,
                                            misc::MODULO_ONE,
