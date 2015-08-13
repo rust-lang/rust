@@ -1,21 +1,21 @@
 % Installing Rust
 
 The first step to using Rust is to install it! There are a number of ways to
-install Rust, but the easiest is to use the `rustup` script. If you're on Linux
-or a Mac, all you need to do is this:
+install Rust, but the easiest is to use the `rustup` script. If we're on Linux
+or a Mac, all we need to do is this:
 
-> Note: you don't need to type in the `$`s, they just indicate the start of
-> each command. You’ll see many tutorials and examples around the web that
-> follow this convention: `$` for commands run as your regular user, and
-> `#` for commands you should be running as an administrator.
+> Note: we don't need to type in the `$`s, they just indicate the start of
+> each command. We’ll see many tutorials and examples around the web that
+> follow this convention: `$` for commands run as our regular user, and `#` for
+> commands we should be running as an administrator.
 
 ```bash
 $ curl -sf -L https://static.rust-lang.org/rustup.sh | sh
 ```
 
-If you're concerned about the [potential insecurity][insecurity] of using `curl
-| sh`, please keep reading and see our disclaimer below. And feel free to
-use a two-step version of the installation and examine our installation script:
+If we're concerned about the [potential insecurity][insecurity] of using `curl |
+sh`, please keep reading and see our disclaimer below. And feel free to use a
+two-step version of the installation and examine our installation script:
 
 ```bash
 $ curl -f -L https://static.rust-lang.org/rustup.sh -O
@@ -24,9 +24,9 @@ $ sh rustup.sh
 
 [insecurity]: http://curlpipesh.tumblr.com
 
-If you're on Windows, please download the appropriate [installer][install-page].
+If we're on Windows, please download the appropriate [installer][install-page].
 **NOTE:** By default, the Windows installer will not add Rust to the %PATH%
-system variable. If this is the only version of Rust you are installing and you
+system variable. If this is the only version of Rust we are installing and we
 want to be able to run it from the command line, click on "Advanced" on the
 install dialog and on the "Product Features" page ensure "Add to PATH" is
 installed on the local hard drive.
@@ -36,7 +36,7 @@ installed on the local hard drive.
 
 ## Uninstalling
 
-If you decide you don't want Rust anymore, we'll be a bit sad, but that's okay.
+If we decide we don't want Rust anymore, we'll be a bit sad, but that's okay.
 Not every programming language is great for everyone. Just run the uninstall
 script:
 
@@ -44,17 +44,17 @@ script:
 $ sudo /usr/local/lib/rustlib/uninstall.sh
 ```
 
-If you used the Windows installer, just re-run the `.msi` and it will give you
-an uninstall option.
+If we used the Windows installer, just re-run the `.msi` and it will give us an
+uninstall option.
 
 ## That disclaimer we promised
 
-Some people, and somewhat rightfully so, get very upset when we tell you to
-`curl | sh`. Basically, when you do this, you are trusting that the good
-people who maintain Rust aren't going to hack your computer and do bad things.
-That's a good instinct! If you're one of those people, please check out the
-documentation on [building Rust from Source][from-source], or [the official
-binary downloads][install-page].
+Some people, and somewhat rightfully so, get very upset when we tell them to
+`curl | sh`. Basically, when we do this, we are trusting that the good people
+who maintain Rust aren't going to hack our computer and do bad things. That's a
+good instinct! If we're one of those people, please check out the documentation
+on [building Rust from Source][from-source], or [the official binary
+downloads][install-page].
 
 [from-source]: https://github.com/rust-lang/rust#building-from-source
 
@@ -78,7 +78,7 @@ commit is tested against Windows just like any other platform.
 
 ## After installation
 
-If you've got Rust installed, you can open up a shell, and type this:
+If we've got Rust installed, we can open up a shell, and type this:
 
 ```bash
 $ rustc --version
@@ -93,17 +93,16 @@ variable. If it isn't, run the installer again, select "Change" on the "Change,
 repair, or remove installation" page and ensure "Add to PATH" is installed on
 the local hard drive.
 
-This installer also installs a copy of the documentation locally, so you can
-read it offline. On UNIX systems, `/usr/local/share/doc/rust` is the location.
-On Windows, it's in a `share/doc` directory, inside wherever you installed Rust
-to.
+This installer also installs a copy of the documentation locally, so we can read
+it offline. On UNIX systems, `/usr/local/share/doc/rust` is the location. On
+Windows, it's in a `share/doc` directory, inside the directory to which Rust was
+installed.
 
-If not, there are a number of places where you can get help. The easiest is
-[the #rust IRC channel on irc.mozilla.org][irc], which you can access through
-[Mibbit][mibbit]. Click that link, and you'll be chatting with other Rustaceans
-(a silly nickname we call ourselves), and we can help you out. Other great
-resources include [the user’s forum][users], and
-[Stack Overflow][stackoverflow].
+If not, there are a number of places where we can get help. The easiest is
+[the #rust IRC channel on irc.mozilla.org][irc], which we can access through
+[Mibbit][mibbit]. Click that link, and we'll be chatting with other Rustaceans
+(a silly nickname we call ourselves) who can help us out. Other great resources
+include [the user’s forum][users], and [Stack Overflow][stackoverflow].
 
 [irc]: irc://irc.mozilla.org/#rust
 [mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
