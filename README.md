@@ -38,8 +38,8 @@ redundant_closure    | warn    | using redundant closures, i.e. `|a| foo(a)` (wh
 result_unwrap_used   | allow   | using `Result.unwrap()`, which might be better handled
 single_match         | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
 str_to_string        | warn    | using `to_string()` on a str, which should be `to_owned()`
-string_add           | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
-string_add_assign    | allow   | expressions of the form `x = x + ..` where x is a `String`
+string_add           | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
+string_add_assign    | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
 string_to_string     | warn    | calling `String.to_string()` which is a no-op
 toplevel_ref_arg     | warn    | a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`)
 zero_width_space     | deny    | using a zero-width space in a string literal, which is confusing
