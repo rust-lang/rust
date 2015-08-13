@@ -50,6 +50,7 @@ use ptr;
 use mem;
 use mem::size_of;
 use marker::{Send, Sync, self};
+use num::wrapping::OverflowingOps;
 use raw::Repr;
 // Avoid conflicts with *both* the Slice trait (buggy) and the `slice::raw` module.
 use raw::Slice as RawSlice;
@@ -1180,6 +1181,34 @@ impl<'a, T> Iterator for Windows<'a, T> {
             (size, Some(size))
         }
     }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.size_hint().0
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        let (end, overflow) = self.size.overflowing_add(n);
+        if end > self.v.len() || overflow {
+            self.v = &[];
+            None
+        } else {
+            let nth = &self.v[n..end];
+            self.v = &self.v[n+1..];
+            Some(nth)
+        }
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        if self.size > self.v.len() {
+            None
+        } else {
+            let start = self.v.len() - self.size;
+            Some(&self.v[start..])
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1266,6 +1295,38 @@ impl<'a, T> Iterator for Chunks<'a, T> {
             (n, Some(n))
         }
     }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.size_hint().0
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        let (start, overflow) = n.overflowing_mul(self.size);
+        if start >= self.v.len() || overflow {
+            self.v = &[];
+            None
+        } else {
+            let end = match start.checked_add(self.size) {
+                Some(sum) => cmp::min(self.v.len(), sum),
+                None => self.v.len(),
+            };
+            let nth = &self.v[start..end];
+            self.v = &self.v[end..];
+            Some(nth)
+        }
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        if self.v.is_empty() {
+            None
+        } else {
+            let start = (self.v.len() - 1) / self.size * self.size;
+            Some(&self.v[start..])
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1344,6 +1405,40 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
             let rem = self.v.len() % self.chunk_size;
             let n = if rem > 0 { n + 1 } else { n };
             (n, Some(n))
+        }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.size_hint().0
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<&'a mut [T]> {
+        let (start, overflow) = n.overflowing_mul(self.chunk_size);
+        if start >= self.v.len() || overflow {
+            self.v = &mut [];
+            None
+        } else {
+            let end = match start.checked_add(self.chunk_size) {
+                Some(sum) => cmp::min(self.v.len(), sum),
+                None => self.v.len(),
+            };
+            let tmp = mem::replace(&mut self.v, &mut []);
+            let (head, tail) = tmp.split_at_mut(end);
+            let (_, nth) =  head.split_at_mut(start);
+            self.v = tail;
+            Some(nth)
+        }
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        if self.v.is_empty() {
+            None
+        } else {
+            let start = (self.v.len() - 1) / self.chunk_size * self.chunk_size;
+            Some(&mut self.v[start..])
         }
     }
 }
