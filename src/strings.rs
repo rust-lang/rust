@@ -14,13 +14,13 @@ use utils::{match_def_path, span_lint, walk_ptrs_ty, get_parent_expr};
 declare_lint! {
     pub STRING_ADD_ASSIGN,
     Allow,
-    "expressions of the form `x = x + ..` where x is a `String`"
+    "using `x = x + ..` where x is a `String`; suggests using `push_str()` instead"
 }
 
 declare_lint! {
     pub STRING_ADD,
     Allow,
-    "using `x = x + ..` where x is a `String`; suggests using `push_str()` instead"
+    "using `x + ..` where x is a `String`; suggests using `push_str()` instead"
 }
 
 #[derive(Copy, Clone)]
@@ -48,13 +48,13 @@ impl LintPass for StringAdd {
                 //TODO check for duplicates
                  span_lint(cx, STRING_ADD, e.span,
                         "you added something to a string. \
-                        Consider using `String::push_str()` instead.")
+                         Consider using `String::push_str()` instead")
             }
         } else if let &ExprAssign(ref target, ref  src) = &e.node {
             if is_string(cx, target) && is_add(src, target) {
                 span_lint(cx, STRING_ADD_ASSIGN, e.span,
                     "you assigned the result of adding something to this string. \
-                    Consider using `String::push_str()` instead.")
+                     Consider using `String::push_str()` instead")
             }
         }
     }

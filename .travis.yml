@@ -3,5 +3,6 @@ rust: nightly
 sudo: false
 
 script:
+ - python util/update_lints.py -c
  - cargo build
  - cargo test
