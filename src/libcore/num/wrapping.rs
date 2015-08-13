@@ -9,7 +9,8 @@
 // except according to those terms.
 
 #![allow(missing_docs)]
-#![unstable(feature = "wrapping", reason = "may be removed or relocated")]
+#![unstable(feature = "wrapping", reason = "may be removed or relocated",
+            issue = "27755")]
 
 use super::Wrapping;
 

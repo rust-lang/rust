@@ -230,7 +230,7 @@ impl<T:Copy> Cell<T> {
     /// let uc = unsafe { c.as_unsafe_cell() };
     /// ```
     #[inline]
-    #[unstable(feature = "as_unsafe_cell")]
+    #[unstable(feature = "as_unsafe_cell", issue = "27708")]
     pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
         &self.value
     }
@@ -278,7 +278,7 @@ pub struct RefCell<T: ?Sized> {
 
 /// An enumeration of values returned from the `state` method on a `RefCell<T>`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "borrow_state")]
+#[unstable(feature = "borrow_state", issue = "27733")]
 pub enum BorrowState {
     /// The cell is currently being read, there is at least one active `borrow`.
     Reading,
@@ -340,7 +340,7 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// The returned value can be dispatched on to determine if a call to
     /// `borrow` or `borrow_mut` would succeed.
-    #[unstable(feature = "borrow_state")]
+    #[unstable(feature = "borrow_state", issue = "27733")]
     #[inline]
     pub fn borrow_state(&self) -> BorrowState {
         match self.borrow.get() {
@@ -449,7 +449,7 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// This function is `unsafe` because `UnsafeCell`'s field is public.
     #[inline]
-    #[unstable(feature = "as_unsafe_cell")]
+    #[unstable(feature = "as_unsafe_cell", issue = "27708")]
     pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
         &self.value
     }
@@ -556,7 +556,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// with the widespread use of `r.borrow().clone()` to clone the contents of
     /// a `RefCell`.
     #[unstable(feature = "cell_extras",
-               reason = "likely to be moved to a method, pending language changes")]
+               reason = "likely to be moved to a method, pending language changes",
+               issue = "27746")]
     #[inline]
     pub fn clone(orig: &Ref<'b, T>) -> Ref<'b, T> {
         Ref {
@@ -585,7 +586,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// let b2: Ref<u32> = Ref::map(b1, |t| &t.0);
     /// assert_eq!(*b2, 5)
     /// ```
-    #[unstable(feature = "cell_extras", reason = "recently added")]
+    #[unstable(feature = "cell_extras", reason = "recently added",
+               issue = "27746")]
     #[inline]
     pub fn map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Ref<'b, U>
         where F: FnOnce(&T) -> &U
@@ -616,7 +618,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// let b2: Ref<u32> = Ref::filter_map(b1, |o| o.as_ref().ok()).unwrap();
     /// assert_eq!(*b2, 5)
     /// ```
-    #[unstable(feature = "cell_extras", reason = "recently added")]
+    #[unstable(feature = "cell_extras", reason = "recently added",
+               issue = "27746")]
     #[inline]
     pub fn filter_map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Option<Ref<'b, U>>
         where F: FnOnce(&T) -> Option<&U>
@@ -653,7 +656,8 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// }
     /// assert_eq!(*c.borrow(), (42, 'b'));
     /// ```
-    #[unstable(feature = "cell_extras", reason = "recently added")]
+    #[unstable(feature = "cell_extras", reason = "recently added",
+               issue = "27746")]
     #[inline]
     pub fn map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> RefMut<'b, U>
         where F: FnOnce(&mut T) -> &mut U
@@ -690,7 +694,8 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// }
     /// assert_eq!(*c.borrow(), Ok(42));
     /// ```
-    #[unstable(feature = "cell_extras", reason = "recently added")]
+    #[unstable(feature = "cell_extras", reason = "recently added",
+               issue = "27746")]
     #[inline]
     pub fn filter_map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> Option<RefMut<'b, U>>
         where F: FnOnce(&mut T) -> Option<&mut U>

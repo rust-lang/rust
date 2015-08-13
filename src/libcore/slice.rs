@@ -64,7 +64,8 @@ use raw::Slice as RawSlice;
 #[allow(missing_docs)] // docs in libcollections
 #[doc(hidden)]
 #[unstable(feature = "core_slice_ext",
-           reason = "stable interface provided by `impl [T]` in later crates")]
+           reason = "stable interface provided by `impl [T]` in later crates",
+           issue = "27701")]
 pub trait SliceExt {
     type Item;
 
@@ -797,7 +798,7 @@ impl<'a, T> Iter<'a, T> {
     ///
     /// This has the same lifetime as the original slice, and so the
     /// iterator can continue to be used while this exists.
-    #[unstable(feature = "iter_to_slice")]
+    #[unstable(feature = "iter_to_slice", issue = "27775")]
     pub fn as_slice(&self) -> &'a [T] {
         make_slice!(self.ptr, self.end)
     }
@@ -845,7 +846,7 @@ impl<'a, T> IterMut<'a, T> {
     /// to consume the iterator. Consider using the `Slice` and
     /// `SliceMut` implementations for obtaining slices with more
     /// restricted lifetimes that do not consume the iterator.
-    #[unstable(feature = "iter_to_slice")]
+    #[unstable(feature = "iter_to_slice", issue = "27775")]
     pub fn into_slice(self) -> &'a mut [T] {
         make_mut_slice!(self.ptr, self.end)
     }
@@ -1408,7 +1409,7 @@ impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
 //
 
 /// Converts a pointer to A into a slice of length 1 (without copying).
-#[unstable(feature = "ref_slice")]
+#[unstable(feature = "ref_slice", issue = "27774")]
 pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     unsafe {
         from_raw_parts(s, 1)
@@ -1416,7 +1417,7 @@ pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
 }
 
 /// Converts a pointer to A into a slice of length 1 (without copying).
-#[unstable(feature = "ref_slice")]
+#[unstable(feature = "ref_slice", issue = "27774")]
 pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     unsafe {
         from_raw_parts_mut(s, 1)
@@ -1478,7 +1479,8 @@ pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
 //
 
 /// Operations on `[u8]`.
-#[unstable(feature = "slice_bytes", reason = "needs review")]
+#[unstable(feature = "slice_bytes", reason = "needs review",
+           issue = "27740")]
 pub mod bytes {
     use ptr;
     use slice::SliceExt;

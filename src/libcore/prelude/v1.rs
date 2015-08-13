@@ -16,7 +16,8 @@
 
 #![unstable(feature = "core_prelude",
             reason = "the libcore prelude has not been scrutinized and \
-                      stabilized yet")]
+                      stabilized yet",
+            issue = "27701")]
 
 // Reexported core operators
 pub use marker::{Copy, Send, Sized, Sync};

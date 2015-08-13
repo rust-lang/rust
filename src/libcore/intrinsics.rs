@@ -42,7 +42,8 @@
 #![unstable(feature = "core_intrinsics",
             reason = "intrinsics are unlikely to ever be stabilized, instead \
                       they should be used through stabilized interfaces \
-                      in the rest of the standard library")]
+                      in the rest of the standard library",
+            issue = "0")]
 #![allow(missing_docs)]
 
 use marker::Sized;

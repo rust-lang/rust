@@ -91,7 +91,8 @@ use marker::{Reflect, Sized};
 pub trait Any: Reflect + 'static {
     /// Gets the `TypeId` of `self`.
     #[unstable(feature = "get_type_id",
-               reason = "this method will likely be replaced by an associated static")]
+               reason = "this method will likely be replaced by an associated static",
+               issue = "27745")]
     fn get_type_id(&self) -> TypeId;
 }
 

@@ -35,7 +35,8 @@
 //! warning.
 
 #![unstable(feature = "core_simd",
-            reason = "needs an RFC to flesh out the design")]
+            reason = "needs an RFC to flesh out the design",
+            issue = "27731")]
 
 #![allow(non_camel_case_types)]
 #![allow(missing_docs)]
