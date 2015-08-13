@@ -36,3 +36,19 @@ if x {
     \tz
     }".into(), false));
 }
+
+#[test]
+fn test_empty_line() {
+    assert_eq!("\
+if x {
+    y
+
+} else {
+    z
+}", trim_multiline("    if x {
+        y
+
+    } else {
+        z
+    }".into(), false));
+}
