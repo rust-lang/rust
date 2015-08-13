@@ -17,7 +17,7 @@
 #![allow(trivial_casts)]
 
 #![crate_name = "rustc_llvm"]
-#![unstable(feature = "rustc_private")]
+#![unstable(feature = "rustc_private", issue = "27812")]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
