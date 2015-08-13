@@ -222,11 +222,75 @@ fn neg_float_str(s: &InternedString) -> Cow<'static, str> {
     }
 }
 
+fn is_negative(ty: LitIntType) -> bool {
+    match ty {
+        SignedIntLit(_, sign) | UnsuffixedIntLit(sign) => sign == Minus,
+        UnsignedIntLit(_) => false,
+    }
+}
+
+fn unify_int_type(l: LitIntType, r: LitIntType, s: Sign) -> Option(LitIntType) {
+    match (l, r) {
+        (SignedIntLit(lty, _), SignedIntLit(rty, _)) => if lty == rty {
+            Some(SignedIntLit(lty, s)) } else { None },
+        (UnsignedIntLit(lty), UnsignedIntLit(rty)) =>
+            if Sign == Plus && lty == rty {
+                Some(UnsignedIntLit(lty))
+            } else { None },
+        (UnsuffixedIntLit(_), UnsuffixedIntLit(_)) => UnsuffixedIntLit(s),
+        (SignedIntLit(lty, _), UnsuffixedIntLit(_)) => SignedIntLit(lty, s),
+        (UnsignedIntLit(lty), UnsuffixedIntLit(rs)) => if rs == Plus {
+            Some(UnsignedIntLit(lty)) } else { None },
+        (UnsuffixedIntLit(_), SignedIntLit(rty, _)) => SignedIntLit(rty, s),
+        (UnsuffixedIntLit(ls), UnsignedIntLit(rty)) => if ls == Plus {
+            Some(UnsignedIntLit(rty)) } else { None },
+        _ => None,
+    }
+}
+
 fn constant_binop(cx: &Context, op: BinOp, left: &Expr, right: &Expr)
         -> Option<Constant> {
     match op.node {
-        //BiAdd,
-        //BiSub,
+        BiAdd => constant_binop_apply(cx, left, right, |l, r|
+            match (l, r) {
+                (ConstantByte(l8), ConstantByte(r8)) =>
+                    l8.checked_add(r8).map(|v| ConstantByte(v)),
+                (ConstantInt(l64, lty), ConstantInt(r64, rty)) => {
+                    let (ln, rn) = (is_negative(lty), is_negative(rty));
+                    if ln == rn {
+                        unify_int_type(lty, rty, if ln { Minus } else { Plus })
+                            .and_then(|ty| l64.checked_add(r64).map(
+                                |v| ConstantInt(v, ty)))
+                    } else {
+                        if ln {
+                            add_neg_int(r64, rty, l64, lty)
+                        } else {
+                            add_neg_int(l64, lty, r64, rty)
+                        }
+                    }
+                },
+                // TODO: float
+                _ => None
+            }),
+        BiSub => constant_binop_apply(cx, left, right, |l, r|
+            match (l, r) {
+                (ConstantByte(l8), ConstantByte(r8)) => if r8 > l8 {
+                    None } else { Some(ConstantByte(l8 - r8)) },
+                (ConstantInt(l64, lty), ConstantInt(r64, rty)) => {
+                    let (ln, rn) = (is_negative(lty), is_negative(rty));
+                    match (ln, rn) {
+                        (false, false) => sub_int(l64, lty, r64, rty, r64 > l64),
+                        (true, true) => sub_int(l64, lty, r64, rty, l64 > r64),
+                        (true, false) => unify_int_type(lty, rty, Minus)
+                            .and_then(|ty| l64.checked_add(r64).map(
+                                |v| ConstantInt(v, ty))),
+                        (false, true) => unify_int_type(lty, rty, Plus)
+                            .and_then(|ty| l64.checked_add(r64).map(
+                                |v| ConstantInt(v, ty))),
+                    }
+                },
+                _ => None,
+            }),
         //BiMul,
         //BiDiv,
         //BiRem,
@@ -245,6 +309,21 @@ fn constant_binop(cx: &Context, op: BinOp, left: &Expr, right: &Expr)
         //BiGt,
         _ => None,
     }
+}
+
+fn add_neg_int(pos: u64, pty: LitIntType, neg: u64, nty: LitIntType) ->
+        Some(Constant) {
+    if neg > pos {
+        unify_int_type(nty, pty, Minus).map(|ty| ConstantInt(neg - pos, ty))
+    } else {
+        unify_int_type(nty, pty, Plus).map(|ty| ConstantInt(pos - neg, ty))
+    }
+}
+
+fn sub_int(l: u64, lty: LitIntType, r: u64, rty: LitIntType, neg: Bool) ->
+        Option<Constant> {
+     unify_int_type(lty, rty, if neg { Minus } else { Plus }).and_then(
+        |ty| l64.checked_sub(r64).map(|v| ConstantInt(v, ty)))
 }
 
 fn constant_binop_apply<F>(cx: &Context, left: &Expr, right: &Expr, op: F)
