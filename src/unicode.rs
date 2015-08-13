@@ -27,11 +27,11 @@ fn check_str(cx: &Context, string: &str, span: Span) {
     for (i, c) in string.char_indices() {
         if c == '\u{200B}' {
             str_pos_lint(cx, ZERO_WIDTH_SPACE, span, i,
-                         "zero-width space detected. Consider using `\\u{200B}`.");
+                         "zero-width space detected. Consider using `\\u{200B}`");
         }
         if c as u32 > 0x7F {
             str_pos_lint(cx, NON_ASCII_LITERAL, span, i, &format!(
-                "literal non-ASCII character detected. Consider using `\\u{{{:X}}}`.", c as u32));
+                "literal non-ASCII character detected. Consider using `\\u{{{:X}}}`", c as u32));
         }
     }
 }

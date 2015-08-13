@@ -51,7 +51,7 @@ impl LintPass for EtaPass {
                         }
                     }
                     span_lint(cx, REDUNDANT_CLOSURE, expr.span,
-                                 &format!("redundant closure found. Consider using `{}` in its place.",
+                                 &format!("redundant closure found. Consider using `{}` in its place",
                                           expr_to_string(caller))[..])
                 }
             }

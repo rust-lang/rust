@@ -61,9 +61,9 @@ fn check_ptr_subtype(cx: &Context, span: Span, ty: &Ty) {
         &["String"]).map_or((), |_| {
             span_lint(cx, PTR_ARG, span,
                       "writing `&String` instead of `&str` involves a new object \
-                       where a slice will do. Consider changing the type to `&str`.")
+                       where a slice will do. Consider changing the type to `&str`")
         }), |_| span_lint(cx, PTR_ARG, span,
                           "writing `&Vec<_>` instead of \
                            `&[_]` involves one more reference and cannot be used with \
-                           non-Vec-based slices. Consider changing the type to `&[...]`."))
+                           non-Vec-based slices. Consider changing the type to `&[...]`"))
 }
