@@ -36,11 +36,18 @@ unsafe impl<T: Send> Sync for ReentrantMutex<T> {}
 /// dropped (falls out of scope), the lock will be unlocked.
 ///
 /// The data protected by the mutex can be accessed through this guard via its
-/// Deref and DerefMut implementations
+/// Deref implementation.
+///
+/// # Mutability
+///
+/// Unlike `MutexGuard`, `ReentrantMutexGuard` does not implement `DerefMut`,
+/// because implementation of the trait would violate Rust’s reference aliasing
+/// rules. Use interior mutability (usually `RefCell`) in order to mutate the
+/// guarded data.
 #[must_use]
 pub struct ReentrantMutexGuard<'a, T: 'a> {
-    // funny underscores due to how Deref/DerefMut currently work (they
-    // disregard field privacy).
+    // funny underscores due to how Deref currently works (it disregards field
+    // privacy).
     __lock: &'a ReentrantMutex<T>,
     __poison: poison::Guard,
 }
