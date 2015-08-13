@@ -18,7 +18,8 @@ Core encoding and decoding interfaces.
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "serialize"]
 #![unstable(feature = "rustc_private",
-            reason = "deprecated in favor of rustc-serialize on crates.io")]
+            reason = "deprecated in favor of rustc-serialize on crates.io",
+            issue = "27812")]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

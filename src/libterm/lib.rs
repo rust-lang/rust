@@ -45,7 +45,8 @@
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "term"]
 #![unstable(feature = "rustc_private",
-            reason = "use the crates.io `term` library instead")]
+            reason = "use the crates.io `term` library instead",
+            issue = "27812")]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
