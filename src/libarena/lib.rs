@@ -46,6 +46,7 @@ use std::intrinsics;
 use std::marker::{PhantomData, Send};
 use std::mem;
 use std::ptr;
+use std::slice;
 
 use alloc::heap;
 use alloc::raw_vec::RawVec;
@@ -122,9 +123,8 @@ impl Chunk {
 /// plain-old-data (`Copy` types) and means we don't need to waste time running
 /// their destructors.
 pub struct Arena<'longer_than_self> {
-    // The head is separated out from the list as a unbenchmarked
-    // microoptimization, to avoid needing to case on the list to access the
-    // head.
+    // The heads are separated out from the list as a unbenchmarked
+    // microoptimization, to avoid needing to case on the list to access a head.
     head: RefCell<Chunk>,
     copy_head: RefCell<Chunk>,
     chunks: RefCell<Vec<Chunk>>,
@@ -329,6 +329,37 @@ impl<'longer_than_self> Arena<'longer_than_self> {
             }
         }
     }
+
+    /// Allocates a slice of bytes of requested length. The bytes are not guaranteed to be zero
+    /// if the arena has previously been cleared.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the requested length is too large and causes overflow.
+    pub fn alloc_bytes(&self, len: usize) -> &mut [u8] {
+        unsafe {
+            // Check for overflow.
+            self.copy_head.borrow().fill.get().checked_add(len).expect("length overflow");
+            let ptr = self.alloc_copy_inner(len, 1);
+            intrinsics::assume(!ptr.is_null());
+            slice::from_raw_parts_mut(ptr as *mut _, len)
+        }
+    }
+
+    /// Clears the arena. Deallocates all but the longest chunk which may be reused.
+    pub fn clear(&mut self) {
+        unsafe {
+            self.head.borrow().destroy();
+            self.head.borrow().fill.set(0);
+            self.copy_head.borrow().fill.set(0);
+            for chunk in self.chunks.borrow().iter() {
+                if !chunk.is_copy.get() {
+                    chunk.destroy();
+                }
+            }
+            self.chunks.borrow_mut().clear();
+        }
+    }
 }
 
 #[test]
@@ -495,6 +526,45 @@ impl<T> TypedArena<T> {
             }
         }
     }
+    /// Clears the arena. Deallocates all but the longest chunk which may be reused.
+    pub fn clear(&mut self) {
+        unsafe {
+            // Clear the last chunk, which is partially filled.
+            let mut chunks_borrow = self.chunks.borrow_mut();
+            let last_idx = chunks_borrow.len() - 1;
+            self.clear_last_chunk(&mut chunks_borrow[last_idx]);
+            // If `T` is ZST, code below has no effect.
+            for mut chunk in chunks_borrow.drain(..last_idx) {
+                let cap = chunk.storage.cap();
+                chunk.destroy(cap);
+            }
+        }
+    }
+
+    // Drops the contents of the last chunk. The last chunk is partially empty, unlike all other
+    // chunks.
+    fn clear_last_chunk(&self, last_chunk: &mut TypedArenaChunk<T>) {
+        // Determine how much was filled.
+        let start = last_chunk.start() as usize;
+        // We obtain the value of the pointer to the first uninitialized element.
+        let end = self.ptr.get() as usize;
+        // We then calculate the number of elements to be dropped in the last chunk,
+        // which is the filled area's length.
+        let diff = if mem::size_of::<T>() == 0 {
+            // `T` is ZST. It can't have a drop flag, so the value here doesn't matter. We get
+            // the number of zero-sized values in the last and only chunk, just out of caution.
+            // Recall that `end` was incremented for each allocated value.
+            end - start
+        } else {
+            (end - start) / mem::size_of::<T>()
+        };
+        // Pass that to the `destroy` method.
+        unsafe {
+            last_chunk.destroy(diff);
+        }
+        // Reset the chunk.
+        self.ptr.set(last_chunk.start());
+    }
 }
 
 impl<T> Drop for TypedArena<T> {
@@ -504,24 +574,14 @@ impl<T> Drop for TypedArena<T> {
             // Determine how much was filled.
             let mut chunks_borrow = self.chunks.borrow_mut();
             let mut last_chunk = chunks_borrow.pop().unwrap();
-            let start = last_chunk.start() as usize;
-            let end = self.ptr.get() as usize;
-            let diff = if mem::size_of::<T>() == 0 {
-                // Avoid division by zero.
-                end - start
-            } else {
-                (end - start) / mem::size_of::<T>()
-            };
-
-            // Pass that to the `destroy` method.
-            last_chunk.destroy(diff);
-            // Destroy this chunk.
-            let _: RawVec<T> = mem::transmute(last_chunk);
-
+            // Drop the contents of the last chunk.
+            self.clear_last_chunk(&mut last_chunk);
+            // The last chunk will be dropped. Destroy all other chunks.
             for chunk in chunks_borrow.iter_mut() {
                 let cap = chunk.storage.cap();
                 chunk.destroy(cap);
             }
+            // RawVec handles deallocation of `last_chunk` and `self.chunks`.
         }
     }
 }
@@ -533,6 +593,7 @@ mod tests {
     extern crate test;
     use self::test::Bencher;
     use super::{Arena, TypedArena};
+    use std::rc::Rc;
 
     #[allow(dead_code)]
     struct Point {
@@ -667,10 +728,74 @@ mod tests {
     }
 
     #[test]
-    pub fn test_zero_sized() {
+    pub fn test_typed_arena_zero_sized() {
         let arena = TypedArena::new();
         for _ in 0..100000 {
             arena.alloc(());
+        }
+    }
+
+    #[test]
+    pub fn test_arena_zero_sized() {
+        let arena = Arena::new();
+        for _ in 0..1000 {
+            for _ in 0..100 {
+                arena.alloc(|| ());
+            }
+            arena.alloc(|| Point {
+                x: 1,
+                y: 2,
+                z: 3,
+            });
+        }
+    }
+
+    #[test]
+    pub fn test_typed_arena_clear() {
+        let mut arena = TypedArena::new();
+        for _ in 0..10 {
+            arena.clear();
+            for _ in 0..10000 {
+                arena.alloc(Point {
+                    x: 1,
+                    y: 2,
+                    z: 3,
+                });
+            }
+        }
+    }
+
+    #[test]
+    pub fn test_arena_clear() {
+        let mut arena = Arena::new();
+        for _ in 0..10 {
+            arena.clear();
+            for _ in 0..10000 {
+                arena.alloc(|| Point {
+                    x: 1,
+                    y: 2,
+                    z: 3,
+                });
+                arena.alloc(|| Noncopy {
+                    string: "hello world".to_string(),
+                    array: vec![],
+                });
+            }
+        }
+    }
+
+    #[test]
+    pub fn test_arena_alloc_bytes() {
+        let arena = Arena::new();
+        for i in 0..10000 {
+            arena.alloc(|| Point {
+                x: 1,
+                y: 2,
+                z: 3,
+            });
+            for byte in arena.alloc_bytes(i % 42).iter_mut() {
+                *byte = i as u8;
+            }
         }
     }
 }
