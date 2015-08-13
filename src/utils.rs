@@ -51,6 +51,44 @@ pub fn snippet<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, str> {
     cx.sess().codemap().span_to_snippet(span).map(From::from).unwrap_or(Cow::Borrowed(default))
 }
 
+/// convert a span (from a block) to a code snippet if available, otherwise use default, e.g.
+/// `snippet(cx, expr.span, "..")`
+/// This trims the code of indentation, except for the first line
+/// Use it for blocks or block-like things which need to be printed as such
+pub fn snippet_block<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, str> {
+    let snip = snippet(cx, span, default);
+    trim_multiline(snip, true)
+}
+
+/// Trim indentation from a multiline string
+/// with possibility of ignoring the first line
+pub fn trim_multiline(s: Cow<str>, ignore_first: bool) -> Cow<str> {
+    let s = trim_multiline_inner(s, ignore_first, ' ');
+    let s = trim_multiline_inner(s, ignore_first, '\t');
+    trim_multiline_inner(s, ignore_first, ' ')
+}
+
+fn trim_multiline_inner(s: Cow<str>, ignore_first: bool, ch: char) -> Cow<str> {
+    let x = s.lines().skip(ignore_first as usize)
+             .filter_map(|l| { if l.len() > 0 { // ignore empty lines
+                                Some(l.char_indices()
+                                      .find(|&(_,x)| x != ch)
+                                      .unwrap_or((l.len(), ch)).0)
+                               } else {None}})
+             .min().unwrap_or(0);
+    if x > 0 {
+        Cow::Owned(s.lines().enumerate().map(|(i,l)| if (ignore_first && i == 0) ||
+                                                         l.len() == 0 {
+                                                        l
+                                                     } else {
+                                                        l.split_at(x).1
+                                                     }).collect::<Vec<_>>()
+                                       .join("\n"))
+    } else {
+        s
+    }
+}
+
 /// get a parent expr if any – this is useful to constrain a lint
 pub fn get_parent_expr<'c>(cx: &'c Context, e: &Expr) -> Option<&'c Expr> {
     let map = &cx.tcx.map;
