@@ -23,7 +23,6 @@ pub use self::FloatTy::*;
 pub use self::FunctionRetTy::*;
 pub use self::ForeignItem_::*;
 pub use self::ImplItem_::*;
-pub use self::InlinedItem::*;
 pub use self::IntTy::*;
 pub use self::Item_::*;
 pub use self::KleeneOp::*;
@@ -1923,17 +1922,6 @@ impl ForeignItem_ {
             ForeignItemStatic(..) => "foreign static item"
         }
     }
-}
-
-/// The data we save and restore about an inlined item or method.  This is not
-/// part of the AST that we parse from a file, but it becomes part of the tree
-/// that we trans.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum InlinedItem {
-    IIItem(P<Item>),
-    IITraitItem(DefId /* impl id */, P<TraitItem>),
-    IIImplItem(DefId /* impl id */, P<ImplItem>),
-    IIForeign(P<ForeignItem>),
 }
 
 /// A macro definition, in this crate or imported from another.

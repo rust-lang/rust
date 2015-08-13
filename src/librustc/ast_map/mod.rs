@@ -12,6 +12,8 @@ pub use self::Node::*;
 pub use self::PathElem::*;
 use self::MapEntry::*;
 
+use metadata::inline::InlinedItem;
+use metadata::inline::InlinedItem as II;
 use syntax::abi;
 use syntax::ast::*;
 use syntax::ast_util;
@@ -374,8 +376,8 @@ impl<'ast> Map<'ast> {
     pub fn get_parent_did(&self, id: NodeId) -> DefId {
         let parent = self.get_parent(id);
         match self.find_entry(parent) {
-            Some(RootInlinedParent(&InlinedParent {ii: IITraitItem(did, _), ..})) => did,
-            Some(RootInlinedParent(&InlinedParent {ii: IIImplItem(did, _), ..})) => did,
+            Some(RootInlinedParent(&InlinedParent {ii: II::TraitItem(did, _), ..})) => did,
+            Some(RootInlinedParent(&InlinedParent {ii: II::ImplItem(did, _), ..})) => did,
             _ => ast_util::local_def(parent)
         }
     }
@@ -967,16 +969,16 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
                                           -> &'ast InlinedItem {
     let mut fld = IdAndSpanUpdater { fold_ops: fold_ops };
     let ii = match ii {
-        IIItem(i) => IIItem(fld.fold_item(i).expect_one("expected one item")),
-        IITraitItem(d, ti) => {
-            IITraitItem(fld.fold_ops.new_def_id(d),
-                        fld.fold_trait_item(ti).expect_one("expected one trait item"))
+        II::Item(i) => II::Item(fld.fold_item(i).expect_one("expected one item")),
+        II::TraitItem(d, ti) => {
+            II::TraitItem(fld.fold_ops.new_def_id(d),
+                          fld.fold_trait_item(ti).expect_one("expected one trait item"))
         }
-        IIImplItem(d, ii) => {
-            IIImplItem(fld.fold_ops.new_def_id(d),
-                       fld.fold_impl_item(ii).expect_one("expected one impl item"))
+        II::ImplItem(d, ii) => {
+            II::ImplItem(fld.fold_ops.new_def_id(d),
+                         fld.fold_impl_item(ii).expect_one("expected one impl item"))
         }
-        IIForeign(i) => IIForeign(fld.fold_foreign_item(i))
+        II::Foreign(i) => II::Foreign(fld.fold_foreign_item(i))
     };
 
     let ii_parent = map.forest.inlined_items.alloc(InlinedParent {
@@ -990,20 +992,20 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
         parent_node: ii_parent_id,
     };
     collector.insert_entry(ii_parent_id, RootInlinedParent(ii_parent));
-    visit::walk_inlined_item(&mut collector, &ii_parent.ii);
+    ii_parent.ii.visit(&mut collector);
 
     // Methods get added to the AST map when their impl is visited.  Since we
     // don't decode and instantiate the impl, but just the method, we have to
     // add it to the table now. Likewise with foreign items.
     match ii_parent.ii {
-        IIItem(_) => {}
-        IITraitItem(_, ref ti) => {
+        II::Item(_) => {}
+        II::TraitItem(_, ref ti) => {
             collector.insert(ti.id, NodeTraitItem(ti));
         }
-        IIImplItem(_, ref ii) => {
+        II::ImplItem(_, ref ii) => {
             collector.insert(ii.id, NodeImplItem(ii));
         }
-        IIForeign(ref i) => {
+        II::Foreign(ref i) => {
             collector.insert(i.id, NodeForeignItem(i));
         }
     }

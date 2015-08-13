@@ -19,3 +19,4 @@ pub mod csearch;
 pub mod loader;
 pub mod filesearch;
 pub mod macro_import;
+pub mod inline;
