@@ -214,21 +214,21 @@ impl<T> [T] {
     }
 
     /// Returns the first and all the rest of the elements of a slice.
-    #[unstable(feature = "slice_splits", reason = "new API")]
+    #[unstable(feature = "slice_splits", reason = "new API", issue = "27742")]
     #[inline]
     pub fn split_first(&self) -> Option<(&T, &[T])> {
         core_slice::SliceExt::split_first(self)
     }
 
     /// Returns the first and all the rest of the elements of a slice.
-    #[unstable(feature = "slice_splits", reason = "new API")]
+    #[unstable(feature = "slice_splits", reason = "new API", issue = "27742")]
     #[inline]
     pub fn split_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
         core_slice::SliceExt::split_first_mut(self)
     }
 
     /// Returns the last and all the rest of the elements of a slice.
-    #[unstable(feature = "slice_splits", reason = "new API")]
+    #[unstable(feature = "slice_splits", reason = "new API", issue = "27742")]
     #[inline]
     pub fn split_last(&self) -> Option<(&T, &[T])> {
         core_slice::SliceExt::split_last(self)
@@ -236,7 +236,7 @@ impl<T> [T] {
     }
 
     /// Returns the last and all the rest of the elements of a slice.
-    #[unstable(feature = "slice_splits", since = "1.3.0")]
+    #[unstable(feature = "slice_splits", reason = "new API", issue = "27742")]
     #[inline]
     pub fn split_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
         core_slice::SliceExt::split_last_mut(self)
@@ -785,7 +785,7 @@ impl<T> [T] {
     /// assert!(dst.clone_from_slice(&src2) == 3);
     /// assert!(dst == [3, 4, 5]);
     /// ```
-    #[unstable(feature = "clone_from_slice")]
+    #[unstable(feature = "clone_from_slice", issue = "27750")]
     pub fn clone_from_slice(&mut self, src: &[T]) -> usize where T: Clone {
         core_slice::SliceExt::clone_from_slice(self, src)
     }
@@ -811,11 +811,13 @@ impl<T> [T] {
 // Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
 #[unstable(feature = "slice_concat_ext",
-           reason = "trait should not have to exist")]
+           reason = "trait should not have to exist",
+           issue = "27747")]
 /// An extension trait for concatenating slices
 pub trait SliceConcatExt<T: ?Sized> {
     #[unstable(feature = "slice_concat_ext",
-               reason = "trait should not have to exist")]
+               reason = "trait should not have to exist",
+               issue = "27747")]
     /// The resulting type after concatenation
     type Output;
 

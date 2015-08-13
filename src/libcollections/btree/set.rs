@@ -101,7 +101,8 @@ impl<T: Ord> BTreeSet<T> {
     ///
     /// B cannot be less than 2.
     #[unstable(feature = "btree_b",
-               reason = "probably want this to be on the type, eventually")]
+               reason = "probably want this to be on the type, eventually",
+               issue = "27795")]
     pub fn with_b(b: usize) -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::with_b(b) }
     }
@@ -154,7 +155,8 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(Some(&5), set.range(Included(&4), Unbounded).next());
     /// ```
     #[unstable(feature = "btree_range",
-               reason = "matches collection reform specification, waiting for dust to settle")]
+               reason = "matches collection reform specification, waiting for dust to settle",
+               issue = "27787")]
     pub fn range<'a, Min: ?Sized + Ord = T, Max: ?Sized + Ord = T>(&'a self, min: Bound<&Min>,
                                                                    max: Bound<&Max>)
         -> Range<'a, T> where

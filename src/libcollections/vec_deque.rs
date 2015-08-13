@@ -467,7 +467,8 @@ impl<T> VecDeque<T> {
     /// assert_eq!(Some(&5), buf.get(0));
     /// ```
     #[unstable(feature = "deque_extras",
-               reason = "matches collection reform specification; waiting on panic semantics")]
+               reason = "matches collection reform specification; waiting on panic semantics",
+               issue = "27788")]
     pub fn truncate(&mut self, len: usize) {
         for _ in len..self.len() {
             self.pop_back();
@@ -528,7 +529,8 @@ impl<T> VecDeque<T> {
     /// `VecDeque`.
     #[inline]
     #[unstable(feature = "deque_extras",
-               reason = "matches collection reform specification, waiting for dust to settle")]
+               reason = "matches collection reform specification, waiting for dust to settle",
+               issue = "27788")]
     pub fn as_slices(&self) -> (&[T], &[T]) {
         unsafe {
             let contiguous = self.is_contiguous();
@@ -548,7 +550,8 @@ impl<T> VecDeque<T> {
     /// `VecDeque`.
     #[inline]
     #[unstable(feature = "deque_extras",
-               reason = "matches collection reform specification, waiting for dust to settle")]
+               reason = "matches collection reform specification, waiting for dust to settle",
+               issue = "27788")]
     pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
         unsafe {
             let contiguous = self.is_contiguous();
@@ -615,7 +618,8 @@ impl<T> VecDeque<T> {
     /// ```
     #[inline]
     #[unstable(feature = "drain",
-               reason = "matches collection reform specification, waiting for dust to settle")]
+               reason = "matches collection reform specification, waiting for dust to settle",
+               issue = "27711")]
     pub fn drain(&mut self) -> Drain<T> {
         Drain {
             inner: self,
@@ -864,7 +868,8 @@ impl<T> VecDeque<T> {
     /// assert_eq!(buf[1], 2);
     /// ```
     #[unstable(feature = "deque_extras",
-               reason = "the naming of this function may be altered")]
+               reason = "the naming of this function may be altered",
+               issue = "27788")]
     pub fn swap_back_remove(&mut self, index: usize) -> Option<T> {
         let length = self.len();
         if length > 0 && index < length - 1 {
@@ -901,7 +906,8 @@ impl<T> VecDeque<T> {
     /// assert_eq!(buf[1], 1);
     /// ```
     #[unstable(feature = "deque_extras",
-               reason = "the naming of this function may be altered")]
+               reason = "the naming of this function may be altered",
+               issue = "27788")]
     pub fn swap_front_remove(&mut self, index: usize) -> Option<T> {
         let length = self.len();
         if length > 0 && index < length && index != 0 {
@@ -1311,7 +1317,8 @@ impl<T> VecDeque<T> {
     /// ```
     #[inline]
     #[unstable(feature = "split_off",
-               reason = "new API, waiting for dust to settle")]
+               reason = "new API, waiting for dust to settle",
+               issue = "27766")]
     pub fn split_off(&mut self, at: usize) -> Self {
         let len = self.len();
         assert!(at <= len, "`at` out of bounds");
@@ -1375,7 +1382,8 @@ impl<T> VecDeque<T> {
     /// ```
     #[inline]
     #[unstable(feature = "append",
-               reason = "new API, waiting for dust to settle")]
+               reason = "new API, waiting for dust to settle",
+               issue = "27765")]
     pub fn append(&mut self, other: &mut Self) {
         // naive impl
         self.extend(other.drain());
@@ -1402,7 +1410,8 @@ impl<T> VecDeque<T> {
     /// assert_eq!(&v[..], &[2, 4]);
     /// ```
     #[unstable(feature = "vec_deque_retain",
-               reason = "new API, waiting for dust to settle")]
+               reason = "new API, waiting for dust to settle",
+               issue = "27767")]
     pub fn retain<F>(&mut self, mut f: F) where F: FnMut(&T) -> bool {
         let len = self.len();
         let mut del = 0;
@@ -1441,7 +1450,8 @@ impl<T: Clone> VecDeque<T> {
     /// }
     /// ```
     #[unstable(feature = "deque_extras",
-               reason = "matches collection reform specification; waiting on panic semantics")]
+               reason = "matches collection reform specification; waiting on panic semantics",
+               issue = "27788")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
 
@@ -1610,7 +1620,8 @@ impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// A draining VecDeque iterator
 #[unstable(feature = "drain",
-           reason = "matches collection reform specification, waiting for dust to settle")]
+           reason = "matches collection reform specification, waiting for dust to settle",
+           issue = "27711")]
 pub struct Drain<'a, T: 'a> {
     inner: &'a mut VecDeque<T>,
 }

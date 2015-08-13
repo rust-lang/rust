@@ -384,7 +384,8 @@ impl<T> Vec<T> {
     /// Equivalent to `&s[..]`.
     #[inline]
     #[unstable(feature = "convert",
-               reason = "waiting on RFC revision")]
+               reason = "waiting on RFC revision",
+               issue = "27729")]
     pub fn as_slice(&self) -> &[T] {
         self
     }
@@ -394,7 +395,8 @@ impl<T> Vec<T> {
     /// Equivalent to `&mut s[..]`.
     #[inline]
     #[unstable(feature = "convert",
-               reason = "waiting on RFC revision")]
+               reason = "waiting on RFC revision",
+               issue = "27729")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         &mut self[..]
     }
@@ -622,7 +624,8 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[unstable(feature = "append",
-               reason = "new API, waiting for dust to settle")]
+               reason = "new API, waiting for dust to settle",
+               issue = "27765")]
     pub fn append(&mut self, other: &mut Self) {
         self.reserve(other.len());
         let len = self.len();
@@ -661,7 +664,8 @@ impl<T> Vec<T> {
     /// assert_eq!(u, &[1, 2, 3]);
     /// ```
     #[unstable(feature = "drain",
-               reason = "recently added, matches RFC")]
+               reason = "recently added, matches RFC",
+               issue = "27711")]
     pub fn drain<R>(&mut self, range: R) -> Drain<T> where R: RangeArgument<usize> {
         // Memory safety
         //
@@ -762,7 +766,8 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[unstable(feature = "split_off",
-               reason = "new API, waiting for dust to settle")]
+               reason = "new API, waiting for dust to settle",
+               issue = "27766")]
     pub fn split_off(&mut self, at: usize) -> Self {
         assert!(at <= self.len(), "`at` out of bounds");
 
@@ -804,7 +809,8 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     #[unstable(feature = "vec_resize",
-               reason = "matches collection reform specification; waiting for dust to settle")]
+               reason = "matches collection reform specification; waiting for dust to settle",
+               issue = "27790")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
 
@@ -854,7 +860,8 @@ impl<T: Clone> Vec<T> {
     /// ```
     #[inline]
     #[unstable(feature = "vec_push_all",
-               reason = "likely to be replaced by a more optimized extend")]
+               reason = "likely to be replaced by a more optimized extend",
+               issue = "27744")]
     pub fn push_all(&mut self, other: &[T]) {
         self.reserve(other.len());
 
@@ -1495,7 +1502,7 @@ impl<T> Drop for IntoIter<T> {
 }
 
 /// A draining iterator for `Vec<T>`.
-#[unstable(feature = "drain", reason = "recently added")]
+#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
 pub struct Drain<'a, T: 'a> {
     /// Index of tail to preserve
     tail_start: usize,
