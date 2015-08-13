@@ -72,13 +72,12 @@ impl LintPass for LoopsPass {
 
 /// Recover the essential nodes of a desugared for loop:
 /// `for pat in arg { body }` becomes `(pat, arg, body)`.
-fn recover_for_loop<'a>(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
+fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
     if_let_chain! {
         [
             let ExprMatch(ref iterexpr, ref arms, _) = expr.node,
             let ExprCall(_, ref iterargs) = iterexpr.node,
-            iterargs.len() == 1,
-            arms.len() == 1 && arms[0].guard.is_none(),
+            iterargs.len() == 1 && arms.len() == 1 && arms[0].guard.is_none(),
             let ExprLoop(ref block, _) = arms[0].body.node,
             block.stmts.is_empty(),
             let Some(ref loopexpr) = block.expr,

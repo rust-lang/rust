@@ -45,8 +45,12 @@ fn check_expr_expd(cx: &Context, e: &Expr, info: Option<&ExpnInfo>) {
     if in_macro(cx, info) { return; }
 
     if let ExprIf(ref check, ref then, None) = e.node {
-        if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), ..}) =
+        if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), span: sp, ..}) =
             single_stmt_of_block(then) {
+                if e.span.expn_id != sp.expn_id {
+                    return;
+                }
+                cx.sess().note(&format!("{:?} -- {:?}", e.span, sp));
                 span_help_and_lint(cx, COLLAPSIBLE_IF, e.span,
                     "this if statement can be collapsed",
                     &format!("try\nif {} && {} {}",
