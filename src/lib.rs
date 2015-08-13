@@ -32,6 +32,7 @@ pub mod unicode;
 pub mod strings;
 pub mod methods;
 pub mod returns;
+pub mod lifetimes;
 pub mod loops;
 
 #[plugin_registrar]
@@ -61,6 +62,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box methods::MethodsPass as LintPassObject);
     reg.register_lint_pass(box types::LetPass as LintPassObject);
     reg.register_lint_pass(box loops::LoopsPass as LintPassObject);
+    reg.register_lint_pass(box lifetimes::LifetimePass as LintPassObject);
 
     reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
                                            misc::SINGLE_MATCH,
@@ -89,6 +91,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
                                            methods::STR_TO_STRING,
                                            methods::STRING_TO_STRING,
                                            types::LET_UNIT_VALUE,
+                                           lifetimes::NEEDLESS_LIFETIMES,
                                            loops::NEEDLESS_RANGE_LOOP,
                                            ]);
 }
