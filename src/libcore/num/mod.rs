@@ -44,6 +44,7 @@ pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
 pub mod wrapping;
 pub mod flt2dec;
+pub mod dec2flt;
 
 /// Types that have a "zero" value.
 ///
@@ -1364,7 +1365,7 @@ pub trait Float {
 }
 
 macro_rules! from_str_float_impl {
-    ($t:ty) => {
+    ($t:ty, $func:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStr for $t {
             type Err = ParseFloatError;
@@ -1397,13 +1398,13 @@ macro_rules! from_str_float_impl {
             #[inline]
             #[allow(deprecated)]
             fn from_str(src: &str) -> Result<Self, ParseFloatError> {
-                Self::from_str_radix(src, 10)
+                dec2flt::$func(src)
             }
         }
     }
 }
-from_str_float_impl!(f32);
-from_str_float_impl!(f64);
+from_str_float_impl!(f32, to_f32);
+from_str_float_impl!(f64, to_f64);
 
 macro_rules! from_str_radix_int_impl {
     ($($t:ty)*) => {$(
