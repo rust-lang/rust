@@ -3,25 +3,29 @@ use syntax::ast::*;
 use syntax::visit::{Visitor, walk_expr};
 use std::collections::HashSet;
 
-use utils::{span_lint, get_parent_expr};
+use utils::{snippet, span_lint, get_parent_expr};
 
 declare_lint!{ pub NEEDLESS_RANGE_LOOP, Warn,
                "for-looping over a range of indices where an iterator over items would do" }
+
+declare_lint!{ pub EXPLICIT_ITER_LOOP, Warn,
+               "for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do" }
 
 #[derive(Copy, Clone)]
 pub struct LoopsPass;
 
 impl LintPass for LoopsPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(NEEDLESS_RANGE_LOOP)
+        lint_array!(NEEDLESS_RANGE_LOOP, EXPLICIT_ITER_LOOP)
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
         if let Some((pat, arg, body)) = recover_for_loop(expr) {
-            // the var must be a single name
-            if let PatIdent(_, ref ident, _) = pat.node {
-                // the iteratee must be a range literal
-                if let ExprRange(_, _) = arg.node {
+            // check for looping over a range and then indexing a sequence with it
+            // -> the iteratee must be a range literal
+            if let ExprRange(_, _) = arg.node {
+                // the var must be a single name
+                if let PatIdent(_, ref ident, _) = pat.node {
                     let mut visitor = VarVisitor { cx: cx, var: ident.node.name,
                                                    indexed: HashSet::new(), nonindex: false };
                     walk_expr(&mut visitor, body);
@@ -40,6 +44,25 @@ impl LintPass for LoopsPass {
                                  Consider using `for item in &{}` or similar iterators.",
                                 ident.node.name.as_str(), indexed.as_str(), indexed.as_str()));
                         }
+                    }
+                }
+            }
+
+            // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
+            if let ExprMethodCall(ref method, _, ref args) = arg.node {
+                // just the receiver, no arguments to iter() or iter_mut()
+                if args.len() == 1 {
+                    let method_name = method.node.name.as_str();
+                    if method_name == "iter" {
+                        let object = snippet(cx, args[0].span, "_");
+                        span_lint(cx, EXPLICIT_ITER_LOOP, expr.span, &format!(
+                            "it is more idiomatic to loop over `&{}` instead of `{}.iter()`",
+                            object, object));
+                    } else if method_name == "iter_mut" {
+                        let object = snippet(cx, args[0].span, "_");
+                        span_lint(cx, EXPLICIT_ITER_LOOP, expr.span, &format!(
+                            "it is more idiomatic to loop over `&mut {}` instead of `{}.iter_mut()`",
+                            object, object));
                     }
                 }
             }

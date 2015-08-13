@@ -15,6 +15,7 @@ cmp_nan              | deny    | comparisons to NAN (which will always return fa
 cmp_owned            | warn    | creating owned instances for comparing with others, e.g. `x == "foo".to_string()`
 collapsible_if       | warn    | two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` can be written as `if x && y { foo() }`
 eq_op                | warn    | equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)
+explicit_iter_loop   | warn    | for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do
 float_cmp            | warn    | using `==` or `!=` on float values (as floating-point operations usually involve rounding errors, it is always better to check for approximate equality within small bounds)
 identity_op          | warn    | using identity operations, e.g. `x + 0` or `y / 1`
 ineffective_bit_mask | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`

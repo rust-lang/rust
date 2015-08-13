@@ -67,7 +67,7 @@ impl LintPass for TypePass {
         let dlists = [vec!["std","collections","linked_list","LinkedList"],
                       vec!["std","collections","linked_list","LinkedList"],
                       vec!["collections","linked_list","LinkedList"]];
-        for path in dlists.iter() {
+        for path in &dlists {
             if match_ty_unwrap(ty, &path[..]).is_some() {
                 span_help_and_lint(cx, LINKEDLIST, ty.span,
                                    "I see you're using a LinkedList! Perhaps you meant some other data structure?",
