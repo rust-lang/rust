@@ -138,6 +138,27 @@ Book:
 https://doc.rust-lang.org/book/ownership.html
 "##,
 
+E0383: r##"
+This error occurs when an attempt is made to partially reinitialize a
+structure that is currently uninitialized.
+
+For example, this can happen when a drop has taken place:
+
+```
+let mut x = Foo { a: 1 };
+drop(x); // `x` is now uninitialized
+x.a = 2; // error, partial reinitialization of uninitialized structure `t`
+```
+
+This error can be fixed by fully reinitializing the structure in question:
+
+```
+let mut x = Foo { a: 1 };
+drop(x);
+x = Foo { a: 2 };
+```
+"##,
+
 E0384: r##"
 This error occurs when an attempt is made to reassign an immutable variable.
 For example:
@@ -217,7 +238,6 @@ https://doc.rust-lang.org/std/cell/
 }
 
 register_diagnostics! {
-    E0383, // partial reinitialization of uninitialized structure
     E0385, // {} in an aliasable location
     E0386, // {} in an immutable container
     E0388, // {} in a static location
