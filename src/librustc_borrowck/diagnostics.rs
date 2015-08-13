@@ -184,7 +184,8 @@ It can also be fixed by using a type with interior mutability, such as `Cell` or
 `RefCell`:
 
 ```
-let y: Cell<_> = Cell::new(1);
+let x: i64 = 1;
+let y: Box<Cell<_>> = Box::new(Cell::new(x));
 y.set(2);
 ```
 "##,
