@@ -70,12 +70,15 @@ pub fn trim_multiline<'a>(s: Cow<'a, str>, ignore_first: bool) -> Cow<'a, str> {
 
 fn trim_multiline_inner<'a>(s: Cow<'a, str>, ignore_first: bool, ch: char) -> Cow<'a, str> {
     let x = s.lines().skip(ignore_first as usize)
-             .map(|l| l.char_indices()
-                       .find(|&(_,x)| x != ch)
-                       .unwrap_or((l.len(), ch)).0)
+             .filter_map(|l| { if l.len() > 0 { // ignore empty lines
+                                Some(l.char_indices()
+                                      .find(|&(_,x)| x != ch)
+                                      .unwrap_or((l.len(), ch)).0)
+                               } else {None}})
              .min().unwrap_or(0);
     if x > 0 {
-        Cow::Owned(s.lines().enumerate().map(|(i,l)| if ignore_first && i==0 {
+        Cow::Owned(s.lines().enumerate().map(|(i,l)| if (ignore_first && i == 0) ||
+                                                         l.len() == 0 {
                                                         l
                                                      } else {
                                                         l.split_at(x).1
