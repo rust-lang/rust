@@ -1,3 +1,4 @@
+#![allow(redundant_closure)] // FIXME (#116)
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::ast_util as ast_util;

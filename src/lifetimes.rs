@@ -103,7 +103,7 @@ fn could_use_elision(kind: FnKind, func: &FnDecl) -> bool {
 }
 
 /// Number of unique lifetimes in the given vector.
-fn unique_lifetimes(lts: &Vec<RefLt>) -> usize {
+fn unique_lifetimes(lts: &[RefLt]) -> usize {
     lts.iter().collect::<HashSet<_>>().len()
 }
 
