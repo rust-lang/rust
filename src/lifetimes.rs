@@ -18,14 +18,23 @@ impl LintPass for LifetimePass {
         lint_array!(NEEDLESS_LIFETIMES)
     }
 
-    fn check_fn(&mut self, cx: &Context, kind: FnKind, decl: &FnDecl,
-                _: &Block, span: Span, _: NodeId) {
-        if in_external_macro(cx, span) {
-            return;
+    fn check_item(&mut self, cx: &Context, item: &Item) {
+        if let ItemFn(ref decl, _, _, _, ref generics, _) = item.node {
+            check_fn_inner(cx, decl, None, &generics.lifetimes, item.span);
         }
-        if could_use_elision(kind, decl) {
-            span_lint(cx, NEEDLESS_LIFETIMES, span,
-                      "explicit lifetimes given in parameter types where they could be elided");
+    }
+
+    fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) {
+        if let MethodImplItem(ref sig, _) = item.node {
+            check_fn_inner(cx, &*sig.decl, Some(&sig.explicit_self),
+                           &sig.generics.lifetimes, item.span);
+        }
+    }
+
+    fn check_trait_item(&mut self, cx: &Context, item: &TraitItem) {
+        if let MethodTraitItem(ref sig, _) = item.node {
+            check_fn_inner(cx, &*sig.decl, Some(&sig.explicit_self),
+                           &sig.generics.lifetimes, item.span);
         }
     }
 }
@@ -39,10 +48,34 @@ enum RefLt {
 }
 use self::RefLt::*;
 
-fn could_use_elision(kind: FnKind, func: &FnDecl) -> bool {
+fn check_fn_inner(cx: &Context, decl: &FnDecl, slf: Option<&ExplicitSelf>,
+                  named_lts: &[LifetimeDef], span: Span) {
+    if in_external_macro(cx, span) {
+        return;
+    }
+    if could_use_elision(decl, slf, named_lts) {
+        span_lint(cx, NEEDLESS_LIFETIMES, span,
+                  "explicit lifetimes given in parameter types where they could be elided");
+    }
+}
+
+fn could_use_elision(func: &FnDecl, slf: Option<&ExplicitSelf>,
+                     named_lts: &[LifetimeDef]) -> bool {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
     // * output references, exactly one input reference with same LT
+    // All lifetimes must be unnamed, 'static or defined without bounds on the
+    // level of the current item.
+
+    // check named LTs
+    let mut allowed_lts = HashSet::new();
+    for lt in named_lts {
+        if lt.bounds.is_empty() {
+            allowed_lts.insert(Named(lt.lifetime.name));
+        }
+    }
+    allowed_lts.insert(Unnamed);
+    allowed_lts.insert(Static);
 
     // these will collect all the lifetimes for references in arg/return types
     let mut input_visitor = RefVisitor(Vec::new());
@@ -50,8 +83,8 @@ fn could_use_elision(kind: FnKind, func: &FnDecl) -> bool {
 
     // extract lifetime in "self" argument for methods (there is a "self" argument
     // in func.inputs, but its type is TyInfer)
-    if let FnKind::FkMethod(_, sig, _) = kind {
-        match sig.explicit_self.node {
+    if let Some(slf) = slf {
+        match slf.node {
             SelfRegion(ref opt_lt, _, _) => input_visitor.record(opt_lt),
             SelfExplicit(ref ty, _) => walk_ty(&mut input_visitor, ty),
             _ => { }
@@ -68,6 +101,13 @@ fn could_use_elision(kind: FnKind, func: &FnDecl) -> bool {
 
     let input_lts = input_visitor.into_vec();
     let output_lts = output_visitor.into_vec();
+
+    // check for lifetimes from higher scopes
+    for lt in input_lts.iter().chain(output_lts.iter()) {
+        if !allowed_lts.contains(lt) {
+            return false;
+        }
+    }
 
     // no input lifetimes? easy case!
     if input_lts.is_empty() {
@@ -103,7 +143,7 @@ fn could_use_elision(kind: FnKind, func: &FnDecl) -> bool {
 }
 
 /// Number of unique lifetimes in the given vector.
-fn unique_lifetimes(lts: &Vec<RefLt>) -> usize {
+fn unique_lifetimes(lts: &[RefLt]) -> usize {
     lts.iter().collect::<HashSet<_>>().len()
 }
 

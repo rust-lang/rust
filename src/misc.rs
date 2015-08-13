@@ -73,7 +73,7 @@ impl LintPass for TopLevelRefPass {
     }
 
     fn check_fn(&mut self, cx: &Context, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
-        for ref arg in decl.inputs.iter() {
+        for ref arg in &decl.inputs {
             if let PatIdent(BindByRef(_), _, _) = arg.pat.node {
                 span_lint(cx,
                     TOPLEVEL_REF_ARG,
