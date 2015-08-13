@@ -150,7 +150,8 @@ pub enum ErrorKind {
     /// Any I/O error not part of this list.
     #[unstable(feature = "io_error_internals",
                reason = "better expressed through extensible enums that this \
-                         enum cannot be exhaustively matched against")]
+                         enum cannot be exhaustively matched against",
+               issue = "0")]
     #[doc(hidden)]
     __Nonexhaustive,
 }

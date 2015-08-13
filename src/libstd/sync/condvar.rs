@@ -76,7 +76,8 @@ pub struct Condvar { inner: Box<StaticCondvar> }
 /// static CVAR: StaticCondvar = CONDVAR_INIT;
 /// ```
 #[unstable(feature = "static_condvar",
-           reason = "may be merged with Condvar in the future")]
+           reason = "may be merged with Condvar in the future",
+           issue = "27717")]
 pub struct StaticCondvar {
     inner: sys::Condvar,
     mutex: AtomicUsize,
@@ -84,7 +85,8 @@ pub struct StaticCondvar {
 
 /// Constant initializer for a statically allocated condition variable.
 #[unstable(feature = "static_condvar",
-           reason = "may be merged with Condvar in the future")]
+           reason = "may be merged with Condvar in the future",
+           issue = "27717")]
 pub const CONDVAR_INIT: StaticCondvar = StaticCondvar::new();
 
 impl Condvar {
@@ -173,7 +175,8 @@ impl Condvar {
     ///
     /// Like `wait`, the lock specified will be re-acquired when this function
     /// returns, regardless of whether the timeout elapsed or not.
-    #[unstable(feature = "wait_timeout", reason = "waiting for Duration")]
+    #[unstable(feature = "wait_timeout", reason = "waiting for Duration",
+               issue = "27772")]
     pub fn wait_timeout<'a, T>(&self, guard: MutexGuard<'a, T>,
                                dur: Duration)
                                -> LockResult<(MutexGuard<'a, T>, bool)> {
@@ -190,7 +193,8 @@ impl Condvar {
     /// that the implementation will repeatedly wait while the duration has not
     /// passed and the provided function returns `false`.
     #[unstable(feature = "wait_timeout_with",
-               reason = "unsure if this API is broadly needed or what form it should take")]
+               reason = "unsure if this API is broadly needed or what form it should take",
+               issue = "27748")]
     pub fn wait_timeout_with<'a, T, F>(&self,
                                        guard: MutexGuard<'a, T>,
                                        dur: Duration,
@@ -234,7 +238,8 @@ impl Drop for Condvar {
 impl StaticCondvar {
     /// Creates a new condition variable
     #[unstable(feature = "static_condvar",
-               reason = "may be merged with Condvar in the future")]
+               reason = "may be merged with Condvar in the future",
+               issue = "27717")]
     pub const fn new() -> StaticCondvar {
         StaticCondvar {
             inner: sys::Condvar::new(),
@@ -247,7 +252,8 @@ impl StaticCondvar {
     ///
     /// See `Condvar::wait`.
     #[unstable(feature = "static_condvar",
-               reason = "may be merged with Condvar in the future")]
+               reason = "may be merged with Condvar in the future",
+               issue = "27717")]
     pub fn wait<'a, T>(&'static self, guard: MutexGuard<'a, T>)
                        -> LockResult<MutexGuard<'a, T>> {
         let poisoned = unsafe {
@@ -268,7 +274,8 @@ impl StaticCondvar {
     ///
     /// See `Condvar::wait_timeout`.
     #[unstable(feature = "static_condvar",
-               reason = "may be merged with Condvar in the future")]
+               reason = "may be merged with Condvar in the future",
+               issue = "27717")]
     pub fn wait_timeout_ms<'a, T>(&'static self, guard: MutexGuard<'a, T>, ms: u32)
                                   -> LockResult<(MutexGuard<'a, T>, bool)> {
         self.wait_timeout(guard, Duration::from_millis(ms as u64))
@@ -279,7 +286,8 @@ impl StaticCondvar {
     ///
     /// See `Condvar::wait_timeout`.
     #[unstable(feature = "static_condvar",
-               reason = "may be merged with Condvar in the future")]
+               reason = "may be merged with Condvar in the future",
+               issue = "27717")]
     pub fn wait_timeout<'a, T>(&'static self,
                                guard: MutexGuard<'a, T>,
                                timeout: Duration)
@@ -305,7 +313,8 @@ impl StaticCondvar {
     ///
     /// See `Condvar::wait_timeout_with`.
     #[unstable(feature = "static_condvar",
-               reason = "may be merged with Condvar in the future")]
+               reason = "may be merged with Condvar in the future",
+               issue = "27717")]
     pub fn wait_timeout_with<'a, T, F>(&'static self,
                                        guard: MutexGuard<'a, T>,
                                        dur: Duration,
@@ -351,14 +360,16 @@ impl StaticCondvar {
     ///
     /// See `Condvar::notify_one`.
     #[unstable(feature = "static_condvar",
-               reason = "may be merged with Condvar in the future")]
+               reason = "may be merged with Condvar in the future",
+               issue = "27717")]
     pub fn notify_one(&'static self) { unsafe { self.inner.notify_one() } }
 
     /// Wakes up all blocked threads on this condvar.
     ///
     /// See `Condvar::notify_all`.
     #[unstable(feature = "static_condvar",
-               reason = "may be merged with Condvar in the future")]
+               reason = "may be merged with Condvar in the future",
+               issue = "27717")]
     pub fn notify_all(&'static self) { unsafe { self.inner.notify_all() } }
 
     /// Deallocates all resources associated with this static condvar.
@@ -368,7 +379,8 @@ impl StaticCondvar {
     /// users of the condvar. This method is required to be called to not leak
     /// memory on all platforms.
     #[unstable(feature = "static_condvar",
-               reason = "may be merged with Condvar in the future")]
+               reason = "may be merged with Condvar in the future",
+               issue = "27717")]
     pub unsafe fn destroy(&'static self) {
         self.inner.destroy()
     }

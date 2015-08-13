@@ -10,7 +10,8 @@
 
 #![unstable(feature = "ip", reason = "extra functionality has not been \
                                       scrutinized to the level that it should \
-                                      be stable")]
+                                      be stable",
+            issue = "27709")]
 
 use prelude::v1::*;
 
@@ -22,7 +23,7 @@ use sys_common::{AsInner, FromInner};
 use net::{hton, ntoh};
 
 /// An IP address, either a IPv4 or IPv6 address.
-#[unstable(feature = "ip_addr", reason = "recent addition")]
+#[unstable(feature = "ip_addr", reason = "recent addition", issue = "27801")]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, PartialOrd, Ord)]
 pub enum IpAddr {
     /// Representation of an IPv4 address.

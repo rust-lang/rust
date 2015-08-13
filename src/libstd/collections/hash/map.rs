@@ -553,7 +553,8 @@ impl<K, V, S> HashMap<K, V, S>
     /// map.insert(1, 2);
     /// ```
     #[inline]
-    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear")]
+    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
+               issue = "27713")]
     pub fn with_hash_state(hash_state: S) -> HashMap<K, V, S> {
         HashMap {
             hash_state:    hash_state,
@@ -583,7 +584,8 @@ impl<K, V, S> HashMap<K, V, S>
     /// map.insert(1, 2);
     /// ```
     #[inline]
-    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear")]
+    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
+               issue = "27713")]
     pub fn with_capacity_and_hash_state(capacity: usize, hash_state: S)
                                         -> HashMap<K, V, S> {
         let resize_policy = DefaultResizePolicy::new();
@@ -998,7 +1000,8 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[inline]
     #[unstable(feature = "drain",
-               reason = "matches collection reform specification, waiting for dust to settle")]
+               reason = "matches collection reform specification, waiting for dust to settle",
+               issue = "27711")]
     pub fn drain(&mut self) -> Drain<K, V> {
         fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
         let last_two: fn((SafeHash, K, V)) -> (K, V) = last_two; // coerce to fn pointer
@@ -1311,7 +1314,8 @@ impl<'a, K, V> Clone for Values<'a, K, V> {
 
 /// HashMap drain iterator.
 #[unstable(feature = "drain",
-           reason = "matches collection reform specification, waiting for dust to settle")]
+           reason = "matches collection reform specification, waiting for dust to settle",
+           issue = "27711")]
 pub struct Drain<'a, K: 'a, V: 'a> {
     inner: iter::Map<table::Drain<'a, K, V>, fn((SafeHash, K, V)) -> (K, V)>
 }
@@ -1587,14 +1591,16 @@ impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
 /// instances are unlikely to produce the same result for the same values.
 #[derive(Clone)]
 #[unstable(feature = "hashmap_hasher",
-           reason = "hashing an hash maps may be altered")]
+           reason = "hashing an hash maps may be altered",
+           issue = "27713")]
 pub struct RandomState {
     k0: u64,
     k1: u64,
 }
 
 #[unstable(feature = "hashmap_hasher",
-           reason = "hashing an hash maps may be altered")]
+           reason = "hashing an hash maps may be altered",
+           issue = "27713")]
 impl RandomState {
     /// Constructs a new `RandomState` that is initialized with random keys.
     #[inline]
@@ -1606,7 +1612,8 @@ impl RandomState {
 }
 
 #[unstable(feature = "hashmap_hasher",
-           reason = "hashing an hash maps may be altered")]
+           reason = "hashing an hash maps may be altered",
+           issue = "27713")]
 impl HashState for RandomState {
     type Hasher = SipHasher;
     #[inline]

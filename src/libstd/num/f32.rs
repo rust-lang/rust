@@ -124,7 +124,8 @@ mod cmath {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl f32 {
     /// Parses a float as with a given radix
-    #[unstable(feature = "float_from_str_radix", reason = "recently moved API")]
+    #[unstable(feature = "float_from_str_radix", reason = "recently moved API",
+               issue = "27736")]
     pub fn from_str_radix(s: &str, radix: u32) -> Result<f32, ParseFloatError> {
         num::Float::from_str_radix(s, radix)
     }
@@ -251,7 +252,8 @@ impl f32 {
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
     /// [floating-point]: ../../../../../reference.html#machine-types
-    #[unstable(feature = "float_extras", reason = "signature is undecided")]
+    #[unstable(feature = "float_extras", reason = "signature is undecided",
+               issue = "27752")]
     #[inline]
     pub fn integer_decode(self) -> (u64, i16, i8) {
         num::Float::integer_decode(self)
@@ -607,7 +609,8 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
-    #[unstable(feature = "float_extras", reason = "desirability is unclear")]
+    #[unstable(feature = "float_extras", reason = "desirability is unclear",
+               issue = "27752")]
     #[inline]
     pub fn to_degrees(self) -> f32 { num::Float::to_degrees(self) }
 
@@ -624,7 +627,8 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
-    #[unstable(feature = "float_extras", reason = "desirability is unclear")]
+    #[unstable(feature = "float_extras", reason = "desirability is unclear",
+               issue = "27752")]
     #[inline]
     pub fn to_radians(self) -> f32 { num::Float::to_radians(self) }
 
@@ -640,7 +644,8 @@ impl f32 {
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
     #[unstable(feature = "float_extras",
-               reason = "pending integer conventions")]
+               reason = "pending integer conventions",
+               issue = "27752")]
     #[inline]
     pub fn ldexp(x: f32, exp: isize) -> f32 {
         unsafe { cmath::ldexpf(x, exp as c_int) }
@@ -668,7 +673,8 @@ impl f32 {
     /// assert!(abs_difference_1 <= f32::EPSILON);
     /// ```
     #[unstable(feature = "float_extras",
-               reason = "pending integer conventions")]
+               reason = "pending integer conventions",
+               issue = "27752")]
     #[inline]
     pub fn frexp(self) -> (f32, isize) {
         unsafe {
@@ -693,7 +699,8 @@ impl f32 {
     /// assert!(abs_diff <= f32::EPSILON);
     /// ```
     #[unstable(feature = "float_extras",
-               reason = "unsure about its place in the world")]
+               reason = "unsure about its place in the world",
+               issue = "27752")]
     #[inline]
     pub fn next_after(self, other: f32) -> f32 {
         unsafe { cmath::nextafterf(self, other) }

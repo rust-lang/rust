@@ -647,7 +647,8 @@ pub trait Read {
     /// ```
     #[unstable(feature = "io", reason = "the semantics of a partial read/write \
                                          of where errors happen is currently \
-                                         unclear and may change")]
+                                         unclear and may change",
+               issue = "27802")]
     fn chars(self) -> Chars<Self> where Self: Sized {
         Chars { inner: self }
     }
@@ -754,7 +755,8 @@ pub trait Read {
     /// ```
     #[unstable(feature = "io", reason = "the semantics of a partial read/write \
                                          of where errors happen is currently \
-                                         unclear and may change")]
+                                         unclear and may change",
+               issue = "27802")]
     fn tee<W: Write>(self, out: W) -> Tee<Self, W> where Self: Sized {
         Tee { reader: self, writer: out }
     }
@@ -1016,7 +1018,8 @@ pub trait Write {
     /// ```
     #[unstable(feature = "io", reason = "the semantics of a partial read/write \
                                          of where errors happen is currently \
-                                         unclear and may change")]
+                                         unclear and may change",
+               issue = "27802")]
     fn broadcast<W: Write>(self, other: W) -> Broadcast<Self, W>
         where Self: Sized
     {
@@ -1401,13 +1404,15 @@ pub trait BufRead: Read {
 /// writer. Please see the documentation of `broadcast()` for more details.
 ///
 /// [broadcast]: trait.Write.html#method.broadcast
-#[unstable(feature = "io", reason = "awaiting stability of Write::broadcast")]
+#[unstable(feature = "io", reason = "awaiting stability of Write::broadcast",
+           issue = "27802")]
 pub struct Broadcast<T, U> {
     first: T,
     second: U,
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Write::broadcast")]
+#[unstable(feature = "io", reason = "awaiting stability of Write::broadcast",
+           issue = "27802")]
 impl<T: Write, U: Write> Write for Broadcast<T, U> {
     fn write(&mut self, data: &[u8]) -> Result<usize> {
         let n = try!(self.first.write(data));
@@ -1509,13 +1514,15 @@ impl<T: BufRead> BufRead for Take<T> {
 /// Please see the documentation of `tee()` for more details.
 ///
 /// [tee]: trait.Read.html#method.tee
-#[unstable(feature = "io", reason = "awaiting stability of Read::tee")]
+#[unstable(feature = "io", reason = "awaiting stability of Read::tee",
+           issue = "27802")]
 pub struct Tee<R, W> {
     reader: R,
     writer: W,
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::tee")]
+#[unstable(feature = "io", reason = "awaiting stability of Read::tee",
+           issue = "27802")]
 impl<R: Read, W: Write> Read for Tee<R, W> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         let n = try!(self.reader.read(buf));
@@ -1556,7 +1563,8 @@ impl<R: Read> Iterator for Bytes<R> {
 /// Please see the documentation of `chars()` for more details.
 ///
 /// [chars]: trait.Read.html#method.chars
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
+#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+           issue = "27802")]
 pub struct Chars<R> {
     inner: R,
 }
@@ -1564,7 +1572,8 @@ pub struct Chars<R> {
 /// An enumeration of possible errors that can be generated from the `Chars`
 /// adapter.
 #[derive(Debug)]
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
+#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+           issue = "27802")]
 pub enum CharsError {
     /// Variant representing that the underlying stream was read successfully
     /// but it did not contain valid utf8 data.
@@ -1574,7 +1583,8 @@ pub enum CharsError {
     Other(Error),
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
+#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+           issue = "27802")]
 impl<R: Read> Iterator for Chars<R> {
     type Item = result::Result<char, CharsError>;
 
@@ -1606,7 +1616,8 @@ impl<R: Read> Iterator for Chars<R> {
     }
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
+#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+           issue = "27802")]
 impl std_error::Error for CharsError {
     fn description(&self) -> &str {
         match *self {
@@ -1622,7 +1633,8 @@ impl std_error::Error for CharsError {
     }
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
+#[unstable(feature = "io", reason = "awaiting stability of Read::chars",
+           issue = "27802")]
 impl fmt::Display for CharsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {

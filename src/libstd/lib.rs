@@ -398,7 +398,7 @@ mod rand;
 // but it may be stabilized long-term. As a result we're exposing a hidden,
 // unstable module so we can get our build working.
 #[doc(hidden)]
-#[unstable(feature = "rand")]
+#[unstable(feature = "rand", issue = "0")]
 pub mod __rand {
     pub use rand::{thread_rng, ThreadRng, Rng};
 }

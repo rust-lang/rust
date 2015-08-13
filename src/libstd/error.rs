@@ -78,7 +78,8 @@ pub trait Error: Debug + Display + Reflect {
     /// Get the `TypeId` of `self`
     #[doc(hidden)]
     #[unstable(feature = "error_type_id",
-               reason = "unclear whether to commit to this public implementation detail")]
+               reason = "unclear whether to commit to this public implementation detail",
+               issue = "27745")]
     fn type_id(&self) -> TypeId where Self: 'static {
         TypeId::of::<Self>()
     }

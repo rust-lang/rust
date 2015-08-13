@@ -40,7 +40,7 @@
 //! });
 //! ```
 
-#![unstable(feature = "thread_local_internals")]
+#![unstable(feature = "thread_local_internals", issue = "0")]
 
 #[doc(hidden)]
 pub use self::imp::KeyInner as __KeyInner;
@@ -54,7 +54,8 @@ pub use self::imp::KeyInner as __KeyInner;
 /// their contents.
 #[unstable(feature = "scoped_tls",
            reason = "scoped TLS has yet to have wide enough use to fully consider \
-                     stabilizing its interface")]
+                     stabilizing its interface",
+           issue = "27715")]
 pub struct ScopedKey<T:'static> { inner: fn() -> &'static imp::KeyInner<T> }
 
 /// Declare a new scoped thread local storage key.
@@ -116,7 +117,8 @@ macro_rules! __scoped_thread_local_inner {
 
 #[unstable(feature = "scoped_tls",
            reason = "scoped TLS has yet to have wide enough use to fully consider \
-                     stabilizing its interface")]
+                     stabilizing its interface",
+           issue = "27715")]
 impl<T> ScopedKey<T> {
     #[doc(hidden)]
     pub const fn new(inner: fn() -> &'static imp::KeyInner<T>) -> ScopedKey<T> {

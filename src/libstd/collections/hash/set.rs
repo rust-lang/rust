@@ -164,7 +164,8 @@ impl<T, S> HashSet<T, S>
     /// set.insert(2);
     /// ```
     #[inline]
-    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear")]
+    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
+               issue = "27713")]
     pub fn with_hash_state(hash_state: S) -> HashSet<T, S> {
         HashSet::with_capacity_and_hash_state(INITIAL_CAPACITY, hash_state)
     }
@@ -190,7 +191,8 @@ impl<T, S> HashSet<T, S>
     /// set.insert(1);
     /// ```
     #[inline]
-    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear")]
+    #[unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
+               issue = "27713")]
     pub fn with_capacity_and_hash_state(capacity: usize, hash_state: S)
                                         -> HashSet<T, S> {
         HashSet {
@@ -411,7 +413,8 @@ impl<T, S> HashSet<T, S>
     /// Clears the set, returning all elements in an iterator.
     #[inline]
     #[unstable(feature = "drain",
-               reason = "matches collection reform specification, waiting for dust to settle")]
+               reason = "matches collection reform specification, waiting for dust to settle",
+               issue = "27711")]
     pub fn drain(&mut self) -> Drain<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
         let first: fn((T, ())) -> T = first; // coerce to fn pointer

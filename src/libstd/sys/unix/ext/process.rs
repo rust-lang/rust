@@ -32,15 +32,17 @@ pub trait CommandExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn gid(&mut self, id: gid_t) -> &mut process::Command;
 
-    /// Create a new session (cf. `setsid(2)`) for the child process. This means that the child is
-    /// the leader of a new process group. The parent process remains the child reaper of the new
-    /// process.
+    /// Create a new session (cf. `setsid(2)`) for the child process. This means
+    /// that the child is the leader of a new process group. The parent process
+    /// remains the child reaper of the new process.
     ///
-    /// This is not enough to create a daemon process. The *init* process should be the child
-    /// reaper of a daemon. This can be achieved if the parent process exit. Moreover, a daemon
-    /// should not have a controlling terminal. To acheive this, a session leader (the child) must
-    /// spawn another process (the daemon) in the same session.
-    #[unstable(feature = "process_session_leader", reason = "recently added")]
+    /// This is not enough to create a daemon process. The *init* process should
+    /// be the child reaper of a daemon. This can be achieved if the parent
+    /// process exit. Moreover, a daemon should not have a controlling terminal.
+    /// To acheive this, a session leader (the child) must spawn another process
+    /// (the daemon) in the same session.
+    #[unstable(feature = "process_session_leader", reason = "recently added",
+               issue = "27811")]
     fn session_leader(&mut self, on: bool) -> &mut process::Command;
 }
 

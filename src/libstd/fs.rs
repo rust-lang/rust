@@ -88,7 +88,8 @@ pub struct DirEntry(fs_imp::DirEntry);
 #[unstable(feature = "fs_walk",
            reason = "the precise semantics and defaults for a recursive walk \
                      may change and this may end up accounting for files such \
-                     as symlinks differently")]
+                     as symlinks differently",
+           issue = "27707")]
 pub struct WalkDir {
     cur: Option<ReadDir>,
     stack: Vec<io::Result<ReadDir>>,
@@ -154,7 +155,8 @@ pub struct FileType(fs_imp::FileType);
 /// A builder used to create directories in various manners.
 ///
 /// This builder also supports platform-specific options.
-#[unstable(feature = "dir_builder", reason = "recently added API")]
+#[unstable(feature = "dir_builder", reason = "recently added API",
+           issue = "27710")]
 pub struct DirBuilder {
     inner: fs_imp::DirBuilder,
     recursive: bool,
@@ -949,7 +951,8 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 
 /// Returns the canonical form of a path with all intermediate components
 /// normalized and symbolic links resolved.
-#[unstable(feature = "fs_canonicalize", reason = "recently added API")]
+#[unstable(feature = "fs_canonicalize", reason = "recently added API",
+           issue = "27706")]
 pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     fs_imp::canonicalize(path.as_ref())
 }
@@ -1107,13 +1110,14 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 #[unstable(feature = "fs_walk",
            reason = "the precise semantics and defaults for a recursive walk \
                      may change and this may end up accounting for files such \
-                     as symlinks differently")]
+                     as symlinks differently",
+           issue = "27707")]
 pub fn walk_dir<P: AsRef<Path>>(path: P) -> io::Result<WalkDir> {
     let start = try!(read_dir(path));
     Ok(WalkDir { cur: Some(start), stack: Vec::new() })
 }
 
-#[unstable(feature = "fs_walk")]
+#[unstable(feature = "fs_walk", issue = "27707")]
 impl Iterator for WalkDir {
     type Item = io::Result<DirEntry>;
 
@@ -1146,7 +1150,8 @@ impl Iterator for WalkDir {
 #[unstable(feature = "path_ext",
            reason = "The precise set of methods exposed on this trait may \
                      change and some methods may be removed.  For stable code, \
-                     see the std::fs::metadata function.")]
+                     see the std::fs::metadata function.",
+           issue = "27725")]
 pub trait PathExt {
     /// Gets information on the file, directory, etc at this path.
     ///
@@ -1242,7 +1247,8 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions)
     fs_imp::set_perm(path.as_ref(), perm.0)
 }
 
-#[unstable(feature = "dir_builder", reason = "recently added API")]
+#[unstable(feature = "dir_builder", reason = "recently added API",
+           issue = "27710")]
 impl DirBuilder {
     /// Creates a new set of options with default mode/security settings for all
     /// platforms and also non-recursive.
