@@ -52,7 +52,8 @@ pub trait FromRawHandle {
 
 /// A trait to express the ability to consume an object and acquire ownership of
 /// its raw `HANDLE`.
-#[unstable(feature = "into_raw_os", reason = "recently added API")]
+#[unstable(feature = "into_raw_os", reason = "recently added API",
+           issue = "27797")]
 pub trait IntoRawHandle {
     /// Consumes this object, returning the raw underlying handle.
     ///
@@ -110,7 +111,8 @@ pub trait FromRawSocket {
 
 /// A trait to express the ability to consume an object and acquire ownership of
 /// its raw `SOCKET`.
-#[unstable(feature = "into_raw_os", reason = "recently added API")]
+#[unstable(feature = "into_raw_os", reason = "recently added API",
+           issue = "27797")]
 pub trait IntoRawSocket {
     /// Consumes this object, returning the raw underlying socket.
     ///

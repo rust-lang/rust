@@ -117,7 +117,7 @@ pub trait AsciiExt {
     ///
     /// assert_eq!('A', ascii);
     /// ```
-    #[unstable(feature = "ascii")]
+    #[unstable(feature = "ascii", issue = "27809")]
     fn make_ascii_uppercase(&mut self);
 
     /// Converts this type to its ASCII lower case equivalent in-place.
@@ -137,7 +137,7 @@ pub trait AsciiExt {
     ///
     /// assert_eq!('a', ascii);
     /// ```
-    #[unstable(feature = "ascii")]
+    #[unstable(feature = "ascii", issue = "27809")]
     fn make_ascii_lowercase(&mut self);
 }
 

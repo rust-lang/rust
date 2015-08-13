@@ -14,7 +14,8 @@
 
 #![unstable(feature = "dynamic_lib",
             reason = "API has not been scrutinized and is highly likely to \
-                      either disappear or change")]
+                      either disappear or change",
+            issue = "27810")]
 #![allow(missing_docs)]
 
 use prelude::v1::*;

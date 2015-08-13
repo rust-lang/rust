@@ -80,7 +80,8 @@ mod cmath {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl f64 {
     /// Parses a float as with a given radix
-    #[unstable(feature = "float_from_str_radix", reason = "recently moved API")]
+    #[unstable(feature = "float_from_str_radix", reason = "recently moved API",
+               issue = "27736")]
     pub fn from_str_radix(s: &str, radix: u32) -> Result<f64, ParseFloatError> {
         num::Float::from_str_radix(s, radix)
     }
@@ -205,7 +206,8 @@ impl f64 {
     /// assert!(abs_difference < 1e-10);
     /// ```
     /// [floating-point]: ../../../../../reference.html#machine-types
-    #[unstable(feature = "float_extras", reason = "signature is undecided")]
+    #[unstable(feature = "float_extras", reason = "signature is undecided",
+               issue = "27752")]
     #[inline]
     pub fn integer_decode(self) -> (u64, i16, i8) { num::Float::integer_decode(self) }
 
@@ -575,7 +577,8 @@ impl f64 {
     /// assert!(abs_difference < 1e-10);
     /// ```
     #[unstable(feature = "float_extras",
-               reason = "pending integer conventions")]
+               reason = "pending integer conventions",
+               issue = "27752")]
     #[inline]
     pub fn ldexp(x: f64, exp: isize) -> f64 {
         unsafe { cmath::ldexp(x, exp as c_int) }
@@ -601,7 +604,8 @@ impl f64 {
     /// assert!(abs_difference_1 < 1e-10);
     /// ```
     #[unstable(feature = "float_extras",
-               reason = "pending integer conventions")]
+               reason = "pending integer conventions",
+               issue = "27752")]
     #[inline]
     pub fn frexp(self) -> (f64, isize) {
         unsafe {
@@ -624,7 +628,8 @@ impl f64 {
     /// assert!(abs_diff < 1e-10);
     /// ```
     #[unstable(feature = "float_extras",
-               reason = "unsure about its place in the world")]
+               reason = "unsure about its place in the world",
+               issue = "27752")]
     #[inline]
     pub fn next_after(self, other: f64) -> f64 {
         unsafe { cmath::nextafter(self, other) }

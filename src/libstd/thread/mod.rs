@@ -167,7 +167,6 @@ use any::Any;
 use cell::UnsafeCell;
 use fmt;
 use io;
-use marker::PhantomData;
 use rt::{self, unwind};
 use sync::{Mutex, Condvar, Arc};
 use sys::thread as imp;
@@ -185,8 +184,9 @@ use time::Duration;
 pub use self::local::{LocalKey, LocalKeyState};
 
 #[unstable(feature = "scoped_tls",
-            reason = "scoped TLS has yet to have wide enough use to fully \
-                      consider stabilizing its interface")]
+           reason = "scoped TLS has yet to have wide enough use to fully \
+                     consider stabilizing its interface",
+           issue = "27715")]
 pub use self::scoped_tls::ScopedKey;
 
 #[doc(hidden)] pub use self::local::__KeyInner as __LocalKeyInner;
@@ -375,7 +375,8 @@ pub fn panicking() -> bool {
 /// });
 /// assert!(result.is_err());
 /// ```
-#[unstable(feature = "catch_panic", reason = "recent API addition")]
+#[unstable(feature = "catch_panic", reason = "recent API addition",
+           issue = "27719")]
 pub fn catch_panic<F, R>(f: F) -> Result<R>
     where F: FnOnce() -> R + Send + 'static
 {
@@ -409,7 +410,8 @@ pub fn sleep_ms(ms: u32) {
 /// signal being received or a spurious wakeup. Platforms which do not support
 /// nanosecond precision for sleeping will have `dur` rounded up to the nearest
 /// granularity of time they can sleep for.
-#[unstable(feature = "thread_sleep", reason = "waiting on Duration")]
+#[unstable(feature = "thread_sleep", reason = "waiting on Duration",
+           issue = "27771")]
 pub fn sleep(dur: Duration) {
     imp::Thread::sleep(dur)
 }
@@ -479,7 +481,8 @@ pub fn park_timeout_ms(ms: u32) {
 ///
 /// Platforms which do not support nanosecond precision for sleeping will have
 /// `dur` rounded up to the nearest granularity of time they can sleep for.
-#[unstable(feature = "park_timeout", reason = "waiting on Duration")]
+#[unstable(feature = "park_timeout", reason = "waiting on Duration",
+           issue = "27771")]
 pub fn park_timeout(dur: Duration) {
     let thread = current();
     let mut guard = thread.inner.lock.lock().unwrap();
@@ -552,7 +555,7 @@ impl thread_info::NewThread for Thread {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// JoinHandle and JoinGuard
+// JoinHandle
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Indicates the manner in which a thread exited.
@@ -578,7 +581,7 @@ struct Packet<T>(Arc<UnsafeCell<Option<Result<T>>>>);
 unsafe impl<T: Send> Send for Packet<T> {}
 unsafe impl<T: Sync> Sync for Packet<T> {}
 
-/// Inner representation for JoinHandle and JoinGuard
+/// Inner representation for JoinHandle
 struct JoinInner<T> {
     native: Option<imp::Thread>,
     thread: Thread,
@@ -596,8 +599,7 @@ impl<T> JoinInner<T> {
 
 /// An owned permission to join on a thread (block on its termination).
 ///
-/// Unlike a `JoinGuard`, a `JoinHandle` *detaches* the child thread
-/// when it is dropped, rather than automatically joining on drop.
+/// A `JoinHandle` *detaches* the child thread when it is dropped.
 ///
 /// Due to platform restrictions, it is not possible to `Clone` this
 /// handle: the ability to join a child thread is a uniquely-owned
@@ -622,63 +624,9 @@ impl<T> JoinHandle<T> {
     }
 }
 
-/// An RAII-style guard that will block until thread termination when dropped.
-///
-/// The type `T` is the return type for the thread's main function.
-///
-/// Joining on drop is necessary to ensure memory safety when stack
-/// data is shared between a parent and child thread.
-///
-/// Due to platform restrictions, it is not possible to `Clone` this
-/// handle: the ability to join a child thread is a uniquely-owned
-/// permission.
-#[must_use = "thread will be immediately joined if `JoinGuard` is not used"]
-#[unstable(feature = "scoped",
-           reason = "memory unsafe if destructor is avoided, see #24292")]
-pub struct JoinGuard<'a, T: Send + 'a> {
-    inner: JoinInner<T>,
-    _marker: PhantomData<&'a T>,
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<'a, T: Send + 'a> Sync for JoinGuard<'a, T> {}
-
-impl<'a, T: Send + 'a> JoinGuard<'a, T> {
-    /// Extracts a handle to the thread this guard will join on.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn thread(&self) -> &Thread {
-        &self.inner.thread
-    }
-
-    /// Waits for the associated thread to finish, returning the result of the
-    /// thread's calculation.
-    ///
-    /// # Panics
-    ///
-    /// Panics on the child thread are propagated by panicking the parent.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn join(mut self) -> T {
-        match self.inner.join() {
-            Ok(res) => res,
-            Err(_) => panic!("child thread {:?} panicked", self.thread()),
-        }
-    }
-}
-
-#[unstable(feature = "scoped",
-           reason = "memory unsafe if destructor is avoided, see #24292")]
-impl<'a, T: Send + 'a> Drop for JoinGuard<'a, T> {
-    fn drop(&mut self) {
-        if self.inner.native.is_some() && self.inner.join().is_err() {
-            panic!("child thread {:?} panicked", self.thread());
-        }
-    }
-}
-
 fn _assert_sync_and_send() {
     fn _assert_both<T: Send + Sync>() {}
     _assert_both::<JoinHandle<()>>();
-    _assert_both::<JoinGuard<()>>();
     _assert_both::<Thread>();
 }
 

@@ -22,43 +22,43 @@ use sys::fs::MetadataExt as UnixMetadataExt;
 use sys;
 use sys_common::{FromInner, AsInner, AsInnerMut};
 
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const USER_READ: raw::mode_t = 0o400;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const USER_WRITE: raw::mode_t = 0o200;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const USER_EXECUTE: raw::mode_t = 0o100;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const USER_RWX: raw::mode_t = 0o700;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const GROUP_READ: raw::mode_t = 0o040;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const GROUP_WRITE: raw::mode_t = 0o020;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const GROUP_EXECUTE: raw::mode_t = 0o010;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const GROUP_RWX: raw::mode_t = 0o070;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const OTHER_READ: raw::mode_t = 0o004;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const OTHER_WRITE: raw::mode_t = 0o002;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const OTHER_EXECUTE: raw::mode_t = 0o001;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const OTHER_RWX: raw::mode_t = 0o007;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const ALL_READ: raw::mode_t = 0o444;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const ALL_WRITE: raw::mode_t = 0o222;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const ALL_EXECUTE: raw::mode_t = 0o111;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const ALL_RWX: raw::mode_t = 0o777;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const SETUID: raw::mode_t = 0o4000;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const SETGID: raw::mode_t = 0o2000;
-#[unstable(feature = "fs_mode", reason = "recently added API")]
+#[unstable(feature = "fs_mode", reason = "recently added API", issue = "27712")]
 pub const STICKY_BIT: raw::mode_t = 0o1000;
 
 /// Unix-specific extensions to `Permissions`
@@ -178,7 +178,8 @@ impl MetadataExt for fs::Metadata {
 }
 
 /// Add special unix types (block/char device, fifo and socket)
-#[unstable(feature = "file_type_ext", reason = "recently added API")]
+#[unstable(feature = "file_type_ext", reason = "recently added API",
+           issue = "27796")]
 pub trait FileTypeExt {
     /// Returns whether this file type is a block device.
     fn is_block_device(&self) -> bool;
@@ -190,7 +191,8 @@ pub trait FileTypeExt {
     fn is_socket(&self) -> bool;
 }
 
-#[unstable(feature = "file_type_ext", reason = "recently added API")]
+#[unstable(feature = "file_type_ext", reason = "recently added API",
+           issue = "27796")]
 impl FileTypeExt for fs::FileType {
     fn is_block_device(&self) -> bool { self.as_inner().is(libc::S_IFBLK) }
     fn is_char_device(&self) -> bool { self.as_inner().is(libc::S_IFCHR) }
@@ -240,7 +242,8 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
     sys::fs::symlink(src.as_ref(), dst.as_ref())
 }
 
-#[unstable(feature = "dir_builder", reason = "recently added API")]
+#[unstable(feature = "dir_builder", reason = "recently added API",
+           issue = "27710")]
 /// An extension trait for `fs::DirBuilder` for unix-specific options.
 pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to
