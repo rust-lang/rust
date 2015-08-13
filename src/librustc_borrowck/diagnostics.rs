@@ -179,6 +179,14 @@ let mut x: i64 = 1;
 let mut y: Box<_> = Box::new(&mut x);
 **y = 2;
 ```
+
+It can also be fixed by using a type with interior mutability, such as `Cell` or
+`RefCell`:
+
+```
+let y: Cell<_> = Cell::new(1);
+y.set(2);
+```
 "##,
 
 E0387: r##"
