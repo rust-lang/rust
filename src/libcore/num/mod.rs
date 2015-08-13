@@ -51,7 +51,8 @@ pub mod dec2flt;
 /// This trait is intended for use in conjunction with `Add`, as an identity:
 /// `x + T::zero() == x`.
 #[unstable(feature = "zero_one",
-           reason = "unsure of placement, wants to use associated constants")]
+           reason = "unsure of placement, wants to use associated constants",
+           issue = "27739")]
 pub trait Zero {
     /// The "zero" (usually, additive identity) for this type.
     fn zero() -> Self;
@@ -62,7 +63,8 @@ pub trait Zero {
 /// This trait is intended for use in conjunction with `Mul`, as an identity:
 /// `x * T::one() == x`.
 #[unstable(feature = "zero_one",
-           reason = "unsure of placement, wants to use associated constants")]
+           reason = "unsure of placement, wants to use associated constants",
+           issue = "27739")]
 pub trait One {
     /// The "one" (usually, multiplicative identity) for this type.
     fn one() -> Self;
@@ -1262,7 +1264,8 @@ pub enum FpCategory {
 /// A built-in floating point number.
 #[doc(hidden)]
 #[unstable(feature = "core_float",
-           reason = "stable interface is via `impl f{32,64}` in later crates")]
+           reason = "stable interface is via `impl f{32,64}` in later crates",
+           issue = "27702")]
 pub trait Float: Sized {
     /// Returns the NaN value.
     fn nan() -> Self;
@@ -1525,7 +1528,8 @@ enum IntErrorKind {
 impl ParseIntError {
     #[unstable(feature = "int_error_internals",
                reason = "available through Error trait and this method should \
-                         not be exposed publicly")]
+                         not be exposed publicly",
+               issue = "0")]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {
         match self.kind {
@@ -1550,13 +1554,15 @@ impl fmt::Display for ParseIntError {
 pub struct ParseFloatError {
     #[doc(hidden)]
     #[unstable(feature = "float_error_internals",
-               reason = "should not be exposed publicly")]
+               reason = "should not be exposed publicly",
+               issue = "0")]
     pub __kind: FloatErrorKind
 }
 
 #[derive(Debug, Clone, PartialEq)]
 #[unstable(feature = "float_error_internals",
-           reason = "should not be exposed publicly")]
+           reason = "should not be exposed publicly",
+           issue = "0")]
 #[doc(hidden)]
 pub enum FloatErrorKind {
     Empty,

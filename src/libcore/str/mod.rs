@@ -117,7 +117,8 @@ impl Utf8Error {
     ///
     /// Starting at the index provided, but not necessarily at it precisely, an
     /// invalid UTF-8 encoding sequence was found.
-    #[unstable(feature = "utf8_error", reason = "method just added")]
+    #[unstable(feature = "utf8_error", reason = "method just added",
+               issue = "27734")]
     pub fn valid_up_to(&self) -> usize { self.valid_up_to }
 }
 
@@ -190,7 +191,7 @@ fn unwrap_or_0(opt: Option<&u8>) -> u8 {
 
 /// Reads the next code point out of a byte iterator (assuming a
 /// UTF-8-like encoding).
-#[unstable(feature = "str_internals")]
+#[unstable(feature = "str_internals", issue = "0")]
 #[inline]
 pub fn next_code_point(bytes: &mut slice::Iter<u8>) -> Option<u32> {
     // Decode UTF-8
@@ -737,7 +738,8 @@ generate_pattern_iterators! {
         struct RMatchIndices;
     stability:
         #[unstable(feature = "str_match_indices",
-                   reason = "type may be removed or have its iterator impl changed")]
+                   reason = "type may be removed or have its iterator impl changed",
+                   issue = "27743")]
     internal:
         MatchIndicesInternal yielding ((usize, usize));
     delegate double ended;
@@ -1002,7 +1004,8 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 #[unstable(feature = "str_char",
            reason = "existence of this struct is uncertain as it is frequently \
                      able to be replaced with char.len_utf8() and/or \
-                     char/char_indices iterators")]
+                     char/char_indices iterators",
+           issue = "27754")]
 pub struct CharRange {
     /// Current `char`
     pub ch: char,
@@ -1220,7 +1223,8 @@ mod traits {
 #[allow(missing_docs)]
 #[doc(hidden)]
 #[unstable(feature = "core_str_ext",
-           reason = "stable interface provided by `impl str` in later crates")]
+           reason = "stable interface provided by `impl str` in later crates",
+           issue = "27701")]
 pub trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
     // libcollections, not here.

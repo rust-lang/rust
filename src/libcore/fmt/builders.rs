@@ -177,7 +177,8 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     }
 
     /// Returns the wrapped `Formatter`.
-    #[unstable(feature = "debug_builder_formatter", reason = "recently added")]
+    #[unstable(feature = "debug_builder_formatter", reason = "recently added",
+               issue = "27782")]
     pub fn formatter(&mut self) -> &mut fmt::Formatter<'b> {
         &mut self.fmt
     }

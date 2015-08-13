@@ -287,7 +287,8 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[unstable(feature = "as_slice",
-               reason = "waiting for mut conventions")]
+               reason = "waiting for mut conventions",
+               issue = "27776")]
     pub fn as_mut_slice<'r>(&'r mut self) -> &'r mut [T] {
         match *self {
             Some(ref mut x) => {
@@ -689,7 +690,8 @@ impl<T> Option<T> {
 
     /// Converts from `Option<T>` to `&[T]` (without copying)
     #[inline]
-    #[unstable(feature = "as_slice", since = "unsure of the utility here")]
+    #[unstable(feature = "as_slice", since = "unsure of the utility here",
+               issue = "27776")]
     pub fn as_slice<'a>(&'a self) -> &'a [T] {
         match *self {
             Some(ref x) => slice::ref_slice(x),
