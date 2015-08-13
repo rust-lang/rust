@@ -13,14 +13,15 @@ use utils::{match_def_path, span_lint, walk_ptrs_ty, get_parent_expr};
 
 declare_lint! {
     pub STRING_ADD_ASSIGN,
-    Warn,
-    "Warn on `x = x + ..` where x is a `String`"
+    Allow,
+    "expressions of the form `x = x + ..` where x is a `String`"
 }
 
 declare_lint! {
     pub STRING_ADD,
     Allow,
-    "Warn on `x + ..` where x is a `String`"
+    "expressions of the form `x + ..` where x is a `String` \
+     unless `string_add_assign` matches"
 }
 
 #[derive(Copy, Clone)]
