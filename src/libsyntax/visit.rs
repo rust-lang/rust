@@ -142,17 +142,6 @@ pub trait Visitor<'v> : Sized {
     fn visit_attribute(&mut self, _attr: &'v Attribute) {}
 }
 
-pub fn walk_inlined_item<'v,V>(visitor: &mut V, item: &'v InlinedItem)
-                         where V: Visitor<'v> {
-    match *item {
-        IIItem(ref i) => visitor.visit_item(&**i),
-        IIForeign(ref i) => visitor.visit_foreign_item(&**i),
-        IITraitItem(_, ref ti) => visitor.visit_trait_item(ti),
-        IIImplItem(_, ref ii) => visitor.visit_impl_item(ii),
-    }
-}
-
-
 pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate) {
     visitor.visit_mod(&krate.module, krate.span, CRATE_NODE_ID);
     for attr in &krate.attrs {

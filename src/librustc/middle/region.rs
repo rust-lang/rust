@@ -17,8 +17,9 @@
 //! `middle/typeck/infer/region_inference.rs`
 
 use ast_map;
-use session::Session;
+use metadata::inline::InlinedItem;
 use middle::ty::{self, Ty};
+use session::Session;
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 
 use std::cell::RefCell;
@@ -1231,7 +1232,7 @@ pub fn resolve_crate(sess: &Session, krate: &ast::Crate) -> RegionMaps {
 
 pub fn resolve_inlined_item(sess: &Session,
                             region_maps: &RegionMaps,
-                            item: &ast::InlinedItem) {
+                            item: &InlinedItem) {
     let mut visitor = RegionResolutionVisitor {
         sess: sess,
         region_maps: region_maps,
@@ -1241,5 +1242,5 @@ pub fn resolve_inlined_item(sess: &Session,
             var_parent: InnermostDeclaringBlock::None
         }
     };
-    visit::walk_inlined_item(&mut visitor, item);
+    item.visit(&mut visitor);
 }

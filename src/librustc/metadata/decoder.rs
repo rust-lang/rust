@@ -23,6 +23,7 @@ use metadata::csearch::MethodInfo;
 use metadata::csearch;
 use metadata::cstore;
 use metadata::encoder::def_to_u64;
+use metadata::inline::InlinedItem;
 use metadata::tydecode::{parse_ty_data, parse_region_data,
                          parse_type_param_def_data, parse_bare_fn_ty_data,
                          parse_trait_ref_data, parse_predicate_data};
@@ -776,7 +777,7 @@ pub type DecodeInlinedItem<'a> =
                         &ty::ctxt<'tcx>,
                         Vec<ast_map::PathElem>,
                         rbml::Doc)
-                        -> Result<&'tcx ast::InlinedItem, Vec<ast_map::PathElem>> + 'a>;
+                        -> Result<&'tcx InlinedItem, Vec<ast_map::PathElem>> + 'a>;
 
 pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeId,
                                 mut decode_inlined_item: DecodeInlinedItem)

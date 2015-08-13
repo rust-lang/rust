@@ -503,33 +503,24 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
     }
 }
 
-pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &InlinedItem,
-                                                          operation: &mut O) {
-    let mut id_visitor = IdVisitor {
-        operation: operation,
-        pass_through_items: true,
-        visited_outermost: false,
-    };
-
-    visit::walk_inlined_item(&mut id_visitor, item);
+pub struct IdRangeComputingVisitor {
+    result: IdRange,
 }
 
-struct IdRangeComputingVisitor {
-    result: IdRange,
+impl IdRangeComputingVisitor {
+    pub fn new() -> IdRangeComputingVisitor {
+        IdRangeComputingVisitor { result: IdRange::max() }
+    }
+
+    pub fn result(&self) -> IdRange {
+        self.result
+    }
 }
 
 impl IdVisitingOperation for IdRangeComputingVisitor {
     fn visit_id(&mut self, id: NodeId) {
         self.result.add(id);
     }
-}
-
-pub fn compute_id_range_for_inlined_item(item: &InlinedItem) -> IdRange {
-    let mut visitor = IdRangeComputingVisitor {
-        result: IdRange::max()
-    };
-    visit_ids_for_inlined_item(item, &mut visitor);
-    visitor.result
 }
 
 /// Computes the id range for a single fn body, ignoring nested items.
@@ -540,9 +531,7 @@ pub fn compute_id_range_for_fn_body(fk: visit::FnKind,
                                     id: NodeId)
                                     -> IdRange
 {
-    let mut visitor = IdRangeComputingVisitor {
-        result: IdRange::max()
-    };
+    let mut visitor = IdRangeComputingVisitor::new();
     let mut id_visitor = IdVisitor {
         operation: &mut visitor,
         pass_through_items: false,

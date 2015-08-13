@@ -17,16 +17,17 @@ use metadata::common as c;
 use metadata::cstore as cstore;
 use session::Session;
 use metadata::decoder;
-use middle::def;
 use metadata::encoder as e;
-use middle::region;
+use metadata::inline::{InlinedItem, InlinedItemRef};
 use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId};
 use metadata::tydecode::{RegionParameter, ClosureSource};
 use metadata::tyencode;
 use middle::cast;
 use middle::check_const::ConstQualif;
+use middle::def;
 use middle::privacy::{AllPublic, LastMod};
+use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::{self, Ty};
@@ -75,12 +76,12 @@ trait tr_intern {
 
 pub fn encode_inlined_item(ecx: &e::EncodeContext,
                            rbml_w: &mut Encoder,
-                           ii: e::InlinedItemRef) {
+                           ii: InlinedItemRef) {
     let id = match ii {
-        e::IIItemRef(i) => i.id,
-        e::IIForeignRef(i) => i.id,
-        e::IITraitItemRef(_, ti) => ti.id,
-        e::IIImplItemRef(_, ii) => ii.id,
+        InlinedItemRef::Item(i) => i.id,
+        InlinedItemRef::Foreign(i) => i.id,
+        InlinedItemRef::TraitItem(_, ti) => ti.id,
+        InlinedItemRef::ImplItem(_, ii) => ii.id,
     };
     debug!("> Encoding inlined item: {} ({:?})",
            ecx.tcx.map.path_to_string(id),
@@ -88,7 +89,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
 
     // Folding could be avoided with a smarter encoder.
     let ii = simplify_ast(ii);
-    let id_range = ast_util::compute_id_range_for_inlined_item(&ii);
+    let id_range = ii.compute_id_range();
 
     rbml_w.start_tag(c::tag_ast as usize);
     id_range.encode(rbml_w);
@@ -124,7 +125,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
                                  tcx: &ty::ctxt<'tcx>,
                                  path: Vec<ast_map::PathElem>,
                                  par_doc: rbml::Doc)
-                                 -> Result<&'tcx ast::InlinedItem, Vec<ast_map::PathElem>> {
+                                 -> Result<&'tcx InlinedItem, Vec<ast_map::PathElem>> {
     match par_doc.opt_child(c::tag_ast) {
       None => Err(path),
       Some(ast_doc) => {
@@ -150,10 +151,10 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
         let ii = ast_map::map_decoded_item(&dcx.tcx.map, path, raw_ii, dcx);
 
         let ident = match *ii {
-            ast::IIItem(ref i) => i.ident,
-            ast::IIForeign(ref i) => i.ident,
-            ast::IITraitItem(_, ref ti) => ti.ident,
-            ast::IIImplItem(_, ref ii) => ii.ident
+            InlinedItem::Item(ref i) => i.ident,
+            InlinedItem::Foreign(ref i) => i.ident,
+            InlinedItem::TraitItem(_, ref ti) => ti.ident,
+            InlinedItem::ImplItem(_, ref ii) => ii.ident
         };
         debug!("Fn named: {}", ident);
         debug!("< Decoded inlined fn: {}::{}",
@@ -162,7 +163,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
         region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
         decode_side_tables(dcx, ast_doc);
         match *ii {
-          ast::IIItem(ref i) => {
+          InlinedItem::Item(ref i) => {
             debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
                    syntax::print::pprust::item_to_string(&**i));
           }
@@ -349,7 +350,7 @@ impl<D:serialize::Decoder> def_id_decoder_helpers for D
 // We also have to adjust the spans: for now we just insert a dummy span,
 // but eventually we should add entries to the local codemap as required.
 
-fn encode_ast(rbml_w: &mut Encoder, item: &ast::InlinedItem) {
+fn encode_ast(rbml_w: &mut Encoder, item: &InlinedItem) {
     rbml_w.start_tag(c::tag_tree as usize);
     item.encode(rbml_w);
     rbml_w.end_tag();
@@ -399,34 +400,34 @@ impl Folder for NestedItemsDropper {
 // As it happens, trans relies on the fact that we do not export
 // nested items, as otherwise it would get confused when translating
 // inlined items.
-fn simplify_ast(ii: e::InlinedItemRef) -> ast::InlinedItem {
+fn simplify_ast(ii: InlinedItemRef) -> InlinedItem {
     let mut fld = NestedItemsDropper;
 
     match ii {
         // HACK we're not dropping items.
-        e::IIItemRef(i) => {
-            ast::IIItem(fold::noop_fold_item(P(i.clone()), &mut fld)
+        InlinedItemRef::Item(i) => {
+            InlinedItem::Item(fold::noop_fold_item(P(i.clone()), &mut fld)
                             .expect_one("expected one item"))
         }
-        e::IITraitItemRef(d, ti) => {
-            ast::IITraitItem(d,
+        InlinedItemRef::TraitItem(d, ti) => {
+            InlinedItem::TraitItem(d,
                 fold::noop_fold_trait_item(P(ti.clone()), &mut fld)
                     .expect_one("noop_fold_trait_item must produce \
                                  exactly one trait item"))
         }
-        e::IIImplItemRef(d, ii) => {
-            ast::IIImplItem(d,
+        InlinedItemRef::ImplItem(d, ii) => {
+            InlinedItem::ImplItem(d,
                 fold::noop_fold_impl_item(P(ii.clone()), &mut fld)
                     .expect_one("noop_fold_impl_item must produce \
                                  exactly one impl item"))
         }
-        e::IIForeignRef(i) => {
-            ast::IIForeign(fold::noop_fold_foreign_item(P(i.clone()), &mut fld))
+        InlinedItemRef::Foreign(i) => {
+            InlinedItem::Foreign(fold::noop_fold_foreign_item(P(i.clone()), &mut fld))
         }
     }
 }
 
-fn decode_ast(par_doc: rbml::Doc) -> ast::InlinedItem {
+fn decode_ast(par_doc: rbml::Doc) -> InlinedItem {
     let chi_doc = par_doc.get(c::tag_tree as usize);
     let mut d = reader::Decoder::new(chi_doc);
     Decodable::decode(&mut d).unwrap()
@@ -920,9 +921,9 @@ impl<'a, 'b, 'c, 'tcx> ast_util::IdVisitingOperation for
 
 fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
                              rbml_w: &mut Encoder,
-                             ii: &ast::InlinedItem) {
+                             ii: &InlinedItem) {
     rbml_w.start_tag(c::tag_table as usize);
-    ast_util::visit_ids_for_inlined_item(ii, &mut SideTableEncodingIdVisitor {
+    ii.visit_ids(&mut SideTableEncodingIdVisitor {
         ecx: ecx,
         rbml_w: rbml_w
     });
@@ -1644,15 +1645,15 @@ fn test_simplification() {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
     ).unwrap();
-    let item_in = e::IIItemRef(&*item);
+    let item_in = InlinedItemRef::Item(&*item);
     let item_out = simplify_ast(item_in);
-    let item_exp = ast::IIItem(quote_item!(&cx,
+    let item_exp = InlinedItem::Item(quote_item!(&cx,
         fn new_int_alist<B>() -> alist<isize, B> {
             return alist {eq_fn: eq_int, data: Vec::new()};
         }
     ).unwrap());
     match (item_out, item_exp) {
-      (ast::IIItem(item_out), ast::IIItem(item_exp)) => {
+      (InlinedItem::Item(item_out), InlinedItem::Item(item_exp)) => {
         assert!(pprust::item_to_string(&*item_out) ==
                 pprust::item_to_string(&*item_exp));
       }

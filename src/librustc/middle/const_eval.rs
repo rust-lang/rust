@@ -17,6 +17,7 @@ use self::EvalHint::*;
 use ast_map;
 use ast_map::blocks::FnLikeNode;
 use metadata::csearch;
+use metadata::inline::InlinedItem;
 use middle::{astencode, def, infer, subst, traits};
 use middle::pat_util::def_to_path;
 use middle::ty::{self, Ty};
@@ -86,7 +87,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
         }
         let expr_id = match csearch::maybe_get_item_ast(tcx, enum_def,
             Box::new(|a, b, c, d| astencode::decode_inlined_item(a, b, c, d))) {
-            csearch::FoundAst::Found(&ast::IIItem(ref item)) => match item.node {
+            csearch::FoundAst::Found(&InlinedItem::Item(ref item)) => match item.node {
                 ast::ItemEnum(ast::EnumDef { ref variants }, _) => {
                     // NOTE this doesn't do the right thing, it compares inlined
                     // NodeId's to the original variant_def's NodeId, but they
@@ -161,11 +162,11 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
         let mut used_ref_id = false;
         let expr_id = match csearch::maybe_get_item_ast(tcx, def_id,
             Box::new(|a, b, c, d| astencode::decode_inlined_item(a, b, c, d))) {
-            csearch::FoundAst::Found(&ast::IIItem(ref item)) => match item.node {
+            csearch::FoundAst::Found(&InlinedItem::Item(ref item)) => match item.node {
                 ast::ItemConst(_, ref const_expr) => Some(const_expr.id),
                 _ => None
             },
-            csearch::FoundAst::Found(&ast::IITraitItem(trait_id, ref ti)) => match ti.node {
+            csearch::FoundAst::Found(&InlinedItem::TraitItem(trait_id, ref ti)) => match ti.node {
                 ast::ConstTraitItem(_, _) => {
                     used_ref_id = true;
                     match maybe_ref_id {
@@ -184,7 +185,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                 }
                 _ => None
             },
-            csearch::FoundAst::Found(&ast::IIImplItem(_, ref ii)) => match ii.node {
+            csearch::FoundAst::Found(&InlinedItem::ImplItem(_, ref ii)) => match ii.node {
                 ast::ConstImplItem(_, ref expr) => Some(expr.id),
                 _ => None
             },
@@ -217,8 +218,8 @@ fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: ast::DefId)
 
     let fn_id = match csearch::maybe_get_item_ast(tcx, def_id,
         box |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
-        csearch::FoundAst::Found(&ast::IIItem(ref item)) => Some(item.id),
-        csearch::FoundAst::Found(&ast::IIImplItem(_, ref item)) => Some(item.id),
+        csearch::FoundAst::Found(&InlinedItem::Item(ref item)) => Some(item.id),
+        csearch::FoundAst::Found(&InlinedItem::ImplItem(_, ref item)) => Some(item.id),
         _ => None
     };
     tcx.extern_const_fns.borrow_mut().insert(def_id,
