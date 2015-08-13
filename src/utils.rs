@@ -63,10 +63,16 @@ pub fn snippet_block<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, 
 /// Trim indentation from a multiline string
 /// with possibility of ignoring the first line
 pub fn trim_multiline<'a>(s: Cow<'a, str>, ignore_first: bool) -> Cow<'a, str> {
+    let s = trim_multiline_inner(s, ignore_first, ' ');
+    let s = trim_multiline_inner(s, ignore_first, '\t');
+    trim_multiline_inner(s, ignore_first, ' ')
+}
+
+fn trim_multiline_inner<'a>(s: Cow<'a, str>, ignore_first: bool, ch: char) -> Cow<'a, str> {
     let x = s.lines().skip(ignore_first as usize)
              .map(|l| l.char_indices()
-                       .find(|&(_,x)| x != ' ')
-                       .unwrap_or((l.len(),' ')).0)
+                       .find(|&(_,x)| x != ch)
+                       .unwrap_or((l.len(), ch)).0)
              .min().unwrap_or(0);
     if x > 0 {
         Cow::Owned(s.lines().enumerate().map(|(i,l)| if ignore_first && i==0 {
