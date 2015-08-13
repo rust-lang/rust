@@ -19,6 +19,7 @@
 #![feature(float_extras)]
 #![feature(float_from_str_radix)]
 #![feature(flt2dec)]
+#![feature(dec2flt)]
 #![feature(fmt_radix)]
 #![feature(hash_default)]
 #![feature(hasher_write)]

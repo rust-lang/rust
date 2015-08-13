@@ -23,7 +23,7 @@ use cmp::Ordering;
 use num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
 use num::flt2dec::estimator::estimate_scaling_factor;
 use num::flt2dec::bignum::Digit32 as Digit;
-use num::flt2dec::bignum::Big32x36 as Big;
+use num::flt2dec::bignum::Big32x40 as Big;
 
 static POW10: [Digit; 10] = [1, 10, 100, 1000, 10000, 100000,
                              1000000, 10000000, 100000000, 1000000000];
