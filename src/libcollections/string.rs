@@ -20,8 +20,8 @@ use core::ops::{self, Deref, Add, Index};
 use core::ptr;
 use core::slice;
 use core::str::pattern::Pattern;
+use rustc_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use rustc_unicode::str as unicode_str;
-use rustc_unicode::str::Utf16Item;
 
 use borrow::{Cow, IntoCow};
 use range::RangeArgument;
@@ -267,14 +267,7 @@ impl String {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {
-        let mut s = String::with_capacity(v.len());
-        for c in unicode_str::utf16_items(v) {
-            match c {
-                Utf16Item::ScalarValue(c) => s.push(c),
-                Utf16Item::LoneSurrogate(_) => return Err(FromUtf16Error(())),
-            }
-        }
-        Ok(s)
+        decode_utf16(v.iter().cloned()).collect::<Result<_, _>>().map_err(|_| FromUtf16Error(()))
     }
 
     /// Decode a UTF-16 encoded vector `v` into a string, replacing
@@ -294,7 +287,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
-        unicode_str::utf16_items(v).map(|c| c.to_char_lossy()).collect()
+        decode_utf16(v.iter().cloned()).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER)).collect()
     }
 
     /// Creates a new `String` from a length, capacity, and pointer.

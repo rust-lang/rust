@@ -242,6 +242,7 @@
 #![feature(unicode)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
+#![feature(decode_utf16)]
 #![feature(vec_push_all)]
 #![feature(vec_resize)]
 #![feature(wrapping)]
