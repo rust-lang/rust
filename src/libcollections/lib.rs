@@ -56,6 +56,7 @@
 #![feature(unicode)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag, filling_drop)]
+#![feature(decode_utf16)]
 #![feature(utf8_error)]
 #![cfg_attr(test, feature(rand, test))]
 

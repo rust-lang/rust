@@ -13,8 +13,9 @@
 //! This module provides functionality to `str` that requires the Unicode methods provided by the
 //! unicode parts of the CharExt trait.
 
+use char::{DecodeUtf16, decode_utf16};
 use core::char;
-use core::iter::Filter;
+use core::iter::{Cloned, Filter};
 use core::slice;
 use core::str::Split;
 
@@ -119,11 +120,18 @@ pub fn is_utf16(v: &[u16]) -> bool {
 
 /// An iterator that decodes UTF-16 encoded codepoints from a vector
 /// of `u16`s.
+#[deprecated(since = "1.4.0", reason = "renamed to `char::DecodeUtf16`")]
+#[unstable(feature = "decode_utf16", reason = "not exposed in std", issue = "27830")]
+#[allow(deprecated)]
 #[derive(Clone)]
 pub struct Utf16Items<'a> {
-    iter: slice::Iter<'a, u16>
+    decoder: DecodeUtf16<Cloned<slice::Iter<'a, u16>>>
 }
+
 /// The possibilities for values decoded from a `u16` stream.
+#[deprecated(since = "1.4.0", reason = "`char::DecodeUtf16` uses `Result<char, u16>` instead")]
+#[unstable(feature = "decode_utf16", reason = "not exposed in std", issue = "27830")]
+#[allow(deprecated)]
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
 pub enum Utf16Item {
     /// A valid codepoint.
@@ -132,6 +140,7 @@ pub enum Utf16Item {
     LoneSurrogate(u16)
 }
 
+#[allow(deprecated)]
 impl Utf16Item {
     /// Convert `self` to a `char`, taking `LoneSurrogate`s to the
     /// replacement character (U+FFFD).
@@ -144,49 +153,22 @@ impl Utf16Item {
     }
 }
 
+#[deprecated(since = "1.4.0", reason = "use `char::DecodeUtf16` instead")]
+#[unstable(feature = "decode_utf16", reason = "not exposed in std", issue = "27830")]
+#[allow(deprecated)]
 impl<'a> Iterator for Utf16Items<'a> {
     type Item = Utf16Item;
 
     fn next(&mut self) -> Option<Utf16Item> {
-        let u = match self.iter.next() {
-            Some(u) => *u,
-            None => return None
-        };
-
-        if u < 0xD800 || 0xDFFF < u {
-            // not a surrogate
-            Some(Utf16Item::ScalarValue(unsafe { char::from_u32_unchecked(u as u32) }))
-        } else if u >= 0xDC00 {
-            // a trailing surrogate
-            Some(Utf16Item::LoneSurrogate(u))
-        } else {
-            // preserve state for rewinding.
-            let old = self.iter.clone();
-
-            let u2 = match self.iter.next() {
-                Some(u2) => *u2,
-                // eof
-                None => return Some(Utf16Item::LoneSurrogate(u))
-            };
-            if u2 < 0xDC00 || u2 > 0xDFFF {
-                // not a trailing surrogate so we're not a valid
-                // surrogate pair, so rewind to redecode u2 next time.
-                self.iter = old.clone();
-                return Some(Utf16Item::LoneSurrogate(u))
-            }
-
-            // all ok, so lets decode it.
-            let c = (((u - 0xD800) as u32) << 10 | (u2 - 0xDC00) as u32) + 0x1_0000;
-            Some(Utf16Item::ScalarValue(unsafe { char::from_u32_unchecked(c) }))
-        }
+        self.decoder.next().map(|result| match result {
+            Ok(c) => Utf16Item::ScalarValue(c),
+            Err(s) => Utf16Item::LoneSurrogate(s),
+        })
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (low, high) = self.iter.size_hint();
-        // we could be entirely valid surrogates (2 elements per
-        // char), or entirely non-surrogates (1 element per char)
-        (low / 2, high)
+        self.decoder.size_hint()
     }
 }
 
@@ -196,7 +178,7 @@ impl<'a> Iterator for Utf16Items<'a> {
 /// # Examples
 ///
 /// ```
-/// #![feature(unicode)]
+/// #![feature(unicode, decode_utf16)]
 ///
 /// extern crate rustc_unicode;
 ///
@@ -216,8 +198,11 @@ impl<'a> Iterator for Utf16Items<'a> {
 ///                     LoneSurrogate(0xD834)]);
 /// }
 /// ```
+#[deprecated(since = "1.4.0", reason = "renamed to `char::decode_utf16`")]
+#[unstable(feature = "decode_utf16", reason = "not exposed in std", issue = "27830")]
+#[allow(deprecated)]
 pub fn utf16_items<'a>(v: &'a [u16]) -> Utf16Items<'a> {
-    Utf16Items { iter : v.iter() }
+    Utf16Items { decoder: decode_utf16(v.iter().cloned()) }
 }
 
 /// Iterator adaptor for encoding `char`s to UTF-16.
