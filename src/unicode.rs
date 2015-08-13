@@ -3,8 +3,11 @@ use syntax::ast::*;
 use syntax::codemap::{BytePos, Span};
 use utils::span_lint;
 
-declare_lint!{ pub ZERO_WIDTH_SPACE, Deny, "Zero-width space is confusing" }
-declare_lint!{ pub NON_ASCII_LITERAL, Allow, "Lint literal non-ASCII chars in literals" }
+declare_lint!{ pub ZERO_WIDTH_SPACE, Deny,
+               "using a zero-width space in a string literal, which is confusing" }
+declare_lint!{ pub NON_ASCII_LITERAL, Allow,
+               "using any literal non-ASCII chars in a string literal; suggests \
+                using the \\u escape instead" }
 
 #[derive(Copy, Clone)]
 pub struct Unicode;

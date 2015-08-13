@@ -16,7 +16,8 @@ use utils::span_lint;
 declare_lint! {
     pub PTR_ARG,
     Allow,
-    "Warn on declaration of a &Vec- or &String-typed method argument"
+    "fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` \
+     instead, respectively"
 }
 
 #[derive(Copy,Clone)]

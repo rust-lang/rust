@@ -10,7 +10,7 @@ use syntax::codemap::Span;
 use utils::{span_lint, snippet};
 
 declare_lint! { pub IDENTITY_OP, Warn,
-    "Warn on identity operations, e.g. '_ + 0'"}
+                "using identity operations, e.g. `x + 0` or `y / 1`" }
 
 #[derive(Copy,Clone)]
 pub struct IdentityOp;

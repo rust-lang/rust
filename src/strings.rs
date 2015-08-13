@@ -20,7 +20,7 @@ declare_lint! {
 declare_lint! {
     pub STRING_ADD,
     Allow,
-    "expressions of the form `x + ..` where x is a `String"
+    "using `x = x + ..` where x is a `String`; suggests using `push_str()` instead"
 }
 
 #[derive(Copy, Clone)]

@@ -12,7 +12,8 @@ use utils::span_lint;
 declare_lint! {
     pub APPROX_CONSTANT,
     Warn,
-    "Warn if a user writes an approximate known constant in their code"
+    "the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) \
+     is found; suggests to use the constant"
 }
 
 const KNOWN_CONSTS : &'static [(f64, &'static str)] = &[(f64::E, "E"), (f64::FRAC_1_PI, "FRAC_1_PI"),

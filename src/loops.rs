@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use utils::{span_lint, get_parent_expr};
 
 declare_lint!{ pub NEEDLESS_RANGE_LOOP, Warn,
-               "Warn about looping over a range of indices if a normal iterator would do" }
+               "for-looping over a range of indices where an iterator over items would do" }
 
 #[derive(Copy, Clone)]
 pub struct LoopsPass;

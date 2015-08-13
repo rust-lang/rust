@@ -6,7 +6,8 @@ use syntax::codemap::{BytePos, ExpnInfo, Span};
 use utils::{in_macro, span_lint};
 
 declare_lint!(pub MUT_MUT, Warn,
-              "Warn on usage of double-mut refs, e.g. '&mut &mut ...'");
+              "usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, \
+               or shows a fundamental misunderstanding of references)");
 
 #[derive(Copy,Clone)]
 pub struct MutMut;

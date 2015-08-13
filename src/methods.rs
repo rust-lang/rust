@@ -8,13 +8,13 @@ use utils::{span_lint, match_def_path, walk_ptrs_ty};
 pub struct MethodsPass;
 
 declare_lint!(pub OPTION_UNWRAP_USED, Warn,
-              "Warn on using unwrap() on an Option value");
+              "using `Option.unwrap()`, which should at least get a better message using `expect()`");
 declare_lint!(pub RESULT_UNWRAP_USED, Allow,
-              "Warn on using unwrap() on a Result value");
+              "using `Result.unwrap()`, which might be better handled");
 declare_lint!(pub STR_TO_STRING, Warn,
-              "Warn when a String could use to_owned() instead of to_string()");
+              "using `to_string()` on a str, which should be `to_owned()`");
 declare_lint!(pub STRING_TO_STRING, Warn,
-              "Warn when calling String.to_string()");
+              "calling `String.to_string()` which is a no-op");
 
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {

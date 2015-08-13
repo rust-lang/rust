@@ -11,7 +11,7 @@ pub struct EtaPass;
 
 
 declare_lint!(pub REDUNDANT_CLOSURE, Warn,
-              "Warn on usage of redundant closures, i.e. `|a| foo(a)`");
+              "using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)");
 
 impl LintPass for EtaPass {
     fn get_lints(&self) -> LintArray {
