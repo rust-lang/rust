@@ -142,23 +142,20 @@ E0383: r##"
 This error occurs when an attempt is made to partially reinitialize a
 structure that is currently uninitialized.
 
-For example, this can happen when a transfer of ownership has taken place:
+For example, this can happen when a drop has taken place:
 
 ```
-let mut t = Test { a: 1, b: None};
-let mut u = Test { a: 2, b: Some(Box::new(t))}; // `t` is now uninitialized
-                                                // because ownership has been
-                                                // transferred
-t.b = Some(Box::new(u)); // error, partial reinitialization of uninitialized
-                         //        structure `t`
+let mut x = Foo { a: 1 };
+drop(x); // `x` is now uninitialized
+x.a = 2; // error, partial reinitialization of uninitialized structure `t`
 ```
 
 This error can be fixed by fully reinitializing the structure in question:
 
 ```
-let mut t = Test { a: 1, b: None};
-let mut u = Test { a: 2, b: Some(Box::new(t))};
-t = Test { a: 1, b: Some(Box::new(u))};
+let mut x = Foo { a: 1 };
+drop(x);
+x = Foo { a: 2 };
 ```
 "##,
 
