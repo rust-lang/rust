@@ -15,7 +15,8 @@ use utils::{de_p, span_lint};
 declare_lint! {
     pub NEEDLESS_BOOL,
     Warn,
-    "Warn on needless use of if x { true } else { false } (or vice versa)"
+    "if-statements with plain booleans in the then- and else-clause, e.g. \
+     `if p { true } else { false }`"
 }
 
 #[derive(Copy,Clone)]

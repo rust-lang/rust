@@ -8,7 +8,7 @@ use utils::span_lint;
 declare_lint! {
     pub EQ_OP,
     Warn,
-    "warn about comparing equal expressions (e.g. x == x)"
+    "equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)"
 }
 
 #[derive(Copy,Clone)]

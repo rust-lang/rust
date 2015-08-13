@@ -7,7 +7,8 @@ use std::collections::HashSet;
 use std::iter::FromIterator;
 
 declare_lint!(pub NEEDLESS_LIFETIMES, Warn,
-              "Warn on explicit lifetimes when elision rules would apply");
+              "using explicit lifetimes for references in function arguments when elision rules \
+               would allow omitting them");
 
 #[derive(Copy,Clone)]
 pub struct LifetimePass;

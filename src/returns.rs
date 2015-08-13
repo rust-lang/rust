@@ -7,9 +7,10 @@ use rustc::lint::{Context, LintPass, LintArray, Level};
 use utils::{span_lint, snippet, match_path};
 
 declare_lint!(pub NEEDLESS_RETURN, Warn,
-              "Warn on using a return statement where an expression would be enough");
+              "using a return statement like `return expr;` where an expression would suffice");
 declare_lint!(pub LET_AND_RETURN, Warn,
-              "Warn on creating a let-binding and then immediately returning it");
+              "creating a let-binding and then immediately returning it like `let x = expr; x` at \
+               the end of a function");
 
 #[derive(Copy,Clone)]
 pub struct ReturnPass;

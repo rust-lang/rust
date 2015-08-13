@@ -11,15 +11,14 @@ use utils::span_lint;
 declare_lint! {
     pub BAD_BIT_MASK,
     Deny,
-    "Deny the use of incompatible bit masks in comparisons, e.g. \
-     '(a & 1) == 2'"
+    "expressions of the form `_ & mask == select` that will only ever return `true` or `false` \
+     (because in the example `select` containing bits that `mask` doesn't have)"
 }
 
 declare_lint! {
     pub INEFFECTIVE_BIT_MASK,
     Warn,
-    "Warn on the use of an ineffective bit mask in comparisons, e.g. \
-     '(a & 1) > 2'"
+    "expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`"
 }
 
 /// Checks for incompatible bit masks in comparisons, e.g. `x & 1 == 2`.

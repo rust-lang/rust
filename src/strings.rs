@@ -14,7 +14,7 @@ use utils::{match_def_path, span_lint, walk_ptrs_ty};
 declare_lint! {
     pub STRING_ADD_ASSIGN,
     Warn,
-    "Warn on `x = x + ..` where x is a `String`"
+    "using `x = x + ..` where x is a `String`; suggests using `push_str()` instead"
 }
 
 #[derive(Copy,Clone)]

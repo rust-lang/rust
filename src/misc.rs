@@ -16,7 +16,8 @@ pub struct MiscPass;
 
 
 declare_lint!(pub SINGLE_MATCH, Warn,
-              "Warn on usage of matches with a single nontrivial arm");
+              "a match statement with a single nontrivial arm (i.e, where the other arm \
+               is `_ => {}`) is used; recommends `if let` instead");
 
 impl LintPass for MiscPass {
     fn get_lints(&self) -> LintArray {
@@ -59,7 +60,9 @@ impl LintPass for MiscPass {
 }
 
 
-declare_lint!(pub TOPLEVEL_REF_ARG, Warn, "Warn about pattern matches with top-level `ref` bindings");
+declare_lint!(pub TOPLEVEL_REF_ARG, Warn,
+              "a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not \
+               `fn foo((ref x, ref y): (u8, u8))`)");
 
 #[allow(missing_copy_implementations)]
 pub struct TopLevelRefPass;
@@ -82,7 +85,8 @@ impl LintPass for TopLevelRefPass {
     }
 }
 
-declare_lint!(pub CMP_NAN, Deny, "Deny comparisons to std::f32::NAN or std::f64::NAN");
+declare_lint!(pub CMP_NAN, Deny,
+              "comparisons to NAN (which will always return false, which is probably not intended)");
 
 #[derive(Copy,Clone)]
 pub struct CmpNan;
@@ -114,7 +118,9 @@ fn check_nan(cx: &Context, path: &Path, span: Span) {
 }
 
 declare_lint!(pub FLOAT_CMP, Warn,
-              "Warn on ==/!= comparison of floaty values");
+              "using `==` or `!=` on float values (as floating-point operations \
+               usually involve rounding errors, it is always better to check for approximate \
+               equality within small bounds)");
 
 #[derive(Copy,Clone)]
 pub struct FloatCmp;
@@ -147,7 +153,8 @@ fn is_float(cx: &Context, expr: &Expr) -> bool {
 }
 
 declare_lint!(pub PRECEDENCE, Warn,
-              "Warn on mixing bit ops with integer arithmetic without parentheses");
+              "expressions where precedence may trip up the unwary reader of the source; \
+               suggests adding parentheses, e.g. `x << 2 + y` will be parsed as `x << (2 + y)`");
 
 #[derive(Copy,Clone)]
 pub struct Precedence;
@@ -190,7 +197,7 @@ fn is_arith_op(op : BinOp_) -> bool {
 }
 
 declare_lint!(pub CMP_OWNED, Warn,
-              "Warn on creating an owned string just for comparison");
+              "creating owned instances for comparing with others, e.g. `x == \"foo\".to_string()`");
 
 #[derive(Copy,Clone)]
 pub struct CmpOwned;
@@ -242,7 +249,7 @@ fn is_str_arg(cx: &Context, args: &[P<Expr>]) -> bool {
         walk_ptrs_ty(cx.tcx.expr_ty(&*args[0])).sty { true } else { false }
 }
 
-declare_lint!(pub MODULO_ONE, Warn, "Warn on expressions that include % 1, which is always 0");
+declare_lint!(pub MODULO_ONE, Warn, "taking a number modulo 1, which always returns 0");
 
 #[derive(Copy,Clone)]
 pub struct ModuloOne;

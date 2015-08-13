@@ -9,7 +9,7 @@ use syntax::parse::token::InternedString;
 use utils::{in_macro, match_path, span_lint};
 
 declare_lint! { pub INLINE_ALWAYS, Warn,
-    "#[inline(always)] is usually a bad idea."}
+    "`#[inline(always)]` is a bad idea in most cases" }
 
 
 #[derive(Copy,Clone)]

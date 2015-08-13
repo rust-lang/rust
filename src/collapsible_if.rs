@@ -23,7 +23,8 @@ use utils::{in_macro, span_help_and_lint, snippet};
 declare_lint! {
     pub COLLAPSIBLE_IF,
     Warn,
-    "Warn on if expressions that can be collapsed"
+    "two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` \
+     can be written as `if x && y { foo() }`"
 }
 
 #[derive(Copy,Clone)]

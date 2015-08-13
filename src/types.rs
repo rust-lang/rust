@@ -12,9 +12,10 @@ use utils::{in_macro, snippet, span_lint, span_help_and_lint};
 pub struct TypePass;
 
 declare_lint!(pub BOX_VEC, Warn,
-              "Warn on usage of Box<Vec<T>>");
+              "usage of `Box<Vec<T>>`, vector elements are already on the heap");
 declare_lint!(pub LINKEDLIST, Warn,
-              "Warn on usage of LinkedList");
+              "usage of LinkedList, usually a vector is faster, or a more specialized data \
+               structure like a RingBuf");
 
 /// Matches a type with a provided string, and returns its type parameters if successful
 pub fn match_ty_unwrap<'a>(ty: &'a Ty, segments: &[&str]) -> Option<&'a [P<Ty>]> {
@@ -81,7 +82,7 @@ impl LintPass for TypePass {
 pub struct LetPass;
 
 declare_lint!(pub LET_UNIT_VALUE, Warn,
-              "Warn on let-binding a value of unit type");
+              "creating a let binding to a value of unit type, which usually can't be used afterwards");
 
 
 fn check_let_unit(cx: &Context, decl: &Decl, info: Option<&ExpnInfo>) {
