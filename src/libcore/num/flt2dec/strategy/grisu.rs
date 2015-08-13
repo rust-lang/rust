@@ -34,7 +34,7 @@ pub struct Fp {
 
 impl Fp {
     /// Returns a correctly rounded product of itself and `other`.
-    fn mul(&self, other: &Fp) -> Fp {
+    pub fn mul(&self, other: &Fp) -> Fp {
         const MASK: u64 = 0xffffffff;
         let a = self.f >> 32;
         let b = self.f & MASK;
@@ -51,7 +51,7 @@ impl Fp {
     }
 
     /// Normalizes itself so that the resulting mantissa is at least `2^63`.
-    fn normalize(&self) -> Fp {
+    pub fn normalize(&self) -> Fp {
         let mut f = self.f;
         let mut e = self.e;
         if f >> (64 - 32) == 0 { f <<= 32; e -= 32; }
@@ -66,7 +66,7 @@ impl Fp {
 
     /// Normalizes itself to have the shared exponent.
     /// It can only decrease the exponent (and thus increase the mantissa).
-    fn normalize_to(&self, e: i16) -> Fp {
+    pub fn normalize_to(&self, e: i16) -> Fp {
         let edelta = self.e - e;
         assert!(edelta >= 0);
         let edelta = edelta as usize;
