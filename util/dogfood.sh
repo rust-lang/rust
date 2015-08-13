@@ -1,0 +1,1 @@
+rm -rf target* && cargo build --lib && cp -R target target_recur && cargo rustc -- -Zextra-plugins=clippy -Ltarget_recur/debug   -Dclippy
