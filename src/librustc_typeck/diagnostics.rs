@@ -2429,6 +2429,77 @@ fn main() {
 ```
 "##,
 
+E0366: r##"
+An attempt was made to implement `Drop` on a concrete specialization of a
+generic type. An example is shown below:
+
+```
+struct Foo<T> {
+    t: T
+}
+
+impl Drop for Foo<u32> {
+    fn drop(&mut self) {}
+}
+```
+
+This code is not legal: it is not possible to specialize `Drop` to a subset of
+implementations of a generic type. One workaround for this is to wrap the
+generic type, as shown below:
+
+```
+struct Foo<T> {
+    t: T
+}
+
+struct Bar {
+    t: Foo<u32>
+}
+
+impl Drop for Bar {
+    fn drop(&mut self) {}
+}
+```
+"##,
+
+E0367: r##"
+An attempt was made to implement `Drop` on a specialization of a generic type.
+An example is shown below:
+
+```
+trait Foo{}
+
+struct MyStruct<T> {
+    t: T
+}
+
+impl<T: Foo> Drop for MyStruct<T> {
+    fn drop(&mut self) {}
+}
+```
+
+This code is not legal: it is not possible to specialize `Drop` to a subset of
+implementations of a generic type. In order for this code to work, `MyStruct`
+must also require that `T` implements `Foo`. Alternatively, another option is
+to wrap the generic type in another that specializes appropriately:
+
+```
+trait Foo{}
+
+struct MyStruct<T> {
+    t: T
+}
+
+struct MyStructWrapper<T: Foo> {
+    t: MyStruct<T>
+}
+
+impl <T: Foo> Drop for MyStructWrapper<T> {
+    fn drop(&mut self) {}
+}
+```
+"##,
+
 E0368: r##"
 This error indicates that a binary assignment operator like `+=` or `^=` was
 applied to the wrong types. For example:
@@ -2659,8 +2730,6 @@ register_diagnostics! {
     E0325, // implemented an associated type when another trait item expected
     E0328, // cannot implement Unsize explicitly
     E0329, // associated const depends on type parameter or Self.
-    E0366, // dropck forbid specialization to concrete type or region
-    E0367, // dropck forbid specialization to predicate not in struct/enum
     E0369, // binary operation `<op>` cannot be applied to types
     E0370, // discriminant overflow
     E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
