@@ -8,14 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::thread;
+struct Guard<'a> {
+    f: Box<Fn() + Send + 'a>,
+}
+
+fn scoped<'a, F: Fn() + Send + 'a>(f: F) -> Guard<'a> {
+    Guard { f: Box::new(f) }
+}
+
+impl<'a> Guard<'a> {
+    fn join(self) {}
+}
 
 fn main() {
     let bad = {
         let x = 1;
         let y = &x; //~ ERROR `x` does not live long enough
 
-        thread::scoped(|| {
+        scoped(|| {
             //~^ ERROR `y` does not live long enough
             let _z = y;
         })

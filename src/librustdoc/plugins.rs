@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(deprecated)] // old path, used for compatibility with dynamic lib
-
 use clean;
 
 use std::dynamic_lib as dl;

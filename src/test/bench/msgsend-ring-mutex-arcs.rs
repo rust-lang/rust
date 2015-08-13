@@ -17,11 +17,12 @@
 
 // no-pretty-expanded FIXME #15189
 
-#![feature(duration, duration_span, future)]
+#![feature(duration_span)]
 
 use std::env;
-use std::sync::{Arc, Future, Mutex, Condvar};
+use std::sync::{Arc, Mutex, Condvar};
 use std::time::Duration;
+use std::thread;
 
 // A poor man's pipe.
 type pipe = Arc<(Mutex<Vec<usize>>, Condvar)>;
@@ -89,7 +90,7 @@ fn main() {
             //println!("spawning %?", i);
             let (new_chan, num_port) = init();
             let num_chan_2 = num_chan.clone();
-            let new_future = Future::spawn(move|| {
+            let new_future = thread::spawn(move|| {
                 thread_ring(i, msg_per_task, num_chan_2, num_port)
             });
             futures.push(new_future);
@@ -100,8 +101,8 @@ fn main() {
         thread_ring(0, msg_per_task, num_chan, num_port);
 
         // synchronize
-        for f in &mut futures {
-            f.get()
+        for f in futures {
+            f.join().unwrap()
         }
     });
 

@@ -40,7 +40,7 @@
 
 // ignore-android: FIXME(#10393) hangs without output
 
-#![feature(libc, scoped)]
+#![feature(libc)]
 
 extern crate libc;
 
@@ -195,11 +195,12 @@ fn reverse_complement(seq: &mut [u8], tables: &Tables) {
 
 /// Executes a closure in parallel over the given iterator over mutable slice.
 /// The closure `f` is run in parallel with an element of `iter`.
+// FIXME: replace with thread::scoped when it exists again
 fn parallel<I: Iterator, F>(iter: I, ref f: F)
         where I::Item: Send,
               F: Fn(I::Item) + Sync, {
     iter.map(|x| {
-        thread::scoped(move || f(x))
+        f(x)
     }).collect::<Vec<_>>();
 }
 

@@ -360,8 +360,6 @@ mod uint_macros;
 
 pub mod ascii;
 
-pub mod thunk;
-
 /* Common traits */
 
 pub mod num;

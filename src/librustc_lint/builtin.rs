@@ -28,9 +28,6 @@
 //! Use the former for unit-like structs and the latter for structs with
 //! a `pub fn new()`.
 
-// BitSet
-#![allow(deprecated)]
-
 use metadata::{csearch, decoder};
 use middle::{cfg, def, infer, pat_util, stability, traits};
 use middle::subst::Substs;
@@ -41,7 +38,7 @@ use rustc::ast_map;
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeSet};
 use lint::{Level, Context, LintPass, LintArray, Lint};
 
-use std::collections::{HashSet, BitSet};
+use std::collections::HashSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
@@ -2170,7 +2167,7 @@ impl LintPass for UnconditionalRecursion {
         let mut work_queue = vec![cfg.entry];
         let mut reached_exit_without_self_call = false;
         let mut self_call_spans = vec![];
-        let mut visited = BitSet::new();
+        let mut visited = HashSet::new();
 
         while let Some(idx) = work_queue.pop() {
             if idx == cfg.exit {

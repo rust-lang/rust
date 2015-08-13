@@ -187,10 +187,11 @@ mod tests {
 
     #[test]
     fn is_mutex() {
-        let m = ReentrantMutex::new(RefCell::new(0));
+        let m = Arc::new(ReentrantMutex::new(RefCell::new(0)));
+        let m2 = m.clone();
         let lock = m.lock().unwrap();
-        let handle = thread::scoped(|| {
-            let lock = m.lock().unwrap();
+        let child = thread::spawn(move || {
+            let lock = m2.lock().unwrap();
             assert_eq!(*lock.borrow(), 4950);
         });
         for i in 0..100 {
@@ -198,20 +199,19 @@ mod tests {
             *lock.borrow_mut() += i;
         }
         drop(lock);
-        drop(handle);
+        child.join().unwrap();
     }
 
     #[test]
     fn trylock_works() {
-        let m = ReentrantMutex::new(());
+        let m = Arc::new(ReentrantMutex::new(()));
+        let m2 = m.clone();
         let lock = m.try_lock().unwrap();
         let lock2 = m.try_lock().unwrap();
-        {
-            thread::scoped(|| {
-                let lock = m.try_lock();
-                assert!(lock.is_err());
-            });
-        }
+        thread::spawn(move || {
+            let lock = m2.try_lock();
+            assert!(lock.is_err());
+        }).join().unwrap();
         let lock3 = m.try_lock().unwrap();
     }
 

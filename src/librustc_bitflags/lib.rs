@@ -19,7 +19,6 @@
 #![feature(no_std)]
 #![no_std]
 #![unstable(feature = "rustc_private")]
-#![cfg_attr(test, feature(hash_default))]
 
 //! A typesafe bitmask flag generator.
 
@@ -293,7 +292,7 @@ macro_rules! bitflags {
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
 mod tests {
-    use std::hash::{self, SipHasher};
+    use std::hash::{Hasher, Hash, SipHasher};
     use std::option::Option::{Some, None};
 
     bitflags! {
@@ -487,9 +486,15 @@ mod tests {
     fn test_hash() {
       let mut x = Flags::empty();
       let mut y = Flags::empty();
-      assert!(hash::hash::<Flags, SipHasher>(&x) == hash::hash::<Flags, SipHasher>(&y));
+      assert!(hash(&x) == hash(&y));
       x = Flags::all();
       y = Flags::FlagABC;
-      assert!(hash::hash::<Flags, SipHasher>(&x) == hash::hash::<Flags, SipHasher>(&y));
+      assert!(hash(&x) == hash(&y));
+    }
+
+    fn hash<T: Hash>(t: &T) -> u64 {
+        let mut s = SipHasher::new();
+        t.hash(&mut s);
+        s.finish()
     }
 }

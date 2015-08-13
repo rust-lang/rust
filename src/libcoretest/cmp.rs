@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cmp::{partial_min, partial_max};
 use core::cmp::Ordering::{Less, Greater, Equal};
 
 #[test]
@@ -40,72 +39,6 @@ fn test_ordering_reverse() {
 fn test_ordering_order() {
     assert!(Less < Equal);
     assert_eq!(Greater.cmp(&Less), Greater);
-}
-
-#[test]
-fn test_partial_min() {
-    use core::f64::NAN;
-    let data_integer = [
-        // a, b, result
-        (0, 0, Some(0)),
-        (1, 0, Some(0)),
-        (0, 1, Some(0)),
-        (-1, 0, Some(-1)),
-        (0, -1, Some(-1))
-    ];
-
-    let data_float = [
-        // a, b, result
-        (0.0f64, 0.0f64, Some(0.0f64)),
-        (1.0f64, 0.0f64, Some(0.0f64)),
-        (0.0f64, 1.0f64, Some(0.0f64)),
-        (-1.0f64, 0.0f64, Some(-1.0f64)),
-        (0.0f64, -1.0f64, Some(-1.0f64)),
-        (NAN, NAN, None),
-        (NAN, 1.0f64, None),
-        (1.0f64, NAN, None)
-    ];
-
-    for &(a, b, result) in &data_integer {
-        assert!(partial_min(a, b) == result);
-    }
-
-    for &(a, b, result) in &data_float {
-        assert!(partial_min(a, b) == result);
-    }
-}
-
-#[test]
-fn test_partial_max() {
-    use core::f64::NAN;
-    let data_integer = [
-        // a, b, result
-        (0, 0, Some(0)),
-        (1, 0, Some(1)),
-        (0, 1, Some(1)),
-        (-1, 0, Some(0)),
-        (0, -1, Some(0))
-    ];
-
-    let data_float = [
-        // a, b, result
-        (0.0f64, 0.0f64, Some(0.0f64)),
-        (1.0f64, 0.0f64, Some(1.0f64)),
-        (0.0f64, 1.0f64, Some(1.0f64)),
-        (-1.0f64, 0.0f64, Some(0.0f64)),
-        (0.0f64, -1.0f64, Some(0.0f64)),
-        (NAN, NAN, None),
-        (NAN, 1.0f64, None),
-        (1.0f64, NAN, None)
-    ];
-
-    for &(a, b, result) in &data_integer {
-        assert!(partial_max(a, b) == result);
-    }
-
-    for &(a, b, result) in &data_float {
-        assert!(partial_max(a, b) == result);
-    }
 }
 
 #[test]

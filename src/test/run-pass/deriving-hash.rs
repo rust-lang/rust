@@ -11,7 +11,7 @@
 
 #![feature(hash_default)]
 
-use std::hash::{Hash, SipHasher};
+use std::hash::{Hash, SipHasher, Hasher};
 
 #[derive(Hash)]
 struct Person {
@@ -21,7 +21,9 @@ struct Person {
 }
 
 fn hash<T: Hash>(t: &T) -> u64 {
-    std::hash::hash::<T, SipHasher>(t)
+    let mut s = SipHasher::new_with_keys(0, 0);
+    t.hash(&mut s);
+    s.finish()
 }
 
 fn main() {

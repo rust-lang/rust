@@ -354,7 +354,6 @@ fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
 /// generated from the cleaned AST of the crate.
 ///
 /// This form of input will run all of the plug/cleaning passes
-#[allow(deprecated)] // for old Path in plugin manager
 fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matches) -> Output {
     let mut default_passes = !matches.opt_present("no-defaults");
     let mut passes = matches.opt_strs("passes");

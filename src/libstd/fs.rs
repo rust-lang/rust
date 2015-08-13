@@ -1216,23 +1216,6 @@ impl PathExt for Path {
     }
 }
 
-/// Changes the timestamps for a file's last modification and access time.
-///
-/// The file at the path specified will have its last access time set to
-/// `accessed` and its modification time set to `modified`. The times specified
-/// should be in milliseconds.
-#[unstable(feature = "fs_time",
-           reason = "the argument type of u64 is not quite appropriate for \
-                     this function and may change if the standard library \
-                     gains a type to represent a moment in time")]
-#[deprecated(since = "1.3.0",
-             reason = "will never be stabilized as-is and its replacement will \
-                       likely have a totally new API")]
-pub fn set_file_times<P: AsRef<Path>>(path: P, accessed: u64,
-                                 modified: u64) -> io::Result<()> {
-    fs_imp::utimes(path.as_ref(), accessed, modified)
-}
-
 /// Changes the permissions found on a file or a directory.
 ///
 /// # Examples
@@ -2047,44 +2030,6 @@ mod tests {
             check!(f.write("bar".as_bytes()));
         }
         assert_eq!(check!(fs::metadata(&tmpdir.join("h"))).len(), 3);
-    }
-
-    #[test]
-    fn utime() {
-        let tmpdir = tmpdir();
-        let path = tmpdir.join("a");
-        check!(File::create(&path));
-        // These numbers have to be bigger than the time in the day to account
-        // for timezones Windows in particular will fail in certain timezones
-        // with small enough values
-        check!(fs::set_file_times(&path, 100_000, 200_000));
-
-        check(&check!(path.metadata()));
-
-        #[cfg(unix)]
-        fn check(metadata: &fs::Metadata) {
-            use os::unix::prelude::*;
-            assert_eq!(metadata.atime(), 100);
-            assert_eq!(metadata.atime_nsec(), 0);
-            assert_eq!(metadata.mtime(), 200);
-            assert_eq!(metadata.mtime_nsec(), 0);
-        }
-        #[cfg(windows)]
-        fn check(metadata: &fs::Metadata) {
-            use os::windows::prelude::*;
-            assert_eq!(metadata.last_access_time(), 100_000 * 10_000);
-            assert_eq!(metadata.last_write_time(), 200_000 * 10_000);
-        }
-    }
-
-    #[test]
-    fn utime_noexist() {
-        let tmpdir = tmpdir();
-
-        match fs::set_file_times(&tmpdir.join("a"), 100, 200) {
-            Ok(..) => panic!(),
-            Err(..) => {}
-        }
     }
 
     #[test]

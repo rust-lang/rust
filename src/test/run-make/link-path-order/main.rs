@@ -23,6 +23,6 @@ fn main() {
     };
 
     if result != 1 {
-        std::env::set_exit_status(255);
+        std::process::exit(255);
     }
 }

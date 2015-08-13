@@ -234,7 +234,7 @@ use self::Result::{Ok, Err};
 use clone::Clone;
 use fmt;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSizeIterator, IntoIterator};
-use ops::{FnMut, FnOnce};
+use ops::FnOnce;
 use option::Option::{self, None, Some};
 use slice;
 
@@ -956,36 +956,4 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
             None => Ok(v),
         }
     }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-// FromIterator
-/////////////////////////////////////////////////////////////////////////////
-
-/// Performs a fold operation over the result values from an iterator.
-///
-/// If an `Err` is encountered, it is immediately returned.
-/// Otherwise, the folded value is returned.
-#[inline]
-#[unstable(feature = "result_fold",
-           reason = "unclear if this function should exist")]
-#[deprecated(since = "1.2.0",
-             reason = "has not seen enough usage to justify its position in \
-                       the standard library")]
-pub fn fold<T,
-            V,
-            E,
-            F: FnMut(V, T) -> V,
-            Iter: Iterator<Item=Result<T, E>>>(
-            iterator: Iter,
-            mut init: V,
-            mut f: F)
-            -> Result<V, E> {
-    for t in iterator {
-        match t {
-            Ok(v) => init = f(init, v),
-            Err(u) => return Err(u)
-        }
-    }
-    Ok(init)
 }

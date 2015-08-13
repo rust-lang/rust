@@ -32,16 +32,12 @@
 use core::char::CharExt as C;
 use core::option::Option::{self, Some, None};
 use core::iter::Iterator;
-use tables::{derived_property, property, general_category, conversions, charwidth};
+use tables::{derived_property, property, general_category, conversions};
 
 // stable reexports
 pub use core::char::{MAX, from_u32, from_u32_unchecked, from_digit, EscapeUnicode, EscapeDefault};
 
 // unstable reexports
-#[allow(deprecated)]
-pub use normalize::{decompose_canonical, decompose_compatible, compose};
-#[allow(deprecated)]
-pub use tables::normalization::canonical_combining_class;
 pub use tables::UNICODE_VERSION;
 
 /// An iterator over the lowercase mapping of a given character, returned from
@@ -501,23 +497,5 @@ impl char {
     #[inline]
     pub fn to_uppercase(self) -> ToUppercase {
         ToUppercase(CaseMappingIter::new(conversions::to_upper(self)))
-    }
-
-    /// Returns this character's displayed width in columns, or `None` if it is a
-    /// control character other than `'\x00'`.
-    ///
-    /// `is_cjk` determines behavior for characters in the Ambiguous category:
-    /// if `is_cjk` is `true`, these are 2 columns wide; otherwise, they are 1.
-    /// In CJK contexts, `is_cjk` should be `true`, else it should be `false`.
-    /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
-    /// recommends that these characters be treated as 1 column (i.e.,
-    /// `is_cjk` = `false`) if the context cannot be reliably determined.
-    #[deprecated(reason = "use the crates.io `unicode-width` library instead",
-                 since = "1.0.0")]
-    #[unstable(feature = "unicode",
-               reason = "needs expert opinion. is_cjk flag stands out as ugly")]
-    #[inline]
-    pub fn width(self, is_cjk: bool) -> Option<usize> {
-        charwidth::width(self, is_cjk)
     }
 }

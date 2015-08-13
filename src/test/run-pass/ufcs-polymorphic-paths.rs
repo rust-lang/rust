@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(collections, rand, into_cow, map_in_place, bitvec)]
-#![allow(warnings)]
+#![feature(into_cow)]
 
 use std::borrow::{Cow, IntoCow};
-use std::collections::BitVec;
 use std::default::Default;
 use std::iter::FromIterator;
 use std::ops::Add;
@@ -24,7 +21,7 @@ use XorShiftRng as DummyRng;
 impl Rng for XorShiftRng {}
 pub trait Rng {}
 pub trait Rand: Default + Sized {
-    fn rand<R: Rng>(rng: &mut R) -> Self { Default::default() }
+    fn rand<R: Rng>(_rng: &mut R) -> Self { Default::default() }
 }
 impl Rand for i32 { }
 
@@ -41,6 +38,25 @@ trait Size: Sized {
     fn size() -> usize { std::mem::size_of::<Self>() }
 }
 impl<T> Size for T {}
+
+#[derive(PartialEq, Eq)]
+struct BitVec;
+
+impl BitVec {
+    fn from_fn<F>(_: usize, _: F) -> BitVec where F: FnMut(usize) -> bool {
+        BitVec
+    }
+}
+
+#[derive(PartialEq, Eq)]
+struct Foo<T>(T);
+
+impl<T> Foo<T> {
+    fn map_in_place<U, F>(self, mut f: F) -> Foo<U> where F: FnMut(T) -> U {
+        Foo(f(self.0))
+    }
+
+}
 
 macro_rules! tests {
     ($($expr:expr, $ty:ty, ($($test:expr),*);)+) => (pub fn main() {$({
@@ -76,13 +92,13 @@ tests! {
     BitVec::from_fn::<fn(usize) -> bool>, fn(usize, fn(usize) -> bool) -> BitVec, (5, odd);
 
     // Inherent non-static method.
-    Vec::map_in_place, fn(Vec<u8>, fn(u8) -> i8) -> Vec<i8>, (vec![b'f', b'o', b'o'], u8_as_i8);
-    Vec::map_in_place::<i8, fn(u8) -> i8>, fn(Vec<u8>, fn(u8) -> i8) -> Vec<i8>,
-        (vec![b'f', b'o', b'o'], u8_as_i8);
-    Vec::<u8>::map_in_place, fn(Vec<u8>, fn(u8) -> i8) -> Vec<i8>
-        , (vec![b'f', b'o', b'o'], u8_as_i8);
-    Vec::<u8>::map_in_place::<i8, fn(u8) -> i8>, fn(Vec<u8>, fn(u8) -> i8) -> Vec<i8>
-        , (vec![b'f', b'o', b'o'], u8_as_i8);
+    Foo::map_in_place, fn(Foo<u8>, fn(u8) -> i8) -> Foo<i8>, (Foo(b'f'), u8_as_i8);
+    Foo::map_in_place::<i8, fn(u8) -> i8>, fn(Foo<u8>, fn(u8) -> i8) -> Foo<i8>,
+        (Foo(b'f'), u8_as_i8);
+    Foo::<u8>::map_in_place, fn(Foo<u8>, fn(u8) -> i8) -> Foo<i8>
+        , (Foo(b'f'), u8_as_i8);
+    Foo::<u8>::map_in_place::<i8, fn(u8) -> i8>, fn(Foo<u8>, fn(u8) -> i8) -> Foo<i8>
+        , (Foo(b'f'), u8_as_i8);
 
     // Trait static methods.
     bool::size, fn() -> usize, ();

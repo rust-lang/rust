@@ -1751,7 +1751,6 @@ mod tests {
         use super::consts;
 
         let pi: f32 = consts::PI;
-        let two_pi: f32 = consts::PI_2;
         let frac_pi_2: f32 = consts::FRAC_PI_2;
         let frac_pi_3: f32 = consts::FRAC_PI_3;
         let frac_pi_4: f32 = consts::FRAC_PI_4;
@@ -1768,7 +1767,6 @@ mod tests {
         let ln_2: f32 = consts::LN_2;
         let ln_10: f32 = consts::LN_10;
 
-        assert_approx_eq!(two_pi, 2f32 * pi);
         assert_approx_eq!(frac_pi_2, pi / 2f32);
         assert_approx_eq!(frac_pi_3, pi / 3f32);
         assert_approx_eq!(frac_pi_4, pi / 4f32);

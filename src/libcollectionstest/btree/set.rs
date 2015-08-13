@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::collections::BTreeSet;
-use std::hash::{SipHasher, self};
 
 #[test]
 fn test_clone_eq() {
@@ -34,7 +33,7 @@ fn test_hash() {
   y.insert(2);
   y.insert(1);
 
-  assert!(hash::hash::<_, SipHasher>(&x) == hash::hash::<_, SipHasher>(&y));
+  assert!(::hash(&x) == ::hash(&y));
 }
 
 struct Counter<'a, 'b> {

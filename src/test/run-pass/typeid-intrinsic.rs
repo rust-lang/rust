@@ -11,13 +11,12 @@
 // aux-build:typeid-intrinsic.rs
 // aux-build:typeid-intrinsic2.rs
 
-
-#![feature(hash_default, core_intrinsics)]
+#![feature(core_intrinsics)]
 
 extern crate typeid_intrinsic as other1;
 extern crate typeid_intrinsic2 as other2;
 
-use std::hash::{self, SipHasher};
+use std::hash::{SipHasher, Hasher, Hash};
 use std::any::TypeId;
 
 struct A;
@@ -72,6 +71,10 @@ pub fn main() {
     // check it has a hash
     let (a, b) = (TypeId::of::<usize>(), TypeId::of::<usize>());
 
-    assert_eq!(hash::hash::<TypeId, SipHasher>(&a),
-               hash::hash::<TypeId, SipHasher>(&b));
+    let mut s1 = SipHasher::new();
+    a.hash(&mut s1);
+    let mut s2 = SipHasher::new();
+    b.hash(&mut s2);
+
+    assert_eq!(s1.finish(), s2.finish());
 }

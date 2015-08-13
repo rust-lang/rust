@@ -75,7 +75,6 @@ impl TempDir {
     /// deleted once the returned wrapper is destroyed.
     ///
     /// If no directory can be created, `Err` is returned.
-    #[allow(deprecated)]
     pub fn new(prefix: &str) -> io::Result<TempDir> {
         TempDir::new_in(&env::temp_dir(), prefix)
     }
