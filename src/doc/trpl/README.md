@@ -1,6 +1,6 @@
 % The Rust Programming Language
 
-Welcome! This book will teach you about the [Rust Programming Language][rust].
+Welcome! This book will teach us about the [Rust Programming Language][rust].
 Rust is a systems programming language focused on three goals: safety, speed,
 and concurrency. It maintains these goals without having a garbage collector,
 making it a useful language for a number of use cases other languages aren’t
@@ -9,16 +9,15 @@ requirements, and writing low-level code, like device drivers and operating
 systems. It improves on current languages targeting this space by having a
 number of compile-time safety checks that produce no runtime overhead, while
 eliminating all data races. Rust also aims to achieve ‘zero-cost abstractions’
-even though some of these abstractions feel like those of a high-level
-language. Even then, Rust still allows precise control like a low-level
-language would.
+even though some of these abstractions feel like those of a high-level language.
+Even then, Rust still allows precise control like a low-level language would.
 
 [rust]: https://www.rust-lang.org
 
 “The Rust Programming Language” is split into eight sections. This introduction
 is the first. After this:
 
-* [Getting started][gs] - Set up your computer for Rust development.
+* [Getting started][gs] - Set up our computer for Rust development.
 * [Learn Rust][lr] - Learn Rust programming through small projects.
 * [Effective Rust][er] - Higher-level concepts for writing excellent Rust code.
 * [Syntax and Semantics][ss] - Each bit of Rust, broken down into small chunks.
@@ -34,11 +33,11 @@ is the first. After this:
 [gl]: glossary.html
 [bi]: bibliography.html
 
-After reading this introduction, you’ll want to dive into either ‘Learn Rust’
-or ‘Syntax and Semantics’, depending on your preference: ‘Learn Rust’ if you
-want to dive in with a project, or ‘Syntax and Semantics’ if you prefer to
-start small, and learn a single concept thoroughly before moving onto the next.
-Copious cross-linking connects these parts together.
+After reading this introduction, we’ll want to dive into either ‘Learn Rust’ or
+‘Syntax and Semantics’, depending on our preference: ‘Learn Rust’ if we want to
+dive in with a project, or ‘Syntax and Semantics’ if we prefer to start small,
+and learn a single concept thoroughly before moving onto the next. Copious
+cross-linking connects these parts together.
 
 ### Contributing
 
@@ -47,7 +46,7 @@ The source files from which this book is generated can be found on Github:
 
 ## A brief introduction to Rust
 
-Is Rust a language you might be interested in? Let’s examine a few small code
+Is Rust a language we might be interested in? Let’s examine a few small code
 samples to show off a few of its strengths.
 
 The main concept that makes Rust unique is called ‘ownership’. Consider this
@@ -76,11 +75,11 @@ type inference to balance out the power of static typing with the verbosity of
 annotating types.
 
 Rust prefers stack allocation to heap allocation: `x` is placed directly on the
-stack. However, the `Vec<T>` type allocates space for the elements of the
-vector on the heap. If you’re not familiar with this distinction, you can
-ignore it for now, or check out [‘The Stack and the Heap’][heap]. As a systems
-programming language, Rust gives you the ability to control how your memory is
-allocated, but when we’re getting started, it’s less of a big deal.
+stack. However, the `Vec<T>` type allocates space for the elements of the vector
+on the heap. If we’re not familiar with this distinction, we can ignore it for
+now, or check out [‘The Stack and the Heap’][heap]. As a systems programming
+language, Rust gives us the ability to control how our memory is allocated, but
+when we’re getting started, it’s less of a big deal.
 
 [var]: variable-bindings.html
 [macro]: macros.html
@@ -90,10 +89,10 @@ Earlier, we mentioned that ‘ownership’ is the key new concept in Rust. In Ru
 parlance, `x` is said to ‘own’ the vector. This means that when `x` goes out of
 scope, the vector’s memory will be de-allocated. This is done deterministically
 by the Rust compiler, rather than through a mechanism such as a garbage
-collector. In other words, in Rust, you don’t call functions like `malloc` and
-`free` yourself: the compiler statically determines when you need to allocate
-or deallocate memory, and inserts those calls itself. To err is to be human,
-but compilers never forget.
+collector. In other words, in Rust, we don’t call functions like `malloc` and
+`free` ourselves: the compiler statically determines when we need to allocate or
+deallocate memory, and inserts those calls itself. To err is to be human, but
+compilers never forget.
 
 Let’s add another line to our example:
 
