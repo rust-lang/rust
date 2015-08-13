@@ -16,7 +16,8 @@
 #![cfg_attr(not(stage0), allocator)]
 #![unstable(feature = "alloc_system",
             reason = "this library is unlikely to be stabilized in its current \
-                      form or name")]
+                      form or name",
+            issue = "27783")]
 #![feature(allocator)]
 #![feature(libc)]
 #![feature(no_std)]
