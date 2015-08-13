@@ -25,6 +25,12 @@ fn deep_reference_2<'a>(x: Result<&'a u8, &'a u8>) -> &'a u8 { x.unwrap() } // n
 
 fn deep_reference_3<'a>(x: &'a u8, _y: u8) -> Result<&'a u8, ()> { Ok(x) } //~ERROR
 
+type Ref<'r> = &'r u8;
+
+fn lifetime_param_1<'a>(_x: Ref<'a>, _y: &'a u8) { }
+
+fn lifetime_param_2<'a, 'b: 'a>(_x: Ref<'a>, _y: &'b u8) { } //~ERROR
+
 struct X {
     x: u8,
 }
@@ -53,6 +59,8 @@ fn main() {
     let _ = deep_reference_1(&1, &2);
     let _ = deep_reference_2(Ok(&1));
     let _ = deep_reference_3(&1, 2);
+    lifetime_param_1(&1, &2);
+    lifetime_param_2(&1, &2);
 
     let foo = X { x: 1 };
     foo.self_and_out();
