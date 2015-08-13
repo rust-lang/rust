@@ -93,9 +93,14 @@ pub fn walk_ptrs_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
     }
 }
 
-/// Produce a nested chain of if-lets from the patterns:
+/// Produce a nested chain of if-lets and ifs from the patterns:
 ///
-///     if_let_chain! {[Some(y) = x, Some(z) = y],
+///     if_let_chain! {
+///         [
+///             Some(y) = x,
+///             y.len() == 2,
+///             Some(z) = y,
+///         ],
 ///         {
 ///             block
 ///         }
@@ -104,19 +109,31 @@ pub fn walk_ptrs_ty<'t>(ty: ty::Ty<'t>) -> ty::Ty<'t> {
 /// becomes
 ///
 ///     if let Some(y) = x {
-///         if let Some(z) = y {
-///             block
+///         if y.len() == 2 {
+///             if let Some(z) = y {
+///                 block
+///             }
 ///         }
 ///     }
 #[macro_export]
 macro_rules! if_let_chain {
-    ([$pat:pat = $expr:expr, $($p2:pat = $e2:expr),+], $block:block) => {
+    ([let $pat:pat = $expr:expr, $($tt:tt)+], $block:block) => {
         if let $pat = $expr {
-           if_let_chain!{ [$($p2 = $e2),+], $block }
+           if_let_chain!{ [$($tt)+], $block }
         }
     };
-    ([$pat:pat = $expr:expr], $block:block) => {
+    ([let $pat:pat = $expr:expr], $block:block) => {
         if let $pat = $expr {
+           $block
+        }
+    };
+    ([$expr:expr, $($tt:tt)+], $block:block) => {
+        if $expr {
+           if_let_chain!{ [$($tt)+], $block }
+        }
+    };
+    ([$expr:expr], $block:block) => {
+        if $expr {
            $block
         }
     };
