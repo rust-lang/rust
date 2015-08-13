@@ -532,10 +532,9 @@ fn find_stability_generic<'a,
         }
     } else if stab.as_ref().map_or(false, |s| s.level == Unstable && s.issue.is_none()) {
         // non-deprecated unstable items need to point to issues.
-        // FIXME: uncomment this error
-        // diagnostic.span_err(item_sp,
-        //                     "non-deprecated unstable items need to point \
-        //                      to an issue with `issue = \"NNN\"`");
+        diagnostic.span_err(item_sp,
+                            "non-deprecated unstable items need to point \
+                             to an issue with `issue = \"NNN\"`");
     }
 
     (stab, used_attrs)
