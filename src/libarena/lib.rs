@@ -45,7 +45,7 @@ extern crate alloc;
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::intrinsics;
-use std::marker;
+use std::marker::{PhantomData, Send};
 use std::mem;
 use std::ptr;
 use std::raw;
@@ -103,7 +103,7 @@ pub struct Arena<'longer_than_self> {
     head: RefCell<Chunk>,
     copy_head: RefCell<Chunk>,
     chunks: RefCell<Vec<Chunk>>,
-    _marker: marker::PhantomData<*mut &'longer_than_self ()>,
+    _marker: PhantomData<*mut &'longer_than_self ()>,
 }
 
 impl<'a> Arena<'a> {
@@ -118,7 +118,7 @@ impl<'a> Arena<'a> {
             head: RefCell::new(chunk(initial_size, false)),
             copy_head: RefCell::new(chunk(initial_size, true)),
             chunks: RefCell::new(Vec::new()),
-            _marker: marker::PhantomData,
+            _marker: PhantomData,
         }
     }
 }
@@ -382,7 +382,7 @@ pub struct TypedArena<T> {
 
     /// Marker indicating that dropping the arena causes its owned
     /// instances of `T` to be dropped.
-    _own: marker::PhantomData<T>,
+    _own: PhantomData<T>,
 }
 
 struct TypedArenaChunk<T> {
@@ -452,7 +452,7 @@ impl<T> TypedArena<T> {
                 ptr: Cell::new(chunk.start()),
                 end: Cell::new(chunk.end()),
                 chunks: RefCell::new(vec![chunk]),
-                _own: marker::PhantomData,
+                _own: PhantomData,
             }
         }
     }
@@ -530,6 +530,8 @@ impl<T> Drop for TypedArena<T> {
         }
     }
 }
+
+unsafe impl<T: Send> Send for TypedArena<T> {}
 
 #[cfg(test)]
 mod tests {
