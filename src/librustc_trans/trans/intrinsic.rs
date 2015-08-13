@@ -918,37 +918,36 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
 
         (_, _) => {
-            match Intrinsic::find(tcx, &name) {
+            let intr = match Intrinsic::find(tcx, &name) {
+                Some(intr) => intr,
                 None => ccx.sess().span_bug(foreign_item.span, "unknown intrinsic"),
-                Some(intr) => {
-                    fn ty_to_type(ccx: &CrateContext, t: &intrinsics::Type) -> Type {
-                        use intrinsics::Type::*;
-                        match *t {
-                            Integer(x) => Type::ix(ccx, x as u64),
-                            Float(x) => {
-                                match x {
-                                    32 => Type::f32(ccx),
-                                    64 => Type::f64(ccx),
-                                    _ => unreachable!()
-                                }
-                            }
-                            Pointer(_) => unimplemented!(),
-                            Vector(ref t, length) => Type::vector(&ty_to_type(ccx, t),
-                                                                  length as u64)
+            };
+            fn ty_to_type(ccx: &CrateContext, t: &intrinsics::Type) -> Type {
+                use intrinsics::Type::*;
+                match *t {
+                    Integer(x) => Type::ix(ccx, x as u64),
+                    Float(x) => {
+                        match x {
+                            32 => Type::f32(ccx),
+                            64 => Type::f64(ccx),
+                            _ => unreachable!()
                         }
                     }
+                    Pointer(_) => unimplemented!(),
+                    Vector(ref t, length) => Type::vector(&ty_to_type(ccx, t),
+                                                          length as u64)
+                }
+            }
 
-                    let inputs = intr.inputs.iter().map(|t| ty_to_type(ccx, t)).collect::<Vec<_>>();
-                    let outputs = ty_to_type(ccx, &intr.output);
-                    match intr.definition {
-                        intrinsics::IntrinsicDef::Named(name) => {
-                            let f = declare::declare_cfn(ccx,
-                                                         name,
-                                                         Type::func(&inputs, &outputs),
-                                                         tcx.mk_nil());
-                            Call(bcx, f, &llargs, None, call_debug_location)
-                        }
-                    }
+            let inputs = intr.inputs.iter().map(|t| ty_to_type(ccx, t)).collect::<Vec<_>>();
+            let outputs = ty_to_type(ccx, &intr.output);
+            match intr.definition {
+                intrinsics::IntrinsicDef::Named(name) => {
+                    let f = declare::declare_cfn(ccx,
+                                                 name,
+                                                 Type::func(&inputs, &outputs),
+                                                 tcx.mk_nil());
+                    Call(bcx, f, &llargs, None, call_debug_location)
                 }
             }
         }
@@ -1330,6 +1329,15 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
      call_debug_location: DebugLoc,
      call_info: NodeIdAndSpan) -> ValueRef
 {
+    macro_rules! require {
+        ($cond: expr, $($fmt: tt)*) => {
+            if !$cond {
+                bcx.sess().span_err(call_info.span, &format!($($fmt)*));
+                return C_null(llret_ty)
+            }
+        }
+    }
+
     let tcx = bcx.tcx();
     let arg_tys = match callee_ty.sty {
         ty::TyBareFn(_, ref f) => {
@@ -1347,15 +1355,6 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
         "simd_ge" => Some(ast::BiGe),
         _ => None
     };
-
-    macro_rules! require {
-        ($cond: expr, $($fmt: tt)*) => {
-            if !$cond {
-                bcx.sess().span_err(call_info.span, &format!($($fmt)*));
-                return C_null(llret_ty)
-            }
-        }
-    }
 
     if let Some(cmp_op) = comparison {
         assert_eq!(arg_tys.len(), 2);
