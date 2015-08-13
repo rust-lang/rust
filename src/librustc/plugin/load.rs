@@ -99,7 +99,6 @@ impl<'a> PluginLoader<'a> {
     }
 
     // Dynamically link a registrar function into the compiler process.
-    #[allow(deprecated)] // until #23197
     fn dylink_registrar(&mut self,
                         span: Span,
                         path: PathBuf,

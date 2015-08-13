@@ -16,9 +16,7 @@
 //! # Examples
 //!
 //! ```rust
-//! #![feature(hash_default)]
-//!
-//! use std::hash::{hash, Hash, SipHasher};
+//! use std::hash::{Hash, SipHasher, Hasher};
 //!
 //! #[derive(Hash)]
 //! struct Person {
@@ -30,16 +28,20 @@
 //! let person1 = Person { id: 5, name: "Janet".to_string(), phone: 555_666_7777 };
 //! let person2 = Person { id: 5, name: "Bob".to_string(), phone: 555_666_7777 };
 //!
-//! assert!(hash::<_, SipHasher>(&person1) != hash::<_, SipHasher>(&person2));
+//! assert!(hash(&person1) != hash(&person2));
+//!
+//! fn hash<T: Hash>(t: &T) -> u64 {
+//!     let mut s = SipHasher::new();
+//!     t.hash(&mut s);
+//!     s.finish()
+//! }
 //! ```
 //!
 //! If you need more control over how a value is hashed, you need to implement
 //! the trait `Hash`:
 //!
 //! ```rust
-//! #![feature(hash_default)]
-//!
-//! use std::hash::{hash, Hash, Hasher, SipHasher};
+//! use std::hash::{Hash, Hasher, SipHasher};
 //!
 //! struct Person {
 //!     id: u32,
@@ -57,7 +59,13 @@
 //! let person1 = Person { id: 5, name: "Janet".to_string(), phone: 555_666_7777 };
 //! let person2 = Person { id: 5, name: "Bob".to_string(), phone: 555_666_7777 };
 //!
-//! assert_eq!(hash::<_, SipHasher>(&person1), hash::<_, SipHasher>(&person2));
+//! assert_eq!(hash(&person1), hash(&person2));
+//!
+//! fn hash<T: Hash>(t: &T) -> u64 {
+//!     let mut s = SipHasher::new();
+//!     t.hash(&mut s);
+//!     s.finish()
+//! }
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -163,21 +171,6 @@ pub trait Hasher {
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_isize(&mut self, i: isize) { self.write_usize(i as usize) }
-}
-
-/// Hash a value with the default SipHasher algorithm (two initial keys of 0).
-///
-/// The specified value will be hashed with this hasher and then the resulting
-/// hash will be returned.
-#[unstable(feature = "hash_default",
-           reason = "not the most ergonomic interface unless `H` is defaulted \
-                     to SipHasher, but perhaps not ready to commit to that")]
-#[deprecated(since = "1.3.0",
-             reason = "has yet to prove itself useful")]
-pub fn hash<T: Hash, H: Hasher + Default>(value: &T) -> u64 {
-    let mut h: H = Default::default();
-    value.hash(&mut h);
-    h.finish()
 }
 
 //////////////////////////////////////////////////////////////////////////////

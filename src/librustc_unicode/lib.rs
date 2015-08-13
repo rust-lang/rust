@@ -37,18 +37,16 @@
 #![feature(core_char_ext)]
 #![feature(core_slice_ext)]
 #![feature(core_str_ext)]
-#![feature(iter_arith)]
 #![feature(lang_items)]
 #![feature(no_std)]
 #![feature(staged_api)]
 
-mod normalize;
 mod tables;
 mod u_str;
 pub mod char;
 
 pub mod str {
-    pub use u_str::{UnicodeStr, SplitWhitespace, Words, Graphemes, GraphemeIndices};
+    pub use u_str::{UnicodeStr, SplitWhitespace};
     pub use u_str::{utf8_char_width, is_utf16, Utf16Items, Utf16Item};
     pub use u_str::{utf16_items, Utf16Encoder};
 }

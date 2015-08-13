@@ -509,13 +509,6 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     Ok(FileAttr { stat: stat })
 }
 
-pub fn utimes(p: &Path, atime: u64, mtime: u64) -> io::Result<()> {
-    let p = try!(cstr(p));
-    let buf = [super::ms_to_timeval(atime), super::ms_to_timeval(mtime)];
-    try!(cvt(unsafe { c::utimes(p.as_ptr(), buf.as_ptr()) }));
-    Ok(())
-}
-
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     let path = try!(CString::new(p.as_os_str().as_bytes()));
     let mut buf = vec![0u8; 16 * 1024];

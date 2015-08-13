@@ -385,11 +385,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 pub use core_collections::Bound;
-pub use core_collections::{BinaryHeap, BitVec, BitSet, BTreeMap, BTreeSet};
-pub use core_collections::{LinkedList, VecDeque, VecMap};
+pub use core_collections::{BinaryHeap, BTreeMap, BTreeSet};
+pub use core_collections::{LinkedList, VecDeque};
 
-pub use core_collections::{binary_heap, bit_vec, bit_set, btree_map, btree_set};
-pub use core_collections::{linked_list, vec_deque, vec_map};
+pub use core_collections::{binary_heap, btree_map, btree_set};
+pub use core_collections::{linked_list, vec_deque};
 
 pub use self::hash_map::HashMap;
 pub use self::hash_set::HashSet;

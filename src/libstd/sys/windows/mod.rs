@@ -174,13 +174,3 @@ fn dur2timeout(dur: Duration) -> libc::DWORD {
         }
     }).unwrap_or(libc::INFINITE)
 }
-
-fn ms_to_filetime(ms: u64) -> libc::FILETIME {
-    // A FILETIME is a count of 100 nanosecond intervals, so we multiply by
-    // 10000 b/c there are 10000 intervals in 1 ms
-    let ms = ms * 10000;
-    libc::FILETIME {
-        dwLowDateTime: ms as u32,
-        dwHighDateTime: (ms >> 32) as u32,
-    }
-}

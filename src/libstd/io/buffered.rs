@@ -785,129 +785,11 @@ impl<W: Read + Write> Read for InternalBufWriter<W> {
     }
 }
 
-/// Wraps a Stream and buffers input and output to and from it.
-///
-/// It can be excessively inefficient to work directly with a `Read+Write`. For
-/// example, every call to `read` or `write` on `TcpStream` results in a system
-/// call. A `BufStream` keeps in memory buffers of data, making large,
-/// infrequent calls to `read` and `write` on the underlying `Read+Write`.
-///
-/// The output buffer will be written out when this stream is dropped.
-#[unstable(feature = "buf_stream",
-           reason = "unsure about semantics of buffering two directions, \
-                     leading to issues like #17136")]
-#[deprecated(since = "1.2.0",
-             reason = "use the crates.io `bufstream` crate instead")]
-pub struct BufStream<S: Write> {
-    inner: BufReader<InternalBufWriter<S>>
-}
-
-#[unstable(feature = "buf_stream",
-           reason = "unsure about semantics of buffering two directions, \
-                     leading to issues like #17136")]
-#[deprecated(since = "1.2.0",
-             reason = "use the crates.io `bufstream` crate instead")]
-#[allow(deprecated)]
-impl<S: Read + Write> BufStream<S> {
-    /// Creates a new buffered stream with explicitly listed capacities for the
-    /// reader/writer buffer.
-    pub fn with_capacities(reader_cap: usize, writer_cap: usize, inner: S)
-                           -> BufStream<S> {
-        let writer = BufWriter::with_capacity(writer_cap, inner);
-        let internal_writer = InternalBufWriter(writer);
-        let reader = BufReader::with_capacity(reader_cap, internal_writer);
-        BufStream { inner: reader }
-    }
-
-    /// Creates a new buffered stream with the default reader/writer buffer
-    /// capacities.
-    pub fn new(inner: S) -> BufStream<S> {
-        BufStream::with_capacities(DEFAULT_BUF_SIZE, DEFAULT_BUF_SIZE, inner)
-    }
-
-    /// Gets a reference to the underlying stream.
-    pub fn get_ref(&self) -> &S {
-        let InternalBufWriter(ref w) = self.inner.inner;
-        w.get_ref()
-    }
-
-    /// Gets a mutable reference to the underlying stream.
-    ///
-    /// It is inadvisable to read directly from or write directly to the
-    /// underlying stream.
-    pub fn get_mut(&mut self) -> &mut S {
-        let InternalBufWriter(ref mut w) = self.inner.inner;
-        w.get_mut()
-    }
-
-    /// Unwraps this `BufStream`, returning the underlying stream.
-    ///
-    /// The internal write buffer is written out before returning the stream.
-    /// Any leftover data in the read buffer is lost.
-    pub fn into_inner(self) -> Result<S, IntoInnerError<BufStream<S>>> {
-        let BufReader { inner: InternalBufWriter(w), buf, pos, cap } = self.inner;
-        w.into_inner().map_err(|IntoInnerError(w, e)| {
-            IntoInnerError(BufStream {
-                inner: BufReader { inner: InternalBufWriter(w), buf: buf, pos: pos, cap: cap },
-            }, e)
-        })
-    }
-}
-
-#[unstable(feature = "buf_stream",
-           reason = "unsure about semantics of buffering two directions, \
-                     leading to issues like #17136")]
-#[allow(deprecated)]
-impl<S: Read + Write> BufRead for BufStream<S> {
-    fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
-    fn consume(&mut self, amt: usize) { self.inner.consume(amt) }
-}
-
-#[unstable(feature = "buf_stream",
-           reason = "unsure about semantics of buffering two directions, \
-                     leading to issues like #17136")]
-#[allow(deprecated)]
-impl<S: Read + Write> Read for BufStream<S> {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.inner.read(buf)
-    }
-}
-
-#[unstable(feature = "buf_stream",
-           reason = "unsure about semantics of buffering two directions, \
-                     leading to issues like #17136")]
-#[allow(deprecated)]
-impl<S: Read + Write> Write for BufStream<S> {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.inner.inner.get_mut().write(buf)
-    }
-    fn flush(&mut self) -> io::Result<()> {
-        self.inner.inner.get_mut().flush()
-    }
-}
-
-#[unstable(feature = "buf_stream",
-           reason = "unsure about semantics of buffering two directions, \
-                     leading to issues like #17136")]
-#[allow(deprecated)]
-impl<S: Write> fmt::Debug for BufStream<S> where S: fmt::Debug {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let reader = &self.inner;
-        let writer = &self.inner.inner.0;
-        fmt.debug_struct("BufStream")
-            .field("stream", &writer.inner)
-            .field("write_buffer", &format_args!("{}/{}", writer.buf.len(), writer.buf.capacity()))
-            .field("read_buffer",
-                   &format_args!("{}/{}", reader.cap - reader.pos, reader.buf.len()))
-            .finish()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;
     use io::prelude::*;
-    use io::{self, BufReader, BufWriter, BufStream, Cursor, LineWriter, SeekFrom};
+    use io::{self, BufReader, BufWriter, Cursor, LineWriter, SeekFrom};
     use test;
 
     /// A dummy reader intended at testing short-reads propagation.
@@ -1078,27 +960,6 @@ mod tests {
         assert_eq!(&w.into_inner().unwrap().into_inner()[..], &[0, 1, 8, 9, 4, 5, 6, 7]);
     }
 
-    // This is just here to make sure that we don't infinite loop in the
-    // newtype struct autoderef weirdness
-    #[test]
-    fn test_buffered_stream() {
-        struct S;
-
-        impl Write for S {
-            fn write(&mut self, b: &[u8]) -> io::Result<usize> { Ok(b.len()) }
-            fn flush(&mut self) -> io::Result<()> { Ok(()) }
-        }
-
-        impl Read for S {
-            fn read(&mut self, _: &mut [u8]) -> io::Result<usize> { Ok(0) }
-        }
-
-        let mut stream = BufStream::new(S);
-        assert_eq!(stream.read(&mut [0; 10]).unwrap(), 0);
-        stream.write(&[0; 10]).unwrap();
-        stream.flush().unwrap();
-    }
-
     #[test]
     fn test_read_until() {
         let inner: &[u8] = &[0, 1, 2, 1, 0];
@@ -1228,14 +1089,6 @@ mod tests {
     fn bench_buffered_writer(b: &mut test::Bencher) {
         b.iter(|| {
             BufWriter::new(io::sink())
-        });
-    }
-
-    #[bench]
-    fn bench_buffered_stream(b: &mut test::Bencher) {
-        let mut buf = Cursor::new(Vec::new());
-        b.iter(|| {
-            BufStream::new(&mut buf);
         });
     }
 }

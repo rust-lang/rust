@@ -10,7 +10,6 @@
 
 use std::collections::VecDeque;
 use std::fmt::Debug;
-use std::hash::{SipHasher, self};
 
 use test;
 
@@ -603,7 +602,7 @@ fn test_hash() {
   y.push_back(2);
   y.push_back(3);
 
-  assert!(hash::hash::<_, SipHasher>(&x) == hash::hash::<_, SipHasher>(&y));
+  assert!(::hash(&x) == ::hash(&y));
 }
 
 #[test]

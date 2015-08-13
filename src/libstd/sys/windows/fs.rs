@@ -571,19 +571,6 @@ pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
     }
 }
 
-pub fn utimes(p: &Path, atime: u64, mtime: u64) -> io::Result<()> {
-    let atime = super::ms_to_filetime(atime);
-    let mtime = super::ms_to_filetime(mtime);
-
-    let mut o = OpenOptions::new();
-    o.write(true);
-    let f = try!(File::open(p, &o));
-    try!(cvt(unsafe {
-        c::SetFileTime(f.handle.raw(), 0 as *const _, &atime, &mtime)
-    }));
-    Ok(())
-}
-
 fn get_path(f: &File) -> io::Result<PathBuf> {
     super::fill_utf16_buf(|buf, sz| unsafe {
         c::GetFinalPathNameByHandleW(f.handle.raw(), buf, sz,

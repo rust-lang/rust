@@ -10,18 +10,15 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(thunk)]
-
 use std::thread::Builder;
-use std::thunk::Thunk;
 
 static generations: usize = 1024+256+128+49;
 
-fn spawn(f: Thunk<'static>) {
+fn spawn(mut f: Box<FnMut() + 'static + Send>) {
     Builder::new().stack_size(32 * 1024).spawn(move|| f());
 }
 
-fn child_no(x: usize) -> Thunk<'static> {
+fn child_no(x: usize) -> Box<FnMut() + 'static + Send> {
     Box::new(move|| {
         if x < generations {
             spawn(child_no(x+1));

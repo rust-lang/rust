@@ -123,27 +123,6 @@ pub unsafe fn read<T>(src: *const T) -> T {
     tmp
 }
 
-/// Reads the value from `src` and nulls it out without dropping it.
-///
-/// # Safety
-///
-/// This is unsafe for the same reasons that `read` is unsafe.
-#[inline(always)]
-#[unstable(feature = "read_and_zero",
-           reason = "may play a larger role in std::ptr future extensions")]
-#[deprecated(since = "1.3.0",
-             reason = "a \"zero value\" will soon not actually exist for all \
-                       types once dynamic drop has been implemented")]
-pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
-    // Copy the data out from `dest`:
-    let tmp = read(&*dest);
-
-    // Now zero out `dest`:
-    write_bytes(dest, 0, 1);
-
-    tmp
-}
-
 /// Variant of read_and_zero that writes the specific drop-flag byte
 /// (which may be more appropriate than zero).
 #[inline(always)]

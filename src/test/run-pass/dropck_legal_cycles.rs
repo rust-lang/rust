@@ -32,7 +32,6 @@ use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use std::collections::LinkedList;
 use std::collections::VecDeque;
-use std::collections::VecMap;
 use std::collections::btree_map::BTreeMap;
 use std::collections::btree_set::BTreeSet;
 use std::hash::{Hash, Hasher};
@@ -155,16 +154,16 @@ pub fn main() {
     if PRINT { println!(""); }
 
     // Cycle 7: { vm -> (vm0, vm1), {vm0, vm1} -> vm }
-    let mut vm: VecMap<VM> = VecMap::new();
+    let mut vm: HashMap<usize, VM> = HashMap::new();
     vm.insert(0, Named::new("vm0"));
     vm.insert(1, Named::new("vm1"));
-    vm[0].contents.set(Some(&vm));
-    vm[1].contents.set(Some(&vm));
+    vm[&0].contents.set(Some(&vm));
+    vm[&1].contents.set(Some(&vm));
 
     let mut c = c_orig.clone();
     c.curr_mark = 70;
     assert!(!c.saw_prev_marked);
-    vm[0].for_each_child(&mut c);
+    vm[&0].for_each_child(&mut c);
     assert!(c.saw_prev_marked);
 
     if PRINT { println!(""); }
@@ -388,7 +387,7 @@ impl<'a> Marked<u32> for VD<'a> {
 struct VM<'a> {
     name: &'static str,
     mark: Cell<u32>,
-    contents: Cell<Option<&'a VecMap<VM<'a>>>>,
+    contents: Cell<Option<&'a HashMap<usize, VM<'a>>>>,
 }
 
 impl<'a> Named for VM<'a> {

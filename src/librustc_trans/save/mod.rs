@@ -703,7 +703,6 @@ impl<'v> Visitor<'v> for PathCollector {
     }
 }
 
-#[allow(deprecated)]
 pub fn process_crate(tcx: &ty::ctxt,
                      analysis: &ty::CrateAnalysis,
                      odir: Option<&Path>) {

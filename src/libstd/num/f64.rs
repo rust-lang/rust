@@ -1651,7 +1651,6 @@ mod tests {
     fn test_real_consts() {
         use super::consts;
         let pi: f64 = consts::PI;
-        let two_pi: f64 = consts::PI_2;
         let frac_pi_2: f64 = consts::FRAC_PI_2;
         let frac_pi_3: f64 = consts::FRAC_PI_3;
         let frac_pi_4: f64 = consts::FRAC_PI_4;
@@ -1668,7 +1667,6 @@ mod tests {
         let ln_2: f64 = consts::LN_2;
         let ln_10: f64 = consts::LN_10;
 
-        assert_approx_eq!(two_pi, 2.0 * pi);
         assert_approx_eq!(frac_pi_2, pi / 2f64);
         assert_approx_eq!(frac_pi_3, pi / 3f64);
         assert_approx_eq!(frac_pi_4, pi / 4f64);

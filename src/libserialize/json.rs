@@ -1552,7 +1552,6 @@ impl<T: Iterator<Item=char>> Parser<T> {
         }
     }
 
-    #[allow(deprecated)] // possible resolve bug is mapping these to traits
     fn parse_u64(&mut self) -> Result<u64, ParserError> {
         let mut accum = 0u64;
         let last_accum = 0; // necessary to detect overflow.
