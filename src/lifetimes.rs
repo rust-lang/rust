@@ -130,15 +130,15 @@ impl RefVisitor {
 
 impl<'v> Visitor<'v> for RefVisitor {
     // for lifetimes of references
-    fn visit_opt_lifetime_ref(&mut self, _: Span, lifetime: &'v Option<Lifetime>) {
+    fn visit_opt_lifetime_ref(&mut self, _: Span, lifetime: &Option<Lifetime>) {
         self.record(lifetime);
     }
 
     // for lifetimes as parameters of generics
-    fn visit_lifetime_ref(&mut self, lifetime: &'v Lifetime) {
+    fn visit_lifetime_ref(&mut self, lifetime: &Lifetime) {
         self.record(&Some(*lifetime));
     }
 
     // for lifetime bounds; the default impl calls visit_lifetime_ref
-    fn visit_lifetime_bound(&mut self, _: &'v Lifetime) { }
+    fn visit_lifetime_bound(&mut self, _: &Lifetime) { }
 }
