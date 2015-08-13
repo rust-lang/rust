@@ -295,7 +295,8 @@ impl char {
     /// assert_eq!(result, None);
     /// ```
     #[unstable(feature = "unicode",
-               reason = "pending decision about Iterator/Writer/Reader")]
+               reason = "pending decision about Iterator/Writer/Reader",
+               issue = "27784")]
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> Option<usize> {
         C::encode_utf8(self, dst)
@@ -334,7 +335,8 @@ impl char {
     /// assert_eq!(result, None);
     /// ```
     #[unstable(feature = "unicode",
-               reason = "pending decision about Iterator/Writer/Reader")]
+               reason = "pending decision about Iterator/Writer/Reader",
+               issue = "27784")]
     #[inline]
     pub fn encode_utf16(self, dst: &mut [u16]) -> Option<usize> {
         C::encode_utf16(self, dst)
@@ -359,7 +361,8 @@ impl char {
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to ID_Start but modified for closure under NFKx.
     #[unstable(feature = "unicode",
-               reason = "mainly needed for compiler internals")]
+               reason = "mainly needed for compiler internals",
+               issue = "0")]
     #[inline]
     pub fn is_xid_start(self) -> bool { derived_property::XID_Start(self) }
 
@@ -370,7 +373,8 @@ impl char {
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
     #[unstable(feature = "unicode",
-               reason = "mainly needed for compiler internals")]
+               reason = "mainly needed for compiler internals",
+               issue = "0")]
     #[inline]
     pub fn is_xid_continue(self) -> bool { derived_property::XID_Continue(self) }
 
