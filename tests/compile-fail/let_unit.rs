@@ -8,6 +8,6 @@ fn main() {
     let _y = 1;   // this is fine
     let _z = ((), 1);  // this as well
     if true {
-        let _a = ();  //~ERROR
+        let _a = ();  //~ERROR this let-binding has unit value
     }
 }

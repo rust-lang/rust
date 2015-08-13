@@ -13,20 +13,20 @@ fn twice<T>(x : T) -> T where T : Add<T, Output = T>, T : Copy {
 #[deny(float_cmp)]
 #[allow(unused)]
 fn main() {
-    ZERO == 0f32; //~ERROR
-    ZERO == 0.0; //~ERROR
-    ZERO + ZERO != 1.0; //~ERROR
+    ZERO == 0f32; //~ERROR ==-comparison of f32 or f64
+    ZERO == 0.0; //~ERROR ==-comparison of f32 or f64
+    ZERO + ZERO != 1.0; //~ERROR !=-comparison of f32 or f64
 
     ONE != 0.0; //~ERROR
-    twice(ONE) != ONE; //~ERROR
-    ONE as f64 != 0.0; //~ERROR
+    twice(ONE) != ONE; //~ERROR !=-comparison of f32 or f64
+    ONE as f64 != 0.0; //~ERROR !=-comparison of f32 or f64
 
     let x : f64 = 1.0;
 
-    x == 1.0; //~ERROR
-    x != 0f64; //~ERROR
+    x == 1.0; //~ERROR ==-comparison of f32 or f64
+    x != 0f64; //~ERROR !=-comparison of f32 or f64
 
-    twice(x) != twice(ONE as f64); //~ERROR
+    twice(x) != twice(ONE as f64); //~ERROR !=-comparison of f32 or f64
 
     x < 0.0;
     x > 0.0;

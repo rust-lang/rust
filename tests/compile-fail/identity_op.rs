@@ -9,16 +9,16 @@ const ZERO : i64 = 0;
 fn main() {
     let x = 0;
 
-    x + 0; //~ERROR
-    0 + x; //~ERROR
-    x - ZERO; //~ERROR
-    x | (0); //~ERROR
-    ((ZERO)) | x; //~ERROR
+    x + 0;        //~ERROR the operation is ineffective
+    0 + x;        //~ERROR the operation is ineffective
+    x - ZERO;     //~ERROR the operation is ineffective
+    x | (0);      //~ERROR the operation is ineffective
+    ((ZERO)) | x; //~ERROR the operation is ineffective
 
-    x * 1; //~ERROR
-    1 * x; //~ERROR
-    x / ONE; //~ERROR
+    x * 1;        //~ERROR the operation is ineffective
+    1 * x;        //~ERROR the operation is ineffective
+    x / ONE;      //~ERROR the operation is ineffective
 
-    x & NEG_ONE; //~ERROR
-    -1 & x; //~ERROR
+    x & NEG_ONE;  //~ERROR the operation is ineffective
+    -1 & x;       //~ERROR the operation is ineffective
 }
