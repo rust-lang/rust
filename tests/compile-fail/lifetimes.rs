@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![deny(needless_lifetimes)]
-
+#![allow(dead_code)]
 fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) { }
 //~^ERROR explicit lifetimes given
 
@@ -54,27 +54,13 @@ impl X {
     fn self_and_same_in<'s>(&'s self, _x: &'s u8) { } // no error, same lifetimes on two params
 }
 
+struct Foo<'a>(&'a u8);
+
+impl<'a> Foo<'a> {
+    fn self_shared_lifetime(&self, _: &'a u8) {} // no error, lifetime 'a not defined in method
+    fn self_bound_lifetime<'b: 'a>(&self, _: &'b u8) {} // no error, bounds exist
+}
 static STATIC: u8 = 1;
 
 fn main() {
-    distinct_lifetimes(&1, &2, 3);
-    distinct_and_static(&1, &2, &STATIC);
-    same_lifetime_on_input(&1, &2);
-    only_static_on_input(&1, &2, &STATIC);
-    in_and_out(&1, 2);
-    multiple_in_and_out_1(&1, &2);
-    multiple_in_and_out_2(&1, &2);
-    in_static_and_out(&1, &STATIC);
-    let _ = deep_reference_1(&1, &2);
-    let _ = deep_reference_2(Ok(&1));
-    let _ = deep_reference_3(&1, 2);
-    lifetime_param_1(&1, &2);
-    lifetime_param_2(&1, &2);
-    lifetime_param_3(&1, &2);
-
-    let foo = X { x: 1 };
-    foo.self_and_out();
-    foo.self_and_in_out(&1);
-    foo.distinct_self_and_in(&1);
-    foo.self_and_same_in(&1);
 }
