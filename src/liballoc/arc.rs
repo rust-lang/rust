@@ -137,7 +137,8 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 /// used to break cycles between `Arc` pointers.
 #[unsafe_no_drop_flag]
 #[unstable(feature = "arc_weak",
-           reason = "Weak pointers may not belong in this module.")]
+           reason = "Weak pointers may not belong in this module.",
+           issue = "27718")]
 pub struct Weak<T: ?Sized> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -209,7 +210,8 @@ impl<T: ?Sized> Arc<T> {
     /// let weak_five = five.downgrade();
     /// ```
     #[unstable(feature = "arc_weak",
-               reason = "Weak pointers may not belong in this module.")]
+               reason = "Weak pointers may not belong in this module.",
+               issue = "27718")]
     pub fn downgrade(&self) -> Weak<T> {
         loop {
             // This Relaxed is OK because we're checking the value in the CAS
@@ -234,14 +236,14 @@ impl<T: ?Sized> Arc<T> {
 
     /// Get the number of weak references to this value.
     #[inline]
-    #[unstable(feature = "arc_counts")]
+    #[unstable(feature = "arc_counts", issue = "27718")]
     pub fn weak_count(this: &Arc<T>) -> usize {
         this.inner().weak.load(SeqCst) - 1
     }
 
     /// Get the number of strong references to this value.
     #[inline]
-    #[unstable(feature = "arc_counts")]
+    #[unstable(feature = "arc_counts", issue = "27718")]
     pub fn strong_count(this: &Arc<T>) -> usize {
         this.inner().strong.load(SeqCst)
     }
@@ -349,7 +351,7 @@ impl<T: Clone> Arc<T> {
     /// let mut_five = Arc::make_unique(&mut five);
     /// ```
     #[inline]
-    #[unstable(feature = "arc_unique")]
+    #[unstable(feature = "arc_unique", issue = "27718")]
     pub fn make_unique(this: &mut Arc<T>) -> &mut T {
         // Note that we hold both a strong reference and a weak reference.
         // Thus, releasing our strong reference only will not, by itself, cause
@@ -427,7 +429,7 @@ impl<T: ?Sized> Arc<T> {
     /// # }
     /// ```
     #[inline]
-    #[unstable(feature = "arc_unique")]
+    #[unstable(feature = "arc_unique", issue = "27718")]
     pub fn get_mut(this: &mut Arc<T>) -> Option<&mut T> {
         if this.is_unique() {
             // This unsafety is ok because we're guaranteed that the pointer
@@ -541,7 +543,8 @@ impl<T: ?Sized> Drop for Arc<T> {
 }
 
 #[unstable(feature = "arc_weak",
-           reason = "Weak pointers may not belong in this module.")]
+           reason = "Weak pointers may not belong in this module.",
+           issue = "27718")]
 impl<T: ?Sized> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
     ///
@@ -589,7 +592,8 @@ impl<T: ?Sized> Weak<T> {
 }
 
 #[unstable(feature = "arc_weak",
-           reason = "Weak pointers may not belong in this module.")]
+           reason = "Weak pointers may not belong in this module.",
+           issue = "27718")]
 impl<T: ?Sized> Clone for Weak<T> {
     /// Makes a clone of the `Weak<T>`.
     ///

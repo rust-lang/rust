@@ -12,7 +12,8 @@
             reason = "the precise API and guarantees it provides may be tweaked \
                       slightly, especially to possibly take into account the \
                       types being stored to make room for a future \
-                      tracing garbage collector")]
+                      tracing garbage collector",
+            issue = "27700")]
 
 use core::{isize, usize};
 
