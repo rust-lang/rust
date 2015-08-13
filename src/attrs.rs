@@ -64,7 +64,7 @@ fn is_relevant_trait(item: &TraitItem) -> bool {
 }
 
 fn is_relevant_block(block: &Block) -> bool {
-    for stmt in block.stmts.iter() {
+    for stmt in &block.stmts {
         match stmt.node {
             StmtDecl(_, _) => return true,
             StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => {
