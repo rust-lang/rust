@@ -16,7 +16,7 @@ fn main() {
     1.5 < 1.5; //~ERROR equal expressions
     1u64 >= 1u64; //~ERROR equal expressions
 
-    // casts, methods, parenthesis
+    // casts, methods, parentheses
     (1 as u64) & (1 as u64); //~ERROR equal expressions
     1 ^ ((((((1)))))); //~ERROR equal expressions
     id((1)) | id(1); //~ERROR equal expressions
