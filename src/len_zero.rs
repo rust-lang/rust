@@ -59,7 +59,7 @@ fn check_trait_items(cx: &Context, item: &Item, trait_items: &[P<TraitItem>]) {
             if is_named_self(i, "len") {
                 span_lint(cx, LEN_WITHOUT_IS_EMPTY, i.span,
                           &format!("trait `{}` has a `.len(_: &Self)` method, but no \
-                                    `.is_empty(_: &Self)` method. Consider adding one.",
+                                    `.is_empty(_: &Self)` method. Consider adding one",
                                    item.ident.name));
             }
         };
@@ -79,7 +79,7 @@ fn check_impl_items(cx: &Context, item: &Item, impl_items: &[P<ImplItem>]) {
                 span_lint(cx, LEN_WITHOUT_IS_EMPTY,
                           Span{ lo: s.lo, hi: s.lo, expn_id: s.expn_id },
                           &format!("item `{}` has a `.len(_: &Self)` method, but no \
-                                    `.is_empty(_: &Self)` method. Consider adding one.",
+                                    `.is_empty(_: &Self)` method. Consider adding one",
                                    item.ident.name));
                 return;
             }

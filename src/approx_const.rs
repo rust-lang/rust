@@ -53,7 +53,7 @@ fn check_known_consts(cx: &Context, span: Span, str: &str, module: &str) {
         for &(constant, name) in KNOWN_CONSTS {
             if within_epsilon(constant, value) {
                 span_lint(cx, APPROX_CONSTANT, span, &format!(
-                    "approximate value of `{}::{}` found. Consider using it directly.", module, &name));
+                    "approximate value of `{}::{}` found. Consider using it directly", module, &name));
             }
         }
     }

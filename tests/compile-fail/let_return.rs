@@ -6,7 +6,7 @@
 fn test() -> i32 {
     let _y = 0; // no warning
     let x = 5;   //~NOTE
-    x            //~ERROR:
+    x            //~ERROR returning the result of a let binding
 }
 
 fn test_nowarn_1() -> i32 {

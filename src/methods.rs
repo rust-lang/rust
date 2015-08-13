@@ -30,12 +30,12 @@ impl LintPass for MethodsPass {
                         span_lint(cx, OPTION_UNWRAP_USED, expr.span,
                                   "used unwrap() on an Option value. If you don't want \
                                    to handle the None case gracefully, consider using
-                                   expect() to provide a better panic message.");
+                                   expect() to provide a better panic message");
                     }
                     else if match_def_path(cx, did.did, &["core", "result", "Result"]) {
                         span_lint(cx, RESULT_UNWRAP_USED, expr.span,
                                   "used unwrap() on a Result value. Graceful handling \
-                                   of Err values is preferred.");
+                                   of Err values is preferred");
                     }
                 }
             }

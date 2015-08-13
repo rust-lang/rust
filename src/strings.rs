@@ -30,7 +30,7 @@ impl LintPass for StringAdd {
             if is_string(cx, target) && is_add(src, target) {
                 span_lint(cx, STRING_ADD_ASSIGN, e.span,
                     "you assign the result of adding something to this string. \
-                    Consider using `String::push_str()` instead.")
+                    Consider using `String::push_str()` instead")
             }
         }
     }

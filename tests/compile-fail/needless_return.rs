@@ -8,35 +8,35 @@ fn test_end_of_fn() -> bool {
         // no error!
         return true;
     }
-    return true;           //~ERROR
+    return true;           //~ERROR unneeded return statement
 }
 
 fn test_no_semicolon() -> bool {
-    return true            //~ERROR
+    return true            //~ERROR unneeded return statement
 }
 
 fn test_if_block() -> bool {
     if true {
-        return true;       //~ERROR
+        return true;       //~ERROR unneeded return statement
     } else {
-        return false;      //~ERROR
+        return false;      //~ERROR unneeded return statement
     }
 }
 
 fn test_match(x: bool) -> bool {
     match x {
         true => {
-            return false;  //~ERROR
+            return false;  //~ERROR unneeded return statement
         }
         false => {
-            return true    //~ERROR
+            return true    //~ERROR unneeded return statement
         }
     }
 }
 
 fn test_closure() {
     let _ = || {
-        return true;       //~ERROR
+        return true;       //~ERROR unneeded return statement
     };
 }
 

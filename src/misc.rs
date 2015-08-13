@@ -129,7 +129,8 @@ impl LintPass for FloatCmp {
             let op = cmp.node;
             if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
                 span_lint(cx, FLOAT_CMP, expr.span, &format!(
-                    "{}-comparison of f32 or f64 detected. Consider changing this to `abs({} - {}) < epsilon` for some suitable value of epsilon.",
+                    "{}-comparison of f32 or f64 detected. Consider changing this to \
+                     `abs({} - {}) < epsilon` for some suitable value of epsilon",
                     binop_to_string(op), snippet(cx, left.span, ".."),
                     snippet(cx, right.span, "..")));
             }
@@ -146,7 +147,7 @@ fn is_float(cx: &Context, expr: &Expr) -> bool {
 }
 
 declare_lint!(pub PRECEDENCE, Warn,
-              "Warn on mixing bit ops with integer arithmetic without parenthesis");
+              "Warn on mixing bit ops with integer arithmetic without parentheses");
 
 #[derive(Copy,Clone)]
 pub struct Precedence;
@@ -160,7 +161,8 @@ impl LintPass for Precedence {
         if let ExprBinary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
             if is_bit_op(op) && (is_arith_expr(left) || is_arith_expr(right)) {
                 span_lint(cx, PRECEDENCE, expr.span,
-                    "operator precedence can trip the unwary. Consider adding parenthesis to the subexpression.");
+                    "operator precedence can trip the unwary. Consider adding parentheses \
+                     to the subexpression");
             }
         }
     }
@@ -216,7 +218,7 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
                 name == "to_owned" && is_str_arg(cx, args) {
                     span_lint(cx, CMP_OWNED, expr.span, &format!(
                         "this creates an owned instance just for comparison. \
-                         Consider using `{}.as_slice()` to compare without allocation.",
+                         Consider using `{}.as_slice()` to compare without allocation",
                         snippet(cx, other_span, "..")))
                 }
         },
@@ -226,7 +228,7 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
                     match_path(path, &["String", "from"]) {
                         span_lint(cx, CMP_OWNED, expr.span, &format!(
                             "this creates an owned instance just for comparison. \
-                             Consider using `{}.as_slice()` to compare without allocation.",
+                             Consider using `{}.as_slice()` to compare without allocation",
                             snippet(cx, other_span, "..")))
                     }
             }

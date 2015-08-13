@@ -46,7 +46,7 @@ fn check_expr_expd(cx: &Context, expr: &Expr, info: Option<&ExpnInfo>) {
                 cx.tcx.expr_ty(e).sty {
                     span_lint(cx, MUT_MUT, expr.span,
                               "this expression mutably borrows a mutable reference. \
-                               Consider reborrowing.")
+                               Consider reborrowing")
                 }
         })
     })

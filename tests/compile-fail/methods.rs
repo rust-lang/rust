@@ -5,11 +5,11 @@
 #[deny(str_to_string, string_to_string)]
 fn main() {
     let opt = Some(0);
-    let _ = opt.unwrap();  //~ERROR
+    let _ = opt.unwrap();  //~ERROR used unwrap() on an Option
 
     let res: Result<i32, ()> = Ok(0);
-    let _ = res.unwrap();  //~ERROR
+    let _ = res.unwrap();  //~ERROR used unwrap() on a Result
 
-    let string = "str".to_string();  //~ERROR
-    let _again = string.to_string();  //~ERROR
+    let string = "str".to_string();  //~ERROR `str.to_owned()` is faster
+    let _again = string.to_string();  //~ERROR `String.to_string()` is a no-op
 }
