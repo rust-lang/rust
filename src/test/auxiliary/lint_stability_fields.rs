@@ -16,45 +16,47 @@
 pub struct Stable {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub inherit: u8, // it's a lie (stable doesn't inherit)
-    #[unstable(feature = "test_feature")]
+    #[unstable(feature = "test_feature", issue = "0")]
     pub override1: u8,
     #[deprecated(since = "1.0.0")]
-    #[unstable(feature = "test_feature")]
+    #[unstable(feature = "test_feature", issue = "0")]
     pub override2: u8,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stable2(#[stable(feature = "rust1", since = "1.0.0")] pub u8,
-                   #[unstable(feature = "test_feature")] pub u8,
-                   #[unstable(feature = "test_feature")] #[deprecated(since = "1.0.0")] pub u8);
+                   #[unstable(feature = "test_feature", issue = "0")] pub u8,
+                   #[unstable(feature = "test_feature", issue = "0")]
+                   #[deprecated(since = "1.0.0")] pub u8);
 
-#[unstable(feature = "test_feature")]
+#[unstable(feature = "test_feature", issue = "0")]
 pub struct Unstable {
     pub inherit: u8,
     #[stable(feature = "rust1", since = "1.0.0")]
     pub override1: u8,
     #[deprecated(since = "1.0.0")]
-    #[unstable(feature = "test_feature")]
+    #[unstable(feature = "test_feature", issue = "0")]
     pub override2: u8,
 }
 
-#[unstable(feature = "test_feature")]
+#[unstable(feature = "test_feature", issue = "0")]
 pub struct Unstable2(pub u8,
                      #[stable(feature = "rust1", since = "1.0.0")] pub u8,
-                     #[unstable(feature = "test_feature")] #[deprecated(since = "1.0.0")] pub u8);
+                     #[unstable(feature = "test_feature", issue = "0")]
+                     #[deprecated(since = "1.0.0")] pub u8);
 
-#[unstable(feature = "test_feature")]
+#[unstable(feature = "test_feature", issue = "0")]
 #[deprecated(feature = "rust1", since = "1.0.0")]
 pub struct Deprecated {
     pub inherit: u8,
     #[stable(feature = "rust1", since = "1.0.0")]
     pub override1: u8,
-    #[unstable(feature = "test_feature")]
+    #[unstable(feature = "test_feature", issue = "0")]
     pub override2: u8,
 }
 
-#[unstable(feature = "test_feature")]
+#[unstable(feature = "test_feature", issue = "0")]
 #[deprecated(feature = "rust1", since = "1.0.0")]
 pub struct Deprecated2(pub u8,
                        #[stable(feature = "rust1", since = "1.0.0")] pub u8,
-                       #[unstable(feature = "test_feature")] pub u8);
+                       #[unstable(feature = "test_feature", issue = "0")] pub u8);

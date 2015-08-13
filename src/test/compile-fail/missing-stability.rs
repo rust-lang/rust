@@ -19,7 +19,7 @@ pub fn unmarked() {
     ()
 }
 
-#[unstable(feature = "foo")]
+#[unstable(feature = "foo", issue = "0")]
 pub mod foo {
     // #[unstable] is inherited
     pub fn unmarked() {}
