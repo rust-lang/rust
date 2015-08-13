@@ -1359,21 +1359,24 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
     if let Some(cmp_op) = comparison {
         assert_eq!(arg_tys.len(), 2);
-        // we need nominal equality here, not LLVM (structural)
-        // equality
-        require!(arg_tys[0] == arg_tys[1],
-                 "SIMD comparison intrinsic monomorphised with different input types");
         require!(arg_tys[0].is_simd(tcx),
-                 "SIMD comparison intrinsic monomorphised for non-SIMD argument type");
+                 "SIMD comparison intrinsic monomorphized for non-SIMD argument type `{}`",
+                 arg_tys[0]);
         require!(ret_ty.is_simd(tcx),
-                 "SIMD comparison intrinsic monomorphised for non-SIMD return type");
+                 "SIMD comparison intrinsic monomorphized for non-SIMD return type `{}`",
+                 ret_ty);
 
         let in_len = arg_tys[0].simd_size(tcx);
         let out_len = ret_ty.simd_size(tcx);
         require!(in_len == out_len,
-                 "SIMD comparison intrinsic monomorphised for non-SIMD argument type");
+                 "SIMD cast intrinsic monomorphized with input type `{}` and \
+                  return type `{}` with different lengths: {} vs. {}",
+                 arg_tys[0],
+                 ret_ty,
+                 in_len,
+                 out_len);
         require!(llret_ty.element_type().kind() == llvm::Integer,
-                 "SIMD comparison intrinsic monomorphised with non-integer return");
+                 "SIMD comparison intrinsic monomorphized with non-integer return");
 
         return compare_simd_types(bcx,
                                   llargs[0],
@@ -1391,18 +1394,20 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
                                           "bad `simd_shuffle` instruction only caught in trans?")
         };
 
-        require!(arg_tys[0] == arg_tys[1],
-                 "SIMD shuffle intrinsic monomorphised with different input types");
+        require!(arg_tys[0].is_simd(tcx),
+                 "SIMD shuffle intrinsic monomorphized with non-SIMD input type `{}`",
+                 arg_tys[0]);
         require!(ret_ty.is_simd(tcx),
-                 "SIMD shuffle intrinsic monomorphised for non-SIMD return type");
+                 "SIMD shuffle intrinsic monomorphized for non-SIMD return type `{}`",
+                 ret_ty);
 
         let in_len = arg_tys[0].simd_size(tcx);
         let out_len = ret_ty.simd_size(tcx);
         require!(out_len == n,
-                 "SIMD shuffle intrinsic monomorphised with return type of length {} (expected {})",
+                 "SIMD shuffle intrinsic monomorphized with return type of length {} (expected {})",
                  out_len, n);
         require!(arg_tys[0].simd_type(tcx) == ret_ty.simd_type(tcx),
-                 "SIMD shuffle intrinsic monomorphised with different \
+                 "SIMD shuffle intrinsic monomorphized with different \
                   input and return element types");
 
         let total_len = in_len as u64 * 2;
@@ -1448,27 +1453,37 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
     if name == "simd_insert" {
         require!(arg_tys[0].is_simd(tcx),
-                 "SIMD insert intrinsic monomorphised for non-SIMD input type");
+                 "SIMD insert intrinsic monomorphized for non-SIMD input type");
 
         let elem_ty = arg_tys[0].simd_type(tcx);
         require!(arg_tys[2] == elem_ty,
-                 "SIMD insert intrinsic monomorphised with inserted type not SIMD element type");
+                 "SIMD insert intrinsic monomorphized with inserted type not SIMD element type");
         return InsertElement(bcx, llargs[0], llargs[2], llargs[1])
     }
     if name == "simd_extract" {
         require!(arg_tys[0].is_simd(tcx),
-                 "SIMD insert intrinsic monomorphised for non-SIMD input type");
+                 "SIMD insert intrinsic monomorphized for non-SIMD input type");
 
         let elem_ty = arg_tys[0].simd_type(tcx);
         require!(ret_ty == elem_ty,
-                 "SIMD insert intrinsic monomorphised with returned type not SIMD element type");
+                 "SIMD insert intrinsic monomorphized with returned type not SIMD element type");
         return ExtractElement(bcx, llargs[0], llargs[1])
     }
 
     if name == "simd_cast" {
+        require!(arg_tys[0].is_simd(tcx),
+                 "SIMD cast intrinsic monomorphized with non-SIMD input type `{}`",
+                 arg_tys[0]);
+        require!(ret_ty.is_simd(tcx),
+                 "SIMD cast intrinsic monomorphized with non-SIMD return type `{}`",
+                 ret_ty);
         require!(arg_tys[0].simd_size(tcx) == ret_ty.simd_size(tcx),
-                 "SIMD cast intrinsic monomorphised with input and \
-                  return types of different lengths");
+                 "SIMD cast intrinsic monomorphized with input type `{}` and \
+                  return type `{}` with different lengths: {} vs. {}",
+                 arg_tys[0],
+                 ret_ty,
+                 arg_tys[0].simd_size(tcx),
+                 ret_ty.simd_size(tcx));
         // casting cares about nominal type, not just structural type
         let in_ = arg_tys[0].simd_type(tcx);
         let out = ret_ty.simd_type(tcx);
@@ -1590,12 +1605,19 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
             }
             _ => {}
         }
-        require!(false, "SIMD cast intrinsic monomorphised with incompatible cast");
+        require!(false,
+                 "SIMD cast intrinsic monomorphized with incompatible cast \
+                  from `{}` (element `{}`)to `{}` (element `{}`)",
+                 arg_tys[0], in_,
+                 ret_ty, out);
     }
     macro_rules! arith {
         ($($name: ident: $($($p: ident),* => $call: expr),*;)*) => {
             $(
                 if name == stringify!($name) {
+                    require!(arg_tys[0].is_simd(tcx),
+                             "`{}` intrinsic monomorphized with non-SIMD type `{}`",
+                             name, arg_tys[0]);
                     let in_ = arg_tys[0].simd_type(tcx);
                     match in_.sty {
                         $(
@@ -1606,8 +1628,11 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
                         _ => {},
                     }
                     require!(false,
-                             "{} intrinsic monomorphised with invalid type",
-                             name)
+                             "`{}` intrinsic monomorphized with SIMD vector `{}` \
+                              with unsupported element type `{}`",
+                             name,
+                             arg_tys[0],
+                             in_)
                 })*
         }
     }
