@@ -20,7 +20,7 @@ declare_lint! {
 declare_lint! {
     pub STRING_ADD,
     Allow,
-    "expressions of the form on `x + ..` where x is a `String`"
+    "expressions of the form `x + ..` where x is a `String"
 }
 
 #[derive(Copy, Clone)]
