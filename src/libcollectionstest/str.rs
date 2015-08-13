@@ -1763,13 +1763,13 @@ fn test_into_string() {
     // The only way to acquire a Box<str> in the first place is through a String, so just
     // test that we can round-trip between Box<str> and String.
     let string = String::from("Some text goes here");
-    assert_eq!(string.clone().into_boxed_slice().into_string(), string);
+    assert_eq!(string.clone().into_boxed_str().into_string(), string);
 }
 
 #[test]
 fn test_box_slice_clone() {
     let data = String::from("hello HELLO hello HELLO yes YES 5 中ä华!!!");
-    let data2 = data.clone().into_boxed_slice().clone().into_string();
+    let data2 = data.clone().into_boxed_str().clone().into_string();
 
     assert_eq!(data, data2);
 }

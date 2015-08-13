@@ -366,9 +366,9 @@ fn test_extend_ref() {
 }
 
 #[test]
-fn test_into_boxed_slice() {
+fn test_into_boxed_str() {
     let xs = String::from("hello my name is bob");
-    let ys = xs.into_boxed_slice();
+    let ys = xs.into_boxed_str();
     assert_eq!(&*ys, "hello my name is bob");
 }
 
