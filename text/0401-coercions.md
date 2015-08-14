@@ -65,62 +65,62 @@ equality.
 
 A coercion is implicit and has no syntax. A coercion can only occur at certain
 coercion sites in a program, these are typically places where the desired type
-is explicit or can be dervied by propagation from explicit types (without type
+is explicit or can be derived by propagation from explicit types (without type
 inference). The base cases are:
 
 * In `let` statements where an explicit type is given: in `let _: U = e;`, `e`
-  is coerced to to have type `U`;
+  is coerced to have type `U`
 
-* In statics and consts, similarly to `let` statements;
+* In statics and consts, similarly to `let` statements
 
 * In argument position for function calls. The value being coerced is the actual
   parameter and it is coerced to the type of the formal parameter. For example,
   where `foo` is defined as `fn foo(x: U) { ... }` and is called with `foo(e);`,
-  `e` is coerced to have type `U`;
+  `e` is coerced to have type `U`
 
 * Where a field of a struct or variant is instantiated. E.g., where `struct Foo
-  { x: U }` and the instantiation is `Foo { x: e }`, `e` is coerced to to have
-  type `U`;
+  { x: U }` and the instantiation is `Foo { x: e }`, `e` is coerced to have
+  type `U`
 
 * The result of a function, either the final line of a block if it is not semi-
   colon terminated or any expression in a `return` statement. For example, for
-  `fn foo() -> U { e }`, `e` is coerced to to have type `U`;
+  `fn foo() -> U { e }`, `e` is coerced to have type `U`
 
 If the expression in one of these coercion sites is a coercion-propagating
 expression, then the relevant sub-expressions in that expression are also
 coercion sites. Propagation recurses from these new coercion sites. Propagating
 expressions and their relevant sub-expressions are:
 
-* array literals, where the array has type `[U, ..n]`, each sub-expression in
-  the array literal is a coercion site for coercion to type `U`;
+* Array literals, where the array has type `[U, ..n]`, each sub-expression in
+  the array literal is a coercion site for coercion to type `U`
 
-* array literals with repeating syntax, where the array has type `[U, ..n]`, the
-  repeated sub-expression is a coercion site for coercion to type `U`;
+* Array literals with repeating syntax, where the array has type `[U, ..n]`, the
+  repeated sub-expression is a coercion site for coercion to type `U`
 
-* tuples, where a tuple is a coercion site to type `(U_0, U_1, ..., U_n)`, each
+* Tuples, where a tuple is a coercion site to type `(U_0, U_1, ..., U_n)`, each
   sub-expression is a coercion site for the respective type, e.g., the zero-th
-  sub-expression is a coercion site to `U_0`;
+  sub-expression is a coercion site to `U_0`
 
-* the box expression, if the expression has type `Box<U>`, the sub-expression is
+* The box expression, if the expression has type `Box<U>`, the sub-expression is
   a coercion site to `U` (I expect this to be generalised when `box` expressions
-  are);
+  are)
 
-* parenthesised sub-expressions (`(e)`), if the expression has type `U`, then
-  the sub-expression is a coercion site to `U`;
+* Parenthesised sub-expressions (`(e)`), if the expression has type `U`, then
+  the sub-expression is a coercion site to `U`
 
-* blocks, if a block has type `U`, then the last expression in the block (if it
+* Blocks, if a block has type `U`, then the last expression in the block (if it
   is not semicolon-terminated) is a coercion site to `U`. This includes blocks
   which are part of control flow statements, such as `if`/`else`, if the block
   has a known type.
 
 
 Note that we do not perform coercions when matching traits (except for
-receivers, see below). If there is an impl for some type `U` and `T` coerces to
+receivers, see below). If there is an impl for some type `U`, and `T` coerces to
 `U`, that does not constitute an implementation for `T`. For example, the
 following will not type check, even though it is OK to coerce `t` to `&T` and
 there is an impl for `&T`:
 
-```
+```rust
 struct T;
 trait Trait {}
 
@@ -136,33 +136,33 @@ fn main() {
 ```
 
 In a cast expression, `e as U`, the compiler will first attempt to coerce `e` to
-`U`, only if that fails will the conversion rules for casts (see below) be
+`U`, and only if that fails will the conversion rules for casts (see below) be
 applied.
 
 Coercion is allowed between the following types:
 
-* `T` to `U` if `T` is a subtype of `U` (the 'identity' case);
+* `T` to `U` if `T` is a subtype of `U` (the 'identity' case)
 
 * `T_1` to `T_3` where `T_1` coerces to `T_2` and `T_2` coerces to `T_3`
-  (transitivity case);
+  (transitivity case)
 
-* `&mut T` to `&T`;
+* `&mut T` to `&T`
 
-* `*mut T` to `*const T`;
+* `*mut T` to `*const T`
 
-* `&T` to `*const T`;
+* `&T` to `*const T`
 
-* `&mut T` to `*mut T`;
+* `&mut T` to `*mut T`
 
 * `T` to `U` if `T` implements `CoerceUnsized<U>` (see below) and `T = Foo<...>`
   and `U = Foo<...>` (for any `Foo`, when we get HKT I expect this could be a
-  constraint on the `CoerceUnsized` trait, rather than being checked here);
+  constraint on the `CoerceUnsized` trait, rather than being checked here)
 
 * From TyCtor(`T`) to TyCtor(coerce_inner(`T`)) (these coercions could be
-  provided by implementing `CoerceUnsized` for all instances of TyCtor);
+  provided by implementing `CoerceUnsized` for all instances of TyCtor)
+  where TyCtor(`T`) is one of `&T`, `&mut T`, `*const T`, `*mut T`, or `Box<T>`.
 
-where TyCtor(`T`) is one of `&T`, `&mut T`, `*const T`, `*mut T`, or `Box<T>`.
-And where coerce_inner is defined as
+And where coerce_inner is defined as:
 
 * coerce_inner(`[T, ..n]`) = `[T]`;
 
@@ -204,7 +204,7 @@ It should be possible to coerce smart pointers (e.g., `Rc`) in the same way as
 the built-in pointers. In order to do so, we provide two traits and an intrinsic
 to allow users to make their smart pointers work with the compiler's coercions.
 It might be possible to implement some of the coercions described for built-in
-pointers using this machinery, whether that is a good idea or not is an
+pointers using this machinery, and whether that is a good idea or not is an
 implementation detail.
 
 ```
