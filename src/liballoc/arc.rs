@@ -136,8 +136,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 /// Weak pointers will not keep the data inside of the `Arc` alive, and can be
 /// used to break cycles between `Arc` pointers.
 #[unsafe_no_drop_flag]
-#[unstable(feature = "arc_weak",
-           reason = "Weak pointers may not belong in this module.")]
+#[stable(feature = "arc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -161,7 +160,7 @@ struct ArcInner<T: ?Sized> {
 
     // the value usize::MAX acts as a sentinel for temporarily "locking" the
     // ability to upgrade weak pointers or downgrade strong ones; this is used
-    // to avoid races in `make_unique` and `get_mut`.
+    // to avoid races in `make_mut` and `get_mut`.
     weak: atomic::AtomicUsize,
 
     data: T,
@@ -192,6 +191,45 @@ impl<T> Arc<T> {
         };
         Arc { _ptr: unsafe { NonZero::new(Box::into_raw(x)) } }
     }
+
+    /// Unwraps the contained value if the `Arc<T>` has only one strong reference.
+    /// This will succeed even if there are outstanding weak references.
+    ///
+    /// Otherwise, an `Err` is returned with the same `Arc<T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::Arc;
+    ///
+    /// let x = Arc::new(3);
+    /// assert_eq!(Arc::try_unwrap(x), Ok(3));
+    ///
+    /// let x = Arc::new(4);
+    /// let _y = x.clone();
+    /// assert_eq!(Arc::try_unwrap(x), Err(Arc::new(4)));
+    /// ```
+    #[inline]
+    #[unstable(feature = "arc_unwrap", reason = "was missing, so is technically new")]
+    pub fn try_unwrap(this: Arc<T>) -> Result<T, Arc<T>> {
+        // See `drop` for impl details
+        if self.inner().strong.compare_and_swap(1, 0, Release) != 1 { return Err(self) }
+
+        // ~~ magic ~~
+        atomic::fence(Acquire);
+
+        unsafe {
+            let ptr = *self._ptr;
+
+            let elem = ptr::read(&(*ptr).data);
+
+            if self.inner().weak.fetch_sub(1, Release) == 1 {
+                atomic::fence(Acquire);
+                deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
+            }
+            Ok(elem)
+        }
+    }
 }
 
 impl<T: ?Sized> Arc<T> {
@@ -200,16 +238,13 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_weak)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
     ///
     /// let weak_five = five.downgrade();
     /// ```
-    #[unstable(feature = "arc_weak",
-               reason = "Weak pointers may not belong in this module.")]
+    #[stable(feature = "arc_weak", since = "1.4.0")]
     pub fn downgrade(&self) -> Weak<T> {
         loop {
             // This Relaxed is OK because we're checking the value in the CAS
@@ -234,14 +269,14 @@ impl<T: ?Sized> Arc<T> {
 
     /// Get the number of weak references to this value.
     #[inline]
-    #[unstable(feature = "arc_counts")]
+    #[unstable(feature = "arc_counts", reason = "not clearly useful, and racy", issue = "27718")]
     pub fn weak_count(this: &Arc<T>) -> usize {
         this.inner().weak.load(SeqCst) - 1
     }
 
     /// Get the number of strong references to this value.
     #[inline]
-    #[unstable(feature = "arc_counts")]
+    #[unstable(feature = "arc_counts", reason = "not clearly useful, and racy", issue = "27718")]
     pub fn strong_count(this: &Arc<T>) -> usize {
         this.inner().strong.load(SeqCst)
     }
@@ -330,27 +365,40 @@ impl<T: ?Sized> Deref for Arc<T> {
 }
 
 impl<T: Clone> Arc<T> {
-    /// Make a mutable reference from the given `Arc<T>`.
+
+    #[unstable(feature = "renamed_arc_unique", reason = "renamed to make_mut", issue = "27718")]
+    #[deprecated(since = "1.4.0", reason = "renamed to make_mut")]
+    pub fn make_unique(this: &mut Arc<T>) -> &mut T {
+        Arc::make_mut(this)
+    }
+
+    /// Make a mutable reference into the given `Arc<T>` by cloning the inner
+    /// data if the `Arc<T>` doesn't have one strong reference and no weak
+    /// references.
     ///
-    /// This is also referred to as a copy-on-write operation because the inner
-    /// data is cloned if the (strong) reference count is greater than one. If
-    /// we hold the only strong reference, any existing weak references will no
-    /// longer be upgradeable.
+    /// This is also referred to as a copy-on-write.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_unique)]
-    ///
     /// use std::sync::Arc;
     ///
-    /// let mut five = Arc::new(5);
+    /// let mut data = Arc::new(5);
     ///
-    /// let mut_five = Arc::make_unique(&mut five);
+    /// *data.make_mut() += 1;             // Won't clone anything
+    /// let mut other_data = data.clone(); // Won't clone inner data
+    /// *data.make_mut() += 1;             // Clones inner data
+    /// *data.make_mut() += 1;             // Won't clone anything
+    /// *other_data.make_mut() *= 2;       // Won't clone anything
+    ///
+    /// // Note: data and other_data now point to different numbers
+    /// assert_eq!(*data, 8);
+    /// assert_eq!(*other_data, 12);
+    ///
     /// ```
     #[inline]
-    #[unstable(feature = "arc_unique")]
-    pub fn make_unique(this: &mut Arc<T>) -> &mut T {
+    #[stable(feature = "arc_unique", since = "1.4.0")]
+    pub fn make_mut(this: &mut Arc<T>) -> &mut T {
         // Note that we hold both a strong reference and a weak reference.
         // Thus, releasing our strong reference only will not, by itself, cause
         // the memory to be deallocated.
@@ -405,18 +453,13 @@ impl<T: Clone> Arc<T> {
 }
 
 impl<T: ?Sized> Arc<T> {
-    /// Returns a mutable reference to the contained value if the `Arc<T>` is unique.
-    ///
-    /// Returns `None` if the `Arc<T>` is not unique.
+    /// Returns a mutable reference to the contained value if the `Arc<T>` has
+    /// one strong reference and no weak references.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_unique, alloc)]
-    ///
-    /// extern crate alloc;
-    /// # fn main() {
-    /// use alloc::arc::Arc;
+    /// use std::sync::Arc;
     ///
     /// let mut x = Arc::new(3);
     /// *Arc::get_mut(&mut x).unwrap() = 4;
@@ -424,10 +467,9 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// let _y = x.clone();
     /// assert!(Arc::get_mut(&mut x).is_none());
-    /// # }
     /// ```
     #[inline]
-    #[unstable(feature = "arc_unique")]
+    #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn get_mut(this: &mut Arc<T>) -> Option<&mut T> {
         if this.is_unique() {
             // This unsafety is ok because we're guaranteed that the pointer
@@ -540,8 +582,6 @@ impl<T: ?Sized> Drop for Arc<T> {
     }
 }
 
-#[unstable(feature = "arc_weak",
-           reason = "Weak pointers may not belong in this module.")]
 impl<T: ?Sized> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
     ///
@@ -553,8 +593,6 @@ impl<T: ?Sized> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_weak)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -563,6 +601,7 @@ impl<T: ?Sized> Weak<T> {
     ///
     /// let strong_five: Option<Arc<_>> = weak_five.upgrade();
     /// ```
+    #[stable(feature = "arc_weak", since = "1.4.0")]
     pub fn upgrade(&self) -> Option<Arc<T>> {
         // We use a CAS loop to increment the strong count instead of a
         // fetch_add because once the count hits 0 it must never be above 0.
@@ -588,8 +627,7 @@ impl<T: ?Sized> Weak<T> {
     }
 }
 
-#[unstable(feature = "arc_weak",
-           reason = "Weak pointers may not belong in this module.")]
+#[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized> Clone for Weak<T> {
     /// Makes a clone of the `Weak<T>`.
     ///
@@ -598,8 +636,6 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_weak)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let weak_five = Arc::new(5).downgrade();
@@ -632,8 +668,6 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_weak)]
-    ///
     /// use std::sync::Arc;
     ///
     /// {
@@ -891,18 +925,30 @@ mod tests {
     }
 
     #[test]
-    fn test_cowarc_clone_make_unique() {
+    fn try_unwrap() {
+        let x = Arc::new(3);
+        assert_eq!(Arc::try_unwrap(x), Ok(3));
+        let x = Arc::new(4);
+        let _y = x.clone();
+        assert_eq!(Arc::try_unwrap(x), Err(Arc::new(4)));
+        let x = Arc::new(5);
+        let _w = x.downgrade();
+        assert_eq!(Arc::try_unwrap(x), Ok(5));
+    }
+
+    #[test]
+    fn test_cowarc_clone_make_mut() {
         let mut cow0 = Arc::new(75);
         let mut cow1 = cow0.clone();
         let mut cow2 = cow1.clone();
 
-        assert!(75 == *Arc::make_unique(&mut cow0));
-        assert!(75 == *Arc::make_unique(&mut cow1));
-        assert!(75 == *Arc::make_unique(&mut cow2));
+        assert!(75 == *Arc::make_mut(&mut cow0));
+        assert!(75 == *Arc::make_mut(&mut cow1));
+        assert!(75 == *Arc::make_mut(&mut cow2));
 
-        *Arc::make_unique(&mut cow0) += 1;
-        *Arc::make_unique(&mut cow1) += 2;
-        *Arc::make_unique(&mut cow2) += 3;
+        *Arc::make_mut(&mut cow0) += 1;
+        *Arc::make_mut(&mut cow1) += 2;
+        *Arc::make_mut(&mut cow2) += 3;
 
         assert!(76 == *cow0);
         assert!(77 == *cow1);
@@ -924,8 +970,7 @@ mod tests {
         assert!(75 == *cow1);
         assert!(75 == *cow2);
 
-        *Arc::make_unique(&mut cow0) += 1;
-
+        *Arc::make_mut(&mut cow0) += 1;
         assert!(76 == *cow0);
         assert!(75 == *cow1);
         assert!(75 == *cow2);
@@ -945,7 +990,7 @@ mod tests {
         assert!(75 == *cow0);
         assert!(75 == *cow1_weak.upgrade().unwrap());
 
-        *Arc::make_unique(&mut cow0) += 1;
+        *Arc::make_mut(&mut cow0) += 1;
 
         assert!(76 == *cow0);
         assert!(cow1_weak.upgrade().is_none());
