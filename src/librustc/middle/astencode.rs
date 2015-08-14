@@ -1075,6 +1075,10 @@ impl<'a> doc_decoder_helpers for rbml::Doc<'a> {
 }
 
 trait rbml_decoder_decoder_helpers<'tcx> {
+    fn read_ty_encoded<'a, 'b, F, R>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>,
+                                     f: F) -> R
+        where F: for<'x> FnOnce(&mut tydecode::TyDecoder<'x, 'tcx>) -> R;
+
     fn read_ty<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Ty<'tcx>;
     fn read_tys<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>) -> Vec<Ty<'tcx>>;
     fn read_trait_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1123,14 +1127,14 @@ trait rbml_decoder_decoder_helpers<'tcx> {
 
 impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_ty_nodcx(&mut self,
-                     tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata) -> Ty<'tcx> {
+                     tcx: &ty::ctxt<'tcx>,
+                     cdata: &cstore::crate_metadata)
+                     -> Ty<'tcx> {
         self.read_opaque(|_, doc| {
-            Ok(tydecode::parse_ty_data(
-                doc.data,
-                cdata.cnum,
-                doc.start,
-                tcx,
-                |_, id| decoder::translate_def_id(cdata, id)))
+            Ok(
+                tydecode::TyDecoder::with_doc(tcx, cdata.cnum, doc,
+                                              &mut |_, id| decoder::translate_def_id(cdata, id))
+                    .parse_ty())
         }).unwrap()
     }
 
@@ -1149,32 +1153,22 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                          -> subst::Substs<'tcx>
     {
         self.read_opaque(|_, doc| {
-            Ok(tydecode::parse_substs_data(
-                doc.data,
-                cdata.cnum,
-                doc.start,
-                tcx,
-                |_, id| decoder::translate_def_id(cdata, id)))
+            Ok(
+                tydecode::TyDecoder::with_doc(tcx, cdata.cnum, doc,
+                                              &mut |_, id| decoder::translate_def_id(cdata, id))
+                    .parse_substs())
         }).unwrap()
     }
 
-    fn read_ty<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> Ty<'tcx> {
-        // Note: regions types embed local node ids.  In principle, we
-        // should translate these node ids into the new decode
-        // context.  However, we do not bother, because region types
-        // are not used during trans.
-
+    fn read_ty_encoded<'b, 'c, F, R>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>, op: F) -> R
+        where F: for<'x> FnOnce(&mut tydecode::TyDecoder<'x,'tcx>) -> R
+    {
         return self.read_opaque(|this, doc| {
-            debug!("read_ty({})", type_string(doc));
-
-            let ty = tydecode::parse_ty_data(
-                doc.data,
-                dcx.cdata.cnum,
-                doc.start,
-                dcx.tcx,
-                |s, a| this.convert_def_id(dcx, s, a));
-
-            Ok(ty)
+            debug!("read_ty_encoded({})", type_string(doc));
+            Ok(op(
+                &mut tydecode::TyDecoder::with_doc(
+                    dcx.tcx, dcx.cdata.cnum, doc,
+                    &mut |s, a| this.convert_def_id(dcx, s, a))))
         }).unwrap();
 
         fn type_string(doc: rbml::Doc) -> String {
@@ -1186,6 +1180,15 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }
     }
 
+    fn read_ty<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> Ty<'tcx> {
+        // Note: regions types embed local node ids.  In principle, we
+        // should translate these node ids into the new decode
+        // context.  However, we do not bother, because region types
+        // are not used during trans.
+
+        return self.read_ty_encoded(dcx, |decoder| decoder.parse_ty());
+    }
+
     fn read_tys<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                         -> Vec<Ty<'tcx>> {
         self.read_to_vec(|this| Ok(this.read_ty(dcx))).unwrap().into_iter().collect()
@@ -1193,49 +1196,23 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
     fn read_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                               -> ty::TraitRef<'tcx> {
-        self.read_opaque(|this, doc| {
-            let ty = tydecode::parse_trait_ref_data(
-                doc.data,
-                dcx.cdata.cnum,
-                doc.start,
-                dcx.tcx,
-                |s, a| this.convert_def_id(dcx, s, a));
-            Ok(ty)
-        }).unwrap()
+        self.read_ty_encoded(dcx, |decoder| decoder.parse_trait_ref())
     }
 
     fn read_poly_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                    -> ty::PolyTraitRef<'tcx> {
-        ty::Binder(self.read_opaque(|this, doc| {
-            let ty = tydecode::parse_trait_ref_data(
-                doc.data,
-                dcx.cdata.cnum,
-                doc.start,
-                dcx.tcx,
-                |s, a| this.convert_def_id(dcx, s, a));
-            Ok(ty)
-        }).unwrap())
+        ty::Binder(self.read_ty_encoded(dcx, |decoder| decoder.parse_trait_ref()))
     }
 
     fn read_type_param_def<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                    -> ty::TypeParameterDef<'tcx> {
-        self.read_opaque(|this, doc| {
-            Ok(tydecode::parse_type_param_def_data(
-                doc.data,
-                doc.start,
-                dcx.cdata.cnum,
-                dcx.tcx,
-                |s, a| this.convert_def_id(dcx, s, a)))
-        }).unwrap()
+        self.read_ty_encoded(dcx, |decoder| decoder.parse_type_param_def())
     }
 
     fn read_predicate<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                               -> ty::Predicate<'tcx>
     {
-        self.read_opaque(|this, doc| {
-            Ok(tydecode::parse_predicate_data(doc.data, doc.start, dcx.cdata.cnum, dcx.tcx,
-                                              |s, a| this.convert_def_id(dcx, s, a)))
-        }).unwrap()
+        self.read_ty_encoded(dcx, |decoder| decoder.parse_predicate())
     }
 
     fn read_type_scheme<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
@@ -1269,13 +1246,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_existential_bounds<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                        -> ty::ExistentialBounds<'tcx>
     {
-        self.read_opaque(|this, doc| {
-            Ok(tydecode::parse_existential_bounds_data(doc.data,
-                                                       dcx.cdata.cnum,
-                                                       doc.start,
-                                                       dcx.tcx,
-                                                       |s, a| this.convert_def_id(dcx, s, a)))
-        }).unwrap()
+        self.read_ty_encoded(dcx, |decoder| decoder.parse_existential_bounds())
     }
 
     fn read_substs<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
@@ -1380,14 +1351,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_closure_ty<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                -> ty::ClosureTy<'tcx>
     {
-        self.read_opaque(|this, doc| {
-            Ok(tydecode::parse_ty_closure_data(
-                doc.data,
-                dcx.cdata.cnum,
-                doc.start,
-                dcx.tcx,
-                |s, a| this.convert_def_id(dcx, s, a)))
-        }).unwrap()
+        self.read_ty_encoded(dcx, |decoder| decoder.parse_closure_ty())
     }
 
     /// Converts a def-id that appears in a type.  The correct
