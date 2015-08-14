@@ -390,6 +390,17 @@ cfg_if_else! {
   compiler can know this. The `repr(simd)` approach means there may be
   more than one SIMD-vector type with the `Simd8<u32>` shape (or, in
   fact, there may be zero).
+- With type-level integers, there could be one shuffle intrinsic:
+
+     fn simd_shuffle<T, U, const N: usize>(x: T, y: T, idx: [u32; N]) -> U;
+
+  NB. It is possible to add this as an additional intrinsic (possibly
+  deprecating the `simd_shuffleNNN` forms) later.
+- Type-level values can be applied more generally: since the shuffle
+  indices have to be compile time constants, the shuffle could be
+
+      fn simd_shuffle<T, U, const N: usize, const IDX: [u32; N]>(x: T, y: T) -> U;
+
 - Instead of platform detection, there could be feature detection
   (e.g. "platform supports something equivalent to x86's `DPPS`"), but
   there probably aren't enough cross-platform commonalities for this
