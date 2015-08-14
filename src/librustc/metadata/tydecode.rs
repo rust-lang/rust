@@ -65,7 +65,7 @@ pub fn parse_ty_closure_data<'tcx, F>(data: &[u8],
                                       -> ty::ClosureTy<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
     st.parse_closure_ty()
 }
 
@@ -74,7 +74,7 @@ pub fn parse_ty_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     debug!("parse_ty_data {}", data_log_string(data, pos));
-    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
     st.parse_ty()
 }
 
@@ -83,7 +83,7 @@ pub fn parse_region_data<F>(data: &[u8], crate_num: ast::CrateNum, pos: usize, t
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     debug!("parse_region_data {}", data_log_string(data, pos));
-    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
     st.parse_region()
 }
 
@@ -93,7 +93,7 @@ pub fn parse_bare_fn_ty_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     debug!("parse_bare_fn_ty_data {}", data_log_string(data, pos));
-    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
     st.parse_bare_fn_ty()
 }
 
@@ -103,7 +103,7 @@ pub fn parse_trait_ref_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos:
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     debug!("parse_trait_ref_data {}", data_log_string(data, pos));
-    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
     st.parse_trait_ref()
 }
 
@@ -112,7 +112,7 @@ pub fn parse_substs_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: us
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
     debug!("parse_substs_data{}", data_log_string(data, pos));
-    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
     st.parse_substs()
 }
 
@@ -121,7 +121,7 @@ pub fn parse_existential_bounds_data<'tcx, F>(data: &[u8], crate_num: ast::Crate
                                               -> ty::ExistentialBounds<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
     st.parse_existential_bounds()
 }
 
@@ -130,7 +130,7 @@ pub fn parse_builtin_bounds_data<F>(data: &[u8], crate_num: ast::CrateNum,
                                     -> ty::BuiltinBounds where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
     st.parse_builtin_bounds()
 }
 
@@ -139,7 +139,7 @@ pub fn parse_type_param_def_data<'tcx, F>(data: &[u8], start: usize,
                                           mut conv: F) -> ty::TypeParameterDef<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    let mut st = PState::new(data, crate_num, start, tcx, &mut conv);
+    let mut st = TyDecoder::new(data, crate_num, start, tcx, &mut conv);
     st.parse_type_param_def()
 }
 
@@ -151,13 +151,13 @@ pub fn parse_predicate_data<'tcx, F>(data: &[u8],
                                      -> ty::Predicate<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    let mut st = PState::new(data, crate_num, start, tcx, &mut conv);
+    let mut st = TyDecoder::new(data, crate_num, start, tcx, &mut conv);
     st.parse_predicate()
 }
 
 pub type DefIdConvert<'a> = &'a mut FnMut(DefIdSource, ast::DefId) -> ast::DefId;
 
-pub struct PState<'a, 'tcx: 'a> {
+pub struct TyDecoder<'a, 'tcx: 'a> {
     data: &'a [u8],
     krate: ast::CrateNum,
     pos: usize,
@@ -165,14 +165,14 @@ pub struct PState<'a, 'tcx: 'a> {
     conv_def_id: DefIdConvert<'a>,
 }
 
-impl<'a,'tcx> PState<'a,'tcx> {
+impl<'a,'tcx> TyDecoder<'a,'tcx> {
     pub fn new(data: &'a [u8],
                crate_num: ast::CrateNum,
                pos: usize,
                tcx: &'a ty::ctxt<'tcx>,
                conv: DefIdConvert<'a>)
-               -> PState<'a, 'tcx> {
-        PState {
+               -> TyDecoder<'a, 'tcx> {
+        TyDecoder {
             data: data,
             krate: crate_num,
             pos: pos,
@@ -231,7 +231,7 @@ impl<'a,'tcx> PState<'a,'tcx> {
     }
 
     fn parse_vec_per_param_space<T, F>(&mut self, mut f: F) -> VecPerParamSpace<T> where
-        F: FnMut(&mut PState<'a, 'tcx>) -> T,
+        F: FnMut(&mut TyDecoder<'a, 'tcx>) -> T,
     {
         let mut r = VecPerParamSpace::empty();
         for &space in &subst::ParamSpace::all() {
@@ -374,7 +374,7 @@ impl<'a,'tcx> PState<'a,'tcx> {
     }
 
     fn parse_opt<T, F>(&mut self, f: F) -> Option<T>
-        where F: FnOnce(&mut PState<'a, 'tcx>) -> T,
+        where F: FnOnce(&mut TyDecoder<'a, 'tcx>) -> T,
     {
         match self.next() {
             'n' => None,
@@ -503,11 +503,11 @@ impl<'a,'tcx> PState<'a,'tcx> {
                     None => {}
                 }
 
-                let mut substate = PState::new(self.data,
-                                               self.krate,
-                                               pos,
-                                               self.tcx,
-                                               self.conv_def_id);
+                let mut substate = TyDecoder::new(self.data,
+                                                  self.krate,
+                                                  pos,
+                                                  self.tcx,
+                                                  self.conv_def_id);
                 let tt = substate.parse_ty();
                 tcx.rcache.borrow_mut().insert(key, tt);
                 return tt;
