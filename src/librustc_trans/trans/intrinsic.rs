@@ -43,6 +43,8 @@ use syntax::ast;
 use syntax::ptr::P;
 use syntax::parse::token;
 
+use std::cmp::Ordering;
+
 pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
     let name = match &*item.ident.name.as_str() {
         "sqrtf32" => "llvm.sqrt.f32",
@@ -1485,120 +1487,57 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
         if in_elem == out_elem { return llargs[0]; }
 
-        match (&in_elem.sty, &out_elem.sty) {
-            (&ty::TyInt(lhs), &ty::TyInt(rhs)) => {
-                match (lhs, rhs) {
-                    (ast::TyI8, ast::TyI8) |
-                    (ast::TyI16, ast::TyI16) |
-                    (ast::TyI32, ast::TyI32) |
-                    (ast::TyI64, ast::TyI64) => return llargs[0],
+        enum Style { Float, Int(/* is signed? */ bool), Unsupported }
 
-                    (ast::TyI8, ast::TyI16) |
-                    (ast::TyI8, ast::TyI32) |
-                    (ast::TyI8, ast::TyI64) |
-                    (ast::TyI16, ast::TyI32) |
-                    (ast::TyI16, ast::TyI64) |
-                    (ast::TyI32, ast::TyI64) => return SExt(bcx, llargs[0], llret_ty),
+        let (in_style, in_width) = match in_elem.sty {
+            // vectors of pointer-sized integers should've been
+            // disallowed before here, so this unwrap is safe.
+            ty::TyInt(i) => (Style::Int(true), i.bit_width().unwrap()),
+            ty::TyUint(u) => (Style::Int(false), u.bit_width().unwrap()),
+            ty::TyFloat(f) => (Style::Float, f.bit_width()),
+            _ => (Style::Unsupported, 0)
+        };
+        let (out_style, out_width) = match out_elem.sty {
+            ty::TyInt(i) => (Style::Int(true), i.bit_width().unwrap()),
+            ty::TyUint(u) => (Style::Int(false), u.bit_width().unwrap()),
+            ty::TyFloat(f) => (Style::Float, f.bit_width()),
+            _ => (Style::Unsupported, 0)
+        };
 
-                    (ast::TyI16, ast::TyI8) |
-                    (ast::TyI32, ast::TyI8) |
-                    (ast::TyI32, ast::TyI16) |
-                    (ast::TyI64, ast::TyI8) |
-                    (ast::TyI64, ast::TyI16) |
-                    (ast::TyI64, ast::TyI32) => return Trunc(bcx, llargs[0], llret_ty),
-                    _ => {}
+        match (in_style, out_style) {
+            (Style::Int(in_is_signed), Style::Int(_)) => {
+                return match in_width.cmp(&out_width) {
+                    Ordering::Greater => Trunc(bcx, llargs[0], llret_ty),
+                    Ordering::Equal => llargs[0],
+                    Ordering::Less => if in_is_signed {
+                        SExt(bcx, llargs[0], llret_ty)
+                    } else {
+                        ZExt(bcx, llargs[0], llret_ty)
+                    }
                 }
             }
-            (&ty::TyUint(lhs), &ty::TyUint(rhs)) => {
-                match (lhs, rhs) {
-                    (ast::TyU8, ast::TyU8) |
-                    (ast::TyU16, ast::TyU16) |
-                    (ast::TyU32, ast::TyU32) |
-                    (ast::TyU64, ast::TyU64) => return llargs[0],
-
-                    (ast::TyU8, ast::TyU16) |
-                    (ast::TyU8, ast::TyU32) |
-                    (ast::TyU8, ast::TyU64) |
-                    (ast::TyU16, ast::TyU32) |
-                    (ast::TyU16, ast::TyU64) |
-                    (ast::TyU32, ast::TyU64) => return ZExt(bcx, llargs[0], llret_ty),
-
-                    (ast::TyU16, ast::TyU8) |
-                    (ast::TyU32, ast::TyU8) |
-                    (ast::TyU32, ast::TyU16) |
-                    (ast::TyU64, ast::TyU8) |
-                    (ast::TyU64, ast::TyU16) |
-                    (ast::TyU64, ast::TyU32) => return Trunc(bcx, llargs[0], llret_ty),
-                    _ => {}
+            (Style::Int(in_is_signed), Style::Float) => {
+                return if in_is_signed {
+                    SIToFP(bcx, llargs[0], llret_ty)
+                } else {
+                    UIToFP(bcx, llargs[0], llret_ty)
                 }
             }
-            (&ty::TyInt(lhs), &ty::TyUint(rhs)) => {
-                match (lhs, rhs) {
-                    (ast::TyI8, ast::TyU8) |
-                    (ast::TyI16, ast::TyU16) |
-                    (ast::TyI32, ast::TyU32) |
-                    (ast::TyI64, ast::TyU64) => return llargs[0],
-
-                    (ast::TyI8, ast::TyU16) |
-                    (ast::TyI8, ast::TyU32) |
-                    (ast::TyI8, ast::TyU64) |
-                    (ast::TyI16, ast::TyU32) |
-                    (ast::TyI16, ast::TyU64) |
-                    (ast::TyI32, ast::TyU64) => return SExt(bcx, llargs[0], llret_ty),
-
-                    (ast::TyI16, ast::TyU8) |
-                    (ast::TyI32, ast::TyU8) |
-                    (ast::TyI32, ast::TyU16) |
-                    (ast::TyI64, ast::TyU8) |
-                    (ast::TyI64, ast::TyU16) |
-                    (ast::TyI64, ast::TyU32) => return Trunc(bcx, llargs[0], llret_ty),
-                    _ => {}
+            (Style::Float, Style::Int(out_is_signed)) => {
+                return if out_is_signed {
+                    FPToSI(bcx, llargs[0], llret_ty)
+                } else {
+                    FPToUI(bcx, llargs[0], llret_ty)
                 }
             }
-            (&ty::TyUint(lhs), &ty::TyInt(rhs)) => {
-                match (lhs, rhs) {
-                    (ast::TyU8, ast::TyI8) |
-                    (ast::TyU16, ast::TyI16) |
-                    (ast::TyU32, ast::TyI32) |
-                    (ast::TyU64, ast::TyI64) => return llargs[0],
-
-                    (ast::TyU8, ast::TyI16) |
-                    (ast::TyU8, ast::TyI32) |
-                    (ast::TyU8, ast::TyI64) |
-                    (ast::TyU16, ast::TyI32) |
-                    (ast::TyU16, ast::TyI64) |
-                    (ast::TyU32, ast::TyI64) => return ZExt(bcx, llargs[0], llret_ty),
-
-                    (ast::TyU16, ast::TyI8) |
-                    (ast::TyU32, ast::TyI8) |
-                    (ast::TyU32, ast::TyI16) |
-                    (ast::TyU64, ast::TyI8) |
-                    (ast::TyU64, ast::TyI16) |
-                    (ast::TyU64, ast::TyI32) => return Trunc(bcx, llargs[0], llret_ty),
-                    _ => {}
+            (Style::Float, Style::Float) => {
+                return match in_width.cmp(&out_width) {
+                    Ordering::Greater => FPTrunc(bcx, llargs[0], llret_ty),
+                    Ordering::Equal => llargs[0],
+                    Ordering::Less => FPExt(bcx, llargs[0], llret_ty)
                 }
             }
-
-            (&ty::TyInt(_), &ty::TyFloat(_)) => {
-                return SIToFP(bcx, llargs[0], llret_ty)
-            }
-            (&ty::TyUint(_), &ty::TyFloat(_)) => {
-                return UIToFP(bcx, llargs[0], llret_ty)
-            }
-
-            (&ty::TyFloat(_), &ty::TyInt(_)) => {
-                return FPToSI(bcx, llargs[0], llret_ty)
-            }
-            (&ty::TyFloat(_), &ty::TyUint(_)) => {
-                return FPToUI(bcx, llargs[0], llret_ty)
-            }
-            (&ty::TyFloat(ast::TyF32), &ty::TyFloat(ast::TyF64)) => {
-                return FPExt(bcx, llargs[0], llret_ty)
-            }
-            (&ty::TyFloat(ast::TyF64), &ty::TyFloat(ast::TyF32)) => {
-                return FPTrunc(bcx, llargs[0], llret_ty)
-            }
-            _ => {}
+            _ => {/* Unsupported. Fallthrough. */}
         }
         require!(false,
                  "unsupported cast from `{}` with element `{}` to `{}` with element `{}`",
