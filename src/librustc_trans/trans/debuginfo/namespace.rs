@@ -109,7 +109,7 @@ pub fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<Namespace
                     let node = Rc::new(NamespaceTreeNode {
                         name: name,
                         scope: scope,
-                        parent: parent_node.map(|parent| parent.downgrade()),
+                        parent: parent_node.map(|parent| Rc::downgrade(&parent)),
                     });
 
                     debug_context(cx).namespace_map.borrow_mut()
