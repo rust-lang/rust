@@ -1,4 +1,4 @@
-#![feature(plugin, collections)]
+#![feature(plugin)]
 #![plugin(clippy)]
 
 #[deny(cmp_owned)]
@@ -13,11 +13,8 @@ fn main() {
 
     x != "foo".to_owned(); //~ERROR this creates an owned instance
 
-    #[allow(deprecated)] // for from_str
-    fn old_timey(x : &str) {
-        x != String::from_str("foo"); //~ERROR this creates an owned instance
-    }
-    old_timey(x);
+    // removed String::from_str(..), as it has finally been removed in 1.4.0
+    // as of 2015-08-14
 
     x != String::from("foo"); //~ERROR this creates an owned instance
 }
