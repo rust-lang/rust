@@ -13,7 +13,6 @@
 
 use astconv::AstConv;
 use intrinsics;
-use middle::infer;
 use middle::subst;
 use middle::ty::FnSig;
 use middle::ty::{self, Ty};
@@ -29,7 +28,6 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 
 fn equate_intrinsic_type<'a, 'tcx>(tcx: &ty::ctxt<'tcx>, it: &ast::ForeignItem,
-                                   maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx>>,
                                    n_tps: usize,
                                    abi: abi::Abi,
                                    inputs: Vec<ty::Ty<'tcx>>,
@@ -52,7 +50,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: &ty::ctxt<'tcx>, it: &ast::ForeignItem,
              i_n_tps, n_tps);
     } else {
         require_same_types(tcx,
-                           maybe_infcx,
+                           None,
                            false,
                            it.span,
                            i_ty.ty,
@@ -349,7 +347,6 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
     equate_intrinsic_type(
         tcx,
         it,
-        None,
         n_tps,
         abi::RustIntrinsic,
         inputs,
@@ -369,7 +366,6 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
     let i_ty = tcx.lookup_item_type(local_def(it.id));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
     let name = it.ident.name.as_str();
-    let mut infer_ctxt = None;
 
     let (n_tps, inputs, output) = match &*name {
         "simd_eq" | "simd_ne" | "simd_lt" | "simd_le" | "simd_gt" | "simd_ge" => {
@@ -388,11 +384,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                 Ok(n) => {
                     let params = vec![param(0), param(0),
                                       tcx.mk_ty(ty::TyArray(tcx.types.u32, n))];
-
-                    let ictxt = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
-                    let ret = ictxt.next_ty_var();
-                    infer_ctxt = Some(ictxt);
-                    (2, params, ret)
+                    (2, params, param(1))
                 }
                 Err(_) => {
                     span_err!(tcx.sess, it.span, E0439,
@@ -438,7 +430,6 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
     equate_intrinsic_type(
         tcx,
         it,
-        infer_ctxt.as_ref(),
         n_tps,
         abi::PlatformIntrinsic,
         inputs,
