@@ -35,6 +35,11 @@ T-middle issues can be more involved and require verifying types. The
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of
 an AST expression). `match_def_path()` in Clippy's `utils` module can also be useful.
 
+Should you add a lint, try it on clippy itself using `util/dogfood.sh`. You may find that clippy
+contains some questionable code itself! Also before making a pull request, please run
+`util/update_lints.py`, which will update `lib.rs` and `README.md` with the lint declarations. Our
+travis build actually checks for this.
+
 ## Contributions
 
 Clippy welcomes contributions from everyone.
