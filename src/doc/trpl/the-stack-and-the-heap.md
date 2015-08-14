@@ -549,7 +549,7 @@ reuse.
 If you’d like to dive into this topic in greater detail, [this paper][wilson]
 is a great introduction.
 
-[wilson]: http://www.cs.northwestern.edu/~pdinda/icsclass/doc/dsa.pdf
+[wilson]: http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.143.4688
 
 ## Semantic impact
 
