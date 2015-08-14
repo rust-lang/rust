@@ -87,12 +87,6 @@ would layer type-safety on top (i.e. generic `repr(simd)` types would
 use some `unsafe` trait as a bound that is designed to only be
 implemented by types that will work).
 
-It is illegal to take an internal reference to the fields of a
-`repr(simd)` type, because the representation of booleans may require
-modification, so that booleans are bit-packed. The official external
-library providing SIMD support will have private fields so this will
-not be generally observable.
-
 Adding `repr(simd)` to a type may increase its minimum/preferred
 alignment, based on platform behaviour. (E.g. x86 wants its 128-bit
 SSE vectors to be 128-bit aligned.)
