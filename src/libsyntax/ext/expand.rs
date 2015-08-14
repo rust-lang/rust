@@ -385,16 +385,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             // expand <head>
             let head = fld.fold_expr(head);
 
-            // create an hygienic ident
-            let iter = {
-                let ident = fld.cx.ident_of("iter");
-                let new_ident = fresh_name(&ident);
-                let rename = (ident, new_ident);
-                let mut rename_list = vec![rename];
-                let mut rename_fld = IdentRenamer{ renames: &mut rename_list };
-
-                rename_fld.fold_ident(ident)
-            };
+            let iter = token::gensym_ident("iter");
 
             let pat_span = fld.new_span(pat.span);
             // `::std::option::Option::Some(<pat>) => <body>`
