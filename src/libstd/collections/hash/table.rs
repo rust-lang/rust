@@ -511,6 +511,7 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> GapThenFull<K, V, M> {
 /// # Panics
 ///
 /// Panics if `target_alignment` is not a power of two.
+#[inline]
 fn round_up_to_next(unrounded: usize, target_alignment: usize) -> usize {
     assert!(target_alignment.is_power_of_two());
     (unrounded + target_alignment - 1) & !(target_alignment - 1)
