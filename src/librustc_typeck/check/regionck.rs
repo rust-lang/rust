@@ -1732,11 +1732,6 @@ fn projection_bound<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 
     // see the extensive comment in projection_must_outlive
 
-    // this routine is not invoked in this case
-    assert!(
-        !projection_ty.trait_ref.substs.types.iter().any(|t| t.needs_infer()) &&
-            !projection_ty.trait_ref.substs.regions().iter().any(|r| r.needs_infer()));
-
     let ty = rcx.tcx().mk_projection(projection_ty.trait_ref, projection_ty.item_name);
     let recursive_bound = recursive_type_bound(rcx, span, ty);
 

@@ -54,6 +54,10 @@ pub enum Component<'tcx> {
     // the future without breaking backwards compat.
     EscapingProjection(Vec<Component<'tcx>>),
 
+    // This is a temporary marker indicating "outlives components"
+    // that are due to the new rules introduced by RFC 1214.  For the
+    // time being, violations of these requirements generally induce
+    // warnings, not errors.
     RFC1214(Vec<Component<'tcx>>),
 }
 
@@ -64,7 +68,7 @@ pub fn components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                            -> Vec<Component<'tcx>> {
     let mut components = vec![];
     compute_components(infcx, ty0, &mut components);
-    debug!("outlives({:?}) = {:?}", ty0, components);
+    debug!("components({:?}) = {:?}", ty0, components);
     components
 }
 
