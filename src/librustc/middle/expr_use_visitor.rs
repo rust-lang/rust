@@ -239,7 +239,7 @@ impl OverloadedCallType {
 // supplies types from the tree. After type checking is complete, you
 // can just use the tcx as the typer.
 
-pub struct ExprUseVisitor<'d,'t,'a: 't, 'tcx:'a> {
+pub struct ExprUseVisitor<'d, 't, 'a: 't, 'tcx:'a+'d> {
     typer: &'t infer::InferCtxt<'a, 'tcx>,
     mc: mc::MemCategorizationContext<'t, 'a, 'tcx>,
     delegate: &'d mut (Delegate<'tcx>+'d),
@@ -273,7 +273,8 @@ enum PassArgs {
 impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
     pub fn new(delegate: &'d mut Delegate<'tcx>,
                typer: &'t infer::InferCtxt<'a, 'tcx>)
-               -> ExprUseVisitor<'d,'t,'a, 'tcx> {
+               -> ExprUseVisitor<'d,'t,'a,'tcx>
+    {
         ExprUseVisitor {
             typer: typer,
             mc: mc::MemCategorizationContext::new(typer),

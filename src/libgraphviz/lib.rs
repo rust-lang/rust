@@ -561,7 +561,7 @@ pub type Edges<'a,E> = Cow<'a,[E]>;
 /// `Cow<[T]>` to leave implementers the freedom to create
 /// entirely new vectors or to pass back slices into internally owned
 /// vectors.
-pub trait GraphWalk<'a, N, E> {
+pub trait GraphWalk<'a, N: Clone, E: Clone> {
     /// Returns all the nodes in this graph.
     fn nodes(&'a self) -> Nodes<'a, N>;
     /// Returns all of the edges in this graph.

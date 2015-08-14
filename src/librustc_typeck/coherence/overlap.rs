@@ -200,10 +200,13 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                         // if Trait1 is a supertrait of Trait2 or Trait2 is not object safe.
 
                         if !traits::is_object_safe(self.tcx, data.principal_def_id()) {
-                            // this just means the self-ty is illegal,
-                            // and probably this error should have
-                            // been reported elsewhere, but I'm trying to avoid
-                            // giving a misleading message below.
+                            // FIXME(#27579). This just means the
+                            // self-ty is illegal; WF will report this
+                            // error. But it will do so as a warning
+                            // for a release or two.  For backwards
+                            // compat reasons, then, we continue to
+                            // report it here so that things which
+                            // were errors remain errors.
                             span_err!(self.tcx.sess, self_ty.span, E0372,
                                       "the trait `{}` cannot be made into an object",
                                       self.tcx.item_path_str(data.principal_def_id()));

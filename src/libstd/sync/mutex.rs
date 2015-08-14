@@ -369,7 +369,7 @@ mod tests {
     use sync::{Arc, Mutex, StaticMutex, Condvar};
     use thread;
 
-    struct Packet<T: Send>(Arc<(Mutex<T>, Condvar)>);
+    struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
 
     unsafe impl<T: Send> Send for Packet<T> {}
     unsafe impl<T> Sync for Packet<T> {}

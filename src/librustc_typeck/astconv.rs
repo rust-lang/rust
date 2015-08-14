@@ -52,7 +52,7 @@ use middle::astconv_util::{prim_ty_to_ty, check_path_args, NO_TPS, NO_REGIONS};
 use middle::const_eval::{self, ConstVal};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def;
-use middle::implicator::object_region_bounds;
+use middle::wf::object_region_bounds;
 use middle::resolve_lifetime as rl;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
@@ -1523,12 +1523,13 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                           ast_ty: &ast::Ty)
                           -> Ty<'tcx>
 {
-    debug!("ast_ty_to_ty(ast_ty={:?})",
-           ast_ty);
+    debug!("ast_ty_to_ty(id={:?}, ast_ty={:?})",
+           ast_ty.id, ast_ty);
 
     let tcx = this.tcx();
 
     if let Some(&ty) = tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
+        debug!("ast_ty_to_ty: id={:?} ty={:?} (cached)", ast_ty.id, ty);
         return ty;
     }
 
@@ -1667,6 +1668,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
     };
 
+    debug!("ast_ty_to_ty: id={:?} ty={:?}", ast_ty.id, typ);
     tcx.ast_ty_to_ty_cache.borrow_mut().insert(ast_ty.id, typ);
     return typ;
 }

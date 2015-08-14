@@ -394,6 +394,10 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
                 ty::Predicate::TypeOutlives(binder.fold_with(folder)),
             ty::Predicate::Projection(ref binder) =>
                 ty::Predicate::Projection(binder.fold_with(folder)),
+            ty::Predicate::WellFormed(data) =>
+                ty::Predicate::WellFormed(data.fold_with(folder)),
+            ty::Predicate::ObjectSafe(trait_def_id) =>
+                ty::Predicate::ObjectSafe(trait_def_id),
         }
     }
 }
@@ -543,6 +547,7 @@ impl<'a, 'tcx> TypeFoldable<'tcx> for ty::ParameterEnvironment<'a, 'tcx> where '
             implicit_region_bound: self.implicit_region_bound.fold_with(folder),
             caller_bounds: self.caller_bounds.fold_with(folder),
             selection_cache: traits::SelectionCache::new(),
+            free_id: self.free_id,
         }
     }
 }

@@ -21,7 +21,8 @@ trait Get {
 }
 
 trait Other {
-    fn okay<U:Get>(&self, foo: U, bar: <Self as Get>::Value);
+    fn okay<U:Get>(&self, foo: U, bar: <Self as Get>::Value)
+        where Self: Get;
 }
 
 impl Get for () {

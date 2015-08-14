@@ -21,10 +21,10 @@ fn main() {
         // str
         std::intrinsics::type_name::<str>(),
         // Trait
-        std::intrinsics::type_name::<Copy>(),
+        std::intrinsics::type_name::<Send>(),
         // Newtype
         std::intrinsics::type_name::<NT>(),
         // DST
         std::intrinsics::type_name::<DST>()
-    )}, ("[u8]", "str", "core::marker::Copy + 'static", "NT", "DST"));
+    )}, ("[u8]", "str", "core::marker::Send + 'static", "NT", "DST"));
 }

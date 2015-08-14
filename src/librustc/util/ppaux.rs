@@ -831,6 +831,11 @@ impl<'tcx> fmt::Display for ty::Predicate<'tcx> {
             ty::Predicate::RegionOutlives(ref predicate) => write!(f, "{}", predicate),
             ty::Predicate::TypeOutlives(ref predicate) => write!(f, "{}", predicate),
             ty::Predicate::Projection(ref predicate) => write!(f, "{}", predicate),
+            ty::Predicate::WellFormed(ty) => write!(f, "{} well-formed", ty),
+            ty::Predicate::ObjectSafe(trait_def_id) =>
+                ty::tls::with(|tcx| {
+                    write!(f, "the trait `{}` is object-safe", tcx.item_path_str(trait_def_id))
+                }),
         }
     }
 }

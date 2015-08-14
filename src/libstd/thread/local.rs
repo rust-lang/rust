@@ -60,7 +60,7 @@ pub use self::imp::Key as __KeyInner;
 /// });
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct LocalKey<T> {
+pub struct LocalKey<T:'static> {
     // The key itself may be tagged with #[thread_local], and this `Key` is
     // stored as a `static`, and it's not valid for a static to reference the
     // address of another thread_local static. For this reason we kinda wonkily

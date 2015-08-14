@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use astconv::AstConv;
-use check::{FnCtxt, Inherited, blank_fn_ctxt, regionck};
+use check::{FnCtxt, Inherited, blank_fn_ctxt, regionck, wfcheck};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
 use middle::region;
@@ -23,7 +23,7 @@ use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::codemap::{DUMMY_SP, Span};
-use syntax::parse::token::special_idents;
+use syntax::parse::token::{special_idents};
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -86,9 +86,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                     Some(ty::BoundSend) | Some(ty::BoundSync) => {}
                     Some(_) | None => {
                         if !ccx.tcx.trait_has_default_impl(trait_ref.def_id) {
-                            span_err!(ccx.tcx.sess, item.span, E0192,
-                                      "negative impls are only allowed for traits with \
-                                       default impls (e.g., `Send` and `Sync`)")
+                            wfcheck::error_192(ccx, item.span);
                         }
                     }
                 }
@@ -122,9 +120,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 reject_non_type_param_bounds(ccx.tcx, item.span, &trait_predicates);
                 if ccx.tcx.trait_has_default_impl(local_def(item.id)) {
                     if !items.is_empty() {
-                        span_err!(ccx.tcx.sess, item.span, E0380,
-                                  "traits with default impls (`e.g. unsafe impl \
-                                  Trait for ..`) must have no methods or associated items")
+                        wfcheck::error_380(ccx, item.span);
                     }
                 }
             }
@@ -149,7 +145,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(type_scheme.ty), item.id);
         f(self, &fcx);
         fcx.select_all_obligations_or_error();
-        regionck::regionck_item(&fcx, item);
+        regionck::regionck_item(&fcx, item.id, item.span, &[]);
     }
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.
@@ -182,11 +178,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 }
             }
 
-            let field_tys: Vec<Ty> =
-                variants.iter().flat_map(|v| v.fields.iter().map(|f| f.ty)).collect();
-
-            regionck::regionck_ensure_component_tys_wf(
-                fcx, item.span, &field_tys);
+            for field in variants.iter().flat_map(|v| v.fields.iter()) {
+                fcx.register_old_wf_obligation(field.ty, field.span, traits::MiscObligation);
+            }
         });
     }
 
@@ -355,8 +349,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                          span: Span,
                          param_name: ast::Name)
     {
-        span_err!(self.tcx().sess, span, E0392,
-            "parameter `{}` is never used", param_name);
+        wfcheck::error_392(self.tcx(), span, param_name);
 
         let suggested_marker_id = self.tcx().lang_items.phantom_data();
         match suggested_marker_id {
@@ -420,9 +413,7 @@ fn reject_shadowing_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     for method_param in generics.types.get_slice(subst::FnSpace) {
         if impl_params.contains(&method_param.name) {
-            span_err!(tcx.sess, span, E0194,
-                "type parameter `{}` shadows another type parameter of the same name",
-                          method_param.name);
+            wfcheck::error_194(tcx, span, method_param.name);
         }
     }
 }
@@ -519,11 +510,6 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
         for &ty in &trait_ref.substs.types {
             self.check_traits_in_ty(ty, span);
         }
-    }
-
-    pub fn check_ty(&mut self, ty: Ty<'tcx>, span: Span) {
-        self.span = span;
-        ty.fold_with(self);
     }
 
     fn check_traits_in_ty(&mut self, ty: Ty<'tcx>, span: Span) {
@@ -709,6 +695,8 @@ fn filter_to_trait_obligations<'tcx>(bounds: ty::InstantiatedPredicates<'tcx>)
             ty::Predicate::Projection(..) => {
                 result.predicates.push(space, predicate.clone())
             }
+            ty::Predicate::WellFormed(..) |
+            ty::Predicate::ObjectSafe(..) |
             ty::Predicate::Equate(..) |
             ty::Predicate::TypeOutlives(..) |
             ty::Predicate::RegionOutlives(..) => {

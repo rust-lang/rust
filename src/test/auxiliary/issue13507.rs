@@ -72,7 +72,6 @@ pub mod testtypes {
     // Tests TyTrait
     pub trait FooTrait {
         fn foo_method(&self) -> usize;
-        fn foo_static_method() -> usize;
     }
 
     // Tests TyStruct

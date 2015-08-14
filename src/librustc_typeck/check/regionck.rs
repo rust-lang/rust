@@ -86,15 +86,19 @@ use astconv::AstConv;
 use check::dropck;
 use check::FnCtxt;
 use middle::free_region::FreeRegionMap;
-use middle::implicator;
+use middle::implicator::{self, Implication};
 use middle::mem_categorization as mc;
+use middle::outlives;
 use middle::region::CodeExtent;
+use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, ReScope, Ty, MethodCall, HasTypeFlags};
-use middle::infer::{self, GenericKind};
+use middle::ty::{self, RegionEscape, ReScope, Ty, MethodCall, HasTypeFlags};
+use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, VerifyBound};
 use middle::pat_util;
+use middle::wf::{self, ImpliedBound};
 
 use std::mem;
+use std::rc::Rc;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
 use syntax::visit;
@@ -120,12 +124,19 @@ pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
     rcx.resolve_regions_and_report_errors();
 }
 
-pub fn regionck_item(fcx: &FnCtxt, item: &ast::Item) {
-    let mut rcx = Rcx::new(fcx, RepeatingScope(item.id), item.id, Subject(item.id));
+/// Region checking during the WF phase for items. `wf_tys` are the
+/// types from which we should derive implied bounds, if any.
+pub fn regionck_item<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                              item_id: ast::NodeId,
+                              span: Span,
+                              wf_tys: &[Ty<'tcx>]) {
+    debug!("regionck_item(item.id={:?}, wf_tys={:?}", item_id, wf_tys);
+    let mut rcx = Rcx::new(fcx, RepeatingScope(item_id), item_id, Subject(item_id));
     let tcx = fcx.tcx();
     rcx.free_region_map
        .relate_free_regions_from_predicates(tcx, &fcx.infcx().parameter_environment.caller_bounds);
-    rcx.visit_region_obligations(item.id);
+    rcx.relate_free_regions(wf_tys, item_id, span);
+    rcx.visit_region_obligations(item_id);
     rcx.resolve_regions_and_report_errors();
 }
 
@@ -152,22 +163,6 @@ pub fn regionck_fn(fcx: &FnCtxt,
     // any map for closures; they just share the same map as the
     // function that created them.
     fcx.tcx().store_free_region_map(fn_id, rcx.free_region_map);
-}
-
-/// Checks that the types in `component_tys` are well-formed. This will add constraints into the
-/// region graph. Does *not* run `resolve_regions_and_report_errors` and so forth.
-pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                                  span: Span,
-                                                  component_tys: &[Ty<'tcx>]) {
-    let mut rcx = Rcx::new(fcx, RepeatingScope(0), 0, SubjectNode::None);
-    for &component_ty in component_tys {
-        // Check that each type outlives the empty region. Since the
-        // empty region is a subregion of all others, this can't fail
-        // unless the type does not meet the well-formedness
-        // requirements.
-        type_must_outlive(&mut rcx, infer::RelateParamBound(span, component_ty),
-                          component_ty, ty::ReEmpty);
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -211,6 +206,10 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
 
     pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
         self.fcx.ccx.tcx
+    }
+
+    pub fn infcx(&self) -> &InferCtxt<'a,'tcx> {
+        self.fcx.infcx()
     }
 
     fn set_body_id(&mut self, body_id: ast::NodeId) -> ast::NodeId {
@@ -325,16 +324,77 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                 .to_vec();
 
         for r_o in &region_obligations {
-            debug!("visit_region_obligations: r_o={:?}",
-                   r_o);
+            debug!("visit_region_obligations: r_o={:?} cause={:?}",
+                   r_o, r_o.cause);
             let sup_type = self.resolve_type(r_o.sup_type);
-            let origin = infer::RelateParamBound(r_o.cause.span, sup_type);
-            type_must_outlive(self, origin, sup_type, r_o.sub_region);
+            let origin = self.code_to_origin(r_o.cause.span, sup_type, &r_o.cause.code);
+
+            if r_o.sub_region != ty::ReEmpty {
+                type_must_outlive(self, origin, sup_type, r_o.sub_region);
+            } else {
+                self.visit_old_school_wf(node_id, sup_type, origin);
+            }
         }
 
         // Processing the region obligations should not cause the list to grow further:
         assert_eq!(region_obligations.len(),
                    self.fcx.inh.infcx.fulfillment_cx.borrow().region_obligations(node_id).len());
+    }
+
+    fn visit_old_school_wf(&mut self,
+                           body_id: ast::NodeId,
+                           ty: Ty<'tcx>,
+                           origin: infer::SubregionOrigin<'tcx>) {
+        // As a weird kind of hack, we use a region of empty as a signal
+        // to mean "old-school WF rules". The only reason the old-school
+        // WF rules are not encoded using WF is that this leads to errors,
+        // and we want to phase those in gradually.
+
+        // FIXME(#27579) remove this weird special case once we phase in new WF rules completely
+        let implications = implicator::implications(self.infcx(),
+                                                    body_id,
+                                                    ty,
+                                                    ty::ReEmpty,
+                                                    origin.span());
+        let origin_for_ty = |ty: Option<Ty<'tcx>>| match ty {
+            None => origin.clone(),
+            Some(ty) => infer::ReferenceOutlivesReferent(ty, origin.span()),
+        };
+        for implication in implications {
+            match implication {
+                Implication::RegionSubRegion(ty, r1, r2) => {
+                    self.fcx.mk_subr(origin_for_ty(ty), r1, r2);
+                }
+                Implication::RegionSubGeneric(ty, r1, GenericKind::Param(param_ty)) => {
+                    param_ty_must_outlive(self, origin_for_ty(ty), r1, param_ty);
+                }
+                Implication::RegionSubGeneric(ty, r1, GenericKind::Projection(proj_ty)) => {
+                    projection_must_outlive(self, origin_for_ty(ty), r1, proj_ty);
+                }
+                Implication::Predicate(def_id, predicate) => {
+                    let cause = traits::ObligationCause::new(origin.span(),
+                                                             body_id,
+                                                             traits::ItemObligation(def_id));
+                    let obligation = traits::Obligation::new(cause, predicate);
+                    self.fcx.register_predicate(obligation);
+                }
+            }
+        }
+    }
+
+    fn code_to_origin(&self,
+                      span: Span,
+                      sup_type: Ty<'tcx>,
+                      code: &traits::ObligationCauseCode<'tcx>)
+                      -> SubregionOrigin<'tcx> {
+        match *code {
+            traits::ObligationCauseCode::RFC1214(ref code) =>
+                infer::RFC1214Subregion(Rc::new(self.code_to_origin(span, sup_type, code))),
+            traits::ObligationCauseCode::ReferenceOutlivesReferent(ref_type) =>
+                infer::ReferenceOutlivesReferent(ref_type, span),
+            _ =>
+                infer::RelateParamBound(span, sup_type),
+        }
     }
 
     /// This method populates the region map's `free_region_map`. It walks over the transformed
@@ -356,33 +416,28 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         for &ty in fn_sig_tys {
             let ty = self.resolve_type(ty);
             debug!("relate_free_regions(t={:?})", ty);
-            let body_scope = CodeExtent::from_node_id(body_id);
-            let body_scope = ty::ReScope(body_scope);
-            let implications = implicator::implications(self.fcx.infcx(), body_id,
-                                                        ty, body_scope, span);
+            let implied_bounds = wf::implied_bounds(self.fcx.infcx(), body_id, ty, span);
 
             // Record any relations between free regions that we observe into the free-region-map.
-            self.free_region_map.relate_free_regions_from_implications(&implications);
+            self.free_region_map.relate_free_regions_from_implied_bounds(&implied_bounds);
 
             // But also record other relationships, such as `T:'x`,
             // that don't go into the free-region-map but which we use
             // here.
-            for implication in implications {
+            for implication in implied_bounds {
                 debug!("implication: {:?}", implication);
                 match implication {
-                    implicator::Implication::RegionSubRegion(_,
-                                                             ty::ReFree(free_a),
-                                                             ty::ReInfer(ty::ReVar(vid_b))) => {
+                    ImpliedBound::RegionSubRegion(ty::ReFree(free_a),
+                                                  ty::ReInfer(ty::ReVar(vid_b))) => {
                         self.fcx.inh.infcx.add_given(free_a, vid_b);
                     }
-                    implicator::Implication::RegionSubGeneric(_, r_a, ref generic_b) => {
-                        debug!("RegionSubGeneric: {:?} <= {:?}",
-                               r_a, generic_b);
-
-                        self.region_bound_pairs.push((r_a, generic_b.clone()));
+                    ImpliedBound::RegionSubParam(r_a, param_b) => {
+                        self.region_bound_pairs.push((r_a, GenericKind::Param(param_b)));
                     }
-                    implicator::Implication::RegionSubRegion(..) |
-                    implicator::Implication::Predicate(..) => {
+                    ImpliedBound::RegionSubProjection(r_a, projection_b) => {
+                        self.region_bound_pairs.push((r_a, GenericKind::Projection(projection_b)));
+                    }
+                    ImpliedBound::RegionSubRegion(..) => {
                         // In principle, we could record (and take
                         // advantage of) every relationship here, but
                         // we are also free not to -- it simply means
@@ -492,12 +547,11 @@ fn constrain_bindings_in_pat(pat: &ast::Pat, rcx: &mut Rcx) {
         // that the lifetime of any regions that appear in a
         // variable's type enclose at least the variable's scope.
 
-        let var_region = tcx.region_maps.var_region(id);
-        type_of_node_must_outlive(
-            rcx, infer::BindingTypeIsNotValidAtDecl(span),
-            id, var_region);
-
         let var_scope = tcx.region_maps.var_scope(id);
+
+        let origin = infer::BindingTypeIsNotValidAtDecl(span);
+        type_of_node_must_outlive(rcx, origin, id, ty::ReScope(var_scope));
+
         let typ = rcx.resolve_node_type(id);
         dropck::check_safety_of_destructor_if_necessary(rcx, typ, span, var_scope);
     })
@@ -514,7 +568,29 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     type_must_outlive(rcx, infer::ExprTypeIsNotInScope(expr_ty, expr.span),
                       expr_ty, ty::ReScope(CodeExtent::from_node_id(expr.id)));
 
-    let has_method_map = rcx.fcx.infcx().is_method_call(expr.id);
+    let method_call = MethodCall::expr(expr.id);
+    let opt_method_callee = rcx.fcx.inh.tables.borrow().method_map.get(&method_call).cloned();
+    let has_method_map = opt_method_callee.is_some();
+
+    // the region corresponding to this expression
+    let expr_region = ty::ReScope(CodeExtent::from_node_id(expr.id));
+
+    // If we are calling a method (either explicitly or via an
+    // overloaded operator), check that all of the types provided as
+    // arguments for its type parameters are well-formed, and all the regions
+    // provided as arguments outlive the call.
+    if let Some(callee) = opt_method_callee {
+        let origin = match expr.node {
+            ast::ExprMethodCall(..) =>
+                infer::ParameterOrigin::MethodCall,
+            ast::ExprUnary(op, _) if op == ast::UnDeref =>
+                infer::ParameterOrigin::OverloadedDeref,
+            _ =>
+                infer::ParameterOrigin::OverloadedOperator
+        };
+
+        substs_wf_in_scope(rcx, origin, &callee.substs, expr.span, expr_region);
+    }
 
     // Check any autoderefs or autorefs that appear.
     let adjustment = rcx.fcx.inh.tables.borrow().adjustments.get(&expr.id).map(|a| a.clone());
@@ -585,6 +661,13 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     }
 
     match expr.node {
+        ast::ExprPath(..) => {
+            rcx.fcx.opt_node_ty_substs(expr.id, |item_substs| {
+                let origin = infer::ParameterOrigin::Path;
+                substs_wf_in_scope(rcx, origin, &item_substs.substs, expr.span, expr_region);
+            });
+        }
+
         ast::ExprCall(ref callee, ref args) => {
             if has_method_map {
                 constrain_call(rcx, expr, Some(&**callee),
@@ -895,6 +978,9 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 debug!("constrain_autoderefs: #{} is overloaded, method={:?}",
                        i, method);
 
+                let origin = infer::ParameterOrigin::OverloadedDeref;
+                substs_wf_in_scope(rcx, origin, method.substs, deref_expr.span, r_deref_expr);
+
                 // Treat overloaded autoderefs as if an AutoRef adjustment
                 // was applied on the base type, as that is always the case.
                 let fn_sig = method.ty.fn_sig();
@@ -1196,6 +1282,9 @@ fn link_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     let mut borrow_cmt = borrow_cmt;
     let mut borrow_kind = borrow_kind;
 
+    let origin = infer::DataBorrowed(borrow_cmt.ty, span);
+    type_must_outlive(rcx, origin, borrow_cmt.ty, *borrow_region);
+
     loop {
         debug!("link_region(borrow_region={:?}, borrow_kind={:?}, borrow_cmt={:?})",
                borrow_region,
@@ -1395,74 +1484,295 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     }
 }
 
-/// Ensures that all borrowed data reachable via `ty` outlives `region`.
-pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
-                               origin: infer::SubregionOrigin<'tcx>,
-                               ty: Ty<'tcx>,
-                               region: ty::Region)
+/// Checks that the values provided for type/region arguments in a given
+/// expression are well-formed and in-scope.
+pub fn substs_wf_in_scope<'a,'tcx>(rcx: &mut Rcx<'a,'tcx>,
+                                   origin: infer::ParameterOrigin,
+                                   substs: &Substs<'tcx>,
+                                   expr_span: Span,
+                                   expr_region: ty::Region) {
+    debug!("substs_wf_in_scope(substs={:?}, \
+            expr_region={:?}, \
+            origin={:?}, \
+            expr_span={:?})",
+           substs, expr_region, origin, expr_span);
+
+    let origin = infer::ParameterInScope(origin, expr_span);
+
+    for &region in substs.regions() {
+        rcx.fcx.mk_subr(origin.clone(), expr_region, region);
+    }
+
+    for &ty in &substs.types {
+        let ty = rcx.resolve_type(ty);
+        type_must_outlive(rcx, origin.clone(), ty, expr_region);
+    }
+}
+
+/// Ensures that type is well-formed in `region`, which implies (among
+/// other things) that all borrowed data reachable via `ty` outlives
+/// `region`.
+pub fn type_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                                   origin: infer::SubregionOrigin<'tcx>,
+                                   ty: Ty<'tcx>,
+                                   region: ty::Region)
 {
+    let ty = rcx.resolve_type(ty);
+
     debug!("type_must_outlive(ty={:?}, region={:?})",
            ty,
            region);
 
-    let implications = implicator::implications(rcx.fcx.infcx(), rcx.body_id,
-                                                ty, region, origin.span());
-    for implication in implications {
-        debug!("implication: {:?}", implication);
-        match implication {
-            implicator::Implication::RegionSubRegion(None, r_a, r_b) => {
-                rcx.fcx.mk_subr(origin.clone(), r_a, r_b);
+    assert!(!ty.has_escaping_regions());
+
+    let components = outlives::components(rcx.infcx(), ty);
+    components_must_outlive(rcx, origin, components, region);
+}
+
+fn components_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                                     origin: infer::SubregionOrigin<'tcx>,
+                                     components: Vec<outlives::Component<'tcx>>,
+                                     region: ty::Region)
+{
+    for component in components {
+        let origin = origin.clone();
+        match component {
+            outlives::Component::Region(region1) => {
+                rcx.fcx.mk_subr(origin, region, region1);
             }
-            implicator::Implication::RegionSubRegion(Some(ty), r_a, r_b) => {
-                let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
-                rcx.fcx.mk_subr(o1, r_a, r_b);
+            outlives::Component::Param(param_ty) => {
+                param_ty_must_outlive(rcx, origin, region, param_ty);
             }
-            implicator::Implication::RegionSubGeneric(None, r_a, ref generic_b) => {
-                generic_must_outlive(rcx, origin.clone(), r_a, generic_b);
+            outlives::Component::Projection(projection_ty) => {
+                projection_must_outlive(rcx, origin, region, projection_ty);
             }
-            implicator::Implication::RegionSubGeneric(Some(ty), r_a, ref generic_b) => {
-                let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
-                generic_must_outlive(rcx, o1, r_a, generic_b);
+            outlives::Component::EscapingProjection(subcomponents) => {
+                components_must_outlive(rcx, origin, subcomponents, region);
             }
-            implicator::Implication::Predicate(def_id, predicate) => {
-                let cause = traits::ObligationCause::new(origin.span(),
-                                                         rcx.body_id,
-                                                         traits::ItemObligation(def_id));
-                let obligation = traits::Obligation::new(cause, predicate);
-                rcx.fcx.register_predicate(obligation);
+            outlives::Component::UnresolvedInferenceVariable(v) => {
+                // ignore this, we presume it will yield an error
+                // later, since if a type variable is not resolved by
+                // this point it never will be
+                rcx.tcx().sess.delay_span_bug(
+                    origin.span(),
+                    &format!("unresolved inference variable in outlives: {:?}", v));
+            }
+            outlives::Component::RFC1214(subcomponents) => {
+                let suborigin = infer::RFC1214Subregion(Rc::new(origin));
+                components_must_outlive(rcx, suborigin, subcomponents, region);
             }
         }
     }
 }
 
-fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
-                                  origin: infer::SubregionOrigin<'tcx>,
-                                  region: ty::Region,
-                                  generic: &GenericKind<'tcx>) {
-    let param_env = &rcx.fcx.inh.infcx.parameter_environment;
+fn param_ty_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                                   origin: infer::SubregionOrigin<'tcx>,
+                                   region: ty::Region,
+                                   param_ty: ty::ParamTy) {
+    debug!("param_ty_must_outlive(region={:?}, param_ty={:?}, origin={:?})",
+           region, param_ty, origin);
 
-    debug!("param_must_outlive(region={:?}, generic={:?})",
-           region,
-           generic);
+    let verify_bound = param_bound(rcx, param_ty);
+    let generic = GenericKind::Param(param_ty);
+    rcx.fcx.infcx().verify_generic_bound(origin, generic, region, verify_bound);
+}
 
-    // To start, collect bounds from user:
-    let mut param_bounds = rcx.tcx().required_region_bounds(generic.to_ty(rcx.tcx()),
-                                                            param_env.caller_bounds.clone());
+fn projection_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                                     origin: infer::SubregionOrigin<'tcx>,
+                                     region: ty::Region,
+                                     projection_ty: ty::ProjectionTy<'tcx>)
+{
+    debug!("projection_must_outlive(region={:?}, projection_ty={:?}, origin={:?})",
+           region, projection_ty, origin);
 
-    // In the case of a projection T::Foo, we may be able to extract bounds from the trait def:
-    match *generic {
-        GenericKind::Param(..) => { }
-        GenericKind::Projection(ref projection_ty) => {
-            param_bounds.push_all(
-                &projection_bounds(rcx, origin.span(), projection_ty));
+    // This case is thorny for inference. The fundamental problem is
+    // that there are many cases where we have choice, and inference
+    // doesn't like choice (the current region inference in
+    // particular). :) First off, we have to choose between using the
+    // OutlivesProjectionEnv, OutlivesProjectionTraitDef, and
+    // OutlivesProjectionComponent rules, any one of which is
+    // sufficient.  If there are no inference variables involved, it's
+    // not hard to pick the right rule, but if there are, we're in a
+    // bit of a catch 22: if we picked which rule we were going to
+    // use, we could add constraints to the region inference graph
+    // that make it apply, but if we don't add those constraints, the
+    // rule might not apply (but another rule might). For now, we err
+    // on the side of adding too few edges into the graph.
+
+    // Compute the bounds we can derive from the environment or trait
+    // definition.  We know that the projection outlives all the
+    // regions in this list.
+    let env_bounds = projection_declared_bounds(rcx, origin.span(), projection_ty);
+
+    debug!("projection_must_outlive: env_bounds={:?}",
+           env_bounds);
+
+    // If we know that the projection outlives 'static, then we're
+    // done here.
+    if env_bounds.contains(&ty::ReStatic) {
+        debug!("projection_must_outlive: 'static as declared bound");
+        return;
+    }
+
+    // If declared bounds list is empty, the only applicable rule is
+    // OutlivesProjectionComponent. If there are inference variables,
+    // then, we can break down the outlives into more primitive
+    // components without adding unnecessary edges.
+    //
+    // If there are *no* inference variables, however, we COULD do
+    // this, but we choose not to, because the error messages are less
+    // good. For example, a requirement like `T::Item: 'r` would be
+    // translated to a requirement that `T: 'r`; when this is reported
+    // to the user, it will thus say "T: 'r must hold so that T::Item:
+    // 'r holds". But that makes it sound like the only way to fix
+    // the problem is to add `T: 'r`, which isn't true. So, if there are no
+    // inference variables, we use a verify constraint instead of adding
+    // edges, which winds up enforcing the same condition.
+    let needs_infer = {
+        projection_ty.trait_ref.substs.types.iter().any(|t| t.needs_infer()) ||
+            projection_ty.trait_ref.substs.regions().iter().any(|r| r.needs_infer())
+    };
+    if env_bounds.is_empty() && needs_infer {
+        debug!("projection_must_outlive: no declared bounds");
+
+        for &component_ty in &projection_ty.trait_ref.substs.types {
+            type_must_outlive(rcx, origin.clone(), component_ty, region);
+        }
+
+        for &r in projection_ty.trait_ref.substs.regions() {
+            rcx.fcx.mk_subr(origin.clone(), region, r);
+        }
+
+        return;
+    }
+
+    // If we find that there is a unique declared bound `'b`, and this bound
+    // appears in the trait reference, then the best action is to require that `'b:'r`,
+    // so do that. This is best no matter what rule we use:
+    //
+    // - OutlivesProjectionEnv or OutlivesProjectionTraitDef: these would translate to
+    // the requirement that `'b:'r`
+    // - OutlivesProjectionComponent: this would require `'b:'r` in addition to other conditions
+    if !env_bounds.is_empty() && env_bounds[1..].iter().all(|b| *b == env_bounds[0]) {
+        let unique_bound = env_bounds[0];
+        debug!("projection_must_outlive: unique declared bound = {:?}", unique_bound);
+        if projection_ty.trait_ref.substs.regions()
+                                         .iter()
+                                         .any(|r| env_bounds.contains(r))
+        {
+            debug!("projection_must_outlive: unique declared bound appears in trait ref");
+            rcx.fcx.mk_subr(origin.clone(), region, unique_bound);
+            return;
         }
     }
+
+    // Fallback to verifying after the fact that there exists a
+    // declared bound, or that all the components appearing in the
+    // projection outlive; in some cases, this may add insufficient
+    // edges into the inference graph, leading to inference failures
+    // even though a satisfactory solution exists.
+    let verify_bound = projection_bound(rcx, origin.span(), env_bounds, projection_ty);
+    let generic = GenericKind::Projection(projection_ty);
+    rcx.fcx.infcx().verify_generic_bound(origin, generic.clone(), region, verify_bound);
+}
+
+fn type_bound<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>, span: Span, ty: Ty<'tcx>) -> VerifyBound {
+    match ty.sty {
+        ty::TyParam(p) => {
+            param_bound(rcx, p)
+        }
+        ty::TyProjection(data) => {
+            let declared_bounds = projection_declared_bounds(rcx, span, data);
+            projection_bound(rcx, span, declared_bounds, data)
+        }
+        _ => {
+            recursive_type_bound(rcx, span, ty)
+        }
+    }
+}
+
+fn param_bound<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>, param_ty: ty::ParamTy) -> VerifyBound {
+    let param_env = &rcx.infcx().parameter_environment;
+
+    debug!("param_bound(param_ty={:?})",
+           param_ty);
+
+    let mut param_bounds = declared_generic_bounds_from_env(rcx, GenericKind::Param(param_ty));
 
     // Add in the default bound of fn body that applies to all in
     // scope type parameters:
     param_bounds.push(param_env.implicit_region_bound);
 
-    // Finally, collect regions we scraped from the well-formedness
+    VerifyBound::AnyRegion(param_bounds)
+}
+
+fn projection_declared_bounds<'a, 'tcx>(rcx: &Rcx<'a,'tcx>,
+                                        span: Span,
+                                        projection_ty: ty::ProjectionTy<'tcx>)
+                                        -> Vec<ty::Region>
+{
+    // First assemble bounds from where clauses and traits.
+
+    let mut declared_bounds =
+        declared_generic_bounds_from_env(rcx, GenericKind::Projection(projection_ty));
+
+    declared_bounds.push_all(
+        &declared_projection_bounds_from_trait(rcx, span, projection_ty));
+
+    declared_bounds
+}
+
+fn projection_bound<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                              span: Span,
+                              declared_bounds: Vec<ty::Region>,
+                              projection_ty: ty::ProjectionTy<'tcx>)
+                              -> VerifyBound {
+    debug!("projection_bound(declared_bounds={:?}, projection_ty={:?})",
+           declared_bounds, projection_ty);
+
+    // see the extensive comment in projection_must_outlive
+
+    let ty = rcx.tcx().mk_projection(projection_ty.trait_ref, projection_ty.item_name);
+    let recursive_bound = recursive_type_bound(rcx, span, ty);
+
+    VerifyBound::AnyRegion(declared_bounds).or(recursive_bound)
+}
+
+fn recursive_type_bound<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                                  span: Span,
+                                  ty: Ty<'tcx>)
+                                  -> VerifyBound {
+    let mut bounds = vec![];
+
+    for subty in ty.walk_shallow() {
+        bounds.push(type_bound(rcx, span, subty));
+    }
+
+    let mut regions = ty.regions();
+    regions.retain(|r| !r.is_bound()); // ignore late-bound regions
+    bounds.push(VerifyBound::AllRegions(regions));
+
+    // remove bounds that must hold, since they are not interesting
+    bounds.retain(|b| !b.must_hold());
+
+    if bounds.len() == 1 {
+        bounds.pop().unwrap()
+    } else {
+        VerifyBound::AllBounds(bounds)
+    }
+}
+
+fn declared_generic_bounds_from_env<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
+                                              generic: GenericKind<'tcx>)
+                                              -> Vec<ty::Region>
+{
+    let param_env = &rcx.infcx().parameter_environment;
+
+    // To start, collect bounds from user:
+    let mut param_bounds = rcx.tcx().required_region_bounds(generic.to_ty(rcx.tcx()),
+                                                            param_env.caller_bounds.clone());
+
+    // Next, collect regions we scraped from the well-formedness
     // constraints in the fn signature. To do that, we walk the list
     // of known relations from the fn ctxt.
     //
@@ -1473,27 +1783,22 @@ fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     // The problem is that the type of `x` is `&'a A`. To be
     // well-formed, then, A must be lower-generic by `'a`, but we
     // don't know that this holds from first principles.
-    for &(ref r, ref p) in &rcx.region_bound_pairs {
+    for &(r, p) in &rcx.region_bound_pairs {
         debug!("generic={:?} p={:?}",
                generic,
                p);
         if generic == p {
-            param_bounds.push(*r);
+            param_bounds.push(r);
         }
     }
 
-    // Inform region inference that this generic must be properly
-    // bounded.
-    rcx.fcx.infcx().verify_generic_bound(origin,
-                                         generic.clone(),
-                                         region,
-                                         param_bounds);
+    param_bounds
 }
 
-fn projection_bounds<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
-                              span: Span,
-                              projection_ty: &ty::ProjectionTy<'tcx>)
-                              -> Vec<ty::Region>
+fn declared_projection_bounds_from_trait<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
+                                                  span: Span,
+                                                  projection_ty: ty::ProjectionTy<'tcx>)
+                                                  -> Vec<ty::Region>
 {
     let fcx = rcx.fcx;
     let tcx = fcx.tcx();

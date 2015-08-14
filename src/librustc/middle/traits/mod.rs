@@ -27,6 +27,7 @@ use syntax::codemap::{Span, DUMMY_SP};
 pub use self::error_reporting::report_fulfillment_errors;
 pub use self::error_reporting::report_overflow_error;
 pub use self::error_reporting::report_selection_error;
+pub use self::error_reporting::report_object_safety_error;
 pub use self::error_reporting::suggest_new_overflow_limit;
 pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
@@ -80,7 +81,7 @@ pub type PredicateObligation<'tcx> = Obligation<'tcx, ty::Predicate<'tcx>>;
 pub type TraitObligation<'tcx> = Obligation<'tcx, ty::PolyTraitPredicate<'tcx>>;
 
 /// Why did we incur this obligation? Used for error reporting.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
@@ -95,14 +96,26 @@ pub struct ObligationCause<'tcx> {
     pub code: ObligationCauseCode<'tcx>
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.
     MiscObligation,
 
+    /// Obligation that triggers warning until RFC 1214 is fully in place.
+    RFC1214(Rc<ObligationCauseCode<'tcx>>),
+
+    /// This is the trait reference from the given projection
+    SliceOrArrayElem,
+
+    /// This is the trait reference from the given projection
+    ProjectionWf(ty::ProjectionTy<'tcx>),
+
     /// In an impl of trait X for type Y, type Y must
     /// also implement all supertraits of X.
     ItemObligation(ast::DefId),
+
+    /// A type like `&'a T` is WF only if `T: 'a`.
+    ReferenceOutlivesReferent(Ty<'tcx>),
 
     /// Obligation incurred due to an object cast.
     ObjectCastObligation(/* Object type */ Ty<'tcx>),
@@ -124,7 +137,6 @@ pub enum ObligationCauseCode<'tcx> {
     // static items must have `Sync` type
     SharedStatic,
 
-
     BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
 
     ImplDerivedObligation(DerivedObligationCause<'tcx>),
@@ -132,7 +144,7 @@ pub enum ObligationCauseCode<'tcx> {
     CompareImplMethodObligation,
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DerivedObligationCause<'tcx> {
     /// The trait reference of the parent obligation that led to the
     /// current obligation. Note that only trait obligations lead to
@@ -513,6 +525,24 @@ impl<'tcx> ObligationCause<'tcx> {
 
     pub fn dummy() -> ObligationCause<'tcx> {
         ObligationCause { span: DUMMY_SP, body_id: 0, code: MiscObligation }
+    }
+}
+
+/// This marker is used in some caches to record whether the
+/// predicate, if it is found to be false, will yield a warning (due
+/// to RFC1214) or an error. We separate these two cases in the cache
+/// so that if we see the same predicate twice, first resulting in a
+/// warning, and next resulting in an error, we still report the
+/// error, rather than considering it a duplicate.
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RFC1214Warning(bool);
+
+impl<'tcx> ObligationCauseCode<'tcx> {
+    pub fn is_rfc1214(&self) -> bool {
+        match *self {
+            ObligationCauseCode::RFC1214(..) => true,
+            _ => false,
+        }
     }
 }
 

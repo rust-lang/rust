@@ -818,7 +818,9 @@ impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
             Predicate::Equate(ref pred) => pred.clean(cx),
             Predicate::RegionOutlives(ref pred) => pred.clean(cx),
             Predicate::TypeOutlives(ref pred) => pred.clean(cx),
-            Predicate::Projection(ref pred) => pred.clean(cx)
+            Predicate::Projection(ref pred) => pred.clean(cx),
+            Predicate::WellFormed(_) => panic!("not user writable"),
+            Predicate::ObjectSafe(_) => panic!("not user writable"),
         }
     }
 }

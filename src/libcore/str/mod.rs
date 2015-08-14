@@ -25,6 +25,7 @@ use default::Default;
 use fmt;
 use iter::ExactSizeIterator;
 use iter::{Map, Iterator, DoubleEndedIterator};
+use marker::Sized;
 use mem;
 use ops::{Fn, FnMut, FnOnce};
 use option::Option::{self, None, Some};
@@ -37,7 +38,7 @@ pub mod pattern;
 /// A trait to abstract the idea of creating a new instance of a type from a
 /// string.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait FromStr {
+pub trait FromStr: Sized {
     /// The associated error which can be returned from parsing.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Err;

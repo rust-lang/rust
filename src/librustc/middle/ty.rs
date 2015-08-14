@@ -1670,6 +1670,13 @@ impl Region {
         }
     }
 
+    pub fn needs_infer(&self) -> bool {
+        match *self {
+            ty::ReInfer(..) => true,
+            _ => false
+        }
+    }
+
     pub fn escapes_depth(&self, depth: u32) -> bool {
         match *self {
             ty::ReLateBound(debruijn, _) => debruijn.depth > depth,
@@ -2410,6 +2417,12 @@ pub enum Predicate<'tcx> {
     /// where <T as TraitRef>::Name == X, approximately.
     /// See `ProjectionPredicate` struct for details.
     Projection(PolyProjectionPredicate<'tcx>),
+
+    /// no syntax: T WF
+    WellFormed(Ty<'tcx>),
+
+    /// trait must be object-safe
+    ObjectSafe(ast::DefId),
 }
 
 impl<'tcx> Predicate<'tcx> {
@@ -2495,6 +2508,10 @@ impl<'tcx> Predicate<'tcx> {
                 Predicate::TypeOutlives(ty::Binder(data.subst(tcx, substs))),
             Predicate::Projection(ty::Binder(ref data)) =>
                 Predicate::Projection(ty::Binder(data.subst(tcx, substs))),
+            Predicate::WellFormed(data) =>
+                Predicate::WellFormed(data.subst(tcx, substs)),
+            Predicate::ObjectSafe(trait_def_id) =>
+                Predicate::ObjectSafe(trait_def_id),
         }
     }
 }
@@ -2567,7 +2584,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
 
 /// Represents the projection of an associated type. In explicit UFCS
 /// form this would be written `<T as Trait<..>>::N`.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ProjectionTy<'tcx> {
     /// The trait reference `T as Trait<..>`.
     pub trait_ref: ty::TraitRef<'tcx>,
@@ -2682,6 +2699,12 @@ impl<'tcx> Predicate<'tcx> {
                             .chain(Some(data.0.ty))
                             .collect()
             }
+            ty::Predicate::WellFormed(data) => {
+                vec![data]
+            }
+            ty::Predicate::ObjectSafe(_trait_def_id) => {
+                vec![]
+            }
         };
 
         // The only reason to collect into a vector here is that I was
@@ -2699,6 +2722,8 @@ impl<'tcx> Predicate<'tcx> {
             Predicate::RegionOutlives(ref p) => p.has_escaping_regions(),
             Predicate::TypeOutlives(ref p) => p.has_escaping_regions(),
             Predicate::Projection(ref p) => p.has_escaping_regions(),
+            Predicate::WellFormed(p) => p.has_escaping_regions(),
+            Predicate::ObjectSafe(_trait_def_id) => false,
         }
     }
 
@@ -2710,6 +2735,8 @@ impl<'tcx> Predicate<'tcx> {
             Predicate::Projection(..) |
             Predicate::Equate(..) |
             Predicate::RegionOutlives(..) |
+            Predicate::WellFormed(..) |
+            Predicate::ObjectSafe(..) |
             Predicate::TypeOutlives(..) => {
                 None
             }
@@ -2806,6 +2833,15 @@ pub struct ParameterEnvironment<'a, 'tcx:'a> {
     /// Caches the results of trait selection. This cache is used
     /// for things that have to do with the parameters in scope.
     pub selection_cache: traits::SelectionCache<'tcx>,
+
+    /// Scope that is attached to free regions for this scope. This
+    /// is usually the id of the fn body, but for more abstract scopes
+    /// like structs we often use the node-id of the struct.
+    ///
+    /// FIXME(#3696). It would be nice to refactor so that free
+    /// regions don't have this implicit scope and instead introduce
+    /// relationships in the environment.
+    pub free_id: ast::NodeId,
 }
 
 impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
@@ -2819,6 +2855,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             implicit_region_bound: self.implicit_region_bound,
             caller_bounds: caller_bounds,
             selection_cache: traits::SelectionCache::new(),
+            free_id: self.free_id,
         }
     }
 
@@ -2826,6 +2863,18 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
+                    ast::TypeImplItem(_) => {
+                        // associated types don't have their own entry (for some reason),
+                        // so for now just grab environment for the impl
+                        let impl_id = cx.map.get_parent(id);
+                        let impl_def_id = ast_util::local_def(impl_id);
+                        let scheme = cx.lookup_item_type(impl_def_id);
+                        let predicates = cx.lookup_predicates(impl_def_id);
+                        cx.construct_parameter_environment(impl_item.span,
+                                                           &scheme.generics,
+                                                           &predicates,
+                                                           id)
+                    }
                     ast::ConstImplItem(_, _) => {
                         let def_id = ast_util::local_def(id);
                         let scheme = cx.lookup_item_type(def_id);
@@ -2854,42 +2903,37 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                             }
                         }
                     }
-                    ast::TypeImplItem(_) => {
-                        cx.sess.bug("ParameterEnvironment::for_item(): \
-                                     can't create a parameter environment \
-                                     for type impl items")
-                    }
                     ast::MacImplItem(_) => cx.sess.bug("unexpanded macro")
                 }
             }
             Some(ast_map::NodeTraitItem(trait_item)) => {
                 match trait_item.node {
-                    ast::ConstTraitItem(_, ref default) => {
-                        match *default {
-                            Some(_) => {
-                                let def_id = ast_util::local_def(id);
-                                let scheme = cx.lookup_item_type(def_id);
-                                let predicates = cx.lookup_predicates(def_id);
-                                cx.construct_parameter_environment(trait_item.span,
-                                                                   &scheme.generics,
-                                                                   &predicates,
-                                                                   id)
-                            }
-                            None => {
-                                cx.sess.bug("ParameterEnvironment::from_item(): \
-                                             can't create a parameter environment \
-                                             for const trait items without defaults")
-                            }
-                        }
+                    ast::TypeTraitItem(..) => {
+                        // associated types don't have their own entry (for some reason),
+                        // so for now just grab environment for the trait
+                        let trait_id = cx.map.get_parent(id);
+                        let trait_def_id = ast_util::local_def(trait_id);
+                        let trait_def = cx.lookup_trait_def(trait_def_id);
+                        let predicates = cx.lookup_predicates(trait_def_id);
+                        cx.construct_parameter_environment(trait_item.span,
+                                                           &trait_def.generics,
+                                                           &predicates,
+                                                           id)
                     }
-                    ast::MethodTraitItem(_, None) => {
-                        cx.sess.span_bug(trait_item.span,
-                                         "ParameterEnvironment::for_item():
-                                          can't create a parameter \
-                                          environment for required trait \
-                                          methods")
+                    ast::ConstTraitItem(..) => {
+                        let def_id = ast_util::local_def(id);
+                        let scheme = cx.lookup_item_type(def_id);
+                        let predicates = cx.lookup_predicates(def_id);
+                        cx.construct_parameter_environment(trait_item.span,
+                                                           &scheme.generics,
+                                                           &predicates,
+                                                           id)
                     }
-                    ast::MethodTraitItem(_, Some(ref body)) => {
+                    ast::MethodTraitItem(_, ref body) => {
+                        // for the body-id, use the id of the body
+                        // block, unless this is a trait method with
+                        // no default, then fallback to the method id.
+                        let body_id = body.as_ref().map(|b| b.id).unwrap_or(id);
                         let method_def_id = ast_util::local_def(id);
                         match cx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
@@ -2899,7 +2943,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                     trait_item.span,
                                     method_generics,
                                     method_bounds,
-                                    body.id)
+                                    body_id)
                             }
                             _ => {
                                 cx.sess
@@ -2908,11 +2952,6 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                         method?!")
                             }
                         }
-                    }
-                    ast::TypeTraitItem(..) => {
-                        cx.sess.bug("ParameterEnvironment::from_item(): \
-                                     can't create a parameter environment \
-                                     for type trait items")
                     }
                 }
             }
@@ -2939,6 +2978,15 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         let predicates = cx.lookup_predicates(def_id);
                         cx.construct_parameter_environment(item.span,
                                                            &scheme.generics,
+                                                           &predicates,
+                                                           id)
+                    }
+                    ast::ItemTrait(..) => {
+                        let def_id = ast_util::local_def(id);
+                        let trait_def = cx.lookup_trait_def(def_id);
+                        let predicates = cx.lookup_predicates(def_id);
+                        cx.construct_parameter_environment(item.span,
+                                                           &trait_def.generics,
                                                            &predicates,
                                                            id)
                     }
@@ -4141,6 +4189,49 @@ impl<'tcx> TyS<'tcx> {
         match self.sty {
             ty::TyParam(ref data) => data.space == space && data.idx == index,
             _ => false,
+        }
+    }
+
+    /// Returns the regions directly referenced from this type (but
+    /// not types reachable from this type via `walk_tys`). This
+    /// ignores late-bound regions binders.
+    pub fn regions(&self) -> Vec<ty::Region> {
+        match self.sty {
+            TyRef(region, _) => {
+                vec![*region]
+            }
+            TyTrait(ref obj) => {
+                let mut v = vec![obj.bounds.region_bound];
+                v.push_all(obj.principal.skip_binder().substs.regions().as_slice());
+                v
+            }
+            TyEnum(_, substs) |
+            TyStruct(_, substs) => {
+                substs.regions().as_slice().to_vec()
+            }
+            TyClosure(_, ref substs) => {
+                substs.func_substs.regions().as_slice().to_vec()
+            }
+            TyProjection(ref data) => {
+                data.trait_ref.substs.regions().as_slice().to_vec()
+            }
+            TyBareFn(..) |
+            TyBool |
+            TyChar |
+            TyInt(_) |
+            TyUint(_) |
+            TyFloat(_) |
+            TyBox(_) |
+            TyStr |
+            TyArray(_, _) |
+            TySlice(_) |
+            TyRawPtr(_) |
+            TyTuple(_) |
+            TyParam(_) |
+            TyInfer(_) |
+            TyError => {
+                vec![]
+            }
         }
     }
 
@@ -6142,13 +6233,18 @@ impl<'tcx> ctxt<'tcx> {
     /// themselves. This should really be a unique type; `FreshTy(0)` is a
     /// popular choice.
     ///
+    /// NB: in some cases, particularly around higher-ranked bounds,
+    /// this function returns a kind of conservative approximation.
+    /// That is, all regions returned by this function are definitely
+    /// required, but there may be other region bounds that are not
+    /// returned, as well as requirements like `for<'a> T: 'a`.
+    ///
     /// Requires that trait definitions have been processed so that we can
     /// elaborate predicates and walk supertraits.
     pub fn required_region_bounds(&self,
                                   erased_self_ty: Ty<'tcx>,
                                   predicates: Vec<ty::Predicate<'tcx>>)
-                                  -> Vec<ty::Region>
-    {
+                                  -> Vec<ty::Region>    {
         debug!("required_region_bounds(erased_self_ty={:?}, predicates={:?})",
                erased_self_ty,
                predicates);
@@ -6161,6 +6257,8 @@ impl<'tcx> ctxt<'tcx> {
                     ty::Predicate::Projection(..) |
                     ty::Predicate::Trait(..) |
                     ty::Predicate::Equate(..) |
+                    ty::Predicate::WellFormed(..) |
+                    ty::Predicate::ObjectSafe(..) |
                     ty::Predicate::RegionOutlives(..) => {
                         None
                     }
@@ -6175,11 +6273,7 @@ impl<'tcx> ctxt<'tcx> {
                         // construct such an object, but this seems
                         // correct even if that code changes).
                         if t == erased_self_ty && !r.has_escaping_regions() {
-                            if r.has_escaping_regions() {
-                                Some(ty::ReStatic)
-                            } else {
-                                Some(r)
-                            }
+                            Some(r)
                         } else {
                             None
                         }
@@ -6515,12 +6609,19 @@ impl<'tcx> ctxt<'tcx> {
 
     /// Construct a parameter environment suitable for static contexts or other contexts where there
     /// are no free type/lifetime parameters in scope.
-    pub fn empty_parameter_environment<'a>(&'a self) -> ParameterEnvironment<'a,'tcx> {
+    pub fn empty_parameter_environment<'a>(&'a self)
+                                           -> ParameterEnvironment<'a,'tcx> {
         ty::ParameterEnvironment { tcx: self,
                                    free_substs: Substs::empty(),
                                    caller_bounds: Vec::new(),
                                    implicit_region_bound: ty::ReEmpty,
-                                   selection_cache: traits::SelectionCache::new(), }
+                                   selection_cache: traits::SelectionCache::new(),
+
+                                   // for an empty parameter
+                                   // environment, there ARE no free
+                                   // regions, so it shouldn't matter
+                                   // what we use for the free id
+                                   free_id: ast::DUMMY_NODE_ID }
     }
 
     /// Constructs and returns a substitution that can be applied to move from
@@ -6604,6 +6705,7 @@ impl<'tcx> ctxt<'tcx> {
             implicit_region_bound: ty::ReScope(free_id_outlive.to_code_extent()),
             caller_bounds: predicates,
             selection_cache: traits::SelectionCache::new(),
+            free_id: free_id,
         };
 
         let cause = traits::ObligationCause::misc(span, free_id);
@@ -6662,6 +6764,8 @@ impl<'tcx> ctxt<'tcx> {
                     ty::Predicate::Equate(..) |
                     ty::Predicate::RegionOutlives(..) |
                     ty::Predicate::TypeOutlives(..) |
+                    ty::Predicate::WellFormed(..) |
+                    ty::Predicate::ObjectSafe(..) |
                     ty::Predicate::Projection(..) => {
                         // For now, assume all these where-clauses
                         // may give drop implementation capabilty
@@ -6906,6 +7010,8 @@ impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
             Predicate::RegionOutlives(ref pair) => write!(f, "{:?}", pair),
             Predicate::TypeOutlives(ref pair) => write!(f, "{:?}", pair),
             Predicate::Projection(ref pair) => write!(f, "{:?}", pair),
+            Predicate::WellFormed(ty) => write!(f, "WF({:?})", ty),
+            Predicate::ObjectSafe(trait_def_id) => write!(f, "ObjectSafe({:?})", trait_def_id),
         }
     }
 }
@@ -6948,6 +7054,20 @@ pub trait RegionEscape {
 impl<'tcx> RegionEscape for Ty<'tcx> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.region_depth > depth
+    }
+}
+
+impl<'tcx> RegionEscape for TraitTy<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.principal.has_regions_escaping_depth(depth) ||
+            self.bounds.has_regions_escaping_depth(depth)
+    }
+}
+
+impl<'tcx> RegionEscape for ExistentialBounds<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.region_bound.has_regions_escaping_depth(depth) ||
+            self.projection_bounds.has_regions_escaping_depth(depth)
     }
 }
 
@@ -7016,6 +7136,8 @@ impl<'tcx> RegionEscape for Predicate<'tcx> {
             Predicate::RegionOutlives(ref data) => data.has_regions_escaping_depth(depth),
             Predicate::TypeOutlives(ref data) => data.has_regions_escaping_depth(depth),
             Predicate::Projection(ref data) => data.has_regions_escaping_depth(depth),
+            Predicate::WellFormed(ty) => ty.has_regions_escaping_depth(depth),
+            Predicate::ObjectSafe(_trait_def_id) => false,
         }
     }
 }
@@ -7174,6 +7296,8 @@ impl<'tcx> HasTypeFlags for Predicate<'tcx> {
             Predicate::RegionOutlives(ref data) => data.has_type_flags(flags),
             Predicate::TypeOutlives(ref data) => data.has_type_flags(flags),
             Predicate::Projection(ref data) => data.has_type_flags(flags),
+            Predicate::WellFormed(data) => data.has_type_flags(flags),
+            Predicate::ObjectSafe(_trait_def_id) => false,
         }
     }
 }

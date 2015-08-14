@@ -12,6 +12,7 @@
 
 // this is surprisingly complicated to be both generic & correct
 
+use core::marker::Sized;
 use Rng;
 use distributions::{Sample, IndependentSample};
 
@@ -57,7 +58,7 @@ impl<Sup: SampleRange> IndependentSample<Sup> for Range<Sup> {
 /// uniformly between two values. This should not be used directly,
 /// and is only to facilitate `Range`.
 #[doc(hidden)]
-pub trait SampleRange {
+pub trait SampleRange: Sized {
     /// Construct the `Range` object that `sample_range`
     /// requires. This should not ever be called directly, only via
     /// `Range::new`, which will check that `low < high`, so this

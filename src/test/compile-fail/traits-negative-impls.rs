@@ -32,12 +32,23 @@ fn dummy() {
 
     Outer(TestType);
     //~^ ERROR the trait `core::marker::Send` is not implemented for the type `dummy::TestType`
+    //~| ERROR the trait `core::marker::Send` is not implemented for the type `dummy::TestType`
+}
+
+fn dummy1b() {
+    struct TestType;
+    impl !Send for TestType {}
 
     is_send(TestType);
-    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `dummy::TestType`
+    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `dummy1b::TestType`
+}
+
+fn dummy1c() {
+    struct TestType;
+    impl !Send for TestType {}
 
     is_send((8, TestType));
-    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `dummy::TestType`
+    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `dummy1c::TestType`
 }
 
 fn dummy2() {

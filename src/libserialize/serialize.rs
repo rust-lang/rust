@@ -194,7 +194,7 @@ pub trait Encodable {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error>;
 }
 
-pub trait Decodable {
+pub trait Decodable: Sized {
     fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error>;
 }
 
