@@ -207,13 +207,37 @@ impl CString {
     /// using the pointer.
     #[unstable(feature = "cstr_memory", reason = "recently added",
                issue = "27769")]
-    // NB: may want to be called from_raw, needs to consider CStr::from_ptr,
-    //     Box::from_raw (or whatever it's currently called), and
-    //     slice::from_raw_parts
+    #[deprecated(since = "1.4.0", reason = "renamed to from_raw")]
     pub unsafe fn from_ptr(ptr: *const libc::c_char) -> CString {
+        CString::from_raw(ptr)
+    }
+
+    /// Retakes ownership of a CString that was transferred to C.
+    ///
+    /// The only appropriate argument is a pointer obtained by calling
+    /// `into_raw`. The length of the string will be recalculated
+    /// using the pointer.
+    #[unstable(feature = "cstr_memory", reason = "recently added",
+               issue = "27769")]
+    pub unsafe fn from_raw(ptr: *const libc::c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
         let slice = slice::from_raw_parts(ptr, len as usize);
         CString { inner: mem::transmute(slice) }
+    }
+
+    /// Transfers ownership of the string to a C caller.
+    ///
+    /// The pointer must be returned to Rust and reconstituted using
+    /// `from_raw` to be properly deallocated. Specifically, one
+    /// should *not* use the standard C `free` function to deallocate
+    /// this string.
+    ///
+    /// Failure to call `from_raw` will lead to a memory leak.
+    #[unstable(feature = "cstr_memory", reason = "recently added",
+               issue = "27769")]
+    #[deprecated(since = "1.4.0", reason = "renamed to into_raw")]
+    pub fn into_ptr(self) -> *const libc::c_char {
+        self.into_raw()
     }
 
     /// Transfers ownership of the string to a C caller.
@@ -226,8 +250,7 @@ impl CString {
     /// Failure to call `from_ptr` will lead to a memory leak.
     #[unstable(feature = "cstr_memory", reason = "recently added",
                issue = "27769")]
-    // NB: may want to be called into_raw, see comments on from_ptr
-    pub fn into_ptr(self) -> *const libc::c_char {
+    pub fn into_raw(self) -> *const libc::c_char {
         // It is important that the bytes be sized to fit - we need
         // the capacity to be determinable from the string length, and
         // shrinking to fit is the only way to be sure.
