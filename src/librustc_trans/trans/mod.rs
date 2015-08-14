@@ -10,7 +10,6 @@
 
 use llvm::{ContextRef, ModuleRef};
 use metadata::common::LinkMeta;
-use middle::dependency_format;
 
 pub use self::base::trans_crate;
 pub use self::context::CrateContext;
@@ -74,6 +73,5 @@ pub struct CrateTranslation {
     pub link: LinkMeta,
     pub metadata: Vec<u8>,
     pub reachable: Vec<String>,
-    pub crate_formats: dependency_format::Dependencies,
     pub no_builtins: bool,
 }

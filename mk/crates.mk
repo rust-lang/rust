@@ -52,23 +52,23 @@
 TARGET_CRATES := libc std flate arena term \
                  serialize getopts collections test rand \
                  log graphviz core rbml alloc \
-                 rustc_unicode rustc_bitflags
+                 rustc_unicode rustc_bitflags \
+		 alloc_system
 RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures
 HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
-CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc rustbook error-index-generator
 
 DEPS_core :=
 DEPS_libc := core
 DEPS_rustc_unicode := core
-DEPS_alloc := core libc native:jemalloc
+DEPS_alloc := core libc alloc_system
 DEPS_std := core libc rand alloc collections rustc_unicode \
 	native:rust_builtin native:backtrace \
-	rustc_bitflags
+	alloc_system
 DEPS_graphviz := std
-DEPS_syntax := std term serialize log fmt_macros arena libc
+DEPS_syntax := std term serialize log fmt_macros arena libc rustc_bitflags
 DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
                      rustc_typeck rustc_resolve log syntax serialize rustc_llvm \
 		     rustc_trans rustc_privacy rustc_lint
@@ -82,7 +82,7 @@ DEPS_rustc_privacy := rustc log syntax
 DEPS_rustc_lint := rustc log syntax
 DEPS_rustc := syntax flate arena serialize getopts rbml \
               log graphviz rustc_llvm rustc_back rustc_data_structures
-DEPS_rustc_llvm := native:rustllvm libc std
+DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
 DEPS_rustc_back := std syntax rustc_llvm flate log libc
 DEPS_rustc_data_structures := std log serialize
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
@@ -102,6 +102,7 @@ DEPS_test := std getopts serialize rbml term native:rust_test_helpers
 DEPS_rand := core
 DEPS_log := std
 DEPS_fmt_macros = std
+DEPS_alloc_system := core libc
 
 TOOL_DEPS_compiletest := test getopts
 TOOL_DEPS_rustdoc := rustdoc
@@ -121,13 +122,25 @@ ONLY_RLIB_rand := 1
 ONLY_RLIB_collections := 1
 ONLY_RLIB_rustc_unicode := 1
 ONLY_RLIB_rustc_bitflags := 1
+ONLY_RLIB_alloc_system := 1
 
 # Documented-by-default crates
 DOC_CRATES := std alloc collections core libc rustc_unicode
 
+ifeq ($(CFG_DISABLE_JEMALLOC),)
+TARGET_CRATES += alloc_jemalloc
+DEPS_std += alloc_jemalloc
+DEPS_alloc_jemalloc := core libc native:jemalloc
+ONLY_RLIB_alloc_jemalloc := 1
+else
+RUSTFLAGS_rustc_back := --cfg disable_jemalloc
+endif
+
 ################################################################################
 # You should not need to edit below this line
 ################################################################################
+
+CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 
 # This macro creates some simple definitions for each crate being built, just
 # some munging of all of the parameters above.

@@ -275,8 +275,6 @@ extern crate alloc;
 extern crate rustc_unicode;
 extern crate libc;
 
-#[macro_use] #[no_link] extern crate rustc_bitflags;
-
 // Make std testable by not duplicating lang items and other globals. See #2912
 #[cfg(test)] extern crate std as realstd;
 
