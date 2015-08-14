@@ -65,38 +65,38 @@ fn main() {
 
 
         simd_add(0, 0);
-        //~^ ERROR `simd_add` intrinsic monomorphized with non-SIMD type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_sub(0, 0);
-        //~^ ERROR `simd_sub` intrinsic monomorphized with non-SIMD type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_mul(0, 0);
-        //~^ ERROR `simd_mul` intrinsic monomorphized with non-SIMD type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_div(0, 0);
-        //~^ ERROR `simd_div` intrinsic monomorphized with non-SIMD type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_shl(0, 0);
-        //~^ ERROR `simd_shl` intrinsic monomorphized with non-SIMD type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_shr(0, 0);
-        //~^ ERROR `simd_shr` intrinsic monomorphized with non-SIMD type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_and(0, 0);
-        //~^ ERROR `simd_and` intrinsic monomorphized with non-SIMD type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_or(0, 0);
-        //~^ ERROR `simd_or` intrinsic monomorphized with non-SIMD type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_xor(0, 0);
-        //~^ ERROR `simd_xor` intrinsic monomorphized with non-SIMD type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
 
 
         simd_div(x, x);
-//~^ ERROR `simd_div` intrinsic monomorphized with SIMD vector `i32x4` with unsupported element type
+//~^ ERROR unsupported operation on `i32x4` with element `i32`
         simd_div(y, y);
-//~^ ERROR `simd_div` intrinsic monomorphized with SIMD vector `u32x4` with unsupported element type
+//~^ ERROR unsupported operation on `u32x4` with element `u32`
         simd_shl(z, z);
-//~^ ERROR `simd_shl` intrinsic monomorphized with SIMD vector `f32x4` with unsupported element type
+//~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_shr(z, z);
-//~^ ERROR `simd_shr` intrinsic monomorphized with SIMD vector `f32x4` with unsupported element type
+//~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_and(z, z);
-//~^ ERROR `simd_and` intrinsic monomorphized with SIMD vector `f32x4` with unsupported element type
+//~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_or(z, z);
-//~^ ERROR `simd_or` intrinsic monomorphized with SIMD vector `f32x4` with unsupported element type
+//~^ ERROR unsupported operation on `f32x4` with element `f32`
         simd_xor(z, z);
-//~^ ERROR `simd_xor` intrinsic monomorphized with SIMD vector `f32x4` with unsupported element type
+//~^ ERROR unsupported operation on `f32x4` with element `f32`
     }
 }
