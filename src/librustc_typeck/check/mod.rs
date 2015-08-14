@@ -1421,14 +1421,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// This is used when checking the constructor in struct literals.
     fn instantiate_struct_literal_ty(&self,
-                                     did: ast::DefId,
+                                     struct_ty: ty::TypeScheme<'tcx>,
                                      path: &ast::Path)
                                      -> TypeAndSubsts<'tcx>
     {
-        let tcx = self.tcx();
-
-        let ty::TypeScheme { generics, ty: decl_ty } =
-            tcx.lookup_item_type(did);
+        let ty::TypeScheme { generics, ty: decl_ty } = struct_ty;
 
         let substs = astconv::ast_path_substs_for_ty(self, self,
                                                      path.span,
@@ -3168,6 +3165,18 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
     }
 
+    fn report_exprstruct_on_nondict<'a, 'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                                              id: ast::NodeId,
+                                              fields: &'tcx [ast::Field],
+                                              base_expr: &'tcx Option<P<ast::Expr>>,
+                                              path: &ast::Path)
+    {
+        span_err!(fcx.tcx().sess, path.span, E0071,
+                  "`{}` does not name a structure",
+                  pprust::path_to_string(path));
+        check_struct_fields_on_error(fcx, id, fields, base_expr)
+    }
+
     type ExprCheckerWithTy = fn(&FnCtxt, &ast::Expr, Ty);
 
     let tcx = fcx.ccx.tcx;
@@ -3618,7 +3627,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       ast::ExprStruct(ref path, ref fields, ref base_expr) => {
         // Resolve the path.
         let def = lookup_full_def(tcx, path.span, id);
-        let struct_id = match def {
+
+        let struct_ty = match def {
             def::DefVariant(enum_id, variant_id, true) => {
                 if let &Some(ref base_expr) = base_expr {
                     span_err!(tcx.sess, base_expr.span, E0436,
@@ -3627,54 +3637,38 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 }
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
                                           variant_id, &fields[..]);
-                enum_id
+                Some(tcx.lookup_item_type(enum_id))
             }
-            def::DefTrait(def_id) => {
-                span_err!(tcx.sess, path.span, E0159,
-                    "use of trait `{}` as a struct constructor",
-                    pprust::path_to_string(path));
-                check_struct_fields_on_error(fcx,
-                                             id,
-                                             &fields[..],
-                                             base_expr);
-                def_id
-            },
-            def => {
+            def::DefTy(did, _) | def::DefStruct(did) => {
                 // Verify that this was actually a struct.
-                let typ = fcx.ccx.tcx.lookup_item_type(def.def_id());
-                match typ.ty.sty {
-                    ty::TyStruct(struct_def, _) => {
-                        check_struct_constructor(fcx,
-                                                 id,
-                                                 expr.span,
-                                                 struct_def,
-                                                 &fields[..],
-                                                 base_expr.as_ref().map(|e| &**e));
-                    }
-                    _ => {
-                        span_err!(tcx.sess, path.span, E0071,
-                            "`{}` does not name a structure",
-                            pprust::path_to_string(path));
-                        check_struct_fields_on_error(fcx,
-                                                     id,
-                                                     &fields[..],
-                                                     base_expr);
-                    }
+                let typ = tcx.lookup_item_type(did);
+                if let ty::TyStruct(struct_def, _) = typ.ty.sty {
+                    check_struct_constructor(fcx,
+                                             id,
+                                             expr.span,
+                                             struct_def,
+                                             &fields,
+                                             base_expr.as_ref().map(|e| &**e));
+                } else {
+                    report_exprstruct_on_nondict(fcx, id, &fields, base_expr, path);
                 }
-
-                def.def_id()
+                Some(typ)
+            }
+            _ => {
+                report_exprstruct_on_nondict(fcx, id, &fields, base_expr, path);
+                None
             }
         };
 
         // Turn the path into a type and verify that that type unifies with
         // the resulting structure type. This is needed to handle type
         // parameters correctly.
-        let actual_structure_type = fcx.expr_ty(&*expr);
-        if !actual_structure_type.references_error() {
-            let type_and_substs = fcx.instantiate_struct_literal_ty(struct_id, path);
+        if let Some(struct_ty) = struct_ty {
+            let expr_ty = fcx.expr_ty(&expr);
+            let type_and_substs = fcx.instantiate_struct_literal_ty(struct_ty, path);
             match fcx.mk_subty(false,
                                infer::Misc(path.span),
-                               actual_structure_type,
+                               expr_ty,
                                type_and_substs.ty) {
                 Ok(()) => {}
                 Err(type_error) => {
@@ -3685,8 +3679,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                          fcx.infcx()
                                             .ty_to_string(type_and_substs.ty),
                                          fcx.infcx()
-                                            .ty_to_string(
-                                                actual_structure_type),
+                                            .ty_to_string(expr_ty),
                                          type_error);
                     tcx.note_and_explain_type_err(&type_error, path.span);
                 }
