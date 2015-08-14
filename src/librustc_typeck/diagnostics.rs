@@ -2229,6 +2229,42 @@ type Foo = Trait<Bar=i32>; // ok!
 ```
 "##,
 
+E0221: r##"
+An attempt was made to retrieve an associated type, but the type was ambiguous.
+For example:
+
+```
+trait T1 {}
+trait T2 {}
+
+trait Foo {
+    type A: T1;
+}
+
+trait Bar : Foo {
+    type A: T2;
+    fn do_something() {
+        let _: Self::A;
+    }
+}
+```
+
+In this example, `Foo` defines an associated type `A`. `Bar` inherits that type
+from `Foo`, and defines another associated type of the same name. As a result,
+when we attempt to use `Self::A`, it's ambiguous whether we mean the `A` defined
+by `Foo` or the one defined by `Bar`.
+
+There are two options to work around this issue. The first is simply to rename
+one of the types. Alternatively, one can specify the intended type using the
+following syntax:
+
+```
+fn do_something() {
+    let _: <Self as Bar>::A;
+}
+```
+"##,
+
 E0223: r##"
 An attempt was made to retrieve an associated type, but the type was ambiguous.
 For example:
@@ -2698,7 +2734,6 @@ register_diagnostics! {
     E0217, // ambiguous associated type, defined in multiple supertraits
     E0218, // no associated type defined
     E0219, // associated type defined in higher-ranked supertrait
-    E0221, // ambiguous associated type in bounds
 //  E0222, // Error code E0045 (variadic function must have C calling
            // convention) duplicate
     E0224, // at least one non-builtin train is required for an object type
