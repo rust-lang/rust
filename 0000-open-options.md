@@ -64,7 +64,7 @@ append-mode has one flag _extra_, that sets the status of the file descriptor to
 append-mode. You could say that on Windows write is a superset of append, while
 on Unix append is a superset of write. 
 
-Because of this append is treated as a seperate access mode in Rust, and if
+Because of this append is treated as a separate access mode in Rust, and if
 `.append(true)` is specified than `.write()` is ignored.
 
 ### Read-append
@@ -114,7 +114,7 @@ OS X but not on other systems.
 `.desired_access(FILE_READ_DATA)`
 
 On Windows you can detail whether you want to have read and/or write access to
-the files data, attributes and/or extended attributes. Managing premissions in
+the files data, attributes and/or extended attributes. Managing permissions in
 such detail has proven itself too difficult, and generally not worth it.
 
 In Rust, `.read(true)` gives you read access to the data, attributes and
@@ -122,6 +122,34 @@ extended attributes. Similarly, `.write(true)` gives write access to those
 three, and the right to append data beyond the current end of the file.
 
 But if you want fine-grained control, with `desired_access` you have it.
+
+As a reference, this are the flags set by Rusts access modes:
+
+bit| flag                  | read  | write | read-write | append | read-append |
+--:|:----------------------|:-----:|:-----:|:----------:|:------:|:-----------:|
+   | **generic rights**    |       |       |            |        |             |
+31 | GENERIC_READ          |  set  |       |    set     |        |     set     |
+30 | GENERIC_WRITE         |       |  set  |    set     |        |             |
+29 | GENERIC_EXECUTE       |       |       |            |        |             |
+28 | GENERIC_ALL           |       |       |            |        |             |
+   | **specific rights**   |       |       |            |        |             |
+ 0 | FILE_READ_DATA        |implied|       |  implied   |        |   implied   |
+ 1 | FILE_WRITE_DATA       |       |implied|  implied   |        |             |
+ 2 | FILE_APPEND_DATA      |       |implied|  implied   |  set   |     set     |
+ 3 | FILE_READ_EA          |implied|       |  implied   |        |   implied   |
+ 4 | FILE_WRITE_EA         |       |implied|  implied   |  set   |     set     |
+ 6 | FILE_EXECUTE          |       |       |            |        |             |
+ 7 | FILE_READ_ATTRIBUTES  |implied|       |  implied   |        |   implied   |
+ 8 | FILE_WRITE_ATTRIBUTES |       |implied|  implied   |  set   |     set     |
+   | **standard rights**   |       |       |            |        |             |
+16 | DELETE                |       |       |            |        |             |
+17 | READ_CONTROL          |implied|implied|  implied   |  set   | set+implied |
+18 | WRITE_DAC             |       |       |            |        |             |
+19 | WRITE_OWNER           |       |       |            |        |             |
+20 | SYNCHRONIZE           |implied|implied|  implied   |  set   | set+implied |
+
+The implied flags can be specified explicitly with the constants
+`FILE_GENERIC_READ` and `FILE_GENERIC_WRITE`.
 
 
 ## Creation modes
@@ -140,7 +168,7 @@ Open an existing file. Fails if the file does not exist.
 ### Create
 `.create(true)`
 
-Open an existing file, or create a new file if it already exists.
+Open an existing file, or create a new file if it does not already exists.
 
 Even if the access mode is read-only, it seems all operating systems can still
 create a new file (for whatever use reading from an empty file may be).
@@ -154,6 +182,9 @@ not exist. Attributes and permissions of the truncated file are preserved.
 Truncating will not work in read-only or append mode. Some platforms may support
 this, but Rust does not allow this for cross-platform consistency (besides it
 being sane behaviour).
+
+On Windows truncating will only work if the `GENERIC_WRITE` flag is set. Setting
+the equivalent individual flags is not enough.
 
 ### Create and truncate
 `.create(true).truncate(true)`
@@ -235,11 +266,11 @@ types of advisory locking, POSIX and BSD-style. Advisory means any process that
 does not use locking itself can happily ignore the locking af another process.
 As if that is not bad enough, they both have
 [problems](http://0pointer.de/blog/projects/locking.html) that make them close
-to unusable for modern multi-treaded programs. Linux may in some very rare cases
-support mandatory file locking, but it is just as broken as advisory.
+to unusable for modern multi-threaded programs. Linux may in some very rare
+cases support mandatory file locking, but it is just as broken as advisory.
 
 For Rust, the sharing mode can be set with a Windows-specific option. Given the
-problems above, i don't expect there to ever be a cross-platform option for file
+problems above, I don't expect there to ever be a cross-platform option for file
 locking.
 
 ### Windows-specific: Share mode
@@ -248,7 +279,7 @@ locking.
 It is possible to set the individual share permissions with `.share_mode()`.
 
 The current philosophy of this function is that others should have no rights,
-unless explicitely granted. I think a better fit for Rust would be to give all
+unless explicitly granted. I think a better fit for Rust would be to give all
 others all rights, unless explicitly denied, e.g.:
 `.share_mode(DENY_READ | DENY_WRITE | DENY_DELETE)`.
 
@@ -257,8 +288,8 @@ others all rights, unless explicitly denied, e.g.:
 
 ### Read cache hint
 
-Instead of requesting only the data neccesary for a single `read()` call from a
-storage device, an operating system may request more data than nessesary to have
+Instead of requesting only the data necessary for a single `read()` call from a
+storage device, an operating system may request more data than necessary to have
 it already available for the next read call (e.g. the read-ahead cache). If you
 read the file sequentially this is beneficial, for completely random access it
 can become a penalty. Operating systems generally have good heuristics, but you
@@ -272,7 +303,7 @@ Do some real-world benchmarks before setting this option.
 .cache_hint(enum CacheHint)
 
 enum CacheHint {
-	Normal,
+	None,
     Sequential,
     Random,
 }
@@ -300,7 +331,7 @@ is important to ensure critical data reaches the storage device in case of a
 system crash or power outage, but comes with a large performance penalty.
 
 All modern operating systems also support a mode where each call to `write()`
-will not return until the data is written to the storage device, dus removing
+will not return until the data is written to the storage device, thus removing
 step 2 for _all_ writes. This can be a useful options for writing critical data,
 where you would call `sync_data()` after each write. This saves a system call
 for each write, and you are sure to never forget it.
@@ -320,7 +351,7 @@ reading if a file is opened with a read-write access mode.
 #### Sync data
 `.sync_data(true)`
 
-Some systems support only syncing the data written, but can wait with updating
+Some systems support syncing only the data written, but can wait with updating
 less critical metadata such as the last modified timestamp. If the metadata is
 not critical (and it rarely is), you should always use `sync_data()` as an easy
 performance win.
@@ -340,12 +371,12 @@ usually 512 or 4096 bytes. Also the kernel can keep data recently read or
 written in cache, to speed up future file operations.
 
 Some operating systems allow you to completely bypass the copy of data to or
-from kernel space. This is generally a bad idea. Applications will have figure
-out and handle alignment restrictions themself, and implement manual caching. It
-is mostly useful for database applications that may have more knowledge obout
-their optimal caching behaviour than the os. And it can have a use when reading
-many gigabytes of data (like a backup process), which may destroy the os cache
-for other processes.
+from kernel space. This is generally a bad idea. Applications will have to
+figure out and handle alignment restrictions themselves, and implement manual
+caching. It is mostly useful for database applications that may have more
+knowledge about their optimal caching behaviour than the os. And it can have a
+use when reading many gigabytes of data (like a backup process), which may
+destroy the os cache for other processes.
 
 This is available on Windows with the flag `FILE_FLAG_NO_BUFFERING`, and on
 Linux and some variants of BSD with `O_DIRECT`. Making correct use of this mode
@@ -393,12 +424,12 @@ if the os is NetBSD or Solaris.
 ### Custom flags
 `.custom_flags()`
 
-Windows and the various flavors of Unix support flags that are not
+Windows and the various flavours of Unix support flags that are not
 cross-platform, but that can be useful in some circumstances. On Unix they will
 be passed as the variable _flags_ to `open`, on Windows as the
 _dwFlagsAndAttributes_ parameter.
 
-The cross-platform options of Rust can do magic: they can set any flag neccesary
+The cross-platform options of Rust can do magic: they can set any flag necessary
 to ensure it works as expected. For example, `.append(true)` on Unix not only
 sets the flag `O_APPEND`, but also automatically `O_WRONLY` or `O_RDWR`. This
 special treatment is not available for the custom flags.
@@ -468,6 +499,10 @@ HANDLE                hTemplateFile;
 - Current: when `.append(true)` is set, it is not possible to modify file
   attributes on Windows, but it is possible to change the file mode on Unix.
   New: allow file attributes to be modified on Windows in append-mode.
+- Current: `.read()` and `.write()` set individual bit flags instead of generic
+  flags. New: Set generic flags, as recommend by Microsoft. e.g. `GENERIC_WRITE`
+  instead of `FILE_GENERIC_WRITE` and `GENERIC_READ` instead of
+  `FILE_GENERIC_READ`. Currently truncate is broken on Windows, this fixes it.
 - Current: when no access mode is set, this falls back to opening the file
   read-only on Unix.
   New: open with `O_RDONLY | O_PATH` on Linux, and fail with `E_INVALID` on all
@@ -484,7 +519,7 @@ HANDLE                hTemplateFile;
 - Split the Windows-specific `.flags_and_attributes()` into `.flags()` and
   `.attributes()`. This is a form of future-proofing, as the new Windows 8
   `Createfile2` also splits these attributes. This has the advantage of a clear
-  seperation between file attributes, that are somewhat similar to Unix mode
+  separation between file attributes, that are somewhat similar to Unix mode
   bits, and the custom flags that modify the behaviour of the current file
   handle.
 
