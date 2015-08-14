@@ -211,7 +211,7 @@ impl<'a,'tcx> PState<'a,'tcx> {
         return &self.data[start_pos..end_pos];
     }
 
-    pub fn parse_name(&mut self, last: char) -> ast::Name {
+    fn parse_name(&mut self, last: char) -> ast::Name {
         fn is_last(b: char, c: char) -> bool { return c == b; }
         let bytes = self.scan(|a| is_last(last, a));
         token::intern(str::from_utf8(bytes).unwrap())
@@ -655,7 +655,7 @@ impl<'a,'tcx> PState<'a,'tcx> {
                               variadic: variadic})
     }
 
-    pub fn parse_predicate(&mut self) -> ty::Predicate<'tcx> {
+    fn parse_predicate(&mut self) -> ty::Predicate<'tcx> {
         match self.next() {
             't' => ty::Binder(self.parse_trait_ref()).to_predicate(),
             'e' => ty::Binder(ty::EquatePredicate(self.parse_ty(),
@@ -784,7 +784,7 @@ fn data_log_string(data: &[u8], pos: usize) -> String {
 }
 
 // Rust metadata parsing
-pub fn parse_defid(buf: &[u8]) -> ast::DefId {
+fn parse_defid(buf: &[u8]) -> ast::DefId {
     let mut colon_idx = 0;
     let len = buf.len();
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1; }
