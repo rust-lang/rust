@@ -90,6 +90,13 @@ impl Session {
         }
         self.diagnostic().handler().fatal(msg)
     }
+    pub fn span_err_or_warn(&self, is_warning: bool, sp: Span, msg: &str) {
+        if is_warning {
+            self.span_warn(sp, msg);
+        } else {
+            self.span_err(sp, msg);
+        }
+    }
     pub fn span_err(&self, sp: Span, msg: &str) {
         if self.opts.treat_err_as_bug {
             self.span_bug(sp, msg);
@@ -98,6 +105,13 @@ impl Session {
             Some(msg) => self.diagnostic().span_err(sp, &msg[..]),
             None => self.diagnostic().span_err(sp, msg)
         }
+    }
+    pub fn note_rfc_1214(&self, span: Span) {
+        self.span_note(
+            span,
+            &format!("this warning results from recent bug fixes and clarifications; \
+                      it will become a HARD ERROR in the next release. \
+                      See RFC 1214 for details."));
     }
     pub fn span_err_with_code(&self, sp: Span, msg: &str, code: &str) {
         if self.opts.treat_err_as_bug {

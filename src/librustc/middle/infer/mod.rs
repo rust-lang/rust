@@ -17,7 +17,7 @@ pub use self::TypeOrigin::*;
 pub use self::ValuePairs::*;
 pub use middle::ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
-pub use self::region_inference::GenericKind;
+pub use self::region_inference::{GenericKind, VerifyBound};
 
 use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
@@ -35,6 +35,7 @@ use middle::ty_relate::{Relate, RelateResult, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{RefCell, Ref};
 use std::fmt;
+use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::{Span, DUMMY_SP};
@@ -188,6 +189,11 @@ pub struct TypeTrace<'tcx> {
 /// See `error_reporting.rs` for more details
 #[derive(Clone, Debug)]
 pub enum SubregionOrigin<'tcx> {
+    // Marker to indicate a constraint that only arises due to new
+    // provisions from RFC 1214. This will result in a warning, not an
+    // error.
+    RFC1214Subregion(Rc<SubregionOrigin<'tcx>>),
+
     // Arose from a subtyping relation
     Subtype(TypeTrace<'tcx>),
 
@@ -229,8 +235,14 @@ pub enum SubregionOrigin<'tcx> {
     // Creating a pointer `b` to contents of an upvar
     ReborrowUpvar(Span, ty::UpvarId),
 
+    // Data with type `Ty<'tcx>` was borrowed
+    DataBorrowed(Ty<'tcx>, Span),
+
     // (&'a &'b T) where a >= b
     ReferenceOutlivesReferent(Ty<'tcx>, Span),
+
+    // Type or region parameters must be in scope.
+    ParameterInScope(ParameterOrigin, Span),
 
     // The type T of an expression E must outlive the lifetime for E.
     ExprTypeIsNotInScope(Ty<'tcx>, Span),
@@ -258,6 +270,15 @@ pub enum SubregionOrigin<'tcx> {
 
     // Region constraint arriving from destructor safety
     SafeDestructor(Span),
+}
+
+/// Places that type/region parameters can appear.
+#[derive(Clone, Copy, Debug)]
+pub enum ParameterOrigin {
+    Path, // foo::bar
+    MethodCall, // foo.bar() <-- parameters on impl providing bar()
+    OverloadedOperator, // a + b when overloaded
+    OverloadedDeref, // *a when overloaded
 }
 
 /// Times when we replace late-bound regions with variables:
@@ -1398,13 +1419,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 origin: SubregionOrigin<'tcx>,
                                 kind: GenericKind<'tcx>,
                                 a: ty::Region,
-                                bs: Vec<ty::Region>) {
+                                bound: VerifyBound) {
         debug!("verify_generic_bound({:?}, {:?} <: {:?})",
                kind,
                a,
-               bs);
+               bound);
 
-        self.region_vars.verify_generic_bound(origin, kind, a, bs);
+        self.region_vars.verify_generic_bound(origin, kind, a, bound);
     }
 
     pub fn can_equate<'b,T>(&'b self, a: &T, b: &T) -> UnitResult<'tcx>
@@ -1565,6 +1586,7 @@ impl TypeOrigin {
 impl<'tcx> SubregionOrigin<'tcx> {
     pub fn span(&self) -> Span {
         match *self {
+            RFC1214Subregion(ref a) => a.span(),
             Subtype(ref a) => a.span(),
             InfStackClosure(a) => a,
             InvokeClosure(a) => a,
@@ -1577,7 +1599,9 @@ impl<'tcx> SubregionOrigin<'tcx> {
             RelateDefaultParamBound(a, _) => a,
             Reborrow(a) => a,
             ReborrowUpvar(a, _) => a,
+            DataBorrowed(_, a) => a,
             ReferenceOutlivesReferent(_, a) => a,
+            ParameterInScope(_, a) => a,
             ExprTypeIsNotInScope(_, a) => a,
             BindingTypeIsNotValidAtDecl(a) => a,
             CallRcvr(a) => a,

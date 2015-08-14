@@ -17,6 +17,7 @@ struct S {
     name: isize
 }
 
-fn bar(_x: Foo) {} //~ ERROR the trait `core::marker::Sized` is not implemented
+fn bar(_x: Foo) {}
+//~^ ERROR E0277
 
 fn main() {}

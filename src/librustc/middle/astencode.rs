@@ -1061,7 +1061,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 }
 
-trait doc_decoder_helpers {
+trait doc_decoder_helpers: Sized {
     fn as_int(&self) -> isize;
     fn opt_child(&self, tag: c::astencode_tag) -> Option<Self>;
 }

@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-trait Foo {
+trait Foo: Sized {
     fn bar(&self);
     fn baz(&self) { }
     fn bah(_: Option<Self>) { }

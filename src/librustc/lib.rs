@@ -129,6 +129,7 @@ pub mod middle {
     pub mod lang_items;
     pub mod liveness;
     pub mod mem_categorization;
+    pub mod outlives;
     pub mod pat_util;
     pub mod privacy;
     pub mod reachable;
@@ -143,6 +144,7 @@ pub mod middle {
     pub mod ty_match;
     pub mod ty_relate;
     pub mod ty_walk;
+    pub mod wf;
     pub mod weak_lang_items;
 }
 

@@ -254,9 +254,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
 /// This function is meant to by applied to the type for every
 /// expression in the program.
 pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
-                                                     typ: ty::Ty<'tcx>,
-                                                     span: Span,
-                                                     scope: region::CodeExtent) {
+                                                         typ: ty::Ty<'tcx>,
+                                                         span: Span,
+                                                         scope: region::CodeExtent) {
     debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",
            typ, scope);
 

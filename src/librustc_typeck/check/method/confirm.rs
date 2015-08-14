@@ -432,7 +432,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             traits::ObligationCause::misc(self.span, self.fcx.body_id),
             method_predicates);
 
-        self.fcx.add_default_region_param_bounds(
+        // this is a projection from a trait reference, so we have to
+        // make sure that the trait reference inputs are well-formed.
+        self.fcx.add_wf_bounds(
             all_substs,
             self.call_expr);
     }

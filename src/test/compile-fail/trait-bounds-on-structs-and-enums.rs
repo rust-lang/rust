@@ -20,12 +20,6 @@ enum Bar<T:Trait> {
     CBar(usize),
 }
 
-fn explode(x: Foo<u32>) {}
-//~^ ERROR not implemented
-
-fn kaboom(y: Bar<f32>) {}
-//~^ ERROR not implemented
-
 impl<T> Foo<T> {
 //~^ ERROR the trait `Trait` is not implemented
     fn uhoh() {}
@@ -53,17 +47,6 @@ struct TupleLike(
 
 enum Enum {
     DictionaryLike { field: Bar<u8> }, //~ ERROR not implemented
-}
-
-trait PolyTrait<T>
-{
-    fn whatever(&self, t: T) {}
-}
-
-struct Struct;
-
-impl PolyTrait<Foo<u16>> for Struct {
-//~^ ERROR not implemented
 }
 
 fn main() {

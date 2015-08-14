@@ -22,5 +22,6 @@ impl Tr for St {
 }
 
 fn main() {
-    let _: &Tr = &St; //~ ERROR cannot convert to a trait object because trait `Tr` is not
+    let _: &Tr = &St; //~ ERROR E0038
+    //~^ ERROR E0038
 }

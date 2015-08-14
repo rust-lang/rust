@@ -15,7 +15,7 @@
 // so for now just live with it.
 // This test case was originally for issue #2258.
 
-trait ToOpt {
+trait ToOpt: Sized {
     fn to_option(&self) -> Option<Self>;
 }
 

@@ -55,7 +55,7 @@ pub use self::imp::KeyInner as __KeyInner;
 #[unstable(feature = "scoped_tls",
            reason = "scoped TLS has yet to have wide enough use to fully consider \
                      stabilizing its interface")]
-pub struct ScopedKey<T> { inner: fn() -> &'static imp::KeyInner<T> }
+pub struct ScopedKey<T:'static> { inner: fn() -> &'static imp::KeyInner<T> }
 
 /// Declare a new scoped thread local storage key.
 ///

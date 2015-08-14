@@ -9,10 +9,11 @@
 // except according to those terms.
 
 // A variant of traits-issue-23003 in which an infinite series of
-// types are required. This currently creates an overflow. This test
-// is included to ensure that some controlled failure, at least,
-// results -- but it might be that we should adjust the rules somewhat
-// to make this legal. -nmatsakis
+// types are required. This test now just compiles fine, since the
+// relevant rules that triggered the overflow were removed.
+
+#![feature(rustc_attrs)]
+#![allow(dead_code)]
 
 use std::marker::PhantomData;
 
@@ -32,7 +33,7 @@ impl<B> Async for Complete<B> {
     type Cancel = Receipt<Complete<Option<B>>>;
 }
 
-fn foo(r: Receipt<Complete<()>>) { }
-//~^ ERROR overflow
+fn foo(_: Receipt<Complete<()>>) { }
 
-fn main() { }
+#[rustc_error]
+fn main() { } //~ ERROR compilation successful

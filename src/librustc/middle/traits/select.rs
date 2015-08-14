@@ -27,6 +27,7 @@ use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation
 use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
 use super::{ObjectCastObligation, Obligation};
 use super::TraitNotObjectSafe;
+use super::RFC1214Warning;
 use super::Selection;
 use super::SelectionResult;
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
@@ -44,6 +45,7 @@ use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
 use middle::ty_match;
 use middle::ty_relate::TypeRelation;
+use middle::wf;
 
 use std::cell::RefCell;
 use std::fmt;
@@ -444,7 +446,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // have been proven elsewhere. This cache only contains
         // predicates that are global in scope and hence unaffected by
         // the current environment.
-        if self.tcx().fulfilled_predicates.borrow().is_duplicate(&obligation.predicate) {
+        let w = RFC1214Warning(false);
+        if self.tcx().fulfilled_predicates.borrow().is_duplicate(w, &obligation.predicate) {
             return EvaluatedToOk;
         }
 
@@ -465,10 +468,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
+            ty::Predicate::WellFormed(ty) => {
+                match wf::obligations(self.infcx, obligation.cause.body_id,
+                                      ty, obligation.cause.span,
+                                      obligation.cause.code.is_rfc1214()) {
+                    Some(obligations) =>
+                        self.evaluate_predicates_recursively(previous_stack, obligations.iter()),
+                    None =>
+                        EvaluatedToAmbig,
+                }
+            }
+
             ty::Predicate::TypeOutlives(..) | ty::Predicate::RegionOutlives(..) => {
                 // we do not consider region relationships when
                 // evaluating trait matches
                 EvaluatedToOk
+            }
+
+            ty::Predicate::ObjectSafe(trait_def_id) => {
+                if object_safety::is_object_safe(self.tcx(), trait_def_id) {
+                    EvaluatedToOk
+                } else {
+                    EvaluatedToErr(Unimplemented)
+                }
             }
 
             ty::Predicate::Projection(ref data) => {
@@ -2900,13 +2922,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // chain. Ideally, we should have a way to configure this either
         // by using -Z verbose or just a CLI argument.
         if obligation.recursion_depth >= 0 {
-            let derived_cause = DerivedObligationCause {
-                parent_trait_ref: obligation.predicate.to_poly_trait_ref(),
-                parent_code: Rc::new(obligation.cause.code.clone()),
+            let derived_code = match obligation.cause.code {
+                ObligationCauseCode::RFC1214(ref base_code) => {
+                    let derived_cause = DerivedObligationCause {
+                        parent_trait_ref: obligation.predicate.to_poly_trait_ref(),
+                        parent_code: base_code.clone(),
+                    };
+                    ObligationCauseCode::RFC1214(Rc::new(variant(derived_cause)))
+                }
+                _ => {
+                    let derived_cause = DerivedObligationCause {
+                        parent_trait_ref: obligation.predicate.to_poly_trait_ref(),
+                        parent_code: Rc::new(obligation.cause.code.clone())
+                    };
+                    variant(derived_cause)
+                }
             };
-            ObligationCause::new(obligation.cause.span,
-                                 obligation.cause.body_id,
-                                 variant(derived_cause))
+            ObligationCause::new(obligation.cause.span, obligation.cause.body_id, derived_code)
         } else {
             obligation.cause.clone()
         }

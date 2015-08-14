@@ -2135,7 +2135,7 @@ impl<I: DoubleEndedIterator, F> DoubleEndedIterator for Inspect<I, F>
 /// two `Step` objects.
 #[unstable(feature = "step_trait",
            reason = "likely to be replaced by finer-grained traits")]
-pub trait Step: PartialOrd {
+pub trait Step: PartialOrd+Sized {
     /// Steps `self` if possible.
     fn step(&self, by: &Self) -> Option<Self>;
 

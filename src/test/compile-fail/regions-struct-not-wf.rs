@@ -12,20 +12,23 @@
 
 #![allow(dead_code)]
 
-struct Ref<'a, T> { //~ ERROR the parameter type `T` may not live long enough
+struct Ref<'a, T> {
     field: &'a T
+        //~^ ERROR the parameter type `T` may not live long enough
 }
 
 struct RefOk<'a, T:'a> {
     field: &'a T
 }
 
-struct RefIndirect<'a, T> { //~ ERROR the parameter type `T` may not live long enough
+struct RefIndirect<'a, T> {
     field: RefOk<'a, T>
+        //~^ ERROR the parameter type `T` may not live long enough
 }
 
-struct DoubleRef<'a, 'b, T> { //~ ERROR reference has a longer lifetime than the data it references
+struct DoubleRef<'a, 'b, T> {
     field: &'a &'b T
+        //~^ ERROR reference has a longer lifetime than the data it references
 }
 
 fn main() { }

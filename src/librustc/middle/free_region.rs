@@ -10,7 +10,7 @@
 
 //! This file defines
 
-use middle::implicator::Implication;
+use middle::wf::ImpliedBound;
 use middle::ty::{self, FreeRegion};
 use util::common::can_reach;
 use util::nodemap::{FnvHashMap, FnvHashSet};
@@ -30,18 +30,19 @@ impl FreeRegionMap {
         FreeRegionMap { map: FnvHashMap(), statics: FnvHashSet() }
     }
 
-    pub fn relate_free_regions_from_implications<'tcx>(&mut self,
-                                                       implications: &[Implication<'tcx>])
+    pub fn relate_free_regions_from_implied_bounds<'tcx>(&mut self,
+                                                        implied_bounds: &[ImpliedBound<'tcx>])
     {
-        for implication in implications {
-            debug!("implication: {:?}", implication);
-            match *implication {
-                Implication::RegionSubRegion(_, ty::ReFree(free_a), ty::ReFree(free_b)) => {
+        debug!("relate_free_regions_from_implied_bounds()");
+        for implied_bound in implied_bounds {
+            debug!("implied bound: {:?}", implied_bound);
+            match *implied_bound {
+                ImpliedBound::RegionSubRegion(ty::ReFree(free_a), ty::ReFree(free_b)) => {
                     self.relate_free_regions(free_a, free_b);
                 }
-                Implication::RegionSubRegion(..) |
-                Implication::RegionSubGeneric(..) |
-                Implication::Predicate(..) => {
+                ImpliedBound::RegionSubRegion(..) |
+                ImpliedBound::RegionSubParam(..) |
+                ImpliedBound::RegionSubProjection(..) => {
                 }
             }
         }
@@ -56,6 +57,8 @@ impl FreeRegionMap {
                 ty::Predicate::Projection(..) |
                 ty::Predicate::Trait(..) |
                 ty::Predicate::Equate(..) |
+                ty::Predicate::WellFormed(..) |
+                ty::Predicate::ObjectSafe(..) |
                 ty::Predicate::TypeOutlives(..) => {
                     // No region bounds here
                 }
