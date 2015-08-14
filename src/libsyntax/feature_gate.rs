@@ -85,6 +85,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("on_unimplemented", "1.0.0", Active),
     ("simd_ffi", "1.0.0", Active),
     ("allocator", "1.0.0", Active),
+    ("needs_allocator", "1.4.0", Active),
     ("linked_from", "1.3.0", Active),
 
     ("if_let", "1.0.0", Accepted),
@@ -253,6 +254,9 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
                                       is an experimental feature")),
     ("allocator", Gated("allocator",
                         "the `#[allocator]` attribute is an experimental feature")),
+    ("needs_allocator", Gated("needs_allocator", "the `#[needs_allocator]` \
+                                                  attribute is an experimental \
+                                                  feature")),
     ("rustc_variance", Gated("rustc_attrs",
                              "the `#[rustc_variance]` attribute \
                               is an experimental feature")),

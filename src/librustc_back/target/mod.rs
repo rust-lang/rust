@@ -173,6 +173,10 @@ pub struct TargetOptions {
     /// defined in libgcc.  If this option is enabled, the target must provide
     /// `eh_unwind_resume` lang item.
     pub custom_unwind_resume: bool,
+
+    /// Default crate for allocation symbols to link against
+    pub lib_allocation_crate: String,
+    pub exe_allocation_crate: String,
 }
 
 impl Default for TargetOptions {
@@ -211,6 +215,8 @@ impl Default for TargetOptions {
             post_link_objects: Vec::new(),
             archive_format: String::new(),
             custom_unwind_resume: false,
+            lib_allocation_crate: "alloc_system".to_string(),
+            exe_allocation_crate: "alloc_system".to_string(),
         }
     }
 }
@@ -422,5 +428,13 @@ impl Target {
         }
 
         Err(format!("Could not find specification for target {:?}", target))
+    }
+}
+
+fn best_allocator() -> String {
+    if cfg!(disable_jemalloc) {
+        "alloc_system".to_string()
+    } else {
+        "alloc_jemalloc".to_string()
     }
 }

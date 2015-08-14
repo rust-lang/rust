@@ -67,7 +67,6 @@ use session;
 use session::config;
 use metadata::cstore;
 use metadata::csearch;
-use middle::ty;
 use util::nodemap::FnvHashMap;
 
 /// A list of dependencies for a certain crate type.
@@ -76,19 +75,29 @@ use util::nodemap::FnvHashMap;
 /// The value is None if the crate does not need to be linked (it was found
 /// statically in another dylib), or Some(kind) if it needs to be linked as
 /// `kind` (either static or dynamic).
-pub type DependencyList = Vec<Option<cstore::LinkagePreference>>;
+pub type DependencyList = Vec<Linkage>;
 
 /// A mapping of all required dependencies for a particular flavor of output.
 ///
 /// This is local to the tcx, and is generally relevant to one session.
 pub type Dependencies = FnvHashMap<config::CrateType, DependencyList>;
 
-pub fn calculate(tcx: &ty::ctxt) {
-    let mut fmts = tcx.dependency_formats.borrow_mut();
-    for &ty in tcx.sess.crate_types.borrow().iter() {
-        fmts.insert(ty, calculate_type(&tcx.sess, ty));
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum Linkage {
+    NotLinked,
+    IncludedFromDylib,
+    Static,
+    Dynamic,
+}
+
+pub fn calculate(sess: &session::Session) {
+    let mut fmts = sess.dependency_formats.borrow_mut();
+    for &ty in sess.crate_types.borrow().iter() {
+        let linkage = calculate_type(sess, ty);
+        verify_ok(sess, &linkage);
+        fmts.insert(ty, linkage);
     }
-    tcx.sess.abort_if_errors();
+    sess.abort_if_errors();
 }
 
 fn calculate_type(sess: &session::Session,
@@ -145,12 +154,12 @@ fn calculate_type(sess: &session::Session,
     sess.cstore.iter_crate_data(|cnum, data| {
         let src = sess.cstore.get_used_crate_source(cnum).unwrap();
         if src.dylib.is_some() {
-            debug!("adding dylib: {}", data.name);
+            info!("adding dylib: {}", data.name);
             add_library(sess, cnum, cstore::RequireDynamic, &mut formats);
             let deps = csearch::get_dylib_dependency_formats(&sess.cstore, cnum);
             for &(depnum, style) in &deps {
-                debug!("adding {:?}: {}", style,
-                       sess.cstore.get_crate_data(depnum).name.clone());
+                info!("adding {:?}: {}", style,
+                      sess.cstore.get_crate_data(depnum).name.clone());
                 add_library(sess, depnum, style, &mut formats);
             }
         }
@@ -158,23 +167,35 @@ fn calculate_type(sess: &session::Session,
 
     // Collect what we've got so far in the return vector.
     let mut ret = (1..sess.cstore.next_crate_num()).map(|i| {
-        match formats.get(&i).cloned() {
-            v @ Some(cstore::RequireDynamic) => v,
-            _ => None,
+        match formats.get(&i) {
+            Some(&cstore::RequireDynamic) => Linkage::Dynamic,
+            Some(&cstore::RequireStatic) => Linkage::IncludedFromDylib,
+            None => Linkage::NotLinked,
         }
     }).collect::<Vec<_>>();
 
     // Run through the dependency list again, and add any missing libraries as
     // static libraries.
+    //
+    // If the crate hasn't been included yet and it's not actually required
+    // (e.g. it's an allocator) then we skip it here as well.
     sess.cstore.iter_crate_data(|cnum, data| {
         let src = sess.cstore.get_used_crate_source(cnum).unwrap();
-        if src.dylib.is_none() && !formats.contains_key(&cnum) {
+        if src.dylib.is_none() &&
+           !formats.contains_key(&cnum) &&
+           data.explicitly_linked.get() {
             assert!(src.rlib.is_some());
-            debug!("adding staticlib: {}", data.name);
+            info!("adding staticlib: {}", data.name);
             add_library(sess, cnum, cstore::RequireStatic, &mut formats);
-            ret[cnum as usize - 1] = Some(cstore::RequireStatic);
+            ret[cnum as usize - 1] = Linkage::Static;
         }
     });
+
+    // We've gotten this far because we're emitting some form of a final
+    // artifact which means that we're going to need an allocator of some form.
+    // No allocator may have been required or linked so far, so activate one
+    // here if one isn't set.
+    activate_allocator(sess, &mut ret);
 
     // When dylib B links to dylib A, then when using B we must also link to A.
     // It could be the case, however, that the rlib for A is present (hence we
@@ -183,21 +204,22 @@ fn calculate_type(sess: &session::Session,
     // For situations like this, we perform one last pass over the dependencies,
     // making sure that everything is available in the requested format.
     for (cnum, kind) in ret.iter().enumerate() {
-        let cnum = cnum as ast::CrateNum;
-        let src = sess.cstore.get_used_crate_source(cnum + 1).unwrap();
+        let cnum = (cnum + 1) as ast::CrateNum;
+        let src = sess.cstore.get_used_crate_source(cnum).unwrap();
         match *kind {
-            None => continue,
-            Some(cstore::RequireStatic) if src.rlib.is_some() => continue,
-            Some(cstore::RequireDynamic) if src.dylib.is_some() => continue,
-            Some(kind) => {
-                let data = sess.cstore.get_crate_data(cnum + 1);
+            Linkage::NotLinked |
+            Linkage::IncludedFromDylib => {}
+            Linkage::Static if src.rlib.is_some() => continue,
+            Linkage::Dynamic if src.dylib.is_some() => continue,
+            kind => {
+                let kind = match kind {
+                    Linkage::Static => "rlib",
+                    _ => "dylib",
+                };
+                let data = sess.cstore.get_crate_data(cnum);
                 sess.err(&format!("crate `{}` required to be available in {}, \
                                   but it was not available in this form",
-                                 data.name,
-                                 match kind {
-                                     cstore::RequireStatic => "rlib",
-                                     cstore::RequireDynamic => "dylib",
-                                 }));
+                                 data.name, kind));
             }
         }
     }
@@ -221,8 +243,7 @@ fn add_library(sess: &session::Session,
             if link2 != link || link == cstore::RequireStatic {
                 let data = sess.cstore.get_crate_data(cnum);
                 sess.err(&format!("cannot satisfy dependencies so `{}` only \
-                                  shows up once",
-                                 data.name));
+                                   shows up once", data.name));
                 sess.help("having upstream crates all available in one format \
                            will likely make this go away");
             }
@@ -233,9 +254,79 @@ fn add_library(sess: &session::Session,
 
 fn attempt_static(sess: &session::Session) -> Option<DependencyList> {
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
-    if crates.iter().by_ref().all(|&(_, ref p)| p.is_some()) {
-        Some(crates.into_iter().map(|_| Some(cstore::RequireStatic)).collect())
-    } else {
-        None
+    if !crates.iter().by_ref().all(|&(_, ref p)| p.is_some()) {
+        return None
+    }
+
+    // All crates are available in an rlib format, so we're just going to link
+    // everything in explicitly so long as it's actually required.
+    let mut ret = (1..sess.cstore.next_crate_num()).map(|cnum| {
+        if sess.cstore.get_crate_data(cnum).explicitly_linked.get() {
+            Linkage::Static
+        } else {
+            Linkage::NotLinked
+        }
+    }).collect::<Vec<_>>();
+
+    // Our allocator may not have been activated as it's not flagged with
+    // explicitly_linked, so flag it here if necessary.
+    activate_allocator(sess, &mut ret);
+
+    Some(ret)
+}
+
+// Given a list of how to link upstream dependencies so far, ensure that an
+// allocator is activated. This will not do anything if one was transitively
+// included already (e.g. via a dylib or explicitly so).
+//
+// If an allocator was not found then we're guaranteed the metadata::creader
+// module has injected an allocator dependency (not listed as a required
+// dependency) in the session's `injected_allocator` field. If this field is not
+// set then this compilation doesn't actually need an allocator and we can also
+// skip this step entirely.
+fn activate_allocator(sess: &session::Session, list: &mut DependencyList) {
+    let mut allocator_found = false;
+    for (i, slot) in list.iter().enumerate() {
+        let cnum = (i + 1) as ast::CrateNum;
+        if !sess.cstore.get_crate_data(cnum).is_allocator() {
+            continue
+        }
+        if let Linkage::NotLinked = *slot {
+            continue
+        }
+        allocator_found = true;
+    }
+    if !allocator_found {
+        if let Some(injected_allocator) = sess.injected_allocator.get() {
+            let idx = injected_allocator as usize - 1;
+            assert_eq!(list[idx], Linkage::NotLinked);
+            list[idx] = Linkage::Static;
+        }
+    }
+}
+
+// After the linkage for a crate has been determined we need to verify that
+// there's only going to be one allocator in the output.
+fn verify_ok(sess: &session::Session, list: &[Linkage]) {
+    if list.len() == 0 {
+        return
+    }
+    let mut allocator = None;
+    for (i, linkage) in list.iter().enumerate() {
+        let cnum = (i + 1) as ast::CrateNum;
+        let data = sess.cstore.get_crate_data(cnum);
+        if !data.is_allocator() {
+            continue
+        }
+        if let Linkage::NotLinked = *linkage {
+            continue
+        }
+        if let Some(prev_alloc) = allocator {
+            let prev = sess.cstore.get_crate_data(prev_alloc);
+            sess.err(&format!("cannot link together two \
+                               allocators: {} and {}",
+                              prev.name(), data.name()));
+        }
+        allocator = Some(cnum);
     }
 }

@@ -2822,7 +2822,6 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
         llcx: shared_ccx.metadata_llcx(),
         llmod: shared_ccx.metadata_llmod(),
     };
-    let formats = shared_ccx.tcx().dependency_formats.borrow().clone();
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
 
     CrateTranslation {
@@ -2831,7 +2830,6 @@ pub fn trans_crate(tcx: &ty::ctxt, analysis: ty::CrateAnalysis) -> CrateTranslat
         link: link_meta,
         metadata: metadata,
         reachable: reachable_symbols,
-        crate_formats: formats,
         no_builtins: no_builtins,
     }
 }

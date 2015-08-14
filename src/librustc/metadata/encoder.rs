@@ -23,8 +23,9 @@ use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
 use middle::def;
-use middle::ty::{self, Ty};
+use middle::dependency_format::Linkage;
 use middle::stability;
+use middle::ty::{self, Ty};
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use serialize::Encodable;
@@ -32,6 +33,7 @@ use std::cell::RefCell;
 use std::hash::{Hash, Hasher, SipHasher};
 use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
+use std::rc::Rc;
 use syntax::abi;
 use syntax::ast::{self, DefId, NodeId};
 use syntax::ast_util::*;
@@ -1751,25 +1753,21 @@ fn encode_polarity(rbml_w: &mut Encoder, polarity: ast::ImplPolarity) {
 }
 
 fn encode_crate_deps(rbml_w: &mut Encoder, cstore: &cstore::CStore) {
-    fn get_ordered_deps(cstore: &cstore::CStore) -> Vec<decoder::CrateDep> {
+    fn get_ordered_deps(cstore: &cstore::CStore)
+                        -> Vec<(ast::CrateNum, Rc<cstore::crate_metadata>)> {
         // Pull the cnums and name,vers,hash out of cstore
         let mut deps = Vec::new();
-        cstore.iter_crate_data(|key, val| {
-            let dep = decoder::CrateDep {
-                cnum: key,
-                name: decoder::get_crate_name(val.data()),
-                hash: decoder::get_crate_hash(val.data()),
-            };
-            deps.push(dep);
+        cstore.iter_crate_data(|cnum, val| {
+            deps.push((cnum, val.clone()));
         });
 
         // Sort by cnum
-        deps.sort_by(|kv1, kv2| kv1.cnum.cmp(&kv2.cnum));
+        deps.sort_by(|kv1, kv2| kv1.0.cmp(&kv2.0));
 
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
-        for n in &deps {
-            assert_eq!(n.cnum, expected_cnum);
+        for &(n, _) in &deps {
+            assert_eq!(n, expected_cnum);
             expected_cnum += 1;
         }
 
@@ -1781,8 +1779,8 @@ fn encode_crate_deps(rbml_w: &mut Encoder, cstore: &cstore::CStore) {
     // FIXME (#2166): This is not nearly enough to support correct versioning
     // but is enough to get transitive crate dependencies working.
     rbml_w.start_tag(tag_crate_deps);
-    for dep in &get_ordered_deps(cstore) {
-        encode_crate_dep(rbml_w, dep);
+    for (_cnum, dep) in get_ordered_deps(cstore) {
+        encode_crate_dep(rbml_w, &dep);
     }
     rbml_w.end_tag();
 }
@@ -1985,10 +1983,13 @@ fn encode_reachable(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 }
 
 fn encode_crate_dep(rbml_w: &mut Encoder,
-                    dep: &decoder::CrateDep) {
+                    dep: &cstore::crate_metadata) {
     rbml_w.start_tag(tag_crate_dep);
-    rbml_w.wr_tagged_str(tag_crate_dep_crate_name, &dep.name);
-    rbml_w.wr_tagged_str(tag_crate_dep_hash, dep.hash.as_str());
+    rbml_w.wr_tagged_str(tag_crate_dep_crate_name, &dep.name());
+    let hash = decoder::get_crate_hash(dep.data());
+    rbml_w.wr_tagged_str(tag_crate_dep_hash, hash.as_str());
+    rbml_w.wr_tagged_u8(tag_crate_dep_explicitly_linked,
+                        dep.explicitly_linked.get() as u8);
     rbml_w.end_tag();
 }
 
@@ -2006,13 +2007,16 @@ fn encode_crate_triple(rbml_w: &mut Encoder, triple: &str) {
 
 fn encode_dylib_dependency_formats(rbml_w: &mut Encoder, ecx: &EncodeContext) {
     let tag = tag_dylib_dependency_formats;
-    match ecx.tcx.dependency_formats.borrow().get(&config::CrateTypeDylib) {
+    match ecx.tcx.sess.dependency_formats.borrow().get(&config::CrateTypeDylib) {
         Some(arr) => {
             let s = arr.iter().enumerate().filter_map(|(i, slot)| {
-                slot.map(|kind| (format!("{}:{}", i + 1, match kind {
-                    cstore::RequireDynamic => "d",
-                    cstore::RequireStatic => "s",
-                })).to_string())
+                let kind = match *slot {
+                    Linkage::NotLinked |
+                    Linkage::IncludedFromDylib => return None,
+                    Linkage::Dynamic => "d",
+                    Linkage::Static => "s",
+                };
+                Some(format!("{}:{}", i + 1, kind))
             }).collect::<Vec<String>>();
             rbml_w.wr_tagged_str(tag, &s.join(","));
         }

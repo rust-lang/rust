@@ -356,7 +356,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
     syntax::ext::mtwt::reset_tables();
     token::reset_ident_interner();
 
-    let krate = time(sess.time_passes(), "parsing", (), |_| {
+    let krate = time(sess.time_passes(), "parsing", || {
         match *input {
             Input::File(ref file) => {
                 parse::parse_crate_from_file(&(*file), cfg.clone(), &sess.parse_sess)
@@ -406,7 +406,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     //
     // baz! should not use this definition unless foo is enabled.
 
-    krate = time(time_passes, "configuration 1", krate, |krate|
+    krate = time(time_passes, "configuration 1", move ||
                  syntax::config::strip_unconfigured_items(sess.diagnostic(), krate));
 
     *sess.crate_types.borrow_mut() =
@@ -414,11 +414,11 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     *sess.crate_metadata.borrow_mut() =
         collect_crate_metadata(sess, &krate.attrs);
 
-    time(time_passes, "recursion limit", (), |_| {
+    time(time_passes, "recursion limit", || {
         middle::recursion_limit::update_recursion_limit(sess, &krate);
     });
 
-    time(time_passes, "gated macro checking", (), |_| {
+    time(time_passes, "gated macro checking", || {
         let features =
             syntax::feature_gate::check_crate_macros(sess.codemap(),
                                                      &sess.parse_sess.span_diagnostic,
@@ -430,20 +430,20 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     });
 
 
-    krate = time(time_passes, "crate injection", krate, |krate|
+    krate = time(time_passes, "crate injection", ||
                  syntax::std_inject::maybe_inject_crates_ref(krate,
                                                              sess.opts.alt_std_name.clone()));
 
-    let macros = time(time_passes, "macro loading", (), |_|
+    let macros = time(time_passes, "macro loading", ||
         metadata::macro_import::read_macro_defs(sess, &krate));
 
     let mut addl_plugins = Some(addl_plugins);
-    let registrars = time(time_passes, "plugin loading", (), |_|
+    let registrars = time(time_passes, "plugin loading", ||
         plugin::load::load_plugins(sess, &krate, addl_plugins.take().unwrap()));
 
     let mut registry = Registry::new(sess, &krate);
 
-    time(time_passes, "plugin registration", registrars, |registrars| {
+    time(time_passes, "plugin registration", || {
         if sess.features.borrow().rustc_diagnostic_macros {
             registry.register_macro("__diagnostic_used",
                 diagnostics::plugin::expand_diagnostic_used);
@@ -486,45 +486,43 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // Abort if there are errors from lint processing or a plugin registrar.
     sess.abort_if_errors();
 
-    krate = time(time_passes, "expansion", (krate, macros, syntax_exts),
-        |(krate, macros, syntax_exts)| {
-            // Windows dlls do not have rpaths, so they don't know how to find their
-            // dependencies. It's up to us to tell the system where to find all the
-            // dependent dlls. Note that this uses cfg!(windows) as opposed to
-            // targ_cfg because syntax extensions are always loaded for the host
-            // compiler, not for the target.
-            let mut _old_path = OsString::new();
-            if cfg!(windows) {
-                _old_path = env::var_os("PATH").unwrap_or(_old_path);
-                let mut new_path = sess.host_filesearch(PathKind::All)
-                                       .get_dylib_search_paths();
-                new_path.extend(env::split_paths(&_old_path));
-                env::set_var("PATH", &env::join_paths(new_path).unwrap());
-            }
-            let features = sess.features.borrow();
-            let cfg = syntax::ext::expand::ExpansionConfig {
-                crate_name: crate_name.to_string(),
-                features: Some(&features),
-                recursion_limit: sess.recursion_limit.get(),
-                trace_mac: sess.opts.debugging_opts.trace_macros,
-            };
-            let ret = syntax::ext::expand::expand_crate(&sess.parse_sess,
-                                              cfg,
-                                              macros,
-                                              syntax_exts,
-                                              krate);
-            if cfg!(windows) {
-                env::set_var("PATH", &_old_path);
-            }
-            ret
+    krate = time(time_passes, "expansion", || {
+        // Windows dlls do not have rpaths, so they don't know how to find their
+        // dependencies. It's up to us to tell the system where to find all the
+        // dependent dlls. Note that this uses cfg!(windows) as opposed to
+        // targ_cfg because syntax extensions are always loaded for the host
+        // compiler, not for the target.
+        let mut _old_path = OsString::new();
+        if cfg!(windows) {
+            _old_path = env::var_os("PATH").unwrap_or(_old_path);
+            let mut new_path = sess.host_filesearch(PathKind::All)
+                                   .get_dylib_search_paths();
+            new_path.extend(env::split_paths(&_old_path));
+            env::set_var("PATH", &env::join_paths(new_path).unwrap());
         }
-    );
+        let features = sess.features.borrow();
+        let cfg = syntax::ext::expand::ExpansionConfig {
+            crate_name: crate_name.to_string(),
+            features: Some(&features),
+            recursion_limit: sess.recursion_limit.get(),
+            trace_mac: sess.opts.debugging_opts.trace_macros,
+        };
+        let ret = syntax::ext::expand::expand_crate(&sess.parse_sess,
+                                          cfg,
+                                          macros,
+                                          syntax_exts,
+                                          krate);
+        if cfg!(windows) {
+            env::set_var("PATH", &_old_path);
+        }
+        ret
+    });
 
     // Needs to go *after* expansion to be able to check the results
     // of macro expansion.  This runs before #[cfg] to try to catch as
     // much as possible (e.g. help the programmer avoid platform
     // specific differences)
-    time(time_passes, "complete gated feature checking 1", (), |_| {
+    time(time_passes, "complete gated feature checking 1", || {
         let features =
             syntax::feature_gate::check_crate(sess.codemap(),
                                               &sess.parse_sess.span_diagnostic,
@@ -537,25 +535,25 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // JBC: make CFG processing part of expansion to avoid this problem:
 
     // strip again, in case expansion added anything with a #[cfg].
-    krate = time(time_passes, "configuration 2", krate, |krate|
+    krate = time(time_passes, "configuration 2", ||
                  syntax::config::strip_unconfigured_items(sess.diagnostic(), krate));
 
-    krate = time(time_passes, "maybe building test harness", krate, |krate|
+    krate = time(time_passes, "maybe building test harness", ||
                  syntax::test::modify_for_testing(&sess.parse_sess,
                                                   &sess.opts.cfg,
                                                   krate,
                                                   sess.diagnostic()));
 
-    krate = time(time_passes, "prelude injection", krate, |krate|
+    krate = time(time_passes, "prelude injection", ||
                  syntax::std_inject::maybe_inject_prelude(&sess.parse_sess, krate));
 
-    time(time_passes, "checking that all macro invocations are gone", &krate, |krate|
-         syntax::ext::expand::check_for_macros(&sess.parse_sess, krate));
+    time(time_passes, "checking that all macro invocations are gone", ||
+         syntax::ext::expand::check_for_macros(&sess.parse_sess, &krate));
 
     // One final feature gating of the true AST that gets compiled
     // later, to make sure we've got everything (e.g. configuration
     // can insert new attributes via `cfg_attr`)
-    time(time_passes, "complete gated feature checking 2", (), |_| {
+    time(time_passes, "complete gated feature checking 2", || {
         let features =
             syntax::feature_gate::check_crate(sess.codemap(),
                                               &sess.parse_sess.span_diagnostic,
@@ -582,7 +580,7 @@ pub fn assign_node_ids_and_map<'ast>(sess: &Session,
         }
     }
 
-    let map = time(sess.time_passes(), "assigning node ids and indexing ast", forest, |forest|
+    let map = time(sess.time_passes(), "assigning node ids and indexing ast", move ||
                    ast_map::map_crate(forest, NodeIdAssigner { sess: sess }));
 
     if sess.opts.debugging_opts.ast_json {
@@ -608,10 +606,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
     let time_passes = sess.time_passes();
     let krate = ast_map.krate();
 
-    time(time_passes, "external crate/lib resolution", (), |_|
+    time(time_passes, "external crate/lib resolution", ||
          LocalCrateReader::new(&sess, &ast_map).read_crates(krate));
 
-    let lang_items = time(time_passes, "language item collection", (), |_|
+    let lang_items = time(time_passes, "language item collection", ||
                           middle::lang_items::collect_language_items(krate, &sess));
 
     let resolve::CrateMap {
@@ -622,30 +620,30 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
         external_exports,
         glob_map,
     } =
-        time(time_passes, "resolution", (),
-             |_| resolve::resolve_crate(&sess, &ast_map, make_glob_map));
+        time(time_passes, "resolution",
+             || resolve::resolve_crate(&sess, &ast_map, make_glob_map));
 
     // Discard MTWT tables that aren't required past resolution.
     syntax::ext::mtwt::clear_tables();
 
-    let named_region_map = time(time_passes, "lifetime resolution", (),
-                                |_| middle::resolve_lifetime::krate(&sess, krate, &def_map));
+    let named_region_map = time(time_passes, "lifetime resolution",
+                                || middle::resolve_lifetime::krate(&sess, krate, &def_map));
 
-    time(time_passes, "looking for entry point", (),
-         |_| middle::entry::find_entry_point(&sess, &ast_map));
+    time(time_passes, "looking for entry point",
+         || middle::entry::find_entry_point(&sess, &ast_map));
 
     sess.plugin_registrar_fn.set(
-        time(time_passes, "looking for plugin registrar", (), |_|
+        time(time_passes, "looking for plugin registrar", ||
             plugin::build::find_plugin_registrar(
                 sess.diagnostic(), krate)));
 
-    let region_map = time(time_passes, "region resolution", (), |_|
+    let region_map = time(time_passes, "region resolution", ||
                           middle::region::resolve_crate(&sess, krate));
 
-    time(time_passes, "loop checking", (), |_|
+    time(time_passes, "loop checking", ||
          middle::check_loop::check_crate(&sess, krate));
 
-    time(time_passes, "static item recursion checking", (), |_|
+    time(time_passes, "static item recursion checking", ||
          middle::check_static_recursion::check_crate(&sess, krate, &def_map, &ast_map));
 
     ty::ctxt::create_and_enter(sess,
@@ -662,33 +660,33 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
         // passes are timed inside typeck
         typeck::check_crate(tcx, trait_map);
 
-        time(time_passes, "const checking", (), |_|
+        time(time_passes, "const checking", ||
             middle::check_const::check_crate(tcx));
 
         let (exported_items, public_items) =
-                time(time_passes, "privacy checking", (), |_|
+                time(time_passes, "privacy checking", ||
                     rustc_privacy::check_crate(tcx, &export_map, external_exports));
 
         // Do not move this check past lint
-        time(time_passes, "stability index", (), |_|
+        time(time_passes, "stability index", ||
             tcx.stability.borrow_mut().build(tcx, krate, &public_items));
 
-        time(time_passes, "intrinsic checking", (), |_|
+        time(time_passes, "intrinsic checking", ||
             middle::intrinsicck::check_crate(tcx));
 
-        time(time_passes, "effect checking", (), |_|
+        time(time_passes, "effect checking", ||
             middle::effect::check_crate(tcx));
 
-        time(time_passes, "match checking", (), |_|
+        time(time_passes, "match checking", ||
             middle::check_match::check_crate(tcx));
 
-        time(time_passes, "liveness checking", (), |_|
+        time(time_passes, "liveness checking", ||
             middle::liveness::check_crate(tcx));
 
-        time(time_passes, "borrow checking", (), |_|
+        time(time_passes, "borrow checking", ||
             borrowck::check_crate(tcx));
 
-        time(time_passes, "rvalue checking", (), |_|
+        time(time_passes, "rvalue checking", ||
             middle::check_rvalues::check_crate(tcx, krate));
 
         // Avoid overwhelming user with errors if type checking failed.
@@ -699,24 +697,24 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
         tcx.sess.abort_if_errors();
 
         let reachable_map =
-            time(time_passes, "reachability checking", (), |_|
+            time(time_passes, "reachability checking", ||
                 reachable::find_reachable(tcx, &exported_items));
 
-        time(time_passes, "death checking", (), |_| {
+        time(time_passes, "death checking", || {
             middle::dead::check_crate(tcx,
                                       &exported_items,
                                       &reachable_map)
         });
 
         let ref lib_features_used =
-            time(time_passes, "stability checking", (), |_|
+            time(time_passes, "stability checking", ||
                 stability::check_unstable_api_usage(tcx));
 
-        time(time_passes, "unused lib feature checking", (), |_|
+        time(time_passes, "unused lib feature checking", ||
             stability::check_unused_or_stable_features(
                 &tcx.sess, lib_features_used));
 
-        time(time_passes, "lint checking", (), |_|
+        time(time_passes, "lint checking", ||
             lint::check_crate(tcx, &exported_items));
 
         // The above three passes generate errors w/o aborting
@@ -739,11 +737,11 @@ pub fn phase_4_translate_to_llvm(tcx: &ty::ctxt, analysis: ty::CrateAnalysis)
                                  -> trans::CrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
-    time(time_passes, "resolving dependency formats", (), |_|
-         dependency_format::calculate(tcx));
+    time(time_passes, "resolving dependency formats", ||
+         dependency_format::calculate(&tcx.sess));
 
     // Option dance to work around the lack of stack once closures.
-    time(time_passes, "translation", analysis, |analysis|
+    time(time_passes, "translation", move ||
          trans::trans_crate(tcx, analysis))
 }
 
@@ -755,7 +753,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
     if sess.opts.cg.no_integrated_as {
         let output_type = config::OutputTypeAssembly;
 
-        time(sess.time_passes(), "LLVM passes", (), |_|
+        time(sess.time_passes(), "LLVM passes", ||
             write::run_passes(sess, trans, &[output_type], outputs));
 
         write::run_assembler(sess, outputs);
@@ -765,7 +763,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
             fs::remove_file(&outputs.temp_path(config::OutputTypeAssembly)).unwrap();
         }
     } else {
-        time(sess.time_passes(), "LLVM passes", (), |_|
+        time(sess.time_passes(), "LLVM passes", ||
             write::run_passes(sess,
                               trans,
                               &sess.opts.output_types,
@@ -780,7 +778,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 pub fn phase_6_link_output(sess: &Session,
                            trans: &trans::CrateTranslation,
                            outputs: &OutputFilenames) {
-    time(sess.time_passes(), "linking", (), |_|
+    time(sess.time_passes(), "linking", ||
          link::link_binary(sess,
                            trans,
                            outputs,

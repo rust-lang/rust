@@ -11,8 +11,9 @@
 use lint;
 use metadata::cstore::CStore;
 use metadata::filesearch;
+use middle::dependency_format;
 use session::search_paths::PathKind;
-use util::nodemap::NodeMap;
+use util::nodemap::{NodeMap, FnvHashMap};
 
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
@@ -57,6 +58,7 @@ pub struct Session {
     pub plugin_llvm_passes: RefCell<Vec<String>>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
+    pub dependency_formats: RefCell<dependency_format::Dependencies>,
     pub crate_metadata: RefCell<Vec<String>>,
     pub features: RefCell<feature_gate::Features>,
 
@@ -68,7 +70,11 @@ pub struct Session {
 
     pub can_print_warnings: bool,
 
-    next_node_id: Cell<ast::NodeId>
+    /// The metadata::creader module may inject an allocator dependency if it
+    /// didn't already find one, and this tracks what was injected.
+    pub injected_allocator: Cell<Option<ast::CrateNum>>,
+
+    next_node_id: Cell<ast::NodeId>,
 }
 
 impl Session {
@@ -447,12 +453,14 @@ pub fn build_session_(sopts: config::Options,
         plugin_llvm_passes: RefCell::new(Vec::new()),
         plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
+        dependency_formats: RefCell::new(FnvHashMap()),
         crate_metadata: RefCell::new(Vec::new()),
         delayed_span_bug: RefCell::new(None),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
         can_print_warnings: can_print_warnings,
-        next_node_id: Cell::new(1)
+        next_node_id: Cell::new(1),
+        injected_allocator: Cell::new(None),
     };
 
     sess
