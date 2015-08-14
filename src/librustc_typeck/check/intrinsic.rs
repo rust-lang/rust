@@ -481,7 +481,7 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
         },
         Pointer(_) => unimplemented!(),
         Vector(ref inner_expected, len) => {
-            if !t.is_simd(tcx) {
+            if !t.is_simd() {
                 simple_error(&format!("non-simd type `{}`", t),
                              "simd type");
                 return;
