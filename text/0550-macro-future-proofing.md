@@ -139,3 +139,8 @@ reasonable freedom and can be extended in the future.
    same issue would come up.
 3. Do nothing. This is very dangerous, and has the potential to essentially
    freeze Rust's syntax for fear of accidentally breaking a macro.
+
+# Edit History
+
+- Updated by https://github.com/rust-lang/rfcs/pull/1209, which added
+  semicolons into the follow set for types.
