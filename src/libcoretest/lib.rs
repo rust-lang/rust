@@ -31,7 +31,6 @@
 #![feature(rand)]
 #![feature(range_inclusive)]
 #![feature(raw)]
-#![feature(result_expect)]
 #![feature(slice_bytes)]
 #![feature(slice_patterns)]
 #![feature(step_by)]

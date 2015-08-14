@@ -740,12 +740,11 @@ impl<T, E: fmt::Debug> Result<T, E> {
     ///
     /// # Examples
     /// ```{.should_panic}
-    /// #![feature(result_expect)]
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
     /// ```
     #[inline]
-    #[unstable(feature = "result_expect", reason = "newly introduced", issue = "27277")]
+    #[stable(feature = "result_expect", since = "1.4.0")]
     pub fn expect(self, msg: &str) -> T {
         match self {
             Ok(t) => t,
