@@ -735,39 +735,33 @@ fn some_func(x: &mut i32) {
 "##,
 
 E0071: r##"
-You tried to use a structure initialization with a non-structure type.
+You tried to use structure-literal syntax to create an item that is
+not a struct-style structure or enum variant.
+
 Example of erroneous code:
 
 ```
-enum Foo { FirstValue };
+enum Foo { FirstValue(i32) };
 
 let u = Foo::FirstValue { value: 0i32 }; // error: Foo::FirstValue
                                          // isn't a structure!
-// or even simpler, if the structure wasn't defined at all:
-let u = RandomName { random_field: 0i32 }; // error: RandomName
-                                           // isn't a structure!
-```
+// or even simpler, if the name doesn't refer to a structure at all.
+let t = u32 { value: 4 }; // error: `u32` does not name a structure.```
 
-To fix this, please check:
- * Did you spell it right?
- * Did you accidentaly used an enum as a struct?
- * Did you accidentaly make an enum when you intended to use a struct?
+To fix this, ensure that the name was correctly spelled, and that
+the correct form of initializer was used.
 
-Here is the previous code with all missing information:
+For example, the code above can be fixed to:
 
 ```
-struct Inner {
-    value: i32
-}
-
 enum Foo {
-    FirstValue(Inner)
+    FirstValue(i32)
 }
 
 fn main() {
-    let u = Foo::FirstValue(Inner { value: 0i32 });
+    let u = Foo::FirstValue(0i32);
 
-    let t = Inner { value: 0i32 };
+    let t = 4;
 }
 ```
 "##,
@@ -1633,30 +1627,6 @@ attribute. Such a function must have the following type signature:
 
 ```
 fn(isize, *const *const u8) -> isize
-```
-"##,
-
-E0159: r##"
-You tried to use a trait as a struct constructor. Erroneous code example:
-
-```
-trait TraitNotAStruct {}
-
-TraitNotAStruct{ value: 0 }; // error: use of trait `TraitNotAStruct` as a
-                             //        struct constructor
-```
-
-Please verify you used the correct type name or please implement the trait
-on a struct and use this struct constructor. Example:
-
-```
-trait TraitNotAStruct {}
-
-struct Foo {
-    value: i32
-}
-
-Foo{ value: 0 }; // ok!
 ```
 "##,
 
@@ -2673,10 +2643,11 @@ register_diagnostics! {
     E0127,
     E0129,
     E0141,
+//  E0159, // use of trait `{}` as struct constructor
     E0163,
     E0164,
     E0167,
-    E0168,
+//  E0168,
     E0173, // manual implementations of unboxed closure traits are experimental
     E0174, // explicit use of unboxed closure methods are experimental
     E0182,

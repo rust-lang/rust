@@ -526,40 +526,40 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
                                   etc: bool, expected: Ty<'tcx>) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
+    let report_nonstruct = || {
+        let name = pprust::path_to_string(path);
+        span_err!(tcx.sess, pat.span, E0163,
+                  "`{}` does not name a struct or a struct variant", name);
+        fcx.write_error(pat.id);
+
+        for field in fields {
+            check_pat(pcx, &field.node.pat, tcx.types.err);
+        }
+    };
 
     let def = tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
     let (adt_def, variant) = match def {
-        def::DefTrait(_) => {
-            let name = pprust::path_to_string(path);
-            span_err!(tcx.sess, pat.span, E0168,
-                "use of trait `{}` in a struct pattern", name);
-            fcx.write_error(pat.id);
-
-            for field in fields {
-                check_pat(pcx, &*field.node.pat, tcx.types.err);
-            }
-            return;
-        },
-        _ => {
-            let def_type = tcx.lookup_item_type(def.def_id());
-            match def_type.ty.sty {
+        def::DefTy(did, _) | def::DefStruct(did) => {
+            match tcx.lookup_item_type(did).ty.sty {
                 ty::TyStruct(struct_def, _) =>
                     (struct_def, struct_def.struct_variant()),
-                ty::TyEnum(enum_def, _)
-                    if def == def::DefVariant(enum_def.did, def.def_id(), true) =>
-                    (enum_def, enum_def.variant_of_def(def)),
                 _ => {
-                    let name = pprust::path_to_string(path);
-                    span_err!(tcx.sess, pat.span, E0163,
-                        "`{}` does not name a struct or a struct variant", name);
-                    fcx.write_error(pat.id);
-
-                    for field in fields {
-                        check_pat(pcx, &*field.node.pat, tcx.types.err);
-                    }
+                    report_nonstruct();
                     return;
                 }
             }
+        }
+        def::DefVariant(eid, vid, true) => {
+            match tcx.lookup_item_type(vid).ty.sty {
+                ty::TyEnum(enum_def, _) if enum_def.did == eid => {
+                    (enum_def, enum_def.variant_with_id(vid))
+                }
+                _ => tcx.sess.span_bug(pat.span, "variant's type is not its enum")
+            }
+        }
+        _ => {
+            report_nonstruct();
+            return;
         }
     };
 
