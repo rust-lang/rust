@@ -122,9 +122,9 @@ pub enum ImpliedBound<'tcx> {
     RegionSubProjection(ty::Region, ty::ProjectionTy<'tcx>),
 }
 
-/// This routine computes the full set of well-formedness constraints
-/// that must hold for the type `ty` to appear in a context with
-/// lifetime `outer_region`.
+/// Compute the implied bounds that a callee/impl can assume based on
+/// the fact that caller/projector has ensured that `ty` is WF.  See
+/// the `ImpliedBound` type for more details.
 pub fn implied_bounds<'a,'tcx>(
     infcx: &'a InferCtxt<'a,'tcx>,
     body_id: ast::NodeId,
