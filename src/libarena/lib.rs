@@ -362,38 +362,6 @@ impl<'longer_than_self> Arena<'longer_than_self> {
     }
 }
 
-#[test]
-fn test_arena_destructors() {
-    let arena = Arena::new();
-    for i in 0..10 {
-        // Arena allocate something with drop glue to make sure it
-        // doesn't leak.
-        arena.alloc(|| Rc::new(i));
-        // Allocate something with funny size and alignment, to keep
-        // things interesting.
-        arena.alloc(|| [0u8, 1u8, 2u8]);
-    }
-}
-
-#[test]
-#[should_panic]
-fn test_arena_destructors_fail() {
-    let arena = Arena::new();
-    // Put some stuff in the arena.
-    for i in 0..10 {
-        // Arena allocate something with drop glue to make sure it
-        // doesn't leak.
-        arena.alloc(|| Rc::new(i));
-        // Allocate something with funny size and alignment, to keep
-        // things interesting.
-        arena.alloc(|| [0u8, 1, 2]);
-    }
-    // Now, panic while allocating
-    arena.alloc::<Rc<i32>, _>(|| {
-        panic!();
-    });
-}
-
 /// A faster arena that can hold objects of only one type.
 pub struct TypedArena<T> {
     /// A pointer to the next object to be allocated.
@@ -693,40 +661,6 @@ mod tests {
         }
     }
 
-    #[bench]
-    pub fn bench_noncopy(b: &mut Bencher) {
-        let arena = TypedArena::new();
-        b.iter(|| {
-            arena.alloc(Noncopy {
-                string: "hello world".to_string(),
-                array: vec![1, 2, 3, 4, 5],
-            })
-        })
-    }
-
-    #[bench]
-    pub fn bench_noncopy_nonarena(b: &mut Bencher) {
-        b.iter(|| {
-            let _: Box<_> = Box::new(Noncopy {
-                string: "hello world".to_string(),
-                array: vec![1, 2, 3, 4, 5],
-            });
-        })
-    }
-
-    #[bench]
-    pub fn bench_noncopy_old_arena(b: &mut Bencher) {
-        let arena = Arena::new();
-        b.iter(|| {
-            arena.alloc(|| {
-                Noncopy {
-                    string: "hello world".to_string(),
-                    array: vec![1, 2, 3, 4, 5],
-                }
-            })
-        })
-    }
-
     #[test]
     pub fn test_typed_arena_zero_sized() {
         let arena = TypedArena::new();
@@ -797,5 +731,69 @@ mod tests {
                 *byte = i as u8;
             }
         }
+    }
+
+    #[test]
+    fn test_arena_destructors() {
+        let arena = Arena::new();
+        for i in 0..10 {
+            // Arena allocate something with drop glue to make sure it
+            // doesn't leak.
+            arena.alloc(|| Rc::new(i));
+            // Allocate something with funny size and alignment, to keep
+            // things interesting.
+            arena.alloc(|| [0u8, 1u8, 2u8]);
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_arena_destructors_fail() {
+        let arena = Arena::new();
+        // Put some stuff in the arena.
+        for i in 0..10 {
+            // Arena allocate something with drop glue to make sure it
+            // doesn't leak.
+            arena.alloc(|| { Rc::new(i) });
+            // Allocate something with funny size and alignment, to keep
+            // things interesting.
+            arena.alloc(|| { [0u8, 1, 2] });
+        }
+        // Now, panic while allocating
+        arena.alloc::<Rc<i32>, _>(|| {
+            panic!();
+        });
+    }
+
+    #[bench]
+    pub fn bench_noncopy(b: &mut Bencher) {
+        let arena = TypedArena::new();
+        b.iter(|| {
+            arena.alloc(Noncopy {
+                string: "hello world".to_string(),
+                array: vec!( 1, 2, 3, 4, 5 ),
+            })
+        })
+    }
+
+    #[bench]
+    pub fn bench_noncopy_nonarena(b: &mut Bencher) {
+        b.iter(|| {
+            let _: Box<_> = Box::new(Noncopy {
+                string: "hello world".to_string(),
+                array: vec!( 1, 2, 3, 4, 5 ),
+            });
+        })
+    }
+
+    #[bench]
+    pub fn bench_noncopy_old_arena(b: &mut Bencher) {
+        let arena = Arena::new();
+        b.iter(|| {
+            arena.alloc(|| Noncopy {
+                string: "hello world".to_string(),
+                array: vec!( 1, 2, 3, 4, 5 ),
+            })
+        })
     }
 }
