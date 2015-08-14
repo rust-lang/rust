@@ -30,3 +30,13 @@ pub struct RewriteContext<'a> {
     pub config: &'a Config,
     pub block_indent: usize,
 }
+
+impl<'a> RewriteContext<'a> {
+    pub fn nested_context(&self) -> RewriteContext<'a> {
+        RewriteContext {
+            codemap: self.codemap,
+            config: self.config,
+            block_indent: self.block_indent + self.config.tab_spaces,
+        }
+    }
+}

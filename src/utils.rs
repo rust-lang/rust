@@ -82,6 +82,25 @@ pub fn format_mutability(mutability: ast::Mutability) -> &'static str {
     }
 }
 
+// The width of the first line in s.
+#[inline]
+pub fn first_line_width(s: &str) -> usize {
+    match s.find('\n') {
+        Some(n) => n,
+        None => s.len(),
+    }
+}
+
+// The width of the last line in s.
+#[inline]
+pub fn last_line_width(s: &str) -> usize {
+    match s.rfind('\n') {
+        Some(n) => s.len() - n,
+        None => s.len(),
+    }
+}
+
+#[inline]
 fn is_skip(meta_item: &MetaItem) -> bool {
     match meta_item.node {
         MetaItem_::MetaWord(ref s) => *s == SKIP_ANNOTATION,
@@ -95,6 +114,7 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
 }
 
 // Find the end of a TyParam
+#[inline]
 pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
     typaram.bounds.last().map(|bound| match *bound {
         ast::RegionTyParamBound(ref lt) => lt.span,

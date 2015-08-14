@@ -12,7 +12,7 @@ use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
 use string::{StringFormat, rewrite_string};
 use StructLitStyle;
-use utils::{span_after, make_indent, extra_offset};
+use utils::{span_after, make_indent, extra_offset, first_line_width, last_line_width};
 use visitor::FmtVisitor;
 use config::BlockIndentStyle;
 use comment::{FindUncommented, rewrite_comment};
@@ -98,6 +98,9 @@ impl Rewrite for ast::Expr {
                               right.as_ref().map(|e| &**e),
                               width,
                               offset)
+            }
+            ast::Expr_::ExprMatch(ref cond, ref arms, _) => {
+                rewrite_match(context, cond, arms, width, offset)
             }
             ast::Expr_::ExprPath(ref qself, ref path) => {
                 rewrite_path(context, qself.as_ref(), path, width, offset)
@@ -301,6 +304,175 @@ fn rewrite_if_else(context: &RewriteContext,
     }
 
     Some(result)
+}
+
+fn rewrite_match(context: &RewriteContext,
+                 cond: &ast::Expr,
+                 arms: &[ast::Arm],
+                 width: usize,
+                 offset: usize)
+                 -> Option<String> {
+    // TODO comments etc. (I am somewhat surprised we don't need handling for these).
+
+    // `match `cond` {`
+    let cond_str = try_opt!(cond.rewrite(context, width - 8, offset + 6));
+    let mut result = format!("match {} {{", cond_str);
+
+    let block_indent = context.block_indent;
+    let nested_context = context.nested_context();
+    let arm_indent_str = make_indent(nested_context.block_indent);
+
+    for arm in arms {
+        result.push('\n');
+        result.push_str(&arm_indent_str);
+        result.push_str(&&try_opt!(arm.rewrite(&nested_context,
+                                               context.config.max_width -
+                                                   nested_context.block_indent,
+                                               nested_context.block_indent)));
+    }
+
+    result.push('\n');
+    result.push_str(&make_indent(block_indent));
+    result.push('}');
+    Some(result)
+}
+
+// Match arms.
+impl Rewrite for ast::Arm {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+        let &ast::Arm { ref attrs, ref pats, ref guard, ref body } = self;
+        let indent_str = make_indent(offset);
+
+        // TODO attrs
+
+        // Patterns
+        let pat_strs = pats.iter().map(|p| p.rewrite(context,
+                                                     // 5 = ` => {`
+                                                     width - 5,
+                                                     offset + context.config.tab_spaces)).collect::<Vec<_>>();
+        if pat_strs.iter().any(|p| p.is_none()) {
+            return None;
+        }
+        let pat_strs = pat_strs.into_iter().map(|p| p.unwrap()).collect::<Vec<_>>();
+                                  
+        let mut total_width = pat_strs.iter().fold(0, |a, p| a + p.len());
+        // Add ` | `.len().
+        total_width += (pat_strs.len() - 1) * 3;
+
+        let mut vertical = total_width > width - 5 || pat_strs.iter().any(|p| p.contains('\n'));
+        if !vertical {
+            // If the patterns were previously stacked, keep them stacked.
+            // FIXME should be an option.
+            let pat_span = mk_sp(pats[0].span.lo, pats[pats.len() - 1].span.hi);
+            let pat_str = context.codemap.span_to_snippet(pat_span).unwrap();
+            vertical = pat_str.find('\n').is_some();
+        }
+
+
+        let pats_width = if vertical {
+            pat_strs[pat_strs.len() - 1].len()
+        } else {
+            total_width
+        };
+
+        let mut pats_str = String::new();
+        for p in pat_strs {
+            if pats_str.len() > 0 {
+                if vertical {
+                    pats_str.push_str(" |\n");
+                    pats_str.push_str(&indent_str);
+                } else {
+                    pats_str.push_str(" | ");
+                }
+            }
+            pats_str.push_str(&p);
+        }
+
+        // TODO probably want to compute the guard width first, then the rest
+        // TODO also, only subtract the guard width from the last pattern.
+        // If guard.
+        let guard_str = try_opt!(rewrite_guard(context, guard, width, offset, pats_width));
+
+        let pats_str = format!("{}{}", pats_str, guard_str);
+        // Where the next text can start.
+        let mut line_start = last_line_width(&pats_str);
+        if pats_str.find('\n').is_none() {
+            line_start += offset;
+        }
+
+        let comma = if let ast::ExprBlock(_) = body.node {
+            String::new()
+        } else {
+            ",".to_owned()
+        };
+
+        // Let's try and get the arm body on the same line as the condition.
+        // 4 = ` => `.len()
+        if context.config.max_width > line_start + comma.len() + 4 {
+            let budget = context.config.max_width - line_start - comma.len() - 4;
+            if let Some(ref body_str) = body.rewrite(context,
+                                                     budget,
+                                                     offset + context.config.tab_spaces) {
+                if first_line_width(body_str) <= budget {
+                    return Some(format!("{} => {}{}", pats_str, body_str, comma));
+                }
+            }
+        }
+
+        // We have to push the body to the next line.
+        if comma.len() > 0 {
+            // We're trying to fit a block in, but it still failed, give up.
+            return None;
+        }
+
+        let body_str = try_opt!(body.rewrite(context,
+                                             width - context.config.tab_spaces,
+                                             offset + context.config.tab_spaces));
+        Some(format!("{} =>\n{}{}",
+                     pats_str,
+                     make_indent(offset + context.config.tab_spaces),
+                     body_str))
+    }
+}
+
+// The `if ...` guard on a match arm.
+fn rewrite_guard(context: &RewriteContext,
+                 guard: &Option<ptr::P<ast::Expr>>,
+                 width: usize,
+                 offset: usize,
+                 // The amount of space used up on this line for the pattern in
+                 // the arm.
+                 pattern_width: usize)
+                 -> Option<String> {
+    if let &Some(ref guard) = guard {
+        // 4 = ` if `, 5 = ` => {`
+        let overhead = pattern_width + 4 + 5;
+        if overhead < width {
+            let cond_str = guard.rewrite(context,
+                                         width - overhead,
+                                         offset + context.config.tab_spaces);
+            if let Some(cond_str) = cond_str {
+                return Some(format!(" if {}", cond_str));
+            }
+        }
+
+        // Not enough space to put the guard after the pattern, try a newline.
+        let overhead = context.config.tab_spaces + 4 + 5;
+        if overhead < width {
+            let cond_str = guard.rewrite(context,
+                                         width - overhead,
+                                         offset + context.config.tab_spaces);
+            if let Some(cond_str) = cond_str {
+                return Some(format!("\n{}if {}",
+                                    make_indent(offset + context.config.tab_spaces),
+                                    cond_str));
+            }
+        }
+
+        None
+    } else {
+        Some(String::new())
+    }
 }
 
 fn rewrite_pat_expr(context: &RewriteContext,
