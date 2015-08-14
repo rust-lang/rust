@@ -12,14 +12,14 @@ use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
 use string::{StringFormat, rewrite_string};
 use StructLitStyle;
-use utils::{span_after, make_indent};
+use utils::{span_after, make_indent, extra_offset};
 use visitor::FmtVisitor;
 use config::BlockIndentStyle;
 use comment::{FindUncommented, rewrite_comment};
+use types::rewrite_path;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{Pos, Span, BytePos, mk_sp};
-use syntax::print::pprust;
 use syntax::visit::Visitor;
 
 impl Rewrite for ast::Expr {
@@ -98,6 +98,9 @@ impl Rewrite for ast::Expr {
                               right.as_ref().map(|e| &**e),
                               width,
                               offset)
+            }
+            ast::Expr_::ExprPath(ref qself, ref path) => {
+                rewrite_path(context, qself.as_ref(), path, width, offset)
             }
             _ => context.codemap.span_to_snippet(self.span).ok()
         }
@@ -320,11 +323,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
     };
 
     // Consider only the last line of the pat string.
-    let extra_offset = match result.rfind('\n') {
-        // 1 for newline character
-        Some(idx) => result.len() - idx - 1 - offset,
-        None => result.len()
-    };
+    let extra_offset = extra_offset(&result, offset);
 
     // The expression may (partionally) fit on the current line.
     if width > extra_offset + 1 {
@@ -391,16 +390,19 @@ fn rewrite_call(context: &RewriteContext,
     debug!("rewrite_call, width: {}, offset: {}", width, offset);
 
     // TODO using byte lens instead of char lens (and probably all over the place too)
-    let callee_str = try_opt!(callee.rewrite(context, width, offset));
+    // 2 is for parens
+    let max_callee_width = try_opt!(width.checked_sub(2));
+    let callee_str = try_opt!(callee.rewrite(context, max_callee_width, offset));
     debug!("rewrite_call, callee_str: `{}`", callee_str);
 
     if args.len() == 0 {
         return Some(format!("{}()", callee_str));
     }
 
+    let extra_offset = extra_offset(&callee_str, offset);
     // 2 is for parens.
-    let remaining_width = try_opt!(width.checked_sub(callee_str.len() + 2));
-    let offset = callee_str.len() + 1 + offset;
+    let remaining_width = try_opt!(width.checked_sub(extra_offset + 2));
+    let offset = offset + extra_offset + 1;
     let block_indent = expr_block_indent(context, offset);
     let inner_context = &RewriteContext { block_indent: block_indent, ..*context };
 
@@ -425,7 +427,7 @@ fn rewrite_call(context: &RewriteContext,
         indent: offset,
         h_width: remaining_width,
         v_width: remaining_width,
-        ends_with_newline: true,
+        ends_with_newline: false,
     };
 
     Some(format!("{}({})", callee_str, write_list(&items, &fmt)))
@@ -468,7 +470,9 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         Base(&'a ast::Expr),
     }
 
-    let path_str = pprust::path_to_string(path);
+    // 2 = " {".len()
+    let path_str = try_opt!(path.rewrite(context, width - 2, offset));
+
     // Foo { a: Foo } - indent is +3, width is -5.
     let h_budget = width.checked_sub(path_str.len() + 5).unwrap_or(0);
     let (indent, v_budget) = match context.config.struct_lit_style {
@@ -537,7 +541,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         indent: indent,
         h_width: h_budget,
         v_width: v_budget,
-        ends_with_newline: true,
+        ends_with_newline: false,
     };
     let fields_str = write_list(&items, &fmt);
 
@@ -601,7 +605,7 @@ fn rewrite_tuple_lit(context: &RewriteContext,
         indent: indent,
         h_width: width - 2,
         v_width: width - 2,
-        ends_with_newline: true,
+        ends_with_newline: false,
     };
 
     Some(format!("({})", write_list(&items, &fmt)))

@@ -16,6 +16,8 @@ use utils::{format_mutability, format_visibility, make_indent, contains_skip, sp
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
 use comment::FindUncommented;
 use visitor::FmtVisitor;
+use rewrite::Rewrite;
+use config::Config;
 
 use syntax::{ast, abi};
 use syntax::codemap::{self, Span, BytePos};
@@ -215,6 +217,7 @@ impl<'a> FmtVisitor<'a> {
 
         // Where clause.
         result.push_str(&self.rewrite_where_clause(where_clause,
+                                                   self.config,
                                                    indent,
                                                    span.hi));
 
@@ -281,7 +284,7 @@ impl<'a> FmtVisitor<'a> {
             indent: arg_indent,
             h_width: one_line_budget,
             v_width: multi_line_budget,
-            ends_with_newline: true,
+            ends_with_newline: false,
         };
 
         write_list(&arg_items, &fmt)
@@ -429,7 +432,7 @@ impl<'a> FmtVisitor<'a> {
                         indent: indent,
                         h_width: budget,
                         v_width: budget,
-                        ends_with_newline: false,
+                        ends_with_newline: true,
                     };
                     result.push_str(&write_list(&items, &fmt));
                     result.push(')');
@@ -557,7 +560,7 @@ impl<'a> FmtVisitor<'a> {
             indent: offset + self.config.tab_spaces,
             h_width: self.config.max_width,
             v_width: budget,
-            ends_with_newline: false,
+            ends_with_newline: true,
         };
 
         result.push_str(&write_list(&items, &fmt));
@@ -608,6 +611,7 @@ impl<'a> FmtVisitor<'a> {
 
         if generics.where_clause.predicates.len() > 0 || result.contains('\n') {
             result.push_str(&self.rewrite_where_clause(&generics.where_clause,
+                                                       self.config,
                                                        self.block_indent,
                                                        span.hi));
             result.push_str(&make_indent(self.block_indent));
@@ -664,8 +668,15 @@ impl<'a> FmtVisitor<'a> {
         result.push('<');
 
         // Strings for the generics.
-        let lt_strs = lifetimes.iter().map(|l| self.rewrite_lifetime_def(l));
-        let ty_strs = tys.iter().map(|ty| self.rewrite_ty_param(ty));
+        // 1 = <
+        let context = self.get_context();
+        // FIXME: don't unwrap
+        let lt_strs = lifetimes.iter().map(|lt| {
+            lt.rewrite(&context, budget, offset + 1).unwrap()
+        });
+        let ty_strs = tys.iter().map(|ty_param| {
+            ty_param.rewrite(&context, budget, offset + 1).unwrap()
+        });
 
         // Extract comments between generics.
         let lt_spans = lifetimes.iter().map(|l| {
@@ -700,7 +711,7 @@ impl<'a> FmtVisitor<'a> {
             indent: offset + 1,
             h_width: budget,
             v_width: budget,
-            ends_with_newline: true,
+            ends_with_newline: false,
         };
         result.push_str(&write_list(&items, &fmt));
 
@@ -711,6 +722,7 @@ impl<'a> FmtVisitor<'a> {
 
     fn rewrite_where_clause(&self,
                             where_clause: &ast::WhereClause,
+                            config: &Config,
                             indent: usize,
                             span_end: BytePos)
                             -> String {
@@ -720,9 +732,13 @@ impl<'a> FmtVisitor<'a> {
         }
 
         result.push('\n');
-        result.push_str(&make_indent(indent + 4));
+        result.push_str(&make_indent(indent + config.tab_spaces));
         result.push_str("where ");
 
+        let context = self.get_context();
+        // 6 = "where ".len()
+        let offset = indent + config.tab_spaces + 6;
+        let budget = self.config.ideal_width + self.config.leeway - offset;
         let span_start = span_for_where_pred(&where_clause.predicates[0]).lo;
         let items = itemize_list(self.codemap,
                                  Vec::new(),
@@ -731,19 +747,21 @@ impl<'a> FmtVisitor<'a> {
                                  "{",
                                  |pred| span_for_where_pred(pred).lo,
                                  |pred| span_for_where_pred(pred).hi,
-                                 |pred| self.rewrite_pred(pred),
+                                 // FIXME: we should handle failure better
+                                 // this will be taken care of when write_list
+                                 // takes Rewrite object: see issue #133
+                                 |pred| pred.rewrite(&context, budget, offset).unwrap(),
                                  span_start,
                                  span_end);
 
-        let budget = self.config.ideal_width + self.config.leeway - indent - 10;
         let fmt = ListFormatting {
             tactic: ListTactic::Vertical,
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
-            indent: indent + 10,
+            indent: offset,
             h_width: budget,
             v_width: budget,
-            ends_with_newline: true,
+            ends_with_newline: false,
         };
         result.push_str(&write_list(&items, &fmt));
 

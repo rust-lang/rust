@@ -15,6 +15,16 @@ use comment::FindUncommented;
 
 use SKIP_ANNOTATION;
 
+// Computes the length of a string's last line, minus offset.
+#[inline]
+pub fn extra_offset(text: &str, offset: usize) -> usize {
+    match text.rfind('\n') {
+        // 1 for newline character
+        Some(idx) => text.len() - idx - 1 - offset,
+        None => text.len()
+    }
+}
+
 #[inline]
 pub fn span_after(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
     let snippet = codemap.span_to_snippet(original).unwrap();
