@@ -57,6 +57,104 @@ pub enum DefIdSource {
     ClosureSource
 }
 
+pub fn parse_ty_closure_data<'tcx, F>(data: &[u8],
+                                      crate_num: ast::CrateNum,
+                                      pos: usize,
+                                      tcx: &ty::ctxt<'tcx>,
+                                      mut conv: F)
+                                      -> ty::ClosureTy<'tcx> where
+    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
+{
+    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    st.parse_closure_ty()
+}
+
+pub fn parse_ty_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
+                              tcx: &ty::ctxt<'tcx>, mut conv: F) -> Ty<'tcx> where
+    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
+{
+    debug!("parse_ty_data {}", data_log_string(data, pos));
+    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    st.parse_ty()
+}
+
+pub fn parse_region_data<F>(data: &[u8], crate_num: ast::CrateNum, pos: usize, tcx: &ty::ctxt,
+                            mut conv: F) -> ty::Region where
+    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
+{
+    debug!("parse_region_data {}", data_log_string(data, pos));
+    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    st.parse_region()
+}
+
+pub fn parse_bare_fn_ty_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
+                                      tcx: &ty::ctxt<'tcx>, mut conv: F)
+                                      -> ty::BareFnTy<'tcx> where
+    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
+{
+    debug!("parse_bare_fn_ty_data {}", data_log_string(data, pos));
+    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    st.parse_bare_fn_ty()
+}
+
+pub fn parse_trait_ref_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
+                                     tcx: &ty::ctxt<'tcx>, mut conv: F)
+                                     -> ty::TraitRef<'tcx> where
+    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
+{
+    debug!("parse_trait_ref_data {}", data_log_string(data, pos));
+    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    st.parse_trait_ref()
+}
+
+pub fn parse_substs_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
+                                  tcx: &ty::ctxt<'tcx>, mut conv: F) -> subst::Substs<'tcx> where
+    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
+{
+    debug!("parse_substs_data{}", data_log_string(data, pos));
+    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    st.parse_substs()
+}
+
+pub fn parse_existential_bounds_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum,
+                                              pos: usize, tcx: &ty::ctxt<'tcx>, mut conv: F)
+                                              -> ty::ExistentialBounds<'tcx> where
+    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
+{
+    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    st.parse_existential_bounds()
+}
+
+pub fn parse_builtin_bounds_data<F>(data: &[u8], crate_num: ast::CrateNum,
+                                    pos: usize, tcx: &ty::ctxt, mut conv: F)
+                                    -> ty::BuiltinBounds where
+    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
+{
+    let mut st = PState::new(data, crate_num, pos, tcx, &mut conv);
+    st.parse_builtin_bounds()
+}
+
+pub fn parse_type_param_def_data<'tcx, F>(data: &[u8], start: usize,
+                                          crate_num: ast::CrateNum, tcx: &ty::ctxt<'tcx>,
+                                          mut conv: F) -> ty::TypeParameterDef<'tcx> where
+    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
+{
+    let mut st = PState::new(data, crate_num, start, tcx, &mut conv);
+    st.parse_type_param_def()
+}
+
+pub fn parse_predicate_data<'tcx, F>(data: &[u8],
+                                     start: usize,
+                                     crate_num: ast::CrateNum,
+                                     tcx: &ty::ctxt<'tcx>,
+                                     mut conv: F)
+                                     -> ty::Predicate<'tcx> where
+    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
+{
+    let mut st = PState::new(data, crate_num, start, tcx, &mut conv);
+    st.parse_predicate()
+}
+
 pub type DefIdConvert<'a> = &'a mut FnMut(DefIdSource, ast::DefId) -> ast::DefId;
 
 pub struct PState<'a, 'tcx: 'a> {
@@ -67,54 +165,606 @@ pub struct PState<'a, 'tcx: 'a> {
     conv_def_id: DefIdConvert<'a>,
 }
 
-fn peek(st: &PState) -> char {
-    st.data[st.pos] as char
-}
-
-fn next(st: &mut PState) -> char {
-    let ch = st.data[st.pos] as char;
-    st.pos = st.pos + 1;
-    return ch;
-}
-
-fn next_byte(st: &mut PState) -> u8 {
-    let b = st.data[st.pos];
-    st.pos = st.pos + 1;
-    return b;
-}
-
-fn scan<'a, 'tcx, F>(st: &mut PState<'a,'tcx>, mut is_last: F) -> &'a [u8] where
-    F: FnMut(char) -> bool,
-{
-    let start_pos = st.pos;
-    debug!("scan: '{}' (start)", st.data[st.pos] as char);
-    while !is_last(st.data[st.pos] as char) {
-        st.pos += 1;
-        debug!("scan: '{}'", st.data[st.pos] as char);
+impl<'a,'tcx> PState<'a,'tcx> {
+    pub fn new(data: &'a [u8],
+               crate_num: ast::CrateNum,
+               pos: usize,
+               tcx: &'a ty::ctxt<'tcx>,
+               conv: DefIdConvert<'a>)
+               -> PState<'a, 'tcx> {
+        PState {
+            data: data,
+            krate: crate_num,
+            pos: pos,
+            tcx: tcx,
+            conv_def_id: conv,
+        }
     }
-    let end_pos = st.pos;
-    st.pos += 1;
-    return &st.data[start_pos..end_pos];
-}
 
-pub fn parse_name(st: &mut PState, last: char) -> ast::Name {
-    fn is_last(b: char, c: char) -> bool { return c == b; }
-    let bytes = scan(st, |a| is_last(last, a));
-    token::intern(str::from_utf8(bytes).unwrap())
-}
+    fn peek(&self) -> char {
+        self.data[self.pos] as char
+    }
 
-pub fn parse_state_from_data<'a, 'tcx>(data: &'a [u8],
-                                       crate_num: ast::CrateNum,
-                                       pos: usize,
-                                       tcx: &'a ty::ctxt<'tcx>,
-                                       conv: DefIdConvert<'a>)
-                                       -> PState<'a, 'tcx> {
-    PState {
-        data: data,
-        krate: crate_num,
-        pos: pos,
-        tcx: tcx,
-        conv_def_id: conv,
+    fn next(&mut self) -> char {
+        let ch = self.data[self.pos] as char;
+        self.pos = self.pos + 1;
+        return ch;
+    }
+
+    fn next_byte(&mut self) -> u8 {
+        let b = self.data[self.pos];
+        self.pos = self.pos + 1;
+        return b;
+    }
+
+    fn scan<F>(&mut self, mut is_last: F) -> &'a [u8]
+        where F: FnMut(char) -> bool,
+    {
+        let start_pos = self.pos;
+        debug!("scan: '{}' (start)", self.data[self.pos] as char);
+        while !is_last(self.data[self.pos] as char) {
+            self.pos += 1;
+            debug!("scan: '{}'", self.data[self.pos] as char);
+        }
+        let end_pos = self.pos;
+        self.pos += 1;
+        return &self.data[start_pos..end_pos];
+    }
+
+    pub fn parse_name(&mut self, last: char) -> ast::Name {
+        fn is_last(b: char, c: char) -> bool { return c == b; }
+        let bytes = self.scan(|a| is_last(last, a));
+        token::intern(str::from_utf8(bytes).unwrap())
+    }
+
+    fn parse_size(&mut self) -> Option<usize> {
+        assert_eq!(self.next(), '/');
+
+        if self.peek() == '|' {
+            assert_eq!(self.next(), '|');
+            None
+        } else {
+            let n = self.parse_uint();
+            assert_eq!(self.next(), '|');
+            Some(n)
+        }
+    }
+
+    fn parse_vec_per_param_space<T, F>(&mut self, mut f: F) -> VecPerParamSpace<T> where
+        F: FnMut(&mut PState<'a, 'tcx>) -> T,
+    {
+        let mut r = VecPerParamSpace::empty();
+        for &space in &subst::ParamSpace::all() {
+            assert_eq!(self.next(), '[');
+            while self.peek() != ']' {
+                r.push(space, f(self));
+            }
+            assert_eq!(self.next(), ']');
+        }
+        r
+    }
+
+    fn parse_substs(&mut self) -> subst::Substs<'tcx> {
+        let regions = self.parse_region_substs();
+        let types = self.parse_vec_per_param_space(|this| this.parse_ty());
+        subst::Substs { types: types, regions: regions }
+    }
+
+    fn parse_region_substs(&mut self) -> subst::RegionSubsts {
+        match self.next() {
+            'e' => subst::ErasedRegions,
+            'n' => {
+                subst::NonerasedRegions(
+                    self.parse_vec_per_param_space(|this| this.parse_region()))
+            }
+            _ => panic!("parse_bound_region: bad input")
+        }
+    }
+
+    fn parse_bound_region(&mut self) -> ty::BoundRegion {
+        match self.next() {
+            'a' => {
+                let id = self.parse_u32();
+                assert_eq!(self.next(), '|');
+                ty::BrAnon(id)
+            }
+            '[' => {
+                let def = self.parse_def(RegionParameter);
+                let ident = token::str_to_ident(&self.parse_str(']'));
+                ty::BrNamed(def, ident.name)
+            }
+            'f' => {
+                let id = self.parse_u32();
+                assert_eq!(self.next(), '|');
+                ty::BrFresh(id)
+            }
+            'e' => ty::BrEnv,
+            _ => panic!("parse_bound_region: bad input")
+        }
+    }
+
+    fn parse_region(&mut self) -> ty::Region {
+        match self.next() {
+            'b' => {
+                assert_eq!(self.next(), '[');
+                let id = ty::DebruijnIndex::new(self.parse_u32());
+                assert_eq!(self.next(), '|');
+                let br = self.parse_bound_region();
+                assert_eq!(self.next(), ']');
+                ty::ReLateBound(id, br)
+            }
+            'B' => {
+                assert_eq!(self.next(), '[');
+                let node_id = self.parse_uint() as ast::NodeId;
+                assert_eq!(self.next(), '|');
+                let space = self.parse_param_space();
+                assert_eq!(self.next(), '|');
+                let index = self.parse_u32();
+                assert_eq!(self.next(), '|');
+                let nm = token::str_to_ident(&self.parse_str(']'));
+                ty::ReEarlyBound(ty::EarlyBoundRegion {
+                    param_id: node_id,
+                    space: space,
+                    index: index,
+                    name: nm.name
+                })
+            }
+            'f' => {
+                assert_eq!(self.next(), '[');
+                let scope = self.parse_destruction_scope_data();
+                assert_eq!(self.next(), '|');
+                let br = self.parse_bound_region();
+                assert_eq!(self.next(), ']');
+                ty::ReFree(ty::FreeRegion { scope: scope,
+                                            bound_region: br})
+            }
+            's' => {
+                let scope = self.parse_scope();
+                assert_eq!(self.next(), '|');
+                ty::ReScope(scope)
+            }
+            't' => {
+                ty::ReStatic
+            }
+            'e' => {
+                ty::ReStatic
+            }
+            _ => panic!("parse_region: bad input")
+        }
+    }
+
+    fn parse_scope(&mut self) -> region::CodeExtent {
+        match self.next() {
+            'P' => {
+                assert_eq!(self.next(), '[');
+                let fn_id = self.parse_uint() as ast::NodeId;
+                assert_eq!(self.next(), '|');
+                let body_id = self.parse_uint() as ast::NodeId;
+                assert_eq!(self.next(), ']');
+                region::CodeExtent::ParameterScope {
+                    fn_id: fn_id, body_id: body_id
+                }
+            }
+            'M' => {
+                let node_id = self.parse_uint() as ast::NodeId;
+                region::CodeExtent::Misc(node_id)
+            }
+            'D' => {
+                let node_id = self.parse_uint() as ast::NodeId;
+                region::CodeExtent::DestructionScope(node_id)
+            }
+            'B' => {
+                assert_eq!(self.next(), '[');
+                let node_id = self.parse_uint() as ast::NodeId;
+                assert_eq!(self.next(), '|');
+                let first_stmt_index = self.parse_uint();
+                assert_eq!(self.next(), ']');
+                let block_remainder = region::BlockRemainder {
+                    block: node_id, first_statement_index: first_stmt_index,
+                };
+                region::CodeExtent::Remainder(block_remainder)
+            }
+            _ => panic!("parse_scope: bad input")
+        }
+    }
+
+    fn parse_destruction_scope_data(&mut self) -> region::DestructionScopeData {
+        let node_id = self.parse_uint() as ast::NodeId;
+        region::DestructionScopeData::new(node_id)
+    }
+
+    fn parse_opt<T, F>(&mut self, f: F) -> Option<T>
+        where F: FnOnce(&mut PState<'a, 'tcx>) -> T,
+    {
+        match self.next() {
+            'n' => None,
+            's' => Some(f(self)),
+            _ => panic!("parse_opt: bad input")
+        }
+    }
+
+    fn parse_str(&mut self, term: char) -> String {
+        let mut result = String::new();
+        while self.peek() != term {
+            unsafe {
+                result.as_mut_vec().push_all(&[self.next_byte()])
+            }
+        }
+        self.next();
+        result
+    }
+
+    fn parse_trait_ref(&mut self) -> ty::TraitRef<'tcx> {
+        let def = self.parse_def(NominalType);
+        let substs = self.tcx.mk_substs(self.parse_substs());
+        ty::TraitRef {def_id: def, substs: substs}
+    }
+
+    fn parse_ty(&mut self) -> Ty<'tcx> {
+        let tcx = self.tcx;
+        match self.next() {
+            'b' => return tcx.types.bool,
+            'i' => { /* eat the s of is */ self.next(); return tcx.types.isize },
+            'u' => { /* eat the s of us */ self.next(); return tcx.types.usize },
+            'M' => {
+                match self.next() {
+                    'b' => return tcx.types.u8,
+                    'w' => return tcx.types.u16,
+                    'l' => return tcx.types.u32,
+                    'd' => return tcx.types.u64,
+                    'B' => return tcx.types.i8,
+                    'W' => return tcx.types.i16,
+                    'L' => return tcx.types.i32,
+                    'D' => return tcx.types.i64,
+                    'f' => return tcx.types.f32,
+                    'F' => return tcx.types.f64,
+                    _ => panic!("parse_ty: bad numeric type")
+                }
+            }
+            'c' => return tcx.types.char,
+            't' => {
+                assert_eq!(self.next(), '[');
+                let did = self.parse_def(NominalType);
+                let substs = self.parse_substs();
+                assert_eq!(self.next(), ']');
+                let def = self.tcx.lookup_adt_def(did);
+                return tcx.mk_enum(def, self.tcx.mk_substs(substs));
+            }
+            'x' => {
+                assert_eq!(self.next(), '[');
+                let trait_ref = ty::Binder(self.parse_trait_ref());
+                let bounds = self.parse_existential_bounds();
+                assert_eq!(self.next(), ']');
+                return tcx.mk_trait(trait_ref, bounds);
+            }
+            'p' => {
+                assert_eq!(self.next(), '[');
+                let index = self.parse_u32();
+                assert_eq!(self.next(), '|');
+                let space = self.parse_param_space();
+                assert_eq!(self.next(), '|');
+                let name = token::intern(&self.parse_str(']'));
+                return tcx.mk_param(space, index, name);
+            }
+            '~' => return tcx.mk_box(self.parse_ty()),
+            '*' => return tcx.mk_ptr(self.parse_mt()),
+            '&' => {
+                let r = self.parse_region();
+                let mt = self.parse_mt();
+                return tcx.mk_ref(tcx.mk_region(r), mt);
+            }
+            'V' => {
+                let t = self.parse_ty();
+                return match self.parse_size() {
+                    Some(n) => tcx.mk_array(t, n),
+                    None => tcx.mk_slice(t)
+                };
+            }
+            'v' => {
+                return tcx.mk_str();
+            }
+            'T' => {
+                assert_eq!(self.next(), '[');
+                let mut params = Vec::new();
+                while self.peek() != ']' { params.push(self.parse_ty()); }
+                self.pos = self.pos + 1;
+                return tcx.mk_tup(params);
+            }
+            'F' => {
+                let def_id = self.parse_def(NominalType);
+                return tcx.mk_fn(Some(def_id), tcx.mk_bare_fn(self.parse_bare_fn_ty()));
+            }
+            'G' => {
+                return tcx.mk_fn(None, tcx.mk_bare_fn(self.parse_bare_fn_ty()));
+            }
+            '#' => {
+                // This is a hacky little caching scheme. The idea is that if we encode
+                // the same type twice, the second (and third, and fourth...) time we will
+                // just write `#123`, where `123` is the offset in the metadata of the
+                // first appearance. Now when we are *decoding*, if we see a `#123`, we
+                // can first check a cache (`tcx.rcache`) for that offset. If we find something,
+                // we return it (modulo closure types, see below). But if not, then we
+                // jump to offset 123 and read the type from there.
+
+                let pos = self.parse_hex();
+                assert_eq!(self.next(), ':');
+                let len = self.parse_hex();
+                assert_eq!(self.next(), '#');
+                let key = ty::CReaderCacheKey {cnum: self.krate, pos: pos, len: len };
+                match tcx.rcache.borrow().get(&key).cloned() {
+                    Some(tt) => {
+                        // If there is a closure buried in the type some where, then we
+                        // need to re-convert any def ids (see case 'k', below). That means
+                        // we can't reuse the cached version.
+                        if !tt.has_closure_types() {
+                            return tt;
+                        }
+                    }
+                    None => {}
+                }
+
+                let mut substate = PState::new(self.data,
+                                               self.krate,
+                                               pos,
+                                               self.tcx,
+                                               self.conv_def_id);
+                let tt = substate.parse_ty();
+                tcx.rcache.borrow_mut().insert(key, tt);
+                return tt;
+            }
+            '\"' => {
+                let _ = self.parse_def(TypeWithId);
+                let inner = self.parse_ty();
+                inner
+            }
+            'a' => {
+                assert_eq!(self.next(), '[');
+                let did = self.parse_def(NominalType);
+                let substs = self.parse_substs();
+                assert_eq!(self.next(), ']');
+                let def = self.tcx.lookup_adt_def(did);
+                return self.tcx.mk_struct(def, self.tcx.mk_substs(substs));
+            }
+            'k' => {
+                assert_eq!(self.next(), '[');
+                let did = self.parse_def(ClosureSource);
+                let substs = self.parse_substs();
+                let mut tys = vec![];
+                while self.peek() != '.' {
+                    tys.push(self.parse_ty());
+                }
+                assert_eq!(self.next(), '.');
+                assert_eq!(self.next(), ']');
+                return self.tcx.mk_closure(did, self.tcx.mk_substs(substs), tys);
+            }
+            'P' => {
+                assert_eq!(self.next(), '[');
+                let trait_ref = self.parse_trait_ref();
+                let name = token::intern(&self.parse_str(']'));
+                return tcx.mk_projection(trait_ref, name);
+            }
+            'e' => {
+                return tcx.types.err;
+            }
+            c => { panic!("unexpected char in type string: {}", c);}
+        }
+    }
+
+    fn parse_mutability(&mut self) -> ast::Mutability {
+        match self.peek() {
+            'm' => { self.next(); ast::MutMutable }
+            _ => { ast::MutImmutable }
+        }
+    }
+
+    fn parse_mt(&mut self) -> ty::TypeAndMut<'tcx> {
+        let m = self.parse_mutability();
+        ty::TypeAndMut { ty: self.parse_ty(), mutbl: m }
+    }
+
+    fn parse_def(&mut self, source: DefIdSource) -> ast::DefId {
+        let def_id = parse_defid(self.scan(|c| c == '|'));
+        return (self.conv_def_id)(source, def_id);
+    }
+
+    fn parse_uint(&mut self) -> usize {
+        let mut n = 0;
+        loop {
+            let cur = self.peek();
+            if cur < '0' || cur > '9' { return n; }
+            self.pos = self.pos + 1;
+            n *= 10;
+            n += (cur as usize) - ('0' as usize);
+        };
+    }
+
+    fn parse_u32(&mut self) -> u32 {
+        let n = self.parse_uint();
+        let m = n as u32;
+        assert_eq!(m as usize, n);
+        m
+    }
+
+    fn parse_param_space(&mut self) -> subst::ParamSpace {
+        subst::ParamSpace::from_uint(self.parse_uint())
+    }
+
+    fn parse_hex(&mut self) -> usize {
+        let mut n = 0;
+        loop {
+            let cur = self.peek();
+            if (cur < '0' || cur > '9') && (cur < 'a' || cur > 'f') { return n; }
+            self.pos = self.pos + 1;
+            n *= 16;
+            if '0' <= cur && cur <= '9' {
+                n += (cur as usize) - ('0' as usize);
+            } else { n += 10 + (cur as usize) - ('a' as usize); }
+        };
+    }
+
+    fn parse_abi_set(&mut self) -> abi::Abi {
+        assert_eq!(self.next(), '[');
+        let bytes = self.scan(|c| c == ']');
+        let abi_str = str::from_utf8(bytes).unwrap();
+        abi::lookup(&abi_str[..]).expect(abi_str)
+    }
+
+    fn parse_closure_ty(&mut self) -> ty::ClosureTy<'tcx> {
+        let unsafety = parse_unsafety(self.next());
+        let sig = self.parse_sig();
+        let abi = self.parse_abi_set();
+        ty::ClosureTy {
+            unsafety: unsafety,
+            sig: sig,
+            abi: abi,
+        }
+    }
+
+    fn parse_bare_fn_ty(&mut self) -> ty::BareFnTy<'tcx> {
+        let unsafety = parse_unsafety(self.next());
+        let abi = self.parse_abi_set();
+        let sig = self.parse_sig();
+        ty::BareFnTy {
+            unsafety: unsafety,
+            abi: abi,
+            sig: sig
+        }
+    }
+
+    fn parse_sig(&mut self) -> ty::PolyFnSig<'tcx> {
+        assert_eq!(self.next(), '[');
+        let mut inputs = Vec::new();
+        while self.peek() != ']' {
+            inputs.push(self.parse_ty());
+        }
+        self.pos += 1; // eat the ']'
+        let variadic = match self.next() {
+            'V' => true,
+            'N' => false,
+            r => panic!(format!("bad variadic: {}", r)),
+        };
+        let output = match self.peek() {
+            'z' => {
+                self.pos += 1;
+                ty::FnDiverging
+            }
+            _ => ty::FnConverging(self.parse_ty())
+        };
+        ty::Binder(ty::FnSig {inputs: inputs,
+                              output: output,
+                              variadic: variadic})
+    }
+
+    pub fn parse_predicate(&mut self) -> ty::Predicate<'tcx> {
+        match self.next() {
+            't' => ty::Binder(self.parse_trait_ref()).to_predicate(),
+            'e' => ty::Binder(ty::EquatePredicate(self.parse_ty(),
+                                                  self.parse_ty())).to_predicate(),
+            'r' => ty::Binder(ty::OutlivesPredicate(self.parse_region(),
+                                                    self.parse_region())).to_predicate(),
+            'o' => ty::Binder(ty::OutlivesPredicate(self.parse_ty(),
+                                                    self.parse_region())).to_predicate(),
+            'p' => ty::Binder(self.parse_projection_predicate()).to_predicate(),
+            'w' => ty::Predicate::WellFormed(self.parse_ty()),
+            'O' => {
+                let def_id = self.parse_def(NominalType);
+                assert_eq!(self.next(), '|');
+                ty::Predicate::ObjectSafe(def_id)
+            }
+            c => panic!("Encountered invalid character in metadata: {}", c)
+        }
+    }
+
+    fn parse_projection_predicate(&mut self) -> ty::ProjectionPredicate<'tcx> {
+        ty::ProjectionPredicate {
+            projection_ty: ty::ProjectionTy {
+                trait_ref: self.parse_trait_ref(),
+                item_name: token::str_to_ident(&self.parse_str('|')).name,
+            },
+            ty: self.parse_ty(),
+        }
+    }
+
+    fn parse_type_param_def(&mut self) -> ty::TypeParameterDef<'tcx> {
+        let name = self.parse_name(':');
+        let def_id = self.parse_def(NominalType);
+        let space = self.parse_param_space();
+        assert_eq!(self.next(), '|');
+        let index = self.parse_u32();
+        assert_eq!(self.next(), '|');
+        let default_def_id = self.parse_def(NominalType);
+        let default = self.parse_opt(|this| this.parse_ty());
+        let object_lifetime_default = self.parse_object_lifetime_default();
+
+        ty::TypeParameterDef {
+            name: name,
+            def_id: def_id,
+            space: space,
+            index: index,
+            default_def_id: default_def_id,
+            default: default,
+            object_lifetime_default: object_lifetime_default,
+        }
+    }
+
+    fn parse_object_lifetime_default(&mut self) -> ty::ObjectLifetimeDefault {
+        match self.next() {
+            'a' => ty::ObjectLifetimeDefault::Ambiguous,
+            'b' => ty::ObjectLifetimeDefault::BaseDefault,
+            's' => {
+                let region = self.parse_region();
+                ty::ObjectLifetimeDefault::Specific(region)
+            }
+            _ => panic!("parse_object_lifetime_default: bad input")
+        }
+    }
+
+    fn parse_existential_bounds(&mut self) -> ty::ExistentialBounds<'tcx> {
+        let builtin_bounds = self.parse_builtin_bounds();
+        let region_bound = self.parse_region();
+        let mut projection_bounds = Vec::new();
+
+        loop {
+            match self.next() {
+                'P' => {
+                    projection_bounds.push(ty::Binder(self.parse_projection_predicate()));
+                }
+                '.' => { break; }
+                c => {
+                    panic!("parse_bounds: bad bounds ('{}')", c)
+                }
+            }
+        }
+
+        return ty::ExistentialBounds { region_bound: region_bound,
+                                       builtin_bounds: builtin_bounds,
+                                       projection_bounds: projection_bounds };
+    }
+
+    fn parse_builtin_bounds(&mut self) -> ty::BuiltinBounds {
+        let mut builtin_bounds = ty::BuiltinBounds::empty();
+        loop {
+            match self.next() {
+                'S' => {
+                    builtin_bounds.insert(ty::BoundSend);
+                }
+                'Z' => {
+                    builtin_bounds.insert(ty::BoundSized);
+                }
+                'P' => {
+                    builtin_bounds.insert(ty::BoundCopy);
+                }
+                'T' => {
+                    builtin_bounds.insert(ty::BoundSync);
+                }
+                '.' => {
+                    return builtin_bounds;
+                }
+                c => {
+                    panic!("parse_bounds: bad builtin bounds ('{}')", c)
+                }
+            }
+        }
     }
 }
 
@@ -133,535 +783,6 @@ fn data_log_string(data: &[u8], pos: usize) -> String {
     buf
 }
 
-pub fn parse_ty_closure_data<'tcx, F>(data: &[u8],
-                                      crate_num: ast::CrateNum,
-                                      pos: usize,
-                                      tcx: &ty::ctxt<'tcx>,
-                                      mut conv: F)
-                                      -> ty::ClosureTy<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let mut st = parse_state_from_data(data, crate_num, pos, tcx, &mut conv);
-    parse_closure_ty(&mut st)
-}
-
-pub fn parse_ty_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
-                              tcx: &ty::ctxt<'tcx>, mut conv: F) -> Ty<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    debug!("parse_ty_data {}", data_log_string(data, pos));
-    let mut st = parse_state_from_data(data, crate_num, pos, tcx, &mut conv);
-    parse_ty(&mut st)
-}
-
-pub fn parse_region_data<F>(data: &[u8], crate_num: ast::CrateNum, pos: usize, tcx: &ty::ctxt,
-                            mut conv: F) -> ty::Region where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    debug!("parse_region_data {}", data_log_string(data, pos));
-    let mut st = parse_state_from_data(data, crate_num, pos, tcx, &mut conv);
-    parse_region(&mut st)
-}
-
-pub fn parse_bare_fn_ty_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
-                                      tcx: &ty::ctxt<'tcx>, mut conv: F)
-                                      -> ty::BareFnTy<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    debug!("parse_bare_fn_ty_data {}", data_log_string(data, pos));
-    let mut st = parse_state_from_data(data, crate_num, pos, tcx, &mut conv);
-    parse_bare_fn_ty(&mut st)
-}
-
-pub fn parse_trait_ref_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
-                                     tcx: &ty::ctxt<'tcx>, mut conv: F)
-                                     -> ty::TraitRef<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    debug!("parse_trait_ref_data {}", data_log_string(data, pos));
-    let mut st = parse_state_from_data(data, crate_num, pos, tcx, &mut conv);
-    parse_trait_ref(&mut st)
-}
-
-pub fn parse_substs_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
-                                  tcx: &ty::ctxt<'tcx>, mut conv: F) -> subst::Substs<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    debug!("parse_substs_data{}", data_log_string(data, pos));
-    let mut st = parse_state_from_data(data, crate_num, pos, tcx, &mut conv);
-    parse_substs(&mut st)
-}
-
-pub fn parse_existential_bounds_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum,
-                                              pos: usize, tcx: &ty::ctxt<'tcx>, mut conv: F)
-                                              -> ty::ExistentialBounds<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let mut st = parse_state_from_data(data, crate_num, pos, tcx, &mut conv);
-    parse_existential_bounds(&mut st)
-}
-
-pub fn parse_builtin_bounds_data<F>(data: &[u8], crate_num: ast::CrateNum,
-                                    pos: usize, tcx: &ty::ctxt, mut conv: F)
-                                    -> ty::BuiltinBounds where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let mut st = parse_state_from_data(data, crate_num, pos, tcx, &mut conv);
-    parse_builtin_bounds(&mut st)
-}
-
-fn parse_size(st: &mut PState) -> Option<usize> {
-    assert_eq!(next(st), '/');
-
-    if peek(st) == '|' {
-        assert_eq!(next(st), '|');
-        None
-    } else {
-        let n = parse_uint(st);
-        assert_eq!(next(st), '|');
-        Some(n)
-    }
-}
-
-fn parse_vec_per_param_space<'a, 'tcx, T, F>(st: &mut PState<'a, 'tcx>,
-                                             mut f: F)
-                                             -> VecPerParamSpace<T> where
-    F: FnMut(&mut PState<'a, 'tcx>) -> T,
-{
-    let mut r = VecPerParamSpace::empty();
-    for &space in &subst::ParamSpace::all() {
-        assert_eq!(next(st), '[');
-        while peek(st) != ']' {
-            r.push(space, f(st));
-        }
-        assert_eq!(next(st), ']');
-    }
-    r
-}
-
-fn parse_substs<'a, 'tcx>(st: &mut PState<'a, 'tcx>) -> subst::Substs<'tcx> {
-    let regions = parse_region_substs(st);
-    let types = parse_vec_per_param_space(st, |st| parse_ty(st));
-    subst::Substs { types: types, regions: regions }
-}
-
-fn parse_region_substs(st: &mut PState) -> subst::RegionSubsts {
-    match next(st) {
-        'e' => subst::ErasedRegions,
-        'n' => {
-            subst::NonerasedRegions(
-                parse_vec_per_param_space(
-                    st, |st| parse_region(st)))
-        }
-        _ => panic!("parse_bound_region: bad input")
-    }
-}
-
-fn parse_bound_region(st: &mut PState) -> ty::BoundRegion {
-    match next(st) {
-        'a' => {
-            let id = parse_u32(st);
-            assert_eq!(next(st), '|');
-            ty::BrAnon(id)
-        }
-        '[' => {
-            let def = parse_def(st, RegionParameter);
-            let ident = token::str_to_ident(&parse_str(st, ']'));
-            ty::BrNamed(def, ident.name)
-        }
-        'f' => {
-            let id = parse_u32(st);
-            assert_eq!(next(st), '|');
-            ty::BrFresh(id)
-        }
-        'e' => ty::BrEnv,
-        _ => panic!("parse_bound_region: bad input")
-    }
-}
-
-fn parse_region(st: &mut PState) -> ty::Region {
-    match next(st) {
-      'b' => {
-        assert_eq!(next(st), '[');
-        let id = ty::DebruijnIndex::new(parse_u32(st));
-        assert_eq!(next(st), '|');
-        let br = parse_bound_region(st);
-        assert_eq!(next(st), ']');
-        ty::ReLateBound(id, br)
-      }
-      'B' => {
-        assert_eq!(next(st), '[');
-        let node_id = parse_uint(st) as ast::NodeId;
-        assert_eq!(next(st), '|');
-        let space = parse_param_space(st);
-        assert_eq!(next(st), '|');
-        let index = parse_u32(st);
-        assert_eq!(next(st), '|');
-        let nm = token::str_to_ident(&parse_str(st, ']'));
-        ty::ReEarlyBound(ty::EarlyBoundRegion {
-            param_id: node_id,
-            space: space,
-            index: index,
-            name: nm.name
-        })
-      }
-      'f' => {
-        assert_eq!(next(st), '[');
-        let scope = parse_destruction_scope_data(st);
-        assert_eq!(next(st), '|');
-        let br = parse_bound_region(st);
-        assert_eq!(next(st), ']');
-        ty::ReFree(ty::FreeRegion { scope: scope,
-                                    bound_region: br})
-      }
-      's' => {
-        let scope = parse_scope(st);
-        assert_eq!(next(st), '|');
-        ty::ReScope(scope)
-      }
-      't' => {
-        ty::ReStatic
-      }
-      'e' => {
-        ty::ReStatic
-      }
-      _ => panic!("parse_region: bad input")
-    }
-}
-
-fn parse_scope(st: &mut PState) -> region::CodeExtent {
-    match next(st) {
-        'P' => {
-            assert_eq!(next(st), '[');
-            let fn_id = parse_uint(st) as ast::NodeId;
-            assert_eq!(next(st), '|');
-            let body_id = parse_uint(st) as ast::NodeId;
-            assert_eq!(next(st), ']');
-            region::CodeExtent::ParameterScope {
-                fn_id: fn_id, body_id: body_id
-            }
-        }
-        'M' => {
-            let node_id = parse_uint(st) as ast::NodeId;
-            region::CodeExtent::Misc(node_id)
-        }
-        'D' => {
-            let node_id = parse_uint(st) as ast::NodeId;
-            region::CodeExtent::DestructionScope(node_id)
-        }
-        'B' => {
-            assert_eq!(next(st), '[');
-            let node_id = parse_uint(st) as ast::NodeId;
-            assert_eq!(next(st), '|');
-            let first_stmt_index = parse_uint(st);
-            assert_eq!(next(st), ']');
-            let block_remainder = region::BlockRemainder {
-                block: node_id, first_statement_index: first_stmt_index,
-            };
-            region::CodeExtent::Remainder(block_remainder)
-        }
-        _ => panic!("parse_scope: bad input")
-    }
-}
-
-fn parse_destruction_scope_data(st: &mut PState) -> region::DestructionScopeData {
-    let node_id = parse_uint(st) as ast::NodeId;
-    region::DestructionScopeData::new(node_id)
-}
-
-fn parse_opt<'a, 'tcx, T, F>(st: &mut PState<'a, 'tcx>, f: F) -> Option<T> where
-    F: FnOnce(&mut PState<'a, 'tcx>) -> T,
-{
-    match next(st) {
-      'n' => None,
-      's' => Some(f(st)),
-      _ => panic!("parse_opt: bad input")
-    }
-}
-
-fn parse_str(st: &mut PState, term: char) -> String {
-    let mut result = String::new();
-    while peek(st) != term {
-        unsafe {
-            result.as_mut_vec().push_all(&[next_byte(st)])
-        }
-    }
-    next(st);
-    result
-}
-
-fn parse_trait_ref<'a, 'tcx>(st: &mut PState<'a, 'tcx>) -> ty::TraitRef<'tcx> {
-    let def = parse_def(st, NominalType);
-    let substs = st.tcx.mk_substs(parse_substs(st));
-    ty::TraitRef {def_id: def, substs: substs}
-}
-
-fn parse_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>) -> Ty<'tcx> {
-    let tcx = st.tcx;
-    match next(st) {
-      'b' => return tcx.types.bool,
-      'i' => { /* eat the s of is */ next(st); return tcx.types.isize },
-      'u' => { /* eat the s of us */ next(st); return tcx.types.usize },
-      'M' => {
-        match next(st) {
-          'b' => return tcx.types.u8,
-          'w' => return tcx.types.u16,
-          'l' => return tcx.types.u32,
-          'd' => return tcx.types.u64,
-          'B' => return tcx.types.i8,
-          'W' => return tcx.types.i16,
-          'L' => return tcx.types.i32,
-          'D' => return tcx.types.i64,
-          'f' => return tcx.types.f32,
-          'F' => return tcx.types.f64,
-          _ => panic!("parse_ty: bad numeric type")
-        }
-      }
-      'c' => return tcx.types.char,
-      't' => {
-        assert_eq!(next(st), '[');
-        let did = parse_def(st, NominalType);
-        let substs = parse_substs(st);
-        assert_eq!(next(st), ']');
-        let def = st.tcx.lookup_adt_def(did);
-        return tcx.mk_enum(def, st.tcx.mk_substs(substs));
-      }
-      'x' => {
-        assert_eq!(next(st), '[');
-        let trait_ref = ty::Binder(parse_trait_ref(st));
-        let bounds = parse_existential_bounds(st);
-        assert_eq!(next(st), ']');
-        return tcx.mk_trait(trait_ref, bounds);
-      }
-      'p' => {
-        assert_eq!(next(st), '[');
-        let index = parse_u32(st);
-        assert_eq!(next(st), '|');
-        let space = parse_param_space(st);
-        assert_eq!(next(st), '|');
-        let name = token::intern(&parse_str(st, ']'));
-        return tcx.mk_param(space, index, name);
-      }
-      '~' => return tcx.mk_box(parse_ty(st)),
-      '*' => return tcx.mk_ptr(parse_mt(st)),
-      '&' => {
-        let r = parse_region(st);
-        let mt = parse_mt(st);
-        return tcx.mk_ref(tcx.mk_region(r), mt);
-      }
-      'V' => {
-        let t = parse_ty(st);
-        return match parse_size(st) {
-            Some(n) => tcx.mk_array(t, n),
-            None => tcx.mk_slice(t)
-        };
-      }
-      'v' => {
-        return tcx.mk_str();
-      }
-      'T' => {
-        assert_eq!(next(st), '[');
-        let mut params = Vec::new();
-        while peek(st) != ']' { params.push(parse_ty(st)); }
-        st.pos = st.pos + 1;
-        return tcx.mk_tup(params);
-      }
-      'F' => {
-          let def_id = parse_def(st, NominalType);
-          return tcx.mk_fn(Some(def_id), tcx.mk_bare_fn(parse_bare_fn_ty(st)));
-      }
-      'G' => {
-          return tcx.mk_fn(None, tcx.mk_bare_fn(parse_bare_fn_ty(st)));
-      }
-      '#' => {
-        // This is a hacky little caching scheme. The idea is that if we encode
-        // the same type twice, the second (and third, and fourth...) time we will
-        // just write `#123`, where `123` is the offset in the metadata of the
-        // first appearance. Now when we are *decoding*, if we see a `#123`, we
-        // can first check a cache (`tcx.rcache`) for that offset. If we find something,
-        // we return it (modulo closure types, see below). But if not, then we
-        // jump to offset 123 and read the type from there.
-
-        let pos = parse_hex(st);
-        assert_eq!(next(st), ':');
-        let len = parse_hex(st);
-        assert_eq!(next(st), '#');
-        let key = ty::CReaderCacheKey {cnum: st.krate, pos: pos, len: len };
-        match tcx.rcache.borrow().get(&key).cloned() {
-          Some(tt) => {
-            // If there is a closure buried in the type some where, then we
-            // need to re-convert any def ids (see case 'k', below). That means
-            // we can't reuse the cached version.
-            if !tt.has_closure_types() {
-                return tt;
-            }
-          }
-          None => {}
-        }
-
-        let mut ps = PState {
-            pos: pos,
-            conv_def_id: st.conv_def_id, // -+ Have to call out these fields specifically,
-            tcx: st.tcx,                 //  | rather than writing `..*st`, so that we
-            data: st.data,               //  | trigger reborrow coercions. Suboptimal,
-            krate: st.krate,             // -+ I suppose.
-        };
-
-        let tt = parse_ty(&mut ps);
-        tcx.rcache.borrow_mut().insert(key, tt);
-        return tt;
-      }
-      '\"' => {
-        let _ = parse_def(st, TypeWithId);
-        let inner = parse_ty(st);
-        inner
-      }
-      'a' => {
-          assert_eq!(next(st), '[');
-          let did = parse_def(st, NominalType);
-          let substs = parse_substs(st);
-          assert_eq!(next(st), ']');
-          let def = st.tcx.lookup_adt_def(did);
-          return st.tcx.mk_struct(def, st.tcx.mk_substs(substs));
-      }
-      'k' => {
-          assert_eq!(next(st), '[');
-          let did = parse_def(st, ClosureSource);
-          let substs = parse_substs(st);
-          let mut tys = vec![];
-          while peek(st) != '.' {
-              tys.push(parse_ty(st));
-          }
-          assert_eq!(next(st), '.');
-          assert_eq!(next(st), ']');
-          return st.tcx.mk_closure(did, st.tcx.mk_substs(substs), tys);
-      }
-      'P' => {
-          assert_eq!(next(st), '[');
-          let trait_ref = parse_trait_ref(st);
-          let name = token::intern(&parse_str(st, ']'));
-          return tcx.mk_projection(trait_ref, name);
-      }
-      'e' => {
-          return tcx.types.err;
-      }
-      c => { panic!("unexpected char in type string: {}", c);}
-    }
-}
-
-fn parse_mutability(st: &mut PState) -> ast::Mutability {
-    match peek(st) {
-      'm' => { next(st); ast::MutMutable }
-      _ => { ast::MutImmutable }
-    }
-}
-
-fn parse_mt<'a, 'tcx>(st: &mut PState<'a, 'tcx>) -> ty::TypeAndMut<'tcx> {
-    let m = parse_mutability(st);
-    ty::TypeAndMut { ty: parse_ty(st), mutbl: m }
-}
-
-fn parse_def(st: &mut PState, source: DefIdSource) -> ast::DefId {
-    let def_id = parse_defid(scan(st, |c| c == '|'));
-    return (st.conv_def_id)(source, def_id);
-}
-
-fn parse_uint(st: &mut PState) -> usize {
-    let mut n = 0;
-    loop {
-        let cur = peek(st);
-        if cur < '0' || cur > '9' { return n; }
-        st.pos = st.pos + 1;
-        n *= 10;
-        n += (cur as usize) - ('0' as usize);
-    };
-}
-
-fn parse_u32(st: &mut PState) -> u32 {
-    let n = parse_uint(st);
-    let m = n as u32;
-    assert_eq!(m as usize, n);
-    m
-}
-
-fn parse_param_space(st: &mut PState) -> subst::ParamSpace {
-    subst::ParamSpace::from_uint(parse_uint(st))
-}
-
-fn parse_hex(st: &mut PState) -> usize {
-    let mut n = 0;
-    loop {
-        let cur = peek(st);
-        if (cur < '0' || cur > '9') && (cur < 'a' || cur > 'f') { return n; }
-        st.pos = st.pos + 1;
-        n *= 16;
-        if '0' <= cur && cur <= '9' {
-            n += (cur as usize) - ('0' as usize);
-        } else { n += 10 + (cur as usize) - ('a' as usize); }
-    };
-}
-
-fn parse_unsafety(c: char) -> ast::Unsafety {
-    match c {
-        'u' => ast::Unsafety::Unsafe,
-        'n' => ast::Unsafety::Normal,
-        _ => panic!("parse_unsafety: bad unsafety {}", c)
-    }
-}
-
-fn parse_abi_set(st: &mut PState) -> abi::Abi {
-    assert_eq!(next(st), '[');
-    let bytes = scan(st, |c| c == ']');
-    let abi_str = str::from_utf8(bytes).unwrap();
-    abi::lookup(&abi_str[..]).expect(abi_str)
-}
-
-fn parse_closure_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>) -> ty::ClosureTy<'tcx> {
-    let unsafety = parse_unsafety(next(st));
-    let sig = parse_sig(st);
-    let abi = parse_abi_set(st);
-    ty::ClosureTy {
-        unsafety: unsafety,
-        sig: sig,
-        abi: abi,
-    }
-}
-
-fn parse_bare_fn_ty<'a, 'tcx>(st: &mut PState<'a, 'tcx>) -> ty::BareFnTy<'tcx> {
-    let unsafety = parse_unsafety(next(st));
-    let abi = parse_abi_set(st);
-    let sig = parse_sig(st);
-    ty::BareFnTy {
-        unsafety: unsafety,
-        abi: abi,
-        sig: sig
-    }
-}
-
-fn parse_sig<'a, 'tcx>(st: &mut PState<'a, 'tcx>) -> ty::PolyFnSig<'tcx> {
-    assert_eq!(next(st), '[');
-    let mut inputs = Vec::new();
-    while peek(st) != ']' {
-        inputs.push(parse_ty(st));
-    }
-    st.pos += 1; // eat the ']'
-    let variadic = match next(st) {
-        'V' => true,
-        'N' => false,
-        r => panic!(format!("bad variadic: {}", r)),
-    };
-    let output = match peek(st) {
-        'z' => {
-          st.pos += 1;
-          ty::FnDiverging
-        }
-        _ => ty::FnConverging(parse_ty(st))
-    };
-    ty::Binder(ty::FnSig {inputs: inputs,
-                          output: output,
-                          variadic: variadic})
-}
-
 // Rust metadata parsing
 pub fn parse_defid(buf: &[u8]) -> ast::DefId {
     let mut colon_idx = 0;
@@ -678,149 +799,25 @@ pub fn parse_defid(buf: &[u8]) -> ast::DefId {
     let crate_num = match str::from_utf8(crate_part).ok().and_then(|s| {
         s.parse::<usize>().ok()
     }) {
-       Some(cn) => cn as ast::CrateNum,
-       None => panic!("internal error: parse_defid: crate number expected, found {:?}",
-                     crate_part)
+        Some(cn) => cn as ast::CrateNum,
+        None => panic!("internal error: parse_defid: crate number expected, found {:?}",
+                       crate_part)
     };
     let def_num = match str::from_utf8(def_part).ok().and_then(|s| {
         s.parse::<usize>().ok()
     }) {
-       Some(dn) => dn as ast::NodeId,
-       None => panic!("internal error: parse_defid: id expected, found {:?}",
-                     def_part)
+        Some(dn) => dn as ast::NodeId,
+        None => panic!("internal error: parse_defid: id expected, found {:?}",
+                       def_part)
     };
     ast::DefId { krate: crate_num, node: def_num }
 }
 
-pub fn parse_predicate_data<'tcx, F>(data: &[u8],
-                                     start: usize,
-                                     crate_num: ast::CrateNum,
-                                     tcx: &ty::ctxt<'tcx>,
-                                     mut conv: F)
-                                     -> ty::Predicate<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let mut st = parse_state_from_data(data, crate_num, start, tcx, &mut conv);
-    parse_predicate(&mut st)
-}
-
-pub fn parse_predicate<'a,'tcx>(st: &mut PState<'a, 'tcx>) -> ty::Predicate<'tcx> {
-    match next(st) {
-        't' => ty::Binder(parse_trait_ref(st)).to_predicate(),
-        'e' => ty::Binder(ty::EquatePredicate(parse_ty(st),
-                                              parse_ty(st))).to_predicate(),
-        'r' => ty::Binder(ty::OutlivesPredicate(parse_region(st),
-                                                parse_region(st))).to_predicate(),
-        'o' => ty::Binder(ty::OutlivesPredicate(parse_ty(st),
-                                                parse_region(st))).to_predicate(),
-        'p' => ty::Binder(parse_projection_predicate(st)).to_predicate(),
-        'w' => ty::Predicate::WellFormed(parse_ty(st)),
-        'O' => {
-            let def_id = parse_def(st, NominalType);
-            assert_eq!(next(st), '|');
-            ty::Predicate::ObjectSafe(def_id)
-        }
-        c => panic!("Encountered invalid character in metadata: {}", c)
+fn parse_unsafety(c: char) -> ast::Unsafety {
+    match c {
+        'u' => ast::Unsafety::Unsafe,
+        'n' => ast::Unsafety::Normal,
+        _ => panic!("parse_unsafety: bad unsafety {}", c)
     }
 }
 
-fn parse_projection_predicate<'a,'tcx>(st: &mut PState<'a, 'tcx>) -> ty::ProjectionPredicate<'tcx> {
-    ty::ProjectionPredicate {
-        projection_ty: ty::ProjectionTy {
-            trait_ref: parse_trait_ref(st),
-            item_name: token::str_to_ident(&parse_str(st, '|')).name,
-        },
-        ty: parse_ty(st),
-    }
-}
-
-pub fn parse_type_param_def_data<'tcx, F>(data: &[u8], start: usize,
-                                          crate_num: ast::CrateNum, tcx: &ty::ctxt<'tcx>,
-                                          mut conv: F) -> ty::TypeParameterDef<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let mut st = parse_state_from_data(data, crate_num, start, tcx, &mut conv);
-    parse_type_param_def(&mut st)
-}
-
-fn parse_type_param_def<'a, 'tcx>(st: &mut PState<'a, 'tcx>) -> ty::TypeParameterDef<'tcx> {
-    let name = parse_name(st, ':');
-    let def_id = parse_def(st, NominalType);
-    let space = parse_param_space(st);
-    assert_eq!(next(st), '|');
-    let index = parse_u32(st);
-    assert_eq!(next(st), '|');
-    let default_def_id = parse_def(st, NominalType);
-    let default = parse_opt(st, |st| parse_ty(st));
-    let object_lifetime_default = parse_object_lifetime_default(st);
-
-    ty::TypeParameterDef {
-        name: name,
-        def_id: def_id,
-        space: space,
-        index: index,
-        default_def_id: default_def_id,
-        default: default,
-        object_lifetime_default: object_lifetime_default,
-    }
-}
-
-fn parse_object_lifetime_default<'a,'tcx>(st: &mut PState<'a,'tcx>) -> ty::ObjectLifetimeDefault {
-    match next(st) {
-        'a' => ty::ObjectLifetimeDefault::Ambiguous,
-        'b' => ty::ObjectLifetimeDefault::BaseDefault,
-        's' => {
-            let region = parse_region(st);
-            ty::ObjectLifetimeDefault::Specific(region)
-        }
-        _ => panic!("parse_object_lifetime_default: bad input")
-    }
-}
-
-fn parse_existential_bounds<'a,'tcx>(st: &mut PState<'a,'tcx>) -> ty::ExistentialBounds<'tcx> {
-    let builtin_bounds = parse_builtin_bounds(st);
-    let region_bound = parse_region(st);
-    let mut projection_bounds = Vec::new();
-
-    loop {
-        match next(st) {
-            'P' => {
-                projection_bounds.push(ty::Binder(parse_projection_predicate(st)));
-                }
-            '.' => { break; }
-            c => {
-                panic!("parse_bounds: bad bounds ('{}')", c)
-            }
-        }
-    }
-
-    return ty::ExistentialBounds { region_bound: region_bound,
-                                   builtin_bounds: builtin_bounds,
-                                   projection_bounds: projection_bounds };
-}
-
-fn parse_builtin_bounds(st: &mut PState) -> ty::BuiltinBounds {
-    let mut builtin_bounds = ty::BuiltinBounds::empty();
-    loop {
-        match next(st) {
-            'S' => {
-                builtin_bounds.insert(ty::BoundSend);
-            }
-            'Z' => {
-                builtin_bounds.insert(ty::BoundSized);
-            }
-            'P' => {
-                builtin_bounds.insert(ty::BoundCopy);
-            }
-            'T' => {
-                builtin_bounds.insert(ty::BoundSync);
-            }
-            '.' => {
-                return builtin_bounds;
-            }
-            c => {
-                panic!("parse_bounds: bad builtin bounds ('{}')", c)
-            }
-        }
-    }
-}
