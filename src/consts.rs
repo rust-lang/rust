@@ -1,8 +1,21 @@
+#[cfg(test)]
 use rustc::lint::Context;
-use rustc::middle::const_eval::lookup_const_by_id;
-use syntax::ast::*;
-use syntax::ptr::P;
 
+use rustc::middle::const_eval::lookup_const_by_id;
+use rustc::middle::def::PathResolution;
+use rustc::middle::def::Def::*;
+use syntax::ast::*;
+use syntax::parse::token::InternedString;
+use syntax::ptr::P;
+use std::rc::Rc;
+use std::ops::Deref;
+use self::ConstantVariant::*;
+use self::FloatWidth::*;
+
+#[cfg(not(test))]
+pub struct Context;
+
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum FloatWidth {
     Fw32,
     Fw64,
@@ -25,12 +38,23 @@ pub struct Constant {
 }
 
 impl Constant {
-    fn new(variant: ConstantVariant) -> Constant {
+    pub fn new(variant: ConstantVariant) -> Constant {
         Constant { constant: variant, needed_resolution: false }
     }
 
-    fn new_resolved(variant: ConstantVariant) -> Constant {
+    pub fn new_resolved(variant: ConstantVariant) -> Constant {
         Constant { constant: variant, needed_resolution: true }
+    }
+
+    // convert this constant to a f64, if possible
+    pub fn as_float(&self) -> Option<f64> {
+        match &self.constant {
+            &ConstantByte(b) => Some(b as f64),
+            &ConstantFloat(ref s, _) => s.parse().ok(),
+            &ConstantInt(i, ty) => Some(if is_negative(ty) {
+                -(i as f64) } else { i as f64 }),
+            _ => None
+        }
     }
 }
 
@@ -38,7 +62,7 @@ impl Constant {
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum ConstantVariant {
     /// a String "abc"
-    ConstantStr(&'static str, StrStyle),
+    ConstantStr(String, StrStyle),
     /// a Binary String b"abc"
     ConstantBinary(Rc<Vec<u8>>),
     /// a single byte b'a'
@@ -48,15 +72,15 @@ pub enum ConstantVariant {
     /// an integer
     ConstantInt(u64, LitIntType),
     /// a float with given type
-    ConstantFloat(Cow<'static, str>, FloatWidth),
+    ConstantFloat(String, FloatWidth),
     /// true or false
     ConstantBool(bool),
     /// an array of constants
-    ConstantVec(Vec<Constant>),
+    ConstantVec(Box<Vec<Constant>>),
     /// also an array, but with only one constant, repeated N times
-    ConstantRepeat(Constant, usize),
+    ConstantRepeat(Box<ConstantVariant>, usize),
     /// a tuple of constants
-    ConstantTuple(Vec<Constant>),
+    ConstantTuple(Box<Vec<Constant>>),
 }
 
 impl ConstantVariant {
@@ -76,34 +100,32 @@ impl ConstantVariant {
 
 /// simple constant folding: Insert an expression, get a constant or none.
 pub fn constant(cx: &Context, e: &Expr) -> Option<Constant> {
-    match e {
+    match &e.node {
         &ExprParen(ref inner) => constant(cx, inner),
         &ExprPath(_, _) => fetch_path(cx, e),
-        &ExprBlock(ref block) => constant_block(cx, inner),
+        &ExprBlock(ref block) => constant_block(cx, block),
         &ExprIf(ref cond, ref then, ref otherwise) =>
-            constant_if(cx, cond, then, otherwise),
-        &ExprLit(ref lit) => Some(lit_to_constant(lit)),
-        &ExprVec(ref vec) => constant_vec(cx, vec),
-        &ExprTup(ref tup) => constant_tup(cx, tup),
+            constant_if(cx, &*cond, &*then, &*otherwise),
+        &ExprLit(ref lit) => Some(lit_to_constant(&lit.node)),
+        &ExprVec(ref vec) => constant_vec(cx, &vec[..]),
+        &ExprTup(ref tup) => constant_tup(cx, &tup[..]),
         &ExprRepeat(ref value, ref number) =>
-            constant_binop_apply(cx, value, number,|v, n| Constant {
-                constant: ConstantRepeat(v, n.constant.as_u64()),
-                needed_resolution: v.needed_resolution || n.needed_resolution
-            }),
+            constant_binop_apply(cx, value, number,|v, n|
+                Some(ConstantRepeat(Box::new(v), n.as_u64() as usize))),
         &ExprUnary(op, ref operand) => constant(cx, operand).and_then(
             |o| match op {
                 UnNot =>
-                    if let ConstantBool(b) = o.variant {
+                    if let ConstantBool(b) = o.constant {
                         Some(Constant{
                             needed_resolution: o.needed_resolution,
                             constant: ConstantBool(!b),
                         })
                     } else { None },
                 UnNeg => constant_negate(o),
-                UnUniq | UnDeref => o,
+                UnUniq | UnDeref => Some(o),
             }),
         &ExprBinary(op, ref left, ref right) =>
-            constant_binop(op, left, right),
+            constant_binop(cx, op, left, right),
         //TODO: add other expressions
         _ => None,
     }
@@ -111,82 +133,93 @@ pub fn constant(cx: &Context, e: &Expr) -> Option<Constant> {
 
 fn lit_to_constant(lit: &Lit_) -> Constant {
     match lit {
-        &LitStr(ref is, style) => Constant::new(ConstantStr(&*is, style)),
+        &LitStr(ref is, style) =>
+            Constant::new(ConstantStr(is.to_string(), style)),
         &LitBinary(ref blob) => Constant::new(ConstantBinary(blob.clone())),
         &LitByte(b) => Constant::new(ConstantByte(b)),
         &LitChar(c) => Constant::new(ConstantChar(c)),
         &LitInt(value, ty) => Constant::new(ConstantInt(value, ty)),
-        &LitFloat(ref is, ty) =>
-            Constant::new(ConstantFloat(Cow::Borrowed(&*is), ty.into())),
-        &LitFloatUnsuffixed(InternedString) =>
-            Constant::new(ConstantFloat(Cow::Borrowed(&*is), FwAny)),
+        &LitFloat(ref is, ty) => {
+            Constant::new(ConstantFloat(is.to_string(), ty.into()))
+        },
+        &LitFloatUnsuffixed(ref is) => {
+            Constant::new(ConstantFloat(is.to_string(), FwAny))
+        },
         &LitBool(b) => Constant::new(ConstantBool(b)),
     }
 }
 
 /// create `Some(ConstantVec(..))` of all constants, unless there is any
 /// non-constant part
-fn constant_vec(cx: &Context, vec: &[&Expr]) -> Option<Constant> {
+fn constant_vec<E: Deref<Target=Expr> + Sized>(cx: &Context, vec: &[E]) -> Option<Constant> {
     let mut parts = Vec::new();
     let mut resolved = false;
-    for opt_part in vec {
+    for opt_part in vec.iter() {
         match constant(cx, opt_part) {
-            Some(ref p) => {
-                resolved |= p.needed_resolution;
+            Some(p) => {
+                resolved |= (&p).needed_resolution;
                 parts.push(p)
             },
             None => { return None; },
         }
     }
     Some(Constant {
-        constant: ConstantVec(parts),
+        constant: ConstantVec(Box::new(parts)),
         needed_resolution: resolved
     })
 }
 
-fn constant_tup(cx: &Context, tup: &[&Expr]) -> Option<Constant> {
+fn constant_tup<E: Deref<Target=Expr> + Sized>(cx: &Context, tup: &[E]) -> Option<Constant> {
     let mut parts = Vec::new();
     let mut resolved = false;
-    for opt_part in vec {
+    for opt_part in tup.iter() {
         match constant(cx, opt_part) {
-            Some(ref p) => {
-                resolved |= p.needed_resolution;
+            Some(p) => {
+                resolved |= (&p).needed_resolution;
                 parts.push(p)
             },
             None => { return None; },
         }
     }
     Some(Constant {
-        constant: ConstantTuple(parts),
+        constant: ConstantTuple(Box::new(parts)),
         needed_resolution: resolved
     })
 }
+
+#[cfg(test)]
+fn fetch_path(_cx: &Context, _expr: &Expr) -> Option<Constant> { None }
 
 /// lookup a possibly constant expression from a ExprPath
+#[cfg(not(test))]
 fn fetch_path(cx: &Context, e: &Expr) -> Option<Constant> {
     if let Some(&PathResolution { base_def: DefConst(id), ..}) =
             cx.tcx.def_map.borrow().get(&e.id) {
-        lookup_const_by_id(cx.tcx, id, None).map(
-            |l| Constant::new_resolved(constant(cx, l).constant))
+        lookup_const_by_id(cx.tcx, id, None).and_then(
+            |l| constant(cx, l).map(|c| Constant::new_resolved(c.constant)))
     } else { None }
 }
 
 /// A block can only yield a constant if it only has one constant expression
 fn constant_block(cx: &Context, block: &Block) -> Option<Constant> {
     if block.stmts.is_empty() {
-        block.expr.map(|b| constant(cx, b))
+        block.expr.as_ref().and_then(|b| constant(cx, &*b))
     } else { None }
 }
 
-fn constant_if(cx: &Context, cond: &Expr, then: &Expr, otherwise: &Expr) ->
-        Option<Constant> {
+fn constant_if(cx: &Context, cond: &Expr, then: &Block, otherwise:
+        &Option<P<Expr>>) -> Option<Constant> {
     if let Some(Constant{ constant: ConstantBool(b), needed_resolution: res }) =
             constant(cx, cond) {
-        let part = constant(cx, if b { then } else { otherwise });
-        Some(Constant {
-            constant: part.constant,
-            needed_resolution: res || part.needed_resolution,
-        })
+        if b {
+            constant_block(cx, then)
+        } else {
+            otherwise.as_ref().and_then(|expr| constant(cx, &*expr))
+        }.map(|part|
+            Constant {
+                constant: part.constant,
+                needed_resolution: res || part.needed_resolution,
+            })
     } else { None }
 }
 
@@ -194,14 +227,15 @@ fn constant_negate(o: Constant) -> Option<Constant> {
     Some(Constant{
         needed_resolution: o.needed_resolution,
         constant: match o.constant {
-            &ConstantInt(value, ty) =>
+            ConstantInt(value, ty) =>
                 ConstantInt(value, match ty {
                     SignedIntLit(ity, sign) =>
                         SignedIntLit(ity, neg_sign(sign)),
                     UnsuffixedIntLit(sign) => UnsuffixedIntLit(neg_sign(sign)),
                     _ => { return None; },
                 }),
-            &LitFloat(ref is, ref ty) => ConstantFloat(neg_float_str(is), ty),
+            ConstantFloat(ref is, ty) =>
+                ConstantFloat(neg_float_str(is.to_string()), ty),
             _ => { return None; },
         }
     })
@@ -214,11 +248,11 @@ fn neg_sign(s: Sign) -> Sign {
     }
 }
 
-fn neg_float_str(s: &InternedString) -> Cow<'static, str> {
-    if s.startsWith('-') {
-        Cow::Borrowed(s[1..])
+fn neg_float_str(s: String) -> String {
+    if s.starts_with('-') {
+        s[1..].to_owned()
     } else {
-        Cow::Owned(format!("-{}", &*s))
+        format!("-{}", &*s)
     }
 }
 
@@ -229,19 +263,19 @@ fn is_negative(ty: LitIntType) -> bool {
     }
 }
 
-fn unify_int_type(l: LitIntType, r: LitIntType, s: Sign) -> Option(LitIntType) {
+fn unify_int_type(l: LitIntType, r: LitIntType, s: Sign) -> Option<LitIntType> {
     match (l, r) {
         (SignedIntLit(lty, _), SignedIntLit(rty, _)) => if lty == rty {
             Some(SignedIntLit(lty, s)) } else { None },
         (UnsignedIntLit(lty), UnsignedIntLit(rty)) =>
-            if Sign == Plus && lty == rty {
+            if s == Plus && lty == rty {
                 Some(UnsignedIntLit(lty))
             } else { None },
-        (UnsuffixedIntLit(_), UnsuffixedIntLit(_)) => UnsuffixedIntLit(s),
-        (SignedIntLit(lty, _), UnsuffixedIntLit(_)) => SignedIntLit(lty, s),
+        (UnsuffixedIntLit(_), UnsuffixedIntLit(_)) => Some(UnsuffixedIntLit(s)),
+        (SignedIntLit(lty, _), UnsuffixedIntLit(_)) => Some(SignedIntLit(lty, s)),
         (UnsignedIntLit(lty), UnsuffixedIntLit(rs)) => if rs == Plus {
             Some(UnsignedIntLit(lty)) } else { None },
-        (UnsuffixedIntLit(_), SignedIntLit(rty, _)) => SignedIntLit(rty, s),
+        (UnsuffixedIntLit(_), SignedIntLit(rty, _)) => Some(SignedIntLit(rty, s)),
         (UnsuffixedIntLit(ls), UnsignedIntLit(rty)) => if ls == Plus {
             Some(UnsignedIntLit(rty)) } else { None },
         _ => None,
@@ -312,7 +346,7 @@ fn constant_binop(cx: &Context, op: BinOp, left: &Expr, right: &Expr)
 }
 
 fn add_neg_int(pos: u64, pty: LitIntType, neg: u64, nty: LitIntType) ->
-        Some(Constant) {
+        Option<ConstantVariant> {
     if neg > pos {
         unify_int_type(nty, pty, Minus).map(|ty| ConstantInt(neg - pos, ty))
     } else {
@@ -320,37 +354,43 @@ fn add_neg_int(pos: u64, pty: LitIntType, neg: u64, nty: LitIntType) ->
     }
 }
 
-fn sub_int(l: u64, lty: LitIntType, r: u64, rty: LitIntType, neg: Bool) ->
-        Option<Constant> {
+fn sub_int(l: u64, lty: LitIntType, r: u64, rty: LitIntType, neg: bool) ->
+        Option<ConstantVariant> {
      unify_int_type(lty, rty, if neg { Minus } else { Plus }).and_then(
-        |ty| l64.checked_sub(r64).map(|v| ConstantInt(v, ty)))
+        |ty| l.checked_sub(r).map(|v| ConstantInt(v, ty)))
 }
 
 fn constant_binop_apply<F>(cx: &Context, left: &Expr, right: &Expr, op: F)
         -> Option<Constant>
-where F: FnMut(ConstantVariant, ConstantVariant) -> Option<ConstantVariant> {
-    constant(cx, left).and_then(|l| constant(cx, right).and_then(
-        |r| Constant {
-            needed_resolution: l.needed_resolution || r.needed_resolution,
-            constant: op(l.constant, r.constant)
-        }))
+where F: Fn(ConstantVariant, ConstantVariant) -> Option<ConstantVariant> {
+    if let (Some(Constant { constant: lc, needed_resolution: ln }),
+            Some(Constant { constant: rc, needed_resolution: rn })) =
+            (constant(cx, left), constant(cx, right)) {
+        op(lc, rc).map(|c|
+            Constant {
+                needed_resolution: ln || rn,
+                constant: c,
+            })
+    } else { None }
 }
 
 fn constant_short_circuit(cx: &Context, left: &Expr, right: &Expr, b: bool) ->
         Option<Constant> {
-    let leftconst = constant(cx, left);
-    if let ConstantBool(lbool) = leftconst.constant {
-        if l == b {
-            Some(leftconst)
-        } else {
-            let rightconst = constant(cx, right);
-            if let ConstantBool(rbool) = rightconst.constant {
-                Some(Constant {
-                    constant: rightconst.constant,
-                    needed_resolution: leftconst.needed_resolution ||
-                                       rightconst.needed_resolution,
-                })
-            } else { None }
-        }
-    } else { None }
+    constant(cx, left).and_then(|left|
+        if let &ConstantBool(lbool) = &left.constant {
+            if lbool == b {
+                Some(left)
+            } else {
+                constant(cx, right).and_then(|right|
+                    if let ConstantBool(_) = right.constant {
+                        Some(Constant {
+                            constant: right.constant,
+                            needed_resolution: left.needed_resolution ||
+                                               right.needed_resolution,
+                        })
+                    } else { None }
+                )
+            }
+        } else { None }
+    )
 }
