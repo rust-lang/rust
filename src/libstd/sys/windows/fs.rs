@@ -176,13 +176,14 @@ impl OpenOptions {
 
     fn get_desired_access(&self) -> libc::DWORD {
         self.desired_access.unwrap_or({
-            let mut base = if self.read {libc::FILE_GENERIC_READ} else {0} |
-                           if self.write {libc::FILE_GENERIC_WRITE} else {0};
-            if self.append {
-                /* append has the same bits set as write, but without FILE_WRITE_DATA */
-                base |= libc::FILE_GENERIC_WRITE;
-                base &= !libc::FILE_WRITE_DATA;
-            }
+            let base = if self.read {libc::GENERIC_READ} else {0} |
+                if self.append {
+                    /* append has the same bits set as those that are implied
+                       for write, but without FILE_WRITE_DATA */
+                    libc::FILE_GENERIC_WRITE & !libc::FILE_WRITE_DATA
+                } else if self.write {
+                    libc::GENERIC_WRITE
+                } else {0};
             base
         })
     }
