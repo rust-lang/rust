@@ -393,6 +393,7 @@ pub fn catch_panic<F, R>(f: F) -> Result<R>
 /// specifics or platform-dependent functionality. Note that on unix platforms
 /// this function will not return early due to a signal being received or a
 /// spurious wakeup.
+#[deprecated(since = "1.4.0", reason = "use `thread::sleep` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn sleep_ms(ms: u32) {
     sleep(Duration::from_millis(ms as u64))
@@ -409,7 +410,7 @@ pub fn sleep_ms(ms: u32) {
 /// signal being received or a spurious wakeup. Platforms which do not support
 /// nanosecond precision for sleeping will have `dur` rounded up to the nearest
 /// granularity of time they can sleep for.
-#[unstable(feature = "thread_sleep", reason = "waiting on Duration")]
+#[stable(feature = "thread_sleep", since = "1.4.0")]
 pub fn sleep(dur: Duration) {
     imp::Thread::sleep(dur)
 }
@@ -459,6 +460,7 @@ pub fn park() {
 /// amount of time waited to be precisely *ms* long.
 ///
 /// See the module doc for more detail.
+#[deprecated(since = "1.4.0", reason = "use `thread::park_timeout` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn park_timeout_ms(ms: u32) {
     park_timeout(Duration::from_millis(ms as u64))
@@ -479,7 +481,7 @@ pub fn park_timeout_ms(ms: u32) {
 ///
 /// Platforms which do not support nanosecond precision for sleeping will have
 /// `dur` rounded up to the nearest granularity of time they can sleep for.
-#[unstable(feature = "park_timeout", reason = "waiting on Duration")]
+#[stable(feature = "park_timeout", since = "1.4.0")]
 pub fn park_timeout(dur: Duration) {
     let thread = current();
     let mut guard = thread.inner.lock.lock().unwrap();
