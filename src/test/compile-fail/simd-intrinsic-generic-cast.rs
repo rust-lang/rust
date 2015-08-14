@@ -40,12 +40,12 @@ fn main() {
 
     unsafe {
         simd_cast::<i32, i32>(0);
-        //~^ ERROR SIMD cast intrinsic monomorphized with non-SIMD input type `i32`
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_cast::<i32, i32x4>(0);
-        //~^ ERROR SIMD cast intrinsic monomorphized with non-SIMD input type `i32`
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_cast::<i32x4, i32>(x);
-        //~^ ERROR SIMD cast intrinsic monomorphized with non-SIMD return type `i32`
+        //~^ ERROR expected SIMD return type, found non-SIMD `i32`
         simd_cast::<_, i32x8>(x);
-//~^ ERROR monomorphized with input type `i32x4` and return type `i32x8` with different lengths
+//~^ ERROR return type with length 4 (same as input type `i32x4`), found `i32x8` with length 8
     }
 }

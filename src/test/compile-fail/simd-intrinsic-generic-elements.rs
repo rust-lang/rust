@@ -61,28 +61,37 @@ fn main() {
 
     unsafe {
         simd_insert(0, 0, 0);
-        //~^ ERROR SIMD insert intrinsic monomorphized for non-SIMD input type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_insert(x, 0, 1.0);
-        //~^ ERROR SIMD insert intrinsic monomorphized with inserted type not SIMD element type
+        //~^ ERROR expected inserted type `i32` (element of input `i32x4`), found `f64`
         simd_extract::<_, f32>(x, 0);
-        //~^ ERROR SIMD insert intrinsic monomorphized with returned type not SIMD element type
+        //~^ ERROR expected return type `i32` (element of input `i32x4`), found `f32`
 
         simd_shuffle2::<i32, i32>(0, 0, [0; 2]);
-        //~^ ERROR SIMD shuffle intrinsic monomorphized with non-SIMD input type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_shuffle3::<i32, i32>(0, 0, [0; 3]);
-        //~^ ERROR SIMD shuffle intrinsic monomorphized with non-SIMD input type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_shuffle4::<i32, i32>(0, 0, [0; 4]);
-        //~^ ERROR SIMD shuffle intrinsic monomorphized with non-SIMD input type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
         simd_shuffle8::<i32, i32>(0, 0, [0; 8]);
-        //~^ ERROR SIMD shuffle intrinsic monomorphized with non-SIMD input type
+        //~^ ERROR expected SIMD input type, found non-SIMD `i32`
 
         simd_shuffle2::<_, f32x2>(x, x, [0; 2]);
-        //~^ ERROR SIMD shuffle intrinsic monomorphized with different input and return element
+//~^ ERROR element type `i32` (element of input `i32x4`), found `f32x2` with element type `f32`
         simd_shuffle3::<_, f32x3>(x, x, [0; 3]);
-        //~^ ERROR SIMD shuffle intrinsic monomorphized with different input and return element
+//~^ ERROR element type `i32` (element of input `i32x4`), found `f32x3` with element type `f32`
         simd_shuffle4::<_, f32x4>(x, x, [0; 4]);
-        //~^ ERROR SIMD shuffle intrinsic monomorphized with different input and return element
+//~^ ERROR element type `i32` (element of input `i32x4`), found `f32x4` with element type `f32`
         simd_shuffle8::<_, f32x8>(x, x, [0; 8]);
-        //~^ ERROR SIMD shuffle intrinsic monomorphized with different input and return element
+//~^ ERROR element type `i32` (element of input `i32x4`), found `f32x8` with element type `f32`
+
+        simd_shuffle2::<_, i32x8>(x, x, [0; 2]);
+        //~^ ERROR expected return type of length 2, found `i32x8` with length 8
+        simd_shuffle3::<_, i32x4>(x, x, [0; 3]);
+        //~^ ERROR expected return type of length 3, found `i32x4` with length 4
+        simd_shuffle4::<_, i32x3>(x, x, [0; 4]);
+        //~^ ERROR expected return type of length 4, found `i32x3` with length 3
+        simd_shuffle8::<_, i32x2>(x, x, [0; 8]);
+        //~^ ERROR expected return type of length 8, found `i32x2` with length 2
     }
 }
