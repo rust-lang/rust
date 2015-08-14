@@ -23,6 +23,7 @@ use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::{self, ToPredicate, Ty, HasTypeFlags};
 
+use rbml;
 use std::str;
 use syntax::abi;
 use syntax::ast;
@@ -166,6 +167,14 @@ pub struct TyDecoder<'a, 'tcx: 'a> {
 }
 
 impl<'a,'tcx> TyDecoder<'a,'tcx> {
+    pub fn with_doc(tcx: &'a ty::ctxt<'tcx>,
+                    crate_num: ast::CrateNum,
+                    doc: rbml::Doc<'a>,
+                    conv: DefIdConvert<'a>)
+                    -> TyDecoder<'a,'tcx> {
+        TyDecoder::new(doc.data, crate_num, doc.start, tcx, conv)
+    }
+
     pub fn new(data: &'a [u8],
                crate_num: ast::CrateNum,
                pos: usize,
@@ -244,7 +253,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         r
     }
 
-    fn parse_substs(&mut self) -> subst::Substs<'tcx> {
+    pub fn parse_substs(&mut self) -> subst::Substs<'tcx> {
         let regions = self.parse_region_substs();
         let types = self.parse_vec_per_param_space(|this| this.parse_ty());
         subst::Substs { types: types, regions: regions }
@@ -394,13 +403,13 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         result
     }
 
-    fn parse_trait_ref(&mut self) -> ty::TraitRef<'tcx> {
+    pub fn parse_trait_ref(&mut self) -> ty::TraitRef<'tcx> {
         let def = self.parse_def(NominalType);
         let substs = self.tcx.mk_substs(self.parse_substs());
         ty::TraitRef {def_id: def, substs: substs}
     }
 
-    fn parse_ty(&mut self) -> Ty<'tcx> {
+    pub fn parse_ty(&mut self) -> Ty<'tcx> {
         let tcx = self.tcx;
         match self.next() {
             'b' => return tcx.types.bool,
@@ -609,7 +618,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         abi::lookup(&abi_str[..]).expect(abi_str)
     }
 
-    fn parse_closure_ty(&mut self) -> ty::ClosureTy<'tcx> {
+    pub fn parse_closure_ty(&mut self) -> ty::ClosureTy<'tcx> {
         let unsafety = parse_unsafety(self.next());
         let sig = self.parse_sig();
         let abi = self.parse_abi_set();
@@ -655,7 +664,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                               variadic: variadic})
     }
 
-    fn parse_predicate(&mut self) -> ty::Predicate<'tcx> {
+    pub fn parse_predicate(&mut self) -> ty::Predicate<'tcx> {
         match self.next() {
             't' => ty::Binder(self.parse_trait_ref()).to_predicate(),
             'e' => ty::Binder(ty::EquatePredicate(self.parse_ty(),
@@ -685,7 +694,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    fn parse_type_param_def(&mut self) -> ty::TypeParameterDef<'tcx> {
+    pub fn parse_type_param_def(&mut self) -> ty::TypeParameterDef<'tcx> {
         let name = self.parse_name(':');
         let def_id = self.parse_def(NominalType);
         let space = self.parse_param_space();
@@ -719,7 +728,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    fn parse_existential_bounds(&mut self) -> ty::ExistentialBounds<'tcx> {
+    pub fn parse_existential_bounds(&mut self) -> ty::ExistentialBounds<'tcx> {
         let builtin_bounds = self.parse_builtin_bounds();
         let region_bound = self.parse_region();
         let mut projection_bounds = Vec::new();
