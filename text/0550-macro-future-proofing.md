@@ -106,7 +106,7 @@ The current legal fragment specifiers are: `item`, `block`, `stmt`, `pat`,
 
 - `FOLLOW(pat)` = `{FatArrow, Comma, Eq}`
 - `FOLLOW(expr)` = `{FatArrow, Comma, Semicolon}`
-- `FOLLOW(ty)` = `{Comma, FatArrow, Colon, Eq, Gt, Ident(as)}`
+- `FOLLOW(ty)` = `{Comma, FatArrow, Colon, Eq, Gt, Ident(as), Semi}`
 - `FOLLOW(stmt)` = `FOLLOW(expr)`
 - `FOLLOW(path)` = `FOLLOW(ty)`
 - `FOLLOW(block)` = any token
