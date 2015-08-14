@@ -22,3 +22,7 @@ trait Foo {
 pub trait WriteMessage {
     fn write_message(&mut self, &FrontendMessage) -> io::Result<()>;
 }
+
+trait Runnable {
+    fn handler(self: &Runnable);
+}
