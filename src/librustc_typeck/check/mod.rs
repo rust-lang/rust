@@ -1387,7 +1387,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn instantiate_type(&self,
                             did: ast::DefId,
                             path: &ast::Path)
-                            -> TypeAndSubsts<'tcx>
+                            -> Ty<'tcx>
     {
         debug!("instantiate_type(did={:?}, path={:?})", did, path);
         let type_scheme =
@@ -1409,10 +1409,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 traits::ItemObligation(did)),
             &bounds);
 
-        TypeAndSubsts {
-            ty: self.instantiate_type_scheme(path.span, &substs, &type_scheme.ty),
-            substs: substs
-        }
+        self.instantiate_type_scheme(path.span, &substs, &type_scheme.ty)
     }
 
     /// Return the dict-like variant corresponding to a given `Def`.
@@ -3128,9 +3125,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             }
         };
 
-        let TypeAndSubsts {
-            ty: expr_ty, ..
-        } = fcx.instantiate_type(def.def_id(), path);
+        let expr_ty = fcx.instantiate_type(def.def_id(), path);
         fcx.write_ty(expr.id, expr_ty);
 
         check_expr_struct_fields(fcx, expr_ty, expr.span, variant, fields,

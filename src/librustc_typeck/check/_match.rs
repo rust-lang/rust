@@ -19,7 +19,6 @@ use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
 use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
 use check::{check_expr_with_lvalue_pref, LvaluePreference};
 use check::{instantiate_path, resolve_ty_and_def_ufcs, structurally_resolved_type};
-use TypeAndSubsts;
 use require_same_types;
 use util::nodemap::FnvHashMap;
 
@@ -544,14 +543,16 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
         }
     };
 
-    let TypeAndSubsts {
-        ty: pat_ty, substs: item_substs
-    } = pcx.fcx.instantiate_type(def.def_id(), path);
+    let pat_ty = pcx.fcx.instantiate_type(def.def_id(), path);
+    let item_substs = match pat_ty.sty {
+        ty::TyStruct(_, substs) | ty::TyEnum(_, substs) => substs,
+        _ => tcx.sess.span_bug(pat.span, "struct variant is not an ADT")
+    };
     demand::eqtype(fcx, pat.span, expected, pat_ty);
     check_struct_pat_fields(pcx, pat.span, fields, variant, &item_substs, etc);
 
     fcx.write_ty(pat.id, pat_ty);
-    fcx.write_substs(pat.id, ty::ItemSubsts { substs: item_substs });
+    fcx.write_substs(pat.id, ty::ItemSubsts { substs: item_substs.clone() });
 }
 
 pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
