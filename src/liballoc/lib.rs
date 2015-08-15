@@ -83,6 +83,7 @@
 #![feature(lang_items)]
 #![feature(no_std)]
 #![feature(nonzero)]
+#![feature(num_bits_bytes)]
 #![feature(optin_builtin_traits)]
 #![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
