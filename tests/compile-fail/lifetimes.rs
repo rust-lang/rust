@@ -13,6 +13,8 @@ fn same_lifetime_on_input<'a>(_x: &'a u8, _y: &'a u8) { } // no error, same life
 
 fn only_static_on_input(_x: &u8, _y: &u8, _z: &'static u8) { } // no error, static involved
 
+fn mut_and_static_input(_x: &mut u8, _y: &'static str) { }
+
 fn in_and_out<'a>(x: &'a u8, _y: u8) -> &'a u8 { x }
 //~^ERROR explicit lifetimes given
 
@@ -60,7 +62,6 @@ impl<'a> Foo<'a> {
     fn self_shared_lifetime(&self, _: &'a u8) {} // no error, lifetime 'a not defined in method
     fn self_bound_lifetime<'b: 'a>(&self, _: &'b u8) {} // no error, bounds exist
 }
-static STATIC: u8 = 1;
 
 fn main() {
 }

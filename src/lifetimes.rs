@@ -115,8 +115,8 @@ fn could_use_elision(func: &FnDecl, slf: Option<&ExplicitSelf>,
     } else if output_lts.is_empty() {
         // no output lifetimes, check distinctness of input lifetimes
 
-        // only one reference with unnamed lifetime, ok
-        if input_lts.len() == 1 && input_lts[0] == Unnamed {
+        // only unnamed and static, ok
+        if input_lts.iter().all(|lt| *lt == Unnamed || *lt == Static) {
             return false;
         }
         // we have no output reference, so we only need all distinct lifetimes
