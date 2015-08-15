@@ -1415,24 +1415,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Return the dict-like variant corresponding to a given `Def`.
     pub fn def_struct_variant(&self,
                               def: def::Def)
                               -> Option<(ty::AdtDef<'tcx>, ty::VariantDef<'tcx>)>
     {
-        match def {
+        let (adt, variant) = match def {
             def::DefVariant(enum_id, variant_id, true) => {
                 let adt = self.tcx().lookup_adt_def(enum_id);
-                Some((adt, adt.variant_with_id(variant_id)))
+                (adt, adt.variant_with_id(variant_id))
             }
             def::DefTy(did, _) | def::DefStruct(did) => {
                 let typ = self.tcx().lookup_item_type(did);
                 if let ty::TyStruct(adt, _) = typ.ty.sty {
-                    Some((adt, adt.struct_variant()))
+                    (adt, adt.struct_variant())
                 } else {
-                    None
+                    return None;
                 }
             }
-            _ => None
+            _ => return None
+        };
+
+        if let ty::VariantKind::Dict = variant.kind() {
+            Some((adt, variant))
+        } else {
+            None
         }
     }
 
