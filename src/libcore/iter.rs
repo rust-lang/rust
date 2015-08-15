@@ -616,6 +616,8 @@ pub trait Iterator {
 
     /// Tests whether the predicate holds true for all elements in the iterator.
     ///
+    /// Does not consume the iterator past the first non-matching element.
+    ///
     /// # Examples
     ///
     /// ```
