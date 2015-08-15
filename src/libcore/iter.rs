@@ -2236,7 +2236,9 @@ step_impl_signed!(isize i8 i16 i32);
 step_impl_unsigned!(u64);
 #[cfg(target_pointer_width = "64")]
 step_impl_signed!(i64);
-#[cfg(target_pointer_width = "32")]
+// If the target pointer width is not 64-bits, we
+// assume here that it is less than 64-bits.
+#[cfg(not(target_pointer_width = "64"))]
 step_impl_no_between!(u64 i64);
 
 /// An adapter for stepping range iterators by a custom amount.

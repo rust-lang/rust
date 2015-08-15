@@ -943,11 +943,8 @@ pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
 pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
     let _icx = push_ctxt("call_memcpy");
     let ccx = cx.ccx();
-    let key = match &ccx.sess().target.target.target_pointer_width[..] {
-        "32" => "llvm.memcpy.p0i8.p0i8.i32",
-        "64" => "llvm.memcpy.p0i8.p0i8.i64",
-        tws => panic!("Unsupported target word size for memcpy: {}", tws),
-    };
+    let ptr_width = &ccx.sess().target.target.target_pointer_width[..];
+    let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
     let memcpy = ccx.get_intrinsic(&key);
     let src_ptr = PointerCast(cx, src, Type::i8p(ccx));
     let dst_ptr = PointerCast(cx, dst, Type::i8p(ccx));
@@ -996,12 +993,8 @@ fn memfill<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>, byte:
     let ccx = b.ccx;
 
     let llty = type_of::type_of(ccx, ty);
-
-    let intrinsic_key = match &ccx.sess().target.target.target_pointer_width[..] {
-        "32" => "llvm.memset.p0i8.i32",
-        "64" => "llvm.memset.p0i8.i64",
-        tws => panic!("Unsupported target word size for memset: {}", tws),
-    };
+    let ptr_width = &ccx.sess().target.target.target_pointer_width[..];
+    let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
 
     let llintrinsicfn = ccx.get_intrinsic(&intrinsic_key);
     let llptr = b.pointercast(llptr, Type::i8(ccx).ptr_to());
