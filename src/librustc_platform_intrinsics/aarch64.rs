@@ -38,6 +38,8 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
 
         "vrsqrteq_f32" => p!("vrsqrte.v4f32", (f32x4) -> f32x4),
         "vrsqrteq_f64" => p!("vrsqrte.v2f64", (f64x2) -> f64x2),
+        "vrecpeq_f32" => p!("vrecpe.v4f32", (f32x4) -> f32x4),
+        "vrecpeq_f64" => p!("vrecpe.v2f64", (f64x2) -> f64x2),
 
         "vmaxq_f32" => p!("fmax.v4f32", (f32x4, f32x4) -> f32x4),
         "vmaxq_f64" => p!("fmax.v2f64", (f64x2, f64x2) -> f64x2),
