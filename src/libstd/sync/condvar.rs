@@ -20,13 +20,20 @@ use time::Duration;
 
 /// A type indicating whether a timed wait on a condition variable returned
 /// due to a time out or not.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 #[unstable(feature = "wait_timeout", reason = "newly added")]
 pub enum TimedOut {
     /// The wait timed out.
     Yes,
     /// The wait did not time out.
     No
+}
+
+impl TimedOut {
+    /// Returns `true` iff the value of `self` is `Yes`.
+    pub fn timed_out(&self) -> bool {
+        *self == TimedOut::Yes
+    }
 }
 
 /// A Condition Variable
