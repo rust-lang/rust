@@ -35,6 +35,7 @@ non_ascii_literal    | allow   | using any literal non-ASCII chars in a string l
 option_unwrap_used   | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
 precedence           | warn    | expressions where precedence may trip up the unwary reader of the source; suggests adding parentheses, e.g. `x << 2 + y` will be parsed as `x << (2 + y)`
 ptr_arg              | allow   | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
+range_step_by_zero   | warn    | using Range::step_by(0), which produces an infinite iterator
 redundant_closure    | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
 result_unwrap_used   | allow   | using `Result.unwrap()`, which might be better handled
 single_match         | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
