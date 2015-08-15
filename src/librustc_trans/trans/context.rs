@@ -566,7 +566,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         }
         match declare_intrinsic(self, key) {
             Some(v) => return v,
-            None => panic!()
+            None => panic!("unknown intrinsic '{}'", key)
         }
     }
 
