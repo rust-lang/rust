@@ -1340,12 +1340,7 @@ impl<T> Pointer for *const T {
             f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
 
             if let None = f.width {
-                // The formats need two extra bytes, for the 0x
-                if cfg!(target_pointer_width = "32") {
-                    f.width = Some(10);
-                } else {
-                    f.width = Some(18);
-                }
+                f.width = Some((::usize::BITS/4) + 2);
             }
         }
         f.flags |= 1 << (FlagV1::Alternate as u32);
