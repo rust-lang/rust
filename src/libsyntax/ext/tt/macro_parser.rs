@@ -401,7 +401,7 @@ pub fn parse(sess: &ParseSess,
                         }
                     }
                     TtToken(sp, SubstNt(..)) => {
-                        return Error(sp, "Cannot transcribe in macro LHS".to_string())
+                        return Error(sp, "missing fragment specifier".to_string())
                     }
                     seq @ TtDelimited(..) | seq @ TtToken(_, DocComment(..)) => {
                         let lower_elts = mem::replace(&mut ei.top_elts, Tt(seq));
@@ -440,20 +440,24 @@ pub fn parse(sess: &ParseSess,
         } else {
             if (!bb_eis.is_empty() && !next_eis.is_empty())
                 || bb_eis.len() > 1 {
-                let nts = bb_eis.iter().map(|ei| {
-                    match ei.top_elts.get_tt(ei.idx) {
-                      TtToken(_, MatchNt(bind, name, _, _)) => {
+                let nts = bb_eis.iter().map(|ei| match ei.top_elts.get_tt(ei.idx) {
+                    TtToken(_, MatchNt(bind, name, _, _)) => {
                         format!("{} ('{}')", name, bind)
-                      }
-                      _ => panic!()
-                    } }).collect::<Vec<String>>().join(" or ");
+                    }
+                    _ => panic!()
+                }).collect::<Vec<String>>().join(" or ");
+
                 return Error(sp, format!(
-                    "local ambiguity: multiple parsing options: \
-                     built-in NTs {} or {} other options.",
-                    nts, next_eis.len()).to_string());
+                    "local ambiguity: multiple parsing options: {}",
+                    match next_eis.len() {
+                        0 => format!("built-in NTs {}.", nts),
+                        1 => format!("built-in NTs {} or 1 other option.", nts),
+                        n => format!("built-in NTs {} or {} other options.", nts, n),
+                    }
+                ))
             } else if bb_eis.is_empty() && next_eis.is_empty() {
                 return Failure(sp, format!("no rules expected the token `{}`",
-                            pprust::token_to_string(&tok)).to_string());
+                            pprust::token_to_string(&tok)));
             } else if !next_eis.is_empty() {
                 /* Now process the next token */
                 while !next_eis.is_empty() {
@@ -465,14 +469,14 @@ pub fn parse(sess: &ParseSess,
 
                 let mut ei = bb_eis.pop().unwrap();
                 match ei.top_elts.get_tt(ei.idx) {
-                  TtToken(span, MatchNt(_, ident, _, _)) => {
-                    let match_cur = ei.match_cur;
-                    (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
-                        parse_nt(&mut rust_parser, span, &ident.name.as_str()))));
-                    ei.idx += 1;
-                    ei.match_cur += 1;
-                  }
-                  _ => panic!()
+                    TtToken(span, MatchNt(_, ident, _, _)) => {
+                        let match_cur = ei.match_cur;
+                        (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
+                            parse_nt(&mut rust_parser, span, &ident.name.as_str()))));
+                        ei.idx += 1;
+                        ei.match_cur += 1;
+                    }
+                    _ => panic!()
                 }
                 cur_eis.push(ei);
 
@@ -499,37 +503,37 @@ pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
     // check at the beginning and the parser checks after each bump
     panictry!(p.check_unknown_macro_variable());
     match name {
-      "item" => match p.parse_item() {
-        Some(i) => token::NtItem(i),
-        None => panic!(p.fatal("expected an item keyword"))
-      },
-      "block" => token::NtBlock(panictry!(p.parse_block())),
-      "stmt" => match p.parse_stmt() {
-        Some(s) => token::NtStmt(s),
-        None => panic!(p.fatal("expected a statement"))
-      },
-      "pat" => token::NtPat(p.parse_pat()),
-      "expr" => token::NtExpr(p.parse_expr()),
-      "ty" => token::NtTy(p.parse_ty()),
-      // this could be handled like a token, since it is one
-      "ident" => match p.token {
-        token::Ident(sn,b) => { panictry!(p.bump()); token::NtIdent(Box::new(sn),b) }
+        "item" => match p.parse_item() {
+            Some(i) => token::NtItem(i),
+            None => panic!(p.fatal("expected an item keyword"))
+        },
+        "block" => token::NtBlock(panictry!(p.parse_block())),
+        "stmt" => match p.parse_stmt() {
+            Some(s) => token::NtStmt(s),
+            None => panic!(p.fatal("expected a statement"))
+        },
+        "pat" => token::NtPat(p.parse_pat()),
+        "expr" => token::NtExpr(p.parse_expr()),
+        "ty" => token::NtTy(p.parse_ty()),
+        // this could be handled like a token, since it is one
+        "ident" => match p.token {
+            token::Ident(sn,b) => { panictry!(p.bump()); token::NtIdent(Box::new(sn),b) }
+            _ => {
+                let token_str = pprust::token_to_string(&p.token);
+                panic!(p.fatal(&format!("expected ident, found {}",
+                                 &token_str[..])))
+            }
+        },
+        "path" => {
+            token::NtPath(Box::new(panictry!(p.parse_path(LifetimeAndTypesWithoutColons))))
+        },
+        "meta" => token::NtMeta(p.parse_meta_item()),
         _ => {
-            let token_str = pprust::token_to_string(&p.token);
-            panic!(p.fatal(&format!("expected ident, found {}",
-                             &token_str[..])))
-        }
-      },
-      "path" => {
-        token::NtPath(Box::new(panictry!(p.parse_path(LifetimeAndTypesWithoutColons))))
-      }
-      "meta" => token::NtMeta(p.parse_meta_item()),
-      _ => {
-          panic!(p.span_fatal_help(sp,
+            panic!(p.span_fatal_help(sp,
                             &format!("invalid fragment specifier `{}`", name),
                             "valid fragment specifiers are `ident`, `block`, \
                              `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt` \
                              and `item`"))
-      }
+        }
     }
 }
