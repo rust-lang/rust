@@ -305,7 +305,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                             }
                             MatchedSeq(..) => {
                                 panic!(r.sp_diag.span_fatal(
-                                    r.cur_span, /* blame the macro writer */
+                                    sp, /* blame the macro writer */
                                     &format!("variable '{}' is still repeating at this depth",
                                             ident)));
                             }
