@@ -833,10 +833,11 @@ pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {
 pub fn C_int<I: AsI64>(ccx: &CrateContext, i: I) -> ValueRef {
     let v = i.as_i64();
 
-    match machine::llbitsize_of_real(ccx, ccx.int_type()) {
-        32 => assert!(v < (1<<31) && v >= -(1<<31)),
-        64 => {},
-        n => panic!("unsupported target size: {}", n)
+    let bit_size = machine::llbitsize_of_real(ccx, ccx.int_type());
+
+    if bit_size < 64 {
+        // make sure it doesn't overflow
+        assert!(v < (1<<(bit_size-1)) && v >= -(1<<(bit_size-1)));
     }
 
     C_integral(ccx.int_type(), v as u64, true)
@@ -845,10 +846,11 @@ pub fn C_int<I: AsI64>(ccx: &CrateContext, i: I) -> ValueRef {
 pub fn C_uint<I: AsU64>(ccx: &CrateContext, i: I) -> ValueRef {
     let v = i.as_u64();
 
-    match machine::llbitsize_of_real(ccx, ccx.int_type()) {
-        32 => assert!(v < (1<<32)),
-        64 => {},
-        n => panic!("unsupported target size: {}", n)
+    let bit_size = machine::llbitsize_of_real(ccx, ccx.int_type());
+
+    if bit_size < 64 {
+        // make sure it doesn't overflow
+        assert!(v < (1<<bit_size));
     }
 
     C_integral(ccx.int_type(), v, false)

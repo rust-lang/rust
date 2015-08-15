@@ -560,13 +560,13 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.builder.b
     }
 
-    pub fn get_intrinsic(&self, key: & &'static str) -> ValueRef {
+    pub fn get_intrinsic(&self, key: &str) -> ValueRef {
         if let Some(v) = self.intrinsics().borrow().get(key).cloned() {
             return v;
         }
         match declare_intrinsic(self, key) {
             Some(v) => return v,
-            None => panic!()
+            None => panic!("unknown intrinsic '{}'", key)
         }
     }
 
@@ -791,10 +791,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 }
 
 /// Declare any llvm intrinsics that you might need
-fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef> {
+fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
-            if *key == $name {
+            if key == $name {
                 let f = declare::declare_cfn(ccx, $name, Type::func(&[], &$ret),
                                              ccx.tcx().mk_nil());
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
@@ -802,7 +802,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
             }
         );
         ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
-            if *key == $name {
+            if key == $name {
                 let f = declare::declare_cfn(ccx, $name, Type::func(&[$($arg),*], &$ret),
                                              ccx.tcx().mk_nil());
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
@@ -824,10 +824,13 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     let t_f32 = Type::f32(ccx);
     let t_f64 = Type::f64(ccx);
 
+    ifn!("llvm.memcpy.p0i8.p0i8.i16", fn(i8p, i8p, t_i16, t_i32, i1) -> void);
     ifn!("llvm.memcpy.p0i8.p0i8.i32", fn(i8p, i8p, t_i32, t_i32, i1) -> void);
     ifn!("llvm.memcpy.p0i8.p0i8.i64", fn(i8p, i8p, t_i64, t_i32, i1) -> void);
+    ifn!("llvm.memmove.p0i8.p0i8.i16", fn(i8p, i8p, t_i16, t_i32, i1) -> void);
     ifn!("llvm.memmove.p0i8.p0i8.i32", fn(i8p, i8p, t_i32, t_i32, i1) -> void);
     ifn!("llvm.memmove.p0i8.p0i8.i64", fn(i8p, i8p, t_i64, t_i32, i1) -> void);
+    ifn!("llvm.memset.p0i8.i16", fn(i8p, t_i8, t_i16, t_i32, i1) -> void);
     ifn!("llvm.memset.p0i8.i32", fn(i8p, t_i8, t_i32, t_i32, i1) -> void);
     ifn!("llvm.memset.p0i8.i64", fn(i8p, t_i8, t_i64, t_i32, i1) -> void);
 
@@ -942,7 +945,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
             if unsafe { llvm::LLVMVersionMinor() >= $llvm_version } {
                 // The `if key == $name` is already in ifn!
                 ifn!($name, fn($($arg),*) -> void);
-            } else if *key == $name {
+            } else if key == $name {
                 let f = declare::declare_cfn(ccx, stringify!($cname),
                                              Type::func(&[$($arg),*], &void),
                                              ccx.tcx().mk_nil());
@@ -965,7 +968,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
             if unsafe { llvm::LLVMVersionMinor() >= $llvm_version } {
                 // The `if key == $name` is already in ifn!
                 ifn!($name, fn($($arg),*) -> $ret);
-            } else if *key == $name {
+            } else if key == $name {
                 let f = declare::declare_cfn(ccx, stringify!($cname),
                                              Type::func(&[$($arg),*], &$ret),
                                              ccx.tcx().mk_nil());
