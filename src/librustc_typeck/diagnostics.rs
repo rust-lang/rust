@@ -2365,6 +2365,25 @@ struct Bar<S, T> { x: Foo<S, T> }
 ```
 "##,
 
+E0248: r##"
+This error indicates an attempt to use a value where a type is expected. For
+example:
+
+```
+enum Foo {
+    Bar(u32)
+}
+
+fn do_something(x: Foo::Bar) { }
+```
+
+In this example, we're attempting to take a type of `Foo::Bar` in the
+do_something function. This is not legal: `Foo::Bar` is a value of type `Foo`,
+not a distinct static type. Likewise, it's not legal to attempt to
+`impl Foo::Bar`: instead, you must `impl Foo` and then pattern match to specify
+behaviour for specific enum variants.
+"##,
+
 E0249: r##"
 This error indicates a constant expression for the array length was found, but
 it was not an integer (signed or unsigned) expression.
@@ -2756,7 +2775,6 @@ register_diagnostics! {
     E0245, // not a trait
     E0246, // invalid recursive type
     E0247, // found module name used as a type
-    E0248, // found value name used as a type
     E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
