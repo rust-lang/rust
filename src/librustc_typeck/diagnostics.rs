@@ -746,7 +746,8 @@ enum Foo { FirstValue(i32) };
 let u = Foo::FirstValue { value: 0i32 }; // error: Foo::FirstValue
                                          // isn't a structure!
 // or even simpler, if the name doesn't refer to a structure at all.
-let t = u32 { value: 4 }; // error: `u32` does not name a structure.```
+let t = u32 { value: 4 }; // error: `u32` does not name a structure.
+```
 
 To fix this, ensure that the name was correctly spelled, and that
 the correct form of initializer was used.
@@ -2681,7 +2682,7 @@ register_diagnostics! {
     E0231, // only named substitution parameters are allowed
     E0233,
     E0234,
-    E0235, // structure constructor specifies a structure of type but
+//  E0235, // structure constructor specifies a structure of type but
     E0236, // no lang item for range syntax
     E0237, // no lang item for range syntax
     E0238, // parenthesized parameters may only be used with a trait
