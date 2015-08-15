@@ -32,7 +32,7 @@ needless_lifetimes   | warn    | using explicit lifetimes for references in func
 needless_range_loop  | warn    | for-looping over a range of indices where an iterator over items would do
 needless_return      | warn    | using a return statement like `return expr;` where an expression would suffice
 non_ascii_literal    | allow   | using any literal non-ASCII chars in a string literal; suggests using the \\u escape instead
-option_unwrap_used   | warn    | using `Option.unwrap()`, which should at least get a better message using `expect()`
+option_unwrap_used   | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
 precedence           | warn    | expressions where precedence may trip up the unwary reader of the source; suggests adding parentheses, e.g. `x << 2 + y` will be parsed as `x << (2 + y)`
 ptr_arg              | allow   | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
 redundant_closure    | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)

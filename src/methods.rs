@@ -7,7 +7,7 @@ use utils::{span_lint, match_def_path, walk_ptrs_ty};
 #[derive(Copy,Clone)]
 pub struct MethodsPass;
 
-declare_lint!(pub OPTION_UNWRAP_USED, Warn,
+declare_lint!(pub OPTION_UNWRAP_USED, Allow,
               "using `Option.unwrap()`, which should at least get a better message using `expect()`");
 declare_lint!(pub RESULT_UNWRAP_USED, Allow,
               "using `Result.unwrap()`, which might be better handled");
