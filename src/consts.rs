@@ -1,6 +1,4 @@
-#[cfg(test)]
 use rustc::lint::Context;
-
 use rustc::middle::const_eval::lookup_const_by_id;
 use rustc::middle::def::PathResolution;
 use rustc::middle::def::Def::*;
@@ -11,9 +9,6 @@ use std::rc::Rc;
 use std::ops::Deref;
 use self::ConstantVariant::*;
 use self::FloatWidth::*;
-
-#[cfg(not(test))]
-pub struct Context;
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum FloatWidth {
@@ -33,8 +28,8 @@ impl From<FloatTy> for FloatWidth {
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Constant {
-    constant: ConstantVariant,
-    needed_resolution: bool
+    pub constant: ConstantVariant,
+    pub needed_resolution: bool
 }
 
 impl Constant {
@@ -187,11 +182,7 @@ fn constant_tup<E: Deref<Target=Expr> + Sized>(cx: &Context, tup: &[E]) -> Optio
     })
 }
 
-#[cfg(test)]
-fn fetch_path(_cx: &Context, _expr: &Expr) -> Option<Constant> { None }
-
 /// lookup a possibly constant expression from a ExprPath
-#[cfg(not(test))]
 fn fetch_path(cx: &Context, e: &Expr) -> Option<Constant> {
     if let Some(&PathResolution { base_def: DefConst(id), ..}) =
             cx.tcx.def_map.borrow().get(&e.id) {
