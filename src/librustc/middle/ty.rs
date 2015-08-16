@@ -5770,13 +5770,9 @@ impl<'tcx> ctxt<'tcx> {
                                             &format!("a default was defined here..."));
                     }
                     (_, _) => {
-                        let elems = csearch::get_item_path(self, expected.def_id)
-                                        .into_iter()
-                                        .map(|p| p.to_string())
-                                        .collect::<Vec<_>>();
                         self.sess.note(
                             &format!("a default is defined on `{}`",
-                                     elems.join("::")));
+                                     self.item_path_str(expected.def_id)));
                     }
                 }
 
@@ -5791,13 +5787,9 @@ impl<'tcx> ctxt<'tcx> {
                                             &format!("a second default was defined here..."));
                     }
                     (_, _) => {
-                        let elems = csearch::get_item_path(self, found.def_id)
-                                        .into_iter()
-                                        .map(|p| p.to_string())
-                                        .collect::<Vec<_>>();
-
                         self.sess.note(
-                            &format!("a second default is defined on `{}`", elems.join(" ")));
+                            &format!("a second default is defined on `{}`",
+                                     self.item_path_str(found.def_id)));
                     }
                 }
 
@@ -6011,6 +6003,14 @@ impl<'tcx> ctxt<'tcx> {
             self.map.with_path(id.node, f)
         } else {
             f(csearch::get_item_path(self, id).iter().cloned().chain(LinkedPath::empty()))
+        }
+    }
+
+    pub fn item_name(&self, id: ast::DefId) -> ast::Name {
+        if id.krate == ast::LOCAL_CRATE {
+            self.map.get_path_elem(id.node).name()
+        } else {
+            csearch::get_item_name(self, id)
         }
     }
 

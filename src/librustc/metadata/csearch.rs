@@ -96,6 +96,12 @@ pub fn get_item_path(tcx: &ty::ctxt, def: ast::DefId) -> Vec<ast_map::PathElem> 
     })
 }
 
+pub fn get_item_name(tcx: &ty::ctxt, def: ast::DefId) -> ast::Name {
+    let cstore = &tcx.sess.cstore;
+    let cdata = cstore.get_crate_data(def.krate);
+    decoder::get_item_name(&cstore.intr, &cdata, def.node)
+}
+
 pub enum FoundAst<'ast> {
     Found(&'ast InlinedItem),
     FoundParent(ast::DefId, &'ast InlinedItem),
