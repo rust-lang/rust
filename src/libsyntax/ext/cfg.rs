@@ -143,7 +143,7 @@ pub fn expand_cfg_val(cx: &mut ExtCtxt,
                     unreachable!();
                 },
                 None => { // the cfg is not defined
-                    cx.span_err(cfg.span, "configuration flag is not set");
+                    cx.span_err(cfg.span, "configuration flag does not have a value");
                     None
                 }
             }
