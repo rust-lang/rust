@@ -18,8 +18,6 @@ Rust adaptation of Grisu3 algorithm described in [1]. It uses about
 
 use prelude::v1::*;
 
-use num::Float;
-
 use num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
 
 /// A custom 64-bit floating point type, representing `f * 2^e`.

@@ -445,7 +445,9 @@ rem_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 impl Rem for f32 {
     type Output = f32;
 
-    // see notes in `core::f32::Float::floor`
+    // The builtin f32 rem operator is broken when targeting
+    // MSVC; see comment in std::f32::floor.
+    // FIXME: See also #27859.
     #[inline]
     #[cfg(target_env = "msvc")]
     fn rem(self, other: f32) -> f32 {

@@ -13,7 +13,7 @@
 use self::GammaRepr::*;
 use self::ChiSquaredRepr::*;
 
-use core::num::Float;
+use FloatMath;
 
 use {Rng, Open01};
 use super::normal::StandardNormal;

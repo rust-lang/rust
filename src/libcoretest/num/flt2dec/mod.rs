@@ -164,12 +164,26 @@ fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16
     }
 }
 
+trait TestableFloat : DecodableFloat + fmt::Display {
+    /// Returns `x * 2^exp`. Almost same to `std::{f32,f64}::ldexp`.
+    /// This is used for testing.
+    fn ldexpi(f: i64, exp: isize) -> Self;
+}
+
+impl TestableFloat for f32 {
+    fn ldexpi(f: i64, exp: isize) -> Self { f as Self * (exp as Self).exp2() }
+}
+
+impl TestableFloat for f64 {
+    fn ldexpi(f: i64, exp: isize) -> Self { f as Self * (exp as Self).exp2() }
+}
+
 fn check_exact_one<F, T>(mut f: F, x: i64, e: isize, tstr: &str, expected: &[u8], expectedk: i16)
-        where T: DecodableFloat + fmt::Display,
+        where T: TestableFloat,
               F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
     // use a large enough buffer
     let mut buf = [b'_'; 1024];
-    let v: T = DecodableFloat::ldexpi(x, e);
+    let v: T = TestableFloat::ldexpi(x, e);
     let decoded = decode_finite(v);
 
     try_exact!(f(&decoded) => &mut buf, &expected, expectedk;

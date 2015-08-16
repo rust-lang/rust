@@ -131,7 +131,6 @@ functions.
 
 use prelude::v1::*;
 use i16;
-use num::Float;
 use slice::bytes;
 pub use self::decoder::{decode, DecodableFloat, FullDecoded, Decoded};
 

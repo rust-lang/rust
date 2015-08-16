@@ -10,7 +10,7 @@
 
 //! The exponential distribution.
 
-use core::num::Float;
+use FloatMath;
 
 use {Rng, Rand};
 use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
