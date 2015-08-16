@@ -67,6 +67,17 @@ pub fn expand_cfg_int(cx: &mut ExtCtxt,
     }
 }
 
+pub fn expand_cfg_str(cx: &mut ExtCtxt,
+                      sp: Span,
+                      tts: &[ast::TokenTree])
+                      -> Box<base::MacResult+'static> {
+
+    match expand_cfg_val(cx, sp, tts) {
+        Some(val) => MacEager::expr(cx.expr_str(sp, val)),
+        None => DummyResult::expr(sp),
+    }
+}
+
 pub fn expand_cfg_val(cx: &mut ExtCtxt,
                       sp: Span,
                       tts: &[ast::TokenTree])
