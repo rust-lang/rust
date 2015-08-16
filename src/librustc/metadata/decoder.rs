@@ -24,9 +24,7 @@ use metadata::csearch;
 use metadata::cstore;
 use metadata::encoder::def_to_u64;
 use metadata::inline::InlinedItem;
-use metadata::tydecode::{parse_ty_data, parse_region_data,
-                         parse_type_param_def_data, parse_bare_fn_ty_data,
-                         parse_trait_ref_data, parse_predicate_data};
+use metadata::tydecode::TyDecoder;
 use middle::def;
 use middle::lang_items;
 use middle::subst;
@@ -235,22 +233,25 @@ fn variant_disr_val(d: rbml::Doc) -> Option<ty::Disr> {
 
 fn doc_type<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd) -> Ty<'tcx> {
     let tp = reader::get_doc(doc, tag_items_data_item_type);
-    parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
-                  |_, did| translate_def_id(cdata, did))
+    TyDecoder::with_doc(tcx, cdata.cnum, tp,
+                        &mut |_, did| translate_def_id(cdata, did))
+        .parse_ty()
 }
 
 fn maybe_doc_type<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd) -> Option<Ty<'tcx>> {
     reader::maybe_get_doc(doc, tag_items_data_item_type).map(|tp| {
-        parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
-                      |_, did| translate_def_id(cdata, did))
+        TyDecoder::with_doc(tcx, cdata.cnum, tp,
+                            &mut |_, did| translate_def_id(cdata, did))
+            .parse_ty()
     })
 }
 
 fn doc_method_fty<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>,
                         cdata: Cmd) -> ty::BareFnTy<'tcx> {
     let tp = reader::get_doc(doc, tag_item_method_fty);
-    parse_bare_fn_ty_data(tp.data, cdata.cnum, tp.start, tcx,
-                          |_, did| translate_def_id(cdata, did))
+    TyDecoder::with_doc(tcx, cdata.cnum, tp,
+                        &mut |_, did| translate_def_id(cdata, did))
+        .parse_bare_fn_ty()
 }
 
 pub fn item_type<'tcx>(_item_id: ast::DefId, item: rbml::Doc,
@@ -260,8 +261,9 @@ pub fn item_type<'tcx>(_item_id: ast::DefId, item: rbml::Doc,
 
 fn doc_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
                        -> ty::TraitRef<'tcx> {
-    parse_trait_ref_data(doc.data, cdata.cnum, doc.start, tcx,
-                         |_, did| translate_def_id(cdata, did))
+    TyDecoder::with_doc(tcx, cdata.cnum, doc,
+                        &mut |_, did| translate_def_id(cdata, did))
+        .parse_trait_ref()
 }
 
 fn item_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
@@ -1465,9 +1467,10 @@ fn doc_generics<'tcx>(base_doc: rbml::Doc,
 
     let mut types = subst::VecPerParamSpace::empty();
     for p in reader::tagged_docs(doc, tag_type_param_def) {
-        let bd = parse_type_param_def_data(
-            p.data, p.start, cdata.cnum, tcx,
-            |_, did| translate_def_id(cdata, did));
+        let bd =
+            TyDecoder::with_doc(tcx, cdata.cnum, p,
+                                &mut |_, did| translate_def_id(cdata, did))
+            .parse_type_param_def();
         types.push(bd.space, bd);
     }
 
@@ -1487,8 +1490,9 @@ fn doc_generics<'tcx>(base_doc: rbml::Doc,
         let index = reader::doc_as_u64(doc) as u32;
 
         let bounds = reader::tagged_docs(rp_doc, tag_items_data_region).map(|p| {
-            parse_region_data(p.data, cdata.cnum, p.start, tcx,
-                              |_, did| translate_def_id(cdata, did))
+            TyDecoder::with_doc(tcx, cdata.cnum, p,
+                                &mut |_, did| translate_def_id(cdata, did))
+            .parse_region()
         }).collect();
 
         regions.push(space, ty::RegionParameterDef { name: name,
@@ -1515,8 +1519,10 @@ fn doc_predicates<'tcx>(base_doc: rbml::Doc,
         let space = subst::ParamSpace::from_uint(reader::doc_as_u8(space_doc) as usize);
 
         let data_doc = reader::get_doc(predicate_doc, tag_predicate_data);
-        let data = parse_predicate_data(data_doc.data, data_doc.start, cdata.cnum, tcx,
-                                        |_, did| translate_def_id(cdata, did));
+        let data =
+            TyDecoder::with_doc(tcx, cdata.cnum, data_doc,
+                                &mut |_, did| translate_def_id(cdata, did))
+            .parse_predicate();
 
         predicates.push(space, data);
     }

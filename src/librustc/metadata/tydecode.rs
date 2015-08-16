@@ -58,104 +58,6 @@ pub enum DefIdSource {
     ClosureSource
 }
 
-pub fn parse_ty_closure_data<'tcx, F>(data: &[u8],
-                                      crate_num: ast::CrateNum,
-                                      pos: usize,
-                                      tcx: &ty::ctxt<'tcx>,
-                                      mut conv: F)
-                                      -> ty::ClosureTy<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
-    st.parse_closure_ty()
-}
-
-pub fn parse_ty_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
-                              tcx: &ty::ctxt<'tcx>, mut conv: F) -> Ty<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    debug!("parse_ty_data {}", data_log_string(data, pos));
-    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
-    st.parse_ty()
-}
-
-pub fn parse_region_data<F>(data: &[u8], crate_num: ast::CrateNum, pos: usize, tcx: &ty::ctxt,
-                            mut conv: F) -> ty::Region where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    debug!("parse_region_data {}", data_log_string(data, pos));
-    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
-    st.parse_region()
-}
-
-pub fn parse_bare_fn_ty_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
-                                      tcx: &ty::ctxt<'tcx>, mut conv: F)
-                                      -> ty::BareFnTy<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    debug!("parse_bare_fn_ty_data {}", data_log_string(data, pos));
-    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
-    st.parse_bare_fn_ty()
-}
-
-pub fn parse_trait_ref_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
-                                     tcx: &ty::ctxt<'tcx>, mut conv: F)
-                                     -> ty::TraitRef<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    debug!("parse_trait_ref_data {}", data_log_string(data, pos));
-    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
-    st.parse_trait_ref()
-}
-
-pub fn parse_substs_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: usize,
-                                  tcx: &ty::ctxt<'tcx>, mut conv: F) -> subst::Substs<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    debug!("parse_substs_data{}", data_log_string(data, pos));
-    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
-    st.parse_substs()
-}
-
-pub fn parse_existential_bounds_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum,
-                                              pos: usize, tcx: &ty::ctxt<'tcx>, mut conv: F)
-                                              -> ty::ExistentialBounds<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
-    st.parse_existential_bounds()
-}
-
-pub fn parse_builtin_bounds_data<F>(data: &[u8], crate_num: ast::CrateNum,
-                                    pos: usize, tcx: &ty::ctxt, mut conv: F)
-                                    -> ty::BuiltinBounds where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let mut st = TyDecoder::new(data, crate_num, pos, tcx, &mut conv);
-    st.parse_builtin_bounds()
-}
-
-pub fn parse_type_param_def_data<'tcx, F>(data: &[u8], start: usize,
-                                          crate_num: ast::CrateNum, tcx: &ty::ctxt<'tcx>,
-                                          mut conv: F) -> ty::TypeParameterDef<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let mut st = TyDecoder::new(data, crate_num, start, tcx, &mut conv);
-    st.parse_type_param_def()
-}
-
-pub fn parse_predicate_data<'tcx, F>(data: &[u8],
-                                     start: usize,
-                                     crate_num: ast::CrateNum,
-                                     tcx: &ty::ctxt<'tcx>,
-                                     mut conv: F)
-                                     -> ty::Predicate<'tcx> where
-    F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
-{
-    let mut st = TyDecoder::new(data, crate_num, start, tcx, &mut conv);
-    st.parse_predicate()
-}
-
 pub type DefIdConvert<'a> = &'a mut FnMut(DefIdSource, ast::DefId) -> ast::DefId;
 
 pub struct TyDecoder<'a, 'tcx: 'a> {
@@ -292,7 +194,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    fn parse_region(&mut self) -> ty::Region {
+    pub fn parse_region(&mut self) -> ty::Region {
         match self.next() {
             'b' => {
                 assert_eq!(self.next(), '[');
@@ -629,7 +531,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    fn parse_bare_fn_ty(&mut self) -> ty::BareFnTy<'tcx> {
+    pub fn parse_bare_fn_ty(&mut self) -> ty::BareFnTy<'tcx> {
         let unsafety = parse_unsafety(self.next());
         let abi = self.parse_abi_set();
         let sig = self.parse_sig();
@@ -775,21 +677,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
         }
     }
-}
-
-fn data_log_string(data: &[u8], pos: usize) -> String {
-    let mut buf = String::new();
-    buf.push_str("<<");
-    for i in pos..data.len() {
-        let c = data[i];
-        if c > 0x20 && c <= 0x7F {
-            buf.push(c as char);
-        } else {
-            buf.push('.');
-        }
-    }
-    buf.push_str(">>");
-    buf
 }
 
 // Rust metadata parsing
