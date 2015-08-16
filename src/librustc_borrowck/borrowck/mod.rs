@@ -67,7 +67,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
                 self.free_region_map = old_free_region_map;
             }
 
-            visit::FkFnBlock => {
+            visit::FkClosure => {
                 borrowck_fn(self, fk, fd, b, s, id);
             }
         }

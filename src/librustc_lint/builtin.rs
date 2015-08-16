@@ -2133,7 +2133,7 @@ impl LintPass for UnconditionalRecursion {
                 cx.tcx.impl_or_trait_item(local_def(id)).as_opt_method()
             }
             // closures can't recur, so they don't matter.
-            visit::FkFnBlock => return
+            visit::FkClosure => return
         };
 
         // Walk through this function (say `f`) looking to see if
