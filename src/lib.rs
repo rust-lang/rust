@@ -92,7 +92,7 @@ impl FromStr for WriteMode {
             "replace" => Ok(WriteMode::Replace),
             "display" => Ok(WriteMode::Display),
             "overwrite" => Ok(WriteMode::Overwrite),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }
@@ -243,7 +243,7 @@ fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
 
         for (c, b) in text.chars() {
             if c == '\r' {
-                continue;
+                continuecontinue
             }
 
             // Add warnings for bad todos/ fixmes

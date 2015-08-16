@@ -21,7 +21,7 @@ pub fn extra_offset(text: &str, offset: usize) -> usize {
     match text.rfind('\n') {
         // 1 for newline character
         Some(idx) => text.len() - idx - 1 - offset,
-        None => text.len()
+        None => text.len(),
     }
 }
 
@@ -70,7 +70,7 @@ pub fn make_indent(width: usize) -> String {
 pub fn format_visibility(vis: Visibility) -> &'static str {
     match vis {
         Visibility::Public => "pub ",
-        Visibility::Inherited => ""
+        Visibility::Inherited => "",
     }
 }
 
@@ -78,7 +78,7 @@ pub fn format_visibility(vis: Visibility) -> &'static str {
 pub fn format_mutability(mutability: ast::Mutability) -> &'static str {
     match mutability {
         ast::Mutability::MutMutable => "mut ",
-        ast::Mutability::MutImmutable => ""
+        ast::Mutability::MutImmutable => "",
     }
 }
 

@@ -15,7 +15,8 @@ use rewrite::{Rewrite, RewriteContext};
 use syntax::ast;
 use syntax::codemap::Span;
 
-// TODO (some day) remove unused imports, expand globs, compress many single imports into a list import
+// TODO (some day) remove unused imports, expand globs, compress many single
+// imports into a list import.
 
 impl Rewrite for ast::ViewPath {
     // Returns an empty string when the ViewPath is empty (like foo::bar::{})
@@ -39,10 +40,10 @@ impl Rewrite for ast::ViewPath {
                 let path_str = try_opt!(path.rewrite(context, width - ident_str.len() - 4, offset));
 
                 Some(if path.segments.last().unwrap().identifier == ident {
-                         path_str
-                     } else {
-                         format!("{} as {}", path_str, ident_str)
-                     })
+                        path_str
+                    } else {
+                        format!("{} as {}", path_str, ident_str)
+                    })
             }
         }
     }
@@ -81,7 +82,7 @@ pub fn rewrite_use_list(width: usize,
     match path_list.len() {
         0 => return None,
         1 => return Some(rewrite_single_use_list(path_str, path_list[0])),
-        _ => ()
+        _ => (),
     }
 
     // 2 = ::
@@ -161,7 +162,7 @@ fn move_self_to_front(items: &mut Vec<ListItem>) -> bool {
         Some(pos) => {
             items[0] = items.remove(pos);
             true
-        },
-        None => false
+        }
+        None => false,
     }
 }

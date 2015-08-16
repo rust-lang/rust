@@ -29,7 +29,7 @@ impl ReportTactic {
         match *self {
             ReportTactic::Always => true,
             ReportTactic::Unnumbered => true,
-            ReportTactic::Never => false
+            ReportTactic::Never => false,
         }
     }
 }
@@ -113,7 +113,7 @@ impl BadIssueSeeker {
         match self.state {
             Seeking::Issue { todo_idx, fixme_idx } => {
                 self.state = self.inspect_issue(c, todo_idx, fixme_idx);
-            },
+            }
             Seeking::Number { issue, part } => {
                 let result = self.inspect_number(c, issue, part);
 
@@ -198,19 +198,19 @@ impl BadIssueSeeker {
                 } else {
                     part = NumberPart::Pound;
                 }
-            },
+            }
             NumberPart::Pound => {
                 if c == '#' {
                     part = NumberPart::Number;
                 }
-            },
+            }
             NumberPart::Number => {
                 if c >= '0' && c <= '9' {
                     part = NumberPart::CloseParen;
                 } else {
                     return IssueClassification::Bad(issue);
                 }
-            },
+            }
             NumberPart::CloseParen => {}
         }
 

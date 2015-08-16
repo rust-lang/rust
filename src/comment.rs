@@ -127,8 +127,8 @@ impl FindUncommented for str {
                     if b != c {
                         needle_iter = pat.chars();
                     }
-                },
-                None => return Some(i - pat.len())
+                }
+                None => return Some(i - pat.len()),
             }
 
             if possible_comment && (b == '/' || b == '*') {
@@ -145,7 +145,7 @@ impl FindUncommented for str {
         // Handle case where the pattern is a suffix of the search string
         match needle_iter.next() {
             Some(_) => None,
-            None => Some(self.len() - pat.len())
+            None => Some(self.len() - pat.len()),
         }
     }
 }

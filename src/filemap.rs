@@ -58,18 +58,18 @@ fn write_file(text: &StringBuffer,
         where T: Write
     {
         match config.newline_style {
-                NewlineStyle::Unix => write!(writer, "{}", text),
-                NewlineStyle::Windows => {
-                    for (c, _) in text.chars() {
-                        match c {
-                            '\n' => try!(write!(writer, "\r\n")),
-                            '\r' => continue,
-                            c => try!(write!(writer, "{}", c)),
-                        }
+            NewlineStyle::Unix => write!(writer, "{}", text),
+            NewlineStyle::Windows => {
+                for (c, _) in text.chars() {
+                    match c {
+                        '\n' => try!(write!(writer, "\r\n")),
+                        '\r' => continue,
+                        c => try!(write!(writer, "{}", c)),
                     }
-                    Ok(())
-                },
+                }
+                Ok(())
             }
+        }
     }
 
     match mode {

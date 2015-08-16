@@ -213,7 +213,8 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
             let comment = item.post_comment.as_ref().unwrap();
             // Use block-style only for the last item or multiline comments.
             let block_style = !formatting.ends_with_newline && last ||
-                              comment.trim().contains('\n') || comment.trim().len() > width;
+                              comment.trim().contains('\n') ||
+                              comment.trim().len() > width;
 
             let formatted_comment = rewrite_comment(comment, block_style, width, offset);
 
@@ -381,7 +382,7 @@ fn comment_len(comment: &Option<String>) -> usize {
             } else {
                 text_len
             }
-        },
-        &None => 0
+        }
+        &None => 0,
     }
 }

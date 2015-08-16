@@ -411,10 +411,8 @@ impl<'a> FmtVisitor<'a> {
 
                     result.push('(');
 
-                    let indent = self.block_indent
-                                 + vis.len()
-                                 + field.node.name.to_string().len()
-                                 + 1; // Open paren
+                    let indent = self.block_indent + vis.len() + field.node.name.to_string().len() +
+                                 1; // Open paren
 
                     let comma_cost = if self.config.enum_trailing_comma {
                         1
@@ -449,7 +447,7 @@ impl<'a> FmtVisitor<'a> {
                 }
 
                 result
-            },
+            }
             ast::VariantKind::StructVariantKind(ref struct_def) => {
                 // TODO Should limit the width, as we have a trailing comma
                 self.format_struct("",
@@ -491,7 +489,7 @@ impl<'a> FmtVisitor<'a> {
 
         let is_tuple = match struct_def.fields[0].node.kind {
             ast::StructFieldKind::NamedField(..) => false,
-            ast::StructFieldKind::UnnamedField(..) => true
+            ast::StructFieldKind::UnnamedField(..) => true,
         };
 
         let (opener, terminator) = if is_tuple {
@@ -506,7 +504,7 @@ impl<'a> FmtVisitor<'a> {
                                             offset + header_str.len(),
                                             codemap::mk_sp(span.lo,
                                                            struct_def.fields[0].span.lo)),
-            None => opener.to_owned()
+            None => opener.to_owned(),
         };
         result.push_str(&generics_str);
 
@@ -632,7 +630,7 @@ impl<'a> FmtVisitor<'a> {
         };
         let vis = match field.node.kind {
             ast::StructFieldKind::NamedField(_, vis) |
-            ast::StructFieldKind::UnnamedField(vis) => format_visibility(vis)
+            ast::StructFieldKind::UnnamedField(vis) => format_visibility(vis),
         };
         let typ = pprust::ty_to_string(&field.node.ty);
 
@@ -645,7 +643,7 @@ impl<'a> FmtVisitor<'a> {
 
         match name {
             Some(name) => format!("{}{}{}: {}", attr_str, vis, name, typ),
-            None => format!("{}{}{}", attr_str, vis, typ)
+            None => format!("{}{}{}", attr_str, vis, typ),
         }
     }
 
@@ -799,8 +797,7 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf, args: &[ast::Arg]) -
 
             // this hacky solution caused by absence of `Mutability` in `SelfValue`.
             let mut_str = {
-                if let ast::Pat_::PatIdent(ast::BindingMode::BindByValue(mutability), _, _)
-                        = args[0].pat.node {
+                if let ast::Pat_::PatIdent(ast::BindingMode::BindByValue(mutability), _, _) = args[0].pat.node {
                     format_mutability(mutability)
                 } else {
                     panic!("there is a bug or change in structure of AST, aborting.");
@@ -809,7 +806,7 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf, args: &[ast::Arg]) -
 
             Some(format!("{}self", mut_str))
         }
-        _ => None
+        _ => None,
     }
 }
 

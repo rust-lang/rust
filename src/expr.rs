@@ -30,7 +30,7 @@ impl Rewrite for ast::Expr {
                     ast::Lit_::LitStr(ref is, _) => {
                         rewrite_string_lit(context, &is, l.span, width, offset)
                     }
-                    _ => context.codemap.span_to_snippet(self.span).ok()
+                    _ => context.codemap.span_to_snippet(self.span).ok(),
                 }
             }
             ast::Expr_::ExprCall(ref callee, ref args) => {
@@ -105,7 +105,7 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprPath(ref qself, ref path) => {
                 rewrite_path(context, qself.as_ref(), path, width, offset)
             }
-            _ => context.codemap.span_to_snippet(self.span).ok()
+            _ => context.codemap.span_to_snippet(self.span).ok(),
         }
     }
 }
@@ -199,7 +199,7 @@ impl<'a> Loop<'a> {
             keyword: "while ",
             matcher: match pat {
                 Some(..) => "let ",
-                None => ""
+                None => "",
             },
             connector: " =",
         }
@@ -237,7 +237,7 @@ impl<'a> Rewrite for Loop<'a> {
                                                     self.connector,
                                                     inner_width,
                                                     inner_offset)),
-            None => String::new()
+            None => String::new(),
         };
 
         // FIXME: this drops any comment between "loop" and the block.
@@ -250,7 +250,7 @@ impl<'a> Rewrite for Loop<'a> {
 fn rewrite_label(label: Option<ast::Ident>) -> String {
     match label {
         Some(ident) => format!("{}: ", ident),
-        None => "".to_owned()
+        None => "".to_owned(),
     }
 }
 
@@ -262,9 +262,8 @@ fn rewrite_range(context: &RewriteContext,
                  offset: usize)
                  -> Option<String> {
     let left_string = match left {
-        // 2 = ..
         Some(expr) => try_opt!(expr.rewrite(context, width - 2, offset)),
-        None => String::new()
+        None => String::new(),
     };
 
     let right_string = match right {
@@ -273,7 +272,7 @@ fn rewrite_range(context: &RewriteContext,
             let max_width = (width - 2).checked_sub(left_string.len()).unwrap_or(0);
             try_opt!(expr.rewrite(context, max_width, offset + 2 + left_string.len()))
         }
-        None => String::new()
+        None => String::new(),
     };
 
     Some(format!("{}..{}", left_string, right_string))
@@ -354,12 +353,13 @@ impl Rewrite for ast::Arm {
         let pat_strs = pats.iter().map(|p| p.rewrite(context,
                                                      // 5 = ` => {`
                                                      width - 5,
-                                                     offset + context.config.tab_spaces)).collect::<Vec<_>>();
+                                                     offset + context.config.tab_spaces))
+                           .collect::<Vec<_>>();
         if pat_strs.iter().any(|p| p.is_none()) {
             return None;
         }
         let pat_strs = pat_strs.into_iter().map(|p| p.unwrap()).collect::<Vec<_>>();
-                                  
+
         let mut total_width = pat_strs.iter().fold(0, |a, p| a + p.len());
         // Add ` | `.len().
         total_width += (pat_strs.len() - 1) * 3;
@@ -496,7 +496,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
                                                   pat_offset));
             format!("{}{}{}", matcher, pat_string, connector)
         }
-        None => String::new()
+        None => String::new(),
     };
 
     // Consider only the last line of the pat string.
@@ -804,7 +804,7 @@ fn rewrite_binary_op(context: &RewriteContext,
     let used_width = result.len() + 1;
     let remaining_width = match result.rfind('\n') {
         Some(idx) => (offset + width + idx).checked_sub(used_width).unwrap_or(0),
-        None => width.checked_sub(used_width).unwrap_or(0)
+        None => width.checked_sub(used_width).unwrap_or(0),
     };
 
     // Get "full width" rhs and see if it fits on the current line. This
@@ -836,7 +836,7 @@ fn rewrite_unary_op(context: &RewriteContext,
         ast::UnOp::UnUniq => "box ",
         ast::UnOp::UnDeref => "*",
         ast::UnOp::UnNot => "!",
-        ast::UnOp::UnNeg => "-"
+        ast::UnOp::UnNeg => "-",
     };
 
     let subexpr = try_opt!(expr.rewrite(context, width - operator_str.len(), offset));
