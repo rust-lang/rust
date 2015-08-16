@@ -74,7 +74,7 @@ type headerfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                               libc::c_int, *mut libc::c_void);
 
 type codespanfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                                *mut libc::c_void);
+                                *mut libc::c_void) -> libc::c_int;
 
 type linkfn = extern "C" fn (*mut hoedown_buffer, *const hoedown_buffer,
                              *const hoedown_buffer, *const hoedown_buffer,
@@ -317,7 +317,11 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
     reset_headers();
 
-    extern fn codespan(ob: *mut hoedown_buffer, text: *const hoedown_buffer, _: *mut libc::c_void) {
+    extern fn codespan(
+        ob: *mut hoedown_buffer,
+        text: *const hoedown_buffer,
+        _: *mut libc::c_void,
+    ) -> libc::c_int {
         let content = if text.is_null() {
             "".to_string()
         } else {
@@ -329,6 +333,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         let content = format!("<code>{}</code>", Escape(&content));
         let element = CString::new(content).unwrap();
         unsafe { hoedown_buffer_puts(ob, element.as_ptr()); }
+        // Return anything except 0, which would mean "also print the code span verbatim".
+        1
     }
 
     unsafe {
