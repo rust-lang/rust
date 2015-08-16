@@ -13,5 +13,8 @@ fn main() {
 
     x != "foo".to_owned(); //~ERROR this creates an owned instance
 
+    // removed String::from_str(..), as it has finally been removed in 1.4.0
+    // as of 2015-08-14
+
     x != String::from("foo"); //~ERROR this creates an owned instance
 }

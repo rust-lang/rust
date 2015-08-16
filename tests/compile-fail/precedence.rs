@@ -2,6 +2,7 @@
 #![plugin(clippy)]
 
 #[deny(precedence)]
+#[allow(identity_op)]
 #[allow(eq_op)]
 fn main() {
     format!("{} vs. {}", 1 << 2 + 3, (1 << 2) + 3); //~ERROR operator precedence can trip

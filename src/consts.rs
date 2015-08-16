@@ -246,7 +246,14 @@ fn neg_float_str(s: String) -> String {
     }
 }
 
-fn is_negative(ty: LitIntType) -> bool {
+/// is the given LitIntType negative?
+///
+/// Examples
+///
+/// ```
+/// assert!(is_negative(UnsuffixedIntLit(Minus)));
+/// ```
+pub fn is_negative(ty: LitIntType) -> bool {
     match ty {
         SignedIntLit(_, sign) | UnsuffixedIntLit(sign) => sign == Minus,
         UnsignedIntLit(_) => false,
