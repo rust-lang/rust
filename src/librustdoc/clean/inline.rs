@@ -113,11 +113,10 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
         }
         _ => return None,
     };
-    let fqn = csearch::get_item_path(tcx, did);
     cx.inlined.borrow_mut().as_mut().unwrap().insert(did);
     ret.push(clean::Item {
         source: clean::Span::empty(),
-        name: Some(fqn.last().unwrap().to_string()),
+        name: Some(tcx.item_name(did).to_string()),
         attrs: load_attrs(cx, tcx, did),
         inner: inner,
         visibility: Some(ast::Public),

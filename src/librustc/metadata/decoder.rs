@@ -774,6 +774,10 @@ pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> Vec<ast_map::PathElem> {
     item_path(lookup_item(id, cdata.data()))
 }
 
+pub fn get_item_name(intr: &IdentInterner, cdata: Cmd, id: ast::NodeId) -> ast::Name {
+    item_name(intr, lookup_item(id, cdata.data()))
+}
+
 pub type DecodeInlinedItem<'a> =
     Box<for<'tcx> FnMut(Cmd,
                         &ty::ctxt<'tcx>,
