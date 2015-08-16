@@ -3,7 +3,6 @@ use rustc::middle::const_eval::lookup_const_by_id;
 use rustc::middle::def::PathResolution;
 use rustc::middle::def::Def::*;
 use syntax::ast::*;
-use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use std::rc::Rc;
 use std::ops::Deref;
@@ -71,11 +70,11 @@ pub enum ConstantVariant {
     /// true or false
     ConstantBool(bool),
     /// an array of constants
-    ConstantVec(Box<Vec<Constant>>),
+    ConstantVec(Vec<Constant>),
     /// also an array, but with only one constant, repeated N times
     ConstantRepeat(Box<ConstantVariant>, usize),
     /// a tuple of constants
-    ConstantTuple(Box<Vec<Constant>>),
+    ConstantTuple(Vec<Constant>),
 }
 
 impl ConstantVariant {
@@ -159,7 +158,7 @@ fn constant_vec<E: Deref<Target=Expr> + Sized>(cx: &Context, vec: &[E]) -> Optio
         }
     }
     Some(Constant {
-        constant: ConstantVec(Box::new(parts)),
+        constant: ConstantVec(parts),
         needed_resolution: resolved
     })
 }
@@ -177,7 +176,7 @@ fn constant_tup<E: Deref<Target=Expr> + Sized>(cx: &Context, tup: &[E]) -> Optio
         }
     }
     Some(Constant {
-        constant: ConstantTuple(Box::new(parts)),
+        constant: ConstantTuple(parts),
         needed_resolution: resolved
     })
 }
