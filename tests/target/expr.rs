@@ -22,15 +22,13 @@ fn foo() -> bool {
              aaaaa)))))))));
 
     {
-        for _ in 0..10 {
-        }
+        for _ in 0..10 {}
     }
 
     {
         {
             {
-                {
-                }
+                {}
             }
         }
     }
@@ -47,8 +45,7 @@ fn foo() -> bool {
     }
 
     if let Some(x) = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-                      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) {
-    }
+                      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) {}
 
     if let (some_very_large,
             tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3 {
@@ -56,8 +53,7 @@ fn foo() -> bool {
 
     if let (some_very_large,
             tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1111 +
-                                                                                         2222 {
-    }
+                                                                                         2222 {}
 
     if let (some_very_large, tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) =
            1 + 2 + 3 {
@@ -119,5 +115,19 @@ fn baz() {
 
     unsafe {
         // Regular unsafe block
+    }
+}
+
+// Test some empty blocks.
+fn qux() {
+    {}
+    // FIXME this one could be done better.
+    { /* a block with a comment */
+    }
+    {
+
+    }
+    {
+        // A block with a comment.
     }
 }

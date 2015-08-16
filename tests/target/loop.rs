@@ -13,8 +13,7 @@ fn main() {
     }
 
     'a: while loooooooooooooooooooooooooooooooooong_variable_name + another_value >
-              some_other_value {
-    }
+              some_other_value {}
 
     while aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb {
     }

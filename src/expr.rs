@@ -112,6 +112,11 @@ impl Rewrite for ast::Expr {
 
 impl Rewrite for ast::Block {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+        let user_str = context.codemap.span_to_snippet(self.span).unwrap();
+        if user_str == "{}" && width > 1 {
+            return Some(user_str);
+        }
+
         let mut visitor = FmtVisitor::from_codemap(context.codemap, context.config);
         visitor.block_indent = context.block_indent;
 
