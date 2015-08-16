@@ -16,12 +16,19 @@ declare_lint!(pub STR_TO_STRING, Warn,
 declare_lint!(pub STRING_TO_STRING, Warn,
               "calling `String.to_string()` which is a no-op");
 
+#[allow(unused_imports)]
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(OPTION_UNWRAP_USED, RESULT_UNWRAP_USED, STR_TO_STRING, STRING_TO_STRING)
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+        {
+            // In case stuff gets moved around
+            use core::option::Option;
+            use core::result::Result;
+            use collections::string::String;
+        }
         if let ExprMethodCall(ref ident, _, ref args) = expr.node {
             let ref obj_ty = walk_ptrs_ty(cx.tcx.expr_ty(&*args[0])).sty;
             if ident.node.name == "unwrap" {

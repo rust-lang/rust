@@ -63,10 +63,8 @@ impl LintPass for TypePass {
             // In case stuff gets moved around
             use collections::linked_list::LinkedList as DL1;
             use std::collections::linked_list::LinkedList as DL2;
-            use std::collections::linked_list::LinkedList as DL3;
         }
         let dlists = [vec!["std","collections","linked_list","LinkedList"],
-                      vec!["std","collections","linked_list","LinkedList"],
                       vec!["collections","linked_list","LinkedList"]];
         for path in &dlists {
             if match_ty_unwrap(ty, &path[..]).is_some() {
