@@ -21,5 +21,8 @@ let x = loop { do_forever(); };
     while let  Some(i) =     x.find('s')
     {
         x.update();
+        // FIXME #184
+        // continue;
+        // continue 'foo;
     }
 }

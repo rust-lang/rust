@@ -105,6 +105,16 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprPath(ref qself, ref path) => {
                 rewrite_path(context, qself.as_ref(), path, width, offset)
             }
+            // FIXME #184 Note that this formatting is broken due to a bad span
+            // from the parser.
+            // `continue`
+            ast::Expr_::ExprAgain(ref opt_ident) => {
+                let id_str = match *opt_ident {
+                    Some(ident) => format!(" {}", ident),
+                    None => String::new(),
+                };
+                Some(format!("continue{}", id_str))
+            }
             _ => context.codemap.span_to_snippet(self.span).ok(),
         }
     }

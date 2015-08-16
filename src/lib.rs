@@ -11,7 +11,8 @@
 #![feature(rustc_private)]
 #![feature(str_escape)]
 #![feature(str_char)]
-
+#![feature(custom_attribute)]
+#![allow(unused_attributes)]
 
 // TODO we're going to allocate a whole bunch of temp Strings, is it worth
 // keeping some scratch mem for this and running our own StrPool?
@@ -227,6 +228,8 @@ fn fmt_ast(krate: &ast::Crate, codemap: &CodeMap, config: &Config) -> FileMap {
 // Formatting done on a char by char or line by line basis.
 // TODO warn on bad license
 // TODO other stuff for parity with make tidy
+// FIXME skipping due to `continue`, #184.
+#[rustfmt_skip]
 fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     let mut truncate_todo = Vec::new();
     let mut report = FormatReport { file_error_map: HashMap::new() };
