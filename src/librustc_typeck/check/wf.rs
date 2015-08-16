@@ -428,7 +428,7 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
                 b: &'v ast::Block, span: Span, id: ast::NodeId) {
         match fk {
-            visit::FkFnBlock | visit::FkItemFn(..) => {}
+            visit::FkClosure | visit::FkItemFn(..) => {}
             visit::FkMethod(..) => {
                 match self.tcx().impl_or_trait_item(local_def(id)) {
                     ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
