@@ -13,8 +13,6 @@
 #![allow(unused_must_use)] // everything is just a MemWriter, can't fail
 #![allow(non_camel_case_types)]
 
-pub use self::InlinedItemRef::*;
-
 use ast_map::{self, LinkedPath, PathElem, PathElems};
 use back::svh::Svh;
 use session::config;
@@ -22,6 +20,7 @@ use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
+use metadata::inline::InlinedItemRef;
 use middle::def;
 use middle::dependency_format::Linkage;
 use middle::stability;
@@ -47,14 +46,6 @@ use syntax::visit::Visitor;
 use syntax::visit;
 use syntax;
 use rbml::writer::Encoder;
-
-/// A borrowed version of `ast::InlinedItem`.
-pub enum InlinedItemRef<'a> {
-    IIItemRef(&'a ast::Item),
-    IITraitItemRef(DefId, &'a ast::TraitItem),
-    IIImplItemRef(DefId, &'a ast::ImplItem),
-    IIForeignRef(&'a ast::ForeignItem)
-}
 
 pub type EncodeInlinedItem<'a> =
     Box<FnMut(&EncodeContext, &mut Encoder, InlinedItemRef) + 'a>;
@@ -832,7 +823,7 @@ fn encode_info_for_associated_const(ecx: &EncodeContext,
 
     if let Some(ii) = impl_item_opt {
         encode_attributes(rbml_w, &ii.attrs);
-        encode_inlined_item(ecx, rbml_w, IIImplItemRef(local_def(parent_id), ii));
+        encode_inlined_item(ecx, rbml_w, InlinedItemRef::ImplItem(local_def(parent_id), ii));
     }
 
     rbml_w.end_tag();
@@ -870,7 +861,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             let needs_inline = any_types || is_default_impl ||
                                attr::requests_inline(&impl_item.attrs);
             if needs_inline || sig.constness == ast::Constness::Const {
-                encode_inlined_item(ecx, rbml_w, IIImplItemRef(local_def(parent_id),
+                encode_inlined_item(ecx, rbml_w, InlinedItemRef::ImplItem(local_def(parent_id),
                                                                impl_item));
             }
             encode_constness(rbml_w, sig.constness);
@@ -1052,7 +1043,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(rbml_w, item.ident.name);
         encode_path(rbml_w, path);
         encode_attributes(rbml_w, &item.attrs);
-        encode_inlined_item(ecx, rbml_w, IIItemRef(item));
+        encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
         rbml_w.end_tag();
@@ -1069,7 +1060,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_attributes(rbml_w, &item.attrs);
         let needs_inline = tps_len > 0 || attr::requests_inline(&item.attrs);
         if needs_inline || constness == ast::Constness::Const {
-            encode_inlined_item(ecx, rbml_w, IIItemRef(item));
+            encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
         }
         if tps_len == 0 {
             encode_symbol(ecx, rbml_w, item.id);
@@ -1134,7 +1125,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         for v in &enum_definition.variants {
             encode_variant_id(rbml_w, local_def(v.node.id));
         }
-        encode_inlined_item(ecx, rbml_w, IIItemRef(item));
+        encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
         encode_path(rbml_w, path);
 
         // Encode inherent implementations for this enumeration.
@@ -1182,7 +1173,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         needs to know*/
         encode_struct_fields(rbml_w, variant, def_id);
 
-        encode_inlined_item(ecx, rbml_w, IIItemRef(item));
+        encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
 
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, rbml_w, def_id);
@@ -1457,7 +1448,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             match trait_item.node {
                 ast::ConstTraitItem(_, _) => {
                     encode_inlined_item(ecx, rbml_w,
-                                        IITraitItemRef(def_id, trait_item));
+                                        InlinedItemRef::TraitItem(def_id, trait_item));
                 }
                 ast::MethodTraitItem(ref sig, ref body) => {
                     // If this is a static method, we've already
@@ -1471,7 +1462,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
                     if body.is_some() {
                         encode_item_sort(rbml_w, 'p');
-                        encode_inlined_item(ecx, rbml_w, IITraitItemRef(def_id, trait_item));
+                        encode_inlined_item(ecx, rbml_w,
+                                            InlinedItemRef::TraitItem(def_id, trait_item));
                     } else {
                         encode_item_sort(rbml_w, 'r');
                     }
@@ -1510,7 +1502,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         encode_bounds_and_type_for_item(rbml_w, ecx, nitem.id);
         encode_name(rbml_w, nitem.ident.name);
         if abi == abi::RustIntrinsic {
-            encode_inlined_item(ecx, rbml_w, IIForeignRef(nitem));
+            encode_inlined_item(ecx, rbml_w, InlinedItemRef::Foreign(nitem));
         }
         encode_attributes(rbml_w, &*nitem.attrs);
         let stab = stability::lookup(ecx.tcx, ast_util::local_def(nitem.id));

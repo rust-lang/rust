@@ -10,6 +10,7 @@
 
 use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
 use metadata::csearch;
+use metadata::inline::InlinedItem;
 use middle::astencode;
 use middle::subst::Substs;
 use trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
@@ -48,7 +49,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             ccx.external().borrow_mut().insert(fn_id, None);
             return None;
         }
-        csearch::FoundAst::Found(&ast::IIItem(ref item)) => {
+        csearch::FoundAst::Found(&InlinedItem::Item(ref item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
 
@@ -91,12 +92,12 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
 
             item.id
         }
-        csearch::FoundAst::Found(&ast::IIForeign(ref item)) => {
+        csearch::FoundAst::Found(&InlinedItem::Foreign(ref item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
             item.id
         }
-        csearch::FoundAst::FoundParent(parent_id, &ast::IIItem(ref item)) => {
+        csearch::FoundAst::FoundParent(parent_id, &InlinedItem::Item(ref item)) => {
             ccx.external().borrow_mut().insert(parent_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, parent_id);
 
@@ -131,7 +132,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             ccx.sess().bug("maybe_get_item_ast returned a FoundParent \
                             with a non-item parent");
         }
-        csearch::FoundAst::Found(&ast::IITraitItem(_, ref trait_item)) => {
+        csearch::FoundAst::Found(&InlinedItem::TraitItem(_, ref trait_item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(trait_item.id));
             ccx.external_srcs().borrow_mut().insert(trait_item.id, fn_id);
 
@@ -150,7 +151,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             // don't.
             trait_item.id
         }
-        csearch::FoundAst::Found(&ast::IIImplItem(impl_did, ref impl_item)) => {
+        csearch::FoundAst::Found(&InlinedItem::ImplItem(impl_did, ref impl_item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(impl_item.id));
             ccx.external_srcs().borrow_mut().insert(impl_item.id, fn_id);
 
