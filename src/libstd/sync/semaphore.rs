@@ -10,7 +10,8 @@
 
 #![unstable(feature = "semaphore",
             reason = "the interaction between semaphores and the acquisition/release \
-                      of resources is currently unclear")]
+                      of resources is currently unclear",
+            issue = "27798")]
 
 use ops::Drop;
 use sync::{Mutex, Condvar};

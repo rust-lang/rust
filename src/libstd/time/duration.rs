@@ -64,7 +64,8 @@ impl Duration {
     #[unstable(feature = "duration_span",
                reason = "unsure if this is the right API or whether it should \
                          wait for a more general \"moment in time\" \
-                         abstraction")]
+                         abstraction",
+               issue = "27799")]
     pub fn span<F>(f: F) -> Duration where F: FnOnce() {
         let start = SteadyTime::now();
         f();

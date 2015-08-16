@@ -157,6 +157,9 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Makes a new empty BTreeMap with the given B.
     ///
     /// B cannot be less than 2.
+    #[unstable(feature = "btree_b",
+               reason = "probably want this to be on the type, eventually",
+               issue = "27795")]
     pub fn with_b(b: usize) -> BTreeMap<K, V> {
         assert!(b > 1, "B must be greater than 1");
         BTreeMap {
@@ -1504,7 +1507,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(Some((&5, &"b")), map.range(Included(&4), Unbounded).next());
     /// ```
     #[unstable(feature = "btree_range",
-               reason = "matches collection reform specification, waiting for dust to settle")]
+               reason = "matches collection reform specification, waiting for dust to settle",
+               issue = "27787")]
     pub fn range<Min: ?Sized + Ord = K, Max: ?Sized + Ord = K>(&self, min: Bound<&Min>,
                                                                max: Bound<&Max>)
         -> Range<K, V> where
@@ -1537,7 +1541,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// }
     /// ```
     #[unstable(feature = "btree_range",
-               reason = "matches collection reform specification, waiting for dust to settle")]
+               reason = "matches collection reform specification, waiting for dust to settle",
+               issue = "27787")]
     pub fn range_mut<Min: ?Sized + Ord = K, Max: ?Sized + Ord = K>(&mut self, min: Bound<&Min>,
                                                                    max: Bound<&Max>)
         -> RangeMut<K, V> where

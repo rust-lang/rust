@@ -133,7 +133,8 @@ radix! { UpperHex, 16, "0x", x @  0 ...  9 => b'0' + x,
 /// A radix with in the range of `2..36`.
 #[derive(Clone, Copy, PartialEq)]
 #[unstable(feature = "fmt_radix",
-           reason = "may be renamed or move to a different module")]
+           reason = "may be renamed or move to a different module",
+           issue = "27728")]
 pub struct Radix {
     base: u8,
 }
@@ -158,7 +159,8 @@ impl GenericRadix for Radix {
 
 /// A helper type for formatting radixes.
 #[unstable(feature = "fmt_radix",
-           reason = "may be renamed or move to a different module")]
+           reason = "may be renamed or move to a different module",
+           issue = "27728")]
 #[derive(Copy, Clone)]
 pub struct RadixFmt<T, R>(T, R);
 
@@ -173,7 +175,8 @@ pub struct RadixFmt<T, R>(T, R);
 /// assert_eq!(format!("{}", radix(55, 36)), "1j".to_string());
 /// ```
 #[unstable(feature = "fmt_radix",
-           reason = "may be renamed or move to a different module")]
+           reason = "may be renamed or move to a different module",
+           issue = "27728")]
 pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
     RadixFmt(x, Radix::new(base))
 }

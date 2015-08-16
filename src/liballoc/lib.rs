@@ -64,7 +64,8 @@
 #![allow(unused_attributes)]
 #![unstable(feature = "alloc",
             reason = "this library is unlikely to be stabilized in its current \
-                      form or name")]
+                      form or name",
+            issue = "27783")]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
@@ -131,7 +132,8 @@ pub mod raw_vec;
 /// Common out-of-memory routine
 #[cold]
 #[inline(never)]
-#[unstable(feature = "oom", reason = "not a scrutinized interface")]
+#[unstable(feature = "oom", reason = "not a scrutinized interface",
+           issue = "27700")]
 pub fn oom() -> ! {
     // FIXME(#14674): This really needs to do something other than just abort
     //                here, but any printing done must be *guaranteed* to not

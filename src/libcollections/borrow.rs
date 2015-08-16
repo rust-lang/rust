@@ -344,7 +344,8 @@ impl<'a, B: ?Sized> Hash for Cow<'a, B> where B: Hash + ToOwned
 }
 
 /// Trait for moving into a `Cow`.
-#[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`")]
+#[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`",
+           issue = "27735")]
 pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
     /// Moves `self` into `Cow`
     fn into_cow(self) -> Cow<'a, B>;

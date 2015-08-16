@@ -61,7 +61,8 @@ pub trait FromRawFd {
 
 /// A trait to express the ability to consume an object and acquire ownership of
 /// its raw file descriptor.
-#[unstable(feature = "into_raw_os", reason = "recently added API")]
+#[unstable(feature = "into_raw_os", reason = "recently added API",
+           issue = "27797")]
 pub trait IntoRawFd {
     /// Consumes this object, returning the raw underlying file descriptor.
     ///

@@ -7,7 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![unstable(feature = "reentrant_mutex", reason = "new API")]
+
+#![unstable(feature = "reentrant_mutex", reason = "new API",
+            issue = "27738")]
 
 use prelude::v1::*;
 

@@ -92,7 +92,8 @@
 
 #![doc(hidden)]
 #![unstable(feature = "dec2flt",
-            reason = "internal routines only exposed for testing")]
+            reason = "internal routines only exposed for testing",
+            issue = "0")]
 
 use prelude::v1::*;
 use num::ParseFloatError as PFE;

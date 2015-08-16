@@ -127,7 +127,8 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// (which may be more appropriate than zero).
 #[inline(always)]
 #[unstable(feature = "filling_drop",
-           reason = "may play a larger role in std::ptr future extensions")]
+           reason = "may play a larger role in std::ptr future extensions",
+           issue = "5016")]
 pub unsafe fn read_and_drop<T>(dest: *mut T) -> T {
     // Copy the data out from `dest`:
     let tmp = read(&*dest);
@@ -177,7 +178,8 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "ptr_as_ref",
                reason = "Option is not clearly the right return type, and we \
                          may want to tie the return lifetime to a borrow of \
-                         the raw pointer")]
+                         the raw pointer",
+               issue = "27780")]
     #[inline]
     pub unsafe fn as_ref<'a>(&self) -> Option<&'a T> where T: Sized {
         if self.is_null() {
@@ -225,7 +227,8 @@ impl<T: ?Sized> *mut T {
     #[unstable(feature = "ptr_as_ref",
                reason = "Option is not clearly the right return type, and we \
                          may want to tie the return lifetime to a borrow of \
-                         the raw pointer")]
+                         the raw pointer",
+               issue = "27780")]
     #[inline]
     pub unsafe fn as_ref<'a>(&self) -> Option<&'a T> where T: Sized {
         if self.is_null() {
@@ -258,7 +261,8 @@ impl<T: ?Sized> *mut T {
     /// of the returned pointer.
     #[unstable(feature = "ptr_as_ref",
                reason = "return value does not necessarily convey all possible \
-                         information")]
+                         information",
+               issue = "27780")]
     #[inline]
     pub unsafe fn as_mut<'a>(&self) -> Option<&'a mut T> where T: Sized {
         if self.is_null() {
@@ -415,7 +419,8 @@ impl<T: ?Sized> PartialOrd for *mut T {
 /// modified without a unique path to the `Unique` reference. Useful
 /// for building abstractions like `Vec<T>` or `Box<T>`, which
 /// internally use raw pointers to manage the memory that they own.
-#[unstable(feature = "unique", reason = "needs an RFC to flesh out design")]
+#[unstable(feature = "unique", reason = "needs an RFC to flesh out design",
+           issue = "27730")]
 pub struct Unique<T: ?Sized> {
     pointer: NonZero<*const T>,
     // NOTE: this marker has no consequences for variance, but is necessary
@@ -430,17 +435,17 @@ pub struct Unique<T: ?Sized> {
 /// reference is unaliased. Note that this aliasing invariant is
 /// unenforced by the type system; the abstraction using the
 /// `Unique` must enforce it.
-#[unstable(feature = "unique")]
+#[unstable(feature = "unique", issue = "27730")]
 unsafe impl<T: Send + ?Sized> Send for Unique<T> { }
 
 /// `Unique` pointers are `Sync` if `T` is `Sync` because the data they
 /// reference is unaliased. Note that this aliasing invariant is
 /// unenforced by the type system; the abstraction using the
 /// `Unique` must enforce it.
-#[unstable(feature = "unique")]
+#[unstable(feature = "unique", issue = "27730")]
 unsafe impl<T: Sync + ?Sized> Sync for Unique<T> { }
 
-#[unstable(feature = "unique")]
+#[unstable(feature = "unique", issue = "27730")]
 impl<T: ?Sized> Unique<T> {
     /// Creates a new `Unique`.
     pub unsafe fn new(ptr: *mut T) -> Unique<T> {
@@ -458,7 +463,7 @@ impl<T: ?Sized> Unique<T> {
     }
 }
 
-#[unstable(feature = "unique")]
+#[unstable(feature = "unique", issue= "27730")]
 impl<T:?Sized> Deref for Unique<T> {
     type Target = *mut T;
 

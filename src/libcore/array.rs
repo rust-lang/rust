@@ -16,7 +16,8 @@
 
 #![unstable(feature = "fixed_size_array",
             reason = "traits and impls are better expressed through generic \
-                      integer constants")]
+                      integer constants",
+            issue = "27778")]
 
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};

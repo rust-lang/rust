@@ -105,7 +105,7 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
 ///
 /// For use with the `std::iter` module.
 #[derive(Clone)]
-#[unstable(feature = "str_utf16")]
+#[unstable(feature = "str_utf16", issue = "27714")]
 pub struct Utf16Units<'a> {
     encoder: Utf16Encoder<Chars<'a>>
 }
@@ -211,7 +211,8 @@ impl str {
                reason = "it is unclear whether this method pulls its weight \
                          with the existence of the char_indices iterator or \
                          this method may want to be replaced with checked \
-                         slicing")]
+                         slicing",
+               issue = "27754")]
     #[inline]
     pub fn is_char_boundary(&self, index: usize) -> bool {
         core_str::StrExt::is_char_boundary(self, index)
@@ -275,7 +276,8 @@ impl str {
     /// Takes a bytewise mutable slice from a string.
     ///
     /// Same as `slice_unchecked`, but works with `&mut str` instead of `&str`.
-    #[unstable(feature = "str_slice_mut", reason = "recently added")]
+    #[unstable(feature = "str_slice_mut", reason = "recently added",
+               issue = "27793")]
     #[inline]
     pub unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
         core_str::StrExt::slice_mut_unchecked(self, begin, end)
@@ -329,7 +331,8 @@ impl str {
     #[unstable(feature = "str_char",
                reason = "often replaced by char_indices, this method may \
                          be removed in favor of just char_at() or eventually \
-                         removed altogether")]
+                         removed altogether",
+               issue = "27754")]
     #[inline]
     pub fn char_range_at(&self, start: usize) -> CharRange {
         core_str::StrExt::char_range_at(self, start)
@@ -388,7 +391,8 @@ impl str {
     #[unstable(feature = "str_char",
                reason = "often replaced by char_indices, this method may \
                          be removed in favor of just char_at_reverse() or \
-                         eventually removed altogether")]
+                         eventually removed altogether",
+               issue = "27754")]
     #[inline]
     pub fn char_range_at_reverse(&self, start: usize) -> CharRange {
         core_str::StrExt::char_range_at_reverse(self, start)
@@ -416,7 +420,8 @@ impl str {
                          method may be removed or possibly renamed in the \
                          future; it is normally replaced by chars/char_indices \
                          iterators or by getting the first char from a \
-                         subslice")]
+                         subslice",
+               issue = "27754")]
     #[inline]
     pub fn char_at(&self, i: usize) -> char {
         core_str::StrExt::char_at(self, i)
@@ -443,7 +448,8 @@ impl str {
     #[unstable(feature = "str_char",
                reason = "see char_at for more details, but reverse semantics \
                          are also somewhat unclear, especially with which \
-                         cases generate panics")]
+                         cases generate panics",
+               issue = "27754")]
     #[inline]
     pub fn char_at_reverse(&self, i: usize) -> char {
         core_str::StrExt::char_at_reverse(self, i)
@@ -478,7 +484,8 @@ impl str {
     #[unstable(feature = "str_char",
                reason = "awaiting conventions about shifting and slices and \
                          may not be warranted with the existence of the chars \
-                         and/or char_indices iterators")]
+                         and/or char_indices iterators",
+               issue = "27754")]
     #[inline]
     pub fn slice_shift_char(&self) -> Option<(char, &str)> {
         core_str::StrExt::slice_shift_char(self)
@@ -508,14 +515,16 @@ impl str {
     /// assert_eq!(b, " 老虎 Léopard");
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_at", reason = "recently added")]
+    #[unstable(feature = "str_split_at", reason = "recently added",
+               issue = "27792")]
     pub fn split_at(&self, mid: usize) -> (&str, &str) {
         core_str::StrExt::split_at(self, mid)
     }
 
     /// Divide one mutable string slice into two at an index.
     #[inline]
-    #[unstable(feature = "str_split_at", reason = "recently added")]
+    #[unstable(feature = "str_split_at", reason = "recently added",
+               issue = "27792")]
     pub fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
         core_str::StrExt::split_at_mut(self, mid)
     }
@@ -652,7 +661,8 @@ impl str {
 
     /// Returns an iterator of `u16` over the string encoded as UTF-16.
     #[unstable(feature = "str_utf16",
-               reason = "this functionality may only be provided by libunicode")]
+               reason = "this functionality may only be provided by libunicode",
+               issue = "27714")]
     pub fn utf16_units(&self) -> Utf16Units {
         Utf16Units { encoder: Utf16Encoder::new(self[..].chars()) }
     }
@@ -1186,7 +1196,8 @@ impl str {
     /// assert_eq!(v, [(0, 3)]); // only the first `aba`
     /// ```
     #[unstable(feature = "str_match_indices",
-               reason = "might have its iterator type changed")]
+               reason = "might have its iterator type changed",
+               issue = "27743")]
     // NB: Right now MatchIndices yields `(usize, usize)`, but it would
     // be more consistent with `matches` and `char_indices` to return `(usize, &str)`
     pub fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
@@ -1231,7 +1242,8 @@ impl str {
     /// assert_eq!(v, [(2, 5)]); // only the last `aba`
     /// ```
     #[unstable(feature = "str_match_indices",
-               reason = "might have its iterator type changed")]
+               reason = "might have its iterator type changed",
+               issue = "27743")]
     // NB: Right now RMatchIndices yields `(usize, usize)`, but it would
     // be more consistent with `rmatches` and `char_indices` to return `(usize, &str)`
     pub fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
@@ -1476,21 +1488,24 @@ impl str {
 
     /// Escapes each char in `s` with `char::escape_default`.
     #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator")]
+               reason = "return type may change to be an iterator",
+               issue = "27791")]
     pub fn escape_default(&self) -> String {
         self.chars().flat_map(|c| c.escape_default()).collect()
     }
 
     /// Escapes each char in `s` with `char::escape_unicode`.
     #[unstable(feature = "str_escape",
-               reason = "return type may change to be an iterator")]
+               reason = "return type may change to be an iterator",
+               issue = "27791")]
     pub fn escape_unicode(&self) -> String {
         self.chars().flat_map(|c| c.escape_unicode()).collect()
     }
 
     /// Converts the `Box<str>` into a `String` without copying or allocating.
     #[unstable(feature = "box_str",
-               reason = "recently added, matches RFC")]
+               reason = "recently added, matches RFC",
+               issue = "27785")]
     pub fn into_string(self: Box<str>) -> String {
         unsafe {
             let slice = mem::transmute::<Box<str>, Box<[u8]>>(self);

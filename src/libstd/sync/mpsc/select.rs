@@ -54,7 +54,8 @@
                       module will likely be replaced, and it is currently \
                       unknown how much API breakage that will cause. The ability \
                       to select over a number of channels will remain forever, \
-                      but no guarantees beyond this are being made")]
+                      but no guarantees beyond this are being made",
+            issue = "27800")]
 
 
 use core::cell::{Cell, UnsafeCell};

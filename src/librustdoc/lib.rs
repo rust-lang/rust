@@ -11,7 +11,7 @@
 // Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "rustdoc"]
-#![unstable(feature = "rustdoc")]
+#![unstable(feature = "rustdoc", issue = "27812")]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]

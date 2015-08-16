@@ -10,7 +10,7 @@
 
 // compile-flags:--cfg foo
 
-#![cfg_attr(foo, unstable(feature = "test_feature"))]
+#![cfg_attr(foo, unstable(feature = "test_feature", issue = "0"))]
 #![cfg_attr(not(foo), stable(feature = "test_feature", since = "1.0.0"))]
 #![feature(staged_api)]
 #![staged_api]

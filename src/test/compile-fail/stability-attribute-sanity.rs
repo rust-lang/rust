@@ -56,11 +56,14 @@ mod bogus_attribute_types_2 {
 }
 
 mod missing_feature_names {
-    #[unstable(since = "a")] //~ ERROR missing 'feature'
+    #[unstable(since = "a", issue = "0")] //~ ERROR missing 'feature'
     fn f1() { }
 
+    #[unstable(feature = "a")]
+    fn f2() { } //~ ERROR need to point to an issue
+
     #[stable(since = "a")] //~ ERROR missing 'feature'
-    fn f2() { }
+    fn f3() { }
 }
 
 mod missing_version {
@@ -72,12 +75,12 @@ mod missing_version {
     fn f2() { }
 }
 
-#[unstable(feature = "a", since = "b")]
+#[unstable(feature = "a", since = "b", issue = "0")]
 #[stable(feature = "a", since = "b")]
 fn multiple1() { } //~ ERROR multiple stability levels
 
-#[unstable(feature = "a", since = "b")]
-#[unstable(feature = "a", since = "b")]
+#[unstable(feature = "a", since = "b", issue = "0")]
+#[unstable(feature = "a", since = "b", issue = "0")]
 fn multiple2() { } //~ ERROR multiple stability levels
 
 #[stable(feature = "a", since = "b")]

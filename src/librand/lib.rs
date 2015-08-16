@@ -27,7 +27,8 @@
 #![no_std]
 #![staged_api]
 #![unstable(feature = "rand",
-            reason = "use `rand` from crates.io")]
+            reason = "use `rand` from crates.io",
+            issue = "27703")]
 #![feature(core_float)]
 #![feature(core_slice_ext)]
 #![feature(no_std)]

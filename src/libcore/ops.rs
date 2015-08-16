@@ -1247,7 +1247,7 @@ mod impls {
 
 /// Trait that indicates that this is a pointer or a wrapper for one,
 /// where unsizing can be performed on the pointee.
-#[unstable(feature = "coerce_unsized")]
+#[unstable(feature = "coerce_unsized", issue = "27732")]
 #[lang="coerce_unsized"]
 pub trait CoerceUnsized<T> {
     // Empty.
@@ -1293,7 +1293,7 @@ impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 /// If evaluating EXPR fails, then the destructor for the
 /// implementation of Place to clean up any intermediate state
 /// (e.g. deallocate box storage, pop a stack, etc).
-#[unstable(feature = "placement_new_protocol")]
+#[unstable(feature = "placement_new_protocol", issue = "27779")]
 pub trait Place<Data: ?Sized> {
     /// Returns the address where the input value will be written.
     /// Note that the data at this address is generally uninitialized,
@@ -1324,7 +1324,7 @@ pub trait Place<Data: ?Sized> {
 /// Values for types implementing this trait usually are transient
 /// intermediate values (e.g. the return value of `Vec::emplace_back`)
 /// or `Copy`, since the `make_place` method takes `self` by value.
-#[unstable(feature = "placement_new_protocol")]
+#[unstable(feature = "placement_new_protocol", issue = "27779")]
 pub trait Placer<Data: ?Sized> {
     /// `Place` is the intermedate agent guarding the
     /// uninitialized state for `Data`.
@@ -1335,7 +1335,7 @@ pub trait Placer<Data: ?Sized> {
 }
 
 /// Specialization of `Place` trait supporting `in (PLACE) EXPR`.
-#[unstable(feature = "placement_new_protocol")]
+#[unstable(feature = "placement_new_protocol", issue = "27779")]
 pub trait InPlace<Data: ?Sized>: Place<Data> {
     /// `Owner` is the type of the end value of `in (PLACE) EXPR`
     ///
@@ -1372,7 +1372,7 @@ pub trait InPlace<Data: ?Sized>: Place<Data> {
 /// `<T as Boxed>` in turn dictates determines which
 /// implementation of `BoxPlace` to use, namely:
 /// `<<T as Boxed>::Place as BoxPlace>`.
-#[unstable(feature = "placement_new_protocol")]
+#[unstable(feature = "placement_new_protocol", issue = "27779")]
 pub trait Boxed {
     /// The kind of data that is stored in this kind of box.
     type Data;  /* (`Data` unused b/c cannot yet express below bound.) */
@@ -1386,7 +1386,7 @@ pub trait Boxed {
 }
 
 /// Specialization of `Place` trait supporting `box EXPR`.
-#[unstable(feature = "placement_new_protocol")]
+#[unstable(feature = "placement_new_protocol", issue = "27779")]
 pub trait BoxPlace<Data: ?Sized> : Place<Data> {
     /// Creates a globally fresh place.
     fn make_place() -> Self;
