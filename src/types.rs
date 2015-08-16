@@ -1,9 +1,9 @@
-use syntax::ptr::P;
+use rustc::lint::*;
 use syntax::ast;
 use syntax::ast::*;
+use syntax::ptr::P;
 use rustc::middle::ty;
-use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
-use syntax::codemap::{ExpnInfo, Span};
+use syntax::codemap::ExpnInfo;
 
 use utils::{in_macro, snippet, span_lint, span_help_and_lint};
 
@@ -40,6 +40,7 @@ pub fn match_ty_unwrap<'a>(ty: &'a Ty, segments: &[&str]) -> Option<&'a [P<Ty>]>
     }
 }
 
+#[allow(unused_imports)]
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
         lint_array!(BOX_VEC, LINKEDLIST)

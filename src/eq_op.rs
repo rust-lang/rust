@@ -3,6 +3,7 @@ use syntax::ast::*;
 use syntax::ast_util as ast_util;
 use syntax::ptr::P;
 use syntax::codemap as code;
+
 use utils::span_lint;
 
 declare_lint! {

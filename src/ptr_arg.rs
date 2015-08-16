@@ -2,14 +2,10 @@
 //!
 //! This lint is **warn** by default
 
-use rustc::plugin::Registry;
 use rustc::lint::*;
-use rustc::middle::const_eval::lookup_const_by_id;
-use rustc::middle::def::*;
 use syntax::ast::*;
-use syntax::ast_util::{is_comparison_binop, binop_to_string};
-use syntax::ptr::P;
 use syntax::codemap::Span;
+
 use types::match_ty_unwrap;
 use utils::span_lint;
 

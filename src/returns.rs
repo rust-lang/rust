@@ -1,8 +1,7 @@
-use syntax::ast;
+use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::{Span, Spanned};
 use syntax::visit::FnKind;
-use rustc::lint::{Context, LintPass, LintArray, Level};
 
 use utils::{span_lint, snippet, match_path};
 
@@ -101,7 +100,7 @@ impl LintPass for ReturnPass {
     }
 
     fn check_fn(&mut self, cx: &Context, _: FnKind, _: &FnDecl,
-                block: &Block, _: Span, _: ast::NodeId) {
+                block: &Block, _: Span, _: NodeId) {
         self.check_block_return(cx, block);
         self.check_let_return(cx, block);
     }

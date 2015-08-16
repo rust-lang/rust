@@ -12,12 +12,10 @@
 //!
 //! This lint is **warn** by default
 
-use rustc::plugin::Registry;
 use rustc::lint::*;
-use rustc::middle::def::*;
 use syntax::ast::*;
-use syntax::ptr::P;
-use syntax::codemap::{Span, Spanned, ExpnInfo};
+use syntax::codemap::{Spanned, ExpnInfo};
+
 use utils::{in_macro, span_help_and_lint, snippet, snippet_block};
 
 declare_lint! {

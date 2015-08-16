@@ -1,6 +1,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::{BytePos, Span};
+
 use utils::span_lint;
 
 declare_lint!{ pub ZERO_WIDTH_SPACE, Deny,

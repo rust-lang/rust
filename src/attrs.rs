@@ -1,11 +1,9 @@
-/// checks for attributes
+//! checks for attributes
 
-use rustc::plugin::Registry;
 use rustc::lint::*;
 use syntax::ast::*;
-use syntax::ptr::P;
-use syntax::codemap::{Span, ExpnInfo};
-use syntax::parse::token::InternedString;
+use syntax::codemap::ExpnInfo;
+
 use utils::{in_macro, match_path, span_lint};
 
 declare_lint! { pub INLINE_ALWAYS, Warn,

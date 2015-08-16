@@ -6,9 +6,9 @@
 use rustc::lint::*;
 use rustc::middle::ty::TypeVariants::TyStruct;
 use syntax::ast::*;
-use syntax::codemap::{Span, Spanned};
+use syntax::codemap::Spanned;
+
 use eq_op::is_exp_equal;
-use types::match_ty_unwrap;
 use utils::{match_def_path, span_lint, walk_ptrs_ty, get_parent_expr};
 
 declare_lint! {

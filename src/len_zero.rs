@@ -1,14 +1,9 @@
-extern crate rustc_typeck as typeck;
-
-use std::rc::Rc;
-use std::cell::RefCell;
-use syntax::ptr::P;
-use rustc::lint::{Context, LintPass, LintArray, Lint};
-use rustc::util::nodemap::DefIdMap;
-use rustc::middle::ty::{self, TypeVariants, TypeAndMut, MethodTraitItemId, ImplOrTraitItemId};
-use rustc::middle::def::{DefTy, DefStruct, DefTrait};
-use syntax::codemap::{Span, Spanned};
+use rustc::lint::*;
 use syntax::ast::*;
+use syntax::ptr::P;
+use syntax::codemap::{Span, Spanned};
+use rustc::middle::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
+
 use utils::{span_lint, walk_ptrs_ty, snippet};
 
 declare_lint!(pub LEN_ZERO, Warn,

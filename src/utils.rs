@@ -1,11 +1,10 @@
-use rustc::lint::{Context, Lint, Level};
-use syntax::ast::{DefId, Expr, Name, NodeId, Path};
+use rustc::lint::*;
+use syntax::ast::*;
 use syntax::codemap::{ExpnInfo, Span};
 use syntax::ptr::P;
 use rustc::ast_map::Node::NodeExpr;
 use rustc::middle::ty;
-use std::borrow::{Cow, IntoCow};
-use std::convert::From;
+use std::borrow::Cow;
 
 /// returns true if the macro that expanded the crate was outside of
 /// the current crate or was a compiler plugin

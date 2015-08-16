@@ -1,5 +1,5 @@
 use syntax::ast::*;
-use rustc::lint::{Context, LintPass, LintArray};
+use rustc::lint::*;
 use rustc::middle::ty;
 
 use utils::{span_lint, match_def_path, walk_ptrs_ty};
