@@ -472,7 +472,7 @@ impl char {
     /// it maps one Unicode character to its uppercase equivalent
     /// according to the Unicode database [1]
     /// and the additional complex mappings [`SpecialCasing.txt`].
-    /// Conditional mappings (based on context or language) are not considerd here.
+    /// Conditional mappings (based on context or language) are not considered here.
     ///
     /// A full reference can be found here [2].
     ///
