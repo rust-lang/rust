@@ -78,6 +78,7 @@ enum used_enum {
     bar3 //~ ERROR variant is never used
 }
 
+#[allow(unused_type_parameters)]
 fn f<T>() {}
 
 pub fn pub_fn() {

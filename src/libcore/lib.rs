@@ -62,6 +62,7 @@
 
 #![no_core]
 #![allow(raw_pointer_derive)]
+#![allow(unused_type_parameters)]
 #![deny(missing_docs)]
 
 #![feature(allow_internal_unstable)]
