@@ -290,6 +290,79 @@ pub mod builtin {
         ($($e:ident),*) => ({ /* compiler built-in */ })
     }
 
+    /// Gets a configuration flag as an integer literal.
+    ///
+    /// This macro takes a configuration flag name as its only argument
+    /// and evaluates its value, returning it as an integer.
+    ///
+    /// Note that the macro expands to an integer with no suffix and no
+    /// specific integer type (i.e. `let val = 5`). This means that the
+    /// type inference engine will decide the type of the integer unless
+    /// it is explicitly specified.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cfg_values)]
+    ///
+    /// # fn main() {
+    /// One boolean for every bit in a pointer.
+    /// let vals = [false; cfg_int!(target_pointer_width)];
+    ///
+    /// // On a 64-bit system, prints 64, etc
+    /// println!("Total bit count: {}", vals.len());
+    ///
+    /// for (i,val) in vals.iter().enumerate() {
+    ///     println!("Bit {} is {}", i, val);
+    /// }
+    /// # }
+    /// ```
+    #[macro_export]
+    macro_rules! cfg_int {
+        ($name:ident) => ({ /* compiler built-in */ })
+    }
+
+    /// Gets a configuration flag as a floating point literal.
+    /// This macro takes a configuration flag name as its only argument
+    /// and evaluates its value, returning it as a float.
+    ///
+    /// Note that the macro expands to a float with no suffix and no
+    /// specific floating point type (i.e. `let val = 5.0`). This means
+    /// that the type inference engine will decide the type of the float
+    /// (`f32` vs `f64`) unless it is explicitly specified.
+    #[macro_export]
+    macro_rules! cfg_float {
+        ($name:ident) => ({ /* compiler built-in */ })
+    }
+
+    /// Gets a configuration flag as a string literal.
+    /// This macro takes a configuration flag name as its only argument
+    /// and evaluates its value, returning it as a string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(cfg_values)]
+    ///
+    /// const TARGET_OS: &'static str = cfg_str!(target_os);
+    /// const TARGET_FAMILY: &'static str = cfg_str!(target_family);
+    /// const TARGET_ARCH: &'static str = cfg_str!(target_arch);
+    /// const TARGET_ENDIAN: &'static str = cfg_str!(target_endian);
+    /// const TARGET_ENV: &'static str = cfg_str!(target_env);
+    ///
+    /// fn main() {
+    ///     println!("OS: {}", TARGET_OS);
+    ///     println!("Family: {}", TARGET_FAMILY);
+    ///     println!("Architecture: {}", TARGET_ARCH);
+    ///     println!("Endianness: {}", TARGET_ENDIAN);
+    ///     println!("Target envionment: {}", TARGET_ENV);
+    /// }
+    /// ```
+    #[macro_export]
+    macro_rules! cfg_str {
+        ($name:ident) => ({ /* compiler built-in */ })
+    }
+
     /// Concatenates literals into a static string slice.
     ///
     /// This macro takes any number of comma-separated literals, yielding an

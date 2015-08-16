@@ -170,9 +170,9 @@ pub fn expand_cfg_val(cx: &mut ExtCtxt,
 }
 
 fn parse_meta_item(cx: &mut ExtCtxt,
-                     sp: Span,
-                     tts: &[ast::TokenTree])
-                     -> Option<P<ast::MetaItem>> {
+                   sp: Span,
+                   tts: &[ast::TokenTree])
+                   -> Option<P<ast::MetaItem>> {
     let mut p = cx.new_parser_from_tts(tts);
     let cfg = p.parse_meta_item();
 
