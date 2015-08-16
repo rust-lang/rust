@@ -614,6 +614,9 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
     syntax_expanders.insert(intern("cfg_int"),
                             builtin_normal_expander(
                                     ext::cfg::expand_cfg_int));
+    syntax_expanders.insert(intern("cfg_float"),
+                            builtin_normal_expander(
+                                    ext::cfg::expand_cfg_float));
     syntax_expanders.insert(intern("cfg_str"),
                             builtin_normal_expander(
                                     ext::cfg::expand_cfg_str));

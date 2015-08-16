@@ -67,6 +67,30 @@ pub fn expand_cfg_int(cx: &mut ExtCtxt,
     }
 }
 
+pub fn expand_cfg_float(cx: &mut ExtCtxt,
+                        sp: Span,
+                        tts: &[ast::TokenTree])
+                        -> Box<base::MacResult+'static> {
+
+    match expand_cfg_val(cx, sp, tts) {
+        Some(val) => {
+            match val.parse::<f64>() {
+                Ok(..) => { // the string is a valid float
+                    let lit = ast::LitFloatUnsuffixed(val);
+                    MacEager::expr(cx.expr_lit(sp, lit))
+                },
+                Err(..) => {
+                    cx.span_err(sp, &format!("{} is not a float", val));
+                    DummyResult::expr(sp)
+                },
+            }
+        },
+        None => {
+           DummyResult::expr(sp)
+        },
+    }
+}
+
 pub fn expand_cfg_str(cx: &mut ExtCtxt,
                       sp: Span,
                       tts: &[ast::TokenTree])
