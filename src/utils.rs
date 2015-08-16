@@ -35,14 +35,14 @@ pub fn in_external_macro(cx: &Context, span: Span) -> bool {
 /// `match_def_path(cx, id, &["core", "option", "Option"])`
 pub fn match_def_path(cx: &Context, def_id: DefId, path: &[&str]) -> bool {
     cx.tcx.with_path(def_id, |iter| iter.map(|elem| elem.name())
-        .zip(path.iter()).all(|(nm, p)| &nm.as_str() == p))
+        .zip(path.iter()).all(|(nm, p)| nm == p))
 }
 
 /// match a Path against a slice of segment string literals, e.g.
 /// `match_path(path, &["std", "rt", "begin_unwind"])`
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
     path.segments.iter().rev().zip(segments.iter().rev()).all(
-        |(a,b)| &a.identifier.name.as_str() == b)
+        |(a, b)| &a.identifier.name == b)
 }
 
 /// convert a span to a code snippet if available, otherwise use default, e.g.

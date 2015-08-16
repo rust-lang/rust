@@ -153,7 +153,7 @@ struct RefVisitor(Vec<RefLt>);
 impl RefVisitor {
     fn record(&mut self, lifetime: &Option<Lifetime>) {
         if let &Some(ref lt) = lifetime {
-            if lt.name.as_str() == "'static" {
+            if lt.name == "'static" {
                 self.0.push(Static);
             } else {
                 self.0.push(Named(lt.name));
