@@ -81,7 +81,11 @@ impl LintPass for TopLevelRefPass {
         lint_array!(TOPLEVEL_REF_ARG)
     }
 
-    fn check_fn(&mut self, cx: &Context, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
+    fn check_fn(&mut self, cx: &Context, k: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
+        if let FnKind::FkFnBlock = k {
+            // Does not apply to closures
+            return
+        }
         for ref arg in &decl.inputs {
             if let PatIdent(BindByRef(_), _, _) = arg.pat.node {
                 span_lint(cx,
