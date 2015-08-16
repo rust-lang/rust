@@ -17,6 +17,7 @@
 
 use ast_map;
 use middle::def;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::ty;
 use middle::privacy;
 use session::config;
@@ -25,7 +26,6 @@ use util::nodemap::NodeSet;
 use std::collections::HashSet;
 use syntax::abi;
 use syntax::ast;
-use syntax::ast_util::is_local;
 use syntax::attr;
 use syntax::visit::Visitor;
 use syntax::visit;
@@ -55,12 +55,12 @@ fn item_might_be_inlined(item: &ast::Item) -> bool {
 
 fn method_might_be_inlined(tcx: &ty::ctxt, sig: &ast::MethodSig,
                            impl_item: &ast::ImplItem,
-                           impl_src: ast::DefId) -> bool {
+                           impl_src: DefId) -> bool {
     if attr::requests_inline(&impl_item.attrs) ||
         generics_require_inlining(&sig.generics) {
         return true
     }
-    if is_local(impl_src) {
+    if impl_src.is_local() {
         {
             match tcx.map.find(impl_src.node) {
                 Some(ast_map::NodeItem(item)) => {
@@ -105,7 +105,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
                 };
 
                 let def_id = def.def_id();
-                if is_local(def_id) {
+                if def_id.is_local() {
                     if self.def_id_represents_local_inlined_item(def_id) {
                         self.worklist.push(def_id.node)
                     } else {
@@ -131,7 +131,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
                 let def_id = self.tcx.tables.borrow().method_map[&method_call].def_id;
                 match self.tcx.impl_or_trait_item(def_id).container() {
                     ty::ImplContainer(_) => {
-                        if is_local(def_id) {
+                        if def_id.is_local() {
                             if self.def_id_represents_local_inlined_item(def_id) {
                                 self.worklist.push(def_id.node)
                             }
@@ -169,8 +169,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 
     // Returns true if the given def ID represents a local item that is
     // eligible for inlining and false otherwise.
-    fn def_id_represents_local_inlined_item(&self, def_id: ast::DefId) -> bool {
-        if def_id.krate != ast::LOCAL_CRATE {
+    fn def_id_represents_local_inlined_item(&self, def_id: DefId) -> bool {
+        if def_id.krate != LOCAL_CRATE {
             return false
         }
 
@@ -203,7 +203,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             // Check the impl. If the generics on the self
                             // type of the impl require inlining, this method
                             // does too.
-                            assert!(impl_did.krate == ast::LOCAL_CRATE);
+                            assert!(impl_did.krate == LOCAL_CRATE);
                             match self.tcx
                                       .map
                                       .expect_item(impl_did.node)
@@ -356,7 +356,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&mut self) {
         for (_, destructor_def_id) in self.tcx.destructor_for_type.borrow().iter() {
-            if destructor_def_id.krate == ast::LOCAL_CRATE {
+            if destructor_def_id.krate == LOCAL_CRATE {
                 self.reachable_symbols.insert(destructor_def_id.node);
             }
         }
@@ -378,7 +378,7 @@ pub fn find_reachable(tcx: &ty::ctxt,
     }
     for (_, item) in tcx.lang_items.items() {
         match *item {
-            Some(did) if is_local(did) => {
+            Some(did) if did.is_local() => {
                 reachable_context.worklist.push(did.node);
             }
             _ => {}

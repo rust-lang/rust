@@ -10,6 +10,7 @@
 
 use check::regionck::{self, Rcx};
 
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::infer;
 use middle::region;
 use middle::subst::{self, Subst};
@@ -37,7 +38,7 @@ use syntax::parse::token::special_idents;
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: ast::DefId) -> Result<(), ()> {
+pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: DefId) -> Result<(), ()> {
     let ty::TypeScheme { generics: ref dtor_generics,
                          ty: dtor_self_type } = tcx.lookup_item_type(drop_impl_did);
     let dtor_predicates = tcx.lookup_predicates(drop_impl_did);
@@ -69,10 +70,10 @@ pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: ast::DefId) -> Result<(), 
 
 fn ensure_drop_params_and_item_params_correspond<'tcx>(
     tcx: &ty::ctxt<'tcx>,
-    drop_impl_did: ast::DefId,
+    drop_impl_did: DefId,
     drop_impl_generics: &ty::Generics<'tcx>,
     drop_impl_ty: &ty::Ty<'tcx>,
-    self_type_did: ast::DefId) -> Result<(), ()>
+    self_type_did: DefId) -> Result<(), ()>
 {
     // New strategy based on review suggestion from nikomatsakis.
     //
@@ -135,9 +136,9 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 /// implied by assuming the predicates attached to self_type_did.
 fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     tcx: &ty::ctxt<'tcx>,
-    drop_impl_did: ast::DefId,
+    drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
-    self_type_did: ast::DefId,
+    self_type_did: DefId,
     self_to_impl_substs: &subst::Substs<'tcx>) -> Result<(), ()> {
 
     // Here is an example, analogous to that from
@@ -175,7 +176,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // absent. So we report an error that the Drop impl injected a
     // predicate that is not present on the struct definition.
 
-    assert_eq!(self_type_did.krate, ast::LOCAL_CRATE);
+    assert_eq!(self_type_did.krate, LOCAL_CRATE);
 
     let drop_impl_span = tcx.map.def_id_span(drop_impl_did, codemap::DUMMY_SP);
 
@@ -321,7 +322,7 @@ enum Error<'tcx> {
 enum TypeContext {
     Root,
     ADT {
-        def_id: ast::DefId,
+        def_id: DefId,
         variant: ast::Name,
         field: ast::Name,
         field_index: usize

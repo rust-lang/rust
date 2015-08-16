@@ -20,6 +20,7 @@ use borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
 use borrowck::LoanPathElem::{LpDeref, LpInterior};
 use borrowck::move_data::InvalidMovePathIndex;
 use borrowck::move_data::{MoveData, MovePathIndex};
+use rustc::middle::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::ty;
 use rustc::middle::mem_categorization as mc;
 
@@ -132,7 +133,7 @@ pub fn build_unfragmented_map(this: &mut borrowck::BorrowckCtxt,
     }
 
     let mut fraginfo_map = this.tcx.fragment_infos.borrow_mut();
-    let fn_did = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
+    let fn_did = DefId { krate: LOCAL_CRATE, node: id };
     let prev = fraginfo_map.insert(fn_did, fragment_infos);
     assert!(prev.is_none());
 }
@@ -412,7 +413,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
                                              origin_field_name: &mc::FieldName,
                                              origin_lp: &Rc<LoanPath<'tcx>>,
                                              origin_id: Option<ast::NodeId>,
-                                             enum_variant_info: Option<(ast::DefId,
+                                             enum_variant_info: Option<(DefId,
                                                                         Rc<LoanPath<'tcx>>)>) {
     let parent_ty = parent_lp.to_type();
 
@@ -509,7 +510,7 @@ fn add_fragment_sibling_core<'tcx>(this: &MoveData<'tcx>,
                                    mc: mc::MutabilityCategory,
                                    new_field_name: mc::FieldName,
                                    origin_lp: &Rc<LoanPath<'tcx>>,
-                                   enum_variant_did: Option<ast::DefId>) -> MovePathIndex {
+                                   enum_variant_did: Option<DefId>) -> MovePathIndex {
     let opt_variant_did = match parent.kind {
         LpDowncast(_, variant_did) => Some(variant_did),
         LpVar(..) | LpUpvar(..) | LpExtend(..) => enum_variant_did,

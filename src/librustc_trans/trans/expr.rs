@@ -55,6 +55,7 @@ use back::abi;
 use llvm::{self, ValueRef, TypeKind};
 use middle::check_const;
 use middle::def;
+use middle::def_id::{LOCAL_CRATE};
 use middle::lang_items::CoerceUnsizedTraitLangItem;
 use middle::subst::{Substs, VecPerParamSpace};
 use middle::traits;
@@ -900,7 +901,7 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let const_ty = expr_ty(bcx, ref_expr);
 
             // For external constants, we don't inline.
-            let val = if did.krate == ast::LOCAL_CRATE {
+            let val = if did.krate == LOCAL_CRATE {
                 // Case 1.
 
                 // The LLVM global has the type of its initializer,

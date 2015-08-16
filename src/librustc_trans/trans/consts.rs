@@ -25,6 +25,7 @@ use middle::const_eval::{const_int_checked_shl, const_uint_checked_shl};
 use middle::const_eval::{const_int_checked_shr, const_uint_checked_shr};
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::const_eval::eval_const_expr_partial;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
 use trans::common::*;
@@ -39,7 +40,7 @@ use util::nodemap::NodeMap;
 
 use std::ffi::{CStr, CString};
 use libc::c_uint;
-use syntax::{ast, ast_util, attr};
+use syntax::{ast, attr};
 use syntax::parse::token;
 use syntax::ptr::P;
 
@@ -170,7 +171,7 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                            node: ExprOrMethodCall,
-                           def_id: ast::DefId,
+                           def_id: DefId,
                            arg_vals: &[ValueRef],
                            param_substs: &'tcx Substs<'tcx>) -> ValueRef {
     let fn_like = const_eval::lookup_const_fn_by_id(ccx.tcx(), def_id);
@@ -192,12 +193,12 @@ fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                def_id: ast::DefId,
+                                def_id: DefId,
                                 ref_expr: &ast::Expr)
                                 -> &'tcx ast::Expr {
     let def_id = inline::maybe_instantiate_inline(ccx, def_id);
 
-    if def_id.krate != ast::LOCAL_CRATE {
+    if def_id.krate != LOCAL_CRATE {
         ccx.sess().span_bug(ref_expr.span,
                             "cross crate constant could not be inlined");
     }
@@ -211,7 +212,7 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 fn get_const_val(ccx: &CrateContext,
-                 def_id: ast::DefId,
+                 def_id: DefId,
                  ref_expr: &ast::Expr) -> ValueRef {
     let expr = get_const_expr(ccx, def_id, ref_expr);
     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
@@ -963,8 +964,10 @@ pub fn trans_static(ccx: &CrateContext,
 }
 
 
-fn get_static_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
-                            ty: Ty<'tcx>) -> ValueRef {
-    if ast_util::is_local(did) { return base::get_item_val(ccx, did.node) }
+fn get_static_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                            did: DefId,
+                            ty: Ty<'tcx>)
+                            -> ValueRef {
+    if did.is_local() { return base::get_item_val(ccx, did.node) }
     base::trans_external_path(ccx, did, ty)
 }

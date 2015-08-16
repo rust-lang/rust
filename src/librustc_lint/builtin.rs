@@ -30,6 +30,7 @@
 
 use metadata::{csearch, decoder};
 use middle::{cfg, def, infer, pat_util, stability, traits};
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use middle::const_eval::{eval_const_expr_partial, ConstVal};
@@ -44,7 +45,7 @@ use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
 use syntax::{abi, ast};
-use syntax::ast_util::{self, is_shift_binop, local_def};
+use syntax::ast_util::is_shift_binop;
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
@@ -400,8 +401,8 @@ struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
 enum FfiResult {
     FfiSafe,
     FfiUnsafe(&'static str),
-    FfiBadStruct(ast::DefId, &'static str),
-    FfiBadEnum(ast::DefId, &'static str)
+    FfiBadStruct(DefId, &'static str),
+    FfiBadEnum(DefId, &'static str)
 }
 
 /// Check if this enum can be safely exported based on the
@@ -850,7 +851,7 @@ impl LintPass for RawPointerDerive {
             }
             _ => return,
         };
-        if !ast_util::is_local(did) {
+        if !did.is_local() {
             return;
         }
         let item = match cx.tcx.map.find(did.node) {
@@ -992,7 +993,7 @@ impl LintPass for UnusedResults {
             ty::TyBool => return,
             ty::TyStruct(def, _) |
             ty::TyEnum(def, _) => {
-                if ast_util::is_local(def.did) {
+                if def.did.is_local() {
                     if let ast_map::NodeItem(it) = cx.tcx.map.get(def.did.node) {
                         check_must_use(cx, &it.attrs, s.span)
                     } else {
@@ -1128,7 +1129,7 @@ enum MethodContext {
 }
 
 fn method_context(cx: &Context, id: ast::NodeId, span: Span) -> MethodContext {
-    match cx.tcx.impl_or_trait_items.borrow().get(&local_def(id)) {
+    match cx.tcx.impl_or_trait_items.borrow().get(&DefId::local(id)) {
         None => cx.sess().span_bug(span, "missing method descriptor?!"),
         Some(item) => match item.container() {
             ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
@@ -1951,7 +1952,7 @@ impl LintPass for MissingCopyImplementations {
         if !cx.exported_items.contains(&item.id) {
             return;
         }
-        if cx.tcx.destructor_for_type.borrow().contains_key(&local_def(item.id)) {
+        if cx.tcx.destructor_for_type.borrow().contains_key(&DefId::local(item.id)) {
             return;
         }
         let ty = match item.node {
@@ -1959,14 +1960,14 @@ impl LintPass for MissingCopyImplementations {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                cx.tcx.mk_struct(cx.tcx.lookup_adt_def(local_def(item.id)),
+                cx.tcx.mk_struct(cx.tcx.lookup_adt_def(DefId::local(item.id)),
                                  cx.tcx.mk_substs(Substs::empty()))
             }
             ast::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                cx.tcx.mk_enum(cx.tcx.lookup_adt_def(local_def(item.id)),
+                cx.tcx.mk_enum(cx.tcx.lookup_adt_def(DefId::local(item.id)),
                                cx.tcx.mk_substs(Substs::empty()))
             }
             _ => return,
@@ -2028,7 +2029,7 @@ impl LintPass for MissingDebugImplementations {
             let debug_def = cx.tcx.lookup_trait_def(debug);
             let mut impls = NodeSet();
             debug_def.for_each_impl(cx.tcx, |d| {
-                if d.krate == ast::LOCAL_CRATE {
+                if d.krate == LOCAL_CRATE {
                     if let Some(ty_def) = cx.tcx.node_id_to_type(d.node).ty_to_def_id() {
                         impls.insert(ty_def.node);
                     }
@@ -2059,7 +2060,7 @@ declare_lint! {
 pub struct Stability;
 
 impl Stability {
-    fn lint(&self, cx: &Context, _id: ast::DefId,
+    fn lint(&self, cx: &Context, _id: DefId,
             span: Span, stability: &Option<&attr::Stability>) {
         // Deprecated attributes apply in-crate and cross-crate.
         let (lint, label) = match *stability {
@@ -2133,7 +2134,7 @@ impl LintPass for UnconditionalRecursion {
         let method = match fn_kind {
             visit::FkItemFn(..) => None,
             visit::FkMethod(..) => {
-                cx.tcx.impl_or_trait_item(local_def(id)).as_opt_method()
+                cx.tcx.impl_or_trait_item(DefId::local(id)).as_opt_method()
             }
             // closures can't recur, so they don't matter.
             visit::FkFnBlock => return
@@ -2247,7 +2248,7 @@ impl LintPass for UnconditionalRecursion {
             match tcx.map.get(id) {
                 ast_map::NodeExpr(&ast::Expr { node: ast::ExprCall(ref callee, _), .. }) => {
                     tcx.def_map.borrow().get(&callee.id)
-                        .map_or(false, |def| def.def_id() == local_def(fn_id))
+                        .map_or(false, |def| def.def_id() == DefId::local(fn_id))
                 }
                 _ => false
             }
@@ -2298,7 +2299,7 @@ impl LintPass for UnconditionalRecursion {
         // and instantiated with `callee_substs` refers to method `method`.
         fn method_call_refers_to_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                               method: &ty::Method,
-                                              callee_id: ast::DefId,
+                                              callee_id: DefId,
                                               callee_substs: &Substs<'tcx>,
                                               expr_id: ast::NodeId) -> bool {
             let callee_item = tcx.impl_or_trait_item(callee_id);
@@ -2475,7 +2476,6 @@ impl LintPass for MutableTransmutes {
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &ast::Expr) {
-        use syntax::ast::DefId;
         use syntax::abi::RustIntrinsic;
         let msg = "mutating transmuted &mut T from &T may cause undefined behavior,\
                    consider instead using an UnsafeCell";
@@ -2569,7 +2569,7 @@ impl LintPass for DropWithReprExtern {
     fn check_crate(&mut self, ctx: &Context, _: &ast::Crate) {
         for dtor_did in ctx.tcx.destructors.borrow().iter() {
             let (drop_impl_did, dtor_self_type) =
-                if dtor_did.krate == ast::LOCAL_CRATE {
+                if dtor_did.krate == LOCAL_CRATE {
                     let impl_did = ctx.tcx.map.get_parent_did(dtor_did.node);
                     let ty = ctx.tcx.lookup_item_type(impl_did).ty;
                     (impl_did, ty)

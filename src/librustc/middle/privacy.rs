@@ -16,9 +16,8 @@ pub use self::PrivateDep::*;
 pub use self::ImportUse::*;
 pub use self::LastPrivate::*;
 
+use middle::def_id::DefId;
 use util::nodemap::{DefIdSet, NodeSet};
-
-use syntax::ast;
 
 /// A set of AST nodes exported by the crate.
 pub type ExportedItems = NodeSet;
@@ -49,7 +48,7 @@ pub enum LastPrivate {
 #[derive(Copy, Clone, Debug)]
 pub enum PrivateDep {
     AllPublic,
-    DependsOn(ast::DefId),
+    DependsOn(DefId),
 }
 
 // How an import is used.

@@ -14,6 +14,7 @@ use self::MapEntry::*;
 
 use metadata::inline::InlinedItem;
 use metadata::inline::InlinedItem as II;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use syntax::abi;
 use syntax::ast::*;
 use syntax::ast_util;
@@ -378,7 +379,7 @@ impl<'ast> Map<'ast> {
         match self.find_entry(parent) {
             Some(RootInlinedParent(&InlinedParent {ii: II::TraitItem(did, _), ..})) => did,
             Some(RootInlinedParent(&InlinedParent {ii: II::ImplItem(did, _), ..})) => did,
-            _ => ast_util::local_def(parent)
+            _ => DefId::local(parent)
         }
     }
 

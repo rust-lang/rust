@@ -10,36 +10,36 @@
 
 pub use self::Def::*;
 
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::privacy::LastPrivate;
 use middle::subst::ParamSpace;
 use util::nodemap::NodeMap;
 use syntax::ast;
-use syntax::ast_util::local_def;
 
 use std::cell::RefCell;
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {
-    DefFn(ast::DefId, bool /* is_ctor */),
-    DefSelfTy(Option<ast::DefId>,                    // trait id
+    DefFn(DefId, bool /* is_ctor */),
+    DefSelfTy(Option<DefId>,                    // trait id
               Option<(ast::NodeId, ast::NodeId)>),   // (impl id, self type id)
-    DefMod(ast::DefId),
-    DefForeignMod(ast::DefId),
-    DefStatic(ast::DefId, bool /* is_mutbl */),
-    DefConst(ast::DefId),
-    DefAssociatedConst(ast::DefId),
+    DefMod(DefId),
+    DefForeignMod(DefId),
+    DefStatic(DefId, bool /* is_mutbl */),
+    DefConst(DefId),
+    DefAssociatedConst(DefId),
     DefLocal(ast::NodeId),
-    DefVariant(ast::DefId /* enum */, ast::DefId /* variant */, bool /* is_structure */),
-    DefTy(ast::DefId, bool /* is_enum */),
-    DefAssociatedTy(ast::DefId /* trait */, ast::DefId),
-    DefTrait(ast::DefId),
+    DefVariant(DefId /* enum */, DefId /* variant */, bool /* is_structure */),
+    DefTy(DefId, bool /* is_enum */),
+    DefAssociatedTy(DefId /* trait */, DefId),
+    DefTrait(DefId),
     DefPrimTy(ast::PrimTy),
-    DefTyParam(ParamSpace, u32, ast::DefId, ast::Name),
-    DefUse(ast::DefId),
+    DefTyParam(ParamSpace, u32, DefId, ast::Name),
+    DefUse(DefId),
     DefUpvar(ast::NodeId,  // id of closed over local
              ast::NodeId), // expr node that creates the closure
 
-    /// Note that if it's a tuple struct's definition, the node id of the ast::DefId
+    /// Note that if it's a tuple struct's definition, the node id of the DefId
     /// may either refer to the item definition's id or the StructDef.ctor_id.
     ///
     /// The cases that I have encountered so far are (this is not exhaustive):
@@ -47,10 +47,10 @@ pub enum Def {
     ///   it to a def whose id is the item definition's id.
     /// - If it's an ExprPath referring to some tuple struct, then DefMap maps
     ///   it to a def whose id is the StructDef.ctor_id.
-    DefStruct(ast::DefId),
+    DefStruct(DefId),
     DefRegion(ast::NodeId),
     DefLabel(ast::NodeId),
-    DefMethod(ast::DefId),
+    DefMethod(DefId),
 }
 
 /// The result of resolving a path.
@@ -83,7 +83,7 @@ impl PathResolution {
     }
 
     /// Get the DefId, if fully resolved, otherwise panic.
-    pub fn def_id(&self) -> ast::DefId {
+    pub fn def_id(&self) -> DefId {
         self.full_def().def_id()
     }
 
@@ -108,17 +108,17 @@ pub type ExportMap = NodeMap<Vec<Export>>;
 #[derive(Copy, Clone)]
 pub struct Export {
     pub name: ast::Name,    // The name of the target.
-    pub def_id: ast::DefId, // The definition of the target.
+    pub def_id: DefId, // The definition of the target.
 }
 
 impl Def {
     pub fn local_node_id(&self) -> ast::NodeId {
         let def_id = self.def_id();
-        assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+        assert_eq!(def_id.krate, LOCAL_CRATE);
         def_id.node
     }
 
-    pub fn def_id(&self) -> ast::DefId {
+    pub fn def_id(&self) -> DefId {
         match *self {
             DefFn(id, _) | DefMod(id) | DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(_, id) |
@@ -132,7 +132,7 @@ impl Def {
             DefRegion(id) |
             DefLabel(id)  |
             DefSelfTy(_, Some((_, id))) => {
-                local_def(id)
+                DefId::local(id)
             }
 
             DefPrimTy(_) => panic!("attempted .def_id() on DefPrimTy"),
@@ -140,7 +140,7 @@ impl Def {
         }
     }
 
-    pub fn variant_def_ids(&self) -> Option<(ast::DefId, ast::DefId)> {
+    pub fn variant_def_ids(&self) -> Option<(DefId, DefId)> {
         match *self {
             DefVariant(enum_id, var_id, _) => {
                 Some((enum_id, var_id))

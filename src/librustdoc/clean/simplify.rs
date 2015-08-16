@@ -29,8 +29,8 @@
 use std::mem;
 use std::collections::HashMap;
 
+use rustc::middle::def_id::DefId;
 use rustc::middle::subst;
-use syntax::ast;
 
 use clean::PathParameters as PP;
 use clean::WherePredicate as WP;
@@ -148,8 +148,8 @@ fn ty_bounds(bounds: Vec<clean::TyParamBound>) -> Vec<clean::TyParamBound> {
     bounds
 }
 
-fn trait_is_same_or_supertrait(cx: &DocContext, child: ast::DefId,
-                               trait_: ast::DefId) -> bool {
+fn trait_is_same_or_supertrait(cx: &DocContext, child: DefId,
+                               trait_: DefId) -> bool {
     if child == trait_ {
         return true
     }

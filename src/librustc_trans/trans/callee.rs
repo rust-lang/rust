@@ -23,6 +23,7 @@ use back::link;
 use session;
 use llvm::{self, ValueRef, get_params};
 use middle::def;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::subst;
 use middle::subst::{Subst, Substs};
 use trans::adt;
@@ -222,7 +223,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
 /// Translates a reference (with id `ref_id`) to the fn/method with id `def_id` into a function
 /// pointer. This may require monomorphization or inlining.
 pub fn trans_fn_ref<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                              def_id: ast::DefId,
+                              def_id: DefId,
                               node: ExprOrMethodCall,
                               param_substs: &'tcx subst::Substs<'tcx>)
                               -> Datum<'tcx, Rvalue> {
@@ -375,7 +376,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 /// - `substs`: values for each of the fn/method's parameters
 pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     ccx: &CrateContext<'a, 'tcx>,
-    def_id: ast::DefId,
+    def_id: DefId,
     node: ExprOrMethodCall,
     param_substs: &'tcx subst::Substs<'tcx>,
     substs: subst::Substs<'tcx>)
@@ -463,7 +464,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     // or is a named tuple constructor.
     let must_monomorphise = if !substs.types.is_empty() || is_default {
         true
-    } else if def_id.krate == ast::LOCAL_CRATE {
+    } else if def_id.krate == LOCAL_CRATE {
         let map_node = session::expect(
             ccx.sess(),
             tcx.map.find(def_id.node),
@@ -487,7 +488,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     // Create a monomorphic version of generic functions
     if must_monomorphise {
         // Should be either intra-crate or inlined.
-        assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+        assert_eq!(def_id.krate, LOCAL_CRATE);
 
         let opt_ref_id = match node {
             ExprId(id) => if id != 0 { Some(id) } else { None },
@@ -523,7 +524,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
     // Find the actual function pointer.
     let mut val = {
-        if def_id.krate == ast::LOCAL_CRATE {
+        if def_id.krate == LOCAL_CRATE {
             // Internal reference.
             get_item_val(ccx, def_id.node)
         } else {
@@ -604,7 +605,7 @@ pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_lang_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                   did: ast::DefId,
+                                   did: DefId,
                                    args: &[ValueRef],
                                    dest: Option<expr::Dest>,
                                    debug_loc: DebugLoc)

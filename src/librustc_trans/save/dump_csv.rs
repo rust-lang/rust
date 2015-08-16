@@ -33,12 +33,13 @@ use super::{escape, generated_code, recorder, SaveContext, PathCollector, Data};
 use session::Session;
 
 use middle::def;
+use middle::def_id::DefId;
 use middle::ty::{self, Ty};
 
 use std::fs::File;
 use std::path::Path;
 
-use syntax::ast::{self, NodeId, DefId};
+use syntax::ast::{self, NodeId};
 use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
 use syntax::owned_slice::OwnedSlice;

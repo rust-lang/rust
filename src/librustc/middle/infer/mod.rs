@@ -19,6 +19,7 @@ pub use middle::ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
 pub use self::region_inference::{GenericKind, VerifyBound};
 
+use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
@@ -1483,7 +1484,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn node_method_id(&self, method_call: ty::MethodCall)
-                          -> Option<ast::DefId> {
+                          -> Option<DefId> {
         self.tables
             .borrow()
             .method_map
@@ -1517,14 +1518,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn closure_kind(&self,
-                        def_id: ast::DefId)
+                        def_id: DefId)
                         -> Option<ty::ClosureKind>
     {
         self.tables.borrow().closure_kinds.get(&def_id).cloned()
     }
 
     pub fn closure_type(&self,
-                        def_id: ast::DefId,
+                        def_id: DefId,
                         substs: &ty::ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {

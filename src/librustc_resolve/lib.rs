@@ -56,6 +56,7 @@ use rustc::lint;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use rustc::middle::def::*;
+use rustc::middle::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::pat_util::pat_bindings;
 use rustc::middle::privacy::*;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
@@ -65,7 +66,7 @@ use rustc::util::lev_distance::lev_distance;
 
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block};
 use syntax::ast::{ConstImplItem, Crate, CrateNum};
-use syntax::ast::{DefId, Expr, ExprAgain, ExprBreak, ExprField};
+use syntax::ast::{Expr, ExprAgain, ExprBreak, ExprField};
 use syntax::ast::{ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItemFn, ForeignItemStatic, Generics};
@@ -81,7 +82,7 @@ use syntax::ast::{TyPath, TyPtr};
 use syntax::ast::{TyRptr, TyStr, TyUs, TyU8, TyU16, TyU32, TyU64, TyUint};
 use syntax::ast::TypeImplItem;
 use syntax::ast;
-use syntax::ast_util::{local_def, walk_pat};
+use syntax::ast_util::{walk_pat};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
 use syntax::parse::token::{self, special_names, special_idents};
@@ -1255,7 +1256,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn get_trait_name(&self, did: DefId) -> Name {
-        if did.krate == ast::LOCAL_CRATE {
+        if did.krate == LOCAL_CRATE {
             self.ast_map.expect_item(did.node).ident.name
         } else {
             csearch::get_trait_name(&self.session.cstore, did)
@@ -2154,7 +2155,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                TypeSpace,
                                                                ItemRibKind),
                                              |this| {
-                    this.with_self_rib(DefSelfTy(Some(local_def(item.id)), None), |this| {
+                    this.with_self_rib(DefSelfTy(Some(DefId::local(item.id)), None), |this| {
                         this.visit_generics(generics);
                         visit::walk_ty_param_bounds_helper(this, bounds);
 
@@ -2248,7 +2249,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     function_type_rib.bindings.insert(name,
                         DlDef(DefTyParam(space,
                                          index as u32,
-                                         local_def(type_parameter.id),
+                                         DefId::local(type_parameter.id),
                                          name)));
                 }
                 self.type_ribs.push(function_type_rib);
@@ -3466,7 +3467,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         fn is_static_method(this: &Resolver, did: DefId) -> bool {
-            if did.krate == ast::LOCAL_CRATE {
+            if did.krate == LOCAL_CRATE {
                 let sig = match this.ast_map.get(did.node) {
                     ast_map::NodeTraitItem(trait_item) => match trait_item.node {
                         ast::MethodTraitItem(ref sig, _) => sig,

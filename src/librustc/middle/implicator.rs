@@ -10,6 +10,7 @@
 
 // #![warn(deprecated_mode)]
 
+use middle::def_id::DefId;
 use middle::infer::{InferCtxt, GenericKind};
 use middle::subst::Substs;
 use middle::traits;
@@ -28,7 +29,7 @@ use util::nodemap::FnvHashSet;
 pub enum Implication<'tcx> {
     RegionSubRegion(Option<Ty<'tcx>>, ty::Region, ty::Region),
     RegionSubGeneric(Option<Ty<'tcx>>, ty::Region, GenericKind<'tcx>),
-    Predicate(ast::DefId, ty::Predicate<'tcx>),
+    Predicate(DefId, ty::Predicate<'tcx>),
 }
 
 struct Implicator<'a, 'tcx: 'a> {
@@ -265,7 +266,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
 
     fn accumulate_from_adt(&mut self,
                            ty: Ty<'tcx>,
-                           def_id: ast::DefId,
+                           def_id: DefId,
                            _generics: &ty::Generics<'tcx>,
                            substs: &Substs<'tcx>)
     {

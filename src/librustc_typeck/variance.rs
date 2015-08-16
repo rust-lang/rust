@@ -266,6 +266,7 @@ use self::ParamKind::*;
 
 use arena;
 use arena::TypedArena;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::resolve_lifetime as rl;
 use middle::subst;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace, VecPerParamSpace};
@@ -274,7 +275,6 @@ use rustc::ast_map;
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::ast_util;
 use syntax::visit;
 use syntax::visit::Visitor;
 use util::nodemap::NodeMap;
@@ -404,7 +404,7 @@ fn lang_items(tcx: &ty::ctxt) -> Vec<(ast::NodeId,Vec<ty::Variance>)> {
 
     all.into_iter()
        .filter(|&(ref d,_)| d.is_some())
-       .filter(|&(ref d,_)| d.as_ref().unwrap().krate == ast::LOCAL_CRATE)
+       .filter(|&(ref d,_)| d.as_ref().unwrap().krate == LOCAL_CRATE)
        .map(|(d, v)| (d.unwrap().node, v))
        .collect()
 }
@@ -452,7 +452,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         if self.num_inferred() == inferreds_on_entry {
             let newly_added =
                 self.tcx.item_variance_map.borrow_mut().insert(
-                    ast_util::local_def(item_id),
+                    DefId::local(item_id),
                     self.empty_variances.clone()).is_none();
             assert!(newly_added);
         }
@@ -485,7 +485,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
                 param_id={}, \
                 inf_index={:?}, \
                 initial_variance={:?})",
-               self.tcx.item_path_str(ast_util::local_def(item_id)),
+               self.tcx.item_path_str(DefId::local(item_id)),
                item_id, kind, space, index, param_id, inf_index,
                initial_variance);
     }
@@ -596,7 +596,7 @@ fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
-        let did = ast_util::local_def(item.id);
+        let did = DefId::local(item.id);
         let tcx = self.terms_cx.tcx;
 
         debug!("visit_item item={}", tcx.map.node_to_string(item.id));
@@ -732,15 +732,15 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// Returns a variance term representing the declared variance of the type/region parameter
     /// with the given id.
     fn declared_variance(&self,
-                         param_def_id: ast::DefId,
-                         item_def_id: ast::DefId,
+                         param_def_id: DefId,
+                         item_def_id: DefId,
                          kind: ParamKind,
                          space: ParamSpace,
                          index: usize)
                          -> VarianceTermPtr<'a> {
         assert_eq!(param_def_id.krate, item_def_id.krate);
 
-        if param_def_id.krate == ast::LOCAL_CRATE {
+        if param_def_id.krate == LOCAL_CRATE {
             // Parameter on an item defined within current crate:
             // variance not yet inferred, so return a symbolic
             // variance.
@@ -923,7 +923,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::TyParam(ref data) => {
                 let def_id = generics.types.get(data.space, data.idx as usize).def_id;
-                assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+                assert_eq!(def_id.krate, LOCAL_CRATE);
                 match self.terms_cx.inferred_map.get(&def_id.node) {
                     Some(&index) => {
                         self.add_constraint(index, variance);
@@ -958,7 +958,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// object, etc) appearing in a context with ambient variance `variance`
     fn add_constraints_from_substs(&mut self,
                                    generics: &ty::Generics<'tcx>,
-                                   def_id: ast::DefId,
+                                   def_id: DefId,
                                    type_param_defs: &[ty::TypeParameterDef<'tcx>],
                                    region_param_defs: &[ty::RegionParameterDef],
                                    substs: &subst::Substs<'tcx>,
@@ -1164,7 +1164,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                     item_id,
                     item_variances);
 
-            let item_def_id = ast_util::local_def(item_id);
+            let item_def_id = DefId::local(item_id);
 
             // For unit testing: check for a special "rustc_variance"
             // attribute and report an error with various results if found.
