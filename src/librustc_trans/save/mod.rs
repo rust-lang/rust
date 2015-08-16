@@ -546,7 +546,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             def::DefMethod(decl_id) => {
                 let sub_span = self.span_utils.sub_span_for_meth_name(path.span);
-                let def_id = if decl_id.krate == LOCAL_CRATE {
+                let def_id = if decl_id.is_local() {
                     let ti = self.tcx.impl_or_trait_item(decl_id);
                     match ti.container() {
                         ty::TraitContainer(def_id) => {

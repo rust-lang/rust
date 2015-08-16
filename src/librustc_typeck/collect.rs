@@ -400,7 +400,7 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
                                            assoc_name: ast::Name)
                                            -> bool
     {
-        if trait_def_id.krate == LOCAL_CRATE {
+        if trait_def_id.is_local() {
             trait_defines_associated_type_named(self.ccx, trait_def_id.node, assoc_name)
         } else {
             let trait_def = self.tcx().lookup_trait_def(trait_def_id);

@@ -186,7 +186,7 @@ pub fn orphan_check<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("orphan_check: trait_ref={:?}", trait_ref);
 
     // If the *trait* is local to the crate, ok.
-    if trait_ref.def_id.krate == LOCAL_CRATE {
+    if trait_ref.def_id.is_local() {
         debug!("trait {:?} is local to current crate",
                trait_ref.def_id);
         return Ok(());
@@ -318,7 +318,7 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         ty::TyEnum(def, _) |
         ty::TyStruct(def, _) => {
-            def.did.krate == LOCAL_CRATE
+            def.did.is_local()
         }
 
         ty::TyBox(_) => { // Box<T>
@@ -327,7 +327,7 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
         }
 
         ty::TyTrait(ref tt) => {
-            tt.principal_def_id().krate == LOCAL_CRATE
+            tt.principal_def_id().is_local()
         }
 
         ty::TyClosure(..) |

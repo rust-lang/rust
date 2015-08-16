@@ -27,7 +27,7 @@ use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
 use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
-use rustc::middle::def_id::{DefId, LOCAL_CRATE};
+use rustc::middle::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::mem_categorization as mc;
@@ -1193,7 +1193,7 @@ impl<'tcx> fmt::Debug for LoanPath<'tcx> {
             }
 
             LpDowncast(ref lp, variant_def_id) => {
-                let variant_str = if variant_def_id.krate == LOCAL_CRATE {
+                let variant_str = if variant_def_id.is_local() {
                     ty::tls::with(|tcx| tcx.item_path_str(variant_def_id))
                 } else {
                     format!("{:?}", variant_def_id)
@@ -1225,7 +1225,7 @@ impl<'tcx> fmt::Display for LoanPath<'tcx> {
             }
 
             LpDowncast(ref lp, variant_def_id) => {
-                let variant_str = if variant_def_id.krate == LOCAL_CRATE {
+                let variant_str = if variant_def_id.is_local() {
                     ty::tls::with(|tcx| tcx.item_path_str(variant_def_id))
                 } else {
                     format!("{:?}", variant_def_id)

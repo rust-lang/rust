@@ -56,7 +56,7 @@ use rustc::lint;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use rustc::middle::def::*;
-use rustc::middle::def_id::{DefId, LOCAL_CRATE};
+use rustc::middle::def_id::DefId;
 use rustc::middle::pat_util::pat_bindings;
 use rustc::middle::privacy::*;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
@@ -1256,7 +1256,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn get_trait_name(&self, did: DefId) -> Name {
-        if did.krate == LOCAL_CRATE {
+        if did.is_local() {
             self.ast_map.expect_item(did.node).ident.name
         } else {
             csearch::get_trait_name(&self.session.cstore, did)
@@ -3467,7 +3467,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         fn is_static_method(this: &Resolver, did: DefId) -> bool {
-            if did.krate == LOCAL_CRATE {
+            if did.is_local() {
                 let sig = match this.ast_map.get(did.node) {
                     ast_map::NodeTraitItem(trait_item) => match trait_item.node {
                         ast::MethodTraitItem(ref sig, _) => sig,

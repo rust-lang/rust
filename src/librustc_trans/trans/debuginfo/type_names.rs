@@ -13,7 +13,7 @@
 use super::namespace::crate_root_namespace;
 
 use trans::common::CrateContext;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::subst::{self, Substs};
 use middle::ty::{self, Ty};
 
@@ -172,7 +172,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       output: &mut String) {
         cx.tcx().with_path(def_id, |path| {
             if qualified {
-                if def_id.krate == LOCAL_CRATE {
+                if def_id.is_local() {
                     output.push_str(crate_root_namespace(cx));
                     output.push_str("::");
                 }

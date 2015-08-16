@@ -427,7 +427,7 @@ pub fn check_item_bodies(ccx: &CrateCtxt) {
 
 pub fn check_drop_impls(ccx: &CrateCtxt) {
     for drop_method_did in ccx.tcx.destructors.borrow().iter() {
-        if drop_method_did.krate == LOCAL_CRATE {
+        if drop_method_did.is_local() {
             let drop_impl_did = ccx.tcx.map.get_parent_did(drop_method_did.node);
             match dropck::check_drop_impl(ccx.tcx, drop_impl_did) {
                 Ok(()) => {}

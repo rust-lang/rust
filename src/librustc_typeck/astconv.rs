@@ -1276,7 +1276,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
     let trait_did = bound.0.def_id;
     let ty = this.projected_ty_from_poly_trait_ref(span, bound, assoc_name);
 
-    let item_did = if trait_did.krate == LOCAL_CRATE {
+    let item_did = if trait_did.is_local() {
         // `ty::trait_items` used below requires information generated
         // by type collection, which may be in progress at this point.
         match tcx.map.expect_item(trait_did.node).node {

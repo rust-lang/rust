@@ -30,7 +30,7 @@
 
 use metadata::{csearch, decoder};
 use middle::{cfg, def, infer, pat_util, stability, traits};
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use middle::const_eval::{eval_const_expr_partial, ConstVal};
@@ -2029,7 +2029,7 @@ impl LintPass for MissingDebugImplementations {
             let debug_def = cx.tcx.lookup_trait_def(debug);
             let mut impls = NodeSet();
             debug_def.for_each_impl(cx.tcx, |d| {
-                if d.krate == LOCAL_CRATE {
+                if d.is_local() {
                     if let Some(ty_def) = cx.tcx.node_id_to_type(d.node).ty_to_def_id() {
                         impls.insert(ty_def.node);
                     }
@@ -2569,7 +2569,7 @@ impl LintPass for DropWithReprExtern {
     fn check_crate(&mut self, ctx: &Context, _: &ast::Crate) {
         for dtor_did in ctx.tcx.destructors.borrow().iter() {
             let (drop_impl_did, dtor_self_type) =
-                if dtor_did.krate == LOCAL_CRATE {
+                if dtor_did.is_local() {
                     let impl_did = ctx.tcx.map.get_parent_did(dtor_did.node);
                     let ty = ctx.tcx.lookup_item_type(impl_did).ty;
                     (impl_did, ty)

@@ -1260,7 +1260,7 @@ pub fn list_crate_metadata(bytes: &[u8], out: &mut io::Write) -> io::Result<()> 
 // then we must translate the crate number from that encoded in the external
 // crate to the correct local crate number.
 pub fn translate_def_id(cdata: Cmd, did: DefId) -> DefId {
-    if did.krate == LOCAL_CRATE {
+    if did.is_local() {
         return DefId { krate: cdata.cnum, node: did.node };
     }
 
