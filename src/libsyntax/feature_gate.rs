@@ -58,6 +58,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("log_syntax", "1.0.0", Active),
     ("trace_macros", "1.0.0", Active),
     ("concat_idents", "1.0.0", Active),
+    ("cfg_values", "1.2.0", Active),
     ("intrinsics", "1.0.0", Active),
     ("lang_items", "1.0.0", Active),
 
@@ -352,6 +353,7 @@ pub struct Features {
     pub allow_asm: bool,
     pub allow_log_syntax: bool,
     pub allow_concat_idents: bool,
+    pub allow_cfg_values: bool,
     pub allow_trace_macros: bool,
     pub allow_internal_unstable: bool,
     pub allow_custom_derive: bool,
@@ -381,6 +383,7 @@ impl Features {
             allow_asm: false,
             allow_log_syntax: false,
             allow_concat_idents: false,
+            allow_cfg_values: false,
             allow_trace_macros: false,
             allow_internal_unstable: false,
             allow_custom_derive: false,
@@ -520,6 +523,9 @@ pub const EXPLAIN_LOG_SYNTAX: &'static str =
 pub const EXPLAIN_CONCAT_IDENTS: &'static str =
     "`concat_idents` is not stable enough for use and is subject to change";
 
+pub const EXPLAIN_CFG_VALUES: &'static str =
+    "`cfg_values` is not stable enough for use and is subject to change";
+
 pub const EXPLAIN_TRACE_MACROS: &'static str =
     "`trace_macros` is not stable enough for use and is subject to change";
 pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &'static str =
@@ -559,6 +565,10 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
 
         else if id == token::str_to_ident("concat_idents") {
             self.context.gate_feature("concat_idents", path.span, EXPLAIN_CONCAT_IDENTS);
+        }
+
+        else if id.name.as_str().starts_with("cfg_") {
+            self.context.gate_feature("cfg_values", path.span, EXPLAIN_CFG_VALUES);
         }
     }
 
@@ -885,6 +895,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         allow_asm: cx.has_feature("asm"),
         allow_log_syntax: cx.has_feature("log_syntax"),
         allow_concat_idents: cx.has_feature("concat_idents"),
+        allow_cfg_values: cx.has_feature("cfg_values"),
         allow_trace_macros: cx.has_feature("trace_macros"),
         allow_internal_unstable: cx.has_feature("allow_internal_unstable"),
         allow_custom_derive: cx.has_feature("custom_derive"),

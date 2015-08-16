@@ -17,23 +17,171 @@ use codemap::Span;
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
+use feature_gate;
 use attr;
 use attr::*;
 use parse::attr::ParserAttr;
-use parse::token;
+use parse::token::{self,InternedString};
+use ptr::P;
 
 pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
                        sp: Span,
                        tts: &[ast::TokenTree])
                        -> Box<base::MacResult+'static> {
+
+    let cfg = match parse_meta_item(cx, sp, tts) {
+        Some(cfg) => cfg,
+        None => { return DummyResult::expr(sp); },
+    };
+
+    let matches_cfg = attr::cfg_matches(&cx.parse_sess.span_diagnostic, &cx.cfg, &*cfg);
+    MacEager::expr(cx.expr_bool(sp, matches_cfg))
+}
+
+/// Expands the `cfg_int!` macro.
+pub fn expand_cfg_int(cx: &mut ExtCtxt,
+                      sp: Span,
+                      tts: &[ast::TokenTree])
+                      -> Box<base::MacResult+'static> {
+
+    match expand_cfg_val(cx, sp, tts) {
+        Some(val) => {
+            match val.parse::<i64>() {
+                Ok(i) => {
+
+                    let sign = if i < 0 { ast::Minus } else { ast::Plus };
+                    let magnitude = i.abs() as u64;
+
+                    let ty = ast::UnsuffixedIntLit(sign);
+                    let lit = ast::LitInt(magnitude, ty);
+
+                    MacEager::expr(cx.expr_lit(sp, lit))
+                },
+                Err(..) => {
+                    cx.span_err(sp, &format!("{} is not an integer", val));
+                    DummyResult::expr(sp)
+                },
+            }
+        },
+        None => {
+            DummyResult::expr(sp)
+        }
+    }
+}
+
+/// Expands the `cfg_float!` macro.
+pub fn expand_cfg_float(cx: &mut ExtCtxt,
+                        sp: Span,
+                        tts: &[ast::TokenTree])
+                        -> Box<base::MacResult+'static> {
+
+    match expand_cfg_val(cx, sp, tts) {
+        Some(val) => {
+            match val.parse::<f64>() {
+                Ok(..) => { // the string is a valid float
+                    let lit = ast::LitFloatUnsuffixed(val);
+                    MacEager::expr(cx.expr_lit(sp, lit))
+                },
+                Err(..) => {
+                    cx.span_err(sp, &format!("{} is not a float", val));
+                    DummyResult::expr(sp)
+                },
+            }
+        },
+        None => {
+           DummyResult::expr(sp)
+        },
+    }
+}
+
+/// Expands the `cfg_str!` macro.
+pub fn expand_cfg_str(cx: &mut ExtCtxt,
+                      sp: Span,
+                      tts: &[ast::TokenTree])
+                      -> Box<base::MacResult+'static> {
+
+    match expand_cfg_val(cx, sp, tts) {
+        Some(val) => MacEager::expr(cx.expr_str(sp, val)),
+        None => DummyResult::expr(sp),
+    }
+}
+
+/// Expands a configuration value a the string
+/// that represents its value.
+///
+/// Returns `None` if there is an error, while
+/// logging information to the context.
+pub fn expand_cfg_val(cx: &mut ExtCtxt,
+                      sp: Span,
+                      tts: &[ast::TokenTree])
+                      -> Option<InternedString> {
+
+    // Make sure the feature gate is enabled.
+    if !cx.ecfg.enable_cfg_values() {
+        feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
+                                       "cfg_values",
+                                       sp,
+                                       feature_gate::EXPLAIN_CFG_VALUES);
+        return None;
+    }
+
+    let cfg = match parse_meta_item(cx, sp, tts) {
+        Some(cfg) => cfg,
+        None => { return None; },
+    };
+
+    match cfg.node {
+        ast::MetaList(..) |
+        ast::MetaNameValue(..) => {
+            cx.span_err(cfg.span, "expected a single configuration flag name");
+            return None;
+        },
+        ast::MetaWord(ref cfg_name) => {
+
+            // Look for the CFG meta item with the specified name.
+            let item = cx.cfg.iter().find(|item| {
+                if let ast::MetaNameValue(ref name,_) = item.node {
+                    cfg_name == name
+                } else {
+                    false
+                }
+            });
+
+            match item.map(|ref a| &a.node) {
+                // The CFG was found
+                Some(&ast::MetaNameValue(_, ref lit))=> {
+                    if let ast::LitStr(ref val, _) = lit.node {
+                        Some(val.clone())
+                    } else {
+                        // CFG values are always textual
+                        unreachable!();
+                    }
+                },
+                Some(_) => {
+                    unreachable!();
+                },
+                None => { // the cfg is not defined
+                    cx.span_err(cfg.span, "configuration flag does not have a value");
+                    None
+                }
+            }
+        }
+    }
+}
+
+fn parse_meta_item(cx: &mut ExtCtxt,
+                   sp: Span,
+                   tts: &[ast::TokenTree])
+                   -> Option<P<ast::MetaItem>> {
     let mut p = cx.new_parser_from_tts(tts);
     let cfg = p.parse_meta_item();
 
     if !panictry!(p.eat(&token::Eof)){
         cx.span_err(sp, "expected 1 cfg-pattern");
-        return DummyResult::expr(sp);
+        None
+    } else {
+        Some(cfg)
     }
 
-    let matches_cfg = attr::cfg_matches(&cx.parse_sess.span_diagnostic, &cx.cfg, &*cfg);
-    MacEager::expr(cx.expr_bool(sp, matches_cfg))
 }
+
