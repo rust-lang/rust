@@ -35,6 +35,7 @@ pub mod methods;
 pub mod returns;
 pub mod lifetimes;
 pub mod loops;
+pub mod ranges;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -64,6 +65,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box types::LetPass as LintPassObject);
     reg.register_lint_pass(box loops::LoopsPass as LintPassObject);
     reg.register_lint_pass(box lifetimes::LifetimePass as LintPassObject);
+    reg.register_lint_pass(box ranges::StepByZero as LintPassObject);
 
     reg.register_lint_group("clippy", vec![
         approx_const::APPROX_CONSTANT,
@@ -93,6 +95,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         mut_mut::MUT_MUT,
         needless_bool::NEEDLESS_BOOL,
         ptr_arg::PTR_ARG,
+        ranges::RANGE_STEP_BY_ZERO,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
         strings::STRING_ADD,
