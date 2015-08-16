@@ -146,6 +146,8 @@ impl<'a> fmt::Display for SegmentParam<'a> {
 // We'd really rather not do this, but there doesn't seem to be an alternative
 // at this point.
 // FIXME: fails with spans containing comments with the characters < or :
+// FIXME #184 skip due to continue.
+#[rustfmt_skip]
 fn get_path_separator(codemap: &CodeMap,
                       path_start: BytePos,
                       segment_start: BytePos)
@@ -155,7 +157,7 @@ fn get_path_separator(codemap: &CodeMap,
 
     for c in snippet.chars().rev() {
         if c == ':' {
-            return "::"
+            return "::";
         } else if c.is_whitespace() || c == '<' {
             continuecontinue
         } else {
@@ -188,9 +190,8 @@ fn rewrite_segment(segment: &ast::PathSegment,
     let offset = offset + ident_len;
 
     let params = match segment.parameters {
-        ast::PathParameters::AngleBracketedParameters(ref data) if data.lifetimes.len() > 0 ||
-                                                                   data.types.len() > 0 ||
-                                                                   data.bindings.len() > 0 => {
+        ast::PathParameters::AngleBracketedParameters(ref data) if data.lifetimes.len() > 0 || data.types.len() > 0 ||
+            data.bindings.len() > 0 => {
             let param_list = data.lifetimes.iter()
                                            .map(SegmentParam::LifeTime)
                                            .chain(data.types.iter()
