@@ -123,7 +123,7 @@ code, pre {
     font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", Inconsolata, monospace;
     white-space: pre-wrap;
 }
-.docblock code {
+.docblock code, .stability code {
     background-color: #F5F5F5;
     border-radius: 3px;
     padding: 0 0.2em;
@@ -387,11 +387,11 @@ a {
     background: transparent;
 }
 
-.docblock a {
+.docblock a, .stability a {
     color: #4e8bca;
 }
 
-.docblock a:hover {
+.docblock a:hover, .stability a {
     text-decoration: underline;
 }
 

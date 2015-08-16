@@ -1709,7 +1709,22 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Optio
             };
             format!("Deprecated{}{}", since, Markdown(&reason))
         } else if stab.level == attr::Unstable {
-            format!("Unstable{}", Markdown(&reason))
+            let unstable_extra = if show_reason {
+                match (!stab.feature.is_empty(), &cx.issue_tracker_base_url, stab.issue) {
+                    (true, &Some(ref tracker_url), Some(issue_no)) =>
+                        format!(" (<code>{}</code> <a href=\"{}{}\">#{}</a>)", Escape(&stab.feature),
+                                tracker_url, issue_no, issue_no),
+                    (false, &Some(ref tracker_url), Some(issue_no)) =>
+                        format!(" (<a href=\"{}{}\">#{}</a>)", Escape(&tracker_url), issue_no,
+                                issue_no),
+                    (true, _, _) =>
+                        format!(" (<code>{}</code>)", Escape(&stab.feature)),
+                    _ => String::new(),
+                }
+            } else {
+                String::new()
+            };
+            format!("Unstable{}{}", unstable_extra, Markdown(&reason))
         } else {
             return None
         };
