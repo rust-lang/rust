@@ -1675,6 +1675,7 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_asm = allow_asm,
         fn enable_log_syntax = allow_log_syntax,
         fn enable_concat_idents = allow_concat_idents,
+        fn enable_cfg_values = allow_cfg_values,
         fn enable_trace_macros = allow_trace_macros,
         fn enable_allow_internal_unstable = allow_internal_unstable,
         fn enable_custom_derive = allow_custom_derive,

@@ -17,6 +17,7 @@ use codemap::Span;
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
+use feature_gate;
 use attr;
 use attr::*;
 use parse::attr::ParserAttr;
@@ -28,7 +29,7 @@ pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
                        tts: &[ast::TokenTree])
                        -> Box<base::MacResult+'static> {
 
-    let cfg = match get_cfg_meta_item(cx, sp, tts) {
+    let cfg = match parse_meta_item(cx, sp, tts) {
         Some(cfg) => cfg,
         None => { return DummyResult::expr(sp); },
     };
@@ -37,6 +38,7 @@ pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
     MacEager::expr(cx.expr_bool(sp, matches_cfg))
 }
 
+/// Expands the `cfg_int!` macro.
 pub fn expand_cfg_int(cx: &mut ExtCtxt,
                       sp: Span,
                       tts: &[ast::TokenTree])
@@ -67,6 +69,7 @@ pub fn expand_cfg_int(cx: &mut ExtCtxt,
     }
 }
 
+/// Expands the `cfg_float!` macro.
 pub fn expand_cfg_float(cx: &mut ExtCtxt,
                         sp: Span,
                         tts: &[ast::TokenTree])
@@ -91,6 +94,7 @@ pub fn expand_cfg_float(cx: &mut ExtCtxt,
     }
 }
 
+/// Expands the `cfg_str!` macro.
 pub fn expand_cfg_str(cx: &mut ExtCtxt,
                       sp: Span,
                       tts: &[ast::TokenTree])
@@ -102,12 +106,26 @@ pub fn expand_cfg_str(cx: &mut ExtCtxt,
     }
 }
 
+/// Expands a configuration value a the string
+/// that represents its value.
+///
+/// Returns `None` if there is an error, while
+/// logging information to the context.
 pub fn expand_cfg_val(cx: &mut ExtCtxt,
                       sp: Span,
                       tts: &[ast::TokenTree])
                       -> Option<InternedString> {
 
-    let cfg = match get_cfg_meta_item(cx, sp, tts) {
+    // Make sure the feature gate is enabled.
+    if !cx.ecfg.enable_cfg_values() {
+        feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
+                                       "cfg_values",
+                                       sp,
+                                       feature_gate::EXPLAIN_CFG_VALUES);
+        return None;
+    }
+
+    let cfg = match parse_meta_item(cx, sp, tts) {
         Some(cfg) => cfg,
         None => { return None; },
     };
@@ -151,7 +169,7 @@ pub fn expand_cfg_val(cx: &mut ExtCtxt,
     }
 }
 
-fn get_cfg_meta_item(cx: &mut ExtCtxt,
+fn parse_meta_item(cx: &mut ExtCtxt,
                      sp: Span,
                      tts: &[ast::TokenTree])
                      -> Option<P<ast::MetaItem>> {
@@ -166,3 +184,4 @@ fn get_cfg_meta_item(cx: &mut ExtCtxt,
     }
 
 } 
+
