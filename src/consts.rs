@@ -148,7 +148,7 @@ fn lit_to_constant(lit: &Lit_) -> Constant {
 fn constant_vec<E: Deref<Target=Expr> + Sized>(cx: &Context, vec: &[E]) -> Option<Constant> {
     let mut parts = Vec::new();
     let mut resolved = false;
-    for opt_part in vec.iter() {
+    for opt_part in vec {
         match constant(cx, opt_part) {
             Some(p) => {
                 resolved |= (&p).needed_resolution;
@@ -166,7 +166,7 @@ fn constant_vec<E: Deref<Target=Expr> + Sized>(cx: &Context, vec: &[E]) -> Optio
 fn constant_tup<E: Deref<Target=Expr> + Sized>(cx: &Context, tup: &[E]) -> Option<Constant> {
     let mut parts = Vec::new();
     let mut resolved = false;
-    for opt_part in tup.iter() {
+    for opt_part in tup {
         match constant(cx, opt_part) {
             Some(p) => {
                 resolved |= (&p).needed_resolution;
@@ -224,8 +224,8 @@ fn constant_negate(o: Constant) -> Option<Constant> {
                     UnsuffixedIntLit(sign) => UnsuffixedIntLit(neg_sign(sign)),
                     _ => { return None; },
                 }),
-            ConstantFloat(ref is, ty) =>
-                ConstantFloat(neg_float_str(is.to_string()), ty),
+            ConstantFloat(is, ty) =>
+                ConstantFloat(neg_float_str(is), ty),
             _ => { return None; },
         }
     })
@@ -278,7 +278,7 @@ fn constant_binop(cx: &Context, op: BinOp, left: &Expr, right: &Expr)
         BiAdd => constant_binop_apply(cx, left, right, |l, r|
             match (l, r) {
                 (ConstantByte(l8), ConstantByte(r8)) =>
-                    l8.checked_add(r8).map(|v| ConstantByte(v)),
+                    l8.checked_add(r8).map(ConstantByte),
                 (ConstantInt(l64, lty), ConstantInt(r64, rty)) => {
                     let (ln, rn) = (is_negative(lty), is_negative(rty));
                     if ln == rn {
