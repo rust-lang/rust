@@ -18,7 +18,8 @@
 
 #![unstable(feature = "rt",
             reason = "this public module should not exist and is highly likely \
-                      to disappear")]
+                      to disappear",
+            issue = "0")]
 #![allow(missing_docs)]
 
 use prelude::v1::*;

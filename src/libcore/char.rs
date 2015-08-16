@@ -91,7 +91,8 @@ pub fn from_u32(i: u32) -> Option<char> {
 /// Converts a `u32` to an `char`, not checking whether it is a valid unicode
 /// codepoint.
 #[inline]
-#[unstable(feature = "char_from_unchecked", reason = "recently added API")]
+#[unstable(feature = "char_from_unchecked", reason = "recently added API",
+           issue = "27781")]
 pub unsafe fn from_u32_unchecked(i: u32) -> char {
     transmute(i)
 }
@@ -139,7 +140,8 @@ pub fn from_digit(num: u32, radix: u32) -> Option<char> {
 #[allow(missing_docs)] // docs in libunicode/u_char.rs
 #[doc(hidden)]
 #[unstable(feature = "core_char_ext",
-           reason = "the stable interface is `impl char` in later crate")]
+           reason = "the stable interface is `impl char` in later crate",
+           issue = "27701")]
 pub trait CharExt {
     fn is_digit(self, radix: u32) -> bool;
     fn to_digit(self, radix: u32) -> Option<u32>;
@@ -230,7 +232,8 @@ impl CharExt for char {
 /// and a `None` will be returned.
 #[inline]
 #[unstable(feature = "char_internals",
-           reason = "this function should not be exposed publicly")]
+           reason = "this function should not be exposed publicly",
+           issue = "0")]
 #[doc(hidden)]
 pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> Option<usize> {
     // Marked #[inline] to allow llvm optimizing it away
@@ -264,7 +267,8 @@ pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> Option<usize> {
 /// and a `None` will be returned.
 #[inline]
 #[unstable(feature = "char_internals",
-           reason = "this function should not be exposed publicly")]
+           reason = "this function should not be exposed publicly",
+           issue = "0")]
 #[doc(hidden)]
 pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<usize> {
     // Marked #[inline] to allow llvm optimizing it away

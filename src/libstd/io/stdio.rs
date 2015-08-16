@@ -531,7 +531,8 @@ impl<'a> Write for StderrLock<'a> {
 /// output handle is to the process's stderr stream.
 #[unstable(feature = "set_stdio",
            reason = "this function may disappear completely or be replaced \
-                     with a more general mechanism")]
+                     with a more general mechanism",
+           issue = "0")]
 #[doc(hidden)]
 pub fn set_panic(sink: Box<Write + Send>) -> Option<Box<Write + Send>> {
     use panicking::LOCAL_STDERR;
@@ -554,7 +555,8 @@ pub fn set_panic(sink: Box<Write + Send>) -> Option<Box<Write + Send>> {
 /// output handle is to the process's stdout stream.
 #[unstable(feature = "set_stdio",
            reason = "this function may disappear completely or be replaced \
-                     with a more general mechanism")]
+                     with a more general mechanism",
+           issue = "0")]
 #[doc(hidden)]
 pub fn set_print(sink: Box<Write + Send>) -> Option<Box<Write + Send>> {
     use mem;
@@ -567,7 +569,8 @@ pub fn set_print(sink: Box<Write + Send>) -> Option<Box<Write + Send>> {
 }
 
 #[unstable(feature = "print",
-           reason = "implementation detail which may disappear or be replaced at any time")]
+           reason = "implementation detail which may disappear or be replaced at any time",
+           issue = "0")]
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     let result = LOCAL_STDOUT.with(|s| {

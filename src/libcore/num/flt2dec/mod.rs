@@ -127,7 +127,8 @@ functions.
 // only made public for testing. do not expose us.
 #![doc(hidden)]
 #![unstable(feature = "flt2dec",
-            reason = "internal routines only exposed for testing")]
+            reason = "internal routines only exposed for testing",
+            issue = "0")]
 
 use prelude::v1::*;
 use i16;

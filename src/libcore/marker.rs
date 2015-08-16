@@ -54,7 +54,7 @@ pub trait Sized {
 }
 
 /// Types that can be "unsized" to a dynamically sized type.
-#[unstable(feature = "unsize")]
+#[unstable(feature = "unsize", issue = "27779")]
 #[lang="unsize"]
 pub trait Unsize<T: ?Sized> {
     // Empty.
@@ -406,7 +406,8 @@ mod impls {
 /// [1]: http://en.wikipedia.org/wiki/Parametricity
 #[rustc_reflect_like]
 #[unstable(feature = "reflect_marker",
-           reason = "requires RFC and more experience")]
+           reason = "requires RFC and more experience",
+           issue = "27749")]
 #[rustc_on_unimplemented = "`{Self}` does not implement `Any`; \
                             ensure all type parameters are bounded by `Any`"]
 pub trait Reflect {}

@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear")]
+#![unstable(feature = "hashmap_hasher", reason = "hasher stuff is unclear",
+            issue = "27713")]
 
 use clone::Clone;
 use default::Default;

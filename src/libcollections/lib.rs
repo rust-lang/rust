@@ -20,7 +20,8 @@
 #![crate_type = "rlib"]
 #![unstable(feature = "collections",
             reason = "library is unlikely to be stabilized with the current \
-                      layout and name, use std::collections instead")]
+                      layout and name, use std::collections instead",
+            issue = "27783")]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
@@ -110,7 +111,7 @@ mod std {
 }
 
 /// An endpoint of a range of keys.
-#[unstable(feature = "collections_bound")]
+#[unstable(feature = "collections_bound", issue = "27711")]
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Bound<T> {
     /// An inclusive bound.

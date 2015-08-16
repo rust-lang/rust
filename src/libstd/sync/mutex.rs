@@ -151,7 +151,8 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> { }
 /// // lock is unlocked here.
 /// ```
 #[unstable(feature = "static_mutex",
-           reason = "may be merged with Mutex in the future")]
+           reason = "may be merged with Mutex in the future",
+           issue = "27717")]
 pub struct StaticMutex {
     lock: sys::Mutex,
     poison: poison::Flag,
@@ -177,7 +178,8 @@ impl<'a, T: ?Sized> !marker::Send for MutexGuard<'a, T> {}
 /// Static initialization of a mutex. This constant can be used to initialize
 /// other mutex constants.
 #[unstable(feature = "static_mutex",
-           reason = "may be merged with Mutex in the future")]
+           reason = "may be merged with Mutex in the future",
+           issue = "27717")]
 pub const MUTEX_INIT: StaticMutex = StaticMutex::new();
 
 impl<T> Mutex<T> {
@@ -271,7 +273,8 @@ unsafe impl Sync for Dummy {}
 static DUMMY: Dummy = Dummy(UnsafeCell::new(()));
 
 #[unstable(feature = "static_mutex",
-           reason = "may be merged with Mutex in the future")]
+           reason = "may be merged with Mutex in the future",
+           issue = "27717")]
 impl StaticMutex {
     /// Creates a new mutex in an unlocked state ready for use.
     pub const fn new() -> StaticMutex {

@@ -12,24 +12,24 @@
 #![staged_api]
 #![stable(feature = "stable", since = "1.0.0")]
 
-#[unstable(feature = "function")]
+#[unstable(feature = "function", issue = "0")]
 pub fn unstable() {}
 
 
 #[stable(feature = "stable", since = "1.0.0")]
 pub struct Foo {
-    #[unstable(feature = "struct_field")]
+    #[unstable(feature = "struct_field", issue = "0")]
     pub x: u8
 }
 
 impl Foo {
-    #[unstable(feature = "method")]
+    #[unstable(feature = "method", issue = "0")]
     pub fn method(&self) {}
 }
 
 #[stable(feature = "stable", since = "1.0.0")]
 pub struct Bar {
-    #[unstable(feature = "struct2_field")]
+    #[unstable(feature = "struct2_field", issue = "0")]
     pub x: u8
 }
 

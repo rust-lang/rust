@@ -238,7 +238,7 @@ impl<T> Rc<T> {
     /// assert_eq!(Rc::try_unwrap(x), Err(Rc::new(4)));
     /// ```
     #[inline]
-    #[unstable(feature = "rc_unique")]
+    #[unstable(feature = "rc_unique", issue = "27718")]
     pub fn try_unwrap(rc: Rc<T>) -> Result<T, Rc<T>> {
         if Rc::is_unique(&rc) {
             unsafe {
@@ -271,7 +271,8 @@ impl<T: ?Sized> Rc<T> {
     /// let weak_five = five.downgrade();
     /// ```
     #[unstable(feature = "rc_weak",
-               reason = "Weak pointers may not belong in this module")]
+               reason = "Weak pointers may not belong in this module",
+               issue = "27718")]
     pub fn downgrade(&self) -> Weak<T> {
         self.inc_weak();
         Weak { _ptr: self._ptr }
@@ -279,12 +280,12 @@ impl<T: ?Sized> Rc<T> {
 
     /// Get the number of weak references to this value.
     #[inline]
-    #[unstable(feature = "rc_counts")]
+    #[unstable(feature = "rc_counts", issue = "27718")]
     pub fn weak_count(this: &Rc<T>) -> usize { this.weak() - 1 }
 
     /// Get the number of strong references to this value.
     #[inline]
-    #[unstable(feature = "rc_counts")]
+    #[unstable(feature = "rc_counts", issue= "27718")]
     pub fn strong_count(this: &Rc<T>) -> usize { this.strong() }
 
     /// Returns true if there are no other `Rc` or `Weak<T>` values that share
@@ -302,7 +303,7 @@ impl<T: ?Sized> Rc<T> {
     /// assert!(Rc::is_unique(&five));
     /// ```
     #[inline]
-    #[unstable(feature = "rc_unique")]
+    #[unstable(feature = "rc_unique", issue = "27718")]
     pub fn is_unique(rc: &Rc<T>) -> bool {
         Rc::weak_count(rc) == 0 && Rc::strong_count(rc) == 1
     }
@@ -327,7 +328,7 @@ impl<T: ?Sized> Rc<T> {
     /// assert!(Rc::get_mut(&mut x).is_none());
     /// ```
     #[inline]
-    #[unstable(feature = "rc_unique")]
+    #[unstable(feature = "rc_unique", issue = "27718")]
     pub fn get_mut(rc: &mut Rc<T>) -> Option<&mut T> {
         if Rc::is_unique(rc) {
             let inner = unsafe { &mut **rc._ptr };
@@ -356,7 +357,7 @@ impl<T: Clone> Rc<T> {
     /// let mut_five = five.make_unique();
     /// ```
     #[inline]
-    #[unstable(feature = "rc_unique")]
+    #[unstable(feature = "rc_unique", issue = "27718")]
     pub fn make_unique(&mut self) -> &mut T {
         if !Rc::is_unique(self) {
             *self = Rc::new((**self).clone())
@@ -653,7 +654,8 @@ impl<T> fmt::Pointer for Rc<T> {
 /// See the [module level documentation](./index.html) for more.
 #[unsafe_no_drop_flag]
 #[unstable(feature = "rc_weak",
-           reason = "Weak pointers may not belong in this module.")]
+           reason = "Weak pointers may not belong in this module.",
+           issue = "27718")]
 pub struct Weak<T: ?Sized> {
     // FIXME #12808: strange names to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -666,7 +668,8 @@ impl<T: ?Sized> !marker::Sync for Weak<T> {}
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
 #[unstable(feature = "rc_weak",
-           reason = "Weak pointers may not belong in this module.")]
+           reason = "Weak pointers may not belong in this module.",
+           issue = "27718")]
 impl<T: ?Sized> Weak<T> {
 
     /// Upgrades a weak reference to a strong reference.
@@ -746,7 +749,8 @@ impl<T: ?Sized> Drop for Weak<T> {
 }
 
 #[unstable(feature = "rc_weak",
-           reason = "Weak pointers may not belong in this module.")]
+           reason = "Weak pointers may not belong in this module.",
+           issue = "27718")]
 impl<T: ?Sized> Clone for Weak<T> {
 
     /// Makes a clone of the `Weak<T>`.

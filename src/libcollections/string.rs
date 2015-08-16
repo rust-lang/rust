@@ -343,7 +343,8 @@ impl String {
     /// Extracts a string slice containing the entire string.
     #[inline]
     #[unstable(feature = "convert",
-               reason = "waiting on RFC revision")]
+               reason = "waiting on RFC revision",
+               issue = "27729")]
     pub fn as_str(&self) -> &str {
         self
     }
@@ -698,7 +699,8 @@ impl String {
     /// assert_eq!(s, "");
     /// ```
     #[unstable(feature = "drain",
-               reason = "recently added, matches RFC")]
+               reason = "recently added, matches RFC",
+               issue = "27711")]
     pub fn drain<R>(&mut self, range: R) -> Drain where R: RangeArgument<usize> {
         // Memory safety
         //
@@ -728,7 +730,8 @@ impl String {
     ///
     /// Note that this will drop any excess capacity.
     #[unstable(feature = "box_str",
-               reason = "recently added, matches RFC")]
+               reason = "recently added, matches RFC",
+               issue = "27785")]
     pub fn into_boxed_str(self) -> Box<str> {
         let slice = self.vec.into_boxed_slice();
         unsafe { mem::transmute::<Box<[u8]>, Box<str>>(slice) }
@@ -1019,7 +1022,8 @@ impl ops::DerefMut for String {
 
 /// Error returned from `String::from`
 #[unstable(feature = "str_parse_error", reason = "may want to be replaced with \
-                                                  Void if it ever exists")]
+                                                  Void if it ever exists",
+           issue = "27734")]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct ParseError(());
 
@@ -1110,7 +1114,8 @@ impl Into<Vec<u8>> for String {
     }
 }
 
-#[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`")]
+#[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`",
+           issue= "27735")]
 impl IntoCow<'static, str> for String {
     #[inline]
     fn into_cow(self) -> Cow<'static, str> {
@@ -1118,7 +1123,8 @@ impl IntoCow<'static, str> for String {
     }
 }
 
-#[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`")]
+#[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`",
+           issue = "27735")]
 impl<'a> IntoCow<'a, str> for &'a str {
     #[inline]
     fn into_cow(self) -> Cow<'a, str> {
@@ -1142,7 +1148,7 @@ impl fmt::Write for String {
 }
 
 /// A draining iterator for `String`.
-#[unstable(feature = "drain", reason = "recently added")]
+#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
 pub struct Drain<'a> {
     /// Will be used as &'a mut String in the destructor
     string: *mut String,
@@ -1157,7 +1163,7 @@ pub struct Drain<'a> {
 unsafe impl<'a> Sync for Drain<'a> {}
 unsafe impl<'a> Send for Drain<'a> {}
 
-#[unstable(feature = "drain", reason = "recently added")]
+#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
 impl<'a> Drop for Drain<'a> {
     fn drop(&mut self) {
         unsafe {
@@ -1171,7 +1177,7 @@ impl<'a> Drop for Drain<'a> {
     }
 }
 
-#[unstable(feature = "drain", reason = "recently added")]
+#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
 impl<'a> Iterator for Drain<'a> {
     type Item = char;
 
@@ -1185,7 +1191,7 @@ impl<'a> Iterator for Drain<'a> {
     }
 }
 
-#[unstable(feature = "drain", reason = "recently added")]
+#[unstable(feature = "drain", reason = "recently added", issue = "27711")]
 impl<'a> DoubleEndedIterator for Drain<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {

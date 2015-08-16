@@ -725,7 +725,7 @@ impl<'a> Components<'a> {
     }
 
     /// Examine the next component without consuming it.
-    #[unstable(feature = "path_components_peek")]
+    #[unstable(feature = "path_components_peek", issue = "27727")]
     pub fn peek(&self) -> Option<Component<'a>> {
         self.clone().next()
     }
@@ -1358,7 +1358,9 @@ impl Path {
     /// Prefixes are relevant only for Windows paths, and consist of volumes
     /// like `C:`, UNC prefixes like `\\server`, and others described in more
     /// detail in `std::os::windows::PathExt`.
-    #[unstable(feature = "path_prefix", reason = "uncertain whether to expose this convenience")]
+    #[unstable(feature = "path_prefix",
+               reason = "uncertain whether to expose this convenience",
+               issue = "27722")]
     pub fn prefix(&self) -> Option<Prefix> {
         self.components().prefix
     }
@@ -1441,7 +1443,8 @@ impl Path {
     ///
     /// If `base` is not a prefix of `self` (i.e. `starts_with`
     /// returns false), then `relative_from` returns `None`.
-    #[unstable(feature = "path_relative_from", reason = "see #23284")]
+    #[unstable(feature = "path_relative_from", reason = "see #23284",
+               issue = "23284")]
     pub fn relative_from<'a, P: ?Sized + AsRef<Path>>(&'a self, base: &'a P) -> Option<&Path>
     {
         iter_after(self.components(), base.as_ref().components()).map(|c| c.as_path())

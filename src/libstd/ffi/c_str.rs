@@ -205,7 +205,8 @@ impl CString {
     /// The only appropriate argument is a pointer obtained by calling
     /// `into_ptr`. The length of the string will be recalculated
     /// using the pointer.
-    #[unstable(feature = "cstr_memory", reason = "recently added")]
+    #[unstable(feature = "cstr_memory", reason = "recently added",
+               issue = "27769")]
     // NB: may want to be called from_raw, needs to consider CStr::from_ptr,
     //     Box::from_raw (or whatever it's currently called), and
     //     slice::from_raw_parts
@@ -223,7 +224,8 @@ impl CString {
     /// this string.
     ///
     /// Failure to call `from_ptr` will lead to a memory leak.
-    #[unstable(feature = "cstr_memory", reason = "recently added")]
+    #[unstable(feature = "cstr_memory", reason = "recently added",
+               issue = "27769")]
     // NB: may want to be called into_raw, see comments on from_ptr
     pub fn into_ptr(self) -> *const libc::c_char {
         // It is important that the bytes be sized to fit - we need
@@ -407,11 +409,13 @@ impl CStr {
     /// > after a 0-cost cast, but it is planned to alter its definition in the
     /// > future to perform the length calculation in addition to the UTF-8
     /// > check whenever this method is called.
-    #[unstable(feature = "cstr_to_str", reason = "recently added")]
+    #[unstable(feature = "cstr_to_str", reason = "recently added",
+               issue = "27764")]
     pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
-        // NB: When CStr is changed to perform the length check in .to_bytes() instead of in
-        // from_ptr(), it may be worth considering if this should be rewritten to do the UTF-8
-        // check inline with the length calculation instead of doing it afterwards.
+        // NB: When CStr is changed to perform the length check in .to_bytes()
+        // instead of in from_ptr(), it may be worth considering if this should
+        // be rewritten to do the UTF-8 check inline with the length calculation
+        // instead of doing it afterwards.
         str::from_utf8(self.to_bytes())
     }
 
@@ -426,7 +430,8 @@ impl CStr {
     /// > after a 0-cost cast, but it is planned to alter its definition in the
     /// > future to perform the length calculation in addition to the UTF-8
     /// > check whenever this method is called.
-    #[unstable(feature = "cstr_to_str", reason = "recently added")]
+    #[unstable(feature = "cstr_to_str", reason = "recently added",
+               issue = "27764")]
     pub fn to_string_lossy(&self) -> Cow<str> {
         String::from_utf8_lossy(self.to_bytes())
     }

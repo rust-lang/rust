@@ -405,7 +405,8 @@ impl<T, E> Result<T, E> {
 
     /// Converts from `Result<T, E>` to `&[T]` (without copying)
     #[inline]
-    #[unstable(feature = "as_slice", since = "unsure of the utility here")]
+    #[unstable(feature = "as_slice", since = "unsure of the utility here",
+               issue = "27776")]
     pub fn as_slice(&self) -> &[T] {
         match *self {
             Ok(ref x) => slice::ref_slice(x),
@@ -436,7 +437,8 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[unstable(feature = "as_slice",
-               reason = "waiting for mut conventions")]
+               reason = "waiting for mut conventions",
+               issue = "27776")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         match *self {
             Ok(ref mut x) => slice::mut_ref_slice(x),

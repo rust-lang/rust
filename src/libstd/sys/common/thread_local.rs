@@ -55,7 +55,7 @@
 //! ```
 
 #![allow(non_camel_case_types)]
-#![unstable(feature = "thread_local_internals")]
+#![unstable(feature = "thread_local_internals", issue = "0")]
 #![allow(dead_code)] // sys isn't exported yet
 
 use sync::atomic::{self, AtomicUsize, Ordering};

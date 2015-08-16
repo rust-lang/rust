@@ -12,8 +12,9 @@
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "libc"]
 #![crate_type = "rlib"]
-#![cfg_attr(not(feature = "cargo-build"), unstable(feature = "libc",
-                                                   reason = "use `libc` from crates.io"))]
+#![cfg_attr(not(feature = "cargo-build"),
+            unstable(feature = "libc", reason = "use `libc` from crates.io",
+                     issue = "27783"))]
 #![cfg_attr(not(feature = "cargo-build"), feature(staged_api, no_std))]
 #![cfg_attr(not(feature = "cargo-build"), staged_api)]
 #![cfg_attr(not(feature = "cargo-build"), no_std)]

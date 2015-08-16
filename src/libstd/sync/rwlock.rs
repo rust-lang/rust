@@ -98,7 +98,8 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 /// unsafe { LOCK.destroy() } // free all resources
 /// ```
 #[unstable(feature = "static_rwlock",
-           reason = "may be merged with RwLock in the future")]
+           reason = "may be merged with RwLock in the future",
+           issue = "27717")]
 pub struct StaticRwLock {
     lock: sys::RWLock,
     poison: poison::Flag,
@@ -106,7 +107,8 @@ pub struct StaticRwLock {
 
 /// Constant initialization for a statically-initialized rwlock.
 #[unstable(feature = "static_rwlock",
-           reason = "may be merged with RwLock in the future")]
+           reason = "may be merged with RwLock in the future",
+           issue = "27717")]
 pub const RW_LOCK_INIT: StaticRwLock = StaticRwLock::new();
 
 /// RAII structure used to release the shared read access of a lock when
@@ -285,7 +287,8 @@ unsafe impl Sync for Dummy {}
 static DUMMY: Dummy = Dummy(UnsafeCell::new(()));
 
 #[unstable(feature = "static_rwlock",
-           reason = "may be merged with RwLock in the future")]
+           reason = "may be merged with RwLock in the future",
+           issue = "27717")]
 impl StaticRwLock {
     /// Creates a new rwlock.
     pub const fn new() -> StaticRwLock {

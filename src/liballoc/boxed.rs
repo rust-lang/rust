@@ -85,13 +85,15 @@ use core::raw::{TraitObject};
 /// ```
 #[lang = "exchange_heap"]
 #[unstable(feature = "box_heap",
-           reason = "may be renamed; uncertain about custom allocator design")]
+           reason = "may be renamed; uncertain about custom allocator design",
+           issue = "27779")]
 pub const HEAP: ExchangeHeapSingleton =
     ExchangeHeapSingleton { _force_singleton: () };
 
 /// This the singleton type used solely for `boxed::HEAP`.
 #[unstable(feature = "box_heap",
-           reason = "may be renamed; uncertain about custom allocator design")]
+           reason = "may be renamed; uncertain about custom allocator design",
+           issue = "27779")]
 #[derive(Copy, Clone)]
 pub struct ExchangeHeapSingleton { _force_singleton: () }
 
@@ -121,7 +123,9 @@ pub struct Box<T: ?Sized>(Unique<T>);
 /// the fact that the `align_of` intrinsic currently requires the
 /// input type to be Sized (which I do not think is strictly
 /// necessary).
-#[unstable(feature = "placement_in", reason = "placement box design is still being worked out.")]
+#[unstable(feature = "placement_in",
+           reason = "placement box design is still being worked out.",
+           issue = "27779")]
 pub struct IntermediateBox<T: ?Sized>{
     ptr: *mut u8,
     size: usize,
@@ -222,7 +226,8 @@ impl<T : ?Sized> Box<T> {
     /// lead to memory problems like double-free, for example if the
     /// function is called twice on the same raw pointer.
     #[unstable(feature = "box_raw",
-               reason = "may be renamed or moved out of Box scope")]
+               reason = "may be renamed or moved out of Box scope",
+               issue = "27768")]
     #[inline]
     // NB: may want to be called from_ptr, see comments on CStr::from_ptr
     pub unsafe fn from_raw(raw: *mut T) -> Self {
@@ -245,7 +250,8 @@ impl<T : ?Sized> Box<T> {
     /// let raw = Box::into_raw(seventeen);
     /// let boxed_again = unsafe { Box::from_raw(raw) };
     /// ```
-    #[unstable(feature = "box_raw", reason = "may be renamed")]
+    #[unstable(feature = "box_raw", reason = "may be renamed",
+               issue = "27768")]
     #[inline]
     // NB: may want to be called into_ptr, see comments on CStr::from_ptr
     pub fn into_raw(b: Box<T>) -> *mut T {
@@ -470,7 +476,7 @@ impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {}
 /// }
 /// ```
 #[rustc_paren_sugar]
-#[unstable(feature = "fnbox", reason = "Newly introduced")]
+#[unstable(feature = "fnbox", reason = "Newly introduced", issue = "0")]
 pub trait FnBox<A> {
     type Output;
 
