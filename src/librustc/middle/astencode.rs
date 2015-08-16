@@ -1252,11 +1252,9 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_substs<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                            -> subst::Substs<'tcx> {
         self.read_opaque(|this, doc| {
-            Ok(tydecode::parse_substs_data(doc.data,
-                                           dcx.cdata.cnum,
-                                           doc.start,
-                                           dcx.tcx,
-                                           |s, a| this.convert_def_id(dcx, s, a)))
+            Ok(tydecode::TyDecoder::with_doc(dcx.tcx, dcx.cdata.cnum, doc,
+                                             &mut |s, a| this.convert_def_id(dcx, s, a))
+               .parse_substs())
         }).unwrap()
     }
 
