@@ -150,7 +150,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
 
     fn report_overlap_note(&self, impl1: DefId, impl2: DefId) {
 
-        if impl2.krate == LOCAL_CRATE {
+        if impl2.is_local() {
             span_note!(self.tcx.sess, self.span_of_impl(impl2),
                        "note conflicting implementation here");
         } else {

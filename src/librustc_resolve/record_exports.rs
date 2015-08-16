@@ -25,7 +25,6 @@ use build_reduced_graph;
 use module_to_string;
 
 use rustc::middle::def::Export;
-use rustc::middle::def_id::LOCAL_CRATE;
 use syntax::ast;
 
 use std::ops::{Deref, DerefMut};
@@ -57,7 +56,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         // exports for nonlocal crates.
 
         match module_.def_id.get() {
-            Some(def_id) if def_id.krate == LOCAL_CRATE => {
+            Some(def_id) if def_id.is_local() => {
                 // OK. Continue.
                 debug!("(recording exports for module subtree) recording \
                         exports for local module `{}`",

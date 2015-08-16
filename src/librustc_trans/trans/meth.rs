@@ -12,7 +12,7 @@ use arena::TypedArena;
 use back::abi;
 use back::link;
 use llvm::{ValueRef, get_params};
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::subst::{Subst, Substs};
 use middle::subst::VecPerParamSpace;
 use middle::subst;

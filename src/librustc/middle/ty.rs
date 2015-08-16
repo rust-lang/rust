@@ -5468,7 +5468,7 @@ fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
         None => { }
     }
 
-    if def_id.krate == LOCAL_CRATE {
+    if def_id.is_local() {
         panic!("No def'n found for {:?} in tcx.{}", def_id, descr);
     }
     let v = load_external();
@@ -5776,7 +5776,7 @@ impl<'tcx> ctxt<'tcx> {
                                              expected.ty,
                                              found.ty));
 
-                match (expected.def_id.krate == LOCAL_CRATE,
+                match (expected.def_id.is_local(),
                        self.map.opt_span(expected.def_id.node)) {
                     (true, Some(span)) => {
                         self.sess.span_note(span,
@@ -5793,7 +5793,7 @@ impl<'tcx> ctxt<'tcx> {
                     expected.origin_span,
                     &format!("...that was applied to an unconstrained type variable here"));
 
-                match (found.def_id.krate == LOCAL_CRATE,
+                match (found.def_id.is_local(),
                        self.map.opt_span(found.def_id.node)) {
                     (true, Some(span)) => {
                         self.sess.span_note(span,
@@ -5905,7 +5905,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn trait_impl_polarity(&self, id: DefId) -> Option<ast::ImplPolarity> {
-        if id.krate == LOCAL_CRATE {
+        if id.is_local() {
             match self.map.find(id.node) {
                 Some(ast_map::NodeItem(item)) => {
                     match item.node {
@@ -5961,7 +5961,7 @@ impl<'tcx> ctxt<'tcx> {
 
     /// Returns whether this DefId refers to an impl
     pub fn is_impl(&self, id: DefId) -> bool {
-        if id.krate == LOCAL_CRATE {
+        if id.is_local() {
             if let Some(ast_map::NodeItem(
                 &ast::Item { node: ast::ItemImpl(..), .. })) = self.map.find(id.node) {
                 true
@@ -6012,7 +6012,7 @@ impl<'tcx> ctxt<'tcx> {
     pub fn with_path<T, F>(&self, id: DefId, f: F) -> T where
         F: FnOnce(ast_map::PathElems) -> T,
     {
-        if id.krate == LOCAL_CRATE {
+        if id.is_local() {
             self.map.with_path(id.node, f)
         } else {
             f(csearch::get_item_path(self, id).iter().cloned().chain(LinkedPath::empty()))
@@ -6135,7 +6135,7 @@ impl<'tcx> ctxt<'tcx> {
     /// Obtain the representation annotation for a struct definition.
     pub fn lookup_repr_hints(&self, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
         memoized(&self.repr_hint_cache, did, |did: DefId| {
-            Rc::new(if did.krate == LOCAL_CRATE {
+            Rc::new(if did.is_local() {
                 self.get_attrs(did).iter().flat_map(|meta| {
                     attr::find_repr_attrs(self.sess.diagnostic(), meta).into_iter()
                 }).collect()
@@ -6315,7 +6315,7 @@ impl<'tcx> ctxt<'tcx> {
     /// Load primitive inherent implementations if necessary
     pub fn populate_implementations_for_primitive_if_necessary(&self,
                                                                primitive_def_id: DefId) {
-        if primitive_def_id.krate == LOCAL_CRATE {
+        if primitive_def_id.is_local() {
             return
         }
 
@@ -6337,7 +6337,7 @@ impl<'tcx> ctxt<'tcx> {
     /// the given type if necessary.
     pub fn populate_inherent_implementations_for_type_if_necessary(&self,
                                                                    type_id: DefId) {
-        if type_id.krate == LOCAL_CRATE {
+        if type_id.is_local() {
             return
         }
 
@@ -6365,7 +6365,7 @@ impl<'tcx> ctxt<'tcx> {
     /// Populates the type context with all the implementations for the given
     /// trait if necessary.
     pub fn populate_implementations_for_trait_if_necessary(&self, trait_id: DefId) {
-        if trait_id.krate == LOCAL_CRATE {
+        if trait_id.is_local() {
             return
         }
 

@@ -23,7 +23,7 @@ use super::{declare_local, VariableKind, VariableAccess};
 use llvm::{self, ValueRef};
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::pat_util;
 use middle::subst::{self, Substs};
 use rustc::ast_map;
@@ -322,7 +322,7 @@ impl<'tcx> TypeMap<'tcx> {
                                             output: &mut String) {
             // First, find out the 'real' def_id of the type. Items inlined from
             // other crates have to be mapped back to their source.
-            let source_def_id = if def_id.krate == LOCAL_CRATE {
+            let source_def_id = if def_id.is_local() {
                 match cx.external_srcs().borrow().get(&def_id.node).cloned() {
                     Some(source_def_id) => {
                         // The given def_id identifies the inlined copy of a
@@ -336,7 +336,7 @@ impl<'tcx> TypeMap<'tcx> {
             };
 
             // Get the crate hash as first part of the identifier.
-            let crate_hash = if source_def_id.krate == LOCAL_CRATE {
+            let crate_hash = if source_def_id.is_local() {
                 cx.link_meta().crate_hash.clone()
             } else {
                 cx.sess().cstore.get_crate_hash(source_def_id.krate)

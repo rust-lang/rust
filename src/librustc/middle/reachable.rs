@@ -203,7 +203,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                             // Check the impl. If the generics on the self
                             // type of the impl require inlining, this method
                             // does too.
-                            assert!(impl_did.krate == LOCAL_CRATE);
+                            assert!(impl_did.is_local());
                             match self.tcx
                                       .map
                                       .expect_item(impl_did.node)
@@ -356,7 +356,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&mut self) {
         for (_, destructor_def_id) in self.tcx.destructor_for_type.borrow().iter() {
-            if destructor_def_id.krate == LOCAL_CRATE {
+            if destructor_def_id.is_local() {
                 self.reachable_symbols.insert(destructor_def_id.node);
             }
         }

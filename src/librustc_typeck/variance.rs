@@ -404,7 +404,7 @@ fn lang_items(tcx: &ty::ctxt) -> Vec<(ast::NodeId,Vec<ty::Variance>)> {
 
     all.into_iter()
        .filter(|&(ref d,_)| d.is_some())
-       .filter(|&(ref d,_)| d.as_ref().unwrap().krate == LOCAL_CRATE)
+       .filter(|&(ref d,_)| d.as_ref().unwrap().is_local())
        .map(|(d, v)| (d.unwrap().node, v))
        .collect()
 }
@@ -740,7 +740,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                          -> VarianceTermPtr<'a> {
         assert_eq!(param_def_id.krate, item_def_id.krate);
 
-        if param_def_id.krate == LOCAL_CRATE {
+        if param_def_id.is_local() {
             // Parameter on an item defined within current crate:
             // variance not yet inferred, so return a symbolic
             // variance.

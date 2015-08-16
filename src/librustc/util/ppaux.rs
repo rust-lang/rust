@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::subst::{self, Subst};
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{ReEarlyBound, BrFresh, ctxt};
@@ -659,7 +659,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
             TyEnum(def, substs) | TyStruct(def, substs) => {
                 ty::tls::with(|tcx| {
-                    if def.did.krate == LOCAL_CRATE &&
+                    if def.did.is_local() &&
                           !tcx.tcache.borrow().contains_key(&def.did) {
                         write!(f, "{}<..>", tcx.item_path_str(def.did))
                     } else {
@@ -674,7 +674,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyClosure(ref did, ref substs) => ty::tls::with(|tcx| {
                 try!(write!(f, "[closure"));
 
-                if did.krate == LOCAL_CRATE {
+                if did.is_local() {
                     try!(write!(f, "@{:?}", tcx.map.span(did.node)));
                     let mut sep = " ";
                     try!(tcx.with_freevars(did.node, |freevars| {

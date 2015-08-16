@@ -295,7 +295,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                         // can't do `unsafe impl Send for Rc<SomethingLocal>` or
                         // `impl !Send for Box<SomethingLocalAndSend>`.
                         Some(self_def_id) => {
-                            if self_def_id.krate == LOCAL_CRATE {
+                            if self_def_id.is_local() {
                                 None
                             } else {
                                 Some(format!(

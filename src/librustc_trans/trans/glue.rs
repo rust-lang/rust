@@ -340,7 +340,7 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let (val, _, _) = monomorphize::monomorphic_fn(ccx, did, substs, None);
 
         val
-    } else if did.krate == LOCAL_CRATE {
+    } else if did.is_local() {
         get_item_val(ccx, did.node)
     } else {
         let tcx = ccx.tcx();

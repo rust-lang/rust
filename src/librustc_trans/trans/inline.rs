@@ -12,7 +12,7 @@ use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
 use metadata::csearch;
 use metadata::inline::InlinedItem;
 use middle::astencode;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::subst::Substs;
 use trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
 use trans::common::*;
@@ -189,7 +189,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
 
 pub fn get_local_instance(ccx: &CrateContext, fn_id: DefId)
     -> Option<DefId> {
-    if fn_id.krate == LOCAL_CRATE {
+    if fn_id.is_local() {
         Some(fn_id)
     } else {
         instantiate_inline(ccx, fn_id)

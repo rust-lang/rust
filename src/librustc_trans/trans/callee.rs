@@ -464,7 +464,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     // or is a named tuple constructor.
     let must_monomorphise = if !substs.types.is_empty() || is_default {
         true
-    } else if def_id.krate == LOCAL_CRATE {
+    } else if def_id.is_local() {
         let map_node = session::expect(
             ccx.sess(),
             tcx.map.find(def_id.node),
@@ -524,7 +524,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
     // Find the actual function pointer.
     let mut val = {
-        if def_id.krate == LOCAL_CRATE {
+        if def_id.is_local() {
             // Internal reference.
             get_item_val(ccx, def_id.node)
         } else {

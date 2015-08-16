@@ -320,7 +320,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 }
                 _ => {
                     // Destructors only work on nominal types.
-                    if impl_did.krate == LOCAL_CRATE {
+                    if impl_did.is_local() {
                         {
                             match tcx.map.find(impl_did.node) {
                                 Some(ast_map::NodeItem(item)) => {

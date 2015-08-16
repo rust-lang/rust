@@ -1781,7 +1781,7 @@ fn encode_lang_items(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 
     for (i, &def_id) in ecx.tcx.lang_items.items() {
         if let Some(id) = def_id {
-            if id.krate == LOCAL_CRATE {
+            if id.is_local() {
                 rbml_w.start_tag(tag_lang_items_item);
                 rbml_w.wr_tagged_u32(tag_lang_items_item_id, i as u32);
                 rbml_w.wr_tagged_u32(tag_lang_items_item_node_id, id.node as u32);
