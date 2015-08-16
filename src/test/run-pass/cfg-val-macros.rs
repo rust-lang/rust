@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(cfg_vals)]
+#![feature(cfg_values)]
 
 #[cfg(target_pointer_width = "32")]
 const EXPECTED_PTR_WIDTH: u32 = 32;

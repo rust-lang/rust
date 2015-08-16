@@ -306,7 +306,7 @@ pub mod builtin {
     /// #![feature(cfg_values)]
     ///
     /// # fn main() {
-    /// One boolean for every bit in a pointer.
+    /// // One boolean for every bit in a pointer.
     /// let vals = [false; cfg_int!(target_pointer_width)];
     ///
     /// // On a 64-bit system, prints 64, etc
