@@ -11,11 +11,9 @@
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
 use utils::span_after;
 use rewrite::{Rewrite, RewriteContext};
-use config::Config;
 
 use syntax::ast;
-use syntax::print::pprust;
-use syntax::codemap::{CodeMap, Span};
+use syntax::codemap::Span;
 
 // TODO (some day) remove unused imports, expand globs, compress many single imports into a list import
 
@@ -29,20 +27,21 @@ impl Rewrite for ast::ViewPath {
                                       path,
                                       path_list,
                                       self.span,
-                                      context.codemap,
-                                      context.config).unwrap_or("".to_owned()))
+                                      context).unwrap_or("".to_owned()))
             }
             ast::ViewPath_::ViewPathGlob(_) => {
                 // FIXME convert to list?
                 None
             }
             ast::ViewPath_::ViewPathSimple(ident, ref path) => {
-                let path_str = pprust::path_to_string(path);
+                let ident_str = ident.to_string();
+                // 4 = " as ".len()
+                let path_str = try_opt!(path.rewrite(context, width - ident_str.len() - 4, offset));
 
                 Some(if path.segments.last().unwrap().identifier == ident {
                          path_str
                      } else {
-                         format!("{} as {}", path_str, ident)
+                         format!("{} as {}", path_str, ident_str)
                      })
             }
         }
@@ -74,10 +73,10 @@ pub fn rewrite_use_list(width: usize,
                         path: &ast::Path,
                         path_list: &[ast::PathListItem],
                         span: Span,
-                        codemap: &CodeMap,
-                        config: &Config)
+                        context: &RewriteContext)
                         -> Option<String> {
-    let path_str = pprust::path_to_string(path);
+    // 1 = {}
+    let path_str = try_opt!(path.rewrite(context, width - 1, offset));
 
     match path_list.len() {
         0 => return None,
@@ -106,10 +105,10 @@ pub fn rewrite_use_list(width: usize,
         // available
         // (loose 1 column (";"))
         v_width: remaining_width,
-        ends_with_newline: true,
+        ends_with_newline: false,
     };
 
-    let mut items = itemize_list(codemap,
+    let mut items = itemize_list(context.codemap,
                                  vec![ListItem::from_str("")], /* Dummy value, explanation
                                                                 * below */
                                  path_list.iter(),
@@ -125,7 +124,7 @@ pub fn rewrite_use_list(width: usize,
                                          "self".to_owned()
                                      }
                                  },
-                                 span_after(span, "{", codemap),
+                                 span_after(span, "{", context.codemap),
                                  span.hi);
 
     // We prefixed the item list with a dummy value so that we can
@@ -140,7 +139,7 @@ pub fn rewrite_use_list(width: usize,
         1
     };
 
-    if config.reorder_imports {
+    if context.config.reorder_imports {
         items[1..].sort_by(|a, b| a.item.cmp(&b.item));
     }
 

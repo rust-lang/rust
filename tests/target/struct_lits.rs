@@ -64,3 +64,10 @@ fn matcher() {
         },
     };
 }
+
+fn issue177() {
+    struct Foo<T> {
+        memb: T,
+    }
+    let foo = Foo::<i64> { memb: 10 };
+}

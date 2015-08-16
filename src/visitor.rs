@@ -33,13 +33,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                self.codemap.lookup_char_pos(ex.span.lo),
                self.codemap.lookup_char_pos(ex.span.hi));
         self.format_missing(ex.span.lo);
+
         let offset = self.buffer.cur_offset();
-        let context = RewriteContext {
-            codemap: self.codemap,
-            config: self.config,
-            block_indent: self.block_indent,
-        };
-        let rewrite = ex.rewrite(&context, self.config.max_width - offset, offset);
+        let rewrite = ex.rewrite(&self.get_context(), self.config.max_width - offset, offset);
 
         if let Some(new_str) = rewrite {
             self.buffer.push_str(&new_str);
@@ -370,6 +366,14 @@ impl<'a> FmtVisitor<'a> {
                 self.format_missing_with_indent(span.lo);
                 self.format_missing(span.hi);
             }
+        }
+    }
+
+    pub fn get_context(&self) -> RewriteContext {
+        RewriteContext {
+            codemap: self.codemap,
+            config: self.config,
+            block_indent: self.block_indent,
         }
     }
 }

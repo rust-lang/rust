@@ -9,3 +9,11 @@ y: World
 ) {
         simple(/* does this preserve comments now? */ 42, NoWay)
 }
+
+fn generic<T>(arg: T) -> &SomeType
+    where T: Fn(// First arg
+        A,
+        // Second argument
+        B, C, D, /* pre comment */ E /* last comment */) -> &SomeType {
+    arg(a, b, c, d, e)    
+}
