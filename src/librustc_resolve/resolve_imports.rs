@@ -27,9 +27,10 @@ use {resolve_error, ResolutionError};
 use build_reduced_graph;
 
 use rustc::middle::def::*;
+use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::*;
 
-use syntax::ast::{DefId, NodeId, Name};
+use syntax::ast::{NodeId, Name};
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 

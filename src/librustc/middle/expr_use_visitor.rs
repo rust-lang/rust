@@ -21,6 +21,7 @@ use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
 use middle::{def, region, pat_util};
+use middle::def_id::{DefId};
 use middle::infer;
 use middle::mem_categorization as mc;
 use middle::ty;
@@ -206,7 +207,7 @@ enum OverloadedCallType {
 }
 
 impl OverloadedCallType {
-    fn from_trait_id(tcx: &ty::ctxt, trait_id: ast::DefId)
+    fn from_trait_id(tcx: &ty::ctxt, trait_id: DefId)
                      -> OverloadedCallType {
         for &(maybe_function_trait, overloaded_call_type) in &[
             (tcx.lang_items.fn_once_trait(), FnOnceOverloadedCall),
@@ -224,7 +225,7 @@ impl OverloadedCallType {
         tcx.sess.bug("overloaded call didn't map to known function trait")
     }
 
-    fn from_method_id(tcx: &ty::ctxt, method_id: ast::DefId)
+    fn from_method_id(tcx: &ty::ctxt, method_id: DefId)
                       -> OverloadedCallType {
         let method = tcx.impl_or_trait_item(method_id);
         OverloadedCallType::from_trait_id(tcx, method.container().id())

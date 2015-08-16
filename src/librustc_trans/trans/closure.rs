@@ -11,6 +11,7 @@
 use arena::TypedArena;
 use back::link::{self, mangle_internal_name_by_path_and_seq};
 use llvm::{ValueRef, get_params};
+use middle::def_id::DefId;
 use middle::infer;
 use trans::adt;
 use trans::attributes;
@@ -30,7 +31,6 @@ use session::config::FullDebugInfo;
 
 use syntax::abi::RustCall;
 use syntax::ast;
-use syntax::ast_util;
 
 
 fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -41,7 +41,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("closure::load_closure_environment");
 
     // Special case for small by-value selfs.
-    let closure_id = ast_util::local_def(bcx.fcx.id);
+    let closure_id = DefId::local(bcx.fcx.id);
     let self_type = self_type_for_closure(bcx.ccx(), closure_id,
                                                   node_id_type(bcx, closure_id.node));
     let kind = kind_for_closure(bcx.ccx(), closure_id);
@@ -128,7 +128,7 @@ impl<'a> ClosureEnv<'a> {
 /// Returns the LLVM function declaration for a closure, creating it if
 /// necessary. If the ID does not correspond to a closure ID, returns None.
 pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                                   closure_id: ast::DefId,
+                                                   closure_id: DefId,
                                                    substs: &ty::ClosureSubsts<'tcx>)
                                                    -> ValueRef {
     // Normalize type so differences in regions and typedefs don't cause
@@ -188,7 +188,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
 
     debug!("trans_closure_expr()");
 
-    let closure_id = ast_util::local_def(id);
+    let closure_id = DefId::local(id);
     let llfn = get_or_create_closure_declaration(ccx, closure_id, closure_substs);
 
     // Get the type of this closure. Use the current `param_substs` as
@@ -250,7 +250,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
 }
 
 pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
-                                      closure_def_id: ast::DefId,
+                                      closure_def_id: DefId,
                                       substs: ty::ClosureSubsts<'tcx>,
                                       trait_closure_kind: ty::ClosureKind)
                                       -> ValueRef
@@ -271,7 +271,7 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 
 fn trans_closure_adapter_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
-    closure_def_id: ast::DefId,
+    closure_def_id: DefId,
     substs: ty::ClosureSubsts<'tcx>,
     llfn_closure_kind: ty::ClosureKind,
     trait_closure_kind: ty::ClosureKind,
@@ -323,7 +323,7 @@ fn trans_closure_adapter_shim<'a, 'tcx>(
 
 fn trans_fn_once_adapter_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
-    closure_def_id: ast::DefId,
+    closure_def_id: DefId,
     substs: ty::ClosureSubsts<'tcx>,
     llreffn: ValueRef)
     -> ValueRef

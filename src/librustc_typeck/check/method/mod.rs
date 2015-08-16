@@ -13,13 +13,13 @@
 use astconv::AstConv;
 use check::FnCtxt;
 use middle::def;
+use middle::def_id::DefId;
 use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
 use middle::traits;
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef};
 use middle::infer;
 
-use syntax::ast::DefId;
 use syntax::ast;
 use syntax::codemap::Span;
 
@@ -40,7 +40,7 @@ pub enum MethodError<'tcx> {
     Ambiguity(Vec<CandidateSource>),
 
     // Using a `Fn`/`FnMut`/etc method on a raw closure type before we have inferred its kind.
-    ClosureAmbiguity(/* DefId of fn trait */ ast::DefId),
+    ClosureAmbiguity(/* DefId of fn trait */ DefId),
 }
 
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
@@ -48,14 +48,14 @@ pub enum MethodError<'tcx> {
 pub struct NoMatchData<'tcx> {
     pub static_candidates: Vec<CandidateSource>,
     pub unsatisfied_predicates: Vec<TraitRef<'tcx>>,
-    pub out_of_scope_traits: Vec<ast::DefId>,
+    pub out_of_scope_traits: Vec<DefId>,
     pub mode: probe::Mode
 }
 
 impl<'tcx> NoMatchData<'tcx> {
     pub fn new(static_candidates: Vec<CandidateSource>,
                unsatisfied_predicates: Vec<TraitRef<'tcx>>,
-               out_of_scope_traits: Vec<ast::DefId>,
+               out_of_scope_traits: Vec<DefId>,
                mode: probe::Mode) -> Self {
         NoMatchData {
             static_candidates: static_candidates,
@@ -70,8 +70,8 @@ impl<'tcx> NoMatchData<'tcx> {
 // candidate can arise. Used for error reporting only.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum CandidateSource {
-    ImplSource(ast::DefId),
-    TraitSource(/* trait id */ ast::DefId),
+    ImplSource(DefId),
+    TraitSource(/* trait id */ DefId),
 }
 
 /// Determines whether the type `self_ty` supports a method name `method_name` or not.
@@ -353,7 +353,7 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 /// Find item with name `item_name` defined in `trait_def_id`
 /// and return it, or `None`, if no such item.
 fn trait_item<'tcx>(tcx: &ty::ctxt<'tcx>,
-                    trait_def_id: ast::DefId,
+                    trait_def_id: DefId,
                     item_name: ast::Name)
                     -> Option<ty::ImplOrTraitItem<'tcx>>
 {
@@ -364,7 +364,7 @@ fn trait_item<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 fn impl_item<'tcx>(tcx: &ty::ctxt<'tcx>,
-                   impl_def_id: ast::DefId,
+                   impl_def_id: DefId,
                    item_name: ast::Name)
                    -> Option<ty::ImplOrTraitItem<'tcx>>
 {

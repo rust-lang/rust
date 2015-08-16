@@ -18,6 +18,7 @@ use back::link::*;
 use llvm;
 use llvm::{ValueRef, get_param};
 use metadata::csearch;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::lang_items::ExchangeFreeFnLangItem;
 use middle::subst;
 use middle::subst::{Subst, Substs};
@@ -288,8 +289,8 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                       t: Ty<'tcx>,
                                       struct_data: ValueRef,
-                                      dtor_did: ast::DefId,
-                                      class_did: ast::DefId,
+                                      dtor_did: DefId,
+                                      class_did: DefId,
                                       substs: &subst::Substs<'tcx>)
                                       -> Block<'blk, 'tcx> {
     assert!(type_is_sized(bcx.tcx(), t), "Precondition: caller must ensure t is sized");
@@ -323,15 +324,15 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 }
 
 pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                              did: ast::DefId,
-                              parent_id: ast::DefId,
+                              did: DefId,
+                              parent_id: DefId,
                               substs: &Substs<'tcx>)
                               -> ValueRef {
     let _icx = push_ctxt("trans_res_dtor");
     let did = inline::maybe_instantiate_inline(ccx, did);
 
     if !substs.types.is_empty() {
-        assert_eq!(did.krate, ast::LOCAL_CRATE);
+        assert_eq!(did.krate, LOCAL_CRATE);
 
         // Since we're in trans we don't care for any region parameters
         let substs = ccx.tcx().mk_substs(Substs::erased(substs.types.clone()));
@@ -339,7 +340,7 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let (val, _, _) = monomorphize::monomorphic_fn(ccx, did, substs, None);
 
         val
-    } else if did.krate == ast::LOCAL_CRATE {
+    } else if did.krate == LOCAL_CRATE {
         get_item_val(ccx, did.node)
     } else {
         let tcx = ccx.tcx();
@@ -354,8 +355,8 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  t: Ty<'tcx>,
                                  v0: ValueRef,
-                                 dtor_did: ast::DefId,
-                                 class_did: ast::DefId,
+                                 dtor_did: DefId,
+                                 class_did: DefId,
                                  substs: &subst::Substs<'tcx>)
                                  -> Block<'blk, 'tcx>
 {

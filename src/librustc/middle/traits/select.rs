@@ -37,6 +37,7 @@ use super::{VtableImplData, VtableObjectData, VtableBuiltinData,
 use super::object_safety;
 use super::util;
 
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::fast_reject;
 use middle::subst::{Subst, Substs, TypeSpace};
 use middle::ty::{self, ToPredicate, RegionEscape, ToPolyTraitRef, Ty, HasTypeFlags};
@@ -101,7 +102,7 @@ pub struct SelectionCache<'tcx> {
 
 pub enum MethodMatchResult {
     MethodMatched(MethodMatchedData),
-    MethodAmbiguous(/* list of impls that could apply */ Vec<ast::DefId>),
+    MethodAmbiguous(/* list of impls that could apply */ Vec<DefId>),
     MethodDidNotMatch,
 }
 
@@ -113,7 +114,7 @@ pub enum MethodMatchedData {
 
     // In the case of a coercion, we need to know the precise impl so
     // that we can determine the type to which things were coerced.
-    CoerciveMethodMatch(/* impl we matched */ ast::DefId)
+    CoerciveMethodMatch(/* impl we matched */ DefId)
 }
 
 /// The selection process begins by considering all impls, where
@@ -193,9 +194,9 @@ enum SelectionCandidate<'tcx> {
     PhantomFnCandidate,
     BuiltinCandidate(ty::BuiltinBound),
     ParamCandidate(ty::PolyTraitRef<'tcx>),
-    ImplCandidate(ast::DefId),
-    DefaultImplCandidate(ast::DefId),
-    DefaultImplObjectCandidate(ast::DefId),
+    ImplCandidate(DefId),
+    DefaultImplCandidate(DefId),
+    DefaultImplObjectCandidate(DefId),
 
     /// This is a trait matching with a projected type as `Self`, and
     /// we found an applicable bound in the trait definition.
@@ -203,7 +204,7 @@ enum SelectionCandidate<'tcx> {
 
     /// Implementation of a `Fn`-family trait by one of the
     /// anonymous types generated for a `||` expression.
-    ClosureCandidate(/* closure */ ast::DefId, &'tcx ty::ClosureSubsts<'tcx>),
+    ClosureCandidate(/* closure */ DefId, &'tcx ty::ClosureSubsts<'tcx>),
 
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int)->int`)
@@ -610,7 +611,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Evaluates whether the impl with id `impl_def_id` could be applied to the self type
     /// `obligation_self_ty`. This can be used either for trait or inherent impls.
     pub fn evaluate_impl(&mut self,
-                         impl_def_id: ast::DefId,
+                         impl_def_id: DefId,
                          obligation: &TraitObligation<'tcx>)
                          -> bool
     {
@@ -1724,7 +1725,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // captures are by value. Really what we ought to do
                 // is reserve judgement and then intertwine this
                 // analysis with closure inference.
-                assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+                assert_eq!(def_id.krate, LOCAL_CRATE);
 
                 // Unboxed closures shouldn't be
                 // implicitly copyable
@@ -1867,7 +1868,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // OIBIT interact? That is, there is no way to say
                 // "make me invariant with respect to this TYPE, but
                 // do not act as though I can reach it"
-                assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+                assert_eq!(def_id.krate, LOCAL_CRATE);
                 substs.upvar_tys.clone()
             }
 
@@ -1886,7 +1887,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn collect_predicates_for_types(&mut self,
                                     obligation: &TraitObligation<'tcx>,
-                                    trait_def_id: ast::DefId,
+                                    trait_def_id: DefId,
                                     types: ty::Binder<Vec<Ty<'tcx>>>)
                                     -> Vec<PredicateObligation<'tcx>>
     {
@@ -2120,7 +2121,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// 2. For each where-clause `C` declared on `Foo`, `[Self => X] C` holds.
     fn confirm_default_impl_candidate(&mut self,
                                       obligation: &TraitObligation<'tcx>,
-                                      trait_def_id: ast::DefId)
+                                      trait_def_id: DefId)
                                       -> VtableDefaultImplData<PredicateObligation<'tcx>>
     {
         debug!("confirm_default_impl_candidate({:?}, {:?})",
@@ -2135,7 +2136,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn confirm_default_impl_object_candidate(&mut self,
                                              obligation: &TraitObligation<'tcx>,
-                                             trait_def_id: ast::DefId)
+                                             trait_def_id: DefId)
                                              -> VtableDefaultImplData<PredicateObligation<'tcx>>
     {
         debug!("confirm_default_impl_object_candidate({:?}, {:?})",
@@ -2175,7 +2176,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// See `confirm_default_impl_candidate`
     fn vtable_default_impl(&mut self,
                            obligation: &TraitObligation<'tcx>,
-                           trait_def_id: ast::DefId,
+                           trait_def_id: DefId,
                            nested: ty::Binder<Vec<Ty<'tcx>>>)
                            -> VtableDefaultImplData<PredicateObligation<'tcx>>
     {
@@ -2210,7 +2211,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn confirm_impl_candidate(&mut self,
                               obligation: &TraitObligation<'tcx>,
-                              impl_def_id: ast::DefId)
+                              impl_def_id: DefId)
                               -> Result<VtableImplData<'tcx, PredicateObligation<'tcx>>,
                                         SelectionError<'tcx>>
     {
@@ -2231,7 +2232,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn vtable_impl(&mut self,
-                   impl_def_id: ast::DefId,
+                   impl_def_id: DefId,
                    mut substs: Normalized<'tcx, Substs<'tcx>>,
                    cause: ObligationCause<'tcx>,
                    recursion_depth: usize,
@@ -2350,7 +2351,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn confirm_closure_candidate(&mut self,
                                  obligation: &TraitObligation<'tcx>,
-                                 closure_def_id: ast::DefId,
+                                 closure_def_id: DefId,
                                  substs: &ty::ClosureSubsts<'tcx>)
                                  -> Result<VtableClosureData<'tcx, PredicateObligation<'tcx>>,
                                            SelectionError<'tcx>>
@@ -2605,7 +2606,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // contained.
 
     fn rematch_impl(&mut self,
-                    impl_def_id: ast::DefId,
+                    impl_def_id: DefId,
                     obligation: &TraitObligation<'tcx>,
                     snapshot: &infer::CombinedSnapshot)
                     -> (Normalized<'tcx, Substs<'tcx>>, infer::SkolemizationMap)
@@ -2622,7 +2623,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn match_impl(&mut self,
-                  impl_def_id: ast::DefId,
+                  impl_def_id: DefId,
                   obligation: &TraitObligation<'tcx>,
                   snapshot: &infer::CombinedSnapshot)
                   -> Result<(Normalized<'tcx, Substs<'tcx>>,
@@ -2753,7 +2754,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// result. But if `obligation_self_ty` were `Box<int>`, we'd get
     /// back `Ok(T=int)`.
     fn match_inherent_impl(&mut self,
-                           impl_def_id: ast::DefId,
+                           impl_def_id: DefId,
                            obligation_cause: &ObligationCause,
                            obligation_self_ty: Ty<'tcx>)
                            -> Result<Substs<'tcx>,()>
@@ -2838,7 +2839,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn closure_trait_ref_unnormalized(&mut self,
                                       obligation: &TraitObligation<'tcx>,
-                                      closure_def_id: ast::DefId,
+                                      closure_def_id: DefId,
                                       substs: &ty::ClosureSubsts<'tcx>)
                                       -> ty::PolyTraitRef<'tcx>
     {
@@ -2860,7 +2861,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn closure_trait_ref(&mut self,
                          obligation: &TraitObligation<'tcx>,
-                         closure_def_id: ast::DefId,
+                         closure_def_id: DefId,
                          substs: &ty::ClosureSubsts<'tcx>)
                          -> Normalized<'tcx, ty::PolyTraitRef<'tcx>>
     {
@@ -2882,7 +2883,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn impl_or_trait_obligations(&mut self,
                                  cause: ObligationCause<'tcx>,
                                  recursion_depth: usize,
-                                 def_id: ast::DefId, // of impl or trait
+                                 def_id: DefId, // of impl or trait
                                  substs: &Substs<'tcx>, // for impl or trait
                                  skol_map: infer::SkolemizationMap,
                                  snapshot: &infer::CombinedSnapshot)

@@ -20,6 +20,7 @@ use super::{
     PreferMutLvalue,
     structurally_resolved_type,
 };
+use middle::def_id::DefId;
 use middle::traits;
 use middle::ty::{Ty, HasTypeFlags};
 use syntax::ast;
@@ -208,7 +209,7 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 pub fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                  op_str: &str,
                                  mname: &str,
-                                 trait_did: Option<ast::DefId>,
+                                 trait_did: Option<DefId>,
                                  ex: &'tcx ast::Expr,
                                  operand_expr: &'tcx ast::Expr,
                                  operand_ty: Ty<'tcx>,
@@ -230,7 +231,7 @@ pub fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
-fn name_and_trait_def_id(fcx: &FnCtxt, op: ast::BinOp) -> (&'static str, Option<ast::DefId>) {
+fn name_and_trait_def_id(fcx: &FnCtxt, op: ast::BinOp) -> (&'static str, Option<DefId>) {
     let lang = &fcx.tcx().lang_items;
     match op.node {
         ast::BiAdd => ("add", lang.add_trait()),
@@ -260,7 +261,7 @@ fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
                               lhs_ty: Ty<'tcx>,
                               other_tys: Vec<Ty<'tcx>>,
                               opname: ast::Name,
-                              trait_did: Option<ast::DefId>,
+                              trait_did: Option<DefId>,
                               lhs_expr: &'a ast::Expr)
                               -> Result<Ty<'tcx>,()>
 {

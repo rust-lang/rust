@@ -43,13 +43,13 @@
 use super::FnCtxt;
 
 use check::demand;
+use middle::def_id::DefId;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::ty::{self, Ty};
 use middle::infer::{InferCtxt, UpvarRegion};
 use std::collections::HashSet;
 use syntax::ast;
-use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::visit::{self, Visitor};
 
@@ -115,7 +115,7 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
                      capture_clause: ast::CaptureClause,
                      _body: &ast::Block)
     {
-        let closure_def_id = ast_util::local_def(expr.id);
+        let closure_def_id = DefId::local(expr.id);
         if !self.fcx.inh.tables.borrow().closure_kinds.contains_key(&closure_def_id) {
             self.closures_with_inferred_kinds.insert(expr.id);
             self.fcx.inh.tables.borrow_mut().closure_kinds
@@ -214,7 +214,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
 
         // Now we must process and remove any deferred resolutions,
         // since we have a concrete closure kind.
-        let closure_def_id = ast_util::local_def(id);
+        let closure_def_id = DefId::local(id);
         if self.closures_with_inferred_kinds.contains(&id) {
             let mut deferred_call_resolutions =
                 self.fcx.remove_deferred_call_resolutions(closure_def_id);
@@ -468,7 +468,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
             return;
         }
 
-        let closure_def_id = ast_util::local_def(closure_id);
+        let closure_def_id = DefId::local(closure_id);
         let closure_kinds = &mut self.fcx.inh.tables.borrow_mut().closure_kinds;
         let existing_kind = *closure_kinds.get(&closure_def_id).unwrap();
 

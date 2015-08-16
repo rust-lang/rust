@@ -23,6 +23,7 @@ use super::{declare_local, VariableKind, VariableAccess};
 use llvm::{self, ValueRef};
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::pat_util;
 use middle::subst::{self, Substs};
 use rustc::ast_map;
@@ -42,7 +43,7 @@ use std::ptr;
 use std::rc::Rc;
 use syntax::util::interner::Interner;
 use syntax::codemap::Span;
-use syntax::{ast, codemap, ast_util};
+use syntax::{ast, codemap};
 use syntax::parse::token;
 
 
@@ -316,12 +317,12 @@ impl<'tcx> TypeMap<'tcx> {
 
         fn from_def_id_and_substs<'a, 'tcx>(type_map: &mut TypeMap<'tcx>,
                                             cx: &CrateContext<'a, 'tcx>,
-                                            def_id: ast::DefId,
+                                            def_id: DefId,
                                             substs: &subst::Substs<'tcx>,
                                             output: &mut String) {
             // First, find out the 'real' def_id of the type. Items inlined from
             // other crates have to be mapped back to their source.
-            let source_def_id = if def_id.krate == ast::LOCAL_CRATE {
+            let source_def_id = if def_id.krate == LOCAL_CRATE {
                 match cx.external_srcs().borrow().get(&def_id.node).cloned() {
                     Some(source_def_id) => {
                         // The given def_id identifies the inlined copy of a
@@ -335,7 +336,7 @@ impl<'tcx> TypeMap<'tcx> {
             };
 
             // Get the crate hash as first part of the identifier.
-            let crate_hash = if source_def_id.krate == ast::LOCAL_CRATE {
+            let crate_hash = if source_def_id.krate == LOCAL_CRATE {
                 cx.link_meta().crate_hash.clone()
             } else {
                 cx.sess().cstore.get_crate_hash(source_def_id.krate)
@@ -1574,7 +1575,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    enum_type: Ty<'tcx>,
-                                   enum_def_id: ast::DefId,
+                                   enum_def_id: DefId,
                                    unique_type_id: UniqueTypeId,
                                    span: Span)
                                    -> RecursiveTypeDescription<'tcx> {
@@ -1699,7 +1700,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     );
 
     fn get_enum_discriminant_name(cx: &CrateContext,
-                                  def_id: ast::DefId)
+                                  def_id: DefId)
                                   -> token::InternedString {
         cx.tcx().item_name(def_id).as_str()
     }
@@ -1884,7 +1885,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
     let variable_type = cx.tcx().node_id_to_type(node_id);
     let type_metadata = type_metadata(cx, variable_type, span);
-    let namespace_node = namespace_for_item(cx, ast_util::local_def(node_id));
+    let namespace_node = namespace_for_item(cx, DefId::local(node_id));
     let var_name = name.to_string();
     let linkage_name =
         namespace_node.mangled_name_of_contained_item(&var_name[..]);

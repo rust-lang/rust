@@ -17,10 +17,10 @@ use super::PredicateObligation;
 use super::project;
 use super::util;
 
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::subst::{Subst, Substs, TypeSpace};
 use middle::ty::{self, ToPolyTraitRef, Ty};
 use middle::infer::{self, InferCtxt};
-use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
 
 #[derive(Copy, Clone)]
@@ -28,8 +28,8 @@ struct InferIsLocal(bool);
 
 /// True if there exist types that satisfy both of the two given impls.
 pub fn overlapping_impls(infcx: &InferCtxt,
-                         impl1_def_id: ast::DefId,
-                         impl2_def_id: ast::DefId)
+                         impl1_def_id: DefId,
+                         impl2_def_id: DefId)
                          -> bool
 {
     debug!("impl_can_satisfy(\
@@ -47,8 +47,8 @@ pub fn overlapping_impls(infcx: &InferCtxt,
 /// Can the types from impl `a` be used to satisfy impl `b`?
 /// (Including all conditions)
 fn overlap(selcx: &mut SelectionContext,
-           a_def_id: ast::DefId,
-           b_def_id: ast::DefId)
+           a_def_id: DefId,
+           b_def_id: DefId)
            -> bool
 {
     debug!("overlap(a_def_id={:?}, b_def_id={:?})",
@@ -109,7 +109,7 @@ pub fn trait_ref_is_knowable<'tcx>(tcx: &ty::ctxt<'tcx>, trait_ref: &ty::TraitRe
     // an ancestor crate will impl this in the future, if they haven't
     // already
     if
-        trait_ref.def_id.krate != ast::LOCAL_CRATE &&
+        trait_ref.def_id.krate != LOCAL_CRATE &&
         !tcx.has_attr(trait_ref.def_id, "fundamental")
     {
         debug!("trait_ref_is_knowable: trait is neither local nor fundamental");
@@ -127,13 +127,13 @@ pub fn trait_ref_is_knowable<'tcx>(tcx: &ty::ctxt<'tcx>, trait_ref: &ty::TraitRe
 
 type SubstsFn = for<'a,'tcx> fn(infcx: &InferCtxt<'a, 'tcx>,
                                 span: Span,
-                                impl_def_id: ast::DefId)
+                                impl_def_id: DefId)
                                 -> Substs<'tcx>;
 
 /// Instantiate fresh variables for all bound parameters of the impl
 /// and return the impl trait ref with those variables substituted.
 fn impl_trait_ref_and_oblig<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
-                                     impl_def_id: ast::DefId,
+                                     impl_def_id: DefId,
                                      substs_fn: SubstsFn)
                                      -> (ty::TraitRef<'tcx>,
                                          Vec<PredicateObligation<'tcx>>)
@@ -175,7 +175,7 @@ pub enum OrphanCheckErr<'tcx> {
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.
 /// 2. Some local type must appear in `Self`.
 pub fn orphan_check<'tcx>(tcx: &ty::ctxt<'tcx>,
-                          impl_def_id: ast::DefId)
+                          impl_def_id: DefId)
                           -> Result<(), OrphanCheckErr<'tcx>>
 {
     debug!("orphan_check({:?})", impl_def_id);
@@ -186,7 +186,7 @@ pub fn orphan_check<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("orphan_check: trait_ref={:?}", trait_ref);
 
     // If the *trait* is local to the crate, ok.
-    if trait_ref.def_id.krate == ast::LOCAL_CRATE {
+    if trait_ref.def_id.krate == LOCAL_CRATE {
         debug!("trait {:?} is local to current crate",
                trait_ref.def_id);
         return Ok(());
@@ -318,16 +318,16 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         ty::TyEnum(def, _) |
         ty::TyStruct(def, _) => {
-            def.did.krate == ast::LOCAL_CRATE
+            def.did.krate == LOCAL_CRATE
         }
 
         ty::TyBox(_) => { // Box<T>
             let krate = tcx.lang_items.owned_box().map(|d| d.krate);
-            krate == Some(ast::LOCAL_CRATE)
+            krate == Some(LOCAL_CRATE)
         }
 
         ty::TyTrait(ref tt) => {
-            tt.principal_def_id().krate == ast::LOCAL_CRATE
+            tt.principal_def_id().krate == LOCAL_CRATE
         }
 
         ty::TyClosure(..) |

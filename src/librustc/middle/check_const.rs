@@ -28,6 +28,7 @@ use middle::cast::{CastKind};
 use middle::const_eval;
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::def;
+use middle::def_id::DefId;
 use middle::expr_use_visitor as euv;
 use middle::infer;
 use middle::mem_categorization as mc;
@@ -204,7 +205,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     /// Returns true if the call is to a const fn or method.
     fn handle_const_fn_call(&mut self,
                             expr: &ast::Expr,
-                            def_id: ast::DefId,
+                            def_id: DefId,
                             ret_ty: Ty<'tcx>)
                             -> bool {
         if let Some(fn_like) = const_eval::lookup_const_fn_by_id(self.tcx, def_id) {

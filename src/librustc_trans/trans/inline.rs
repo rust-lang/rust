@@ -12,15 +12,15 @@ use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
 use metadata::csearch;
 use metadata::inline::InlinedItem;
 use middle::astencode;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::subst::Substs;
 use trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
 use trans::common::*;
 
 use syntax::ast;
-use syntax::ast_util::local_def;
 
-fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
-    -> Option<ast::DefId> {
+fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
+    -> Option<DefId> {
     debug!("instantiate_inline({:?})", fn_id);
     let _icx = push_ctxt("instantiate_inline");
 
@@ -29,7 +29,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             // Already inline
             debug!("instantiate_inline({}): already inline as node id {}",
                    ccx.tcx().item_path_str(fn_id), node_id);
-            return Some(local_def(node_id));
+            return Some(DefId::local(node_id));
         }
         Some(&None) => {
             return None; // Not inlinable
@@ -144,7 +144,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             // inlined items.
             let ty_trait_item = ccx.tcx().impl_or_trait_item(fn_id).clone();
             ccx.tcx().impl_or_trait_items.borrow_mut()
-                     .insert(local_def(trait_item.id), ty_trait_item);
+                     .insert(DefId::local(trait_item.id), ty_trait_item);
 
             // If this is a default method, we can't look up the
             // impl type. But we aren't going to translate anyways, so
@@ -184,18 +184,18 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
         }
     };
 
-    Some(local_def(inline_id))
+    Some(DefId::local(inline_id))
 }
 
-pub fn get_local_instance(ccx: &CrateContext, fn_id: ast::DefId)
-    -> Option<ast::DefId> {
-    if fn_id.krate == ast::LOCAL_CRATE {
+pub fn get_local_instance(ccx: &CrateContext, fn_id: DefId)
+    -> Option<DefId> {
+    if fn_id.krate == LOCAL_CRATE {
         Some(fn_id)
     } else {
         instantiate_inline(ccx, fn_id)
     }
 }
 
-pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId) -> ast::DefId {
+pub fn maybe_instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> DefId {
     get_local_instance(ccx, fn_id).unwrap_or(fn_id)
 }

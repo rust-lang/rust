@@ -45,6 +45,7 @@ use super::structurally_resolved_type;
 
 use lint;
 use middle::cast::{CastKind, CastTy};
+use middle::def_id::DefId;
 use middle::ty::{self, Ty, HasTypeFlags};
 use syntax::ast;
 use syntax::ast::UintTy::{TyU8};
@@ -63,7 +64,7 @@ pub struct CastCheck<'tcx> {
 /// fat pointers if their unsize-infos have the same kind.
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum UnsizeKind<'tcx> {
-    Vtable(ast::DefId),
+    Vtable(DefId),
     Length,
     /// The unsize info of this projection
     OfProjection(&'tcx ty::ProjectionTy<'tcx>),
