@@ -28,15 +28,24 @@ fn foo() {
         Patternnnnnnnnnnnnnnnnnnn if looooooooooooooooooong_guard => meh,
 
         Patternnnnnnnnnnnnnnnnnnnnnnnnn |
-        Patternnnnnnnnnnnnnnnnnnnnnnnnn
-            if looooooooooooooooooooooooooooooooooooooooong_guard => meh,
+        Patternnnnnnnnnnnnnnnnnnnnnnnnn if looooooooooooooooooooooooooooooooooooooooong_guard =>
+            meh,
+
+        // Test that earlier patterns can take the guard space
+        (aaaa, bbbbb, ccccccc, aaaaa, bbbbbbbb, cccccc, aaaa, bbbbbbbb, cccccc, dddddd) |
+        Patternnnnnnnnnnnnnnnnnnnnnnnnn if loooooooooooooooooooooooooooooooooooooooooong_guard => {}
+
         _ => {}
     }
 
     let whatever = match something {
         /// DOC COMMENT!
         Some(_) => 42,
+        // COmment on an attribute.
         #[an_attribute]
+        // Comment after an attribute.
         None => 0,
+        #[rustfmt_skip]
+        Blurb     =>     {                  }
     };
 }

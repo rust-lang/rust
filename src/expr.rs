@@ -113,7 +113,7 @@ impl Rewrite for ast::Expr {
 impl Rewrite for ast::Block {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
         let user_str = context.codemap.span_to_snippet(self.span).unwrap();
-        if user_str == "{}" && width > 1 {
+        if user_str == "{}" && width >= 2 {
             return Some(user_str);
         }
 
@@ -316,7 +316,9 @@ fn rewrite_match(context: &RewriteContext,
                  width: usize,
                  offset: usize)
                  -> Option<String> {
-    // TODO comments etc. (I am somewhat surprised we don't need handling for these).
+    if arms.len() == 0 {
+        return None;
+    }
 
     // `match `cond` {`
     let cond_str = try_opt!(cond.rewrite(context, width - 8, offset + 6));
@@ -326,19 +328,74 @@ fn rewrite_match(context: &RewriteContext,
     let nested_context = context.nested_context();
     let arm_indent_str = make_indent(nested_context.block_indent);
 
-    for arm in arms {
+    let open_brace_pos = span_after(mk_sp(cond.span.hi, arm_start_pos(&arms[0])),
+                                    "{",
+                                    context.codemap);
+
+    for (i, arm) in arms.iter().enumerate() {
+        // Make sure we get the stuff between arms.
+        let missed_str = if i == 0 {
+            context.codemap.span_to_snippet(mk_sp(open_brace_pos + BytePos(1),
+                                                  arm_start_pos(arm))).unwrap()
+        } else {
+            context.codemap.span_to_snippet(mk_sp(arm_end_pos(&arms[i-1]),
+                                                  arm_start_pos(arm))).unwrap()
+        };
+        let missed_str = match missed_str.find_uncommented(",") {
+            Some(n) => &missed_str[n+1..],
+            None => &missed_str[..],
+        };
+        // first = first non-whitespace byte index.
+        let first = missed_str.find(|c: char| !c.is_whitespace()).unwrap_or(missed_str.len());
+        if missed_str[..first].chars().filter(|c| c == &'\n').count() >= 2 {
+            // There were multiple line breaks which got trimmed to nothing
+            // that means there should be some vertical white space. Lets
+            // replace that with just one blank line.
+            result.push('\n');
+        }
+        let missed_str = missed_str.trim();
+        if missed_str.len() > 0 {
+            result.push('\n');
+            result.push_str(&arm_indent_str);
+            result.push_str(missed_str);
+        }
         result.push('\n');
         result.push_str(&arm_indent_str);
-        result.push_str(&&try_opt!(arm.rewrite(&nested_context,
-                                               context.config.max_width -
-                                                   nested_context.block_indent,
-                                               nested_context.block_indent)));
+
+        let arm_str = arm.rewrite(&nested_context,
+                                  context.config.max_width -
+                                      nested_context.block_indent,
+                                  nested_context.block_indent);
+        if let Some(ref arm_str) = arm_str {
+            result.push_str(arm_str);
+        } else {
+            // We couldn't format the arm, just reproduce the source.
+            let snippet = context.codemap.span_to_snippet(mk_sp(arm_start_pos(arm),
+                                                                arm_end_pos(arm))).unwrap();
+            result.push_str(&snippet);
+        }
     }
+
+    // We'll miss any comments etc. between the last arm and the end of the
+    // match expression, but meh.
 
     result.push('\n');
     result.push_str(&make_indent(block_indent));
     result.push('}');
     Some(result)
+}
+
+fn arm_start_pos(arm: &ast::Arm) -> BytePos {
+    let &ast::Arm { ref attrs, ref pats, .. } = arm;
+    if attrs.len() > 0 {
+        return attrs[0].span.lo
+    }
+
+    pats[0].span.lo
+}
+
+fn arm_end_pos(arm: &ast::Arm) -> BytePos {
+    arm.body.span.hi
 }
 
 // Match arms.
@@ -347,7 +404,25 @@ impl Rewrite for ast::Arm {
         let &ast::Arm { ref attrs, ref pats, ref guard, ref body } = self;
         let indent_str = make_indent(offset);
 
-        // TODO attrs
+        // FIXME this is all a bit grotty, would be nice to abstract out the
+        // treatment of attributes.
+        let attr_str = if attrs.len() > 0 {
+            // We only use this visitor for the attributes, should we use it for
+            // more?
+            let mut attr_visitor = FmtVisitor::from_codemap(context.codemap, context.config);
+            attr_visitor.block_indent = context.block_indent;
+            attr_visitor.last_pos = attrs[0].span.lo;
+            if attr_visitor.visit_attrs(attrs) {
+                // Attributes included a skip instruction.
+                let snippet = context.codemap.span_to_snippet(mk_sp(attrs[0].span.lo,
+                                                                    body.span.hi)).unwrap();
+                return Some(snippet);
+            }
+            attr_visitor.format_missing(pats[0].span.lo);
+            attr_visitor.buffer.to_string()
+        } else {
+            String::new()
+        };
 
         // Patterns
         let pat_strs = pats.iter().map(|p| p.rewrite(context,
@@ -393,9 +468,6 @@ impl Rewrite for ast::Arm {
             pats_str.push_str(&p);
         }
 
-        // TODO probably want to compute the guard width first, then the rest
-        // TODO also, only subtract the guard width from the last pattern.
-        // If guard.
         let guard_str = try_opt!(rewrite_guard(context, guard, width, offset, pats_width));
 
         let pats_str = format!("{}{}", pats_str, guard_str);
@@ -419,13 +491,17 @@ impl Rewrite for ast::Arm {
                                                      budget,
                                                      offset + context.config.tab_spaces) {
                 if first_line_width(body_str) <= budget {
-                    return Some(format!("{} => {}{}", pats_str, body_str, comma));
+                    return Some(format!("{}{} => {}{}",
+                                        attr_str.trim_left(),
+                                        pats_str,
+                                        body_str,
+                                        comma));
                 }
             }
         }
 
         // We have to push the body to the next line.
-        if comma.len() > 0 {
+        if comma.len() == 0 {
             // We're trying to fit a block in, but it still failed, give up.
             return None;
         }
@@ -433,7 +509,8 @@ impl Rewrite for ast::Arm {
         let body_str = try_opt!(body.rewrite(context,
                                              width - context.config.tab_spaces,
                                              offset + context.config.tab_spaces));
-        Some(format!("{} =>\n{}{}",
+        Some(format!("{}{} =>\n{}{},",
+                     attr_str.trim_left(),
                      pats_str,
                      make_indent(offset + context.config.tab_spaces),
                      body_str))

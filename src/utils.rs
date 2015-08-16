@@ -95,7 +95,7 @@ pub fn first_line_width(s: &str) -> usize {
 #[inline]
 pub fn last_line_width(s: &str) -> usize {
     match s.rfind('\n') {
-        Some(n) => s.len() - n,
+        Some(n) => s.len() - n - 1,
         None => s.len(),
     }
 }
