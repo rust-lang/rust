@@ -2688,7 +2688,8 @@ pub struct Stability {
     pub feature: String,
     pub since: String,
     pub deprecated_since: String,
-    pub reason: String
+    pub reason: String,
+    pub issue: Option<u32>
 }
 
 impl Clean<Stability> for attr::Stability {
@@ -2702,6 +2703,7 @@ impl Clean<Stability> for attr::Stability {
                                                                     |istr| istr.to_string()),
             reason: self.reason.as_ref().map_or("".to_string(),
                                                 |interned| interned.to_string()),
+            issue: self.issue,
         }
     }
 }
@@ -2717,6 +2719,7 @@ impl<'a> Clean<Stability> for &'a attr::Stability {
                                                                     |istr| istr.to_string()),
             reason: self.reason.as_ref().map_or("".to_string(),
                                                 |interned| interned.to_string()),
+            issue: self.issue,
         }
     }
 }
