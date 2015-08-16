@@ -32,7 +32,7 @@ use codemap::Span;
 use ptr::P;
 use owned_slice::OwnedSlice;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
     FkItemFn(Ident, &'a Generics, Unsafety, Constness, Abi, Visibility),
@@ -40,8 +40,7 @@ pub enum FnKind<'a> {
     /// fn foo(&self)
     FkMethod(Ident, &'a MethodSig, Option<Visibility>),
 
-    /// |x, y| ...
-    /// proc(x, y) ...
+    /// Closures (|x, y| {})
     FkFnBlock,
 }
 
