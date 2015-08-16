@@ -1,14 +1,9 @@
-extern crate rustc_typeck as typeck;
-
-use std::rc::Rc;
-use std::cell::RefCell;
-use syntax::ptr::P;
-use rustc::lint::{Context, LintPass, LintArray, Lint};
-use rustc::util::nodemap::DefIdMap;
-use rustc::middle::ty::{self, TypeVariants, TypeAndMut, MethodTraitItemId, ImplOrTraitItemId};
-use rustc::middle::def::{DefTy, DefStruct, DefTrait};
-use syntax::codemap::{Span, Spanned};
+use rustc::lint::*;
 use syntax::ast::*;
+use syntax::ptr::P;
+use syntax::codemap::{Span, Spanned};
+use rustc::middle::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
+
 use utils::{span_lint, walk_ptrs_ty, snippet};
 
 declare_lint!(pub LEN_ZERO, Warn,
@@ -55,7 +50,7 @@ fn check_trait_items(cx: &Context, item: &Item, trait_items: &[P<TraitItem>]) {
     }
 
     if !trait_items.iter().any(|i| is_named_self(i, "is_empty")) {
-        //span_lint(cx, LEN_WITHOUT_IS_EMPTY, item.span, &format!("trait {}", item.ident.as_str()));
+        //span_lint(cx, LEN_WITHOUT_IS_EMPTY, item.span, &format!("trait {}", item.ident));
         for i in trait_items {
             if is_named_self(i, "len") {
                 span_lint(cx, LEN_WITHOUT_IS_EMPTY, i.span,
@@ -122,7 +117,7 @@ fn has_is_empty(cx: &Context, expr: &Expr) -> bool {
         if let &MethodTraitItemId(def_id) = id {
             if let ty::MethodTraitItem(ref method) =
                 cx.tcx.impl_or_trait_item(def_id) {
-                    method.name.as_str() == "is_empty"
+                    method.name == "is_empty"
                         && method.fty.sig.skip_binder().inputs.len() == 1
                 } else { false }
         } else { false }

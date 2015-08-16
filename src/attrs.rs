@@ -1,11 +1,9 @@
-/// checks for attributes
+//! checks for attributes
 
-use rustc::plugin::Registry;
 use rustc::lint::*;
 use syntax::ast::*;
-use syntax::ptr::P;
-use syntax::codemap::{Span, ExpnInfo};
-use syntax::parse::token::InternedString;
+use syntax::codemap::ExpnInfo;
+
 use utils::{in_macro, match_path, span_lint};
 
 declare_lint! { pub INLINE_ALWAYS, Warn,
@@ -103,7 +101,7 @@ fn check_attrs(cx: &Context, info: Option<&ExpnInfo>, ident: &Ident,
                 span_lint(cx, INLINE_ALWAYS, attr.span, &format!(
                     "you have declared `#[inline(always)]` on `{}`. This \
                      is usually a bad idea. Are you sure?",
-                    ident.name.as_str()));
+                    ident.name));
             }
         }
     }

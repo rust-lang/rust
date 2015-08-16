@@ -1,6 +1,5 @@
+use rustc::lint::*;
 use syntax::ast::*;
-use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
-use syntax::codemap::{Span, Spanned};
 use syntax::print::pprust::expr_to_string;
 
 use utils::span_lint;

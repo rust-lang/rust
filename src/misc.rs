@@ -1,11 +1,11 @@
+use rustc::lint::*;
 use syntax::ptr::P;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util::{is_comparison_binop, binop_to_string};
-use syntax::visit::{FnKind};
-use rustc::lint::{Context, LintPass, LintArray, Lint, Level};
-use rustc::middle::ty;
 use syntax::codemap::{Span, Spanned};
+use syntax::visit::FnKind;
+use rustc::middle::ty;
 use std::borrow::Cow;
 
 use utils::{match_path, snippet, snippet_block, span_lint, span_help_and_lint, walk_ptrs_ty};

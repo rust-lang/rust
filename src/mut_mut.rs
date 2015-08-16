@@ -1,8 +1,8 @@
-use syntax::ptr::P;
+use rustc::lint::*;
 use syntax::ast::*;
-use rustc::lint::{Context, LintPass, LintArray, Lint};
-use rustc::middle::ty::{TypeVariants, TypeAndMut, TyRef};
-use syntax::codemap::{BytePos, ExpnInfo, Span};
+use syntax::codemap::ExpnInfo;
+use rustc::middle::ty::{TypeAndMut, TyRef};
+
 use utils::{in_macro, span_lint};
 
 declare_lint!(pub MUT_MUT, Warn,

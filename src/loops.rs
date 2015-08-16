@@ -36,13 +36,12 @@ impl LintPass for LoopsPass {
                             span_lint(cx, NEEDLESS_RANGE_LOOP, expr.span, &format!(
                                 "the loop variable `{}` is used to index `{}`. Consider using \
                                  `for ({}, item) in {}.iter().enumerate()` or similar iterators.",
-                                ident.node.name.as_str(), indexed.as_str(),
-                                ident.node.name.as_str(), indexed.as_str()));
+                                ident.node.name, indexed, ident.node.name, indexed));
                         } else {
                             span_lint(cx, NEEDLESS_RANGE_LOOP, expr.span, &format!(
                                 "the loop variable `{}` is only used to index `{}`. \
                                  Consider using `for item in &{}` or similar iterators.",
-                                ident.node.name.as_str(), indexed.as_str(), indexed.as_str()));
+                                ident.node.name, indexed, indexed));
                         }
                     }
                 }
@@ -52,7 +51,7 @@ impl LintPass for LoopsPass {
             if let ExprMethodCall(ref method, _, ref args) = arg.node {
                 // just the receiver, no arguments to iter() or iter_mut()
                 if args.len() == 1 {
-                    let method_name = method.node.name.as_str();
+                    let method_name = method.node.name;
                     if method_name == "iter" {
                         let object = snippet(cx, args[0].span, "_");
                         span_lint(cx, EXPLICIT_ITER_LOOP, expr.span, &format!(

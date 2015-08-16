@@ -1,10 +1,10 @@
 use syntax::ast::*;
-use rustc::lint::{Context, LintPass, LintArray, Lint};
+use rustc::lint::*;
 use syntax::codemap::Span;
-use syntax::visit::{Visitor, FnKind, walk_ty};
-use utils::{in_external_macro, span_lint};
+use syntax::visit::{Visitor, walk_ty};
 use std::collections::HashSet;
-use std::iter::FromIterator;
+
+use utils::{in_external_macro, span_lint};
 
 declare_lint!(pub NEEDLESS_LIFETIMES, Warn,
               "using explicit lifetimes for references in function arguments when elision rules \
@@ -153,7 +153,7 @@ struct RefVisitor(Vec<RefLt>);
 impl RefVisitor {
     fn record(&mut self, lifetime: &Option<Lifetime>) {
         if let &Some(ref lt) = lifetime {
-            if lt.name.as_str() == "'static" {
+            if lt.name == "'static" {
                 self.0.push(Static);
             } else {
                 self.0.push(Named(lt.name));

@@ -1,7 +1,6 @@
 #![feature(plugin_registrar, box_syntax)]
-#![feature(rustc_private, collections)]
+#![feature(rustc_private, core, collections)]
 #![feature(str_split_at)]
-#![allow(unused_imports, unknown_lints)]
 
 #[macro_use]
 extern crate syntax;
@@ -9,6 +8,7 @@ extern crate syntax;
 extern crate rustc;
 
 // Only for the compile time checking of paths
+extern crate core;
 extern crate collections;
 
 use rustc::plugin::Registry;

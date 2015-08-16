@@ -1,12 +1,8 @@
-use rustc::plugin::Registry;
 use rustc::lint::*;
-use rustc::middle::const_eval::lookup_const_by_id;
-use rustc::middle::def::*;
 use syntax::ast::*;
-use syntax::ast_util::{is_comparison_binop, binop_to_string};
-use syntax::ptr::P;
 use syntax::codemap::Span;
 use std::f64::consts as f64;
+
 use utils::span_lint;
 
 declare_lint! {
