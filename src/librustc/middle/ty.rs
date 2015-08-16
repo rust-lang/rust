@@ -1093,8 +1093,6 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Binder<T> {
 }
 
 pub mod tls {
-    use ast_map;
-    use middle::def_id::{DefId, DEF_ID_DEBUG, LOCAL_CRATE};
     use middle::ty;
     use session::Session;
 
@@ -1108,28 +1106,6 @@ pub mod tls {
 
     scoped_thread_local!(static TLS_TCX: ThreadLocalTyCx);
 
-    fn def_id_debug(def_id: DefId, f: &mut fmt::Formatter) -> fmt::Result {
-        // Unfortunately, there seems to be no way to attempt to print
-        // a path for a def-id, so I'll just make a best effort for now
-        // and otherwise fallback to just printing the crate/node pair
-        with(|tcx| {
-            if def_id.krate == LOCAL_CRATE {
-                match tcx.map.find(def_id.node) {
-                    Some(ast_map::NodeItem(..)) |
-                    Some(ast_map::NodeForeignItem(..)) |
-                    Some(ast_map::NodeImplItem(..)) |
-                    Some(ast_map::NodeTraitItem(..)) |
-                    Some(ast_map::NodeVariant(..)) |
-                    Some(ast_map::NodeStructCtor(..)) => {
-                        return write!(f, "{}", tcx.item_path_str(def_id));
-                    }
-                    _ => {}
-                }
-            }
-            Ok(())
-        })
-    }
-
     fn span_debug(span: codemap::Span, f: &mut fmt::Formatter) -> fmt::Result {
         with(|tcx| {
             write!(f, "{}", tcx.sess.codemap().span_to_string(span))
@@ -1138,24 +1114,27 @@ pub mod tls {
 
     pub fn enter<'tcx, F: FnOnce(&ty::ctxt<'tcx>) -> R, R>(tcx: ty::ctxt<'tcx>, f: F)
                                                            -> (Session, R) {
-        let result = DEF_ID_DEBUG.with(|def_id_dbg| {
-            codemap::SPAN_DEBUG.with(|span_dbg| {
-                let original_def_id_debug = def_id_dbg.get();
-                def_id_dbg.set(def_id_debug);
-                let original_span_debug = span_dbg.get();
-                span_dbg.set(span_debug);
-                let tls_ptr = &tcx as *const _ as *const ThreadLocalTyCx;
-                let result = TLS_TCX.set(unsafe { &*tls_ptr }, || f(&tcx));
-                def_id_dbg.set(original_def_id_debug);
-                span_dbg.set(original_span_debug);
-                result
-            })
+        let result = codemap::SPAN_DEBUG.with(|span_dbg| {
+            let original_span_debug = span_dbg.get();
+            span_dbg.set(span_debug);
+            let tls_ptr = &tcx as *const _ as *const ThreadLocalTyCx;
+            let result = TLS_TCX.set(unsafe { &*tls_ptr }, || f(&tcx));
+            span_dbg.set(original_span_debug);
+            result
         });
         (tcx.sess, result)
     }
 
     pub fn with<F: FnOnce(&ty::ctxt) -> R, R>(f: F) -> R {
         TLS_TCX.with(|tcx| f(unsafe { &*(tcx as *const _ as *const ty::ctxt) }))
+    }
+
+    pub fn with_opt<F: FnOnce(Option<&ty::ctxt>) -> R, R>(f: F) -> R {
+        if TLS_TCX.is_set() {
+            with(|v| f(Some(v)))
+        } else {
+            f(None)
+        }
     }
 }
 

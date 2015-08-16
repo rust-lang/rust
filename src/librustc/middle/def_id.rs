@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::ty;
 use syntax::ast::{CrateNum, NodeId};
-use std::cell::Cell;
 use std::fmt;
 
 #[derive(Clone, Eq, Ord, PartialOrd, PartialEq, RustcEncodable,
@@ -19,18 +19,25 @@ pub struct DefId {
     pub node: NodeId,
 }
 
-fn default_def_id_debug(_: DefId, _: &mut fmt::Formatter) -> fmt::Result { Ok(()) }
-
-thread_local!(pub static DEF_ID_DEBUG: Cell<fn(DefId, &mut fmt::Formatter) -> fmt::Result> =
-                Cell::new(default_def_id_debug));
-
 impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "DefId {{ krate: {}, node: {} }}",
+        try!(write!(f, "DefId {{ krate: {}, node: {}",
                     self.krate, self.node));
-        DEF_ID_DEBUG.with(|def_id_debug| def_id_debug.get()(*self, f))
+
+        // Unfortunately, there seems to be no way to attempt to print
+        // a path for a def-id, so I'll just make a best effort for now
+        // and otherwise fallback to just printing the crate/node pair
+        try!(ty::tls::with_opt(|opt_tcx| {
+            if let Some(tcx) = opt_tcx {
+                try!(write!(f, " => {}", tcx.item_path_str(*self)));
+            }
+            Ok(())
+        }));
+
+        write!(f, " }}")
     }
 }
+
 
 impl DefId {
     pub fn local(id: NodeId) -> DefId {
