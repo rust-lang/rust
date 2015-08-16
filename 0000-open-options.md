@@ -29,6 +29,7 @@ This RFC attempts to
 ### Read-only
 Open a file for read-only.
 
+
 ### Write-only
 Open a file for write-only.
 
@@ -40,8 +41,10 @@ file.write(b"bbbb")
 // contents of file after: "bbbbaaaa"
 ```
 
+
 ### Read-write
 This is the simple combinations of read-only and write-only.
+
 
 ### Append-mode
 Append-mode is similar to write-only, but all writes always happen at the end of
@@ -66,6 +69,7 @@ on Unix append is a superset of write.
 
 Because of this append is treated as a separate access mode in Rust, and if
 `.append(true)` is specified than `.write()` is ignored.
+
 
 ### Read-append
 Writing to the file works exactly the same as in append-mode.
@@ -100,7 +104,7 @@ file with `O_RDONLY | O_PATH`. Since version 3.6 you can call `fstat` on a file
 descriptor opened this way.
 
 For what it's worth
-[Gnu Hurd](http://www.gnu.org/software/libc/manual/html_node/Access-Modes.html)
+[GNU/Hurd](http://www.gnu.org/software/libc/manual/html_node/Access-Modes.html)
 allows opening files without an access mode, because it defines `O_RDONLY = 1`
 and `O_WRONLY = 2`. It allows all operations on the file that do not involve
 reading or writing the data, like `chmod`.
@@ -110,8 +114,9 @@ opening the file with `E_INVALID`. Otherwise, if for example you are developing
 on OS X but forget to set `.read(true)` when opening a file, it would work on
 OS X but not on other systems.
 
+
 ### Windows-specific
-`.desired_access(FILE_READ_DATA)`
+`.access_mode(FILE_READ_DATA)`
 
 On Windows you can detail whether you want to have read and/or write access to
 the files data, attributes and/or extended attributes. Managing permissions in
@@ -121,7 +126,13 @@ In Rust, `.read(true)` gives you read access to the data, attributes and
 extended attributes. Similarly, `.write(true)` gives write access to those
 three, and the right to append data beyond the current end of the file.
 
-But if you want fine-grained control, with `desired_access` you have it.
+But if you want fine-grained control, with `access_mode` you have it.
+
+`.access_mode()` overrides the access mode set with Rusts cross-platform
+options. Reasons to do so:
+- it is not possible to un-set the flags set by Rusts options;
+- otherwise the cross-platform options have to be wrapped with `#[cfg(unix)]`,
+  instead of only having to wrap the Windows-specific option.
 
 As a reference, this are the flags set by Rusts access modes:
 
@@ -162,8 +173,10 @@ creation mode                | file exists | file does not exist | Unix         
 .create(true).truncate(true) | truncate    | create              | O_CREAT + O_TRUNC | CREATE_ALWAYS                             |
 .create_new(true)            | fail        | create              | O_CREAT + O_EXCL  | CREATE_NEW + FILE_FLAG_OPEN_REPARSE_POINT |
 
+
 ### Not set
 Open an existing file. Fails if the file does not exist.
+
 
 ### Create
 `.create(true)`
@@ -173,23 +186,43 @@ Open an existing file, or create a new file if it does not already exists.
 Even if the access mode is read-only, it seems all operating systems can still
 create a new file (for whatever use reading from an empty file may be).
 
+
 ### Truncate
 `.truncate(true)`
 
 Open an existing file, and truncate it to zero length. Fails if the file does
 not exist. Attributes and permissions of the truncated file are preserved.
 
-Truncating will not work in read-only or append mode. Some platforms may support
-this, but Rust does not allow this for cross-platform consistency (besides it
-being sane behaviour).
+Truncating will not work if the access mode is not write-only or read-write
+(e.g. read-only and/or append mode). Some platforms may support this, but Rust
+does not allow it for cross-platform consistency (besides it being sane
+behaviour).
 
 On Windows truncating will only work if the `GENERIC_WRITE` flag is set. Setting
 the equivalent individual flags is not enough.
 
+
 ### Create and truncate
 `.create(true).truncate(true)`
 
-The logical combination of create and truncate.
+Open an existing file and truncate it to zero length, or create a new file if it
+does not already exists.
+
+Like `.create(true)`, even if the access mode is read-only it seems all
+operating systems can still create a new file.
+
+Contrary to only `.truncate(true)`, with `.create(true).truncate(true)` Windows
+_can_ truncate an existing file without requiring the `GENERIC_WRITE` flag. But
+for cross-platform consistency Rust should not allow this if the access mode is
+not write-only or read-write.
+TODO: What to do if the access mode is set with the Windows-specific `.access_mode()`?
+
+On Windows the attributes of an existing file can cause `.open()` to fail. If
+the existing file has the attribute _hidden_ set, it is necessary to open with
+`FILE_ATTRIBUTE_HIDDEN`. Similarly if the existing file has the attribute
+_system_ set, it is necessary to open with `FILE_ATTRIBUTE_SYSTEM`. See
+the Windows-specific `.attributes()` below on how to set these.
+
 
 ### Create_new
 `.create_new(true)`
@@ -228,18 +261,20 @@ specified, `.mode()` is ignored.
 
 Rust currently does not expose a way to modify the umask.
 
+
 ### Windows-specific: Attributes
 `.attributes(FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM)`
 
 Files on Windows can have several attributes, most commonly one or more of the
 following four: readonly, hidden, system and archive. Most
 [others](https://msdn.microsoft.com/en-us/library/windows/desktop/gg258117%28v=vs.85%29.aspx)
-are properties set by the file system. It seems of the others only
-`FILE_ATTRIBUTE_ENCRYPTED` and `FILE_ATTRIBUTE_TEMPORARY` are meaningful to set
-when creating a new file.
+are properties set by the file system. Of the others only
+`FILE_ATTRIBUTE_ENCRYPTED`, `FILE_ATTRIBUTE_TEMPORARY` and
+`FILE_ATTRIBUTE_OFFLINE` can be set when creating a new file. All others are
+silently ignored.
 
-It is no use to set the archive flag, as Windows sets it automatically when the
-file is newly created or modified. This flag may then be used by backup
+It is no use to set the archive attribute, as Windows sets it automatically when
+the file is newly created or modified. This flag may then be used by backup
 applications as an indication of which files have changed.
 
 If a _new_ file is created because it does not yet exist and `.create(true)` or
@@ -247,7 +282,8 @@ If a _new_ file is created because it does not yet exist and `.create(true)` or
 with `.attributes()`.
 
 If an _existing_ file is opened with `.create(true).truncate(true)`, its
-attributes are also replaced by the ones specified with `.attributes()`.
+existing attributes are preserved and combined with the ones declared with
+`.attributes()`.
 
 In all other cases the attributes get ignored.
 
@@ -273,6 +309,7 @@ For Rust, the sharing mode can be set with a Windows-specific option. Given the
 problems above, I don't expect there to ever be a cross-platform option for file
 locking.
 
+
 ### Windows-specific: Share mode
 `.share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE)`
 
@@ -287,7 +324,6 @@ others all rights, unless explicitly denied, e.g.:
 ## Caching behaviour
 
 ### Read cache hint
-
 Instead of requesting only the data necessary for a single `read()` call from a
 storage device, an operating system may request more data than necessary to have
 it already available for the next read call (e.g. the read-ahead cache). If you
@@ -298,12 +334,13 @@ file.
 
 Do some real-world benchmarks before setting this option.
 
+
 #### Cache hint
 ```
 .cache_hint(enum CacheHint)
 
 enum CacheHint {
-	None,
+    None,
     Sequential,
     Random,
 }
@@ -316,8 +353,8 @@ On Windows this maps to the flags `FILE_FLAG_SEQUENTIAL_SCAN` and
 
 This option is ignored on operating systems that do not support caching hints.
 
-### Write cache
 
+### Write cache
 See [Ensuring data reaches disk](https://lwn.net/Articles/457667/)
 
 1. copy data to kernel space
@@ -336,6 +373,7 @@ step 2 for _all_ writes. This can be a useful options for writing critical data,
 where you would call `sync_data()` after each write. This saves a system call
 for each write, and you are sure to never forget it.
 
+
 #### Sync all
 `.sync_all(true)`: implement an open option with the same name as the free
 standing call.
@@ -347,6 +385,7 @@ OS X does not support `O_SYNC`, but it is possible to call fcntl with
 `F_NOCACHE` to get the same effect. This has the side-effect that data also does
 not end up in the read cache, so this can have a performance penalty when
 reading if a file is opened with a read-write access mode.
+
 
 #### Sync data
 `.sync_data(true)`
@@ -393,7 +432,6 @@ Out op scope.
 ## Other options
 
 ### Inheritance of file descriptors
-
 Leaking file descriptors to child processes can cause problems and can be a
 security vulnerability. See this report by 
 [Python](https://www.python.org/dev/peps/pep-0446/).
@@ -437,7 +475,8 @@ special treatment is not available for the custom flags.
 Custom flags can only set flags, not remove flags set by Rusts options.
 
 For the custom flags on Unix, the bits that define the access mode are masked
-out with `O_ACCMODE`, to ensure they do not interfere with the access mode set by Rusts options.
+out with `O_ACCMODE`, to ensure they do not interfere with the access mode set
+by Rusts options.
 
 | [Windows](https://msdn.microsoft.com/en-us/library/windows/desktop/hh449426%28v=vs.85%29.aspx):
 |:---------------------------
@@ -455,7 +494,7 @@ out with `O_ACCMODE`, to ensure they do not interfere with the access mode set b
 
 Unix:
 
-| Posix       | Linux       | OS X        | FreeBSD     | OpenBSD     | NetBSD      |Dragonfly BSD| Solaris     |
+| POSIX       | Linux       | OS X        | FreeBSD     | OpenBSD     | NetBSD      |Dragonfly BSD| Solaris     |
 |:------------|:------------|:------------|:------------|:------------|:------------|:------------|:------------|
 | O_DIRECTORY | O_DIRECTORY |             | O_DIRECTORY | O_DIRECTORY | O_DIRECTORY | O_DIRECTORY | O_DIRECTORY |
 | O_NOCTTY    | O_NOCTTY    |             | O_NOCTTY    |             | O_NOCTTY    |             | O_NOCTTY    |
@@ -477,11 +516,10 @@ Unix:
 |             |             |             |             |             | O_ALT_IO    |             |             |
 |             |             |             |             |             |             |             | O_NOLINKS   |
 |             |             |             |             |             |             |             | O_XATTR     |
-| [Posix](http://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html) | [Linux](http://man7.org/linux/man-pages/man2/open.2.html) | [OS X](https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man2/open.2.html) | [FreeBSD](https://www.freebsd.org/cgi/man.cgi?query=open&sektion=2) | [OpenBSD](http://www.openbsd.org/cgi-bin/man.cgi/OpenBSD-current/man2/open.2?query=open&sec=2) | [NetBSD](http://netbsd.gw.com/cgi-bin/man-cgi?open+2+NetBSD-current) | [Dragonfly BSD](http://leaf.dragonflybsd.org/cgi/web-man?command=open&section=2) | [Solaris](http://docs.oracle.com/cd/E23824_01/html/821-1463/open-2.html) |
+| [POSIX](http://pubs.opengroup.org/onlinepubs/9699919799/functions/open.html) | [Linux](http://man7.org/linux/man-pages/man2/open.2.html) | [OS X](https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man2/open.2.html) | [FreeBSD](https://www.freebsd.org/cgi/man.cgi?query=open&sektion=2) | [OpenBSD](http://www.openbsd.org/cgi-bin/man.cgi/OpenBSD-current/man2/open.2?query=open&sec=2) | [NetBSD](http://netbsd.gw.com/cgi-bin/man-cgi?open+2+NetBSD-current) | [Dragonfly BSD](http://leaf.dragonflybsd.org/cgi/web-man?command=open&section=2) | [Solaris](http://docs.oracle.com/cd/E23824_01/html/821-1463/open-2.html) |
 
 
 ### Windows-specific flags and attributes
-
 The following variables for CreateFile2 currently have no equivalent functions
 in Rust to set them:
 ```
@@ -507,7 +545,7 @@ HANDLE                hTemplateFile;
   read-only on Unix.
   New: open with `O_RDONLY | O_PATH` on Linux, and fail with `E_INVALID` on all
   other Unix variants.
-- Maybe rename the Windows-specific `.desired_access()` to `.access_mode()`?
+- Rename the Windows-specific `.desired_access()` to `.access_mode()`
 
 ### Creation mode
 - Do not allow `.truncate(true)` if the access mode is read-only and/or append.
@@ -528,7 +566,7 @@ HANDLE                hTemplateFile;
   and possibly deny permissions.
 
 ### Caching behaviour
-- Implement `.cache_hint()`. Should this use an enum?
+- Implement `.cache_hint()`.
 - Implement `.sync_all()` and `.sync_data()`.
 
 ### Other options
@@ -537,9 +575,7 @@ HANDLE                hTemplateFile;
 system.
 
 
-
 # Drawbacks
-
 This adds a thin layer on top of the raw operating system calls. In this
 [pull request](https://github.com/rust-lang/rust/pull/26772#issuecomment-126753342)
 the conclusion was: this seems like a good idea for a "high level" abstraction
@@ -560,14 +596,12 @@ Also this RFC is in line with the vision for IO in the
 
 
 # Alternatives
-
 Keep the status quo.
 
-# Unresolved questions
 
-Implementation and testing of `.nofollow()`, `.sync_all()` and `.sync_data()`
-could uncover some corner cases, but I don't expect any that would give great
-trouble.
+# Unresolved questions
+Implementation and testing of `.sync_all()` and `.sync_data()` could uncover
+some corner cases, but I don't expect any that would give great trouble.
 
 Should `.cache_hint()` take an enum?
 
