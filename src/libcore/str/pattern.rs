@@ -641,6 +641,8 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
             }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 let is_long = searcher.memory == usize::MAX;
+                // write out `true` and `false` cases to encourage the compiler
+                // to specialize the two cases separately.
                 if is_long {
                     searcher.next::<MatchOnly>(self.haystack.as_bytes(),
                                                self.needle.as_bytes(),
@@ -653,8 +655,8 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
             }
         }
     }
-
 }
+
 unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
@@ -709,6 +711,7 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
             }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 let is_long = searcher.memory == usize::MAX;
+                // write out `true` and `false`, like `next_match`
                 if is_long {
                     searcher.next_back::<MatchOnly>(self.haystack.as_bytes(),
                                                     self.needle.as_bytes(),
@@ -723,8 +726,7 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
     }
 }
 
-/// The internal state of an iterator that searches for matches of a substring
-/// within a larger string using two-way search
+/// The internal state of the two-way substring search algorithm.
 #[derive(Clone, Debug)]
 struct TwoWaySearcher {
     // constants
@@ -741,7 +743,9 @@ struct TwoWaySearcher {
     // variables
     position: usize,
     end: usize,
+    /// index into needle before which we have already matched
     memory: usize,
+    /// index into needle after which we have already matched
     memory_back: usize,
 }
 
@@ -841,9 +845,6 @@ impl TwoWaySearcher {
         // is large.
         if &needle[..crit_pos] == &needle[period.. period + crit_pos] {
             // short period case -- the period is exact
-            let byteset = needle[..period].iter()
-                                .fold(0, |a, &b| (1 << (b & 0x3f)) | a);
-
             // compute a separate critical factorization for the reversed needle
             // x = u' v' where |v'| < period(x).
             //
@@ -860,26 +861,26 @@ impl TwoWaySearcher {
                 crit_pos: crit_pos,
                 crit_pos_back: crit_pos_back,
                 period: period,
-                byteset: byteset,
+                byteset: Self::byteset_create(&needle[..period]),
 
                 position: 0,
                 end: end,
                 memory: 0,
-                // memory_back after which we have already matched
                 memory_back: needle.len(),
             }
         } else {
             // long period case -- we have an approximation to the actual period,
             // and don't use memorization.
-
-            let byteset = needle.iter()
-                                .fold(0, |a, &b| (1 << (b & 0x3f)) | a);
+            //
+            // Approximate the period by lower bound max(|u|, |v|) + 1.
+            // The critical factorization is efficient to use for both forward and
+            // reverse search.
 
             TwoWaySearcher {
                 crit_pos: crit_pos,
                 crit_pos_back: crit_pos,
                 period: cmp::max(crit_pos, needle.len() - crit_pos) + 1,
-                byteset: byteset,
+                byteset: Self::byteset_create(needle),
 
                 position: 0,
                 end: end,
@@ -887,6 +888,11 @@ impl TwoWaySearcher {
                 memory_back: usize::MAX,
             }
         }
+    }
+
+    #[inline]
+    fn byteset_create(bytes: &[u8]) -> u64 {
+        bytes.iter().fold(0, |a, &b| (1 << (b & 0x3f)) | a)
     }
 
     #[inline(always)]
@@ -976,9 +982,9 @@ impl TwoWaySearcher {
     // and local_period(u, v) = local_period(reverse(v), reverse(u)), so if (u, v)
     // is a critical factorization, so is (reverse(v), reverse(u)).
     //
-    // For the short period case, using memorization, we rely on |u| < period(x).
-    // For this case we have computed a critical factorization x = u' v'
-    // where |v'| < period(x) instead (field `crit_pos_back`).
+    // For the reverse case we have computed a critical factorization x = u' v'
+    // (field `crit_pos_back`). We need |u| < period(x) for the forward case and
+    // thus |v'| < period(x) for the reverse.
     //
     // To search in reverse through the haystack, we search forward through
     // a reversed haystack with a reversed needle, matching first u' and then v'.
@@ -1018,7 +1024,7 @@ impl TwoWaySearcher {
 
             // See if the left part of the needle matches
             let crit = if long_period { self.crit_pos_back }
-                        else { cmp::min(self.crit_pos_back, self.memory_back) };
+                       else { cmp::min(self.crit_pos_back, self.memory_back) };
             for i in (0..crit).rev() {
                 if needle[i] != haystack[self.end - needle.len() + i] {
                     self.end -= self.crit_pos_back - i;
@@ -1031,7 +1037,7 @@ impl TwoWaySearcher {
 
             // See if the right part of the needle matches
             let needle_end = if long_period { needle.len() }
-                        else { self.memory_back };
+                             else { self.memory_back };
             for i in self.crit_pos_back..needle_end {
                 if needle[i] != haystack[self.end - needle.len() + i] {
                     self.end -= self.period;
@@ -1070,7 +1076,8 @@ impl TwoWaySearcher {
     fn maximal_suffix(arr: &[u8], order_greater: bool) -> (usize, usize) {
         let mut left = 0; // Corresponds to i in the paper
         let mut right = 1; // Corresponds to j in the paper
-        let mut offset = 0; // Corresponds to k in the paper
+        let mut offset = 0; // Corresponds to k in the paper, but starting at 0
+                            // to match 0-based indexing.
         let mut period = 1; // Corresponds to p in the paper
 
         while let Some(&a) = arr.get(right + offset) {
@@ -1117,7 +1124,8 @@ impl TwoWaySearcher {
     {
         let mut left = 0; // Corresponds to i in the paper
         let mut right = 1; // Corresponds to j in the paper
-        let mut offset = 0; // Corresponds to k in the paper
+        let mut offset = 0; // Corresponds to k in the paper, but starting at 0
+                            // to match 0-based indexing.
         let mut period = 1; // Corresponds to p in the paper
         let n = arr.len();
 
