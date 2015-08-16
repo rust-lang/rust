@@ -118,6 +118,7 @@ pub mod middle {
     pub mod dataflow;
     pub mod dead;
     pub mod def;
+    pub mod def_id;
     pub mod dependency_format;
     pub mod effect;
     pub mod entry;
