@@ -103,6 +103,9 @@ pub struct Context {
     pub render_redirect_pages: bool,
     /// All the passes that were run on this crate.
     pub passes: HashSet<String>,
+    /// The base-URL of the issue tracker for when an item has been tagged with
+    /// an issue number.
+    pub issue_tracker_base_url: Option<String>,
 }
 
 /// Indicates where an external crate can be found.
@@ -303,7 +306,8 @@ thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
 pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
            dst: PathBuf,
-           passes: HashSet<String>) -> io::Result<()> {
+           passes: HashSet<String>,
+           issue_tracker_base_url: Option<String>) -> io::Result<()> {
     let src_root = match krate.src.parent() {
         Some(p) => p.to_path_buf(),
         None => PathBuf::new(),
@@ -323,6 +327,7 @@ pub fn run(mut krate: clean::Crate,
         },
         include_sources: true,
         render_redirect_pages: false,
+        issue_tracker_base_url: issue_tracker_base_url,
     };
 
     try!(mkdir(&cx.dst));
@@ -351,6 +356,10 @@ pub fn run(mut krate: clean::Crate,
                                 *slot.borrow_mut() = Some(Some(name));
                             }
                         });
+                    }
+                    clean::NameValue(ref x, ref s)
+                            if "issue_tracker_base_url" == *x => {
+                        cx.issue_tracker_base_url = Some(s.to_string());
                     }
                     clean::Word(ref x)
                             if "html_no_source" == *x => {
