@@ -402,11 +402,11 @@ fn constant_binop(cx: &Context, op: BinOp, left: &Expr, right: &Expr)
         //BiRem,
         BiAnd => constant_short_circuit(cx, left, right, false),
         BiOr => constant_short_circuit(cx, left, right, true),
-        //BiBitXor,
-        //BiBitAnd,
-        //BiBitOr,
-        //BiShl,
-        //BiShr,
+        BiBitXor => constant_bitop(cx, left, right, |x, y| x ^ y),
+        BiBitAnd => constant_bitop(cx, left, right, |x, y| x & y),
+        BiBitOr => constant_bitop(cx, left, right, |x, y| (x | y)),
+        BiShl => constant_bitop(cx, left, right, |x, y| x << y),
+        BiShr => constant_bitop(cx, left, right, |x, y| x >> y),
         BiEq => constant_binop_apply(cx, left, right,
             |l, r| Some(ConstantBool(l == r))),
         BiNe => constant_binop_apply(cx, left, right,
@@ -415,8 +415,21 @@ fn constant_binop(cx: &Context, op: BinOp, left: &Expr, right: &Expr)
         BiLe => constant_cmp(cx, left, right, Greater, false),
         BiGe => constant_cmp(cx, left, right, Less, false),
         BiGt => constant_cmp(cx, left, right, Greater, true),
-        _ => None,
+        _ => None
     }
+}
+
+fn constant_bitop<F>(cx: &Context, left: &Expr, right: &Expr, f: F)
+        -> Option<Constant> where F: Fn(u64, u64) -> u64 {
+    constant_binop_apply(cx, left, right, |l, r| match (l, r) {
+        (ConstantBool(l), ConstantBool(r)) =>
+            Some(ConstantBool(f(l as u64, r as u64) != 0)),
+        (ConstantByte(l8), ConstantByte(r8)) =>
+            Some(ConstantByte(f(l8 as u64, r8 as u64) as u8)),
+        (ConstantInt(l, lty), ConstantInt(r, rty)) =>
+            unify_int_type(lty, rty, Plus).map(|ty| ConstantInt(f(l, r), ty)),
+        _ => None
+    })
 }
 
 fn constant_cmp(cx: &Context, left: &Expr, right: &Expr, ordering: Ordering,
