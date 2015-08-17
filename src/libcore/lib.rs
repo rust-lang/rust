@@ -142,7 +142,7 @@ pub mod convert;
 
 pub mod any;
 pub mod array;
-pub mod atomic;
+pub mod sync;
 pub mod cell;
 pub mod char;
 pub mod panicking;
