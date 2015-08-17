@@ -3920,6 +3920,8 @@ pub mod consts {
             pub const _SC_XBS5_ILP32_OFFBIG : c_int = 126;
             pub const _SC_XBS5_LPBIG_OFFBIG : c_int = 128;
 
+            pub const _PC_NAME_MAX: c_int = 3;
+            pub const _PC_PATH_MAX: c_int = 4;
         }
         #[cfg(target_os = "nacl")]
         pub mod sysconf {
@@ -3928,6 +3930,9 @@ pub mod consts {
             pub static _SC_SENDMSG_MAX_SIZE : c_int = 0;
             pub static _SC_NPROCESSORS_ONLN : c_int = 1;
             pub static _SC_PAGESIZE : c_int = 2;
+
+            pub const _PC_NAME_MAX: c_int = 3;
+            pub const _PC_PATH_MAX: c_int = 4;
         }
 
         #[cfg(target_os = "android")]
@@ -3963,6 +3968,9 @@ pub mod consts {
             pub const _SC_STREAM_MAX : c_int = 27;
             pub const _SC_TZNAME_MAX : c_int = 28;
             pub const _SC_PAGESIZE : c_int = 39;
+
+            pub const _PC_NAME_MAX: c_int = 4;
+            pub const _PC_PATH_MAX: c_int = 5;
         }
     }
 
@@ -4433,6 +4441,9 @@ pub mod consts {
             pub const _SC_SEM_VALUE_MAX : c_int = 50;
             pub const _SC_SIGQUEUE_MAX : c_int = 51;
             pub const _SC_TIMER_MAX : c_int = 52;
+
+            pub const _PC_NAME_MAX: c_int = 4;
+            pub const _PC_PATH_MAX: c_int = 5;
         }
     }
 
@@ -4868,6 +4879,9 @@ pub mod consts {
             pub const _SC_SYNCHRONIZED_IO : c_int = 75;
             pub const _SC_TIMER_MAX : c_int = 93;
             pub const _SC_TIMERS : c_int = 94;
+
+            pub const _PC_NAME_MAX: c_int = 4;
+            pub const _PC_PATH_MAX: c_int = 5;
         }
     }
 
@@ -5379,6 +5393,9 @@ pub mod consts {
             pub const _SC_TRACE_SYS_MAX : c_int = 129;
             pub const _SC_TRACE_USER_EVENT_MAX : c_int = 130;
             pub const _SC_PASS_MAX : c_int = 131;
+
+            pub const _PC_NAME_MAX: c_int = 4;
+            pub const _PC_PATH_MAX: c_int = 5;
         }
     }
 }
@@ -5834,8 +5851,6 @@ pub mod funcs {
             use types::os::arch::posix01::utimbuf;
             use types::os::arch::posix88::{gid_t, off_t, pid_t};
             use types::os::arch::posix88::{ssize_t, uid_t};
-
-            pub const _PC_NAME_MAX: c_int = 4;
 
             #[cfg(not(target_os = "nacl"))]
             extern {
