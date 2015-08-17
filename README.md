@@ -20,6 +20,7 @@ float_cmp            | warn    | using `==` or `!=` on float values (as floating
 identity_op          | warn    | using identity operations, e.g. `x + 0` or `y / 1`
 ineffective_bit_mask | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
 inline_always        | warn    | `#[inline(always)]` is a bad idea in most cases
+iter_next_loop       | warn    | for-looping over `_.next()` which is probably not intended
 len_without_is_empty | warn    | traits and impls that have `.len()` but not `.is_empty()`
 len_zero             | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
 let_and_return       | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a function
