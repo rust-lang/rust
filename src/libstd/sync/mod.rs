@@ -18,7 +18,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 pub use alloc::arc::{Arc, Weak};
-pub use core::atomic;
+pub use core::sync::atomic;
 
 pub use self::barrier::{Barrier, BarrierWaitResult};
 pub use self::condvar::{Condvar, StaticCondvar, CONDVAR_INIT};
