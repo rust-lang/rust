@@ -179,8 +179,6 @@ pub fn opts() -> Vec<getopts::OptGroup> {
                  "FILES"),
         optopt("", "markdown-playground-url",
                "URL to send code snippets to", "URL"),
-        optopt("", "issue-tracker-base-url",
-               "base URL for issue tracker", "URL"),
         optflag("", "markdown-no-toc", "don't include table of contents")
     )
 }
@@ -287,8 +285,7 @@ pub fn main_args(args: &[String]) -> isize {
         Some("html") | None => {
             match html::render::run(krate, &external_html,
                                     output.unwrap_or(PathBuf::from("doc")),
-                                    passes.into_iter().collect(),
-                                    matches.opt_str("issue-tracker-base-url")) {
+                                    passes.into_iter().collect()) {
                 Ok(()) => {}
                 Err(e) => panic!("failed to generate documentation: {}", e),
             }
