@@ -4,6 +4,8 @@ use rustc::middle::def::*;
 use syntax::ast::*;
 use syntax::codemap::Span;
 
+use consts::{constant, Constant, is_negative};
+use consts::ConstantVariant::ConstantInt;
 use utils::{span_lint, snippet};
 
 declare_lint! { pub IDENTITY_OP, Warn,
@@ -44,35 +46,19 @@ impl LintPass for IdentityOp {
 
 
 fn check(cx: &Context, e: &Expr, m: i8, span: Span, arg: Span) {
-    if have_lit(cx, e, m) {
-        span_lint(cx, IDENTITY_OP, span, &format!(
-            "the operation is ineffective. Consider reducing it to `{}`",
-           snippet(cx, arg, "..")));
-    }
-}
-
-fn have_lit(cx: &Context, e : &Expr, m: i8) -> bool {
-    match &e.node {
-        &ExprUnary(UnNeg, ref litexp) => have_lit(cx, litexp, -m),
-        &ExprLit(ref lit) => {
-            match (&lit.node, m) {
-                (&LitInt(0, _), 0) => true,
-                (&LitInt(1, SignedIntLit(_, Plus)), 1) => true,
-                (&LitInt(1, UnsuffixedIntLit(Plus)), 1) => true,
-                (&LitInt(1, SignedIntLit(_, Minus)), -1) => true,
-                (&LitInt(1, UnsuffixedIntLit(Minus)), -1) => true,
-                _ => false
+    if let Some(c) = constant(cx, e) {
+        if c.needed_resolution { return; } // skip linting w/ lookup for now
+        if let ConstantInt(v, ty) = c.constant {
+            if match m {
+                0 => v == 0,
+                -1 => is_negative(ty),
+                1 => !is_negative(ty),
+                _ => unreachable!(),
+            } {
+                span_lint(cx, IDENTITY_OP, span, &format!(
+                    "the operation is ineffective. Consider reducing it to `{}`",
+                   snippet(cx, arg, "..")));
             }
-        },
-        &ExprParen(ref p) => have_lit(cx, p, m),
-        &ExprPath(_, _) => {
-            match cx.tcx.def_map.borrow().get(&e.id) {
-                Some(&PathResolution { base_def: DefConst(id), ..}) =>
-                        lookup_const_by_id(cx.tcx, id, Option::None)
-                        .map_or(false, |l| have_lit(cx, l, m)),
-                _ => false
-            }
-        },
-        _ => false
+        }
     }
 }

@@ -11,14 +11,14 @@ fn main() {
 
     x + 0;        //~ERROR the operation is ineffective
     0 + x;        //~ERROR the operation is ineffective
-    x - ZERO;     //~ERROR the operation is ineffective
+    x - ZERO;     //no error, as we skip lookups (for now)
     x | (0);      //~ERROR the operation is ineffective
-    ((ZERO)) | x; //~ERROR the operation is ineffective
+    ((ZERO)) | x; //no error, as we skip lookups (for now)
 
     x * 1;        //~ERROR the operation is ineffective
     1 * x;        //~ERROR the operation is ineffective
-    x / ONE;      //~ERROR the operation is ineffective
+    x / ONE;      //no error, as we skip lookups (for now)
 
-    x & NEG_ONE;  //~ERROR the operation is ineffective
+    x & NEG_ONE;  //no error, as we skip lookups (for now)
     -1 & x;       //~ERROR the operation is ineffective
 }

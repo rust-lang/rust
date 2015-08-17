@@ -16,6 +16,7 @@ use rustc::lint::LintPassObject;
 
 #[macro_use]
 pub mod utils;
+pub mod consts;
 pub mod types;
 pub mod misc;
 pub mod eq_op;
