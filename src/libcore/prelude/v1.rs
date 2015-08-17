@@ -14,27 +14,26 @@
 //! well. This module is imported by default when `#![no_std]` is used in the
 //! same manner as the standard library's prelude.
 
-#![unstable(feature = "core_prelude",
-            reason = "the libcore prelude has not been scrutinized and \
-                      stabilized yet",
-            issue = "27701")]
+#![stable(feature = "core_prelude", since = "1.4.0")]
 
 // Reexported core operators
-pub use marker::{Copy, Send, Sized, Sync};
-pub use ops::{Drop, Fn, FnMut, FnOnce};
+#[doc(no_inline)] pub use marker::{Copy, Send, Sized, Sync};
+#[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
 
 // Reexported functions
-pub use mem::drop;
+#[doc(no_inline)] pub use mem::drop;
 
 // Reexported types and traits
-pub use char::CharExt;
-pub use clone::Clone;
-pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
-pub use convert::{AsRef, AsMut, Into, From};
-pub use default::Default;
-pub use iter::IntoIterator;
-pub use iter::{Iterator, DoubleEndedIterator, Extend, ExactSizeIterator};
-pub use option::Option::{self, Some, None};
-pub use result::Result::{self, Ok, Err};
-pub use slice::SliceExt;
-pub use str::StrExt;
+#[doc(no_inline)] pub use clone::Clone;
+#[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
+#[doc(no_inline)] pub use convert::{AsRef, AsMut, Into, From};
+#[doc(no_inline)] pub use default::Default;
+#[doc(no_inline)] pub use iter::{Iterator, Extend, IntoIterator};
+#[doc(no_inline)] pub use iter::{DoubleEndedIterator, ExactSizeIterator};
+#[doc(no_inline)] pub use option::Option::{self, Some, None};
+#[doc(no_inline)] pub use result::Result::{self, Ok, Err};
+
+// Reexported extension traits for primitive types
+#[doc(no_inline)] pub use slice::SliceExt;
+#[doc(no_inline)] pub use str::StrExt;
+#[doc(no_inline)] pub use char::CharExt;
