@@ -197,6 +197,15 @@ macro_rules! log {
     )
 }
 
+#[cfg(test)]
+macro_rules! assert_approx_eq {
+    ($a:expr, $b:expr) => ({
+        let (a, b) = (&$a, &$b);
+        assert!((*a - *b).abs() < 1.0e-6,
+                "{} is not approximately equal to {}", *a, *b);
+    })
+}
+
 /// Built-in macros to the compiler itself.
 ///
 /// These macros do not have any corresponding definition with a `macro_rules!`

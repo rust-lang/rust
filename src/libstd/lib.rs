@@ -253,7 +253,6 @@
 // Don't link to std. We are std.
 #![no_std]
 
-#![allow(trivial_casts)]
 #![deny(missing_docs)]
 
 #[cfg(test)] extern crate test;
@@ -263,7 +262,7 @@
 // imported by the compiler (via our #[no_std] attribute) In this case we just
 // add a new crate name so we can attach the reexports to it.
 #[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
-    unreachable, unimplemented, write, writeln)]
+                 unreachable, unimplemented, write, writeln)]
 extern crate core as __core;
 
 #[macro_use]
@@ -307,7 +306,6 @@ pub use core_collections::fmt;
 pub use core_collections::slice;
 pub use core_collections::str;
 pub use core_collections::string;
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::vec;
 
 pub use rustc_unicode::char;
@@ -326,32 +324,21 @@ pub mod prelude;
 
 /* Primitive types */
 
-// NB: slice and str are primitive types too, but their module docs + primitive doc pages
-// are inlined from the public re-exports of core_collections::{slice, str} above.
+// NB: slice and str are primitive types too, but their module docs + primitive
+// doc pages are inlined from the public re-exports of core_collections::{slice,
+// str} above.
 
-#[path = "num/float_macros.rs"]
-#[macro_use]
-mod float_macros;
+pub use core::isize;
+pub use core::i8;
+pub use core::i16;
+pub use core::i32;
+pub use core::i64;
 
-#[path = "num/int_macros.rs"]
-#[macro_use]
-mod int_macros;
-
-#[path = "num/uint_macros.rs"]
-#[macro_use]
-mod uint_macros;
-
-#[path = "num/isize.rs"]  pub mod isize;
-#[path = "num/i8.rs"]   pub mod i8;
-#[path = "num/i16.rs"]  pub mod i16;
-#[path = "num/i32.rs"]  pub mod i32;
-#[path = "num/i64.rs"]  pub mod i64;
-
-#[path = "num/usize.rs"] pub mod usize;
-#[path = "num/u8.rs"]   pub mod u8;
-#[path = "num/u16.rs"]  pub mod u16;
-#[path = "num/u32.rs"]  pub mod u32;
-#[path = "num/u64.rs"]  pub mod u64;
+pub use core::usize;
+pub use core::u8;
+pub use core::u16;
+pub use core::u32;
+pub use core::u64;
 
 #[path = "num/f32.rs"]   pub mod f32;
 #[path = "num/f64.rs"]   pub mod f64;
