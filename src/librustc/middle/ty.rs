@@ -3192,6 +3192,8 @@ impl<'tcx> TraitDef<'tcx> {
         }
     }
 
+    /// Iterate over every impl that could possibly match the
+    /// self-type `self_ty`.
     pub fn for_each_relevant_impl<F: FnMut(DefId)>(&self,
                                                    tcx: &ctxt<'tcx>,
                                                    self_ty: Ty<'tcx>,
@@ -3203,7 +3205,19 @@ impl<'tcx> TraitDef<'tcx> {
             f(impl_def_id);
         }
 
-        if let Some(simp) = fast_reject::simplify_type(tcx, self_ty, false) {
+        // simplify_type(.., false) basically replaces type parameters and
+        // projections with infer-variables. This is, of course, done on
+        // the impl trait-ref when it is instantiated, but not on the
+        // predicate trait-ref which is passed here.
+        //
+        // for example, if we match `S: Copy` against an impl like
+        // `impl<T:Copy> Copy for Option<T>`, we replace the type variable
+        // in `Option<T>` with an infer variable, to `Option<_>` (this
+        // doesn't actually change fast_reject output), but we don't
+        // replace `S` with anything - this impl of course can't be
+        // selected, and as there are hundreds of similar impls,
+        // considering them would significantly harm performance.
+        if let Some(simp) = fast_reject::simplify_type(tcx, self_ty, true) {
             if let Some(impls) = self.nonblanket_impls.borrow().get(&simp) {
                 for &impl_def_id in impls {
                     f(impl_def_id);

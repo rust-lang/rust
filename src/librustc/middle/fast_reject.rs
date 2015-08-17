@@ -85,11 +85,13 @@ pub fn simplify_type(tcx: &ty::ctxt,
         ty::TyBareFn(_, ref f) => {
             Some(FunctionSimplifiedType(f.sig.0.inputs.len()))
         }
-        ty::TyProjection(_) => {
-            None
-        }
-        ty::TyParam(_) => {
+        ty::TyProjection(_) | ty::TyParam(_) => {
             if can_simplify_params {
+                // In normalized types, projections don't unify with
+                // anything. when lazy normalization happens, this
+                // will change. It would still be nice to have a way
+                // to deal with known-not-to-unify-with-anything
+                // projections (e.g. the likes of <__S as Encoder>::Error).
                 Some(ParameterSimplifiedType)
             } else {
                 None

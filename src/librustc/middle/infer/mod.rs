@@ -1456,9 +1456,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let ty = self.resolve_type_vars_if_possible(&ty);
-        !traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundCopy, span)
-        // FIXME(@jroesch): should be able to use:
-        // ty.moves_by_default(&self.parameter_environment, span)
+        if ty.needs_infer() {
+            // this can get called from typeck (by euv), and moves_by_default
+            // rightly refuses to work with inference variables, but
+            // moves_by_default has a cache, which we want to use in other
+            // cases.
+            !traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundCopy, span)
+        } else {
+            ty.moves_by_default(&self.parameter_environment, span)
+        }
     }
 
     pub fn node_method_ty(&self, method_call: ty::MethodCall)
