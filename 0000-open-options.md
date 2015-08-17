@@ -167,14 +167,14 @@ The implied flags can be specified explicitly with the constants
 
 creation mode                | file exists | file does not exist | Unix              | Windows                                   |
 :----------------------------|-------------|---------------------|:------------------|:------------------------------------------|
-(not set)                    | open        | fail                |                   | OPEN_EXISTING                             |
+not set (open existing)      | open        | fail                |                   | OPEN_EXISTING                             |
 .create(true)                | open        | create              | O_CREAT           | OPEN_ALWAYS                               |
 .truncate(true)              | truncate    | fail                | O_TRUNC           | TRUNCATE_EXISTING                         |
 .create(true).truncate(true) | truncate    | create              | O_CREAT + O_TRUNC | CREATE_ALWAYS                             |
 .create_new(true)            | fail        | create              | O_CREAT + O_EXCL  | CREATE_NEW + FILE_FLAG_OPEN_REPARSE_POINT |
 
 
-### Not set
+### Not set (open existing)
 Open an existing file. Fails if the file does not exist.
 
 
@@ -183,9 +183,6 @@ Open an existing file. Fails if the file does not exist.
 
 Open an existing file, or create a new file if it does not already exists.
 
-Even if the access mode is read-only, it seems all operating systems can still
-create a new file (for whatever use reading from an empty file may be).
-
 
 ### Truncate
 `.truncate(true)`
@@ -193,13 +190,9 @@ create a new file (for whatever use reading from an empty file may be).
 Open an existing file, and truncate it to zero length. Fails if the file does
 not exist. Attributes and permissions of the truncated file are preserved.
 
-Truncating will not work if the access mode is not write-only or read-write
-(e.g. read-only and/or append mode). Some platforms may support this, but Rust
-does not allow it for cross-platform consistency (besides it being sane
-behaviour).
-
-On Windows truncating will only work if the `GENERIC_WRITE` flag is set. Setting
-the equivalent individual flags is not enough.
+Note when using the Windows-specific `.access_mode()`: truncating will only work
+if the `GENERIC_WRITE` flag is set. Setting the equivalent individual flags is
+not enough.
 
 
 ### Create and truncate
@@ -208,14 +201,9 @@ the equivalent individual flags is not enough.
 Open an existing file and truncate it to zero length, or create a new file if it
 does not already exists.
 
-Like `.create(true)`, even if the access mode is read-only it seems all
-operating systems can still create a new file.
-
-Contrary to only `.truncate(true)`, with `.create(true).truncate(true)` Windows
-_can_ truncate an existing file without requiring the `GENERIC_WRITE` flag. But
-for cross-platform consistency Rust should not allow this if the access mode is
-not write-only or read-write.
-TODO: What to do if the access mode is set with the Windows-specific `.access_mode()`?
+Note when using the Windows-specific `.access_mode()`: Contrary to only
+`.truncate(true)`, with `.create(true).truncate(true)` Windows _can_ truncate an
+existing file without requiring any flags to be set.
 
 On Windows the attributes of an existing file can cause `.open()` to fail. If
 the existing file has the attribute _hidden_ set, it is necessary to open with
@@ -286,6 +274,42 @@ existing attributes are preserved and combined with the ones declared with
 `.attributes()`.
 
 In all other cases the attributes get ignored.
+
+
+### Combination of access modes and creation modes
+
+Some combinations of creation modes and access modes do not make sense.
+
+For example: `.create(true)` when opening read-only. If the file does not
+already exist, it is created and you start reading from an empty file. And it is
+questionable whether you have permission to create a new file if you don't have
+write access. A new file is created on all systems I have tested, but there is
+no documentation that explicitly guarantees this behaviour.
+
+The same is true for `.truncate(true)` with read and/or append mode. Should an
+existing file be modified if you don't have write permission? On Unix it is
+undefined
+(see [some](http://www.monkey.org/openbsd/archive/tech/0009/msg00299.html)
+[comments](http://www.monkey.org/openbsd/archive/tech/0009/msg00304.html) on the
+OpenBSD mailing list). The behaviour on Windows is inconsistent and depends on
+whether `.create(true)` is set.
+
+To give guarantees about cross-platform (and sane) behaviour, Rust should allow
+only the following combinations of access modes and creations modes:
+
+creation mode           | read  | write | read-write | append | read-append |
+:-----------------------|:-----:|:-----:|:----------:|:------:|:-----------:|
+not set (open existing) |   X   |   X   |     X      |   X    |      X      |
+create                  |       |   X   |     X      |   X    |      X      |
+truncate                |       |   X   |     X      |        |             |
+create and truncate     |       |   X   |     X      |        |             |
+create_new              |       |   X   |     X      |   X    |      X      |
+
+It is possible to bypass these restrictions by using system-specific options (as
+in this case you already have to take care of cross-platform support yourself).
+On Unix this is done by setting the creation mode using `.custom_flags()` with
+`O_CREAT`, `O_TRUNC` and/or `O_EXCL`. On Windows this can be done by manually
+specifying `.access_mode()` (see above).
 
 
 ## Sharing / locking
@@ -554,8 +578,8 @@ HANDLE                hTemplateFile;
 - Implement `.create_new()`.
 - Remove the Windows-specific `.creation_disposition()`.
   It has no use, because all its options can be set in a cross-platform way.
-- Split the Windows-specific `.flags_and_attributes()` into `.flags()` and
-  `.attributes()`. This is a form of future-proofing, as the new Windows 8
+- Split the Windows-specific `.flags_and_attributes()` into `.custom_flags()`
+  and `.attributes()`. This is a form of future-proofing, as the new Windows 8
   `Createfile2` also splits these attributes. This has the advantage of a clear
   separation between file attributes, that are somewhat similar to Unix mode
   bits, and the custom flags that modify the behaviour of the current file
