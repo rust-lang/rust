@@ -1,10 +1,8 @@
 use rustc::lint::*;
-use rustc::middle::const_eval::lookup_const_by_id;
-use rustc::middle::def::*;
 use syntax::ast::*;
 use syntax::codemap::Span;
 
-use consts::{constant, Constant, is_negative};
+use consts::{constant, is_negative};
 use consts::ConstantVariant::ConstantInt;
 use utils::{span_lint, snippet};
 
@@ -51,8 +49,8 @@ fn check(cx: &Context, e: &Expr, m: i8, span: Span, arg: Span) {
         if let ConstantInt(v, ty) = c.constant {
             if match m {
                 0 => v == 0,
-                -1 => is_negative(ty),
-                1 => !is_negative(ty),
+                -1 => is_negative(ty) && v == 1,
+                1 => !is_negative(ty) && v == 1,
                 _ => unreachable!(),
             } {
                 span_lint(cx, IDENTITY_OP, span, &format!(
