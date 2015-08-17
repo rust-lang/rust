@@ -306,8 +306,7 @@ thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
 pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
            dst: PathBuf,
-           passes: HashSet<String>,
-           issue_tracker_base_url: Option<String>) -> io::Result<()> {
+           passes: HashSet<String>) -> io::Result<()> {
     let src_root = match krate.src.parent() {
         Some(p) => p.to_path_buf(),
         None => PathBuf::new(),
@@ -327,7 +326,7 @@ pub fn run(mut krate: clean::Crate,
         },
         include_sources: true,
         render_redirect_pages: false,
-        issue_tracker_base_url: issue_tracker_base_url,
+        issue_tracker_base_url: None,
     };
 
     try!(mkdir(&cx.dst));
