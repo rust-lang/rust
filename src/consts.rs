@@ -105,7 +105,7 @@ impl PartialEq for ConstantVariant {
         match (self, other) {
             (&ConstantStr(ref ls, ref lsty), &ConstantStr(ref rs, ref rsty)) =>
                 ls == rs && lsty == rsty,
-            (&ConstantBinary(ref l),&ConstantBinary(ref r)) => l == r,
+            (&ConstantBinary(ref l), &ConstantBinary(ref r)) => l == r,
             (&ConstantByte(l), &ConstantByte(r)) => l == r,
             (&ConstantChar(l), &ConstantChar(r)) => l == r,
             (&ConstantInt(lv, lty), &ConstantInt(rv, rty)) => lv == rv &&
@@ -184,13 +184,7 @@ pub fn constant(cx: &Context, e: &Expr) -> Option<Constant> {
                 Some(ConstantRepeat(Box::new(v), n.as_u64() as usize))),
         &ExprUnary(op, ref operand) => constant(cx, operand).and_then(
             |o| match op {
-                UnNot =>
-                    if let ConstantBool(b) = o.constant {
-                        Some(Constant{
-                            needed_resolution: o.needed_resolution,
-                            constant: ConstantBool(!b),
-                        })
-                    } else { None },
+                UnNot => constant_not(o),
                 UnNeg => constant_negate(o),
                 UnUniq | UnDeref => Some(o),
             }),
@@ -227,7 +221,7 @@ fn constant_vec<E: Deref<Target=Expr> + Sized>(cx: &Context, vec: &[E]) -> Optio
     for opt_part in vec {
         match constant(cx, opt_part) {
             Some(p) => {
-                resolved |= (&p).needed_resolution;
+                resolved |= p.needed_resolution;
                 parts.push(p)
             },
             None => { return None; },
@@ -245,7 +239,7 @@ fn constant_tup<E: Deref<Target=Expr> + Sized>(cx: &Context, tup: &[E]) -> Optio
     for opt_part in tup {
         match constant(cx, opt_part) {
             Some(p) => {
-                resolved |= (&p).needed_resolution;
+                resolved |= p.needed_resolution;
                 parts.push(p)
             },
             None => { return None; },
@@ -287,6 +281,43 @@ fn constant_if(cx: &Context, cond: &Expr, then: &Block, otherwise:
                 needed_resolution: res || part.needed_resolution,
             })
     } else { None }
+}
+
+fn constant_not(o: Constant) -> Option<Constant> {
+    Some(Constant {
+        needed_resolution: o.needed_resolution,
+        constant: match o.constant {
+            ConstantBool(b) => ConstantBool(!b),
+            ConstantInt(value, ty) => {
+                let (nvalue, nty) = match ty {
+                    SignedIntLit(ity, Plus) => {
+                        if value == ::std::u64::MAX { return None; }
+                        (value + 1, SignedIntLit(ity, Minus))
+                    },
+                    SignedIntLit(ity, Minus) => {
+                        if value == 0 {
+                            (1, SignedIntLit(ity, Minus))
+                        } else {
+                            (value - 1, SignedIntLit(ity, Plus))
+                        }
+                    }
+                    UnsignedIntLit(ity) => {
+                        let mask = match ity {
+                            UintTy::TyU8 => ::std::u8::MAX as u64,
+                            UintTy::TyU16 => ::std::u16::MAX as u64,
+                            UintTy::TyU32 => ::std::u32::MAX as u64,
+                            UintTy::TyU64 => ::std::u64::MAX,
+                            UintTy::TyUs => { return None; }  // refuse to guess
+                        };
+                        (!value & mask, UnsignedIntLit(ity))
+                    }
+                    UnsuffixedIntLit(_) => { return None; }  // refuse to guess
+                };
+                ConstantInt(nvalue, nty)
+            },
+            _ => { return None; }
+        }
+    })
 }
 
 fn constant_negate(o: Constant) -> Option<Constant> {
