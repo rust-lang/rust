@@ -4,6 +4,8 @@ use rustc::middle::def::PathResolution;
 use rustc::middle::def::Def::*;
 use syntax::ast::*;
 use syntax::ptr::P;
+use std::cmp::PartialOrd;
+use std::cmp::Ordering::{self, Greater, Less, Equal};
 use std::rc::Rc;
 use std::ops::Deref;
 use self::ConstantVariant::*;
@@ -52,8 +54,14 @@ impl Constant {
     }
 }
 
+impl PartialOrd for Constant {
+    fn partial_cmp(&self, other: &Constant) -> Option<Ordering> {
+        self.constant.partial_cmp(&other.constant)
+    }
+}
+
 /// a Lit_-like enum to fold constant `Expr`s into
-#[derive(PartialEq, Eq, Debug, Clone)] //TODO: A better PartialEq, remove Eq
+#[derive(Eq, Debug, Clone)]
 pub enum ConstantVariant {
     /// a String "abc"
     ConstantStr(String, StrStyle),
@@ -89,6 +97,73 @@ impl ConstantVariant {
         } else {
             panic!("Could not convert a {:?} to u64");
         }
+    }
+}
+
+impl PartialEq for ConstantVariant {
+    fn eq(&self, other: &ConstantVariant) -> bool {
+        match (self, other) {
+            (&ConstantStr(ref ls, ref lsty), &ConstantStr(ref rs, ref rsty)) =>
+                ls == rs && lsty == rsty,
+            (&ConstantBinary(ref l),&ConstantBinary(ref r)) => l == r,
+            (&ConstantByte(l), &ConstantByte(r)) => l == r,
+            (&ConstantChar(l), &ConstantChar(r)) => l == r,
+            (&ConstantInt(lv, lty), &ConstantInt(rv, rty)) => lv == rv &&
+               is_negative(lty) == is_negative(rty),
+            (&ConstantFloat(ref ls, lw), &ConstantFloat(ref rs, rw)) =>
+                if match (lw, rw) {
+                    (FwAny, _) | (_, FwAny) | (Fw32, Fw32) | (Fw64, Fw64) => true,
+                    _ => false,
+                } {
+                    match (ls.parse::<f64>(), rs.parse()) {
+                        (Ok(l), Ok(r)) => l == r,
+                        _ => false,
+                    }
+                } else { false },
+            (&ConstantBool(l), &ConstantBool(r)) => l == r,
+            (&ConstantVec(ref l), &ConstantVec(ref r)) => l == r,
+            (&ConstantRepeat(ref lv, ref ls), &ConstantRepeat(ref rv, ref rs)) =>
+                ls == rs && lv == rv,
+            (&ConstantTuple(ref l), &ConstantTuple(ref r)) => l == r,
+            _ => false, //TODO: Are there inter-type equalities?
+        }
+    }
+}
+
+impl PartialOrd for ConstantVariant {
+    fn partial_cmp(&self, other: &ConstantVariant) -> Option<Ordering> {
+        match (self, other) {
+            (&ConstantStr(ref ls, ref lsty), &ConstantStr(ref rs, ref rsty)) =>
+                if lsty != rsty { None } else { Some(ls.cmp(rs)) },
+            (&ConstantByte(ref l), &ConstantByte(ref r)) => Some(l.cmp(r)),
+            (&ConstantChar(ref l), &ConstantChar(ref r)) => Some(l.cmp(r)),
+            (&ConstantInt(ref lv, lty), &ConstantInt(ref rv, rty)) =>
+                Some(match (is_negative(lty), is_negative(rty)) {
+                    (true, true) => lv.cmp(rv),
+                    (false, false) => rv.cmp(lv),
+                    (true, false) => Greater,
+                    (false, true) => Less,
+                }),
+            (&ConstantFloat(ref ls, lw), &ConstantFloat(ref rs, rw)) =>
+                if match (lw, rw) {
+                    (FwAny, _) | (_, FwAny) | (Fw32, Fw32) | (Fw64, Fw64) => true,
+                    _ => false,
+                } {
+                    match (ls.parse::<f64>(), rs.parse::<f64>()) {
+                        (Ok(ref l), Ok(ref r)) => l.partial_cmp(r),
+                        _ => None,
+                    }
+                } else { None },
+            (&ConstantBool(ref l), &ConstantBool(ref r)) => Some(l.cmp(r)),
+            (&ConstantVec(ref l), &ConstantVec(ref r)) => l.partial_cmp(&r),
+            (&ConstantRepeat(ref lv, ref ls), &ConstantRepeat(ref rv, ref rs)) =>
+                match lv.partial_cmp(rv) {
+                    Some(Equal) => Some(ls.cmp(rs)),
+                    x => x,
+                },
+            (&ConstantTuple(ref l), &ConstantTuple(ref r)) => l.partial_cmp(r),
+             _ => None, //TODO: Are there any useful inter-type orderings?
+         }
     }
 }
 
@@ -300,7 +375,7 @@ fn constant_binop(cx: &Context, op: BinOp, left: &Expr, right: &Expr)
                         }
                     }
                 },
-                // TODO: float
+                // TODO: float (would need bignum library?)
                 _ => None
             }),
         BiSub => constant_binop_apply(cx, left, right, |l, r|
@@ -334,14 +409,20 @@ fn constant_binop(cx: &Context, op: BinOp, left: &Expr, right: &Expr)
         //BiShr,
         BiEq => constant_binop_apply(cx, left, right,
             |l, r| Some(ConstantBool(l == r))),
-        //BiLt,
-        //BiLe,
         BiNe => constant_binop_apply(cx, left, right,
             |l, r| Some(ConstantBool(l != r))),
-        //BiGe,
-        //BiGt,
+        BiLt => constant_cmp(cx, left, right, Less, true),
+        BiLe => constant_cmp(cx, left, right, Greater, false),
+        BiGe => constant_cmp(cx, left, right, Less, false),
+        BiGt => constant_cmp(cx, left, right, Greater, true),
         _ => None,
     }
+}
+
+fn constant_cmp(cx: &Context, left: &Expr, right: &Expr, ordering: Ordering,
+        b: bool) -> Option<Constant> {
+    constant_binop_apply(cx, left, right, |l, r| l.partial_cmp(&r).map(|o|
+        ConstantBool(b == (o == ordering))))
 }
 
 fn add_neg_int(pos: u64, pty: LitIntType, neg: u64, nty: LitIntType) ->
