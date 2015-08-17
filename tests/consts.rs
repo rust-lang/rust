@@ -5,21 +5,13 @@ extern crate clippy;
 extern crate syntax;
 extern crate rustc;
 
-use clippy::consts::{constant, ConstantVariant};
-use clippy::consts::ConstantVariant::*;
 use syntax::ast::*;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::codemap::{Spanned, COMMAND_LINE_SP};
-use std::mem;
-use rustc::lint::Context;
 
-fn ctx() -> &'static Context<'static, 'static> {
-    unsafe {
-        let x : *const Context<'static, 'static> = std::ptr::null();
-        mem::transmute(x)
-    }
-}
+use clippy::consts::{constant_simple, Constant};
+use clippy::consts::Constant::*;
 
 fn spanned<T>(t: T) -> Spanned<T> {
     Spanned{ node: t, span: COMMAND_LINE_SP }
@@ -41,13 +33,13 @@ fn binop(op: BinOp_, l: Expr, r: Expr) -> Expr {
     expr(ExprBinary(spanned(op), P(l), P(r)))
 }
 
-fn check(expect: ConstantVariant, expr: &Expr) {
-    assert_eq!(Some(expect), constant(ctx(), expr).map(|x| x.constant))
+fn check(expect: Constant, expr: &Expr) {
+    assert_eq!(Some(expect), constant_simple(expr))
 }
 
-const TRUE : ConstantVariant = ConstantBool(true);
-const FALSE : ConstantVariant = ConstantBool(false);
-const ZERO : ConstantVariant = ConstantInt(0, UnsuffixedIntLit(Plus));
+const TRUE : Constant = ConstantBool(true);
+const FALSE : Constant = ConstantBool(false);
+const ZERO : Constant = ConstantInt(0, UnsuffixedIntLit(Plus));
 
 #[test]
 fn test_lit() {

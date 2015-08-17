@@ -3,7 +3,7 @@ use syntax::ast::*;
 use syntax::codemap::Span;
 
 use consts::{constant, is_negative};
-use consts::ConstantVariant::ConstantInt;
+use consts::Constant::ConstantInt;
 use utils::{span_lint, snippet};
 
 declare_lint! { pub IDENTITY_OP, Warn,
@@ -44,9 +44,9 @@ impl LintPass for IdentityOp {
 
 
 fn check(cx: &Context, e: &Expr, m: i8, span: Span, arg: Span) {
-    if let Some(c) = constant(cx, e) {
-        if c.needed_resolution { return; } // skip linting w/ lookup for now
-        if let ConstantInt(v, ty) = c.constant {
+    if let Some((c, needed_resolution)) = constant(cx, e) {
+        if needed_resolution { return; } // skip linting w/ lookup for now
+        if let ConstantInt(v, ty) = c {
             if match m {
                 0 => v == 0,
                 -1 => is_negative(ty) && v == 1,
