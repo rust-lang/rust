@@ -21,27 +21,53 @@ fn ctx() -> &'static Context<'static, 'static> {
     }
 }
 
-fn lit(l: Lit_) -> Expr {
+fn spanned<T>(t: T) -> Spanned<T> {
+    Spanned{ node: t, span: COMMAND_LINE_SP }
+}
+
+fn expr(n: Expr_) -> Expr {
     Expr{
         id: 1,
-        node: ExprLit(P(Spanned{
-            node: l,
-            span: COMMAND_LINE_SP,
-        })),
+        node: n,
         span: COMMAND_LINE_SP,
     }
+}
+
+fn lit(l: Lit_) -> Expr {
+    expr(ExprLit(P(spanned(l))))
+}
+
+fn binop(op: BinOp_, l: Expr, r: Expr) -> Expr {
+    expr(ExprBinary(spanned(op), P(l), P(r)))
 }
 
 fn check(expect: ConstantVariant, expr: &Expr) {
     assert_eq!(Some(expect), constant(ctx(), expr).map(|x| x.constant))
 }
 
+const TRUE : ConstantVariant = ConstantBool(true);
+const FALSE : ConstantVariant = ConstantBool(false);
+const ZERO : ConstantVariant = ConstantInt(0, UnsuffixedIntLit(Plus));
+
 #[test]
 fn test_lit() {
-    check(ConstantBool(true), &lit(LitBool(true)));
-    check(ConstantBool(false), &lit(LitBool(false)));
-    check(ConstantInt(0, UnsuffixedIntLit(Plus)),
-            &lit(LitInt(0, UnsuffixedIntLit(Plus))));
+    check(TRUE, &lit(LitBool(true)));
+    check(FALSE, &lit(LitBool(false)));
+    check(ZERO, &lit(LitInt(0, UnsuffixedIntLit(Plus))));
     check(ConstantStr("cool!".into(), CookedStr), &lit(LitStr(
         InternedString::new("cool!"), CookedStr)));
+}
+
+#[test]
+fn test_ops() {
+    check(TRUE, &binop(BiOr, lit(LitBool(false)), lit(LitBool(true))));
+    check(FALSE, &binop(BiAnd, lit(LitBool(false)), lit(LitBool(true))));
+
+    let litzero = lit(LitInt(0, UnsuffixedIntLit(Plus)));
+    check(TRUE, &binop(BiEq, litzero.clone(), litzero.clone()));
+    check(TRUE, &binop(BiGe, litzero.clone(), litzero.clone()));
+    check(TRUE, &binop(BiLe, litzero.clone(), litzero.clone()));
+    check(FALSE, &binop(BiNe, litzero.clone(), litzero.clone()));
+    check(FALSE, &binop(BiGt, litzero.clone(), litzero.clone()));
+    check(FALSE, &binop(BiLt, litzero.clone(), litzero.clone()));
 }
