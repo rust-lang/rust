@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for signed 8-bits integers (`i8` type)
+//! The 8-bit signed integer type.
+//!
+//! *[See also the `i8` primitive type](../primitive.i8.html).*
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
