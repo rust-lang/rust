@@ -115,8 +115,8 @@ impl PartialEq for ConstantVariant {
                     (FwAny, _) | (_, FwAny) | (Fw32, Fw32) | (Fw64, Fw64) => true,
                     _ => false,
                 } {
-                    match (ls.parse::<f64>(), rs.parse()) {
-                        (Ok(l), Ok(r)) => l == r,
+                    match (ls.parse::<f64>(), rs.parse::<f64>()) {
+                        (Ok(l), Ok(r)) => l.eq(&r),
                         _ => false,
                     }
                 } else { false },
