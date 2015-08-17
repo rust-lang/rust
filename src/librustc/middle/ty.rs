@@ -3222,13 +3222,12 @@ impl<'tcx> TraitDef<'tcx> {
                 for &impl_def_id in impls {
                     f(impl_def_id);
                 }
-                return; // we don't need to process the other non-blanket impls
             }
-        }
-
-        for v in self.nonblanket_impls.borrow().values() {
-            for &impl_def_id in v {
-                f(impl_def_id);
+        } else {
+            for v in self.nonblanket_impls.borrow().values() {
+                for &impl_def_id in v {
+                    f(impl_def_id);
+                }
             }
         }
     }
