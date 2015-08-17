@@ -250,7 +250,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn> ) {
         };
     match run_tests_console(&opts, tests) {
         Ok(true) => {}
-        Ok(false) => panic!("Some tests failed"),
+        Ok(false) => std::process::exit(101),
         Err(e) => panic!("io error when running tests: {:?}", e),
     }
 }
