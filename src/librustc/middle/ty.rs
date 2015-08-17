@@ -7280,6 +7280,24 @@ impl<'tcx,T:HasTypeFlags> HasTypeFlags for VecPerParamSpace<T> {
     }
 }
 
+impl HasTypeFlags for abi::Abi {
+    fn has_type_flags(&self, _flags: TypeFlags) -> bool {
+        false
+    }
+}
+
+impl HasTypeFlags for ast::Unsafety {
+    fn has_type_flags(&self, _flags: TypeFlags) -> bool {
+        false
+    }
+}
+
+impl HasTypeFlags for BuiltinBounds {
+    fn has_type_flags(&self, _flags: TypeFlags) -> bool {
+        false
+    }
+}
+
 impl<'tcx> HasTypeFlags for ClosureTy<'tcx> {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self.sig.has_type_flags(flags)
@@ -7289,6 +7307,12 @@ impl<'tcx> HasTypeFlags for ClosureTy<'tcx> {
 impl<'tcx> HasTypeFlags for ClosureUpvar<'tcx> {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self.ty.has_type_flags(flags)
+    }
+}
+
+impl<'tcx> HasTypeFlags for ExistentialBounds<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.projection_bounds.has_type_flags(flags)
     }
 }
 
@@ -7364,6 +7388,12 @@ impl<'tcx> HasTypeFlags for ProjectionTy<'tcx> {
 impl<'tcx> HasTypeFlags for Ty<'tcx> {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self.flags.get().intersects(flags)
+    }
+}
+
+impl<'tcx> HasTypeFlags for TypeAndMut<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.ty.has_type_flags(flags)
     }
 }
 
