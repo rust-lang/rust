@@ -12,11 +12,10 @@ use middle::infer::InferCtxt;
 use middle::ty::{self, RegionEscape, Ty, HasTypeFlags};
 use middle::wf;
 
-use std::collections::HashSet;
 use std::fmt;
 use syntax::ast;
 use util::common::ErrorReported;
-use util::nodemap::NodeMap;
+use util::nodemap::{FnvHashSet, NodeMap};
 
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
@@ -33,7 +32,7 @@ use super::Unimplemented;
 use super::util::predicate_for_builtin_bound;
 
 pub struct FulfilledPredicates<'tcx> {
-    set: HashSet<(RFC1214Warning, ty::Predicate<'tcx>)>
+    set: FnvHashSet<(RFC1214Warning, ty::Predicate<'tcx>)>
 }
 
 /// The fulfillment context is used to drive trait resolution.  It
@@ -540,7 +539,7 @@ fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
 impl<'tcx> FulfilledPredicates<'tcx> {
     pub fn new() -> FulfilledPredicates<'tcx> {
         FulfilledPredicates {
-            set: HashSet::new()
+            set: FnvHashSet()
         }
     }
 
