@@ -9,6 +9,7 @@ use rustc::middle::ty;
 use std::borrow::Cow;
 
 use utils::{match_path, snippet, snippet_block, span_lint, span_help_and_lint, walk_ptrs_ty};
+use consts::constant;
 
 /// Handles uncategorized lints
 /// Currently handles linting of if-let-able matches
@@ -147,6 +148,10 @@ impl LintPass for FloatCmp {
         if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
             let op = cmp.node;
             if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
+                if constant(cx, left).or_else(|| constant(cx, right)).map_or(
+                        false, |c| c.as_float().map_or(false, |f| f == 0.0)) {
+                    return;
+                }
                 span_lint(cx, FLOAT_CMP, expr.span, &format!(
                     "{}-comparison of f32 or f64 detected. Consider changing this to \
                      `abs({} - {}) < epsilon` for some suitable value of epsilon",
