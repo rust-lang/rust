@@ -294,6 +294,7 @@ pub use core::mem;
 pub use core::ops;
 pub use core::ptr;
 pub use core::raw;
+#[allow(deprecated)]
 pub use core::simd;
 pub use core::result;
 pub use core::option;

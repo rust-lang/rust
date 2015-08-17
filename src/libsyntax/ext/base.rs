@@ -17,6 +17,7 @@ use codemap::{CodeMap, Span, ExpnId, ExpnInfo, NO_EXPANSION, CompilerExpansion};
 use ext;
 use ext::expand;
 use ext::tt::macro_rules;
+use feature_gate::GatedCfg;
 use parse;
 use parse::parser;
 use parse::token;
@@ -632,6 +633,7 @@ pub struct ExtCtxt<'a> {
     pub backtrace: ExpnId,
     pub ecfg: expand::ExpansionConfig<'a>,
     pub crate_root: Option<&'static str>,
+    pub feature_gated_cfgs: &'a mut Vec<GatedCfg>,
 
     pub mod_path: Vec<ast::Ident> ,
     pub exported_macros: Vec<ast::MacroDef>,
@@ -642,7 +644,8 @@ pub struct ExtCtxt<'a> {
 
 impl<'a> ExtCtxt<'a> {
     pub fn new(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
-               ecfg: expand::ExpansionConfig<'a>) -> ExtCtxt<'a> {
+               ecfg: expand::ExpansionConfig<'a>,
+               feature_gated_cfgs: &'a mut Vec<GatedCfg>) -> ExtCtxt<'a> {
         let env = initial_syntax_expander_table(&ecfg);
         ExtCtxt {
             parse_sess: parse_sess,
@@ -651,6 +654,7 @@ impl<'a> ExtCtxt<'a> {
             mod_path: Vec::new(),
             ecfg: ecfg,
             crate_root: None,
+            feature_gated_cfgs: feature_gated_cfgs,
             exported_macros: Vec::new(),
             syntax_env: env,
             recursion_count: 0,

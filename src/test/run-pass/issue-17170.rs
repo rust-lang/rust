@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct T(f64, f64, f64);
 
 static X: T = T(0.0, 0.0, 0.0);

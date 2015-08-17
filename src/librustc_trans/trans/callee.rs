@@ -150,7 +150,8 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 }
             }
             def::DefFn(did, _) if match expr_ty.sty {
-                ty::TyBareFn(_, ref f) => f.abi == synabi::RustIntrinsic,
+                ty::TyBareFn(_, ref f) => f.abi == synabi::RustIntrinsic ||
+                                          f.abi == synabi::PlatformIntrinsic,
                 _ => false
             } => {
                 let substs = common::node_id_substs(bcx.ccx(),
@@ -671,7 +672,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             (d.llfn, Some(d.llself))
         }
         Intrinsic(node, substs) => {
-            assert!(abi == synabi::RustIntrinsic);
+            assert!(abi == synabi::RustIntrinsic || abi == synabi::PlatformIntrinsic);
             assert!(dest.is_some());
 
             let call_info = match debug_loc {
@@ -701,7 +702,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
     // Intrinsics should not become actual functions.
     // We trans them in place in `trans_intrinsic_call`
-    assert!(abi != synabi::RustIntrinsic);
+    assert!(abi != synabi::RustIntrinsic && abi != synabi::PlatformIntrinsic);
 
     let is_rust_fn = abi == synabi::Rust || abi == synabi::RustCall;
 

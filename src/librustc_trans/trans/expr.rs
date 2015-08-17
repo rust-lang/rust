@@ -1797,7 +1797,7 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       }
       ast::BiEq | ast::BiNe | ast::BiLt | ast::BiGe | ast::BiLe | ast::BiGt => {
         if is_simd {
-            base::compare_simd_types(bcx, lhs, rhs, intype, op.node, binop_debug_loc)
+            base::compare_simd_types(bcx, lhs, rhs, intype, val_ty(lhs), op.node, binop_debug_loc)
         } else {
             base::compare_scalar_types(bcx, lhs, rhs, intype, op.node, binop_debug_loc)
         }

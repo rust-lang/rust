@@ -182,6 +182,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         None => ()
     }
 
+    debug!("sizing_type_of {:?}", t);
     let llsizingty = match t.sty {
         _ if !type_is_sized(cx.tcx(), t) => {
             Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
@@ -223,7 +224,13 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
         ty::TyStruct(..) => {
             if t.is_simd() {
-                let llet = type_of(cx, t.simd_type(cx.tcx()));
+                let e = t.simd_type(cx.tcx());
+                if !e.is_machine() {
+                    cx.sess().fatal(&format!("monomorphising SIMD type `{}` with \
+                                              a non-machine element type `{}`",
+                                             t, e))
+                }
+                let llet = type_of(cx, e);
                 let n = t.simd_size(cx.tcx()) as u64;
                 ensure_array_fits_in_address_space(cx, llet, n, t);
                 Type::vector(&llet, n)
@@ -239,6 +246,10 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         }
         ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => unreachable!()
     };
+
+    debug!("--> mapped t={:?} to llsizingty={}",
+            t,
+            cx.tn().type_to_string(llsizingty));
 
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
     llsizingty
@@ -405,7 +416,13 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       }
       ty::TyStruct(def, ref substs) => {
           if t.is_simd() {
-              let llet = in_memory_type_of(cx, t.simd_type(cx.tcx()));
+              let e = t.simd_type(cx.tcx());
+              if !e.is_machine() {
+                  cx.sess().fatal(&format!("monomorphising SIMD type `{}` with \
+                                            a non-machine element type `{}`",
+                                           t, e))
+              }
+              let llet = in_memory_type_of(cx, e);
               let n = t.simd_size(cx.tcx()) as u64;
               ensure_array_fits_in_address_space(cx, llet, n, t);
               Type::vector(&llet, n)
@@ -426,8 +443,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyError(..) => cx.sess().bug("type_of with TyError"),
     };
 
-    debug!("--> mapped t={:?} {:?} to llty={}",
-            t,
+    debug!("--> mapped t={:?} to llty={}",
             t,
             cx.tn().type_to_string(llty));
 

@@ -8,16 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:thread '<main>' panicked at 'shift operation overflowed'
-// compile-flags: -C debug-assertions
+#[repr(simd)]
+struct Foo(u64, u64); //~ error: SIMD types are experimental
 
-#![feature(core_simd)]
-
-use std::simd::u64x2;
-
-// (Work around constant-evaluation)
-fn id<T>(x: T) -> T { x }
-
-fn main() {
-    let _x = u64x2(1, 0) << id(u64x2(64, 0));
-}
+fn main() {}

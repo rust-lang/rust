@@ -1339,6 +1339,15 @@ impl IntTy {
             TyI16 | TyI32 | TyI64  => 3,
         }
     }
+    pub fn bit_width(&self) -> Option<usize> {
+        Some(match *self {
+            TyIs => return None,
+            TyI8 => 8,
+            TyI16 => 16,
+            TyI32 => 32,
+            TyI64 => 64,
+        })
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
@@ -1356,6 +1365,15 @@ impl UintTy {
             TyUs | TyU8 => 2,
             TyU16 | TyU32 | TyU64  => 3,
         }
+    }
+    pub fn bit_width(&self) -> Option<usize> {
+        Some(match *self {
+            TyUs => return None,
+            TyU8 => 8,
+            TyU16 => 16,
+            TyU32 => 32,
+            TyU64 => 64,
+        })
     }
 }
 
@@ -1393,6 +1411,12 @@ impl FloatTy {
     pub fn suffix_len(&self) -> usize {
         match *self {
             TyF32 | TyF64 => 3, // add F128 handling here
+        }
+    }
+    pub fn bit_width(&self) -> usize {
+        match *self {
+            TyF32 => 32,
+            TyF64 => 64,
         }
     }
 }

@@ -739,7 +739,7 @@ fn find_repr_type_name(diagnostic: &SpanHandler,
     for a in type_attrs {
         for r in &attr::find_repr_attrs(diagnostic, a) {
             repr_type_name = match *r {
-                attr::ReprAny | attr::ReprPacked => continue,
+                attr::ReprAny | attr::ReprPacked | attr::ReprSimd => continue,
                 attr::ReprExtern => "i32",
 
                 attr::ReprInt(_, attr::SignedInt(ast::TyIs)) => "isize",

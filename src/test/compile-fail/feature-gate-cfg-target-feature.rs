@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:thread '<main>' panicked at 'shift operation overflowed'
-// compile-flags: -C debug-assertions
+#[cfg(target_feature = "x")] //~ ERROR `cfg(target_feature)` is experimental
+#[cfg_attr(target_feature = "x", x)] //~ ERROR `cfg(target_feature)` is experimental
+struct Foo(u64, u64);
 
-#![feature(core_simd)]
-
-use std::simd::i32x4;
-
-// (Work around constant-evaluation)
-fn id<T>(x: T) -> T { x }
+#[cfg(not(any(all(target_feature = "x"))))] //~ ERROR `cfg(target_feature)` is experimental
+fn foo() {}
 
 fn main() {
-    let _x = i32x4(0, 0, 0, -1) >> id(i32x4(0, 0, 0, -1));
+    cfg!(target_feature = "x");
+    //~^ ERROR `cfg(target_feature)` is experimental and subject to change
 }

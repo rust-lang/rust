@@ -406,8 +406,10 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     //
     // baz! should not use this definition unless foo is enabled.
 
-    krate = time(time_passes, "configuration 1", move ||
-                 syntax::config::strip_unconfigured_items(sess.diagnostic(), krate));
+    let mut feature_gated_cfgs = vec![];
+    krate = time(time_passes, "configuration 1", ||
+                 syntax::config::strip_unconfigured_items(sess.diagnostic(), krate,
+                                                          &mut feature_gated_cfgs));
 
     *sess.crate_types.borrow_mut() =
         collect_crate_types(sess, &krate.attrs);
@@ -511,6 +513,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                           cfg,
                                           macros,
                                           syntax_exts,
+                                          &mut feature_gated_cfgs,
                                           krate);
         if cfg!(windows) {
             env::set_var("PATH", &_old_path);
@@ -536,7 +539,17 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     // strip again, in case expansion added anything with a #[cfg].
     krate = time(time_passes, "configuration 2", ||
-                 syntax::config::strip_unconfigured_items(sess.diagnostic(), krate));
+                 syntax::config::strip_unconfigured_items(sess.diagnostic(), krate,
+                                                          &mut feature_gated_cfgs));
+
+    time(time_passes, "gated configuration checking", || {
+        let features = sess.features.borrow();
+        feature_gated_cfgs.sort();
+        feature_gated_cfgs.dedup();
+        for cfg in &feature_gated_cfgs {
+            cfg.check_and_emit(sess.diagnostic(), &features);
+        }
+    });
 
     krate = time(time_passes, "maybe building test harness", ||
                  syntax::test::modify_for_testing(&sess.parse_sess,

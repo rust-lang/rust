@@ -19,6 +19,7 @@ use ast::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, Meta
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
 use diagnostic::SpanHandler;
+use feature_gate::GatedCfg;
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::token::{InternedString, intern_and_get_ident};
 use parse::token;
@@ -357,24 +358,28 @@ pub fn requests_inline(attrs: &[Attribute]) -> bool {
 }
 
 /// Tests if a cfg-pattern matches the cfg set
-pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::MetaItem) -> bool {
+pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::MetaItem,
+                   feature_gated_cfgs: &mut Vec<GatedCfg>) -> bool {
     match cfg.node {
         ast::MetaList(ref pred, ref mis) if &pred[..] == "any" =>
-            mis.iter().any(|mi| cfg_matches(diagnostic, cfgs, &**mi)),
+            mis.iter().any(|mi| cfg_matches(diagnostic, cfgs, &**mi, feature_gated_cfgs)),
         ast::MetaList(ref pred, ref mis) if &pred[..] == "all" =>
-            mis.iter().all(|mi| cfg_matches(diagnostic, cfgs, &**mi)),
+            mis.iter().all(|mi| cfg_matches(diagnostic, cfgs, &**mi, feature_gated_cfgs)),
         ast::MetaList(ref pred, ref mis) if &pred[..] == "not" => {
             if mis.len() != 1 {
                 diagnostic.span_err(cfg.span, "expected 1 cfg-pattern");
                 return false;
             }
-            !cfg_matches(diagnostic, cfgs, &*mis[0])
+            !cfg_matches(diagnostic, cfgs, &*mis[0], feature_gated_cfgs)
         }
         ast::MetaList(ref pred, _) => {
             diagnostic.span_err(cfg.span, &format!("invalid predicate `{}`", pred));
             false
         },
-        ast::MetaWord(_) | ast::MetaNameValue(..) => contains(cfgs, cfg),
+        ast::MetaWord(_) | ast::MetaNameValue(..) => {
+            feature_gated_cfgs.extend(GatedCfg::gate(cfg));
+            contains(cfgs, cfg)
+        }
     }
 }
 
@@ -579,6 +584,7 @@ pub fn find_repr_attrs(diagnostic: &SpanHandler, attr: &Attribute) -> Vec<ReprAt
                             // Can't use "extern" because it's not a lexical identifier.
                             "C" => Some(ReprExtern),
                             "packed" => Some(ReprPacked),
+                            "simd" => Some(ReprSimd),
                             _ => match int_type_of_word(&word) {
                                 Some(ity) => Some(ReprInt(item.span, ity)),
                                 None => {
@@ -628,6 +634,7 @@ pub enum ReprAttr {
     ReprInt(Span, IntType),
     ReprExtern,
     ReprPacked,
+    ReprSimd,
 }
 
 impl ReprAttr {
@@ -636,7 +643,8 @@ impl ReprAttr {
             ReprAny => false,
             ReprInt(_sp, ity) => ity.is_ffi_safe(),
             ReprExtern => true,
-            ReprPacked => false
+            ReprPacked => false,
+            ReprSimd => true,
         }
     }
 }

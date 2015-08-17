@@ -11,9 +11,9 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(simd)]
+#![feature(repr_simd)]
 
-#[simd]
+#[repr(simd)]
 struct RGBA {
     r: f32,
     g: f32,

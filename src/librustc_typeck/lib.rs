@@ -96,6 +96,7 @@ This API is completely unstable and subject to change.
 extern crate arena;
 extern crate fmt_macros;
 extern crate rustc;
+extern crate rustc_platform_intrinsics as intrinsics;
 
 pub use rustc::lint;
 pub use rustc::metadata;

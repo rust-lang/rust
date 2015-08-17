@@ -615,6 +615,9 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
         attr::ReprPacked => {
             cx.tcx().sess.bug("range_to_inttype: found ReprPacked on an enum");
         }
+        attr::ReprSimd => {
+            cx.tcx().sess.bug("range_to_inttype: found ReprSimd on an enum");
+        }
     }
     for &ity in attempts {
         if bounds_usable(cx, ity, bounds) {
