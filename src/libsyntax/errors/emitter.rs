@@ -55,7 +55,8 @@ impl ColorConfig {
         match *self {
             ColorConfig::Always => true,
             ColorConfig::Never  => false,
-            ColorConfig::Auto   => stderr_isatty(),
+            ColorConfig::Auto   => env::var("CLICOLOR_FORCE").unwrap_or("0".to_string()) != "0" ||
+                      (stderr_isatty() && env::var("CLICOLOR").unwrap_or("1".to_string()) != "0"),
         }
     }
 }
