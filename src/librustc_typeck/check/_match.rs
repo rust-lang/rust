@@ -528,60 +528,31 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
     let tcx = pcx.fcx.ccx.tcx;
 
     let def = tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
-    let (adt_def, variant) = match def {
-        def::DefTrait(_) => {
+    let variant = match fcx.def_struct_variant(def) {
+        Some((_, variant)) => variant,
+        None => {
             let name = pprust::path_to_string(path);
-            span_err!(tcx.sess, pat.span, E0168,
-                "use of trait `{}` in a struct pattern", name);
+            span_err!(tcx.sess, pat.span, E0163,
+                      "`{}` does not name a struct or a struct variant", name);
             fcx.write_error(pat.id);
 
             for field in fields {
-                check_pat(pcx, &*field.node.pat, tcx.types.err);
+                check_pat(pcx, &field.node.pat, tcx.types.err);
             }
             return;
-        },
-        _ => {
-            let def_type = tcx.lookup_item_type(def.def_id());
-            match def_type.ty.sty {
-                ty::TyStruct(struct_def, _) =>
-                    (struct_def, struct_def.struct_variant()),
-                ty::TyEnum(enum_def, _)
-                    if def == def::DefVariant(enum_def.did, def.def_id(), true) =>
-                    (enum_def, enum_def.variant_of_def(def)),
-                _ => {
-                    let name = pprust::path_to_string(path);
-                    span_err!(tcx.sess, pat.span, E0163,
-                        "`{}` does not name a struct or a struct variant", name);
-                    fcx.write_error(pat.id);
-
-                    for field in fields {
-                        check_pat(pcx, &*field.node.pat, tcx.types.err);
-                    }
-                    return;
-                }
-            }
         }
     };
 
-    instantiate_path(pcx.fcx,
-                     &path.segments,
-                     adt_def.type_scheme(tcx),
-                     &adt_def.predicates(tcx),
-                     None,
-                     def,
-                     pat.span,
-                     pat.id);
-
-    let pat_ty = fcx.node_ty(pat.id);
+    let pat_ty = pcx.fcx.instantiate_type(def.def_id(), path);
+    let item_substs = match pat_ty.sty {
+        ty::TyStruct(_, substs) | ty::TyEnum(_, substs) => substs,
+        _ => tcx.sess.span_bug(pat.span, "struct variant is not an ADT")
+    };
     demand::eqtype(fcx, pat.span, expected, pat_ty);
-
-    let item_substs = fcx
-        .item_substs()
-        .get(&pat.id)
-        .map(|substs| substs.substs.clone())
-        .unwrap_or_else(|| Substs::empty());
-
     check_struct_pat_fields(pcx, pat.span, fields, variant, &item_substs, etc);
+
+    fcx.write_ty(pat.id, pat_ty);
+    fcx.write_substs(pat.id, ty::ItemSubsts { substs: item_substs.clone() });
 }
 
 pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,

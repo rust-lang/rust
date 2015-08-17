@@ -1409,67 +1409,67 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                        cause)
     }
 
-    /// Returns the type of `def_id` with all generics replaced by by fresh type/region variables.
-    /// Also returns the substitution from the type parameters on `def_id` to the fresh variables.
-    /// Registers any trait obligations specified on `def_id` at the same time.
+    /// Instantiates the type in `did` with the generics in `path` and returns
+    /// it (registering the necessary trait obligations along the way).
     ///
-    /// Note that function is only intended to be used with types (notably, not fns). This is
-    /// because it doesn't do any instantiation of late-bound regions.
+    /// Note that this function is only intended to be used with type-paths,
+    /// not with value-paths.
     pub fn instantiate_type(&self,
-                            span: Span,
-                            def_id: ast::DefId)
-                            -> TypeAndSubsts<'tcx>
+                            did: ast::DefId,
+                            path: &ast::Path)
+                            -> Ty<'tcx>
     {
+        debug!("instantiate_type(did={:?}, path={:?})", did, path);
         let type_scheme =
-            self.tcx().lookup_item_type(def_id);
+            self.tcx().lookup_item_type(did);
         let type_predicates =
-            self.tcx().lookup_predicates(def_id);
-        let substs =
-            self.infcx().fresh_substs_for_generics(
-                span,
-                &type_scheme.generics);
-        let bounds =
-            self.instantiate_bounds(span, &substs, &type_predicates);
-        self.add_obligations_for_parameters(
-            traits::ObligationCause::new(
-                span,
-                self.body_id,
-                traits::ItemObligation(def_id)),
-            &bounds);
-        let monotype =
-            self.instantiate_type_scheme(span, &substs, &type_scheme.ty);
-
-        TypeAndSubsts {
-            ty: monotype,
-            substs: substs
-        }
-    }
-
-    /// Returns the type that this AST path refers to. If the path has no type
-    /// parameters and the corresponding type has type parameters, fresh type
-    /// and/or region variables are substituted.
-    ///
-    /// This is used when checking the constructor in struct literals.
-    fn instantiate_struct_literal_ty(&self,
-                                     did: ast::DefId,
-                                     path: &ast::Path)
-                                     -> TypeAndSubsts<'tcx>
-    {
-        let tcx = self.tcx();
-
-        let ty::TypeScheme { generics, ty: decl_ty } =
-            tcx.lookup_item_type(did);
-
+            self.tcx().lookup_predicates(did);
         let substs = astconv::ast_path_substs_for_ty(self, self,
                                                      path.span,
                                                      PathParamMode::Optional,
-                                                     &generics,
+                                                     &type_scheme.generics,
                                                      path.segments.last().unwrap());
+        debug!("instantiate_type: ty={:?} substs={:?}", &type_scheme.ty, &substs);
+        let bounds =
+            self.instantiate_bounds(path.span, &substs, &type_predicates);
+        self.add_obligations_for_parameters(
+            traits::ObligationCause::new(
+                path.span,
+                self.body_id,
+                traits::ItemObligation(did)),
+            &bounds);
 
-        let ty = self.instantiate_type_scheme(path.span, &substs, &decl_ty);
-
-        TypeAndSubsts { substs: substs, ty: ty }
+        self.instantiate_type_scheme(path.span, &substs, &type_scheme.ty)
     }
+
+    /// Return the dict-like variant corresponding to a given `Def`.
+    pub fn def_struct_variant(&self,
+                              def: def::Def)
+                              -> Option<(ty::AdtDef<'tcx>, ty::VariantDef<'tcx>)>
+    {
+        let (adt, variant) = match def {
+            def::DefVariant(enum_id, variant_id, true) => {
+                let adt = self.tcx().lookup_adt_def(enum_id);
+                (adt, adt.variant_with_id(variant_id))
+            }
+            def::DefTy(did, _) | def::DefStruct(did) => {
+                let typ = self.tcx().lookup_item_type(did);
+                if let ty::TyStruct(adt, _) = typ.ty.sty {
+                    (adt, adt.struct_variant())
+                } else {
+                    return None;
+                }
+            }
+            _ => return None
+        };
+
+        if let ty::VariantKind::Dict = variant.kind() {
+            Some((adt, variant))
+        } else {
+            None
+        }
+    }
+
 
     pub fn write_nil(&self, node_id: ast::NodeId) {
         self.write_ty(node_id, self.tcx().mk_nil());
@@ -3100,18 +3100,17 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
 
-    fn check_struct_or_variant_fields<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                                adt_ty: Ty<'tcx>,
-                                                span: Span,
-                                                variant_id: ast::DefId,
-                                                ast_fields: &'tcx [ast::Field],
-                                                check_completeness: bool) -> Result<(),()> {
+    fn check_expr_struct_fields<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                          adt_ty: Ty<'tcx>,
+                                          span: Span,
+                                          variant: ty::VariantDef<'tcx>,
+                                          ast_fields: &'tcx [ast::Field],
+                                          check_completeness: bool) {
         let tcx = fcx.ccx.tcx;
-        let (adt_def, substs) = match adt_ty.sty {
-            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => (def, substs),
-            _ => tcx.sess.span_bug(span, "non-ADT passed to check_struct_or_variant_fields")
+        let substs = match adt_ty.sty {
+            ty::TyStruct(_, substs) | ty::TyEnum(_, substs) => substs,
+            _ => tcx.sess.span_bug(span, "non-ADT passed to check_expr_struct_fields")
         };
-        let variant = adt_def.variant_with_id(variant_id);
 
         let mut remaining_fields = FnvHashMap();
         for field in &variant.fields {
@@ -3148,7 +3147,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             !error_happened &&
             !remaining_fields.is_empty()
         {
-            error_happened = true;
             span_err!(tcx.sess, span, E0063,
                       "missing field{}: {}",
                       if remaining_fields.len() == 1 {""} else {"s"},
@@ -3157,68 +3155,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                       .collect::<Vec<_>>()
                                       .join(", "));
         }
-
-        if error_happened { Err(()) } else { Ok(()) }
-    }
-
-    fn check_struct_constructor<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                                         id: ast::NodeId,
-                                         span: codemap::Span,
-                                         struct_def: ty::AdtDef<'tcx>,
-                                         fields: &'tcx [ast::Field],
-                                         base_expr: Option<&'tcx ast::Expr>) {
-        let tcx = fcx.ccx.tcx;
-
-        // Generate the struct type.
-        let TypeAndSubsts {
-            ty: mut struct_type,
-            substs: _
-        } = fcx.instantiate_type(span, struct_def.did);
-
-        // Look up and check the fields.
-        let res = check_struct_or_variant_fields(fcx,
-                                                 struct_type,
-                                                 span,
-                                                 struct_def.did,
-                                                 fields,
-                                                 base_expr.is_none());
-        if res.is_err() {
-            struct_type = tcx.types.err;
-        }
-
-        // Check the base expression if necessary.
-        match base_expr {
-            None => {}
-            Some(base_expr) => {
-                check_expr_has_type(fcx, &*base_expr, struct_type);
-            }
-        }
-
-        // Write in the resulting type.
-        fcx.write_ty(id, struct_type);
-    }
-
-    fn check_struct_enum_variant<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                                          id: ast::NodeId,
-                                          span: codemap::Span,
-                                          enum_id: ast::DefId,
-                                          variant_id: ast::DefId,
-                                          fields: &'tcx [ast::Field]) {
-        // Look up the number of type parameters and the raw type, and
-        // determine whether the enum is region-parameterized.
-        let TypeAndSubsts {
-            ty: enum_type,
-            substs: _
-        } = fcx.instantiate_type(span, enum_id);
-
-        // Look up and check the enum variant fields.
-        let _ = check_struct_or_variant_fields(fcx,
-                                               enum_type,
-                                               span,
-                                               variant_id,
-                                               fields,
-                                               true);
-        fcx.write_ty(id, enum_type);
     }
 
     fn check_struct_fields_on_error<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
@@ -3234,6 +3170,42 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         match *base_expr {
             Some(ref base) => check_expr(fcx, &**base),
             None => {}
+        }
+    }
+
+    fn check_expr_struct<'a, 'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                                   expr: &ast::Expr,
+                                   path: &ast::Path,
+                                   fields: &'tcx [ast::Field],
+                                   base_expr: &'tcx Option<P<ast::Expr>>)
+    {
+        let tcx = fcx.tcx();
+
+        // Find the relevant variant
+        let def = lookup_full_def(tcx, path.span, expr.id);
+        let (adt, variant) = match fcx.def_struct_variant(def) {
+            Some((adt, variant)) => (adt, variant),
+            None => {
+                span_err!(fcx.tcx().sess, path.span, E0071,
+                          "`{}` does not name a structure",
+                          pprust::path_to_string(path));
+                check_struct_fields_on_error(fcx, expr.id, fields, base_expr);
+                return;
+            }
+        };
+
+        let expr_ty = fcx.instantiate_type(def.def_id(), path);
+        fcx.write_ty(expr.id, expr_ty);
+
+        check_expr_struct_fields(fcx, expr_ty, expr.span, variant, fields,
+                                 base_expr.is_none());
+
+        if let &Some(ref base_expr) = base_expr {
+            check_expr_has_type(fcx, base_expr, expr_ty);
+            if adt.adt_kind() == ty::AdtKind::Enum {
+                span_err!(tcx.sess, base_expr.span, E0436,
+                          "functional record update syntax requires a struct");
+            }
         }
     }
 
@@ -3689,83 +3661,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
       }
       ast::ExprStruct(ref path, ref fields, ref base_expr) => {
-        // Resolve the path.
-        let def = lookup_full_def(tcx, path.span, id);
-        let struct_id = match def {
-            def::DefVariant(enum_id, variant_id, true) => {
-                if let &Some(ref base_expr) = base_expr {
-                    span_err!(tcx.sess, base_expr.span, E0436,
-                              "functional record update syntax requires a struct");
-                    fcx.write_error(base_expr.id);
-                }
-                check_struct_enum_variant(fcx, id, expr.span, enum_id,
-                                          variant_id, &fields[..]);
-                enum_id
-            }
-            def::DefTrait(def_id) => {
-                span_err!(tcx.sess, path.span, E0159,
-                    "use of trait `{}` as a struct constructor",
-                    pprust::path_to_string(path));
-                check_struct_fields_on_error(fcx,
-                                             id,
-                                             &fields[..],
-                                             base_expr);
-                def_id
-            },
-            def => {
-                // Verify that this was actually a struct.
-                let typ = fcx.ccx.tcx.lookup_item_type(def.def_id());
-                match typ.ty.sty {
-                    ty::TyStruct(struct_def, _) => {
-                        check_struct_constructor(fcx,
-                                                 id,
-                                                 expr.span,
-                                                 struct_def,
-                                                 &fields[..],
-                                                 base_expr.as_ref().map(|e| &**e));
-                    }
-                    _ => {
-                        span_err!(tcx.sess, path.span, E0071,
-                            "`{}` does not name a structure",
-                            pprust::path_to_string(path));
-                        check_struct_fields_on_error(fcx,
-                                                     id,
-                                                     &fields[..],
-                                                     base_expr);
-                    }
-                }
-
-                def.def_id()
-            }
-        };
-
-        // Turn the path into a type and verify that that type unifies with
-        // the resulting structure type. This is needed to handle type
-        // parameters correctly.
-        let actual_structure_type = fcx.expr_ty(&*expr);
-        if !actual_structure_type.references_error() {
-            let type_and_substs = fcx.instantiate_struct_literal_ty(struct_id, path);
-            match fcx.mk_subty(false,
-                               infer::Misc(path.span),
-                               actual_structure_type,
-                               type_and_substs.ty) {
-                Ok(()) => {}
-                Err(type_error) => {
-                    span_err!(fcx.tcx().sess, path.span, E0235,
-                                 "structure constructor specifies a \
-                                         structure of type `{}`, but this \
-                                         structure has type `{}`: {}",
-                                         fcx.infcx()
-                                            .ty_to_string(type_and_substs.ty),
-                                         fcx.infcx()
-                                            .ty_to_string(
-                                                actual_structure_type),
-                                         type_error);
-                    tcx.note_and_explain_type_err(&type_error, path.span);
-                }
-            }
-        }
-
+        check_expr_struct(fcx, expr, path, fields, base_expr);
         fcx.require_expr_have_sized_type(expr, traits::StructInitializerSized);
       }
       ast::ExprField(ref base, ref field) => {
@@ -4745,6 +4641,9 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
     }
 
+    debug!("instantiate_path: type of {:?} is {:?}",
+           node_id,
+           ty_substituted);
     fcx.write_ty(node_id, ty_substituted);
     fcx.write_substs(node_id, ty::ItemSubsts { substs: substs });
     return;
