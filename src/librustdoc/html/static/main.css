@@ -123,7 +123,7 @@ code, pre {
     font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", Inconsolata, monospace;
     white-space: pre-wrap;
 }
-.docblock code, .stability code {
+.docblock code {
     background-color: #F5F5F5;
     border-radius: 3px;
     padding: 0 0.2em;
@@ -353,6 +353,10 @@ nav.sub {
 }
 .content .impl-items .method, .content .impl-items > .type {
     margin-left: 20px;
+}
+
+.content .stability code {
+	font-size: 90%;
 }
 
 nav {
