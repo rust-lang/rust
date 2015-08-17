@@ -109,7 +109,7 @@ impl PartialEq for ConstantVariant {
             (&ConstantByte(l), &ConstantByte(r)) => l == r,
             (&ConstantChar(l), &ConstantChar(r)) => l == r,
             (&ConstantInt(lv, lty), &ConstantInt(rv, rty)) => lv == rv &&
-               is_negative(lty) == is_negative(rty),
+               (is_negative(lty) & (lv != 0)) == (is_negative(rty) & (rv != 0)),
             (&ConstantFloat(ref ls, lw), &ConstantFloat(ref rs, rw)) =>
                 if match (lw, rw) {
                     (FwAny, _) | (_, FwAny) | (Fw32, Fw32) | (Fw64, Fw64) => true,
@@ -138,7 +138,8 @@ impl PartialOrd for ConstantVariant {
             (&ConstantByte(ref l), &ConstantByte(ref r)) => Some(l.cmp(r)),
             (&ConstantChar(ref l), &ConstantChar(ref r)) => Some(l.cmp(r)),
             (&ConstantInt(ref lv, lty), &ConstantInt(ref rv, rty)) =>
-                Some(match (is_negative(lty), is_negative(rty)) {
+                Some(match (is_negative(lty) && *lv != 0,
+                            is_negative(rty) && *rv != 0) {
                     (true, true) => lv.cmp(rv),
                     (false, false) => rv.cmp(lv),
                     (true, false) => Greater,
