@@ -229,7 +229,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      llargs_rust: &[ValueRef],
                                      passed_arg_tys: Vec<Ty<'tcx>>,
                                      call_debug_loc: DebugLoc)
-                                     -> Block<'blk, 'tcx>
+                                     -> (ValueRef, Block<'blk, 'tcx>)
 {
     let ccx = bcx.ccx();
 
@@ -441,7 +441,18 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
-    return bcx;
+    let mut llretval = C_undef(llsig.llret_ty);
+    match fn_sig.output {
+        ty::FnConverging(result_ty) => {
+            if !type_of::return_uses_outptr(ccx, result_ty) {
+                llretval = base::load_ty(bcx, llretptr, result_ty);
+            }
+        }
+        ty::FnDiverging => {}
+    }
+
+
+    return (llretval, bcx);
 }
 
 // feature gate SIMD types in FFI, since I (huonw) am not sure the
