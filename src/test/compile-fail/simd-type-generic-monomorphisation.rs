@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:thread '<main>' panicked at 'shift operation overflowed'
-// compile-flags: -C debug-assertions
+#![feature(repr_simd, platform_intrinsics)]
 
-#![feature(core_simd)]
+// error-pattern:monomorphising SIMD type `Simd2<X>` with a non-machine element type `X`
 
-use std::simd::i64x2;
-
-// (Work around constant-evaluation)
-fn id<T>(x: T) -> T { x }
+struct X(Vec<i32>);
+#[repr(simd)]
+struct Simd2<T>(T, T);
 
 fn main() {
-    let _x = i64x2(0, -1) >> id(i64x2(0, 64));
+    let _ = Simd2(X(vec![]), X(vec![]));
 }

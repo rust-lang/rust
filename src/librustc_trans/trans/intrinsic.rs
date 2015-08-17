@@ -11,6 +11,8 @@
 #![allow(non_upper_case_globals)]
 
 use arena::TypedArena;
+use intrinsics::{self, Intrinsic};
+use libc;
 use llvm;
 use llvm::{SequentiallyConsistent, Acquire, Release, AtomicXchg, ValueRef, TypeKind};
 use middle::subst;
@@ -23,6 +25,7 @@ use trans::callee;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::common::*;
+use trans::consts;
 use trans::datum::*;
 use trans::debuginfo::DebugLoc;
 use trans::declare;
@@ -37,7 +40,10 @@ use middle::ty::{self, Ty, HasTypeFlags};
 use middle::subst::Substs;
 use syntax::abi::{self, RustIntrinsic};
 use syntax::ast;
+use syntax::ptr::P;
 use syntax::parse::token;
+
+use std::cmp::Ordering;
 
 pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
     let name = match &*item.ident.name.as_str() {
@@ -341,6 +347,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                             `try` intrinsic");
         }
     }
+
+    // save the actual AST arguments for later (some places need to do
+    // const-evaluation on them)
+    let expr_arguments = match args {
+        callee::ArgExprs(args) => Some(args),
+        _ => None,
+    };
 
     // Push the arguments.
     let mut llargs = Vec::new();
@@ -800,7 +813,16 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 _ => C_null(llret_ty)
             }
         }
-
+        (_, name) if name.starts_with("simd_") => {
+            generic_simd_intrinsic(bcx, name,
+                                   substs,
+                                   callee_ty,
+                                   expr_arguments,
+                                   &llargs,
+                                   ret_ty, llret_ty,
+                                   call_debug_location,
+                                   call_info)
+        }
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
         (_, name) if name.starts_with("atomic_") => {
@@ -897,7 +919,40 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
         }
 
-        (_, _) => ccx.sess().span_bug(foreign_item.span, "unknown intrinsic")
+        (_, _) => {
+            let intr = match Intrinsic::find(tcx, &name) {
+                Some(intr) => intr,
+                None => ccx.sess().span_bug(foreign_item.span, "unknown intrinsic"),
+            };
+            fn ty_to_type(ccx: &CrateContext, t: &intrinsics::Type) -> Type {
+                use intrinsics::Type::*;
+                match *t {
+                    Integer(x) => Type::ix(ccx, x as u64),
+                    Float(x) => {
+                        match x {
+                            32 => Type::f32(ccx),
+                            64 => Type::f64(ccx),
+                            _ => unreachable!()
+                        }
+                    }
+                    Pointer(_) => unimplemented!(),
+                    Vector(ref t, length) => Type::vector(&ty_to_type(ccx, t),
+                                                          length as u64)
+                }
+            }
+
+            let inputs = intr.inputs.iter().map(|t| ty_to_type(ccx, t)).collect::<Vec<_>>();
+            let outputs = ty_to_type(ccx, &intr.output);
+            match intr.definition {
+                intrinsics::IntrinsicDef::Named(name) => {
+                    let f = declare::declare_cfn(ccx,
+                                                 name,
+                                                 Type::func(&inputs, &outputs),
+                                                 tcx.mk_nil());
+                    Call(bcx, f, &llargs, None, call_debug_location)
+                }
+            }
+        }
     };
 
     if val_ty(llval) != Type::void(ccx) &&
@@ -1262,4 +1317,262 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let rust_try = f(tcx.mk_fn(None, try_fn_ty), output);
     *ccx.rust_try_fn().borrow_mut() = Some(rust_try);
     return rust_try
+}
+
+fn generic_simd_intrinsic<'blk, 'tcx, 'a>
+    (bcx: Block<'blk, 'tcx>,
+     name: &str,
+     substs: subst::Substs<'tcx>,
+     callee_ty: Ty<'tcx>,
+     args: Option<&[P<ast::Expr>]>,
+     llargs: &[ValueRef],
+     ret_ty: Ty<'tcx>,
+     llret_ty: Type,
+     call_debug_location: DebugLoc,
+     call_info: NodeIdAndSpan) -> ValueRef
+{
+    // macros for error handling:
+    macro_rules! emit_error {
+        ($msg: tt) => {
+            emit_error!($msg, )
+        };
+        ($msg: tt, $($fmt: tt)*) => {
+            bcx.sess().span_err(call_info.span,
+                                &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
+                                                 $msg),
+                                         name, $($fmt)*));
+        }
+    }
+    macro_rules! require {
+        ($cond: expr, $($fmt: tt)*) => {
+            if !$cond {
+                emit_error!($($fmt)*);
+                return C_null(llret_ty)
+            }
+        }
+    }
+    macro_rules! require_simd {
+        ($ty: expr, $position: expr) => {
+            require!($ty.is_simd(), "expected SIMD {} type, found non-SIMD `{}`", $position, $ty)
+        }
+    }
+
+
+
+    let tcx = bcx.tcx();
+    let arg_tys = match callee_ty.sty {
+        ty::TyBareFn(_, ref f) => {
+            bcx.tcx().erase_late_bound_regions(&f.sig.inputs())
+        }
+        _ => unreachable!()
+    };
+
+    // every intrinsic takes a SIMD vector as its first argument
+    require_simd!(arg_tys[0], "input");
+    let in_ty = arg_tys[0];
+    let in_elem = arg_tys[0].simd_type(tcx);
+    let in_len = arg_tys[0].simd_size(tcx);
+
+    let comparison = match name {
+        "simd_eq" => Some(ast::BiEq),
+        "simd_ne" => Some(ast::BiNe),
+        "simd_lt" => Some(ast::BiLt),
+        "simd_le" => Some(ast::BiLe),
+        "simd_gt" => Some(ast::BiGt),
+        "simd_ge" => Some(ast::BiGe),
+        _ => None
+    };
+
+    if let Some(cmp_op) = comparison {
+        require_simd!(ret_ty, "return");
+
+        let out_len = ret_ty.simd_size(tcx);
+        require!(in_len == out_len,
+                 "expected return type with length {} (same as input type `{}`), \
+                  found `{}` with length {}",
+                 in_len, in_ty,
+                 ret_ty, out_len);
+        require!(llret_ty.element_type().kind() == llvm::Integer,
+                 "expected return type with integer elements, found `{}` with non-integer `{}`",
+                 ret_ty,
+                 ret_ty.simd_type(tcx));
+
+        return compare_simd_types(bcx,
+                                  llargs[0],
+                                  llargs[1],
+                                  in_elem,
+                                  llret_ty,
+                                  cmp_op,
+                                  call_debug_location)
+    }
+
+    if name.starts_with("simd_shuffle") {
+        let n: usize = match name["simd_shuffle".len()..].parse() {
+            Ok(n) => n,
+            Err(_) => tcx.sess.span_bug(call_info.span,
+                                        "bad `simd_shuffle` instruction only caught in trans?")
+        };
+
+        require_simd!(ret_ty, "return");
+
+        let out_len = ret_ty.simd_size(tcx);
+        require!(out_len == n,
+                 "expected return type of length {}, found `{}` with length {}",
+                 n, ret_ty, out_len);
+        require!(in_elem == ret_ty.simd_type(tcx),
+                 "expected return element type `{}` (element of input `{}`), \
+                  found `{}` with element type `{}`",
+                 in_elem, in_ty,
+                 ret_ty, ret_ty.simd_type(tcx));
+
+        let total_len = in_len as u64 * 2;
+
+        let vector = match args {
+            Some(args) => &args[2],
+            None => bcx.sess().span_bug(call_info.span,
+                                        "intrinsic call with unexpected argument shape"),
+        };
+        let vector = consts::const_expr(bcx.ccx(), vector, tcx.mk_substs(substs), None).0;
+
+        let indices: Option<Vec<_>> = (0..n)
+            .map(|i| {
+                let arg_idx = i;
+                let val = const_get_elt(bcx.ccx(), vector, &[i as libc::c_uint]);
+                let c = const_to_opt_uint(val);
+                match c {
+                    None => {
+                        emit_error!("shuffle index #{} is not a constant", arg_idx);
+                        None
+                    }
+                    Some(idx) if idx >= total_len => {
+                        emit_error!("shuffle index #{} is out of bounds (limit {})",
+                                    arg_idx, total_len);
+                        None
+                    }
+                    Some(idx) => Some(C_i32(bcx.ccx(), idx as i32)),
+                }
+            })
+            .collect();
+        let indices = match indices {
+            Some(i) => i,
+            None => return C_null(llret_ty)
+        };
+
+        return ShuffleVector(bcx, llargs[0], llargs[1], C_vector(&indices))
+    }
+
+    if name == "simd_insert" {
+        require!(in_elem == arg_tys[2],
+                 "expected inserted type `{}` (element of input `{}`), found `{}`",
+                 in_elem, in_ty, arg_tys[2]);
+        return InsertElement(bcx, llargs[0], llargs[2], llargs[1])
+    }
+    if name == "simd_extract" {
+        require!(ret_ty == in_elem,
+                 "expected return type `{}` (element of input `{}`), found `{}`",
+                 in_elem, in_ty, ret_ty);
+        return ExtractElement(bcx, llargs[0], llargs[1])
+    }
+
+    if name == "simd_cast" {
+        require_simd!(ret_ty, "return");
+        let out_len = ret_ty.simd_size(tcx);
+        require!(in_len == out_len,
+                 "expected return type with length {} (same as input type `{}`), \
+                  found `{}` with length {}",
+                 in_len, in_ty,
+                 ret_ty, out_len);
+        // casting cares about nominal type, not just structural type
+        let out_elem = ret_ty.simd_type(tcx);
+
+        if in_elem == out_elem { return llargs[0]; }
+
+        enum Style { Float, Int(/* is signed? */ bool), Unsupported }
+
+        let (in_style, in_width) = match in_elem.sty {
+            // vectors of pointer-sized integers should've been
+            // disallowed before here, so this unwrap is safe.
+            ty::TyInt(i) => (Style::Int(true), i.bit_width().unwrap()),
+            ty::TyUint(u) => (Style::Int(false), u.bit_width().unwrap()),
+            ty::TyFloat(f) => (Style::Float, f.bit_width()),
+            _ => (Style::Unsupported, 0)
+        };
+        let (out_style, out_width) = match out_elem.sty {
+            ty::TyInt(i) => (Style::Int(true), i.bit_width().unwrap()),
+            ty::TyUint(u) => (Style::Int(false), u.bit_width().unwrap()),
+            ty::TyFloat(f) => (Style::Float, f.bit_width()),
+            _ => (Style::Unsupported, 0)
+        };
+
+        match (in_style, out_style) {
+            (Style::Int(in_is_signed), Style::Int(_)) => {
+                return match in_width.cmp(&out_width) {
+                    Ordering::Greater => Trunc(bcx, llargs[0], llret_ty),
+                    Ordering::Equal => llargs[0],
+                    Ordering::Less => if in_is_signed {
+                        SExt(bcx, llargs[0], llret_ty)
+                    } else {
+                        ZExt(bcx, llargs[0], llret_ty)
+                    }
+                }
+            }
+            (Style::Int(in_is_signed), Style::Float) => {
+                return if in_is_signed {
+                    SIToFP(bcx, llargs[0], llret_ty)
+                } else {
+                    UIToFP(bcx, llargs[0], llret_ty)
+                }
+            }
+            (Style::Float, Style::Int(out_is_signed)) => {
+                return if out_is_signed {
+                    FPToSI(bcx, llargs[0], llret_ty)
+                } else {
+                    FPToUI(bcx, llargs[0], llret_ty)
+                }
+            }
+            (Style::Float, Style::Float) => {
+                return match in_width.cmp(&out_width) {
+                    Ordering::Greater => FPTrunc(bcx, llargs[0], llret_ty),
+                    Ordering::Equal => llargs[0],
+                    Ordering::Less => FPExt(bcx, llargs[0], llret_ty)
+                }
+            }
+            _ => {/* Unsupported. Fallthrough. */}
+        }
+        require!(false,
+                 "unsupported cast from `{}` with element `{}` to `{}` with element `{}`",
+                 in_ty, in_elem,
+                 ret_ty, out_elem);
+    }
+    macro_rules! arith {
+        ($($name: ident: $($($p: ident),* => $call: expr),*;)*) => {
+            $(
+                if name == stringify!($name) {
+                    match in_elem.sty {
+                        $(
+                            $(ty::$p(_))|* => {
+                                return $call(bcx, llargs[0], llargs[1], call_debug_location)
+                            }
+                            )*
+                        _ => {},
+                    }
+                    require!(false,
+                             "unsupported operation on `{}` with element `{}`",
+                             in_ty,
+                             in_elem)
+                })*
+        }
+    }
+    arith! {
+        simd_add: TyUint, TyInt => Add, TyFloat => FAdd;
+        simd_sub: TyUint, TyInt => Sub, TyFloat => FSub;
+        simd_mul: TyUint, TyInt => Mul, TyFloat => FMul;
+        simd_div: TyFloat => FDiv;
+        simd_shl: TyUint, TyInt => Shl;
+        simd_shr: TyUint => LShr, TyInt => AShr;
+        simd_and: TyUint, TyInt => And;
+        simd_or: TyUint, TyInt => Or;
+        simd_xor: TyUint, TyInt => Xor;
+    }
+    bcx.sess().span_bug(call_info.span, "unknown SIMD intrinsic");
 }

@@ -246,11 +246,13 @@ fn generate_test_harness(sess: &ParseSess,
                          krate: ast::Crate,
                          cfg: &ast::CrateConfig,
                          sd: &diagnostic::SpanHandler) -> ast::Crate {
+    let mut feature_gated_cfgs = vec![];
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         span_diagnostic: sd,
         ext_cx: ExtCtxt::new(sess, cfg.clone(),
-                             ExpansionConfig::default("test".to_string())),
+                             ExpansionConfig::default("test".to_string()),
+                             &mut feature_gated_cfgs),
         path: Vec::new(),
         testfns: Vec::new(),
         reexport_test_harness_main: reexport_test_harness_main,

@@ -10,7 +10,7 @@
 pub use self::MaybeTyped::*;
 
 use rustc_lint;
-use rustc_driver::driver;
+use rustc_driver::{driver, target_features};
 use rustc::session::{self, config};
 use rustc::middle::{privacy, ty};
 use rustc::ast_map;
@@ -119,7 +119,8 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
                                        span_diagnostic_handler);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
-    let cfg = config::build_configuration(&sess);
+    let mut cfg = config::build_configuration(&sess);
+    target_features::add_configuration(&mut cfg, &sess);
 
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 

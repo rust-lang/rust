@@ -78,7 +78,8 @@
 #![feature(optin_builtin_traits)]
 #![feature(reflect)]
 #![feature(rustc_attrs)]
-#![feature(simd)]
+#![cfg_attr(stage0, feature(simd))]
+#![cfg_attr(not(stage0), feature(repr_simd, platform_intrinsics))]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 
@@ -150,7 +151,13 @@ pub mod iter;
 pub mod option;
 pub mod raw;
 pub mod result;
+
+#[cfg(stage0)]
+#[path = "simd_old.rs"]
 pub mod simd;
+#[cfg(not(stage0))]
+pub mod simd;
+
 pub mod slice;
 pub mod str;
 pub mod hash;

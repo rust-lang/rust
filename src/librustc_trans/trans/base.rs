@@ -91,7 +91,7 @@ use std::collections::{HashMap, HashSet};
 use std::mem;
 use std::str;
 use std::{i8, i16, i32, i64};
-use syntax::abi::{Rust, RustCall, RustIntrinsic, Abi};
+use syntax::abi::{Rust, RustCall, RustIntrinsic, PlatformIntrinsic, Abi};
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
@@ -348,17 +348,14 @@ pub fn compare_simd_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                       lhs: ValueRef,
                                       rhs: ValueRef,
                                       t: Ty<'tcx>,
+                                      ret_ty: Type,
                                       op: ast::BinOp_,
                                       debug_loc: DebugLoc)
                                       -> ValueRef {
     let signed = match t.sty {
         ty::TyFloat(_) => {
-            // The comparison operators for floating point vectors are challenging.
-            // LLVM outputs a `< size x i1 >`, but if we perform a sign extension
-            // then bitcast to a floating point vector, the result will be `-NaN`
-            // for each truth value. Because of this they are unsupported.
-            bcx.sess().bug("compare_simd_types: comparison operators \
-                            not supported for floating point SIMD types")
+            let cmp = bin_op_to_fcmp_predicate(bcx.ccx(), op);
+            return SExt(bcx, FCmp(bcx, cmp, lhs, rhs, debug_loc), ret_ty);
         },
         ty::TyUint(_) => false,
         ty::TyInt(_) => true,
@@ -370,7 +367,7 @@ pub fn compare_simd_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // to get the correctly sized type. This will compile to a single instruction
     // once the IR is converted to assembly if the SIMD instruction is supported
     // by the target architecture.
-    SExt(bcx, ICmp(bcx, cmp, lhs, rhs, debug_loc), val_ty(lhs))
+    SExt(bcx, ICmp(bcx, cmp, lhs, rhs, debug_loc), ret_ty)
 }
 
 // Iterates through the elements of a structural type.
@@ -674,7 +671,7 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 Rust | RustCall => {
                     get_extern_rust_fn(ccx, t, &name[..], did)
                 }
-                RustIntrinsic => {
+                RustIntrinsic | PlatformIntrinsic => {
                     ccx.sess().bug("unexpected intrinsic in trans_external_path")
                 }
                 _ => {

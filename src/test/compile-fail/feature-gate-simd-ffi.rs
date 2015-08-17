@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(simd, core_simd)]
-#![allow(dead_code)]
+#![feature(repr_simd, core_simd)]
+#![allow(dead_code, deprecated)]
 
 use std::simd::f32x4;
 
-#[simd] #[derive(Copy, Clone)] #[repr(C)] struct LocalSimd(u8, u8);
+#[repr(simd)] #[derive(Copy, Clone)] #[repr(C)] struct LocalSimd(u8, u8);
 
 extern {
     fn foo() -> f32x4; //~ ERROR use of SIMD type

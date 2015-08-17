@@ -194,6 +194,8 @@ mod arch {
 
 #[cfg(target_arch = "x86_64")]
 mod arch {
+    #![allow(deprecated)]
+
     use libc::{c_longlong, c_ulonglong};
     use libc::types::os::arch::extra::{WORD, DWORD, DWORDLONG};
     use simd;

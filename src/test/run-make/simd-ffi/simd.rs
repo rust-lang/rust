@@ -15,12 +15,12 @@
 #![feature(no_core)]
 #![no_core]
 
-#![feature(simd, simd_ffi, link_llvm_intrinsics, lang_items)]
+#![feature(repr_simd, simd_ffi, link_llvm_intrinsics, lang_items)]
 
 
 #[repr(C)]
 #[derive(Copy)]
-#[simd]
+#[repr(simd)]
 pub struct f32x4(f32, f32, f32, f32);
 
 
@@ -35,7 +35,7 @@ pub fn foo(x: f32x4) -> f32x4 {
 
 #[repr(C)]
 #[derive(Copy)]
-#[simd]
+#[repr(simd)]
 pub struct i32x4(i32, i32, i32, i32);
 
 
