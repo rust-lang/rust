@@ -35,12 +35,12 @@ impl LintPass for LoopsPass {
                         if visitor.nonindex {
                             span_lint(cx, NEEDLESS_RANGE_LOOP, expr.span, &format!(
                                 "the loop variable `{}` is used to index `{}`. Consider using \
-                                 `for ({}, item) in {}.iter().enumerate()` or similar iterators.",
+                                 `for ({}, item) in {}.iter().enumerate()` or similar iterators",
                                 ident.node.name, indexed, ident.node.name, indexed));
                         } else {
                             span_lint(cx, NEEDLESS_RANGE_LOOP, expr.span, &format!(
                                 "the loop variable `{}` is only used to index `{}`. \
-                                 Consider using `for item in &{}` or similar iterators.",
+                                 Consider using `for item in &{}` or similar iterators",
                                 ident.node.name, indexed, indexed));
                         }
                     }
