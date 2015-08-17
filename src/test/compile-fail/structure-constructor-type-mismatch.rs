@@ -24,41 +24,66 @@ type PairF<U> = Pair<f32,U>;
 
 fn main() {
     let pt = PointF {
-        //~^ ERROR structure constructor specifies a structure of type
+        x: 1,
+        //~^ ERROR mismatched types
         //~| expected f32
         //~| found integral variable
-        x: 1,
         y: 2,
+        //~^ ERROR mismatched types
+        //~| expected f32
+        //~| found integral variable
     };
 
     let pt2 = Point::<f32> {
-        //~^ ERROR structure constructor specifies a structure of type
+        x: 3,
+        //~^ ERROR mismatched types
         //~| expected f32
         //~| found integral variable
-        x: 3,
         y: 4,
+        //~^ ERROR mismatched types
+        //~| expected f32
+        //~| found integral variable
     };
 
     let pair = PairF {
-        //~^ ERROR structure constructor specifies a structure of type
+        x: 5,
+        //~^ ERROR mismatched types
         //~| expected f32
         //~| found integral variable
-        x: 5,
         y: 6,
     };
 
     let pair2 = PairF::<i32> {
-        //~^ ERROR structure constructor specifies a structure of type
+        x: 7,
+        //~^ ERROR mismatched types
         //~| expected f32
         //~| found integral variable
-        x: 7,
         y: 8,
     };
 
-    let pt3 = PointF::<i32> {
-        //~^ ERROR wrong number of type arguments
-        //~| ERROR structure constructor specifies a structure of type
-        x: 9,
-        y: 10,
+    let pt3 = PointF::<i32> { //~ ERROR wrong number of type arguments
+        x: 9,  //~ ERROR mismatched types
+        y: 10, //~ ERROR mismatched types
     };
+
+    match (Point { x: 1, y: 2 }) {
+        PointF::<u32> { .. } => {} //~ ERROR wrong number of type arguments
+        //~^ ERROR mismatched types
+    }
+
+    match (Point { x: 1, y: 2 }) {
+        PointF { .. } => {} //~ ERROR mismatched types
+    }
+
+    match (Point { x: 1.0, y: 2.0 }) {
+        PointF { .. } => {} // ok
+    }
+
+    match (Pair { x: 1, y: 2 }) {
+        PairF::<u32> { .. } => {} //~ ERROR mismatched types
+    }
+
+    match (Pair { x: 1.0, y: 2 }) {
+        PairF::<u32> { .. } => {} // ok
+    }
 }

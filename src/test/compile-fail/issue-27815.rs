@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:use_from_trait_xc.rs
-
-extern crate use_from_trait_xc;
-pub use use_from_trait_xc::Trait;
+mod A {}
 
 fn main() {
+    let u = A { x: 1 }; //~ ERROR `A` does not name a structure
+    let v = u32 { x: 1 }; //~ ERROR `u32` does not name a structure
     match () {
-        Trait { x: 42 } => () //~ ERROR `Trait` does not name a struct
+        A { x: 1 } => {} //~ ERROR `A` does not name a struct
+        u32 { x: 1 } => {} //~ ERROR `u32` does not name a struct
     }
 }
