@@ -2,7 +2,7 @@ use rustc::lint::{Context, LintArray, LintPass};
 use rustc::middle::ty::TypeVariants::TyStruct;
 use syntax::ast::*;
 use syntax::codemap::Spanned;
-use utils::{match_def_path, walk_ptrs_ty};
+use utils::{match_def_path};
 
 declare_lint! {
     pub RANGE_STEP_BY_ZERO, Warn,
