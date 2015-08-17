@@ -23,8 +23,7 @@ macro_rules! from_str_radix_float_impl {
     ($T:ty) => {
         fn from_str_radix(src: &str, radix: u32)
                           -> Result<$T, ParseFloatError> {
-            use num::FloatErrorKind::*;
-            use num::ParseFloatError as PFE;
+            use num::dec2flt::{pfe_empty, pfe_invalid};
 
             // Special values
             match src {
@@ -35,8 +34,8 @@ macro_rules! from_str_radix_float_impl {
             }
 
             let (is_positive, src) =  match src.slice_shift_char() {
-                None             => return Err(PFE { __kind: Empty }),
-                Some(('-', ""))  => return Err(PFE { __kind: Empty }),
+                None             => return Err(pfe_empty()),
+                Some(('-', ""))  => return Err(pfe_empty()),
                 Some(('-', src)) => (false, src),
                 Some((_, _))     => (true,  src),
             };
@@ -88,7 +87,7 @@ macro_rules! from_str_radix_float_impl {
                             break;  // start of fractional part
                         },
                         _ => {
-                            return Err(PFE { __kind: Invalid });
+                            return Err(pfe_invalid())
                         },
                     },
                 }
@@ -122,7 +121,7 @@ macro_rules! from_str_radix_float_impl {
                                 break; // start of exponent
                             },
                             _ => {
-                                return Err(PFE { __kind: Invalid });
+                                return Err(pfe_invalid())
                             },
                         },
                     }
@@ -135,7 +134,7 @@ macro_rules! from_str_radix_float_impl {
                     let base = match c {
                         'E' | 'e' if radix == 10 => 10.0,
                         'P' | 'p' if radix == 16 => 2.0,
-                        _ => return Err(PFE { __kind: Invalid }),
+                        _ => return Err(pfe_invalid()),
                     };
 
                     // Parse the exponent as decimal integer
@@ -144,13 +143,13 @@ macro_rules! from_str_radix_float_impl {
                         Some(('-', src)) => (false, src.parse::<usize>()),
                         Some(('+', src)) => (true,  src.parse::<usize>()),
                         Some((_, _))     => (true,  src.parse::<usize>()),
-                        None             => return Err(PFE { __kind: Invalid }),
+                        None             => return Err(pfe_invalid()),
                     };
 
                     match (is_positive, exp) {
                         (true,  Ok(exp)) => base.powi(exp as i32),
                         (false, Ok(exp)) => 1.0 / base.powi(exp as i32),
-                        (_, Err(_))      => return Err(PFE { __kind: Invalid }),
+                        (_, Err(_))      => return Err(pfe_invalid()),
                     }
                 },
                 None => 1.0, // no exponent

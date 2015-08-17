@@ -14,7 +14,7 @@ mod tests {
     use core::$T_i::*;
     use num;
     use core::ops::{BitOr, BitAnd, BitXor, Shl, Shr, Not};
-    use std::str;
+    use std::str::FromStr;
 
     #[test]
     fn test_overflows() {
@@ -152,5 +152,5 @@ mod tests {
         assert_eq!($T::from_str_radix("Z", 10).ok(), None::<$T>);
         assert_eq!($T::from_str_radix("_", 2).ok(), None::<$T>);
     }
-
+}
 )}

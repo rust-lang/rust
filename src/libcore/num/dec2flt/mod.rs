@@ -96,8 +96,9 @@
             issue = "0")]
 
 use prelude::v1::*;
-use num::ParseFloatError as PFE;
-use num::FloatErrorKind;
+use fmt;
+use str::FromStr;
+
 use self::parse::{parse_decimal, Decimal, Sign};
 use self::parse::ParseResult::{self, Valid, ShortcutToInf, ShortcutToZero};
 use self::num::digits_to_big;
@@ -110,14 +111,87 @@ mod num;
 pub mod rawfp;
 pub mod parse;
 
-/// Entry point for decimal-to-f32 conversion.
-pub fn to_f32(s: &str) -> Result<f32, PFE> {
-    dec2flt(s)
+macro_rules! from_str_float_impl {
+    ($t:ty, $func:ident) => {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl FromStr for $t {
+            type Err = ParseFloatError;
+
+            /// Converts a string in base 10 to a float.
+            /// Accepts an optional decimal exponent.
+            ///
+            /// This function accepts strings such as
+            ///
+            /// * '3.14'
+            /// * '-3.14'
+            /// * '2.5E10', or equivalently, '2.5e10'
+            /// * '2.5E-10'
+            /// * '.' (understood as 0)
+            /// * '5.'
+            /// * '.5', or, equivalently,  '0.5'
+            /// * 'inf', '-inf', 'NaN'
+            ///
+            /// Leading and trailing whitespace represent an error.
+            ///
+            /// # Arguments
+            ///
+            /// * src - A string
+            ///
+            /// # Return value
+            ///
+            /// `Err(ParseFloatError)` if the string did not represent a valid
+            /// number.  Otherwise, `Ok(n)` where `n` is the floating-point
+            /// number represented by `src`.
+            #[inline]
+            fn from_str(src: &str) -> Result<Self, ParseFloatError> {
+                dec2flt(src)
+            }
+        }
+    }
+}
+from_str_float_impl!(f32, to_f32);
+from_str_float_impl!(f64, to_f64);
+
+/// An error which can be returned when parsing a float.
+#[derive(Debug, Clone, PartialEq)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct ParseFloatError {
+    kind: FloatErrorKind
 }
 
-/// Entry point for decimal-to-f64 conversion.
-pub fn to_f64(s: &str) -> Result<f64, PFE> {
-    dec2flt(s)
+#[derive(Debug, Clone, PartialEq)]
+enum FloatErrorKind {
+    Empty,
+    Invalid,
+}
+
+impl ParseFloatError {
+    #[unstable(feature = "int_error_internals",
+               reason = "available through Error trait and this method should \
+                         not be exposed publicly",
+               issue = "0")]
+    #[doc(hidden)]
+    pub fn __description(&self) -> &str {
+        match self.kind {
+            FloatErrorKind::Empty => "cannot parse float from empty string",
+            FloatErrorKind::Invalid => "invalid float literal",
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for ParseFloatError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.__description().fmt(f)
+    }
+}
+
+pub fn pfe_empty() -> ParseFloatError {
+    ParseFloatError { kind: FloatErrorKind::Empty }
+}
+
+pub fn pfe_invalid() -> ParseFloatError {
+    ParseFloatError { kind: FloatErrorKind::Invalid }
 }
 
 /// Split decimal string into sign and the rest, without inspecting or validating the rest.
@@ -131,9 +205,9 @@ fn extract_sign(s: &str) -> (Sign, &str) {
 }
 
 /// Convert a decimal string into a floating point number.
-fn dec2flt<T: RawFloat>(s: &str) -> Result<T, PFE> {
+fn dec2flt<T: RawFloat>(s: &str) -> Result<T, ParseFloatError> {
     if s.is_empty() {
-        return Err(PFE { __kind: FloatErrorKind::Empty });
+        return Err(pfe_empty())
     }
     let (sign, s) = extract_sign(s);
     let flt = match parse_decimal(s) {
@@ -143,7 +217,7 @@ fn dec2flt<T: RawFloat>(s: &str) -> Result<T, PFE> {
         ParseResult::Invalid => match s {
             "inf" => T::infinity(),
             "NaN" => T::nan(),
-            _ => { return Err(PFE { __kind: FloatErrorKind::Invalid }); }
+            _ => { return Err(pfe_invalid()); }
         }
     };
 
@@ -155,7 +229,7 @@ fn dec2flt<T: RawFloat>(s: &str) -> Result<T, PFE> {
 
 /// The main workhorse for the decimal-to-float conversion: Orchestrate all the preprocessing
 /// and figure out which algorithm should do the actual conversion.
-fn convert<T: RawFloat>(mut decimal: Decimal) -> Result<T, PFE> {
+fn convert<T: RawFloat>(mut decimal: Decimal) -> Result<T, ParseFloatError> {
     simplify(&mut decimal);
     if let Some(x) = trivial_cases(&decimal) {
         return Ok(x);
@@ -172,7 +246,7 @@ fn convert<T: RawFloat>(mut decimal: Decimal) -> Result<T, PFE> {
     // If we exceed this, perhaps while calculating `f * 10^e` in Algorithm R or Algorithm M,
     // we'll crash. So we error out before getting too close, with a generous safety margin.
     if max_digits > 375 {
-        return Err(PFE { __kind: FloatErrorKind::Invalid });
+        return Err(pfe_invalid());
     }
     let f = digits_to_big(decimal.integral, decimal.fractional);
 
