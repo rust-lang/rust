@@ -2774,6 +2774,22 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 -lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
 "##,
 
+E0390: r##"
+You tried to implement on an `*mut T` type. Erroneous code example:
+
+```
+struct Foo {
+    x: i32
+}
+
+impl *mut Foo {}
+// error: only a single inherent implementation marked with
+//        `#[lang = "mut_ptr"]` is allowed for the `*mut T` primitive
+```
+
+To fix this, please follow the compiler recommendations.
+"##,
+
 E0391: r##"
 This error indicates that some types or traits depend on each other
 and therefore cannot be constructed.
@@ -2928,8 +2944,6 @@ register_diagnostics! {
            // between structures
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0390, // only a single inherent implementation marked with
-           // `#[lang = \"{}\"]` is allowed for the `{}` primitive
     E0393, // the type parameter `{}` must be explicitly specified in an object
            // type because its default value `{}` references the type `Self`"
     E0399, // trait items need to be implemented because the associated
