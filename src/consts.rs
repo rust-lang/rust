@@ -53,7 +53,7 @@ impl Constant {
 }
 
 /// a Lit_-like enum to fold constant `Expr`s into
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone)] //TODO: A better PartialEq, remove Eq
 pub enum ConstantVariant {
     /// a String "abc"
     ConstantStr(String, StrStyle),
@@ -332,10 +332,12 @@ fn constant_binop(cx: &Context, op: BinOp, left: &Expr, right: &Expr)
         //BiBitOr,
         //BiShl,
         //BiShr,
-        //BiEq,
+        BiEq => constant_binop_apply(cx, left, right,
+            |l, r| Some(ConstantBool(l == r))),
         //BiLt,
         //BiLe,
-        //BiNe,
+        BiNe => constant_binop_apply(cx, left, right,
+            |l, r| Some(ConstantBool(l != r))),
         //BiGe,
         //BiGt,
         _ => None,
