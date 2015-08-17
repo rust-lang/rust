@@ -8,6 +8,7 @@ extern crate rustc;
 use clippy::consts::{constant, ConstantVariant};
 use clippy::consts::ConstantVariant::*;
 use syntax::ast::*;
+use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::codemap::{Spanned, COMMAND_LINE_SP};
 use std::mem;
@@ -39,5 +40,8 @@ fn check(expect: ConstantVariant, expr: &Expr) {
 fn test_lit() {
     check(ConstantBool(true), &lit(LitBool(true)));
     check(ConstantBool(false), &lit(LitBool(false)));
-
+    check(ConstantInt(0, UnsuffixedIntLit(Plus)),
+            &lit(LitInt(0, UnsuffixedIntLit(Plus))));
+    check(ConstantStr("cool!".into(), CookedStr), &lit(LitStr(
+        InternedString::new("cool!"), CookedStr)));
 }
