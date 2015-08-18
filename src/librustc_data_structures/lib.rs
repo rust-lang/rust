@@ -28,6 +28,8 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(rustc_private, staged_api)]
+#![feature(hashmap_hasher)]
+
 #![cfg_attr(test, feature(test))]
 
 #[macro_use] extern crate log;
@@ -39,6 +41,7 @@ pub mod ivar;
 pub mod snapshot_vec;
 pub mod transitive_relation;
 pub mod unify;
+pub mod fnv;
 
 // See comments in src/librustc/lib.rs
 #[doc(hidden)]
