@@ -643,6 +643,8 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
             }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 let is_long = searcher.memory == usize::MAX;
+                // write out `true` and `false` cases to encourage the compiler
+                // to specialize the two cases separately.
                 if is_long {
                     searcher.next::<MatchOnly>(self.haystack.as_bytes(),
                                                self.needle.as_bytes(),
@@ -655,8 +657,8 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b> {
             }
         }
     }
-
 }
+
 unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
     #[inline]
     fn next_back(&mut self) -> SearchStep {
@@ -678,8 +680,10 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
                 if searcher.end == 0 {
                     return SearchStep::Done;
                 }
+                let is_long = searcher.memory == usize::MAX;
                 match searcher.next_back::<RejectAndMatch>(self.haystack.as_bytes(),
-                                                           self.needle.as_bytes())
+                                                           self.needle.as_bytes(),
+                                                           is_long)
                 {
                     SearchStep::Reject(mut a, b) => {
                         // skip to next char boundary
@@ -708,26 +712,43 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b> {
                 }
             }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
-                searcher.next_back::<MatchOnly>(self.haystack.as_bytes(),
-                                                self.needle.as_bytes())
+                let is_long = searcher.memory == usize::MAX;
+                // write out `true` and `false`, like `next_match`
+                if is_long {
+                    searcher.next_back::<MatchOnly>(self.haystack.as_bytes(),
+                                                    self.needle.as_bytes(),
+                                                    true)
+                } else {
+                    searcher.next_back::<MatchOnly>(self.haystack.as_bytes(),
+                                                    self.needle.as_bytes(),
+                                                    false)
+                }
             }
         }
     }
 }
 
-/// The internal state of an iterator that searches for matches of a substring
-/// within a larger string using two-way search
+/// The internal state of the two-way substring search algorithm.
 #[derive(Clone, Debug)]
 struct TwoWaySearcher {
     // constants
+    /// critical factorization index
     crit_pos: usize,
+    /// critical factorization index for reversed needle
+    crit_pos_back: usize,
     period: usize,
+    /// `byteset` is an extension (not part of the two way algorithm);
+    /// it's a 64-bit "fingerprint" where each set bit `j` corresponds
+    /// to a (byte & 63) == j present in the needle.
     byteset: u64,
 
     // variables
     position: usize,
     end: usize,
-    memory: usize
+    /// index into needle before which we have already matched
+    memory: usize,
+    /// index into needle after which we have already matched
+    memory_back: usize,
 }
 
 /*
@@ -799,6 +820,9 @@ struct TwoWaySearcher {
 
     The purpose of maximal_suffix is to find such a critical factorization.
 
+    If the period is short, compute another factorization x = u' v' to use
+    for reverse search, chosen instead so that |v'| < period(x).
+
 */
 impl TwoWaySearcher {
     fn new(needle: &[u8], end: usize) -> TwoWaySearcher {
@@ -812,10 +836,6 @@ impl TwoWaySearcher {
                 (crit_pos_true, period_true)
             };
 
-        // This isn't in the original algorithm, as far as I'm aware.
-        let byteset = needle.iter()
-                            .fold(0, |a, &b| (1 << ((b & 0x3f) as usize)) | a);
-
         // A particularly readable explanation of what's going on here can be found
         // in Crochemore and Rytter's book "Text Algorithms", ch 13. Specifically
         // see the code for "Algorithm CP" on p. 323.
@@ -826,29 +846,55 @@ impl TwoWaySearcher {
         // "Algorithm CP2", which is optimized for when the period of the needle
         // is large.
         if &needle[..crit_pos] == &needle[period.. period + crit_pos] {
-            // short period case
+            // short period case -- the period is exact
+            // compute a separate critical factorization for the reversed needle
+            // x = u' v' where |v'| < period(x).
+            //
+            // This is sped up by the period being known already.
+            // Note that a case like x = "acba" may be factored exactly forwards
+            // (crit_pos = 1, period = 3) while being factored with approximate
+            // period in reverse (crit_pos = 2, period = 2). We use the given
+            // reverse factorization but keep the exact period.
+            let crit_pos_back = needle.len() - cmp::max(
+                TwoWaySearcher::reverse_maximal_suffix(needle, period, false),
+                TwoWaySearcher::reverse_maximal_suffix(needle, period, true));
+
             TwoWaySearcher {
                 crit_pos: crit_pos,
+                crit_pos_back: crit_pos_back,
                 period: period,
-                byteset: byteset,
+                byteset: Self::byteset_create(&needle[..period]),
 
                 position: 0,
                 end: end,
-                memory: 0
+                memory: 0,
+                memory_back: needle.len(),
             }
         } else {
-            // long period case
-            // we have an approximation to the actual period, and don't use memory.
+            // long period case -- we have an approximation to the actual period,
+            // and don't use memorization.
+            //
+            // Approximate the period by lower bound max(|u|, |v|) + 1.
+            // The critical factorization is efficient to use for both forward and
+            // reverse search.
+
             TwoWaySearcher {
                 crit_pos: crit_pos,
+                crit_pos_back: crit_pos,
                 period: cmp::max(crit_pos, needle.len() - crit_pos) + 1,
-                byteset: byteset,
+                byteset: Self::byteset_create(needle),
 
                 position: 0,
                 end: end,
-                memory: usize::MAX // Dummy value to signify that the period is long
+                memory: usize::MAX, // Dummy value to signify that the period is long
+                memory_back: usize::MAX,
             }
         }
+    }
+
+    #[inline]
+    fn byteset_create(bytes: &[u8]) -> u64 {
+        bytes.iter().fold(0, |a, &b| (1 << (b & 0x3f)) | a)
     }
 
     #[inline(always)]
@@ -868,19 +914,25 @@ impl TwoWaySearcher {
     {
         // `next()` uses `self.position` as its cursor
         let old_pos = self.position;
+        let needle_last = needle.len() - 1;
         'search: loop {
             // Check that we have room to search in
-            if needle.len() > haystack.len() - self.position {
-                self.position = haystack.len();
-                return S::rejecting(old_pos, self.position);
-            }
+            // position + needle_last can not overflow if we assume slices
+            // are bounded by isize's range.
+            let tail_byte = match haystack.get(self.position + needle_last) {
+                Some(&b) => b,
+                None => {
+                    self.position = haystack.len();
+                    return S::rejecting(old_pos, self.position);
+                }
+            };
 
             if S::use_early_reject() && old_pos != self.position {
                 return S::rejecting(old_pos, self.position);
             }
 
             // Quickly skip by large portions unrelated to our substring
-            if !self.byteset_contains(haystack[self.position + needle.len() - 1]) {
+            if !self.byteset_contains(tail_byte) {
                 self.position += needle.len();
                 if !long_period {
                     self.memory = 0;
@@ -928,19 +980,18 @@ impl TwoWaySearcher {
 
     // Follows the ideas in `next()`.
     //
-    // All the definitions are completely symmetrical, with period(x) = period(reverse(x))
+    // The definitions are symmetrical, with period(x) = period(reverse(x))
     // and local_period(u, v) = local_period(reverse(v), reverse(u)), so if (u, v)
-    // is a critical factorization, so is (reverse(v), reverse(u)). Similarly,
-    // the "period" stored in self.period is the real period if long_period is
-    // false, and so is still valid for a reversed needle, and if long_period is
-    // true, all the algorithm requires is that self.period is less than or
-    // equal to the real period, which must be true for the forward case anyway.
+    // is a critical factorization, so is (reverse(v), reverse(u)).
+    //
+    // For the reverse case we have computed a critical factorization x = u' v'
+    // (field `crit_pos_back`). We need |u| < period(x) for the forward case and
+    // thus |v'| < period(x) for the reverse.
     //
     // To search in reverse through the haystack, we search forward through
-    // a reversed haystack with a reversed needle, and the above paragraph shows
-    // that the precomputed parameters can be left alone.
+    // a reversed haystack with a reversed needle, matching first u' and then v'.
     #[inline]
-    fn next_back<S>(&mut self, haystack: &[u8], needle: &[u8])
+    fn next_back<S>(&mut self, haystack: &[u8], needle: &[u8], long_period: bool)
         -> S::Output
         where S: TwoWayStrategy
     {
@@ -949,33 +1000,52 @@ impl TwoWaySearcher {
         let old_end = self.end;
         'search: loop {
             // Check that we have room to search in
-            if needle.len() > self.end {
-                self.end = 0;
-                return S::rejecting(0, old_end);
-            }
+            // end - needle.len() will wrap around when there is no more room,
+            // but due to slice length limits it can never wrap all the way back
+            // into the length of haystack.
+            let front_byte = match haystack.get(self.end.wrapping_sub(needle.len())) {
+                Some(&b) => b,
+                None => {
+                    self.end = 0;
+                    return S::rejecting(0, old_end);
+                }
+            };
 
             if S::use_early_reject() && old_end != self.end {
                 return S::rejecting(self.end, old_end);
             }
 
             // Quickly skip by large portions unrelated to our substring
-            if !self.byteset_contains(haystack[self.end - needle.len()]) {
+            if !self.byteset_contains(front_byte) {
                 self.end -= needle.len();
+                if !long_period {
+                    self.memory_back = needle.len();
+                }
                 continue 'search;
             }
 
             // See if the left part of the needle matches
-            for i in (0..self.crit_pos).rev() {
+            let crit = if long_period { self.crit_pos_back }
+                       else { cmp::min(self.crit_pos_back, self.memory_back) };
+            for i in (0..crit).rev() {
                 if needle[i] != haystack[self.end - needle.len() + i] {
-                    self.end -= self.crit_pos - i;
+                    self.end -= self.crit_pos_back - i;
+                    if !long_period {
+                        self.memory_back = needle.len();
+                    }
                     continue 'search;
                 }
             }
 
             // See if the right part of the needle matches
-            for i in self.crit_pos..needle.len() {
+            let needle_end = if long_period { needle.len() }
+                             else { self.memory_back };
+            for i in self.crit_pos_back..needle_end {
                 if needle[i] != haystack[self.end - needle.len() + i] {
                     self.end -= self.period;
+                    if !long_period {
+                        self.memory_back = self.period;
+                    }
                     continue 'search;
                 }
             }
@@ -984,41 +1054,47 @@ impl TwoWaySearcher {
             let match_pos = self.end - needle.len();
             // Note: sub self.period instead of needle.len() to have overlapping matches
             self.end -= needle.len();
+            if !long_period {
+                self.memory_back = needle.len();
+            }
 
             return S::matching(match_pos, match_pos + needle.len());
         }
     }
 
-    // Computes a critical factorization (u, v) of `arr`.
-    // Specifically, returns (i, p), where i is the starting index of v in some
-    // critical factorization (u, v) and p = period(v)
+    // Compute the maximal suffix of `arr`.
+    //
+    // The maximal suffix is a possible critical factorization (u, v) of `arr`.
+    //
+    // Returns (`i`, `p`) where `i` is the starting index of v and `p` is the
+    // period of v.
+    //
+    // `order_greater` determines if lexical order is `<` or `>`. Both
+    // orders must be computed -- the ordering with the largest `i` gives
+    // a critical factorization.
+    //
+    // For long period cases, the resulting period is not exact (it is too short).
     #[inline]
-    fn maximal_suffix(arr: &[u8], reversed: bool) -> (usize, usize) {
-        let mut left: usize = !0; // Corresponds to i in the paper
-        let mut right = 0; // Corresponds to j in the paper
-        let mut offset = 1; // Corresponds to k in the paper
+    fn maximal_suffix(arr: &[u8], order_greater: bool) -> (usize, usize) {
+        let mut left = 0; // Corresponds to i in the paper
+        let mut right = 1; // Corresponds to j in the paper
+        let mut offset = 0; // Corresponds to k in the paper, but starting at 0
+                            // to match 0-based indexing.
         let mut period = 1; // Corresponds to p in the paper
 
-        while right + offset < arr.len() {
-            let a;
-            let b;
-            if reversed {
-                a = arr[left.wrapping_add(offset)];
-                b = arr[right + offset];
-            } else {
-                a = arr[right + offset];
-                b = arr[left.wrapping_add(offset)];
-            }
-            if a < b {
+        while let Some(&a) = arr.get(right + offset) {
+            // `left` will be inbounds when `right` is.
+            let b = arr[left + offset];
+            if (a < b && !order_greater) || (a > b && order_greater) {
                 // Suffix is smaller, period is entire prefix so far.
-                right += offset;
-                offset = 1;
-                period = right.wrapping_sub(left);
+                right += offset + 1;
+                offset = 0;
+                period = right - left;
             } else if a == b {
                 // Advance through repetition of the current period.
-                if offset == period {
-                    right += offset;
-                    offset = 1;
+                if offset + 1 == period {
+                    right += offset + 1;
+                    offset = 0;
                 } else {
                     offset += 1;
                 }
@@ -1026,11 +1102,64 @@ impl TwoWaySearcher {
                 // Suffix is larger, start over from current location.
                 left = right;
                 right += 1;
-                offset = 1;
+                offset = 0;
                 period = 1;
             }
         }
-        (left.wrapping_add(1), period)
+        (left, period)
+    }
+
+    // Compute the maximal suffix of the reverse of `arr`.
+    //
+    // The maximal suffix is a possible critical factorization (u', v') of `arr`.
+    //
+    // Returns `i` where `i` is the starting index of v', from the back;
+    // returns immedately when a period of `known_period` is reached.
+    //
+    // `order_greater` determines if lexical order is `<` or `>`. Both
+    // orders must be computed -- the ordering with the largest `i` gives
+    // a critical factorization.
+    //
+    // For long period cases, the resulting period is not exact (it is too short).
+    fn reverse_maximal_suffix(arr: &[u8], known_period: usize,
+                              order_greater: bool) -> usize
+    {
+        let mut left = 0; // Corresponds to i in the paper
+        let mut right = 1; // Corresponds to j in the paper
+        let mut offset = 0; // Corresponds to k in the paper, but starting at 0
+                            // to match 0-based indexing.
+        let mut period = 1; // Corresponds to p in the paper
+        let n = arr.len();
+
+        while right + offset < n {
+            let a = arr[n - (1 + right + offset)];
+            let b = arr[n - (1 + left + offset)];
+            if (a < b && !order_greater) || (a > b && order_greater) {
+                // Suffix is smaller, period is entire prefix so far.
+                right += offset + 1;
+                offset = 0;
+                period = right - left;
+            } else if a == b {
+                // Advance through repetition of the current period.
+                if offset + 1 == period {
+                    right += offset + 1;
+                    offset = 0;
+                } else {
+                    offset += 1;
+                }
+            } else {
+                // Suffix is larger, start over from current location.
+                left = right;
+                right += 1;
+                offset = 0;
+                period = 1;
+            }
+            if period == known_period {
+                break;
+            }
+        }
+        debug_assert!(period <= known_period);
+        left
     }
 }
 
