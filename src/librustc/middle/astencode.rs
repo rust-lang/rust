@@ -470,8 +470,8 @@ impl tr for def::Def {
           def::DefPrimTy(p) => def::DefPrimTy(p),
           def::DefTyParam(s, index, def_id, n) => def::DefTyParam(s, index, def_id.tr(dcx), n),
           def::DefUse(did) => def::DefUse(did.tr(dcx)),
-          def::DefUpvar(nid1, nid2) => {
-            def::DefUpvar(dcx.tr_id(nid1), dcx.tr_id(nid2))
+          def::DefUpvar(nid1, index, nid2) => {
+            def::DefUpvar(dcx.tr_id(nid1), index, dcx.tr_id(nid2))
           }
           def::DefStruct(did) => def::DefStruct(did.tr(dcx)),
           def::DefRegion(nid) => def::DefRegion(dcx.tr_id(nid)),
