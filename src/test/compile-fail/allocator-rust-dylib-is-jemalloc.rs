@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-msvc everything is the system allocator on msvc
+// ignore-musl no dylibs on musl right now
 // aux-build:allocator-dylib2.rs
 // error-pattern: cannot link together two allocators
 
