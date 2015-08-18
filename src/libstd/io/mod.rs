@@ -1060,9 +1060,6 @@ pub trait Seek {
     /// A seek beyond the end of a stream is allowed, but implementation
     /// defined.
     ///
-    /// The behavior when seeking past the end of the stream is implementation
-    /// defined.
-    ///
     /// If the seek operation completed successfully,
     /// this method returns the new position from the start of the stream.
     /// That position can be used later with `SeekFrom::Start`.
