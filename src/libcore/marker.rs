@@ -13,15 +13,6 @@
 //! Rust types can be classified in various useful ways according to
 //! intrinsic properties of the type. These classifications, often called
 //! 'kinds', are represented as traits.
-//!
-//! They cannot be implemented by user code, but are instead implemented
-//! by the compiler automatically for the types to which they apply.
-//!
-//! Marker types are special types that are used with unsafe code to
-//! inform the compiler of special constraints. Marker types should
-//! only be needed when you are creating an abstraction that is
-//! implemented using unsafe code. In that case, you may want to embed
-//! some of the marker types below into your type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
