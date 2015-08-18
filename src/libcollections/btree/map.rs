@@ -315,8 +315,14 @@ impl<K: Ord, V> BTreeMap<K, V> {
     // 2) While ODS may potentially return the pair we *just* inserted after
     // the split, we will never do this. Again, this shouldn't effect the analysis.
 
-    /// Inserts a key-value pair into the map. If the key already had a value
-    /// present in the map, that value is returned. Otherwise, `None` is returned.
+    /// Inserts a key-value pair into the map.
+    ///
+    /// If the map did not have this key present, `None` is returned.
+    ///
+    /// If the map did have this key present, that value is returned, and the
+    /// entry is not updated. See the [module-level documentation] for more.
+    ///
+    /// [module-level documentation]: index.html#insert-and-complex-keys
     ///
     /// # Examples
     ///
