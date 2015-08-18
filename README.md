@@ -82,6 +82,28 @@ Read ["Installing Rust"] from [The Book].
    $ make && make install
    ```
 
+## Building Documentation
+
+If you’d like to build the documentation, it’s almost the same:
+
+```sh
+./configure
+$ make docs
+```
+
+Building the documentation requires building the compiler, so the above
+details will apply. Once you have the compiler built, you can
+
+```sh
+$ make docs NO_REBUILD=1 
+```
+
+To make sure you don’t re-build the compiler because you made a change
+to some documentation.
+
+The generated documentation will appear in a top-level `doc` directory,
+created by the `make` rule.
+
 ## Notes
 
 Since the Rust compiler is written in Rust, it must be built by a
