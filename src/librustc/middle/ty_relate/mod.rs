@@ -14,7 +14,7 @@
 //! type equality, etc.
 
 use middle::subst::{ErasedRegions, NonerasedRegions, ParamSpace, Substs};
-use middle::ty::{self, Ty, TypeError};
+use middle::ty::{self, HasTypeFlags, Ty, TypeError};
 use middle::ty_fold::TypeFoldable;
 use std::rc::Rc;
 use syntax::abi;
@@ -78,7 +78,7 @@ pub trait TypeRelation<'a,'tcx> : Sized {
         where T: Relate<'a,'tcx>;
 }
 
-pub trait Relate<'a,'tcx>: TypeFoldable<'tcx> {
+pub trait Relate<'a,'tcx>: TypeFoldable<'tcx> + HasTypeFlags {
     fn relate<R:TypeRelation<'a,'tcx>>(relation: &mut R,
                                        a: &Self,
                                        b: &Self)
