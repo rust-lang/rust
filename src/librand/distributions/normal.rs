@@ -10,7 +10,7 @@
 
 //! The normal and derived distributions.
 
-use core::num::Float;
+use FloatMath;
 
 use {Rng, Rand, Open01};
 use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};

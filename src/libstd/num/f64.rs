@@ -45,12 +45,12 @@ mod cmath {
         pub fn fmax(a: c_double, b: c_double) -> c_double;
         pub fn fmin(a: c_double, b: c_double) -> c_double;
         pub fn fmod(a: c_double, b: c_double) -> c_double;
-        pub fn nextafter(x: c_double, y: c_double) -> c_double;
         pub fn frexp(n: c_double, value: &mut c_int) -> c_double;
+        pub fn ilogb(n: c_double) -> c_int;
         pub fn ldexp(x: c_double, n: c_int) -> c_double;
         pub fn logb(n: c_double) -> c_double;
         pub fn log1p(n: c_double) -> c_double;
-        pub fn ilogb(n: c_double) -> c_int;
+        pub fn nextafter(x: c_double, y: c_double) -> c_double;
         pub fn modf(n: c_double, iptr: &mut c_double) -> c_double;
         pub fn sinh(n: c_double) -> c_double;
         pub fn tan(n: c_double) -> c_double;
@@ -222,7 +222,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn floor(self) -> f64 { num::Float::floor(self) }
+    pub fn floor(self) -> f64 {
+        unsafe { intrinsics::floorf64(self) }
+    }
 
     /// Returns the smallest integer greater than or equal to a number.
     ///
@@ -235,7 +237,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn ceil(self) -> f64 { num::Float::ceil(self) }
+    pub fn ceil(self) -> f64 {
+        unsafe { intrinsics::ceilf64(self) }
+    }
 
     /// Returns the nearest integer to a number. Round half-way cases away from
     /// `0.0`.
@@ -249,7 +253,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn round(self) -> f64 { num::Float::round(self) }
+    pub fn round(self) -> f64 {
+        unsafe { intrinsics::roundf64(self) }
+    }
 
     /// Returns the integer part of a number.
     ///
@@ -262,7 +268,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn trunc(self) -> f64 { num::Float::trunc(self) }
+    pub fn trunc(self) -> f64 {
+        unsafe { intrinsics::truncf64(self) }
+    }
 
     /// Returns the fractional part of a number.
     ///
@@ -277,7 +285,7 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn fract(self) -> f64 { num::Float::fract(self) }
+    pub fn fract(self) -> f64 { self - self.trunc() }
 
     /// Computes the absolute value of `self`. Returns `NAN` if the
     /// number is `NAN`.
@@ -386,7 +394,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn mul_add(self, a: f64, b: f64) -> f64 { num::Float::mul_add(self, a, b) }
+    pub fn mul_add(self, a: f64, b: f64) -> f64 {
+        unsafe { intrinsics::fmaf64(self, a, b) }
+    }
 
     /// Takes the reciprocal (inverse) of a number, `1/x`.
     ///
@@ -424,7 +434,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn powf(self, n: f64) -> f64 { num::Float::powf(self, n) }
+    pub fn powf(self, n: f64) -> f64 {
+        unsafe { intrinsics::powf64(self, n) }
+    }
 
     /// Takes the square root of a number.
     ///
@@ -441,7 +453,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn sqrt(self) -> f64 { num::Float::sqrt(self) }
+    pub fn sqrt(self) -> f64 {
+        unsafe { intrinsics::sqrtf64(self) }
+    }
 
     /// Returns `e^(self)`, (the exponential function).
     ///
@@ -457,7 +471,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn exp(self) -> f64 { num::Float::exp(self) }
+    pub fn exp(self) -> f64 {
+        unsafe { intrinsics::expf64(self) }
+    }
 
     /// Returns `2^(self)`.
     ///
@@ -471,7 +487,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn exp2(self) -> f64 { num::Float::exp2(self) }
+    pub fn exp2(self) -> f64 {
+        unsafe { intrinsics::exp2f64(self) }
+    }
 
     /// Returns the natural logarithm of the number.
     ///
@@ -487,7 +505,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn ln(self) -> f64 { num::Float::ln(self) }
+    pub fn ln(self) -> f64 {
+        unsafe { intrinsics::logf64(self) }
+    }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
     ///
@@ -506,7 +526,7 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn log(self, base: f64) -> f64 { num::Float::log(self, base) }
+    pub fn log(self, base: f64) -> f64 { self.ln() / base.ln() }
 
     /// Returns the base 2 logarithm of the number.
     ///
@@ -520,7 +540,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn log2(self) -> f64 { num::Float::log2(self) }
+    pub fn log2(self) -> f64 {
+        unsafe { intrinsics::log2f64(self) }
+    }
 
     /// Returns the base 10 logarithm of the number.
     ///
@@ -534,7 +556,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn log10(self) -> f64 { num::Float::log10(self) }
+    pub fn log10(self) -> f64 {
+        unsafe { intrinsics::log10f64(self) }
+    }
 
     /// Converts radians to degrees.
     ///

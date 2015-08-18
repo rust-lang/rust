@@ -1297,18 +1297,6 @@ pub trait Float: Sized {
     /// Returns the mantissa, exponent and sign as integers, respectively.
     fn integer_decode(self) -> (u64, i16, i8);
 
-    /// Return the largest integer less than or equal to a number.
-    fn floor(self) -> Self;
-    /// Return the smallest integer greater than or equal to a number.
-    fn ceil(self) -> Self;
-    /// Return the nearest integer to a number. Round half-way cases away from
-    /// `0.0`.
-    fn round(self) -> Self;
-    /// Return the integer part of a number.
-    fn trunc(self) -> Self;
-    /// Return the fractional part of a number.
-    fn fract(self) -> Self;
-
     /// Computes the absolute value of `self`. Returns `Float::nan()` if the
     /// number is `Float::nan()`.
     fn abs(self) -> Self;
@@ -1325,10 +1313,6 @@ pub trait Float: Sized {
     /// `Float::neg_infinity()`.
     fn is_negative(self) -> bool;
 
-    /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
-    /// error. This produces a more accurate result with better performance than
-    /// a separate multiplication operation followed by an add.
-    fn mul_add(self, a: Self, b: Self) -> Self;
     /// Take the reciprocal (inverse) of a number, `1/x`.
     fn recip(self) -> Self;
 
@@ -1336,28 +1320,6 @@ pub trait Float: Sized {
     ///
     /// Using this function is generally faster than using `powf`
     fn powi(self, n: i32) -> Self;
-    /// Raise a number to a floating point power.
-    fn powf(self, n: Self) -> Self;
-
-    /// Take the square root of a number.
-    ///
-    /// Returns NaN if `self` is a negative number.
-    fn sqrt(self) -> Self;
-    /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
-    fn rsqrt(self) -> Self;
-
-    /// Returns `e^(self)`, (the exponential function).
-    fn exp(self) -> Self;
-    /// Returns 2 raised to the power of the number, `2^(self)`.
-    fn exp2(self) -> Self;
-    /// Returns the natural logarithm of the number.
-    fn ln(self) -> Self;
-    /// Returns the logarithm of the number with respect to an arbitrary base.
-    fn log(self, base: Self) -> Self;
-    /// Returns the base 2 logarithm of the number.
-    fn log2(self) -> Self;
-    /// Returns the base 10 logarithm of the number.
-    fn log10(self) -> Self;
 
     /// Convert radians to degrees.
     fn to_degrees(self) -> Self;
