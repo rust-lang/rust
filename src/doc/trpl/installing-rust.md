@@ -24,37 +24,38 @@ $ sh rustup.sh
 
 [insecurity]: http://curlpipesh.tumblr.com
 
-If we're on Windows, please download the appropriate [installer][install-page].
-**NOTE:** By default, the Windows installer will not add Rust to the %PATH%
-system variable. If this is the only version of Rust we are installing and we
-want to be able to run it from the command line, click on "Advanced" on the
-install dialog and on the "Product Features" page ensure "Add to PATH" is
-installed on the local hard drive.
+If you're on Windows, please download the appropriate [installer][install-page].
+
+> Note: By default, the Windows installer won't add Rust to the %PATH% system
+> variable. If this is the only version of Rust we are installing and we want to
+> be able to run it from the command line, click on "Advanced" on the install
+> dialog and on the "Product Features" page ensure "Add to PATH" is installed on
+> the local hard drive.
 
 
 [install-page]: https://www.rust-lang.org/install.html
 
 ## Uninstalling
 
-If we decide we don't want Rust anymore, we'll be a bit sad, but that's okay.
-Not every programming language is great for everyone. Just run the uninstall
-script:
+If you decide you don't want Rust anymore, we'll be a bit sad, but that's okay.
+Not every programming language is great for everyone. We'll just run the
+uninstall script:
 
 ```bash
 $ sudo /usr/local/lib/rustlib/uninstall.sh
 ```
 
-If we used the Windows installer, just re-run the `.msi` and it will give us an
-uninstall option.
+If we used the Windows installer, we'll just re-run the `.msi` and it will give
+us an uninstall option.
 
 ## That disclaimer we promised
 
 Some people, and somewhat rightfully so, get very upset when we tell them to
-`curl | sh`. Basically, when we do this, we are trusting that the good people
-who maintain Rust aren't going to hack our computer and do bad things. That's a
-good instinct! If we're one of those people, please check out the documentation
-on [building Rust from Source][from-source], or [the official binary
-downloads][install-page].
+`curl | sh`. Basically, when they do this, they are trusting that the good
+people who maintain Rust aren't going to hack their computer and do bad things.
+That's a good instinct! If you're one of those people, please check out the
+documentation on [building Rust from Source][from-source], or [the official
+binary downloads][install-page].
 
 [from-source]: https://github.com/rust-lang/rust#building-from-source
 
@@ -62,7 +63,7 @@ downloads][install-page].
 
 Oh, we should also mention the officially supported platforms:
 
-* Windows (7, 8, Server 2008 R2)
+* Windows (7 or later, Server 2008 R2)
 * Linux (2.6.18 or later, various distributions), x86 and x86-64
 * OSX 10.7 (Lion) or later, x86 and x86-64
 
@@ -73,7 +74,7 @@ testing.
 Finally, a comment about Windows. Rust considers Windows to be a first-class
 platform upon release, but if we're honest, the Windows experience isn't as
 integrated as the Linux/OS X experience is. We're working on it! If anything
-does not work, it is a bug. Please let us know if that happens. Each and every
+doesn't work, it is a bug. Please let us know if that happens. Each and every
 commit is tested against Windows just like any other platform.
 
 ## After installation

@@ -9,7 +9,7 @@ thing to do.
 
 The first thing that we need to do is make a file to put our code in. I like to
 make a `projects` directory in my home directory, and keep all my projects
-there. Rust does not care where our code lives.
+there. Rust doesn't care where our code lives.
 
 This actually leads to one other concern we should address: this guide will
 assume that we have basic familiarity with the command line. Rust itself makes
@@ -71,10 +71,10 @@ were arguments, they would go inside the parentheses (`(` and `)`), and because
 we aren’t returning anything from this function, we can omit the return type
 entirely. We’ll get to it later.
 
-We’ll also note that the function is wrapped in curly braces (`{` and `}`). Rust
-requires these around all function bodies. It is also considered good style to
-put the opening curly brace on the same line as the function declaration, with
-one space in between.
+You’ll also note that the function is wrapped in curly braces (`{` and `}`).
+Rust requires these around all function bodies. It is also considered good style
+to put the opening curly brace on the same line as the function declaration,
+with one space in between.
 
 Next up is this line:
 
@@ -84,29 +84,29 @@ Next up is this line:
 
 This line does all of the work in our little program. There are a number of
 details that are important here. The first is that it’s indented with four
-spaces, not tabs. Please configure our editor of choice to insert four spaces
-with the tab key. We provide some [sample configurations for various
-editors][configs].
+spaces, not tabs. Please configure your editor of choice to insert four spaces
+with the tab key. We provide some
+[sample configurations for various editors][configs].
 
 [configs]: https://github.com/rust-lang/rust/tree/master/src/etc/CONFIGS.md
 
 The second point is the `println!()` part. This is calling a Rust
 [macro][macro], which is how metaprogramming is done in Rust. If it were a
 function instead, it would look like this: `println()`. For our purposes, we
-don’t need to worry about this difference. Just know that sometimes, we’ll see a `!`,
-and that means that we’re calling a macro instead of a normal function. Rust
-implements `println!` as a macro rather than a function for good reasons, but
-that's an advanced topic. One last thing to mention: Rust’s macros are
-significantly different from C macros, if we’ve used those. Don’t be scared of
-using macros. We’ll get to the details eventually, we’ll just have to take it on
-trust for now.
+don’t need to worry about this difference. Just know that sometimes, we’ll see a
+`!`, and that means that we’re calling a macro instead of a normal function.
+Rust implements `println!` as a macro rather than a function for good reasons,
+but that's an advanced topic. One last thing to mention: Rust’s macros are
+significantly different from C macros, if you’ve used those. Don’t be scared of
+using macros. We’ll get to the details eventually, you’ll just have to take it
+on trust for now.
 
 [macro]: macros.html
 
 Next, `"Hello, world!"` is a ‘string’. Strings are a surprisingly complicated
 topic in a systems programming language, and this is a ‘statically allocated’
-string. If we want to read further about allocation, check out [the stack and
-the heap][allocation], but we don’t need to right now if we don’t want to. We
+string. If you want to read further about allocation, check out [the stack and
+the heap][allocation], but you don’t need to right now if you don’t want to. We
 pass this string as an argument to `println!`, which prints the string to the
 screen. Easy enough!
 
@@ -127,8 +127,8 @@ compiler, `rustc`, by passing it the name of our source file:
 $ rustc main.rs
 ```
 
-This is similar to `gcc` or `clang`, if we come from a C or C++ background. Rust
-will output a binary executable. We can see it with `ls`:
+This is similar to `gcc` or `clang`, if you come from a C or C++ background.
+Rust will output a binary executable. We can see it with `ls`:
 
 ```bash
 $ ls
@@ -151,18 +151,19 @@ $ ./main  # or main.exe on Windows
 
 This prints out our `Hello, world!` text to our terminal.
 
-If we come from a dynamic language like Ruby, Python, or JavaScript, we may not
-be used to these two steps being separate. Rust is an ‘ahead-of-time compiled
-language’, which means that we can compile a program, give it to someone else,
-and they don't need to have Rust installed. If we give someone a `.rb` or `.py`
-or `.js` file, they need to have a Ruby/Python/JavaScript implementation
-installed, but we just need one command to both compile and run our program.
-Everything is a tradeoff in language design, and Rust has made its choice.
+If you come from a dynamic language like Ruby, Python, or JavaScript, you may
+not be used to these two steps being separate. Rust is an ‘ahead-of-time
+compiled language’, which means that we can compile a program, give it to
+someone else, and they don't need to have Rust installed. If we give someone a
+`.rb` or `.py` or `.js` file, they need to have a Ruby/Python/JavaScript
+implementation installed, but we just need one command to both compile and run
+our program. Everything is a tradeoff in language design, and Rust has made its
+choice.
 
-Congratulations! We have officially written a Rust program. That makes us Rust
-programmers! Welcome. 🎊🎉👍
+Congratulations! You have officially written a Rust program. That makes you a
+Rust programmer! Welcome. 🎊🎉👍
 
-Next, I'd like to introduce us to another tool, Cargo, which is used to write
+Next, I'd like to introduce you to another tool, Cargo, which is used to write
 real-world Rust programs. Just using `rustc` is nice for simple things, but as
 our project grows, we'll want something to help us manage all of the options
 that it has, and to make it easy to share our code with other people and

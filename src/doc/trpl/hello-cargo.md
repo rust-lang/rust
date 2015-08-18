@@ -13,9 +13,10 @@ any dependencies, so we’ll only be using the first part of its functionality.
 Eventually, we’ll add more. Since we started off by using Cargo, it'll be easy
 to add later.
 
-If we installed Rust via the official installers we will also have Cargo. If we
-installed Rust some other way, we may want to [check the Cargo
-README][cargoreadme] for specific instructions about installing it.
+If you installed Rust via the official installers you will also have Cargo. If
+you installed Rust some other way, you may want to
+[check the Cargo README][cargoreadme] for specific instructions about installing
+it.
 
 [cargoreadme]: https://github.com/rust-lang/cargo#installing-cargo-from-nightlies
 
@@ -30,14 +31,14 @@ old executable (`main.exe` on Windows, `main` everywhere else). Let's do that pa
 ```bash
 $ mkdir src
 $ mv main.rs src/main.rs
-$ rm main  # or main.exe on Windows
+$ rm main  # or 'rm main.exe' on Windows
 ```
 
-Note that since we're creating an executable, we retain `main.rs` as the source
-filename. If we want to make a library instead, we should use `lib.rs`. This
-convention is used by Cargo to successfully compile our projects, but it can be
-overridden if we wish. Custom file locations for the entry point can be
-specified with a [`[lib]` or `[[bin]]`][crates-custom] key in the TOML file.
+> Note: since we're creating an executable, we retain `main.rs` as the source
+> filename. If we want to make a library instead, we should use `lib.rs`. This
+> convention is used by Cargo to successfully compile our projects, but it can
+> be overridden if we wish. Custom file locations for the entry point can be
+> specified with a [`[lib]` or `[[bin]]`][crates-custom] key in the TOML file.
 
 [crates-custom]: http://doc.crates.io/manifest.html#configuring-a-target
 
@@ -49,7 +50,7 @@ everything, and everything in its place.
 Next, our configuration file:
 
 ```bash
-$ editor Cargo.toml
+$ editor Cargo.toml # or 'notepad Cargo.toml' on Windows
 ```
 
 Make sure to get this name right: we need the capital `C`!
@@ -112,7 +113,7 @@ grows, we can just run `cargo build`, and it’ll work the right way.
 When our project is finally ready for release, we can use `cargo build
 --release` to compile our project with optimizations.
 
-We'll also notice that Cargo has created a new file: `Cargo.lock`.
+You'll also notice that Cargo has created a new file: `Cargo.lock`.
 
 ```toml
 [root]
@@ -141,7 +142,7 @@ We don’t have to go through this whole process every time we want to start a n
 project! Cargo has the ability to make a bare-bones project directory in which
 we can start developing right away.
 
-To start a new project with Cargo, use `cargo new`:
+To start a new project with Cargo, we use `cargo new`:
 
 ```bash
 $ cargo new hello_world --bin
@@ -178,8 +179,8 @@ authors = ["Your Name <you@example.com>"]
 ```
 
 Cargo has populated this file with reasonable defaults based off the arguments
-we gave it and our `git` global configuration. We may notice that Cargo has also
-initialized the `hello_world` directory as a `git` repository.
+we gave it and our `git` global configuration. You may notice that Cargo has
+also initialized the `hello_world` directory as a `git` repository.
 
 Here’s what’s in `src/main.rs`:
 
@@ -199,11 +200,11 @@ Now that we’ve got the tools down, let’s actually learn more about the Rust
 language itself. These are the basics that will serve us well through the rest
 of our time with Rust.
 
-We have two options: Dive into a project with ‘[Learn Rust][learnrust]’, or
-start from the bottom and work our way up with ‘[Syntax and Semantics][syntax]’.
-More experienced systems programmers will probably prefer ‘Learn Rust’, while
-those from dynamic backgrounds may enjoy either. Different people learn
-differently! Choose whatever’s right for us.
+You have two options: Dive into a project with ‘[Learn Rust][learnrust]’, or
+start from the bottom and work your way up with
+‘[Syntax and Semantics][syntax]’. More experienced systems programmers will
+probably prefer ‘Learn Rust’, while those from dynamic backgrounds may enjoy
+either. Different people learn differently! Choose whatever’s right for you.
 
 [learnrust]: learn-rust.html
 [syntax]: syntax-and-semantics.html
