@@ -214,11 +214,61 @@ fn diverges() -> ! {
 
 `panic!` is a macro, similar to `println!()` that we’ve already seen. Unlike
 `println!()`, `panic!()` causes the current thread of execution to crash with
-the given message.
+the given message. Because this function will cause a crash, it will never
+return, and so it has the type ‘`!`’, which is read ‘diverges’.
 
-Because this function will cause a crash, it will never return, and so it has
-the type ‘`!`’, which is read ‘diverges’. A diverging function can be used
-as any type:
+If you add a main function that calls `diverges()` and run it, you’ll get
+some output that looks like this:
+
+```text
+thread ‘<main>’ panicked at ‘This function never returns!’, hello.rs:2
+```
+
+If you want more information, you can get a backtrace by setting the
+`RUST_BACKTRACE` environment variable:
+
+```text
+$ RUST_BACKTRACE=1 ./diverges
+thread '<main>' panicked at 'This function never returns!', hello.rs:2
+stack backtrace:
+   1:     0x7f402773a829 - sys::backtrace::write::h0942de78b6c02817K8r
+   2:     0x7f402773d7fc - panicking::on_panic::h3f23f9d0b5f4c91bu9w
+   3:     0x7f402773960e - rt::unwind::begin_unwind_inner::h2844b8c5e81e79558Bw
+   4:     0x7f4027738893 - rt::unwind::begin_unwind::h4375279447423903650
+   5:     0x7f4027738809 - diverges::h2266b4c4b850236beaa
+   6:     0x7f40277389e5 - main::h19bb1149c2f00ecfBaa
+   7:     0x7f402773f514 - rt::unwind::try::try_fn::h13186883479104382231
+   8:     0x7f402773d1d8 - __rust_try
+   9:     0x7f402773f201 - rt::lang_start::ha172a3ce74bb453aK5w
+  10:     0x7f4027738a19 - main
+  11:     0x7f402694ab44 - __libc_start_main
+  12:     0x7f40277386c8 - <unknown>
+  13:                0x0 - <unknown>
+```
+
+`RUST_BACKTRACE` also works with Cargo’s `run` command:
+
+```text
+$ RUST_BACKTRACE=1 cargo run
+     Running `target/debug/diverges`
+thread '<main>' panicked at 'This function never returns!', hello.rs:2
+stack backtrace:
+   1:     0x7f402773a829 - sys::backtrace::write::h0942de78b6c02817K8r
+   2:     0x7f402773d7fc - panicking::on_panic::h3f23f9d0b5f4c91bu9w
+   3:     0x7f402773960e - rt::unwind::begin_unwind_inner::h2844b8c5e81e79558Bw
+   4:     0x7f4027738893 - rt::unwind::begin_unwind::h4375279447423903650
+   5:     0x7f4027738809 - diverges::h2266b4c4b850236beaa
+   6:     0x7f40277389e5 - main::h19bb1149c2f00ecfBaa
+   7:     0x7f402773f514 - rt::unwind::try::try_fn::h13186883479104382231
+   8:     0x7f402773d1d8 - __rust_try
+   9:     0x7f402773f201 - rt::lang_start::ha172a3ce74bb453aK5w
+  10:     0x7f4027738a19 - main
+  11:     0x7f402694ab44 - __libc_start_main
+  12:     0x7f40277386c8 - <unknown>
+  13:                0x0 - <unknown>
+```
+
+A diverging function can be used as any type:
 
 ```should_panic
 # fn diverges() -> ! {
