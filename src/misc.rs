@@ -149,7 +149,7 @@ impl LintPass for FloatCmp {
             let op = cmp.node;
             if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
                 if constant(cx, left).or_else(|| constant(cx, right)).map_or(
-                        false, |c| c.as_float().map_or(false, |f| f == 0.0)) {
+                        false, |c| c.0.as_float().map_or(false, |f| f == 0.0)) {
                     return;
                 }
                 span_lint(cx, FLOAT_CMP, expr.span, &format!(
