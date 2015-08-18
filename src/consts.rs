@@ -59,7 +59,7 @@ impl Constant {
     ///
     /// if the constant could not be converted to u64 losslessly
     fn as_u64(&self) -> u64 {
-        if let &ConstantInt(val, _) = self {
+        if let ConstantInt(val, _) = *self {
             val // TODO we may want to check the sign if any
         } else {
             panic!("Could not convert a {:?} to u64");
@@ -149,15 +149,15 @@ impl PartialOrd for Constant {
 
 
 fn lit_to_constant(lit: &Lit_) -> Constant {
-    match lit {
-        &LitStr(ref is, style) => ConstantStr(is.to_string(), style),
-        &LitBinary(ref blob) => ConstantBinary(blob.clone()),
-        &LitByte(b) => ConstantByte(b),
-        &LitChar(c) => ConstantChar(c),
-        &LitInt(value, ty) => ConstantInt(value, ty),
-        &LitFloat(ref is, ty) => ConstantFloat(is.to_string(), ty.into()),
-        &LitFloatUnsuffixed(ref is) => ConstantFloat(is.to_string(), FwAny),
-        &LitBool(b) => ConstantBool(b),
+    match *lit {
+        LitStr(ref is, style) => ConstantStr(is.to_string(), style),
+        LitBinary(ref blob) => ConstantBinary(blob.clone()),
+        LitByte(b) => ConstantByte(b),
+        LitChar(c) => ConstantChar(c),
+        LitInt(value, ty) => ConstantInt(value, ty),
+        LitFloat(ref is, ty) => ConstantFloat(is.to_string(), ty.into()),
+        LitFloatUnsuffixed(ref is) => ConstantFloat(is.to_string(), FwAny),
+        LitBool(b) => ConstantBool(b),
     }
 }
 
@@ -293,25 +293,25 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
 
     /// simple constant folding: Insert an expression, get a constant or none.
     fn expr(&mut self, e: &Expr) -> Option<Constant> {
-        match &e.node {
-            &ExprParen(ref inner) => self.expr(inner),
-            &ExprPath(_, _) => self.fetch_path(e),
-            &ExprBlock(ref block) => self.block(block),
-            &ExprIf(ref cond, ref then, ref otherwise) =>
+        match e.node {
+            ExprParen(ref inner) => self.expr(inner),
+            ExprPath(_, _) => self.fetch_path(e),
+            ExprBlock(ref block) => self.block(block),
+            ExprIf(ref cond, ref then, ref otherwise) =>
                 self.ifthenelse(&*cond, &*then, &*otherwise),
-            &ExprLit(ref lit) => Some(lit_to_constant(&lit.node)),
-            &ExprVec(ref vec) => self.vec(&vec[..]),
-            &ExprTup(ref tup) => self.tup(&tup[..]),
-            &ExprRepeat(ref value, ref number) =>
-                self.binop_apply(value, number,|v, n|
+            ExprLit(ref lit) => Some(lit_to_constant(&lit.node)),
+            ExprVec(ref vec) => self.vec(&vec),
+            ExprTup(ref tup) => self.tup(&tup),
+            ExprRepeat(ref value, ref number) =>
+                self.binop_apply(value, number, |v, n|
                     Some(ConstantRepeat(Box::new(v), n.as_u64() as usize))),
-            &ExprUnary(op, ref operand) => self.expr(operand).and_then(
+            ExprUnary(op, ref operand) => self.expr(operand).and_then(
                 |o| match op {
                     UnNot => constant_not(o),
                     UnNeg => constant_negate(o),
                     UnUniq | UnDeref => Some(o),
                 }),
-            &ExprBinary(op, ref left, ref right) =>
+            ExprBinary(op, ref left, ref right) =>
                 self.binop(op, left, right),
             //TODO: add other expressions
             _ => None,
@@ -321,29 +321,15 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
     /// create `Some(ConstantVec(..))` of all constants, unless there is any
     /// non-constant part
     fn vec<E: Deref<Target=Expr> + Sized>(&mut self, vec: &[E]) -> Option<Constant> {
-        let mut parts = Vec::new();
-        for opt_part in vec {
-            match self.expr(opt_part) {
-                Some(p) => {
-                    parts.push(p)
-                },
-                None => { return None; },
-            }
-        }
-        Some(ConstantVec(parts))
+        vec.iter().map(|elem| self.expr(elem))
+                  .collect::<Option<_>>()
+                  .map(ConstantVec)
     }
 
     fn tup<E: Deref<Target=Expr> + Sized>(&mut self, tup: &[E]) -> Option<Constant> {
-        let mut parts = Vec::new();
-        for opt_part in tup {
-            match self.expr(opt_part) {
-                Some(p) => {
-                    parts.push(p)
-                },
-                None => { return None; },
-            }
-        }
-        Some(ConstantTuple(parts),)
+        tup.iter().map(|elem| self.expr(elem))
+                  .collect::<Option<_>>()
+                  .map(ConstantTuple)
     }
 
     /// lookup a possibly constant expression from a ExprPath
@@ -366,7 +352,7 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
     /// A block can only yield a constant if it only has one constant expression
     fn block(&mut self, block: &Block) -> Option<Constant> {
         if block.stmts.is_empty() {
-            block.expr.as_ref().and_then(|b| self.expr(&*b))
+            block.expr.as_ref().and_then(|ref b| self.expr(b))
         } else { None }
     }
 
@@ -376,7 +362,7 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
             if b {
                 self.block(then)
             } else {
-                otherwise.as_ref().and_then(|expr| self.expr(&*expr))
+                otherwise.as_ref().and_then(|ref expr| self.expr(expr))
             }
         } else { None }
     }
@@ -472,7 +458,7 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
 
     fn short_circuit(&mut self, left: &Expr, right: &Expr, b: bool) -> Option<Constant> {
         self.expr(left).and_then(|left|
-            if let &ConstantBool(lbool) = &left {
+            if let ConstantBool(lbool) = left {
                 if lbool == b {
                     Some(left)
                 } else {
