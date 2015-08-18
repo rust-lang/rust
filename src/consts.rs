@@ -59,7 +59,7 @@ impl Constant {
     ///
     /// if the constant could not be converted to u64 losslessly
     fn as_u64(&self) -> u64 {
-        if let &ConstantInt(val, _) = self {
+        if let ConstantInt(val, _) = *self {
             val // TODO we may want to check the sign if any
         } else {
             panic!("Could not convert a {:?} to u64");
@@ -149,15 +149,15 @@ impl PartialOrd for Constant {
 
 
 fn lit_to_constant(lit: &Lit_) -> Constant {
-    match lit {
-        &LitStr(ref is, style) => ConstantStr(is.to_string(), style),
-        &LitBinary(ref blob) => ConstantBinary(blob.clone()),
-        &LitByte(b) => ConstantByte(b),
-        &LitChar(c) => ConstantChar(c),
-        &LitInt(value, ty) => ConstantInt(value, ty),
-        &LitFloat(ref is, ty) => ConstantFloat(is.to_string(), ty.into()),
-        &LitFloatUnsuffixed(ref is) => ConstantFloat(is.to_string(), FwAny),
-        &LitBool(b) => ConstantBool(b),
+    match *lit {
+        LitStr(ref is, style) => ConstantStr(is.to_string(), style),
+        LitBinary(ref blob) => ConstantBinary(blob.clone()),
+        LitByte(b) => ConstantByte(b),
+        LitChar(c) => ConstantChar(c),
+        LitInt(value, ty) => ConstantInt(value, ty),
+        LitFloat(ref is, ty) => ConstantFloat(is.to_string(), ty.into()),
+        LitFloatUnsuffixed(ref is) => ConstantFloat(is.to_string(), FwAny),
+        LitBool(b) => ConstantBool(b),
     }
 }
 
@@ -300,8 +300,8 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
             ExprIf(ref cond, ref then, ref otherwise) =>
                 self.ifthenelse(&*cond, &*then, &*otherwise),
             ExprLit(ref lit) => Some(lit_to_constant(&lit.node)),
-            ExprVec(ref vec) => self.multi(&vec[..]).map(ConstantVec),
-            ExprTup(ref tup) => self.multi(&tup[..]).map(ConstantTuple),
+            ExprVec(ref vec) => self.multi(vec).map(ConstantVec),
+            ExprTup(ref tup) => self.multi(tup).map(ConstantTuple),
             ExprRepeat(ref value, ref number) =>
                 self.binop_apply(value, number, |v, n|
                     Some(ConstantRepeat(Box::new(v), n.as_u64() as usize))),
