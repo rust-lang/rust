@@ -93,6 +93,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
 		$$(LLVM_LIBDIR_RUSTFLAGS_$(2)) \
 		$$(LLVM_STDCPP_RUSTFLAGS_$(2)) \
 		$$(RUSTFLAGS_$(4)) \
+		$$(RUSTFLAGS$(1)_$(4)) \
 		$$(RUSTFLAGS$(1)_$(4)_T_$(2)) \
 		--out-dir $$(@D) \
 		-C extra-filename=-$$(CFG_FILENAME_EXTRA) \
