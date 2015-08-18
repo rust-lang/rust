@@ -2059,6 +2059,11 @@ The following configurations must be defined by the implementation:
   `"mips"`, `"powerpc"`, `"arm"`, or `"aarch64"`.
 * `target_endian = "..."`. Endianness of the target CPU, either `"little"` or
   `"big"`.
+* `target_env = ".."` - an option provided by the compiler by default
+  describing the runtime environment of the target platform. Some examples of
+  this are `musl` for builds targeting the MUSL libc implementation, `msvc` for
+  Windows builds targeting MSVC, and `gnu` frequently the rest of the time. This
+  option may also be blank on some platforms.
 * `target_family = "..."`. Operating system family of the target, e. g.
   `"unix"` or `"windows"`. The value of this configuration option is defined
   as a configuration itself, like `unix` or `windows`.
