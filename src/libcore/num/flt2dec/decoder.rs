@@ -53,20 +53,15 @@ pub enum FullDecoded {
 
 /// A floating point type which can be `decode`d.
 pub trait DecodableFloat: Float + Copy {
-    /// Returns `x * 2^exp`. Almost same to `std::{f32,f64}::ldexp`.
-    /// This is used for testing.
-    fn ldexpi(f: i64, exp: isize) -> Self;
     /// The minimum positive normalized value.
     fn min_pos_norm_value() -> Self;
 }
 
 impl DecodableFloat for f32 {
-    fn ldexpi(f: i64, exp: isize) -> Self { f as Self * (exp as Self).exp2() }
     fn min_pos_norm_value() -> Self { f32::MIN_POSITIVE }
 }
 
 impl DecodableFloat for f64 {
-    fn ldexpi(f: i64, exp: isize) -> Self { f as Self * (exp as Self).exp2() }
     fn min_pos_norm_value() -> Self { f64::MIN_POSITIVE }
 }
 
