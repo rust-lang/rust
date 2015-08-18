@@ -12,7 +12,6 @@
 #![allow(non_camel_case_types)]
 
 pub use self::InferTy::*;
-pub use self::InferRegion::*;
 pub use self::ImplOrTraitItemId::*;
 pub use self::ClosureKind::*;
 pub use self::Variance::*;
@@ -1529,7 +1528,11 @@ pub enum Region {
     ReStatic,
 
     /// A region variable.  Should not exist after typeck.
-    ReInfer(InferRegion),
+    ReVar(RegionVid),
+
+    /// A skolemized region - basically the higher-ranked version of ReFree.
+    /// Should not exist after typeck.
+    ReSkolemized(u32, BoundRegion),
 
     /// Empty lifetime is for data that is never accessed.
     /// Bottom in the region lattice. We treat ReEmpty somewhat
@@ -1648,7 +1651,7 @@ impl Region {
 
     pub fn needs_infer(&self) -> bool {
         match *self {
-            ty::ReInfer(..) => true,
+            ty::ReVar(..) | ty::ReSkolemized(..) => true,
             _ => false
         }
     }
@@ -2186,29 +2189,6 @@ pub enum UnconstrainedNumeric {
     Neither,
 }
 
-
-#[derive(Clone, RustcEncodable, RustcDecodable, Eq, Hash, Debug, Copy)]
-pub enum InferRegion {
-    ReVar(RegionVid),
-    ReSkolemized(u32, BoundRegion)
-}
-
-impl cmp::PartialEq for InferRegion {
-    fn eq(&self, other: &InferRegion) -> bool {
-        match ((*self), *other) {
-            (ReVar(rva), ReVar(rvb)) => {
-                rva == rvb
-            }
-            (ReSkolemized(rva, _), ReSkolemized(rvb, _)) => {
-                rva == rvb
-            }
-            _ => false
-        }
-    }
-    fn ne(&self, other: &InferRegion) -> bool {
-        !((*self) == (*other))
-    }
-}
 
 impl fmt::Debug for TyVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -3722,7 +3702,8 @@ impl FlagComputation {
 
     fn add_region(&mut self, r: Region) {
         match r {
-            ty::ReInfer(_) => { self.add_flags(TypeFlags::HAS_RE_INFER); }
+            ty::ReVar(..) |
+            ty::ReSkolemized(..) => { self.add_flags(TypeFlags::HAS_RE_INFER); }
             ty::ReLateBound(debruijn, _) => { self.add_depth(debruijn.depth); }
             ty::ReEarlyBound(..) => { self.add_flags(TypeFlags::HAS_RE_EARLY_BOUND); }
             ty::ReStatic => {}
@@ -5728,7 +5709,7 @@ impl<'tcx> ctxt<'tcx> {
                 self.note_and_explain_region("concrete lifetime that was found is ",
                                            conc_region, "");
             }
-            RegionsOverlyPolymorphic(_, ty::ReInfer(ty::ReVar(_))) => {
+            RegionsOverlyPolymorphic(_, ty::ReVar(_)) => {
                 // don't bother to print out the message below for
                 // inference variables, it's not very illuminating.
             }
@@ -6479,7 +6460,8 @@ impl<'tcx> ctxt<'tcx> {
                     ReLateBound(..) |
                     ReFree(..) |
                     ReScope(..) |
-                    ReInfer(..) => {
+                    ReVar(..) |
+                    ReSkolemized(..) => {
                         tcx.sess.bug("unexpected region found when hashing a type")
                     }
                 }
@@ -7338,8 +7320,9 @@ impl HasTypeFlags for Region {
             }
         }
         if flags.intersects(TypeFlags::HAS_RE_INFER) {
-            if let ty::ReInfer(_) = *self {
-                return true;
+            match *self {
+                ty::ReVar(_) | ty::ReSkolemized(..) => { return true }
+                _ => {}
             }
         }
         false

@@ -95,7 +95,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::ReStatic |
             ty::ReFree(_) |
             ty::ReScope(_) |
-            ty::ReInfer(_) |
+            ty::ReVar(_) |
+            ty::ReSkolemized(..) |
             ty::ReEmpty => {
                 // replace all free regions with 'static
                 ty::ReStatic

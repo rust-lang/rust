@@ -1025,8 +1025,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // methods or in fn types.
             }
 
-            ty::ReFree(..) | ty::ReScope(..) | ty::ReInfer(..) |
-            ty::ReEmpty => {
+            ty::ReFree(..) | ty::ReScope(..) | ty::ReVar(..) |
+            ty::ReSkolemized(..) | ty::ReEmpty => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
                 self.tcx()

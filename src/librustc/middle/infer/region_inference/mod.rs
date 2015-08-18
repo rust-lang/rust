@@ -25,7 +25,7 @@ use middle::free_region::FreeRegionMap;
 use middle::region;
 use middle::ty::{self, Ty, TypeError};
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
-use middle::ty::{ReEmpty, ReStatic, ReInfer, ReFree, ReEarlyBound};
+use middle::ty::{ReEmpty, ReStatic, ReFree, ReEarlyBound};
 use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
 use middle::ty_relate::RelateResult;
 use util::common::indenter;
@@ -373,7 +373,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         let sc = self.skolemization_count.get();
         self.skolemization_count.set(sc + 1);
-        ReInfer(ReSkolemized(sc, br))
+        ReSkolemized(sc, br)
     }
 
     pub fn new_bound(&self, debruijn: ty::DebruijnIndex) -> Region {
@@ -510,13 +510,13 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
           (_, ReStatic) => {
             // all regions are subregions of static, so we can ignore this
           }
-          (ReInfer(ReVar(sub_id)), ReInfer(ReVar(sup_id))) => {
+          (ReVar(sub_id), ReVar(sup_id)) => {
             self.add_constraint(ConstrainVarSubVar(sub_id, sup_id), origin);
           }
-          (r, ReInfer(ReVar(sup_id))) => {
+          (r, ReVar(sup_id)) => {
             self.add_constraint(ConstrainRegSubVar(r, sup_id), origin);
           }
-          (ReInfer(ReVar(sub_id)), r) => {
+          (ReVar(sub_id), r) => {
             self.add_constraint(ConstrainVarSubReg(sub_id, r), origin);
           }
           _ => {
@@ -621,7 +621,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         let vars = TwoRegions { a: a, b: b };
         match self.combine_map(t).borrow().get(&vars) {
             Some(&c) => {
-                return ReInfer(ReVar(c));
+                return ReVar(c);
             }
             None => {}
         }
@@ -630,10 +630,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         if self.in_snapshot() {
             self.undo_log.borrow_mut().push(AddCombination(t, vars));
         }
-        relate(self, a, ReInfer(ReVar(c)));
-        relate(self, b, ReInfer(ReVar(c)));
+        relate(self, a, ReVar(c));
+        relate(self, b, ReVar(c));
         debug!("combine_vars() c={:?}", c);
-        ReInfer(ReVar(c))
+        ReVar(c)
     }
 
     pub fn vars_created_since_snapshot(&self, mark: &RegionSnapshot)
@@ -672,22 +672,22 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     &AddConstraint(ConstrainVarSubVar(a, b)) => {
                         consider_adding_bidirectional_edges(
                             &mut result_set, r,
-                            ReInfer(ReVar(a)), ReInfer(ReVar(b)));
+                            ReVar(a), ReVar(b));
                     }
                     &AddConstraint(ConstrainRegSubVar(a, b)) => {
                         consider_adding_bidirectional_edges(
                             &mut result_set, r,
-                            a, ReInfer(ReVar(b)));
+                            a, ReVar(b));
                     }
                     &AddConstraint(ConstrainVarSubReg(a, b)) => {
                         consider_adding_bidirectional_edges(
                             &mut result_set, r,
-                            ReInfer(ReVar(a)), b);
+                            ReVar(a), b);
                     }
                     &AddGiven(a, b) => {
                         consider_adding_bidirectional_edges(
                             &mut result_set, r,
-                            ReFree(a), ReInfer(ReVar(b)));
+                            ReFree(a), ReVar(b));
                     }
                     &AddVerify(i) => {
                         match (*self.verifys.borrow())[i] {
@@ -775,7 +775,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             r // everything lives longer than empty
           }
 
-          (ReInfer(ReVar(v_id)), _) | (_, ReInfer(ReVar(v_id))) => {
+          (ReVar(v_id), _) | (_, ReVar(v_id)) => {
             self.tcx.sess.span_bug(
                 (*self.var_origins.borrow())[v_id.index as usize].span(),
                 &format!("lub_concrete_regions invoked with \
@@ -818,8 +818,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
           // For these types, we cannot define any additional
           // relationship:
-          (ReInfer(ReSkolemized(..)), _) |
-          (_, ReInfer(ReSkolemized(..))) => {
+          (ReSkolemized(..), _) |
+          (_, ReSkolemized(..)) => {
             if a == b {a} else {ReStatic}
           }
         }
@@ -853,8 +853,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 Ok(ReEmpty)
             }
 
-            (ReInfer(ReVar(v_id)), _) |
-            (_, ReInfer(ReVar(v_id))) => {
+            (ReVar(v_id), _) |
+            (_, ReVar(v_id)) => {
                 self.tcx.sess.span_bug(
                     (*self.var_origins.borrow())[v_id.index as usize].span(),
                     &format!("glb_concrete_regions invoked with \
@@ -890,8 +890,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
             // For these types, we cannot define any additional
             // relationship:
-            (ReInfer(ReSkolemized(..)), _) |
-            (_, ReInfer(ReSkolemized(..))) => {
+            (ReSkolemized(..), _) |
+            (_, ReSkolemized(..)) => {
                 if a == b {
                     Ok(a)
                 } else {
@@ -1632,7 +1632,7 @@ impl<'tcx> fmt::Debug for Verify<'tcx> {
 
 fn normalize(values: &Vec<VarValue>, r: ty::Region) -> ty::Region {
     match r {
-        ty::ReInfer(ReVar(rid)) => lookup(values, rid),
+        ty::ReVar(rid) => lookup(values, rid),
         _ => r
     }
 }
