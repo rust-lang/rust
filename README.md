@@ -5,7 +5,9 @@ A tool for formatting Rust code according to style guidelines.
 
 ## How to use
 
-You'll need a pretty up to date version of the **nightly** version of Rust.
+You'll need a pretty up to date version of the **nightly** version of Rust. 
+You will need a default.toml file in the current working directory when you run
+the rustfmt command. You can look at this repo for an example default.toml file.
 
 `cargo build` to build.
 
@@ -201,8 +203,7 @@ It would be really useful to have people use rustfmt on their projects and file
 issues where it does something you don't expect.
 
 A really useful thing to do that on a crate from the Rust repo. If it does
-something unexpected, file an issue; if not, make a PR to the Rust repo with the
-reformatted code. I hope to get the whole repo consistently rustfmt'ed and to
+something unexpected, file an issue; if not, make a PR to the Rust repo with the reformatted code. I hope to get the whole repo consistently rustfmt'ed and to
 replace `make tidy` with rustfmt as a medium-term goal.
 
 ### Create test cases
