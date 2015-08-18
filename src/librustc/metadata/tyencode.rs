@@ -271,7 +271,7 @@ pub fn enc_region(w: &mut Encoder, cx: &ctxt, r: ty::Region) {
         ty::ReEmpty => {
             mywrite!(w, "e");
         }
-        ty::ReInfer(_) => {
+        ty::ReVar(_) | ty::ReSkolemized(..) => {
             // these should not crop up after typeck
             cx.diag.handler().bug("cannot encode region variables");
         }

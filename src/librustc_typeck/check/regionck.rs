@@ -428,7 +428,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                 debug!("implication: {:?}", implication);
                 match implication {
                     ImpliedBound::RegionSubRegion(ty::ReFree(free_a),
-                                                  ty::ReInfer(ty::ReVar(vid_b))) => {
+                                                  ty::ReVar(vid_b)) => {
                         self.fcx.inh.infcx.add_given(free_a, vid_b);
                     }
                     ImpliedBound::RegionSubParam(r_a, param_b) => {

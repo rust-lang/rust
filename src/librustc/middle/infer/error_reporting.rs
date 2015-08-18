@@ -196,9 +196,12 @@ impl<'tcx> ty::ctxt<'tcx> {
 
             ty::ReEarlyBound(ref data) => (data.name.to_string(), None),
 
-            // I believe these cases should not occur (except when debugging,
-            // perhaps)
-            ty::ReInfer(_) | ty::ReLateBound(..) => {
+            // FIXME(#13998) ReSkolemized should probably print like
+            // ReFree rather than dumping Debug output on the user.
+            //
+            // We shouldn't really be having unification failures with ReVar
+            // and ReLateBound through.
+            ty::ReSkolemized(..) | ty::ReVar(_) | ty::ReLateBound(..) => {
                 (format!("lifetime {:?}", region), None)
             }
         };
