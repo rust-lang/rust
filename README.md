@@ -13,12 +13,18 @@ the rustfmt command. You can look at this repo for an example default.toml file.
 
 `cargo test` to run all tests.
 
-`cargo run filename` to run on a file, if the file includes out of line modules,
+`cargo run -- filename` to run on a file, if the file includes out of line modules,
 then we reformat those too. So to run on a whole module or crate, you just need
-to run on the top file. You'll probably want to set the `WriteMode` in the call
-to `run` in `main()`. Eventually you should be able to set the mode from the
-command line or from a config file or something.
+to run on the top file. 
 
+You'll probably want to specify the write mode. Currently, there are the replace,
+overwrite and display mode. The replace mode is the default and overwrites the
+original files after renaming them. In overwrite mode, rustfmt does not backup
+the source files. To print the output to stdout, use the display mode. The write
+mode can be set by passing the `--write-mode` flag on the command line.
+
+`cargo run -- filename --write-mode=display` prints the output of rustfmt to the
+screen, for example.
 
 ## Use cases
 

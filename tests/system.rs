@@ -19,6 +19,7 @@ use std::fs;
 use std::io::{self, Read, BufRead, BufReader};
 use std::thread;
 use rustfmt::*;
+use rustfmt::config::Config;
 
 fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
     let path = dir_entry.ok().expect("Couldn't get DirEntry.").path();
@@ -103,14 +104,14 @@ pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, String>>
     // panic to return a result in case of failure. This has the advantage of smoothing the road to
     // multithreaded rustfmt
     thread::catch_panic(move || {
-        run(args, WriteMode::Return(HANDLE_RESULT), &config);
+        run(args, WriteMode::Return(HANDLE_RESULT), config);
     }).map_err(|any|
         *any.downcast().ok().expect("Downcast failed.")
     )
 }
 
 // Reads test config file from comments and loads it
-fn get_config(file_name: &str) -> String {
+fn get_config(file_name: &str) -> Box<Config> {
     let config_file_name = read_significant_comment(file_name, "config")
         .map(|file_name| {
             let mut full_path = "tests/config/".to_owned();
@@ -123,7 +124,7 @@ fn get_config(file_name: &str) -> String {
     let mut def_config = String::new();
     def_config_file.read_to_string(&mut def_config).ok().expect("Couldn't read config.");
 
-    def_config
+    Box::new(Config::from_toml(&def_config))
 }
 
 fn read_significant_comment(file_name: &str, option: &str) -> Option<String> {

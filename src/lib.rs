@@ -42,6 +42,7 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 use std::fmt;
 use std::mem::swap;
+use std::str::FromStr;
 
 use issues::{BadIssueSeeker, Issue};
 use filemap::FileMap;
@@ -71,13 +72,29 @@ const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
 
 #[derive(Copy, Clone)]
 pub enum WriteMode {
+    // Backups the original file and overwrites the orignal.
+    Replace,
+    // Overwrites original file without backup.
     Overwrite,
-    // str is the extension of the new file
+    // str is the extension of the new file.
     NewFile(&'static str),
     // Write the output to stdout.
     Display,
     // Return the result as a mapping from filenames to StringBuffers.
     Return(&'static Fn(HashMap<String, String>)),
+}
+
+impl FromStr for WriteMode {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "replace" => Ok(WriteMode::Replace),
+            "display" => Ok(WriteMode::Display),
+            "overwrite" => Ok(WriteMode::Overwrite),
+            _ => Err(())
+        }
+    }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -343,9 +360,7 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
 // to the compiler.
 // write_mode determines what happens to the result of running rustfmt, see
 // WriteMode.
-// default_config is a string of toml data to be used to configure rustfmt.
-pub fn run(args: Vec<String>, write_mode: WriteMode, default_config: &str) {
-    let config = Some(Box::new(config::Config::from_toml(default_config)));
-    let mut call_ctxt = RustFmtCalls { write_mode: write_mode, config: config };
+pub fn run(args: Vec<String>, write_mode: WriteMode, config: Box<Config>) {
+    let mut call_ctxt = RustFmtCalls { write_mode: write_mode, config: Some(config) };
     rustc_driver::run_compiler(&args, &mut call_ctxt);
 }

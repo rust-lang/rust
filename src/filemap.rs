@@ -73,40 +73,46 @@ fn write_file(text: &StringBuffer,
     }
 
     match mode {
-            WriteMode::Overwrite => {
-                // Do a little dance to make writing safer - write to a temp file
-                // rename the original to a .bk, then rename the temp file to the
-                // original.
-                let tmp_name = filename.to_owned() + ".tmp";
-                let bk_name = filename.to_owned() + ".bk";
-                {
-                    // Write text to temp file
-                    let tmp_file = try!(File::create(&tmp_name));
-                    try!(write_system_newlines(tmp_file, text, config));
-                }
+        WriteMode::Replace => {
+            // Do a little dance to make writing safer - write to a temp file
+            // rename the original to a .bk, then rename the temp file to the
+            // original.
+            let tmp_name = filename.to_owned() + ".tmp";
+            let bk_name = filename.to_owned() + ".bk";
+            {
+                // Write text to temp file
+                let tmp_file = try!(File::create(&tmp_name));
+                try!(write_system_newlines(tmp_file, text, config));
+            }
 
-                try!(fs::rename(filename, bk_name));
-                try!(fs::rename(tmp_name, filename));
-            }
-            WriteMode::NewFile(extn) => {
-                let filename = filename.to_owned() + "." + extn;
-                let file = try!(File::create(&filename));
-                try!(write_system_newlines(file, text, config));
-            }
-            WriteMode::Display => {
-                println!("{}:\n", filename);
-                let stdout = stdout();
-                let stdout_lock = stdout.lock();
-                try!(write_system_newlines(stdout_lock, text, config));
-            }
-            WriteMode::Return(_) => {
-                // io::Write is not implemented for String, working around with Vec<u8>
-                let mut v = Vec::new();
-                try!(write_system_newlines(&mut v, text, config));
-                // won't panic, we are writing correct utf8
-                return Ok(Some(String::from_utf8(v).unwrap()));
-            }
+            try!(fs::rename(filename, bk_name));
+            try!(fs::rename(tmp_name, filename));
         }
+        WriteMode::Overwrite => {
+            // Write text directly over original file.
+            let file = try!(File::create(filename));
+            try!(write_system_newlines(file, text, config));
+        }
+        WriteMode::NewFile(extn) => {
+            let filename = filename.to_owned() + "." + extn;
+            let file = try!(File::create(&filename));
+            try!(write_system_newlines(file, text, config));
+        }
+        WriteMode::Display => {
+            println!("{}:\n", filename);
+            let stdout = stdout();
+            let stdout_lock = stdout.lock();
+            try!(write_system_newlines(stdout_lock, text, config));
+        }
+        WriteMode::Return(_) => {
+            // io::Write is not implemented for String, working around with
+            // Vec<u8>
+            let mut v = Vec::new();
+            try!(write_system_newlines(&mut v, text, config));
+            // won't panic, we are writing correct utf8
+            return Ok(Some(String::from_utf8(v).unwrap()));
+        }
+    }
 
     Ok(None)
 }
