@@ -3475,6 +3475,13 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
             .expect("variant_with_id: unknown variant")
     }
 
+    pub fn variant_index_with_id(&self, vid: DefId) -> usize {
+        self.variants
+            .iter()
+            .position(|v| v.did == vid)
+            .expect("variant_index_with_id: unknown variant")
+    }
+
     pub fn variant_of_def(&self, def: def::Def) -> &VariantDefData<'tcx, 'container> {
         match def {
             def::DefVariant(_, vid, _) => self.variant_with_id(vid),
@@ -5223,14 +5230,11 @@ impl<'tcx> TyS<'tcx> {
     {
         let method_call = MethodCall::autoderef(expr_id, autoderef);
         let mut adjusted_ty = self;
-        match method_type(method_call) {
-            Some(method_ty) => {
-                // Method calls always have all late-bound regions
-                // fully instantiated.
-                let fn_ret = cx.no_late_bound_regions(&method_ty.fn_ret()).unwrap();
-                adjusted_ty = fn_ret.unwrap();
-            }
-            None => {}
+        if let Some(method_ty) = method_type(method_call) {
+            // Method calls always have all late-bound regions
+            // fully instantiated.
+            let fn_ret = cx.no_late_bound_regions(&method_ty.fn_ret()).unwrap();
+            adjusted_ty = fn_ret.unwrap();
         }
         match adjusted_ty.builtin_deref(true, NoPreference) {
             Some(mt) => mt.ty,
