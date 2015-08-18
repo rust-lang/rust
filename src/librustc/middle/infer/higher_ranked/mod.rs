@@ -614,7 +614,7 @@ pub fn plug_leaks<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
                              snapshot: &CombinedSnapshot,
                              value: &T)
                              -> T
-    where T : TypeFoldable<'tcx>
+    where T : TypeFoldable<'tcx> + ty::HasTypeFlags
 {
     debug_assert!(leak_check(infcx, &skol_map, snapshot).is_ok());
 

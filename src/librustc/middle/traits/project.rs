@@ -927,6 +927,13 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Normalized<'tcx, T> {
     }
 }
 
+impl<'tcx, T: HasTypeFlags> HasTypeFlags for Normalized<'tcx, T> {
+    fn has_type_flags(&self, flags: ty::TypeFlags) -> bool {
+        self.value.has_type_flags(flags) ||
+            self.obligations.has_type_flags(flags)
+    }
+}
+
 impl<'tcx, T:fmt::Debug> fmt::Debug for Normalized<'tcx, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Normalized({:?},{:?})",
