@@ -1,6 +1,6 @@
 % The Rust Programming Language
 
-Welcome! This book will teach us about the [Rust Programming Language][rust].
+Welcome! This book will teach you about the [Rust Programming Language][rust].
 Rust is a systems programming language focused on three goals: safety, speed,
 and concurrency. It maintains these goals without having a garbage collector,
 making it a useful language for a number of use cases other languages aren’t
@@ -17,7 +17,7 @@ Even then, Rust still allows precise control like a low-level language would.
 “The Rust Programming Language” is split into eight sections. This introduction
 is the first. After this:
 
-* [Getting started][gs] - Set up our computer for Rust development.
+* [Getting started][gs] - Set up your computer for Rust development.
 * [Learn Rust][lr] - Learn Rust programming through small projects.
 * [Effective Rust][er] - Higher-level concepts for writing excellent Rust code.
 * [Syntax and Semantics][ss] - Each bit of Rust, broken down into small chunks.
@@ -33,11 +33,11 @@ is the first. After this:
 [gl]: glossary.html
 [bi]: bibliography.html
 
-After reading this introduction, we’ll want to dive into either ‘Learn Rust’ or
-‘Syntax and Semantics’, depending on our preference: ‘Learn Rust’ if we want to
-dive in with a project, or ‘Syntax and Semantics’ if we prefer to start small,
-and learn a single concept thoroughly before moving onto the next. Copious
-cross-linking connects these parts together.
+After reading this introduction, you’ll want to dive into either ‘Learn Rust’ or
+‘Syntax and Semantics’, depending on your preference: ‘Learn Rust’ if you want
+to dive in with a project, or ‘Syntax and Semantics’ if you prefer to start
+small, and learn a single concept thoroughly before moving onto the next.
+Copious cross-linking connects these parts together.
 
 ### Contributing
 
@@ -46,7 +46,7 @@ The source files from which this book is generated can be found on Github:
 
 ## A brief introduction to Rust
 
-Is Rust a language we might be interested in? Let’s examine a few small code
+Is Rust a language you might be interested in? Let’s examine a few small code
 samples to show off a few of its strengths.
 
 The main concept that makes Rust unique is called ‘ownership’. Consider this
@@ -76,7 +76,7 @@ annotating types.
 
 Rust prefers stack allocation to heap allocation: `x` is placed directly on the
 stack. However, the `Vec<T>` type allocates space for the elements of the vector
-on the heap. If we’re not familiar with this distinction, we can ignore it for
+on the heap. If you’re not familiar with this distinction, you can ignore it for
 now, or check out [‘The Stack and the Heap’][heap]. As a systems programming
 language, Rust gives us the ability to control how our memory is allocated, but
 when we’re getting started, it’s less of a big deal.
@@ -104,13 +104,13 @@ fn main() {
 }
 ```
 
-We’ve introduced another binding, `y`. In this case, `y` is a ‘reference’ to
-the first element of the vector. Rust’s references are similar to pointers in
-other languages, but with additional compile-time safety checks. References
-interact with the ownership system by [‘borrowing’][borrowing] what they point
-to, rather than owning it. The difference is, when the reference goes out of
-scope, it will not deallocate the underlying memory. If it did, we’d
-de-allocate twice, which is bad!
+We’ve introduced another binding, `y`. In this case, `y` is a ‘reference’ to the
+first element of the vector. Rust’s references are similar to pointers in other
+languages, but with additional compile-time safety checks. References interact
+with the ownership system by [‘borrowing’][borrowing] what they point to, rather
+than owning it. The difference is, when the reference goes out of scope, it
+won't deallocate the underlying memory. If it did, we’d de-allocate twice, which
+is bad!
 
 [borrowing]: references-and-borrowing.html
 
@@ -146,7 +146,7 @@ fn main() {
 
 Whew! The Rust compiler gives quite detailed errors at times, and this is one
 of those times. As the error explains, while we made our binding mutable, we
-still cannot call `push`. This is because we already have a reference to an
+still can't call `push`. This is because we already have a reference to an
 element of the vector, `y`. Mutating something while another reference exists
 is dangerous, because we may invalidate the reference. In this specific case,
 when we create the vector, we may have only allocated space for two elements.
