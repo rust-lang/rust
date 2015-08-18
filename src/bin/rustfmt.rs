@@ -19,7 +19,9 @@ use std::io::Read;
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
-    let mut def_config_file = File::open("default.toml").unwrap();
+    let mut def_config_file = File::open("default.toml").unwrap_or_else(|e| {
+        panic!("Unable to open configuration file [default.toml] {}",e)
+    });
     let mut def_config = String::new();
     def_config_file.read_to_string(&mut def_config).unwrap();
 
