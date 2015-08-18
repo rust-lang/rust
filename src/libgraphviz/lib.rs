@@ -313,6 +313,13 @@ pub enum LabelText<'a> {
     /// are also the escape sequences `\l` which left-justifies the
     /// preceding line and `\r` which right-justifies it.
     EscStr(Cow<'a, str>),
+
+    /// This uses a graphviz [HTML string label][html]. The string is
+    /// printed exactly as given, but between `<` and `>`. **No
+    /// escaping is performed.**
+    ///
+    /// [html]: http://www.graphviz.org/content/node-shapes#html
+    HtmlStr(Cow<'a, str>),
 }
 
 /// The style for a node or edge.
@@ -453,6 +460,14 @@ pub trait Labeller<'a,N,E> {
     /// is a valid DOT identifier.
     fn node_id(&'a self, n: &N) -> Id<'a>;
 
+    /// Maps `n` to one of the [graphviz `shape` names][1]. If `None`
+    /// is returned, no `shape` attribute is specified.
+    ///
+    /// [1]: http://www.graphviz.org/content/node-shapes
+    fn node_shape(&'a self, _node: &N) -> Option<LabelText<'a>> {
+        None
+    }
+
     /// Maps `n` to a label that will be used in the rendered output.
     /// The label need not be unique, and may be the empty string; the
     /// default is just the output from `node_id`.
@@ -479,6 +494,16 @@ pub trait Labeller<'a,N,E> {
     }
 }
 
+/// Escape tags in such a way that it is suitable for inclusion in a
+/// Graphviz HTML label.
+pub fn escape_html(s: &str) -> String {
+    s
+        .replace("&", "&amp;")
+        .replace("\"", "&quot;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+}
+
 impl<'a> LabelText<'a> {
     pub fn label<S:IntoCow<'a, str>>(s: S) -> LabelText<'a> {
         LabelStr(s.into_cow())
@@ -486,6 +511,10 @@ impl<'a> LabelText<'a> {
 
     pub fn escaped<S:IntoCow<'a, str>>(s: S) -> LabelText<'a> {
         EscStr(s.into_cow())
+    }
+
+    pub fn html<S:IntoCow<'a, str>>(s: S) -> LabelText<'a> {
+        HtmlStr(s.into_cow())
     }
 
     fn escape_char<F>(c: char, mut f: F) where F: FnMut(char) {
@@ -505,10 +534,12 @@ impl<'a> LabelText<'a> {
     }
 
     /// Renders text as string suitable for a label in a .dot file.
-    pub fn escape(&self) -> String {
+    /// This includes quotes or suitable delimeters.
+    pub fn to_dot_string(&self) -> String {
         match self {
-            &LabelStr(ref s) => s.escape_default(),
-            &EscStr(ref s) => LabelText::escape_str(&s[..]),
+            &LabelStr(ref s) => format!("\"{}\"", s.escape_default()),
+            &EscStr(ref s) => format!("\"{}\"", LabelText::escape_str(&s[..])),
+            &HtmlStr(ref s) => format!("<{}>", s),
         }
     }
 
@@ -524,6 +555,7 @@ impl<'a> LabelText<'a> {
             } else {
                 s
             },
+            HtmlStr(s) => s,
         }
     }
 
@@ -612,14 +644,15 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
         try!(indent(w));
         let id = g.node_id(n);
 
-        let escaped = &g.node_label(n).escape();
+        let escaped = &g.node_label(n).to_dot_string();
+        let shape;
 
         let mut text = vec![id.as_slice()];
 
         if !options.contains(&RenderOption::NoNodeLabels) {
-            text.push("[label=\"");
+            text.push("[label=");
             text.push(escaped);
-            text.push("\"]");
+            text.push("]");
         }
 
         let style = g.node_style(n);
@@ -629,12 +662,19 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
             text.push("\"]");
         }
 
+        if let Some(s) = g.node_shape(n) {
+            shape = s.to_dot_string();
+            text.push("[shape=");
+            text.push(&shape);
+            text.push("]");
+        }
+
         text.push(";");
         try!(writeln(w, &text));
     }
 
     for e in g.edges().iter() {
-        let escaped_label = &g.edge_label(e).escape();
+        let escaped_label = &g.edge_label(e).to_dot_string();
         try!(indent(w));
         let source = g.source(e);
         let target = g.target(e);
@@ -644,9 +684,9 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
         let mut text = vec![source_id.as_slice(), " -> ", target_id.as_slice()];
 
         if !options.contains(&RenderOption::NoEdgeLabels) {
-            text.push("[label=\"");
+            text.push("[label=");
             text.push(escaped_label);
-            text.push("\"]");
+            text.push("]");
         }
 
         let style = g.edge_style(e);
@@ -667,7 +707,7 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
 mod tests {
     use self::NodeLabels::*;
     use super::{Id, Labeller, Nodes, Edges, GraphWalk, render, Style};
-    use super::LabelText::{self, LabelStr, EscStr};
+    use super::LabelText::{self, LabelStr, EscStr, HtmlStr};
     use std::io;
     use std::io::prelude::*;
     use std::borrow::IntoCow;
@@ -805,12 +845,12 @@ mod tests {
         fn node_id(&'a self, n: &Node) -> Id<'a> { self.graph.node_id(n) }
         fn node_label(&'a self, n: &Node) -> LabelText<'a> {
             match self.graph.node_label(n) {
-                LabelStr(s) | EscStr(s) => EscStr(s),
+                LabelStr(s) | EscStr(s) | HtmlStr(s) => EscStr(s),
             }
         }
         fn edge_label(&'a self, e: & &'a Edge) -> LabelText<'a> {
             match self.graph.edge_label(e) {
-                LabelStr(s) | EscStr(s) => EscStr(s),
+                LabelStr(s) | EscStr(s) | HtmlStr(s) => EscStr(s),
             }
         }
     }
