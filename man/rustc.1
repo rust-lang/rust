@@ -41,7 +41,7 @@ look for anything here (the default)
 .RE
 .TP
 \fB\-l\fR [\fIKIND\fR=]\fINAME\fR
-Link the generated crate(s) to the specified native library \fINAME\fR.
+Link the generated crate(s) to the specified library \fINAME\fR.
 The optional \fIKIND\fR can be one of \fIstatic\fR, \fIdylib\fR, or
 \fIframework\fR.
 If omitted, \fIdylib\fR is assumed.
@@ -113,7 +113,8 @@ Print version info and exit.
 Use verbose output.
 .TP
 \fB\-\-extern\fR \fINAME\fR=\fIPATH\fR
-Specify where an external rust library is located.
+Specify where an external rust library is located. These should match
+\fIextern\fR declarations in the crate's source code.
 .TP
 \fB\-\-sysroot\fR \fIPATH\fR
 Override the system root.
