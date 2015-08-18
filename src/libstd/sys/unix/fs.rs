@@ -212,9 +212,13 @@ impl DirEntry {
 impl OpenOptions {
     pub fn new() -> OpenOptions {
         OpenOptions {
-            flags: 0,
+            flags: libc::O_CLOEXEC,
             read: false,
             write: false,
+            append: false,
+            truncate: false,
+            create: false,
+            create_new: false,
             mode: 0o666,
         }
     }
@@ -228,15 +232,19 @@ impl OpenOptions {
     }
 
     pub fn append(&mut self, append: bool) {
-        self.flag(libc::O_APPEND, append);
+        self.append = append;
     }
 
     pub fn truncate(&mut self, truncate: bool) {
-        self.flag(libc::O_TRUNC, truncate);
+        self.truncate = truncate;
     }
 
     pub fn create(&mut self, create: bool) {
-        self.flag(libc::O_CREAT, create);
+        self.create = create;
+    }
+
+    pub fn create_new(&mut self, create_new: bool) {
+        self.create_new = create_new;
     }
 
     pub fn mode(&mut self, mode: raw::mode_t) {
@@ -250,6 +258,37 @@ impl OpenOptions {
             self.flags &= !bit;
         }
     }
+
+    fn get_flags(&self) -> io::Result<c_int> {
+        flags = self.flags;
+
+        // Access mode
+        match (self.read, self.write | self.append) {
+            (true, true) => flags |= libc::O_RDWR,
+            (false, true) => flags |= libc::O_WRONLY,
+            (true, false) => flags |= libc::O_RDONLY,
+            (false, false) => return Err(Error::from_raw_os_error(libc::EINVAL)),
+        }
+        if self.append {flags |= libc::O_APPEND};
+
+        // Flags
+        if self.create_new {
+            flags |= libc::O_CREAT | libc::O_EXCL;
+        } else {
+            if self.truncate {
+                if !self.write || self.append {
+                    // The result of using O_TRUNC with O_RDONLY or O_APPEND is undefined.
+                    // Not allowed, for consistency with Windows.
+                    return Err(Error::from_raw_os_error(libc::EINVAL))
+                } else {
+                    flags |= libc::O_TRUNC;
+                }
+            }
+            if self.create {flags |= libc::O_CREAT};
+        }
+
+        Ok(flags)
+    }
 }
 
 impl File {
@@ -259,12 +298,7 @@ impl File {
     }
 
     pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
-        let flags = opts.flags | match (opts.read, opts.write) {
-            (true, true) => libc::O_RDWR,
-            (false, true) => libc::O_WRONLY,
-            (true, false) |
-            (false, false) => libc::O_RDONLY,
-        };
+        let flags = try!(opts.get_flags());
         let fd = try!(cvt_r(|| unsafe {
             libc::open(path.as_ptr(), flags, opts.mode)
         }));
