@@ -812,8 +812,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             ReScope(self.tcx.region_maps.nearest_common_ancestor(a_id, b_id))
           }
 
-          (ReFree(ref a_fr), ReFree(ref b_fr)) => {
-             self.lub_free_regions(free_regions, a_fr, b_fr)
+          (ReFree(a_fr), ReFree(b_fr)) => {
+            free_regions.lub_free_regions(a_fr, b_fr)
           }
 
           // For these types, we cannot define any additional
@@ -822,35 +822,6 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
           (_, ReInfer(ReSkolemized(..))) => {
             if a == b {a} else {ReStatic}
           }
-        }
-    }
-
-    /// Computes a region that encloses both free region arguments. Guarantee that if the same two
-    /// regions are given as argument, in any order, a consistent result is returned.
-    fn lub_free_regions(&self,
-                        free_regions: &FreeRegionMap,
-                        a: &FreeRegion,
-                        b: &FreeRegion)
-                        -> ty::Region
-    {
-        return match a.cmp(b) {
-            Less => helper(self, free_regions, a, b),
-            Greater => helper(self, free_regions, b, a),
-            Equal => ty::ReFree(*a)
-        };
-
-        fn helper(_this: &RegionVarBindings,
-                  free_regions: &FreeRegionMap,
-                  a: &FreeRegion,
-                  b: &FreeRegion) -> ty::Region
-        {
-            if free_regions.sub_free_region(*a, *b) {
-                ty::ReFree(*b)
-            } else if free_regions.sub_free_region(*b, *a) {
-                ty::ReFree(*a)
-            } else {
-                ty::ReStatic
-            }
         }
     }
 
@@ -892,8 +863,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                             b));
             }
 
-            (ReFree(ref fr), ReScope(s_id)) |
-            (ReScope(s_id), ReFree(ref fr)) => {
+            (ReFree(fr), ReScope(s_id)) |
+            (ReScope(s_id), ReFree(fr)) => {
                 let s = ReScope(s_id);
                 // Free region is something "at least as big as
                 // `fr.scope_id`."  If we find that the scope `fr.scope_id` is bigger
