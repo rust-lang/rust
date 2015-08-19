@@ -125,6 +125,9 @@ pub enum ErrorKind {
     /// Unlike `InvalidInput`, this typically means that the operation
     /// parameters were valid, however the error was caused by malformed
     /// input data.
+    ///
+    /// For example, a function that reads a file into a string will error with
+    /// `InvalidData` if the file's contents are not valid UTF-8.
     #[stable(feature = "io_invalid_data", since = "1.2.0")]
     InvalidData,
     /// The I/O operation's timeout expired, causing it to be canceled.
