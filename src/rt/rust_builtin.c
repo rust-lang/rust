@@ -341,7 +341,11 @@ const char * rust_current_exe()
   char **paths;
   size_t sz;
   int i;
-  char buf[2*PATH_MAX], exe[2*PATH_MAX];
+  /* If `PATH_MAX` is defined on the platform, `realpath` will truncate the
+   * resolved path up to `PATH_MAX`. While this can make the resolution fail if
+   * the executable is placed in a deep path, the usage of a buffer whose
+   * length depends on `PATH_MAX` is still memory safe. */
+  char buf[2*PATH_MAX], exe[PATH_MAX];
 
   if (self != NULL)
     return self;
