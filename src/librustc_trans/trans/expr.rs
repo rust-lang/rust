@@ -65,6 +65,7 @@ use trans::cleanup::{self, CleanupMethods, DropHintMethods};
 use trans::common::*;
 use trans::datum::*;
 use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
+use trans::declare;
 use trans::glue;
 use trans::machine;
 use trans::meth;
@@ -1767,7 +1768,43 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       }
       ast::BiRem => {
         if is_float {
-            FRem(bcx, lhs, rhs, binop_debug_loc)
+            // LLVM currently always lowers the `frem` instructions appropriate
+            // library calls typically found in libm. Notably f64 gets wired up
+            // to `fmod` and f32 gets wired up to `fmodf`. Inconveniently for
+            // us, 32-bit MSVC does not actually have a `fmodf` symbol, it's
+            // instead just an inline function in a header that goes up to a
+            // f64, uses `fmod`, and then comes back down to a f32.
+            //
+            // Although LLVM knows that `fmodf` doesn't exist on MSVC, it will
+            // still unconditionally lower frem instructions over 32-bit floats
+            // to a call to `fmodf`. To work around this we special case MSVC
+            // 32-bit float rem instructions and instead do the call out to
+            // `fmod` ourselves.
+            //
+            // Note that this is currently duplicated with src/libcore/ops.rs
+            // which does the same thing, and it would be nice to perhaps unify
+            // these two implementations on day! Also note that we call `fmod`
+            // for both 32 and 64-bit floats because if we emit any FRem
+            // instruction at all then LLVM is capable of optimizing it into a
+            // 32-bit FRem (which we're trying to avoid).
+            let use_fmod = tcx.sess.target.target.options.is_like_msvc &&
+                           tcx.sess.target.target.arch == "x86";
+            if use_fmod {
+                let f64t = Type::f64(bcx.ccx());
+                let fty = Type::func(&[f64t, f64t], &f64t);
+                let llfn = declare::declare_cfn(bcx.ccx(), "fmod", fty,
+                                                tcx.types.f64);
+                if lhs_t == tcx.types.f32 {
+                    let lhs = FPExt(bcx, lhs, f64t);
+                    let rhs = FPExt(bcx, rhs, f64t);
+                    let res = Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc);
+                    FPTrunc(bcx, res, Type::f32(bcx.ccx()))
+                } else {
+                    Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc)
+                }
+            } else {
+                FRem(bcx, lhs, rhs, binop_debug_loc)
+            }
         } else {
             // Only zero-check integers; fp %0 is NaN
             bcx = base::fail_if_zero_or_overflows(bcx,
