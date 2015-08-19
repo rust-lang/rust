@@ -73,6 +73,7 @@ use boxed::Box;
 
 use core::sync::atomic;
 use core::sync::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
+use core::borrow;
 use core::fmt;
 use core::cmp::Ordering;
 use core::mem::{align_of_val, size_of_val};
@@ -1108,4 +1109,8 @@ mod tests {
         drop(x);
         assert!(y.upgrade().is_none());
     }
+}
+
+impl<T: ?Sized> borrow::Borrow<T> for Arc<T> {
+    fn borrow(&self) -> &T { &**self }
 }
