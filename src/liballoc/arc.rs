@@ -270,7 +270,6 @@ impl<T: ?Sized> Arc<T> {
     /// Get the number of weak references to this value.
     #[inline]
     #[unstable(feature = "arc_counts", reason = "not clearly useful, and racy", issue = "27718")]
-    #[deprecated(since = "1.4.0", reason = "not clearly useful, and racy")]
     pub fn weak_count(this: &Self) -> usize {
         this.inner().weak.load(SeqCst) - 1
     }
@@ -278,7 +277,6 @@ impl<T: ?Sized> Arc<T> {
     /// Get the number of strong references to this value.
     #[inline]
     #[unstable(feature = "arc_counts", reason = "not clearly useful, and racy", issue = "27718")]
-    #[deprecated(since = "1.4.0", reason = "not clearly useful, and racy")]
     pub fn strong_count(this: &Self) -> usize {
         this.inner().strong.load(SeqCst)
     }
