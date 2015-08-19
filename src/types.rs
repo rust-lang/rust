@@ -204,9 +204,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
             let separator = get_path_separator(context.codemap, *span_lo, list_lo);
 
             let items = itemize_list(context.codemap,
-                                     Vec::new(),
                                      param_list.into_iter(),
-                                     ",",
                                      ">",
                                      |param| param.get_span().lo,
                                      |param| param.get_span().hi,
@@ -232,7 +230,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
             // update pos
             *span_lo = next_span_lo;
 
-            format!("{}<{}>", separator, write_list(&items, &fmt))
+            format!("{}<{}>", separator, write_list(&items.collect::<Vec<_>>(), &fmt))
         }
         ast::PathParameters::ParenthesizedParameters(ref data) => {
             let output = match data.output {
@@ -242,9 +240,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
 
             let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi), "(", context.codemap);
             let items = itemize_list(context.codemap,
-                                     Vec::new(),
                                      data.inputs.iter(),
-                                     ",",
                                      ")",
                                      |ty| ty.span.lo,
                                      |ty| ty.span.hi,
@@ -269,7 +265,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
             // update pos
             *span_lo = data.inputs.last().unwrap().span.hi + BytePos(1);
 
-            format!("({}){}", write_list(&items, &fmt), output)
+            format!("({}){}", write_list(&items.collect::<Vec<_>>(), &fmt), output)
         }
         _ => String::new()
     };

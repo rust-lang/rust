@@ -407,9 +407,7 @@ fn rewrite_call(context: &RewriteContext,
     let inner_context = &RewriteContext { block_indent: block_indent, ..*context };
 
     let items = itemize_list(context.codemap,
-                             Vec::new(),
                              args.iter(),
-                             ",",
                              ")",
                              |item| item.span.lo,
                              |item| item.span.hi,
@@ -430,7 +428,7 @@ fn rewrite_call(context: &RewriteContext,
         ends_with_newline: false,
     };
 
-    Some(format!("{}({})", callee_str, write_list(&items, &fmt)))
+    Some(format!("{}({})", callee_str, write_list(&items.collect::<Vec<_>>(), &fmt)))
 }
 
 fn expr_block_indent(context: &RewriteContext, offset: usize) -> usize {
@@ -494,9 +492,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     let inner_context = &RewriteContext { block_indent: indent, ..*context };
 
     let items = itemize_list(context.codemap,
-                             Vec::new(),
                              field_iter,
-                             ",",
                              "}",
                              |item| {
                                  match *item {
@@ -543,7 +539,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         v_width: v_budget,
         ends_with_newline: false,
     };
-    let fields_str = write_list(&items, &fmt);
+    let fields_str = write_list(&items.collect::<Vec<_>>(), &fmt);
 
     match context.config.struct_lit_style {
         StructLitStyle::BlockIndent if fields_str.contains('\n') => {
@@ -584,9 +580,7 @@ fn rewrite_tuple_lit(context: &RewriteContext,
     }
 
     let items = itemize_list(context.codemap,
-                             Vec::new(),
-                             items.into_iter(),
-                             ",",
+                             items.iter(),
                              ")",
                              |item| item.span.lo,
                              |item| item.span.hi,
@@ -608,7 +602,7 @@ fn rewrite_tuple_lit(context: &RewriteContext,
         ends_with_newline: false,
     };
 
-    Some(format!("({})", write_list(&items, &fmt)))
+    Some(format!("({})", write_list(&items.collect::<Vec<_>>(), &fmt)))
 }
 
 fn rewrite_binary_op(context: &RewriteContext,
