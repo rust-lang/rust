@@ -46,8 +46,13 @@ fn main() {
 fn ineffective() {
     let x = 5;
 
-    x | 1 > 2; //~ERROR ineffective bit mask
-    x | 1 < 3; //~ERROR ineffective bit mask
+    x | 1 > 3; //~ERROR ineffective bit mask
+    x | 1 < 4; //~ERROR ineffective bit mask
     x | 1 <= 3; //~ERROR ineffective bit mask
-    x | 1 >= 2; //~ERROR ineffective bit mask
+    x | 1 >= 8; //~ERROR ineffective bit mask
+
+    x | 1 > 2; // not an error (yet), better written as x >= 2
+    x | 1 >= 7; // not an error (yet), better written as x >= 6
+    x | 3 > 4; // not an error (yet), better written as x >= 4
+    x | 4 <= 19;
 }
