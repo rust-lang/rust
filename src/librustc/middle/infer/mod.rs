@@ -653,13 +653,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                    .borrow_mut()
                                    .unsolved_variables()
                                    .into_iter()
-                                   .map(|v| (self.tcx.mk_int_var(v), type_variable::Default::Integer));
+                                   .map(|v| (self.tcx.mk_int_var(v),
+                                             type_variable::Default::Integer));
 
         let unbound_float_vars = self.float_unification_table
                                      .borrow_mut()
                                      .unsolved_variables()
                                      .into_iter()
-                                     .map(|v| (self.tcx.mk_float_var(v), type_variable::Default::Float));
+                                     .map(|v| (self.tcx.mk_float_var(v),
+                                               type_variable::Default::Float));
 
         variables.extend(unbound_ty_vars);
         variables.extend(unbound_int_vars);

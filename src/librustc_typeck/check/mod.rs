@@ -1835,10 +1835,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for &(ref ty, ref default) in &defaults_to_apply {
                 // We should NEVER process anything but a TyInfer.
                 assert!(match ty.sty { ty::TyInfer(_) => true, _ => false });
+
                 match default {
                     &Default::User(ref user_default) => {
-                        debug!("select_all_obligations_and_apply_defaults: ty: {:?} with default: {:?}",
-                               ty, default);
+                        debug!("select_all_obligations_and_apply_defaults: \
+                                ty: {:?} with default: {:?}", ty, default);
 
                         has_user_default.insert((*ty, user_default.clone()));
                     },
@@ -1958,9 +1959,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // table then apply defaults until we find a conflict. That default must be the one
     // that caused conflict earlier.
     fn find_conflicting_default(&self,
-                                tys_with_defaults: &HashSet<(Ty<'tcx>, type_variable::UserDefault<'tcx>)>,
-                                conflict: &(Ty<'tcx>, type_variable::UserDefault<'tcx>))
-                                -> Option<type_variable::UserDefault<'tcx>> {
+            tys_with_defaults: &HashSet<(Ty<'tcx>, type_variable::UserDefault<'tcx>)>,
+            conflict: &(Ty<'tcx>, type_variable::UserDefault<'tcx>))
+            -> Option<type_variable::UserDefault<'tcx>> {
         // Ensure that we apply the conflicting default first
         let mut unbound_tyvars = Vec::with_capacity(tys_with_defaults.len() + 1);
         unbound_tyvars.push(conflict);
