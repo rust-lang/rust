@@ -159,7 +159,7 @@ fn get_path_separator(codemap: &CodeMap,
         if c == ':' {
             return "::";
         } else if c.is_whitespace() || c == '<' {
-            continuecontinue
+            continue;
         } else {
             return "";
         }
@@ -190,8 +190,9 @@ fn rewrite_segment(segment: &ast::PathSegment,
     let offset = offset + ident_len;
 
     let params = match segment.parameters {
-        ast::PathParameters::AngleBracketedParameters(ref data) if data.lifetimes.len() > 0 || data.types.len() > 0 ||
-            data.bindings.len() > 0 => {
+        ast::PathParameters::AngleBracketedParameters(ref data) if data.lifetimes.len() > 0 ||
+                                                                   data.types.len() > 0 ||
+                                                                   data.bindings.len() > 0 => {
             let param_list = data.lifetimes.iter()
                                            .map(SegmentParam::LifeTime)
                                            .chain(data.types.iter()

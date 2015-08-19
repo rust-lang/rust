@@ -246,7 +246,7 @@ fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
 
         for (c, b) in text.chars() {
             if c == '\r' {
-                continuecontinue
+                continue;
             }
 
             // Add warnings for bad todos/ fixmes

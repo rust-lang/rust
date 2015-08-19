@@ -36,12 +36,16 @@ fn foo() {
         Patternnnnnnnnnnnnnnnnnnnnnnnnn if loooooooooooooooooooooooooooooooooooooooooong_guard => {}
 
         _ => {}
+        ast::PathParameters::AngleBracketedParameters(ref data) if data.lifetimes.len() > 0 ||
+                                                                   data.types.len() > 0 ||
+                                                                   data.bindings.len() > 0 => {
+        }
     }
 
     let whatever = match something {
         /// DOC COMMENT!
         Some(_) => 42,
-        // COmment on an attribute.
+        // Comment on an attribute.
         #[an_attribute]
         // Comment after an attribute.
         None => 0,
