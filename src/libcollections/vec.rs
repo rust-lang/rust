@@ -199,7 +199,7 @@ use super::range::RangeArgument;
 /// sufficient. `push` and `insert` *will* (re)allocate if `len() == capacity()`.
 /// That is, the reported capacity is completely accurate, and can be relied on.
 /// It can even be used to manually free the memory allocated by a Vec if
-/// desired. Bulk insertion methods *may* reallocate unnecessarily.
+/// desired. Bulk insertion methods *may* reallocate, even when not necessary.
 ///
 /// Vec does not guarantee any particular growth strategy when reallocating
 /// when full, nor when `reserve` is called. The current strategy is basic
