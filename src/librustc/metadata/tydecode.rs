@@ -269,7 +269,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 assert_eq!(self.next(), '[');
                 let node_id = self.parse_uint() as ast::NodeId;
                 assert_eq!(self.next(), '|');
-                let first_stmt_index = self.parse_uint();
+                let first_stmt_index = self.parse_u32();
                 assert_eq!(self.next(), ']');
                 let block_remainder = region::BlockRemainder {
                     block: node_id, first_statement_index: first_stmt_index,
@@ -717,4 +717,3 @@ fn parse_unsafety(c: char) -> ast::Unsafety {
         _ => panic!("parse_unsafety: bad unsafety {}", c)
     }
 }
-
