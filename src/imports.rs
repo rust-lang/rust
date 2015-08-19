@@ -108,30 +108,33 @@ pub fn rewrite_use_list(width: usize,
         ends_with_newline: false,
     };
 
-    let mut items = itemize_list(context.codemap,
-                                 vec![ListItem::from_str("")], /* Dummy value, explanation
-                                                                * below */
-                                 path_list.iter(),
-                                 ",",
-                                 "}",
-                                 |vpi| vpi.span.lo,
-                                 |vpi| vpi.span.hi,
-                                 |vpi| match vpi.node {
+    let mut items = {
+        // Dummy value, see explanation below.
+        let mut items = vec![ListItem::from_str("")];
+        let iter = itemize_list(context.codemap,
+                                path_list.iter(),
+                                "}",
+                                |vpi| vpi.span.lo,
+                                |vpi| vpi.span.hi,
+                                |vpi| match vpi.node {
                                      ast::PathListItem_::PathListIdent{ name, .. } => {
                                          name.to_string()
                                      }
                                      ast::PathListItem_::PathListMod{ .. } => {
                                          "self".to_owned()
                                      }
-                                 },
-                                 span_after(span, "{", context.codemap),
-                                 span.hi);
+                                },
+                                span_after(span, "{", context.codemap),
+                                span.hi);
+        items.extend(iter);
+        items
+    };
 
     // We prefixed the item list with a dummy value so that we can
     // potentially move "self" to the front of the vector without touching
     // the rest of the items.
-    // FIXME: Make more efficient by using a linked list? That would
-    // require changes to the signatures of itemize_list and write_list.
+    // FIXME: Make more efficient by using a linked list? That would require
+    // changes to the signatures of write_list.
     let has_self = move_self_to_front(&mut items);
     let first_index = if has_self {
         0

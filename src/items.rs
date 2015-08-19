@@ -259,16 +259,16 @@ impl<'a> FmtVisitor<'a> {
                 span.lo
             };
 
-            arg_items = itemize_list(self.codemap,
-                                     arg_items,
-                                     args[min_args-1..].iter().cloned(),
-                                     ",",
-                                     ")",
-                                     span_lo_for_arg,
-                                     |arg| arg.ty.span.hi,
-                                     |_| String::new(),
-                                     comment_span_start,
-                                     span.hi);
+            let more_items = itemize_list(self.codemap,
+                                          args[min_args-1..].iter(),
+                                          ")",
+                                          |arg| span_lo_for_arg(arg),
+                                          |arg| arg.ty.span.hi,
+                                          |_| String::new(),
+                                          comment_span_start,
+                                          span.hi);
+
+            arg_items.extend(more_items);
         }
 
         assert_eq!(arg_item_strs.len(), arg_items.len());
@@ -401,9 +401,7 @@ impl<'a> FmtVisitor<'a> {
 
                 if types.len() > 0 {
                     let items = itemize_list(self.codemap,
-                                             Vec::new(),
                                              types.iter(),
-                                             ",",
                                              ")",
                                              |arg| arg.ty.span.lo,
                                              |arg| arg.ty.span.hi,
@@ -434,7 +432,7 @@ impl<'a> FmtVisitor<'a> {
                         v_width: budget,
                         ends_with_newline: true,
                     };
-                    result.push_str(&write_list(&items, &fmt));
+                    result.push_str(&write_list(&items.collect::<Vec<_>>(), &fmt));
                     result.push(')');
                 }
 
@@ -513,9 +511,7 @@ impl<'a> FmtVisitor<'a> {
         result.push_str(&generics_str);
 
         let items = itemize_list(self.codemap,
-                                 Vec::new(),
                                  struct_def.fields.iter(),
-                                 ",",
                                  terminator,
                                  |field| {
                                       // Include attributes and doc comments,
@@ -563,7 +559,7 @@ impl<'a> FmtVisitor<'a> {
             ends_with_newline: true,
         };
 
-        result.push_str(&write_list(&items, &fmt));
+        result.push_str(&write_list(&items.collect::<Vec<_>>(), &fmt));
 
         if break_line {
             result.push('\n');
@@ -689,16 +685,15 @@ impl<'a> FmtVisitor<'a> {
         });
         let ty_spans = tys.iter().map(span_for_ty_param);
 
-        let mut items = itemize_list(self.codemap,
-                                     Vec::new(),
-                                     lt_spans.chain(ty_spans),
-                                     ",",
-                                     ">",
-                                     |sp| sp.lo,
-                                     |sp| sp.hi,
-                                     |_| String::new(),
-                                     span_after(span, "<", self.codemap),
-                                     span.hi);
+        let items = itemize_list(self.codemap,
+                                 lt_spans.chain(ty_spans),
+                                 ">",
+                                 |sp| sp.lo,
+                                 |sp| sp.hi,
+                                 |_| String::new(),
+                                 span_after(span, "<", self.codemap),
+                                 span.hi);
+        let mut items = items.collect::<Vec<_>>();
 
         for (item, ty) in items.iter_mut().zip(lt_strs.chain(ty_strs)) {
             item.item = ty;
@@ -741,9 +736,7 @@ impl<'a> FmtVisitor<'a> {
         let budget = self.config.ideal_width + self.config.leeway - offset;
         let span_start = span_for_where_pred(&where_clause.predicates[0]).lo;
         let items = itemize_list(self.codemap,
-                                 Vec::new(),
                                  where_clause.predicates.iter(),
-                                 ",",
                                  "{",
                                  |pred| span_for_where_pred(pred).lo,
                                  |pred| span_for_where_pred(pred).hi,
@@ -763,7 +756,7 @@ impl<'a> FmtVisitor<'a> {
             v_width: budget,
             ends_with_newline: false,
         };
-        result.push_str(&write_list(&items, &fmt));
+        result.push_str(&write_list(&items.collect::<Vec<_>>(), &fmt));
 
         result
     }

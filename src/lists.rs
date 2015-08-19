@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cmp;
+use std::iter::Peekable;
 
 use syntax::codemap::{self, CodeMap, BytePos};
 
@@ -224,107 +225,134 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
     result
 }
 
-// Turns a list into a vector of items with associated comments.
-// TODO: we probably do not want to take a terminator any more. Instead, we
-// should demand a proper span end.
-pub fn itemize_list<T, I, F1, F2, F3>(codemap: &CodeMap,
-                                      prefix: Vec<ListItem>,
-                                      it: I,
-                                      separator: &str,
-                                      terminator: &str,
-                                      get_lo: F1,
-                                      get_hi: F2,
-                                      get_item_string: F3,
-                                      mut prev_span_end: BytePos,
-                                      next_span_start: BytePos)
-                                      -> Vec<ListItem>
+pub struct ListItems<'a, I, F1, F2, F3>
+    where I: Iterator
+{
+    codemap: &'a CodeMap,
+    inner: Peekable<I>,
+    get_lo: F1,
+    get_hi: F2,
+    get_item_string: F3,
+    prev_span_end: BytePos,
+    next_span_start: BytePos,
+    terminator: &'a str,
+}
+
+impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
     where I: Iterator<Item = T>,
           F1: Fn(&T) -> BytePos,
           F2: Fn(&T) -> BytePos,
           F3: Fn(&T) -> String
 {
-    let mut result = prefix;
-    result.reserve(it.size_hint().0);
+    type Item = ListItem;
 
-    let mut new_it = it.peekable();
-    let white_space: &[_] = &[' ', '\t'];
+    fn next(&mut self) -> Option<Self::Item> {
+        let white_space: &[_] = &[' ', '\t'];
 
-    while let Some(item) = new_it.next() {
-        // Pre-comment
-        let pre_snippet = codemap.span_to_snippet(codemap::mk_sp(prev_span_end,
-                                                                get_lo(&item)))
-                                 .unwrap();
-        let pre_snippet = pre_snippet.trim();
-        let pre_comment = if pre_snippet.len() > 0 {
-            Some(pre_snippet.to_owned())
-        } else {
-            None
-        };
+        self.inner.next().map(|item| {
+            // Pre-comment
+            let pre_snippet = self.codemap.span_to_snippet(codemap::mk_sp(self.prev_span_end,
+                                                                          (self.get_lo)(&item)))
+                                          .unwrap();
+            let pre_snippet = pre_snippet.trim();
+            let pre_comment = if pre_snippet.len() > 0 {
+                Some(pre_snippet.to_owned())
+            } else {
+                None
+            };
 
-        // Post-comment
-        let next_start = match new_it.peek() {
-            Some(ref next_item) => get_lo(next_item),
-            None => next_span_start
-        };
-        let post_snippet = codemap.span_to_snippet(codemap::mk_sp(get_hi(&item),
-                                                                  next_start))
-                                  .unwrap();
+            // Post-comment
+            let next_start = match self.inner.peek() {
+                Some(ref next_item) => (self.get_lo)(next_item),
+                None => self.next_span_start
+            };
+            let post_snippet = self.codemap.span_to_snippet(codemap::mk_sp((self.get_hi)(&item),
+                                                                           next_start))
+                                           .unwrap();
 
-        let comment_end = match new_it.peek() {
-            Some(..) => {
-                let block_open_index = post_snippet.find("/*");
-                let newline_index = post_snippet.find('\n');
-                let separator_index = post_snippet.find_uncommented(separator).unwrap();
+            let comment_end = match self.inner.peek() {
+                Some(..) => {
+                    let block_open_index = post_snippet.find("/*");
+                    let newline_index = post_snippet.find('\n');
+                    let separator_index = post_snippet.find_uncommented(",").unwrap();
 
-                match (block_open_index, newline_index) {
-                    // Separator before comment, with the next item on same line.
-                    // Comment belongs to next item.
-                    (Some(i), None) if i > separator_index => { separator_index + separator.len() }
-                    // Block-style post-comment before the separator.
-                    (Some(i), None) => {
-                        cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
-                                 separator_index + separator.len())
+                    match (block_open_index, newline_index) {
+                        // Separator before comment, with the next item on same line.
+                        // Comment belongs to next item.
+                        (Some(i), None) if i > separator_index => {
+                            separator_index + 1
+                        }
+                        // Block-style post-comment before the separator.
+                        (Some(i), None) => {
+                            cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
+                                     separator_index + 1)
+                        }
+                        // Block-style post-comment. Either before or after the separator.
+                        (Some(i), Some(j)) if i < j => {
+                            cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
+                                     separator_index + 1)
+                        }
+                        // Potential *single* line comment.
+                        (_, Some(j)) => { j + 1 }
+                        _ => post_snippet.len()
                     }
-                    // Block-style post-comment. Either before or after the separator.
-                    (Some(i), Some(j)) if i < j => {
-                        cmp::max(find_comment_end(&post_snippet[i..]).unwrap() + i,
-                                 separator_index + separator.len())
-                    }
-                    // Potential *single* line comment.
-                    (_, Some(j)) => { j + 1 }
-                    _ => post_snippet.len()
+                },
+                None => {
+                    post_snippet.find_uncommented(self.terminator)
+                                .unwrap_or(post_snippet.len())
                 }
-            },
-            None => {
-                post_snippet.find_uncommented(terminator)
-                            .unwrap_or(post_snippet.len())
+            };
+
+            // Cleanup post-comment: strip separators and whitespace.
+            self.prev_span_end = (self.get_hi)(&item) + BytePos(comment_end as u32);
+            let mut post_snippet = post_snippet[..comment_end].trim();
+
+            if post_snippet.starts_with(',') {
+                post_snippet = post_snippet[1..].trim_matches(white_space);
+            } else if post_snippet.ends_with(",") {
+                post_snippet = post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space);
             }
-        };
 
-        // Cleanup post-comment: strip separators and whitespace.
-        prev_span_end = get_hi(&item) + BytePos(comment_end as u32);
-        let mut post_snippet = post_snippet[..comment_end].trim();
-
-        if post_snippet.starts_with(separator) {
-            post_snippet = post_snippet[separator.len()..]
-                .trim_matches(white_space);
-        } else if post_snippet.ends_with(separator) {
-            post_snippet = post_snippet[..post_snippet.len()-separator.len()]
-                .trim_matches(white_space);
-        }
-
-        result.push(ListItem {
-            pre_comment: pre_comment,
-            item: get_item_string(&item),
-            post_comment: if post_snippet.len() > 0 {
+            let post_comment = if post_snippet.len() > 0 {
                 Some(post_snippet.to_owned())
             } else {
                 None
-            }
-        });
-    }
+            };
 
-    result
+            ListItem {
+                pre_comment: pre_comment,
+                item: (self.get_item_string)(&item),
+                post_comment: post_comment,
+            }
+        })
+    }
+}
+
+// Creates an iterator over a list's items with associated comments.
+pub fn itemize_list<'a, T, I, F1, F2, F3>(codemap: &'a CodeMap,
+                                          inner: I,
+                                          terminator: &'a str,
+                                          get_lo: F1,
+                                          get_hi: F2,
+                                          get_item_string: F3,
+                                          prev_span_end: BytePos,
+                                          next_span_start: BytePos)
+                                          -> ListItems<'a, I, F1, F2, F3>
+    where I: Iterator<Item = T>,
+          F1: Fn(&T) -> BytePos,
+          F2: Fn(&T) -> BytePos,
+          F3: Fn(&T) -> String
+{
+    ListItems {
+        codemap: codemap,
+        inner: inner.peekable(),
+        get_lo: get_lo,
+        get_hi: get_hi,
+        get_item_string: get_item_string,
+        prev_span_end: prev_span_end,
+        next_span_start: next_span_start,
+        terminator: terminator,
+    }
 }
 
 fn needs_trailing_separator(separator_tactic: SeparatorTactic, list_tactic: ListTactic) -> bool {
