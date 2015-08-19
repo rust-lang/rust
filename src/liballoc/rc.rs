@@ -160,7 +160,7 @@ use core::cell::Cell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hasher, Hash};
-use core::intrinsics::{assume, drop_in_place, abort};
+use core::intrinsics::{assume, abort};
 use core::marker::{self, Unsize};
 use core::mem::{self, align_of_val, size_of_val, forget};
 use core::ops::{CoerceUnsized, Deref};
@@ -460,7 +460,7 @@ impl<T: ?Sized> Drop for Rc<T> {
                 self.dec_strong();
                 if self.strong() == 0 {
                     // destroy the contained object
-                    drop_in_place(&mut (*ptr).value);
+                    ptr::drop_in_place(&mut (*ptr).value);
 
                     // remove the implicit "strong weak" pointer now that we've
                     // destroyed the contents.
