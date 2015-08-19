@@ -39,7 +39,13 @@ declare_lint! {
 /// This lint is **deny** by default
 ///
 /// There is also a lint that warns on ineffective masks that is *warn*
-/// by default
+/// by default.
+///
+/// |Comparison|Bit-Op   |Example    |equals |Formula|
+/// |`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|`¹ && m <= c`|
+/// |`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|`¹ && m < c` |
+///
+/// `¹ power_of_two(c + 1)`
 #[derive(Copy,Clone)]
 pub struct BitMask;
 
@@ -127,12 +133,10 @@ fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_,
                     "incompatible bit mask: `_ | {}` will never be lower than `{}`",
                     mask_value, cmp_value));
             } else {
-                if mask_value < cmp_value {
-                    span_lint(cx, INEFFECTIVE_BIT_MASK, *span, &format!(
-                        "ineffective bit mask: `x | {}` compared to `{}` is the same as x compared directly",
-                        mask_value, cmp_value));
-                }
+                check_ineffective_lt(cx, *span, mask_value, cmp_value, "|");
             },
+            BiBitXor =>
+                check_ineffective_lt(cx, *span, mask_value, cmp_value, "^"),
             _ => ()
         },
         BiLe | BiGt => match bit_op {
@@ -151,15 +155,29 @@ fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_,
                     "incompatible bit mask: `_ | {}` will always be higher than `{}`",
                     mask_value, cmp_value));
             } else {
-                if mask_value < cmp_value {
-                    span_lint(cx, INEFFECTIVE_BIT_MASK, *span, &format!(
-                        "ineffective bit mask: `x | {}` compared to `{}` is the same as x compared directly",
-                        mask_value, cmp_value));
-                }
+                check_ineffective_gt(cx, *span, mask_value, cmp_value, "|");
             },
+            BiBitXor =>
+                check_ineffective_gt(cx, *span, mask_value, cmp_value, "^"),
             _ => ()
         },
         _ => ()
+    }
+}
+
+fn check_ineffective_lt(cx: &Context, span: Span, m: u64, c: u64, op: &str) {
+    if c.is_power_of_two() && m < c {
+        span_lint(cx, INEFFECTIVE_BIT_MASK, span, &format!(
+            "ineffective bit mask: `x {} {}` compared to `{}`, is the same as x compared directly",
+            op, m, c));
+    }
+}
+
+fn check_ineffective_gt(cx: &Context, span: Span, m: u64, c: u64, op: &str) {
+    if (c + 1).is_power_of_two() && m <= c {
+        span_lint(cx, INEFFECTIVE_BIT_MASK, span, &format!(
+            "ineffective bit mask: `x {} {}` compared to `{}`, is the same as x compared directly",
+            op, m, c));
     }
 }
 
