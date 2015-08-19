@@ -1,4 +1,4 @@
-// rustfmt-config: expr_visual_indent.toml
+// rustfmt-expr_indent_style: Visual
 
 // Visual level block indentation.
 

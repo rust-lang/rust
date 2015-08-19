@@ -617,10 +617,8 @@ fn rewrite_binary_op(context: &RewriteContext,
     let operator_str = context.codemap.span_to_snippet(op.span).unwrap();
 
     // 1 = space between lhs expr and operator
-    let mut result =
-        try_opt!(lhs.rewrite(context,
-                             context.config.max_width - offset - 1 - operator_str.len(),
-                             offset));
+    let max_width = try_opt!(context.config.max_width.checked_sub(operator_str.len() + offset + 1));
+    let mut result = try_opt!(lhs.rewrite(context, max_width, offset));
 
     result.push(' ');
     result.push_str(&operator_str);
