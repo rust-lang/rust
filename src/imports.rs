@@ -117,13 +117,15 @@ pub fn rewrite_use_list(width: usize,
                                 "}",
                                 |vpi| vpi.span.lo,
                                 |vpi| vpi.span.hi,
-                                |vpi| match vpi.node {
-                                     ast::PathListItem_::PathListIdent{ name, .. } => {
-                                         name.to_string()
-                                     }
-                                     ast::PathListItem_::PathListMod{ .. } => {
-                                         "self".to_owned()
-                                     }
+                                |vpi| {
+                                    match vpi.node {
+                                        ast::PathListItem_::PathListIdent{ name, .. } => {
+                                            name.to_string()
+                                        }
+                                        ast::PathListItem_::PathListMod{ .. } => {
+                                            "self".to_owned()
+                                        }
+                                    }
                                 },
                                 span_after(span, "{", context.codemap),
                                 span.hi);

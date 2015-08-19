@@ -78,4 +78,5 @@ create_config! {
     report_fixme: ReportTactic,
     reorder_imports: bool, // Alphabetically, case sensitive.
     expr_indent_style: BlockIndentStyle,
+    closure_indent_style: BlockIndentStyle,
 }

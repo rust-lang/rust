@@ -52,6 +52,20 @@ pub struct ListFormatting<'a> {
     pub ends_with_newline: bool,
 }
 
+impl<'a> ListFormatting<'a> {
+    pub fn for_fn(width: usize, offset: usize) -> ListFormatting<'a> {
+        ListFormatting {
+            tactic: ListTactic::HorizontalVertical,
+            separator: ",",
+            trailing_separator: SeparatorTactic::Never,
+            indent: offset,
+            h_width: width,
+            v_width: width,
+            ends_with_newline: false,
+        }
+    }
+}
+
 pub struct ListItem {
     pub pre_comment: Option<String>,
     // Item should include attributes and doc comments

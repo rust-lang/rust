@@ -232,7 +232,7 @@ impl<'a> FmtVisitor<'a> {
                     arg_indent: usize,
                     span: Span)
                     -> String {
-        let mut arg_item_strs: Vec<_> = args.iter().map(|a| self.rewrite_fn_input(a)).collect();
+        let mut arg_item_strs: Vec<_> = args.iter().map(rewrite_fn_input).collect();
         // Account for sugary self.
         // FIXME: the comment for the self argument is dropped. This is blocked
         // on rust issue #27522.
@@ -512,13 +512,12 @@ impl<'a> FmtVisitor<'a> {
                                  struct_def.fields.iter(),
                                  terminator,
                                  |field| {
-                                      // Include attributes and doc comments,
-                                      // if present
-                                      if field.node.attrs.len() > 0 {
-                                          field.node.attrs[0].span.lo
-                                      } else {
-                                          field.span.lo
-                                      }
+                                     // Include attributes and doc comments, if present
+                                     if field.node.attrs.len() > 0 {
+                                         field.node.attrs[0].span.lo
+                                     } else {
+                                         field.span.lo
+                                     }
                                  },
                                  |field| field.node.ty.span.hi,
                                  |field| self.format_field(field),
@@ -650,16 +649,14 @@ impl<'a> FmtVisitor<'a> {
     fn rewrite_generics(&self, generics: &ast::Generics, offset: usize, span: Span) -> String {
         // FIXME convert bounds to where clauses where they get too big or if
         // there is a where clause at all.
-        let mut result = String::new();
         let lifetimes: &[_] = &generics.lifetimes;
         let tys: &[_] = &generics.ty_params;
         if lifetimes.len() + tys.len() == 0 {
-            return result;
+            return String::new();
         }
 
         let budget = self.config.max_width - offset - 2;
         // TODO might need to insert a newline if the generics are really long
-        result.push('<');
 
         // Strings for the generics.
         // 1 = <
@@ -697,20 +694,9 @@ impl<'a> FmtVisitor<'a> {
             item.item = ty;
         }
 
-        let fmt = ListFormatting {
-            tactic: ListTactic::HorizontalVertical,
-            separator: ",",
-            trailing_separator: SeparatorTactic::Never,
-            indent: offset + 1,
-            h_width: budget,
-            v_width: budget,
-            ends_with_newline: false,
-        };
-        result.push_str(&write_list(&items, &fmt));
+        let fmt = ListFormatting::for_fn(budget, offset + 1);
 
-        result.push('>');
-
-        result
+        format!("<{}>", write_list(&items, &fmt))
     }
 
     fn rewrite_where_clause(&self,
@@ -719,14 +705,9 @@ impl<'a> FmtVisitor<'a> {
                             indent: usize,
                             span_end: BytePos)
                             -> String {
-        let mut result = String::new();
         if where_clause.predicates.len() == 0 {
-            return result;
+            return String::new();
         }
-
-        result.push('\n');
-        result.push_str(&make_indent(indent + config.tab_spaces));
-        result.push_str("where ");
 
         let context = self.get_context();
         // 6 = "where ".len()
@@ -752,11 +733,12 @@ impl<'a> FmtVisitor<'a> {
             indent: offset,
             h_width: budget,
             v_width: budget,
-            ends_with_newline: false,
+            ends_with_newline: true,
         };
-        result.push_str(&write_list(&items.collect::<Vec<_>>(), &fmt));
 
-        result
+        format!("\n{}where {}",
+                make_indent(indent + config.tab_spaces),
+                write_list(&items.collect::<Vec<_>>(), &fmt))
     }
 
     fn rewrite_return(&self, ret: &ast::FunctionRetTy) -> String {
@@ -766,17 +748,21 @@ impl<'a> FmtVisitor<'a> {
             ast::FunctionRetTy::Return(ref ty) => "-> ".to_owned() + &pprust::ty_to_string(ty),
         }
     }
+}
 
-    // TODO we farm this out, but this could spill over the column limit, so we
-    // ought to handle it properly.
-    fn rewrite_fn_input(&self, arg: &ast::Arg) -> String {
-        if is_named_arg(arg) {
-            format!("{}: {}",
-                    pprust::pat_to_string(&arg.pat),
-                    pprust::ty_to_string(&arg.ty))
+// TODO we farm this out, but this could spill over the column limit, so we
+// ought to handle it properly.
+pub fn rewrite_fn_input(arg: &ast::Arg) -> String {
+    if is_named_arg(arg) {
+        if let ast::Ty_::TyInfer = arg.ty.node {
+            pprust::pat_to_string(&arg.pat)
         } else {
-            pprust::ty_to_string(&arg.ty)
+            format!("{}: {}",
+                pprust::pat_to_string(&arg.pat),
+                pprust::ty_to_string(&arg.ty))
         }
+    } else {
+        pprust::ty_to_string(&arg.ty)
     }
 }
 
@@ -810,11 +796,18 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf, args: &[ast::Arg]) -
     }
 }
 
-fn span_lo_for_arg(arg: &ast::Arg) -> BytePos {
+pub fn span_lo_for_arg(arg: &ast::Arg) -> BytePos {
     if is_named_arg(arg) {
         arg.pat.span.lo
     } else {
         arg.ty.span.lo
+    }
+}
+
+pub fn span_hi_for_arg(arg: &ast::Arg) -> BytePos {
+    match arg.ty.node {
+        ast::Ty_::TyInfer if is_named_arg(arg) => arg.pat.span.hi,
+        _ => arg.ty.span.hi,
     }
 }
 
