@@ -36,16 +36,19 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         "vsqrtq_f32" => plain!("llvm.sqrt.v4f32", (f32x4) -> f32x4),
         "vsqrtq_f64" => plain!("llvm.sqrt.v2f64", (f64x2) -> f64x2),
 
-        "vrsqrteq_f32" => p!("vrsqrte.v4f32", (f32x4) -> f32x4),
-        "vrsqrteq_f64" => p!("vrsqrte.v2f64", (f64x2) -> f64x2),
-        "vrecpeq_f32" => p!("vrecpe.v4f32", (f32x4) -> f32x4),
-        "vrecpeq_f64" => p!("vrecpe.v2f64", (f64x2) -> f64x2),
+        "vrsqrteq_f32" => p!("frsqrte.v4f32", (f32x4) -> f32x4),
+        "vrsqrteq_f64" => p!("frsqrte.v2f64", (f64x2) -> f64x2),
+        "vrecpeq_f32" => p!("frecpe.v4f32", (f32x4) -> f32x4),
+        "vrecpeq_f64" => p!("frecpe.v2f64", (f64x2) -> f64x2),
 
         "vmaxq_f32" => p!("fmax.v4f32", (f32x4, f32x4) -> f32x4),
         "vmaxq_f64" => p!("fmax.v2f64", (f64x2, f64x2) -> f64x2),
 
         "vminq_f32" => p!("fmin.v4f32", (f32x4, f32x4) -> f32x4),
         "vminq_f64" => p!("fmin.v2f64", (f64x2, f64x2) -> f64x2),
+
+        "vqtbl1q_u8" => p!("tbl1.v16i8", (i8x16, i8x16) -> i8x16),
+        "vqtbl1q_s8" => p!("tbl1.v16i8", (i8x16, i8x16) -> i8x16),
         _ => return None,
     })
 }
