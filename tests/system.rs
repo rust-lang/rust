@@ -97,8 +97,16 @@ fn print_mismatches(result: HashMap<String, String>) {
 static HANDLE_RESULT: &'static Fn(HashMap<String, String>) = &handle_result;
 
 pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, String>> {
-    let config = get_config(&filename);
+    let sig_comments = read_significant_comments(&filename);
+    let mut config = get_config(sig_comments.get("config").map(|x| &(*x)[..]));
     let args = vec!["rustfmt".to_owned(), filename];
+
+    for (key, val) in sig_comments {
+        if key != "target" && key != "config" {
+            config.override_value(&key, &val);
+        }
+    }
+
     // this thread is not used for concurrency, but rather to workaround the issue that the passed
     // function handle needs to have static lifetime. Instead of using a global RefCell, we use
     // panic to return a result in case of failure. This has the advantage of smoothing the road to
@@ -110,15 +118,15 @@ pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, String>>
     )
 }
 
-// Reads test config file from comments and loads it
-fn get_config(file_name: &str) -> Box<Config> {
-    let config_file_name = read_significant_comment(file_name, "config")
-        .map(|file_name| {
-            let mut full_path = "tests/config/".to_owned();
-            full_path.push_str(&file_name);
-            full_path
-        })
-        .unwrap_or("default.toml".to_owned());
+
+// Reads test config file from comments and reads its contents.
+fn get_config(config_file: Option<&str>) -> Box<Config> {
+    let config_file_name = config_file.map(|file_name| {
+                                           let mut full_path = "tests/config/".to_owned();
+                                           full_path.push_str(&file_name);
+                                           full_path
+                                       })
+                                       .unwrap_or("default.toml".to_owned());
 
     let mut def_config_file = fs::File::open(config_file_name).ok().expect("Couldn't open config.");
     let mut def_config = String::new();
@@ -127,14 +135,16 @@ fn get_config(file_name: &str) -> Box<Config> {
     Box::new(Config::from_toml(&def_config))
 }
 
-fn read_significant_comment(file_name: &str, option: &str) -> Option<String> {
-    let file = fs::File::open(file_name).ok().expect("Couldn't read file for comment.");
+// Reads significant comments of the form: // rustfmt-key: value
+// into a hash map.
+fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
+    let file = fs::File::open(file_name).ok().expect(&format!("Couldn't read file {}.", file_name));
     let reader = BufReader::new(file);
-    let pattern = format!("^\\s*//\\s*rustfmt-{}:\\s*(\\S+)", option);
+    let pattern = r"^\s*//\s*rustfmt-([^:]+):\s*(\S+)";
     let regex = regex::Regex::new(&pattern).ok().expect("Failed creating pattern 1.");
 
-    // matches exactly the lines containing significant comments or whitespace
-    let line_regex = regex::Regex::new(r"(^\s*$)|(^\s*//\s*rustfmt-[:alpha:]+:\s*\S+)")
+    // Matches lines containing significant comments or whitespace.
+    let line_regex = regex::Regex::new(r"(^\s*$)|(^\s*//\s*rustfmt-[^:]+:\s*\S+)")
         .ok().expect("Failed creating pattern 2.");
 
     reader.lines()
@@ -142,20 +152,26 @@ fn read_significant_comment(file_name: &str, option: &str) -> Option<String> {
           .take_while(|line| line_regex.is_match(&line))
           .filter_map(|line| {
               regex.captures_iter(&line).next().map(|capture| {
-                  capture.at(1).expect("Couldn't unwrap capture.").to_owned()
+                  (capture.at(1).expect("Couldn't unwrap capture.").to_owned(),
+                   capture.at(2).expect("Couldn't unwrap capture.").to_owned())
               })
           })
-          .next()
+          .collect()
 }
 
 // Compare output to input.
+// TODO: needs a better name, more explanation.
 fn handle_result(result: HashMap<String, String>) {
     let mut failures = HashMap::new();
 
     for (file_name, fmt_text) in result {
-        // If file is in tests/source, compare to file with same name in tests/target
-        let target_file_name = get_target(&file_name);
-        let mut f = fs::File::open(&target_file_name).ok().expect("Couldn't open target.");
+        // FIXME: reading significant comments again. Is there a way we can just
+        // pass the target to this function?
+        let sig_comments = read_significant_comments(&file_name);
+
+        // If file is in tests/source, compare to file with same name in tests/target.
+        let target = get_target(&file_name, sig_comments.get("target").map(|x| &(*x)[..]));
+        let mut f = fs::File::open(&target).ok().expect("Couldn't open target.");
 
         let mut text = String::new();
         // TODO: speedup by running through bytes iterator
@@ -171,15 +187,11 @@ fn handle_result(result: HashMap<String, String>) {
 }
 
 // Map source file paths to their target paths.
-fn get_target(file_name: &str) -> String {
+fn get_target(file_name: &str, target: Option<&str>) -> String {
     if file_name.starts_with("tests/source/") {
-        let target = read_significant_comment(file_name, "target");
-        let base = target.unwrap_or(file_name.trim_left_matches("tests/source/").to_owned());
+        let base = target.unwrap_or(file_name.trim_left_matches("tests/source/"));
 
-        let mut target_file = "tests/target/".to_owned();
-        target_file.push_str(&base);
-
-        target_file
+        format!("tests/target/{}", base)
     } else {
         file_name.to_owned()
     }

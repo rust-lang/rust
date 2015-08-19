@@ -144,6 +144,19 @@ macro_rules! impl_enum_decodable {
                 }
             }
         }
+
+        impl ::std::str::FromStr for $e {
+            type Err = &'static str;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                match &*s {
+                    $(
+                        stringify!($x) => Ok($e::$x),
+                    )*
+                    _ => Err("Bad variant"),
+                }
+            }
+        }
     };
 }
 

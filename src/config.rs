@@ -26,37 +26,56 @@ pub enum BlockIndentStyle {
 
 impl_enum_decodable!(BlockIndentStyle, Inherit, Tabbed, Visual);
 
-#[derive(RustcDecodable, Clone)]
-pub struct Config {
-    pub max_width: usize,
-    pub ideal_width: usize,
-    pub leeway: usize,
-    pub tab_spaces: usize,
-    pub newline_style: NewlineStyle,
-    pub fn_brace_style: BraceStyle,
-    pub fn_return_indent: ReturnIndent,
-    pub fn_args_paren_newline: bool,
-    pub struct_trailing_comma: SeparatorTactic,
-    pub struct_lit_trailing_comma: SeparatorTactic,
-    pub struct_lit_style: StructLitStyle,
-    pub enum_trailing_comma: bool,
-    pub report_todo: ReportTactic,
-    pub report_fixme: ReportTactic,
-    pub reorder_imports: bool, // Alphabetically, case sensitive.
-    pub expr_indent_style: BlockIndentStyle,
-}
+macro_rules! create_config {
+    ($($i:ident: $ty:ty),+ $(,)*) => (
+        #[derive(RustcDecodable, Clone)]
+        pub struct Config {
+            $(pub $i: $ty),+
+        }
 
-impl Config {
-    pub fn from_toml(toml: &str) -> Config {
-        let parsed = toml.parse().unwrap();
-        match toml::decode(parsed) {
-            Some(decoded) => decoded,
-            None => {
-                println!("Decoding config file failed. Config:\n{}", toml);
-                let parsed: toml::Value = toml.parse().unwrap();
-                println!("\n\nParsed:\n{:?}", parsed);
-                panic!();
+        impl Config {
+            pub fn from_toml(toml: &str) -> Config {
+                let parsed = toml.parse().unwrap();
+                match toml::decode(parsed) {
+                    Some(decoded) => decoded,
+                    None => {
+                        println!("Decoding config file failed. Config:\n{}", toml);
+                        let parsed: toml::Value = toml.parse().unwrap();
+                        println!("\n\nParsed:\n{:?}", parsed);
+                        panic!();
+                    }
+                }
+            }
+
+            pub fn override_value(&mut self, key: &str, val: &str) {
+                match key {
+                    $(
+                        stringify!($i) => {
+                            self.$i = val.parse::<$ty>().unwrap();
+                        }
+                    )+
+                    _ => panic!("Bad config key!")
+                }
             }
         }
-    }
+    )
+}
+
+create_config! {
+    max_width: usize,
+    ideal_width: usize,
+    leeway: usize,
+    tab_spaces: usize,
+    newline_style: NewlineStyle,
+    fn_brace_style: BraceStyle,
+    fn_return_indent: ReturnIndent,
+    fn_args_paren_newline: bool,
+    struct_trailing_comma: SeparatorTactic,
+    struct_lit_trailing_comma: SeparatorTactic,
+    struct_lit_style: StructLitStyle,
+    enum_trailing_comma: bool,
+    report_todo: ReportTactic,
+    report_fixme: ReportTactic,
+    reorder_imports: bool, // Alphabetically, case sensitive.
+    expr_indent_style: BlockIndentStyle,
 }

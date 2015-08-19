@@ -80,7 +80,7 @@ pub enum WriteMode {
     NewFile(&'static str),
     // Write the output to stdout.
     Display,
-    // Return the result as a mapping from filenames to StringBuffers.
+    // Return the result as a mapping from filenames to Strings.
     Return(&'static Fn(HashMap<String, String>)),
 }
 
