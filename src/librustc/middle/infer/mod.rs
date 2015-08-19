@@ -616,40 +616,50 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Returns a type variable's default fallback if any exists. A default
     /// must be attached to the variable when created, if it is created
-    /// without a default, this will return None.
+    /// without a default, this will return NoDefault.
     ///
     /// This code does not apply to integral or floating point variables,
     /// only to use declared defaults.
     ///
     /// See `new_ty_var_with_default` to create a type variable with a default.
     /// See `type_variable::Default` for details about what a default entails.
-    pub fn default(&self, ty: Ty<'tcx>) -> Option<type_variable::Default<'tcx>> {
+    pub fn default(&self, ty: Ty<'tcx>) -> type_variable::Default<'tcx> {
         match ty.sty {
-            ty::TyInfer(ty::TyVar(vid)) => self.type_variables.borrow().default(vid),
-            _ => None
+            ty::TyInfer(ty::TyVar(vid)) => self.type_variables
+                .borrow()
+                .default(vid)
+                .clone(),
+            _ => type_variable::Default::None,
         }
     }
 
-    pub fn unsolved_variables(&self) -> Vec<ty::Ty<'tcx>> {
+    // Returns a vector containing all type variables that have an applicable default,
+    // along with their defaults.
+    //
+    // NB: You must be careful to only apply defaults once, if a variable is unififed
+    // it many no longer be unsolved and apply a second default will mostly likely
+    // result in a type error.
+    pub fn candidates_for_defaulting(&self)
+                                     -> Vec<(ty::Ty<'tcx>, type_variable::Default<'tcx>)> {
         let mut variables = Vec::new();
 
         let unbound_ty_vars = self.type_variables
                                   .borrow()
-                                  .unsolved_variables()
+                                  .candidates_for_defaulting()
                                   .into_iter()
-                                  .map(|t| self.tcx.mk_var(t));
+                                  .map(|(t, d)| (self.tcx.mk_var(t), d));
 
         let unbound_int_vars = self.int_unification_table
                                    .borrow_mut()
                                    .unsolved_variables()
                                    .into_iter()
-                                   .map(|v| self.tcx.mk_int_var(v));
+                                   .map(|v| (self.tcx.mk_int_var(v), type_variable::Default::Integer));
 
         let unbound_float_vars = self.float_unification_table
                                      .borrow_mut()
                                      .unsolved_variables()
                                      .into_iter()
-                                     .map(|v| self.tcx.mk_float_var(v));
+                                     .map(|v| (self.tcx.mk_float_var(v), type_variable::Default::Float));
 
         variables.extend(unbound_ty_vars);
         variables.extend(unbound_int_vars);
@@ -960,7 +970,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn next_ty_var_with_default(&self,
-                                    default: Option<type_variable::Default<'tcx>>) -> Ty<'tcx> {
+                                    default: Option<type_variable::UserDefault<'tcx>>) -> Ty<'tcx> {
         let ty_var_id = self.type_variables
                             .borrow_mut()
                             .new_var(false, default);
@@ -1013,7 +1023,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         for def in defs.iter() {
             let default = def.default.map(|default| {
-                type_variable::Default {
+                type_variable::UserDefault {
                     ty: default.subst_spanned(self.tcx, substs, Some(span)),
                     origin_span: span,
                     def_id: def.default_def_id
@@ -1319,13 +1329,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     pub fn report_conflicting_default_types(&self,
                                             span: Span,
-                                            expected: type_variable::Default<'tcx>,
-                                            actual: type_variable::Default<'tcx>) {
+                                            expected: type_variable::UserDefault<'tcx>,
+                                            actual: type_variable::UserDefault<'tcx>) {
         let trace = TypeTrace {
             origin: Misc(span),
             values: Types(ExpectedFound {
                 expected: expected.ty,
-                found: actual.ty
+                found: actual.ty,
             })
         };
 

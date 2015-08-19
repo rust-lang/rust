@@ -27,8 +27,7 @@ pub struct TypeVariableTable<'tcx> {
 
 struct TypeVariableData<'tcx> {
     value: TypeVariableValue<'tcx>,
-    default: Option<Default<'tcx>>,
-    diverging: bool,
+    default: Default<'tcx>,
 }
 
 enum TypeVariableValue<'tcx> {
@@ -38,10 +37,20 @@ enum TypeVariableValue<'tcx> {
     }
 }
 
-// We will use this to store the required information to recapitulate what happened when
-// an error occurs.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Default<'tcx> {
+pub enum Default<'tcx> {
+    User(UserDefault<'tcx>),
+    Integer,
+    Float,
+    Diverging,
+    None,
+}
+
+// We will use this to store the required information to recapitulate
+// what happened when an error occurs.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct UserDefault<'tcx> {
+    /// The default type provided by the user
     pub ty: Ty<'tcx>,
     /// The span where the default was incurred
     pub origin_span: Span,
@@ -88,12 +97,15 @@ impl<'tcx> TypeVariableTable<'tcx> {
         relations(self.values.get_mut(a.index as usize))
     }
 
-    pub fn default(&self, vid: ty::TyVid) -> Option<Default<'tcx>> {
-        self.values.get(vid.index as usize).default.clone()
+    pub fn default(&self, vid: ty::TyVid) -> &Default<'tcx> {
+       &self.values.get(vid.index as usize).default
     }
 
     pub fn var_diverges<'a>(&'a self, vid: ty::TyVid) -> bool {
-        self.values.get(vid.index as usize).diverging
+        match self.values.get(vid.index as usize).default {
+            Default::Diverging => true,
+            _ => false,
+        }
     }
 
     /// Records that `a <: b`, `a :> b`, or `a == b`, depending on `dir`.
@@ -136,12 +148,19 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
     pub fn new_var(&mut self,
                    diverging: bool,
-                   default: Option<Default<'tcx>>) -> ty::TyVid {
+                   default: Option<UserDefault<'tcx>>) -> ty::TyVid {
+        let default = if diverging {
+            Default::Diverging
+        } else {
+            default.map(|u| Default::User(u))
+                   .unwrap_or(Default::None)
+        };
+
         let index = self.values.push(TypeVariableData {
             value: Bounded { relations: vec![] },
             default: default,
-            diverging: diverging
         });
+
         ty::TyVid { index: index as u32 }
     }
 
@@ -219,17 +238,20 @@ impl<'tcx> TypeVariableTable<'tcx> {
         escaping_types
     }
 
-    pub fn unsolved_variables(&self) -> Vec<ty::TyVid> {
+    pub fn candidates_for_defaulting(&self) -> Vec<(ty::TyVid, Default<'tcx>)> {
         self.values
             .iter()
             .enumerate()
-            .filter_map(|(i, value)| match &value.value {
-                &TypeVariableValue::Bounded { .. } => Some(ty::TyVid { index: i as u32 }),
-                &TypeVariableValue::Known(v) => match v.sty {
-                    ty::TyInfer(ty::FloatVar(_)) | ty::TyInfer(ty::IntVar(_)) =>
-                        Some(ty::TyVid { index: i as u32 }),
-                    _ => None
-                }
+            .filter_map(|(i, value)| {
+                let vid = match &value.value {
+                    &TypeVariableValue::Bounded { .. } => Some(ty::TyVid { index: i as u32 }),
+                    &TypeVariableValue::Known(v) => match v.sty {
+                        ty::TyInfer(ty::FloatVar(_)) | ty::TyInfer(ty::IntVar(_)) =>
+                            Some(ty::TyVid { index: i as u32 }),
+                        _ => None
+                    }
+                };
+                vid.map(|v| (v, value.default.clone()))
            })
            .collect()
     }
