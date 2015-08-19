@@ -135,7 +135,8 @@ impl FreeRegionMap {
                     tcx.region_maps.is_subscope_of(sub_scope, super_scope),
 
                 (ty::ReScope(sub_scope), ty::ReFree(fr)) =>
-                    tcx.region_maps.is_subscope_of(sub_scope, fr.scope.to_code_extent()) ||
+                    tcx.region_maps.is_subscope_of(sub_scope,
+                                                   fr.scope.to_code_extent(&tcx.region_maps)) ||
                     self.is_static(fr),
 
                 (ty::ReFree(sub_fr), ty::ReFree(super_fr)) =>
@@ -177,4 +178,3 @@ fn lub() {
     map.relate_free_regions(frs[1], frs[2]);
     assert_eq!(map.lub_free_regions(frs[0], frs[1]), ty::ReFree(frs[2]));
 }
-

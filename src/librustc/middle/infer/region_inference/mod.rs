@@ -790,7 +790,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             // A "free" region can be interpreted as "some region
             // at least as big as the block fr.scope_id".  So, we can
             // reasonably compare free regions and scopes:
-            let fr_scope = fr.scope.to_code_extent();
+            let fr_scope = fr.scope.to_code_extent(&self.tcx.region_maps);
             let r_id = self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id);
 
             if r_id == fr_scope {
@@ -871,7 +871,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 // than the scope `s_id`, then we can say that the GLB
                 // is the scope `s_id`.  Otherwise, as we do not know
                 // big the free region is precisely, the GLB is undefined.
-                let fr_scope = fr.scope.to_code_extent();
+                let fr_scope = fr.scope.to_code_extent(&self.tcx.region_maps);
                 if self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id) == fr_scope ||
                         free_regions.is_static(fr) {
                     Ok(s)
@@ -927,8 +927,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 Ok(ty::ReFree(*b))
             } else {
                 this.intersect_scopes(ty::ReFree(*a), ty::ReFree(*b),
-                                      a.scope.to_code_extent(),
-                                      b.scope.to_code_extent())
+                                      a.scope.to_code_extent(&this.tcx.region_maps),
+                                      b.scope.to_code_extent(&this.tcx.region_maps))
             }
         }
     }

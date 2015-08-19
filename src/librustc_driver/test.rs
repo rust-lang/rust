@@ -18,6 +18,7 @@ use rustc_resolve as resolve;
 use rustc_typeck::middle::lang_items;
 use rustc_typeck::middle::free_region::FreeRegionMap;
 use rustc_typeck::middle::region::{self, CodeExtent, DestructionScopeData};
+use rustc_typeck::middle::region::CodeExtentData;
 use rustc_typeck::middle::resolve_lifetime;
 use rustc_typeck::middle::stability;
 use rustc_typeck::middle::subst;
@@ -153,24 +154,25 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn create_region_hierarchy(&self, rh: &RH) {
+    pub fn create_region_hierarchy(&self, rh: &RH, parent: CodeExtent) {
+        let me = self.infcx.tcx.region_maps.intern_node(rh.id, parent);
         for child_rh in rh.sub {
-            self.create_region_hierarchy(child_rh);
-            self.infcx.tcx.region_maps.record_encl_scope(
-                CodeExtent::from_node_id(child_rh.id),
-                CodeExtent::from_node_id(rh.id));
+            self.create_region_hierarchy(child_rh, me);
         }
     }
 
     pub fn create_simple_region_hierarchy(&self) {
         // creates a region hierarchy where 1 is root, 10 and 11 are
         // children of 1, etc
+        let dscope = self.infcx.tcx.region_maps.intern_code_extent(
+            CodeExtentData::DestructionScope(1), region::ROOT_CODE_EXTENT);
         self.create_region_hierarchy(
             &RH {id: 1,
                  sub: &[RH {id: 10,
                             sub: &[]},
                         RH {id: 11,
-                            sub: &[]}]});
+                            sub: &[]}]},
+            dscope);
     }
 
     #[allow(dead_code)] // this seems like it could be useful, even if we don't use it now
@@ -321,7 +323,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     pub fn t_rptr_scope(&self, id: ast::NodeId) -> Ty<'tcx> {
-        let r = ty::ReScope(CodeExtent::from_node_id(id));
+        let r = ty::ReScope(self.tcx().region_maps.node_extent(id));
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r),
                                    self.tcx().types.isize)
     }
@@ -462,7 +464,8 @@ fn sub_free_bound_false() {
     //! does NOT hold.
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
-        let t_rptr_free1 = env.t_rptr_free(0, 1);
+        env.create_simple_region_hierarchy();
+        let t_rptr_free1 = env.t_rptr_free(1, 1);
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         env.check_not_sub(env.t_fn(&[t_rptr_free1], env.tcx().types.isize),
                           env.t_fn(&[t_rptr_bound1], env.tcx().types.isize));
@@ -478,8 +481,9 @@ fn sub_bound_free_true() {
     //! DOES hold.
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
+        env.create_simple_region_hierarchy();
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
-        let t_rptr_free1 = env.t_rptr_free(0, 1);
+        let t_rptr_free1 = env.t_rptr_free(1, 1);
         env.check_sub(env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
                       env.t_fn(&[t_rptr_free1], env.tcx().types.isize));
     })
@@ -512,9 +516,10 @@ fn lub_free_bound_infer() {
     //! anyhow.
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
+        env.create_simple_region_hierarchy();
         let t_infer1 = env.infcx.next_ty_var();
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
-        let t_rptr_free1 = env.t_rptr_free(0, 1);
+        let t_rptr_free1 = env.t_rptr_free(1, 1);
         env.check_lub(env.t_fn(&[t_infer1], env.tcx().types.isize),
                       env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
                       env.t_fn(&[t_rptr_free1], env.tcx().types.isize));
@@ -535,8 +540,9 @@ fn lub_bound_bound() {
 #[test]
 fn lub_bound_free() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
+        env.create_simple_region_hierarchy();
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
-        let t_rptr_free1 = env.t_rptr_free(0, 1);
+        let t_rptr_free1 = env.t_rptr_free(1, 1);
         env.check_lub(env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
                       env.t_fn(&[t_rptr_free1], env.tcx().types.isize),
                       env.t_fn(&[t_rptr_free1], env.tcx().types.isize));
@@ -568,8 +574,9 @@ fn lub_bound_bound_inverse_order() {
 #[test]
 fn lub_free_free() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
-        let t_rptr_free1 = env.t_rptr_free(0, 1);
-        let t_rptr_free2 = env.t_rptr_free(0, 2);
+        env.create_simple_region_hierarchy();
+        let t_rptr_free1 = env.t_rptr_free(1, 1);
+        let t_rptr_free2 = env.t_rptr_free(1, 2);
         let t_rptr_static = env.t_rptr_static();
         env.check_lub(env.t_fn(&[t_rptr_free1], env.tcx().types.isize),
                       env.t_fn(&[t_rptr_free2], env.tcx().types.isize),
@@ -594,9 +601,10 @@ fn lub_returning_scope() {
 #[test]
 fn glb_free_free_with_common_scope() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
-        let t_rptr_free1 = env.t_rptr_free(0, 1);
-        let t_rptr_free2 = env.t_rptr_free(0, 2);
-        let t_rptr_scope = env.t_rptr_scope(0);
+        env.create_simple_region_hierarchy();
+        let t_rptr_free1 = env.t_rptr_free(1, 1);
+        let t_rptr_free2 = env.t_rptr_free(1, 2);
+        let t_rptr_scope = env.t_rptr_scope(1);
         env.check_glb(env.t_fn(&[t_rptr_free1], env.tcx().types.isize),
                       env.t_fn(&[t_rptr_free2], env.tcx().types.isize),
                       env.t_fn(&[t_rptr_scope], env.tcx().types.isize));
@@ -617,8 +625,9 @@ fn glb_bound_bound() {
 #[test]
 fn glb_bound_free() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
+        env.create_simple_region_hierarchy();
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
-        let t_rptr_free1 = env.t_rptr_free(0, 1);
+        let t_rptr_free1 = env.t_rptr_free(1, 1);
         env.check_glb(env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
                       env.t_fn(&[t_rptr_free1], env.tcx().types.isize),
                       env.t_fn(&[t_rptr_bound1], env.tcx().types.isize));
@@ -738,10 +747,11 @@ fn escaping() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         // Situation:
         // Theta = [A -> &'a foo]
+        env.create_simple_region_hierarchy();
 
         assert!(!env.t_nil().has_escaping_regions());
 
-        let t_rptr_free1 = env.t_rptr_free(0, 1);
+        let t_rptr_free1 = env.t_rptr_free(1, 1);
         assert!(!t_rptr_free1.has_escaping_regions());
 
         let t_rptr_bound1 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));

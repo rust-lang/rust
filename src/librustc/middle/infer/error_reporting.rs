@@ -121,11 +121,11 @@ impl<'tcx> ty::ctxt<'tcx> {
                     format!("{}unknown scope: {:?}{}.  Please report a bug.",
                             prefix, scope, suffix)
                 };
-                let span = match scope.span(&self.map) {
+                let span = match scope.span(&self.region_maps, &self.map) {
                     Some(s) => s,
                     None => return self.sess.note(&unknown_scope())
                 };
-                let tag = match self.map.find(scope.node_id()) {
+                let tag = match self.map.find(scope.node_id(&self.region_maps)) {
                     Some(ast_map::NodeBlock(_)) => "block",
                     Some(ast_map::NodeExpr(expr)) => match expr.node {
                         ast::ExprCall(..) => "call",
@@ -142,16 +142,16 @@ impl<'tcx> ty::ctxt<'tcx> {
                         return self.sess.span_note(span, &unknown_scope());
                     }
                 };
-                let scope_decorated_tag = match scope {
-                    region::CodeExtent::Misc(_) => tag,
-                    region::CodeExtent::ParameterScope { .. } => {
+                let scope_decorated_tag = match self.region_maps.code_extent_data(scope) {
+                    region::CodeExtentData::Misc(_) => tag,
+                    region::CodeExtentData::ParameterScope { .. } => {
                         "scope of parameters for function"
                     }
-                    region::CodeExtent::DestructionScope(_) => {
+                    region::CodeExtentData::DestructionScope(_) => {
                         new_string = format!("destruction scope surrounding {}", tag);
                         &new_string[..]
                     }
-                    region::CodeExtent::Remainder(r) => {
+                    region::CodeExtentData::Remainder(r) => {
                         new_string = format!("block suffix following statement {}",
                                              r.first_statement_index);
                         &new_string[..]

@@ -191,6 +191,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                                           -> AnalysisData<'a, 'tcx>
 {
     // Check the body of fn items.
+    let tcx = this.tcx;
     let id_range = ast_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
     let (all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, id, decl, body);
@@ -204,8 +205,9 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                              id_range,
                              all_loans.len());
     for (loan_idx, loan) in all_loans.iter().enumerate() {
-        loan_dfcx.add_gen(loan.gen_scope.node_id(), loan_idx);
-        loan_dfcx.add_kill(KillFrom::ScopeEnd, loan.kill_scope.node_id(), loan_idx);
+        loan_dfcx.add_gen(loan.gen_scope.node_id(&tcx.region_maps), loan_idx);
+        loan_dfcx.add_kill(KillFrom::ScopeEnd,
+                           loan.kill_scope.node_id(&tcx.region_maps), loan_idx);
     }
     loan_dfcx.add_kills_from_flow_exits(cfg);
     loan_dfcx.propagate(cfg, body);
@@ -414,7 +416,7 @@ impl<'tcx> LoanPath<'tcx> {
             LpVar(local_id) => tcx.region_maps.var_scope(local_id),
             LpUpvar(upvar_id) => {
                 let block_id = closure_to_block(upvar_id.closure_expr_id, tcx);
-                region::CodeExtent::from_node_id(block_id)
+                tcx.region_maps.node_extent(block_id)
             }
             LpDowncast(ref base, _) |
             LpExtend(ref base, _, _) => base.kill_scope(tcx),
@@ -1135,7 +1137,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 fn statement_scope_span(tcx: &ty::ctxt, region: ty::Region) -> Option<Span> {
     match region {
         ty::ReScope(scope) => {
-            match tcx.map.find(scope.node_id()) {
+            match tcx.map.find(scope.node_id(&tcx.region_maps)) {
                 Some(ast_map::NodeStmt(stmt)) => Some(stmt.span),
                 _ => None
             }
