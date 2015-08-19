@@ -40,6 +40,8 @@ fn check(expect: Constant, expr: &Expr) {
 const TRUE : Constant = ConstantBool(true);
 const FALSE : Constant = ConstantBool(false);
 const ZERO : Constant = ConstantInt(0, UnsuffixedIntLit(Plus));
+const ONE : Constant = ConstantInt(1, UnsuffixedIntLit(Plus));
+const TWO : Constant = ConstantInt(2, UnsuffixedIntLit(Plus));
 
 #[test]
 fn test_lit() {
@@ -56,10 +58,17 @@ fn test_ops() {
     check(FALSE, &binop(BiAnd, lit(LitBool(false)), lit(LitBool(true))));
 
     let litzero = lit(LitInt(0, UnsuffixedIntLit(Plus)));
+    let litone = lit(LitInt(1, UnsuffixedIntLit(Plus)));
     check(TRUE, &binop(BiEq, litzero.clone(), litzero.clone()));
     check(TRUE, &binop(BiGe, litzero.clone(), litzero.clone()));
     check(TRUE, &binop(BiLe, litzero.clone(), litzero.clone()));
     check(FALSE, &binop(BiNe, litzero.clone(), litzero.clone()));
     check(FALSE, &binop(BiGt, litzero.clone(), litzero.clone()));
     check(FALSE, &binop(BiLt, litzero.clone(), litzero.clone()));
+
+    check(ZERO, &binop(BiAdd, litzero.clone(), litzero.clone()));
+    check(TWO, &binop(BiAdd, litone.clone(), litone.clone()));
+    check(ONE, &binop(BiSub, litone.clone(), litzero.clone()));
+    check(ONE, &binop(BiMul, litone.clone(), litone.clone()));
+    check(ONE, &binop(BiDiv, litone.clone(), litone.clone()));
 }
