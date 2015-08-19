@@ -68,6 +68,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box loops::LoopsPass as LintPassObject);
     reg.register_lint_pass(box lifetimes::LifetimePass as LintPassObject);
     reg.register_lint_pass(box ranges::StepByZero as LintPassObject);
+    reg.register_lint_pass(box types::CastPass as LintPassObject);
 
     reg.register_lint_group("clippy", vec![
         approx_const::APPROX_CONSTANT,
@@ -104,6 +105,9 @@ pub fn plugin_registrar(reg: &mut Registry) {
         strings::STRING_ADD,
         strings::STRING_ADD_ASSIGN,
         types::BOX_VEC,
+        types::CAST_POSSIBLE_OVERFLOW,
+        types::CAST_PRECISION_LOSS,
+        types::CAST_SIGN_LOSS,
         types::LET_UNIT_VALUE,
         types::LINKEDLIST,
         types::UNIT_CMP,

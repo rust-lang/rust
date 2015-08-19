@@ -67,15 +67,16 @@ impl Constant {
     }
 
     /// convert this constant to a f64, if possible
-   pub fn as_float(&self) -> Option<f64> {
-       match *self {
-           ConstantByte(b) => Some(b as f64),
-           ConstantFloat(ref s, _) => s.parse().ok(),
-           ConstantInt(i, ty) => Some(if is_negative(ty) {
-               -(i as f64) } else { i as f64 }),
-           _ => None
-       }
-   }
+    #[allow(unknown_lints,cast_precision_loss)]
+    pub fn as_float(&self) -> Option<f64> {
+        match *self {
+            ConstantByte(b) => Some(b as f64),
+            ConstantFloat(ref s, _) => s.parse().ok(),
+            ConstantInt(i, ty) => Some(if is_negative(ty) {
+                -(i as f64) } else { i as f64 }),
+            _ => None
+        }
+    }
 }
 
 impl PartialEq for Constant {

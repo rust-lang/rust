@@ -6,47 +6,50 @@ A collection of lints that give helpful tips to newbies and catch oversights.
 ##Lints
 Lints included in this crate:
 
-name                 | default | meaning
----------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-approx_constant      | warn    | the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found; suggests to use the constant
-bad_bit_mask         | deny    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
-box_vec              | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
-cmp_nan              | deny    | comparisons to NAN (which will always return false, which is probably not intended)
-cmp_owned            | warn    | creating owned instances for comparing with others, e.g. `x == "foo".to_string()`
-collapsible_if       | warn    | two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` can be written as `if x && y { foo() }`
-eq_op                | warn    | equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)
-explicit_iter_loop   | warn    | for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do
-float_cmp            | warn    | using `==` or `!=` on float values (as floating-point operations usually involve rounding errors, it is always better to check for approximate equality within small bounds)
-identity_op          | warn    | using identity operations, e.g. `x + 0` or `y / 1`
-ineffective_bit_mask | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
-inline_always        | warn    | `#[inline(always)]` is a bad idea in most cases
-iter_next_loop       | warn    | for-looping over `_.next()` which is probably not intended
-len_without_is_empty | warn    | traits and impls that have `.len()` but not `.is_empty()`
-len_zero             | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
-let_and_return       | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a function
-let_unit_value       | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
-linkedlist           | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a RingBuf
-modulo_one           | warn    | taking a number modulo 1, which always returns 0
-mut_mut              | warn    | usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, or shows a fundamental misunderstanding of references)
-needless_bool        | warn    | if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
-needless_lifetimes   | warn    | using explicit lifetimes for references in function arguments when elision rules would allow omitting them
-needless_range_loop  | warn    | for-looping over a range of indices where an iterator over items would do
-needless_return      | warn    | using a return statement like `return expr;` where an expression would suffice
-non_ascii_literal    | allow   | using any literal non-ASCII chars in a string literal; suggests using the \\u escape instead
-option_unwrap_used   | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
-precedence           | warn    | expressions where precedence may trip up the unwary reader of the source; suggests adding parentheses, e.g. `x << 2 + y` will be parsed as `x << (2 + y)`
-ptr_arg              | allow   | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
-range_step_by_zero   | warn    | using Range::step_by(0), which produces an infinite iterator
-redundant_closure    | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
-result_unwrap_used   | allow   | using `Result.unwrap()`, which might be better handled
-single_match         | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
-str_to_string        | warn    | using `to_string()` on a str, which should be `to_owned()`
-string_add           | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
-string_add_assign    | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
-string_to_string     | warn    | calling `String.to_string()` which is a no-op
-toplevel_ref_arg     | warn    | a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`)
-unit_cmp             | warn    | comparing unit values (which is always `true` or `false`, respectively)
-zero_width_space     | deny    | using a zero-width space in a string literal, which is confusing
+name                   | default | meaning
+-----------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+approx_constant        | warn    | the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found; suggests to use the constant
+bad_bit_mask           | deny    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
+box_vec                | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
+cast_possible_overflow | allow   | casts that may cause overflow
+cast_precision_loss    | allow   | casts that cause loss of precision
+cast_sign_loss         | allow   | casts from signed types to unsigned types
+cmp_nan                | deny    | comparisons to NAN (which will always return false, which is probably not intended)
+cmp_owned              | warn    | creating owned instances for comparing with others, e.g. `x == "foo".to_string()`
+collapsible_if         | warn    | two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` can be written as `if x && y { foo() }`
+eq_op                  | warn    | equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)
+explicit_iter_loop     | warn    | for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do
+float_cmp              | warn    | using `==` or `!=` on float values (as floating-point operations usually involve rounding errors, it is always better to check for approximate equality within small bounds)
+identity_op            | warn    | using identity operations, e.g. `x + 0` or `y / 1`
+ineffective_bit_mask   | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
+inline_always          | warn    | `#[inline(always)]` is a bad idea in most cases
+iter_next_loop         | warn    | for-looping over `_.next()` which is probably not intended
+len_without_is_empty   | warn    | traits and impls that have `.len()` but not `.is_empty()`
+len_zero               | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
+let_and_return         | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a function
+let_unit_value         | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
+linkedlist             | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a RingBuf
+modulo_one             | warn    | taking a number modulo 1, which always returns 0
+mut_mut                | warn    | usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, or shows a fundamental misunderstanding of references)
+needless_bool          | warn    | if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
+needless_lifetimes     | warn    | using explicit lifetimes for references in function arguments when elision rules would allow omitting them
+needless_range_loop    | warn    | for-looping over a range of indices where an iterator over items would do
+needless_return        | warn    | using a return statement like `return expr;` where an expression would suffice
+non_ascii_literal      | allow   | using any literal non-ASCII chars in a string literal; suggests using the \\u escape instead
+option_unwrap_used     | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
+precedence             | warn    | expressions where precedence may trip up the unwary reader of the source; suggests adding parentheses, e.g. `x << 2 + y` will be parsed as `x << (2 + y)`
+ptr_arg                | allow   | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
+range_step_by_zero     | warn    | using Range::step_by(0), which produces an infinite iterator
+redundant_closure      | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
+result_unwrap_used     | allow   | using `Result.unwrap()`, which might be better handled
+single_match           | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
+str_to_string          | warn    | using `to_string()` on a str, which should be `to_owned()`
+string_add             | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
+string_add_assign      | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
+string_to_string       | warn    | calling `String.to_string()` which is a no-op
+toplevel_ref_arg       | warn    | a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`)
+unit_cmp               | warn    | comparing unit values (which is always `true` or `false`, respectively)
+zero_width_space       | deny    | using a zero-width space in a string literal, which is confusing
 
 To use, add the following lines to your Cargo.toml:
 
