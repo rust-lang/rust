@@ -292,13 +292,11 @@ impl<T: ?Sized> Rc<T> {
     /// Get the number of weak references to this value.
     #[inline]
     #[unstable(feature = "rc_counts", reason = "not clearly useful", issue = "27718")]
-    #[deprecated(since = "1.4.0", reason = "not clearly useful")]
     pub fn weak_count(this: &Self) -> usize { this.weak() - 1 }
 
     /// Get the number of strong references to this value.
     #[inline]
     #[unstable(feature = "rc_counts", reason = "not clearly useful", issue = "27718")]
-    #[deprecated(since = "1.4.0", reason = "not clearly useful")]
     pub fn strong_count(this: &Self) -> usize { this.strong() }
 
     /// Returns true if there are no other `Rc` or `Weak<T>` values that share
@@ -317,7 +315,6 @@ impl<T: ?Sized> Rc<T> {
     /// ```
     #[inline]
     #[unstable(feature = "rc_counts", reason = "uniqueness has unclear meaning", issue = "27718")]
-    #[deprecated(since = "1.4.0", reason = "uniqueness has unclear meaning")]
     pub fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
