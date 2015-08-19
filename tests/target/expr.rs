@@ -5,8 +5,8 @@ fn foo() -> bool {
     let referenced = &5;
 
     let very_long_variable_name = (a + first + simple + test);
-    let very_long_variable_name = (a + first + simple + test + AAAAAAAAAAAAA + BBBBBBBBBBBBBBBBB +
-                                   b + c);
+    let very_long_variable_name = (a + first + simple + test + AAAAAAAAAAAAA +
+                                   BBBBBBBBBBBBBBBBB + b + c);
 
     //FIXME this exceeds width limit. Needs assignments reformatting
     let is_internalxxxx = self.codemap.span_to_filename(s) == self.codemap.span_to_filename(m.inner);
@@ -15,22 +15,22 @@ fn foo() -> bool {
                    (bbbbbb - function_call(x, *very_long_pointer, y)) + 1000;
 
     some_ridiculously_loooooooooooooooooooooong_function(10000 * 30000000000 +
-                                                         40000 / 1002200000000 - 50000 * sqrt(-1),
+                                                         40000 / 1002200000000 -
+                                                         50000 * sqrt(-1),
                                                          trivial_value);
     (((((((((aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-             a + aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
+             a +
+             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
              aaaaa)))))))));
 
     {
-        for _ in 0..10 {
-        }
+        for _ in 0..10 {}
     }
 
     {
         {
             {
-                {
-                }
+                {}
             }
         }
     }
@@ -47,8 +47,7 @@ fn foo() -> bool {
     }
 
     if let Some(x) = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
-                      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) {
-    }
+                      aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa) {}
 
     if let (some_very_large,
             tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1 + 2 + 3 {
@@ -56,8 +55,7 @@ fn foo() -> bool {
 
     if let (some_very_large,
             tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) = 1111 +
-                                                                                         2222 {
-    }
+                                                                                         2222 {}
 
     if let (some_very_large, tuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuple) =
            1 + 2 + 3 {
@@ -119,5 +117,19 @@ fn baz() {
 
     unsafe {
         // Regular unsafe block
+    }
+}
+
+// Test some empty blocks.
+fn qux() {
+    {}
+    // FIXME this one could be done better.
+    { /* a block with a comment */
+    }
+    {
+
+    }
+    {
+        // A block with a comment.
     }
 }

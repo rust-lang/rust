@@ -13,8 +13,7 @@ fn main() {
     }
 
     'a: while loooooooooooooooooooooooooooooooooong_variable_name + another_value >
-              some_other_value {
-    }
+              some_other_value {}
 
     while aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa > bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb {
     }
@@ -26,5 +25,8 @@ fn main() {
 
     while let Some(i) = x.find('s') {
         x.update();
+        // FIXME #184
+        // continue;
+        // continue 'foo;
     }
 }

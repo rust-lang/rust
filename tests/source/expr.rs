@@ -91,3 +91,16 @@ fn baz() {
         // Regular unsafe block
     }
 }
+
+// Test some empty blocks.
+fn qux() {
+    {}
+    // FIXME this one could be done better.
+    { /* a block with a comment */ }
+    {
+
+    }
+    {
+        // A block with a comment.
+    }
+}

@@ -351,7 +351,7 @@ impl<'a> FmtVisitor<'a> {
                 let prev_span = codemap::mk_sp(self.last_pos, span.lo);
                 let span_end = match self.snippet(prev_span).rfind('\n') {
                     Some(offset) => self.last_pos + BytePos(offset as u32),
-                    None => span.lo
+                    None => span.lo,
                 };
                 self.format_missing(span_end);
                 self.last_pos = span.hi;

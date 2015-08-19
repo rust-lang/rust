@@ -21,7 +21,7 @@ pub fn extra_offset(text: &str, offset: usize) -> usize {
     match text.rfind('\n') {
         // 1 for newline character
         Some(idx) => text.len() - idx - 1 - offset,
-        None => text.len()
+        None => text.len(),
     }
 }
 
@@ -70,7 +70,7 @@ pub fn make_indent(width: usize) -> String {
 pub fn format_visibility(vis: Visibility) -> &'static str {
     match vis {
         Visibility::Public => "pub ",
-        Visibility::Inherited => ""
+        Visibility::Inherited => "",
     }
 }
 
@@ -78,10 +78,29 @@ pub fn format_visibility(vis: Visibility) -> &'static str {
 pub fn format_mutability(mutability: ast::Mutability) -> &'static str {
     match mutability {
         ast::Mutability::MutMutable => "mut ",
-        ast::Mutability::MutImmutable => ""
+        ast::Mutability::MutImmutable => "",
     }
 }
 
+// The width of the first line in s.
+#[inline]
+pub fn first_line_width(s: &str) -> usize {
+    match s.find('\n') {
+        Some(n) => n,
+        None => s.len(),
+    }
+}
+
+// The width of the last line in s.
+#[inline]
+pub fn last_line_width(s: &str) -> usize {
+    match s.rfind('\n') {
+        Some(n) => s.len() - n - 1,
+        None => s.len(),
+    }
+}
+
+#[inline]
 fn is_skip(meta_item: &MetaItem) -> bool {
     match meta_item.node {
         MetaItem_::MetaWord(ref s) => *s == SKIP_ANNOTATION,
@@ -95,6 +114,7 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
 }
 
 // Find the end of a TyParam
+#[inline]
 pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
     typaram.bounds.last().map(|bound| match *bound {
         ast::RegionTyParamBound(ref lt) => lt.span,

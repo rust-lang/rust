@@ -146,6 +146,8 @@ impl<'a> fmt::Display for SegmentParam<'a> {
 // We'd really rather not do this, but there doesn't seem to be an alternative
 // at this point.
 // FIXME: fails with spans containing comments with the characters < or :
+// FIXME #184 skip due to continue.
+#[rustfmt_skip]
 fn get_path_separator(codemap: &CodeMap,
                       path_start: BytePos,
                       segment_start: BytePos)
@@ -155,7 +157,7 @@ fn get_path_separator(codemap: &CodeMap,
 
     for c in snippet.chars().rev() {
         if c == ':' {
-            return "::"
+            return "::";
         } else if c.is_whitespace() || c == '<' {
             continue;
         } else {
@@ -235,7 +237,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
         ast::PathParameters::ParenthesizedParameters(ref data) => {
             let output = match data.output {
                 Some(ref ty) => format!(" -> {}", pprust::ty_to_string(&*ty)),
-                None => String::new()
+                None => String::new(),
             };
 
             let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi), "(", context.codemap);
@@ -267,7 +269,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
 
             format!("({}){}", write_list(&items.collect::<Vec<_>>(), &fmt), output)
         }
-        _ => String::new()
+        _ => String::new(),
     };
 
     Some(format!("{}{}", segment.identifier, params))
@@ -278,57 +280,57 @@ impl Rewrite for ast::WherePredicate {
         // TODO dead spans?
         // TODO assumes we'll always fit on one line...
         Some(match self {
-            &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ref bound_lifetimes,
+                &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ref bound_lifetimes,
                                                                           ref bounded_ty,
                                                                           ref bounds,
                                                                           ..}) => {
-                if bound_lifetimes.len() > 0 {
-                    let lifetime_str = bound_lifetimes.iter().map(|lt| {
+                    if bound_lifetimes.len() > 0 {
+                        let lifetime_str = bound_lifetimes.iter().map(|lt| {
                                            lt.rewrite(context, width, offset).unwrap()
                                        }).collect::<Vec<_>>().join(", ");
-                    let type_str = pprust::ty_to_string(bounded_ty);
+                        let type_str = pprust::ty_to_string(bounded_ty);
                     // 8 = "for<> : ".len()
-                    let used_width = lifetime_str.len() + type_str.len() + 8;
-                    let bounds_str = bounds.iter().map(|ty_bound| {
+                        let used_width = lifetime_str.len() + type_str.len() + 8;
+                        let bounds_str = bounds.iter().map(|ty_bound| {
                                          ty_bound.rewrite(context,
                                                           width - used_width,
                                                           offset + used_width)
                                                  .unwrap()
                                      }).collect::<Vec<_>>().join(" + ");
 
-                    format!("for<{}> {}: {}", lifetime_str, type_str, bounds_str)
-                } else {
-                    let type_str = pprust::ty_to_string(bounded_ty);
+                        format!("for<{}> {}: {}", lifetime_str, type_str, bounds_str)
+                    } else {
+                        let type_str = pprust::ty_to_string(bounded_ty);
                     // 2 = ": ".len()
-                    let used_width = type_str.len() + 2;
-                    let bounds_str = bounds.iter().map(|ty_bound| {
+                        let used_width = type_str.len() + 2;
+                        let bounds_str = bounds.iter().map(|ty_bound| {
                                          ty_bound.rewrite(context,
                                                           width - used_width,
                                                           offset + used_width)
                                                  .unwrap()
                                      }).collect::<Vec<_>>().join(" + ");
 
-                    format!("{}: {}", type_str, bounds_str)
+                        format!("{}: {}", type_str, bounds_str)
+                    }
                 }
-            }
-            &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
+                &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
                                                                             ref bounds,
                                                                             ..}) => {
-                format!("{}: {}",
+                    format!("{}: {}",
                         pprust::lifetime_to_string(lifetime),
                         bounds.iter().map(pprust::lifetime_to_string)
                               .collect::<Vec<_>>().join(" + "))
-            }
-            &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
-                let ty_str = pprust::ty_to_string(ty);
+                }
+                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
+                    let ty_str = pprust::ty_to_string(ty);
                 // 3 = " = ".len()
-                let used_width = 3 + ty_str.len();
-                let path_str = try_opt!(path.rewrite(context,
+                    let used_width = 3 + ty_str.len();
+                    let path_str = try_opt!(path.rewrite(context,
                                                      width - used_width,
                                                      offset + used_width));
-                format!("{} = {}", path_str, ty_str)
-            }
-        })
+                    format!("{} = {}", path_str, ty_str)
+                }
+            })
     }
 }
 
