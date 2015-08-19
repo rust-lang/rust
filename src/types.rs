@@ -1,6 +1,7 @@
 use rustc::lint::*;
 use syntax::ast;
 use syntax::ast::*;
+use syntax::ast_util::{is_comparison_binop, binop_to_string};
 use syntax::ptr::P;
 use rustc::middle::ty;
 use syntax::codemap::ExpnInfo;
@@ -105,5 +106,33 @@ impl LintPass for LetPass {
         cx.sess().codemap().with_expn_info(
             decl.span.expn_id,
             |info| check_let_unit(cx, decl, info));
+    }
+}
+
+declare_lint!(pub UNIT_CMP, Warn,
+              "comparing unit values (which is always `true` or `false`, respectively)");
+
+#[allow(missing_copy_implementations)]
+pub struct UnitCmp;
+
+impl LintPass for UnitCmp {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNIT_CMP)
+    }
+
+    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+        if let ExprBinary(ref cmp, ref left, _) = expr.node {
+            let op = cmp.node;
+            let sty = &cx.tcx.expr_ty(left).sty;
+            if *sty == ty::TyTuple(vec![]) && is_comparison_binop(op) {
+                let result = match op {
+                    BiEq | BiLe | BiGe => "true",
+                    _ => "false"
+                };
+                span_lint(cx, UNIT_CMP, expr.span, &format!(
+                    "{}-comparison of unit values detected. This will always be {}",
+                    binop_to_string(op), result));
+            }
+        }
     }
 }

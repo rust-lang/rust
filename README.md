@@ -45,6 +45,7 @@ string_add           | allow   | using `x + ..` where x is a `String`; suggests 
 string_add_assign    | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
 string_to_string     | warn    | calling `String.to_string()` which is a no-op
 toplevel_ref_arg     | warn    | a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`)
+unit_cmp             | warn    | comparing unit values (which is always `true` or `false`, respectively)
 zero_width_space     | deny    | using a zero-width space in a string literal, which is confusing
 
 To use, add the following lines to your Cargo.toml:
