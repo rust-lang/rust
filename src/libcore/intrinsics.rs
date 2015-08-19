@@ -198,7 +198,7 @@ extern "rust-intrinsic" {
 
     /// Executes the destructor (if any) of the pointed-to value.
     ///
-    /// This has two usecases:
+    /// This has two use cases:
     ///
     /// * It is *required* to use `drop_in_place` to drop unsized types like
     ///   trait objects, because they can't be read out onto the stack and
@@ -209,7 +209,7 @@ extern "rust-intrinsic" {
     ///   as the compiler doesn't need to prove that it's sound to elide the
     ///   copy.
     ///
-    /// # Undefined Behaviour
+    /// # Undefined Behavior
     ///
     /// This has all the same safety problems as `ptr::read` with respect to
     /// invalid pointers, types, and double drops.

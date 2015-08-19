@@ -77,7 +77,7 @@ use core::borrow;
 use core::fmt;
 use core::cmp::Ordering;
 use core::mem::{align_of_val, size_of_val};
-use core::intrinsics::{drop_in_place, abort};
+use core::intrinsics::abort;
 use core::mem;
 use core::ops::{Deref, CoerceUnsized};
 use core::ptr::{self, Shared};
@@ -304,7 +304,7 @@ impl<T: ?Sized> Arc<T> {
 
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
-        drop_in_place(&mut (*ptr).data);
+        ptr::drop_in_place(&mut (*ptr).data);
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
