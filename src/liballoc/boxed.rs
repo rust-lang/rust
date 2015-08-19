@@ -57,6 +57,7 @@ use heap;
 use raw_vec::RawVec;
 
 use core::any::Any;
+use core::borrow;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
@@ -562,3 +563,10 @@ impl<T: Clone> Clone for Box<[T]> {
     }
 }
 
+impl<T: ?Sized> borrow::Borrow<T> for Box<T> {
+    fn borrow(&self) -> &T { &**self }
+}
+
+impl<T: ?Sized> borrow::BorrowMut<T> for Box<T> {
+    fn borrow_mut(&mut self) -> &mut T { &mut **self }
+}
