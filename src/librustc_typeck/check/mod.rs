@@ -2222,7 +2222,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let mut conflicts = Vec::new();
 
             // Collect all unsolved type, integral and floating point variables.
-            let unsolved_variables = self.inh.infcx.candidates_for_defaulting();
+            let defaults_to_apply = self.inh.infcx.candidates_for_defaulting();
 
             let mut has_user_default = HashSet::new();
             let mut has_literal_fallback = HashSet::new();
@@ -2231,8 +2231,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // Examine all unsolved variables, and narrow them to the set that have applicable
             // defaults. We want to process any unsolved variables that have either an explicit
             // user default, literal fallback, or are diverging.
-            for &(ref ty, ref default) in &unsolved_variables {
-                let resolved = self.infcx().resolve_type_vars_if_possible(ty);
+            for &(ref ty, ref default) in &defaults_to_apply {
+                // We should NEVER process anything but a TyInfer.
+                assert!(match ty.sty { ty::TyInfer(_) => true, _ => false });
                 match default {
                     &Default::User(ref user_default) => {
                         debug!("select_all_obligations_and_apply_defaults: ty: {:?} with default: {:?}",
@@ -2324,6 +2325,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
+            // Apply integer and floating point fallbacks to any variables that
+            // weren't solved by the previous phase where we applied user defaults.
             for ty in &has_literal_fallback {
                 let resolved = self.infcx().resolve_type_vars_if_possible(ty);
                 match self.infcx().type_is_unconstrained_numeric(resolved) {
