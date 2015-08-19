@@ -377,6 +377,7 @@ pub enum Nonterminal {
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
     NtIdent(Box<ast::Ident>, IdentStyle),
+    NtLifetime(Box<ast::Ident>),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::MetaItem>),
     NtPath(Box<ast::Path>),
@@ -399,6 +400,7 @@ impl fmt::Debug for Nonterminal {
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtTy(..) => f.pad("NtTy(..)"),
             NtIdent(..) => f.pad("NtIdent(..)"),
+            NtLifetime(..) => f.pad("NtLifetime(..)"),
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
             NtTT(..) => f.pad("NtTT(..)"),
