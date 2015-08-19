@@ -109,6 +109,17 @@ mod record_exports;
 mod build_reduced_graph;
 mod resolve_imports;
 
+// Perform the callback, not walking deeper if the return is true
+macro_rules! execute_callback {
+    ($node: expr, $walker: expr) => (
+        if let Some(ref callback) = $walker.callback {
+            if callback($node, &mut $walker.resolved) {
+                return;
+            }
+        }
+    )
+}
+
 pub enum ResolutionError<'a> {
     /// error E0401: can't use type parameters from outer function
     TypeParametersFromOuterFunction,
@@ -397,7 +408,7 @@ enum PatternBindingMode {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-enum Namespace {
+pub enum Namespace {
     TypeNS,
     ValueNS
 }
@@ -445,18 +456,22 @@ enum NameDefinition {
 
 impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
+        execute_callback!(ast_map::Node::NodeItem(item), self);
         self.resolve_item(item);
     }
     fn visit_arm(&mut self, arm: &Arm) {
         self.resolve_arm(arm);
     }
     fn visit_block(&mut self, block: &Block) {
+        execute_callback!(ast_map::Node::NodeBlock(block), self);
         self.resolve_block(block);
     }
     fn visit_expr(&mut self, expr: &Expr) {
+        execute_callback!(ast_map::Node::NodeExpr(expr), self);
         self.resolve_expr(expr);
     }
     fn visit_local(&mut self, local: &Local) {
+        execute_callback!(ast_map::Node::NodeLocal(&*local.pat), self);
         self.resolve_local(local);
     }
     fn visit_ty(&mut self, ty: &Ty) {
@@ -475,6 +490,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         visit::walk_poly_trait_ref(self, tref, m);
     }
     fn visit_variant(&mut self, variant: &ast::Variant, generics: &Generics) {
+        execute_callback!(ast_map::Node::NodeVariant(variant), self);
         if let Some(ref dis_expr) = variant.node.disr_expr {
             // resolve the discriminator expr as a constant
             self.with_constant_rib(|this| {
@@ -498,6 +514,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         }
     }
     fn visit_foreign_item(&mut self, foreign_item: &ast::ForeignItem) {
+        execute_callback!(ast_map::Node::NodeForeignItem(foreign_item), self);
         let type_parameters = match foreign_item.node {
             ForeignItemFn(_, ref generics) => {
                 HasTypeParameters(generics, FnSpace, ItemRibKind)
@@ -1147,6 +1164,13 @@ pub struct Resolver<'a, 'tcx:'a> {
 
     used_imports: HashSet<(NodeId, Namespace)>,
     used_crates: HashSet<CrateNum>,
+
+    // Callback function for intercepting walks
+    callback: Option<Box<Fn(ast_map::Node, &mut bool) -> bool>>,
+    // The intention is that the callback modifies this flag.
+    // Once set, the resolver falls out of the walk, preserving the ribs.
+    resolved: bool,
+
 }
 
 #[derive(PartialEq)]
@@ -1208,6 +1232,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             emit_errors: true,
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
             glob_map: HashMap::new(),
+
+            callback: None,
+            resolved: false,
+
         }
     }
 
@@ -2234,7 +2262,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         f(self);
 
         match type_parameters {
-            HasTypeParameters(..) => { self.type_ribs.pop(); }
+            HasTypeParameters(..) => { if !self.resolved { self.type_ribs.pop(); } }
             NoTypeParameters => { }
         }
     }
@@ -2244,7 +2272,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     {
         self.label_ribs.push(Rib::new(NormalRibKind));
         f(self);
-        self.label_ribs.pop();
+        if !self.resolved {
+            self.label_ribs.pop();
+        }
     }
 
     fn with_constant_rib<F>(&mut self, f: F) where
@@ -2253,8 +2283,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self.value_ribs.push(Rib::new(ConstantItemRibKind));
         self.type_ribs.push(Rib::new(ConstantItemRibKind));
         f(self);
-        self.type_ribs.pop();
-        self.value_ribs.pop();
+        if !self.resolved {
+            self.type_ribs.pop();
+            self.value_ribs.pop();
+        }
     }
 
     fn resolve_function(&mut self,
@@ -2285,8 +2317,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         debug!("(resolving function) leaving function");
 
-        self.label_ribs.pop();
-        self.value_ribs.pop();
+        if !self.resolved {
+            self.label_ribs.pop();
+            self.value_ribs.pop();
+        }
     }
 
     fn resolve_trait_reference(&mut self,
@@ -2389,7 +2423,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self_type_rib.bindings.insert(name, DlDef(self_def));
         self.type_ribs.push(self_type_rib);
         f(self);
-        self.type_ribs.pop();
+        if !self.resolved {
+            self.type_ribs.pop();
+        }
     }
 
     fn resolve_implementation(&mut self,
@@ -2558,7 +2594,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         visit::walk_expr_opt(self, &arm.guard);
         self.visit_expr(&*arm.body);
 
-        self.value_ribs.pop();
+        if !self.resolved {
+            self.value_ribs.pop();
+        }
     }
 
     fn resolve_block(&mut self, block: &Block) {
@@ -2600,9 +2638,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         visit::walk_block(self, block);
 
         // Move back up.
-        self.current_module = orig_module;
-
-        self.value_ribs.pop();
+        if !self.resolved {
+            self.current_module = orig_module;
+            self.value_ribs.pop();
+        }
         debug!("(resolving block) leaving block");
     }
 
@@ -3044,12 +3083,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// doesn't skip straight to the containing module.
     /// Skips `path_depth` trailing segments, which is also reflected in the
     /// returned value. See `middle::def::PathResolution` for more info.
-    fn resolve_path(&mut self,
-                    id: NodeId,
-                    path: &Path,
-                    path_depth: usize,
-                    namespace: Namespace,
-                    check_ribs: bool) -> Option<PathResolution> {
+    pub fn resolve_path(&mut self,
+                        id: NodeId,
+                        path: &Path,
+                        path_depth: usize,
+                        namespace: Namespace,
+                        check_ribs: bool) -> Option<PathResolution> {
         let span = path.span;
         let segments = &path.segments[..path.segments.len()-path_depth];
 
@@ -3988,16 +4027,7 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
                                make_glob_map: MakeGlobMap)
                                -> CrateMap {
     let krate = ast_map.krate();
-    let mut resolver = Resolver::new(session, ast_map, krate.span, make_glob_map);
-
-    build_reduced_graph::build_reduced_graph(&mut resolver, krate);
-    session.abort_if_errors();
-
-    resolve_imports::resolve_imports(&mut resolver);
-    session.abort_if_errors();
-
-    record_exports::record(&mut resolver);
-    session.abort_if_errors();
+    let mut resolver = create_resolver(session, ast_map, krate, make_glob_map, None);
 
     resolver.resolve_crate(krate);
     session.abort_if_errors();
@@ -4016,6 +4046,36 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
                         None
                     },
     }
+}
+
+/// Builds a name resolution walker to be used within this module,
+/// or used externally, with an optional callback function.
+///
+/// The callback takes a &mut bool which allows callbacks to end a
+/// walk when set to true, passing through the rest of the walk, while
+/// preserving the ribs + current module. This allows resolve_path
+/// calls to be made with the correct scope info. The node in the
+/// callback corresponds to the current node in the walk.
+pub fn create_resolver<'a, 'tcx>(session: &'a Session,
+                                 ast_map: &'a ast_map::Map<'tcx>,
+                                 krate: &'a Crate,
+                                 make_glob_map: MakeGlobMap,
+                                 callback: Option<Box<Fn(ast_map::Node, &mut bool) -> bool>>)
+                                 -> Resolver<'a, 'tcx> {
+    let mut resolver = Resolver::new(session, ast_map, krate.span, make_glob_map);
+
+    resolver.callback = callback;
+
+    build_reduced_graph::build_reduced_graph(&mut resolver, krate);
+    session.abort_if_errors();
+
+    resolve_imports::resolve_imports(&mut resolver);
+    session.abort_if_errors();
+
+    record_exports::record(&mut resolver);
+    session.abort_if_errors();
+
+    resolver
 }
 
 __build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }
