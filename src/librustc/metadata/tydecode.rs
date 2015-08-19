@@ -207,6 +207,8 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'B' => {
                 assert_eq!(self.next(), '[');
+                // this is totally wrong, but nobody relevant cares about
+                // this field - it will die soon(TM).
                 let node_id = self.parse_uint() as ast::NodeId;
                 assert_eq!(self.next(), '|');
                 let space = self.parse_param_space();
@@ -246,24 +248,26 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     }
 
     fn parse_scope(&mut self) -> region::CodeExtent {
-        match self.next() {
+        self.tcx.region_maps.bogus_code_extent(match self.next() {
+            // the scopes created here are totally bogus with their
+            // NodeIDs
             'P' => {
                 assert_eq!(self.next(), '[');
                 let fn_id = self.parse_uint() as ast::NodeId;
                 assert_eq!(self.next(), '|');
                 let body_id = self.parse_uint() as ast::NodeId;
                 assert_eq!(self.next(), ']');
-                region::CodeExtent::ParameterScope {
+                region::CodeExtentData::ParameterScope {
                     fn_id: fn_id, body_id: body_id
                 }
             }
             'M' => {
                 let node_id = self.parse_uint() as ast::NodeId;
-                region::CodeExtent::Misc(node_id)
+                region::CodeExtentData::Misc(node_id)
             }
             'D' => {
                 let node_id = self.parse_uint() as ast::NodeId;
-                region::CodeExtent::DestructionScope(node_id)
+                region::CodeExtentData::DestructionScope(node_id)
             }
             'B' => {
                 assert_eq!(self.next(), '[');
@@ -274,10 +278,10 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 let block_remainder = region::BlockRemainder {
                     block: node_id, first_statement_index: first_stmt_index,
                 };
-                region::CodeExtent::Remainder(block_remainder)
+                region::CodeExtentData::Remainder(block_remainder)
             }
             _ => panic!("parse_scope: bad input")
-        }
+        })
     }
 
     fn parse_destruction_scope_data(&mut self) -> region::DestructionScopeData {
@@ -618,6 +622,33 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             object_lifetime_default: object_lifetime_default,
         }
     }
+
+    pub fn parse_region_param_def(&mut self) -> ty::RegionParameterDef {
+        let name = self.parse_name(':');
+        let def_id = self.parse_def(NominalType);
+        let space = self.parse_param_space();
+        assert_eq!(self.next(), '|');
+        let index = self.parse_u32();
+        assert_eq!(self.next(), '|');
+        let mut bounds = vec![];
+        loop {
+            match self.next() {
+                'R' => bounds.push(self.parse_region()),
+                '.' => { break; }
+                c => {
+                    panic!("parse_region_param_def: bad bounds ('{}')", c)
+                }
+            }
+        }
+        ty::RegionParameterDef {
+            name: name,
+            def_id: def_id,
+            space: space,
+            index: index,
+            bounds: bounds
+        }
+    }
+
 
     fn parse_object_lifetime_default(&mut self) -> ty::ObjectLifetimeDefault {
         match self.next() {

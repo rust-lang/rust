@@ -44,7 +44,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
         all_loans: Vec::new(),
-        item_ub: region::CodeExtent::from_node_id(body.id),
+        item_ub: bccx.tcx.region_maps.node_extent(body.id),
         move_data: MoveData::new(),
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
@@ -360,7 +360,9 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 let loan_scope = match loan_region {
                     ty::ReScope(scope) => scope,
 
-                    ty::ReFree(ref fr) => fr.scope.to_code_extent(),
+                    ty::ReFree(ref fr) => {
+                        fr.scope.to_code_extent(&self.tcx().region_maps)
+                    }
 
                     ty::ReStatic => {
                         // If we get here, an error must have been
@@ -387,7 +389,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 };
                 debug!("loan_scope = {:?}", loan_scope);
 
-                let borrow_scope = region::CodeExtent::from_node_id(borrow_id);
+                let borrow_scope = self.tcx().region_maps.node_extent(borrow_id);
                 let gen_scope = self.compute_gen_scope(borrow_scope, loan_scope);
                 debug!("gen_scope = {:?}", gen_scope);
 

@@ -1503,7 +1503,7 @@ pub struct DebruijnIndex {
 }
 
 /// Representation of regions:
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, Copy)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -1609,7 +1609,7 @@ pub enum BorrowKind {
 
 /// Information describing the capture of an upvar. This is computed
 /// during `typeck`, specifically by `regionck`.
-#[derive(PartialEq, Clone, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(PartialEq, Clone, Debug, Copy)]
 pub enum UpvarCapture {
     /// Upvar is captured by value. This is always true when the
     /// closure is labeled `move`, but can also be true in other cases
@@ -1620,7 +1620,7 @@ pub enum UpvarCapture {
     ByRef(UpvarBorrow),
 }
 
-#[derive(PartialEq, Clone, RustcEncodable, RustcDecodable, Copy)]
+#[derive(PartialEq, Clone, Copy)]
 pub struct UpvarBorrow {
     /// The kind of borrow: by-ref upvars have access to shared
     /// immutable borrows, which are not part of the normal language
@@ -2271,7 +2271,7 @@ pub struct TypeParameterDef<'tcx> {
     pub object_lifetime_default: ObjectLifetimeDefault,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct RegionParameterDef {
     pub name: ast::Name,
     pub def_id: DefId,
@@ -6673,7 +6673,8 @@ impl<'tcx> ctxt<'tcx> {
         let unnormalized_env = ty::ParameterEnvironment {
             tcx: self,
             free_substs: free_substs,
-            implicit_region_bound: ty::ReScope(free_id_outlive.to_code_extent()),
+            implicit_region_bound: ty::ReScope(
+                free_id_outlive.to_code_extent(&self.region_maps)),
             caller_bounds: predicates,
             selection_cache: traits::SelectionCache::new(),
             free_id: free_id,
