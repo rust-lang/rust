@@ -320,7 +320,7 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
 
     /// create `Some(Vec![..])` of all constants, unless there is any
     /// non-constant part
-    fn multi<E: Deref<Target=Expr> + Sized>(&mut self, vec: &[E]) -> 
+    fn multi<E: Deref<Target=Expr> + Sized>(&mut self, vec: &[E]) ->
             Option<Vec<Constant>> {
         vec.iter().map(|elem| self.expr(elem))
                   .collect::<Option<_>>()
@@ -388,9 +388,8 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
                 match (l, r) {
                     (ConstantByte(l8), ConstantByte(r8)) => if r8 > l8 {
                         None } else { Some(ConstantByte(l8 - r8)) },
-                    (ConstantInt(l64, lty), ConstantInt(r64, rty)) => {
-                        let (ln, rn) = (is_negative(lty), is_negative(rty));
-                        match (ln, rn) {
+                    (ConstantInt(l64, lty), ConstantInt(r64, rty)) =>
+                        match (is_negative(lty), is_negative(rty)) {
                             (false, false) => sub_int(l64, lty, r64, rty, r64 > l64),
                             (true, true) => sub_int(l64, lty, r64, rty, l64 > r64),
                             (true, false) => unify_int_type(lty, rty, Minus)
@@ -399,12 +398,11 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
                             (false, true) => unify_int_type(lty, rty, Plus)
                                 .and_then(|ty| l64.checked_add(r64).map(
                                     |v| ConstantInt(v, ty))),
-                        }
-                    },
+                        },
                     _ => None,
                 }),
-            //BiMul,
-            //BiDiv,
+            BiMul => self.divmul(left, right, u64::checked_mul),
+            BiDiv => self.divmul(left, right, u64::checked_div),
             //BiRem,
             BiAnd => self.short_circuit(left, right, false),
             BiOr => self.short_circuit(left, right, true),
@@ -423,6 +421,20 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
             BiGt => self.cmp(left, right, Greater, true),
             _ => None
         }
+    }
+
+    fn divmul<F>(&mut self, left: &Expr, right: &Expr, f: F)
+            -> Option<Constant> where F: Fn(u64, u64) -> Option<u64> {
+        self.binop_apply(left, right, |l, r|
+            match (l, r) {
+                (ConstantInt(l64, lty), ConstantInt(r64, rty)) => {
+                    f(l64, r64).and_then(|value|
+                        unify_int_type(lty, rty, if is_negative(lty) ==
+                                is_negative(rty) { Plus } else { Minus })
+                            .map(|ty| ConstantInt(value, ty)))
+                },
+                _ => None,
+            })
     }
 
     fn bitop<F>(&mut self, left: &Expr, right: &Expr, f: F)
