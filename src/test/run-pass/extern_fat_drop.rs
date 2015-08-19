@@ -10,7 +10,7 @@
 
 // aux-build:fat_drop.rs
 
-#![feature(core_intrinsics)]
+#![feature(core_intrinsics, drop_in_place)]
 
 extern crate fat_drop;
 

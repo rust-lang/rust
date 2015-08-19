@@ -411,7 +411,7 @@ mod imp {
         if cfg!(target_os = "macos") {
             ptr::read((*ptr).inner.get());
         } else {
-            intrinsics::drop_in_place((*ptr).inner.get());
+            ptr::drop_in_place((*ptr).inner.get());
         }
     }
 }

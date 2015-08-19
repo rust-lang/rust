@@ -245,6 +245,8 @@
 #![feature(vec_resize)]
 #![feature(wrapping)]
 #![feature(zero_one)]
+#![feature(drop_in_place)]
+
 #![cfg_attr(windows, feature(str_utf16))]
 #![cfg_attr(test, feature(float_from_str_radix, range_inclusive, float_extras, hash_default))]
 #![cfg_attr(test, feature(test, rustc_private, float_consts))]
