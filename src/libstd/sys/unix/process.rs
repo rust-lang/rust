@@ -11,7 +11,7 @@
 use prelude::v1::*;
 use os::unix::prelude::*;
 
-use collections::HashMap;
+use collections::{HashMap, HashSet};
 use env;
 use ffi::{OsString, OsStr, CString, CStr};
 use fmt;
@@ -37,6 +37,8 @@ pub struct Command {
     pub uid: Option<uid_t>,
     pub gid: Option<gid_t>,
     pub session_leader: bool,
+    pub leak_fds: bool,
+    pub leak_fds_whitelist: HashSet<RawFd>,
 }
 
 impl Command {
@@ -49,6 +51,9 @@ impl Command {
             uid: None,
             gid: None,
             session_leader: false,
+            // Backward compatibility:
+            leak_fds: true,
+            leak_fds_whitelist: HashSet::new(),
         }
     }
 
@@ -254,6 +259,81 @@ impl Process {
             unsafe { libc::_exit(1) }
         }
 
+        fn walk_open_fd_brute<F>(action_fd: F) where F: Fn(RawFd) {
+            // The `getdtablesize(3)` and `sysconf(_SC_OPEN_MAX)` could miss file descriptors if
+            // the RLIMIT_NOFILE is lowered (cf. #12148) but there is no good way to list them all
+            // except with procfs (cf. `walk_open_fd_proc()`).
+            // However, an unprivileged process (i.e. without CAP_SYS_RESOURCE on Linux) is not
+            // allowed to use a file descriptor upper or equal to it's hard limit nor to change
+            // this limit upwards.
+            let begin = libc::STDERR_FILENO + 1;
+            let end = unsafe { libc::sysconf(libc::consts::os::sysconf::_SC_OPEN_MAX) } as RawFd;
+            for fd in begin..end {
+                action_fd(fd);
+            }
+        }
+
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        fn walk_open_fd_proc<F>(action_fd: F) where F: Fn(RawFd) {
+            // Take care to look at a real procfs
+            let is_procfs = match ::fs::metadata("/proc") {
+                Ok(fs) => {
+                    // The device ID is 3 for a bare Linux but change for other namespaces (e.g.
+                    // with LXC). With Linux user namespace, the UID and GID may be different than
+                    // 0, so we only check the root inode.
+                    fs.is_dir() && fs.ino() == 1
+                },
+                Err(..) => false
+            };
+
+            if !is_procfs {
+                return walk_open_fd_brute(action_fd);
+            }
+
+            // There is currently no way to atomically stat a file/directory and use it (cf.
+            // #15643).
+            match ::fs::read_dir("/proc/self/fd") {
+                Ok(dir) => {
+                    let current = dir.as_raw_fd();
+                    for ret in dir {
+                        match ret {
+                            Ok(entry) => {
+                                let filename = entry.file_name();
+                                let filename = match filename.to_str() {
+                                    Some(s) => s,
+                                    None => return walk_open_fd_brute(action_fd),
+                                };
+                                let fd = match ::str::FromStr::from_str(filename) {
+                                    Ok(fd) => fd,
+                                    Err(..) => return walk_open_fd_brute(action_fd),
+                                };
+                                match fd {
+                                    libc::STDIN_FILENO => {}
+                                    libc::STDOUT_FILENO => {}
+                                    libc::STDERR_FILENO => {}
+                                    other => if other != current {
+                                        action_fd(other);
+                                    }
+                                }
+                            }
+                            Err(..) => return walk_open_fd_brute(action_fd),
+                        }
+                    }
+                },
+                Err(..) => walk_open_fd_brute(action_fd),
+            }
+        }
+
+        #[cfg(not(any(target_os = "linux", target_os = "android")))]
+        fn walk_open_fd<F>(action_fd: F) where F: Fn(RawFd) {
+            walk_open_fd_brute(action_fd)
+        }
+
+        #[cfg(any(target_os = "linux", target_os = "android"))]
+        fn walk_open_fd<F>(action_fd: F) where F: Fn(RawFd) {
+            walk_open_fd_proc(action_fd)
+        }
+
         let setup = |src: Stdio, dst: c_int| {
             match src {
                 Stdio::Inherit => true,
@@ -282,6 +362,24 @@ impl Process {
         if !setup(in_fd, libc::STDIN_FILENO) { fail(&mut output) }
         if !setup(out_fd, libc::STDOUT_FILENO) { fail(&mut output) }
         if !setup(err_fd, libc::STDERR_FILENO) { fail(&mut output) }
+
+        let close_or_leak = |fd: RawFd| {
+            if cfg.leak_fds_whitelist.contains(&fd) {
+                let flag_orig = libc::fcntl(fd, libc::F_GETFD, 0);
+                if flag_orig < 0 {
+                    return;
+                }
+                let flag_new = flag_orig & !libc::FD_CLOEXEC;
+                if flag_orig != flag_new {
+                    let _ = libc::fcntl(fd, libc::F_SETFD, flag_new);
+                }
+            } else {
+                let _ = libc::close(fd);
+            }
+        };
+        if !cfg.leak_fds {
+            walk_open_fd(close_or_leak);
+        }
 
         if let Some(u) = cfg.gid {
             if libc::setgid(u as libc::gid_t) != 0 {
