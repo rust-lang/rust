@@ -64,6 +64,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box returns::ReturnPass as LintPassObject);
     reg.register_lint_pass(box methods::MethodsPass as LintPassObject);
     reg.register_lint_pass(box types::LetPass as LintPassObject);
+    reg.register_lint_pass(box types::UnitCmp as LintPassObject);
     reg.register_lint_pass(box loops::LoopsPass as LintPassObject);
     reg.register_lint_pass(box lifetimes::LifetimePass as LintPassObject);
     reg.register_lint_pass(box ranges::StepByZero as LintPassObject);
@@ -105,6 +106,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         types::BOX_VEC,
         types::LET_UNIT_VALUE,
         types::LINKEDLIST,
+        types::UNIT_CMP,
         unicode::NON_ASCII_LITERAL,
         unicode::ZERO_WIDTH_SPACE,
     ]);
