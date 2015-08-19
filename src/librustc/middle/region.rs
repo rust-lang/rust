@@ -144,7 +144,7 @@ impl DestructionScopeData {
          RustcDecodable, Debug, Copy)]
 pub struct BlockRemainder {
     pub block: ast::NodeId,
-    pub first_statement_index: usize,
+    pub first_statement_index: u32,
 }
 
 impl CodeExtent {
@@ -207,7 +207,7 @@ impl CodeExtent {
                         //
                         // (This is the special case aluded to in the
                         // doc-comment for this method)
-                        let stmt_span = blk.stmts[r.first_statement_index].span;
+                        let stmt_span = blk.stmts[r.first_statement_index as usize].span;
                         Some(Span { lo: stmt_span.hi, ..blk.span })
                     }
                 }
@@ -310,7 +310,7 @@ impl InnermostDeclaringBlock {
 struct DeclaringStatementContext {
     stmt_id: ast::NodeId,
     block_id: ast::NodeId,
-    stmt_index: usize,
+    stmt_index: u32,
 }
 
 impl DeclaringStatementContext {
@@ -711,7 +711,7 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &ast::Block) {
                 let declaring = DeclaringStatementContext {
                     stmt_id: stmt_id,
                     block_id: blk.id,
-                    stmt_index: i,
+                    stmt_index: i as u32,
                 };
                 record_superlifetime(
                     visitor, declaring.to_code_extent(), statement.span);
