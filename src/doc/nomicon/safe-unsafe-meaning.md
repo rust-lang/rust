@@ -125,7 +125,7 @@ unsafe impl UnsafeOrd for MyType {
 But it's probably not the implementation you want.
 
 Rust has traditionally avoided making traits unsafe because it makes Unsafe
-pervasive, which is not desirable. Send and Sync are unsafe is because thread
+pervasive, which is not desirable. The reason Send and Sync are unsafe is because thread
 safety is a *fundamental property* that unsafe code cannot possibly hope to defend
 against in the same way it would defend against a bad Ord implementation. The
 only way to possibly defend against thread-unsafety would be to *not use
