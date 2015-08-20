@@ -355,8 +355,8 @@ Let's finally check out that third section: documentation tests.
 Nothing is better than documentation with examples. Nothing is worse than
 examples that don't actually work, because the code has changed since the
 documentation has been written. To this end, Rust supports automatically
-running examples in your documentation. Here's a fleshed-out `src/lib.rs`
-with examples:
+running examples in your documentation (**note:** this only works in library
+crates, not binary crates). Here's a fleshed-out `src/lib.rs` with examples:
 
 ```rust,ignore
 //! The `adder` crate provides functions that add numbers to other numbers.
