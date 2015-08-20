@@ -175,7 +175,11 @@ indicate the field type which is coerced, for example).
 
 # Unresolved questions
 
-None
+It is unclear to what extent DST coercions should support multiple fields that
+refer to the same type parameter. `PhantomData<T>` should definitely be
+supported as an "extra" field that's skipped, but can all zero-sized fields
+be skipped? Are there cases where this would enable by-passing the abstractions
+that make some API safe?
 
 # Updates since being accepted
 
