@@ -27,4 +27,9 @@ fn main() {
                      };
 
     let empty = |arg|    {};
+
+    let test = |  | { do_something(); do_something_else(); };
+
+    |arg1, arg2, _, _, arg3, arg4| { let temp = arg4 + arg3;
+                                     arg2 * arg1 - temp }
 }
