@@ -22,7 +22,7 @@ Coercion is allowed between the following types:
 for all pointer types (including smart pointers like Box and Rc). Unsize is
 only implemented automatically, and enables the following transformations:
 
-* `[T, ..n]` => `[T]`
+* `[T; n]` => `[T]`
 * `T` => `Trait` where `T: Trait`
 * `Foo<..., T, ...>` => `Foo<..., U, ...>` where:
     * `T: Unsize<U>`
