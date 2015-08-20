@@ -168,6 +168,8 @@ pub struct TargetOptions {
     /// currently only "gnu" is used to fall into LLVM. Unknown strings cause
     /// the system linker to be used.
     pub archive_format: String,
+    /// Is asm!() allowed? Defaults to true.
+    pub allow_asm: bool,
     /// Whether the target uses a custom unwind resumption routine.
     /// By default LLVM lowers `resume` instructions into calls to `_Unwind_Resume`
     /// defined in libgcc.  If this option is enabled, the target must provide
@@ -217,6 +219,7 @@ impl Default for TargetOptions {
             custom_unwind_resume: false,
             lib_allocation_crate: "alloc_system".to_string(),
             exe_allocation_crate: "alloc_system".to_string(),
+            allow_asm: true,
         }
     }
 }
@@ -310,6 +313,7 @@ impl Target {
         key!(no_compiler_rt, bool);
         key!(pre_link_args, list);
         key!(post_link_args, list);
+        key!(allow_asm, bool);
 
         base
     }
