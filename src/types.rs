@@ -156,7 +156,7 @@ impl LintPass for CastPass {
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
         if let ExprCast(ref ex, _) = expr.node {
             let (cast_from, cast_to) = (cx.tcx.expr_ty(&*ex), cx.tcx.expr_ty(expr));
-            if cast_from.is_numeric() && !in_external_macro(cx, expr.span) {
+            if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false)  => {
                         match (&cast_from.sty, &cast_to.sty) {
