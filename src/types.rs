@@ -190,7 +190,7 @@ impl LintPass for CastPass {
                     (false, true) => {
                         span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
                                   &format!("the contents of a {} may overflow a {}", cast_from, cast_to));
-                        if !cx.tcx.expr_ty(expr).is_signed() {
+                        if !cast_to.is_signed() {
                             span_lint(cx, CAST_SIGN_LOSS, expr.span,
                                       &format!("casting from {} to {} loses the sign of the value", cast_from, cast_to));
                         }
