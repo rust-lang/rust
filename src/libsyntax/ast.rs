@@ -1216,16 +1216,6 @@ pub enum LitIntType {
     UnsuffixedIntLit(Sign)
 }
 
-impl LitIntType {
-    pub fn suffix_len(&self) -> usize {
-        match *self {
-            UnsuffixedIntLit(_) => 0,
-            SignedIntLit(s, _) => s.suffix_len(),
-            UnsignedIntLit(u) => u.suffix_len()
-        }
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Lit_ {
     /// A string literal (`"foo"`)
@@ -1333,12 +1323,6 @@ impl fmt::Display for IntTy {
 }
 
 impl IntTy {
-    pub fn suffix_len(&self) -> usize {
-        match *self {
-            TyIs | TyI8 => 2,
-            TyI16 | TyI32 | TyI64  => 3,
-        }
-    }
     pub fn bit_width(&self) -> Option<usize> {
         Some(match *self {
             TyIs => return None,
@@ -1360,12 +1344,6 @@ pub enum UintTy {
 }
 
 impl UintTy {
-    pub fn suffix_len(&self) -> usize {
-        match *self {
-            TyUs | TyU8 => 2,
-            TyU16 | TyU32 | TyU64  => 3,
-        }
-    }
     pub fn bit_width(&self) -> Option<usize> {
         Some(match *self {
             TyUs => return None,
@@ -1408,11 +1386,6 @@ impl fmt::Display for FloatTy {
 }
 
 impl FloatTy {
-    pub fn suffix_len(&self) -> usize {
-        match *self {
-            TyF32 | TyF64 => 3, // add F128 handling here
-        }
-    }
     pub fn bit_width(&self) -> usize {
         match *self {
             TyF32 => 32,
