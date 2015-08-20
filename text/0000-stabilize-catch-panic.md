@@ -5,8 +5,8 @@
 
 # Summary
 
-Stabilize `std::thread::catch_panic` after removing the `Send` and `'static`
-bounds from the closure parameter.
+Move `std::thread::catch_panic` to `std::panic::catch` after removing the `Send`
+and `'static` bounds from the closure parameter.
 
 # Motivation
 
@@ -178,12 +178,13 @@ this RFC.
 
 # Detailed design
 
-At its heart, the change this RFC is proposing is to stabilize
-`std::thread::catch_panic` after removing the `Send` and `'static` bounds from
-the closure parameter, modifying the signature to be:
+At its heart, the change this RFC is proposing is to move
+`std::thread::catch_panic` to a new `std::panic` module and rename the function
+to `catch`. Additionally, the `Send` and `'static` bounds from the closure
+parameter will be removed, modifying the signature to be:
 
 ```rust
-fn catch_panic<F: FnOnce() -> R, R>(f: F) -> thread::Result<R>
+fn catch<F: FnOnce() -> R, R>(f: F) -> thread::Result<R>
 ```
 
 More generally, however, this RFC also claims that this stable function does
