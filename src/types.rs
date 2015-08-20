@@ -158,33 +158,24 @@ impl LintPass for CastPass {
             let (cast_from, cast_to) = (cx.tcx.expr_ty(&*ex), cx.tcx.expr_ty(expr));
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
-                    (true, false)  => {
-                        match (&cast_from.sty, &cast_to.sty) {
-                            (&ty::TyInt(i), &ty::TyFloat(f)) => {
-                                match (i, f) {
-                                    (ast::TyI32, ast::TyF32) |
-                                    (ast::TyI64, ast::TyF32) |
-                                    (ast::TyI64, ast::TyF64) => {
-                                        span_lint(cx, CAST_PRECISION_LOSS, expr.span,
-                                                  &format!("converting from {} to {}, which causes a loss of precision",
-                                                           i, f));
-                                    },
-                                    _ => ()
-                                }
+                    (true, false) => {
+                        let from_nbits = match &cast_from.sty {
+                            &ty::TyInt(i) =>  4 << (i as usize),
+                            &ty::TyUint(u) => 4 << (u as usize),
+                            _ => 0
+                        };
+                        let to_nbits : usize = match &cast_to.sty {
+                            &ty::TyFloat(ast::TyF32) => 32,
+                            &ty::TyFloat(ast::TyF64) => 64,
+                            _ => 0
+                        };
+                        if from_nbits != 4 {
+                            // Handle TyIs/TyUs separately (size is arch dependant)
+                            if from_nbits >= to_nbits {
+                                span_lint(cx, CAST_PRECISION_LOSS, expr.span,
+                                          &format!("converting from {} to {}, which causes a loss of precision",
+                                                   cast_from, cast_to));
                             }
-                            (&ty::TyUint(u), &ty::TyFloat(f)) => {
-                                match (u, f) {
-                                    (ast::TyU32, ast::TyF32) |
-                                    (ast::TyU64, ast::TyF32) |
-                                    (ast::TyU64, ast::TyF64) => {
-                                        span_lint(cx, CAST_PRECISION_LOSS, expr.span,
-                                                  &format!("converting from {} to {}, which causes a loss of precision",
-                                                           u, f));
-                                    },
-                                    _ => ()
-                                }
-                            },
-                            _ => ()
                         }
                     },
                     (false, true) => {
@@ -196,66 +187,24 @@ impl LintPass for CastPass {
                         }
                     },
                     (true, true) => {
-                        match (&cast_from.sty, &cast_to.sty) {
-                            (&ty::TyInt(i1), &ty::TyInt(i2)) => {
-                                match (i1, i2) {
-                                    (ast::TyI64, ast::TyI32) |
-                                    (ast::TyI64, ast::TyI16) |
-                                    (ast::TyI64, ast::TyI8)  |
-                                    (ast::TyI32, ast::TyI16) |
-                                    (ast::TyI32, ast::TyI8)  |
-                                    (ast::TyI16, ast::TyI8) =>
-                                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
-                                                  &format!("the contents of a {} may overflow a {}", i1, i2)),
-                                    _ => ()
-                                }
-                            },
-                            (&ty::TyInt(i), &ty::TyUint(u)) => {
-                                span_lint(cx, CAST_SIGN_LOSS, expr.span,
-                                          &format!("casting from {} to {} loses the sign of the value", i, u));
-                                match (i, u) {
-                                    (ast::TyI64, ast::TyU32) |
-                                    (ast::TyI64, ast::TyU16) |
-                                    (ast::TyI64, ast::TyU8)  |
-                                    (ast::TyI32, ast::TyU16) |
-                                    (ast::TyI32, ast::TyU8)  |
-                                    (ast::TyI16, ast::TyU8) =>
-                                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
-                                                  &format!("the contents of a {} may overflow a {}", i, u)),
-                                    _ => ()
-                                }
-                            },
-                            (&ty::TyUint(u), &ty::TyInt(i)) => {
-                                match (u, i) {
-                                    (ast::TyU64, ast::TyI32) |
-                                    (ast::TyU64, ast::TyI64) |
-                                    (ast::TyU64, ast::TyI16) |
-                                    (ast::TyU64, ast::TyI8)  |
-                                    (ast::TyU32, ast::TyI32) |
-                                    (ast::TyU32, ast::TyI16) |
-                                    (ast::TyU32, ast::TyI8)  |
-                                    (ast::TyU16, ast::TyI16) |
-                                    (ast::TyU16, ast::TyI8)  |
-                                    (ast::TyU8, ast::TyI8) =>
-                                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
-                                                  &format!("the contents of a {} may overflow a {}", u, i)),
-                                    _ => ()
-                                }
-                            },
-                            (&ty::TyUint(u1), &ty::TyUint(u2)) => {
-                                match (u1, u2) {
-                                    (ast::TyU64, ast::TyU32) |
-                                    (ast::TyU64, ast::TyU16) |
-                                    (ast::TyU64, ast::TyU8)  |
-                                    (ast::TyU32, ast::TyU16) |
-                                    (ast::TyU32, ast::TyU8)  |
-                                    (ast::TyU16, ast::TyU8) =>
-                                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
-                                                  &format!("the contents of a {} may overflow a {}", u1, u2)),
-                                    _ => ()
-                                }
-                            },
-                            _ => ()
+                        if cast_from.is_signed() && !cast_to.is_signed() {
+                            span_lint(cx, CAST_SIGN_LOSS, expr.span,
+                                      &format!("casting from {} to {} loses the sign of the value", cast_from, cast_to));
+                        }
+                        let from_nbits = match &cast_from.sty {
+                            &ty::TyInt(i) =>  4 << (i as usize),
+                            &ty::TyUint(u) => 4 << (u as usize),
+                            _ => 0
+                        };
+                        let to_nbits = match &cast_to.sty {
+                            &ty::TyInt(i) =>  4 << (i as usize),
+                            &ty::TyUint(u) => 4 << (u as usize),
+                            _ => 0
+                        };
+                        if to_nbits < from_nbits ||
+                           (!cast_from.is_signed() && cast_to.is_signed() && to_nbits <= from_nbits) {
+                                span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
+                                          &format!("the contents of a {} may overflow a {}", cast_from, cast_to));
                         }
                     }
                     (false, false) => {
