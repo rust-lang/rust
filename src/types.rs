@@ -140,11 +140,11 @@ impl LintPass for UnitCmp {
 pub struct CastPass;
 
 declare_lint!(pub CAST_PRECISION_LOSS, Allow,
-              "casts that cause loss of precision");
+              "casts that cause loss of precision, e.g `x as f32` where `x: u64`");
 declare_lint!(pub CAST_SIGN_LOSS, Allow,
-              "casts from signed types to unsigned types");
+              "casts from signed types to unsigned types, e.g `x as u32` where `x: i32`");
 declare_lint!(pub CAST_POSSIBLE_OVERFLOW, Allow,
-              "casts that may cause overflow");
+              "casts that may cause overflow, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`");
 
 impl LintPass for CastPass {
     fn get_lints(&self) -> LintArray {
