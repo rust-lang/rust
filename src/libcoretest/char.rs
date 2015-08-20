@@ -55,28 +55,24 @@ fn test_to_digit() {
 
 #[test]
 fn test_to_lowercase() {
-    fn lower(c: char) -> char {
-        let mut it = c.to_lowercase();
-        let c = it.next().unwrap();
-        // As of Unicode version 7.0.0, `SpecialCasing.txt` has no lower-case mapping
-        // to multiple code points.
-        assert!(it.next().is_none());
-        c
+    fn lower(c: char) -> Vec<char> {
+        c.to_lowercase().collect()
     }
-    assert_eq!(lower('A'), 'a');
-    assert_eq!(lower('Ö'), 'ö');
-    assert_eq!(lower('ß'), 'ß');
-    assert_eq!(lower('Ü'), 'ü');
-    assert_eq!(lower('💩'), '💩');
-    assert_eq!(lower('Σ'), 'σ');
-    assert_eq!(lower('Τ'), 'τ');
-    assert_eq!(lower('Ι'), 'ι');
-    assert_eq!(lower('Γ'), 'γ');
-    assert_eq!(lower('Μ'), 'μ');
-    assert_eq!(lower('Α'), 'α');
-    assert_eq!(lower('Σ'), 'σ');
-    assert_eq!(lower('ǅ'), 'ǆ');
-    assert_eq!(lower('ﬁ'), 'ﬁ');
+    assert_eq!(lower('A'), ['a']);
+    assert_eq!(lower('Ö'), ['ö']);
+    assert_eq!(lower('ß'), ['ß']);
+    assert_eq!(lower('Ü'), ['ü']);
+    assert_eq!(lower('💩'), ['💩']);
+    assert_eq!(lower('Σ'), ['σ']);
+    assert_eq!(lower('Τ'), ['τ']);
+    assert_eq!(lower('Ι'), ['ι']);
+    assert_eq!(lower('Γ'), ['γ']);
+    assert_eq!(lower('Μ'), ['μ']);
+    assert_eq!(lower('Α'), ['α']);
+    assert_eq!(lower('Σ'), ['σ']);
+    assert_eq!(lower('ǅ'), ['ǆ']);
+    assert_eq!(lower('ﬁ'), ['ﬁ']);
+    assert_eq!(lower('İ'), ['i', '\u{307}']);
 }
 
 #[test]
