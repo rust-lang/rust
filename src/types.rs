@@ -143,14 +143,14 @@ declare_lint!(pub CAST_PRECISION_LOSS, Allow,
               "casts that cause loss of precision, e.g `x as f32` where `x: u64`");
 declare_lint!(pub CAST_SIGN_LOSS, Allow,
               "casts from signed types to unsigned types, e.g `x as u32` where `x: i32`");
-declare_lint!(pub CAST_POSSIBLE_OVERFLOW, Allow,
-              "casts that may cause overflow, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`");
+declare_lint!(pub CAST_POSSIBLE_TRUNCATION, Allow,
+              "casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`");
 
 impl LintPass for CastPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(CAST_PRECISION_LOSS,
                     CAST_SIGN_LOSS,
-                    CAST_POSSIBLE_OVERFLOW)
+                    CAST_POSSIBLE_TRUNCATION)
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
@@ -170,17 +170,18 @@ impl LintPass for CastPass {
                             _ => 0
                         };
                         if from_nbits != 4 {
-                            // Handle TyIs/TyUs separately (size is arch dependant)
+                            // Handle TyIs/TyUs separately (pointer size is arch dependant)
                             if from_nbits >= to_nbits {
                                 span_lint(cx, CAST_PRECISION_LOSS, expr.span,
-                                          &format!("converting from {} to {}, which causes a loss of precision",
-                                                   cast_from, cast_to));
+                                          &format!("converting from {0} to {1}, which causes a loss of precision \
+                                          			({0} is {2} bits wide, but {1}'s mantissa is only {3} bits wide)",
+                                                   cast_from, cast_to, from_nbits, if to_nbits == 64 {52} else {23} ));
                             }
                         }
                     },
                     (false, true) => {
-                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
-                                  &format!("the contents of a {} may overflow a {}", cast_from, cast_to));
+                        span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
+                                  &format!("casting {} to {} may cause truncation of the value", cast_from, cast_to));
                         if !cast_to.is_signed() {
                             span_lint(cx, CAST_SIGN_LOSS, expr.span,
                                       &format!("casting from {} to {} loses the sign of the value", cast_from, cast_to));
@@ -203,14 +204,14 @@ impl LintPass for CastPass {
                         };
                         if to_nbits < from_nbits ||
                            (!cast_from.is_signed() && cast_to.is_signed() && to_nbits <= from_nbits) {
-                                span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
-                                          &format!("the contents of a {} may overflow a {}", cast_from, cast_to));
+                                span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
+                                          &format!("casting {} to {} may cause truncation of the value", cast_from, cast_to));
                         }
                     }
                     (false, false) => {
                         if let (&ty::TyFloat(ast::TyF64),
                                 &ty::TyFloat(ast::TyF32)) = (&cast_from.sty, &cast_to.sty) {
-                            span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span, "the contents of a f64 may overflow a f32");
+                            span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span, "casting f64 to f32 may cause truncation of the value");
                         }
                     }
                 }
