@@ -21,11 +21,12 @@ use time::Duration;
 /// A type indicating whether a timed wait on a condition variable returned
 /// due to a time out or not.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-#[unstable(feature = "wait_timeout", reason = "newly added")]
+#[unstable(feature = "wait_timeout", reason = "newly added", issue = "27772")]
 pub struct WaitTimeoutResult(bool);
 
 impl WaitTimeoutResult {
     /// Returns whether the wait was known to have timed out.
+    #[unstable(feature = "wait_timeout", reason = "newly added", issue = "27772")]
     pub fn timed_out(&self) -> bool {
         self.0
     }
