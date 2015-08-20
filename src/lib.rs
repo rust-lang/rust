@@ -1,6 +1,7 @@
 #![feature(plugin_registrar, box_syntax)]
 #![feature(rustc_private, core, collections)]
 #![feature(str_split_at)]
+#![allow(unknown_lints)]
 
 #[macro_use]
 extern crate syntax;

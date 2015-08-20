@@ -67,7 +67,7 @@ impl Constant {
     }
 
     /// convert this constant to a f64, if possible
-    #[allow(unknown_lints,cast_precision_loss)]
+    #[allow(cast_precision_loss)]
     pub fn as_float(&self) -> Option<f64> {
         match *self {
             ConstantByte(b) => Some(b as f64),
