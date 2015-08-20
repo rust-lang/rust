@@ -160,7 +160,8 @@ fn rewrite_closure(capture: ast::CaptureClause,
     let prefix = format!("{}|{}|", mover, write_list(&arg_items.collect::<Vec<_>>(), &fmt));
     let block_indent = closure_block_indent(context, offset);
 
-    let body_rewrite = if body.stmts.is_empty() {
+    // Try to format closure body as a single line expression without braces.
+    if body.stmts.is_empty() {
         let expr = body.expr.as_ref().unwrap();
         // All closure bodies are blocks in the eyes of the AST, but we may not
         // want to unwrap them when they only contain a single expression.
@@ -179,29 +180,16 @@ fn rewrite_closure(capture: ast::CaptureClause,
         let accept_rewrite = rewrite.as_ref().map(|result| !result.contains('\n')).unwrap_or(false);
 
         if accept_rewrite {
-            rewrite
-        } else {
-            if let ast::Expr_::ExprBlock(ref inner_body) = expr.node {
-                // Closure body is a proper block, with braces and all.
-                let inner_context = &RewriteContext { block_indent: block_indent, ..*context };
-                inner_body.rewrite(inner_context, 0, 0)
-            } else {
-                // Closure body is an expression, but not a block. It does not
-                // fit a single line, so we format it as it were wrapped in a
-                // block.
-                let inner_context = &RewriteContext {
-                    block_indent: block_indent + context.config.tab_spaces,
-                    ..*context
-                };
-                let indent = offset + context.config.tab_spaces;
-                expr.rewrite(inner_context, context.config.max_width - indent, indent)
-                    .map(|result| {
-                        format!("{{\n{}{}\n{}}}", make_indent(indent), result, make_indent(offset))
-                    })
-            }
+            return Some(format!("{} {}", prefix, rewrite.unwrap()));
         }
+    }
+
+    // We couldn't format the closure body as a single line expression; fall
+    // back to block formatting.
+    let inner_context = &RewriteContext { block_indent: block_indent, ..*context };
+    let body_rewrite = if let ast::Expr_::ExprBlock(ref inner) = body.expr.as_ref().unwrap().node {
+        inner.rewrite(inner_context, 0, 0)
     } else {
-        let inner_context = &RewriteContext { block_indent: block_indent, ..*context };
         body.rewrite(inner_context, 0, 0)
     };
 

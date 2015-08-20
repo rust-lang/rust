@@ -51,6 +51,14 @@ fn main() {
                    do_something_else();
                };
 
+    let arg_test = |big_argument_name, test123| {
+                       looooooooooooooooooong_function_naaaaaaaaaaaaaaaaame()
+                   };
+
+    let arg_test = |big_argument_name, test123| {
+                       looooooooooooooooooong_function_naaaaaaaaaaaaaaaaame()
+                   };
+
     |arg1, arg2, _, _, arg3, arg4| {
         let temp = arg4 + arg3;
         arg2 * arg1 - temp

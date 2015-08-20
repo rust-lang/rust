@@ -68,9 +68,18 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                self.codemap.lookup_char_pos(b.span.lo),
                self.codemap.lookup_char_pos(b.span.hi));
 
-        self.buffer.push_str("{");
-        self.last_pos = self.last_pos + BytePos(1);
+        // Check if this block has braces.
+        let snippet = self.snippet(b.span);
+        let has_braces = snippet.chars().next().unwrap() == '{' || &snippet[..6] == "unsafe";
+        let brace_compensation = if has_braces {
+            BytePos(1)
+        } else {
+            BytePos(0)
+        };
+
+        self.last_pos = self.last_pos + brace_compensation;
         self.block_indent += self.config.tab_spaces;
+        self.buffer.push_str("{");
 
         for stmt in &b.stmts {
             self.visit_stmt(&stmt)
@@ -86,7 +95,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         self.block_indent -= self.config.tab_spaces;
         // TODO we should compress any newlines here to just one
-        self.format_missing_with_indent(b.span.hi - BytePos(1));
+        self.format_missing_with_indent(b.span.hi - brace_compensation);
         self.buffer.push_str("}");
         self.last_pos = b.span.hi;
     }
