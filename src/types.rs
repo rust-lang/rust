@@ -160,11 +160,11 @@ impl LintPass for CastPass {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false)  => {
                         match (&cast_from.sty, &cast_to.sty) {
-                            (&ty::TypeVariants::TyInt(i), &ty::TypeVariants::TyFloat(f)) => {
+                            (&ty::TyInt(i), &ty::TyFloat(f)) => {
                                 match (i, f) {
-                                    (ast::IntTy::TyI32, ast::FloatTy::TyF32) |
-                                    (ast::IntTy::TyI64, ast::FloatTy::TyF32) |
-                                    (ast::IntTy::TyI64, ast::FloatTy::TyF64) => {
+                                    (ast::TyI32, ast::TyF32) |
+                                    (ast::TyI64, ast::TyF32) |
+                                    (ast::TyI64, ast::TyF64) => {
                                         span_lint(cx, CAST_PRECISION_LOSS, expr.span,
                                                   &format!("converting from {} to {}, which causes a loss of precision",
                                                            i, f));
@@ -172,11 +172,11 @@ impl LintPass for CastPass {
                                     _ => ()
                                 }
                             }
-                            (&ty::TypeVariants::TyUint(u), &ty::TypeVariants::TyFloat(f)) => {
+                            (&ty::TyUint(u), &ty::TyFloat(f)) => {
                                 match (u, f) {
-                                    (ast::UintTy::TyU32, ast::FloatTy::TyF32) |
-                                    (ast::UintTy::TyU64, ast::FloatTy::TyF32) |
-                                    (ast::UintTy::TyU64, ast::FloatTy::TyF64) => {
+                                    (ast::TyU32, ast::TyF32) |
+                                    (ast::TyU64, ast::TyF32) |
+                                    (ast::TyU64, ast::TyF64) => {
                                         span_lint(cx, CAST_PRECISION_LOSS, expr.span,
                                                   &format!("converting from {} to {}, which causes a loss of precision",
                                                            u, f));
@@ -188,69 +188,69 @@ impl LintPass for CastPass {
                         }
                     },
                     (false, true) => {
-                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span, 
+                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
                                   &format!("the contents of a {} may overflow a {}", cast_from, cast_to));
                         if !cx.tcx.expr_ty(expr).is_signed() {
-                            span_lint(cx, CAST_SIGN_LOSS, expr.span, 
+                            span_lint(cx, CAST_SIGN_LOSS, expr.span,
                                       &format!("casting from {} to {} loses the sign of the value", cast_from, cast_to));
                         }
                     },
                     (true, true) => {
                         match (&cast_from.sty, &cast_to.sty) {
-                            (&ty::TypeVariants::TyInt(i1), &ty::TypeVariants::TyInt(i2)) => {
+                            (&ty::TyInt(i1), &ty::TyInt(i2)) => {
                                 match (i1, i2) {
-                                    (ast::IntTy::TyI64, ast::IntTy::TyI32) |
-                                    (ast::IntTy::TyI64, ast::IntTy::TyI16) |
-                                    (ast::IntTy::TyI64, ast::IntTy::TyI8)  |
-                                    (ast::IntTy::TyI32, ast::IntTy::TyI16) |
-                                    (ast::IntTy::TyI32, ast::IntTy::TyI8)  |
-                                    (ast::IntTy::TyI16, ast::IntTy::TyI8) => 
-                                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span, 
+                                    (ast::TyI64, ast::TyI32) |
+                                    (ast::TyI64, ast::TyI16) |
+                                    (ast::TyI64, ast::TyI8)  |
+                                    (ast::TyI32, ast::TyI16) |
+                                    (ast::TyI32, ast::TyI8)  |
+                                    (ast::TyI16, ast::TyI8) =>
+                                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
                                                   &format!("the contents of a {} may overflow a {}", i1, i2)),
                                     _ => ()
                                 }
                             },
-                            (&ty::TypeVariants::TyInt(i), &ty::TypeVariants::TyUint(u)) => {
-                                span_lint(cx, CAST_SIGN_LOSS, expr.span, 
+                            (&ty::TyInt(i), &ty::TyUint(u)) => {
+                                span_lint(cx, CAST_SIGN_LOSS, expr.span,
                                           &format!("casting from {} to {} loses the sign of the value", i, u));
                                 match (i, u) {
-                                    (ast::IntTy::TyI64, ast::UintTy::TyU32) |
-                                    (ast::IntTy::TyI64, ast::UintTy::TyU16) |
-                                    (ast::IntTy::TyI64, ast::UintTy::TyU8)  |
-                                    (ast::IntTy::TyI32, ast::UintTy::TyU16) |
-                                    (ast::IntTy::TyI32, ast::UintTy::TyU8)  |
-                                    (ast::IntTy::TyI16, ast::UintTy::TyU8) => 
-                                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span, 
+                                    (ast::TyI64, ast::TyU32) |
+                                    (ast::TyI64, ast::TyU16) |
+                                    (ast::TyI64, ast::TyU8)  |
+                                    (ast::TyI32, ast::TyU16) |
+                                    (ast::TyI32, ast::TyU8)  |
+                                    (ast::TyI16, ast::TyU8) =>
+                                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
                                                   &format!("the contents of a {} may overflow a {}", i, u)),
                                     _ => ()
                                 }
                             },
-                            (&ty::TypeVariants::TyUint(u), &ty::TypeVariants::TyInt(i)) => {
+                            (&ty::TyUint(u), &ty::TyInt(i)) => {
                                 match (u, i) {
-                                    (ast::UintTy::TyU64, ast::IntTy::TyI32) |
-                                    (ast::UintTy::TyU64, ast::IntTy::TyI64) |
-                                    (ast::UintTy::TyU64, ast::IntTy::TyI16) |
-                                    (ast::UintTy::TyU64, ast::IntTy::TyI8)  |
-                                    (ast::UintTy::TyU32, ast::IntTy::TyI32) |
-                                    (ast::UintTy::TyU32, ast::IntTy::TyI16) |
-                                    (ast::UintTy::TyU32, ast::IntTy::TyI8)  |
-                                    (ast::UintTy::TyU16, ast::IntTy::TyI16) |
-                                    (ast::UintTy::TyU16, ast::IntTy::TyI8)  |
-                                    (ast::UintTy::TyU8, ast::IntTy::TyI8) => 
-                                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span, 
+                                    (ast::TyU64, ast::TyI32) |
+                                    (ast::TyU64, ast::TyI64) |
+                                    (ast::TyU64, ast::TyI16) |
+                                    (ast::TyU64, ast::TyI8)  |
+                                    (ast::TyU32, ast::TyI32) |
+                                    (ast::TyU32, ast::TyI16) |
+                                    (ast::TyU32, ast::TyI8)  |
+                                    (ast::TyU16, ast::TyI16) |
+                                    (ast::TyU16, ast::TyI8)  |
+                                    (ast::TyU8, ast::TyI8) =>
+                                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
                                                   &format!("the contents of a {} may overflow a {}", u, i)),
                                     _ => ()
                                 }
                             },
-                            (&ty::TypeVariants::TyUint(u1), &ty::TypeVariants::TyUint(u2)) => {
+                            (&ty::TyUint(u1), &ty::TyUint(u2)) => {
                                 match (u1, u2) {
-                                    (ast::UintTy::TyU64, ast::UintTy::TyU32) |
-                                    (ast::UintTy::TyU64, ast::UintTy::TyU16) |
-                                    (ast::UintTy::TyU64, ast::UintTy::TyU8)  |
-                                    (ast::UintTy::TyU32, ast::UintTy::TyU16) |
-                                    (ast::UintTy::TyU32, ast::UintTy::TyU8)  |
-                                    (ast::UintTy::TyU16, ast::UintTy::TyU8) => 
-                                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span, 
+                                    (ast::TyU64, ast::TyU32) |
+                                    (ast::TyU64, ast::TyU16) |
+                                    (ast::TyU64, ast::TyU8)  |
+                                    (ast::TyU32, ast::TyU16) |
+                                    (ast::TyU32, ast::TyU8)  |
+                                    (ast::TyU16, ast::TyU8) =>
+                                        span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span,
                                                   &format!("the contents of a {} may overflow a {}", u1, u2)),
                                     _ => ()
                                 }
@@ -259,13 +259,13 @@ impl LintPass for CastPass {
                         }
                     }
                     (false, false) => {
-                        if let (&ty::TypeVariants::TyFloat(ast::FloatTy::TyF64),
-                                &ty::TypeVariants::TyFloat(ast::FloatTy::TyF32)) = (&cast_from.sty, &cast_to.sty) {
+                        if let (&ty::TyFloat(ast::TyF64),
+                                &ty::TyFloat(ast::TyF32)) = (&cast_from.sty, &cast_to.sty) {
                             span_lint(cx, CAST_POSSIBLE_OVERFLOW, expr.span, "the contents of a f64 may overflow a f32");
                         }
                     }
                 }
             }
         }
-    }                                        
+    }
 }
