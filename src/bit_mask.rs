@@ -82,9 +82,9 @@ fn invert_cmp(cmp : BinOp_) -> BinOp_ {
 
 
 fn check_compare(cx: &Context, bit_op: &Expr, cmp_op: BinOp_, cmp_value: u64, span: &Span) {
-    match &bit_op.node {
-        &ExprParen(ref subexp) => check_compare(cx, subexp, cmp_op, cmp_value, span),
-        &ExprBinary(ref op, ref left, ref right) => {
+    match bit_op.node {
+        ExprParen(ref subexp) => check_compare(cx, subexp, cmp_op, cmp_value, span),
+        ExprBinary(ref op, ref left, ref right) => {
             if op.node != BiBitAnd && op.node != BiBitOr { return; }
             fetch_int_literal(cx, right).or_else(|| fetch_int_literal(
                 cx, left)).map_or((), |mask| check_bit_mask(cx, op.node,
@@ -182,13 +182,13 @@ fn check_ineffective_gt(cx: &Context, span: Span, m: u64, c: u64, op: &str) {
 }
 
 fn fetch_int_literal(cx: &Context, lit : &Expr) -> Option<u64> {
-    match &lit.node {
-        &ExprLit(ref lit_ptr) => {
+    match lit.node {
+        ExprLit(ref lit_ptr) => {
             if let &LitInt(value, _) = &lit_ptr.node {
                 Option::Some(value) //TODO: Handle sign
             } else { Option::None }
         },
-        &ExprPath(_, _) => {
+        ExprPath(_, _) => {
             // Important to let the borrow expire before the const lookup to avoid double
             // borrowing.
             let def_map = cx.tcx.def_map.borrow();

@@ -175,8 +175,8 @@ impl LintPass for CmpOwned {
 }
 
 fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
-    match &expr.node {
-        &ExprMethodCall(Spanned{node: ref ident, ..}, _, ref args) => {
+    match expr.node {
+        ExprMethodCall(Spanned{node: ref ident, ..}, _, ref args) => {
             let name = ident.name;
             if name == "to_string" ||
                 name == "to_owned" && is_str_arg(cx, args) {
@@ -186,7 +186,7 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
                         snippet(cx, other_span, "..")))
                 }
         },
-        &ExprCall(ref path, _) => {
+        ExprCall(ref path, _) => {
             if let &ExprPath(None, ref path) = &path.node {
                 if match_path(path, &["String", "from_str"]) ||
                     match_path(path, &["String", "from"]) {

@@ -18,9 +18,9 @@ impl LintPass for EtaPass {
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-        match &expr.node {
-            &ExprCall(_, ref args) |
-            &ExprMethodCall(_, _, ref args) => {
+        match expr.node {
+            ExprCall(_, ref args) |
+            ExprMethodCall(_, _, ref args) => {
                 for arg in args {
                     check_closure(cx, &*arg)
                 }
