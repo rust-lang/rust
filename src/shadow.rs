@@ -4,6 +4,8 @@ use syntax::codemap::Span;
 use syntax::visit::FnKind;
 
 use rustc::lint::{Context, LintArray, LintPass};
+use rustc::middle::def::Def::{DefVariant, DefStruct};
+
 use utils::{in_external_macro, snippet, span_lint};
 
 declare_lint!(pub SHADOW_SAME, Allow,
