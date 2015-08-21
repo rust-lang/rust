@@ -464,3 +464,85 @@ fn bub_lub() {
     assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"x"]);
     assert_eq!(relation.best_upper_bound(&"a", &"b"), Some(&"x"));
 }
+
+#[test]
+fn mubs_intermediate_node_on_one_side_only() {
+    // a -> c -> d
+    //           ^
+    //           |
+    //           b
+
+    // "digraph { a -> c -> d; b -> d; }",
+    let mut relation = TransitiveRelation::new();
+    relation.add("a",  "c");
+    relation.add("c",  "d");
+    relation.add("b",  "d");
+
+    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"d"]);
+}
+
+#[test]
+fn mubs_scc_1() {
+    // +-------------+
+    // |    +----+   |
+    // |    v    |   |
+    // a -> c -> d <-+
+    //           ^
+    //           |
+    //           b
+
+    // "digraph { a -> c -> d; d -> c; a -> d; b -> d; }",
+    let mut relation = TransitiveRelation::new();
+    relation.add("a",  "c");
+    relation.add("c",  "d");
+    relation.add("d",  "c");
+    relation.add("a",  "d");
+    relation.add("b",  "d");
+
+    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"c"]);
+}
+
+#[test]
+fn mubs_scc_2() {
+    //      +----+
+    //      v    |
+    // a -> c -> d
+    //      ^    ^
+    //      |    |
+    //      +--- b
+
+    // "digraph { a -> c -> d; d -> c; b -> d; b -> c; }",
+    let mut relation = TransitiveRelation::new();
+    relation.add("a",  "c");
+    relation.add("c",  "d");
+    relation.add("d",  "c");
+    relation.add("b",  "d");
+    relation.add("b",  "c");
+
+    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"c"]);
+}
+
+#[test]
+fn mubs_scc_3() {
+    //      +---------+
+    //      v         |
+    // a -> c -> d -> e
+    //           ^    ^
+    //           |    |
+    //           b ---+
+
+    // "digraph { a -> c -> d -> e -> c; b -> d; b -> e; }",
+    let mut relation = TransitiveRelation::new();
+    relation.add("a",  "c");
+    relation.add("c",  "d");
+    relation.add("e",  "e");
+    relation.add("e",  "c");
+    relation.add("b",  "d");
+    relation.add("b",  "e");
+
+    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"c"]);
+}
+
+/*
+    "digraph { a -> c -> d -> e -> c; a -> d; b -> e; }"
+*/
