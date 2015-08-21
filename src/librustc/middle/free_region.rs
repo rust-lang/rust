@@ -104,7 +104,7 @@ impl FreeRegionMap {
         let r_a = ty::ReFree(fr_a);
         let r_b = ty::ReFree(fr_b);
         let result = if fr_a == fr_b { r_a } else {
-            match self.relation.best_upper_bound(&r_a, &r_b) {
+            match self.relation.postdom_upper_bound(&r_a, &r_b) {
                 None => ty::ReStatic,
                 Some(r) => *r,
             }

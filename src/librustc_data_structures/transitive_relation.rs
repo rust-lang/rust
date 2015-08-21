@@ -107,7 +107,7 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
     ///
     /// Examples are probably clearer than any prose I could write
     /// (there are corresponding tests below, btw). In each case,
-    /// the query is `best_upper_bound(a, b)`:
+    /// the query is `postdom_upper_bound(a, b)`:
     ///
     /// ```
     /// // returns Some(x), which is also LUB
@@ -127,7 +127,7 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
     /// a -> a1
     /// b -> b1
     /// ```
-    pub fn best_upper_bound(&self, a: &T, b: &T) -> Option<&T> {
+    pub fn postdom_upper_bound(&self, a: &T, b: &T) -> Option<&T> {
         let mut mubs = self.minimal_upper_bounds(a, b);
         loop {
             match mubs.len() {
@@ -422,7 +422,7 @@ fn mubs_best_choice_scc() {
 }
 
 #[test]
-fn bub_crisscross() {
+fn pdub_crisscross() {
     // diagonal edges run left-to-right
     // a -> a1 -> x
     //   \/       ^
@@ -438,11 +438,11 @@ fn bub_crisscross() {
     relation.add("b1", "x");
 
     assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"a1", &"b1"]);
-    assert_eq!(relation.best_upper_bound(&"a", &"b"), Some(&"x"));
+    assert_eq!(relation.postdom_upper_bound(&"a", &"b"), Some(&"x"));
 }
 
 #[test]
-fn bub_crisscross_more() {
+fn pdub_crisscross_more() {
     // diagonal edges run left-to-right
     // a -> a1 -> a2 -> a3 -> x
     //   \/    \/             ^
@@ -467,11 +467,11 @@ fn bub_crisscross_more() {
 
     assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"a1", &"b1"]);
     assert_eq!(relation.minimal_upper_bounds(&"a1", &"b1"), vec![&"a2", &"b2"]);
-    assert_eq!(relation.best_upper_bound(&"a", &"b"), Some(&"x"));
+    assert_eq!(relation.postdom_upper_bound(&"a", &"b"), Some(&"x"));
 }
 
 #[test]
-fn bub_lub() {
+fn pdub_lub() {
     // a -> a1 -> x
     //            ^
     //            |
@@ -484,7 +484,7 @@ fn bub_lub() {
     relation.add("b1", "x");
 
     assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"x"]);
-    assert_eq!(relation.best_upper_bound(&"a", &"b"), Some(&"x"));
+    assert_eq!(relation.postdom_upper_bound(&"a", &"b"), Some(&"x"));
 }
 
 #[test]
