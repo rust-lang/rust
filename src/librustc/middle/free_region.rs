@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This file defines
+//! This file handles the relationships between free regions --
+//! meaning lifetime parameters. Ordinarily, free regions are
+//! unrelated to one another, but they can be related vai implied or
+//! explicit bounds.  In that case, we track the bounds using the
+//! `TransitiveRelation` type and use that to decide when one free
+//! region outlives another and so forth.
 
 use middle::ty::{self, FreeRegion, Region};
 use middle::wf::ImpliedBound;
