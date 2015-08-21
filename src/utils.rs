@@ -44,6 +44,18 @@ pub fn match_def_path(cx: &Context, def_id: DefId, path: &[&str]) -> bool {
         .zip(path.iter()).all(|(nm, p)| nm == p))
 }
 
+/// check if type is struct or enum type with given def path
+pub fn match_type(cx: &Context, ty: ty::Ty, path: &[&str]) -> bool {
+    match ty.sty {
+        ty::TyEnum(ref adt, _) | ty::TyStruct(ref adt, _) => {
+            match_def_path(cx, adt.did, path)
+        }
+        _ => {
+            false
+        }
+    }
+}
+
 /// match a Path against a slice of segment string literals, e.g.
 /// `match_path(path, &["std", "rt", "begin_unwind"])`
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {

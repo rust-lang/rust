@@ -4,12 +4,11 @@
 //! disable the subsumed lint unless it has a higher level
 
 use rustc::lint::*;
-use rustc::middle::ty::TypeVariants::TyStruct;
 use syntax::ast::*;
 use syntax::codemap::Spanned;
 
 use eq_op::is_exp_equal;
-use utils::{match_def_path, span_lint, walk_ptrs_ty, get_parent_expr};
+use utils::{match_type, span_lint, walk_ptrs_ty, get_parent_expr};
 use utils::STRING_PATH;
 
 declare_lint! {
@@ -62,10 +61,7 @@ impl LintPass for StringAdd {
 }
 
 fn is_string(cx: &Context, e: &Expr) -> bool {
-    let ty = walk_ptrs_ty(cx.tcx.expr_ty(e));
-    if let TyStruct(did, _) = ty.sty {
-        match_def_path(cx, did.did, &STRING_PATH)
-    } else { false }
+    match_type(cx, walk_ptrs_ty(cx.tcx.expr_ty(e)), &STRING_PATH)
 }
 
 fn is_add(cx: &Context, src: &Expr, target: &Expr) -> bool {
