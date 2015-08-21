@@ -16,6 +16,7 @@ use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 #[derive(Clone)]
 pub struct FreeRegionMap {
+    // Stores the relation `a < b`, where `a` and `b` are regions.
     relation: TransitiveRelation<Region>
 }
 

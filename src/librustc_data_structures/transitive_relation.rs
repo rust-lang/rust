@@ -61,6 +61,10 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
             Some(i) => i,
             None => {
                 self.elements.push(a);
+
+                // if we changed the dimensions, clear the cache
+                *self.closure.borrow_mut() = None;
+
                 Index(self.elements.len() - 1)
             }
         }
@@ -73,17 +77,17 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
         let edge = Edge { source: a, target: b };
         if !self.edges.contains(&edge) {
             self.edges.push(edge);
-        }
 
-        // clear cached closure, if any
-        *self.closure.borrow_mut() = None;
+            // added an edge, clear the cache
+            *self.closure.borrow_mut() = None;
+        }
     }
 
     /// Check whether `a < target` (transitively)
     pub fn contains(&self, a: &T, b: &T) -> bool {
         match (self.index(a), self.index(b)) {
             (Some(a), Some(b)) =>
-                self.take_closure(|closure| closure.contains(a.0, b.0)),
+                self.with_closure(|closure| closure.contains(a.0, b.0)),
             (None, _) | (_, None) =>
                 false,
         }
@@ -102,7 +106,8 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
     /// itself is not fully sufficient).
     ///
     /// Examples are probably clearer than any prose I could write
-    /// (there are corresponding tests below, btw):
+    /// (there are corresponding tests below, btw). In each case,
+    /// the query is `best_upper_bound(a, b)`:
     ///
     /// ```
     /// // returns Some(x), which is also LUB
@@ -140,7 +145,11 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
     /// Returns the set of bounds `X` such that:
     ///
     /// - `a < X` and `b < X`
-    /// - there is no `Y` such that `a < Y` and `Y < X`
+    /// - there is no `Y != X` such that `a < Y` and `Y < X`
+    ///   - except for the case where `X < a` (i.e., a strongly connected
+    ///     component in the graph). In that case, the smallest
+    ///     representative of the SCC is returned (as determined by the
+    ///     internal indices).
     ///
     /// Note that this set can, in principle, have any size.
     pub fn minimal_upper_bounds(&self, a: &T, b: &T) -> Vec<&T> {
@@ -157,7 +166,7 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
             mem::swap(&mut a, &mut b);
         }
 
-        let lub_indices = self.take_closure(|closure| {
+        let lub_indices = self.with_closure(|closure| {
             // Easy case is when either a < b or b < a:
             if closure.contains(a.0, b.0) {
                 return vec![b.0];
@@ -178,18 +187,28 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
             //    to the steps below.
             //    - This vector contains upper bounds, but they are
             //      not minimal upper bounds. So you may have e.g.
-            //      `[a, b, tcx, x]` where `a < tcx` and `b < tcx` and
-            //      `x < a` and `x < b`. This could be reduced to
-            //      just `[x]`.
+            //      `[x, y, tcx, z]` where `x < tcx` and `y < tcx` and
+            //      `z < x` and `z < y`:
+            //
+            //           z --+---> x ----+----> tcx
+            //               |           |
+            //               |           |
+            //               +---> y ----+
+            //
+            //      In this case, we really want to return just `[z]`.
+            //      The following steps below achieve this by gradually
+            //      reducing the list.
             // 2. Pare down the vector using `pare_down`. This will
             //    remove elements from the vector that can be reached
             //    by an earlier element.
-            //    - In the example above, this would convert
-            //      `[a, b, tcx, x]` to `[a, b, x]`. Note that `x`
-            //      remains because `x < a` but not `a < x.`
+            //    - In the example above, this would convert `[x, y,
+            //      tcx, z]` to `[x, y, z]`. Note that `x` and `y` are
+            //      still in the vector; this is because while `z < x`
+            //      (and `z < y`) holds, `z` comes after them in the
+            //      vector.
             // 3. Reverse the vector and repeat the pare down process.
             //    - In the example above, we would reverse to
-            //      `[x, b, a]` and then pare down to `[x]`.
+            //      `[z, y, x]` and then pare down to `[z]`.
             // 4. Reverse once more just so that we yield a vector in
             //    increasing order of index. Maybe this is silly.
             //
@@ -213,7 +232,7 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
                    .collect()
     }
 
-    fn take_closure<OP,R>(&self, op: OP) -> R
+    fn with_closure<OP,R>(&self, op: OP) -> R
         where OP: FnOnce(&BitMatrix) -> R
     {
         let mut closure_cell = self.closure.borrow_mut();
@@ -248,7 +267,8 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
 /// there exists an earlier element i<j such that i -> j. That is,
 /// after you run `pare_down`, you know that for all elements that
 /// remain in candidates, they cannot reach any of the elements that
-/// come after them.
+/// come after them. (Note that it may permute the ordering in some
+/// cases.)
 ///
 /// Examples follow. Assume that a -> b -> c and x -> y -> z.
 ///
@@ -264,9 +284,13 @@ fn pare_down(candidates: &mut Vec<usize>, closure: &BitMatrix) {
         let mut j = i;
         while j < candidates.len() {
             if closure.contains(candidate, candidates[j]) {
-                // if i can reach j, then we can remove j
-                println!("pare_down: candidates[{:?}]={:?} candidates[{:?}] = {:?}",
-                         i-1, candidate, j, candidates[j]);
+                // If `i` can reach `j`, then we can remove `j`. Given
+                // how careful this algorithm is about ordering, it
+                // may seem odd to use swap-remove. The reason it is
+                // ok is that we are swapping two elements (`j` and
+                // `max`) that are both to the right of our cursor
+                // `i`, and the invariant that we are establishing
+                // continues to hold for everything left of `i`.
                 candidates.swap_remove(j);
             } else {
                 j += 1;
@@ -371,9 +395,8 @@ fn mubs_best_choice2() {
 
 #[test]
 fn mubs_no_best_choice() {
-    // in this case, the intersection yields [1, 2],
-    // and we need the first "pare down" call to narrow
-    // this down to [2]
+    // in this case, the intersection yields [1, 2], and the "pare
+    // down" calls find nothing to remove.
     let mut relation = TransitiveRelation::new();
     relation.add("0", "1");
     relation.add("0", "2");
