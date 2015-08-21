@@ -94,9 +94,9 @@ pub fn snippet_block<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, 
 /// Trim indentation from a multiline string
 /// with possibility of ignoring the first line
 pub fn trim_multiline(s: Cow<str>, ignore_first: bool) -> Cow<str> {
-    let s = trim_multiline_inner(s, ignore_first, ' ');
-    let s = trim_multiline_inner(s, ignore_first, '\t');
-    trim_multiline_inner(s, ignore_first, ' ')
+    let s_space = trim_multiline_inner(s, ignore_first, ' ');
+    let s_tab = trim_multiline_inner(s_space, ignore_first, '\t');
+    trim_multiline_inner(s_tab, ignore_first, ' ')
 }
 
 fn trim_multiline_inner(s: Cow<str>, ignore_first: bool, ch: char) -> Cow<str> {

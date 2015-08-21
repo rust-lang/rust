@@ -4,7 +4,7 @@
 A collection of lints that give helpful tips to newbies and catch oversights.
 
 ##Lints
-There are 45 lints included in this crate:
+There are 48 lints included in this crate:
 
 name                     | default | meaning
 -------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -44,6 +44,9 @@ ptr_arg                  | allow   | fn arguments of the type `&Vec<...>` or `&S
 range_step_by_zero       | warn    | using Range::step_by(0), which produces an infinite iterator
 redundant_closure        | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
 result_unwrap_used       | allow   | using `Result.unwrap()`, which might be better handled
+shadow_foreign           | warn    | The name is re-bound without even using the original value
+shadow_reuse             | allow   | rebinding a name to an expression that re-uses the original value, e.g. `let x = x + 1`
+shadow_same              | allow   | rebinding a name to itself, e.g. `let mut x = &mut x`
 single_match             | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
 str_to_string            | warn    | using `to_string()` on a str, which should be `to_owned()`
 string_add               | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
