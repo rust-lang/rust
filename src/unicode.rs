@@ -40,6 +40,7 @@ fn check_str(cx: &Context, string: &str, span: Span) {
     }
 }
 
+#[allow(cast_possible_truncation)]
 fn str_pos_lint(cx: &Context, lint: &'static Lint, span: Span, index: usize, msg: &str) {
     span_lint(cx, lint, Span { lo: span.lo + BytePos((1 + index) as u32),
                                hi: span.lo + BytePos((1 + index) as u32),
