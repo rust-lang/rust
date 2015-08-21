@@ -33,7 +33,7 @@ impl LintPass for EqOp {
 }
 
 pub fn is_exp_equal(cx: &Context, left : &Expr, right : &Expr) -> bool {
-    match (&left.node, &right.node) {
+    if match (&left.node, &right.node) {
         (&ExprBinary(ref lop, ref ll, ref lr),
                 &ExprBinary(ref rop, ref rl, ref rr)) =>
             lop.node == rop.node &&
@@ -66,7 +66,8 @@ pub fn is_exp_equal(cx: &Context, left : &Expr, right : &Expr) -> bool {
             lunop == runop && is_exp_equal(cx, l, r),
         (&ExprVec(ref l), &ExprVec(ref r)) => is_exps_equal(cx, l, r),
         _ => false
-    } || match (constant(cx, left), constant(cx, right)) {
+    } { return true; }
+    match (constant(cx, left), constant(cx, right)) {
         (Some(l), Some(r)) => l == r,
         _ => false
     }
