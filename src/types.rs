@@ -240,7 +240,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
                 None => String::new(),
             };
 
-            let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi), "(", context.codemap);
+            let list_lo = span_after(data.span, "(", context.codemap);
             let items = itemize_list(context.codemap,
                                      data.inputs.iter(),
                                      ")",
@@ -265,7 +265,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
             };
 
             // update pos
-            *span_lo = data.inputs.last().unwrap().span.hi + BytePos(1);
+            *span_lo = data.span.hi + BytePos(1);
 
             format!("({}){}", write_list(&items.collect::<Vec<_>>(), &fmt), output)
         }

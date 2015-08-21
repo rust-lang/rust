@@ -68,3 +68,9 @@ struct Tuple(
     A, //Comment
     B
 );
+
+pub struct State<F: FnMut() -> time::Timespec> { now: F }
+
+pub struct State<F: FnMut() -> ()> { now: F }
+
+pub struct State<F: FnMut()> { now: F }
