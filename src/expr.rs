@@ -17,6 +17,7 @@ use visitor::FmtVisitor;
 use config::BlockIndentStyle;
 use comment::{FindUncommented, rewrite_comment};
 use types::rewrite_path;
+use items::{span_lo_for_arg, span_hi_for_arg, rewrite_fn_input};
 
 use syntax::{ast, ptr};
 use syntax::codemap::{Pos, Span, BytePos, mk_sp};
@@ -115,9 +116,84 @@ impl Rewrite for ast::Expr {
                 };
                 Some(format!("continue{}", id_str))
             }
+            ast::Expr_::ExprClosure(capture, ref fn_decl, ref body) => {
+                rewrite_closure(capture, fn_decl, body, self.span, context, width, offset)
+            }
             _ => context.codemap.span_to_snippet(self.span).ok(),
         }
     }
+}
+
+// This functions is pretty messy because of the wrapping and unwrapping of
+// expressions into and from blocks. See rust issue #27872.
+fn rewrite_closure(capture: ast::CaptureClause,
+                   fn_decl: &ast::FnDecl,
+                   body: &ast::Block,
+                   span: Span,
+                   context: &RewriteContext,
+                   width: usize,
+                   offset: usize)
+                   -> Option<String> {
+    let mover = if capture == ast::CaptureClause::CaptureByValue {
+        "move "
+    } else {
+        ""
+    };
+    let offset = offset + mover.len();
+
+    // 4 = "|| {".len(), which is overconservative when the closure consists of
+    // a single expression.
+    let argument_budget = try_opt!(width.checked_sub(4 + mover.len()));
+    // 1 = |
+    let argument_offset = offset + 1;
+
+    let arg_items = itemize_list(context.codemap,
+                                 fn_decl.inputs.iter(),
+                                 "|",
+                                 |arg| span_lo_for_arg(arg),
+                                 |arg| span_hi_for_arg(arg),
+                                 |arg| rewrite_fn_input(arg),
+                                 span_after(span, "|", context.codemap),
+                                 body.span.lo);
+
+    let fmt = ListFormatting::for_fn(argument_budget, argument_offset);
+    let prefix = format!("{}|{}|", mover, write_list(&arg_items.collect::<Vec<_>>(), &fmt));
+    let block_indent = closure_block_indent(context, offset);
+
+    // Try to format closure body as a single line expression without braces.
+    if body.stmts.is_empty() {
+        let expr = body.expr.as_ref().unwrap();
+        // All closure bodies are blocks in the eyes of the AST, but we may not
+        // want to unwrap them when they only contain a single expression.
+        let inner_expr = match expr.node {
+            ast::Expr_::ExprBlock(ref inner) if inner.stmts.is_empty() && inner.expr.is_some() => {
+                inner.expr.as_ref().unwrap()
+            }
+            _ => expr,
+        };
+
+        // 1 = the separating space between arguments and the body.
+        let extra_offset = extra_offset(&prefix, offset) + 1;
+        let rewrite = inner_expr.rewrite(context, width - extra_offset, offset + extra_offset);
+
+        // Checks if rewrite succeeded and fits on a single line.
+        let accept_rewrite = rewrite.as_ref().map(|result| !result.contains('\n')).unwrap_or(false);
+
+        if accept_rewrite {
+            return Some(format!("{} {}", prefix, rewrite.unwrap()));
+        }
+    }
+
+    // We couldn't format the closure body as a single line expression; fall
+    // back to block formatting.
+    let inner_context = &RewriteContext { block_indent: block_indent, ..*context };
+    let body_rewrite = if let ast::Expr_::ExprBlock(ref inner) = body.expr.as_ref().unwrap().node {
+        inner.rewrite(inner_context, 0, 0)
+    } else {
+        body.rewrite(inner_context, 0, 0)
+    };
+
+    Some(format!("{} {}", prefix, try_opt!(body_rewrite)))
 }
 
 impl Rewrite for ast::Block {
@@ -674,32 +750,32 @@ fn rewrite_call(context: &RewriteContext,
                              |item| item.span.lo,
                              |item| item.span.hi,
                              // Take old span when rewrite fails.
-                             |item| item.rewrite(inner_context, remaining_width, offset)
-                                        .unwrap_or(context.codemap.span_to_snippet(item.span)
-                                                                  .unwrap()),
+                             |item| {
+                                 item.rewrite(inner_context, remaining_width, offset)
+                                     .unwrap_or(context.codemap.span_to_snippet(item.span).unwrap())
+                             },
                              callee.span.hi + BytePos(1),
                              span.hi);
 
-    let fmt = ListFormatting {
-        tactic: ListTactic::HorizontalVertical,
-        separator: ",",
-        trailing_separator: SeparatorTactic::Never,
-        indent: offset,
-        h_width: remaining_width,
-        v_width: remaining_width,
-        ends_with_newline: false,
-    };
+    let fmt = ListFormatting::for_fn(remaining_width, offset);
 
     Some(format!("{}({})", callee_str, write_list(&items.collect::<Vec<_>>(), &fmt)))
 }
 
-fn expr_block_indent(context: &RewriteContext, offset: usize) -> usize {
-    match context.config.expr_indent_style {
-        BlockIndentStyle::Inherit => context.block_indent,
-        BlockIndentStyle::Tabbed => context.block_indent + context.config.tab_spaces,
-        BlockIndentStyle::Visual => offset,
-    }
+macro_rules! block_indent_helper {
+    ($name:ident, $option:ident) => (
+        fn $name(context: &RewriteContext, offset: usize) -> usize {
+            match context.config.$option {
+                BlockIndentStyle::Inherit => context.block_indent,
+                BlockIndentStyle::Tabbed => context.block_indent + context.config.tab_spaces,
+                BlockIndentStyle::Visual => offset,
+            }
+        }
+    );
 }
+
+block_indent_helper!(expr_block_indent, expr_indent_style);
+block_indent_helper!(closure_block_indent, closure_indent_style);
 
 fn rewrite_paren(context: &RewriteContext,
                  subexpr: &ast::Expr,
@@ -760,13 +836,13 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                  match *item {
                                      StructLitField::Regular(ref field) => field.span.lo,
                                      // 2 = ..
-                                     StructLitField::Base(ref expr) => expr.span.lo - BytePos(2)
+                                     StructLitField::Base(ref expr) => expr.span.lo - BytePos(2),
                                  }
                              },
                              |item| {
                                  match *item {
                                      StructLitField::Regular(ref field) => field.span.hi,
-                                     StructLitField::Base(ref expr) => expr.span.hi
+                                     StructLitField::Base(ref expr) => expr.span.hi,
                                  }
                              },
                              |item| {
@@ -775,7 +851,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                          rewrite_field(inner_context, &field, h_budget, indent)
                                             .unwrap_or(context.codemap.span_to_snippet(field.span)
                                                                       .unwrap())
-                                     },
+                                     }
                                      StructLitField::Base(ref expr) => {
                                          // 2 = ..
                                          expr.rewrite(inner_context, h_budget - 2, indent + 2)
@@ -846,23 +922,15 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                              ")",
                              |item| item.span.lo,
                              |item| item.span.hi,
-                             |item| item.rewrite(context,
-                                                 context.config.max_width - indent - 1,
-                                                 indent)
-                                        .unwrap_or(context.codemap.span_to_snippet(item.span)
-                                                                  .unwrap()),
+                             |item| {
+                                 let inner_width = context.config.max_width - indent - 1;
+                                 item.rewrite(context, inner_width, indent)
+                                     .unwrap_or(context.codemap.span_to_snippet(item.span).unwrap())
+                             },
                              span.lo + BytePos(1), // Remove parens
                              span.hi - BytePos(1));
 
-    let fmt = ListFormatting {
-        tactic: ListTactic::HorizontalVertical,
-        separator: ",",
-        trailing_separator: SeparatorTactic::Never,
-        indent: indent,
-        h_width: width - 2,
-        v_width: width - 2,
-        ends_with_newline: false,
-    };
+    let fmt = ListFormatting::for_fn(width - 2, indent);
 
     Some(format!("({})", write_list(&items.collect::<Vec<_>>(), &fmt)))
 }

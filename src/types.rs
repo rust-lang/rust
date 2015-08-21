@@ -14,7 +14,7 @@ use syntax::ast;
 use syntax::print::pprust;
 use syntax::codemap::{self, Span, BytePos, CodeMap};
 
-use lists::{itemize_list, write_list, ListTactic, SeparatorTactic, ListFormatting};
+use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, span_after};
 
@@ -218,16 +218,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
             let extra_offset = 1 + separator.len();
             // 1 for >
             let list_width = try_opt!(width.checked_sub(extra_offset + 1));
-
-            let fmt = ListFormatting {
-                tactic: ListTactic::HorizontalVertical,
-                separator: ",",
-                trailing_separator: SeparatorTactic::Never,
-                indent: offset + extra_offset,
-                h_width: list_width,
-                v_width: list_width,
-                ends_with_newline: false,
-            };
+            let fmt = ListFormatting::for_fn(list_width, offset + extra_offset);
 
             // update pos
             *span_lo = next_span_lo;
@@ -253,16 +244,8 @@ fn rewrite_segment(segment: &ast::PathSegment,
             // 2 for ()
             let budget = try_opt!(width.checked_sub(output.len() + 2));
 
-            let fmt = ListFormatting {
-                tactic: ListTactic::HorizontalVertical,
-                separator: ",",
-                trailing_separator: SeparatorTactic::Never,
-                // 1 for (
-                indent: offset + 1,
-                h_width: budget,
-                v_width: budget,
-                ends_with_newline: false,
-            };
+            // 1 for (
+            let fmt = ListFormatting::for_fn(budget, offset + 1);
 
             // update pos
             *span_lo = data.inputs.last().unwrap().span.hi + BytePos(1);

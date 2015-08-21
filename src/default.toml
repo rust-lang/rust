@@ -14,3 +14,4 @@ report_todo = "Always"
 report_fixme = "Never"
 reorder_imports = false
 expr_indent_style = "Tabbed"
+closure_indent_style = "Visual"
