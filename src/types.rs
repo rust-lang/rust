@@ -6,6 +6,7 @@ use rustc::middle::ty;
 use syntax::codemap::ExpnInfo;
 
 use utils::{in_macro, match_def_path, snippet, span_lint, span_help_and_lint, in_external_macro};
+use utils::{LL_PATH, VEC_PATH};
 
 /// Handles all the linting of funky types
 #[allow(missing_copy_implementations)]
@@ -17,22 +18,16 @@ declare_lint!(pub LINKEDLIST, Warn,
               "usage of LinkedList, usually a vector is faster, or a more specialized data \
                structure like a RingBuf");
 
-#[allow(unused_imports)]
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
         lint_array!(BOX_VEC, LINKEDLIST)
     }
 
     fn check_ty(&mut self, cx: &Context, ast_ty: &ast::Ty) {
-        {
-            // In case stuff gets moved around
-            use collections::vec::Vec;
-            use collections::linked_list::LinkedList;
-        }
         if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
             if let ty::TyBox(ref inner) = ty.sty {
                 if let ty::TyStruct(did, _) = inner.sty {
-                    if match_def_path(cx, did.did, &["collections", "vec", "Vec"]) {
+                    if match_def_path(cx, did.did, &VEC_PATH) {
                         span_help_and_lint(
                             cx, BOX_VEC, ast_ty.span,
                             "you seem to be trying to use `Box<Vec<T>>`. Did you mean to use `Vec<T>`?",
@@ -41,7 +36,7 @@ impl LintPass for TypePass {
                 }
             }
             if let ty::TyStruct(did, _) = ty.sty {
-                if match_def_path(cx, did.did, &["collections", "linked_list", "LinkedList"]) {
+                if match_def_path(cx, did.did, &LL_PATH) {
                     span_help_and_lint(
                         cx, LINKEDLIST, ast_ty.span,
                         "I see you're using a LinkedList! Perhaps you meant some other data structure?",

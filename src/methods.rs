@@ -3,6 +3,7 @@ use rustc::lint::*;
 use rustc::middle::ty;
 
 use utils::{span_lint, match_def_path, walk_ptrs_ty};
+use utils::{OPTION_PATH, RESULT_PATH, STRING_PATH};
 
 #[derive(Copy,Clone)]
 pub struct MethodsPass;
@@ -16,30 +17,23 @@ declare_lint!(pub STR_TO_STRING, Warn,
 declare_lint!(pub STRING_TO_STRING, Warn,
               "calling `String.to_string()` which is a no-op");
 
-#[allow(unused_imports)]
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(OPTION_UNWRAP_USED, RESULT_UNWRAP_USED, STR_TO_STRING, STRING_TO_STRING)
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-        {
-            // In case stuff gets moved around
-            use core::option::Option;
-            use core::result::Result;
-            use collections::string::String;
-        }
         if let ExprMethodCall(ref ident, _, ref args) = expr.node {
             let ref obj_ty = walk_ptrs_ty(cx.tcx.expr_ty(&*args[0])).sty;
             if ident.node.name == "unwrap" {
                 if let ty::TyEnum(did, _) = *obj_ty {
-                    if match_def_path(cx, did.did, &["core", "option", "Option"]) {
+                    if match_def_path(cx, did.did, &OPTION_PATH) {
                         span_lint(cx, OPTION_UNWRAP_USED, expr.span,
                                   "used unwrap() on an Option value. If you don't want \
                                    to handle the None case gracefully, consider using
                                    expect() to provide a better panic message");
                     }
-                    else if match_def_path(cx, did.did, &["core", "result", "Result"]) {
+                    else if match_def_path(cx, did.did, &RESULT_PATH) {
                         span_lint(cx, RESULT_UNWRAP_USED, expr.span,
                                   "used unwrap() on a Result value. Graceful handling \
                                    of Err values is preferred");
@@ -51,7 +45,7 @@ impl LintPass for MethodsPass {
                     span_lint(cx, STR_TO_STRING, expr.span, "`str.to_owned()` is faster");
                 }
                 else if let ty::TyStruct(did, _) = *obj_ty {
-                    if match_def_path(cx, did.did, &["collections", "string", "String"]) {
+                    if match_def_path(cx, did.did, &STRING_PATH) {
                         span_lint(cx, STRING_TO_STRING, expr.span,
                                   "`String.to_string()` is a no-op")
                     }
