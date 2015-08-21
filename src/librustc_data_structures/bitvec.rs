@@ -52,7 +52,7 @@ impl BitVector {
 
 /// A "bit matrix" is basically a square matrix of booleans
 /// represented as one gigantic bitvector. In other words, it is as if
-/// you have N bitvectors, each of length N.
+/// you have N bitvectors, each of length N. Note that `elements` here is `N`/
 #[derive(Clone)]
 pub struct BitMatrix {
     elements: usize,
@@ -60,6 +60,7 @@ pub struct BitMatrix {
 }
 
 impl BitMatrix {
+    // Create a new `elements x elements` matrix, initially empty.
     pub fn new(elements: usize) -> BitMatrix {
         // For every element, we need one bit for every other
         // element. Round up to an even number of u64s.
@@ -88,15 +89,17 @@ impl BitMatrix {
     }
 
     /// Do the bits from `source` contain `target`?
-    /// Put another way, can `source` reach `target`?
+    ///
+    /// Put another way, if the matrix represents (transitive)
+    /// reachability, can `source` reach `target`?
     pub fn contains(&self, source: usize, target: usize) -> bool {
         let (start, _) = self.range(source);
         let (word, mask) = word_mask(target);
         (self.vector[start+word] & mask) != 0
     }
 
-    /// Returns those indices that are reachable from both source and
-    /// target. This is an O(n) operation where `n` is the number of
+    /// Returns those indices that are reachable from both `a` and
+    /// `b`. This is an O(n) operation where `n` is the number of
     /// elements (somewhat independent from the actual size of the
     /// intersection, in particular).
     pub fn intersection(&self, a: usize, b: usize) -> Vec<usize> {
@@ -114,24 +117,24 @@ impl BitMatrix {
         result
     }
 
-    /// Add the bits from source to the bits from destination,
+    /// Add the bits from `read` to the bits from `write`,
     /// return true if anything changed.
     ///
-    /// This is used when computing reachability because if you have
-    /// an edge `destination -> source`, because in that case
-    /// `destination` can reach everything that `source` can (and
+    /// This is used when computing transitive reachability because if
+    /// you have an edge `write -> read`, because in that case
+    /// `write` can reach everything that `read` can (and
     /// potentially more).
-    pub fn merge(&mut self, source: usize, destination: usize) -> bool {
-        let (source_start, source_end) = self.range(source);
-        let (destination_start, destination_end) = self.range(destination);
+    pub fn merge(&mut self, read: usize, write: usize) -> bool {
+        let (read_start, read_end) = self.range(read);
+        let (write_start, write_end) = self.range(write);
         let vector = &mut self.vector[..];
         let mut changed = false;
-        for (source_index, destination_index) in
-            (source_start..source_end).zip(destination_start..destination_end)
+        for (read_index, write_index) in
+            (read_start..read_end).zip(write_start..write_end)
         {
-            let v1 = vector[destination_index];
-            let v2 = v1 | vector[source_index];
-            vector[destination_index] = v2;
+            let v1 = vector[write_index];
+            let v2 = v1 | vector[read_index];
+            vector[write_index] = v2;
             changed = changed | (v1 != v2);
         }
         changed
@@ -183,25 +186,29 @@ fn grow() {
 fn matrix_intersection() {
     let mut vec1 = BitMatrix::new(200);
 
+    // (*) Elements reachable from both 2 and 65.
+
     vec1.add(2, 3);
     vec1.add(2, 6);
-    vec1.add(2, 10);
-    vec1.add(2, 64);
+    vec1.add(2, 10); // (*)
+    vec1.add(2, 64); // (*)
     vec1.add(2, 65);
     vec1.add(2, 130);
-    vec1.add(2, 160);
+    vec1.add(2, 160); // (*)
+
+    vec1.add(64, 133);
 
     vec1.add(65, 2);
     vec1.add(65, 8);
-    vec1.add(65, 10); // X
-    vec1.add(65, 64); // X
+    vec1.add(65, 10); // (*)
+    vec1.add(65, 64); // (*)
     vec1.add(65, 68);
     vec1.add(65, 133);
-    vec1.add(65, 160); // X
+    vec1.add(65, 160); // (*)
 
     let intersection = vec1.intersection(2, 64);
     assert!(intersection.is_empty());
 
     let intersection = vec1.intersection(2, 65);
-    assert_eq!(intersection, vec![10, 64, 160]);
+    assert_eq!(intersection, &[10, 64, 160]);
 }
