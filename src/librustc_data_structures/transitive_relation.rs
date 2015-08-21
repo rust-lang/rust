@@ -112,6 +112,7 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
     /// b -> b1 ---+
     ///
     /// // returns Some(x), which is not LUB (there is none)
+    /// // diagonal edges run left-to-right
     /// a -> a1 -> x
     ///   \/       ^
     ///   /\       |
@@ -400,6 +401,7 @@ fn mubs_best_choice_scc() {
 
 #[test]
 fn bub_crisscross() {
+    // diagonal edges run left-to-right
     // a -> a1 -> x
     //   \/       ^
     //   /\       |
@@ -419,6 +421,7 @@ fn bub_crisscross() {
 
 #[test]
 fn bub_crisscross_more() {
+    // diagonal edges run left-to-right
     // a -> a1 -> a2 -> a3 -> x
     //   \/    \/             ^
     //   /\    /\             |
