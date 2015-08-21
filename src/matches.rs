@@ -3,23 +3,27 @@ use syntax::ast;
 use syntax::ast::*;
 use std::borrow::Cow;
 
-use utils::{snippet, snippet_block, span_help_and_lint};
+use utils::{snippet, snippet_block, span_lint, span_help_and_lint};
 
 declare_lint!(pub SINGLE_MATCH, Warn,
               "a match statement with a single nontrivial arm (i.e, where the other arm \
                is `_ => {}`) is used; recommends `if let` instead");
+declare_lint!(pub MATCH_REF_PATS, Warn,
+              "a match has all arms prefixed with `&`; the match expression can be \
+               dereferenced instead");
 
 #[allow(missing_copy_implementations)]
 pub struct MatchPass;
 
 impl LintPass for MatchPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(SINGLE_MATCH)
+        lint_array!(SINGLE_MATCH, MATCH_REF_PATS)
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
         if let ExprMatch(ref ex, ref arms, ast::MatchSource::Normal) = expr.node {
-            // check preconditions: only two arms
+            // check preconditions for SINGLE_MATCH
+                // only two arms
             if arms.len() == 2 &&
                 // both of the arms have a single pattern and no guard
                 arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
@@ -48,6 +52,13 @@ impl LintPass for MatchPass {
                                 body_code)
                 );
             }
+
+            // check preconditions for MATCH_REF_PATS
+            if has_only_ref_pats(arms) {
+                span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
+                    "instead of prefixing all patterns with `&`, you can dereference the \
+                     expression to match: `match *{} {{ ...`", snippet(cx, ex.span, "..")));
+            }
         }
     }
 }
@@ -58,4 +69,17 @@ fn is_unit_expr(expr: &Expr) -> bool {
         ExprBlock(ref b) if b.stmts.is_empty() && b.expr.is_none() => true,
         _ => false,
     }
+}
+
+fn has_only_ref_pats(arms: &[Arm]) -> bool {
+    for arm in arms {
+        for pat in &arm.pats {
+            match pat.node {
+                PatRegion(..) => (),  // &-patterns
+                PatWild(..) => (),    // an "anything" wildcard is also fine
+                _ => return false,
+            }
+        }
+    }
+    true
 }

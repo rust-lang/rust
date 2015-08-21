@@ -88,6 +88,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         loops::EXPLICIT_ITER_LOOP,
         loops::ITER_NEXT_LOOP,
         loops::NEEDLESS_RANGE_LOOP,
+        matches::MATCH_REF_PATS,
         matches::SINGLE_MATCH,
         methods::OPTION_UNWRAP_USED,
         methods::RESULT_UNWRAP_USED,
