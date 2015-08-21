@@ -76,9 +76,9 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box matches::MatchPass as LintPassObject);
 
     reg.register_lint_group("shadow", vec![
-        shadow::SHADOW_FOREIGN,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
+        shadow::SHADOW_UNRELATED,
     ]);
 
     reg.register_lint_group("clippy", vec![
@@ -114,9 +114,9 @@ pub fn plugin_registrar(reg: &mut Registry) {
         ranges::RANGE_STEP_BY_ZERO,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
-        shadow::SHADOW_FOREIGN,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
+        shadow::SHADOW_UNRELATED,
         strings::STRING_ADD,
         strings::STRING_ADD_ASSIGN,
         types::BOX_VEC,
