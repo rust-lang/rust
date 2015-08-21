@@ -762,22 +762,20 @@ fn rewrite_call(context: &RewriteContext,
     Some(format!("{}({})", callee_str, write_list(&items.collect::<Vec<_>>(), &fmt)))
 }
 
-fn expr_block_indent(context: &RewriteContext, offset: usize) -> usize {
-    match context.config.expr_indent_style {
-        BlockIndentStyle::Inherit => context.block_indent,
-        BlockIndentStyle::Tabbed => context.block_indent + context.config.tab_spaces,
-        BlockIndentStyle::Visual => offset,
-    }
+macro_rules! block_indent_helper {
+    ($name:ident, $option:ident) => (
+        fn $name(context: &RewriteContext, offset: usize) -> usize {
+            match context.config.$option {
+                BlockIndentStyle::Inherit => context.block_indent,
+                BlockIndentStyle::Tabbed => context.block_indent + context.config.tab_spaces,
+                BlockIndentStyle::Visual => offset,
+            }
+        }
+    );
 }
 
-// FIXME: Code duplication; is there a better solution?
-fn closure_block_indent(context: &RewriteContext, offset: usize) -> usize {
-    match context.config.closure_indent_style {
-        BlockIndentStyle::Inherit => context.block_indent,
-        BlockIndentStyle::Tabbed => context.block_indent + context.config.tab_spaces,
-        BlockIndentStyle::Visual => offset,
-    }
-}
+block_indent_helper!(expr_block_indent, expr_indent_style);
+block_indent_helper!(closure_block_indent, closure_indent_style);
 
 fn rewrite_paren(context: &RewriteContext,
                  subexpr: &ast::Expr,
