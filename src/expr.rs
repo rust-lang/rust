@@ -106,6 +106,12 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprPath(ref qself, ref path) => {
                 rewrite_path(context, qself.as_ref(), path, width, offset)
             }
+            ast::Expr_::ExprAssign(ref lhs, ref rhs) => {
+                rewrite_assignment(context, lhs, rhs, None, width, offset)
+            }
+            ast::Expr_::ExprAssignOp(ref op, ref lhs, ref rhs) => {
+                rewrite_assignment(context, lhs, rhs, Some(op), width, offset)
+            }
             // FIXME #184 Note that this formatting is broken due to a bad span
             // from the parser.
             // `continue`
@@ -116,10 +122,47 @@ impl Rewrite for ast::Expr {
                 };
                 Some(format!("continue{}", id_str))
             }
+            ast::Expr_::ExprBreak(ref opt_ident) => {
+                let id_str = match *opt_ident {
+                    Some(ident) => format!(" {}", ident),
+                    None => String::new(),
+                };
+                Some(format!("break{}", id_str))
+            }
             ast::Expr_::ExprClosure(capture, ref fn_decl, ref body) => {
                 rewrite_closure(capture, fn_decl, body, self.span, context, width, offset)
             }
-            _ => context.codemap.span_to_snippet(self.span).ok(),
+            _ => {
+                // We do not format these expressions yet, but they should still
+                // satisfy our width restrictions.
+                let snippet = context.codemap.span_to_snippet(self.span).unwrap();
+
+                {
+                    let mut lines = snippet.lines();
+
+                    // The caller of this function has already placed `offset`
+                    // characters on the first line.
+                    let first_line_max_len = try_opt!(context.config.max_width.checked_sub(offset));
+                    if lines.next().unwrap().len() > first_line_max_len {
+                        return None;
+                    }
+
+                    // The other lines must fit within the maximum width.
+                    if lines.find(|line| line.len() > context.config.max_width).is_some() {
+                        return None;
+                    }
+
+                    // `width` is the maximum length of the last line, excluding
+                    // indentation.
+                    // A special check for the last line, since the caller may
+                    // place trailing characters on this line.
+                    if snippet.lines().rev().next().unwrap().len() > offset + width {
+                        return None;
+                    }
+                }
+
+                Some(snippet)
+            }
         }
     }
 }
@@ -402,7 +445,7 @@ fn rewrite_match(context: &RewriteContext,
                  width: usize,
                  offset: usize)
                  -> Option<String> {
-    if arms.len() == 0 {
+    if arms.is_empty() {
         return None;
     }
 
@@ -440,7 +483,7 @@ fn rewrite_match(context: &RewriteContext,
             result.push('\n');
         }
         let missed_str = missed_str.trim();
-        if missed_str.len() > 0 {
+        if !missed_str.is_empty() {
             result.push('\n');
             result.push_str(&arm_indent_str);
             result.push_str(missed_str);
@@ -473,7 +516,7 @@ fn rewrite_match(context: &RewriteContext,
 
 fn arm_start_pos(arm: &ast::Arm) -> BytePos {
     let &ast::Arm { ref attrs, ref pats, .. } = arm;
-    if attrs.len() > 0 {
+    if !attrs.is_empty() {
         return attrs[0].span.lo
     }
 
@@ -492,7 +535,7 @@ impl Rewrite for ast::Arm {
 
         // FIXME this is all a bit grotty, would be nice to abstract out the
         // treatment of attributes.
-        let attr_str = if attrs.len() > 0 {
+        let attr_str = if !attrs.is_empty() {
             // We only use this visitor for the attributes, should we use it for
             // more?
             let mut attr_visitor = FmtVisitor::from_codemap(context.codemap, context.config);
@@ -539,7 +582,7 @@ impl Rewrite for ast::Arm {
 
         let mut pats_str = String::new();
         for p in pat_strs {
-            if pats_str.len() > 0 {
+            if !pats_str.is_empty() {
                 if vertical {
                     pats_str.push_str(" |\n");
                     pats_str.push_str(&indent_str);
@@ -584,7 +627,7 @@ impl Rewrite for ast::Arm {
         }
 
         // We have to push the body to the next line.
-        if comma.len() == 0 {
+        if comma.is_empty() {
             // We're trying to fit a block in, but it still failed, give up.
             return None;
         }
@@ -645,6 +688,8 @@ fn rewrite_pat_expr(context: &RewriteContext,
                     pat: Option<&ast::Pat>,
                     expr: &ast::Expr,
                     matcher: &str,
+                    // Connecting piece between pattern and expression,
+                    // *without* trailing space.
                     connector: &str,
                     width: usize,
                     offset: usize)
@@ -665,18 +710,18 @@ fn rewrite_pat_expr(context: &RewriteContext,
 
     // The expression may (partionally) fit on the current line.
     if width > extra_offset + 1 {
-        let mut corrected_offset = extra_offset;
-
-        if pat.is_some() {
-            result.push(' ');
-            corrected_offset += 1;
-        }
+        let spacer = if pat.is_some() {
+            " "
+        } else {
+            ""
+        };
 
         let expr_rewrite = expr.rewrite(context,
-                                        width - corrected_offset,
-                                        offset + corrected_offset);
+                                        width - extra_offset - spacer.len(),
+                                        offset + extra_offset + spacer.len());
 
         if let Some(expr_string) = expr_rewrite {
+            result.push_str(spacer);
             result.push_str(&expr_string);
             return Some(result);
         }
@@ -810,7 +855,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     let path_str = try_opt!(path.rewrite(context, width - 2, offset));
 
     // Foo { a: Foo } - indent is +3, width is -5.
-    let h_budget = width.checked_sub(path_str.len() + 5).unwrap_or(0);
+    let h_budget = try_opt!(width.checked_sub(path_str.len() + 5));
     let (indent, v_budget) = match context.config.struct_lit_style {
         StructLitStyle::VisualIndent => {
             (offset + path_str.len() + 3, h_budget)
@@ -1008,7 +1053,62 @@ fn rewrite_unary_op(context: &RewriteContext,
         ast::UnOp::UnNeg => "-",
     };
 
-    let subexpr = try_opt!(expr.rewrite(context, try_opt!(width.checked_sub(operator_str.len())), offset));
+    let subexpr =
+        try_opt!(expr.rewrite(context, try_opt!(width.checked_sub(operator_str.len())), offset));
 
     Some(format!("{}{}", operator_str, subexpr))
+}
+
+fn rewrite_assignment(context: &RewriteContext,
+                      lhs: &ast::Expr,
+                      rhs: &ast::Expr,
+                      op: Option<&ast::BinOp>,
+                      width: usize,
+                      offset: usize)
+                      -> Option<String> {
+    let operator_str = match op {
+        Some(op) => context.codemap.span_to_snippet(op.span).unwrap(),
+        None => "=".to_owned(),
+    };
+
+    // 1 = space between lhs and operator.
+    let max_width = try_opt!(width.checked_sub(operator_str.len() + 1));
+    let lhs_str = format!("{} {}", try_opt!(lhs.rewrite(context, max_width, offset)), operator_str);
+
+    rewrite_assign_rhs(&context, lhs_str, rhs, width, offset)
+}
+
+// The left hand side must contain everything up to, and including, the
+// assignment operator.
+pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
+                                           lhs: S,
+                                           ex: &ast::Expr,
+                                           width: usize,
+                                           offset: usize)
+                                           -> Option<String> {
+    let mut result = lhs.into();
+
+    // 1 = space between operator and rhs.
+    let max_width = try_opt!(width.checked_sub(result.len() + 1));
+    let rhs = ex.rewrite(&context, max_width, offset + result.len() + 1);
+
+    match rhs {
+        Some(new_str) => {
+            result.push(' ');
+            result.push_str(&new_str)
+        }
+        None => {
+            // Expression did not fit on the same line as the identifier. Retry
+            // on the next line.
+            let new_offset = offset + context.config.tab_spaces;
+            result.push_str(&format!("\n{}", make_indent(new_offset)));
+
+            let max_width = try_opt!(context.config.max_width.checked_sub(new_offset + 1));
+            let rhs = try_opt!(ex.rewrite(&context, max_width, new_offset));
+
+            result.push_str(&rhs);
+        }
+    }
+
+    Some(result)
 }

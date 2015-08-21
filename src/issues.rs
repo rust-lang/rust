@@ -214,10 +214,7 @@ impl BadIssueSeeker {
             NumberPart::CloseParen => {}
         }
 
-        self.state = Seeking::Number {
-            part: part,
-            issue: issue
-        };
+        self.state = Seeking::Number { part: part, issue: issue };
 
         IssueClassification::None
     }
