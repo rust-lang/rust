@@ -211,7 +211,7 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
             //    - In the example above, we would reverse to
             //      `[z, y, x]` and then pare down to `[z]`.
             // 4. Reverse once more just so that we yield a vector in
-            //    increasing order of index. Maybe this is silly.
+            //    increasing order of index. Not necessary, but why not.
             //
             // I believe this algorithm yields a minimal set. The
             // argument is that, after step 2, we know that no element
@@ -224,11 +224,11 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
             pare_down(&mut candidates, closure); // (2)
             candidates.reverse(); // (3a)
             pare_down(&mut candidates, closure); // (3b)
-            candidates.reverse(); // (4)
             candidates
         });
 
         lub_indices.into_iter()
+                   .rev() // (4)
                    .map(|i| &self.elements[i])
                    .collect()
     }
