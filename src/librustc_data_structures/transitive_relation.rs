@@ -535,7 +535,7 @@ fn mubs_scc_3() {
     let mut relation = TransitiveRelation::new();
     relation.add("a",  "c");
     relation.add("c",  "d");
-    relation.add("e",  "e");
+    relation.add("d",  "e");
     relation.add("e",  "c");
     relation.add("b",  "d");
     relation.add("b",  "e");
@@ -543,6 +543,24 @@ fn mubs_scc_3() {
     assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"c"]);
 }
 
-/*
-    "digraph { a -> c -> d -> e -> c; a -> d; b -> e; }"
-*/
+#[test]
+fn mubs_scc_4() {
+    //      +---------+
+    //      v         |
+    // a -> c -> d -> e
+    // |         ^    ^
+    // +---------+    |
+    //                |
+    //           b ---+
+
+    // "digraph { a -> c -> d -> e -> c; a -> d; b -> e; }"
+    let mut relation = TransitiveRelation::new();
+    relation.add("a",  "c");
+    relation.add("c",  "d");
+    relation.add("d",  "e");
+    relation.add("e",  "c");
+    relation.add("a",  "d");
+    relation.add("b",  "e");
+
+    assert_eq!(relation.minimal_upper_bounds(&"a", &"b"), vec![&"c"]);
+}
