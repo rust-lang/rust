@@ -21,11 +21,11 @@
 
 #![feature(associated_consts)]
 #![feature(borrow_state)]
-#![feature(rc_weak)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(slice_splits)]
 #![feature(staged_api)]
+#![feature(rc_weak)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
