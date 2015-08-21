@@ -258,7 +258,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     }
 
     fn get_parent_link(&mut self, parent: &Rc<Module>, name: Name) -> ParentLink {
-        ModuleParentLink(parent.downgrade(), name)
+        ModuleParentLink(Rc::downgrade(parent), name)
     }
 
     /// Constructs the reduced graph for one item.
@@ -390,7 +390,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 if let Some(crate_id) = self.session.cstore.find_extern_mod_stmt_cnum(item.id) {
                     let def_id = DefId { krate: crate_id, node: 0 };
                     self.external_exports.insert(def_id);
-                    let parent_link = ModuleParentLink(parent.downgrade(), name);
+                    let parent_link = ModuleParentLink(Rc::downgrade(parent), name);
                     let external_module = Rc::new(Module::new(parent_link,
                                                               Some(def_id),
                                                               NormalModuleKind,
@@ -638,7 +638,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                    block_id);
 
             let new_module = Rc::new(Module::new(
-                BlockParentLink(parent.downgrade(), block_id),
+                BlockParentLink(Rc::downgrade(parent), block_id),
                 None,
                 AnonymousModuleKind,
                 false,
