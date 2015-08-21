@@ -41,7 +41,7 @@ impl LintPass for StringAdd {
                     if let Some(ref p) = parent {
                         if let &ExprAssign(ref target, _) = &p.node {
                             // avoid duplicate matches
-                            if is_exp_equal(target, left) { return; }
+                            if is_exp_equal(cx, target, left) { return; }
                         }
                     }
                 }
@@ -51,7 +51,7 @@ impl LintPass for StringAdd {
                          Consider using `String::push_str()` instead")
             }
         } else if let &ExprAssign(ref target, ref  src) = &e.node {
-            if is_string(cx, target) && is_add(src, target) {
+            if is_string(cx, target) && is_add(cx, src, target) {
                 span_lint(cx, STRING_ADD_ASSIGN, e.span,
                     "you assigned the result of adding something to this string. \
                      Consider using `String::push_str()` instead")
@@ -67,13 +67,14 @@ fn is_string(cx: &Context, e: &Expr) -> bool {
     } else { false }
 }
 
-fn is_add(src: &Expr, target: &Expr) -> bool {
+fn is_add(cx: &Context, src: &Expr, target: &Expr) -> bool {
     match &src.node {
         &ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) =>
-            is_exp_equal(target, left),
+            is_exp_equal(cx, target, left),
         &ExprBlock(ref block) => block.stmts.is_empty() &&
-            block.expr.as_ref().map_or(false, |expr| is_add(&*expr, target)),
-        &ExprParen(ref expr) => is_add(&*expr, target),
+            block.expr.as_ref().map_or(false,
+                |expr| is_add(cx, &*expr, target)),
+        &ExprParen(ref expr) => is_add(cx, &*expr, target),
         _ => false
     }
 }
