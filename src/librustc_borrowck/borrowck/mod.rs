@@ -377,10 +377,18 @@ impl ToInteriorKind for mc::InteriorKind {
     }
 }
 
+// This can be:
+// - a pointer dereference (`*LV` in README.md)
+// - a field reference, with an optional definition of the containing
+//   enum variant (`LV.f` in README.md)
+// `DefId` is present when the field is part of struct that is in
+// a variant of an enum. For instance in:
+// `enum E { X { foo: u32 }, Y { foo: u32 }}`
+// each `foo` is qualified by the definitition id of the variant (`X` or `Y`).
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum LoanPathElem {
-    LpDeref(mc::PointerKind),    // `*LV` in README.md
-    LpInterior(InteriorKind),    // `LV.f` in README.md
+    LpDeref(mc::PointerKind),
+    LpInterior(Option<DefId>, InteriorKind),
 }
 
 pub fn closure_to_block(closure_id: ast::NodeId,
@@ -413,8 +421,9 @@ impl<'tcx> LoanPath<'tcx> {
 
     fn has_fork(&self, other: &LoanPath<'tcx>) -> bool {
         match (&self.kind, &other.kind) {
-            (&LpExtend(ref base, _, LpInterior(id)), &LpExtend(ref base2, _, LpInterior(id2))) =>
-                if id == id2 {
+            (&LpExtend(ref base, _, LpInterior(opt_variant_id, id)),
+             &LpExtend(ref base2, _, LpInterior(opt_variant_id2, id2))) =>
+                if id == id2 && opt_variant_id == opt_variant_id2 {
                     base.has_fork(&**base2)
                 } else {
                     true
@@ -428,23 +437,23 @@ impl<'tcx> LoanPath<'tcx> {
     fn depth(&self) -> usize {
         match self.kind {
             LpExtend(ref base, _, LpDeref(_)) => base.depth(),
-            LpExtend(ref base, _, LpInterior(_)) => base.depth() + 1,
+            LpExtend(ref base, _, LpInterior(_, _)) => base.depth() + 1,
             _ => 0,
         }
     }
 
     fn common(&self, other: &LoanPath<'tcx>) -> Option<LoanPath<'tcx>> {
         match (&self.kind, &other.kind) {
-            (&LpExtend(ref base, a, LpInterior(id)),
-             &LpExtend(ref base2, _, LpInterior(id2))) => {
-                if id == id2 {
+            (&LpExtend(ref base, a, LpInterior(opt_variant_id, id)),
+             &LpExtend(ref base2, _, LpInterior(opt_variant_id2, id2))) => {
+                if id == id2 && opt_variant_id == opt_variant_id2 {
                     base.common(&**base2).map(|x| {
                         let xd = x.depth();
                         if base.depth() == xd && base2.depth() == xd {
                             assert_eq!(base.ty, base2.ty);
                             assert_eq!(self.ty, other.ty);
                             LoanPath {
-                                kind: LpExtend(Rc::new(x), a, LpInterior(id)),
+                                kind: LpExtend(Rc::new(x), a, LpInterior(opt_variant_id, id)),
                                 ty: self.ty,
                             }
                         } else {
@@ -509,7 +518,11 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
 
         Categorization::Interior(ref cmt_base, ik) => {
             opt_loan_path(cmt_base).map(|lp| {
-                new_lp(LpExtend(lp, cmt.mutbl, LpInterior(ik.cleaned())))
+                let opt_variant_id = match cmt_base.cat {
+                    Categorization::Downcast(_, did) =>  Some(did),
+                    _ => None
+                };
+                new_lp(LpExtend(lp, cmt.mutbl, LpInterior(opt_variant_id, ik.cleaned())))
             })
         }
 
@@ -1068,7 +1081,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
 
 
-            LpExtend(ref lp_base, _, LpInterior(InteriorField(fname))) => {
+            LpExtend(ref lp_base, _, LpInterior(_, InteriorField(fname))) => {
                 self.append_autoderefd_loan_path_to_string(&**lp_base, out);
                 match fname {
                     mc::NamedField(fname) => {
@@ -1082,7 +1095,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            LpExtend(ref lp_base, _, LpInterior(InteriorElement(..))) => {
+            LpExtend(ref lp_base, _, LpInterior(_, InteriorElement(..))) => {
                 self.append_autoderefd_loan_path_to_string(&**lp_base, out);
                 out.push_str("[..]");
             }
@@ -1210,7 +1223,7 @@ impl<'tcx> fmt::Debug for LoanPath<'tcx> {
                 write!(f, "{:?}.*", lp)
             }
 
-            LpExtend(ref lp, _, LpInterior(ref interior)) => {
+            LpExtend(ref lp, _, LpInterior(_, ref interior)) => {
                 write!(f, "{:?}.{:?}", lp, interior)
             }
         }
@@ -1242,7 +1255,7 @@ impl<'tcx> fmt::Display for LoanPath<'tcx> {
                 write!(f, "{}.*", lp)
             }
 
-            LpExtend(ref lp, _, LpInterior(ref interior)) => {
+            LpExtend(ref lp, _, LpInterior(_, ref interior)) => {
                 write!(f, "{}.{:?}", lp, interior)
             }
         }
