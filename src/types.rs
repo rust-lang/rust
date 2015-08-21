@@ -2,6 +2,8 @@ use rustc::lint::*;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util::{is_comparison_binop, binop_to_string};
+use syntax::codemap::Span;
+use syntax::visit::{FnKind, Visitor, walk_ty};
 use rustc::middle::ty;
 use syntax::codemap::ExpnInfo;
 
@@ -181,5 +183,128 @@ impl LintPass for CastPass {
                 }
             }
         }
+    }
+}
+
+declare_lint!(pub TYPE_COMPLEXITY, Warn,
+              "usage of very complex types; recommends factoring out parts into `type` definitions");
+
+#[allow(missing_copy_implementations)]
+pub struct TypeComplexityPass;
+
+impl LintPass for TypeComplexityPass {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(TYPE_COMPLEXITY)
+    }
+
+    fn check_fn(&mut self, cx: &Context, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
+        check_fndecl(cx, decl);
+    }
+
+    fn check_struct_field(&mut self, cx: &Context, field: &StructField) {
+        check_type(cx, &*field.node.ty);
+    }
+
+    fn check_variant(&mut self, cx: &Context, var: &Variant, _: &Generics) {
+        // StructVariant is covered by check_struct_field
+        if let TupleVariantKind(ref args) = var.node.kind {
+            for arg in args {
+                check_type(cx, &*arg.ty);
+            }
+        }
+    }
+
+    fn check_item(&mut self, cx: &Context, item: &Item) {
+        match item.node {
+            ItemStatic(ref ty, _, _) |
+            ItemConst(ref ty, _) => check_type(cx, ty),
+            // functions, enums, structs, impls and traits are covered
+            _ => ()
+        }
+    }
+
+    fn check_trait_item(&mut self, cx: &Context, item: &TraitItem) {
+        match item.node {
+            ConstTraitItem(ref ty, _) |
+            TypeTraitItem(_, Some(ref ty)) => check_type(cx, ty),
+            MethodTraitItem(MethodSig { ref decl, .. }, None) => check_fndecl(cx, decl),
+            // methods with default impl are covered by check_fn
+            _ => ()
+        }
+    }
+
+    fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) {
+        match item.node {
+            ConstImplItem(ref ty, _) |
+            TypeImplItem(ref ty) => check_type(cx, ty),
+            // methods are covered by check_fn
+            _ => ()
+        }
+    }
+
+    fn check_local(&mut self, cx: &Context, local: &Local) {
+        if let Some(ref ty) = local.ty {
+            check_type(cx, ty);
+        }
+    }
+}
+
+fn check_fndecl(cx: &Context, decl: &FnDecl) {
+    for arg in &decl.inputs {
+        check_type(cx, &*arg.ty);
+    }
+    if let Return(ref ty) = decl.output {
+        check_type(cx, ty);
+    }
+}
+
+fn check_type(cx: &Context, ty: &ast::Ty) {
+    let score = {
+        let mut visitor = TypeComplexityVisitor { score: 0, nest: 1 };
+        visitor.visit_ty(ty);
+        visitor.score
+    };
+    // println!("{:?} --> {}", ty, score);
+    if score > 250 {
+        span_lint(cx, TYPE_COMPLEXITY, ty.span, &format!(
+            "very complex type used. Consider factoring parts into `type` definitions"));
+    }
+}
+
+/// Walks a type and assigns a complexity score to it.
+struct TypeComplexityVisitor {
+    /// total complexity score of the type
+    score: u32,
+    /// current nesting level
+    nest: u32,
+}
+
+impl<'v> Visitor<'v> for TypeComplexityVisitor {
+    fn visit_ty(&mut self, ty: &'v ast::Ty) {
+        let (add_score, sub_nest) = match ty.node {
+            // _, &x and *x have only small overhead; don't mess with nesting level
+            TyInfer |
+            TyPtr(..) |
+            TyRptr(..) => (1, 0),
+
+            // the "normal" components of a type: named types, arrays/tuples
+            TyPath(..) |
+            TyVec(..) |
+            TyTup(..) |
+            TyFixedLengthVec(..) => (10 * self.nest, 1),
+
+            // "Sum" of trait bounds
+            TyObjectSum(..) => (20 * self.nest, 0),
+
+            // function types and "for<...>" bring a lot of overhead
+            TyBareFn(..) |
+            TyPolyTraitRef(..) => (50 * self.nest, 1),
+
+            _ => (0, 0)
+        };
+        self.score += add_score;
+        self.nest += sub_nest;
+        walk_ty(self, ty);
+        self.nest -= sub_nest;
     }
 }
