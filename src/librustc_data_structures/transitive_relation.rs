@@ -267,8 +267,7 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
 /// there exists an earlier element i<j such that i -> j. That is,
 /// after you run `pare_down`, you know that for all elements that
 /// remain in candidates, they cannot reach any of the elements that
-/// come after them. (Note that it may permute the ordering in some
-/// cases.)
+/// come after them.
 ///
 /// Examples follow. Assume that a -> b -> c and x -> y -> z.
 ///
@@ -278,24 +277,24 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
 fn pare_down(candidates: &mut Vec<usize>, closure: &BitMatrix) {
     let mut i = 0;
     while i < candidates.len() {
-        let candidate = candidates[i];
+        let candidate_i = candidates[i];
         i += 1;
 
         let mut j = i;
+        let mut dead = 0;
         while j < candidates.len() {
-            if closure.contains(candidate, candidates[j]) {
-                // If `i` can reach `j`, then we can remove `j`. Given
-                // how careful this algorithm is about ordering, it
-                // may seem odd to use swap-remove. The reason it is
-                // ok is that we are swapping two elements (`j` and
-                // `max`) that are both to the right of our cursor
-                // `i`, and the invariant that we are establishing
-                // continues to hold for everything left of `i`.
-                candidates.swap_remove(j);
+            let candidate_j = candidates[j];
+            if closure.contains(candidate_i, candidate_j) {
+                // If `i` can reach `j`, then we can remove `j`. So just
+                // mark it as dead and move on; subsequent indices will be
+                // shifted into its place.
+                dead += 1;
             } else {
-                j += 1;
+                candidates[j - dead] = candidate_j;
             }
+            j += 1;
         }
+        candidates.truncate(j - dead);
     }
 }
 
