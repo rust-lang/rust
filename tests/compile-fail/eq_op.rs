@@ -34,4 +34,8 @@ fn main() {
     ((1, 2) != (1, 2)); //~ERROR equal expressions
     [1].len() == [1].len(); //~ERROR equal expressions
     vec![1, 2, 3] == vec![1, 2, 3]; //no error yet, as we don't match macros
+
+    // const folding
+    1 + 1 == 2; //~ERROR equal expressions
+    1 - 1 == 0; //~ERROR equal expressions
 }
