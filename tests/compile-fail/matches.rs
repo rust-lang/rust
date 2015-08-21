@@ -53,6 +53,12 @@ fn ref_pats() {
         &(v, 1) => println!("{}", v),
         _ => println!("none"),
     }
+    // special case: using & both in expr and pats
+    let w = Some(0);
+    match &w {  //~ERROR you don't need to add `&` to both
+        &Some(v) => println!("{:?}", v),
+        &None => println!("none"),
+    }
 }
 
 fn main() {

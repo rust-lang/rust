@@ -55,9 +55,15 @@ impl LintPass for MatchPass {
 
             // check preconditions for MATCH_REF_PATS
             if has_only_ref_pats(arms) {
-                span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
-                    "instead of prefixing all patterns with `&`, you can dereference the \
-                     expression to match: `match *{} {{ ...`", snippet(cx, ex.span, "..")));
+                if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
+                    span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
+                        "you don't need to add `&` to both the expression to match \
+                         and the patterns: use `match {} {{ ...`", snippet(cx, inner.span, "..")));
+                } else {
+                    span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
+                        "instead of prefixing all patterns with `&`, you can dereference the \
+                         expression to match: `match *{} {{ ...`", snippet(cx, ex.span, "..")));
+                }
             }
         }
     }
@@ -72,14 +78,9 @@ fn is_unit_expr(expr: &Expr) -> bool {
 }
 
 fn has_only_ref_pats(arms: &[Arm]) -> bool {
-    for arm in arms {
-        for pat in &arm.pats {
-            match pat.node {
-                PatRegion(..) => (),  // &-patterns
-                PatWild(..) => (),    // an "anything" wildcard is also fine
-                _ => return false,
-            }
-        }
-    }
-    true
+    arms.iter().flat_map(|a| &a.pats).all(|p| match p.node {
+        PatRegion(..) => true,  // &-patterns
+        PatWild(..) => true,    // an "anything" wildcard is also fine
+        _ => false,
+    })
 }
