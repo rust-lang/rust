@@ -93,10 +93,11 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
         }
     }
 
-    /// Picks what I am referring to as the "best" upper-bound for `a`
-    /// and `b`. This is usually the least upper bound, but in cases where
-    /// there is no single least upper bound, it is the "mutual immediate postdominator",
-    /// if you imagine a graph where `a < b` means `a -> b`.
+    /// Picks what I am referring to as the "postdominating"
+    /// upper-bound for `a` and `b`. This is usually the least upper
+    /// bound, but in cases where there is no single least upper
+    /// bound, it is the "mutual immediate postdominator", if you
+    /// imagine a graph where `a < b` means `a -> b`.
     ///
     /// This function is needed because region inference currently
     /// requires that we produce a single "UB", and there is no best
