@@ -93,7 +93,7 @@ impl FreeRegionMap {
         let result = sub == sup || {
             let sub = ty::ReFree(sub);
             let sup = ty::ReFree(sup);
-            self.relation.contains(&sub, &sup) || self.relation.contains(&sup, &ty::ReStatic)
+            self.relation.contains(&sub, &sup) || self.relation.contains(&ty::ReStatic, &sup)
         };
         debug!("sub_free_region(sub={:?}, sup={:?}) = {:?}", sub, sup, result);
         result
