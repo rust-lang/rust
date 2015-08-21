@@ -1555,6 +1555,21 @@ impl<'a> State<'a> {
         self.pclose()
     }
 
+    pub fn check_expr_bin_needs_paren(&mut self, sub_expr: &ast::Expr,
+                                      binop: ast::BinOp) -> bool {
+        match sub_expr.node {
+            ast::ExprBinary(ref sub_op, _, _) => {
+                if ast_util::operator_prec(sub_op.node) <
+                    ast_util::operator_prec(binop.node) {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => true
+        }
+    }
+
     pub fn print_expr_maybe_paren(&mut self, expr: &ast::Expr) -> io::Result<()> {
         let needs_par = needs_parentheses(expr);
         if needs_par {
@@ -1670,10 +1685,18 @@ impl<'a> State<'a> {
                          op: ast::BinOp,
                          lhs: &ast::Expr,
                          rhs: &ast::Expr) -> io::Result<()> {
-        try!(self.print_expr(lhs));
+        if self.check_expr_bin_needs_paren(lhs, op) {
+            try!(self.print_expr_maybe_paren(lhs));
+        } else {
+            try!(self.print_expr(lhs));
+        }
         try!(space(&mut self.s));
         try!(self.word_space(ast_util::binop_to_string(op.node)));
-        self.print_expr(rhs)
+        if self.check_expr_bin_needs_paren(rhs, op) {
+            self.print_expr_maybe_paren(rhs)
+        } else {
+            self.print_expr(rhs)
+        }
     }
 
     fn print_expr_unary(&mut self,
@@ -1730,7 +1753,11 @@ impl<'a> State<'a> {
                 try!(self.print_literal(&**lit));
             }
             ast::ExprCast(ref expr, ref ty) => {
-                try!(self.print_expr(&**expr));
+                if let ast::ExprCast(..) = expr.node {
+                    try!(self.print_expr(&**expr));
+                } else {
+                    try!(self.print_expr_maybe_paren(&**expr));
+                }
                 try!(space(&mut self.s));
                 try!(self.word_space("as"));
                 try!(self.print_type(&**ty));
