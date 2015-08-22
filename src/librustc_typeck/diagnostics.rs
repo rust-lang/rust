@@ -1279,8 +1279,8 @@ fn main() {
 "##,
 
 E0103: r##"
-You hit this error because the compiler the compiler lacks information
-to determine a type for this pattern binding.
+You hit this error because the compiler lacks information to determine a type
+for this pattern binding.
 
 You have two possibilities to solve this situation:
  * Give an explicit definition of the expression
@@ -2437,8 +2437,8 @@ impl Foo for Bar {
 }
 ```
 
-To fix this error, please verify you didn't misspell the associated
-const name or you did implement the good trait item. Example:
+Please verify that the associated const wasn't misspelled and the correct trait
+was implemented. Example:
 
 ```
 struct Bar;
