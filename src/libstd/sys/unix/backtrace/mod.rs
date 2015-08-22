@@ -107,6 +107,7 @@ pub fn output(w: &mut Write, idx: isize, addr: *mut libc::c_void,
     w.write_all(&['\n' as u8])
 }
 
+#[allow(dead_code)]
 pub fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
                        more: bool) -> io::Result<()> {
     let file = str::from_utf8(file).unwrap_or("<unknown>");
