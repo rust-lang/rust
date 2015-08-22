@@ -130,7 +130,8 @@ fn cs_clone_from(
     cx: &mut ExtCtxt, span: Span,
     substr: &Substructure) -> P<Expr> {
 
-    cs_same_method(
+    let fn_path = cx.std_path(&["clone", "Clone", "clone_from"]);
+    cs_call_global(
         |cx, span, exprs| {
             cx.expr_block(cx.block(span, exprs.into_iter().map(|expr| {
                 cx.stmt_expr(expr)
@@ -148,5 +149,5 @@ fn cs_clone_from(
                 cx.expr(span, ast::ExprAssign(lhs, rhs))
             }
         }),
-        cx, span, substr)
+        cx, span, substr, fn_path, ast::MutMutable)
 }

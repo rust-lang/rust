@@ -1306,10 +1306,7 @@ impl<'a> MethodDef<'a> {
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
             let borrowed_self_args = self_args.into_iter().map(|(self_arg, mutability)| {
-                match mutability {
-                    ast::MutImmutable => cx.expr_addr_of(sp, self_arg),
-                    ast::MutMutable => cx.expr_mut_addr_of(sp, self_arg),
-                }
+                cs_addr_of(cx, sp, self_arg, mutability)
             }).collect();
             let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
 
@@ -1389,10 +1386,7 @@ impl<'a> MethodDef<'a> {
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
             let borrowed_self_args = self_args.into_iter().map(|(self_arg, mutability)| {
-                match mutability {
-                    ast::MutImmutable => cx.expr_addr_of(sp, self_arg),
-                    ast::MutMutable => cx.expr_mut_addr_of(sp, self_arg),
-                }
+                cs_addr_of(cx, sp, self_arg, mutability)
             }).collect();
             let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
             cx.expr_match(sp, match_arg, match_arms)
@@ -1671,6 +1665,51 @@ pub fn cs_same_method<F>(f: F,
     }
 }
 
+/// Call a global function on all the fields, and then
+/// process the collected results. i.e.
+///
+/// ```
+/// f(cx, span, vec![path::method(self_1, __arg_1_1, __arg_2_1),
+///                  path::method(self_2, __arg_1_2, __arg_2_2)])
+/// ```
+#[inline]
+pub fn cs_call_global<F>(f: F,
+                         mut enum_nonmatch_f: EnumNonMatchCollapsedFunc,
+                         cx: &mut ExtCtxt,
+                         trait_span: Span,
+                         substructure: &Substructure,
+                         path: Vec<Ident>,
+                         mutability: ast::Mutability)
+                         -> P<Expr> where
+    F: FnOnce(&mut ExtCtxt, Span, Vec<P<Expr>>) -> P<Expr>,
+{
+    match *substructure.fields {
+        EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
+            // call path::method(self_n, other_1_n, other_2_n, ...)
+            let called = all_fields.iter().map(|field| {
+                // Start with self_n
+                let mut args = vec![cs_addr_of(cx, field.span, field.self_.clone(), mutability)];
+                // Extend with other_n_m
+                args.extend(field.other.iter().map(|e| {
+                    cx.expr_addr_of(field.span, e.clone())
+                }));
+
+                cx.expr_call_global(field.span,
+                                    path.clone(),
+                                    args)
+            }).collect();
+
+            f(cx, trait_span, called)
+        },
+        EnumNonMatchingCollapsed(ref all_self_args, _, tuple) =>
+            enum_nonmatch_f(cx, trait_span, (&all_self_args[..], tuple),
+                            substructure.nonself_args),
+        StaticEnum(..) | StaticStruct(..) => {
+            cx.span_bug(trait_span, "static function in `derive`")
+        }
+    }
+}
+
 /// Fold together the results of calling the derived method on all the
 /// fields. `use_foldl` controls whether this is done left-to-right
 /// (`true`) or right-to-left (`false`).
@@ -1739,4 +1778,13 @@ pub fn cs_and(enum_nonmatch_f: EnumNonMatchCollapsedFunc,
     cs_binop(ast::BiAnd, cx.expr_bool(span, true),
              enum_nonmatch_f,
              cx, span, substructure)
+}
+
+/// Mutably/immutabily take the address of an expression
+#[inline]
+pub fn cs_addr_of(cx: &mut ExtCtxt, span: Span, expr: P<Expr>, mutbl: ast::Mutability) -> P<Expr> {
+    match mutbl {
+        ast::MutImmutable => cx.expr_addr_of(span, expr),
+        ast::MutMutable => cx.expr_mut_addr_of(span, expr),
+    }
 }
