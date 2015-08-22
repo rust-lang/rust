@@ -251,7 +251,7 @@ extern "rust-intrinsic" {
     /// assert_eq!(array, [82, 117, 115, 116]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn transmute<T,U>(e: T) -> U;
+    pub fn transmute<T, U>(e: T) -> U;
 
     /// Gives the address for the return value of the enclosing function.
     ///
