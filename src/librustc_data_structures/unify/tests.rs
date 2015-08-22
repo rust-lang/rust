@@ -12,7 +12,6 @@
 
 extern crate test;
 use self::test::Bencher;
-use std::collections::HashSet;
 use unify::{UnifyKey, UnificationTable};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
