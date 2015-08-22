@@ -18,6 +18,7 @@ components = sys.argv[2].split() # splits on whitespace
 enable_static = sys.argv[3]
 llvm_config = sys.argv[4]
 stdcpp_name = sys.argv[5]
+use_libcpp = sys.argv[6]
 
 f.write("""// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -44,11 +45,25 @@ def run(args):
         sys.exit(1)
     return out
 
+def runErr(args):
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = proc.communicate()
+
+    if err:
+        return False, out
+    else:
+        return True, out
+
 f.write("\n")
+
+args = [llvm_config, '--shared-mode']
+args.extend(components)
+llvm_shared, out = runErr(args)
+if llvm_shared:
+    llvm_shared = 'shared' in out
 
 # LLVM libs
 args = [llvm_config, '--libs', '--system-libs']
-
 args.extend(components)
 out = run(args)
 for lib in out.strip().replace("\n", ' ').split(' '):
@@ -63,8 +78,7 @@ for lib in out.strip().replace("\n", ' ').split(' '):
     elif lib[0] == '-':
         lib = lib.strip()[1:]
     f.write("#[link(name = \"" + lib + "\"")
-    # LLVM libraries are all static libraries
-    if 'LLVM' in lib:
+    if not llvm_shared and 'LLVM' in lib:
         f.write(", kind = \"static\"")
     f.write(")]\n")
 
@@ -83,7 +97,7 @@ else:
     # Note that we use `cfg_attr` here because on MSVC the C++ standard library
     # is not c++ or stdc++, but rather the linker takes care of linking the
     # right standard library.
-    if 'stdlib=libc++' in out:
+    if use_libcpp != "0" or 'stdlib=libc++' in out:
         f.write("#[cfg_attr(not(target_env = \"msvc\"), link(name = \"c++\"))]\n")
     else:
         f.write("#[cfg_attr(not(target_env = \"msvc\"), link(name = \"" + stdcpp_name + "\"))]\n")

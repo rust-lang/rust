@@ -961,39 +961,7 @@ pub unsafe fn configure_llvm(sess: &Session) {
 
     llvm::LLVMInitializePasses();
 
-    // Only initialize the platforms supported by Rust here, because
-    // using --llvm-root will have multiple platforms that rustllvm
-    // doesn't actually link to and it's pointless to put target info
-    // into the registry that Rust cannot generate machine code for.
-    llvm::LLVMInitializeX86TargetInfo();
-    llvm::LLVMInitializeX86Target();
-    llvm::LLVMInitializeX86TargetMC();
-    llvm::LLVMInitializeX86AsmPrinter();
-    llvm::LLVMInitializeX86AsmParser();
-
-    llvm::LLVMInitializeARMTargetInfo();
-    llvm::LLVMInitializeARMTarget();
-    llvm::LLVMInitializeARMTargetMC();
-    llvm::LLVMInitializeARMAsmPrinter();
-    llvm::LLVMInitializeARMAsmParser();
-
-    llvm::LLVMInitializeAArch64TargetInfo();
-    llvm::LLVMInitializeAArch64Target();
-    llvm::LLVMInitializeAArch64TargetMC();
-    llvm::LLVMInitializeAArch64AsmPrinter();
-    llvm::LLVMInitializeAArch64AsmParser();
-
-    llvm::LLVMInitializeMipsTargetInfo();
-    llvm::LLVMInitializeMipsTarget();
-    llvm::LLVMInitializeMipsTargetMC();
-    llvm::LLVMInitializeMipsAsmPrinter();
-    llvm::LLVMInitializeMipsAsmParser();
-
-    llvm::LLVMInitializePowerPCTargetInfo();
-    llvm::LLVMInitializePowerPCTarget();
-    llvm::LLVMInitializePowerPCTargetMC();
-    llvm::LLVMInitializePowerPCAsmPrinter();
-    llvm::LLVMInitializePowerPCAsmParser();
+    llvm::initialize_available_targets();
 
     llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
                                  llvm_args.as_ptr());

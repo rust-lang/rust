@@ -131,6 +131,7 @@ $$(TBIN$(1)_T_$(2)_H_$(3))/$(4)$$(X_$(2)): \
 	@$$(call E, rustc: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) \
 		$$(STDCPP_LIBDIR_RUSTFLAGS_$(2)) \
+		$$(LLVM_LIBDIR_RUSTFLAGS_$(2)) \
 		-o $$@ $$< --cfg $(4)
 
 endef
