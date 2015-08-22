@@ -162,8 +162,8 @@ impl FreeRegionMap {
 
 #[cfg(test)]
 fn free_region(index: u32) -> FreeRegion {
-    use middle::region::DestructionScopeData;
-    FreeRegion { scope: DestructionScopeData::new(0),
+    use middle::region::DUMMY_CODE_EXTENT;
+    FreeRegion { scope: DUMMY_CODE_EXTENT,
                  bound_region: ty::BoundRegion::BrAnon(index) }
 }
 
