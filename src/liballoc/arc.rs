@@ -71,8 +71,8 @@
 
 use boxed::Box;
 
-use core::atomic;
-use core::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
+use core::sync::atomic;
+use core::sync::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
 use core::fmt;
 use core::cmp::Ordering;
 use core::mem::{align_of_val, size_of_val};

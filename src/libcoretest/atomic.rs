@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::atomic::*;
-use core::atomic::Ordering::SeqCst;
+use core::sync::atomic::*;
+use core::sync::atomic::Ordering::SeqCst;
 
 #[test]
 fn bool_() {
