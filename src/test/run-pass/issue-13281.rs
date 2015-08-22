@@ -12,23 +12,23 @@ struct ForceCloneFrom;
 struct ForceClone;
 
 impl Clone for ForceCloneFrom {
-	fn clone(&self) -> Self {
-		// Ensure `clone_from` is called
-		assert!(false);
-		ForceCloneFrom
-	}
-	fn clone_from(&mut self, _: &Self) {
-	}
+    fn clone(&self) -> Self {
+        // Ensure `clone_from` is called
+        assert!(false);
+        ForceCloneFrom
+    }
+    fn clone_from(&mut self, _: &Self) {
+    }
 }
 
 impl Clone for ForceClone {
-	fn clone(&self) -> Self {
-		ForceClone
-	}
-	fn clone_from(&mut self, _: &Self) {
-		// Ensure `clone` is called
-		assert!(false);
-	}
+    fn clone(&self) -> Self {
+        ForceClone
+    }
+    fn clone_from(&mut self, _: &Self) {
+        // Ensure `clone` is called
+        assert!(false);
+    }
 }
 
 #[derive(Clone)]
