@@ -116,10 +116,10 @@ declare_lint!(pub CAST_POSSIBLE_TRUNCATION, Allow,
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
 fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
-    let n = match &typ.sty {
-    &ty::TyInt(i) =>  4 << (i as usize),
-    &ty::TyUint(u) => 4 << (u as usize),
-    _ => 0
+    let n = match typ.sty {
+        ty::TyInt(i) =>  4 << (i as usize),
+        ty::TyUint(u) => 4 << (u as usize),
+        _ => 0
     };
     // n == 4 is the usize/isize case
     if n == 4 { ::std::usize::BITS } else { n }
@@ -139,16 +139,16 @@ impl LintPass for CastPass {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
                         let from_nbits = int_ty_to_nbits(cast_from);
-                        let to_nbits : usize = match &cast_to.sty {
-                            &ty::TyFloat(ast::TyF32) => 32,
-                            &ty::TyFloat(ast::TyF64) => 64,
+                        let to_nbits : usize = match cast_to.sty {
+                            ty::TyFloat(ast::TyF32) => 32,
+                            ty::TyFloat(ast::TyF64) => 64,
                             _ => 0
                         };
                         if from_nbits != 0 {
                             if from_nbits >= to_nbits {
                                 span_lint(cx, CAST_PRECISION_LOSS, expr.span,
                                           &format!("converting from {0} to {1}, which causes a loss of precision \
-                                          			({0} is {2} bits wide, but {1}'s mantissa is only {3} bits wide)",
+                                                    ({0} is {2} bits wide, but {1}'s mantissa is only {3} bits wide)",
                                                    cast_from, cast_to, from_nbits, if to_nbits == 64 {52} else {23} ));
                             }
                         }

@@ -65,13 +65,13 @@ fn is_string(cx: &Context, e: &Expr) -> bool {
 }
 
 fn is_add(cx: &Context, src: &Expr, target: &Expr) -> bool {
-    match &src.node {
-        &ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) =>
+    match src.node {
+        ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) =>
             is_exp_equal(cx, target, left),
-        &ExprBlock(ref block) => block.stmts.is_empty() &&
+        ExprBlock(ref block) => block.stmts.is_empty() &&
             block.expr.as_ref().map_or(false,
                 |expr| is_add(cx, &*expr, target)),
-        &ExprParen(ref expr) => is_add(cx, &*expr, target),
+        ExprParen(ref expr) => is_add(cx, &*expr, target),
         _ => false
     }
 }

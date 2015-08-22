@@ -38,11 +38,11 @@ pub mod returns;
 pub mod lifetimes;
 pub mod loops;
 pub mod ranges;
+pub mod matches;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box types::TypePass as LintPassObject);
-    reg.register_lint_pass(box misc::MiscPass as LintPassObject);
     reg.register_lint_pass(box misc::TopLevelRefPass as LintPassObject);
     reg.register_lint_pass(box misc::CmpNan as LintPassObject);
     reg.register_lint_pass(box eq_op::EqOp as LintPassObject);
@@ -71,6 +71,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box ranges::StepByZero as LintPassObject);
     reg.register_lint_pass(box types::CastPass as LintPassObject);
     reg.register_lint_pass(box types::TypeComplexityPass as LintPassObject);
+    reg.register_lint_pass(box matches::MatchPass as LintPassObject);
 
     reg.register_lint_group("clippy", vec![
         approx_const::APPROX_CONSTANT,
@@ -87,6 +88,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
         loops::EXPLICIT_ITER_LOOP,
         loops::ITER_NEXT_LOOP,
         loops::NEEDLESS_RANGE_LOOP,
+        matches::MATCH_REF_PATS,
+        matches::SINGLE_MATCH,
         methods::OPTION_UNWRAP_USED,
         methods::RESULT_UNWRAP_USED,
         methods::STR_TO_STRING,
@@ -96,7 +99,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
         misc::FLOAT_CMP,
         misc::MODULO_ONE,
         misc::PRECEDENCE,
-        misc::SINGLE_MATCH,
         misc::TOPLEVEL_REF_ARG,
         mut_mut::MUT_MUT,
         needless_bool::NEEDLESS_BOOL,

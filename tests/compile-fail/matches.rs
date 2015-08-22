@@ -2,8 +2,9 @@
 
 #![plugin(clippy)]
 #![deny(clippy)]
+#![allow(unused)]
 
-fn main(){
+fn single_match(){
     let x = Some(1u8);
     match x {  //~ ERROR you seem to be trying to use match
                //~^ HELP try
@@ -35,4 +36,30 @@ fn main(){
         (2...3, 7...9) => println!("{:?}", z),
         _ => println!("nope"),
     }
+}
+
+fn ref_pats() {
+    let ref v = Some(0);
+    match v {  //~ERROR instead of prefixing all patterns with `&`
+        &Some(v) => println!("{:?}", v),
+        &None => println!("none"),
+    }
+    match v {  // this doesn't trigger, we have a different pattern
+        &Some(v) => println!("some"),
+        other => println!("other"),
+    }
+    let ref tup = (1, 2);
+    match tup {  //~ERROR instead of prefixing all patterns with `&`
+        &(v, 1) => println!("{}", v),
+        _ => println!("none"),
+    }
+    // special case: using & both in expr and pats
+    let w = Some(0);
+    match &w {  //~ERROR you don't need to add `&` to both
+        &Some(v) => println!("{:?}", v),
+        &None => println!("none"),
+    }
+}
+
+fn main() {
 }

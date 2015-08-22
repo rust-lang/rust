@@ -29,6 +29,7 @@ len_zero                 | warn    | checking `.len() == 0` or `.len() > 0` (or 
 let_and_return           | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a function
 let_unit_value           | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
 linkedlist               | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a RingBuf
+match_ref_pats           | warn    | a match has all arms prefixed with `&`; the match expression can be dereferenced instead
 modulo_one               | warn    | taking a number modulo 1, which always returns 0
 mut_mut                  | warn    | usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, or shows a fundamental misunderstanding of references)
 needless_bool            | warn    | if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
