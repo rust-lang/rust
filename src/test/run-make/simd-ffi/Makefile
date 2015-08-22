@@ -1,15 +1,28 @@
 -include ../tools.mk
 
+TARGETS =
+ifeq ($(filter arm,$(LLVM_COMPONENTS)),arm)
 # construct a fairly exhaustive list of platforms that we
 # support. These ones don't follow a pattern
-TARGETS=arm-linux-androideabi arm-unknown-linux-gnueabihf arm-unknown-linux-gnueabi
+TARGETS += arm-linux-androideabi arm-unknown-linux-gnueabihf arm-unknown-linux-gnueabi
+endif
+
+ifeq ($(filter x86,$(LLVM_COMPONENTS)),x86)
+X86_ARCHS = i686 x86_64
+else
+X86_ARCHS =
+endif
 
 # these ones do, each OS lists the architectures it supports
-LINUX=aarch64 i686 x86_64 mips mipsel
-WINDOWS=i686 x86_64
+LINUX=$(filter aarch64 mips,$(LLVM_COMPONENTS)) $(X86_ARCHS)
+ifeq ($(filter mips,$(LLVM_COMPONENTS)),mips)
+LINUX += mipsel
+endif
+
+WINDOWS=$(X86_ARCHS)
 # fails with: failed to get iphonesimulator SDK path: no such file or directory
 #IOS=i386 aarch64 armv7
-DARWIN=i686 x86_64
+DARWIN=$(X86_ARCHS)
 
 $(foreach arch,$(LINUX),$(eval TARGETS += $(arch)-unknown-linux-gnu))
 $(foreach arch,$(WINDOWS),$(eval TARGETS += $(arch)-pc-windows-gnu))

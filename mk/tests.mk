@@ -1072,7 +1072,9 @@ $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 	    "$$(LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3))" \
 	    $(1) \
 	    $$(S) \
-	    $(3)
+	    $(3) \
+	    "$$(LLVM_LIBDIR_RUSTFLAGS_$(3))" \
+	    "$$(LLVM_ALL_COMPONENTS_$(3))"
 	@touch -r $$@.start_time $$@ && rm $$@.start_time
 else
 # FIXME #11094 - The above rule doesn't work right for multiple targets
