@@ -2073,6 +2073,7 @@ The following configurations must be defined by the implementation:
 * `target_pointer_width = "..."`. Target pointer width in bits. This is set
   to `"32"` for targets with 32-bit pointers, and likewise set to `"64"` for
   64-bit pointers.
+* `test`. Enabled when compiling the test harness (using the `--test` flag).
 * `unix`. See `target_family`.
 * `windows`. See `target_family`.
 
