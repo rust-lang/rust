@@ -145,6 +145,8 @@ declare_lint!(pub CAST_SIGN_LOSS, Allow,
               "casts from signed types to unsigned types, e.g `x as u32` where `x: i32`");
 declare_lint!(pub CAST_POSSIBLE_TRUNCATION, Allow,
               "casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`");
+declare_lint!(pub CAST_POSSIBLE_WRAP, Allow,
+              "casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`");
 
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
@@ -169,7 +171,8 @@ impl LintPass for CastPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(CAST_PRECISION_LOSS,
                     CAST_SIGN_LOSS,
-                    CAST_POSSIBLE_TRUNCATION)
+                    CAST_POSSIBLE_TRUNCATION,
+                    CAST_POSSIBLE_WRAP)
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
@@ -186,50 +189,93 @@ impl LintPass for CastPass {
                         };
                         if from_nbits != 0 {
                             // When casting to f32, precision loss would occur regardless of the arch
-                            if is_isize_or_usize(cast_from) && to_nbits == 64 {
-                                span_lint(cx, CAST_PRECISION_LOSS, expr.span,
-                                          &format!("converting from {0} to f64, which causes a loss of precision on 64-bit architectures \
-                                          			({0} is 64 bits wide, but f64's mantissa is only 52 bits wide)",
-                                                   cast_from));
+                            if is_isize_or_usize(cast_from) {
+                                if to_nbits == 64 {
+                                    span_lint(cx, CAST_PRECISION_LOSS, expr.span,
+                                              &format!("casting {0} to f64 causes a loss of precision on targets with 64-bit wide pointers \
+                                        	  			({0} is 64 bits wide, but f64's mantissa is only 52 bits wide)",
+                                                       cast_from));
+                                }
+                                else {
+                                    span_lint(cx, CAST_PRECISION_LOSS, expr.span,
+                                              &format!("casting {0} to f32 causes a loss of precision \
+                                        	  			({0} is 32 or 64 bits wide, but f32's mantissa is only 23 bits wide)",
+                                                       cast_from));
+                                }
                             }
                             else if from_nbits >= to_nbits {
                                 span_lint(cx, CAST_PRECISION_LOSS, expr.span,
-                                          &format!("converting from {0} to {1}, which causes a loss of precision \
+                                          &format!("casting {0} to {1} causes a loss of precision \
                                           			({0} is {2} bits wide, but {1}'s mantissa is only {3} bits wide)",
                                                    cast_from, cast_to, from_nbits, if to_nbits == 64 {52} else {23} ));
                             }
                         }
                     },
-                    (false, true) => { // Nothing to add there
+                    (false, true) => {
+                        // Nothing to add there as long as UB in involved when the cast overflows
                         span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
-                                  &format!("casting {} to {} may cause truncation of the value", cast_from, cast_to));
+                                  &format!("casting {} to {} may truncate the value", cast_from, cast_to));
                         if !cast_to.is_signed() {
                             span_lint(cx, CAST_SIGN_LOSS, expr.span,
-                                      &format!("casting from {} to {} loses the sign of the value", cast_from, cast_to));
+                                      &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to));
                         }
                     },
                     (true, true) => {
-                        if cast_from.is_signed() && !cast_to.is_signed() {
-                            span_lint(cx, CAST_SIGN_LOSS, expr.span,
-                                      &format!("casting from {} to {} loses the sign of the value", cast_from, cast_to));
-                        }
                         let from_nbits = int_ty_to_nbits(cast_from);
                         let to_nbits   = int_ty_to_nbits(cast_to);
+                        if cast_from.is_signed() && !cast_to.is_signed() {
+                            span_lint(cx, CAST_SIGN_LOSS, expr.span,
+                                      &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to));
+                        }
                         match (is_isize_or_usize(cast_from), is_isize_or_usize(cast_to)) {
                             (true, true) | (false, false) =>
-                                if to_nbits < from_nbits ||
-                                   (!cast_from.is_signed() && cast_to.is_signed() && to_nbits <= from_nbits) {
-                                        span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
-                                                  &format!("casting {} to {} may cause truncation of the value", cast_from, cast_to));
+                                if to_nbits < from_nbits {
+                                    span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
+                                              &format!("casting {} to {} may truncate the value", cast_from, cast_to));
+                                }
+                                else if !cast_from.is_signed() && cast_to.is_signed() && to_nbits == from_nbits {
+                                    span_lint(cx, CAST_POSSIBLE_WRAP, expr.span,
+                                              &format!("casting {} to {} may wrap around the value", cast_from, cast_to));
                                 },
-                            (true, false) => (), // TODO
-                            (false, true) => ()  // TODO
+                            (true, false) =>
+                                if to_nbits == 32 {
+                                    span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
+                                              &format!("casting {} to {} may truncate the value on targets with 64-bit wide pointers",
+                                                       cast_from, cast_to));
+                                    if !cast_from.is_signed() && cast_to.is_signed() {
+                                        span_lint(cx, CAST_POSSIBLE_WRAP, expr.span,
+                                                  &format!("casting {} to {} may wrap around the value on targets with 32-bit wide pointers",
+                                                           cast_from, cast_to));
+                                    }
+                                }
+                                else if to_nbits < 32 {
+                                    span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
+                                              &format!("casting {} to {} may truncate the value", cast_from, cast_to));
+                                },
+                            (false, true) =>
+                                if from_nbits == 64 {
+                                    span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
+                                              &format!("casting {} to {} may truncate the value on targets with 32-bit wide pointers",
+                                                       cast_from, cast_to));
+                                    if !cast_from.is_signed() && cast_to.is_signed() {
+                                        span_lint(cx, CAST_POSSIBLE_WRAP, expr.span,
+                                                  &format!("casting {} to {} may wrap around the value on targets with 64-bit wide pointers",
+                                                           cast_from, cast_to));
+                                    }
+                                }
+                                else {
+                                    if !cast_from.is_signed() && cast_to.is_signed() {
+                                        span_lint(cx, CAST_POSSIBLE_WRAP, expr.span,
+                                                  &format!("casting {} to {} may wrap around the value on targets with 32-bit wide pointers",
+                                                           cast_from, cast_to));
+                                    }
+                                }
                         }
                     }
                     (false, false) => {
                         if let (&ty::TyFloat(ast::TyF64),
                                 &ty::TyFloat(ast::TyF32)) = (&cast_from.sty, &cast_to.sty) {
-                            span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span, "casting f64 to f32 may cause truncation of the value");
+                            span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span, "casting f64 to f32 may truncate the value");
                         }
                     }
                 }

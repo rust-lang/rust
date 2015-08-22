@@ -107,6 +107,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         strings::STRING_ADD_ASSIGN,
         types::BOX_VEC,
         types::CAST_POSSIBLE_TRUNCATION,
+        types::CAST_POSSIBLE_WRAP,
         types::CAST_PRECISION_LOSS,
         types::CAST_SIGN_LOSS,
         types::LET_UNIT_VALUE,
