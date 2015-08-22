@@ -172,7 +172,7 @@ impl<'tcx> ty::ctxt<'tcx> {
                     }
                 };
 
-                match self.map.find(fr.scope.node_id) {
+                match self.map.find(fr.scope.node_id(&self.region_maps)) {
                     Some(ast_map::NodeBlock(ref blk)) => {
                         let (msg, opt_span) = explain_span(self, "block", blk.span);
                         (format!("{} {}", prefix, msg), opt_span)
@@ -183,7 +183,8 @@ impl<'tcx> ty::ctxt<'tcx> {
                         (format!("{} {}", prefix, msg), opt_span)
                     }
                     Some(_) | None => {
-                        // this really should not happen
+                        // this really should not happen, but it does:
+                        // FIXME(#27942)
                         (format!("{} unknown free region bounded by scope {:?}",
                                  prefix, fr.scope), None)
                     }
@@ -422,7 +423,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                         return None
                     }
                     assert!(fr1.scope == fr2.scope);
-                    (fr1.scope.node_id, fr1, fr2)
+                    (fr1.scope.node_id(&tcx.region_maps), fr1, fr2)
                 },
                 _ => return None
             };

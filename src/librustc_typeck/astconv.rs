@@ -179,7 +179,7 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
 
         Some(&rl::DefFreeRegion(scope, id)) => {
             ty::ReFree(ty::FreeRegion {
-                    scope: scope,
+                    scope: tcx.region_maps.item_extent(scope.node_id),
                     bound_region: ty::BrNamed(DefId::local(id),
                                               lifetime.name)
                 })

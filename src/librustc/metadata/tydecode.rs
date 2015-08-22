@@ -225,7 +225,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'f' => {
                 assert_eq!(self.next(), '[');
-                let scope = self.parse_destruction_scope_data();
+                let scope = self.parse_scope();
                 assert_eq!(self.next(), '|');
                 let br = self.parse_bound_region();
                 assert_eq!(self.next(), ']');
@@ -282,11 +282,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             _ => panic!("parse_scope: bad input")
         })
-    }
-
-    fn parse_destruction_scope_data(&mut self) -> region::DestructionScopeData {
-        let node_id = self.parse_uint() as ast::NodeId;
-        region::DestructionScopeData::new(node_id)
     }
 
     fn parse_opt<T, F>(&mut self, f: F) -> Option<T>
