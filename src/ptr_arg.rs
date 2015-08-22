@@ -4,10 +4,10 @@
 
 use rustc::lint::*;
 use syntax::ast::*;
-use syntax::codemap::Span;
+use rustc::middle::ty;
 
-use types::match_ty_unwrap;
-use utils::span_lint;
+use utils::{span_lint, match_type};
+use utils::{STRING_PATH, VEC_PATH};
 
 declare_lint! {
     pub PTR_ARG,
@@ -45,22 +45,21 @@ impl LintPass for PtrArg {
 
 fn check_fn(cx: &Context, decl: &FnDecl) {
     for arg in &decl.inputs {
-        match &arg.ty.node {
-            &TyPtr(ref p) | &TyRptr(_, ref p) =>
-                check_ptr_subtype(cx, arg.ty.span, &p.ty),
-            _ => ()
+        if arg.ty.node == TyInfer {  // "self" arguments
+            continue;
+        }
+        let ref sty = cx.tcx.pat_ty(&*arg.pat).sty;
+        if let &ty::TyRef(_, ty::TypeAndMut { ty, mutbl: MutImmutable }) = sty {
+            if match_type(cx, ty, &VEC_PATH) {
+                span_lint(cx, PTR_ARG, arg.ty.span,
+                          "writing `&Vec<_>` instead of `&[_]` involves one more reference \
+                           and cannot be used with non-Vec-based slices. Consider changing \
+                           the type to `&[...]`");
+            } else if match_type(cx, ty, &STRING_PATH) {
+                span_lint(cx, PTR_ARG, arg.ty.span,
+                          "writing `&String` instead of `&str` involves a new object \
+                           where a slice will do. Consider changing the type to `&str`");
+            }
         }
     }
-}
-
-fn check_ptr_subtype(cx: &Context, span: Span, ty: &Ty) {
-    match_ty_unwrap(ty, &["Vec"]).map_or_else(|| match_ty_unwrap(ty,
-        &["String"]).map_or((), |_| {
-            span_lint(cx, PTR_ARG, span,
-                      "writing `&String` instead of `&str` involves a new object \
-                       where a slice will do. Consider changing the type to `&str`")
-        }), |_| span_lint(cx, PTR_ARG, span,
-                          "writing `&Vec<_>` instead of \
-                           `&[_]` involves one more reference and cannot be used with \
-                           non-Vec-based slices. Consider changing the type to `&[...]`"))
 }
