@@ -155,7 +155,7 @@
 //!
 //! ```{.text}
 //! EnumNonMatchingCollapsed(
-//!     vec![<ident of self>, <ident of __arg_1>],
+//!     vec![<ast::Expr for self>, <ast::Expr for __arg_1>],
 //!     &[<ast::Variant for C0>, <ast::Variant for C1>],
 //!     &[<ident for self index value>, <ident of __arg_1 index value>])
 //! ```
@@ -203,7 +203,6 @@ use ext::build::AstBuilder;
 use codemap::{self, DUMMY_SP};
 use codemap::Span;
 use diagnostic::SpanHandler;
-use fold::MoveMap;
 use owned_slice::OwnedSlice;
 use parse::token::InternedString;
 use parse::token::special_idents;
@@ -267,7 +266,7 @@ pub struct Substructure<'a> {
     /// ident of the method
     pub method_ident: Ident,
     /// dereferenced access to any `Self_` or `Ptr(Self_, _)` arguments
-    pub self_args: &'a [P<Expr>],
+    pub self_args: &'a [(P<Expr>, ast::Mutability)],
     /// verbatim access to any other arguments
     pub nonself_args: &'a [P<Expr>],
     pub fields: &'a SubstructureFields<'a>
@@ -311,7 +310,7 @@ pub enum SubstructureFields<'a> {
     /// variants for the enum itself, and the third component is a list of
     /// `Ident`s bound to the variant index values for each of the actual
     /// input `Self` arguments.
-    EnumNonMatchingCollapsed(Vec<Ident>, &'a [P<ast::Variant>], &'a [Ident]),
+    EnumNonMatchingCollapsed(Vec<P<ast::Expr>>, &'a [P<ast::Variant>], &'a [Ident]),
 
     /// A static method where `Self` is a struct.
     StaticStruct(&'a ast::StructDef, StaticFields),
@@ -332,7 +331,7 @@ pub type CombineSubstructureFunc<'a> =
 /// holding the variant index value for each of the `Self` arguments.  The
 /// last argument is all the non-`Self` args of the method being derived.
 pub type EnumNonMatchCollapsedFunc<'a> =
-    Box<FnMut(&mut ExtCtxt, Span, (&[Ident], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
+    Box<FnMut(&mut ExtCtxt, Span, (&[P<Expr>], &[Ident]), &[P<Expr>]) -> P<Expr> + 'a>;
 
 pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
     -> RefCell<CombineSubstructureFunc<'a>> {
@@ -764,7 +763,7 @@ impl<'a> MethodDef<'a> {
                                 cx: &mut ExtCtxt,
                                 trait_: &TraitDef,
                                 type_ident: Ident,
-                                self_args: &[P<Expr>],
+                                self_args: &[(P<Expr>, ast::Mutability)],
                                 nonself_args: &[P<Expr>],
                                 fields: &SubstructureFields)
         -> P<Expr> {
@@ -798,7 +797,7 @@ impl<'a> MethodDef<'a> {
                                trait_: &TraitDef,
                                type_ident: Ident,
                                generics: &Generics)
-        -> (ast::ExplicitSelf, Vec<P<Expr>>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
+        -> (ast::ExplicitSelf, Vec<(P<Expr>, ast::Mutability)>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
 
         let mut self_args = Vec::new();
         let mut nonself_args = Vec::new();
@@ -807,10 +806,10 @@ impl<'a> MethodDef<'a> {
 
         let ast_explicit_self = match self.explicit_self {
             Some(ref self_ptr) => {
-                let (self_expr, explicit_self) =
+                let (self_expr, mutability, explicit_self) =
                     ty::get_explicit_self(cx, trait_.span, self_ptr);
 
-                self_args.push(self_expr);
+                self_args.push((self_expr, mutability));
                 nonstatic = true;
 
                 explicit_self
@@ -829,10 +828,13 @@ impl<'a> MethodDef<'a> {
                 // for static methods, just treat any Self
                 // arguments as a normal arg
                 Self_ if nonstatic  => {
-                    self_args.push(arg_expr);
+                    self_args.push((arg_expr, ast::MutImmutable));
                 }
-                Ptr(ref ty, _) if **ty == Self_ && nonstatic => {
-                    self_args.push(cx.expr_deref(trait_.span, arg_expr))
+                Ptr(ref ty, ref ty_ptr) if **ty == Self_ && nonstatic => {
+                    let mutability = match ty_ptr {
+                        &ty::Borrowed(_, m) | &ty::Raw(m) => m
+                    };
+                    self_args.push((cx.expr_deref(trait_.span, arg_expr), mutability))
                 }
                 _ => {
                     nonself_args.push(arg_expr);
@@ -921,7 +923,7 @@ impl<'a> MethodDef<'a> {
                                  trait_: &TraitDef<'b>,
                                  struct_def: &'b StructDef,
                                  type_ident: Ident,
-                                 self_args: &[P<Expr>],
+                                 self_args: &[(P<Expr>, ast::Mutability)],
                                  nonself_args: &[P<Expr>])
         -> P<Expr> {
 
@@ -936,7 +938,7 @@ impl<'a> MethodDef<'a> {
                                              struct_def,
                                              &format!("__self_{}",
                                                      i),
-                                             ast::MutImmutable);
+                                             self_args[i].1);
             patterns.push(pat);
             raw_fields.push(ident_expr);
         }
@@ -978,7 +980,7 @@ impl<'a> MethodDef<'a> {
         // make a series of nested matches, to destructure the
         // structs. This is actually right-to-left, but it shouldn't
         // matter.
-        for (arg_expr, pat) in self_args.iter().zip(patterns) {
+        for (&(ref arg_expr, _), ref pat) in self_args.iter().zip(patterns) {
             body = cx.expr_match(trait_.span, arg_expr.clone(),
                                      vec!( cx.arm(trait_.span, vec!(pat.clone()), body) ))
         }
@@ -990,7 +992,7 @@ impl<'a> MethodDef<'a> {
                                         trait_: &TraitDef,
                                         struct_def: &StructDef,
                                         type_ident: Ident,
-                                        self_args: &[P<Expr>],
+                                        self_args: &[(P<Expr>, ast::Mutability)],
                                         nonself_args: &[P<Expr>])
         -> P<Expr> {
         let summary = trait_.summarise_struct(cx, struct_def);
@@ -1037,7 +1039,7 @@ impl<'a> MethodDef<'a> {
                                enum_def: &'b EnumDef,
                                type_attrs: &[ast::Attribute],
                                type_ident: Ident,
-                               self_args: Vec<P<Expr>>,
+                               self_args: Vec<(P<Expr>, ast::Mutability)>,
                                nonself_args: &[P<Expr>])
                                -> P<Expr> {
         self.build_enum_match_tuple(
@@ -1087,31 +1089,27 @@ impl<'a> MethodDef<'a> {
         enum_def: &'b EnumDef,
         type_attrs: &[ast::Attribute],
         type_ident: Ident,
-        self_args: Vec<P<Expr>>,
+        self_args: Vec<(P<Expr>, ast::Mutability)>,
         nonself_args: &[P<Expr>]) -> P<Expr> {
 
         let sp = trait_.span;
         let variants = &enum_def.variants;
 
         let self_arg_names = self_args.iter().enumerate()
-            .map(|(arg_count, _self_arg)| {
+            .map(|(arg_count, &(_, mutability))| {
                 if arg_count == 0 {
-                    "__self".to_string()
+                    ("__self".to_string(), mutability)
                 } else {
-                    format!("__arg_{}", arg_count)
+                    (format!("__arg_{}", arg_count-1), mutability)
                 }
             })
-            .collect::<Vec<String>>();
-
-        let self_arg_idents = self_arg_names.iter()
-            .map(|name|cx.ident_of(&name[..]))
-            .collect::<Vec<ast::Ident>>();
+            .collect::<Vec<(String, ast::Mutability)>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each self_arg to an int
         // value corresponding to its discriminant.
         let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
-            .map(|name| { let vi_suffix = format!("{}_vi", &name[..]);
+            .map(|&(ref name, _)| { let vi_suffix = format!("{}_vi", &name[..]);
                           cx.ident_of(&vi_suffix[..]) })
             .collect::<Vec<ast::Ident>>();
 
@@ -1119,7 +1117,7 @@ impl<'a> MethodDef<'a> {
         // delegated expression that handles the catch-all case,
         // using `__variants_tuple` to drive logic if necessary.
         let catch_all_substructure = EnumNonMatchingCollapsed(
-            self_arg_idents, &variants[..], &vi_idents[..]);
+            self_args.iter().map(|&(ref expr, _)| expr.clone()).collect(), &variants[..], &vi_idents[..]);
 
         // These arms are of the form:
         // (Variant1, Variant1, ...) => Body1
@@ -1128,12 +1126,12 @@ impl<'a> MethodDef<'a> {
         // where each tuple has length = self_args.len()
         let mut match_arms: Vec<ast::Arm> = variants.iter().enumerate()
             .map(|(index, variant)| {
-                let mk_self_pat = |cx: &mut ExtCtxt, self_arg_name: &str| {
+                let mk_self_pat = |cx: &mut ExtCtxt, self_arg_name: &(String, ast::Mutability)| {
                     let (p, idents) = trait_.create_enum_variant_pattern(cx, type_ident,
                                                                          &**variant,
-                                                                         self_arg_name,
-                                                                         ast::MutImmutable);
-                    (cx.pat(sp, ast::PatRegion(p, ast::MutImmutable)), idents)
+                                                                         &self_arg_name.0[..],
+                                                                         self_arg_name.1);
+                    (cx.pat(sp, ast::PatRegion(p, self_arg_name.1)), idents)
                 };
 
                 // A single arm has form (&VariantK, &VariantK, ...) => BodyK
@@ -1146,7 +1144,7 @@ impl<'a> MethodDef<'a> {
                     idents
                 };
                 for self_arg_name in &self_arg_names[1..] {
-                    let (p, idents) = mk_self_pat(cx, &self_arg_name[..]);
+                    let (p, idents) = mk_self_pat(cx, self_arg_name);
                     subpats.push(p);
                     self_pats_idents.push(idents);
                 }
@@ -1251,7 +1249,7 @@ impl<'a> MethodDef<'a> {
                 find_repr_type_name(&cx.parse_sess.span_diagnostic, type_attrs);
 
             let mut first_ident = None;
-            for (&ident, self_arg) in vi_idents.iter().zip(&self_args) {
+            for (&ident, &(ref self_arg, _)) in vi_idents.iter().zip(&self_args) {
                 let path = cx.std_path(&["intrinsics", "discriminant_value"]);
                 let call = cx.expr_call_global(
                     sp, path, vec![cx.expr_addr_of(sp, self_arg.clone())]);
@@ -1303,7 +1301,12 @@ impl<'a> MethodDef<'a> {
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
+            let borrowed_self_args = self_args.into_iter().map(|(self_arg, mutability)| {
+                match mutability {
+                    ast::MutImmutable => cx.expr_addr_of(sp, self_arg),
+                    ast::MutMutable => cx.expr_mut_addr_of(sp, self_arg),
+                }
+            }).collect();
             let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
 
             //Lastly we create an expression which branches on all discriminants being equal
@@ -1381,7 +1384,12 @@ impl<'a> MethodDef<'a> {
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
             // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
-            let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
+            let borrowed_self_args = self_args.into_iter().map(|(self_arg, mutability)| {
+                match mutability {
+                    ast::MutImmutable => cx.expr_addr_of(sp, self_arg),
+                    ast::MutMutable => cx.expr_mut_addr_of(sp, self_arg),
+                }
+            }).collect();
             let match_arg = cx.expr(sp, ast::ExprTup(borrowed_self_args));
             cx.expr_match(sp, match_arg, match_arms)
         }
@@ -1392,7 +1400,7 @@ impl<'a> MethodDef<'a> {
                                       trait_: &TraitDef,
                                       enum_def: &EnumDef,
                                       type_ident: Ident,
-                                      self_args: &[P<Expr>],
+                                      self_args: &[(P<Expr>, ast::Mutability)],
                                       nonself_args: &[P<Expr>])
         -> P<Expr> {
         let summary = enum_def.variants.iter().map(|v| {

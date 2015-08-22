@@ -100,16 +100,28 @@ pub enum Ty<'a> {
 pub fn borrowed_ptrty<'r>() -> PtrTy<'r> {
     Borrowed(None, ast::MutImmutable)
 }
+pub fn borrowed_mut_ptrty<'r>() -> PtrTy<'r> {
+    Borrowed(None, ast::MutMutable)
+}
 pub fn borrowed<'r>(ty: Box<Ty<'r>>) -> Ty<'r> {
     Ptr(ty, borrowed_ptrty())
+}
+pub fn borrowed_mut<'r>(ty: Box<Ty<'r>>) -> Ty<'r> {
+    Ptr(ty, borrowed_mut_ptrty())
 }
 
 pub fn borrowed_explicit_self<'r>() -> Option<Option<PtrTy<'r>>> {
     Some(Some(borrowed_ptrty()))
 }
+pub fn borrowed_mut_explicit_self<'r>() -> Option<Option<PtrTy<'r>>> {
+    Some(Some(borrowed_mut_ptrty()))
+}
 
 pub fn borrowed_self<'r>() -> Ty<'r> {
     borrowed(Box::new(Self_))
+}
+pub fn borrowed_mut_self<'r>() -> Ty<'r> {
+    borrowed_mut(Box::new(Self_))
 }
 
 pub fn nil_ty<'r>() -> Ty<'r> {
@@ -258,26 +270,28 @@ impl<'a> LifetimeBounds<'a> {
 }
 
 pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
-    -> (P<Expr>, ast::ExplicitSelf) {
+    -> (P<Expr>, ast::Mutability, ast::ExplicitSelf) {
     // this constructs a fresh `self` path, which will match the fresh `self` binding
     // created below.
     let self_path = cx.expr_self(span);
     match *self_ptr {
         None => {
-            (self_path, respan(span, ast::SelfValue(special_idents::self_)))
+            (self_path, ast::MutImmutable, respan(span, ast::SelfValue(special_idents::self_)))
         }
         Some(ref ptr) => {
+            let mutability;
             let self_ty = respan(
                 span,
                 match *ptr {
                     Borrowed(ref lt, mutbl) => {
+                        mutability = mutbl;
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s).name));
                         ast::SelfRegion(lt, mutbl, special_idents::self_)
                     }
                     Raw(_) => cx.span_bug(span, "attempted to use *self in deriving definition")
                 });
             let self_expr = cx.expr_deref(span, self_path);
-            (self_expr, self_ty)
+            (self_expr, mutability, self_ty)
         }
     }
 }
