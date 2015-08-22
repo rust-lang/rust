@@ -1278,15 +1278,6 @@ fn main() {
 ```
 "##,
 
-E0103: r##"
-You hit this error because the compiler lacks information to determine a type
-for this pattern binding.
-
-You have two possibilities to solve this situation:
- * Give an explicit definition of the expression
- * Infer the expression
-"##,
-
 E0106: r##"
 This error indicates that a lifetime is missing from a type. If it is an error
 inside a function signature, the problem may be with failing to adhere to the
@@ -2778,8 +2769,7 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 "##,
 
 E0390: r##"
-You tried to implement methods for a mutable raw pointer (*mut T). Erroneous
-code example:
+You tried to implement methods for a primitive type. Erroneous code example:
 
 ```
 struct Foo {
@@ -2893,6 +2883,7 @@ register_diagnostics! {
     E0085,
     E0086,
     E0090,
+    E0103, // @GuillaumeGomez: I was unable to get this error, try your best!
     E0104,
     E0118,
     E0122,
