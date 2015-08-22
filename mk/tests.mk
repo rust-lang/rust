@@ -1056,7 +1056,7 @@ $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
         $$(MAKE) \
 	    $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
 	    $(3)/test/run-make/$$* \
-	    $$(CC_$(3)) \
+	    "$$(CC_$(3))" \
 	    "$$(CFG_GCCISH_CFLAGS_$(3))" \
 	    $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
 	    "$$(TESTNAME)" \
