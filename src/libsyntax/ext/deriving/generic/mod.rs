@@ -797,7 +797,8 @@ impl<'a> MethodDef<'a> {
                                trait_: &TraitDef,
                                type_ident: Ident,
                                generics: &Generics)
-        -> (ast::ExplicitSelf, Vec<(P<Expr>, ast::Mutability)>, Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
+        -> (ast::ExplicitSelf, Vec<(P<Expr>, ast::Mutability)>,
+            Vec<P<Expr>>, Vec<(Ident, P<ast::Ty>)>) {
 
         let mut self_args = Vec::new();
         let mut nonself_args = Vec::new();
@@ -1117,7 +1118,10 @@ impl<'a> MethodDef<'a> {
         // delegated expression that handles the catch-all case,
         // using `__variants_tuple` to drive logic if necessary.
         let catch_all_substructure = EnumNonMatchingCollapsed(
-            self_args.iter().map(|&(ref expr, _)| expr.clone()).collect(), &variants[..], &vi_idents[..]);
+            self_args.iter().map(|&(ref expr, _)| {
+                expr.clone()
+            }).collect(), &variants[..], &vi_idents[..]
+        );
 
         // These arms are of the form:
         // (Variant1, Variant1, ...) => Body1
