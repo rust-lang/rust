@@ -15,6 +15,6 @@ extern crate core as bar;
 fn assert_clone<T>() where T : Clone { }
 
 fn main() {
-    assert_clone::<bar::atomic::AtomicBool>();
-    //~^ ERROR the trait `bar::clone::Clone` is not implemented for the type `bar::atomic::
+    assert_clone::<bar::sync::atomic::AtomicBool>();
+    //~^ ERROR the trait `bar::clone::Clone` is not implemented for the type `bar::sync::atomic::
 }

@@ -12,7 +12,6 @@
 
 use std::{i64, f32, f64};
 use test;
-use core::num::dec2flt::{to_f32, to_f64};
 
 mod parse;
 mod rawfp;
@@ -27,11 +26,11 @@ macro_rules! test_literal {
         let inputs = &[stringify!($x).into(), format!("{:?}", x64), format!("{:e}", x64)];
         for input in inputs {
             if input != "inf" {
-                assert_eq!(to_f64(input), Ok(x64));
-                assert_eq!(to_f32(input), Ok(x32));
+                assert_eq!(input.parse(), Ok(x64));
+                assert_eq!(input.parse(), Ok(x32));
                 let neg_input = &format!("-{}", input);
-                assert_eq!(to_f64(neg_input), Ok(-x64));
-                assert_eq!(to_f32(neg_input), Ok(-x32));
+                assert_eq!(neg_input.parse(), Ok(-x64));
+                assert_eq!(neg_input.parse(), Ok(-x32));
             }
         }
     })
@@ -99,83 +98,83 @@ fn fast_path_correct() {
 
 #[test]
 fn lonely_dot() {
-    assert_eq!(to_f64("."), Ok(0.0));
+    assert_eq!(".".parse(), Ok(0.0));
 }
 
 #[test]
 fn nan() {
-    assert!(to_f64("NaN").unwrap().is_nan());
-    assert!(to_f32("NaN").unwrap().is_nan());
+    assert!("NaN".parse::<f32>().unwrap().is_nan());
+    assert!("NaN".parse::<f64>().unwrap().is_nan());
 }
 
 #[test]
 fn inf() {
-    assert_eq!(to_f64("inf"), Ok(f64::INFINITY));
-    assert_eq!(to_f64("-inf"), Ok(f64::NEG_INFINITY));
-    assert_eq!(to_f32("inf"), Ok(f32::INFINITY));
-    assert_eq!(to_f32("-inf"), Ok(f32::NEG_INFINITY));
+    assert_eq!("inf".parse(), Ok(f64::INFINITY));
+    assert_eq!("-inf".parse(), Ok(f64::NEG_INFINITY));
+    assert_eq!("inf".parse(), Ok(f32::INFINITY));
+    assert_eq!("-inf".parse(), Ok(f32::NEG_INFINITY));
 }
 
 #[test]
 fn massive_exponent() {
     let max = i64::MAX;
-    assert_eq!(to_f64(&format!("1e{}000", max)), Ok(f64::INFINITY));
-    assert_eq!(to_f64(&format!("1e-{}000", max)), Ok(0.0));
-    assert_eq!(to_f64(&format!("1e{}000", max)), Ok(f64::INFINITY));
+    assert_eq!(format!("1e{}000", max).parse(), Ok(f64::INFINITY));
+    assert_eq!(format!("1e-{}000", max).parse(), Ok(0.0));
+    assert_eq!(format!("1e{}000", max).parse(), Ok(f64::INFINITY));
 }
 
 #[bench]
 fn bench_0(b: &mut test::Bencher) {
-    b.iter(|| to_f64("0.0"));
+    b.iter(|| "0.0".parse::<f64>());
 }
 
 #[bench]
 fn bench_42(b: &mut test::Bencher) {
-    b.iter(|| to_f64("42"));
+    b.iter(|| "42".parse::<f64>());
 }
 
 #[bench]
 fn bench_huge_int(b: &mut test::Bencher) {
     // 2^128 - 1
-    b.iter(|| to_f64("170141183460469231731687303715884105727"));
+    b.iter(|| "170141183460469231731687303715884105727".parse::<f64>());
 }
 
 #[bench]
 fn bench_short_decimal(b: &mut test::Bencher) {
-    b.iter(|| to_f64("1234.5678"));
+    b.iter(|| "1234.5678".parse::<f64>());
 }
 
 #[bench]
 fn bench_pi_long(b: &mut test::Bencher) {
-    b.iter(|| to_f64("3.14159265358979323846264338327950288"));
+    b.iter(|| "3.14159265358979323846264338327950288".parse::<f64>());
 }
 
 #[bench]
 fn bench_pi_short(b: &mut test::Bencher) {
-    b.iter(|| to_f64("3.141592653589793"))
+    b.iter(|| "3.141592653589793".parse::<f64>())
 }
 
 #[bench]
 fn bench_1e150(b: &mut test::Bencher) {
-    b.iter(|| to_f64("1e150"));
+    b.iter(|| "1e150".parse::<f64>());
 }
 
 #[bench]
 fn bench_long_decimal_and_exp(b: &mut test::Bencher) {
-    b.iter(|| to_f64("727501488517303786137132964064381141071e-123"));
+    b.iter(|| "727501488517303786137132964064381141071e-123".parse::<f64>());
 }
 
 #[bench]
 fn bench_min_subnormal(b: &mut test::Bencher) {
-    b.iter(|| to_f64("5e-324"));
+    b.iter(|| "5e-324".parse::<f64>());
 }
 
 #[bench]
 fn bench_min_normal(b: &mut test::Bencher) {
-    b.iter(|| to_f64("2.2250738585072014e-308"));
+    b.iter(|| "2.2250738585072014e-308".parse::<f64>());
 }
 
 #[bench]
 fn bench_max(b: &mut test::Bencher) {
-    b.iter(|| to_f64("1.7976931348623157e308"));
+    b.iter(|| "1.7976931348623157e308".parse::<f64>());
 }
