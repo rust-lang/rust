@@ -21,7 +21,7 @@ pub use alloc::arc::{Arc, Weak};
 pub use core::atomic;
 
 pub use self::barrier::{Barrier, BarrierWaitResult};
-pub use self::condvar::{Condvar, StaticCondvar, CONDVAR_INIT};
+pub use self::condvar::{Condvar, StaticCondvar, WaitTimeoutResult, CONDVAR_INIT};
 pub use self::mutex::MUTEX_INIT;
 pub use self::mutex::{Mutex, MutexGuard, StaticMutex};
 pub use self::once::{Once, ONCE_INIT};
