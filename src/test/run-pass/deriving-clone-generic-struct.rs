@@ -18,5 +18,6 @@ struct S<T> {
 }
 
 pub fn main() {
-    let _ = S { foo: (), bar: (), baz: 1 }.clone();
+    let mut foo = S { foo: (), bar: (), baz: 1 }.clone();
+    foo.clone_from(&S { foo: (), bar: (), baz: 31 });
 }

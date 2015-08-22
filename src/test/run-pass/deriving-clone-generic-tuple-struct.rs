@@ -14,5 +14,6 @@
 struct S<T>(T, ());
 
 pub fn main() {
-    let _ = S(1, ()).clone();
+    let mut foo = S(1, ()).clone();
+    foo.clone_from(&S(32, ()));
 }

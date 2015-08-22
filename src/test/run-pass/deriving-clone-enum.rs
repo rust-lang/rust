@@ -18,5 +18,10 @@ enum E {
 }
 
 pub fn main() {
-    let _ = E::A.clone();
+    let mut foo = E::A.clone();
+    
+    // Test both code-paths of clone_from (same variant/different variant)
+    foo.clone_from(&E::A);
+    foo.clone_from(&E::B(()));
+    foo.clone_from(&E::B(()));
 }
