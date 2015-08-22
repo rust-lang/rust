@@ -8,10 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use io;
+use io::prelude::*;
+use libc;
+
 pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
              _symaddr: *mut libc::c_void) -> io::Result<()> {
     use sys::backtrace::{output};
     use intrinsics;
+    use ffi::CStr;
+
     #[repr(C)]
     struct Dl_info {
         dli_fname: *const libc::c_char,
