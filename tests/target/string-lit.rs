@@ -19,5 +19,10 @@ fn main() -> &'static str {
                                      AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
                                      AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
+    let raw_string = r#"Do
+not
+remove
+formatting"#;
+
     "stuff"
 }

@@ -28,7 +28,7 @@ impl Rewrite for ast::Expr {
         match self.node {
             ast::Expr_::ExprLit(ref l) => {
                 match l.node {
-                    ast::Lit_::LitStr(ref is, _) => {
+                    ast::Lit_::LitStr(ref is, ast::StrStyle::CookedStr) => {
                         rewrite_string_lit(context, &is, l.span, width, offset)
                     }
                     _ => context.codemap.span_to_snippet(self.span).ok(),
