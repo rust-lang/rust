@@ -2482,7 +2482,8 @@ impl Foo for Bar {
 }
 ```
 
-To fix this error, please verify you didn't misspell the method name. Example:
+To fix this error, please verify that the method name wasn't misspelled and
+verify that you are indeed implementing the correct trait items. Example:
 
 ```
 struct Bar;
@@ -2519,9 +2520,8 @@ impl Foo for Bar {
 }
 ```
 
-To fix this error, please verify you didn't misspell the associated type name
-and that your trait item implementation corresponds to the trait definition.
-Example:
+Please verify that the associated type name wasn't misspelled and your
+implementation corresponds to the trait definition. Example:
 
 ```
 struct Bar;
@@ -2722,8 +2722,8 @@ let x = 12f32; // error: binary operation `<<` cannot be applied to
 x << 2;
 ```
 
-To fix this error, please check this type implements this binary operation.
-Example:
+To fix this error, please check that this type implements this binary
+operation. Example:
 
 ```
 let x = 12u32; // the `u32` type does implement it:
@@ -2775,7 +2775,8 @@ For more information see the [opt-in builtin traits RFC](https://github.com/rust
 "##,
 
 E0390: r##"
-You tried to implement on an `*mut T` type. Erroneous code example:
+You tried to implement methods for a mutable raw pointer (*mut T). Erroneous
+code example:
 
 ```
 struct Foo {
@@ -2787,7 +2788,12 @@ impl *mut Foo {}
 //        `#[lang = "mut_ptr"]` is allowed for the `*mut T` primitive
 ```
 
-To fix this, please follow the compiler recommendations.
+This isn't allowed, perhaps you might get the desired effects by wrapping the
+raw pointer in a struct. Example:
+
+```
+struct FooPtr(pub *mut Foo);
+```
 "##,
 
 E0391: r##"
