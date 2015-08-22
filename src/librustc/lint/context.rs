@@ -43,6 +43,7 @@ use syntax::codemap::Span;
 use syntax::visit::{Visitor, FnKind};
 use syntax::parse::token::InternedString;
 use syntax::{ast, ast_util, visit};
+use syntax::diagnostic;
 
 /// Information about the registered lints.
 ///
@@ -141,7 +142,7 @@ impl LintStore {
                 match (sess, from_plugin) {
                     // We load builtin lints first, so a duplicate is a compiler bug.
                     // Use early_error when handling -W help with no crate.
-                    (None, _) => early_error(&msg[..]),
+                    (None, _) => early_error(diagnostic::Auto, &msg[..]),
                     (Some(sess), false) => sess.bug(&msg[..]),
 
                     // A duplicate name from a plugin is a user error.
@@ -166,7 +167,7 @@ impl LintStore {
             match (sess, from_plugin) {
                 // We load builtin lints first, so a duplicate is a compiler bug.
                 // Use early_error when handling -W help with no crate.
-                (None, _) => early_error(&msg[..]),
+                (None, _) => early_error(diagnostic::Auto, &msg[..]),
                 (Some(sess), false) => sess.bug(&msg[..]),
 
                 // A duplicate name from a plugin is a user error.

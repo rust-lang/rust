@@ -117,11 +117,11 @@ pub fn run_compiler<'a>(args: &[String],
         None => return
     };
 
+    let sopts = config::build_session_options(&matches);
+
     let descriptions = diagnostics_registry();
 
-    do_or_return!(callbacks.early_callback(&matches, &descriptions));
-
-    let sopts = config::build_session_options(&matches);
+    do_or_return!(callbacks.early_callback(&matches, &descriptions, sopts.color));
 
     let (odir, ofile) = make_output(&matches);
     let (input, input_file_path) = match make_input(&matches.free) {
@@ -205,7 +205,8 @@ pub trait CompilerCalls<'a> {
     // else (e.g., selecting input and output).
     fn early_callback(&mut self,
                       _: &getopts::Matches,
-                      _: &diagnostics::registry::Registry)
+                      _: &diagnostics::registry::Registry,
+                      _: diagnostic::ColorConfig)
                       -> Compilation {
         Compilation::Continue
     }
@@ -277,7 +278,8 @@ pub struct RustcDefaultCalls;
 impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
-                      descriptions: &diagnostics::registry::Registry)
+                      descriptions: &diagnostics::registry::Registry,
+                      color: diagnostic::ColorConfig)
                       -> Compilation {
         match matches.opt_str("explain") {
             Some(ref code) => {
@@ -287,7 +289,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                         print!("{}", &description[1..]);
                     }
                     None => {
-                        early_error(&format!("no extended information for {}", code));
+                        early_error(color, &format!("no extended information for {}", code));
                     }
                 }
                 return Compilation::Stop;
@@ -319,10 +321,10 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 if should_stop == Compilation::Stop {
                     return None;
                 }
-                early_error("no input filename given");
+                early_error(sopts.color, "no input filename given");
             }
             1 => panic!("make_input should have provided valid inputs"),
-            _ => early_error("multiple input filenames provided")
+            _ => early_error(sopts.color, "multiple input filenames provided")
         }
 
         None
@@ -414,7 +416,7 @@ impl RustcDefaultCalls {
                     println!("{}", String::from_utf8(v).unwrap());
                 }
                 &Input::Str(_) => {
-                    early_error("cannot list metadata for stdin");
+                    early_error(sess.opts.color, "cannot list metadata for stdin");
                 }
             }
             return Compilation::Stop;
@@ -441,7 +443,7 @@ impl RustcDefaultCalls {
                 PrintRequest::CrateName => {
                     let input = match input {
                         Some(input) => input,
-                        None => early_error("no input file provided"),
+                        None => early_error(sess.opts.color, "no input file provided"),
                     };
                     let attrs = attrs.as_ref().unwrap();
                     let t_outputs = driver::build_output_filenames(input,
@@ -701,14 +703,15 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
                             &opt.opt_group.short_name
                         };
                         if m.opt_present(opt_name) {
-                            early_error(&format!("use of unstable option '{}' requires \
-                                                  -Z unstable-options", opt_name));
+                            early_error(diagnostic::Auto, &format!("use of unstable option '{}' \
+                                                                    requires -Z unstable-options",
+                                                                   opt_name));
                         }
                     }
                 }
                 m
             }
-            Err(f) => early_error(&f.to_string())
+            Err(f) => early_error(diagnostic::Auto, &f.to_string())
         }
     }
 
