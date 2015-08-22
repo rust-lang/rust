@@ -355,6 +355,10 @@ nav.sub {
     margin-left: 20px;
 }
 
+.content .stability code {
+	font-size: 90%;
+}
+
 nav {
     border-bottom: 1px solid #e0e0e0;
     padding-bottom: 10px;
@@ -387,11 +391,11 @@ a {
     background: transparent;
 }
 
-.docblock a {
+.docblock a, .stability a {
     color: #4e8bca;
 }
 
-.docblock a:hover {
+.docblock a:hover, .stability a {
     text-decoration: underline;
 }
 
