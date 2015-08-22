@@ -2791,11 +2791,21 @@ impl *mut Foo {}
 //        `#[lang = "mut_ptr"]` is allowed for the `*mut T` primitive
 ```
 
-This isn't allowed, perhaps you might get the desired effects by wrapping the
-raw pointer in a struct. Example:
+This isn't allowed, but using a trait to implement a method is a good solution.
+Example:
 
 ```
-struct FooPtr(pub *mut Foo);
+struct Foo {
+    x: i32
+}
+
+trait Bar {
+    fn bar();
+}
+
+impl Bar for *mut Foo {
+    fn bar() {} // ok!
+}
 ```
 "##,
 
