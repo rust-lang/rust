@@ -73,8 +73,8 @@ hello.rs:4 }
 ```
 
 This [unfortunate error](https://github.com/rust-lang/rust/issues/22547) is
-correct: documentation comments apply to the thing after them, and there's no
-thing after that last comment.
+correct: documentation comments apply to the thing after them, and there's 
+nothing after that last comment.
 
 [rc-new]: https://doc.rust-lang.org/nightly/std/rc/struct.Rc.html#method.new
 
