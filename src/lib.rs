@@ -70,6 +70,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box lifetimes::LifetimePass as LintPassObject);
     reg.register_lint_pass(box ranges::StepByZero as LintPassObject);
     reg.register_lint_pass(box types::CastPass as LintPassObject);
+    reg.register_lint_pass(box types::TypeComplexityPass as LintPassObject);
 
     reg.register_lint_group("clippy", vec![
         approx_const::APPROX_CONSTANT,
@@ -111,6 +112,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         types::CAST_SIGN_LOSS,
         types::LET_UNIT_VALUE,
         types::LINKEDLIST,
+        types::TYPE_COMPLEXITY,
         types::UNIT_CMP,
         unicode::NON_ASCII_LITERAL,
         unicode::ZERO_WIDTH_SPACE,
