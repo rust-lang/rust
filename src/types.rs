@@ -150,12 +150,19 @@ declare_lint!(pub CAST_POSSIBLE_TRUNCATION, Allow,
 /// Will return 0 if the type is not an int or uint variant
 fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
     let n = match &typ.sty {
-    &ty::TyInt(i) =>  4 << (i as usize),
-    &ty::TyUint(u) => 4 << (u as usize),
-    _ => 0
+        &ty::TyInt(i) =>  4 << (i as usize),
+        &ty::TyUint(u) => 4 << (u as usize),
+        _ => 0
     };
     // n == 4 is the usize/isize case
     if n == 4 { ::std::usize::BITS } else { n }
+}
+
+fn is_isize_or_usize(typ: &ty::TyS) -> bool {
+    match &typ.sty {
+        &ty::TyInt(ast::TyIs) | &ty::TyUint(ast::TyUs) => true,
+        _ => false
+    }
 }
 
 impl LintPass for CastPass {
@@ -178,7 +185,14 @@ impl LintPass for CastPass {
                             _ => 0
                         };
                         if from_nbits != 0 {
-                            if from_nbits >= to_nbits {
+                            // When casting to f32, precision loss would occur regardless of the arch
+                            if is_isize_or_usize(cast_from) && to_nbits == 64 {
+                                span_lint(cx, CAST_PRECISION_LOSS, expr.span,
+                                          &format!("converting from {0} to f64, which causes a loss of precision on 64-bit architectures \
+                                          			({0} is 64 bits wide, but f64's mantissa is only 52 bits wide)",
+                                                   cast_from));
+                            }
+                            else if from_nbits >= to_nbits {
                                 span_lint(cx, CAST_PRECISION_LOSS, expr.span,
                                           &format!("converting from {0} to {1}, which causes a loss of precision \
                                           			({0} is {2} bits wide, but {1}'s mantissa is only {3} bits wide)",
@@ -186,7 +200,7 @@ impl LintPass for CastPass {
                             }
                         }
                     },
-                    (false, true) => {
+                    (false, true) => { // Nothing to add there
                         span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
                                   &format!("casting {} to {} may cause truncation of the value", cast_from, cast_to));
                         if !cast_to.is_signed() {
@@ -201,10 +215,15 @@ impl LintPass for CastPass {
                         }
                         let from_nbits = int_ty_to_nbits(cast_from);
                         let to_nbits   = int_ty_to_nbits(cast_to);
-                        if to_nbits < from_nbits ||
-                           (!cast_from.is_signed() && cast_to.is_signed() && to_nbits <= from_nbits) {
-                                span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
-                                          &format!("casting {} to {} may cause truncation of the value", cast_from, cast_to));
+                        match (is_isize_or_usize(cast_from), is_isize_or_usize(cast_to)) {
+                            (true, true) | (false, false) =>
+                                if to_nbits < from_nbits ||
+                                   (!cast_from.is_signed() && cast_to.is_signed() && to_nbits <= from_nbits) {
+                                        span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
+                                                  &format!("casting {} to {} may cause truncation of the value", cast_from, cast_to));
+                                },
+                            (true, false) => (), // TODO
+                            (false, true) => ()  // TODO
                         }
                     }
                     (false, false) => {

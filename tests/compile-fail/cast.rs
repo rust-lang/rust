@@ -32,26 +32,12 @@ fn main() {
     i as u32; //~ERROR casting from i32 to u32 loses the sign of the value
 
     // Extra checks for usize/isize
-    let is : isize = -42;
-    is as usize; //~ERROR casting from isize to usize loses the sign of the value
-    is as i8; //~ERROR casting isize to i8 may cause truncation of the value
-
-    // FIXME : enable these checks when we figure out a way to make compiletest deal with conditional compilation
     /*
-    #[cfg(target_pointer_width = "64")]
-    fn check_64() {
-        let is : isize = -42;
-        let us : usize = 42;
-        is as f32; //ERROR converting from isize to f32, which causes a loss of precision (isize is 64 bits wide, but f32's mantissa is only 23 bits wide)
-        us as u32; //ERROR casting usize to u32 may cause truncation of the value
-        us as u64; // Should not trigger any lint
-    }
-    #[cfg(target_pointer_width = "32")]
-    fn check_32() {
-        let is : isize = -42;
-        let us : usize = 42;
-        is as f32; //ERROR converting from isize to f32, which causes a loss of precision (isize is 32 bits wide, but f32's mantissa is only 23 bits wide)
-        us as u32; // Should not trigger any lint
-        us as u64; // Should not trigger any lint
-    }*/
+    let is : isize = -42;
+    let us : usize = 42;
+    is as usize; //ERROR casting from isize to usize loses the sign of the value
+    is as i8; //ERROR casting isize to i8 may cause truncation of the value
+    is as f64; //ERROR converting from isize to f64, which causes a loss of precision on 64-bit architectures (isize is 64 bits wide, but f64's mantissa is only 52 bits wide)
+    us as f64; //ERROR converting from usize to f64, which causes a loss of precision on 64-bit architectures (usize is 64 bits wide, but f64's mantissa is only 52 bits wide)
+    */
 }
