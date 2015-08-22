@@ -60,9 +60,9 @@ fn fetch_bool_block(block: &Block) -> Option<bool> {
 }
 
 fn fetch_bool_expr(expr: &Expr) -> Option<bool> {
-    match &expr.node {
-        &ExprBlock(ref block) => fetch_bool_block(block),
-        &ExprLit(ref lit_ptr) => if let &LitBool(value) = &lit_ptr.node {
+    match expr.node {
+        ExprBlock(ref block) => fetch_bool_block(block),
+        ExprLit(ref lit_ptr) => if let LitBool(value) = lit_ptr.node {
             Some(value) } else { None },
         _ => None
     }

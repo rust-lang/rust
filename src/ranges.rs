@@ -1,8 +1,7 @@
 use rustc::lint::{Context, LintArray, LintPass};
-use rustc::middle::ty::TypeVariants::TyStruct;
 use syntax::ast::*;
 use syntax::codemap::Spanned;
-use utils::{match_def_path};
+use utils::match_type;
 
 declare_lint! {
     pub RANGE_STEP_BY_ZERO, Warn,
@@ -34,11 +33,9 @@ impl LintPass for StepByZero {
 fn is_range(cx: &Context, expr: &Expr) -> bool {
     // No need for walk_ptrs_ty here because step_by moves self, so it
     // can't be called on a borrowed range.
-    if let TyStruct(did, _) = cx.tcx.expr_ty(expr).sty {
-        // Note: RangeTo and RangeFull don't have step_by
-        match_def_path(cx, did.did, &["core", "ops", "Range"]) ||
-        match_def_path(cx, did.did, &["core", "ops", "RangeFrom"])
-    } else { false }
+    let ty = cx.tcx.expr_ty(expr);
+    // Note: RangeTo and RangeFull don't have step_by
+    match_type(cx, ty, &["core", "ops", "Range"]) || match_type(cx, ty, &["core", "ops", "RangeFrom"])
 }
 
 fn is_lit_zero(expr: &Expr) -> bool {

@@ -37,10 +37,10 @@ impl LintPass for ApproxConstant {
 }
 
 fn check_lit(cx: &Context, lit: &Lit, span: Span) {
-    match &lit.node {
-        &LitFloat(ref str, TyF32) => check_known_consts(cx, span, str, "f32"),
-        &LitFloat(ref str, TyF64) => check_known_consts(cx, span, str, "f64"),
-        &LitFloatUnsuffixed(ref str) => check_known_consts(cx, span, str, "f{32, 64}"),
+    match lit.node {
+        LitFloat(ref str, TyF32) => check_known_consts(cx, span, str, "f32"),
+        LitFloat(ref str, TyF64) => check_known_consts(cx, span, str, "f64"),
+        LitFloatUnsuffixed(ref str) => check_known_consts(cx, span, str, "f{32, 64}"),
         _ => ()
     }
 }

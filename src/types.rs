@@ -2,11 +2,13 @@ use rustc::lint::*;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_util::{is_comparison_binop, binop_to_string};
-use syntax::ptr::P;
+use syntax::codemap::Span;
+use syntax::visit::{FnKind, Visitor, walk_ty};
 use rustc::middle::ty;
 use syntax::codemap::ExpnInfo;
 
-use utils::{in_macro, snippet, span_lint, span_help_and_lint, in_external_macro};
+use utils::{in_macro, match_type, snippet, span_lint, span_help_and_lint, in_external_macro};
+use utils::{LL_PATH, VEC_PATH};
 
 /// Handles all the linting of funky types
 #[allow(missing_copy_implementations)]
@@ -18,61 +20,26 @@ declare_lint!(pub LINKEDLIST, Warn,
               "usage of LinkedList, usually a vector is faster, or a more specialized data \
                structure like a RingBuf");
 
-/// Matches a type with a provided string, and returns its type parameters if successful
-pub fn match_ty_unwrap<'a>(ty: &'a Ty, segments: &[&str]) -> Option<&'a [P<Ty>]> {
-    match ty.node {
-        TyPath(_, Path {segments: ref seg, ..}) => {
-            // So ast::Path isn't the full path, just the tokens that were provided.
-            // I could muck around with the maps and find the full path
-            // however the more efficient way is to simply reverse the iterators and zip them
-            // which will compare them in reverse until one of them runs out of segments
-            if seg.iter().rev().zip(segments.iter().rev()).all(|(a,b)| a.identifier.name == b) {
-                match seg[..].last() {
-                    Some(&PathSegment {parameters: AngleBracketedParameters(ref a), ..}) => {
-                        Some(&a.types[..])
-                    }
-                    _ => None
-                }
-            } else {
-                None
-            }
-        },
-        _ => None
-    }
-}
-
-#[allow(unused_imports)]
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
         lint_array!(BOX_VEC, LINKEDLIST)
     }
 
-    fn check_ty(&mut self, cx: &Context, ty: &ast::Ty) {
-        {
-            // In case stuff gets moved around
-            use std::boxed::Box;
-            use std::vec::Vec;
-        }
-        match_ty_unwrap(ty, &["std", "boxed", "Box"]).and_then(|t| t.first())
-          .and_then(|t| match_ty_unwrap(&**t, &["std", "vec", "Vec"]))
-          .map(|_| {
-            span_help_and_lint(cx, BOX_VEC, ty.span,
-                              "you seem to be trying to use `Box<Vec<T>>`. Did you mean to use `Vec<T>`?",
-                              "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation");
-          });
-        {
-            // In case stuff gets moved around
-            use collections::linked_list::LinkedList as DL1;
-            use std::collections::linked_list::LinkedList as DL2;
-        }
-        let dlists = [vec!["std","collections","linked_list","LinkedList"],
-                      vec!["collections","linked_list","LinkedList"]];
-        for path in &dlists {
-            if match_ty_unwrap(ty, &path[..]).is_some() {
-                span_help_and_lint(cx, LINKEDLIST, ty.span,
-                                   "I see you're using a LinkedList! Perhaps you meant some other data structure?",
-                                   "a RingBuf might work");
-                return;
+    fn check_ty(&mut self, cx: &Context, ast_ty: &ast::Ty) {
+        if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
+            if let ty::TyBox(ref inner) = ty.sty {
+                if match_type(cx, inner, &VEC_PATH) {
+                    span_help_and_lint(
+                        cx, BOX_VEC, ast_ty.span,
+                        "you seem to be trying to use `Box<Vec<T>>`. Did you mean to use `Vec<T>`?",
+                        "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation");
+                }
+            }
+            else if match_type(cx, ty, &LL_PATH) {
+                span_help_and_lint(
+                    cx, LINKEDLIST, ast_ty.span,
+                    "I see you're using a LinkedList! Perhaps you meant some other data structure?",
+                    "a RingBuf might work");
             }
         }
     }
@@ -151,9 +118,9 @@ declare_lint!(pub CAST_POSSIBLE_WRAP, Allow,
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
 fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
-    let n = match &typ.sty {
-        &ty::TyInt(i) =>  4 << (i as usize),
-        &ty::TyUint(u) => 4 << (u as usize),
+    let n = match typ.sty {
+        ty::TyInt(i) =>  4 << (i as usize),
+        ty::TyUint(u) => 4 << (u as usize),
         _ => 0
     };
     // n == 4 is the usize/isize case
@@ -161,8 +128,8 @@ fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
 }
 
 fn is_isize_or_usize(typ: &ty::TyS) -> bool {
-    match &typ.sty {
-        &ty::TyInt(ast::TyIs) | &ty::TyUint(ast::TyUs) => true,
+    match typ.sty {
+        ty::TyInt(ast::TyIs) | ty::TyUint(ast::TyUs) => true,
         _ => false
     }
 }
@@ -182,9 +149,9 @@ impl LintPass for CastPass {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
                         let from_nbits = int_ty_to_nbits(cast_from);
-                        let to_nbits : usize = match &cast_to.sty {
-                            &ty::TyFloat(ast::TyF32) => 32,
-                            &ty::TyFloat(ast::TyF64) => 64,
+                        let to_nbits : usize = match cast_to.sty {
+                            ty::TyFloat(ast::TyF32) => 32,
+                            ty::TyFloat(ast::TyF64) => 64,
                             _ => 0
                         };
                         if from_nbits != 0 {
@@ -206,13 +173,12 @@ impl LintPass for CastPass {
                             else if from_nbits >= to_nbits {
                                 span_lint(cx, CAST_PRECISION_LOSS, expr.span,
                                           &format!("casting {0} to {1} causes a loss of precision \
-                                          			({0} is {2} bits wide, but {1}'s mantissa is only {3} bits wide)",
+                                          	    ({0} is {2} bits wide, but {1}'s mantissa is only {3} bits wide)",
                                                    cast_from, cast_to, from_nbits, if to_nbits == 64 {52} else {23} ));
                             }
                         }
                     },
                     (false, true) => {
-                        // Nothing to add there as long as UB in involved when the cast overflows
                         span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
                                   &format!("casting {} to {} may truncate the value", cast_from, cast_to));
                         if !cast_to.is_signed() {
@@ -281,5 +247,129 @@ impl LintPass for CastPass {
                 }
             }
         }
+    }
+}
+
+declare_lint!(pub TYPE_COMPLEXITY, Warn,
+              "usage of very complex types; recommends factoring out parts into `type` definitions");
+
+#[allow(missing_copy_implementations)]
+pub struct TypeComplexityPass;
+
+impl LintPass for TypeComplexityPass {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(TYPE_COMPLEXITY)
+    }
+
+    fn check_fn(&mut self, cx: &Context, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
+        check_fndecl(cx, decl);
+    }
+
+    fn check_struct_field(&mut self, cx: &Context, field: &StructField) {
+        check_type(cx, &*field.node.ty);
+    }
+
+    fn check_variant(&mut self, cx: &Context, var: &Variant, _: &Generics) {
+        // StructVariant is covered by check_struct_field
+        if let TupleVariantKind(ref args) = var.node.kind {
+            for arg in args {
+                check_type(cx, &*arg.ty);
+            }
+        }
+    }
+
+    fn check_item(&mut self, cx: &Context, item: &Item) {
+        match item.node {
+            ItemStatic(ref ty, _, _) |
+            ItemConst(ref ty, _) => check_type(cx, ty),
+            // functions, enums, structs, impls and traits are covered
+            _ => ()
+        }
+    }
+
+    fn check_trait_item(&mut self, cx: &Context, item: &TraitItem) {
+        match item.node {
+            ConstTraitItem(ref ty, _) |
+            TypeTraitItem(_, Some(ref ty)) => check_type(cx, ty),
+            MethodTraitItem(MethodSig { ref decl, .. }, None) => check_fndecl(cx, decl),
+            // methods with default impl are covered by check_fn
+            _ => ()
+        }
+    }
+
+    fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) {
+        match item.node {
+            ConstImplItem(ref ty, _) |
+            TypeImplItem(ref ty) => check_type(cx, ty),
+            // methods are covered by check_fn
+            _ => ()
+        }
+    }
+
+    fn check_local(&mut self, cx: &Context, local: &Local) {
+        if let Some(ref ty) = local.ty {
+            check_type(cx, ty);
+        }
+    }
+}
+
+fn check_fndecl(cx: &Context, decl: &FnDecl) {
+    for arg in &decl.inputs {
+        check_type(cx, &*arg.ty);
+    }
+    if let Return(ref ty) = decl.output {
+        check_type(cx, ty);
+    }
+}
+
+fn check_type(cx: &Context, ty: &ast::Ty) {
+    if in_external_macro(cx, ty.span) { return; }
+    let score = {
+        let mut visitor = TypeComplexityVisitor { score: 0, nest: 1 };
+        visitor.visit_ty(ty);
+        visitor.score
+    };
+    // println!("{:?} --> {}", ty, score);
+    if score > 250 {
+        span_lint(cx, TYPE_COMPLEXITY, ty.span, &format!(
+            "very complex type used. Consider factoring parts into `type` definitions"));
+    }
+}
+
+/// Walks a type and assigns a complexity score to it.
+struct TypeComplexityVisitor {
+    /// total complexity score of the type
+    score: u32,
+    /// current nesting level
+    nest: u32,
+}
+
+impl<'v> Visitor<'v> for TypeComplexityVisitor {
+    fn visit_ty(&mut self, ty: &'v ast::Ty) {
+        let (add_score, sub_nest) = match ty.node {
+            // _, &x and *x have only small overhead; don't mess with nesting level
+            TyInfer |
+            TyPtr(..) |
+            TyRptr(..) => (1, 0),
+
+            // the "normal" components of a type: named types, arrays/tuples
+            TyPath(..) |
+            TyVec(..) |
+            TyTup(..) |
+            TyFixedLengthVec(..) => (10 * self.nest, 1),
+
+            // "Sum" of trait bounds
+            TyObjectSum(..) => (20 * self.nest, 0),
+
+            // function types and "for<...>" bring a lot of overhead
+            TyBareFn(..) |
+            TyPolyTraitRef(..) => (50 * self.nest, 1),
+
+            _ => (0, 0)
+        };
+        self.score += add_score;
+        self.nest += sub_nest;
+        walk_ty(self, ty);
+        self.nest -= sub_nest;
     }
 }

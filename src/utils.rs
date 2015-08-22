@@ -6,6 +6,13 @@ use rustc::ast_map::Node::NodeExpr;
 use rustc::middle::ty;
 use std::borrow::Cow;
 
+// module DefPaths for certain structs/enums we check for
+pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
+pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
+pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
+pub const VEC_PATH:    [&'static str; 3] = ["collections", "vec", "Vec"];
+pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
+
 /// returns true if the macro that expanded the crate was outside of
 /// the current crate or was a compiler plugin
 pub fn in_macro(cx: &Context, opt_info: Option<&ExpnInfo>) -> bool {
@@ -35,6 +42,18 @@ pub fn in_external_macro(cx: &Context, span: Span) -> bool {
 pub fn match_def_path(cx: &Context, def_id: DefId, path: &[&str]) -> bool {
     cx.tcx.with_path(def_id, |iter| iter.map(|elem| elem.name())
         .zip(path.iter()).all(|(nm, p)| nm == p))
+}
+
+/// check if type is struct or enum type with given def path
+pub fn match_type(cx: &Context, ty: ty::Ty, path: &[&str]) -> bool {
+    match ty.sty {
+        ty::TyEnum(ref adt, _) | ty::TyStruct(ref adt, _) => {
+            match_def_path(cx, adt.did, path)
+        }
+        _ => {
+            false
+        }
+    }
 }
 
 /// match a Path against a slice of segment string literals, e.g.

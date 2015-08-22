@@ -30,6 +30,7 @@ len_zero                 | warn    | checking `.len() == 0` or `.len() > 0` (or 
 let_and_return           | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a function
 let_unit_value           | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
 linkedlist               | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a RingBuf
+match_ref_pats           | warn    | a match has all arms prefixed with `&`; the match expression can be dereferenced instead
 modulo_one               | warn    | taking a number modulo 1, which always returns 0
 mut_mut                  | warn    | usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, or shows a fundamental misunderstanding of references)
 needless_bool            | warn    | if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
@@ -49,6 +50,7 @@ string_add               | allow   | using `x + ..` where x is a `String`; sugge
 string_add_assign        | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
 string_to_string         | warn    | calling `String.to_string()` which is a no-op
 toplevel_ref_arg         | warn    | a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`)
+type_complexity          | warn    | usage of very complex types; recommends factoring out parts into `type` definitions
 unit_cmp                 | warn    | comparing unit values (which is always `true` or `false`, respectively)
 zero_width_space         | deny    | using a zero-width space in a string literal, which is confusing
 
