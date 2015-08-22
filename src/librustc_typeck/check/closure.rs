@@ -14,7 +14,6 @@ use super::{check_fn, Expectation, FnCtxt};
 
 use astconv;
 use middle::def_id::DefId;
-use middle::region;
 use middle::subst;
 use middle::ty::{self, ToPolyTraitRef, Ty};
 use std::cmp;
@@ -77,7 +76,7 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     fcx.write_ty(expr.id, closure_type);
 
     let fn_sig = fcx.tcx().liberate_late_bound_regions(
-        region::DestructionScopeData::new(body.id), &fn_ty.sig);
+        fcx.tcx().region_maps.item_extent(body.id), &fn_ty.sig);
 
     check_fn(fcx.ccx,
              ast::Unsafety::Normal,

@@ -1679,7 +1679,7 @@ impl Region {
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
-    pub scope: region::DestructionScopeData,
+    pub scope: region::CodeExtent,
     pub bound_region: BoundRegion
 }
 
@@ -6610,7 +6610,7 @@ impl<'tcx> ctxt<'tcx> {
             types.push(def.space, self.mk_param_from_def(def));
         }
 
-        let free_id_outlive = region::DestructionScopeData::new(free_id);
+        let free_id_outlive = self.region_maps.item_extent(free_id);
 
         // map bound 'a => free 'a
         let mut regions = VecPerParamSpace::empty();
@@ -6641,7 +6641,7 @@ impl<'tcx> ctxt<'tcx> {
         //
 
         let free_substs = self.construct_free_substs(generics, free_id);
-        let free_id_outlive = region::DestructionScopeData::new(free_id);
+        let free_id_outlive = self.region_maps.item_extent(free_id);
 
         //
         // Compute the bounds on Self and the type parameters.
@@ -6673,8 +6673,7 @@ impl<'tcx> ctxt<'tcx> {
         let unnormalized_env = ty::ParameterEnvironment {
             tcx: self,
             free_substs: free_substs,
-            implicit_region_bound: ty::ReScope(
-                free_id_outlive.to_code_extent(&self.region_maps)),
+            implicit_region_bound: ty::ReScope(free_id_outlive),
             caller_bounds: predicates,
             selection_cache: traits::SelectionCache::new(),
             free_id: free_id,
@@ -6838,7 +6837,7 @@ impl<'tcx> ctxt<'tcx> {
     /// Replace any late-bound regions bound in `value` with free variants attached to scope-id
     /// `scope_id`.
     pub fn liberate_late_bound_regions<T>(&self,
-        all_outlive_scope: region::DestructionScopeData,
+        all_outlive_scope: region::CodeExtent,
         value: &Binder<T>)
         -> T
         where T : TypeFoldable<'tcx>

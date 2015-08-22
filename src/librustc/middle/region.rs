@@ -309,6 +309,13 @@ impl RegionMaps {
     pub fn lookup_code_extent(&self, e: CodeExtentData) -> CodeExtent {
         self.code_extent_interner.borrow()[&e]
     }
+    pub fn node_extent(&self, n: ast::NodeId) -> CodeExtent {
+        self.lookup_code_extent(CodeExtentData::Misc(n))
+    }
+    // Returns the code extent for an item - the destruction scope.
+    pub fn item_extent(&self, n: ast::NodeId) -> CodeExtent {
+        self.lookup_code_extent(CodeExtentData::DestructionScope(n))
+    }
     pub fn intern_code_extent(&self,
                               e: CodeExtentData,
                               parent: CodeExtent) -> CodeExtent {
@@ -349,9 +356,6 @@ impl RegionMaps {
                        n: ast::NodeId,
                        parent: CodeExtent) -> CodeExtent {
         self.intern_code_extent(CodeExtentData::Misc(n), parent)
-    }
-    pub fn node_extent(&self, n: ast::NodeId) -> CodeExtent {
-        self.lookup_code_extent(CodeExtentData::Misc(n))
     }
     pub fn code_extent_data(&self, e: CodeExtent) -> CodeExtentData {
         self.code_extents.borrow()[e.0 as usize]

@@ -2311,7 +2311,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
             _ => typ,
         };
 
-        let body_scope = region::DestructionScopeData::new(body_id);
+        let body_scope = tcx.region_maps.item_extent(body_id);
 
         // "Required type" comes from the trait definition. It may
         // contain late-bound regions from the method, but not the
@@ -2363,7 +2363,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
 
     fn liberate_early_bound_regions<'tcx,T>(
         tcx: &ty::ctxt<'tcx>,
-        scope: region::DestructionScopeData,
+        scope: region::CodeExtent,
         value: &T)
         -> T
         where T : TypeFoldable<'tcx>

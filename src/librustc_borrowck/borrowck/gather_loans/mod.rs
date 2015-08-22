@@ -360,9 +360,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 let loan_scope = match loan_region {
                     ty::ReScope(scope) => scope,
 
-                    ty::ReFree(ref fr) => {
-                        fr.scope.to_code_extent(&self.tcx().region_maps)
-                    }
+                    ty::ReFree(ref fr) => fr.scope,
 
                     ty::ReStatic => {
                         // If we get here, an error must have been

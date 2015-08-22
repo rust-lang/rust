@@ -13,7 +13,6 @@ use check::{FnCtxt, Inherited, blank_fn_ctxt, regionck};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
 use middle::def_id::DefId;
-use middle::region::DestructionScopeData;
 use middle::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
 use middle::traits;
 use middle::ty::{self, Ty};
@@ -362,7 +361,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     {
         let free_substs = &fcx.inh.infcx.parameter_environment.free_substs;
         let fty = fcx.instantiate_type_scheme(span, free_substs, fty);
-        let free_id_outlive = DestructionScopeData::new(free_id);
+        let free_id_outlive = fcx.tcx().region_maps.item_extent(free_id);
         let sig = fcx.tcx().liberate_late_bound_regions(free_id_outlive, &fty.sig);
 
         for &input_ty in &sig.inputs {

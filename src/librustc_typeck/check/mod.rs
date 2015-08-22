@@ -91,7 +91,6 @@ use middle::infer;
 use middle::infer::type_variable;
 use middle::pat_util::{self, pat_id_map};
 use middle::privacy::{AllPublic, LastMod};
-use middle::region::{self};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
 use middle::traits::{self, report_fulfillment_errors};
 use middle::ty::{FnSig, GenericPredicates, TypeScheme};
@@ -455,11 +454,11 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let inh = Inherited::new(ccx.tcx, &tables, param_env);
 
             // Compute the fty from point of view of inside fn.
+            let fn_scope = ccx.tcx.region_maps.item_extent(body.id);
             let fn_sig =
                 fn_ty.sig.subst(ccx.tcx, &inh.infcx.parameter_environment.free_substs);
             let fn_sig =
-                ccx.tcx.liberate_late_bound_regions(region::DestructionScopeData::new(body.id),
-                                                    &fn_sig);
+                ccx.tcx.liberate_late_bound_regions(fn_scope, &fn_sig);
             let fn_sig =
                 inh.normalize_associated_types_in(body.span,
                                                   body.id,
