@@ -12,6 +12,7 @@ import subprocess
 import os
 import sys
 
+target_triple = sys.argv[14]
 
 def normalize_path(v):
     """msys1/msys2 automatically converts `/abs/path1:/abs/path2` into
@@ -22,8 +23,11 @@ def normalize_path(v):
     windows paths so it is really error-prone. revert it for peace."""
     v = v.replace('\\', '/')
     # c:/path -> /c/path
-    if ':/' in v:
-        v = '/' + v.replace(':/', '/')
+    # "c:/path" -> "/c/path"
+    start = v.find(':/')
+    while start != -1:
+        v = v[:start - 1] + '/' + v[start - 1:start] + v[start + 1:]
+        start = v.find(':/')
     return v
 
 
@@ -50,6 +54,10 @@ putenv('TARGET_RPATH_DIR', os.path.abspath(sys.argv[11]))
 putenv('RUST_BUILD_STAGE', sys.argv[12])
 putenv('S', os.path.abspath(sys.argv[13]))
 putenv('PYTHON', sys.executable)
+os.putenv('TARGET', target_triple)
+
+if 'msvc' in target_triple:
+    os.putenv('IS_MSVC', '1')
 
 if filt not in sys.argv[1]:
     sys.exit(0)
