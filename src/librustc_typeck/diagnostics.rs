@@ -2731,6 +2731,9 @@ let x = 12u32; // the `u32` type does implement it:
 
 x << 2; // ok!
 ```
+
+It is also possible to overload most operators for your own type by
+implementing traits from `std::ops`.
 "##,
 
 E0371: r##"
