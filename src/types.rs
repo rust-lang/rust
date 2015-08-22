@@ -259,6 +259,7 @@ fn check_fndecl(cx: &Context, decl: &FnDecl) {
 }
 
 fn check_type(cx: &Context, ty: &ast::Ty) {
+    if in_external_macro(cx, ty.span) { return; }
     let score = {
         let mut visitor = TypeComplexityVisitor { score: 0, nest: 1 };
         visitor.visit_ty(ty);
