@@ -73,8 +73,8 @@ hello.rs:4 }
 ```
 
 This [unfortunate error](https://github.com/rust-lang/rust/issues/22547) is
-correct: documentation comments apply to the thing after them, and there's no
-thing after that last comment.
+correct: documentation comments apply to the thing after them, and there's 
+nothing after that last comment.
 
 [rc-new]: https://doc.rust-lang.org/nightly/std/rc/struct.Rc.html#method.new
 
@@ -196,10 +196,10 @@ This will highlight according to whatever language you're showing off.
 If you're just showing plain text, choose `text`.
 
 It's important to choose the correct annotation here, because `rustdoc` uses it
-in an interesting way: It can be used to actually test your examples, so that
-they don't get out of date. If you have some C code but `rustdoc` thinks it's
-Rust because you left off the annotation, `rustdoc` will complain when trying to
-generate the documentation.
+in an interesting way: It can be used to actually test your examples in a
+library crate, so that they don't get out of date. If you have some C code but
+`rustdoc` thinks it's Rust because you left off the annotation, `rustdoc` will
+complain when trying to generate the documentation.
 
 ## Documentation as tests
 
@@ -377,8 +377,8 @@ $ rustdoc --test path/to/my/crate/root.rs
 $ cargo test
 ```
 
-That's right, `cargo test` tests embedded documentation too. However,
-`cargo test` will not test binary crates, only library ones. This is
+That's right, `cargo test` tests embedded documentation too. **However,
+`cargo test` will not test binary crates, only library ones.** This is
 due to the way `rustdoc` works: it links against the library to be tested,
 but with a binary, there’s nothing to link to.
 
