@@ -56,7 +56,7 @@ pub trait Hair: Sized+Debug+Clone+Eq+Hash { // (*)
     /// Returns the type `usize`.
     fn usize_ty(&mut self) -> Self::Ty;
 
-    /// Returns the literal for `true`
+    /// Returns the literal for `value` as a `usize`.
     fn usize_literal(&mut self, value: usize) -> Literal<Self>;
 
     /// Returns the type `bool`.
@@ -65,7 +65,7 @@ pub trait Hair: Sized+Debug+Clone+Eq+Hash { // (*)
     /// Returns the literal for `true`
     fn true_literal(&mut self) -> Literal<Self>;
 
-    /// Returns the literal for `true`
+    /// Returns the literal for `false`
     fn false_literal(&mut self) -> Literal<Self>;
 
     /// Returns a reference to `PartialEq::<T,T>::eq`
