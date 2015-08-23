@@ -917,10 +917,14 @@ pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
     let _icx = push_ctxt("lifetime_start");
     let ccx = cx.ccx();
 
-    let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
+    let size = machine::llsize_of_alloc(ccx, val_ty(ptr).element_type());
+    if size == 0 {
+        return;
+    }
+
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
     let lifetime_start = ccx.get_intrinsic(&"llvm.lifetime.start");
-    Call(cx, lifetime_start, &[llsize, ptr], None, DebugLoc::None);
+    Call(cx, lifetime_start, &[C_u64(ccx, size), ptr], None, DebugLoc::None);
 }
 
 pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
@@ -931,10 +935,14 @@ pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
     let _icx = push_ctxt("lifetime_end");
     let ccx = cx.ccx();
 
-    let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
+    let size = machine::llsize_of_alloc(ccx, val_ty(ptr).element_type());
+    if size == 0 {
+        return;
+    }
+
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
     let lifetime_end = ccx.get_intrinsic(&"llvm.lifetime.end");
-    Call(cx, lifetime_end, &[llsize, ptr], None, DebugLoc::None);
+    Call(cx, lifetime_end, &[C_u64(ccx, size), ptr], None, DebugLoc::None);
 }
 
 pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
