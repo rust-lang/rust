@@ -1819,7 +1819,7 @@ fn bar(foo: Foo) -> u32 {
 }
 ```
 
-Try using `{}` isntead:
+Try using `{}` instead:
 
 ```
 fn bar(foo: Foo) -> u32 {
@@ -2010,8 +2010,8 @@ wrapped type `T` implements `Clone`. The `where` clause is important because
 some types will not implement `Clone`, and thus will not get this method.
 
 In our erroneous example, however, we're referencing a single concrete type.
-Since we know for certain that Wrapper<u32> implements Clone, there's no reason
-to also specify it in a `where` clause.
+Since we know for certain that `Wrapper<u32>` implements `Clone`, there's no
+reason to also specify it in a `where` clause.
 "##,
 
 E0194: r##"
@@ -2581,7 +2581,7 @@ In this example, we're attempting to take a type of `Foo::Bar` in the
 do_something function. This is not legal: `Foo::Bar` is a value of type `Foo`,
 not a distinct static type. Likewise, it's not legal to attempt to
 `impl Foo::Bar`: instead, you must `impl Foo` and then pattern match to specify
-behaviour for specific enum variants.
+behavior for specific enum variants.
 "##,
 
 E0249: r##"

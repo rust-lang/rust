@@ -93,13 +93,13 @@ println!("{}", vec[0]);
 This is pretty clearly Not Good. Unfortunately, we're kind've stuck between a
 rock and a hard place: maintaining consistent state at every step has an
 enormous cost (and would negate any benefits of the API). Failing to maintain
-consistent state gives us Undefined Behaviour in safe code (making the API
+consistent state gives us Undefined Behavior in safe code (making the API
 unsound).
 
 So what can we do? Well, we can pick a trivially consistent state: set the Vec's
 len to be 0 when we start the iteration, and fix it up if necessary in the
 destructor. That way, if everything executes like normal we get the desired
-behaviour with minimal overhead. But if someone has the *audacity* to
+behavior with minimal overhead. But if someone has the *audacity* to
 mem::forget us in the middle of the iteration, all that does is *leak even more*
 (and possibly leave the Vec in an unexpected but otherwise consistent state).
 Since we've accepted that mem::forget is safe, this is definitely safe. We call
