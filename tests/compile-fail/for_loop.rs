@@ -14,9 +14,9 @@ impl Unrelated {
     }
 }
 
-#[deny(needless_range_loop, explicit_iter_loop, iter_next_loop, reverse_range_loop)]
+#[deny(needless_range_loop, explicit_iter_loop, iter_next_loop, reverse_range_loop, explicit_counter_loop)]
 #[deny(unused_collect)]
-#[allow(linkedlist)]
+#[allow(linkedlist,shadow_unrelated)]
 fn main() {
     let mut vec = vec![1, 2, 3, 4];
     let vec2 = vec![1, 2, 3, 4];
@@ -119,4 +119,64 @@ fn main() {
     let mut out = vec![];
     vec.iter().map(|x| out.push(x)).collect::<Vec<_>>(); //~ERROR you are collect()ing an iterator
     let _y = vec.iter().map(|x| out.push(x)).collect::<Vec<_>>(); // this is fine
+
+    // Loop with explicit counter variable
+    let mut _index = 0;
+    for _v in &vec { _index += 1 } //~ERROR the variable `_index` is used as a loop counter
+
+    let mut _index = 1;
+    _index = 0;
+    for _v in &vec { _index += 1 } //~ERROR the variable `_index` is used as a loop counter
+
+    let mut _index;
+    _index = 0;
+    for _v in &vec { _index += 1 } //~ERROR the variable `_index` is used as a loop counter
+    for _v in &vec { _index += 1 } // But this does not warn
+
+    // Potential false positives
+    let mut _index = 0;
+    _index = 1;
+    for _v in &vec { _index += 1 }
+
+    let mut _index = 0;
+    _index += 1;
+    for _v in &vec { _index += 1 }
+
+    let mut _index = 0;
+    if true { _index = 1 }
+    for _v in &vec { _index += 1 }
+
+    let mut _index = 0;
+    let mut _index = 1;
+    for _v in &vec { _index += 1 }
+
+    let mut _index = 0;
+    for _v in &vec { _index += 1; _index += 1 }
+
+    let mut _index = 0;
+    for _v in &vec { _index *= 2; _index += 1 }
+
+    let mut _index = 0;
+    for _v in &vec { _index = 1; _index += 1 }
+
+    let mut _index = 0;
+
+    for _v in &vec { let mut _index = 0; _index += 1 }
+
+    let mut _index = 0;
+    for _v in &vec { _index += 1; _index = 0; }
+
+    let mut _index = 0;
+    for _v in &vec { for _x in 0..1 { _index += 1; }; _index += 1 }
+
+    let mut _index = 0;
+    for x in &vec { if *x == 1 { _index += 1 } }
+
+    let mut _index = 0;
+    if true { _index = 1 };
+    for _v in &vec { _index += 1 }
+
+    let mut _index = 1;
+    if false { _index = 0 };
+    for _v in &vec { _index += 1 }
 }

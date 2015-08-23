@@ -1,10 +1,12 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use reexport::*;
-use rustc_front::visit::{Visitor, walk_expr};
+use rustc_front::visit::{Visitor, walk_expr, walk_block, walk_decl};
 use rustc::middle::ty;
+use rustc::middle::def::DefLocal;
 use consts::{constant_simple, Constant};
-use std::collections::HashSet;
+use rustc::front::map::Node::{NodeBlock};
+use std::collections::{HashSet,HashMap};
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type,
             in_external_macro, expr_block, span_help_and_lint};
@@ -29,13 +31,16 @@ declare_lint!{ pub UNUSED_COLLECT, Warn,
 declare_lint!{ pub REVERSE_RANGE_LOOP, Warn,
                "Iterating over an empty range, such as `10..0` or `5..5`" }
 
+declare_lint!{ pub EXPLICIT_COUNTER_LOOP, Warn,
+               "for-looping with an explicit counter when `_.enumerate()` would do" }
+
 #[derive(Copy, Clone)]
 pub struct LoopsPass;
 
 impl LintPass for LoopsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_RANGE_LOOP, EXPLICIT_ITER_LOOP, ITER_NEXT_LOOP,
-                    WHILE_LET_LOOP, UNUSED_COLLECT, REVERSE_RANGE_LOOP)
+                    WHILE_LET_LOOP, UNUSED_COLLECT, REVERSE_RANGE_LOOP, EXPLICIT_COUNTER_LOOP)
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
@@ -117,6 +122,35 @@ impl LintPass for LoopsPass {
                         span_lint(cx, ITER_NEXT_LOOP, expr.span,
                                   "you are iterating over `Iterator::next()` which is an Option; \
                                    this will compile but is probably not what you want");
+                    }
+                }
+            }
+
+            // Look for variables that are incremented once per loop iteration.
+            let mut visitor = IncrementVisitor { cx: cx, states: HashMap::new(), depth: 0, done: false };
+            walk_expr(&mut visitor, body);
+
+            // For each candidate, check the parent block to see if
+            // it's initialized to zero at the start of the loop.
+            let map = &cx.tcx.map;
+            let parent_scope = map.get_enclosing_scope(expr.id).and_then(|id| map.get_enclosing_scope(id) );
+            if let Some(parent_id) = parent_scope {
+                if let NodeBlock(block) = map.get(parent_id) {
+                    for (id, _) in visitor.states.iter().filter( |&(_,v)| *v == VarState::IncrOnce) {
+                        let mut visitor2 = InitializeVisitor { cx: cx, end_expr: expr, var_id: id.clone(),
+                                                               state: VarState::IncrOnce, name: None,
+                                                               depth: 0, done: false };
+                        walk_block(&mut visitor2, block);
+
+                        if visitor2.state == VarState::Warn {
+                            if let Some(name) = visitor2.name {
+                                span_lint(cx, EXPLICIT_COUNTER_LOOP, expr.span,
+                                          &format!("the variable `{0}` is used as a loop counter. Consider \
+                                                    using `for ({0}, item) in _.iter().enumerate()` \
+                                                    or similar iterators.",
+                                                   name));
+                            }
+                        }
                     }
                 }
             }
@@ -269,4 +303,193 @@ fn is_break_expr(expr: &Expr) -> bool {
         },
         _ => false,
     }
+}
+
+// To trigger the EXPLICIT_COUNTER_LOOP lint, a variable must be
+// incremented exactly once in the loop body, and initialized to zero
+// at the start of the loop.
+#[derive(PartialEq)]
+enum VarState {
+    Initial,      // Not examined yet
+    IncrOnce,     // Incremented exactly once, may be a loop counter
+    Declared,     // Declared but not (yet) initialized to zero
+    Warn,
+    DontWarn
+}
+
+// Scan a for loop for variables that are incremented exactly once.
+struct IncrementVisitor<'v, 't: 'v> {
+    cx: &'v Context<'v, 't>,      // context reference
+    states: HashMap<NodeId, VarState>,  // incremented variables
+    depth: u32,                         // depth of conditional expressions
+    done: bool
+}
+
+impl<'v, 't> Visitor<'v> for IncrementVisitor<'v, 't> {
+    fn visit_expr(&mut self, expr: &'v Expr) {
+        if self.done {
+            return;
+        }
+
+        // If node is a variable
+        if let Some(def_id) = var_def_id(self.cx, expr) {
+            if let Some(parent) = get_parent_expr(self.cx, expr) {
+                let state = self.states.entry(def_id).or_insert(VarState::Initial);
+
+                match parent.node {
+                    ExprAssignOp(op, ref lhs, ref rhs) =>
+                        if lhs.id == expr.id {
+                            if op.node == BiAdd && is_lit_one(rhs) {
+                                *state = match *state {
+                                    VarState::Initial if self.depth == 0 => VarState::IncrOnce,
+                                    _ => VarState::DontWarn
+                                };
+                            }
+                            else {
+                                // Assigned some other value
+                                *state = VarState::DontWarn;
+                            }
+                        },
+                    ExprAssign(ref lhs, _) if lhs.id == expr.id => *state = VarState::DontWarn,
+                    _ => ()
+                }
+            }
+        }
+        // Give up if there are nested loops
+        else if is_loop(expr) {
+            self.states.clear();
+            self.done = true;
+            return;
+        }
+        // Keep track of whether we're inside a conditional expression
+        else if is_conditional(expr) {
+            self.depth += 1;
+            walk_expr(self, expr);
+            self.depth -= 1;
+            return;
+        }
+        walk_expr(self, expr);
+    }
+}
+
+// Check whether a variable is initialized to zero at the start of a loop.
+struct InitializeVisitor<'v, 't: 'v> {
+    cx: &'v Context<'v, 't>, // context reference
+    end_expr: &'v Expr,      // the for loop. Stop scanning here.
+    var_id: NodeId,
+    state: VarState,
+    name: Option<Name>,
+    depth: u32,              // depth of conditional expressions
+    done: bool
+}
+
+impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
+    fn visit_decl(&mut self, decl: &'v Decl) {
+        // Look for declarations of the variable
+        if let DeclLocal(ref local) = decl.node {
+            if local.pat.id == self.var_id {
+                if let PatIdent(_, ref ident, _) = local.pat.node {
+                    self.name = Some(ident.node.name);
+
+                    self.state = if let Some(ref init) = local.init {
+                        if is_lit_zero(init) {
+                            VarState::Warn
+                        } else {
+                            VarState::Declared
+                        }
+                    }
+                    else {
+                        VarState::Declared
+                    }
+                }
+            }
+        }
+        walk_decl(self, decl);
+    }
+
+    fn visit_expr(&mut self, expr: &'v Expr) {
+        if self.state == VarState::DontWarn || expr == self.end_expr {
+            self.done = true;
+        }
+        // No need to visit expressions before the variable is
+        // declared or after we've rejected it.
+        if self.state == VarState::IncrOnce || self.done {
+            return;
+        }
+
+        // If node is the desired variable, see how it's used
+        if var_def_id(self.cx, expr) == Some(self.var_id) {
+            if let Some(parent) = get_parent_expr(self.cx, expr) {
+                match parent.node {
+                    ExprAssignOp(_, ref lhs, _) if lhs.id == expr.id => {
+                        self.state = VarState::DontWarn;
+                    },
+                    ExprAssign(ref lhs, ref rhs) if lhs.id == expr.id => {
+                        self.state = if is_lit_zero(rhs) && self.depth == 0 {
+                            VarState::Warn
+                        } else {
+                            VarState::DontWarn
+                        }},
+                    _ => ()
+                }
+            }
+        }
+        // If there are other loops between the declaration and the target loop, give up
+        else if is_loop(expr) {
+            self.state = VarState::DontWarn;
+            self.done = true;
+            return;
+        }
+        // Keep track of whether we're inside a conditional expression
+        else if is_conditional(expr) {
+            self.depth += 1;
+            walk_expr(self, expr);
+            self.depth -= 1;
+            return;
+        }
+        walk_expr(self, expr);
+    }
+}
+
+fn var_def_id(cx: &Context, expr: &Expr) -> Option<NodeId> {
+    if let Some(path_res) = cx.tcx.def_map.borrow().get(&expr.id) {
+        if let DefLocal(node_id) = path_res.base_def {
+            return Some(node_id)
+        }
+    }
+    None
+}
+
+fn is_loop(expr: &Expr) -> bool {
+    match expr.node {
+        ExprLoop(..) | ExprWhile(..)  => true,
+        _ => false
+    }
+}
+
+fn is_conditional(expr: &Expr) -> bool {
+    match expr.node {
+        ExprIf(..) | ExprMatch(..) => true,
+        _ => false
+    }
+}
+
+// FIXME: copy/paste from misc.rs
+fn is_lit_one(expr: &Expr) -> bool {
+    if let ExprLit(ref spanned) = expr.node {
+        if let LitInt(1, _) = spanned.node {
+            return true;
+        }
+    }
+    false
+}
+
+// FIXME: copy/paste from ranges.rs
+fn is_lit_zero(expr: &Expr) -> bool {
+    if let ExprLit(ref spanned) = expr.node {
+        if let LitInt(0, _) = spanned.node {
+            return true;
+        }
+    }
+    false
 }
