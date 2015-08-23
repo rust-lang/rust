@@ -11,6 +11,9 @@
 use target::Target;
 
 pub fn target() -> Target {
+    let mut base = super::android_base::opts();
+    base.cpu = "pentium4".to_string();
+
     Target {
         llvm_target: "i686-linux-android".to_string(),
         target_endian: "little".to_string(),
@@ -18,6 +21,6 @@ pub fn target() -> Target {
         arch: "x86".to_string(),
         target_os: "android".to_string(),
         target_env: "gnu".to_string(),
-        options: super::android_base::opts(),
+        options: base,
     }
 }
