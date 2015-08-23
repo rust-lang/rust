@@ -563,6 +563,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     time(time_passes, "checking that all macro invocations are gone", ||
          syntax::ext::expand::check_for_macros(&sess.parse_sess, &krate));
 
+    time(time_passes, "checking for inline asm in case the target doesn't support it", ||
+         middle::check_no_asm::check_crate(sess, &krate));
+
     // One final feature gating of the true AST that gets compiled
     // later, to make sure we've got everything (e.g. configuration
     // can insert new attributes via `cfg_attr`)
