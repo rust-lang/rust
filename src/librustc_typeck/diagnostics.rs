@@ -2400,6 +2400,132 @@ for types as needed by the compiler, and it is currently disallowed to
 explicitly implement it for a type.
 "##,
 
+E0323: r##"
+An associated const was implemented when another trait item was expected.
+Erroneous code example:
+
+```
+trait Foo {
+    type N;
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    const N : u32 = 0;
+    // error: item `N` is an associated const, which doesn't match its
+    //        trait `<Bar as Foo>`
+}
+```
+
+Please verify that the associated const wasn't misspelled and the correct trait
+was implemented. Example:
+
+```
+struct Bar;
+
+trait Foo {
+    type N;
+}
+
+impl Foo for Bar {
+    type N = u32; // ok!
+}
+
+// or:
+trait Foo {
+    const N : u32;
+}
+
+impl Foo for Bar {
+    const N : u32 = 0; // ok!
+}
+```
+"##,
+
+E0324: r##"
+A method was implemented when another trait item was expected. Erroneous
+code example:
+
+```
+struct Bar;
+
+trait Foo {
+    const N : u32;
+
+    fn M();
+}
+
+impl Foo for Bar {
+    fn N() {}
+    // error: item `N` is an associated method, which doesn't match its
+    //        trait `<Bar as Foo>`
+}
+```
+
+To fix this error, please verify that the method name wasn't misspelled and
+verify that you are indeed implementing the correct trait items. Example:
+
+```
+struct Bar;
+
+trait Foo {
+    const N : u32;
+
+    fn M();
+}
+
+impl Foo for Bar {
+    const N : u32 = 0;
+
+    fn M() {} // ok!
+}
+```
+"##,
+
+E0325: r##"
+An associated type was implemented when another trait item was expected.
+Erroneous code example:
+
+```
+struct Bar;
+
+trait Foo {
+    const N : u32;
+}
+
+impl Foo for Bar {
+    type N = u32;
+    // error: item `N` is an associated type, which doesn't match its
+    //        trait `<Bar as Foo>`
+}
+```
+
+Please verify that the associated type name wasn't misspelled and your
+implementation corresponds to the trait definition. Example:
+
+```
+struct Bar;
+
+trait Foo {
+    type N;
+}
+
+impl Foo for Bar {
+    type N = u32; // ok!
+}
+
+//or:
+trait Foo {
+    const N : u32;
+}
+
+impl Foo for Bar {
+    const N : u32 = 0; // ok!
+}
+```
+"##,
+
 E0326: r##"
 The types of any associated constants in a trait implementation must match the
 types in the trait definition. This error indicates that there was a mismatch.
@@ -2566,6 +2692,31 @@ to change this.
 [RFC 953]: https://github.com/rust-lang/rfcs/pull/953
 "##,
 
+E0369: r##"
+A binary operation was attempted on a type which doesn't support it.
+Erroneous code example:
+
+```
+let x = 12f32; // error: binary operation `<<` cannot be applied to
+               //        type `f32`
+
+x << 2;
+```
+
+To fix this error, please check that this type implements this binary
+operation. Example:
+
+```
+let x = 12u32; // the `u32` type does implement it:
+               // https://doc.rust-lang.org/stable/std/ops/trait.Shl.html
+
+x << 2; // ok!
+```
+
+It is also possible to overload most operators for your own type by
+implementing traits from `std::ops`.
+"##,
+
 E0371: r##"
 When `Trait2` is a subtrait of `Trait1` (for example, when `Trait2` has a
 definition like `trait Trait2: Trait1 { ... }`), it is not allowed to implement
@@ -2605,6 +2756,37 @@ E0380: r##"
 Default impls are only allowed for traits with no methods or associated items.
 For more information see the [opt-in builtin traits RFC](https://github.com/rust
 -lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
+"##,
+
+E0390: r##"
+You tried to implement methods for a primitive type. Erroneous code example:
+
+```
+struct Foo {
+    x: i32
+}
+
+impl *mut Foo {}
+// error: only a single inherent implementation marked with
+//        `#[lang = "mut_ptr"]` is allowed for the `*mut T` primitive
+```
+
+This isn't allowed, but using a trait to implement a method is a good solution.
+Example:
+
+```
+struct Foo {
+    x: i32
+}
+
+trait Bar {
+    fn bar();
+}
+
+impl Bar for *mut Foo {
+    fn bar() {} // ok!
+}
+```
 "##,
 
 E0391: r##"
@@ -2691,7 +2873,7 @@ register_diagnostics! {
     E0085,
     E0086,
     E0090,
-    E0103,
+    E0103, // @GuillaumeGomez: I was unable to get this error, try your best!
     E0104,
     E0118,
     E0122,
@@ -2750,12 +2932,8 @@ register_diagnostics! {
     E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
-    E0323, // implemented an associated const when another trait item expected
-    E0324, // implemented a method when another trait item expected
-    E0325, // implemented an associated type when another trait item expected
     E0328, // cannot implement Unsize explicitly
     E0329, // associated const depends on type parameter or Self.
-    E0369, // binary operation `<op>` cannot be applied to types
     E0370, // discriminant overflow
     E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with one field being coerced, none found
@@ -2766,8 +2944,6 @@ register_diagnostics! {
            // between structures
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0390, // only a single inherent implementation marked with
-           // `#[lang = \"{}\"]` is allowed for the `{}` primitive
     E0393, // the type parameter `{}` must be explicitly specified in an object
            // type because its default value `{}` references the type `Self`"
     E0399, // trait items need to be implemented because the associated

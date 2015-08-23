@@ -50,6 +50,8 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 span_err!(self.tcx.sess, span, E0390,
                           "only a single inherent implementation marked with `#[lang = \"{}\"]` \
                            is allowed for the `{}` primitive", lang, ty);
+                span_help!(self.tcx.sess, span,
+                           "consider using a trait to implement these methods");
             }
         }
     }
