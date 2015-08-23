@@ -110,7 +110,7 @@ impl<T:Debug+PartialEq> TransitiveRelation<T> {
     /// (there are corresponding tests below, btw). In each case,
     /// the query is `postdom_upper_bound(a, b)`:
     ///
-    /// ```
+    /// ```text
     /// // returns Some(x), which is also LUB
     /// a -> a1 -> x
     ///            ^
