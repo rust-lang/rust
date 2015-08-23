@@ -219,6 +219,63 @@ fn it_works() {
 This is a very common use of `assert_eq!`: call some function with
 some known arguments and compare it to the expected output.
 
+# The `ignore` attribute
+
+Sometimes a few specific tests can be very time-consuming to execute.  These
+can be disabled by default by using the `ignore` attribute:
+
+```rust
+#[test]
+fn it_works() {
+    assert_eq!(4, add_two(2));
+}
+
+#[test]
+#[ignore]
+fn expensive_test() {
+    // code that takes an hour to run
+}
+```
+
+Now we run our tests and see that `it_works` is run, but `expensive_test` is
+not:
+
+```bash
+$ cargo test
+   Compiling adder v0.0.1 (file:///home/you/projects/adder)
+     Running target/adder-91b3e234d4ed382a
+
+running 2 tests
+test expensive_test ... ignored
+test it_works ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured
+
+   Doc-tests adder
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+```
+
+The expensive tests can be run explicitly using `cargo test -- --ignored`:
+
+```bash
+$ cargo test -- --ignored
+     Running target/adder-91b3e234d4ed382a
+
+running 1 test
+test expensive_test ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+   Doc-tests adder
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+```
+
 # The `tests` module
 
 There is one way in which our existing example is not idiomatic: it's
