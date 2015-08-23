@@ -1,10 +1,9 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::visit::{Visitor, walk_expr};
-use rustc::middle::ty;
 use std::collections::HashSet;
 
-use utils::{snippet, span_lint, get_parent_expr, match_def_path};
+use utils::{snippet, span_lint, get_parent_expr, match_trait_method};
 
 declare_lint!{ pub NEEDLESS_RANGE_LOOP, Warn,
                "for-looping over a range of indices where an iterator over items would do" }
@@ -68,16 +67,10 @@ impl LintPass for LoopsPass {
                             object, object));
                     // check for looping over Iterator::next() which is not what you want
                     } else if method_name == "next" {
-                        let method_call = ty::MethodCall::expr(arg.id);
-                        let trt_id = cx.tcx.tables
-                                           .borrow().method_map.get(&method_call)
-                                           .and_then(|callee| cx.tcx.trait_of_item(callee.def_id));
-                        if let Some(trt_id) = trt_id {
-                            if match_def_path(cx, trt_id, &["core", "iter", "Iterator"]) {
-                                span_lint(cx, ITER_NEXT_LOOP, expr.span,
-                                          "you are iterating over `Iterator::next()` which is an Option; \
-                                           this will compile but is probably not what you want");
-                            }
+                        if match_trait_method(cx, arg, &["core", "iter", "Iterator"]) {
+                            span_lint(cx, ITER_NEXT_LOOP, expr.span,
+                                      "you are iterating over `Iterator::next()` which is an Option; \
+                                       this will compile but is probably not what you want");
                         }
                     }
                 }
