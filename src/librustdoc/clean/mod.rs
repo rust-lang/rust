@@ -999,6 +999,7 @@ impl Clean<Method> for ast::MethodSig {
                 values: inputs.clean(cx),
             },
             output: self.decl.output.clean(cx),
+            variadic: false,
             attrs: Vec::new()
         };
         Method {
@@ -1032,6 +1033,7 @@ impl Clean<TyMethod> for ast::MethodSig {
                 values: inputs.clean(cx),
             },
             output: self.decl.output.clean(cx),
+            variadic: false,
             attrs: Vec::new()
         };
         TyMethod {
@@ -1098,6 +1100,7 @@ impl Clean<Item> for doctree::Function {
 pub struct FnDecl {
     pub inputs: Arguments,
     pub output: FunctionRetTy,
+    pub variadic: bool,
     pub attrs: Vec<Attribute>,
 }
 
@@ -1113,6 +1116,7 @@ impl Clean<FnDecl> for ast::FnDecl {
                 values: self.inputs.clean(cx),
             },
             output: self.output.clean(cx),
+            variadic: self.variadic,
             attrs: Vec::new()
         }
     }
@@ -1141,6 +1145,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (ast::DefId, &'a ty::PolyFnSig<'tcx>) {
         FnDecl {
             output: Return(sig.0.output.clean(cx)),
             attrs: Vec::new(),
+            variadic: sig.0.variadic,
             inputs: Arguments {
                 values: sig.0.inputs.iter().map(|t| {
                     Argument {

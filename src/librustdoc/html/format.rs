@@ -579,7 +579,11 @@ impl fmt::Display for clean::FunctionRetTy {
 
 impl fmt::Display for clean::FnDecl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({args}){arrow}", args = self.inputs, arrow = self.output)
+        if self.variadic {
+            write!(f, "({args}, ...){arrow}", args = self.inputs, arrow = self.output)
+        } else {
+            write!(f, "({args}){arrow}", args = self.inputs, arrow = self.output)
+        }
     }
 }
 
