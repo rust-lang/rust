@@ -18,7 +18,8 @@ struct Error;
 #[derive(Clone)]
 enum Enum {
    A {
-     x: Error //~ ERROR
+     x: Error //~ ERROR the trait `core::clone::Clone` is not implemented for the type `Error`
+        //~^ ERROR the trait `core::clone::Clone` is not implemented for the type `Error`
    }
 }
 
