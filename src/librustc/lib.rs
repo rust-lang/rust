@@ -112,6 +112,7 @@ pub mod middle {
     pub mod check_static_recursion;
     pub mod check_loop;
     pub mod check_match;
+    pub mod check_no_asm;
     pub mod check_rvalues;
     pub mod const_eval;
     pub mod dataflow;
