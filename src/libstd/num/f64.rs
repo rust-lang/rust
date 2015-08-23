@@ -454,7 +454,11 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sqrt(self) -> f64 {
-        unsafe { intrinsics::sqrtf64(self) }
+        if self < 0.0 {
+            NAN
+        } else {
+            unsafe { intrinsics::sqrtf64(self) }
+        }
     }
 
     /// Returns `e^(self)`, (the exponential function).
