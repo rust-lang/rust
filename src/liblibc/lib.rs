@@ -102,6 +102,7 @@ pub use types::os::arch::extra::*;
 pub use consts::os::c95::*;
 pub use consts::os::posix88::*;
 pub use consts::os::posix01::*;
+pub use consts::os::posix08::*;
 pub use consts::os::bsd44::*;
 pub use consts::os::extra::*;
 
@@ -3608,6 +3609,8 @@ pub mod consts {
             pub const RUSAGE_THREAD: c_int = 1;
         }
         pub mod posix08 {
+            use types::os::arch::c95::c_int;
+            pub const O_CLOEXEC: c_int = 0x80000;
         }
         #[cfg(any(target_arch = "arm",
                   target_arch = "aarch64",
@@ -4267,7 +4270,15 @@ pub mod consts {
             pub const RUSAGE_CHILDREN: c_int = -1;
             pub const RUSAGE_THREAD: c_int = 1;
         }
+        #[cfg(target_os = "freebsd")]
         pub mod posix08 {
+            use types::os::arch::c95::c_int;
+            pub const O_CLOEXEC: c_int = 0x100000;
+        }
+        #[cfg(target_os = "dragonfly")]
+        pub mod posix08 {
+            use types::os::arch::c95::c_int;
+            pub const O_CLOEXEC: c_int = 0x20000;
         }
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
@@ -4710,7 +4721,15 @@ pub mod consts {
             pub const RUSAGE_CHILDREN: c_int = -1;
             pub const RUSAGE_THREAD: c_int = 1;
         }
+        #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
         pub mod posix08 {
+            use types::os::arch::c95::c_int;
+            pub const O_CLOEXEC: c_int = 0x10000;
+        }
+        #[cfg(target_os = "netbsd")]
+        pub mod posix08 {
+            use types::os::arch::c95::c_int;
+            pub const O_CLOEXEC: c_int = 0x400000;
         }
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
@@ -5148,6 +5167,8 @@ pub mod consts {
             pub const RUSAGE_THREAD: c_int = 1;
         }
         pub mod posix08 {
+            use types::os::arch::c95::c_int;
+            pub const O_CLOEXEC: c_int = 0x1000000;
         }
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
