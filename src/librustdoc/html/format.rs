@@ -18,9 +18,9 @@
 use std::fmt;
 use std::iter::repeat;
 
+use rustc::middle::def_id::{DefId, LOCAL_CRATE};
 use syntax::abi::Abi;
 use syntax::ast;
-use syntax::ast_util;
 
 use clean;
 use html::item_type::ItemType;
@@ -287,14 +287,14 @@ impl fmt::Display for clean::Path {
     }
 }
 
-pub fn href(did: ast::DefId) -> Option<(String, ItemType, Vec<String>)> {
+pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     let cache = cache();
     let loc = CURRENT_LOCATION_KEY.with(|l| l.borrow().clone());
     let &(ref fqp, shortty) = match cache.paths.get(&did) {
         Some(p) => p,
         None => return None,
     };
-    let mut url = if ast_util::is_local(did) || cache.inlined.contains(&did) {
+    let mut url = if did.is_local() || cache.inlined.contains(&did) {
         repeat("../").take(loc.len()).collect::<String>()
     } else {
         match cache.extern_locations[&did.krate] {
@@ -324,7 +324,7 @@ pub fn href(did: ast::DefId) -> Option<(String, ItemType, Vec<String>)> {
 
 /// Used when rendering a `ResolvedPath` structure. This invokes the `path`
 /// rendering function with the necessary arguments for linking to a local path.
-fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, path: &clean::Path,
+fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                  print_all: bool) -> fmt::Result {
     let last = path.segments.last().unwrap();
     let rel_root = match &*path.segments[0].name {
@@ -374,7 +374,7 @@ fn primitive_link(f: &mut fmt::Formatter,
     let m = cache();
     let mut needs_termination = false;
     match m.primitive_locations.get(&prim) {
-        Some(&ast::LOCAL_CRATE) => {
+        Some(&LOCAL_CRATE) => {
             let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
             let len = if len == 0 {0} else {len - 1};
             try!(write!(f, "<a href='{}primitive.{}.html'>",
@@ -383,7 +383,7 @@ fn primitive_link(f: &mut fmt::Formatter,
             needs_termination = true;
         }
         Some(&cnum) => {
-            let path = &m.paths[&ast::DefId {
+            let path = &m.paths[&DefId {
                 krate: cnum,
                 node: ast::CRATE_NODE_ID,
             }];

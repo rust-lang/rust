@@ -12,6 +12,7 @@ use back::link::exported_name;
 use session;
 use llvm::ValueRef;
 use llvm;
+use middle::def_id::DefId;
 use middle::infer;
 use middle::subst;
 use middle::subst::{Subst, Substs};
@@ -34,7 +35,7 @@ use syntax::codemap::DUMMY_SP;
 use std::hash::{Hasher, Hash, SipHasher};
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                fn_id: ast::DefId,
+                                fn_id: DefId,
                                 psubsts: &'tcx subst::Substs<'tcx>,
                                 ref_id: Option<ast::NodeId>)
     -> (ValueRef, Ty<'tcx>, bool) {
@@ -272,7 +273,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct MonoId<'tcx> {
-    pub def: ast::DefId,
+    pub def: DefId,
     pub params: &'tcx subst::VecPerParamSpace<Ty<'tcx>>
 }
 

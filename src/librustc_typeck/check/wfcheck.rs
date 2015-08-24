@@ -12,6 +12,7 @@ use astconv::AstConv;
 use check::{FnCtxt, Inherited, blank_fn_ctxt, regionck};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
+use middle::def_id::DefId;
 use middle::region::DestructionScopeData;
 use middle::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
 use middle::traits;
@@ -23,7 +24,6 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::ast_util::local_def;
 use syntax::codemap::{Span};
 use syntax::parse::token::{special_idents};
 use syntax::ptr::P;
@@ -64,7 +64,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         let ccx = self.ccx;
         debug!("check_item_well_formed(it.id={}, it.ident={})",
                item.id,
-               ccx.tcx.item_path_str(local_def(item.id)));
+               ccx.tcx.item_path_str(DefId::local(item.id)));
 
         match item.node {
             /// Right now we check that every default trait implementation
@@ -91,7 +91,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             ast::ItemImpl(_, ast::ImplPolarity::Negative, _, Some(_), _, _) => {
                 // FIXME(#27579) what amount of WF checking do we need for neg impls?
 
-                let trait_ref = ccx.tcx.impl_trait_ref(local_def(item.id)).unwrap();
+                let trait_ref = ccx.tcx.impl_trait_ref(DefId::local(item.id)).unwrap();
                 ccx.tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id);
                 match ccx.tcx.lang_items.to_builtin_kind(trait_ref.def_id) {
                     Some(ty::BoundSend) | Some(ty::BoundSync) => {}
@@ -138,7 +138,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let free_substs = &fcx.inh.infcx.parameter_environment.free_substs;
             let free_id = fcx.inh.infcx.parameter_environment.free_id;
 
-            let item = fcx.tcx().impl_or_trait_item(local_def(item_id));
+            let item = fcx.tcx().impl_or_trait_item(DefId::local(item_id));
 
             let mut implied_bounds = match item.container() {
                 ty::TraitContainer(_) => vec![],
@@ -217,7 +217,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             }
 
             let free_substs = &fcx.inh.infcx.parameter_environment.free_substs;
-            let predicates = fcx.tcx().lookup_predicates(local_def(item.id));
+            let predicates = fcx.tcx().lookup_predicates(DefId::local(item.id));
             let predicates = fcx.instantiate_bounds(item.span, free_substs, &predicates);
             this.check_where_clauses(fcx, item.span, &predicates);
 
@@ -229,7 +229,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                    item: &ast::Item,
                    items: &[P<ast::TraitItem>])
     {
-        let trait_def_id = local_def(item.id);
+        let trait_def_id = DefId::local(item.id);
 
         if self.ccx.tcx.trait_has_default_impl(trait_def_id) {
             if !items.is_empty() {
@@ -252,7 +252,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     {
         self.with_item_fcx(item, |fcx, this| {
             let free_substs = &fcx.inh.infcx.parameter_environment.free_substs;
-            let type_scheme = fcx.tcx().lookup_item_type(local_def(item.id));
+            let type_scheme = fcx.tcx().lookup_item_type(DefId::local(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span, free_substs, &type_scheme.ty);
             let bare_fn_ty = match item_ty.sty {
                 ty::TyBareFn(_, ref bare_fn_ty) => bare_fn_ty,
@@ -261,7 +261,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 }
             };
 
-            let predicates = fcx.tcx().lookup_predicates(local_def(item.id));
+            let predicates = fcx.tcx().lookup_predicates(DefId::local(item.id));
             let predicates = fcx.instantiate_bounds(item.span, free_substs, &predicates);
 
             let mut implied_bounds = vec![];
@@ -277,7 +277,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         debug!("check_item_type: {:?}", item);
 
         self.with_item_fcx(item, |fcx, this| {
-            let type_scheme = fcx.tcx().lookup_item_type(local_def(item.id));
+            let type_scheme = fcx.tcx().lookup_item_type(DefId::local(item.id));
             let item_ty = fcx.instantiate_type_scheme(item.span,
                                                       &fcx.inh
                                                           .infcx
@@ -300,7 +300,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
         self.with_item_fcx(item, |fcx, this| {
             let free_substs = &fcx.inh.infcx.parameter_environment.free_substs;
-            let item_def_id = local_def(item.id);
+            let item_def_id = DefId::local(item.id);
 
             match *ast_trait_ref {
                 Some(ref ast_trait_ref) => {
@@ -329,7 +329,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let predicates = fcx.instantiate_bounds(item.span, free_substs, &predicates);
             this.check_where_clauses(fcx, item.span, &predicates);
 
-            impl_implied_bounds(fcx, local_def(item.id), item.span)
+            impl_implied_bounds(fcx, DefId::local(item.id), item.span)
         });
     }
 
@@ -387,7 +387,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                      item: &ast::Item,
                                      ast_generics: &ast::Generics)
     {
-        let item_def_id = local_def(item.id);
+        let item_def_id = DefId::local(item.id);
         let ty_predicates = self.tcx().lookup_predicates(item_def_id);
         let variances = self.tcx().item_variances(item_def_id);
 
@@ -584,7 +584,7 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 }
 
 fn impl_implied_bounds<'fcx,'tcx>(fcx: &FnCtxt<'fcx, 'tcx>,
-                                  impl_def_id: ast::DefId,
+                                  impl_def_id: DefId,
                                   span: Span)
                                   -> Vec<Ty<'tcx>>
 {

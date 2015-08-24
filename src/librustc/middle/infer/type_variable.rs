@@ -11,8 +11,8 @@
 pub use self::RelationDir::*;
 use self::TypeVariableValue::*;
 use self::UndoEntry::*;
+use middle::def_id::{DefId};
 use middle::ty::{self, Ty};
-use syntax::ast::DefId;
 use syntax::codemap::Span;
 
 use std::cmp::min;

@@ -11,10 +11,10 @@
 //! Unsafety checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
+use middle::def_id::DefId;
 use middle::ty;
 use syntax::ast::{Item, ItemImpl};
 use syntax::ast;
-use syntax::ast_util;
 use syntax::visit;
 
 pub fn check(tcx: &ty::ctxt) {
@@ -30,7 +30,7 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
     fn check_unsafety_coherence(&mut self, item: &'v ast::Item,
                                 unsafety: ast::Unsafety,
                                 polarity: ast::ImplPolarity) {
-        match self.tcx.impl_trait_ref(ast_util::local_def(item.id)) {
+        match self.tcx.impl_trait_ref(DefId::local(item.id)) {
             None => {
                 // Inherent impl.
                 match unsafety {

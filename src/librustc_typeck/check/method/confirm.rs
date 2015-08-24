@@ -12,6 +12,7 @@ use super::probe;
 
 use check::{self, FnCtxt, NoPreference, PreferMutLvalue, callee, demand};
 use check::UnresolvedTypeAction;
+use middle::def_id::DefId;
 use middle::subst::{self};
 use middle::traits;
 use middle::ty::{self, Ty};
@@ -631,7 +632,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
     fn upcast(&mut self,
               source_trait_ref: ty::PolyTraitRef<'tcx>,
-              target_trait_def_id: ast::DefId)
+              target_trait_def_id: DefId)
               -> ty::PolyTraitRef<'tcx>
     {
         let upcast_trait_refs = traits::upcast(self.tcx(),

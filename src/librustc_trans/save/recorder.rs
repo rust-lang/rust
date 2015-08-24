@@ -13,10 +13,12 @@ pub use self::Row::*;
 use super::escape;
 use super::span_utils::SpanUtils;
 
+use middle::def_id::DefId;
+
 use std::io::Write;
 
 use syntax::ast;
-use syntax::ast::{NodeId,DefId};
+use syntax::ast::{NodeId};
 use syntax::codemap::*;
 
 const ZERO_DEF_ID: DefId = DefId { node: 0, krate: 0 };

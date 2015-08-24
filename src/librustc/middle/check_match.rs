@@ -17,6 +17,7 @@ use middle::const_eval::{eval_const_expr, eval_const_expr_partial};
 use middle::const_eval::{const_expr_to_pat, lookup_const_by_id};
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::def::*;
+use middle::def_id::{DefId};
 use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
 use middle::expr_use_visitor::{JustWrite, LoanCause, MutateMode};
 use middle::expr_use_visitor::WriteAndRead;
@@ -111,7 +112,7 @@ pub enum Constructor {
     /// e.g. struct patterns and fixed-length arrays.
     Single,
     /// Enum variants.
-    Variant(ast::DefId),
+    Variant(DefId),
     /// Literal values.
     ConstantValue(ConstVal),
     /// Ranges of literal values (2..5).

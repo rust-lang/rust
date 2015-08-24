@@ -194,6 +194,7 @@ use middle::check_match::StaticInliner;
 use middle::check_match;
 use middle::const_eval;
 use middle::def::{self, DefMap};
+use middle::def_id::DefId;
 use middle::expr_use_visitor as euv;
 use middle::infer;
 use middle::lang_items::StrEqFnLangItem;
@@ -247,7 +248,7 @@ impl<'a> ConstantExpr<'a> {
 enum Opt<'a, 'tcx> {
     ConstantValue(ConstantExpr<'a>, DebugLoc),
     ConstantRange(ConstantExpr<'a>, ConstantExpr<'a>, DebugLoc),
-    Variant(ty::Disr, Rc<adt::Repr<'tcx>>, ast::DefId, DebugLoc),
+    Variant(ty::Disr, Rc<adt::Repr<'tcx>>, DefId, DebugLoc),
     SliceLengthEqual(usize, DebugLoc),
     SliceLengthGreaterOrEqual(/* prefix length */ usize,
                               /* suffix length */ usize,

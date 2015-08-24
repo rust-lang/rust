@@ -26,6 +26,7 @@ use super::UnresolvedTypeAction;
 use super::write_call;
 
 use CrateCtxt;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::infer;
 use middle::ty::{self, Ty};
 use syntax::ast;
@@ -36,7 +37,7 @@ use syntax::ptr::P;
 /// Check that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
 /// method that is called)
-pub fn check_legal_trait_for_method_call(ccx: &CrateCtxt, span: Span, trait_id: ast::DefId) {
+pub fn check_legal_trait_for_method_call(ccx: &CrateCtxt, span: Span, trait_id: DefId) {
     let tcx = ccx.tcx;
     let did = Some(trait_id);
     let li = &tcx.lang_items;
@@ -132,7 +133,7 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         ty::TyClosure(def_id, ref substs) => {
-            assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+            assert_eq!(def_id.krate, LOCAL_CRATE);
 
             // Check whether this is a call to a closure where we
             // haven't yet decided on whether the closure is fn vs
@@ -334,7 +335,7 @@ struct CallResolution<'tcx> {
     adjusted_ty: Ty<'tcx>,
     autoderefs: usize,
     fn_sig: ty::FnSig<'tcx>,
-    closure_def_id: ast::DefId,
+    closure_def_id: DefId,
 }
 
 impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {

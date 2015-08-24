@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::def_id::DefId;
 use middle::ty::{self, Ty};
 use syntax::ast;
 
@@ -21,14 +22,14 @@ pub enum SimplifiedType {
     IntSimplifiedType(ast::IntTy),
     UintSimplifiedType(ast::UintTy),
     FloatSimplifiedType(ast::FloatTy),
-    EnumSimplifiedType(ast::DefId),
+    EnumSimplifiedType(DefId),
     StrSimplifiedType,
     VecSimplifiedType,
     PtrSimplifiedType,
     TupleSimplifiedType(usize),
-    TraitSimplifiedType(ast::DefId),
-    StructSimplifiedType(ast::DefId),
-    ClosureSimplifiedType(ast::DefId),
+    TraitSimplifiedType(DefId),
+    StructSimplifiedType(DefId),
+    ClosureSimplifiedType(DefId),
     FunctionSimplifiedType(usize),
     ParameterSimplifiedType,
 }

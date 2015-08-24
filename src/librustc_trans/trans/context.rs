@@ -12,6 +12,7 @@ use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
 use metadata::common::LinkMeta;
 use middle::def::ExportMap;
+use middle::def_id::DefId;
 use middle::traits;
 use trans::adt;
 use trans::base;
@@ -91,7 +92,7 @@ pub struct LocalCrateContext<'tcx> {
     external: RefCell<DefIdMap<Option<ast::NodeId>>>,
     /// Backwards version of the `external` map (inlined items to where they
     /// came from)
-    external_srcs: RefCell<NodeMap<ast::DefId>>,
+    external_srcs: RefCell<NodeMap<DefId>>,
     /// Cache instances of monomorphized functions
     monomorphized: RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<usize>>,
@@ -120,7 +121,7 @@ pub struct LocalCrateContext<'tcx> {
     /// Cache of external const values
     extern_const_values: RefCell<DefIdMap<ValueRef>>,
 
-    impl_method_cache: RefCell<FnvHashMap<(ast::DefId, ast::Name), ast::DefId>>,
+    impl_method_cache: RefCell<FnvHashMap<(DefId, ast::Name), DefId>>,
 
     /// Cache of closure wrappers for bare fn's.
     closure_bare_wrapper_cache: RefCell<FnvHashMap<ValueRef, ValueRef>>,
@@ -626,7 +627,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.external
     }
 
-    pub fn external_srcs<'a>(&'a self) -> &'a RefCell<NodeMap<ast::DefId>> {
+    pub fn external_srcs<'a>(&'a self) -> &'a RefCell<NodeMap<DefId>> {
         &self.local.external_srcs
     }
 
@@ -664,7 +665,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn impl_method_cache<'a>(&'a self)
-            -> &'a RefCell<FnvHashMap<(ast::DefId, ast::Name), ast::DefId>> {
+            -> &'a RefCell<FnvHashMap<(DefId, ast::Name), DefId>> {
         &self.local.impl_method_cache
     }
 

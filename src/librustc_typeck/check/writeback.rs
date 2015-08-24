@@ -15,6 +15,7 @@ use self::ResolveReason::*;
 
 use astconv::AstConv;
 use check::FnCtxt;
+use middle::def_id::DefId;
 use middle::pat_util;
 use middle::ty::{self, Ty, MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder,TypeFoldable};
@@ -337,7 +338,7 @@ enum ResolveReason {
     ResolvingLocal(Span),
     ResolvingPattern(Span),
     ResolvingUpvar(ty::UpvarId),
-    ResolvingClosure(ast::DefId),
+    ResolvingClosure(DefId),
 }
 
 impl ResolveReason {
@@ -350,7 +351,7 @@ impl ResolveReason {
                 tcx.expr_span(upvar_id.closure_expr_id)
             }
             ResolvingClosure(did) => {
-                if did.krate == ast::LOCAL_CRATE {
+                if did.is_local() {
                     tcx.expr_span(did.node)
                 } else {
                     DUMMY_SP

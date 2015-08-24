@@ -27,7 +27,6 @@ pub use self::FunctionRetTy::*;
 use syntax;
 use syntax::abi;
 use syntax::ast;
-use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap;
@@ -40,6 +39,7 @@ use rustc::metadata::cstore;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 use rustc::middle::def;
+use rustc::middle::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::subst::{self, ParamSpace, VecPerParamSpace};
 use rustc::middle::ty;
 use rustc::middle::stability;
@@ -61,7 +61,7 @@ mod inline;
 mod simplify;
 
 // extract the stability index for a node from tcx, if possible
-fn get_stability(cx: &DocContext, def_id: ast::DefId) -> Option<Stability> {
+fn get_stability(cx: &DocContext, def_id: DefId) -> Option<Stability> {
     cx.tcx_opt().and_then(|tcx| stability::lookup(tcx, def_id)).clean(cx)
 }
 
@@ -121,7 +121,7 @@ pub struct Crate {
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
     pub primitives: Vec<PrimitiveType>,
-    pub external_traits: HashMap<ast::DefId, Trait>,
+    pub external_traits: HashMap<DefId, Trait>,
 }
 
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
@@ -186,7 +186,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     attrs: child.attrs.clone(),
                     visibility: Some(ast::Public),
                     stability: None,
-                    def_id: ast_util::local_def(prim.to_node_id()),
+                    def_id: DefId::local(prim.to_node_id()),
                     inner: PrimitiveItem(prim),
                 });
             }
@@ -252,7 +252,7 @@ pub struct Item {
     pub attrs: Vec<Attribute> ,
     pub inner: ItemEnum,
     pub visibility: Option<Visibility>,
-    pub def_id: ast::DefId,
+    pub def_id: DefId,
     pub stability: Option<Stability>,
 }
 
@@ -417,7 +417,7 @@ impl Clean<Item> for doctree::Module {
             source: whence.clean(cx),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             inner: ModuleItem(Module {
                is_crate: self.is_crate,
                items: items
@@ -484,7 +484,7 @@ impl<'a> attr::AttrMetaMethods for &'a Attribute {
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub struct TyParam {
     pub name: String,
-    pub did: ast::DefId,
+    pub did: DefId,
     pub bounds: Vec<TyParamBound>,
     pub default: Option<Type>,
 }
@@ -493,7 +493,7 @@ impl Clean<TyParam> for ast::TyParam {
     fn clean(&self, cx: &DocContext) -> TyParam {
         TyParam {
             name: self.ident.clean(cx),
-            did: ast::DefId { krate: ast::LOCAL_CRATE, node: self.id },
+            did: DefId { krate: LOCAL_CRATE, node: self.id },
             bounds: self.bounds.clean(cx),
             default: self.default.clean(cx),
         }
@@ -577,7 +577,7 @@ impl<'tcx> Clean<(Vec<TyParamBound>, Vec<TypeBinding>)> for ty::ExistentialBound
     }
 }
 
-fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
+fn external_path_params(cx: &DocContext, trait_did: Option<DefId>,
                         bindings: Vec<TypeBinding>, substs: &subst::Substs) -> PathParameters {
     let lifetimes = substs.regions().get_slice(subst::TypeSpace)
                     .iter()
@@ -622,7 +622,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
 
 // trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
 // from Fn<(A, B,), C> to Fn(A, B) -> C
-fn external_path(cx: &DocContext, name: &str, trait_did: Option<ast::DefId>,
+fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>,
                  bindings: Vec<TypeBinding>, substs: &subst::Substs) -> Path {
     Path {
         global: false,
@@ -1084,7 +1084,7 @@ impl Clean<Item> for doctree::Function {
             source: self.whence.clean(cx),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             inner: FunctionItem(Function {
                 decl: self.decl.clean(cx),
                 generics: self.generics.clean(cx),
@@ -1131,7 +1131,7 @@ impl<'tcx> Clean<Type> for ty::FnOutput<'tcx> {
     }
 }
 
-impl<'a, 'tcx> Clean<FnDecl> for (ast::DefId, &'a ty::PolyFnSig<'tcx>) {
+impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
     fn clean(&self, cx: &DocContext) -> FnDecl {
         let (did, sig) = *self;
         let mut names = if did.node != 0 {
@@ -1207,7 +1207,7 @@ impl Clean<Item> for doctree::Trait {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: TraitItem(Trait {
@@ -1257,9 +1257,9 @@ impl Clean<Item> for ast::TraitItem {
             name: Some(self.ident.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             visibility: None,
-            stability: get_stability(cx, ast_util::local_def(self.id)),
+            stability: get_stability(cx, DefId::local(self.id)),
             inner: inner
         }
     }
@@ -1296,9 +1296,9 @@ impl Clean<Item> for ast::ImplItem {
             name: Some(self.ident.clean(cx)),
             source: self.span.clean(cx),
             attrs: self.attrs.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             visibility: self.vis.clean(cx),
-            stability: get_stability(cx, ast_util::local_def(self.id)),
+            stability: get_stability(cx, DefId::local(self.id)),
             inner: inner
         }
     }
@@ -1403,7 +1403,7 @@ pub enum Type {
     ResolvedPath {
         path: Path,
         typarams: Option<Vec<TyParamBound>>,
-        did: ast::DefId,
+        did: DefId,
         /// true if is a `T::Name` path for associated types
         is_generic: bool,
     },
@@ -1665,7 +1665,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     type_params: Vec::new(),
                     where_predicates: Vec::new()
                 },
-                decl: (ast_util::local_def(0), &fty.sig).clean(cx),
+                decl: (DefId::local(0), &fty.sig).clean(cx),
                 abi: fty.abi.to_string(),
             }),
             ty::TyStruct(def, substs) |
@@ -1733,8 +1733,8 @@ impl Clean<Item> for ast::StructField {
             attrs: self.node.attrs.clean(cx),
             source: self.span.clean(cx),
             visibility: Some(vis),
-            stability: get_stability(cx, ast_util::local_def(self.node.id)),
-            def_id: ast_util::local_def(self.node.id),
+            stability: get_stability(cx, DefId::local(self.node.id)),
+            def_id: DefId::local(self.node.id),
             inner: StructFieldItem(TypedStructField(self.node.ty.clean(cx))),
         }
     }
@@ -1787,7 +1787,7 @@ impl Clean<Item> for doctree::Struct {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: StructItem(Struct {
@@ -1833,7 +1833,7 @@ impl Clean<Item> for doctree::Enum {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: EnumItem(Enum {
@@ -1858,7 +1858,7 @@ impl Clean<Item> for doctree::Variant {
             source: self.whence.clean(cx),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             inner: VariantItem(Variant {
                 kind: self.kind.clean(cx),
             }),
@@ -2094,7 +2094,7 @@ impl Clean<Item> for doctree::Typedef {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: ast_util::local_def(self.id.clone()),
+            def_id: DefId::local(self.id.clone()),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: TypedefItem(Typedef {
@@ -2145,7 +2145,7 @@ impl Clean<Item> for doctree::Static {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: StaticItem(Static {
@@ -2169,7 +2169,7 @@ impl Clean<Item> for doctree::Constant {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: ConstantItem(Constant {
@@ -2243,7 +2243,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: ImplItem(Impl {
@@ -2274,7 +2274,7 @@ fn build_deref_target_impls(cx: &DocContext,
             _ => continue,
         };
         let primitive = match *target {
-            ResolvedPath { did, .. } if ast_util::is_local(did) => continue,
+            ResolvedPath { did, .. } if did.is_local() => continue,
             ResolvedPath { did, .. } => {
                 ret.extend(inline::build_impls(cx, tcx, did));
                 continue
@@ -2306,7 +2306,7 @@ fn build_deref_target_impls(cx: &DocContext,
             PrimitiveRawPointer => tcx.lang_items.const_ptr_impl(),
         };
         if let Some(did) = did {
-            if !ast_util::is_local(did) {
+            if !did.is_local() {
                 inline::build_impl(cx, tcx, did, ret);
             }
         }
@@ -2325,7 +2325,7 @@ impl Clean<Item> for doctree::DefaultImpl {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             visibility: Some(ast::Public),
             stability: None,
             inner: DefaultImplItem(DefaultImpl {
@@ -2342,7 +2342,7 @@ impl Clean<Item> for doctree::ExternCrate {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: ast_util::local_def(0),
+            def_id: DefId::local(0),
             visibility: self.vis.clean(cx),
             stability: None,
             inner: ExternCrateItem(self.name.clean(cx), self.path.clone())
@@ -2407,7 +2407,7 @@ impl Clean<Vec<Item>> for doctree::Import {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: ast_util::local_def(0),
+            def_id: DefId::local(0),
             visibility: self.vis.clean(cx),
             stability: None,
             inner: ImportItem(inner)
@@ -2429,14 +2429,14 @@ pub enum Import {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ImportSource {
     pub path: Path,
-    pub did: Option<ast::DefId>,
+    pub did: Option<DefId>,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ViewListIdent {
     pub name: String,
     pub rename: Option<String>,
-    pub source: Option<ast::DefId>,
+    pub source: Option<DefId>,
 }
 
 impl Clean<ViewListIdent> for ast::PathListItem {
@@ -2493,9 +2493,9 @@ impl Clean<Item> for ast::ForeignItem {
             name: Some(self.ident.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             visibility: self.vis.clean(cx),
-            stability: get_stability(cx, ast_util::local_def(self.id)),
+            stability: get_stability(cx, DefId::local(self.id)),
             inner: inner,
         }
     }
@@ -2626,7 +2626,7 @@ fn resolve_type(cx: &DocContext,
     ResolvedPath { path: path, typarams: None, did: did, is_generic: is_generic }
 }
 
-fn register_def(cx: &DocContext, def: def::Def) -> ast::DefId {
+fn register_def(cx: &DocContext, def: def::Def) -> DefId {
     let (did, kind) = match def {
         def::DefFn(i, _) => (i, TypeFunction),
         def::DefTy(i, false) => (i, TypeTypedef),
@@ -2638,7 +2638,7 @@ fn register_def(cx: &DocContext, def: def::Def) -> ast::DefId {
         def::DefVariant(i, _, _) => (i, TypeEnum),
         _ => return def.def_id()
     };
-    if ast_util::is_local(did) { return did }
+    if did.is_local() { return did }
     let tcx = match cx.tcx_opt() {
         Some(tcx) => tcx,
         None => return did
@@ -2658,7 +2658,7 @@ fn resolve_use_source(cx: &DocContext, path: Path, id: ast::NodeId) -> ImportSou
     }
 }
 
-fn resolve_def(cx: &DocContext, id: ast::NodeId) -> Option<ast::DefId> {
+fn resolve_def(cx: &DocContext, id: ast::NodeId) -> Option<DefId> {
     cx.tcx_opt().and_then(|tcx| {
         tcx.def_map.borrow().get(&id).map(|d| register_def(cx, d.full_def()))
     })
@@ -2678,7 +2678,7 @@ impl Clean<Item> for doctree::Macro {
             source: self.whence.clean(cx),
             visibility: ast::Public.clean(cx),
             stability: self.stab.clean(cx),
-            def_id: ast_util::local_def(self.id),
+            def_id: DefId::local(self.id),
             inner: MacroItem(Macro {
                 source: self.whence.to_src(cx),
                 imported_from: self.imported_from.clean(cx),
@@ -2811,7 +2811,7 @@ impl<'a> Clean<Typedef> for (ty::TypeScheme<'a>, ty::GenericPredicates<'a>,
     }
 }
 
-fn lang_struct(cx: &DocContext, did: Option<ast::DefId>,
+fn lang_struct(cx: &DocContext, did: Option<DefId>,
                t: ty::Ty, name: &str,
                fallback: fn(Box<Type>) -> Type) -> Type {
     let did = match did {

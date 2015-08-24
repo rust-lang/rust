@@ -52,6 +52,7 @@ use middle::astconv_util::{prim_ty_to_ty, check_path_args, NO_TPS, NO_REGIONS};
 use middle::const_eval::{self, ConstVal};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::wf::object_region_bounds;
 use middle::resolve_lifetime as rl;
 use middle::privacy::{AllPublic, LastMod};
@@ -67,7 +68,7 @@ use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::FnvHashSet;
 
 use std::slice;
-use syntax::{abi, ast, ast_util};
+use syntax::{abi, ast};
 use syntax::codemap::{Span, Pos};
 use syntax::feature_gate::emit_feature_err;
 use syntax::parse::token;
@@ -79,18 +80,18 @@ pub trait AstConv<'tcx> {
     /// Identify the type scheme for an item with a type, like a type
     /// alias, fn, or struct. This allows you to figure out the set of
     /// type parameters defined on the item.
-    fn get_item_type_scheme(&self, span: Span, id: ast::DefId)
+    fn get_item_type_scheme(&self, span: Span, id: DefId)
                             -> Result<ty::TypeScheme<'tcx>, ErrorReported>;
 
     /// Returns the `TraitDef` for a given trait. This allows you to
     /// figure out the set of type parameters defined on the trait.
-    fn get_trait_def(&self, span: Span, id: ast::DefId)
+    fn get_trait_def(&self, span: Span, id: DefId)
                      -> Result<&'tcx ty::TraitDef<'tcx>, ErrorReported>;
 
     /// Ensure that the super-predicates for the trait with the given
     /// id are available and also for the transitive set of
     /// super-predicates.
-    fn ensure_super_predicates(&self, span: Span, id: ast::DefId)
+    fn ensure_super_predicates(&self, span: Span, id: DefId)
                                -> Result<(), ErrorReported>;
 
     /// Returns the set of bounds in scope for the type parameter with
@@ -100,7 +101,7 @@ pub trait AstConv<'tcx> {
 
     /// Returns true if the trait with id `trait_def_id` defines an
     /// associated type with the name `name`.
-    fn trait_defines_associated_type_named(&self, trait_def_id: ast::DefId, name: ast::Name)
+    fn trait_defines_associated_type_named(&self, trait_def_id: DefId, name: ast::Name)
                                            -> bool;
 
     /// Return an (optional) substitution to convert bound type parameters that
@@ -164,7 +165,7 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
         }
 
         Some(&rl::DefLateBoundRegion(debruijn, id)) => {
-            ty::ReLateBound(debruijn, ty::BrNamed(ast_util::local_def(id), lifetime.name))
+            ty::ReLateBound(debruijn, ty::BrNamed(DefId::local(id), lifetime.name))
         }
 
         Some(&rl::DefEarlyBoundRegion(space, index, id)) => {
@@ -179,7 +180,7 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
         Some(&rl::DefFreeRegion(scope, id)) => {
             ty::ReFree(ty::FreeRegion {
                     scope: scope,
-                    bound_region: ty::BrNamed(ast_util::local_def(id),
+                    bound_region: ty::BrNamed(DefId::local(id),
                                               lifetime.name)
                 })
         }
@@ -667,7 +668,7 @@ pub fn instantiate_mono_trait_ref<'tcx>(
                                trait_ref.path.segments.last().unwrap())
 }
 
-fn trait_def_id<'tcx>(this: &AstConv<'tcx>, trait_ref: &ast::TraitRef) -> ast::DefId {
+fn trait_def_id<'tcx>(this: &AstConv<'tcx>, trait_ref: &ast::TraitRef) -> DefId {
     let path = &trait_ref.path;
     match ::lookup_full_def(this.tcx(), path.span, trait_ref.ref_id) {
         def::DefTrait(trait_def_id) => trait_def_id,
@@ -683,7 +684,7 @@ fn object_path_to_poly_trait_ref<'a,'tcx>(
     rscope: &RegionScope,
     span: Span,
     param_mode: PathParamMode,
-    trait_def_id: ast::DefId,
+    trait_def_id: DefId,
     trait_segment: &ast::PathSegment,
     mut projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
     -> ty::PolyTraitRef<'tcx>
@@ -703,7 +704,7 @@ fn ast_path_to_poly_trait_ref<'a,'tcx>(
     rscope: &RegionScope,
     span: Span,
     param_mode: PathParamMode,
-    trait_def_id: ast::DefId,
+    trait_def_id: DefId,
     self_ty: Option<Ty<'tcx>>,
     trait_segment: &ast::PathSegment,
     poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
@@ -749,7 +750,7 @@ fn ast_path_to_mono_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
                                        rscope: &RegionScope,
                                        span: Span,
                                        param_mode: PathParamMode,
-                                       trait_def_id: ast::DefId,
+                                       trait_def_id: DefId,
                                        self_ty: Option<Ty<'tcx>>,
                                        trait_segment: &ast::PathSegment)
                                        -> ty::TraitRef<'tcx>
@@ -770,7 +771,7 @@ fn create_substs_for_ast_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
                                             rscope: &RegionScope,
                                             span: Span,
                                             param_mode: PathParamMode,
-                                            trait_def_id: ast::DefId,
+                                            trait_def_id: DefId,
                                             self_ty: Option<Ty<'tcx>>,
                                             trait_segment: &ast::PathSegment)
                                             -> (&'tcx Substs<'tcx>, Vec<ConvertedBinding<'tcx>>)
@@ -918,7 +919,7 @@ fn ast_path_to_ty<'tcx>(
     rscope: &RegionScope,
     span: Span,
     param_mode: PathParamMode,
-    did: ast::DefId,
+    did: DefId,
     item_segment: &ast::PathSegment)
     -> Ty<'tcx>
 {
@@ -1075,7 +1076,7 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
         return tcx.types.err;
     }
 
-    let mut associated_types: FnvHashSet<(ast::DefId, ast::Name)> =
+    let mut associated_types: FnvHashSet<(DefId, ast::Name)> =
         traits::supertraits(tcx, object_trait_ref)
         .flat_map(|tr| {
             let trait_def = tcx.lookup_trait_def(tr.def_id());
@@ -1214,7 +1215,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         (_, def::DefSelfTy(Some(trait_did), Some((impl_id, _)))) => {
             // `Self` in an impl of a trait - we have a concrete self type and a
             // trait reference.
-            let trait_ref = tcx.impl_trait_ref(ast_util::local_def(impl_id)).unwrap();
+            let trait_ref = tcx.impl_trait_ref(DefId::local(impl_id)).unwrap();
             let trait_ref = if let Some(free_substs) = this.get_free_substs() {
                 trait_ref.subst(tcx, free_substs)
             } else {
@@ -1241,7 +1242,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             }
         }
         (&ty::TyParam(_), def::DefSelfTy(Some(trait_did), None)) => {
-            assert_eq!(trait_did.krate, ast::LOCAL_CRATE);
+            assert_eq!(trait_did.krate, LOCAL_CRATE);
             match find_bound_for_assoc_item(this,
                                             trait_did.node,
                                             token::special_idents::type_self.name,
@@ -1252,7 +1253,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             }
         }
         (&ty::TyParam(_), def::DefTyParam(_, _, param_did, param_name)) => {
-            assert_eq!(param_did.krate, ast::LOCAL_CRATE);
+            assert_eq!(param_did.krate, LOCAL_CRATE);
             match find_bound_for_assoc_item(this,
                                             param_did.node,
                                             param_name,
@@ -1275,7 +1276,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
     let trait_did = bound.0.def_id;
     let ty = this.projected_ty_from_poly_trait_ref(span, bound, assoc_name);
 
-    let item_did = if trait_did.krate == ast::LOCAL_CRATE {
+    let item_did = if trait_did.is_local() {
         // `ty::trait_items` used below requires information generated
         // by type collection, which may be in progress at this point.
         match tcx.map.expect_item(trait_did.node).node {
@@ -1283,7 +1284,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                 let item = trait_items.iter()
                                       .find(|i| i.ident.name == assoc_name)
                                       .expect("missing associated type");
-                ast_util::local_def(item.id)
+                DefId::local(item.id)
             }
             _ => unreachable!()
         }
@@ -1301,7 +1302,7 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
                      span: Span,
                      param_mode: PathParamMode,
                      opt_self_ty: Option<Ty<'tcx>>,
-                     trait_def_id: ast::DefId,
+                     trait_def_id: DefId,
                      trait_segment: &ast::PathSegment,
                      item_segment: &ast::PathSegment)
                      -> Ty<'tcx>
@@ -1589,7 +1590,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             } else if let Some(ast::QSelf { position: 0, .. }) = *maybe_qself {
                 // Create some fake resolution that can't possibly be a type.
                 def::PathResolution {
-                    base_def: def::DefMod(ast_util::local_def(ast::CRATE_NODE_ID)),
+                    base_def: def::DefMod(DefId::local(ast::CRATE_NODE_ID)),
                     last_private: LastMod(AllPublic),
                     depth: path.segments.len()
                 }

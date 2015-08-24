@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::def_id::DefId;
 use syntax::ast;
 use syntax::ast_util::{IdRange, IdRangeComputingVisitor,
                        IdVisitor, IdVisitingOperation};
@@ -21,16 +22,16 @@ use self::InlinedItem::*;
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum InlinedItem {
     Item(P<ast::Item>),
-    TraitItem(ast::DefId /* impl id */, P<ast::TraitItem>),
-    ImplItem(ast::DefId /* impl id */, P<ast::ImplItem>),
+    TraitItem(DefId /* impl id */, P<ast::TraitItem>),
+    ImplItem(DefId /* impl id */, P<ast::ImplItem>),
     Foreign(P<ast::ForeignItem>),
 }
 
 /// A borrowed version of `ast::InlinedItem`.
 pub enum InlinedItemRef<'a> {
     Item(&'a ast::Item),
-    TraitItem(ast::DefId, &'a ast::TraitItem),
-    ImplItem(ast::DefId, &'a ast::ImplItem),
+    TraitItem(DefId, &'a ast::TraitItem),
+    ImplItem(DefId, &'a ast::ImplItem),
     Foreign(&'a ast::ForeignItem)
 }
 

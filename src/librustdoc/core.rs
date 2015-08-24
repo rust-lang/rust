@@ -12,6 +12,7 @@ pub use self::MaybeTyped::*;
 use rustc_lint;
 use rustc_driver::{driver, target_features};
 use rustc::session::{self, config};
+use rustc::middle::def_id::DefId;
 use rustc::middle::{privacy, ty};
 use rustc::ast_map;
 use rustc::lint;
@@ -37,7 +38,7 @@ pub enum MaybeTyped<'a, 'tcx: 'a> {
     NotTyped(session::Session)
 }
 
-pub type ExternalPaths = RefCell<Option<HashMap<ast::DefId,
+pub type ExternalPaths = RefCell<Option<HashMap<DefId,
                                                 (Vec<String>, clean::TypeKind)>>>;
 
 pub struct DocContext<'a, 'tcx: 'a> {
@@ -45,11 +46,11 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub maybe_typed: MaybeTyped<'a, 'tcx>,
     pub input: Input,
     pub external_paths: ExternalPaths,
-    pub external_traits: RefCell<Option<HashMap<ast::DefId, clean::Trait>>>,
-    pub external_typarams: RefCell<Option<HashMap<ast::DefId, String>>>,
-    pub inlined: RefCell<Option<HashSet<ast::DefId>>>,
+    pub external_traits: RefCell<Option<HashMap<DefId, clean::Trait>>>,
+    pub external_typarams: RefCell<Option<HashMap<DefId, String>>>,
+    pub inlined: RefCell<Option<HashSet<DefId>>>,
     pub populated_crate_impls: RefCell<HashSet<ast::CrateNum>>,
-    pub deref_trait_did: Cell<Option<ast::DefId>>,
+    pub deref_trait_did: Cell<Option<DefId>>,
 }
 
 impl<'b, 'tcx> DocContext<'b, 'tcx> {
@@ -77,9 +78,9 @@ pub struct CrateAnalysis {
     pub exported_items: privacy::ExportedItems,
     pub public_items: privacy::PublicItems,
     pub external_paths: ExternalPaths,
-    pub external_typarams: RefCell<Option<HashMap<ast::DefId, String>>>,
-    pub inlined: RefCell<Option<HashSet<ast::DefId>>>,
-    pub deref_trait_did: Option<ast::DefId>,
+    pub external_typarams: RefCell<Option<HashMap<DefId, String>>>,
+    pub inlined: RefCell<Option<HashSet<DefId>>>,
+    pub deref_trait_did: Option<DefId>,
 }
 
 pub type Externs = HashMap<String, Vec<String>>;

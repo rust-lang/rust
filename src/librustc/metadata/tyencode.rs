@@ -16,6 +16,7 @@
 use std::cell::RefCell;
 use std::io::prelude::*;
 
+use middle::def_id::DefId;
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
@@ -34,7 +35,7 @@ macro_rules! mywrite { ($w:expr, $($arg:tt)*) => ({ write!($w.writer, $($arg)*);
 pub struct ctxt<'a, 'tcx: 'a> {
     pub diag: &'a SpanHandler,
     // Def -> str Callback:
-    pub ds: fn(ast::DefId) -> String,
+    pub ds: fn(DefId) -> String,
     // The type context.
     pub tcx: &'a ty::ctxt<'tcx>,
     pub abbrevs: &'a abbrev_map<'tcx>

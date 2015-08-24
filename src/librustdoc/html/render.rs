@@ -52,7 +52,8 @@ use std::sync::Arc;
 use externalfiles::ExternalHtml;
 
 use serialize::json::{self, ToJson};
-use syntax::{abi, ast, ast_util, attr};
+use syntax::{abi, ast, attr};
+use rustc::middle::def_id::{DefId, LOCAL_CRATE};
 use rustc::util::nodemap::NodeSet;
 
 use clean::{self, SelfTy};
@@ -120,7 +121,7 @@ pub enum ExternalLocation {
 
 /// Metadata about an implementor of a trait.
 pub struct Implementor {
-    pub def_id: ast::DefId,
+    pub def_id: DefId,
     pub stability: Option<clean::Stability>,
     pub impl_: clean::Impl,
 }
@@ -134,7 +135,7 @@ pub struct Impl {
 }
 
 impl Impl {
-    fn trait_did(&self) -> Option<ast::DefId> {
+    fn trait_did(&self) -> Option<DefId> {
         self.impl_.trait_.as_ref().and_then(|tr| {
             if let clean::ResolvedPath { did, .. } = *tr {Some(did)} else {None}
         })
@@ -155,7 +156,7 @@ pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
     /// when pretty-printing a type (so pretty printing doesn't have to
     /// painfully maintain a context like this)
-    pub typarams: HashMap<ast::DefId, String>,
+    pub typarams: HashMap<DefId, String>,
 
     /// Maps a type id to all known implementations for that type. This is only
     /// recognized for intra-crate `ResolvedPath` types, and is used to print
@@ -163,29 +164,29 @@ pub struct Cache {
     ///
     /// The values of the map are a list of implementations and documentation
     /// found on that implementation.
-    pub impls: HashMap<ast::DefId, Vec<Impl>>,
+    pub impls: HashMap<DefId, Vec<Impl>>,
 
     /// Maintains a mapping of local crate node ids to the fully qualified name
     /// and "short type description" of that node. This is used when generating
     /// URLs when a type is being linked to. External paths are not located in
     /// this map because the `External` type itself has all the information
     /// necessary.
-    pub paths: HashMap<ast::DefId, (Vec<String>, ItemType)>,
+    pub paths: HashMap<DefId, (Vec<String>, ItemType)>,
 
     /// Similar to `paths`, but only holds external paths. This is only used for
     /// generating explicit hyperlinks to other crates.
-    pub external_paths: HashMap<ast::DefId, Vec<String>>,
+    pub external_paths: HashMap<DefId, Vec<String>>,
 
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
     /// parent trait if no extra documentation is specified, and default methods
     /// should show up in documentation about trait implementations.
-    pub traits: HashMap<ast::DefId, clean::Trait>,
+    pub traits: HashMap<DefId, clean::Trait>,
 
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
     /// of trait ids to the list of known implementors of the trait
-    pub implementors: HashMap<ast::DefId, Vec<Implementor>>,
+    pub implementors: HashMap<DefId, Vec<Implementor>>,
 
     /// Cache of where external crate documentation can be found.
     pub extern_locations: HashMap<ast::CrateNum, (String, ExternalLocation)>,
@@ -194,17 +195,17 @@ pub struct Cache {
     pub primitive_locations: HashMap<clean::PrimitiveType, ast::CrateNum>,
 
     /// Set of definitions which have been inlined from external crates.
-    pub inlined: HashSet<ast::DefId>,
+    pub inlined: HashSet<DefId>,
 
     // Private fields only used when initially crawling a crate to build a cache
 
     stack: Vec<String>,
-    parent_stack: Vec<ast::DefId>,
+    parent_stack: Vec<DefId>,
     search_index: Vec<IndexItem>,
     privmod: bool,
     remove_priv: bool,
     public_items: NodeSet,
-    deref_trait_did: Option<ast::DefId>,
+    deref_trait_did: Option<DefId>,
 
     // In rare case where a structure is defined in one module but implemented
     // in another, if the implementing module is parsed before defining module,
@@ -246,7 +247,7 @@ struct IndexItem {
     name: String,
     path: String,
     desc: String,
-    parent: Option<ast::DefId>,
+    parent: Option<DefId>,
     search_type: Option<IndexItemFunctionType>,
 }
 
@@ -376,7 +377,7 @@ pub fn run(mut krate: clean::Crate,
     let analysis = analysis.borrow();
     let public_items = analysis.as_ref().map(|a| a.public_items.clone());
     let public_items = public_items.unwrap_or(NodeSet());
-    let paths: HashMap<ast::DefId, (Vec<String>, ItemType)> =
+    let paths: HashMap<DefId, (Vec<String>, ItemType)> =
       analysis.as_ref().map(|a| {
         let paths = a.external_paths.borrow_mut().take().unwrap();
         paths.into_iter().map(|(k, (v, t))| (k, (v, ItemType::from_type_kind(t)))).collect()
@@ -410,7 +411,7 @@ pub fn run(mut krate: clean::Crate,
     for &(n, ref e) in &krate.externs {
         cache.extern_locations.insert(n, (e.name.clone(),
                                           extern_location(e, &cx.dst)));
-        let did = ast::DefId { krate: n, node: ast::CRATE_NODE_ID };
+        let did = DefId { krate: n, node: ast::CRATE_NODE_ID };
         cache.paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
     }
 
@@ -424,7 +425,7 @@ pub fn run(mut krate: clean::Crate,
         }
     }
     for &prim in &krate.primitives {
-        cache.primitive_locations.insert(prim, ast::LOCAL_CRATE);
+        cache.primitive_locations.insert(prim, LOCAL_CRATE);
     }
 
     cache.stack.push(krate.name.clone());
@@ -458,7 +459,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
         // Attach all orphan methods to the type's definition if the type
         // has since been learned.
         for &(pid, ref item) in orphan_methods {
-            let did = ast_util::local_def(pid);
+            let did = DefId::local(pid);
             match paths.get(&did) {
                 Some(&(ref fqp, _)) => {
                     // Needed to determine `self` type.
@@ -963,7 +964,7 @@ impl DocFolder for Cache {
                     });
                 }
                 (Some(parent), None) if is_method || (!self.privmod && !hidden_field)=> {
-                    if ast_util::is_local(parent) {
+                    if parent.is_local() {
                         // We have a parent, but we don't know where they're
                         // defined yet. Wait for later to index this item.
                         self.orphan_methods.push((parent.node, item.clone()))
@@ -994,7 +995,7 @@ impl DocFolder for Cache {
                 // not a public item.
                 let id = item.def_id.node;
                 if !self.paths.contains_key(&item.def_id) ||
-                   !ast_util::is_local(item.def_id) ||
+                   !item.def_id.is_local() ||
                    self.public_items.contains(&id) {
                     self.paths.insert(item.def_id,
                                       (self.stack.clone(), shortty(&item)));
@@ -1031,7 +1032,7 @@ impl DocFolder for Cache {
                     ref t => {
                         match t.primitive_type() {
                             Some(prim) => {
-                                let did = ast_util::local_def(prim.to_node_id());
+                                let did = DefId::local(prim.to_node_id());
                                 self.parent_stack.push(did);
                                 true
                             }
@@ -1077,7 +1078,7 @@ impl DocFolder for Cache {
                                 t.primitive_type().and_then(|t| {
                                     self.primitive_locations.get(&t).map(|n| {
                                         let id = t.to_node_id();
-                                        ast::DefId { krate: *n, node: id }
+                                        DefId { krate: *n, node: id }
                                     })
                                 })
                             }
@@ -1383,7 +1384,7 @@ impl<'a> Item<'a> {
         // If this item is part of the local crate, then we're guaranteed to
         // know the span, so we plow forward and generate a proper url. The url
         // has anchors for the line numbers that we're linking to.
-        } else if ast_util::is_local(self.item.def_id) {
+        } else if self.item.def_id.is_local() {
             let mut path = Vec::new();
             clean_srcpath(&cx.src_root, Path::new(&self.item.source.filename),
                           true, |component| {
@@ -1934,7 +1935,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                               src="{root_path}/implementors/{path}/{ty}.{name}.js">
                       </script>"#,
                 root_path = vec![".."; cx.current.len()].join("/"),
-                path = if ast_util::is_local(it.def_id) {
+                path = if it.def_id.is_local() {
                     cx.current.join("/")
                 } else {
                     let path = &cache.external_paths[&it.def_id];
@@ -2247,7 +2248,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
 #[derive(Copy, Clone)]
 enum AssocItemLink {
     Anchor,
-    GotoSource(ast::DefId),
+    GotoSource(DefId),
 }
 
 enum AssocItemRender<'a> {
@@ -2257,7 +2258,7 @@ enum AssocItemRender<'a> {
 
 fn render_assoc_items(w: &mut fmt::Formatter,
                       cx: &Context,
-                      it: ast::DefId,
+                      it: DefId,
                       what: AssocItemRender) -> fmt::Result {
     let c = cache();
     let v = match c.impls.get(&it) {
@@ -2334,7 +2335,7 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl) -> f
         _ => {
             if let Some(prim) = target.primitive_type() {
                 if let Some(c) = cache().primitive_locations.get(&prim) {
-                    let did = ast::DefId { krate: *c, node: prim.to_node_id() };
+                    let did = DefId { krate: *c, node: prim.to_node_id() };
                     try!(render_assoc_items(w, cx, did, what));
                 }
             }
@@ -2427,7 +2428,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 
     fn render_default_items(w: &mut fmt::Formatter,
                             cx: &Context,
-                            did: ast::DefId,
+                            did: DefId,
                             t: &clean::Trait,
                               i: &clean::Impl,
                               render_static: bool) -> fmt::Result {
