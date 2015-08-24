@@ -12,6 +12,7 @@ approx_constant          | warn    | the approximate of a known float constant (
 bad_bit_mask             | deny    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
 box_vec                  | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
 cast_possible_truncation | allow   | casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`
+cast_possible_wrap       | allow   | casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`
 cast_precision_loss      | allow   | casts that cause loss of precision, e.g `x as f32` where `x: u64`
 cast_sign_loss           | allow   | casts from signed types to unsigned types, e.g `x as u32` where `x: i32`
 cmp_nan                  | deny    | comparisons to NAN (which will always return false, which is probably not intended)

@@ -112,6 +112,8 @@ declare_lint!(pub CAST_SIGN_LOSS, Allow,
               "casts from signed types to unsigned types, e.g `x as u32` where `x: i32`");
 declare_lint!(pub CAST_POSSIBLE_TRUNCATION, Allow,
               "casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`");
+declare_lint!(pub CAST_POSSIBLE_WRAP, Allow,
+              "casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`");
 
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
@@ -125,11 +127,85 @@ fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
     if n == 4 { ::std::usize::BITS } else { n }
 }
 
+fn is_isize_or_usize(typ: &ty::TyS) -> bool {
+    match typ.sty {
+        ty::TyInt(ast::TyIs) | ty::TyUint(ast::TyUs) => true,
+        _ => false
+    }
+}
+
+fn span_precision_loss_lint(cx: &Context, expr: &Expr, cast_from: &ty::TyS, cast_to_f64: bool) {
+    let mantissa_nbits = if cast_to_f64 {52} else {23};
+    let arch_dependent = is_isize_or_usize(cast_from) && cast_to_f64;
+    let arch_dependent_str = "on targets with 64-bit wide pointers ";
+    let from_nbits_str = if arch_dependent {"64".to_owned()}
+                         else if is_isize_or_usize(cast_from) {"32 or 64".to_owned()}
+                         else {int_ty_to_nbits(cast_from).to_string()};
+    span_lint(cx, CAST_PRECISION_LOSS, expr.span,
+              &format!("casting {0} to {1} causes a loss of precision {2}\
+                        ({0} is {3} bits wide, but {1}'s mantissa is only {4} bits wide)",
+                       cast_from, if cast_to_f64 {"f64"} else {"f32"},
+                       if arch_dependent {arch_dependent_str} else {""},
+                       from_nbits_str,
+                       mantissa_nbits));
+}
+
+enum ArchSuffix {
+    _32, _64, None
+}
+
+fn check_truncation_and_wrapping(cx: &Context, expr: &Expr, cast_from: &ty::TyS, cast_to: &ty::TyS) {
+    let arch_64_suffix = " on targets with 64-bit wide pointers";
+    let arch_32_suffix = " on targets with 32-bit wide pointers";
+    let cast_unsigned_to_signed = !cast_from.is_signed() && cast_to.is_signed();
+    let (from_nbits, to_nbits) = (int_ty_to_nbits(cast_from), int_ty_to_nbits(cast_to));
+    let (span_truncation, suffix_truncation, span_wrap, suffix_wrap) =
+        match (is_isize_or_usize(cast_from), is_isize_or_usize(cast_to)) {
+            (true, true) | (false, false) => (
+                to_nbits < from_nbits,
+                ArchSuffix::None,
+                to_nbits == from_nbits && cast_unsigned_to_signed,
+                ArchSuffix::None
+                ),
+            (true, false) => (
+                to_nbits <= 32,
+                if to_nbits == 32 {ArchSuffix::_64} else {ArchSuffix::None},
+                to_nbits <= 32 && cast_unsigned_to_signed,
+                ArchSuffix::_32
+                ),
+            (false, true) => (
+                from_nbits == 64,
+                ArchSuffix::_32,
+                cast_unsigned_to_signed,
+                if from_nbits == 64 {ArchSuffix::_64} else {ArchSuffix::_32}
+                ),
+        };
+    if span_truncation {
+        span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
+                  &format!("casting {} to {} may truncate the value{}",
+                           cast_from, cast_to,
+                           match suffix_truncation {
+                               ArchSuffix::_32 => arch_32_suffix,
+                               ArchSuffix::_64 => arch_64_suffix,
+                               ArchSuffix::None => "" }));
+    }
+    if span_wrap {
+        span_lint(cx, CAST_POSSIBLE_WRAP, expr.span,
+                  &format!("casting {} to {} may wrap around the value{}",
+                           cast_from, cast_to,
+                           match suffix_wrap {
+                               ArchSuffix::_32 => arch_32_suffix,
+                               ArchSuffix::_64 => arch_64_suffix,
+                               ArchSuffix::None => "" }));
+    }
+}
+
 impl LintPass for CastPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(CAST_PRECISION_LOSS,
                     CAST_SIGN_LOSS,
-                    CAST_POSSIBLE_TRUNCATION)
+                    CAST_POSSIBLE_TRUNCATION,
+                    CAST_POSSIBLE_WRAP)
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
@@ -139,45 +215,30 @@ impl LintPass for CastPass {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
                         let from_nbits = int_ty_to_nbits(cast_from);
-                        let to_nbits : usize = match cast_to.sty {
-                            ty::TyFloat(ast::TyF32) => 32,
-                            ty::TyFloat(ast::TyF64) => 64,
-                            _ => 0
-                        };
-                        if from_nbits != 0 {
-                            if from_nbits >= to_nbits {
-                                span_lint(cx, CAST_PRECISION_LOSS, expr.span,
-                                          &format!("converting from {0} to {1}, which causes a loss of precision \
-                                                    ({0} is {2} bits wide, but {1}'s mantissa is only {3} bits wide)",
-                                                   cast_from, cast_to, from_nbits, if to_nbits == 64 {52} else {23} ));
-                            }
+                        let to_nbits = if let ty::TyFloat(ast::TyF32) = cast_to.sty {32} else {64};
+                        if is_isize_or_usize(cast_from) || from_nbits >= to_nbits {
+                            span_precision_loss_lint(cx, expr, cast_from, to_nbits == 64);
                         }
                     },
                     (false, true) => {
                         span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
-                                  &format!("casting {} to {} may cause truncation of the value", cast_from, cast_to));
+                                  &format!("casting {} to {} may truncate the value", cast_from, cast_to));
                         if !cast_to.is_signed() {
                             span_lint(cx, CAST_SIGN_LOSS, expr.span,
-                                      &format!("casting from {} to {} loses the sign of the value", cast_from, cast_to));
+                                      &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to));
                         }
                     },
                     (true, true) => {
                         if cast_from.is_signed() && !cast_to.is_signed() {
                             span_lint(cx, CAST_SIGN_LOSS, expr.span,
-                                      &format!("casting from {} to {} loses the sign of the value", cast_from, cast_to));
+                                      &format!("casting {} to {} may lose the sign of the value", cast_from, cast_to));
                         }
-                        let from_nbits = int_ty_to_nbits(cast_from);
-                        let to_nbits   = int_ty_to_nbits(cast_to);
-                        if to_nbits < from_nbits ||
-                           (!cast_from.is_signed() && cast_to.is_signed() && to_nbits <= from_nbits) {
-                                span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
-                                          &format!("casting {} to {} may cause truncation of the value", cast_from, cast_to));
-                        }
+                        check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
                     }
                     (false, false) => {
                         if let (&ty::TyFloat(ast::TyF64),
                                 &ty::TyFloat(ast::TyF32)) = (&cast_from.sty, &cast_to.sty) {
-                            span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span, "casting f64 to f32 may cause truncation of the value");
+                            span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span, "casting f64 to f32 may truncate the value");
                         }
                     }
                 }
