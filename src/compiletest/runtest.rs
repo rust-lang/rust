@@ -25,7 +25,7 @@ use std::fs::{self, File};
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::net::TcpStream;
-use std::path::{Path, PathBuf};
+use std::path::{Path, PathBuf, Component};
 use std::process::{Command, Output, ExitStatus};
 
 pub fn run(config: Config, testfile: &Path) {
@@ -952,6 +952,9 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
+    //
+    // This pattern is ambiguous on windows, because filename may contain
+    // a colon, so any path prefix must be detected and removed first.
     for line in proc_res.stderr.lines() {
         let mut was_expected = false;
         let mut prev = 0;
@@ -1006,7 +1009,16 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError>,
     }
 }
 
-fn is_compiler_error_or_warning(line: &str) -> bool {
+fn is_compiler_error_or_warning(mut line: &str) -> bool {
+    // Remove initial prefix which may contain a colon
+    let mut components = Path::new(line).components();
+    if let Some(Component::Prefix(_)) = components.peek() {
+        components.next();
+    }
+
+    // Safe as path was originally constructed from a &str ^
+    line = components.as_path().to_str().unwrap();
+
     let mut i = 0;
     return
         scan_until_char(line, ':', &mut i) &&
