@@ -389,7 +389,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let (_, bcx) = if type_is_sized(bcx.tcx(), t) {
         invoke(bcx, dtor_addr, &[v0], dtor_ty, DebugLoc::None)
     } else {
-        let args = [Load(bcx, expr::get_dataptr(bcx, v0)), Load(bcx, expr::get_len(bcx, v0))];
+        let args = [Load(bcx, expr::get_dataptr(bcx, v0)), Load(bcx, expr::get_meta(bcx, v0))];
         invoke(bcx, dtor_addr, &args, dtor_ty, DebugLoc::None)
     };
 

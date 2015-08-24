@@ -835,7 +835,7 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
 
     if common::type_is_fat_ptr(cx.tcx(), t) {
         Store(cx, ExtractValue(cx, v, abi::FAT_PTR_ADDR), expr::get_dataptr(cx, dst));
-        Store(cx, ExtractValue(cx, v, abi::FAT_PTR_EXTRA), expr::get_len(cx, dst));
+        Store(cx, ExtractValue(cx, v, abi::FAT_PTR_EXTRA), expr::get_meta(cx, dst));
     } else {
         let store = Store(cx, from_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t));
         unsafe {
@@ -1389,7 +1389,7 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                                                         arg_scope_id, (data, extra),
                                                         |(data, extra), bcx, dst| {
                     Store(bcx, data, expr::get_dataptr(bcx, dst));
-                    Store(bcx, extra, expr::get_len(bcx, dst));
+                    Store(bcx, extra, expr::get_meta(bcx, dst));
                     bcx
                 }))
             } else {
@@ -1420,7 +1420,7 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                                 let data = get_param(bcx.fcx.llfn, idx);
                                 let extra = get_param(bcx.fcx.llfn, idx + 1);
                                 Store(bcx, data, expr::get_dataptr(bcx, lldest));
-                                Store(bcx, extra, expr::get_len(bcx, lldest));
+                                Store(bcx, extra, expr::get_meta(bcx, lldest));
                                 idx += 2;
                             } else {
                                 let datum = datum::Datum::new(
@@ -1822,7 +1822,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
                                                  i);
             if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
                 Store(bcx, get_param(fcx.llfn, llarg_idx), expr::get_dataptr(bcx, lldestptr));
-                Store(bcx, get_param(fcx.llfn, llarg_idx + 1), expr::get_len(bcx, lldestptr));
+                Store(bcx, get_param(fcx.llfn, llarg_idx + 1), expr::get_meta(bcx, lldestptr));
                 llarg_idx += 2;
             } else {
                 let arg = get_param(fcx.llfn, llarg_idx);

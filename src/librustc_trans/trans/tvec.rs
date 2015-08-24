@@ -310,7 +310,7 @@ pub fn get_base_and_len<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ty::TyArray(_, n) => get_fixed_base_and_len(bcx, llval, n),
         ty::TySlice(_) | ty::TyStr => {
             let base = Load(bcx, expr::get_dataptr(bcx, llval));
-            let len = Load(bcx, expr::get_len(bcx, llval));
+            let len = Load(bcx, expr::get_meta(bcx, llval));
             (base, len)
         }
 

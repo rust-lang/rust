@@ -449,7 +449,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             } else {
                 let scratch = rvalue_scratch_datum(bcx, tp_ty, "tmp");
                 Store(bcx, llargs[0], expr::get_dataptr(bcx, scratch.val));
-                Store(bcx, llargs[1], expr::get_len(bcx, scratch.val));
+                Store(bcx, llargs[1], expr::get_meta(bcx, scratch.val));
                 fcx.schedule_lifetime_end(cleanup::CustomScope(cleanup_scope), scratch.val);
                 scratch.val
             };
