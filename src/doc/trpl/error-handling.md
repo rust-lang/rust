@@ -208,8 +208,8 @@ Because these kinds of situations are relatively rare, use panics sparingly.
 
 In certain circumstances, even though a function may fail, we may want to treat
 it as a panic instead. For example, `io::stdin().read_line(&mut buffer)` returns
-a `Result<usize>`, when there is an error reading the line. This allows us to
-handle and possibly recover from error.
+a `Result<usize>`, which can indicate an error if one occurs when reading the line.
+This allows us to handle and possibly recover from errors.
 
 If we don't want to handle this error, and would rather just abort the program,
 we can use the `unwrap()` method:
