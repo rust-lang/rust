@@ -283,11 +283,11 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn get_meta(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
-    GEPi(bcx, fat_ptr, &[0, abi::FAT_PTR_EXTRA])
+    StructGEP(bcx, fat_ptr, abi::FAT_PTR_EXTRA)
 }
 
 pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
-    GEPi(bcx, fat_ptr, &[0, abi::FAT_PTR_ADDR])
+    StructGEP(bcx, fat_ptr, abi::FAT_PTR_ADDR)
 }
 
 pub fn copy_fat_ptr(bcx: Block, src_ptr: ValueRef, dst_ptr: ValueRef) {
