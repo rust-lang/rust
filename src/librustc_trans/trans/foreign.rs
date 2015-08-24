@@ -302,7 +302,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              "__arg");
             if type_is_fat_ptr(ccx.tcx(), passed_arg_tys[i]) {
                 Store(bcx, llargs_rust[i + offset], expr::get_dataptr(bcx, scratch));
-                Store(bcx, llargs_rust[i + offset + 1], expr::get_len(bcx, scratch));
+                Store(bcx, llargs_rust[i + offset + 1], expr::get_meta(bcx, scratch));
                 offset += 1;
             } else {
                 base::store_ty(bcx, llarg_rust, scratch, passed_arg_tys[i]);
