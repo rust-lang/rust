@@ -44,7 +44,7 @@ impl<'a> FmtVisitor<'a> {
 
         if start == end {
             // Do nothing if this is the beginning of the file.
-            if start == BytePos(0) {
+            if start == self.codemap.lookup_char_pos(start).file.start_pos {
                 return;
             }
             process_last_snippet(self, "", "");
