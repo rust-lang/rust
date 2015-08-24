@@ -77,7 +77,6 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::check_const;
 use middle::def;
-use middle::region;
 use middle::ty::{self, Ty};
 
 use syntax::ast::{MutImmutable, MutMutable};
@@ -749,7 +748,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: region::DestructionScopeData::new(fn_body_id),
+            scope: self.tcx().region_maps.item_extent(fn_body_id),
             bound_region: ty::BrEnv
         });
 

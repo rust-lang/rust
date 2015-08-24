@@ -12,7 +12,6 @@
 #![allow(non_camel_case_types)]
 
 pub use self::InferTy::*;
-pub use self::InferRegion::*;
 pub use self::ImplOrTraitItemId::*;
 pub use self::ClosureKind::*;
 pub use self::Variance::*;
@@ -1504,7 +1503,7 @@ pub struct DebruijnIndex {
 }
 
 /// Representation of regions:
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, Copy)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -1529,7 +1528,11 @@ pub enum Region {
     ReStatic,
 
     /// A region variable.  Should not exist after typeck.
-    ReInfer(InferRegion),
+    ReVar(RegionVid),
+
+    /// A skolemized region - basically the higher-ranked version of ReFree.
+    /// Should not exist after typeck.
+    ReSkolemized(u32, BoundRegion),
 
     /// Empty lifetime is for data that is never accessed.
     /// Bottom in the region lattice. We treat ReEmpty somewhat
@@ -1606,7 +1609,7 @@ pub enum BorrowKind {
 
 /// Information describing the capture of an upvar. This is computed
 /// during `typeck`, specifically by `regionck`.
-#[derive(PartialEq, Clone, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(PartialEq, Clone, Debug, Copy)]
 pub enum UpvarCapture {
     /// Upvar is captured by value. This is always true when the
     /// closure is labeled `move`, but can also be true in other cases
@@ -1617,7 +1620,7 @@ pub enum UpvarCapture {
     ByRef(UpvarBorrow),
 }
 
-#[derive(PartialEq, Clone, RustcEncodable, RustcDecodable, Copy)]
+#[derive(PartialEq, Clone, Copy)]
 pub struct UpvarBorrow {
     /// The kind of borrow: by-ref upvars have access to shared
     /// immutable borrows, which are not part of the normal language
@@ -1648,7 +1651,7 @@ impl Region {
 
     pub fn needs_infer(&self) -> bool {
         match *self {
-            ty::ReInfer(..) => true,
+            ty::ReVar(..) | ty::ReSkolemized(..) => true,
             _ => false
         }
     }
@@ -1676,7 +1679,7 @@ impl Region {
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
-    pub scope: region::DestructionScopeData,
+    pub scope: region::CodeExtent,
     pub bound_region: BoundRegion
 }
 
@@ -2187,29 +2190,6 @@ pub enum UnconstrainedNumeric {
 }
 
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Eq, Hash, Debug, Copy)]
-pub enum InferRegion {
-    ReVar(RegionVid),
-    ReSkolemized(u32, BoundRegion)
-}
-
-impl cmp::PartialEq for InferRegion {
-    fn eq(&self, other: &InferRegion) -> bool {
-        match ((*self), *other) {
-            (ReVar(rva), ReVar(rvb)) => {
-                rva == rvb
-            }
-            (ReSkolemized(rva, _), ReSkolemized(rvb, _)) => {
-                rva == rvb
-            }
-            _ => false
-        }
-    }
-    fn ne(&self, other: &InferRegion) -> bool {
-        !((*self) == (*other))
-    }
-}
-
 impl fmt::Debug for TyVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "_#{}t", self.index)
@@ -2291,7 +2271,7 @@ pub struct TypeParameterDef<'tcx> {
     pub object_lifetime_default: ObjectLifetimeDefault,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct RegionParameterDef {
     pub name: ast::Name,
     pub def_id: DefId,
@@ -3722,7 +3702,8 @@ impl FlagComputation {
 
     fn add_region(&mut self, r: Region) {
         match r {
-            ty::ReInfer(_) => { self.add_flags(TypeFlags::HAS_RE_INFER); }
+            ty::ReVar(..) |
+            ty::ReSkolemized(..) => { self.add_flags(TypeFlags::HAS_RE_INFER); }
             ty::ReLateBound(debruijn, _) => { self.add_depth(debruijn.depth); }
             ty::ReEarlyBound(..) => { self.add_flags(TypeFlags::HAS_RE_EARLY_BOUND); }
             ty::ReStatic => {}
@@ -5728,7 +5709,7 @@ impl<'tcx> ctxt<'tcx> {
                 self.note_and_explain_region("concrete lifetime that was found is ",
                                            conc_region, "");
             }
-            RegionsOverlyPolymorphic(_, ty::ReInfer(ty::ReVar(_))) => {
+            RegionsOverlyPolymorphic(_, ty::ReVar(_)) => {
                 // don't bother to print out the message below for
                 // inference variables, it's not very illuminating.
             }
@@ -6479,7 +6460,8 @@ impl<'tcx> ctxt<'tcx> {
                     ReLateBound(..) |
                     ReFree(..) |
                     ReScope(..) |
-                    ReInfer(..) => {
+                    ReVar(..) |
+                    ReSkolemized(..) => {
                         tcx.sess.bug("unexpected region found when hashing a type")
                     }
                 }
@@ -6628,7 +6610,7 @@ impl<'tcx> ctxt<'tcx> {
             types.push(def.space, self.mk_param_from_def(def));
         }
 
-        let free_id_outlive = region::DestructionScopeData::new(free_id);
+        let free_id_outlive = self.region_maps.item_extent(free_id);
 
         // map bound 'a => free 'a
         let mut regions = VecPerParamSpace::empty();
@@ -6659,7 +6641,7 @@ impl<'tcx> ctxt<'tcx> {
         //
 
         let free_substs = self.construct_free_substs(generics, free_id);
-        let free_id_outlive = region::DestructionScopeData::new(free_id);
+        let free_id_outlive = self.region_maps.item_extent(free_id);
 
         //
         // Compute the bounds on Self and the type parameters.
@@ -6691,7 +6673,7 @@ impl<'tcx> ctxt<'tcx> {
         let unnormalized_env = ty::ParameterEnvironment {
             tcx: self,
             free_substs: free_substs,
-            implicit_region_bound: ty::ReScope(free_id_outlive.to_code_extent()),
+            implicit_region_bound: ty::ReScope(free_id_outlive),
             caller_bounds: predicates,
             selection_cache: traits::SelectionCache::new(),
             free_id: free_id,
@@ -6855,7 +6837,7 @@ impl<'tcx> ctxt<'tcx> {
     /// Replace any late-bound regions bound in `value` with free variants attached to scope-id
     /// `scope_id`.
     pub fn liberate_late_bound_regions<T>(&self,
-        all_outlive_scope: region::DestructionScopeData,
+        all_outlive_scope: region::CodeExtent,
         value: &Binder<T>)
         -> T
         where T : TypeFoldable<'tcx>
@@ -7338,8 +7320,9 @@ impl HasTypeFlags for Region {
             }
         }
         if flags.intersects(TypeFlags::HAS_RE_INFER) {
-            if let ty::ReInfer(_) = *self {
-                return true;
+            match *self {
+                ty::ReVar(_) | ty::ReSkolemized(..) => { return true }
+                _ => {}
             }
         }
         false

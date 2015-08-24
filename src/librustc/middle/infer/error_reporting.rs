@@ -121,11 +121,11 @@ impl<'tcx> ty::ctxt<'tcx> {
                     format!("{}unknown scope: {:?}{}.  Please report a bug.",
                             prefix, scope, suffix)
                 };
-                let span = match scope.span(&self.map) {
+                let span = match scope.span(&self.region_maps, &self.map) {
                     Some(s) => s,
                     None => return self.sess.note(&unknown_scope())
                 };
-                let tag = match self.map.find(scope.node_id()) {
+                let tag = match self.map.find(scope.node_id(&self.region_maps)) {
                     Some(ast_map::NodeBlock(_)) => "block",
                     Some(ast_map::NodeExpr(expr)) => match expr.node {
                         ast::ExprCall(..) => "call",
@@ -142,16 +142,16 @@ impl<'tcx> ty::ctxt<'tcx> {
                         return self.sess.span_note(span, &unknown_scope());
                     }
                 };
-                let scope_decorated_tag = match scope {
-                    region::CodeExtent::Misc(_) => tag,
-                    region::CodeExtent::ParameterScope { .. } => {
+                let scope_decorated_tag = match self.region_maps.code_extent_data(scope) {
+                    region::CodeExtentData::Misc(_) => tag,
+                    region::CodeExtentData::ParameterScope { .. } => {
                         "scope of parameters for function"
                     }
-                    region::CodeExtent::DestructionScope(_) => {
+                    region::CodeExtentData::DestructionScope(_) => {
                         new_string = format!("destruction scope surrounding {}", tag);
                         &new_string[..]
                     }
-                    region::CodeExtent::Remainder(r) => {
+                    region::CodeExtentData::Remainder(r) => {
                         new_string = format!("block suffix following statement {}",
                                              r.first_statement_index);
                         &new_string[..]
@@ -172,7 +172,7 @@ impl<'tcx> ty::ctxt<'tcx> {
                     }
                 };
 
-                match self.map.find(fr.scope.node_id) {
+                match self.map.find(fr.scope.node_id(&self.region_maps)) {
                     Some(ast_map::NodeBlock(ref blk)) => {
                         let (msg, opt_span) = explain_span(self, "block", blk.span);
                         (format!("{} {}", prefix, msg), opt_span)
@@ -183,7 +183,8 @@ impl<'tcx> ty::ctxt<'tcx> {
                         (format!("{} {}", prefix, msg), opt_span)
                     }
                     Some(_) | None => {
-                        // this really should not happen
+                        // this really should not happen, but it does:
+                        // FIXME(#27942)
                         (format!("{} unknown free region bounded by scope {:?}",
                                  prefix, fr.scope), None)
                     }
@@ -196,9 +197,12 @@ impl<'tcx> ty::ctxt<'tcx> {
 
             ty::ReEarlyBound(ref data) => (data.name.to_string(), None),
 
-            // I believe these cases should not occur (except when debugging,
-            // perhaps)
-            ty::ReInfer(_) | ty::ReLateBound(..) => {
+            // FIXME(#13998) ReSkolemized should probably print like
+            // ReFree rather than dumping Debug output on the user.
+            //
+            // We shouldn't really be having unification failures with ReVar
+            // and ReLateBound though.
+            ty::ReSkolemized(..) | ty::ReVar(_) | ty::ReLateBound(..) => {
                 (format!("lifetime {:?}", region), None)
             }
         };
@@ -419,7 +423,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                         return None
                     }
                     assert!(fr1.scope == fr2.scope);
-                    (fr1.scope.node_id, fr1, fr2)
+                    (fr1.scope.node_id(&tcx.region_maps), fr1, fr2)
                 },
                 _ => return None
             };

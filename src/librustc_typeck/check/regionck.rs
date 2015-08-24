@@ -294,7 +294,9 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
 
         let old_body_id = self.set_body_id(body.id);
         self.relate_free_regions(&fn_sig[..], body.id, span);
-        link_fn_args(self, CodeExtent::from_node_id(body.id), &fn_decl.inputs[..]);
+        link_fn_args(self,
+                     self.tcx().region_maps.node_extent(body.id),
+                     &fn_decl.inputs[..]);
         self.visit_block(body);
         self.visit_region_obligations(body.id);
 
@@ -428,7 +430,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                 debug!("implication: {:?}", implication);
                 match implication {
                     ImpliedBound::RegionSubRegion(ty::ReFree(free_a),
-                                                  ty::ReInfer(ty::ReVar(vid_b))) => {
+                                                  ty::ReVar(vid_b)) => {
                         self.fcx.inh.infcx.add_given(free_a, vid_b);
                     }
                     ImpliedBound::RegionSubParam(r_a, param_b) => {
@@ -564,16 +566,14 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     // No matter what, the type of each expression must outlive the
     // scope of that expression. This also guarantees basic WF.
     let expr_ty = rcx.resolve_node_type(expr.id);
-
+    // the region corresponding to this expression
+    let expr_region = ty::ReScope(rcx.tcx().region_maps.node_extent(expr.id));
     type_must_outlive(rcx, infer::ExprTypeIsNotInScope(expr_ty, expr.span),
-                      expr_ty, ty::ReScope(CodeExtent::from_node_id(expr.id)));
+                      expr_ty, expr_region);
 
     let method_call = MethodCall::expr(expr.id);
     let opt_method_callee = rcx.fcx.inh.tables.borrow().method_map.get(&method_call).cloned();
     let has_method_map = opt_method_callee.is_some();
-
-    // the region corresponding to this expression
-    let expr_region = ty::ReScope(CodeExtent::from_node_id(expr.id));
 
     // If we are calling a method (either explicitly or via an
     // overloaded operator), check that all of the types provided as
@@ -609,7 +609,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                     // FIXME(#6268) remove to support nested method calls
                     type_of_node_must_outlive(
                         rcx, infer::AutoBorrow(expr.span),
-                        expr.id, ty::ReScope(CodeExtent::from_node_id(expr.id)));
+                        expr.id, expr_region);
                 }
             }
             /*
@@ -726,7 +726,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                 type_must_outlive(rcx,
                                   infer::Operand(expr.span),
                                   ty,
-                                  ty::ReScope(CodeExtent::from_node_id(expr.id)));
+                                  expr_region);
             }
             visit::walk_expr(rcx, expr);
         }
@@ -756,7 +756,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             };
             if let ty::TyRef(r_ptr, _) = base_ty.sty {
                 mk_subregion_due_to_dereference(
-                    rcx, expr.span, ty::ReScope(CodeExtent::from_node_id(expr.id)), *r_ptr);
+                    rcx, expr.span, expr_region, *r_ptr);
             }
 
             visit::walk_expr(rcx, expr);
@@ -789,8 +789,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             //
             // FIXME(#6268) nested method calls requires that this rule change
             let ty0 = rcx.resolve_node_type(expr.id);
-            type_must_outlive(rcx, infer::AddrOf(expr.span),
-                              ty0, ty::ReScope(CodeExtent::from_node_id(expr.id)));
+            type_must_outlive(rcx, infer::AddrOf(expr.span), ty0, expr_region);
             visit::walk_expr(rcx, expr);
         }
 
@@ -919,7 +918,7 @@ fn constrain_call<'a, I: Iterator<Item=&'a ast::Expr>>(rcx: &mut Rcx,
     // call occurs.
     //
     // FIXME(#6268) to support nested method calls, should be callee_id
-    let callee_scope = CodeExtent::from_node_id(call_expr.id);
+    let callee_scope = rcx.tcx().region_maps.node_extent(call_expr.id);
     let callee_region = ty::ReScope(callee_scope);
 
     debug!("callee_region={:?}", callee_region);
@@ -966,7 +965,8 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
            derefs,
            derefd_ty);
 
-    let r_deref_expr = ty::ReScope(CodeExtent::from_node_id(deref_expr.id));
+    let s_deref_expr = rcx.tcx().region_maps.node_extent(deref_expr.id);
+    let r_deref_expr = ty::ReScope(s_deref_expr);
     for i in 0..derefs {
         let method_call = MethodCall::autoderef(deref_expr.id, i as u32);
         debug!("constrain_autoderefs: method_call={:?} (of {:?} total)", method_call, derefs);
@@ -1083,7 +1083,7 @@ fn constrain_index<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
     debug!("constrain_index(index_expr=?, indexed_ty={}",
            rcx.fcx.infcx().ty_to_string(indexed_ty));
 
-    let r_index_expr = ty::ReScope(CodeExtent::from_node_id(index_expr.id));
+    let r_index_expr = ty::ReScope(rcx.tcx().region_maps.node_extent(index_expr.id));
     if let ty::TyRef(r_ptr, mt) = indexed_ty.sty {
         match mt.ty.sty {
             ty::TySlice(_) | ty::TyStr => {
@@ -1234,7 +1234,7 @@ fn link_autoref(rcx: &Rcx,
         }
 
         ty::AutoUnsafe(m) => {
-            let r = ty::ReScope(CodeExtent::from_node_id(expr.id));
+            let r = ty::ReScope(rcx.tcx().region_maps.node_extent(expr.id));
             link_region(rcx, expr.span, &r, ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
     }

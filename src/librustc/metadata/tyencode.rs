@@ -255,7 +255,7 @@ pub fn enc_region(w: &mut Encoder, cx: &ctxt, r: ty::Region) {
         }
         ty::ReFree(ref fr) => {
             mywrite!(w, "f[");
-            enc_destruction_scope_data(w, fr.scope);
+            enc_scope(w, cx, fr.scope);
             mywrite!(w, "|");
             enc_bound_region(w, cx, fr.bound_region);
             mywrite!(w, "]");
@@ -271,27 +271,22 @@ pub fn enc_region(w: &mut Encoder, cx: &ctxt, r: ty::Region) {
         ty::ReEmpty => {
             mywrite!(w, "e");
         }
-        ty::ReInfer(_) => {
+        ty::ReVar(_) | ty::ReSkolemized(..) => {
             // these should not crop up after typeck
             cx.diag.handler().bug("cannot encode region variables");
         }
     }
 }
 
-fn enc_scope(w: &mut Encoder, _cx: &ctxt, scope: region::CodeExtent) {
-    match scope {
-        region::CodeExtent::ParameterScope {
+fn enc_scope(w: &mut Encoder, cx: &ctxt, scope: region::CodeExtent) {
+    match cx.tcx.region_maps.code_extent_data(scope) {
+        region::CodeExtentData::ParameterScope {
             fn_id, body_id } => mywrite!(w, "P[{}|{}]", fn_id, body_id),
-        region::CodeExtent::Misc(node_id) => mywrite!(w, "M{}", node_id),
-        region::CodeExtent::Remainder(region::BlockRemainder {
+        region::CodeExtentData::Misc(node_id) => mywrite!(w, "M{}", node_id),
+        region::CodeExtentData::Remainder(region::BlockRemainder {
             block: b, first_statement_index: i }) => mywrite!(w, "B[{}|{}]", b, i),
-        region::CodeExtent::DestructionScope(node_id) => mywrite!(w, "D{}", node_id),
+        region::CodeExtentData::DestructionScope(node_id) => mywrite!(w, "D{}", node_id),
     }
-}
-
-fn enc_destruction_scope_data(w: &mut Encoder,
-                              d: region::DestructionScopeData) {
-    mywrite!(w, "{}", d.node_id);
 }
 
 fn enc_bound_region(w: &mut Encoder, cx: &ctxt, br: ty::BoundRegion) {
@@ -396,17 +391,6 @@ pub fn enc_existential_bounds<'a,'tcx>(w: &mut Encoder,
     mywrite!(w, ".");
 }
 
-pub fn enc_region_bounds<'a, 'tcx>(w: &mut Encoder,
-                            cx: &ctxt<'a, 'tcx>,
-                            rs: &[ty::Region]) {
-    for &r in rs {
-        mywrite!(w, "R");
-        enc_region(w, cx, r);
-    }
-
-    mywrite!(w, ".");
-}
-
 pub fn enc_type_param_def<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>,
                                     v: &ty::TypeParameterDef<'tcx>) {
     mywrite!(w, "{}:{}|{}|{}|{}|",
@@ -414,6 +398,18 @@ pub fn enc_type_param_def<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>,
              v.space.to_uint(), v.index, (cx.ds)(v.default_def_id));
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
     enc_object_lifetime_default(w, cx, v.object_lifetime_default);
+}
+
+pub fn enc_region_param_def(w: &mut Encoder, cx: &ctxt,
+                            v: &ty::RegionParameterDef) {
+    mywrite!(w, "{}:{}|{}|{}|",
+             v.name, (cx.ds)(v.def_id),
+             v.space.to_uint(), v.index);
+    for &r in &v.bounds {
+        mywrite!(w, "R");
+        enc_region(w, cx, r);
+    }
+    mywrite!(w, ".");
 }
 
 fn enc_object_lifetime_default<'a, 'tcx>(w: &mut Encoder,

@@ -253,18 +253,16 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         // now we just say that if there is already an AST scope on the stack,
         // this new AST scope had better be its immediate child.
         let top_scope = self.top_ast_scope();
+        let region_maps = &self.ccx.tcx().region_maps;
         if top_scope.is_some() {
-            assert!((self.ccx
-                     .tcx()
-                     .region_maps
-                     .opt_encl_scope(region::CodeExtent::from_node_id(debug_loc.id))
-                     .map(|s|s.node_id()) == top_scope)
+            assert!((region_maps
+                     .opt_encl_scope(region_maps.node_extent(debug_loc.id))
+                     .map(|s|s.node_id(region_maps)) == top_scope)
                     ||
-                    (self.ccx
-                     .tcx()
-                     .region_maps
-                     .opt_encl_scope(region::CodeExtent::DestructionScope(debug_loc.id))
-                     .map(|s|s.node_id()) == top_scope));
+                    (region_maps
+                     .opt_encl_scope(region_maps.lookup_code_extent(
+                         region::CodeExtentData::DestructionScope(debug_loc.id)))
+                     .map(|s|s.node_id(region_maps)) == top_scope));
         }
 
         self.push_scope(CleanupScope::new(AstScopeKind(debug_loc.id),
@@ -1111,7 +1109,7 @@ pub fn temporary_scope(tcx: &ty::ctxt,
                        -> ScopeId {
     match tcx.region_maps.temporary_scope(id) {
         Some(scope) => {
-            let r = AstScope(scope.node_id());
+            let r = AstScope(scope.node_id(&tcx.region_maps));
             debug!("temporary_scope({}) = {:?}", id, r);
             r
         }
@@ -1125,7 +1123,7 @@ pub fn temporary_scope(tcx: &ty::ctxt,
 pub fn var_scope(tcx: &ty::ctxt,
                  id: ast::NodeId)
                  -> ScopeId {
-    let r = AstScope(tcx.region_maps.var_scope(id).node_id());
+    let r = AstScope(tcx.region_maps.var_scope(id).node_id(&tcx.region_maps));
     debug!("var_scope({}) = {:?}", id, r);
     r
 }

@@ -12,7 +12,6 @@ use rustc_data_structures::graph;
 use middle::cfg::*;
 use middle::def;
 use middle::pat_util;
-use middle::region::CodeExtent;
 use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
@@ -585,11 +584,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         to_loop: LoopScope,
                         to_index: CFGIndex) {
         let mut data = CFGEdgeData {exiting_scopes: vec!() };
-        let mut scope = CodeExtent::from_node_id(from_expr.id);
-        let target_scope = CodeExtent::from_node_id(to_loop.loop_id);
+        let mut scope = self.tcx.region_maps.node_extent(from_expr.id);
+        let target_scope = self.tcx.region_maps.node_extent(to_loop.loop_id);
         while scope != target_scope {
-
-            data.exiting_scopes.push(scope.node_id());
+            data.exiting_scopes.push(scope.node_id(&self.tcx.region_maps));
             scope = self.tcx.region_maps.encl_scope(scope);
         }
         self.graph.add_edge(from_index, to_index, data);
