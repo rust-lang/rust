@@ -1415,7 +1415,7 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                                                                llval| {
                         for (j, &tupled_arg_ty) in
                                     tupled_arg_tys.iter().enumerate() {
-                            let lldest = GEPi(bcx, llval, &[0, j]);
+                            let lldest = StructGEP(bcx, llval, j);
                             if common::type_is_fat_ptr(bcx.tcx(), tupled_arg_ty) {
                                 let data = get_param(bcx.fcx.llfn, idx);
                                 let extra = get_param(bcx.fcx.llfn, idx + 1);

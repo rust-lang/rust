@@ -66,7 +66,7 @@ pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         SaveIn(lldest) => {
             // lldest will have type *[T x N], but we want the type *T,
             // so use GEP to convert:
-            let lldest = GEPi(bcx, lldest, &[0, 0]);
+            let lldest = StructGEP(bcx, lldest, 0);
             write_content(bcx, &vt, expr, expr, SaveIn(lldest))
         }
     };
@@ -122,7 +122,7 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // llfixed has type *[T x N], but we want the type *T,
         // so use GEP to convert
         bcx = write_content(bcx, &vt, slice_expr, content_expr,
-                            SaveIn(GEPi(bcx, llfixed, &[0, 0])));
+                            SaveIn(StructGEP(bcx, llfixed, 0)));
     };
 
     immediate_rvalue_bcx(bcx, llfixed, vec_ty).to_expr_datumblock()

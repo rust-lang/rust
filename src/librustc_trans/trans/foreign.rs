@@ -821,10 +821,10 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                    i, ccx.tn().val_to_string(llrust_arg));
             if type_is_fat_ptr(ccx.tcx(), rust_ty) {
                 let next_llrust_ty = rust_param_tys.next().expect("Not enough parameter types!");
-                llrust_args.push(builder.load(builder.bitcast(builder.gepi(
-                                llrust_arg, &[0, abi::FAT_PTR_ADDR]), llrust_ty.ptr_to())));
-                llrust_args.push(builder.load(builder.bitcast(builder.gepi(
-                                llrust_arg, &[0, abi::FAT_PTR_EXTRA]), next_llrust_ty.ptr_to())));
+                llrust_args.push(builder.load(builder.bitcast(builder.struct_gep(
+                                llrust_arg, abi::FAT_PTR_ADDR), llrust_ty.ptr_to())));
+                llrust_args.push(builder.load(builder.bitcast(builder.struct_gep(
+                                llrust_arg, abi::FAT_PTR_EXTRA), next_llrust_ty.ptr_to())));
             } else {
                 llrust_args.push(llrust_arg);
             }
