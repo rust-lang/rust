@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use arena::TypedArena;
-use back::abi;
 use back::link;
 use llvm::{ValueRef, get_params};
 use middle::subst::{Subst, Substs};
@@ -445,8 +444,8 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         self_datum.val
     };
 
-    let llself = Load(bcx, GEPi(bcx, llval, &[0, abi::FAT_PTR_ADDR]));
-    let llvtable = Load(bcx, GEPi(bcx, llval, &[0, abi::FAT_PTR_EXTRA]));
+    let llself = Load(bcx, expr::get_dataptr(bcx, llval));
+    let llvtable = Load(bcx, expr::get_meta(bcx, llval));
     trans_trait_callee_from_llval(bcx, opaque_fn_ty, vtable_index, llself, llvtable)
 }
 

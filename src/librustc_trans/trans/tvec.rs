@@ -10,7 +10,6 @@
 
 #![allow(non_camel_case_types)]
 
-use back::abi;
 use llvm;
 use llvm::ValueRef;
 use trans::base::*;
@@ -147,8 +146,8 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let llbytes = C_uint(bcx.ccx(), bytes);
             let llcstr = C_cstr(bcx.ccx(), str_lit, false);
             let llcstr = consts::ptrcast(llcstr, Type::i8p(bcx.ccx()));
-            Store(bcx, llcstr, GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]));
-            Store(bcx, llbytes, GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]));
+            Store(bcx, llcstr, expr::get_dataptr(bcx, lldest));
+            Store(bcx, llbytes, expr::get_meta(bcx, lldest));
             bcx
         }
     }
