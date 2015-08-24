@@ -17,7 +17,7 @@ use rustc_lint;
 use rustc_resolve as resolve;
 use rustc_typeck::middle::lang_items;
 use rustc_typeck::middle::free_region::FreeRegionMap;
-use rustc_typeck::middle::region::{self, CodeExtent, DestructionScopeData};
+use rustc_typeck::middle::region::{self, CodeExtent};
 use rustc_typeck::middle::region::CodeExtentData;
 use rustc_typeck::middle::resolve_lifetime;
 use rustc_typeck::middle::stability;
@@ -329,8 +329,10 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     pub fn re_free(&self, nid: ast::NodeId, id: u32) -> ty::Region {
-        ty::ReFree(ty::FreeRegion { scope: DestructionScopeData::new(nid),
-                                    bound_region: ty::BrAnon(id)})
+        ty::ReFree(ty::FreeRegion {
+            scope: self.tcx().region_maps.item_extent(nid),
+            bound_region: ty::BrAnon(id)
+        })
     }
 
     pub fn t_rptr_free(&self, nid: ast::NodeId, id: u32) -> Ty<'tcx> {
