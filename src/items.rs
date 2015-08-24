@@ -178,7 +178,7 @@ impl<'a> FmtVisitor<'a> {
         result.push(')');
 
         // Return type.
-        if ret_str.len() > 0 {
+        if !ret_str.is_empty() {
             // If we've already gone multi-line, or the return type would push
             // over the max width, then put the return type on a new line.
             if result.contains("\n") ||
@@ -200,11 +200,11 @@ impl<'a> FmtVisitor<'a> {
 
             // Comment between return type and the end of the decl.
             let snippet_lo = fd.output.span().hi;
-            if where_clause.predicates.len() == 0 {
+            if where_clause.predicates.is_empty() {
                 let snippet_hi = span.hi;
                 let snippet = self.snippet(codemap::mk_sp(snippet_lo, snippet_hi));
                 let snippet = snippet.trim();
-                if snippet.len() > 0 {
+                if !snippet.is_empty() {
                     result.push(' ');
                     result.push_str(snippet);
                 }
@@ -342,7 +342,7 @@ impl<'a> FmtVisitor<'a> {
     fn newline_for_brace(&self, where_clause: &ast::WhereClause) -> bool {
         match self.config.fn_brace_style {
             BraceStyle::AlwaysNextLine => true,
-            BraceStyle::SameLineWhere if where_clause.predicates.len() > 0 => true,
+            BraceStyle::SameLineWhere if !where_clause.predicates.is_empty() => true,
             _ => false,
         }
     }
@@ -399,7 +399,7 @@ impl<'a> FmtVisitor<'a> {
 
                 let mut result = String::new();
 
-                if types.len() > 0 {
+                if !types.is_empty() {
                     let items = itemize_list(self.codemap,
                                              types.iter(),
                                              ")",
@@ -482,7 +482,7 @@ impl<'a> FmtVisitor<'a> {
         let header_str = self.format_header(item_name, ident, vis);
         result.push_str(&header_str);
 
-        if struct_def.fields.len() == 0 {
+        if struct_def.fields.is_empty() {
             result.push(';');
             return result;
         }
@@ -513,7 +513,7 @@ impl<'a> FmtVisitor<'a> {
                                  terminator,
                                  |field| {
                                      // Include attributes and doc comments, if present
-                                     if field.node.attrs.len() > 0 {
+                                     if !field.node.attrs.is_empty() {
                                          field.node.attrs[0].span.lo
                                      } else {
                                          field.span.lo
@@ -602,7 +602,7 @@ impl<'a> FmtVisitor<'a> {
                        -> String {
         let mut result = self.rewrite_generics(generics, offset, span);
 
-        if generics.where_clause.predicates.len() > 0 || result.contains('\n') {
+        if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
             result.push_str(&self.rewrite_where_clause(&generics.where_clause,
                                                        self.config,
                                                        self.block_indent,
@@ -635,7 +635,7 @@ impl<'a> FmtVisitor<'a> {
 
         let indent = self.block_indent + self.config.tab_spaces;
         let mut attr_str = self.rewrite_attrs(&field.node.attrs, indent);
-        if attr_str.len() > 0 {
+        if !attr_str.is_empty() {
             attr_str.push('\n');
             attr_str.push_str(&make_indent(indent));
         }
@@ -651,7 +651,7 @@ impl<'a> FmtVisitor<'a> {
         // there is a where clause at all.
         let lifetimes: &[_] = &generics.lifetimes;
         let tys: &[_] = &generics.ty_params;
-        if lifetimes.len() + tys.len() == 0 {
+        if lifetimes.is_empty() && tys.is_empty() {
             return String::new();
         }
 
@@ -671,7 +671,7 @@ impl<'a> FmtVisitor<'a> {
 
         // Extract comments between generics.
         let lt_spans = lifetimes.iter().map(|l| {
-            let hi = if l.bounds.len() == 0 {
+            let hi = if l.bounds.is_empty() {
                 l.lifetime.span.hi
             } else {
                 l.bounds[l.bounds.len() - 1].span.hi
@@ -705,7 +705,7 @@ impl<'a> FmtVisitor<'a> {
                             indent: usize,
                             span_end: BytePos)
                             -> String {
-        if where_clause.predicates.len() == 0 {
+        if where_clause.predicates.is_empty() {
             return String::new();
         }
 
@@ -833,7 +833,7 @@ fn span_for_ty_param(ty: &ast::TyParam) -> Span {
     if let Some(ref def) = ty.default {
         return codemap::mk_sp(lo, def.span.hi);
     }
-    if ty.bounds.len() == 0 {
+    if ty.bounds.is_empty() {
         return ty.span;
     }
     let hi = match ty.bounds[ty.bounds.len() - 1] {

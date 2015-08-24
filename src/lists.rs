@@ -92,7 +92,7 @@ impl ListItem {
 // FIXME: this has grown into a monstrosity
 // TODO: add unit tests
 pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> String {
-    if items.len() == 0 {
+    if items.is_empty() {
         return String::new();
     }
 
@@ -270,7 +270,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                                                                           (self.get_lo)(&item)))
                                           .unwrap();
             let pre_snippet = pre_snippet.trim();
-            let pre_comment = if pre_snippet.len() > 0 {
+            let pre_comment = if !pre_snippet.is_empty() {
                 Some(pre_snippet.to_owned())
             } else {
                 None
@@ -328,7 +328,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                 post_snippet = post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space);
             }
 
-            let post_comment = if post_snippet.len() > 0 {
+            let post_comment = if !post_snippet.is_empty() {
                 Some(post_snippet.to_owned())
             } else {
                 None

@@ -51,13 +51,13 @@ impl Rewrite for ast::ViewPath {
 
 fn rewrite_single_use_list(path_str: String, vpi: ast::PathListItem) -> String {
     if let ast::PathListItem_::PathListIdent{ name, .. } = vpi.node {
-        if path_str.len() == 0 {
+        if path_str.is_empty() {
             name.to_string()
         } else {
             format!("{}::{}", path_str, name)
         }
     } else {
-        if path_str.len() != 0 {
+        if !path_str.is_empty() {
             path_str
         } else {
             // This catches the import: use {self}, which is a compiler error, so we just
@@ -86,7 +86,7 @@ pub fn rewrite_use_list(width: usize,
     }
 
     // 2 = ::
-    let path_separation_w = if path_str.len() > 0 {
+    let path_separation_w = if !path_str.is_empty() {
         2
     } else {
         0
@@ -151,7 +151,7 @@ pub fn rewrite_use_list(width: usize,
 
     let list = write_list(&items[first_index..], &fmt);
 
-    Some(if path_str.len() == 0 {
+    Some(if path_str.is_empty() {
             format!("{{{}}}", list)
         } else {
             format!("{}::{{{}}}", path_str, list)

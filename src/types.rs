@@ -190,9 +190,9 @@ fn rewrite_segment(segment: &ast::PathSegment,
     let offset = offset + ident_len;
 
     let params = match segment.parameters {
-        ast::PathParameters::AngleBracketedParameters(ref data) if data.lifetimes.len() > 0 ||
-                                                                   data.types.len() > 0 ||
-                                                                   data.bindings.len() > 0 => {
+        ast::PathParameters::AngleBracketedParameters(ref data) if !data.lifetimes.is_empty() ||
+                                                                   !data.types.is_empty() ||
+                                                                   !data.bindings.is_empty() => {
             let param_list = data.lifetimes.iter()
                                            .map(SegmentParam::LifeTime)
                                            .chain(data.types.iter()
@@ -267,7 +267,7 @@ impl Rewrite for ast::WherePredicate {
                                                                           ref bounded_ty,
                                                                           ref bounds,
                                                                           ..}) => {
-                    if bound_lifetimes.len() > 0 {
+                    if !bound_lifetimes.is_empty() {
                         let lifetime_str = bound_lifetimes.iter().map(|lt| {
                                            lt.rewrite(context, width, offset).unwrap()
                                        }).collect::<Vec<_>>().join(", ");
@@ -319,7 +319,7 @@ impl Rewrite for ast::WherePredicate {
 
 impl Rewrite for ast::LifetimeDef {
     fn rewrite(&self, _: &RewriteContext, _: usize, _: usize) -> Option<String> {
-        if self.bounds.len() == 0 {
+        if self.bounds.is_empty() {
             Some(pprust::lifetime_to_string(&self.lifetime))
         } else {
             Some(format!("{}: {}",
@@ -351,7 +351,7 @@ impl Rewrite for ast::TyParam {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
         let mut result = String::with_capacity(128);
         result.push_str(&self.ident.to_string());
-        if self.bounds.len() > 0 {
+        if !self.bounds.is_empty() {
             result.push_str(": ");
 
             let bounds = self.bounds.iter().map(|ty_bound| {
@@ -372,7 +372,7 @@ impl Rewrite for ast::TyParam {
 // FIXME: this assumes everything will fit on one line
 impl Rewrite for ast::PolyTraitRef {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
-        if self.bound_lifetimes.len() > 0 {
+        if !self.bound_lifetimes.is_empty() {
             let lifetime_str = self.bound_lifetimes.iter().map(|lt| {
                 lt.rewrite(context, width, offset).unwrap()
             }).collect::<Vec<_>>().join(", ");
