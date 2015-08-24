@@ -20,7 +20,7 @@ impl LintPass for StepByZero {
         if let ExprMethodCall(Spanned { node: ref ident, .. }, _,
                               ref args) = expr.node {
             // Only warn on literal ranges.
-            if ident.name.as_str() == "step_by" && args.len() == 2 &&
+            if ident.name == "step_by" && args.len() == 2 &&
                 is_range(cx, &args[0]) && is_lit_zero(&args[1]) {
                 cx.span_lint(RANGE_STEP_BY_ZERO, expr.span,
                              "Range::step_by(0) produces an infinite iterator. \

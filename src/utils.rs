@@ -56,6 +56,19 @@ pub fn match_type(cx: &Context, ty: ty::Ty, path: &[&str]) -> bool {
     }
 }
 
+/// check if method call given in "expr" belongs to given trait
+pub fn match_trait_method(cx: &Context, expr: &Expr, path: &[&str]) -> bool {
+    let method_call = ty::MethodCall::expr(expr.id);
+    let trt_id = cx.tcx.tables
+                       .borrow().method_map.get(&method_call)
+                       .and_then(|callee| cx.tcx.trait_of_item(callee.def_id));
+    if let Some(trt_id) = trt_id {
+        match_def_path(cx, trt_id, path)
+    } else {
+        false
+    }
+}
+
 /// match a Path against a slice of segment string literals, e.g.
 /// `match_path(path, &["std", "rt", "begin_unwind"])`
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
