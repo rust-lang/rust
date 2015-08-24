@@ -342,12 +342,14 @@ impl FromStr for SocketAddr {
 #[derive(Debug, Clone, PartialEq)]
 pub struct AddrParseError(());
 
+#[stable(feature = "addr_parse_error_error", since = "1.4.0")]
 impl fmt::Display for AddrParseError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(self.description())
     }
 }
 
+#[stable(feature = "addr_parse_error_error", since = "1.4.0")]
 impl Error for AddrParseError {
     fn description(&self) -> &str {
         "invalid IP address syntax"
