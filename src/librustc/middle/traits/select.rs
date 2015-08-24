@@ -185,7 +185,7 @@ pub enum MethodMatchedData {
 /// that we can have both a projection candidate and a where-clause candidate
 /// for the same obligation. In that case either would do (except that
 /// different "leaps of logic" would occur if inference variables are
-/// present), and we just pick the projection. This is, for example,
+/// present), and we just pick the where-clause. This is, for example,
 /// required for associated types to work in default impls, as the bounds
 /// are visible both as projection bounds and as where-clauses from the
 /// parameter environment.
@@ -915,6 +915,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                -> Result<SelectionCandidateSet<'tcx>, SelectionError<'tcx>>
     {
         let TraitObligationStack { obligation, .. } = *stack;
+        let ref obligation = Obligation {
+            cause: obligation.cause.clone(),
+            recursion_depth: obligation.recursion_depth,
+            predicate: self.infcx().resolve_type_vars_if_possible(&obligation.predicate)
+        };
+
+        if obligation.predicate.skip_binder().self_ty().is_ty_var() {
+            // FIXME(#20297): Self is a type variable (e.g. `_: AsRef<str>`).
+            //
+            // This is somewhat problematic, as the current scheme can't really
+            // handle it turning to be a projection. This does end up as truly
+            // ambiguous in most cases anyway.
+            //
+            // Until this is fixed, take the fast path out - this also improves
+            // performance by preventing assemble_candidates_from_impls from
+            // matching every impl for this trait.
+            return Ok(SelectionCandidateSet { vec: vec![], ambiguous: true });
+        }
 
         let mut candidates = SelectionCandidateSet {
             vec: Vec::new(),
@@ -935,13 +953,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // For other types, we'll use the builtin rules.
                 try!(self.assemble_builtin_bound_candidates(ty::BoundCopy,
-                                                            stack,
+                                                            obligation,
                                                             &mut candidates));
             }
             Some(bound @ ty::BoundSized) => {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
-                try!(self.assemble_builtin_bound_candidates(bound, stack, &mut candidates));
+                try!(self.assemble_builtin_bound_candidates(bound,
+                                                            obligation,
+                                                            &mut candidates));
             }
 
             None if self.tcx().lang_items.unsize_trait() ==
@@ -974,29 +994,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                               obligation: &TraitObligation<'tcx>,
                                               candidates: &mut SelectionCandidateSet<'tcx>)
     {
-        let poly_trait_predicate =
-            self.infcx().resolve_type_vars_if_possible(&obligation.predicate);
-
-        debug!("assemble_candidates_for_projected_tys({:?},{:?})",
-               obligation,
-               poly_trait_predicate);
+        debug!("assemble_candidates_for_projected_tys({:?})", obligation);
 
         // FIXME(#20297) -- just examining the self-type is very simplistic
 
         // before we go into the whole skolemization thing, just
         // quickly check if the self-type is a projection at all.
-        let trait_def_id = match poly_trait_predicate.0.trait_ref.self_ty().sty {
+        let trait_def_id = match obligation.predicate.0.trait_ref.self_ty().sty {
             ty::TyProjection(ref data) => data.trait_ref.def_id,
             ty::TyInfer(ty::TyVar(_)) => {
-                // If the self-type is an inference variable, then it MAY wind up
-                // being a projected type, so induce an ambiguity.
-                //
-                // FIXME(#20297) -- being strict about this can cause
-                // inference failures with BorrowFrom, which is
-                // unfortunate. Can we do better here?
-                debug!("assemble_candidates_for_projected_tys: ambiguous self-type");
-                candidates.ambiguous = true;
-                return;
+                self.tcx().sess.span_bug(obligation.cause.span,
+                    "Self=_ should have been handled by assemble_candidates");
             }
             _ => { return; }
         };
@@ -1164,7 +1172,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // ok to skip binder because the substs on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
-        let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
+        let self_ty = *obligation.self_ty().skip_binder();
         let (closure_def_id, substs) = match self_ty.sty {
             ty::TyClosure(id, ref substs) => (id, substs),
             ty::TyInfer(ty::TyVar(_)) => {
@@ -1208,7 +1216,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // ok to skip binder because what we are inspecting doesn't involve bound regions
-        let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
+        let self_ty = *obligation.self_ty().skip_binder();
         match self_ty.sty {
             ty::TyInfer(ty::TyVar(_)) => {
                 debug!("assemble_fn_pointer_candidates: ambiguous self-type");
@@ -1265,7 +1273,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                               -> Result<(), SelectionError<'tcx>>
     {
         // OK to skip binder here because the tests we do below do not involve bound regions
-        let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
+        let self_ty = *obligation.self_ty().skip_binder();
         debug!("assemble_candidates_from_default_impls(self_ty={:?})", self_ty);
 
         let def_id = obligation.predicate.def_id();
@@ -1321,7 +1329,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                           candidates: &mut SelectionCandidateSet<'tcx>)
     {
         debug!("assemble_candidates_from_object_ty(self_ty={:?})",
-               self.infcx.shallow_resolve(*obligation.self_ty().skip_binder()));
+               obligation.self_ty().skip_binder());
 
         // Object-safety candidates are only applicable to object-safe
         // traits. Including this check is useful because it helps
@@ -1336,10 +1344,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         self.infcx.commit_if_ok(|snapshot| {
-            let bound_self_ty =
-                self.infcx.resolve_type_vars_if_possible(&obligation.self_ty());
             let (self_ty, _) =
-                self.infcx().skolemize_late_bound_regions(&bound_self_ty, snapshot);
+                self.infcx().skolemize_late_bound_regions(&obligation.self_ty(), snapshot);
             let poly_trait_ref = match self_ty.sty {
                 ty::TyTrait(ref data) => {
                     match self.tcx().lang_items.to_builtin_kind(obligation.predicate.def_id()) {
@@ -1413,15 +1419,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         //     T: Trait
         // so it seems ok if we (conservatively) fail to accept that `Unsize`
         // obligation above. Should be possible to extend this in the future.
-        let self_ty = match self.tcx().no_late_bound_regions(&obligation.self_ty()) {
+        let source = match self.tcx().no_late_bound_regions(&obligation.self_ty()) {
             Some(t) => t,
             None => {
                 // Don't add any candidates if there are bound regions.
                 return;
             }
         };
-        let source = self.infcx.shallow_resolve(self_ty);
-        let target = self.infcx.shallow_resolve(obligation.predicate.0.input_types()[0]);
+        let target = obligation.predicate.0.input_types()[0];
 
         debug!("assemble_candidates_for_unsizing(source={:?}, target={:?})",
                source, target);
@@ -1576,11 +1581,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn assemble_builtin_bound_candidates<'o>(&mut self,
                                              bound: ty::BuiltinBound,
-                                             stack: &TraitObligationStack<'o, 'tcx>,
+                                             obligation: &TraitObligation<'tcx>,
                                              candidates: &mut SelectionCandidateSet<'tcx>)
                                              -> Result<(),SelectionError<'tcx>>
     {
-        match self.builtin_bound(bound, stack.obligation) {
+        match self.builtin_bound(bound, obligation) {
             Ok(If(..)) => {
                 debug!("builtin_bound: bound={:?}",
                        bound);
