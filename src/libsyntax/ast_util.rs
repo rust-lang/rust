@@ -438,7 +438,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
             visit::FkMethod(_, sig, _) => {
                 self.visit_generics_helper(&sig.generics)
             }
-            visit::FkFnBlock => {}
+            visit::FkClosure => {}
         }
 
         for argument in &function_declaration.inputs {

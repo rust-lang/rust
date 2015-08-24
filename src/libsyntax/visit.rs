@@ -32,7 +32,7 @@ use codemap::Span;
 use ptr::P;
 use owned_slice::OwnedSlice;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
     FkItemFn(Ident, &'a Generics, Unsafety, Constness, Abi, Visibility),
@@ -40,9 +40,8 @@ pub enum FnKind<'a> {
     /// fn foo(&self)
     FkMethod(Ident, &'a MethodSig, Option<Visibility>),
 
-    /// |x, y| ...
-    /// proc(x, y) ...
-    FkFnBlock,
+    /// |x, y| {}
+    FkClosure,
 }
 
 /// Each method of the Visitor trait is a hook to be potentially
@@ -616,7 +615,7 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
             visitor.visit_generics(&sig.generics);
             visitor.visit_explicit_self(&sig.explicit_self);
         }
-        FkFnBlock(..) => {}
+        FkClosure(..) => {}
     }
 
     visitor.visit_block(function_body)
@@ -817,7 +816,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             }
         }
         ExprClosure(_, ref function_declaration, ref body) => {
-            visitor.visit_fn(FkFnBlock,
+            visitor.visit_fn(FkClosure,
                              &**function_declaration,
                              &**body,
                              expression.span,

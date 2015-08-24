@@ -191,7 +191,7 @@ impl<'a> FnLikeNode<'a> {
             visit::FkItemFn(p.ident, p.generics, p.unsafety, p.constness, p.abi, p.vis)
         };
         let closure = |_: ClosureParts| {
-            visit::FkFnBlock
+            visit::FkClosure
         };
         let method = |_, ident, sig: &'a ast::MethodSig, vis, _, _| {
             visit::FkMethod(ident, sig, vis)
