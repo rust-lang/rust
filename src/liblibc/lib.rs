@@ -996,12 +996,7 @@ pub mod types {
             pub mod posix88 {
                 pub type off_t = i64;
                 pub type dev_t = u32;
-
-                #[cfg(target_os = "android")]
-                pub type ino_t = u64;
-                #[cfg(not(target_os = "android"))]
                 pub type ino_t = u32;
-
                 pub type pid_t = i32;
                 pub type uid_t = u32;
                 pub type gid_t = u32;
