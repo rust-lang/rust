@@ -207,8 +207,10 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'B' => {
                 assert_eq!(self.next(), '[');
-                // this is totally wrong, but nobody relevant cares about
-                // this field - it will die soon(TM).
+                // this is the wrong NodeId, but `param_id` is only accessed
+                // by the receiver-matching code in collect, which won't
+                // be going down this code path, and anyway I will kill it
+                // the moment wfcheck becomes the standard.
                 let node_id = self.parse_uint() as ast::NodeId;
                 assert_eq!(self.next(), '|');
                 let space = self.parse_param_space();
@@ -249,8 +251,12 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
 
     fn parse_scope(&mut self) -> region::CodeExtent {
         self.tcx.region_maps.bogus_code_extent(match self.next() {
-            // the scopes created here are totally bogus with their
-            // NodeIDs
+            // This creates scopes with the wrong NodeId. This isn't
+            // actually a problem because scopes only exist *within*
+            // functions, and functions aren't loaded until trans which
+            // doesn't care about regions.
+            //
+            // May still be worth fixing though.
             'P' => {
                 assert_eq!(self.next(), '[');
                 let fn_id = self.parse_uint() as ast::NodeId;

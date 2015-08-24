@@ -1365,7 +1365,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     /// the crate numbers back to the original source crate.
     ///
     /// Scopes will end up as being totally bogus. This can actually
-    /// be fixed through.
+    /// be fixed though.
     ///
     /// Unboxed closures are cloned along with the function being
     /// inlined, and all side tables use interned node IDs, so we

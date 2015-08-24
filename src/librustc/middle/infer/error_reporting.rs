@@ -201,7 +201,7 @@ impl<'tcx> ty::ctxt<'tcx> {
             // ReFree rather than dumping Debug output on the user.
             //
             // We shouldn't really be having unification failures with ReVar
-            // and ReLateBound through.
+            // and ReLateBound though.
             ty::ReSkolemized(..) | ty::ReVar(_) | ty::ReLateBound(..) => {
                 (format!("lifetime {:?}", region), None)
             }
