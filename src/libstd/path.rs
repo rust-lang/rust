@@ -882,7 +882,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::PartialEq for Components<'a> {
     fn eq(&self, other: &Components<'a>) -> bool {
-        iter::order::eq(self.clone(), other.clone())
+        Iterator::eq(self.clone(), other.clone())
     }
 }
 
@@ -892,14 +892,14 @@ impl<'a> cmp::Eq for Components<'a> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::PartialOrd for Components<'a> {
     fn partial_cmp(&self, other: &Components<'a>) -> Option<cmp::Ordering> {
-        iter::order::partial_cmp(self.clone(), other.clone())
+        Iterator::partial_cmp(self.clone(), other.clone())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::Ord for Components<'a> {
     fn cmp(&self, other: &Components<'a>) -> cmp::Ordering {
-        iter::order::cmp(self.clone(), other.clone())
+        Iterator::cmp(self.clone(), other.clone())
     }
 }
 
@@ -1162,14 +1162,14 @@ impl cmp::Eq for PathBuf {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialOrd for PathBuf {
     fn partial_cmp(&self, other: &PathBuf) -> Option<cmp::Ordering> {
-        self.components().partial_cmp(&other.components())
+        self.components().partial_cmp(other.components())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Ord for PathBuf {
     fn cmp(&self, other: &PathBuf) -> cmp::Ordering {
-        self.components().cmp(&other.components())
+        self.components().cmp(other.components())
     }
 }
 
@@ -1691,7 +1691,7 @@ impl<'a> fmt::Display for Display<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialEq for Path {
     fn eq(&self, other: &Path) -> bool {
-        iter::order::eq(self.components(), other.components())
+        self.components().eq(other.components())
     }
 }
 
@@ -1701,14 +1701,14 @@ impl cmp::Eq for Path {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialOrd for Path {
     fn partial_cmp(&self, other: &Path) -> Option<cmp::Ordering> {
-        self.components().partial_cmp(&other.components())
+        self.components().partial_cmp(other.components())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Ord for Path {
     fn cmp(&self, other: &Path) -> cmp::Ordering {
-        self.components().cmp(&other.components())
+        self.components().cmp(other.components())
     }
 }
 

@@ -22,7 +22,7 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{Map, FromIterator};
 use core::ops::Index;
-use core::{iter, fmt, mem, usize};
+use core::{fmt, mem, usize};
 use Bound::{self, Included, Excluded, Unbounded};
 
 use borrow::Borrow;
@@ -915,7 +915,7 @@ impl<K: Eq, V: Eq> Eq for BTreeMap<K, V> {}
 impl<K: PartialOrd, V: PartialOrd> PartialOrd for BTreeMap<K, V> {
     #[inline]
     fn partial_cmp(&self, other: &BTreeMap<K, V>) -> Option<Ordering> {
-        iter::order::partial_cmp(self.iter(), other.iter())
+        self.iter().partial_cmp(other.iter())
     }
 }
 
@@ -923,7 +923,7 @@ impl<K: PartialOrd, V: PartialOrd> PartialOrd for BTreeMap<K, V> {
 impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
     #[inline]
     fn cmp(&self, other: &BTreeMap<K, V>) -> Ordering {
-        iter::order::cmp(self.iter(), other.iter())
+        self.iter().cmp(other.iter())
     }
 }
 
