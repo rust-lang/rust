@@ -4,7 +4,7 @@
 A collection of lints that give helpful tips to newbies and catch oversights.
 
 ##Lints
-Lints included in this crate:
+There are 45 lints included in this crate:
 
 name                     | default | meaning
 -------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -54,13 +54,6 @@ type_complexity          | warn    | usage of very complex types; recommends fac
 unit_cmp                 | warn    | comparing unit values (which is always `true` or `false`, respectively)
 zero_width_space         | deny    | using a zero-width space in a string literal, which is confusing
 
-To use, add the following lines to your Cargo.toml:
-
-```
-[dependencies]
-clippy = "*"
-```
-
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!
 
 ##Usage
@@ -69,8 +62,8 @@ Compiler plugins are highly unstable and will only work with a nightly Rust for 
 
 Add in your `Cargo.toml`:
 ```toml
-[dependencies.clippy]
-git = "https://github.com/Manishearth/rust-clippy"
+[dependencies]
+clippy = "*"
 ```
 
 Sample `main.rs`:
