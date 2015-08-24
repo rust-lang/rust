@@ -216,7 +216,7 @@ impl Rewrite for ast::Block {
                 // Extract comment between unsafe and block start.
                 let trimmed = &snippet[6..open_pos].trim();
 
-                if trimmed.len() > 0 {
+                if !trimmed.is_empty() {
                     // 9 = "unsafe  {".len(), 7 = "unsafe ".len()
                     format!("unsafe {} ", rewrite_comment(trimmed, true, width - 9, offset + 7))
                 } else {
@@ -733,7 +733,7 @@ fn rewrite_call(context: &RewriteContext,
     let callee_str = try_opt!(callee.rewrite(context, max_callee_width, offset));
     debug!("rewrite_call, callee_str: `{}`", callee_str);
 
-    if args.len() == 0 {
+    if args.is_empty() {
         return Some(format!("{}()", callee_str));
     }
 
@@ -799,7 +799,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                           offset: usize)
                           -> Option<String> {
     debug!("rewrite_struct_lit: width {}, offset {}", width, offset);
-    assert!(fields.len() > 0 || base.is_some());
+    assert!(!fields.is_empty() || base.is_some());
 
     enum StructLitField<'a> {
         Regular(&'a ast::Field),
@@ -1008,7 +1008,7 @@ fn rewrite_unary_op(context: &RewriteContext,
         ast::UnOp::UnNeg => "-",
     };
 
-    let subexpr = try_opt!(expr.rewrite(context, width - operator_str.len(), offset));
+    let subexpr = try_opt!(expr.rewrite(context, try_opt!(width.checked_sub(operator_str.len())), offset));
 
     Some(format!("{}{}", operator_str, subexpr))
 }

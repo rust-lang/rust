@@ -267,7 +267,7 @@ impl<'a> FmtVisitor<'a> {
 
     // Returns true if we should skip the following item.
     pub fn visit_attrs(&mut self, attrs: &[ast::Attribute]) -> bool {
-        if attrs.len() == 0 {
+        if attrs.is_empty() {
             return false;
         }
 
@@ -299,7 +299,7 @@ impl<'a> FmtVisitor<'a> {
                 // with the usual doc comment token.
                 let multi_line = a_str.starts_with("//") && comment.matches('\n').count() > 1;
                 let comment = comment.trim();
-                if comment.len() > 0 {
+                if !comment.is_empty() {
                     result.push_str(&indent);
                     result.push_str(comment);
                     result.push('\n');
@@ -355,7 +355,7 @@ impl<'a> FmtVisitor<'a> {
         };
         // 1 = ";"
         match vp.rewrite(&context, self.config.max_width - offset - 1, offset) {
-            Some(ref s) if s.len() == 0 => {
+            Some(ref s) if s.is_empty() => {
                 // Format up to last newline
                 let prev_span = codemap::mk_sp(self.last_pos, span.lo);
                 let span_end = match self.snippet(prev_span).rfind('\n') {
