@@ -202,8 +202,8 @@ impl fold::Folder for EntryPointCleaner {
         let folded = fold::noop_fold_item(i, self).expect_one("noop did something");
         self.depth -= 1;
 
-        // Remove any #[main] from the AST so it doesn't clash with
-        // the one we're going to add, but mark it as
+        // Remove any #[main] or #[start] from the AST so it doesn't
+        // clash with the one we're going to add, but mark it as
         // #[allow(dead_code)] to avoid printing warnings.
         let folded = match entry::entry_point_type(&*folded, self.depth) {
             EntryPointType::MainNamed |
@@ -221,13 +221,10 @@ impl fold::Folder for EntryPointCleaner {
                     ast::Item {
                         id: id,
                         ident: ident,
-                        attrs: attrs.into_iter().filter_map(|attr| {
-                            if !attr.check_name("main") {
-                                Some(attr)
-                            } else {
-                                None
-                            }
-                        })
+                        attrs: attrs.into_iter()
+                            .filter(|attr| {
+                                !attr.check_name("main") && !attr.check_name("start")
+                            })
                             .chain(iter::once(allow_dead_code))
                             .collect(),
                         node: node,
