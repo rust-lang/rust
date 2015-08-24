@@ -25,7 +25,7 @@ use alloc::boxed::Box;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hasher, Hash};
-use core::iter::{self, FromIterator};
+use core::iter::FromIterator;
 use core::mem;
 use core::ptr;
 
@@ -917,12 +917,12 @@ impl<'a, T: 'a + Copy> Extend<&'a T> for LinkedList<T> {
 impl<A: PartialEq> PartialEq for LinkedList<A> {
     fn eq(&self, other: &LinkedList<A>) -> bool {
         self.len() == other.len() &&
-            iter::order::eq(self.iter(), other.iter())
+            self.iter().eq(other.iter())
     }
 
     fn ne(&self, other: &LinkedList<A>) -> bool {
         self.len() != other.len() ||
-            iter::order::ne(self.iter(), other.iter())
+            self.iter().ne(other.iter())
     }
 }
 
@@ -932,7 +932,7 @@ impl<A: Eq> Eq for LinkedList<A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialOrd> PartialOrd for LinkedList<A> {
     fn partial_cmp(&self, other: &LinkedList<A>) -> Option<Ordering> {
-        iter::order::partial_cmp(self.iter(), other.iter())
+        self.iter().partial_cmp(other.iter())
     }
 }
 
@@ -940,7 +940,7 @@ impl<A: PartialOrd> PartialOrd for LinkedList<A> {
 impl<A: Ord> Ord for LinkedList<A> {
     #[inline]
     fn cmp(&self, other: &LinkedList<A>) -> Ordering {
-        iter::order::cmp(self.iter(), other.iter())
+        self.iter().cmp(other.iter())
     }
 }
 
