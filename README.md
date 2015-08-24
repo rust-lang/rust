@@ -4,7 +4,7 @@
 A collection of lints that give helpful tips to newbies and catch oversights.
 
 ##Lints
-There are 45 lints included in this crate:
+There are 46 lints included in this crate:
 
 name                     | default | meaning
 -------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -44,6 +44,7 @@ ptr_arg                  | allow   | fn arguments of the type `&Vec<...>` or `&S
 range_step_by_zero       | warn    | using Range::step_by(0), which produces an infinite iterator
 redundant_closure        | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
 result_unwrap_used       | allow   | using `Result.unwrap()`, which might be better handled
+should_implement_trait   | warn    | defining a method that should be implementing a std trait
 single_match             | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
 str_to_string            | warn    | using `to_string()` on a str, which should be `to_owned()`
 string_add               | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead

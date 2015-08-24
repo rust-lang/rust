@@ -92,6 +92,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         matches::SINGLE_MATCH,
         methods::OPTION_UNWRAP_USED,
         methods::RESULT_UNWRAP_USED,
+        methods::SHOULD_IMPLEMENT_TRAIT,
         methods::STR_TO_STRING,
         methods::STRING_TO_STRING,
         misc::CMP_NAN,

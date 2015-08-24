@@ -1,8 +1,27 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-#[deny(option_unwrap_used, result_unwrap_used)]
-#[deny(str_to_string, string_to_string)]
+#![allow(unused)]
+#![deny(clippy)]
+
+use std::ops::Mul;
+
+struct T;
+
+impl T {
+    fn add(self, other: T) -> T { self } //~ERROR defining a method called `add`
+    fn drop(&mut self) { } //~ERROR defining a method called `drop`
+
+    fn sub(&self, other: T) -> &T { self } // no error, self is a ref
+    fn div(self) -> T { self } // no error, different #arguments
+    fn rem(self, other: T) { } // no error, wrong return type
+}
+
+impl Mul<T> for T {
+    type Output = T;
+    fn mul(self, other: T) -> T { self } // no error, obviously
+}
+
 fn main() {
     let opt = Some(0);
     let _ = opt.unwrap();  //~ERROR used unwrap() on an Option
