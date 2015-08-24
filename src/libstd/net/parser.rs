@@ -15,8 +15,10 @@
 
 use prelude::v1::*;
 
-use str::FromStr;
+use error::Error;
+use fmt;
 use net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use str::FromStr;
 
 struct Parser<'a> {
     // parsing as ASCII, so can use byte array
@@ -339,3 +341,17 @@ impl FromStr for SocketAddr {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug, Clone, PartialEq)]
 pub struct AddrParseError(());
+
+#[stable(feature = "addr_parse_error_error", since = "1.4.0")]
+impl fmt::Display for AddrParseError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(self.description())
+    }
+}
+
+#[stable(feature = "addr_parse_error_error", since = "1.4.0")]
+impl Error for AddrParseError {
+    fn description(&self) -> &str {
+        "invalid IP address syntax"
+    }
+}
