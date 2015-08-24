@@ -14,6 +14,7 @@
 #![allow(unused_imports)]
 use self::HasTestSignature::*;
 
+use std::iter;
 use std::slice;
 use std::mem;
 use std::vec;
@@ -24,6 +25,7 @@ use codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
 use codemap;
 use diagnostic;
 use config;
+use entry::{self, EntryPointType};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::expand::ExpansionConfig;
@@ -177,22 +179,39 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         // the one we're going to add. Only if compiling an executable.
 
         mod_folded.items = mem::replace(&mut mod_folded.items, vec![]).move_map(|item| {
-            item.map(|ast::Item {id, ident, attrs, node, vis, span}| {
-                ast::Item {
-                    id: id,
-                    ident: ident,
-                    attrs: attrs.into_iter().filter_map(|attr| {
-                        if !attr.check_name("main") {
-                            Some(attr)
-                        } else {
-                            None
+            match entry::entry_point_type(&item, self.cx.path.len() + 1) {
+                EntryPointType::MainNamed |
+                EntryPointType::MainAttr |
+                EntryPointType::Start =>
+                    item.map(|ast::Item {id, ident, attrs, node, vis, span}| {
+                        let allow_str = InternedString::new("allow");
+                        let dead_code_str = InternedString::new("dead_code");
+                        let allow_dead_code_item =
+                            attr::mk_list_item(allow_str,
+                                               vec![attr::mk_word_item(dead_code_str)]);
+                        let allow_dead_code = attr::mk_attr_outer(attr::mk_attr_id(),
+                                                                  allow_dead_code_item);
+
+                        ast::Item {
+                            id: id,
+                            ident: ident,
+                            attrs: attrs.into_iter().filter_map(|attr| {
+                                if !attr.check_name("main") {
+                                    Some(attr)
+                                } else {
+                                    None
+                                }
+                            })
+                                .chain(iter::once(allow_dead_code))
+                                .collect(),
+                            node: node,
+                            vis: vis,
+                            span: span
                         }
-                    }).collect(),
-                    node: node,
-                    vis: vis,
-                    span: span
-                }
-            })
+                    }),
+                EntryPointType::None |
+                EntryPointType::OtherMain => item,
+            }
         });
 
         if !tests.is_empty() || !tested_submods.is_empty() {
