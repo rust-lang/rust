@@ -13,7 +13,6 @@
 // Code relating to drop glue.
 
 
-use back::abi;
 use back::link::*;
 use llvm;
 use llvm::{ValueRef, get_param};
@@ -524,14 +523,14 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
             // a safe-guard, assert TyBox not used with TyContents.
             assert!(!skip_dtor);
             if !type_is_sized(bcx.tcx(), content_ty) {
-                let llval = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
+                let llval = expr::get_dataptr(bcx, v0);
                 let llbox = Load(bcx, llval);
                 let llbox_as_usize = PtrToInt(bcx, llbox, Type::int(bcx.ccx()));
                 let drop_flag_not_dropped_already =
                     ICmp(bcx, llvm::IntNE, llbox_as_usize, dropped_pattern, DebugLoc::None);
                 with_cond(bcx, drop_flag_not_dropped_already, |bcx| {
                     let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
-                    let info = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
+                    let info = expr::get_meta(bcx, v0);
                     let info = Load(bcx, info);
                     let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
 
@@ -590,8 +589,8 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
             // versus without calling Drop::drop. Assert caller is
             // okay with always calling the Drop impl, if any.
             assert!(!skip_dtor);
-            let data_ptr = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-            let vtable_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]));
+            let data_ptr = expr::get_dataptr(bcx, v0);
+            let vtable_ptr = Load(bcx, expr::get_meta(bcx, v0));
             let dtor = Load(bcx, vtable_ptr);
             Call(bcx,
                  dtor,
