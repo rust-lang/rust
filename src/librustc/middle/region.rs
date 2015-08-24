@@ -177,6 +177,14 @@ impl CodeExtentData {
 }
 
 impl CodeExtent {
+    #[inline]
+    fn into_option(self) -> Option<CodeExtent> {
+        if self == ROOT_CODE_EXTENT {
+            None
+        } else {
+            Some(self)
+        }
+    }
     pub fn node_id(&self, region_maps: &RegionMaps) -> ast::NodeId {
         region_maps.code_extent_data(*self).node_id()
     }
@@ -325,7 +333,7 @@ impl RegionMaps {
                 // have (bogus) NodeId-s that overlap items created during
                 // inlining.
                 // We probably shouldn't be creating bogus code extents
-                // through.
+                // though.
                 let idx = *o.get();
                 if parent == DUMMY_CODE_EXTENT {
                     info!("CodeExtent({}) = {:?} [parent={}] BOGUS!",
@@ -413,10 +421,7 @@ impl RegionMaps {
 
     pub fn opt_encl_scope(&self, id: CodeExtent) -> Option<CodeExtent> {
         //! Returns the narrowest scope that encloses `id`, if any.
-        match self.scope_map.borrow()[id.0 as usize] {
-            ROOT_CODE_EXTENT => None,
-            c => Some(c)
-        }
+        self.scope_map.borrow()[id.0 as usize].into_option()
     }
 
     #[allow(dead_code)] // used in middle::cfg
@@ -445,32 +450,33 @@ impl RegionMaps {
             None => { }
         }
 
+        let scope_map : &[CodeExtent] = &self.scope_map.borrow();
+        let code_extents: &[CodeExtentData] = &self.code_extents.borrow();
+
         // else, locate the innermost terminating scope
         // if there's one. Static items, for instance, won't
         // have an enclosing scope, hence no scope will be
         // returned.
+        let expr_extent = self.node_extent(expr_id);
         // For some reason, the expr's scope itself is skipped here.
-        let mut id = match self.opt_encl_scope(self.node_extent(expr_id)) {
+        let mut id = match scope_map[expr_extent.0 as usize].into_option() {
             Some(i) => i,
-            None => { return None; }
+            _ => return None
         };
 
-        loop { match self.opt_encl_scope(id) {
-            Some(p) => {
-                match self.code_extent_data(p) {
-                    CodeExtentData::DestructionScope(..) => {
-                        debug!("temporary_scope({:?}) = {:?} [enclosing]",
-                               expr_id, id);
-                        return Some(id);
-                    }
-                    _ => id = p
+        while let Some(p) = scope_map[id.0 as usize].into_option() {
+            match code_extents[p.0 as usize] {
+                CodeExtentData::DestructionScope(..) => {
+                    debug!("temporary_scope({:?}) = {:?} [enclosing]",
+                           expr_id, id);
+                    return Some(id);
                 }
+                _ => id = p
             }
-            None => {
-                debug!("temporary_scope({:?}) = None", expr_id);
-                return None;
-            }
-        } }
+        }
+
+        debug!("temporary_scope({:?}) = None", expr_id);
+        return None;
     }
 
     pub fn var_region(&self, id: ast::NodeId) -> ty::Region {
@@ -591,24 +597,20 @@ impl RegionMaps {
             let mut i = 0;
             while i < 32 {
                 buf[i] = scope;
-                let superscope = scope_map[scope.0 as usize];
-                if superscope == ROOT_CODE_EXTENT {
-                    return &buf[..i+1];
-                } else {
-                    scope = superscope;
+                match scope_map[scope.0 as usize].into_option() {
+                    Some(superscope) => scope = superscope,
+                    _ => return &buf[..i+1]
                 }
                 i += 1;
             }
 
             *vec = Vec::with_capacity(64);
-            vec.extend((*buf).into_iter());
+            vec.push_all(buf);
             loop {
                 vec.push(scope);
-                let superscope = scope_map[scope.0 as usize];
-                if superscope == ROOT_CODE_EXTENT {
-                    return &*vec;
-                } else {
-                    scope = superscope;
+                match scope_map[scope.0 as usize].into_option() {
+                    Some(superscope) => scope = superscope,
+                    _ => return &*vec
                 }
             }
         }
