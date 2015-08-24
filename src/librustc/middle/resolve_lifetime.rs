@@ -186,7 +186,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     this.walk_fn(fk, fd, b, s)
                 })
             }
-            visit::FkFnBlock(..) => {
+            visit::FkClosure(..) => {
                 self.walk_fn(fk, fd, b, s)
             }
         }
@@ -484,7 +484,7 @@ impl<'a> LifetimeContext<'a> {
                 self.visit_generics(&sig.generics);
                 self.visit_explicit_self(&sig.explicit_self);
             }
-            visit::FkFnBlock(..) => {
+            visit::FkClosure(..) => {
                 visit::walk_fn_decl(self, fd);
             }
         }

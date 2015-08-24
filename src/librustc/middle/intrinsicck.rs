@@ -225,7 +225,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
                 visit::walk_fn(self, fk, fd, b, s);
                 self.param_envs.pop();
             }
-            visit::FkFnBlock(..) => {
+            visit::FkClosure(..) => {
                 visit::walk_fn(self, fk, fd, b, s);
             }
         }
