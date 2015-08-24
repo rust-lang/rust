@@ -26,6 +26,7 @@ use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
                       DIDescriptor, FlagPrototyped};
+use middle::def_id::DefId;
 use middle::subst::{self, Substs};
 use rustc::ast_map;
 use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
@@ -75,7 +76,7 @@ pub struct CrateDebugContext<'tcx> {
     builder: DIBuilderRef,
     current_debug_location: Cell<InternalDebugLocation>,
     created_files: RefCell<FnvHashMap<String, DIFile>>,
-    created_enum_disr_types: RefCell<FnvHashMap<(ast::DefId, IntType), DIType>>,
+    created_enum_disr_types: RefCell<FnvHashMap<(DefId, IntType), DIType>>,
 
     type_map: RefCell<TypeMap<'tcx>>,
     namespace_map: RefCell<FnvHashMap<Vec<ast::Name>, Rc<NamespaceTreeNode>>>,
@@ -345,7 +346,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // somehow (storing a path in the ast_map, or construct a path using the
     // enclosing function).
     let (linkage_name, containing_scope) = if has_path {
-        let namespace_node = namespace_for_item(cx, ast_util::local_def(fn_ast_id));
+        let namespace_node = namespace_for_item(cx, DefId::local(fn_ast_id));
         let linkage_name = namespace_node.mangled_name_of_contained_item(
             &function_name[..]);
         let containing_scope = namespace_node.scope;

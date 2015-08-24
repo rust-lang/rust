@@ -900,7 +900,7 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let const_ty = expr_ty(bcx, ref_expr);
 
             // For external constants, we don't inline.
-            let val = if did.krate == ast::LOCAL_CRATE {
+            let val = if did.is_local() {
                 // Case 1.
 
                 // The LLVM global has the type of its initializer,

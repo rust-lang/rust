@@ -11,11 +11,11 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::traits;
 use middle::ty;
 use syntax::ast::{Item, ItemImpl};
 use syntax::ast;
-use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::visit;
 
@@ -29,8 +29,8 @@ struct OrphanChecker<'cx, 'tcx:'cx> {
 }
 
 impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
-    fn check_def_id(&self, item: &ast::Item, def_id: ast::DefId) {
-        if def_id.krate != ast::LOCAL_CRATE {
+    fn check_def_id(&self, item: &ast::Item, def_id: DefId) {
+        if def_id.krate != LOCAL_CRATE {
             span_err!(self.tcx.sess, item.span, E0116,
                       "cannot define inherent `impl` for a type outside of the \
                        crate where the type is defined; define and implement \
@@ -39,8 +39,8 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     }
 
     fn check_primitive_impl(&self,
-                            impl_def_id: ast::DefId,
-                            lang_def_id: Option<ast::DefId>,
+                            impl_def_id: DefId,
+                            lang_def_id: Option<DefId>,
                             lang: &str,
                             ty: &str,
                             span: Span) {
@@ -62,7 +62,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
     /// to prevent inundating the user with a bunch of similar error
     /// reports.
     fn check_item(&self, item: &ast::Item) {
-        let def_id = ast_util::local_def(item.id);
+        let def_id = DefId::local(item.id);
         match item.node {
             ast::ItemImpl(_, _, _, None, _, _) => {
                 // For inherent impls, self type must be a nominal type
@@ -277,7 +277,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                        self.tcx.trait_has_default_impl(trait_def_id));
                 if
                     self.tcx.trait_has_default_impl(trait_def_id) &&
-                    trait_def_id.krate != ast::LOCAL_CRATE
+                    trait_def_id.krate != LOCAL_CRATE
                 {
                     let self_ty = trait_ref.self_ty();
                     let opt_self_def_id = match self_ty.sty {
@@ -295,7 +295,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                         // can't do `unsafe impl Send for Rc<SomethingLocal>` or
                         // `impl !Send for Box<SomethingLocalAndSend>`.
                         Some(self_def_id) => {
-                            if self_def_id.krate == ast::LOCAL_CRATE {
+                            if self_def_id.is_local() {
                                 None
                             } else {
                                 Some(format!(
@@ -338,7 +338,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 debug!("coherence2::orphan check: default trait impl {}",
                        self.tcx.map.node_to_string(item.id));
                 let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
-                if trait_ref.def_id.krate != ast::LOCAL_CRATE {
+                if trait_ref.def_id.krate != LOCAL_CRATE {
                     span_err!(self.tcx.sess, item.span, E0318,
                               "cannot create default implementations for traits outside the \
                                crate they're defined in; define a new trait instead");

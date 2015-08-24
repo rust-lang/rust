@@ -16,12 +16,12 @@ use std::mem;
 
 use syntax::abi;
 use syntax::ast;
-use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
 use rustc::ast_map;
+use rustc::middle::def_id::DefId;
 use rustc::middle::stability;
 
 use core;
@@ -62,7 +62,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
         self.cx.tcx_opt().and_then(
-            |tcx| stability::lookup(tcx, ast_util::local_def(id)).map(|x| x.clone()))
+            |tcx| stability::lookup(tcx, DefId::local(id)).map(|x| x.clone()))
     }
 
     pub fn visit(&mut self, krate: &ast::Crate) {
@@ -205,7 +205,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             None => return false
         };
         let def = tcx.def_map.borrow()[&id].def_id();
-        if !ast_util::is_local(def) { return false }
+        if !def.is_local() { return false }
         let analysis = match self.analysis {
             Some(analysis) => analysis, None => return false
         };

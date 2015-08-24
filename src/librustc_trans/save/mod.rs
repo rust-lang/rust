@@ -10,6 +10,7 @@
 
 use middle::ty;
 use middle::def;
+use middle::def_id::{DefId, LOCAL_CRATE};
 
 use std::env;
 use std::fs::{self, File};
@@ -18,7 +19,7 @@ use std::path::{Path, PathBuf};
 use rustc::ast_map::NodeItem;
 
 use syntax::{attr};
-use syntax::ast::{self, NodeId, DefId};
+use syntax::ast::{self, NodeId};
 use syntax::ast_util;
 use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
@@ -351,7 +352,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                            span: Span) -> FunctionData {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
-        let qualname = match self.tcx.impl_of_method(ast_util::local_def(id)) {
+        let qualname = match self.tcx.impl_of_method(DefId::local(id)) {
             Some(impl_id) => match self.tcx.map.get(impl_id.node) {
                 NodeItem(item) => {
                     match item.node {
@@ -359,7 +360,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             let mut result = String::from("<");
                             result.push_str(&ty_to_string(&**ty));
 
-                            match self.tcx.trait_of_item(ast_util::local_def(id)) {
+                            match self.tcx.trait_of_item(DefId::local(id)) {
                                 Some(def_id) => {
                                     result.push_str(" as ");
                                     result.push_str(
@@ -383,7 +384,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                  impl_id.node, id, self.tcx.map.get(impl_id.node)));
                 },
             },
-            None => match self.tcx.trait_of_item(ast_util::local_def(id)) {
+            None => match self.tcx.trait_of_item(DefId::local(id)) {
                 Some(def_id) => {
                     match self.tcx.map.get(def_id.node) {
                         NodeItem(_) => {
@@ -405,10 +406,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         let qualname = format!("{}::{}", qualname, name);
 
-        let decl_id = self.tcx.trait_item_of_item(ast_util::local_def(id))
+        let decl_id = self.tcx.trait_item_of_item(DefId::local(id))
             .and_then(|new_id| {
                 let def_id = new_id.def_id();
-                if def_id.node != 0 && def_id != ast_util::local_def(id) {
+                if def_id.node != 0 && def_id != DefId::local(id) {
                     Some(def_id)
                 } else {
                     None
@@ -545,7 +546,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             def::DefMethod(decl_id) => {
                 let sub_span = self.span_utils.sub_span_for_meth_name(path.span);
-                let def_id = if decl_id.krate == ast::LOCAL_CRATE {
+                let def_id = if decl_id.is_local() {
                     let ti = self.tcx.impl_or_trait_item(decl_id);
                     match ti.container() {
                         ty::TraitContainer(def_id) => {
@@ -599,7 +600,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     fn trait_method_has_body(&self, mr: &ty::ImplOrTraitItem) -> bool {
         let def_id = mr.def_id();
-        if def_id.krate != ast::LOCAL_CRATE {
+        if def_id.krate != LOCAL_CRATE {
             return false;
         }
 

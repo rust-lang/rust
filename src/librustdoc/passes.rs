@@ -14,7 +14,6 @@ use std::cmp;
 use std::string::String;
 use std::usize;
 use syntax::ast;
-use syntax::ast_util;
 
 use clean;
 use clean::Item;
@@ -131,7 +130,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::TraitItem(..) | clean::FunctionItem(..) |
             clean::VariantItem(..) | clean::MethodItem(..) |
             clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) => {
-                if ast_util::is_local(i.def_id) {
+                if i.def_id.is_local() {
                     if !self.exported_items.contains(&i.def_id.node) {
                         return None;
                     }
@@ -143,7 +142,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             }
 
             clean::ConstantItem(..) => {
-                if ast_util::is_local(i.def_id) &&
+                if i.def_id.is_local() &&
                    !self.exported_items.contains(&i.def_id.node) {
                     return None;
                 }
@@ -171,7 +170,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::ImplItem(clean::Impl{
                 for_: clean::ResolvedPath{ did, .. }, ..
             }) => {
-                if ast_util::is_local(did) &&
+                if did.is_local() &&
                    !self.exported_items.contains(&did.node) {
                     return None;
                 }
@@ -238,7 +237,7 @@ impl<'a> fold::DocFolder for ImplStripper<'a> {
             match imp.trait_ {
                 Some(clean::ResolvedPath{ did, .. }) => {
                     let ImplStripper(s) = *self;
-                    if ast_util::is_local(did) && !s.contains(&did.node) {
+                    if did.is_local() && !s.contains(&did.node) {
                         return None;
                     }
                 }

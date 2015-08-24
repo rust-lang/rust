@@ -26,6 +26,7 @@ use metadata::tyencode;
 use middle::cast;
 use middle::check_const::ConstQualif;
 use middle::def;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::privacy::{AllPublic, LastMod};
 use middle::region;
 use middle::subst;
@@ -68,7 +69,7 @@ trait tr {
 }
 
 trait tr_intern {
-    fn tr_intern(&self, dcx: &DecodeContext) -> ast::DefId;
+    fn tr_intern(&self, dcx: &DecodeContext) -> DefId;
 }
 
 // ______________________________________________________________________
@@ -111,7 +112,7 @@ impl<'a, 'b, 'c, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'c, 'tcx> {
             self.tr_id(id)
         }
     }
-    fn new_def_id(&self, def_id: ast::DefId) -> ast::DefId {
+    fn new_def_id(&self, def_id: DefId) -> DefId {
         self.tr_def_id(def_id)
     }
     fn new_span(&self, span: Span) -> Span {
@@ -212,7 +213,7 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
     /// However, there are a *few* cases where def-ids are used but we know that the thing being
     /// referenced is in fact *internal* to the item being inlined.  In those cases, you should use
     /// `tr_intern_def_id()` below.
-    pub fn tr_def_id(&self, did: ast::DefId) -> ast::DefId {
+    pub fn tr_def_id(&self, did: DefId) -> DefId {
 
         decoder::translate_def_id(self.cdata, did)
     }
@@ -221,9 +222,9 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
     /// known to refer to some part of the item currently being
     /// inlined.  In that case, we want to convert the def-id to
     /// refer to the current crate and to the new, inlined node-id.
-    pub fn tr_intern_def_id(&self, did: ast::DefId) -> ast::DefId {
-        assert_eq!(did.krate, ast::LOCAL_CRATE);
-        ast::DefId { krate: ast::LOCAL_CRATE, node: self.tr_id(did.node) }
+    pub fn tr_intern_def_id(&self, did: DefId) -> DefId {
+        assert_eq!(did.krate, LOCAL_CRATE);
+        DefId { krate: LOCAL_CRATE, node: self.tr_id(did.node) }
     }
 
     /// Translates a `Span` from an extern crate to the corresponding `Span`
@@ -284,20 +285,20 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
     }
 }
 
-impl tr_intern for ast::DefId {
-    fn tr_intern(&self, dcx: &DecodeContext) -> ast::DefId {
+impl tr_intern for DefId {
+    fn tr_intern(&self, dcx: &DecodeContext) -> DefId {
         dcx.tr_intern_def_id(*self)
     }
 }
 
-impl tr for ast::DefId {
-    fn tr(&self, dcx: &DecodeContext) -> ast::DefId {
+impl tr for DefId {
+    fn tr(&self, dcx: &DecodeContext) -> DefId {
         dcx.tr_def_id(*self)
     }
 }
 
-impl tr for Option<ast::DefId> {
-    fn tr(&self, dcx: &DecodeContext) -> Option<ast::DefId> {
+impl tr for Option<DefId> {
+    fn tr(&self, dcx: &DecodeContext) -> Option<DefId> {
         self.map(|d| dcx.tr_def_id(d))
     }
 }
@@ -309,35 +310,35 @@ impl tr for Span {
 }
 
 trait def_id_encoder_helpers {
-    fn emit_def_id(&mut self, did: ast::DefId);
+    fn emit_def_id(&mut self, did: DefId);
 }
 
 impl<S:serialize::Encoder> def_id_encoder_helpers for S
     where <S as serialize::serialize::Encoder>::Error: Debug
 {
-    fn emit_def_id(&mut self, did: ast::DefId) {
+    fn emit_def_id(&mut self, did: DefId) {
         did.encode(self).unwrap()
     }
 }
 
 trait def_id_decoder_helpers {
-    fn read_def_id(&mut self, dcx: &DecodeContext) -> ast::DefId;
+    fn read_def_id(&mut self, dcx: &DecodeContext) -> DefId;
     fn read_def_id_nodcx(&mut self,
-                         cdata: &cstore::crate_metadata) -> ast::DefId;
+                         cdata: &cstore::crate_metadata) -> DefId;
 }
 
 impl<D:serialize::Decoder> def_id_decoder_helpers for D
     where <D as serialize::serialize::Decoder>::Error: Debug
 {
-    fn read_def_id(&mut self, dcx: &DecodeContext) -> ast::DefId {
-        let did: ast::DefId = Decodable::decode(self).unwrap();
+    fn read_def_id(&mut self, dcx: &DecodeContext) -> DefId {
+        let did: DefId = Decodable::decode(self).unwrap();
         did.tr(dcx)
     }
 
     fn read_def_id_nodcx(&mut self,
                          cdata: &cstore::crate_metadata)
-                         -> ast::DefId {
-        let did: ast::DefId = Decodable::decode(self).unwrap();
+                         -> DefId {
+        let did: DefId = Decodable::decode(self).unwrap();
         decoder::translate_def_id(cdata, did)
     }
 }
@@ -987,7 +988,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
+    let lid = DefId { krate: LOCAL_CRATE, node: id };
     if let Some(type_scheme) = tcx.tcache.borrow().get(&lid) {
         rbml_w.tag(c::tag_table_tcache, |rbml_w| {
             rbml_w.id(id);
@@ -1033,14 +1034,14 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    if let Some(closure_type) = tcx.tables.borrow().closure_tys.get(&ast_util::local_def(id)) {
+    if let Some(closure_type) = tcx.tables.borrow().closure_tys.get(&DefId::local(id)) {
         rbml_w.tag(c::tag_table_closure_tys, |rbml_w| {
             rbml_w.id(id);
             rbml_w.emit_closure_type(ecx, closure_type);
         })
     }
 
-    if let Some(closure_kind) = tcx.tables.borrow().closure_kinds.get(&ast_util::local_def(id)) {
+    if let Some(closure_kind) = tcx.tables.borrow().closure_kinds.get(&DefId::local(id)) {
         rbml_w.tag(c::tag_table_closure_kinds, |rbml_w| {
             rbml_w.id(id);
             encode_closure_kind(rbml_w, *closure_kind)
@@ -1110,8 +1111,8 @@ trait rbml_decoder_decoder_helpers<'tcx> {
     fn convert_def_id(&mut self,
                       dcx: &DecodeContext,
                       source: DefIdSource,
-                      did: ast::DefId)
-                      -> ast::DefId;
+                      did: DefId)
+                      -> DefId;
 
     // Versions of the type reading functions that don't need the full
     // DecodeContext.
@@ -1384,8 +1385,8 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn convert_def_id(&mut self,
                       dcx: &DecodeContext,
                       source: tydecode::DefIdSource,
-                      did: ast::DefId)
-                      -> ast::DefId {
+                      did: DefId)
+                      -> DefId {
         let r = match source {
             NominalType | TypeWithId | RegionParameter => dcx.tr_def_id(did),
             ClosureSource => dcx.tr_intern_def_id(did)
@@ -1457,7 +1458,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                     }
                     c::tag_table_tcache => {
                         let type_scheme = val_dsr.read_type_scheme(dcx);
-                        let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
+                        let lid = DefId { krate: LOCAL_CRATE, node: id };
                         dcx.tcx.register_item_type(lid, type_scheme);
                     }
                     c::tag_table_param_defs => {
@@ -1479,13 +1480,13 @@ fn decode_side_tables(dcx: &DecodeContext,
                     c::tag_table_closure_tys => {
                         let closure_ty =
                             val_dsr.read_closure_ty(dcx);
-                        dcx.tcx.tables.borrow_mut().closure_tys.insert(ast_util::local_def(id),
+                        dcx.tcx.tables.borrow_mut().closure_tys.insert(DefId::local(id),
                                                                 closure_ty);
                     }
                     c::tag_table_closure_kinds => {
                         let closure_kind =
                             val_dsr.read_closure_kind(dcx);
-                        dcx.tcx.tables.borrow_mut().closure_kinds.insert(ast_util::local_def(id),
+                        dcx.tcx.tables.borrow_mut().closure_kinds.insert(DefId::local(id),
                                                                   closure_kind);
                     }
                     c::tag_table_cast_kinds => {

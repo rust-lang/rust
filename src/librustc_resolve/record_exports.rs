@@ -56,7 +56,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         // exports for nonlocal crates.
 
         match module_.def_id.get() {
-            Some(def_id) if def_id.krate == ast::LOCAL_CRATE => {
+            Some(def_id) if def_id.is_local() => {
                 // OK. Continue.
                 debug!("(recording exports for module subtree) recording \
                         exports for local module `{}`",

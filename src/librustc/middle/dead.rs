@@ -14,12 +14,12 @@
 
 use ast_map;
 use middle::{def, pat_util, privacy, ty};
+use middle::def_id::{DefId};
 use lint;
 use util::nodemap::NodeSet;
 
 use std::collections::HashSet;
 use syntax::{ast, codemap};
-use syntax::ast_util::{local_def, is_local};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::visit::{self, Visitor};
 
@@ -27,8 +27,8 @@ use syntax::visit::{self, Visitor};
 // explored. For example, if it's a live NodeItem that is a
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
-fn should_explore(tcx: &ty::ctxt, def_id: ast::DefId) -> bool {
-    if !is_local(def_id) {
+fn should_explore(tcx: &ty::ctxt, def_id: DefId) -> bool {
+    if !def_id.is_local() {
         return false;
     }
 
@@ -65,7 +65,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_def_id(&mut self, def_id: ast::DefId) {
+    fn check_def_id(&mut self, def_id: DefId) {
         if should_explore(self.tcx, def_id) {
             self.worklist.push(def_id.node);
         }
@@ -475,7 +475,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // method of a private type is used, but the type itself is never
         // called directly.
         let impl_items = self.tcx.impl_items.borrow();
-        match self.tcx.inherent_impls.borrow().get(&local_def(id)) {
+        match self.tcx.inherent_impls.borrow().get(&DefId::local(id)) {
             None => (),
             Some(impl_list) => {
                 for impl_did in impl_list.iter() {

@@ -17,12 +17,13 @@ use astconv::AstConv;
 use check::{self, FnCtxt};
 use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate, HasTypeFlags};
 use middle::def;
+use middle::def_id::DefId;
 use middle::lang_items::FnOnceTraitLangItem;
 use middle::subst::Substs;
 use middle::traits::{Obligation, SelectionContext};
 use metadata::{csearch, cstore, decoder};
 
-use syntax::{ast, ast_util};
+use syntax::ast;
 use syntax::codemap::Span;
 use syntax::print::pprust;
 
@@ -221,7 +222,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                       rcvr_ty: Ty<'tcx>,
                                       item_name: ast::Name,
                                       rcvr_expr: Option<&ast::Expr>,
-                                      valid_out_of_scope_traits: Vec<ast::DefId>)
+                                      valid_out_of_scope_traits: Vec<DefId>)
 {
     let tcx = fcx.tcx();
 
@@ -261,7 +262,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // this isn't perfect (that is, there are cases when
             // implementing a trait would be legal but is rejected
             // here).
-            (type_is_local || ast_util::is_local(info.def_id))
+            (type_is_local || info.def_id.is_local())
                 && trait_item(tcx, info.def_id, item_name).is_some()
         })
         .collect::<Vec<_>>();
@@ -301,9 +302,9 @@ fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   rcvr_expr: Option<&ast::Expr>) -> bool {
     fn is_local(ty: Ty) -> bool {
         match ty.sty {
-            ty::TyEnum(def, _) | ty::TyStruct(def, _) => ast_util::is_local(def.did),
+            ty::TyEnum(def, _) | ty::TyStruct(def, _) => def.did.is_local(),
 
-            ty::TyTrait(ref tr) => ast_util::is_local(tr.principal_def_id()),
+            ty::TyTrait(ref tr) => tr.principal_def_id().is_local(),
 
             ty::TyParam(_) => true,
 
@@ -334,11 +335,11 @@ fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 #[derive(Copy, Clone)]
 pub struct TraitInfo {
-    pub def_id: ast::DefId,
+    pub def_id: DefId,
 }
 
 impl TraitInfo {
-    fn new(def_id: ast::DefId) -> TraitInfo {
+    fn new(def_id: DefId) -> TraitInfo {
         TraitInfo {
             def_id: def_id,
         }
@@ -383,7 +384,7 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
             fn visit_item(&mut self, i: &'v ast::Item) {
                 match i.node {
                     ast::ItemTrait(..) => {
-                        self.traits.push(TraitInfo::new(ast_util::local_def(i.id)));
+                        self.traits.push(TraitInfo::new(DefId::local(i.id)));
                     }
                     _ => {}
                 }

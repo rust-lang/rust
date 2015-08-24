@@ -24,13 +24,13 @@ use super::{
 };
 
 use fmt_macros::{Parser, Piece, Position};
+use middle::def_id::DefId;
 use middle::infer::InferCtxt;
 use middle::ty::{self, ToPredicate, HasTypeFlags, ToPolyTraitRef, TraitRef, Ty};
 use middle::ty_fold::TypeFoldable;
 use std::collections::HashMap;
 use std::fmt;
 use syntax::codemap::Span;
-use syntax::ast;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 
 pub fn report_fulfillment_errors<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
@@ -294,7 +294,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 
 pub fn report_object_safety_error<'tcx>(tcx: &ty::ctxt<'tcx>,
                                         span: Span,
-                                        trait_def_id: ast::DefId,
+                                        trait_def_id: DefId,
                                         is_warning: bool)
 {
     span_err_or_warn!(

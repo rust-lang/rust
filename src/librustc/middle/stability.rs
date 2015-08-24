@@ -14,6 +14,7 @@
 use session::Session;
 use lint;
 use middle::def;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::ty;
 use middle::privacy::PublicItems;
 use metadata::csearch;
@@ -21,9 +22,8 @@ use syntax::parse::token::InternedString;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::{attr, visit};
 use syntax::ast;
-use syntax::ast::{Attribute, Block, Crate, DefId, FnDecl, NodeId, Variant};
+use syntax::ast::{Attribute, Block, Crate, FnDecl, NodeId, Variant};
 use syntax::ast::{Item, Generics, StructField};
-use syntax::ast_util::{is_local, local_def};
 use syntax::attr::{Stability, AttrMetaMethods};
 use syntax::visit::{FnKind, Visitor};
 use syntax::feature_gate::emit_feature_err;
@@ -57,7 +57,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                    attrs: &Vec<Attribute>, item_sp: Span, f: F, required: bool) where
         F: FnOnce(&mut Annotator),
     {
-        if self.index.staged_api[&ast::LOCAL_CRATE] {
+        if self.index.staged_api[&LOCAL_CRATE] {
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
             match attr::find_stability(self.tcx.sess.diagnostic(), attrs, item_sp) {
                 Some(mut stab) => {
@@ -111,7 +111,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                             "An API can't be stabilized after it is deprecated");
                     }
 
-                    self.index.map.insert(local_def(id), Some(stab));
+                    self.index.map.insert(DefId::local(id), Some(stab));
 
                     // Don't inherit #[stable(feature = "rust1", since = "1.0.0")]
                     if stab.level != attr::Stable {
@@ -127,8 +127,8 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                            use_parent, self.parent);
                     if use_parent {
                         if let Some(stab) = self.parent {
-                            self.index.map.insert(local_def(id), Some(stab));
-                        } else if self.index.staged_api[&ast::LOCAL_CRATE] && required
+                            self.index.map.insert(DefId::local(id), Some(stab));
+                        } else if self.index.staged_api[&LOCAL_CRATE] && required
                             && self.export_map.contains(&id)
                             && !self.tcx.sess.opts.test {
                                 self.tcx.sess.span_err(item_sp,
@@ -245,7 +245,7 @@ impl<'tcx> Index<'tcx> {
             }
         }
         let mut staged_api = FnvHashMap();
-        staged_api.insert(ast::LOCAL_CRATE, is_staged_api);
+        staged_api.insert(LOCAL_CRATE, is_staged_api);
         Index {
             staged_api: staged_api,
             map: DefIdMap(),
@@ -283,9 +283,9 @@ struct Checker<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
-    fn check(&mut self, id: ast::DefId, span: Span, stab: &Option<&Stability>) {
+    fn check(&mut self, id: DefId, span: Span, stab: &Option<&Stability>) {
         // Only the cross-crate scenario matters when checking unstable APIs
-        let cross_crate = !is_local(id);
+        let cross_crate = !id.is_local();
         if !cross_crate { return }
 
         match *stab {
@@ -367,7 +367,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
 
 /// Helper for discovering nodes to check for stability
 pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
-                  cb: &mut FnMut(ast::DefId, Span, &Option<&Stability>)) {
+                  cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
     match item.node {
         ast::ItemExternCrate(_) => {
             // compiler-generated `extern crate` items have a dummy span.
@@ -377,7 +377,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
                 Some(cnum) => cnum,
                 None => return,
             };
-            let id = ast::DefId { krate: cnum, node: ast::CRATE_NODE_ID };
+            let id = DefId { krate: cnum, node: ast::CRATE_NODE_ID };
             maybe_do_stability_check(tcx, id, item.span, cb);
         }
 
@@ -404,7 +404,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
 
 /// Helper for discovering nodes to check for stability
 pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
-                  cb: &mut FnMut(ast::DefId, Span, &Option<&Stability>)) {
+                  cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
     let span;
     let id = match e.node {
         ast::ExprMethodCall(i, _, _) => {
@@ -465,7 +465,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
 }
 
 pub fn check_path(tcx: &ty::ctxt, path: &ast::Path, id: ast::NodeId,
-                  cb: &mut FnMut(ast::DefId, Span, &Option<&Stability>)) {
+                  cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
     match tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
         Some(def::DefPrimTy(..)) => {}
         Some(def) => {
@@ -477,7 +477,7 @@ pub fn check_path(tcx: &ty::ctxt, path: &ast::Path, id: ast::NodeId,
 }
 
 pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
-                 cb: &mut FnMut(ast::DefId, Span, &Option<&Stability>)) {
+                 cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
     debug!("check_pat(pat = {:?})", pat);
     if is_internal(tcx, pat.span) { return; }
 
@@ -509,8 +509,8 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
     }
 }
 
-fn maybe_do_stability_check(tcx: &ty::ctxt, id: ast::DefId, span: Span,
-                            cb: &mut FnMut(ast::DefId, Span, &Option<&Stability>)) {
+fn maybe_do_stability_check(tcx: &ty::ctxt, id: DefId, span: Span,
+                            cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
     if !is_staged_api(tcx, id) {
         debug!("maybe_do_stability_check: \
                 skipping id={:?} since it is not staged_api", id);
@@ -568,7 +568,7 @@ fn lookup_uncached<'tcx>(tcx: &ty::ctxt<'tcx>, id: DefId) -> Option<&'tcx Stabil
         _ => {}
     }
 
-    let item_stab = if is_local(id) {
+    let item_stab = if id.is_local() {
         None // The stability cache is filled partially lazily
     } else {
         csearch::get_stability(&tcx.sess.cstore, id).map(|st| tcx.intern_stability(st))

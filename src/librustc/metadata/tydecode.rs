@@ -18,6 +18,7 @@
 
 pub use self::DefIdSource::*;
 
+use middle::def_id::DefId;
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
@@ -58,7 +59,7 @@ pub enum DefIdSource {
     ClosureSource
 }
 
-pub type DefIdConvert<'a> = &'a mut FnMut(DefIdSource, ast::DefId) -> ast::DefId;
+pub type DefIdConvert<'a> = &'a mut FnMut(DefIdSource, DefId) -> DefId;
 
 pub struct TyDecoder<'a, 'tcx: 'a> {
     data: &'a [u8],
@@ -473,7 +474,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         ty::TypeAndMut { ty: self.parse_ty(), mutbl: m }
     }
 
-    fn parse_def(&mut self, source: DefIdSource) -> ast::DefId {
+    fn parse_def(&mut self, source: DefIdSource) -> DefId {
         let def_id = parse_defid(self.scan(|c| c == '|'));
         return (self.conv_def_id)(source, def_id);
     }
@@ -680,7 +681,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
 }
 
 // Rust metadata parsing
-fn parse_defid(buf: &[u8]) -> ast::DefId {
+fn parse_defid(buf: &[u8]) -> DefId {
     let mut colon_idx = 0;
     let len = buf.len();
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1; }
@@ -706,7 +707,7 @@ fn parse_defid(buf: &[u8]) -> ast::DefId {
         None => panic!("internal error: parse_defid: id expected, found {:?}",
                        def_part)
     };
-    ast::DefId { krate: crate_num, node: def_num }
+    DefId { krate: crate_num, node: def_num }
 }
 
 fn parse_unsafety(c: char) -> ast::Unsafety {

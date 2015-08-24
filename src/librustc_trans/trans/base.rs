@@ -37,6 +37,7 @@ use llvm;
 use metadata::{csearch, encoder, loader};
 use middle::astencode;
 use middle::cfg;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::pat_util::simple_identifier;
@@ -92,7 +93,6 @@ use std::mem;
 use std::str;
 use std::{i8, i16, i32, i64};
 use syntax::abi::{Rust, RustCall, RustIntrinsic, PlatformIntrinsic, Abi};
-use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap::Span;
@@ -179,7 +179,7 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
 }
 
 fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
-                                name: &str, did: ast::DefId) -> ValueRef {
+                                name: &str, did: DefId) -> ValueRef {
     match ccx.externs().borrow().get(name) {
         Some(n) => return *n,
         None => ()
@@ -195,7 +195,7 @@ fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
 }
 
 pub fn self_type_for_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                       closure_id: ast::DefId,
+                                       closure_id: DefId,
                                        fn_ty: Ty<'tcx>)
                                        -> Ty<'tcx>
 {
@@ -211,11 +211,11 @@ pub fn self_type_for_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn kind_for_closure(ccx: &CrateContext, closure_id: ast::DefId) -> ty::ClosureKind {
+pub fn kind_for_closure(ccx: &CrateContext, closure_id: DefId) -> ty::ClosureKind {
     *ccx.tcx().tables.borrow().closure_kinds.get(&closure_id).unwrap()
 }
 
-pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
+pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: DefId,
                                   t: Ty<'tcx>) -> ValueRef {
     let name = csearch::get_symbol(&ccx.sess().cstore, did);
     let ty = type_of(ccx, t);
@@ -245,7 +245,7 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
 }
 
 fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                info_ty: Ty<'tcx>, it: LangItem) -> ast::DefId {
+                                info_ty: Ty<'tcx>, it: LangItem) -> DefId {
     match bcx.tcx().lang_items.require(it) {
         Ok(id) => id,
         Err(s) => {
@@ -663,7 +663,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
 }
 
 pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                     did: ast::DefId, t: Ty<'tcx>) -> ValueRef {
+                                     did: DefId, t: Ty<'tcx>) -> ValueRef {
     let name = csearch::get_symbol(&ccx.sess().cstore, did);
     match t.sty {
         ty::TyBareFn(_, ref fn_ty) => {
@@ -1294,7 +1294,7 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
 
     // Create the drop-flag hints for every unfragmented path in the function.
     let tcx = fcx.ccx.tcx();
-    let fn_did = ast::DefId { krate: ast::LOCAL_CRATE, node: fcx.id };
+    let fn_did = DefId { krate: LOCAL_CRATE, node: fcx.id };
     let mut hints = fcx.lldropflag_hints.borrow_mut();
     let fragment_infos = tcx.fragment_infos.borrow();
 
@@ -2080,7 +2080,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                     // error in trans. This is used to write compile-fail tests
                     // that actually test that compilation succeeds without
                     // reporting an error.
-                    if ccx.tcx().has_attr(local_def(item.id), "rustc_error") {
+                    if ccx.tcx().has_attr(DefId::local(item.id), "rustc_error") {
                         ccx.tcx().sess.span_fatal(item.span, "compilation successful");
                     }
                 }
@@ -2247,7 +2247,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
                     Ok(id) => id,
                     Err(s) => { ccx.sess().fatal(&s[..]); }
                 };
-                let start_fn = if start_def_id.krate == ast::LOCAL_CRATE {
+                let start_fn = if start_def_id.is_local() {
                     get_item_val(ccx, start_def_id.node)
                 } else {
                     let start_fn_type = csearch::get_type(ccx.tcx(),

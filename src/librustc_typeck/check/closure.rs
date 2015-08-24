@@ -13,13 +13,13 @@
 use super::{check_fn, Expectation, FnCtxt};
 
 use astconv;
+use middle::def_id::DefId;
 use middle::region;
 use middle::subst;
 use middle::ty::{self, ToPolyTraitRef, Ty};
 use std::cmp;
 use syntax::abi;
 use syntax::ast;
-use syntax::ast_util;
 
 pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                    expr: &ast::Expr,
@@ -47,7 +47,7 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                           decl: &'tcx ast::FnDecl,
                           body: &'tcx ast::Block,
                           expected_sig: Option<ty::FnSig<'tcx>>) {
-    let expr_def_id = ast_util::local_def(expr.id);
+    let expr_def_id = DefId::local(expr.id);
 
     debug!("check_closure opt_kind={:?} expected_sig={:?}",
            opt_kind,

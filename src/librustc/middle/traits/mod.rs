@@ -15,6 +15,7 @@ pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;
 pub use self::ObligationCauseCode::*;
 
+use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use middle::subst;
 use middle::ty::{self, HasTypeFlags, Ty};
@@ -112,7 +113,7 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// In an impl of trait X for type Y, type Y must
     /// also implement all supertraits of X.
-    ItemObligation(ast::DefId),
+    ItemObligation(DefId),
 
     /// A type like `&'a T` is WF only if `T: 'a`.
     ReferenceOutlivesReferent(Ty<'tcx>),
@@ -168,7 +169,7 @@ pub enum SelectionError<'tcx> {
     OutputTypeParameterMismatch(ty::PolyTraitRef<'tcx>,
                                 ty::PolyTraitRef<'tcx>,
                                 ty::TypeError<'tcx>),
-    TraitNotObjectSafe(ast::DefId),
+    TraitNotObjectSafe(DefId),
 }
 
 pub struct FulfillmentError<'tcx> {
@@ -274,14 +275,14 @@ pub enum Vtable<'tcx, N> {
 /// impl, and nested obligations are satisfied later.
 #[derive(Clone, PartialEq, Eq)]
 pub struct VtableImplData<'tcx, N> {
-    pub impl_def_id: ast::DefId,
+    pub impl_def_id: DefId,
     pub substs: subst::Substs<'tcx>,
     pub nested: Vec<N>
 }
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct VtableClosureData<'tcx, N> {
-    pub closure_def_id: ast::DefId,
+    pub closure_def_id: DefId,
     pub substs: ty::ClosureSubsts<'tcx>,
     /// Nested obligations. This can be non-empty if the closure
     /// signature contains associated types.
@@ -290,7 +291,7 @@ pub struct VtableClosureData<'tcx, N> {
 
 #[derive(Clone)]
 pub struct VtableDefaultImplData<N> {
-    pub trait_def_id: ast::DefId,
+    pub trait_def_id: DefId,
     pub nested: Vec<N>
 }
 

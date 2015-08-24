@@ -9,6 +9,7 @@
 // except according to those terms.
 
 
+use middle::def_id::DefId;
 use middle::subst::{self, Subst};
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{ReEarlyBound, BrFresh, ctxt};
@@ -64,7 +65,7 @@ fn fn_sig(f: &mut fmt::Formatter,
 
 fn parameterized<GG>(f: &mut fmt::Formatter,
                      substs: &subst::Substs,
-                     did: ast::DefId,
+                     did: DefId,
                      projections: &[ty::ProjectionPredicate],
                      get_generics: GG)
                      -> fmt::Result
@@ -229,7 +230,7 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
             ty::BrEnv => {
                 let name = token::intern("'r");
                 let _ = write!(f, "{}", name);
-                ty::BrNamed(ast_util::local_def(ast::DUMMY_NODE_ID), name)
+                ty::BrNamed(DefId::local(ast::DUMMY_NODE_ID), name)
             }
         })
     }).0;
@@ -658,7 +659,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
             TyEnum(def, substs) | TyStruct(def, substs) => {
                 ty::tls::with(|tcx| {
-                    if def.did.krate == ast::LOCAL_CRATE &&
+                    if def.did.is_local() &&
                           !tcx.tcache.borrow().contains_key(&def.did) {
                         write!(f, "{}<..>", tcx.item_path_str(def.did))
                     } else {
@@ -673,7 +674,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyClosure(ref did, ref substs) => ty::tls::with(|tcx| {
                 try!(write!(f, "[closure"));
 
-                if did.krate == ast::LOCAL_CRATE {
+                if did.is_local() {
                     try!(write!(f, "@{:?}", tcx.map.span(did.node)));
                     let mut sep = " ";
                     try!(tcx.with_freevars(did.node, |freevars| {

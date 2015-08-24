@@ -20,6 +20,7 @@
 use super::supertraits;
 use super::elaborate_predicates;
 
+use middle::def_id::DefId;
 use middle::subst::{self, SelfSpace, TypeSpace};
 use middle::traits;
 use middle::ty::{self, ToPolyTraitRef, Ty};
@@ -53,7 +54,7 @@ pub enum MethodViolationCode {
 }
 
 pub fn is_object_safe<'tcx>(tcx: &ty::ctxt<'tcx>,
-                            trait_def_id: ast::DefId)
+                            trait_def_id: DefId)
                             -> bool
 {
     // Because we query yes/no results frequently, we keep a cache:
@@ -76,7 +77,7 @@ pub fn is_object_safe<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 pub fn object_safety_violations<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                      trait_def_id: ast::DefId)
+                                      trait_def_id: DefId)
                                       -> Vec<ObjectSafetyViolation<'tcx>>
 {
     traits::supertrait_def_ids(tcx, trait_def_id)
@@ -85,7 +86,7 @@ pub fn object_safety_violations<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                            trait_def_id: ast::DefId)
+                                            trait_def_id: DefId)
                                             -> Vec<ObjectSafetyViolation<'tcx>>
 {
     // Check methods for violations.
@@ -119,7 +120,7 @@ fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 fn supertraits_reference_self<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                    trait_def_id: ast::DefId)
+                                    trait_def_id: DefId)
                                     -> bool
 {
     let trait_def = tcx.lookup_trait_def(trait_def_id);
@@ -152,7 +153,7 @@ fn supertraits_reference_self<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 fn trait_has_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
-                              trait_def_id: ast::DefId)
+                              trait_def_id: DefId)
                               -> bool
 {
     let trait_def = tcx.lookup_trait_def(trait_def_id);
@@ -194,7 +195,7 @@ fn generics_require_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 /// Returns `Some(_)` if this method makes the containing trait not object safe.
 fn object_safety_violation_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                            trait_def_id: ast::DefId,
+                                            trait_def_id: DefId,
                                             method: &ty::Method<'tcx>)
                                             -> Option<MethodViolationCode>
 {
@@ -212,7 +213,7 @@ fn object_safety_violation_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 /// non-vtable-safe methods, so long as they require `Self:Sized` or
 /// otherwise ensure that they cannot be used when `Self=Trait`.
 pub fn is_vtable_safe_method<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                   trait_def_id: ast::DefId,
+                                   trait_def_id: DefId,
                                    method: &ty::Method<'tcx>)
                                    -> bool
 {
@@ -224,7 +225,7 @@ pub fn is_vtable_safe_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 /// is not object safe, because the method might have a where clause
 /// `Self:Sized`.
 fn virtual_call_violation_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                           trait_def_id: ast::DefId,
+                                           trait_def_id: DefId,
                                            method: &ty::Method<'tcx>)
                                            -> Option<MethodViolationCode>
 {
@@ -265,7 +266,7 @@ fn virtual_call_violation_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 fn contains_illegal_self_type_reference<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                              trait_def_id: ast::DefId,
+                                              trait_def_id: DefId,
                                               ty: Ty<'tcx>)
                                               -> bool
 {

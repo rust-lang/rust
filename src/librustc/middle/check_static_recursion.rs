@@ -16,7 +16,7 @@ use session::Session;
 use middle::def::{DefStatic, DefConst, DefAssociatedConst, DefVariant, DefMap};
 use util::nodemap::NodeMap;
 
-use syntax::{ast, ast_util};
+use syntax::{ast};
 use syntax::codemap::Span;
 use syntax::feature_gate::emit_feature_err;
 use syntax::visit::Visitor;
@@ -239,8 +239,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                 match self.def_map.borrow().get(&e.id).map(|d| d.base_def) {
                     Some(DefStatic(def_id, _)) |
                     Some(DefAssociatedConst(def_id)) |
-                    Some(DefConst(def_id))
-                           if ast_util::is_local(def_id) => {
+                    Some(DefConst(def_id)) if def_id.is_local() => {
                         match self.ast_map.get(def_id.node) {
                           ast_map::NodeItem(item) =>
                             self.visit_item(item),
@@ -261,8 +260,7 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                     // affect the specific variant used, but we need to check
                     // the whole enum definition to see what expression that
                     // might be (if any).
-                    Some(DefVariant(enum_id, variant_id, false))
-                           if ast_util::is_local(enum_id) => {
+                    Some(DefVariant(enum_id, variant_id, false)) if enum_id.is_local() => {
                         if let ast::ItemEnum(ref enum_def, ref generics) =
                                self.ast_map.expect_item(enum_id.local_id()).node {
                             self.populate_enum_discriminants(enum_def);

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::def_id::DefId;
 use middle::infer::InferCtxt;
 use middle::outlives::{self, Component};
 use middle::subst::Substs;
@@ -451,7 +452,7 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
     }
 
     fn nominal_obligations(&mut self,
-                           def_id: ast::DefId,
+                           def_id: DefId,
                            substs: &Substs<'tcx>)
                            -> Vec<traits::PredicateObligation<'tcx>>
     {
