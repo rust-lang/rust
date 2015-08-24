@@ -1059,7 +1059,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn next_region_var(&self, origin: RegionVariableOrigin) -> ty::Region {
-        ty::ReInfer(ty::ReVar(self.region_vars.new_region_var(origin)))
+        ty::ReVar(self.region_vars.new_region_var(origin))
     }
 
     pub fn region_vars_for_defs(&self,

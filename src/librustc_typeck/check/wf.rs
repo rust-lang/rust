@@ -466,10 +466,7 @@ pub struct BoundsChecker<'cx,'tcx:'cx> {
     fcx: &'cx FnCtxt<'cx,'tcx>,
     span: Span,
 
-    // This field is often attached to item impls; it is not clear
-    // that `CodeExtent` is well-defined for such nodes, so pnkfelix
-    // has left it as a NodeId rather than porting to CodeExtent.
-    scope: ast::NodeId,
+    scope: region::CodeExtent,
 
     binding_count: usize,
     cache: Option<&'cx mut HashSet<Ty<'tcx>>>,
@@ -480,6 +477,7 @@ impl<'cx,'tcx> BoundsChecker<'cx,'tcx> {
                scope: ast::NodeId,
                cache: Option<&'cx mut HashSet<Ty<'tcx>>>)
                -> BoundsChecker<'cx,'tcx> {
+        let scope = fcx.tcx().region_maps.item_extent(scope);
         BoundsChecker { fcx: fcx, span: DUMMY_SP, scope: scope,
                         cache: cache, binding_count: 0 }
     }
@@ -532,7 +530,7 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
     {
         self.binding_count += 1;
         let value = self.fcx.tcx().liberate_late_bound_regions(
-            region::DestructionScopeData::new(self.scope),
+            self.scope,
             binder);
         debug!("BoundsChecker::fold_binder: late-bound regions replaced: {:?} at scope: {:?}",
                value, self.scope);

@@ -106,7 +106,7 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
         match r {
-          ty::ReInfer(ty::ReVar(rid)) => self.infcx.region_vars.resolve_var(rid),
+          ty::ReVar(rid) => self.infcx.region_vars.resolve_var(rid),
           _ => r,
         }
     }

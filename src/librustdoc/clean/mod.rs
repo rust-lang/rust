@@ -772,7 +772,8 @@ impl Clean<Option<Lifetime>> for ty::Region {
             ty::ReLateBound(..) |
             ty::ReFree(..) |
             ty::ReScope(..) |
-            ty::ReInfer(..) |
+            ty::ReVar(..) |
+            ty::ReSkolemized(..) |
             ty::ReEmpty(..) => None
         }
     }

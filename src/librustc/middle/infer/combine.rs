@@ -340,14 +340,14 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
 
             // Always make a fresh region variable for skolemized regions;
             // the higher-ranked decision procedures rely on this.
-            ty::ReInfer(ty::ReSkolemized(..)) => { }
+            ty::ReSkolemized(..) => { }
 
             // For anything else, we make a region variable, unless we
             // are *equating*, in which case it's just wasteful.
             ty::ReEmpty |
             ty::ReStatic |
             ty::ReScope(..) |
-            ty::ReInfer(ty::ReVar(..)) |
+            ty::ReVar(..) |
             ty::ReFree(..) => {
                 if !self.make_region_vars {
                     return r;

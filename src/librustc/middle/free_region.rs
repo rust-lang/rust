@@ -135,7 +135,7 @@ impl FreeRegionMap {
                     tcx.region_maps.is_subscope_of(sub_scope, super_scope),
 
                 (ty::ReScope(sub_scope), ty::ReFree(fr)) =>
-                    tcx.region_maps.is_subscope_of(sub_scope, fr.scope.to_code_extent()) ||
+                    tcx.region_maps.is_subscope_of(sub_scope, fr.scope) ||
                     self.is_static(fr),
 
                 (ty::ReFree(sub_fr), ty::ReFree(super_fr)) =>
@@ -162,8 +162,8 @@ impl FreeRegionMap {
 
 #[cfg(test)]
 fn free_region(index: u32) -> FreeRegion {
-    use middle::region::DestructionScopeData;
-    FreeRegion { scope: DestructionScopeData::new(0),
+    use middle::region::DUMMY_CODE_EXTENT;
+    FreeRegion { scope: DUMMY_CODE_EXTENT,
                  bound_region: ty::BoundRegion::BrAnon(index) }
 }
 
@@ -177,4 +177,3 @@ fn lub() {
     map.relate_free_regions(frs[1], frs[2]);
     assert_eq!(map.lub_free_regions(frs[0], frs[1]), ty::ReFree(frs[2]));
 }
-

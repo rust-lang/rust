@@ -13,7 +13,7 @@ use middle::def_id::DefId;
 use middle::subst::{self, Subst};
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{ReEarlyBound, BrFresh, ctxt};
-use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
+use middle::ty::{ReFree, ReScope, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar, BrEnv};
 use middle::ty::{TyBool, TyChar, TyStruct, TyEnum};
 use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyBareFn};
@@ -413,11 +413,11 @@ impl fmt::Debug for ty::Region {
 
             ty::ReStatic => write!(f, "ReStatic"),
 
-            ty::ReInfer(ReVar(ref vid)) => {
+            ty::ReVar(ref vid) => {
                 write!(f, "{:?}", vid)
             }
 
-            ty::ReInfer(ReSkolemized(id, ref bound_region)) => {
+            ty::ReSkolemized(id, ref bound_region) => {
                 write!(f, "ReSkolemized({}, {:?})", id, bound_region)
             }
 
@@ -442,11 +442,11 @@ impl fmt::Display for ty::Region {
             }
             ty::ReLateBound(_, br) |
             ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
-            ty::ReInfer(ReSkolemized(_, br)) => {
+            ty::ReSkolemized(_, br) => {
                 write!(f, "{}", br)
             }
             ty::ReScope(_) |
-            ty::ReInfer(ReVar(_)) => Ok(()),
+            ty::ReVar(_) => Ok(()),
             ty::ReStatic => write!(f, "'static"),
             ty::ReEmpty => write!(f, "'<empty>"),
         }

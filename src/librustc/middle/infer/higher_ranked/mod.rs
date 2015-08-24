@@ -335,7 +335,7 @@ fn var_ids<'a, 'tcx>(fields: &CombineFields<'a, 'tcx>,
                      -> Vec<ty::RegionVid> {
     map.iter()
        .map(|(_, r)| match *r {
-           ty::ReInfer(ty::ReVar(r)) => { r }
+           ty::ReVar(r) => { r }
            r => {
                fields.tcx().sess.span_bug(
                    fields.trace.origin.span(),
@@ -347,7 +347,7 @@ fn var_ids<'a, 'tcx>(fields: &CombineFields<'a, 'tcx>,
 
 fn is_var_in_set(new_vars: &[ty::RegionVid], r: ty::Region) -> bool {
     match r {
-        ty::ReInfer(ty::ReVar(ref v)) => new_vars.iter().any(|x| x == v),
+        ty::ReVar(ref v) => new_vars.iter().any(|x| x == v),
         _ => false
     }
 }
@@ -443,7 +443,7 @@ impl<'a,'tcx> InferCtxtExt for InferCtxt<'a,'tcx> {
         }
 
         region_vars.retain(|&region_vid| {
-            let r = ty::ReInfer(ty::ReVar(region_vid));
+            let r = ty::ReVar(region_vid);
             !escaping_region_vars.contains(&r)
         });
 
@@ -561,7 +561,7 @@ pub fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
             // Each skolemized should only be relatable to itself
             // or new variables:
             match tainted_region {
-                ty::ReInfer(ty::ReVar(vid)) => {
+                ty::ReVar(vid) => {
                     if new_vars.iter().any(|&x| x == vid) { continue; }
                 }
                 _ => {
