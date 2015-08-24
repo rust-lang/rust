@@ -115,9 +115,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 self.check_variances_for_type_defn(item, ast_generics);
             }
             ast::ItemTrait(_, _, _, ref items) => {
-                let trait_predicates =
-                    ccx.tcx.lookup_predicates(local_def(item.id));
-                reject_non_type_param_bounds(ccx.tcx, item.span, &trait_predicates);
                 if ccx.tcx.trait_has_default_impl(local_def(item.id)) {
                     if !items.is_empty() {
                         wfcheck::error_380(ccx, item.span);
@@ -135,7 +132,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         let item_def_id = local_def(item.id);
         let type_scheme = ccx.tcx.lookup_item_type(item_def_id);
         let type_predicates = ccx.tcx.lookup_predicates(item_def_id);
-        reject_non_type_param_bounds(ccx.tcx, item.span, &type_predicates);
         let param_env = ccx.tcx.construct_parameter_environment(item.span,
                                                                 &type_scheme.generics,
                                                                 &type_predicates,
@@ -367,44 +363,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 }
 
-// Reject any predicates that do not involve a type parameter.
-fn reject_non_type_param_bounds<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                      span: Span,
-                                      predicates: &ty::GenericPredicates<'tcx>) {
-    for predicate in &predicates.predicates {
-        match predicate {
-            &ty::Predicate::Trait(ty::Binder(ref tr)) => {
-                let found_param = tr.input_types().iter()
-                                    .flat_map(|ty| ty.walk())
-                                    .any(is_ty_param);
-                if !found_param { report_bound_error(tcx, span, tr.self_ty() )}
-            }
-            &ty::Predicate::TypeOutlives(ty::Binder(ty::OutlivesPredicate(ty, _))) => {
-                let found_param = ty.walk().any(|t| is_ty_param(t));
-                if !found_param { report_bound_error(tcx, span, ty) }
-            }
-            _ => {}
-        };
-    }
-
-    fn report_bound_error<'t>(tcx: &ty::ctxt<'t>,
-                          span: Span,
-                          bounded_ty: ty::Ty<'t>) {
-        span_err!(tcx.sess, span, E0193,
-            "cannot bound type `{}`, where clause \
-                bounds may only be attached to types involving \
-                type parameters",
-                bounded_ty)
-    }
-
-    fn is_ty_param(ty: ty::Ty) -> bool {
-        match &ty.sty {
-            &ty::TyParam(_) => true,
-            _ => false
-        }
-    }
-}
-
 fn reject_shadowing_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>,
                                           span: Span,
                                           generics: &ty::Generics<'tcx>) {
@@ -445,10 +403,6 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         if let ast::MethodTraitItem(_, None) = trait_item.node {
             match self.tcx().impl_or_trait_item(local_def(trait_item.id)) {
                 ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
-                    reject_non_type_param_bounds(
-                        self.tcx(),
-                        trait_item.span,
-                        &ty_method.predicates);
                     reject_shadowing_type_parameters(
                         self.tcx(),
                         trait_item.span,
