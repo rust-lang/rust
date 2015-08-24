@@ -831,9 +831,7 @@ is a size mismatch in one of the impls.
 It is also possible to manually transmute:
 
 ```
-let result: SomeType = mem::uninitialized();
-unsafe { copy_nonoverlapping(&v, &result) };
-result // `v` transmuted to type `SomeType`
+ptr::read(&v as *const _ as *const SomeType) // `v` transmuted to `SomeType`
 ```
 "##,
 
