@@ -1,10 +1,6 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
-fn id<X>(x: X) -> X {
-    x
-}
-
 #[deny(eq_op)]
 #[allow(identity_op)]
 fn main() {
@@ -19,7 +15,6 @@ fn main() {
     // casts, methods, parentheses
     (1 as u64) & (1 as u64); //~ERROR equal expressions
     1 ^ ((((((1)))))); //~ERROR equal expressions
-    id((1)) | id(1); //~ERROR equal expressions
 
     // unary and binary operators
     (-(2) < -(2));  //~ERROR equal expressions
@@ -32,7 +27,6 @@ fn main() {
     // various other things
     ([1] != [1]); //~ERROR equal expressions
     ((1, 2) != (1, 2)); //~ERROR equal expressions
-    [1].len() == [1].len(); //~ERROR equal expressions
     vec![1, 2, 3] == vec![1, 2, 3]; //no error yet, as we don't match macros
 
     // const folding
