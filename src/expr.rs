@@ -80,7 +80,8 @@ impl Rewrite for ast::Expr {
                                 else_block.as_ref().map(|e| &**e),
                                 None,
                                 width,
-                                offset)
+                                offset,
+                                true)
             }
             ast::Expr_::ExprIfLet(ref pat, ref cond, ref if_block, ref else_block) => {
                 rewrite_if_else(context,
@@ -89,7 +90,8 @@ impl Rewrite for ast::Expr {
                                 else_block.as_ref().map(|e| &**e),
                                 Some(pat),
                                 width,
-                                offset)
+                                offset,
+                                true)
             }
             // We reformat it ourselves because rustc gives us a bad span
             // for ranges, see rust#27162
@@ -415,7 +417,8 @@ fn rewrite_if_else(context: &RewriteContext,
                    else_block_opt: Option<&ast::Expr>,
                    pat: Option<&ast::Pat>,
                    width: usize,
-                   offset: usize)
+                   offset: usize,
+                   allow_single_line: bool)
                    -> Option<String> {
     // 3 = "if ", 2 = " {"
     let pat_expr_string = try_opt!(rewrite_pat_expr(context,
@@ -427,7 +430,7 @@ fn rewrite_if_else(context: &RewriteContext,
                                                     offset + 3));
 
     // Try to format if-else on single line.
-    if context.config.single_line_if_else {
+    if allow_single_line && context.config.single_line_if_else {
         let trial = single_line_if_else(context, &pat_expr_string, if_block, else_block_opt, width);
 
         if trial.is_some() {
@@ -439,10 +442,34 @@ fn rewrite_if_else(context: &RewriteContext,
     let mut result = format!("if {} {}", pat_expr_string, if_block_string);
 
     if let Some(else_block) = else_block_opt {
-        let else_block_string = try_opt!(else_block.rewrite(context, width, offset));
+        let rewrite = match else_block.node {
+            // If the else expression is another if-else expression, prevent it
+            // from being formatted on a single line.
+            ast::Expr_::ExprIfLet(ref pat, ref cond, ref if_block, ref else_block) => {
+                rewrite_if_else(context,
+                                cond,
+                                if_block,
+                                else_block.as_ref().map(|e| &**e),
+                                Some(pat),
+                                width,
+                                offset,
+                                false)
+            }
+            ast::Expr_::ExprIf(ref cond, ref if_block, ref else_block) => {
+                rewrite_if_else(context,
+                                cond,
+                                if_block,
+                                else_block.as_ref().map(|e| &**e),
+                                None,
+                                width,
+                                offset,
+                                false)
+            }
+            _ => else_block.rewrite(context, width, offset),
+        };
 
         result.push_str(" else ");
-        result.push_str(&else_block_string);
+        result.push_str(&&try_opt!(rewrite));
     }
 
     Some(result)
@@ -491,6 +518,7 @@ fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
 
     let snippet = codemap.span_to_snippet(block.span).unwrap();
 
+    // FIXME: fails when either // or /* is contained in a string literal.
     !snippet.contains("//") && !snippet.contains("/*")
 }
 

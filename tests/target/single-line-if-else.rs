@@ -7,7 +7,11 @@ fn main() {
 
     let a = if x {
         1
-    } else if y { 2 } else { 3 };
+    } else if y {
+        2
+    } else {
+        3
+    };
 
     let b = if cond() {
         5
@@ -23,6 +27,8 @@ fn main() {
     } else {
         10
     };
+
+    let d = if let Some(val) = turbo { "cool" } else { "beans" };
 
     if cond() {
         statement();

@@ -26,6 +26,10 @@ fn main() {
         10
     };
 
+    let d   = if  let  Some(val)  =  turbo 
+    { "cool" } else {
+     "beans" };
+
     if cond() { statement(); } else { other_statement(); }
 
     if true  {
