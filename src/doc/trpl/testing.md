@@ -276,6 +276,9 @@ running 0 tests
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 ```
 
+The `--ignored` argument is an argument to the test binary, and not to cargo,
+which is why the command is `cargo test -- --ignored`.
+
 # The `tests` module
 
 There is one way in which our existing example is not idiomatic: it's
