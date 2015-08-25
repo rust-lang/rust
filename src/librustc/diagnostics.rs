@@ -731,9 +731,14 @@ type X = u32; // ok!
 "##,
 
 E0133: r##"
-Using unsafe functionality, such as dereferencing raw pointers and calling
-functions via FFI or marked as unsafe, is potentially dangerous and disallowed
-by safety checks. These safety checks can be relaxed for a section of the code
+Using unsafe functionality, is potentially dangerous and disallowed
+by safety checks. Examples:
+
+- Dereferencing raw pointers
+- Calling functions via FFI
+- Calling functions marked unsafe
+
+These safety checks can be relaxed for a section of the code
 by wrapping the unsafe instructions with an `unsafe` block. For instance:
 
 ```
@@ -831,9 +836,7 @@ is a size mismatch in one of the impls.
 It is also possible to manually transmute:
 
 ```
-let result: SomeType = mem::uninitialized();
-unsafe { copy_nonoverlapping(&v, &result) };
-result // `v` transmuted to type `SomeType`
+ptr::read(&v as *const _ as *const SomeType) // `v` transmuted to `SomeType`
 ```
 "##,
 

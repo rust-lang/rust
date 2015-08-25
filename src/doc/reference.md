@@ -1452,7 +1452,7 @@ fn draw_twice<T: Shape>(surface: Surface, sh: T) {
 }
 ```
 
-Traits also define an [trait object](#trait-objects) with the same
+Traits also define a [trait object](#trait-objects) with the same
 name as the trait. Values of this type are created by coercing from a
 pointer of some specific type to a pointer of trait type. For example,
 `&T` could be coerced to `&Shape` if `T: Shape` holds (and similarly
