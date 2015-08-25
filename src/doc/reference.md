@@ -1881,11 +1881,15 @@ type int8_t = i8;
 - `no_start` - disable linking to the `native` crate, which specifies the
   "start" language item.
 - `no_std` - disable linking to the `std` crate.
-- `plugin` — load a list of named crates as compiler plugins, e.g.
+- `plugin` - load a list of named crates as compiler plugins, e.g.
              `#![plugin(foo, bar)]`. Optional arguments for each plugin,
              i.e. `#![plugin(foo(... args ...))]`, are provided to the plugin's
              registrar function.  The `plugin` feature gate is required to use
              this attribute.
+- `recursion_limit` - Sets the maximum depth for potentially
+                      infinitely-recursive compile-time operations like
+                      auto-dereference or macro expansion. The default is
+                      `#![recursion_limit="64"]`.
 
 ### Module-only attributes
 
