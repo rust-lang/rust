@@ -184,7 +184,7 @@ pub trait Iterator {
     fn chain<U>(self, other: U) -> Chain<Self, U::IntoIter> where
         Self: Sized, U: IntoIterator<Item=Self::Item>,
     {
-        Chain{a: self, b: other.into_iter(), flag: false}
+        Chain{a: self, b: other.into_iter(), state: ChainState::Both}
     }
 
     /// Creates an iterator that iterates over both this and the specified
@@ -1277,7 +1277,30 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
 pub struct Chain<A, B> {
     a: A,
     b: B,
-    flag: bool,
+    state: ChainState,
+}
+
+// The iterator protocol specifies that iteration ends with the return value
+// `None` from `.next()` (or `.next_back()`) and it is unspecified what
+// further calls return. The chain adaptor must account for this since it uses
+// two subiterators.
+//
+//  It uses three states:
+//
+//  - Both: `a` and `b` are remaining
+//  - Front: `a` remaining
+//  - Back: `b` remaining
+//
+//  The fourth state (neither iterator is remaining) only occurs after Chain has
+//  returned None once, so we don't need to store this state.
+#[derive(Clone)]
+enum ChainState {
+    // both front and back iterator are remaining
+    Both,
+    // only front is remaining
+    Front,
+    // only back is remaining
+    Back,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1289,42 +1312,58 @@ impl<A, B> Iterator for Chain<A, B> where
 
     #[inline]
     fn next(&mut self) -> Option<A::Item> {
-        if self.flag {
-            self.b.next()
-        } else {
-            match self.a.next() {
-                Some(x) => return Some(x),
-                _ => ()
-            }
-            self.flag = true;
-            self.b.next()
+        match self.state {
+            ChainState::Both => match self.a.next() {
+                elt @ Some(..) => return elt,
+                None => {
+                    self.state = ChainState::Back;
+                    self.b.next()
+                }
+            },
+            ChainState::Front => self.a.next(),
+            ChainState::Back => self.b.next(),
         }
     }
 
     #[inline]
     fn count(self) -> usize {
-        (if !self.flag { self.a.count() } else { 0 }) + self.b.count()
+        match self.state {
+            ChainState::Both => self.a.count() + self.b.count(),
+            ChainState::Front => self.a.count(),
+            ChainState::Back => self.b.count(),
+        }
     }
 
     #[inline]
     fn nth(&mut self, mut n: usize) -> Option<A::Item> {
-        if !self.flag {
-            for x in self.a.by_ref() {
-                if n == 0 {
-                    return Some(x)
+        match self.state {
+            ChainState::Both | ChainState::Front => {
+                for x in self.a.by_ref() {
+                    if n == 0 {
+                        return Some(x)
+                    }
+                    n -= 1;
                 }
-                n -= 1;
+                if let ChainState::Both = self.state {
+                    self.state = ChainState::Back;
+                }
             }
-            self.flag = true;
+            ChainState::Back => {}
         }
-        self.b.nth(n)
+        if let ChainState::Back = self.state {
+            self.b.nth(n)
+        } else {
+            None
+        }
     }
 
     #[inline]
     fn last(self) -> Option<A::Item> {
-        let a_last = if self.flag { None } else { self.a.last() };
-        let b_last = self.b.last();
-        b_last.or(a_last)
+        match self.state {
+            ChainState::Both => self.b.last().or(self.a.last()),
+            ChainState::Front => self.a.last(),
+            ChainState::Back => self.b.last()
+        }
     }
 
     #[inline]
@@ -1350,9 +1389,16 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
 {
     #[inline]
     fn next_back(&mut self) -> Option<A::Item> {
-        match self.b.next_back() {
-            Some(x) => Some(x),
-            None => self.a.next_back()
+        match self.state {
+            ChainState::Both => match self.b.next_back() {
+                elt @ Some(..) => return elt,
+                None => {
+                    self.state = ChainState::Front;
+                    self.a.next_back()
+                }
+            },
+            ChainState::Front => self.a.next_back(),
+            ChainState::Back => self.b.next_back(),
         }
     }
 }
