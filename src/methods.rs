@@ -1,8 +1,10 @@
 use syntax::ast::*;
 use rustc::lint::*;
 use rustc::middle::ty;
+use std::iter;
+use std::borrow::Cow;
 
-use utils::{span_lint, match_type, walk_ptrs_ty};
+use utils::{snippet, span_lint, match_type, walk_ptrs_ty_depth};
 use utils::{OPTION_PATH, RESULT_PATH, STRING_PATH};
 
 #[derive(Copy,Clone)]
@@ -24,7 +26,7 @@ impl LintPass for MethodsPass {
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
         if let ExprMethodCall(ref ident, _, ref args) = expr.node {
-            let obj_ty = walk_ptrs_ty(cx.tcx.expr_ty(&args[0]));
+            let (obj_ty, ptr_depth) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&args[0]));
             if ident.node.name == "unwrap" {
                 if match_type(cx, obj_ty, &OPTION_PATH) {
                     span_lint(cx, OPTION_UNWRAP_USED, expr.span,
@@ -39,7 +41,15 @@ impl LintPass for MethodsPass {
             }
             else if ident.node.name == "to_string" {
                 if obj_ty.sty == ty::TyStr {
-                    span_lint(cx, STR_TO_STRING, expr.span, "`str.to_owned()` is faster");
+                    let mut arg_str = snippet(cx, args[0].span, "_");
+                    if ptr_depth > 1 {
+                        arg_str = Cow::Owned(format!(
+                            "({}{})",
+                            iter::repeat('*').take(ptr_depth - 1).collect::<String>(),
+                            arg_str));
+                    }
+                    span_lint(cx, STR_TO_STRING, expr.span, &format!(
+                        "`{}.to_owned()` is faster", arg_str));
                 } else if match_type(cx, obj_ty, &STRING_PATH) {
                     span_lint(cx, STRING_TO_STRING, expr.span, "`String.to_string()` is a no-op; use \
                                                                 `clone()` to make a copy");
