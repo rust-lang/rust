@@ -13,10 +13,10 @@ fn main() {
           b: bar(),
           ..something };
 
-    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(),
-                                                                               b: bar(), };
+    Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: foo(), b: bar() };
 
-    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { // Comment
+    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { // Commen
+                                                                                        // t
                                                                                         a: foo(), /* C
                                                                                                    * o
                                                                                                    * m
@@ -24,7 +24,8 @@ fn main() {
                                                                                                    * e
                                                                                                    * n
                                                                                                    * t */
-                                                                                        // Comment
+                                                                                        // Commen
+                                                                                        // t
                                                                                         b: bar(), /* C
                                                                                                    * o
                                                                                                    * m

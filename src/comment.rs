@@ -104,13 +104,12 @@ fn format_comments() {
 
     let input = "// comment";
     let expected = "/* com\n                                                                      \
-                    * men\n                                                                      * \
-                    t */";
+                    * men\n                                                                      \
+                    * t */";
     assert_eq!(expected, rewrite_comment(input, true, 9, 69));
 
     assert_eq!("/* trimmed */", rewrite_comment("/*   trimmed    */", true, 100, 100));
 }
-
 
 pub trait FindUncommented {
     fn find_uncommented(&self, pat: &str) -> Option<usize>;

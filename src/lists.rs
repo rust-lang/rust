@@ -99,7 +99,7 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
     let mut tactic = formatting.tactic;
 
     // Conservatively overestimates because of the changing separator tactic.
-    let sep_count = if formatting.trailing_separator != SeparatorTactic::Never {
+    let sep_count = if formatting.trailing_separator == SeparatorTactic::Always {
         items.len()
     } else {
         items.len() - 1
@@ -113,8 +113,7 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
     if tactic == ListTactic::HorizontalVertical {
         debug!("write_list: total_width: {}, total_sep_len: {}, h_width: {}",
                total_width, total_sep_len, formatting.h_width);
-        tactic = if fits_single &&
-                    !items.iter().any(ListItem::is_multiline) {
+        tactic = if fits_single && !items.iter().any(ListItem::is_multiline) {
             ListTactic::Horizontal
         } else {
             ListTactic::Vertical
@@ -187,13 +186,11 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
 
         // Pre-comments
         if let Some(ref comment) = item.pre_comment {
-            result.push_str(&rewrite_comment(comment,
-                                             // Block style in non-vertical mode
-                                             tactic != ListTactic::Vertical,
-                                             // Width restriction is only
-                                             // relevant in vertical mode.
-                                             formatting.v_width,
-                                             formatting.indent));
+            // Block style in non-vertical mode.
+            let block_mode = tactic != ListTactic::Vertical;
+            // Width restriction is only relevant in vertical mode.
+            let max_width = formatting.v_width;
+            result.push_str(&rewrite_comment(comment, block_mode, max_width, formatting.indent));
 
             if tactic == ListTactic::Vertical {
                 result.push('\n');

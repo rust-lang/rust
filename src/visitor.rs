@@ -28,6 +28,8 @@ pub struct FmtVisitor<'a> {
 }
 
 impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
+    // FIXME: We'd rather not format expressions here, as we have little
+    // context. How are we still reaching this?
     fn visit_expr(&mut self, ex: &'v ast::Expr) {
         debug!("visit_expr: {:?} {:?}",
                self.codemap.lookup_char_pos(ex.span.lo),
@@ -44,23 +46,37 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     }
 
     fn visit_stmt(&mut self, stmt: &'v ast::Stmt) {
-        // If the stmt is actually an item, then we'll handle any missing spans
-        // there. This is important because of annotations.
-        // Although it might make more sense for the statement span to include
-        // any annotations on the item.
-        let skip_missing = match stmt.node {
+        match stmt.node {
             ast::Stmt_::StmtDecl(ref decl, _) => {
-                match decl.node {
-                    ast::Decl_::DeclItem(_) => true,
-                    _ => false,
+                return match decl.node {
+                    ast::Decl_::DeclLocal(ref local) => self.visit_let(local, stmt.span),
+                    ast::Decl_::DeclItem(..) => visit::walk_stmt(self, stmt),
+                };
+            }
+            ast::Stmt_::StmtExpr(ref ex, _) | ast::Stmt_::StmtSemi(ref ex, _) => {
+                self.format_missing_with_indent(stmt.span.lo);
+                let suffix = if let ast::Stmt_::StmtExpr(..) = stmt.node {
+                    ""
+                } else {
+                    ";"
+                };
+
+                // 1 = trailing semicolon;
+                let rewrite = ex.rewrite(&self.get_context(),
+                                         self.config.max_width - self.block_indent - suffix.len(),
+                                         self.block_indent);
+
+                if let Some(new_str) = rewrite {
+                    self.buffer.push_str(&new_str);
+                    self.buffer.push_str(suffix);
+                    self.last_pos = stmt.span.hi;
                 }
             }
-            _ => false,
-        };
-        if !skip_missing {
-            self.format_missing_with_indent(stmt.span.lo);
+            ast::Stmt_::StmtMac(..) => {
+                self.format_missing_with_indent(stmt.span.lo);
+                visit::walk_stmt(self, stmt);
+            }
         }
-        visit::walk_stmt(self, stmt);
     }
 
     fn visit_block(&mut self, b: &'v ast::Block) {

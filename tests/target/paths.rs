@@ -13,8 +13,6 @@ fn main() {
                                                                                      supports_clipboard);
 
     Quux::<ParamOne /* Comment 1 */, ParamTwo /* Comment 2 */>::some_func();
-
-    AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA::BBBBBBBBBBBBBBBBBBBBBBBBBBBB::CCCCCCCCCCCCCCCCCCCCCC::quux();
 }
 
 fn op(foo: Bar, key: &[u8], upd: Fn(Option<&memcache::Item>, Baz) -> Result) -> MapResult {

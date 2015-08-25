@@ -2,23 +2,22 @@
 
 fn foo() -> bool {
     let boxed: Box<i32> = box   5;
-    let referenced = &5;
+    let referenced = &5 ;
 
     let very_long_variable_name = ( a +  first +   simple + test   );
     let very_long_variable_name = (a + first + simple + test + AAAAAAAAAAAAA + BBBBBBBBBBBBBBBBB + b + c);
 
-    //FIXME this exceeds width limit. Needs assignments reformatting
     let is_internalxxxx = self.codemap.span_to_filename(s) == self.codemap.span_to_filename(m.inner);
 
     let some_val = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa * bbbb / (bbbbbb -
         function_call(x, *very_long_pointer, y))
-    + 1000;
+    + 1000  ;
 
 some_ridiculously_loooooooooooooooooooooong_function(10000 * 30000000000 + 40000 / 1002200000000
                                                      - 50000 * sqrt(-1),
                                                      trivial_value);
     (((((((((aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa + a +
-             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa + aaaaa)))))))));
+             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa + aaaaa)))))))))   ;
 
     { for _ in 0..10 {} }
 
@@ -64,9 +63,9 @@ fn bar() {
     syntactically_correct(loop { sup( '?'); }, if cond { 0 } else { 1 });
 
     let third = ..10;
-    let infi_range = ..;
+    let infi_range = ..   ;
     let foo = 1..;
-    let bar = 5;
+    let bar = 5 ;
     let nonsense = (10 .. 0)..(0..10);
 
     let x = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &&

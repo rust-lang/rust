@@ -325,6 +325,8 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
         panic!("No input supplied to RustFmt");
     }
 
+    #[rustfmt_skip]
+    // FIXME(#195): closure is formatted poorly.
     fn build_controller(&mut self, _: &Session) -> driver::CompileController<'a> {
         let write_mode = self.write_mode;
 

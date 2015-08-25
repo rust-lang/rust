@@ -14,8 +14,10 @@ use {ReturnIndent, BraceStyle};
 use utils::{format_mutability, format_visibility, make_indent, contains_skip, span_after,
             end_typaram};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
+use expr::rewrite_assign_rhs;
 use comment::FindUncommented;
 use visitor::FmtVisitor;
+
 use rewrite::Rewrite;
 use config::Config;
 
@@ -25,6 +27,67 @@ use syntax::print::pprust;
 use syntax::parse::token;
 
 impl<'a> FmtVisitor<'a> {
+    pub fn visit_let(&mut self, local: &ast::Local, span: Span) {
+        self.format_missing_with_indent(span.lo);
+
+        // String that is placed within the assignment pattern and expression.
+        let infix = {
+            let mut infix = String::new();
+
+            if let Some(ref ty) = local.ty {
+                infix.push_str(": ");
+                infix.push_str(&pprust::ty_to_string(ty));
+            }
+
+            if local.init.is_some() {
+                infix.push_str(" =");
+            }
+
+            infix
+        };
+
+        // New scope so we drop the borrow of self (context) in time to mutably
+        // borrow self to mutate its buffer.
+        let result = {
+            let context = self.get_context();
+            let mut result = "let ".to_owned();
+            let pattern_offset = self.block_indent + result.len() + infix.len();
+            // 1 = ;
+            let pattern_width = match self.config.max_width.checked_sub(pattern_offset + 1) {
+                Some(width) => width,
+                None => return,
+            };
+
+            match local.pat.rewrite(&context, pattern_offset, pattern_width) {
+                Some(ref pat_string) => result.push_str(pat_string),
+                None => return,
+            }
+
+            result.push_str(&infix);
+
+            if let Some(ref ex) = local.init {
+                let max_width = match self.config.max_width.checked_sub(context.block_indent + 1) {
+                    Some(width) => width,
+                    None => return,
+                };
+
+                // 1 = trailing semicolon;
+                let rhs = rewrite_assign_rhs(&context, result, ex, max_width, context.block_indent);
+
+                match rhs {
+                    Some(result) => result,
+                    None => return,
+                }
+            } else {
+                result
+            }
+        };
+
+        self.buffer.push_str(&result);
+        self.buffer.push_str(";");
+        self.last_pos = span.hi;
+    }
+
     pub fn rewrite_fn(&mut self,
                       indent: usize,
                       ident: ast::Ident,
@@ -51,9 +114,11 @@ impl<'a> FmtVisitor<'a> {
                                               span,
                                               newline_brace);
 
-        // Prepare for the function body by possibly adding a newline and indent.
-        // FIXME we'll miss anything between the end of the signature and the start
-        // of the body, but we need more spans from the compiler to solve this.
+        // Prepare for the function body by possibly adding a newline and
+        // indent.
+        // FIXME we'll miss anything between the end of the signature and the
+        // start of the body, but we need more spans from the compiler to solve
+        // this.
         if newline_brace {
             result.push('\n');
             result.push_str(&make_indent(indent));
@@ -783,7 +848,8 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf, args: &[ast::Arg]) -
 
             // this hacky solution caused by absence of `Mutability` in `SelfValue`.
             let mut_str = {
-                if let ast::Pat_::PatIdent(ast::BindingMode::BindByValue(mutability), _, _) = args[0].pat.node {
+                if let ast::Pat_::PatIdent(ast::BindingMode::BindByValue(mutability), _, _) =
+                       args[0].pat.node {
                     format_mutability(mutability)
                 } else {
                     panic!("there is a bug or change in structure of AST, aborting.");
