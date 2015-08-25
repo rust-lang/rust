@@ -79,4 +79,5 @@ create_config! {
     reorder_imports: bool, // Alphabetically, case sensitive.
     expr_indent_style: BlockIndentStyle,
     closure_indent_style: BlockIndentStyle,
+    single_line_if_else: bool,
 }

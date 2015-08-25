@@ -61,6 +61,12 @@ fn foo() -> bool {
            1 + 2 + 3 {
     }
 
+    let test = if true {
+        5
+    } else {
+        3
+    };
+
     if cond() {
         something();
     } else if different_cond() {
