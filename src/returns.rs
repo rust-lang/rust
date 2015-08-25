@@ -11,7 +11,7 @@ declare_lint!(pub LET_AND_RETURN, Warn,
               "creating a let-binding and then immediately returning it like `let x = expr; x` at \
                the end of a function");
 
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 pub struct ReturnPass;
 
 impl ReturnPass {

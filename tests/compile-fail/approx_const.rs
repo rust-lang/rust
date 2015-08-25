@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #[deny(approx_constant)]
-#[allow(unused)]
+#[allow(unused, shadow_unrelated)]
 fn main() {
     let my_e = 2.7182; //~ERROR approximate value of `f{32, 64}::E` found
     let almost_e = 2.718; //~ERROR approximate value of `f{32, 64}::E` found

@@ -32,6 +32,7 @@ pub mod len_zero;
 pub mod attrs;
 pub mod collapsible_if;
 pub mod unicode;
+pub mod shadow;
 pub mod strings;
 pub mod methods;
 pub mod returns;
@@ -64,6 +65,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box strings::StringAdd as LintPassObject);
     reg.register_lint_pass(box returns::ReturnPass as LintPassObject);
     reg.register_lint_pass(box methods::MethodsPass as LintPassObject);
+    reg.register_lint_pass(box shadow::ShadowPass as LintPassObject);
     reg.register_lint_pass(box types::LetPass as LintPassObject);
     reg.register_lint_pass(box types::UnitCmp as LintPassObject);
     reg.register_lint_pass(box loops::LoopsPass as LintPassObject);
@@ -72,6 +74,12 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box types::CastPass as LintPassObject);
     reg.register_lint_pass(box types::TypeComplexityPass as LintPassObject);
     reg.register_lint_pass(box matches::MatchPass as LintPassObject);
+
+    reg.register_lint_group("shadow", vec![
+        shadow::SHADOW_REUSE,
+        shadow::SHADOW_SAME,
+        shadow::SHADOW_UNRELATED,
+    ]);
 
     reg.register_lint_group("clippy", vec![
         approx_const::APPROX_CONSTANT,
@@ -106,6 +114,9 @@ pub fn plugin_registrar(reg: &mut Registry) {
         ranges::RANGE_STEP_BY_ZERO,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
+        shadow::SHADOW_REUSE,
+        shadow::SHADOW_SAME,
+        shadow::SHADOW_UNRELATED,
         strings::STRING_ADD,
         strings::STRING_ADD_ASSIGN,
         types::BOX_VEC,
