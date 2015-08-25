@@ -160,7 +160,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              codemap::mk_sp(s.lo, b.span.lo));
                 self.buffer.push_str(&new_fn);
             }
-            visit::FkFnBlock(..) => {}
+            visit::FkClosure(..) => {}
         }
 
         self.last_pos = b.span.lo;
