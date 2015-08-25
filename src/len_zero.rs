@@ -22,10 +22,10 @@ impl LintPass for LenZero {
     }
 
     fn check_item(&mut self, cx: &Context, item: &Item) {
-        match &item.node {
-            &ItemTrait(_, _, _, ref trait_items) =>
+        match item.node {
+            ItemTrait(_, _, _, ref trait_items) =>
                 check_trait_items(cx, item, trait_items),
-            &ItemImpl(_, _, _, None, _, ref impl_items) => // only non-trait
+            ItemImpl(_, _, _, None, _, ref impl_items) => // only non-trait
                 check_impl_items(cx, item, impl_items),
             _ => ()
         }
@@ -100,9 +100,9 @@ fn check_cmp(cx: &Context, span: Span, left: &Expr, right: &Expr, op: &str) {
 
 fn check_len_zero(cx: &Context, span: Span, method: &SpannedIdent,
                   args: &[P<Expr>], lit: &Lit, op: &str) {
-    if let &Spanned{node: LitInt(0, _), ..} = lit {
+    if let Spanned{node: LitInt(0, _), ..} = *lit {
         if method.node.name == "len" && args.len() == 1 &&
-            has_is_empty(cx, &*args[0]) {
+            has_is_empty(cx, &args[0]) {
                 span_lint(cx, LEN_ZERO, span, &format!(
                     "consider replacing the len comparison with `{}{}.is_empty()`",
                     op, snippet(cx, args[0].span, "_")))

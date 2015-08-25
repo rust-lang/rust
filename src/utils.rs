@@ -1,10 +1,16 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::{ExpnInfo, Span};
-use syntax::ptr::P;
 use rustc::ast_map::Node::NodeExpr;
 use rustc::middle::ty;
 use std::borrow::Cow;
+
+// module DefPaths for certain structs/enums we check for
+pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
+pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
+pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
+pub const VEC_PATH:    [&'static str; 3] = ["collections", "vec", "Vec"];
+pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
 
 /// returns true if the macro that expanded the crate was outside of
 /// the current crate or was a compiler plugin
@@ -35,6 +41,31 @@ pub fn in_external_macro(cx: &Context, span: Span) -> bool {
 pub fn match_def_path(cx: &Context, def_id: DefId, path: &[&str]) -> bool {
     cx.tcx.with_path(def_id, |iter| iter.map(|elem| elem.name())
         .zip(path.iter()).all(|(nm, p)| nm == p))
+}
+
+/// check if type is struct or enum type with given def path
+pub fn match_type(cx: &Context, ty: ty::Ty, path: &[&str]) -> bool {
+    match ty.sty {
+        ty::TyEnum(ref adt, _) | ty::TyStruct(ref adt, _) => {
+            match_def_path(cx, adt.did, path)
+        }
+        _ => {
+            false
+        }
+    }
+}
+
+/// check if method call given in "expr" belongs to given trait
+pub fn match_trait_method(cx: &Context, expr: &Expr, path: &[&str]) -> bool {
+    let method_call = ty::MethodCall::expr(expr.id);
+    let trt_id = cx.tcx.tables
+                       .borrow().method_map.get(&method_call)
+                       .and_then(|callee| cx.tcx.trait_of_item(callee.def_id));
+    if let Some(trt_id) = trt_id {
+        match_def_path(cx, trt_id, path)
+    } else {
+        false
+    }
 }
 
 /// match a Path against a slice of segment string literals, e.g.
@@ -97,9 +128,6 @@ pub fn get_parent_expr<'c>(cx: &'c Context, e: &Expr) -> Option<&'c Expr> {
     map.find(parent_id).and_then(|node|
         if let NodeExpr(parent) = node { Some(parent) } else { None } )
 }
-
-/// dereference a P<T> and return a ref on the result
-pub fn de_p<T>(p: &P<T>) -> &T { &*p }
 
 #[cfg(not(feature="structured_logging"))]
 pub fn span_lint(cx: &Context, lint: &'static Lint, sp: Span, msg: &str) {

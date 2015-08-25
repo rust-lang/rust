@@ -113,6 +113,11 @@ def main(print_only=False, check=False):
                              lambda: gen_table(lints),
                              write_back=not check)
 
+    changed |= replace_region('README.md',
+        r'^There are \d+ lints included in this crate:', "",
+        lambda: ['There are %d lints included in this crate:\n' % len(lints)],
+        write_back=not check)
+
     # same for "clippy" lint collection
     changed |= replace_region('src/lib.rs', r'reg.register_lint_group\("clippy"', r'\]\);',
                               lambda: gen_group(lints), replace_start=False,

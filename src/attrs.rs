@@ -71,14 +71,14 @@ fn is_relevant_block(block: &Block) -> bool {
             _ => ()
         }
     }
-    block.expr.as_ref().map_or(false, |e| is_relevant_expr(&*e))
+    block.expr.as_ref().map_or(false, |e| is_relevant_expr(e))
 }
 
 fn is_relevant_expr(expr: &Expr) -> bool {
     match expr.node {
         ExprBlock(ref block) => is_relevant_block(block),
         ExprRet(Some(ref e)) | ExprParen(ref e) =>
-            is_relevant_expr(&*e),
+            is_relevant_expr(e),
         ExprRet(None) | ExprBreak(_) | ExprMac(_) => false,
         ExprCall(ref path_expr, _) => {
             if let ExprPath(_, ref path) = path_expr.node {

@@ -67,15 +67,16 @@ impl Constant {
     }
 
     /// convert this constant to a f64, if possible
-   pub fn as_float(&self) -> Option<f64> {
-       match *self {
-           ConstantByte(b) => Some(b as f64),
-           ConstantFloat(ref s, _) => s.parse().ok(),
-           ConstantInt(i, ty) => Some(if is_negative(ty) {
-               -(i as f64) } else { i as f64 }),
-           _ => None
-       }
-   }
+    #[allow(cast_precision_loss)]
+    pub fn as_float(&self) -> Option<f64> {
+        match *self {
+            ConstantByte(b) => Some(b as f64),
+            ConstantFloat(ref s, _) => s.parse().ok(),
+            ConstantInt(i, ty) => Some(if is_negative(ty) {
+                -(i as f64) } else { i as f64 }),
+            _ => None
+        }
+    }
 }
 
 impl PartialEq for Constant {
@@ -221,7 +222,7 @@ fn neg_float_str(s: String) -> String {
     if s.starts_with('-') {
         s[1..].to_owned()
     } else {
-        format!("-{}", &*s)
+        format!("-{}", s)
     }
 }
 
@@ -298,7 +299,7 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
             ExprPath(_, _) => self.fetch_path(e),
             ExprBlock(ref block) => self.block(block),
             ExprIf(ref cond, ref then, ref otherwise) =>
-                self.ifthenelse(&*cond, &*then, &*otherwise),
+                self.ifthenelse(cond, then, otherwise),
             ExprLit(ref lit) => Some(lit_to_constant(&lit.node)),
             ExprVec(ref vec) => self.multi(vec).map(ConstantVec),
             ExprTup(ref tup) => self.multi(tup).map(ConstantTuple),
@@ -329,8 +330,13 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
     /// lookup a possibly constant expression from a ExprPath
     fn fetch_path(&mut self, e: &Expr) -> Option<Constant> {
         if let Some(lcx) = self.lcx {
+            let mut maybe_id = None;
             if let Some(&PathResolution { base_def: DefConst(id), ..}) =
                 lcx.tcx.def_map.borrow().get(&e.id) {
+                maybe_id = Some(id);
+            }
+            // separate if lets to avoid doubleborrowing the defmap
+            if let Some(id) = maybe_id {
                 if let Some(const_expr) = lookup_const_by_id(lcx.tcx, id, None) {
                     let ret = self.expr(const_expr);
                     if ret.is_some() {
@@ -356,7 +362,7 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
             if b {
                 self.block(then)
             } else {
-                otherwise.as_ref().and_then(|ref expr| self.expr(expr))
+                otherwise.as_ref().and_then(|expr| self.expr(expr))
             }
         } else { None }
     }
