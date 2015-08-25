@@ -106,11 +106,10 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("    vt={}, count={}", vt.to_string(ccx), count);
 
     let fixed_ty = bcx.tcx().mk_array(vt.unit_ty, count);
-    let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty);
 
     // Always create an alloca even if zero-sized, to preserve
     // the non-null invariant of the inner slice ptr
-    let llfixed = base::alloca(bcx, llfixed_ty, "");
+    let llfixed = base::alloc_ty(bcx, fixed_ty, "");
     call_lifetime_start(bcx, llfixed);
 
     if count > 0 {

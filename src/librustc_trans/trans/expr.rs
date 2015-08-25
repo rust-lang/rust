@@ -246,8 +246,7 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Maybe just get the value directly, instead of loading it?
             immediate_rvalue(load_ty(bcx, global, const_ty), const_ty)
         } else {
-            let llty = type_of::type_of(bcx.ccx(), const_ty);
-            let scratch = alloca(bcx, llty, "const");
+            let scratch = alloc_ty(bcx, const_ty, "const");
             call_lifetime_start(bcx, scratch);
             let lldest = if !const_ty.is_structural() {
                 // Cast pointer to slot, because constants have different types.
@@ -410,9 +409,8 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     datum.to_rvalue_datum(bcx, "__coerce_source"));
 
                 let target = bcx.monomorphize(&target);
-                let llty = type_of::type_of(bcx.ccx(), target);
 
-                let scratch = alloca(bcx, llty, "__coerce_target");
+                let scratch = alloc_ty(bcx, target, "__coerce_target");
                 call_lifetime_start(bcx, scratch);
                 let target_datum = Datum::new(scratch, target,
                                               Rvalue::new(ByRef));
