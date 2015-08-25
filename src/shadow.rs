@@ -81,8 +81,9 @@ fn check_pat<T>(cx: &Context, pat: &Pat, init: &Option<T>, span: Span,
             if is_binding(cx, pat) {
                 if bindings.contains(&name) {
                     lint_shadow(cx, name, span, pat.span, init);
+                } else {
+                    bindings.push(name);
                 }
-                bindings.push(name);
             }
             if let Some(ref p) = *inner { check_pat(cx, p, init, span, bindings); }
         },
@@ -161,6 +162,7 @@ fn check_expr(cx: &Context, expr: &Expr, bindings: &mut Vec<Name>) {
         },
         ExprMatch(ref init, ref arms, _) => {
             check_expr(cx, init, bindings);
+            let len = bindings.len();
             for ref arm in arms {
                 for ref pat in &arm.pats {
                     check_pat(cx, &pat, &Some(&**init), pat.span, bindings);
@@ -170,6 +172,7 @@ fn check_expr(cx: &Context, expr: &Expr, bindings: &mut Vec<Name>) {
                     check_expr(cx, guard, bindings);
                 }
                 check_expr(cx, &arm.body, bindings);
+                bindings.truncate(len);
             }
         },
         _ => ()
