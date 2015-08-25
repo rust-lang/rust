@@ -10,7 +10,6 @@
 
 #![allow(non_camel_case_types)]
 
-use back::abi;
 use llvm;
 use llvm::ValueRef;
 use trans::base::*;
@@ -67,7 +66,7 @@ pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         SaveIn(lldest) => {
             // lldest will have type *[T x N], but we want the type *T,
             // so use GEP to convert:
-            let lldest = GEPi(bcx, lldest, &[0, 0]);
+            let lldest = StructGEP(bcx, lldest, 0);
             write_content(bcx, &vt, expr, expr, SaveIn(lldest))
         }
     };
@@ -123,7 +122,7 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // llfixed has type *[T x N], but we want the type *T,
         // so use GEP to convert
         bcx = write_content(bcx, &vt, slice_expr, content_expr,
-                            SaveIn(GEPi(bcx, llfixed, &[0, 0])));
+                            SaveIn(StructGEP(bcx, llfixed, 0)));
     };
 
     immediate_rvalue_bcx(bcx, llfixed, vec_ty).to_expr_datumblock()
@@ -147,8 +146,8 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let llbytes = C_uint(bcx.ccx(), bytes);
             let llcstr = C_cstr(bcx.ccx(), str_lit, false);
             let llcstr = consts::ptrcast(llcstr, Type::i8p(bcx.ccx()));
-            Store(bcx, llcstr, GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]));
-            Store(bcx, llbytes, GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]));
+            Store(bcx, llcstr, expr::get_dataptr(bcx, lldest));
+            Store(bcx, llbytes, expr::get_meta(bcx, lldest));
             bcx
         }
     }
@@ -310,7 +309,7 @@ pub fn get_base_and_len<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ty::TyArray(_, n) => get_fixed_base_and_len(bcx, llval, n),
         ty::TySlice(_) | ty::TyStr => {
             let base = Load(bcx, expr::get_dataptr(bcx, llval));
-            let len = Load(bcx, expr::get_len(bcx, llval));
+            let len = Load(bcx, expr::get_meta(bcx, llval));
             (base, len)
         }
 

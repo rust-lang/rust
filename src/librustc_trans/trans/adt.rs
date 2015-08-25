@@ -892,7 +892,7 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
     let val = match *r {
         CEnum(ity, min, max) => load_discr(bcx, ity, scrutinee, min, max),
         General(ity, ref cases, _) => {
-            let ptr = GEPi(bcx, scrutinee, &[0, 0]);
+            let ptr = StructGEP(bcx, scrutinee, 0);
             load_discr(bcx, ity, ptr, 0, (cases.len() - 1) as Disr)
         }
         Univariant(..) => C_u8(bcx.ccx(), 0),
@@ -986,13 +986,13 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                 Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED), ptr);
             }
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
-                  GEPi(bcx, val, &[0, 0]));
+                  StructGEP(bcx, val, 0));
         }
         Univariant(ref st, dtor) => {
             assert_eq!(discr, 0);
             if dtor_active(dtor) {
                 Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED),
-                    GEPi(bcx, val, &[0, st.fields.len() - 1]));
+                      StructGEP(bcx, val, st.fields.len() - 1));
             }
         }
         RawNullablePointer { nndiscr, nnty, ..} => {
@@ -1091,7 +1091,7 @@ pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, v
         val
     };
 
-    GEPi(bcx, val, &[0, ix])
+    StructGEP(bcx, val, ix)
 }
 
 pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
@@ -1162,7 +1162,7 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let ptr_ty = bcx.tcx().mk_imm_ptr(tcx.dtor_type());
     match *r {
         Univariant(ref st, dtor) if dtor_active(dtor) => {
-            let flag_ptr = GEPi(bcx, val, &[0, st.fields.len() - 1]);
+            let flag_ptr = StructGEP(bcx, val, st.fields.len() - 1);
             datum::immediate_rvalue_bcx(bcx, flag_ptr, ptr_ty).to_expr_datumblock()
         }
         General(_, _, dtor) if dtor_active(dtor) => {
