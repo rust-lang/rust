@@ -101,7 +101,6 @@ use trans::cleanup;
 use trans::cleanup::{CleanupMethods, DropHintDatum, DropHintMethods};
 use trans::expr;
 use trans::tvec;
-use trans::type_of;
 use middle::ty::Ty;
 
 use std::fmt;
@@ -302,8 +301,7 @@ pub fn lvalue_scratch_datum<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
                                               -> DatumBlock<'blk, 'tcx, Lvalue> where
     F: FnOnce(A, Block<'blk, 'tcx>, ValueRef) -> Block<'blk, 'tcx>,
 {
-    let llty = type_of::type_of(bcx.ccx(), ty);
-    let scratch = alloca(bcx, llty, name);
+    let scratch = alloc_ty(bcx, ty, name);
 
     // Subtle. Populate the scratch memory *before* scheduling cleanup.
     call_lifetime_start(bcx, scratch);
@@ -323,8 +321,7 @@ pub fn rvalue_scratch_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         ty: Ty<'tcx>,
                                         name: &str)
                                         -> Datum<'tcx, Rvalue> {
-    let llty = type_of::type_of(bcx.ccx(), ty);
-    let scratch = alloca(bcx, llty, name);
+    let scratch = alloc_ty(bcx, ty, name);
     call_lifetime_start(bcx, scratch);
     Datum::new(scratch, ty, Rvalue::new(ByRef))
 }

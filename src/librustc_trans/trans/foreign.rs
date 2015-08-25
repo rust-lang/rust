@@ -296,10 +296,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // Ensure that we always have the Rust value indirectly,
         // because it makes bitcasting easier.
         if !rust_indirect {
-            let scratch =
-                base::alloca(bcx,
-                             type_of::type_of(ccx, passed_arg_tys[i]),
-                             "__arg");
+            let scratch = base::alloc_ty(bcx, passed_arg_tys[i], "__arg");
             if type_is_fat_ptr(ccx.tcx(), passed_arg_tys[i]) {
                 Store(bcx, llargs_rust[i + offset], expr::get_dataptr(bcx, scratch));
                 Store(bcx, llargs_rust[i + offset + 1], expr::get_meta(bcx, scratch));

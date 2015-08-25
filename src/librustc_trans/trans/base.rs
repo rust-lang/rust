@@ -1020,8 +1020,7 @@ pub fn alloc_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, name: &str) -> 
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);
     assert!(!t.has_param_types());
-    let val = alloca(bcx, ty, name);
-    return val;
+    alloca(bcx, ty, name)
 }
 
 pub fn alloca(cx: Block, ty: Type, name: &str) -> ValueRef {

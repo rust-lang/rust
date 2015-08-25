@@ -1196,8 +1196,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 let unsized_ty = def.struct_variant().fields.last().map(|field| {
                     monomorphize::field_ty(bcx.tcx(), substs, field)
                 }).unwrap();
-                let llty = type_of::type_of(bcx.ccx(), unsized_ty);
-                let scratch = alloca(bcx, llty, "__struct_field_fat_ptr");
+                let scratch = alloc_ty(bcx, unsized_ty, "__struct_field_fat_ptr");
                 let data = adt::trans_field_ptr(bcx, &*repr, struct_val, 0, arg_count);
                 let len = Load(bcx, expr::get_meta(bcx, val.val));
                 Store(bcx, data, expr::get_dataptr(bcx, scratch));
