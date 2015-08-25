@@ -41,7 +41,8 @@ impl LintPass for MethodsPass {
                 if obj_ty.sty == ty::TyStr {
                     span_lint(cx, STR_TO_STRING, expr.span, "`str.to_owned()` is faster");
                 } else if match_type(cx, obj_ty, &STRING_PATH) {
-                    span_lint(cx, STRING_TO_STRING, expr.span, "`String.to_string()` is a no-op");
+                    span_lint(cx, STRING_TO_STRING, expr.span, "`String.to_string()` is a no-op; use \
+                                                                `clone()` to make a copy");
                 }
             }
         }
