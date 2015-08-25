@@ -158,6 +158,17 @@ pub fn walk_ptrs_ty(ty: ty::Ty) -> ty::Ty {
     }
 }
 
+/// return the base type for references and raw pointers, and count reference depth
+pub fn walk_ptrs_ty_depth(ty: ty::Ty) -> (ty::Ty, usize) {
+    fn inner(ty: ty::Ty, depth: usize) -> (ty::Ty, usize) {
+        match ty.sty {
+            ty::TyRef(_, ref tm) | ty::TyRawPtr(ref tm) => inner(tm.ty, depth + 1),
+            _ => (ty, depth)
+        }
+    }
+    inner(ty, 0)
+}
+
 /// Produce a nested chain of if-lets and ifs from the patterns:
 ///
 ///     if_let_chain! {
