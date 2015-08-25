@@ -875,8 +875,10 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                               debug_loc: DebugLoc)
                               -> Result<'blk, 'tcx> {
     fn compare_str<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
-                               lhs: ValueRef,
-                               rhs: ValueRef,
+                               lhs_data: ValueRef,
+                               lhs_len: ValueRef,
+                               rhs_data: ValueRef,
+                               rhs_len: ValueRef,
                                rhs_t: Ty<'tcx>,
                                debug_loc: DebugLoc)
                                -> Result<'blk, 'tcx> {
@@ -884,10 +886,6 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                            None,
                            &format!("comparison of `{}`", rhs_t),
                            StrEqFnLangItem);
-        let lhs_data = Load(cx, expr::get_dataptr(cx, lhs));
-        let lhs_len = Load(cx, expr::get_meta(cx, lhs));
-        let rhs_data = Load(cx, expr::get_dataptr(cx, rhs));
-        let rhs_len = Load(cx, expr::get_meta(cx, rhs));
         callee::trans_lang_call(cx, did, &[lhs_data, lhs_len, rhs_data, rhs_len], None, debug_loc)
     }
 
@@ -899,7 +897,13 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
     match rhs_t.sty {
         ty::TyRef(_, mt) => match mt.ty.sty {
-            ty::TyStr => compare_str(cx, lhs, rhs, rhs_t, debug_loc),
+            ty::TyStr => {
+                let lhs_data = Load(cx, expr::get_dataptr(cx, lhs));
+                let lhs_len = Load(cx, expr::get_meta(cx, lhs));
+                let rhs_data = Load(cx, expr::get_dataptr(cx, rhs));
+                let rhs_len = Load(cx, expr::get_meta(cx, rhs));
+                compare_str(cx, lhs_data, lhs_len, rhs_data, rhs_len, rhs_t, debug_loc)
+            }
             ty::TyArray(ty, _) | ty::TySlice(ty) => match ty.sty {
                 ty::TyUint(ast::TyU8) => {
                     // NOTE: cast &[u8] and &[u8; N] to &str and abuse the str_eq lang item,
@@ -907,24 +911,24 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                     let pat_len = val_ty(rhs).element_type().array_length();
                     let ty_str_slice = cx.tcx().mk_static_str();
 
-                    let rhs_str = alloc_ty(cx, ty_str_slice, "rhs_str");
-                    Store(cx, expr::get_dataptr(cx, rhs), expr::get_dataptr(cx, rhs_str));
-                    Store(cx, C_uint(cx.ccx(), pat_len), expr::get_meta(cx, rhs_str));
+                    let rhs_data = GEPi(cx, rhs, &[0, 0]);
+                    let rhs_len = C_uint(cx.ccx(), pat_len);
 
-                    let lhs_str;
+                    let lhs_data;
+                    let lhs_len;
                     if val_ty(lhs) == val_ty(rhs) {
                         // Both the discriminant and the pattern are thin pointers
-                        lhs_str = alloc_ty(cx, ty_str_slice, "lhs_str");
-                        Store(cx, expr::get_dataptr(cx, lhs), expr::get_dataptr(cx, lhs_str));
-                        Store(cx, C_uint(cx.ccx(), pat_len), expr::get_meta(cx, lhs_str));
-                    }
-                    else {
+                        lhs_data = GEPi(cx, lhs, &[0, 0]);
+                        lhs_len = C_uint(cx.ccx(), pat_len);
+                    } else {
                         // The discriminant is a fat pointer
                         let llty_str_slice = type_of::type_of(cx.ccx(), ty_str_slice).ptr_to();
-                        lhs_str = PointerCast(cx, lhs, llty_str_slice);
+                        let lhs_str = PointerCast(cx, lhs, llty_str_slice);
+                        lhs_data = Load(cx, expr::get_dataptr(cx, lhs_str));
+                        lhs_len = Load(cx, expr::get_meta(cx, lhs_str));
                     }
 
-                    compare_str(cx, lhs_str, rhs_str, rhs_t, debug_loc)
+                    compare_str(cx, lhs_data, lhs_len, rhs_data, rhs_len, rhs_t, debug_loc)
                 },
                 _ => cx.sess().bug("only byte strings supported in compare_values"),
             },
