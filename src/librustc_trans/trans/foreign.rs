@@ -432,6 +432,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // - Truncating foreign type to correct integral type and then
             //   bitcasting to the struct type yields invalid cast errors.
             let llscratch = base::alloca(bcx, llforeign_ret_ty, "__cast");
+            base::call_lifetime_start(bcx, llscratch);
             Store(bcx, llforeign_retval, llscratch);
             let llscratch_i8 = BitCast(bcx, llscratch, Type::i8(ccx).ptr_to());
             let llretptr_i8 = BitCast(bcx, llretptr, Type::i8(ccx).ptr_to());
@@ -442,6 +443,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             debug!("llrust_size={}", llrust_size);
             base::call_memcpy(bcx, llretptr_i8, llscratch_i8,
                               C_uint(ccx, llrust_size), llalign as u32);
+            base::call_lifetime_end(bcx, llscratch);
         }
     }
 
