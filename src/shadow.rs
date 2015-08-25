@@ -65,13 +65,20 @@ fn check_decl(cx: &Context, decl: &Decl, bindings: &mut Vec<Name>) {
     }
 }
 
+fn is_binding(cx: &Context, pat: &Pat) -> bool {
+    match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
+        Some(DefVariant(..)) | Some(DefStruct(..)) => false,
+        _ => true
+    }
+}
+
 fn check_pat<T>(cx: &Context, pat: &Pat, init: &Option<T>, span: Span,  
         bindings: &mut Vec<Name>) where T: Deref<Target=Expr> {
     //TODO: match more stuff / destructuring
     match pat.node {
         PatIdent(_, ref ident, ref inner) => {
             let name = ident.node.name;
-            if pat_is_binding(&cx.tcx.def_map, pat) {
+            if is_binding(cx, pat) {
                 if bindings.contains(&name) {
                     lint_shadow(cx, name, span, pat.span, init);
                 }
