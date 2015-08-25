@@ -19,6 +19,7 @@
 #![feature(str_char)]
 #![feature(test)]
 #![feature(vec_push_all)]
+#![feature(path_components_peek)]
 
 #![deny(warnings)]
 
