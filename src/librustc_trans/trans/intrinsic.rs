@@ -966,6 +966,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     match dest {
         expr::Ignore => {
             bcx = glue::drop_ty(bcx, llresult, ret_ty, call_debug_location);
+            call_lifetime_end(bcx, llresult);
         }
         expr::SaveIn(_) => {}
     }

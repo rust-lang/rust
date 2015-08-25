@@ -190,7 +190,9 @@ pub fn drop_ty_immediate<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let vp = alloca(bcx, type_of(bcx.ccx(), t), "");
     call_lifetime_start(bcx, vp);
     store_ty(bcx, v, vp, t);
-    drop_ty_core(bcx, vp, t, debug_loc, skip_dtor, None)
+    let bcx = drop_ty_core(bcx, vp, t, debug_loc, skip_dtor, None);
+    call_lifetime_end(bcx, vp);
+    bcx
 }
 
 pub fn get_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> ValueRef {
