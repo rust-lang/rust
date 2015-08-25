@@ -221,7 +221,7 @@ some known arguments and compare it to the expected output.
 
 # The `ignore` attribute
 
-Sometimes a few specific tests can be very time-consuming to execute.  These
+Sometimes a few specific tests can be very time-consuming to execute. These
 can be disabled by default by using the `ignore` attribute:
 
 ```rust
