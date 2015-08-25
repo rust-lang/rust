@@ -607,6 +607,7 @@ NATIVE_TRUE
 BACKTRACE_USES_MALLOC
 ALLOC_FILE
 VIEW_FILE
+BACKTRACE_SUPPORTS_DATA
 BACKTRACE_SUPPORTED
 FORMAT_FILE
 BACKTRACE_SUPPORTS_THREADS
@@ -4326,11 +4327,11 @@ MAKEINFO=${MAKEINFO-"${am_missing_run}makeinfo"}
 
 # We need awk for the "check" target.  The system "awk" is bad on
 # some platforms.
-# Always define AMTAR for backward compatibility.
+# Always define AMTAR for backward compatibility.  Yes, it's still used
+# in the wild :-(  We should find a proper way to deprecate it ...
+AMTAR='$${TAR-tar}'
 
-AMTAR=${AMTAR-"${am_missing_run}tar"}
-
-am__tar='${AMTAR} chof - "$$tardir"'; am__untar='${AMTAR} xf -'
+am__tar='$${TAR-tar} chof - "$$tardir"' am__untar='$${TAR-tar} xf -'
 
 
 
@@ -5690,7 +5691,7 @@ else
     lt_cv_sys_max_cmd_len=8192;
     ;;
 
-  netbsd* | freebsd* | openbsd* | darwin* | dragonfly* | bitrig*)
+  netbsd* | freebsd* | openbsd* | darwin* | dragonfly*)
     # This has been around since 386BSD, at least.  Likely further.
     if test -x /sbin/sysctl; then
       lt_cv_sys_max_cmd_len=`/sbin/sysctl -n kern.argmax`
@@ -9372,7 +9373,7 @@ if test -z "$aix_libpath"; then aix_libpath="/usr/lib:/lib"; fi
       ;;
 
     # FreeBSD 3 and greater uses gcc -shared to do shared libraries.
-    freebsd* | dragonfly* | bitrig* | openbsd*)
+    freebsd* | dragonfly*)
       archive_cmds='$CC -shared -o $lib $libobjs $deplibs $compiler_flags'
       hardcode_libdir_flag_spec='-R$libdir'
       hardcode_direct=yes
@@ -11129,7 +11130,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11132 "configure"
+#line 11133 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11235,7 +11236,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11238 "configure"
+#line 11239 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11569,6 +11570,12 @@ $as_echo "$libbacktrace_cv_c_random_seed_string" >&6; }
 fi
 
 
+ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
 WARN_FLAGS=
 save_CFLAGS="$CFLAGS"
 for real_option in -W -Wall -Wwrite-strings -Wstrict-prototypes \
@@ -11615,6 +11622,12 @@ $as_echo "$ac_res" >&6; }
 fi
   done
 CFLAGS="$save_CFLAGS"
+ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
 
 
 if test -n "${with_target_subdir}"; then
@@ -11826,8 +11839,12 @@ $as_echo "$libbacktrace_cv_sys_filetype" >&6; }
 
 # Match the file type to decide what files to compile.
 FORMAT_FILE=
+backtrace_supports_data=yes
 case "$libbacktrace_cv_sys_filetype" in
 elf*) FORMAT_FILE="elf.lo" ;;
+pecoff) FORMAT_FILE="pecoff.lo"
+        backtrace_supports_data=no
+	;;
 *) { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: could not determine output file type" >&5
 $as_echo "$as_me: WARNING: could not determine output file type" >&2;}
    FORMAT_FILE="unknown.lo"
@@ -11841,6 +11858,7 @@ elfsize=
 case "$libbacktrace_cv_sys_filetype" in
 elf32) elfsize=32 ;;
 elf64) elfsize=64 ;;
+*)     elfsize=unused
 esac
 
 cat >>confdefs.h <<_ACEOF
@@ -11851,6 +11869,12 @@ _ACEOF
 BACKTRACE_SUPPORTED=0
 if test "$backtrace_supported" = "yes"; then
   BACKTRACE_SUPPORTED=1
+fi
+
+
+BACKTRACE_SUPPORTS_DATA=0
+if test "$backtrace_supports_data" = "yes"; then
+  BACKTRACE_SUPPORTS_DATA=1
 fi
 
 
@@ -12280,6 +12304,12 @@ else
     # When built as a GCC target library, we can't do a link test.  We
     # simply assume that if we have mman.h, we have mmap.
     have_mmap=yes
+    case "${host}" in
+    spu-*-*)
+        # The SPU does not have mmap, but it has a sys/mman.h header file
+        # containing "mmap_eaddr" and the mmap flags, confusing the test.
+	have_mmap=no ;;
+    esac
   else
     ac_fn_c_check_func "$LINENO" "mmap" "ac_cv_func_mmap"
 if test "x$ac_cv_func_mmap" = x""yes; then :
