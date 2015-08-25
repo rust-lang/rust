@@ -39,8 +39,7 @@ pub fn in_external_macro(cx: &Context, span: Span) -> bool {
 /// usage e.g. with
 /// `match_def_path(cx, id, &["core", "option", "Option"])`
 pub fn match_def_path(cx: &Context, def_id: DefId, path: &[&str]) -> bool {
-    cx.tcx.with_path(def_id, |iter| iter.map(|elem| elem.name())
-        .zip(path.iter()).all(|(nm, p)| nm == p))
+    cx.tcx.with_path(def_id, |iter| iter.zip(path).all(|(nm, p)| nm.name() == p))
 }
 
 /// check if type is struct or enum type with given def path
