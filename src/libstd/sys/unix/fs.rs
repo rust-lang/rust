@@ -212,7 +212,7 @@ impl DirEntry {
 impl OpenOptions {
     pub fn new() -> OpenOptions {
         OpenOptions {
-            flags: 0,
+            flags: libc::O_CLOEXEC,
             read: false,
             write: false,
             mode: 0o666,
@@ -269,6 +269,9 @@ impl File {
             libc::open(path.as_ptr(), flags, opts.mode)
         }));
         let fd = FileDesc::new(fd);
+        // Even though we open with the O_CLOEXEC flag, still set CLOEXEC here,
+        // in case the open flag is not supported (it's just ignored by the OS
+        // in that case).
         fd.set_cloexec();
         Ok(File(fd))
     }
