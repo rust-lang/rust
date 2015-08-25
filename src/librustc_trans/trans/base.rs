@@ -1025,12 +1025,6 @@ pub fn alloc_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, name: &str) -> 
 }
 
 pub fn alloca(cx: Block, ty: Type, name: &str) -> ValueRef {
-    let p = alloca_no_lifetime(cx, ty, name);
-    call_lifetime_start(cx, p);
-    p
-}
-
-pub fn alloca_no_lifetime(cx: Block, ty: Type, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloca");
     if cx.unreachable.get() {
         unsafe {
@@ -1742,7 +1736,9 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         expr::SaveIn(d) => d,
         expr::Ignore => {
             if !type_is_zero_size(ccx, result_ty) {
-                alloc_ty(bcx, result_ty, "constructor_result")
+                let llresult = alloc_ty(bcx, result_ty, "constructor_result");
+                call_lifetime_start(bcx, llresult);
+                llresult
             } else {
                 C_undef(type_of::type_of(ccx, result_ty).ptr_to())
             }

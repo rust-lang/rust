@@ -306,6 +306,7 @@ pub fn lvalue_scratch_datum<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
     let scratch = alloca(bcx, llty, name);
 
     // Subtle. Populate the scratch memory *before* scheduling cleanup.
+    call_lifetime_start(bcx, scratch);
     let bcx = populate(arg, bcx, scratch);
     bcx.fcx.schedule_lifetime_end(scope, scratch);
     bcx.fcx.schedule_drop_mem(scope, scratch, ty, None);
@@ -324,6 +325,7 @@ pub fn rvalue_scratch_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         -> Datum<'tcx, Rvalue> {
     let llty = type_of::type_of(bcx.ccx(), ty);
     let scratch = alloca(bcx, llty, name);
+    call_lifetime_start(bcx, scratch);
     Datum::new(scratch, ty, Rvalue::new(ByRef))
 }
 

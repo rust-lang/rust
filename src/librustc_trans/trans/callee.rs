@@ -725,7 +725,9 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                     let llty = type_of::type_of(ccx, ret_ty);
                     Some(common::C_undef(llty.ptr_to()))
                 } else {
-                    Some(alloc_ty(bcx, ret_ty, "__llret"))
+                    let llresult = alloc_ty(bcx, ret_ty, "__llret");
+                    call_lifetime_start(bcx, llresult);
+                    Some(llresult)
                 }
             } else {
                 None

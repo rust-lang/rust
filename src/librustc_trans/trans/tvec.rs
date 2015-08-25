@@ -111,6 +111,7 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Always create an alloca even if zero-sized, to preserve
     // the non-null invariant of the inner slice ptr
     let llfixed = base::alloca(bcx, llfixed_ty, "");
+    call_lifetime_start(bcx, llfixed);
 
     if count > 0 {
         // Arrange for the backing array to be cleaned up.

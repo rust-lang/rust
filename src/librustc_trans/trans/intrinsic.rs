@@ -393,7 +393,9 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         expr::SaveIn(d) => d,
         expr::Ignore => {
             if !type_is_zero_size(ccx, ret_ty) {
-                alloc_ty(bcx, ret_ty, "intrinsic_result")
+                let llresult = alloc_ty(bcx, ret_ty, "intrinsic_result");
+                call_lifetime_start(bcx, llresult);
+                llresult
             } else {
                 C_undef(llret_ty.ptr_to())
             }

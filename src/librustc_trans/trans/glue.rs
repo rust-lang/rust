@@ -188,6 +188,7 @@ pub fn drop_ty_immediate<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("drop_ty_immediate");
     let vp = alloca(bcx, type_of(bcx.ccx(), t), "");
+    call_lifetime_start(bcx, vp);
     store_ty(bcx, v, vp, t);
     drop_ty_core(bcx, vp, t, debug_loc, skip_dtor, None)
 }

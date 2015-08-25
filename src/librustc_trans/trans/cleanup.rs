@@ -883,6 +883,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
             }
             None => {
                 let addr = base::alloca(pad_bcx, common::val_ty(llretval), "");
+                base::call_lifetime_start(pad_bcx, addr);
                 self.personality.set(Some(addr));
                 build::Store(pad_bcx, llretval, addr);
             }
