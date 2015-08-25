@@ -79,7 +79,7 @@ fn single_stmt_of_block(block: &Block) -> Option<&Expr> {
         } else { None }
     } else {
         if block.stmts.is_empty() {
-            if let Some(ref p) = block.expr { Some(&*p) } else { None }
+            if let Some(ref p) = block.expr { Some(p) } else { None }
         } else { None }
     }
 }

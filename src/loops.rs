@@ -95,9 +95,9 @@ fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
             let PatEnum(_, Some(ref somepats)) = innerarms[0].pats[0].node,
             somepats.len() == 1
         ], {
-            return Some((&*somepats[0],
-                         &*iterargs[0],
-                         &*innerarms[0].body));
+            return Some((&somepats[0],
+                         &iterargs[0],
+                         &innerarms[0].body));
         }
     }
     None

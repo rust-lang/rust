@@ -22,7 +22,7 @@ impl LintPass for EtaPass {
             ExprCall(_, ref args) |
             ExprMethodCall(_, _, ref args) => {
                 for arg in args {
-                    check_closure(cx, &*arg)
+                    check_closure(cx, arg)
                 }
             },
             _ => (),

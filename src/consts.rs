@@ -222,7 +222,7 @@ fn neg_float_str(s: String) -> String {
     if s.starts_with('-') {
         s[1..].to_owned()
     } else {
-        format!("-{}", &*s)
+        format!("-{}", s)
     }
 }
 
@@ -299,7 +299,7 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
             ExprPath(_, _) => self.fetch_path(e),
             ExprBlock(ref block) => self.block(block),
             ExprIf(ref cond, ref then, ref otherwise) =>
-                self.ifthenelse(&*cond, &*then, &*otherwise),
+                self.ifthenelse(cond, then, otherwise),
             ExprLit(ref lit) => Some(lit_to_constant(&lit.node)),
             ExprVec(ref vec) => self.multi(vec).map(ConstantVec),
             ExprTup(ref tup) => self.multi(tup).map(ConstantTuple),
@@ -362,7 +362,7 @@ impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
             if b {
                 self.block(then)
             } else {
-                otherwise.as_ref().and_then(|ref expr| self.expr(expr))
+                otherwise.as_ref().and_then(|expr| self.expr(expr))
             }
         } else { None }
     }
