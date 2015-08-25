@@ -203,7 +203,7 @@ fn check_to_owned(cx: &Context, expr: &Expr, other_span: Span) {
 
 fn is_str_arg(cx: &Context, args: &[P<Expr>]) -> bool {
     args.len() == 1 && if let ty::TyStr =
-        walk_ptrs_ty(cx.tcx.expr_ty(&*args[0])).sty { true } else { false }
+        walk_ptrs_ty(cx.tcx.expr_ty(&args[0])).sty { true } else { false }
 }
 
 declare_lint!(pub MODULO_ONE, Warn, "taking a number modulo 1, which always returns 0");

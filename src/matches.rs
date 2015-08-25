@@ -34,7 +34,7 @@ impl LintPass for MatchPass {
                 // when an enum is extended, so we don't consider these cases
                 arms[1].pats[0].node == PatWild(PatWildSingle) &&
                 // finally, we don't want any content in the second arm (unit or empty block)
-                is_unit_expr(&*arms[1].body)
+                is_unit_expr(&arms[1].body)
             {
                 let body_code = snippet_block(cx, arms[0].body.span, "..");
                 let body_code = if let ExprBlock(_) = arms[0].body.node {
@@ -46,10 +46,10 @@ impl LintPass for MatchPass {
                       "you seem to be trying to use match for \
                       destructuring a single pattern. Did you mean to \
                       use `if let`?",
-                      &*format!("try\nif let {} = {} {}",
-                                snippet(cx, arms[0].pats[0].span, ".."),
-                                snippet(cx, ex.span, ".."),
-                                body_code)
+                      &format!("try\nif let {} = {} {}",
+                               snippet(cx, arms[0].pats[0].span, ".."),
+                               snippet(cx, ex.span, ".."),
+                               body_code)
                 );
             }
 

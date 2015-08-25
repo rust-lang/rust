@@ -5,7 +5,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 
-use utils::{de_p, span_lint, snippet};
+use utils::{span_lint, snippet};
 
 declare_lint! {
     pub NEEDLESS_BOOL,
@@ -55,7 +55,7 @@ impl LintPass for NeedlessBool {
 
 fn fetch_bool_block(block: &Block) -> Option<bool> {
     if block.stmts.is_empty() {
-        block.expr.as_ref().map(de_p).and_then(fetch_bool_expr)
+        block.expr.as_ref().and_then(|e| fetch_bool_expr(e))
     } else { None }
 }
 

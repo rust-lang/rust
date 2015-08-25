@@ -24,7 +24,7 @@ impl LintPass for MethodsPass {
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
         if let ExprMethodCall(ref ident, _, ref args) = expr.node {
-            let obj_ty = walk_ptrs_ty(cx.tcx.expr_ty(&*args[0]));
+            let obj_ty = walk_ptrs_ty(cx.tcx.expr_ty(&args[0]));
             if ident.node.name == "unwrap" {
                 if match_type(cx, obj_ty, &OPTION_PATH) {
                     span_lint(cx, OPTION_UNWRAP_USED, expr.span,

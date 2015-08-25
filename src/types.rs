@@ -55,7 +55,7 @@ declare_lint!(pub LET_UNIT_VALUE, Warn,
 fn check_let_unit(cx: &Context, decl: &Decl, info: Option<&ExpnInfo>) {
     if in_macro(cx, info) { return; }
     if let DeclLocal(ref local) = decl.node {
-        let bindtype = &cx.tcx.pat_ty(&*local.pat).sty;
+        let bindtype = &cx.tcx.pat_ty(&local.pat).sty;
         if *bindtype == ty::TyTuple(vec![]) {
             span_lint(cx, LET_UNIT_VALUE, decl.span, &format!(
                 "this let-binding has unit value. Consider omitting `let {} =`",
@@ -210,7 +210,7 @@ impl LintPass for CastPass {
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
         if let ExprCast(ref ex, _) = expr.node {
-            let (cast_from, cast_to) = (cx.tcx.expr_ty(&*ex), cx.tcx.expr_ty(expr));
+            let (cast_from, cast_to) = (cx.tcx.expr_ty(ex), cx.tcx.expr_ty(expr));
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
@@ -263,14 +263,14 @@ impl LintPass for TypeComplexityPass {
     }
 
     fn check_struct_field(&mut self, cx: &Context, field: &StructField) {
-        check_type(cx, &*field.node.ty);
+        check_type(cx, &field.node.ty);
     }
 
     fn check_variant(&mut self, cx: &Context, var: &Variant, _: &Generics) {
         // StructVariant is covered by check_struct_field
         if let TupleVariantKind(ref args) = var.node.kind {
             for arg in args {
-                check_type(cx, &*arg.ty);
+                check_type(cx, &arg.ty);
             }
         }
     }
@@ -312,7 +312,7 @@ impl LintPass for TypeComplexityPass {
 
 fn check_fndecl(cx: &Context, decl: &FnDecl) {
     for arg in &decl.inputs {
-        check_type(cx, &*arg.ty);
+        check_type(cx, &arg.ty);
     }
     if let Return(ref ty) = decl.output {
         check_type(cx, ty);
