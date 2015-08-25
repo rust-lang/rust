@@ -14,7 +14,6 @@
 use super::{CombinedSnapshot, InferCtxt, HigherRankedType, SkolemizationMap};
 use super::combine::CombineFields;
 
-use middle::subst;
 use middle::ty::{self, TypeError, Binder};
 use middle::ty_fold::{self, TypeFoldable};
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
@@ -452,63 +451,6 @@ impl<'a,'tcx> InferCtxtExt for InferCtxt<'a,'tcx> {
                escaping_types);
 
         region_vars
-    }
-}
-
-/// Constructs and returns a substitution that, for a given type
-/// scheme parameterized by `generics`, will replace every generic
-/// parameter in the type with a skolemized type/region (which one can
-/// think of as a "fresh constant", except at the type/region level of
-/// reasoning).
-///
-/// Since we currently represent bound/free type parameters in the
-/// same way, this only has an effect on regions.
-///
-/// (Note that unlike a substitution from `ty::construct_free_substs`,
-/// this inserts skolemized regions rather than free regions; this
-/// allows one to use `fn leak_check` to catch attmepts to unify the
-/// skolemized regions with e.g. the `'static` lifetime)
-pub fn construct_skolemized_substs<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                                            generics: &ty::Generics<'tcx>,
-                                            snapshot: &CombinedSnapshot)
-                                            -> (subst::Substs<'tcx>, SkolemizationMap)
-{
-    let mut map = FnvHashMap();
-
-    // map T => T
-    let mut types = subst::VecPerParamSpace::empty();
-    push_types_from_defs(infcx.tcx, &mut types, generics.types.as_slice());
-
-    // map early- or late-bound 'a => fresh 'a
-    let mut regions = subst::VecPerParamSpace::empty();
-    push_region_params(infcx, &mut map, &mut regions, generics.regions.as_slice(), snapshot);
-
-    let substs = subst::Substs { types: types,
-                                 regions: subst::NonerasedRegions(regions) };
-    return (substs, map);
-
-    fn push_region_params<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                                   map: &mut SkolemizationMap,
-                                   regions: &mut subst::VecPerParamSpace<ty::Region>,
-                                   region_params: &[ty::RegionParameterDef],
-                                   snapshot: &CombinedSnapshot)
-    {
-        for r in region_params {
-            let br = r.to_bound_region();
-            let skol_var = infcx.region_vars.new_skolemized(br, &snapshot.region_vars_snapshot);
-            let sanity_check = map.insert(br, skol_var);
-            assert!(sanity_check.is_none());
-            regions.push(r.space, skol_var);
-        }
-    }
-
-    fn push_types_from_defs<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                  types: &mut subst::VecPerParamSpace<ty::Ty<'tcx>>,
-                                  defs: &[ty::TypeParameterDef<'tcx>]) {
-        for def in defs {
-            let ty = tcx.mk_param_from_def(def);
-            types.push(def.space, ty);
-        }
     }
 }
 
