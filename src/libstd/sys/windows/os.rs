@@ -75,7 +75,7 @@ pub fn error_string(errnum: i32) -> String {
                                  langId,
                                  buf.as_mut_ptr(),
                                  buf.len() as DWORD,
-                                 ptr::null());
+                                 ptr::null()) as usize;
         if res == 0 {
             // Sometimes FormatMessageW can fail e.g. system doesn't like langId,
             let fm_err = errno();
@@ -83,8 +83,7 @@ pub fn error_string(errnum: i32) -> String {
                            errnum, fm_err);
         }
 
-        let b = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
-        match String::from_utf16(&buf[..b]) {
+        match String::from_utf16(&buf[..res]) {
             Ok(mut msg) => {
                 // Trim trailing CRLF inserted by FormatMessageW
                 let len = msg.trim_right().len();
