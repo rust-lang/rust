@@ -211,6 +211,10 @@ struct line
   const char *filename;
   /* Line number.  */
   int lineno;
+  /* Index of the object in the original array read from the DWARF
+     section, before it has been sorted.  The index makes it possible
+     to use Quicksort and maintain stability.  */
+  int idx;
 };
 
 /* A growable vector of line number information.  This is used while
@@ -940,9 +944,10 @@ unit_addrs_search (const void *vkey, const void *ventry)
     return 0;
 }
 
-/* Sort the line vector by PC.  We want a stable sort here.  We know
-   that the pointers are into the same array, so it is safe to compare
-   them directly.  */
+/* Sort the line vector by PC.  We want a stable sort here to maintain
+   the order of lines for the same PC values.  Since the sequence is
+   being sorted in place, their addresses cannot be relied on to
+   maintain stability.  That is the purpose of the index member.  */
 
 static int
 line_compare (const void *v1, const void *v2)
@@ -954,9 +959,9 @@ line_compare (const void *v1, const void *v2)
     return -1;
   else if (ln1->pc > ln2->pc)
     return 1;
-  else if (ln1 < ln2)
+  else if (ln1->idx < ln2->idx)
     return -1;
-  else if (ln1 > ln2)
+  else if (ln1->idx > ln2->idx)
     return 1;
   else
     return 0;
@@ -1551,6 +1556,7 @@ add_line (struct backtrace_state *state, struct dwarf_data *ddata,
 
   ln->filename = filename;
   ln->lineno = lineno;
+  ln->idx = vec->count;
 
   ++vec->count;
 
@@ -2011,6 +2017,7 @@ read_line_info (struct backtrace_state *state, struct dwarf_data *ddata,
   ln->pc = (uintptr_t) -1;
   ln->filename = NULL;
   ln->lineno = 0;
+  ln->idx = 0;
 
   if (!backtrace_vector_release (state, &vec.vec, error_callback, data))
     goto fail;
@@ -2243,7 +2250,8 @@ read_function_entry (struct backtrace_state *state, struct dwarf_data *ddata,
 		     struct unit *u, uint64_t base, struct dwarf_buf *unit_buf,
 		     const struct line_header *lhdr,
 		     backtrace_error_callback error_callback, void *data,
-		     struct function_vector *vec)
+		     struct function_vector *vec_function,
+		     struct function_vector *vec_inlined)
 {
   while (unit_buf->left > 0)
     {
@@ -2251,6 +2259,7 @@ read_function_entry (struct backtrace_state *state, struct dwarf_data *ddata,
       const struct abbrev *abbrev;
       int is_function;
       struct function *function;
+      struct function_vector *vec;
       size_t i;
       uint64_t lowpc;
       int have_lowpc;
@@ -2271,6 +2280,11 @@ read_function_entry (struct backtrace_state *state, struct dwarf_data *ddata,
       is_function = (abbrev->tag == DW_TAG_subprogram
 		     || abbrev->tag == DW_TAG_entry_point
 		     || abbrev->tag == DW_TAG_inlined_subroutine);
+
+      if (abbrev->tag == DW_TAG_inlined_subroutine)
+	vec = vec_inlined;
+      else
+	vec = vec_function;
 
       function = NULL;
       if (is_function)
@@ -2451,7 +2465,8 @@ read_function_entry (struct backtrace_state *state, struct dwarf_data *ddata,
 	  if (!is_function)
 	    {
 	      if (!read_function_entry (state, ddata, u, base, unit_buf, lhdr,
-					error_callback, data, vec))
+					error_callback, data, vec_function,
+					vec_inlined))
 		return 0;
 	    }
 	  else
@@ -2464,7 +2479,8 @@ read_function_entry (struct backtrace_state *state, struct dwarf_data *ddata,
 	      memset (&fvec, 0, sizeof fvec);
 
 	      if (!read_function_entry (state, ddata, u, base, unit_buf, lhdr,
-					error_callback, data, &fvec))
+					error_callback, data, vec_function,
+					&fvec))
 		return 0;
 
 	      if (fvec.count > 0)
@@ -2528,7 +2544,7 @@ read_function_info (struct backtrace_state *state, struct dwarf_data *ddata,
   while (unit_buf.left > 0)
     {
       if (!read_function_entry (state, ddata, u, 0, &unit_buf, lhdr,
-				error_callback, data, pfvec))
+				error_callback, data, pfvec, pfvec))
 	return;
     }
 

@@ -229,8 +229,12 @@ libbacktrace_cv_sys_filetype=$filetype])
 
 # Match the file type to decide what files to compile.
 FORMAT_FILE=
+backtrace_supports_data=yes
 case "$libbacktrace_cv_sys_filetype" in
 elf*) FORMAT_FILE="elf.lo" ;;
+pecoff) FORMAT_FILE="pecoff.lo"
+        backtrace_supports_data=no
+	;;
 *) AC_MSG_WARN([could not determine output file type])
    FORMAT_FILE="unknown.lo"
    backtrace_supported=no
@@ -243,6 +247,7 @@ elfsize=
 case "$libbacktrace_cv_sys_filetype" in
 elf32) elfsize=32 ;;
 elf64) elfsize=64 ;;
+*)     elfsize=unused
 esac
 AC_DEFINE_UNQUOTED([BACKTRACE_ELF_SIZE], [$elfsize], [ELF size: 32 or 64])
 
@@ -251,6 +256,12 @@ if test "$backtrace_supported" = "yes"; then
   BACKTRACE_SUPPORTED=1
 fi
 AC_SUBST(BACKTRACE_SUPPORTED)
+
+BACKTRACE_SUPPORTS_DATA=0
+if test "$backtrace_supports_data" = "yes"; then
+  BACKTRACE_SUPPORTS_DATA=1
+fi
+AC_SUBST(BACKTRACE_SUPPORTS_DATA)
 
 GCC_HEADER_STDINT(gstdint.h)
 
@@ -262,6 +273,12 @@ else
     # When built as a GCC target library, we can't do a link test.  We
     # simply assume that if we have mman.h, we have mmap.
     have_mmap=yes
+    case "${host}" in
+    spu-*-*)
+        # The SPU does not have mmap, but it has a sys/mman.h header file
+        # containing "mmap_eaddr" and the mmap flags, confusing the test.
+	have_mmap=no ;;
+    esac
   else
     AC_CHECK_FUNC(mmap, [have_mmap=yes], [have_mmap=no])
   fi
