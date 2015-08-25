@@ -1267,7 +1267,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         def::DefStruct(_) => {
             let ty = expr_ty(bcx, ref_expr);
             match ty.sty {
-                ty::TyStruct(def, _) if def.has_dtor(bcx.tcx()) => {
+                ty::TyStruct(def, _) if def.has_dtor() => {
                     let repr = adt::represent_type(bcx.ccx(), ty);
                     adt::trans_set_discr(bcx, &*repr, lldest, 0);
                 }

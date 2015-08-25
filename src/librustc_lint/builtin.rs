@@ -1952,26 +1952,26 @@ impl LintPass for MissingCopyImplementations {
         if !cx.exported_items.contains(&item.id) {
             return;
         }
-        if cx.tcx.destructor_for_type.borrow().contains_key(&DefId::local(item.id)) {
-            return;
-        }
-        let ty = match item.node {
+        let (def, ty) = match item.node {
             ast::ItemStruct(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                cx.tcx.mk_struct(cx.tcx.lookup_adt_def(DefId::local(item.id)),
-                                 cx.tcx.mk_substs(Substs::empty()))
+                let def = cx.tcx.lookup_adt_def(DefId::local(item.id));
+                (def, cx.tcx.mk_struct(def,
+                                       cx.tcx.mk_substs(Substs::empty())))
             }
             ast::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                cx.tcx.mk_enum(cx.tcx.lookup_adt_def(DefId::local(item.id)),
-                               cx.tcx.mk_substs(Substs::empty()))
+                let def = cx.tcx.lookup_adt_def(DefId::local(item.id));
+                (def, cx.tcx.mk_enum(def,
+                                     cx.tcx.mk_substs(Substs::empty())))
             }
             _ => return,
         };
+        if def.has_dtor() { return; }
         let parameter_environment = cx.tcx.empty_parameter_environment();
         // FIXME (@jroesch) should probably inver this so that the parameter env still impls this
         // method
@@ -2583,7 +2583,7 @@ impl LintPass for DropWithReprExtern {
                     let self_type_did = self_type_def.did;
                     let hints = ctx.tcx.lookup_repr_hints(self_type_did);
                     if hints.iter().any(|attr| *attr == attr::ReprExtern) &&
-                        ctx.tcx.ty_dtor(self_type_did).has_drop_flag() {
+                        self_type_def.dtor_kind().has_drop_flag() {
                         let drop_impl_span = ctx.tcx.map.def_id_span(drop_impl_did,
                                                                      codemap::DUMMY_SP);
                         let self_defn_span = ctx.tcx.map.def_id_span(self_type_did,
