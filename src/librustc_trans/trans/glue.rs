@@ -356,7 +356,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             traits::VtableImpl(data) => data,
             _ => tcx.sess.bug(&format!("dtor for {:?} is not an impl???", t))
         };
-        let dtor_did = tcx.destructor_for_type.borrow()[&def.did];
+        let dtor_did = def.destructor().unwrap();
         let datum = callee::trans_fn_ref_with_substs(bcx.ccx(),
                                                      dtor_did,
                                                      ExprId(0),
@@ -534,9 +534,8 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
             }
         }
         ty::TyStruct(def, _) | ty::TyEnum(def, _) => {
-            let tcx = bcx.tcx();
-            match (tcx.ty_dtor(def.did), skip_dtor) {
-                (ty::TraitDtor(_, true), false) => {
+            match (def.dtor_kind(), skip_dtor) {
+                (ty::TraitDtor(true), false) => {
                     // FIXME(16758) Since the struct is unsized, it is hard to
                     // find the drop flag (which is at the end of the struct).
                     // Lets just ignore the flag and pretend everything will be
@@ -552,7 +551,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                         trans_struct_drop(bcx, t, v0)
                     }
                 }
-                (ty::TraitDtor(_, false), false) => {
+                (ty::TraitDtor(false), false) => {
                     trans_struct_drop(bcx, t, v0)
                 }
                 (ty::NoDtor, _) | (_, true) => {

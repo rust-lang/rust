@@ -355,9 +355,11 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // this properly would result in the necessity of computing *type*
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&mut self) {
-        for (_, destructor_def_id) in self.tcx.destructor_for_type.borrow().iter() {
-            if destructor_def_id.is_local() {
-                self.reachable_symbols.insert(destructor_def_id.node);
+        for adt in self.tcx.adt_defs() {
+            if let Some(destructor_def_id) = adt.destructor() {
+                if destructor_def_id.is_local() {
+                    self.reachable_symbols.insert(destructor_def_id.node);
+                }
             }
         }
     }
