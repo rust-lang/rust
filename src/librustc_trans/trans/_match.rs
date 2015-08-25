@@ -1197,7 +1197,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     monomorphize::field_ty(bcx.tcx(), substs, field)
                 }).unwrap();
                 let llty = type_of::type_of(bcx.ccx(), unsized_ty);
-                let scratch = alloca_no_lifetime(bcx, llty, "__struct_field_fat_ptr");
+                let scratch = alloca(bcx, llty, "__struct_field_fat_ptr");
                 let data = adt::trans_field_ptr(bcx, &*repr, struct_val, 0, arg_count);
                 let len = Load(bcx, expr::get_meta(bcx, val.val));
                 Store(bcx, data, expr::get_dataptr(bcx, scratch));
@@ -1524,12 +1524,8 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
         match bm {
             ast::BindByValue(_) if !moves_by_default || reassigned =>
             {
-                llmatch = alloca_no_lifetime(bcx,
-                                             llvariable_ty.ptr_to(),
-                                             "__llmatch");
-                let llcopy = alloca_no_lifetime(bcx,
-                                                llvariable_ty,
-                                                &bcx.name(name));
+                llmatch = alloca(bcx, llvariable_ty.ptr_to(), "__llmatch");
+                let llcopy = alloca(bcx, llvariable_ty, &bcx.name(name));
                 trmode = if moves_by_default {
                     TrByMoveIntoCopy(llcopy)
                 } else {
@@ -1540,15 +1536,11 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
                 // in this case, the final type of the variable will be T,
                 // but during matching we need to store a *T as explained
                 // above
-                llmatch = alloca_no_lifetime(bcx,
-                                             llvariable_ty.ptr_to(),
-                                             &bcx.name(name));
+                llmatch = alloca(bcx, llvariable_ty.ptr_to(), &bcx.name(name));
                 trmode = TrByMoveRef;
             }
             ast::BindByRef(_) => {
-                llmatch = alloca_no_lifetime(bcx,
-                                 llvariable_ty,
-                                 &bcx.name(name));
+                llmatch = alloca(bcx, llvariable_ty, &bcx.name(name));
                 trmode = TrByRef;
             }
         };
@@ -1749,6 +1741,7 @@ fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
 
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
+    call_lifetime_start(bcx, llval);
     let bcx = populate(arg, bcx, datum);
     bcx.fcx.schedule_lifetime_end(cleanup_scope, llval);
     bcx.fcx.schedule_drop_mem(cleanup_scope, llval, var_ty, lvalue.dropflag_hint(bcx));
