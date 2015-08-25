@@ -247,8 +247,7 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             immediate_rvalue(load_ty(bcx, global, const_ty), const_ty)
         } else {
             let llty = type_of::type_of(bcx.ccx(), const_ty);
-            // HACK(eddyb) get around issues with lifetime intrinsics.
-            let scratch = alloca_no_lifetime(bcx, llty, "const");
+            let scratch = alloca(bcx, llty, "const");
             let lldest = if !const_ty.is_structural() {
                 // Cast pointer to slot, because constants have different types.
                 PointerCast(bcx, scratch, val_ty(global))
@@ -412,8 +411,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let target = bcx.monomorphize(&target);
                 let llty = type_of::type_of(bcx.ccx(), target);
 
-                // HACK(eddyb) get around issues with lifetime intrinsics.
-                let scratch = alloca_no_lifetime(bcx, llty, "__coerce_target");
+                let scratch = alloca(bcx, llty, "__coerce_target");
                 let target_datum = Datum::new(scratch, target,
                                               Rvalue::new(ByRef));
                 bcx = coerce_unsized(bcx, expr.span, source_datum, target_datum);
