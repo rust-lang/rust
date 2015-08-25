@@ -304,9 +304,7 @@ pub fn lvalue_scratch_datum<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
     let scratch = alloc_ty(bcx, ty, name);
 
     // Subtle. Populate the scratch memory *before* scheduling cleanup.
-    call_lifetime_start(bcx, scratch);
     let bcx = populate(arg, bcx, scratch);
-    bcx.fcx.schedule_lifetime_end(scope, scratch);
     bcx.fcx.schedule_drop_mem(scope, scratch, ty, None);
 
     DatumBlock::new(bcx, Datum::new(scratch, ty, Lvalue::new("datum::lvalue_scratch_datum")))
@@ -499,7 +497,12 @@ impl<'tcx> Datum<'tcx, Rvalue> {
             ByValue => {
                 lvalue_scratch_datum(
                     bcx, self.ty, name, scope, self,
-                    |this, bcx, llval| this.store_to(bcx, llval))
+                    |this, bcx, llval| {
+                        call_lifetime_start(bcx, llval);
+                        let bcx = this.store_to(bcx, llval);
+                        bcx.fcx.schedule_lifetime_end(scope, llval);
+                        bcx
+                    })
             }
         }
     }
