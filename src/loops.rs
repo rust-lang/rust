@@ -1,9 +1,11 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::visit::{Visitor, walk_expr};
+use rustc::middle::ty;
 use std::collections::HashSet;
 
-use utils::{snippet, span_lint, get_parent_expr, match_trait_method};
+use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, walk_ptrs_ty};
+use utils::{VEC_PATH, LL_PATH};
 
 declare_lint!{ pub NEEDLESS_RANGE_LOOP, Warn,
                "for-looping over a range of indices where an iterator over items would do" }
@@ -55,18 +57,17 @@ impl LintPass for LoopsPass {
                 if args.len() == 1 {
                     let method_name = method.node.name;
                     // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
-                    if method_name == "iter" {
-                        let object = snippet(cx, args[0].span, "_");
-                        span_lint(cx, EXPLICIT_ITER_LOOP, expr.span, &format!(
-                            "it is more idiomatic to loop over `&{}` instead of `{}.iter()`",
-                            object, object));
-                    } else if method_name == "iter_mut" {
-                        let object = snippet(cx, args[0].span, "_");
-                        span_lint(cx, EXPLICIT_ITER_LOOP, expr.span, &format!(
-                            "it is more idiomatic to loop over `&mut {}` instead of `{}.iter_mut()`",
-                            object, object));
+                    if method_name == "iter" || method_name == "iter_mut" {
+                        if is_ref_iterable_type(cx, &args[0]) {
+                            let object = snippet(cx, args[0].span, "_");
+                            span_lint(cx, EXPLICIT_ITER_LOOP, expr.span, &format!(
+                                "it is more idiomatic to loop over `&{}{}` instead of `{}.{}()`",
+                                if method_name == "iter_mut" { "mut " } else { "" },
+                                object, object, method_name));
+                        }
+                    }
                     // check for looping over Iterator::next() which is not what you want
-                    } else if method_name == "next" {
+                    else if method_name == "next" {
                         if match_trait_method(cx, arg, &["core", "iter", "Iterator"]) {
                             span_lint(cx, ITER_NEXT_LOOP, expr.span,
                                       "you are iterating over `Iterator::next()` which is an Option; \
@@ -132,5 +133,28 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
             }
         }
         walk_expr(self, expr);
+    }
+}
+
+/// Return true if the type of expr is one that provides IntoIterator impls
+/// for &T and &mut T, such as Vec.
+fn is_ref_iterable_type(cx: &Context, e: &Expr) -> bool {
+    let ty = walk_ptrs_ty(cx.tcx.expr_ty(e));
+    println!("mt {:?} {:?}", e, ty);
+    is_array(ty) ||
+        match_type(cx, ty, &VEC_PATH) ||
+        match_type(cx, ty, &LL_PATH) ||
+        match_type(cx, ty, &["std", "collections", "hash", "map", "HashMap"]) ||
+        match_type(cx, ty, &["std", "collections", "hash", "set", "HashSet"]) ||
+        match_type(cx, ty, &["collections", "vec_deque", "VecDeque"]) ||
+        match_type(cx, ty, &["collections", "binary_heap", "BinaryHeap"]) ||
+        match_type(cx, ty, &["collections", "btree", "map", "BTreeMap"]) ||
+        match_type(cx, ty, &["collections", "btree", "set", "BTreeSet"])
+}
+
+fn is_array(ty: ty::Ty) -> bool {
+    match ty.sty {
+        ty::TyArray(..) => true,
+        _ => false
     }
 }
