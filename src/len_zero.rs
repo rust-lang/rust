@@ -102,7 +102,7 @@ fn check_len_zero(cx: &Context, span: Span, method: &SpannedIdent,
                   args: &[P<Expr>], lit: &Lit, op: &str) {
     if let Spanned{node: LitInt(0, _), ..} = *lit {
         if method.node.name == "len" && args.len() == 1 &&
-            has_is_empty(cx, &*args[0]) {
+            has_is_empty(cx, &args[0]) {
                 span_lint(cx, LEN_ZERO, span, &format!(
                     "consider replacing the len comparison with `{}{}.is_empty()`",
                     op, snippet(cx, args[0].span, "_")))

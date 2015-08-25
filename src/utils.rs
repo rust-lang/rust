@@ -1,7 +1,6 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::{ExpnInfo, Span};
-use syntax::ptr::P;
 use rustc::ast_map::Node::NodeExpr;
 use rustc::middle::ty;
 use std::borrow::Cow;
@@ -129,9 +128,6 @@ pub fn get_parent_expr<'c>(cx: &'c Context, e: &Expr) -> Option<&'c Expr> {
     map.find(parent_id).and_then(|node|
         if let NodeExpr(parent) = node { Some(parent) } else { None } )
 }
-
-/// dereference a P<T> and return a ref on the result
-pub fn de_p<T>(p: &P<T>) -> &T { &*p }
 
 #[cfg(not(feature="structured_logging"))]
 pub fn span_lint(cx: &Context, lint: &'static Lint, sp: Span, msg: &str) {

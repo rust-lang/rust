@@ -26,14 +26,14 @@ impl LintPass for LifetimePass {
 
     fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) {
         if let MethodImplItem(ref sig, _) = item.node {
-            check_fn_inner(cx, &*sig.decl, Some(&sig.explicit_self),
+            check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self),
                            &sig.generics.lifetimes, item.span);
         }
     }
 
     fn check_trait_item(&mut self, cx: &Context, item: &TraitItem) {
         if let MethodTraitItem(ref sig, _) = item.node {
-            check_fn_inner(cx, &*sig.decl, Some(&sig.explicit_self),
+            check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self),
                            &sig.generics.lifetimes, item.span);
         }
     }
@@ -92,7 +92,7 @@ fn could_use_elision(func: &FnDecl, slf: Option<&ExplicitSelf>,
     }
     // extract lifetimes in input argument types
     for arg in &func.inputs {
-        walk_ty(&mut input_visitor, &*arg.ty);
+        walk_ty(&mut input_visitor, &arg.ty);
     }
     // extract lifetimes in output type
     if let Return(ref ty) = func.output {

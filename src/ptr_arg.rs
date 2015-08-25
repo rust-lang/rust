@@ -45,7 +45,7 @@ impl LintPass for PtrArg {
 
 fn check_fn(cx: &Context, decl: &FnDecl) {
     for arg in &decl.inputs {
-        if let Some(pat_ty) = cx.tcx.pat_ty_opt(&*arg.pat) {
+        if let Some(pat_ty) = cx.tcx.pat_ty_opt(&arg.pat) {
             if let ty::TyRef(_, ty::TypeAndMut { ty, mutbl: MutImmutable }) = pat_ty.sty {
                 if match_type(cx, ty, &VEC_PATH) {
                     span_lint(cx, PTR_ARG, arg.ty.span,

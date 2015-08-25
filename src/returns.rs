@@ -50,7 +50,7 @@ impl ReturnPass {
             // a match expr, check all arms
             ExprMatch(_, ref arms, _) => {
                 for arm in arms {
-                    self.check_final_expr(cx, &*arm.body);
+                    self.check_final_expr(cx, &arm.body);
                 }
             }
             _ => { }
@@ -76,7 +76,7 @@ impl ReturnPass {
                 let PatIdent(_, Spanned { node: id, .. }, _) = local.pat.node,
                 let Some(ref retexpr) = block.expr,
                 let ExprPath(_, ref path) = retexpr.node,
-                match_path(path, &[&*id.name.as_str()])
+                match_path(path, &[&id.name.as_str()])
             ], {
                 self.emit_let_lint(cx, retexpr.span, initexpr.span);
             }
