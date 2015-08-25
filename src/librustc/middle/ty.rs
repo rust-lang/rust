@@ -1502,7 +1502,62 @@ pub struct DebruijnIndex {
     pub depth: u32,
 }
 
-/// Representation of regions:
+/// Representation of regions.
+///
+/// Unlike types, most region variants are "fictitious", not concrete,
+/// regions. Among these, `ReStatic`, `ReEmpty` and `ReScope` are the only
+/// ones representing concrete regions.
+///
+/// ## Bound Regions
+///
+/// These are regions that are stored behind a binder and must be substituted
+/// with some concrete region before being used. There are 2 kind of
+/// bound regions: early-bound, which are bound in a TypeScheme/TraitDef,
+/// and are substituted by a Substs,  and late-bound, which are part of
+/// higher-ranked types (e.g. `for<'a> fn(&'a ())`) and are substituted by
+/// the likes of `liberate_late_bound_regions`. The distinction exists
+/// because higher-ranked lifetimes aren't supported in all places. See [1][2].
+///
+/// Unlike TyParam-s, bound regions are not supposed to exist "in the wild"
+/// outside their binder, e.g. in types passed to type inference, and
+/// should first be substituted (by skolemized regions, free regions,
+/// or region variables).
+///
+/// ## Skolemized and Free Regions
+///
+/// One often wants to work with bound regions without knowing their precise
+/// identity. For example, when checking a function, the lifetime of a borrow
+/// can end up being assigned to some region parameter. In these cases,
+/// it must be ensured that bounds on the region can't be accidentally
+/// assumed without being checked.
+///
+/// The process of doing that is called "skolemization". The bound regions
+/// are replaced by skolemized markers, which don't satisfy any relation
+/// not explicity provided.
+///
+/// There are 2 kinds of skolemized regions in rustc: `ReFree` and
+/// `ReSkolemized`. When checking an item's body, `ReFree` is supposed
+/// to be used. These also support explicit bounds: both the internally-stored
+/// *scope*, which the region is assumed to outlive, as well as other
+/// relations stored in the `FreeRegionMap`. Note that these relations
+/// aren't checked when you `make_subregion` (or `mk_eqty`), only by
+/// `resolve_regions_and_report_errors`.
+///
+/// When working with higher-ranked types, some region relations aren't
+/// yet known, so you can't just call `resolve_regions_and_report_errors`.
+/// `ReSkolemized` is designed for this purpose. In these contexts,
+/// there's also the risk that some inference variable laying around will
+/// get unified with your skolemized region: if you want to check whether
+/// `for<'a> Foo<'_>: 'a`, and you substitute your bound region `'a`
+/// with a skolemized region `'%a`, the variable `'_` would just be
+/// instantiated to the skolemized region `'%a`, which is wrong because
+/// the inference variable is supposed to satisfy the relation
+/// *for every value of the skolemized region*. To ensure that doesn't
+/// happen, you can use `leak_check`. This is more clearly explained
+/// by infer/higher_ranked/README.md.
+///
+/// [1] http://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
+/// [2] http://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 #[derive(Clone, PartialEq, Eq, Hash, Copy)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
@@ -1532,7 +1587,7 @@ pub enum Region {
 
     /// A skolemized region - basically the higher-ranked version of ReFree.
     /// Should not exist after typeck.
-    ReSkolemized(u32, BoundRegion),
+    ReSkolemized(SkolemizedRegionVid, BoundRegion),
 
     /// Empty lifetime is for data that is never accessed.
     /// Bottom in the region lattice. We treat ReEmpty somewhat
@@ -2165,6 +2220,11 @@ pub struct FloatVid {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct RegionVid {
+    pub index: u32
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SkolemizedRegionVid {
     pub index: u32
 }
 
