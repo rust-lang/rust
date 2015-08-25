@@ -813,11 +813,7 @@ impl<'a> Extend<&'a char> for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
     fn extend<I: IntoIterator<Item=&'a str>>(&mut self, iterable: I) {
-        let iterator = iterable.into_iter();
-        // A guess that at least one byte per iterator element will be needed.
-        let (lower_bound, _) = iterator.size_hint();
-        self.reserve(lower_bound);
-        for s in iterator {
+        for s in iterable {
             self.push_str(s)
         }
     }
