@@ -466,18 +466,19 @@ pub mod types {
                 pub type off_t = i32;
                 pub type dev_t = u32;
                 pub type ino_t = u32;
+
                 pub type pid_t = i32;
                 pub type uid_t = u32;
                 pub type gid_t = u32;
                 pub type useconds_t = u32;
+
                 pub type mode_t = u16;
                 pub type ssize_t = i32;
             }
-            #[cfg(any(target_arch = "x86",
+            #[cfg(any(all(any(target_arch = "arm", target_arch = "x86"),
+                          not(target_os = "android")),
                       target_arch = "le32",
-                      target_arch = "powerpc",
-                      all(any(target_arch = "arm", target_arch = "x86"),
-                          not(target_os = "android"))))]
+                      target_arch = "powerpc"))]
             pub mod posix01 {
                 use types::os::arch::c95::{c_short, c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t};
@@ -523,12 +524,13 @@ pub mod types {
                     pub __size: [u32; 9]
                 }
             }
+
             #[cfg(all(any(target_arch = "arm", target_arch = "x86"),
-                          target_os = "android"))]
+                      target_os = "android"))]
             pub mod posix01 {
-                use types::os::arch::c95::{c_uchar, c_uint, c_ulong, time_t};
+                use types::os::arch::c95::{c_uchar, c_uint, c_ulong, c_long, time_t};
                 use types::os::arch::c99::{c_longlong, c_ulonglong};
-                use types::os::arch::posix88::{uid_t, gid_t, ino_t};
+                use types::os::arch::posix88::{uid_t, gid_t};
 
                 pub type nlink_t = u16;
                 pub type blksize_t = u32;
@@ -538,7 +540,7 @@ pub mod types {
                 #[derive(Copy, Clone)] pub struct stat {
                     pub st_dev: c_ulonglong,
                     pub __pad0: [c_uchar; 4],
-                    pub __st_ino: ino_t,
+                    pub __st_ino: c_long,
                     pub st_mode: c_uint,
                     pub st_nlink: c_uint,
                     pub st_uid: uid_t,
@@ -546,7 +548,7 @@ pub mod types {
                     pub st_rdev: c_ulonglong,
                     pub __pad3: [c_uchar; 4],
                     pub st_size: c_longlong,
-                    pub st_blksize: blksize_t,
+                    pub st_blksize: c_ulong,
                     pub st_blocks: c_ulonglong,
                     pub st_atime: time_t,
                     pub st_atime_nsec: c_ulong,
@@ -568,6 +570,7 @@ pub mod types {
                     pub __size: [u32; 9]
                 }
             }
+
             #[cfg(any(target_arch = "mips",
                       target_arch = "mipsel"))]
             pub mod posix01 {

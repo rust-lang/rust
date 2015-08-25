@@ -377,6 +377,7 @@ impl Target {
             aarch64_unknown_linux_gnu,
             x86_64_unknown_linux_musl,
 
+            i686_linux_android,
             arm_linux_androideabi,
             aarch64_linux_android,
 
