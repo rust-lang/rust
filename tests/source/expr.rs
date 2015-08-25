@@ -43,6 +43,8 @@ some_ridiculously_loooooooooooooooooooooong_function(10000 * 30000000000 + 40000
  + 2 + 3 {
     }
 
+    let test = if true { 5 } else { 3 };
+
     if cond() {
         something();
     } else  if different_cond() {

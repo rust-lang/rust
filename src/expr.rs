@@ -20,7 +20,7 @@ use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg, rewrite_fn_input};
 
 use syntax::{ast, ptr};
-use syntax::codemap::{Pos, Span, BytePos, mk_sp};
+use syntax::codemap::{CodeMap, Pos, Span, BytePos, mk_sp};
 use syntax::visit::Visitor;
 
 impl Rewrite for ast::Expr {
@@ -412,7 +412,7 @@ fn rewrite_range(context: &RewriteContext,
 fn rewrite_if_else(context: &RewriteContext,
                    cond: &ast::Expr,
                    if_block: &ast::Block,
-                   else_block: Option<&ast::Expr>,
+                   else_block_opt: Option<&ast::Expr>,
                    pat: Option<&ast::Pat>,
                    width: usize,
                    offset: usize)
@@ -423,13 +423,22 @@ fn rewrite_if_else(context: &RewriteContext,
                                                     cond,
                                                     "let ",
                                                     " =",
-                                                    width - 3 - 2,
+                                                    try_opt!(width.checked_sub(3 + 2)),
                                                     offset + 3));
+
+    // Try to format if-else on single line.
+    if context.config.single_line_if_else {
+        let trial = single_line_if_else(context, &pat_expr_string, if_block, else_block_opt, width);
+
+        if trial.is_some() {
+            return trial;
+        }
+    }
 
     let if_block_string = try_opt!(if_block.rewrite(context, width, offset));
     let mut result = format!("if {} {}", pat_expr_string, if_block_string);
 
-    if let Some(else_block) = else_block {
+    if let Some(else_block) = else_block_opt {
         let else_block_string = try_opt!(else_block.rewrite(context, width, offset));
 
         result.push_str(" else ");
@@ -437,6 +446,52 @@ fn rewrite_if_else(context: &RewriteContext,
     }
 
     Some(result)
+}
+
+fn single_line_if_else(context: &RewriteContext,
+                       pat_expr_str: &str,
+                       if_node: &ast::Block,
+                       else_block_opt: Option<&ast::Expr>,
+                       width: usize)
+                       -> Option<String> {
+    let else_block = try_opt!(else_block_opt);
+    let fixed_cost = "if  {  } else {  }".len();
+
+    if let ast::ExprBlock(ref else_node) = else_block.node {
+        if !is_simple_block(if_node, context.codemap) ||
+           !is_simple_block(else_node, context.codemap) || pat_expr_str.contains('\n') {
+            return None;
+        }
+
+        let new_width = try_opt!(width.checked_sub(pat_expr_str.len() + fixed_cost));
+        let if_expr = if_node.expr.as_ref().unwrap();
+        let if_str = try_opt!(if_expr.rewrite(context, new_width, 0));
+
+        let new_width = try_opt!(new_width.checked_sub(if_str.len()));
+        let else_expr = else_node.expr.as_ref().unwrap();
+        let else_str = try_opt!(else_expr.rewrite(context, new_width, 0));
+
+        // FIXME: this check shouldn't be necessary. Rewrites should either fail
+        // or wrap to a newline when the object does not fit the width.
+        let fits_line = fixed_cost + pat_expr_str.len() + if_str.len() + else_str.len() <= width;
+
+        if fits_line && !if_str.contains('\n') && !else_str.contains('\n') {
+            return Some(format!("if {} {{ {} }} else {{ {} }}", pat_expr_str, if_str, else_str));
+        }
+    }
+
+    None
+}
+
+// Checks that a block contains no statements, an expression and no comments.
+fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
+    if !block.stmts.is_empty() || block.expr.is_none() {
+        return false;
+    }
+
+    let snippet = codemap.span_to_snippet(block.span).unwrap();
+
+    !snippet.contains("//") && !snippet.contains("/*")
 }
 
 fn rewrite_match(context: &RewriteContext,
@@ -830,7 +885,7 @@ fn rewrite_paren(context: &RewriteContext,
     debug!("rewrite_paren, width: {}, offset: {}", width, offset);
     // 1 is for opening paren, 2 is for opening+closing, we want to keep the closing
     // paren on the same line as the subexpr.
-    let subexpr_str = subexpr.rewrite(context, width-2, offset+1);
+    let subexpr_str = subexpr.rewrite(context, try_opt!(width.checked_sub(2)), offset + 1);
     debug!("rewrite_paren, subexpr_str: `{:?}`", subexpr_str);
     subexpr_str.map(|s| format!("({})", s))
 }
