@@ -188,7 +188,6 @@ pub use self::TransBindingMode::*;
 use self::Opt::*;
 use self::FailureHandler::*;
 
-use back::abi;
 use llvm::{ValueRef, BasicBlockRef};
 use middle::check_match::StaticInliner;
 use middle::check_match;
@@ -731,9 +730,8 @@ fn bind_subslice_pat(bcx: Block,
     let slice_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReStatic),
                                          bcx.tcx().mk_slice(unit_ty));
     let scratch = rvalue_scratch_datum(bcx, slice_ty, "");
-    Store(bcx, slice_begin,
-          GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
-    Store(bcx, slice_len, GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_EXTRA]));
+    Store(bcx, slice_begin, expr::get_dataptr(bcx, scratch.val));
+    Store(bcx, slice_len, expr::get_meta(bcx, scratch.val));
     scratch.val
 }
 
@@ -887,9 +885,9 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                            &format!("comparison of `{}`", rhs_t),
                            StrEqFnLangItem);
         let lhs_data = Load(cx, expr::get_dataptr(cx, lhs));
-        let lhs_len = Load(cx, expr::get_len(cx, lhs));
+        let lhs_len = Load(cx, expr::get_meta(cx, lhs));
         let rhs_data = Load(cx, expr::get_dataptr(cx, rhs));
-        let rhs_len = Load(cx, expr::get_len(cx, rhs));
+        let rhs_len = Load(cx, expr::get_meta(cx, rhs));
         callee::trans_lang_call(cx, did, &[lhs_data, lhs_len, rhs_data, rhs_len], None, debug_loc)
     }
 
@@ -910,15 +908,15 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                     let ty_str_slice = cx.tcx().mk_static_str();
 
                     let rhs_str = alloc_ty(cx, ty_str_slice, "rhs_str");
-                    Store(cx, GEPi(cx, rhs, &[0, 0]), expr::get_dataptr(cx, rhs_str));
-                    Store(cx, C_uint(cx.ccx(), pat_len), expr::get_len(cx, rhs_str));
+                    Store(cx, expr::get_dataptr(cx, rhs), expr::get_dataptr(cx, rhs_str));
+                    Store(cx, C_uint(cx.ccx(), pat_len), expr::get_meta(cx, rhs_str));
 
                     let lhs_str;
                     if val_ty(lhs) == val_ty(rhs) {
                         // Both the discriminant and the pattern are thin pointers
                         lhs_str = alloc_ty(cx, ty_str_slice, "lhs_str");
-                        Store(cx, GEPi(cx, lhs, &[0, 0]), expr::get_dataptr(cx, lhs_str));
-                        Store(cx, C_uint(cx.ccx(), pat_len), expr::get_len(cx, lhs_str));
+                        Store(cx, expr::get_dataptr(cx, lhs), expr::get_dataptr(cx, lhs_str));
+                        Store(cx, C_uint(cx.ccx(), pat_len), expr::get_meta(cx, lhs_str));
                     }
                     else {
                         // The discriminant is a fat pointer
@@ -1197,9 +1195,9 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 let llty = type_of::type_of(bcx.ccx(), unsized_ty);
                 let scratch = alloca_no_lifetime(bcx, llty, "__struct_field_fat_ptr");
                 let data = adt::trans_field_ptr(bcx, &*repr, struct_val, 0, arg_count);
-                let len = Load(bcx, expr::get_len(bcx, val.val));
+                let len = Load(bcx, expr::get_meta(bcx, val.val));
                 Store(bcx, data, expr::get_dataptr(bcx, scratch));
-                Store(bcx, len, expr::get_len(bcx, scratch));
+                Store(bcx, len, expr::get_meta(bcx, scratch));
                 field_vals.push(scratch);
             }
             _ => {}

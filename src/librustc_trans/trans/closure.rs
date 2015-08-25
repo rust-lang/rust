@@ -70,7 +70,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let upvar_id = ty::UpvarId { var_id: freevar.def.local_node_id(),
                                      closure_expr_id: closure_id.node };
         let upvar_capture = bcx.tcx().upvar_capture(upvar_id).unwrap();
-        let mut upvar_ptr = GEPi(bcx, llenv, &[0, i]);
+        let mut upvar_ptr = StructGEP(bcx, llenv, i);
         let captured_by_ref = match upvar_capture {
             ty::UpvarCapture::ByValue => false,
             ty::UpvarCapture::ByRef(..) => {

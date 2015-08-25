@@ -1129,7 +1129,7 @@ pub fn trans_arg_datum<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     if common::type_is_fat_ptr(bcx.tcx(), formal_arg_ty) {
         llargs.push(Load(bcx, expr::get_dataptr(bcx, val)));
-        llargs.push(Load(bcx, expr::get_len(bcx, val)));
+        llargs.push(Load(bcx, expr::get_meta(bcx, val)));
     } else {
         llargs.push(val);
     }

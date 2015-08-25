@@ -282,17 +282,17 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     return DatumBlock::new(bcx, datum);
 }
 
-pub fn get_len(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
-    GEPi(bcx, fat_ptr, &[0, abi::FAT_PTR_EXTRA])
+pub fn get_meta(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
+    StructGEP(bcx, fat_ptr, abi::FAT_PTR_EXTRA)
 }
 
 pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
-    GEPi(bcx, fat_ptr, &[0, abi::FAT_PTR_ADDR])
+    StructGEP(bcx, fat_ptr, abi::FAT_PTR_ADDR)
 }
 
 pub fn copy_fat_ptr(bcx: Block, src_ptr: ValueRef, dst_ptr: ValueRef) {
     Store(bcx, Load(bcx, get_dataptr(bcx, src_ptr)), get_dataptr(bcx, dst_ptr));
-    Store(bcx, Load(bcx, get_len(bcx, src_ptr)), get_len(bcx, dst_ptr));
+    Store(bcx, Load(bcx, get_meta(bcx, src_ptr)), get_meta(bcx, dst_ptr));
 }
 
 /// Retrieve the information we are losing (making dynamic) in an unsizing
@@ -454,7 +454,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // load out the original data pointer so we can repackage
                 // it.
                 (Load(bcx, get_dataptr(bcx, source.val)),
-                Some(Load(bcx, get_len(bcx, source.val))))
+                Some(Load(bcx, get_meta(bcx, source.val))))
             } else {
                 let val = if source.kind.is_by_ref() {
                     load_ty(bcx, source.val, source.ty)
@@ -473,7 +473,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let base = PointerCast(bcx, base, ptr_ty);
 
             Store(bcx, base, get_dataptr(bcx, target.val));
-            Store(bcx, info, get_len(bcx, target.val));
+            Store(bcx, info, get_meta(bcx, target.val));
         }
 
         // This can be extended to enums and tuples in the future.
@@ -729,8 +729,8 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     } else {
         let scratch = rvalue_scratch_datum(bcx, d.ty, "");
         Store(bcx, d.val, get_dataptr(bcx, scratch.val));
-        let info = Load(bcx, get_len(bcx, base_datum.val));
-        Store(bcx, info, get_len(bcx, scratch.val));
+        let info = Load(bcx, get_meta(bcx, base_datum.val));
+        Store(bcx, info, get_meta(bcx, scratch.val));
 
         // Always generate an lvalue datum, because this pointer doesn't own
         // the data and cleanup is scheduled elsewhere.
