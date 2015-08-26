@@ -729,6 +729,26 @@ fn test_double_ended_chain() {
     assert_eq!(it.next_back().unwrap(), &5);
     assert_eq!(it.next_back().unwrap(), &7);
     assert_eq!(it.next_back(), None);
+
+
+    // test that .chain() is well behaved with an unfused iterator
+    struct CrazyIterator(bool);
+    impl CrazyIterator { fn new() -> CrazyIterator { CrazyIterator(false) } }
+    impl Iterator for CrazyIterator {
+        type Item = i32;
+        fn next(&mut self) -> Option<i32> {
+            if self.0 { Some(99) } else { self.0 = true; None }
+        }
+    }
+
+    impl DoubleEndedIterator for CrazyIterator {
+        fn next_back(&mut self) -> Option<i32> {
+            self.next()
+        }
+    }
+
+    assert_eq!(CrazyIterator::new().chain(0..10).rev().last(), Some(0));
+    assert!((0..10).chain(CrazyIterator::new()).rev().any(|i| i == 0));
 }
 
 #[test]
