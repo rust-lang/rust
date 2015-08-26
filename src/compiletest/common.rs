@@ -15,10 +15,10 @@ use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
-    CompileFail,
+    CompileFail { fulldeps: bool },
     ParseFail,
-    RunFail,
-    RunPass,
+    RunFail { fulldeps: bool },
+    RunPass { fulldeps: bool },
     RunPassValgrind,
     Pretty,
     DebugInfoGdb,
@@ -31,10 +31,13 @@ impl FromStr for Mode {
     type Err = ();
     fn from_str(s: &str) -> Result<Mode, ()> {
         match s {
-          "compile-fail" => Ok(CompileFail),
+          "compile-fail" => Ok(CompileFail { fulldeps: false }),
+          "compile-fail-fulldeps" => Ok(CompileFail { fulldeps: true }),
           "parse-fail" => Ok(ParseFail),
-          "run-fail" => Ok(RunFail),
-          "run-pass" => Ok(RunPass),
+          "run-fail" => Ok(RunFail { fulldeps: false, }),
+          "run-fail-fulldeps" => Ok(RunFail { fulldeps: true, }),
+          "run-pass" => Ok(RunPass { fulldeps: false, }),
+          "run-pass-fulldeps" => Ok(RunPass { fulldeps: true, }),
           "run-pass-valgrind" => Ok(RunPassValgrind),
           "pretty" => Ok(Pretty),
           "debuginfo-lldb" => Ok(DebugInfoLldb),
@@ -49,10 +52,13 @@ impl FromStr for Mode {
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(match *self {
-            CompileFail => "compile-fail",
+            CompileFail { fulldeps: false } => "compile-fail",
+            CompileFail { fulldeps: true } => "compile-fail-fulldeps",
             ParseFail => "parse-fail",
-            RunFail => "run-fail",
-            RunPass => "run-pass",
+            RunFail { fulldeps: false, } => "run-fail",
+            RunFail { fulldeps: true, } => "run-fail-fulldeps",
+            RunPass { fulldeps: false, } => "run-pass",
+            RunPass { fulldeps: true, } => "run-pass-fulldeps",
             RunPassValgrind => "run-pass-valgrind",
             Pretty => "pretty",
             DebugInfoGdb => "debuginfo-gdb",
