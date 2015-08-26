@@ -5,9 +5,8 @@ use syntax::ast_util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::Span;
 use syntax::visit::{FnKind, Visitor, walk_ty};
 use rustc::middle::ty;
-use syntax::codemap::ExpnInfo;
 
-use utils::{in_macro, match_type, snippet, span_lint, span_help_and_lint, in_external_macro};
+use utils::{match_type, snippet, span_lint, span_help_and_lint, in_external_macro};
 use utils::{LL_PATH, VEC_PATH};
 
 /// Handles all the linting of funky types
@@ -55,11 +54,11 @@ declare_lint!(pub LET_UNIT_VALUE, Warn,
               "creating a let binding to a value of unit type, which usually can't be used afterwards");
 
 
-fn check_let_unit(cx: &Context, decl: &Decl, info: Option<&ExpnInfo>) {
-    if in_macro(cx, info) { return; }
+fn check_let_unit(cx: &Context, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
         let bindtype = &cx.tcx.pat_ty(&local.pat).sty;
         if *bindtype == ty::TyTuple(vec![]) {
+            if in_external_macro(cx, decl.span) { return; }
             span_lint(cx, LET_UNIT_VALUE, decl.span, &format!(
                 "this let-binding has unit value. Consider omitting `let {} =`",
                 snippet(cx, local.pat.span, "..")));
@@ -73,9 +72,7 @@ impl LintPass for LetPass {
     }
 
     fn check_decl(&mut self, cx: &Context, decl: &Decl) {
-        cx.sess().codemap().with_expn_info(
-            decl.span.expn_id,
-            |info| check_let_unit(cx, decl, info));
+        check_let_unit(cx, decl)
     }
 }
 
