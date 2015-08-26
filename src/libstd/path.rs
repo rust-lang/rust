@@ -632,9 +632,11 @@ impl<'a> Components<'a> {
     /// ```
     /// use std::path::Path;
     ///
-    /// let path = Path::new("/tmp/foo/bar.txt");
+    /// let mut components = Path::new("/tmp/foo/bar.txt").components();
+    /// components.next();
+    /// components.next();
     ///
-    /// println!("{:?}", path.components().as_path());
+    /// assert_eq!(Path::new("foo/bar.txt"), components.as_path());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &'a Path {
