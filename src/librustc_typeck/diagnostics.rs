@@ -1886,7 +1886,7 @@ rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
 
 E0193: r##"
 `where` clauses must use generic type parameters: it does not make sense to use
-them otherwise.  An example causing this error:
+them otherwise. An example causing this error:
 
 ```
 trait Foo {
