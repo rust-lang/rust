@@ -67,22 +67,40 @@ fn main() {
     std::process::exit(0);
 }
 
+fn usage<S: Into<String>>(reason: S) {
+    print!("{}\n\r usage: rustfmt [-h Help] [--write-mode=[true/false]] <file_name>", reason.into());
+    std::process::exit(1);
+}
+
 fn determine_params<I>(args: I) -> (Vec<String>, WriteMode)
     where I: Iterator<Item = String>
 {
-    let prefix = "--write-mode=";
+    let arg_prefix = "-";
+    let write_mode_prefix = "--write-mode=";
+    let help_mode = "-h";
+    let long_help_mode = "--help";
     let mut write_mode = WriteMode::Replace;
 
     // The NewFile option currently isn't supported because it requires another
     // parameter, but it can be added later.
-    let args = args.filter(|arg| {
-        if arg.starts_with(prefix) {
-            write_mode = FromStr::from_str(&arg[prefix.len()..]).expect("Unrecognized write mode");
+    let args:Vec<String> = args.filter(|arg| {
+        if arg.starts_with(write_mode_prefix) {
+            write_mode = FromStr::from_str(&arg[write_mode_prefix.len()..]).expect("Unrecognized write mode");
+            false
+        } else if arg.starts_with(help_mode) || arg.starts_with(long_help_mode) {
+            usage("");
+            false
+        } else if arg.starts_with(arg_prefix) {
+            usage("Invalid argument");
             false
         } else {
             true
         }
     }).collect();
+    if args.len() < 2 {
+        usage("Please provide a file to be formatted");
+    }
+
 
     (args, write_mode)
 }
