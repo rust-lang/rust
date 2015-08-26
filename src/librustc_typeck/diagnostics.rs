@@ -84,7 +84,7 @@ struct Foo {
 
 fn main(){
     let x = Foo { a:1, b:2 };
- 
+
     let Foo { a: x, a: y } = x;
     // error: field `a` bound multiple times in the pattern
 }
@@ -102,7 +102,7 @@ struct Foo {
 
 fn main(){
     let x = Foo { a:1, b:2 };
- 
+
     let Foo { a: x, b: y } = x; // ok!
 }
 ```
@@ -2820,6 +2820,36 @@ It is also possible to overload most operators for your own type by
 implementing traits from `std::ops`.
 "##,
 
+E0370: r##"
+The maximum value of an enum was reached, so it cannot be automatically
+set in the next enum value. Erroneous code example:
+
+```
+enum Foo {
+    X = 0x7fffffffffffffff,
+    Y // error: enum discriminant overflowed on value after
+      //        9223372036854775807: i64; set explicitly via
+      //        Y = -9223372036854775808 if that is desired outcome
+}
+```
+
+To fix this, please set manually the next enum value or put the enum variant
+with the maximum value at the end of the enum. Examples:
+
+```
+enum Foo {
+    X = 0x7fffffffffffffff,
+    Y = 0, // ok!
+}
+
+// or:
+enum Foo {
+    Y = 0, // ok!
+    X = 0x7fffffffffffffff,
+}
+```
+"##,
+
 E0371: r##"
 When `Trait2` is a subtrait of `Trait1` (for example, when `Trait2` has a
 definition like `trait Trait2: Trait1 { ... }`), it is not allowed to implement
@@ -3037,7 +3067,6 @@ register_diagnostics! {
     E0321, // extended coherence rules for defaulted traits violated
     E0328, // cannot implement Unsize explicitly
     E0329, // associated const depends on type parameter or Self.
-    E0370, // discriminant overflow
     E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with one field being coerced, none found
     E0375, // the trait `CoerceUnsized` may only be implemented for a coercion
