@@ -731,7 +731,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
                         "foreign items may not have type parameters");
                     span_help!(ccx.tcx.sess, item.span,
                         "consider using specialization instead of \
-                        type parameter");
+                        type parameters");
                 }
 
                 if let ast::ForeignItemFn(ref fn_decl, _) = item.node {
