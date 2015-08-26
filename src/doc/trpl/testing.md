@@ -120,11 +120,24 @@ And that's reflected in the summary line:
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured
 ```
 
-We also get a non-zero status code:
+We also get a non-zero status code. We can use `$?` on OS X and Linux:
 
 ```bash
 $ echo $?
 101
+```
+
+On Windows, if you’re using `cmd`:
+
+```bash
+> echo %ERRORLEVEL%
+```
+
+And if you’re using PowerShell:
+
+```bash
+> echo $LASTEXITCODE # the code itself
+> echo $? # a boolean, fail or succeed
 ```
 
 This is useful if you want to integrate `cargo test` into other tooling.
