@@ -7,7 +7,6 @@ description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/nick29581/rustfmt"
 readme = "README.md"
 license = "Apache-2.0/MIT"
-build = "build.rs"
 
 [dependencies.strings]
 strings = "0.0.1"
