@@ -48,10 +48,10 @@ pub fn run(config: Config, testfile: &Path) {
     let props = header::load_props(&testfile);
     debug!("loaded props");
     match config.mode {
-        CompileFail => run_cfail_test(&config, &props, &testfile),
+        CompileFail { .. } => run_cfail_test(&config, &props, &testfile),
         ParseFail => run_cfail_test(&config, &props, &testfile),
-        RunFail => run_rfail_test(&config, &props, &testfile),
-        RunPass => run_rpass_test(&config, &props, &testfile),
+        RunFail { .. } => run_rfail_test(&config, &props, &testfile),
+        RunPass { .. } => run_rpass_test(&config, &props, &testfile),
         RunPassValgrind => run_valgrind_test(&config, &props, &testfile),
         Pretty => run_pretty_test(&config, &props, &testfile),
         DebugInfoGdb => run_debuginfo_gdb_test(&config, &props, &testfile),

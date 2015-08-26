@@ -516,17 +516,17 @@ CTEST_RUNTOOL_rpass-valgrind = $(CTEST_RUNTOOL)
 
 CTEST_SRC_BASE_rpass-full = run-pass-fulldeps
 CTEST_BUILD_BASE_rpass-full = run-pass-fulldeps
-CTEST_MODE_rpass-full = run-pass
+CTEST_MODE_rpass-full = run-pass-fulldeps
 CTEST_RUNTOOL_rpass-full = $(CTEST_RUNTOOL)
 
 CTEST_SRC_BASE_rfail-full = run-fail-fulldeps
 CTEST_BUILD_BASE_rfail-full = run-fail-fulldeps
-CTEST_MODE_rfail-full = run-fail
+CTEST_MODE_rfail-full = run-fail-fulldeps
 CTEST_RUNTOOL_rfail-full = $(CTEST_RUNTOOL)
 
 CTEST_SRC_BASE_cfail-full = compile-fail-fulldeps
 CTEST_BUILD_BASE_cfail-full = compile-fail-fulldeps
-CTEST_MODE_cfail-full = compile-fail
+CTEST_MODE_cfail-full = compile-fail-fulldeps
 CTEST_RUNTOOL_cfail-full = $(CTEST_RUNTOOL)
 
 CTEST_SRC_BASE_rfail = run-fail
