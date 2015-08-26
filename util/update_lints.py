@@ -16,6 +16,7 @@ declare_lint_re = re.compile(r'''
 
 nl_escape_re = re.compile(r'\\\n\s*')
 
+wiki_link = 'https://github.com/Manishearth/rust-clippy/wiki'
 
 def collect(lints, fn):
     """Collect all lints from a file.
@@ -33,8 +34,11 @@ def collect(lints, fn):
                       desc.replace('\\"', '"')))
 
 
-def gen_table(lints):
+def gen_table(lints, link=None):
     """Write lint table in Markdown format."""
+    if link:
+        lints = [(p, '[%s](%s#%s)' % (l, link, l), lvl, d)
+                    for (p, l, lvl, d) in lints]
     # first and third column widths
     w_name = max(len(l[1]) for l in lints)
     w_desc = max(len(l[3]) for l in lints)
@@ -110,7 +114,7 @@ def main(print_only=False, check=False):
 
     # replace table in README.md
     changed = replace_region('README.md', r'^name +\|', '^$',
-                             lambda: gen_table(lints),
+                             lambda: gen_table(lints, link=wiki_link),
                              write_back=not check)
 
     changed |= replace_region('README.md',
