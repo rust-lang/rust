@@ -1734,7 +1734,7 @@ It is not possible to declare type parameters on a function that has the `start`
 attribute. Such a function must have the following type signature:
 
 ```
-fn(isize, *const *const u8) -> isize
+fn(isize, *const *const u8) -> isize;
 ```
 "##,
 
