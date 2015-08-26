@@ -30,7 +30,6 @@ use sys::c;
 use sys::fd;
 use vec;
 
-const GETCWD_BUF_BYTES: usize = 2048;
 const TMPBUF_SZ: usize = 128;
 
 /// Returns the platform-specific value of errno
@@ -94,11 +93,9 @@ pub fn error_string(errno: i32) -> String {
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
-    let mut buf = Vec::new();
-    let mut n = GETCWD_BUF_BYTES;
+    let mut buf = Vec::with_capacity(512);
     loop {
         unsafe {
-            buf.reserve(n);
             let ptr = buf.as_mut_ptr() as *mut libc::c_char;
             if !libc::getcwd(ptr, buf.capacity() as libc::size_t).is_null() {
                 let len = CStr::from_ptr(buf.as_ptr() as *const libc::c_char).to_bytes().len();
@@ -111,7 +108,12 @@ pub fn getcwd() -> io::Result<PathBuf> {
                     return Err(error);
                 }
             }
-            n *= 2;
+
+            // Trigger the internal buffer resizing logic of `Vec` by requiring
+            // more space than the current capacity.
+            let cap = buf.capacity();
+            buf.set_len(cap);
+            buf.reserve(1);
         }
     }
 }
