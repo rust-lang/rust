@@ -670,8 +670,31 @@ fn main() {
 
 E0063: r##"
 This error indicates that during an attempt to build a struct or struct-like
-enum variant, one of the fields was not provided. Each field should be
-specified exactly once.
+enum variant, one of the fields was not provided. Erroneous code example:
+
+```
+struct Foo {
+    x: i32,
+    y: i32
+}
+
+fn main() {
+    let x = Foo { x: 0 }; // error: missing field: `y`
+}
+```
+
+Each field should be specified exactly once. Example:
+
+```
+struct Foo {
+    x: i32,
+    y: i32
+}
+
+fn main() {
+    let x = Foo { x: 0, y: 0 }; // ok!
+}
+```
 "##,
 
 E0066: r##"
