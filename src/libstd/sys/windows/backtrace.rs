@@ -27,17 +27,28 @@
 use io::prelude::*;
 
 use dynamic_lib::DynamicLibrary;
-use ffi::CStr;
 use intrinsics;
 use io;
 use libc;
-use mem;
 use path::Path;
 use ptr;
-use str;
 use sync::StaticMutex;
 
-use sys_common::backtrace::*;
+macro_rules! sym{ ($lib:expr, $e:expr, $t:ident) => (unsafe {
+    let lib = $lib;
+    match lib.symbol($e) {
+        Ok(f) => $crate::mem::transmute::<*mut u8, $t>(f),
+        Err(..) => return Ok(())
+    }
+}) }
+
+#[cfg(target_env = "msvc")]
+#[path = "printing/msvc.rs"]
+mod printing;
+
+#[cfg(target_env = "gnu")]
+#[path = "printing/gnu.rs"]
+mod printing;
 
 #[allow(non_snake_case)]
 extern "system" {
@@ -302,23 +313,15 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     // Open up dbghelp.dll, we don't link to it explicitly because it can't
     // always be found. Additionally, it's nice having fewer dependencies.
     let path = Path::new("dbghelp.dll");
-    let lib = match DynamicLibrary::open(Some(&path)) {
+    let dbghelp = match DynamicLibrary::open(Some(&path)) {
         Ok(lib) => lib,
         Err(..) => return Ok(()),
     };
 
-    macro_rules! sym{ ($e:expr, $t:ident) => (unsafe {
-        match lib.symbol($e) {
-            Ok(f) => mem::transmute::<*mut u8, $t>(f),
-            Err(..) => return Ok(())
-        }
-    }) }
-
     // Fetch the symbols necessary from dbghelp.dll
-    let SymFromAddr = sym!("SymFromAddr", SymFromAddrFn);
-    let SymInitialize = sym!("SymInitialize", SymInitializeFn);
-    let SymCleanup = sym!("SymCleanup", SymCleanupFn);
-    let StackWalk64 = sym!("StackWalk64", StackWalk64Fn);
+    let SymInitialize = sym!(&dbghelp, "SymInitialize", SymInitializeFn);
+    let SymCleanup = sym!(&dbghelp, "SymCleanup", SymCleanupFn);
+    let StackWalk64 = sym!(&dbghelp, "StackWalk64", StackWalk64Fn);
 
     // Allocate necessary structures for doing the stack walk
     let process = unsafe { GetCurrentProcess() };
@@ -334,7 +337,9 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     let _c = Cleanup { handle: process, SymCleanup: SymCleanup };
 
     // And now that we're done with all the setup, do the stack walking!
-    let mut i = 0;
+    // Start from -1 to avoid printing this stack frame, which will
+    // always be exactly the same.
+    let mut i = -1;
     try!(write!(w, "stack backtrace:\n"));
     while StackWalk64(image, process, thread, &mut frame, &mut context,
                       ptr::null_mut(),
@@ -346,28 +351,10 @@ pub fn write(w: &mut Write) -> io::Result<()> {
            frame.AddrReturn.Offset == 0 { break }
 
         i += 1;
-        try!(write!(w, "  {:2}: {:#2$x}", i, addr, HEX_WIDTH));
-        let mut info: SYMBOL_INFO = unsafe { intrinsics::init() };
-        info.MaxNameLen = MAX_SYM_NAME as libc::c_ulong;
-        // the struct size in C.  the value is different to
-        // `size_of::<SYMBOL_INFO>() - MAX_SYM_NAME + 1` (== 81)
-        // due to struct alignment.
-        info.SizeOfStruct = 88;
 
-        let mut displacement = 0u64;
-        let ret = SymFromAddr(process, addr as u64, &mut displacement,
-                              &mut info);
-
-        if ret == libc::TRUE {
-            try!(write!(w, " - "));
-            let ptr = info.Name.as_ptr() as *const libc::c_char;
-            let bytes = unsafe { CStr::from_ptr(ptr).to_bytes() };
-            match str::from_utf8(bytes) {
-                Ok(s) => try!(demangle(w, s)),
-                Err(..) => try!(w.write_all(&bytes[..bytes.len()-1])),
-            }
+        if i >= 0 {
+            try!(printing::print(w, i, addr-1, &dbghelp, process));
         }
-        try!(w.write_all(&['\n' as u8]));
     }
 
     Ok(())
