@@ -14,7 +14,7 @@ use libc;
 
 pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
              _symaddr: *mut libc::c_void) -> io::Result<()> {
-    use sys::backtrace::{output};
+    use sys_common::backtrace::{output};
     use intrinsics;
     use ffi::CStr;
 
