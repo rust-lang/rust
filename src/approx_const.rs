@@ -3,7 +3,7 @@ use syntax::ast::*;
 use syntax::codemap::Span;
 use std::f64::consts as f64;
 
-use utils::span_lint;
+use utils::span_help_and_lint;
 
 declare_lint! {
     pub APPROX_CONSTANT,
@@ -40,7 +40,8 @@ fn check_lit(cx: &Context, lit: &Lit, span: Span) {
     match lit.node {
         LitFloat(ref str, TyF32) => check_known_consts(cx, span, str, "f32"),
         LitFloat(ref str, TyF64) => check_known_consts(cx, span, str, "f64"),
-        LitFloatUnsuffixed(ref str) => check_known_consts(cx, span, str, "f{32, 64}"),
+        LitFloatUnsuffixed(ref str) => 
+            check_known_consts(cx, span, str, "f{32, 64}"),
         _ => ()
     }
 }
@@ -49,13 +50,18 @@ fn check_known_consts(cx: &Context, span: Span, str: &str, module: &str) {
     if let Ok(value) = str.parse::<f64>() {
         for &(constant, name) in KNOWN_CONSTS {
             if within_epsilon(constant, value) {
-                span_lint(cx, APPROX_CONSTANT, span, &format!(
-                    "approximate value of `{}::{}` found. Consider using it directly", module, &name));
+                span_help_and_lint(cx, APPROX_CONSTANT, span, &format!(
+                    "approximate value of `{}::{}` found. \
+                    Consider using it directly", module, &name),
+                    "for further information see https://github.com/\
+                     Manishearth/rust-clippy/wiki#approx_constant");
             }
         }
     }
 }
 
 fn within_epsilon(target: f64, value: f64) -> bool {
-    f64::abs(value - target) < f64::abs((if target > value { target } else { value })) / EPSILON_DIVISOR
+    f64::abs(value - target) < f64::abs(if target > value { 
+                                            target 
+                                        } else { value }) / EPSILON_DIVISOR
 }

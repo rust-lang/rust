@@ -4,7 +4,7 @@ use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::ExpnInfo;
 
-use utils::{in_macro, match_path, span_lint};
+use utils::{in_macro, match_path, span_help_and_lint};
 
 declare_lint! { pub INLINE_ALWAYS, Warn,
     "`#[inline(always)]` is a bad idea in most cases" }
@@ -98,10 +98,12 @@ fn check_attrs(cx: &Context, info: Option<&ExpnInfo>, ident: &Ident,
             if values.len() != 1 || inline != &"inline" { continue; }
             if let MetaWord(ref always) = values[0].node {
                 if always != &"always" { continue; }
-                span_lint(cx, INLINE_ALWAYS, attr.span, &format!(
+                span_help_and_lint(cx, INLINE_ALWAYS, attr.span, &format!(
                     "you have declared `#[inline(always)]` on `{}`. This \
                      is usually a bad idea. Are you sure?",
-                    ident.name));
+                    ident.name),
+                    "for further information see https://github.com/\
+                    Manishearth/rust-clippy/wiki#inline_always");
             }
         }
     }
