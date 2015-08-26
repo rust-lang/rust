@@ -6,7 +6,7 @@ use syntax::visit::FnKind;
 use rustc::lint::{Context, LintArray, LintPass};
 use rustc::middle::def::Def::{DefVariant, DefStruct};
 
-use utils::{in_external_macro, snippet, span_lint};
+use utils::{in_external_macro, snippet, span_help_and_lint};
 
 declare_lint!(pub SHADOW_SAME, Allow,
     "rebinding a name to itself, e.g. `let mut x = &mut x`");
@@ -114,26 +114,34 @@ fn lint_shadow<T>(cx: &Context, name: Name, span: Span, lspan: Span, init:
         &Option<T>) where T: Deref<Target=Expr> {
     if let &Some(ref expr) = init {
         if is_self_shadow(name, expr) {
-            span_lint(cx, SHADOW_SAME, span, &format!(
+            span_help_and_lint(cx, SHADOW_SAME, span, &format!(
                 "{} is shadowed by itself in {}",
                 snippet(cx, lspan, "_"),
-                snippet(cx, expr.span, "..")));
+                snippet(cx, expr.span, "..")),
+                "for further information see \
+                https://github.com/Manishearth/rust-clippy/wiki#shadow_same");
         } else {
             if contains_self(name, expr) {
-                span_lint(cx, SHADOW_REUSE, span, &format!(
+                span_help_and_lint(cx, SHADOW_REUSE, span, &format!(
                     "{} is shadowed by {} which reuses the original value",
                     snippet(cx, lspan, "_"),
-                    snippet(cx, expr.span, "..")));
+                    snippet(cx, expr.span, "..")),
+                    "for further information see https://\
+                    github.com/Manishearth/rust-clippy/wiki#shadow_reuse");
             } else {
-                span_lint(cx, SHADOW_UNRELATED, span, &format!(
+                span_help_and_lint(cx, SHADOW_UNRELATED, span, &format!(
                     "{} is shadowed by {} in this declaration",
                     snippet(cx, lspan, "_"),
-                    snippet(cx, expr.span, "..")));
+                    snippet(cx, expr.span, "..")),
+                    "for further information see https://github.com\
+                    /Manishearth/rust-clippy/wiki#shadow_unrelated");
             }
         }
     } else {
-        span_lint(cx, SHADOW_UNRELATED, span, &format!(
-            "{} is shadowed in this declaration", snippet(cx, lspan, "_")));
+        span_help_and_lint(cx, SHADOW_UNRELATED, span, &format!(
+            "{} is shadowed in this declaration", snippet(cx, lspan, "_")),
+            "for further information see \
+            https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated");
     }
 }
 
