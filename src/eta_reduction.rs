@@ -1,8 +1,8 @@
 use rustc::lint::*;
 use syntax::ast::*;
-use syntax::print::pprust::expr_to_string;
+use rustc::middle::ty;
 
-use utils::span_lint;
+use utils::{snippet, span_lint};
 
 
 #[allow(missing_copy_implementations)]
@@ -47,7 +47,17 @@ fn check_closure(cx: &Context, expr: &Expr) {
                     // is no way the closure is the same as the function
                     return;
                 }
-                if args.iter().any(|arg| is_adjusted(cx, arg)) { return; }
+                if args.iter().any(|arg| is_adjusted(cx, arg)) {
+                    // Are the arguments type-adjusted? Then we need the closure
+                    return;
+                }
+                let fn_ty = cx.tcx.expr_ty(caller);
+                if let ty::TyBareFn(_, fn_ty) = fn_ty.sty {
+                    // Is it an unsafe function? They don't implement the closure traits
+                    if fn_ty.unsafety == Unsafety::Unsafe {
+                        return;
+                    }
+                }
                 for (ref a1, ref a2) in decl.inputs.iter().zip(args) {
                     if let PatIdent(_, ident, _) = a1.pat.node {
                         // XXXManishearth Should I be checking the binding mode here?
@@ -67,9 +77,9 @@ fn check_closure(cx: &Context, expr: &Expr) {
                         return
                     }
                 }
-                span_lint(cx, REDUNDANT_CLOSURE, expr.span,
-                             &format!("redundant closure found. Consider using `{}` in its place",
-                                      expr_to_string(caller))[..])
+                span_lint(cx, REDUNDANT_CLOSURE, expr.span, &format!(
+                    "redundant closure found. Consider using `{}` in its place",
+                    snippet(cx, caller.span, "..")));
             }
         }
     }
