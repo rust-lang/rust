@@ -1988,7 +1988,6 @@ unsafe impl Foo { }
 // converting it to this will fix it
 impl Foo { }
 ```
-
 "##,
 
 E0198: r##"
@@ -2005,7 +2004,6 @@ unsafe impl !Clone for Foo { }
 // this will compile
 impl !Clone for Foo { }
 ```
-
 "##,
 
 E0199: r##"
@@ -2023,7 +2021,6 @@ unsafe impl Bar for Foo { }
 // this will compile
 impl Bar for Foo { }
 ```
-
 "##,
 
 E0200: r##"
@@ -2041,7 +2038,6 @@ impl Bar for Foo { }
 // this will compile
 unsafe impl Bar for Foo { }
 ```
-
 "##,
 
 E0201: r##"
