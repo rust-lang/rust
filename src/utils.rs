@@ -2,6 +2,7 @@ use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::{ExpnInfo, Span};
 use rustc::ast_map::Node::NodeExpr;
+use rustc::middle::def_id::DefId;
 use rustc::middle::ty;
 use std::borrow::Cow;
 

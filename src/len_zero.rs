@@ -2,6 +2,7 @@ use rustc::lint::*;
 use syntax::ast::*;
 use syntax::ptr::P;
 use syntax::codemap::{Span, Spanned};
+use rustc::middle::def_id::DefId;
 use rustc::middle::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
 
 use utils::{span_lint, walk_ptrs_ty, snippet};
