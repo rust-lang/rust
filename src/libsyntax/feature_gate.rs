@@ -33,7 +33,7 @@ use attr::AttrMetaMethods;
 use codemap::{CodeMap, Span};
 use diagnostic::SpanHandler;
 use visit;
-use visit::Visitor;
+use visit::{FnKind, Visitor};
 use parse::token::{self, InternedString};
 
 use std::ascii::AsciiExt;
@@ -825,14 +825,14 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_fn(&mut self,
-                fn_kind: visit::FnKind<'v>,
+                fn_kind: FnKind<'v>,
                 fn_decl: &'v ast::FnDecl,
                 block: &'v ast::Block,
                 span: Span,
                 _node_id: NodeId) {
         // check for const fn declarations
         match fn_kind {
-            visit::FkItemFn(_, _, _, ast::Constness::Const, _, _) => {
+            FnKind::ItemFn(_, _, _, ast::Constness::Const, _, _) => {
                 self.gate_feature("const_fn", span, "const fn is unstable");
             }
             _ => {
@@ -844,13 +844,13 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         }
 
         match fn_kind {
-            visit::FkItemFn(_, _, _, _, abi, _) if abi == Abi::RustIntrinsic => {
+            FnKind::ItemFn(_, _, _, _, abi, _) if abi == Abi::RustIntrinsic => {
                 self.gate_feature("intrinsics",
                                   span,
                                   "intrinsics are subject to change")
             }
-            visit::FkItemFn(_, _, _, _, abi, _) |
-            visit::FkMethod(_, &ast::MethodSig { abi, .. }, _) if abi == Abi::RustCall => {
+            FnKind::ItemFn(_, _, _, _, abi, _) |
+            FnKind::Method(_, &ast::MethodSig { abi, .. }, _) if abi == Abi::RustCall => {
                 self.gate_feature("unboxed_closures",
                                   span,
                                   "rust-call ABI is subject to change")

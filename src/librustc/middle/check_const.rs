@@ -38,7 +38,7 @@ use util::nodemap::NodeMap;
 
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::visit::{self, Visitor};
+use syntax::visit::{self, FnKind, Visitor};
 
 use std::collections::hash_map::Entry;
 use std::cmp::Ordering;
@@ -142,7 +142,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn fn_like(&mut self,
-               fk: visit::FnKind,
+               fk: FnKind,
                fd: &ast::FnDecl,
                b: &ast::Block,
                s: Span,
@@ -157,10 +157,10 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         }
 
         let mode = match fk {
-            visit::FkItemFn(_, _, _, ast::Constness::Const, _, _) => {
+            FnKind::ItemFn(_, _, _, ast::Constness::Const, _, _) => {
                 Mode::ConstFn
             }
-            visit::FkMethod(_, m, _) => {
+            FnKind::Method(_, m, _) => {
                 if m.constness == ast::Constness::Const {
                     Mode::ConstFn
                 } else {
@@ -352,7 +352,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self,
-                fk: visit::FnKind<'v>,
+                fk: FnKind<'v>,
                 fd: &'v ast::FnDecl,
                 b: &'v ast::Block,
                 s: Span,

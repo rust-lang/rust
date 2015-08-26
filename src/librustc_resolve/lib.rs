@@ -88,7 +88,7 @@ use syntax::ext::mtwt;
 use syntax::parse::token::{self, special_names, special_idents};
 use syntax::ptr::P;
 use syntax::codemap::{self, Span, Pos};
-use syntax::visit::{self, Visitor};
+use syntax::visit::{self, FnKind, Visitor};
 
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -527,22 +527,22 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         });
     }
     fn visit_fn(&mut self,
-                function_kind: visit::FnKind<'v>,
+                function_kind: FnKind<'v>,
                 declaration: &'v FnDecl,
                 block: &'v Block,
                 _: Span,
                 node_id: NodeId) {
         let rib_kind = match function_kind {
-            visit::FkItemFn(_, generics, _, _, _, _) => {
+            FnKind::ItemFn(_, generics, _, _, _, _) => {
                 self.visit_generics(generics);
                 ItemRibKind
             }
-            visit::FkMethod(_, sig, _) => {
+            FnKind::Method(_, sig, _) => {
                 self.visit_generics(&sig.generics);
                 self.visit_explicit_self(&sig.explicit_self);
                 MethodRibKind
             }
-            visit::FkClosure(..) => ClosureRibKind(node_id)
+            FnKind::Closure(..) => ClosureRibKind(node_id)
         };
         self.resolve_function(rib_kind, declaration, block);
     }
