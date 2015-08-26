@@ -5,5 +5,7 @@ CC := $(CC:-g=)
 
 all:
 	$(RUSTC) foo.rs -C lto
-	$(CC) bar.c -lfoo -o $(call RUN_BINFILE,bar) $(EXTRACFLAGS) $(EXTRACXXFLAGS)
+	$(CC) bar.c $(TMPDIR)/libfoo.a \
+		$(call OUT_EXE,bar) \
+		$(EXTRACFLAGS) $(EXTRACXXFLAGS)
 	$(call RUN,bar)
