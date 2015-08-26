@@ -9,9 +9,12 @@ fn main() {
     meta(|a| foo(a));
     //~^ ERROR redundant closure found. Consider using `foo` in its place
     let c = Some(1u8).map(|a| {1+2; foo}(a));
-    //~^ ERROR redundant closure found. Consider using `{ 1 + 2; foo }` in its place
+    //~^ ERROR redundant closure found. Consider using `{1+2; foo}` in its place
     let d = Some(1u8).map(|a| foo((|b| foo2(b))(a))); //is adjusted?
     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
+    unsafe {
+        Some(1u8).map(|a| unsafe_fn(a)); // unsafe fn
+    }
 }
 
 fn meta<F>(f: F) where F: Fn(u8) {
@@ -32,3 +35,5 @@ where F: Fn(&X, &X) -> bool {
 }
 
 fn below(x: &u8, y: &u8) -> bool { x < y }
+
+unsafe fn unsafe_fn(_: u8) { }
