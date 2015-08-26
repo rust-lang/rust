@@ -257,21 +257,38 @@ pub struct FileMapAndBytePos { pub fm: Rc<FileMap>, pub pos: BytePos }
 //
 
 /// The source of expansion.
-#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
+#[derive(Clone, Hash, Debug, PartialEq, Eq)]
 pub enum ExpnFormat {
     /// e.g. #[derive(...)] <item>
-    MacroAttribute,
+    MacroAttribute(String),
     /// e.g. `format!()`
-    MacroBang,
+    MacroBang(String),
     /// Syntax sugar expansion performed by the compiler (libsyntax::expand).
-    CompilerExpansion,
+    CompilerExpansion(CompilerExpansionFormat),
 }
 
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
+pub enum CompilerExpansionFormat {
+    IfLet,
+    PlacementIn,
+    WhileLet,
+    ForLoop,
+    Closure,
+}
+
+impl CompilerExpansionFormat {
+    pub fn name(self) -> &'static str {
+        match self {
+            CompilerExpansionFormat::IfLet => "if let expansion",
+            CompilerExpansionFormat::PlacementIn => "placement-in expansion",
+            CompilerExpansionFormat::WhileLet => "while let expansion",
+            CompilerExpansionFormat::ForLoop => "for loop expansion",
+            CompilerExpansionFormat::Closure => "closure expansion",
+        }
+    }
+}
 #[derive(Clone, Hash, Debug)]
 pub struct NameAndSpan {
-    /// The name of the macro that was invoked to create the thing
-    /// with this Span.
-    pub name: String,
     /// The format with which the macro was invoked.
     pub format: ExpnFormat,
     /// Whether the macro is allowed to use #[unstable]/feature-gated
@@ -282,6 +299,16 @@ pub struct NameAndSpan {
     /// have a sensible definition span (e.g. something defined
     /// completely inside libsyntax) in which case this is None.
     pub span: Option<Span>
+}
+
+impl NameAndSpan {
+    pub fn name(&self) -> &str{
+        match self.format {
+            ExpnFormat::MacroAttribute(ref s) => &s,
+            ExpnFormat::MacroBang(ref s) => &s,
+            ExpnFormat::CompilerExpansion(ce) => ce.name(),
+        }
+    } 
 }
 
 /// Extra information for tracking spans of macro and syntax sugar expansion

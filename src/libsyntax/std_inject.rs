@@ -27,8 +27,7 @@ fn ignored_span(sess: &ParseSess, sp: Span) -> Span {
     let info = ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
-            name: "std_inject".to_string(),
-            format: MacroAttribute,
+            format: MacroAttribute("std_inject".to_string()),
             span: None,
             allow_internal_unstable: true,
         }
