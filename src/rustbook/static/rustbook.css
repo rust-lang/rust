@@ -27,7 +27,7 @@ h1, h2, h3, h4, h5, h6 {
 
 @media only screen {
     #toc {
-        position: absolute;
+        position: fixed;
         left: 0px;
         top: 0px;
         bottom: 0px;
@@ -48,7 +48,6 @@ h1, h2, h3, h4, h5, h6 {
         left: 310px;
         right: 0px;
         top: 0px;
-        bottom: 0px;
         box-sizing: border-box;
         background: none repeat scroll 0% 0% #FFF;
         -webkit-overflow-scrolling: touch;
