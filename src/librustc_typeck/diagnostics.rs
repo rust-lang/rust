@@ -1126,7 +1126,7 @@ fn main() {
 }
 ```
 
-The number of supplied parameters much exactly match the number of defined type
+The number of supplied parameters must exactly match the number of defined type
 parameters.
 "##,
 
