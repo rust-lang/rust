@@ -25,7 +25,7 @@ use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::{special_idents};
 use syntax::visit;
-use syntax::visit::Visitor;
+use syntax::visit::{FnKind, Visitor};
 
 pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
     ccx: &'ccx CrateCtxt<'ccx, 'tcx>,
@@ -425,11 +425,11 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn visit_fn(&mut self,
-                fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
+                fk: FnKind<'v>, fd: &'v ast::FnDecl,
                 b: &'v ast::Block, span: Span, id: ast::NodeId) {
         match fk {
-            visit::FkClosure | visit::FkItemFn(..) => {}
-            visit::FkMethod(..) => {
+            FnKind::Closure | FnKind::ItemFn(..) => {}
+            FnKind::Method(..) => {
                 match self.tcx().impl_or_trait_item(DefId::local(id)) {
                     ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
                         reject_shadowing_type_parameters(self.tcx(), span, &ty_method.generics)

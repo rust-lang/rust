@@ -51,7 +51,7 @@ use syntax::codemap::{self, Span};
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ptr::P;
-use syntax::visit::{self, Visitor};
+use syntax::visit::{self, FnKind, Visitor};
 
 // hardwired lints from librustc
 pub use lint::builtin::*;
@@ -1240,10 +1240,10 @@ impl LintPass for NonSnakeCase {
     }
 
     fn check_fn(&mut self, cx: &Context,
-                fk: visit::FnKind, _: &ast::FnDecl,
+                fk: FnKind, _: &ast::FnDecl,
                 _: &ast::Block, span: Span, id: ast::NodeId) {
         match fk {
-            visit::FkMethod(ident, _, _) => match method_context(cx, id, span) {
+            FnKind::Method(ident, _, _) => match method_context(cx, id, span) {
                 MethodContext::PlainImpl => {
                     self.check_snake_case(cx, "method", &ident.name.as_str(), Some(span))
                 },
@@ -1252,7 +1252,7 @@ impl LintPass for NonSnakeCase {
                 },
                 _ => (),
             },
-            visit::FkItemFn(ident, _, _, _, _, _) => {
+            FnKind::ItemFn(ident, _, _, _, _, _) => {
                 self.check_snake_case(cx, "function", &ident.name.as_str(), Some(span))
             },
             _ => (),
@@ -1598,13 +1598,13 @@ impl LintPass for UnsafeCode {
         }
     }
 
-    fn check_fn(&mut self, cx: &Context, fk: visit::FnKind, _: &ast::FnDecl,
+    fn check_fn(&mut self, cx: &Context, fk: FnKind, _: &ast::FnDecl,
                 _: &ast::Block, span: Span, _: ast::NodeId) {
         match fk {
-            visit::FkItemFn(_, _, ast::Unsafety::Unsafe, _, _, _) =>
+            FnKind::ItemFn(_, _, ast::Unsafety::Unsafe, _, _, _) =>
                 cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
 
-            visit::FkMethod(_, sig, _) => {
+            FnKind::Method(_, sig, _) => {
                 if sig.unsafety == ast::Unsafety::Unsafe {
                     cx.span_lint(UNSAFE_CODE, span, "implementation of an `unsafe` method")
                 }
@@ -1685,7 +1685,7 @@ impl LintPass for UnusedMut {
     }
 
     fn check_fn(&mut self, cx: &Context,
-                _: visit::FnKind, decl: &ast::FnDecl,
+                _: FnKind, decl: &ast::FnDecl,
                 _: &ast::Block, _: Span, _: ast::NodeId) {
         for a in &decl.inputs {
             self.check_unused_mut_pat(cx, slice::ref_slice(&a.pat));
@@ -2126,18 +2126,18 @@ impl LintPass for UnconditionalRecursion {
         lint_array![UNCONDITIONAL_RECURSION]
     }
 
-    fn check_fn(&mut self, cx: &Context, fn_kind: visit::FnKind, _: &ast::FnDecl,
+    fn check_fn(&mut self, cx: &Context, fn_kind: FnKind, _: &ast::FnDecl,
                 blk: &ast::Block, sp: Span, id: ast::NodeId) {
         type F = for<'tcx> fn(&ty::ctxt<'tcx>,
                               ast::NodeId, ast::NodeId, ast::Ident, ast::NodeId) -> bool;
 
         let method = match fn_kind {
-            visit::FkItemFn(..) => None,
-            visit::FkMethod(..) => {
+            FnKind::ItemFn(..) => None,
+            FnKind::Method(..) => {
                 cx.tcx.impl_or_trait_item(DefId::local(id)).as_opt_method()
             }
             // closures can't recur, so they don't matter.
-            visit::FkClosure => return
+            FnKind::Closure => return
         };
 
         // Walk through this function (say `f`) looking to see if
