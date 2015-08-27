@@ -150,3 +150,36 @@ pub fn test_expect_err() {
     let err: Result<isize, &'static str> = Err("All good");
     err.expect("Got expected error");
 }
+
+#[test]
+pub fn test_iter() {
+    let ok: Result<isize, &'static str> = Ok(100);
+    let mut it = ok.iter();
+    assert_eq!(it.size_hint(), (1, Some(1)));
+    assert_eq!(it.next(), Some(&100));
+    assert_eq!(it.size_hint(), (0, Some(0)));
+    assert!(it.next().is_none());
+    assert_eq!((&ok).into_iter().next(), Some(&100));
+
+    let err: Result<isize, &'static str> = Err("error");
+    assert_eq!(err.iter().next(), None);
+}
+
+#[test]
+pub fn test_iter_mut() {
+    let mut ok: Result<isize, &'static str> = Ok(100);
+    for loc in ok.iter_mut() {
+        *loc = 200;
+    }
+    assert_eq!(ok, Ok(200));
+    for loc in &mut ok {
+        *loc = 300;
+    }
+    assert_eq!(ok, Ok(300));
+
+    let mut err: Result<isize, &'static str> = Err("error");
+    for loc in err.iter_mut() {
+        *loc = 200;
+    }
+    assert_eq!(err, Err("error"));
+}
