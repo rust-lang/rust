@@ -46,6 +46,7 @@ mod tables;
 mod u_str;
 pub mod char;
 
+#[allow(deprecated)]
 pub mod str {
     pub use u_str::{UnicodeStr, SplitWhitespace};
     pub use u_str::{utf8_char_width, is_utf16, Utf16Items, Utf16Item};

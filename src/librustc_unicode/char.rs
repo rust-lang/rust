@@ -503,3 +503,116 @@ impl char {
         ToUppercase(CaseMappingIter::new(conversions::to_upper(self)))
     }
 }
+
+/// An iterator that decodes UTF-16 encoded codepoints from an iterator of `u16`s.
+#[unstable(feature = "decode_utf16", reason = "recently exposed", issue = "27830")]
+#[derive(Clone)]
+pub struct DecodeUtf16<I> where I: Iterator<Item=u16> {
+    iter: I,
+    buf: Option<u16>,
+}
+
+/// Create an iterator over the UTF-16 encoded codepoints in `iterable`,
+/// returning unpaired surrogates as `Err`s.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(decode_utf16)]
+///
+/// use std::char::decode_utf16;
+///
+/// fn main() {
+///     // 𝄞mus<invalid>ic<invalid>
+///     let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
+///              0x0073, 0xDD1E, 0x0069, 0x0063,
+///              0xD834];
+///
+///     assert_eq!(decode_utf16(v.iter().cloned()).collect::<Vec<_>>(),
+///                vec![Ok('𝄞'),
+///                     Ok('m'), Ok('u'), Ok('s'),
+///                     Err(0xDD1E),
+///                     Ok('i'), Ok('c'),
+///                     Err(0xD834)]);
+/// }
+/// ```
+///
+/// A lossy decoder can be obtained by replacing `Err` results with the replacement character:
+///
+/// ```
+/// #![feature(decode_utf16)]
+///
+/// use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
+///
+/// fn main() {
+///     // 𝄞mus<invalid>ic<invalid>
+///     let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
+///              0x0073, 0xDD1E, 0x0069, 0x0063,
+///              0xD834];
+///
+///     assert_eq!(decode_utf16(v.iter().cloned())
+///                    .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
+///                    .collect::<String>(),
+///                "𝄞mus�ic�");
+/// }
+/// ```
+#[unstable(feature = "decode_utf16", reason = "recently exposed", issue = "27830")]
+#[inline]
+pub fn decode_utf16<I: IntoIterator<Item=u16>>(iterable: I) -> DecodeUtf16<I::IntoIter> {
+    DecodeUtf16 {
+        iter: iterable.into_iter(),
+        buf: None,
+    }
+}
+
+#[unstable(feature = "decode_utf16", reason = "recently exposed", issue = "27830")]
+impl<I: Iterator<Item=u16>> Iterator for DecodeUtf16<I> {
+    type Item = Result<char, u16>;
+
+    fn next(&mut self) -> Option<Result<char, u16>> {
+        let u = match self.buf.take() {
+            Some(buf) => buf,
+            None => match self.iter.next() {
+                Some(u) => u,
+                None => return None
+            }
+        };
+
+        if u < 0xD800 || 0xDFFF < u {
+            // not a surrogate
+            Some(Ok(unsafe { from_u32_unchecked(u as u32) }))
+        } else if u >= 0xDC00 {
+            // a trailing surrogate
+            Some(Err(u))
+        } else {
+            let u2 = match self.iter.next() {
+                Some(u2) => u2,
+                // eof
+                None => return Some(Err(u))
+            };
+            if u2 < 0xDC00 || u2 > 0xDFFF {
+                // not a trailing surrogate so we're not a valid
+                // surrogate pair, so rewind to redecode u2 next time.
+                self.buf = Some(u2);
+                return Some(Err(u))
+            }
+
+            // all ok, so lets decode it.
+            let c = (((u - 0xD800) as u32) << 10 | (u2 - 0xDC00) as u32) + 0x1_0000;
+            Some(Ok(unsafe { from_u32_unchecked(c) }))
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (low, high) = self.iter.size_hint();
+        // we could be entirely valid surrogates (2 elements per
+        // char), or entirely non-surrogates (1 element per char)
+        (low / 2, high)
+    }
+}
+
+/// U+FFFD REPLACEMENT CHARACTER (�) is used in Unicode to represent a decoding error.
+/// It can occur, for example, when giving ill-formed UTF-8 bytes to `String::from_utf8_lossy`.
+#[unstable(feature = "decode_utf16", reason = "recently added", issue = "27830")]
+pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';

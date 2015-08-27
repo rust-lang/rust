@@ -19,6 +19,7 @@
 #![feature(float_from_str_radix)]
 #![feature(flt2dec)]
 #![feature(dec2flt)]
+#![feature(decode_utf16)]
 #![feature(fmt_radix)]
 #![feature(iter_arith)]
 #![feature(iter_arith)]

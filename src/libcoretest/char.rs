@@ -207,3 +207,12 @@ fn test_len_utf16() {
     assert!('\u{a66e}'.len_utf16() == 1);
     assert!('\u{1f4a9}'.len_utf16() == 2);
 }
+
+#[test]
+fn test_decode_utf16() {
+    fn check(s: &[u16], expected: &[Result<char, u16>]) {
+        assert_eq!(::std::char::decode_utf16(s.iter().cloned()).collect::<Vec<_>>(), expected);
+    }
+    check(&[0xD800, 0x41, 0x42], &[Err(0xD800), Ok('A'), Ok('B')]);
+    check(&[0xD800, 0], &[Err(0xD800), Ok('\0')]);
+}

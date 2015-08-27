@@ -209,8 +209,6 @@ use std::str::FromStr;
 use std::string;
 use std::{char, f64, fmt, str};
 use std;
-use rustc_unicode::str as unicode_str;
-use rustc_unicode::str::Utf16Item;
 
 use Encodable;
 
@@ -1712,11 +1710,13 @@ impl<T: Iterator<Item=char>> Parser<T> {
                                 _ => return self.error(UnexpectedEndOfHexEscape),
                             }
 
-                            let buf = [n1, try!(self.decode_hex_escape())];
-                            match unicode_str::utf16_items(&buf).next() {
-                                Some(Utf16Item::ScalarValue(c)) => res.push(c),
-                                _ => return self.error(LoneLeadingSurrogateInHexEscape),
+                            let n2 = try!(self.decode_hex_escape());
+                            if n2 < 0xDC00 || n2 > 0xDFFF {
+                                return self.error(LoneLeadingSurrogateInHexEscape)
                             }
+                            let c = (((n1 - 0xD800) as u32) << 10 |
+                                     (n2 - 0xDC00) as u32) + 0x1_0000;
+                            res.push(char::from_u32(c).unwrap());
                         }
 
                         n => match char::from_u32(n as u32) {
