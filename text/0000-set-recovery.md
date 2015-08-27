@@ -1,4 +1,4 @@
-- Feature Name: collection_recovery
+- Feature Name: set_recovery
 - Start Date: 2015-07-08
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
