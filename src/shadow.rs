@@ -6,7 +6,7 @@ use syntax::visit::FnKind;
 use rustc::lint::{Context, LintArray, LintPass};
 use rustc::middle::def::Def::{DefVariant, DefStruct};
 
-use utils::{in_external_macro, snippet, span_help_and_lint};
+use utils::{in_external_macro, snippet, span_lint};
 
 declare_lint!(pub SHADOW_SAME, Allow,
     "rebinding a name to itself, e.g. `let mut x = &mut x`");
@@ -72,7 +72,7 @@ fn is_binding(cx: &Context, pat: &Pat) -> bool {
     }
 }
 
-fn check_pat<T>(cx: &Context, pat: &Pat, init: &Option<T>, span: Span,  
+fn check_pat<T>(cx: &Context, pat: &Pat, init: &Option<T>, span: Span,
         bindings: &mut Vec<Name>) where T: Deref<Target=Expr> {
     //TODO: match more stuff / destructuring
     match pat.node {
@@ -94,7 +94,7 @@ fn check_pat<T>(cx: &Context, pat: &Pat, init: &Option<T>, span: Span,
         PatBox(ref inner) => {
             if let Some(ref initp) = *init {
                 match initp.node {
-                    ExprBox(_, ref inner_init) => 
+                    ExprBox(_, ref inner_init) =>
                         check_pat(cx, inner, &Some(&**inner_init), span, bindings),
                     //TODO: ExprCall on Box::new
                     _ => check_pat(cx, inner, init, span, bindings),
@@ -110,38 +110,30 @@ fn check_pat<T>(cx: &Context, pat: &Pat, init: &Option<T>, span: Span,
     }
 }
 
-fn lint_shadow<T>(cx: &Context, name: Name, span: Span, lspan: Span, init: 
+fn lint_shadow<T>(cx: &Context, name: Name, span: Span, lspan: Span, init:
         &Option<T>) where T: Deref<Target=Expr> {
     if let &Some(ref expr) = init {
         if is_self_shadow(name, expr) {
-            span_help_and_lint(cx, SHADOW_SAME, span, &format!(
+            span_lint(cx, SHADOW_SAME, span, &format!(
                 "{} is shadowed by itself in {}",
                 snippet(cx, lspan, "_"),
-                snippet(cx, expr.span, "..")),
-                "for further information see \
-                https://github.com/Manishearth/rust-clippy/wiki#shadow_same");
+                snippet(cx, expr.span, "..")));
         } else {
             if contains_self(name, expr) {
-                span_help_and_lint(cx, SHADOW_REUSE, span, &format!(
+                span_lint(cx, SHADOW_REUSE, span, &format!(
                     "{} is shadowed by {} which reuses the original value",
                     snippet(cx, lspan, "_"),
-                    snippet(cx, expr.span, "..")),
-                    "for further information see https://\
-                    github.com/Manishearth/rust-clippy/wiki#shadow_reuse");
+                    snippet(cx, expr.span, "..")));
             } else {
-                span_help_and_lint(cx, SHADOW_UNRELATED, span, &format!(
+                span_lint(cx, SHADOW_UNRELATED, span, &format!(
                     "{} is shadowed by {} in this declaration",
                     snippet(cx, lspan, "_"),
-                    snippet(cx, expr.span, "..")),
-                    "for further information see https://github.com\
-                    /Manishearth/rust-clippy/wiki#shadow_unrelated");
+                    snippet(cx, expr.span, "..")));
             }
         }
     } else {
-        span_help_and_lint(cx, SHADOW_UNRELATED, span, &format!(
-            "{} is shadowed in this declaration", snippet(cx, lspan, "_")),
-            "for further information see \
-            https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated");
+        span_lint(cx, SHADOW_UNRELATED, span, &format!(
+            "{} is shadowed in this declaration", snippet(cx, lspan, "_")));
     }
 }
 
@@ -218,7 +210,7 @@ fn is_self_shadow(name: Name, expr: &Expr) -> bool {
 }
 
 fn path_eq_name(name: Name, path: &Path) -> bool {
-    !path.global && path.segments.len() == 1 && 
+    !path.global && path.segments.len() == 1 &&
         path.segments[0].identifier.name == name
 }
 
@@ -242,8 +234,8 @@ fn contains_self(name: Name, expr: &Expr) -> bool {
             otherwise.as_ref().map_or(false, |ref e| contains_self(name, e)),
         ExprWhile(ref e, ref block, _)  =>
             contains_self(name, e) || contains_block_self(name, block),
-        ExprMatch(ref e, ref arms, _) => 
-            arms.iter().any(|ref arm| arm.pats.iter().any(|ref pat| 
+        ExprMatch(ref e, ref arms, _) =>
+            arms.iter().any(|ref arm| arm.pats.iter().any(|ref pat|
                 contains_pat_self(name, pat))) || contains_self(name, e),
         ExprPath(_, ref path) => path_eq_name(name, path),
         _ => false
@@ -274,7 +266,7 @@ fn contains_pat_self(name: Name, pat: &Pat) -> bool {
     match pat.node {
         PatIdent(_, ref ident, ref inner) => name == ident.node.name ||
             inner.as_ref().map_or(false, |ref p| contains_pat_self(name, p)),
-        PatEnum(_, ref opats) => opats.as_ref().map_or(false, 
+        PatEnum(_, ref opats) => opats.as_ref().map_or(false,
             |pats| pats.iter().any(|p| contains_pat_self(name, p))),
         PatQPath(_, ref path) => path_eq_name(name, path),
         PatStruct(_, ref fieldpats, _) => fieldpats.iter().any(
@@ -282,10 +274,10 @@ fn contains_pat_self(name: Name, pat: &Pat) -> bool {
         PatTup(ref ps) => ps.iter().any(|ref p| contains_pat_self(name, p)),
         PatBox(ref p) |
         PatRegion(ref p, _) => contains_pat_self(name, p),
-        PatRange(ref from, ref until) => 
+        PatRange(ref from, ref until) =>
             contains_self(name, from) || contains_self(name, until),
         PatVec(ref pre, ref opt, ref post) =>
-            pre.iter().any(|ref p| contains_pat_self(name, p)) || 
+            pre.iter().any(|ref p| contains_pat_self(name, p)) ||
                 opt.as_ref().map_or(false, |ref p| contains_pat_self(name, p)) ||
                 post.iter().any(|ref p| contains_pat_self(name, p)),
         _ => false,

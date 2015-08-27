@@ -5,7 +5,7 @@ use syntax::ast::*;
 use syntax::ast_util::is_comparison_binop;
 use syntax::codemap::Span;
 
-use utils::span_help_and_lint;
+use utils::span_lint;
 
 declare_lint! {
     pub BAD_BIT_MASK,
@@ -100,50 +100,36 @@ fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_,
         BiEq | BiNe => match bit_op {
             BiBitAnd => if mask_value & cmp_value != mask_value {
                 if cmp_value != 0 {
-                    span_help_and_lint(cx, BAD_BIT_MASK, *span, &format!(
+                    span_lint(cx, BAD_BIT_MASK, *span, &format!(
                         "incompatible bit mask: `_ & {}` can never be equal to `{}`",
-                        mask_value, cmp_value),
-                        "for further information see https://github.com/\
-                        Manishearth/rust-clippy/wiki#bad_bit_mask");
+                        mask_value, cmp_value));
                 }
             } else {
                 if mask_value == 0 {
-                    span_help_and_lint(cx, BAD_BIT_MASK, *span, 
-                        "&-masking with zero",
-                        "for further information see https://github.com/\
-                        Manishearth/rust-clippy/wiki#bad_bit_mask");
+                    span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                 }
             },
             BiBitOr => if mask_value | cmp_value != cmp_value {
-                span_help_and_lint(cx, BAD_BIT_MASK, *span, &format!(
+                span_lint(cx, BAD_BIT_MASK, *span, &format!(
                     "incompatible bit mask: `_ | {}` can never be equal to `{}`",
-                    mask_value, cmp_value),
-                    "for further information see https://github.com/\
-                    Manishearth/rust-clippy/wiki#bad_bit_mask");
+                    mask_value, cmp_value));
             },
             _ => ()
         },
         BiLt | BiGe => match bit_op {
             BiBitAnd => if mask_value < cmp_value {
-                span_help_and_lint(cx, BAD_BIT_MASK, *span, &format!(
+                span_lint(cx, BAD_BIT_MASK, *span, &format!(
                     "incompatible bit mask: `_ & {}` will always be lower than `{}`",
-                    mask_value, cmp_value),
-                    "for further information see https://github.com/\
-                    Manishearth/rust-clippy/wiki#bad_bit_mask");
+                    mask_value, cmp_value));
             } else {
                 if mask_value == 0 {
-                    span_help_and_lint(cx, BAD_BIT_MASK, *span,
-                        "&-masking with zero",
-                        "for further information see https://github.com/\
-                        Manishearth/rust-clippy/wiki#bad_bit_mask");
+                    span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                 }
             },
             BiBitOr => if mask_value >= cmp_value {
-                span_help_and_lint(cx, BAD_BIT_MASK, *span, &format!(
+                span_lint(cx, BAD_BIT_MASK, *span, &format!(
                     "incompatible bit mask: `_ | {}` will never be lower than `{}`",
-                    mask_value, cmp_value),
-                    "for further information see https://github.com/\
-                    Manishearth/rust-clippy/wiki#bad_bit_mask");
+                    mask_value, cmp_value));
             } else {
                 check_ineffective_lt(cx, *span, mask_value, cmp_value, "|");
             },
@@ -153,25 +139,18 @@ fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_,
         },
         BiLe | BiGt => match bit_op {
             BiBitAnd => if mask_value <= cmp_value {
-                span_help_and_lint(cx, BAD_BIT_MASK, *span, &format!(
+                span_lint(cx, BAD_BIT_MASK, *span, &format!(
                     "incompatible bit mask: `_ & {}` will never be higher than `{}`",
-                    mask_value, cmp_value),
-                    "for further information see https://github.com/\
-                    Manishearth/rust-clippy/wiki#bad_bit_mask");
+                    mask_value, cmp_value));
             } else {
                 if mask_value == 0 {
-                    span_help_and_lint(cx, BAD_BIT_MASK, *span, 
-                        "&-masking with zero",
-                        "for further information see https://github.com/\
-                        Manishearth/rust-clippy/wiki#bad_bit_mask");
+                    span_lint(cx, BAD_BIT_MASK, *span, "&-masking with zero");
                 }
             },
             BiBitOr => if mask_value > cmp_value {
-                span_help_and_lint(cx, BAD_BIT_MASK, *span, &format!(
+                span_lint(cx, BAD_BIT_MASK, *span, &format!(
                     "incompatible bit mask: `_ | {}` will always be higher than `{}`",
-                    mask_value, cmp_value),
-                    "for further information see https://github.com/\
-                    Manishearth/rust-clippy/wiki#bad_bit_mask");
+                    mask_value, cmp_value));
             } else {
                 check_ineffective_gt(cx, *span, mask_value, cmp_value, "|");
             },
@@ -185,21 +164,17 @@ fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_,
 
 fn check_ineffective_lt(cx: &Context, span: Span, m: u64, c: u64, op: &str) {
     if c.is_power_of_two() && m < c {
-        span_help_and_lint(cx, INEFFECTIVE_BIT_MASK, span, &format!(
+        span_lint(cx, INEFFECTIVE_BIT_MASK, span, &format!(
             "ineffective bit mask: `x {} {}` compared to `{}`, is the same as x compared directly",
-            op, m, c),
-            "for further information see https://github.com/\
-            Manishearth/rust-clippy/wiki#ineffective_bit_mask");
+            op, m, c));
     }
 }
 
 fn check_ineffective_gt(cx: &Context, span: Span, m: u64, c: u64, op: &str) {
     if (c + 1).is_power_of_two() && m <= c {
-        span_help_and_lint(cx, INEFFECTIVE_BIT_MASK, span, &format!(
+        span_lint(cx, INEFFECTIVE_BIT_MASK, span, &format!(
             "ineffective bit mask: `x {} {}` compared to `{}`, is the same as x compared directly",
-            op, m, c),
-            "for further information see https://github.com/\
-            Manishearth/rust-clippy/wiki#ineffective_bit_mask");
+            op, m, c));
     }
 }
 

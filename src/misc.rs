@@ -6,7 +6,7 @@ use syntax::codemap::{Span, Spanned};
 use syntax::visit::FnKind;
 use rustc::middle::ty;
 
-use utils::{match_path, snippet, span_lint, span_help_and_lint, walk_ptrs_ty};
+use utils::{match_path, snippet, span_lint, walk_ptrs_ty};
 use consts::constant;
 
 declare_lint!(pub TOPLEVEL_REF_ARG, Warn,
@@ -65,10 +65,8 @@ impl LintPass for CmpNan {
 
 fn check_nan(cx: &Context, path: &Path, span: Span) {
     path.segments.last().map(|seg| if seg.identifier.name == "NAN" {
-        span_help_and_lint(cx, CMP_NAN, span,
-            "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead",
-            "for further information see https://github.com/\
-            Manishearth/rust-clippy/wiki#cmp_nan");
+        span_lint(cx, CMP_NAN, span,
+            "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
     });
 }
 
@@ -126,11 +124,9 @@ impl LintPass for Precedence {
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
         if let ExprBinary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
             if is_bit_op(op) && (is_arith_expr(left) || is_arith_expr(right)) {
-                span_help_and_lint(cx, PRECEDENCE, expr.span,
+                span_lint(cx, PRECEDENCE, expr.span,
                     "operator precedence can trip the unwary. Consider adding parentheses \
-                     to the subexpression",
-                    "for further information see https://github.com/\
-                     Manishearth/rust-clippy/wiki#precedence");
+                     to the subexpression");
             }
         }
     }

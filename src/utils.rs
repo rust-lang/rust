@@ -141,6 +141,11 @@ pub fn get_parent_expr<'c>(cx: &'c Context, e: &Expr) -> Option<&'c Expr> {
 #[cfg(not(feature="structured_logging"))]
 pub fn span_lint(cx: &Context, lint: &'static Lint, sp: Span, msg: &str) {
     cx.span_lint(lint, sp, msg);
+    if cx.current_level(lint) != Level::Allow {
+        cx.sess().fileline_help(sp, &format!("for further information visit \
+            https://github.com/Manishearth/rust-clippy/wiki#{}",
+            lint.name_lower()))
+    }
 }
 
 #[cfg(feature="structured_logging")]
@@ -149,13 +154,20 @@ pub fn span_lint(cx: &Context, lint: &'static Lint, sp: Span, msg: &str) {
     // cx.sess().codemap() has all these nice functions for line/column/snippet details
     // http://doc.rust-lang.org/syntax/codemap/struct.CodeMap.html#method.span_to_string
     cx.span_lint(lint, sp, msg);
+    if cx.current_level(lint) != Level::Allow {
+        cx.sess().fileline_help(sp, &format!("for further information visit \
+            https://github.com/Manishearth/rust-clippy/wiki#{}",
+            lint.name_lower()))
+    }
 }
 
 pub fn span_help_and_lint(cx: &Context, lint: &'static Lint, span: Span,
         msg: &str, help: &str) {
     span_lint(cx, lint, span, msg);
     if cx.current_level(lint) != Level::Allow {
-        cx.sess().fileline_help(span, help);
+        cx.sess().fileline_help(span, &format!("{}\nfor further information \
+            visit https://github.com/Manishearth/rust-clippy/wiki#{}",
+            help, lint.name_lower()))
     }
 }
 
