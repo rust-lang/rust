@@ -441,6 +441,7 @@ macro_rules! rem_impl_integer {
 
 rem_impl_integer! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
+#[cfg(not(stage0))]
 macro_rules! rem_impl_float {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -455,7 +456,47 @@ macro_rules! rem_impl_float {
     )*)
 }
 
+#[cfg(not(stage0))]
 rem_impl_float! { f32 f64 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
+impl Rem for f32 {
+    type Output = f32;
+
+    // The builtin f32 rem operator is broken when targeting
+    // MSVC; see comment in std::f32::floor.
+    // FIXME: See also #27859.
+    #[inline]
+    #[cfg(target_env = "msvc")]
+    fn rem(self, other: f32) -> f32 {
+        (self as f64).rem(other as f64) as f32
+    }
+
+    #[inline]
+    #[cfg(not(target_env = "msvc"))]
+    fn rem(self, other: f32) -> f32 {
+        extern { fn fmodf(a: f32, b: f32) -> f32; }
+        unsafe { fmodf(self, other) }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
+impl Rem for f64 {
+    type Output = f64;
+
+    #[inline]
+    fn rem(self, other: f64) -> f64 {
+        extern { fn fmod(a: f64, b: f64) -> f64; }
+        unsafe { fmod(self, other) }
+    }
+}
+
+#[cfg(stage0)]
+forward_ref_binop! { impl Rem, rem for f64, f64 }
+#[cfg(stage0)]
+forward_ref_binop! { impl Rem, rem for f32, f32 }
 
 /// The `Neg` trait is used to specify the functionality of unary `-`.
 ///
