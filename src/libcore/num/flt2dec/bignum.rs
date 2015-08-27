@@ -448,12 +448,10 @@ macro_rules! define_bignum {
         impl ::cmp::Ord for $name {
             fn cmp(&self, other: &$name) -> ::cmp::Ordering {
                 use cmp::max;
-                use iter::order;
-
                 let sz = max(self.size, other.size);
                 let lhs = self.base[..sz].iter().cloned().rev();
                 let rhs = other.base[..sz].iter().cloned().rev();
-                order::cmp(lhs, rhs)
+                lhs.cmp(rhs)
             }
         }
 
