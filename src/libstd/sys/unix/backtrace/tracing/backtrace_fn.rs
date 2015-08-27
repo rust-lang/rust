@@ -20,18 +20,15 @@
 
 use io;
 use io::prelude::*;
-use iter::Iterator;
 use libc;
 use mem;
 use result::Result::Ok;
 use sync::StaticMutex;
 
-use super::printer::print;
+use super::super::printing::print;
 
 #[inline(never)]
 pub fn write(w: &mut Write) -> io::Result<()> {
-    use mem;
-
     extern {
         fn backtrace(buf: *mut *mut libc::c_void,
                      sz: libc::c_int) -> libc::c_int;
