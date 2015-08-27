@@ -158,6 +158,7 @@ use boxed::Box;
 #[cfg(test)]
 use std::boxed::Box;
 
+use core::borrow;
 use core::cell::Cell;
 use core::cmp::Ordering;
 use core::fmt;
@@ -1090,4 +1091,8 @@ mod tests {
         let foo: Rc<[i32]> = Rc::new([1, 2, 3]);
         assert_eq!(foo, foo.clone());
     }
+}
+
+impl<T: ?Sized> borrow::Borrow<T> for Rc<T> {
+    fn borrow(&self) -> &T { &**self }
 }
