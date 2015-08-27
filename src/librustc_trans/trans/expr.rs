@@ -390,14 +390,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // (You might think there is a more elegant way to do this than a
             // skip_reborrows bool, but then you remember that the borrow checker exists).
             if skip_reborrows == 0 && adj.autoref.is_some() {
-                if !type_is_sized(bcx.tcx(), datum.ty) {
-                    // Arrange cleanup
-                    let lval = unpack_datum!(bcx,
-                        datum.to_lvalue_datum(bcx, "ref_fat_ptr", expr.id));
-                    datum = unpack_datum!(bcx, ref_fat_ptr(bcx, lval));
-                } else {
-                    datum = unpack_datum!(bcx, auto_ref(bcx, datum, expr));
-                }
+                datum = unpack_datum!(bcx, auto_ref(bcx, datum, expr));
             }
 
             if let Some(target) = adj.unsize {
