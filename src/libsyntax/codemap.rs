@@ -29,6 +29,8 @@ use std::io::{self, Read};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
+use parse::token::intern;
+use ast::Name;
 
 // _____________________________________________________________________________
 // Pos, BytePos, CharPos
@@ -260,9 +262,9 @@ pub struct FileMapAndBytePos { pub fm: Rc<FileMap>, pub pos: BytePos }
 #[derive(Clone, Hash, Debug, PartialEq, Eq)]
 pub enum ExpnFormat {
     /// e.g. #[derive(...)] <item>
-    MacroAttribute(String),
+    MacroAttribute(Name),
     /// e.g. `format!()`
-    MacroBang(String),
+    MacroBang(Name),
     /// Syntax sugar expansion performed by the compiler (libsyntax::expand).
     CompilerExpansion(CompilerExpansionFormat),
 }
@@ -302,13 +304,13 @@ pub struct NameAndSpan {
 }
 
 impl NameAndSpan {
-    pub fn name(&self) -> &str{
+    pub fn name(&self) -> Name {
         match self.format {
-            ExpnFormat::MacroAttribute(ref s) => &s,
-            ExpnFormat::MacroBang(ref s) => &s,
-            ExpnFormat::CompilerExpansion(ce) => ce.name(),
+            ExpnFormat::MacroAttribute(s) => s,
+            ExpnFormat::MacroBang(s) => s,
+            ExpnFormat::CompilerExpansion(ce) => intern(ce.name()),
         }
-    } 
+    }
 }
 
 /// Extra information for tracking spans of macro and syntax sugar expansion
