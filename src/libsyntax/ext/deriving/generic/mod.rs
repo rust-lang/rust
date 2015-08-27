@@ -205,7 +205,7 @@ use codemap::Span;
 use diagnostic::SpanHandler;
 use fold::MoveMap;
 use owned_slice::OwnedSlice;
-use parse::token::InternedString;
+use parse::token::{intern, InternedString};
 use parse::token::special_idents;
 use ptr::P;
 
@@ -1436,8 +1436,7 @@ impl<'a> TraitDef<'a> {
         to_set.expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
             call_site: to_set,
             callee: codemap::NameAndSpan {
-                name: format!("derive({})", trait_name),
-                format: codemap::MacroAttribute,
+                format: codemap::MacroAttribute(intern(&format!("derive({})", trait_name))),
                 span: Some(self.span),
                 allow_internal_unstable: false,
             }

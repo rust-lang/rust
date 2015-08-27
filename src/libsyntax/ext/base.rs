@@ -714,13 +714,14 @@ impl<'a> ExtCtxt<'a> {
         loop {
             if self.codemap().with_expn_info(expn_id, |info| {
                 info.map_or(None, |i| {
-                    if i.callee.name == "include" {
+                    if i.callee.name() == "include" {
                         // Stop going up the backtrace once include! is encountered
                         return None;
                     }
                     expn_id = i.call_site.expn_id;
-                    if i.callee.format != CompilerExpansion {
-                        last_macro = Some(i.call_site)
+                    match i.callee.format {
+                        CompilerExpansion(..) => (),
+                        _ => last_macro = Some(i.call_site),
                     }
                     return Some(());
                 })
@@ -744,7 +745,7 @@ impl<'a> ExtCtxt<'a> {
         if self.recursion_count > self.ecfg.recursion_limit {
             panic!(self.span_fatal(ei.call_site,
                             &format!("recursion limit reached while expanding the macro `{}`",
-                                    ei.callee.name)));
+                                    ei.callee.name())));
         }
 
         let mut call_site = ei.call_site;
