@@ -239,7 +239,7 @@ fn test_hash_no_concat_alias() {
 fn bench_str_under_8_bytes(b: &mut Bencher) {
     let s = "foo";
     b.iter(|| {
-        assert_eq!(hash(&s), 16262950014981195938);
+        hash(&s)
     })
 }
 
@@ -247,7 +247,7 @@ fn bench_str_under_8_bytes(b: &mut Bencher) {
 fn bench_str_of_8_bytes(b: &mut Bencher) {
     let s = "foobar78";
     b.iter(|| {
-        assert_eq!(hash(&s), 4898293253460910787);
+        hash(&s)
     })
 }
 
@@ -255,7 +255,7 @@ fn bench_str_of_8_bytes(b: &mut Bencher) {
 fn bench_str_over_8_bytes(b: &mut Bencher) {
     let s = "foobarbaz0";
     b.iter(|| {
-        assert_eq!(hash(&s), 10581415515220175264);
+        hash(&s)
     })
 }
 
@@ -268,7 +268,7 @@ irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nul
 pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui \
 officia deserunt mollit anim id est laborum.";
     b.iter(|| {
-        assert_eq!(hash(&s), 17717065544121360093);
+        hash(&s)
     })
 }
 

@@ -61,7 +61,7 @@ fn test_writer_hasher() {
     assert_eq!(hash(&'a'), 97);
 
     let s: &str = "a";
-    assert_eq!(hash(& s), 97 + 0xFF);
+    assert_eq!(hash(&s), 1 + 97);
     // FIXME (#18283) Enable test
     //let s: Box<str> = box "a";
     //assert_eq!(hasher.hash(& s), 97 + 0xFF);
