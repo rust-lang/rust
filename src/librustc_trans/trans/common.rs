@@ -504,7 +504,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
                         output: ty::FnOutput<'tcx>,
                         name: &str) -> ValueRef {
         if self.needs_ret_allocas {
-            base::alloca_no_lifetime(bcx, match output {
+            base::alloca(bcx, match output {
                 ty::FnConverging(output_type) => type_of::type_of(bcx.ccx(), output_type),
                 ty::FnDiverging => Type::void(bcx.ccx())
             }, name)

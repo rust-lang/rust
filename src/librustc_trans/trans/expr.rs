@@ -246,9 +246,8 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Maybe just get the value directly, instead of loading it?
             immediate_rvalue(load_ty(bcx, global, const_ty), const_ty)
         } else {
-            let llty = type_of::type_of(bcx.ccx(), const_ty);
-            // HACK(eddyb) get around issues with lifetime intrinsics.
-            let scratch = alloca_no_lifetime(bcx, llty, "const");
+            let scratch = alloc_ty(bcx, const_ty, "const");
+            call_lifetime_start(bcx, scratch);
             let lldest = if !const_ty.is_structural() {
                 // Cast pointer to slot, because constants have different types.
                 PointerCast(bcx, scratch, val_ty(global))
@@ -403,10 +402,9 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     datum.to_rvalue_datum(bcx, "__coerce_source"));
 
                 let target = bcx.monomorphize(&target);
-                let llty = type_of::type_of(bcx.ccx(), target);
 
-                // HACK(eddyb) get around issues with lifetime intrinsics.
-                let scratch = alloca_no_lifetime(bcx, llty, "__coerce_target");
+                let scratch = alloc_ty(bcx, target, "__coerce_target");
+                call_lifetime_start(bcx, scratch);
                 let target_datum = Datum::new(scratch, target,
                                               Rvalue::new(ByRef));
                 bcx = coerce_unsized(bcx, expr.span, source_datum, target_datum);
@@ -1440,7 +1438,11 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // temporary stack slot
     let addr = match dest {
         SaveIn(pos) => pos,
-        Ignore => alloc_ty(bcx, ty, "temp"),
+        Ignore => {
+            let llresult = alloc_ty(bcx, ty, "temp");
+            call_lifetime_start(bcx, llresult);
+            llresult
+        }
     };
 
     // This scope holds intermediates that must be cleaned should

@@ -875,8 +875,10 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                               debug_loc: DebugLoc)
                               -> Result<'blk, 'tcx> {
     fn compare_str<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
-                               lhs: ValueRef,
-                               rhs: ValueRef,
+                               lhs_data: ValueRef,
+                               lhs_len: ValueRef,
+                               rhs_data: ValueRef,
+                               rhs_len: ValueRef,
                                rhs_t: Ty<'tcx>,
                                debug_loc: DebugLoc)
                                -> Result<'blk, 'tcx> {
@@ -884,10 +886,6 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                            None,
                            &format!("comparison of `{}`", rhs_t),
                            StrEqFnLangItem);
-        let lhs_data = Load(cx, expr::get_dataptr(cx, lhs));
-        let lhs_len = Load(cx, expr::get_meta(cx, lhs));
-        let rhs_data = Load(cx, expr::get_dataptr(cx, rhs));
-        let rhs_len = Load(cx, expr::get_meta(cx, rhs));
         callee::trans_lang_call(cx, did, &[lhs_data, lhs_len, rhs_data, rhs_len], None, debug_loc)
     }
 
@@ -899,7 +897,13 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
     match rhs_t.sty {
         ty::TyRef(_, mt) => match mt.ty.sty {
-            ty::TyStr => compare_str(cx, lhs, rhs, rhs_t, debug_loc),
+            ty::TyStr => {
+                let lhs_data = Load(cx, expr::get_dataptr(cx, lhs));
+                let lhs_len = Load(cx, expr::get_meta(cx, lhs));
+                let rhs_data = Load(cx, expr::get_dataptr(cx, rhs));
+                let rhs_len = Load(cx, expr::get_meta(cx, rhs));
+                compare_str(cx, lhs_data, lhs_len, rhs_data, rhs_len, rhs_t, debug_loc)
+            }
             ty::TyArray(ty, _) | ty::TySlice(ty) => match ty.sty {
                 ty::TyUint(ast::TyU8) => {
                     // NOTE: cast &[u8] and &[u8; N] to &str and abuse the str_eq lang item,
@@ -907,24 +911,24 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                     let pat_len = val_ty(rhs).element_type().array_length();
                     let ty_str_slice = cx.tcx().mk_static_str();
 
-                    let rhs_str = alloc_ty(cx, ty_str_slice, "rhs_str");
-                    Store(cx, expr::get_dataptr(cx, rhs), expr::get_dataptr(cx, rhs_str));
-                    Store(cx, C_uint(cx.ccx(), pat_len), expr::get_meta(cx, rhs_str));
+                    let rhs_data = GEPi(cx, rhs, &[0, 0]);
+                    let rhs_len = C_uint(cx.ccx(), pat_len);
 
-                    let lhs_str;
+                    let lhs_data;
+                    let lhs_len;
                     if val_ty(lhs) == val_ty(rhs) {
                         // Both the discriminant and the pattern are thin pointers
-                        lhs_str = alloc_ty(cx, ty_str_slice, "lhs_str");
-                        Store(cx, expr::get_dataptr(cx, lhs), expr::get_dataptr(cx, lhs_str));
-                        Store(cx, C_uint(cx.ccx(), pat_len), expr::get_meta(cx, lhs_str));
-                    }
-                    else {
+                        lhs_data = GEPi(cx, lhs, &[0, 0]);
+                        lhs_len = C_uint(cx.ccx(), pat_len);
+                    } else {
                         // The discriminant is a fat pointer
                         let llty_str_slice = type_of::type_of(cx.ccx(), ty_str_slice).ptr_to();
-                        lhs_str = PointerCast(cx, lhs, llty_str_slice);
+                        let lhs_str = PointerCast(cx, lhs, llty_str_slice);
+                        lhs_data = Load(cx, expr::get_dataptr(cx, lhs_str));
+                        lhs_len = Load(cx, expr::get_meta(cx, lhs_str));
                     }
 
-                    compare_str(cx, lhs_str, rhs_str, rhs_t, debug_loc)
+                    compare_str(cx, lhs_data, lhs_len, rhs_data, rhs_len, rhs_t, debug_loc)
                 },
                 _ => cx.sess().bug("only byte strings supported in compare_values"),
             },
@@ -1192,8 +1196,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 let unsized_ty = def.struct_variant().fields.last().map(|field| {
                     monomorphize::field_ty(bcx.tcx(), substs, field)
                 }).unwrap();
-                let llty = type_of::type_of(bcx.ccx(), unsized_ty);
-                let scratch = alloca_no_lifetime(bcx, llty, "__struct_field_fat_ptr");
+                let scratch = alloc_ty(bcx, unsized_ty, "__struct_field_fat_ptr");
                 let data = adt::trans_field_ptr(bcx, &*repr, struct_val, 0, arg_count);
                 let len = Load(bcx, expr::get_meta(bcx, val.val));
                 Store(bcx, data, expr::get_dataptr(bcx, scratch));
@@ -1520,12 +1523,8 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
         match bm {
             ast::BindByValue(_) if !moves_by_default || reassigned =>
             {
-                llmatch = alloca_no_lifetime(bcx,
-                                             llvariable_ty.ptr_to(),
-                                             "__llmatch");
-                let llcopy = alloca_no_lifetime(bcx,
-                                                llvariable_ty,
-                                                &bcx.name(name));
+                llmatch = alloca(bcx, llvariable_ty.ptr_to(), "__llmatch");
+                let llcopy = alloca(bcx, llvariable_ty, &bcx.name(name));
                 trmode = if moves_by_default {
                     TrByMoveIntoCopy(llcopy)
                 } else {
@@ -1536,15 +1535,11 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
                 // in this case, the final type of the variable will be T,
                 // but during matching we need to store a *T as explained
                 // above
-                llmatch = alloca_no_lifetime(bcx,
-                                             llvariable_ty.ptr_to(),
-                                             &bcx.name(name));
+                llmatch = alloca(bcx, llvariable_ty.ptr_to(), &bcx.name(name));
                 trmode = TrByMoveRef;
             }
             ast::BindByRef(_) => {
-                llmatch = alloca_no_lifetime(bcx,
-                                 llvariable_ty,
-                                 &bcx.name(name));
+                llmatch = alloca(bcx, llvariable_ty, &bcx.name(name));
                 trmode = TrByRef;
             }
         };
@@ -1745,6 +1740,7 @@ fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
 
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
+    call_lifetime_start(bcx, llval);
     let bcx = populate(arg, bcx, datum);
     bcx.fcx.schedule_lifetime_end(cleanup_scope, llval);
     bcx.fcx.schedule_drop_mem(cleanup_scope, llval, var_ty, lvalue.dropflag_hint(bcx));

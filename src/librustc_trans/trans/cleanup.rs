@@ -730,8 +730,9 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                         let prev_bcx = self.new_block(true, "resume", None);
                         let personality = self.personality.get().expect(
                             "create_landing_pad() should have set this");
-                        build::Resume(prev_bcx,
-                                      build::Load(prev_bcx, personality));
+                        let lp = build::Load(prev_bcx, personality);
+                        base::call_lifetime_end(prev_bcx, personality);
+                        build::Resume(prev_bcx, lp);
                         prev_llbb = prev_bcx.llbb;
                         break;
                     }
@@ -883,6 +884,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
             }
             None => {
                 let addr = base::alloca(pad_bcx, common::val_ty(llretval), "");
+                base::call_lifetime_start(pad_bcx, addr);
                 self.personality.set(Some(addr));
                 build::Store(pad_bcx, llretval, addr);
             }
