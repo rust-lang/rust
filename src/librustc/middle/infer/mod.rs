@@ -948,15 +948,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         })
     }
 
-    pub fn construct_skolemized_subst(&self,
-                                      generics: &ty::Generics<'tcx>,
-                                      snapshot: &CombinedSnapshot)
-                                      -> (subst::Substs<'tcx>, SkolemizationMap) {
-        /*! See `higher_ranked::construct_skolemized_subst` */
-
-        higher_ranked::construct_skolemized_substs(self, generics, snapshot)
-    }
-
     pub fn skolemize_late_bound_regions<T>(&self,
                                            value: &ty::Binder<T>,
                                            snapshot: &CombinedSnapshot)
