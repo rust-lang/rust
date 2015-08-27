@@ -815,6 +815,26 @@ impl<T, E> IntoIterator for Result<T, E> {
     }
 }
 
+#[stable(since = "1.4.0", feature = "result_iter")]
+impl<'a, T, E> IntoIterator for &'a Result<T, E> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
+}
+
+#[stable(since = "1.4.0", feature = "result_iter")]
+impl<'a, T, E> IntoIterator for &'a mut Result<T, E> {
+    type Item = &'a mut T;
+    type IntoIter = IterMut<'a, T>;
+
+    fn into_iter(mut self) -> IterMut<'a, T> {
+        self.iter_mut()
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // The Result Iterators
 /////////////////////////////////////////////////////////////////////////////
