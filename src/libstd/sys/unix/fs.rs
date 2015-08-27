@@ -376,6 +376,11 @@ impl fmt::Debug for File {
 
         #[cfg(target_os = "macos")]
         fn get_path(fd: c_int) -> Option<PathBuf> {
+            // FIXME: The use of PATH_MAX is generally not encouraged, but it
+            // is inevitable in this case because OS X defines `fcntl` with
+            // `F_GETPATH` in terms of `MAXPATHLEN`, and there are no
+            // alternatives. If a better method is invented, it should be used
+            // instead.
             let mut buf = vec![0;libc::PATH_MAX as usize];
             let n = unsafe { libc::fcntl(fd, libc::F_GETPATH, buf.as_ptr()) };
             if n == -1 {
@@ -383,6 +388,7 @@ impl fmt::Debug for File {
             }
             let l = buf.iter().position(|&c| c == 0).unwrap();
             buf.truncate(l as usize);
+            buf.shrink_to_fit();
             Some(PathBuf::from(OsString::from_vec(buf)))
         }
 
@@ -466,18 +472,27 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     let c_path = try!(cstr(p));
     let p = c_path.as_ptr();
-    let mut len = unsafe { libc::pathconf(p as *mut _, libc::_PC_NAME_MAX) };
-    if len < 0 {
-        len = 1024; // FIXME: read PATH_MAX from C ffi?
+
+    let mut buf = Vec::with_capacity(256);
+
+    loop {
+        let buf_read = try!(cvt(unsafe {
+            libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity() as libc::size_t)
+        })) as usize;
+
+        unsafe { buf.set_len(buf_read); }
+
+        if buf_read != buf.capacity() {
+            buf.shrink_to_fit();
+
+            return Ok(PathBuf::from(OsString::from_vec(buf)));
+        }
+
+        // Trigger the internal buffer resizing logic of `Vec` by requiring
+        // more space than the current capacity. The length is guaranteed to be
+        // the same as the capacity due to the if statement above.
+        buf.reserve(1);
     }
-    let mut buf: Vec<u8> = Vec::with_capacity(len as usize);
-    unsafe {
-        let n = try!(cvt({
-            libc::readlink(p, buf.as_ptr() as *mut c_char, len as size_t)
-        }));
-        buf.set_len(n as usize);
-    }
-    Ok(PathBuf::from(OsString::from_vec(buf)))
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
@@ -514,15 +529,15 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     let path = try!(CString::new(p.as_os_str().as_bytes()));
-    let mut buf = vec![0u8; 16 * 1024];
+    let buf;
     unsafe {
-        let r = c::realpath(path.as_ptr(), buf.as_mut_ptr() as *mut _);
+        let r = c::realpath(path.as_ptr(), ptr::null_mut());
         if r.is_null() {
             return Err(io::Error::last_os_error())
         }
+        buf = CStr::from_ptr(r).to_bytes().to_vec();
+        libc::free(r as *mut _);
     }
-    let p = buf.iter().position(|i| *i == 0).unwrap();
-    buf.truncate(p);
     Ok(PathBuf::from(OsString::from_vec(buf)))
 }
 
