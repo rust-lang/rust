@@ -678,9 +678,10 @@ struct Foo {
 }
 
 fn main() {
-    let x = Foo { x: 0,
-                  x: 0, // error: field `x` specified more than once
-                };
+    let x = Foo {
+                x: 0,
+                x: 0, // error: field `x` specified more than once
+            };
 }
 ```
 
@@ -3002,44 +3003,44 @@ https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 }
 
 register_diagnostics! {
-    E0068,
-    E0085,
-    E0086,
+//  E0068,
+//  E0085,
+//  E0086,
     E0090,
     E0103, // @GuillaumeGomez: I was unable to get this error, try your best!
     E0104,
     E0118,
     E0122,
-    E0123,
-    E0127,
-    E0129,
-    E0141,
+//  E0123,
+//  E0127,
+//  E0129,
+//  E0141,
 //  E0159, // use of trait `{}` as struct constructor
     E0163,
     E0164,
     E0167,
 //  E0168,
-    E0173, // manual implementations of unboxed closure traits are experimental
+//  E0173, // manual implementations of unboxed closure traits are experimental
     E0174, // explicit use of unboxed closure methods are experimental
     E0182,
     E0183,
-    E0187, // can't infer the kind of the closure
-    E0188, // can not cast a immutable reference to a mutable pointer
-    E0189, // deprecated: can only cast a boxed pointer to a boxed object
-    E0190, // deprecated: can only cast a &-pointer to an &-object
+//  E0187, // can't infer the kind of the closure
+//  E0188, // can not cast a immutable reference to a mutable pointer
+//  E0189, // deprecated: can only cast a boxed pointer to a boxed object
+//  E0190, // deprecated: can only cast a &-pointer to an &-object
     E0196, // cannot determine a type for this closure
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
     E0208,
-    E0209, // builtin traits can only be implemented on structs or enums
+//  E0209, // builtin traits can only be implemented on structs or enums
     E0212, // cannot extract an associated type from a higher-ranked trait bound
-    E0213, // associated types are not accepted in this context
+//  E0213, // associated types are not accepted in this context
     E0214, // parenthesized parameters may only be used with a trait
 //  E0215, // angle-bracket notation is not stable with `Fn`
 //  E0216, // parenthetical notation is only stable with `Fn`
-    E0217, // ambiguous associated type, defined in multiple supertraits
-    E0218, // no associated type defined
-    E0219, // associated type defined in higher-ranked supertrait
+//  E0217, // ambiguous associated type, defined in multiple supertraits
+//  E0218, // no associated type defined
+//  E0219, // associated type defined in higher-ranked supertrait
 //  E0222, // Error code E0045 (variadic function must have C calling
            // convention) duplicate
     E0224, // at least one non-builtin train is required for an object type
@@ -3049,20 +3050,20 @@ register_diagnostics! {
     E0229, // associated type bindings are not allowed here
     E0230, // there is no type parameter on trait
     E0231, // only named substitution parameters are allowed
-    E0233,
-    E0234,
+//  E0233,
+//  E0234,
 //  E0235, // structure constructor specifies a structure of type but
     E0236, // no lang item for range syntax
     E0237, // no lang item for range syntax
     E0238, // parenthesized parameters may only be used with a trait
-    E0239, // `next` method of `Iterator` trait has unexpected type
-    E0240,
-    E0241,
+//  E0239, // `next` method of `Iterator` trait has unexpected type
+//  E0240,
+//  E0241,
     E0242, // internal error looking up a definition
     E0245, // not a trait
-    E0246, // invalid recursive type
+//  E0246, // invalid recursive type
     E0247, // found module name used as a type
-    E0319, // trait impls for defaulted traits allowed just for structs/enums
+//  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
     E0328, // cannot implement Unsize explicitly
