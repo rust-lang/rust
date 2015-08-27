@@ -27,8 +27,7 @@ fn main() {
     cx.bt_push(syntax::codemap::ExpnInfo {
         call_site: DUMMY_SP,
         callee: syntax::codemap::NameAndSpan {
-            name: "".to_string(),
-            format: syntax::codemap::MacroBang,
+            format: syntax::codemap::MacroBang(parse::token::intern("")),
             allow_internal_unstable: false,
             span: None,
         }
