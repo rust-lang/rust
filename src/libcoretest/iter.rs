@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use core::iter::*;
-use core::iter::order::*;
 use core::{i8, i16, isize};
 use core::usize;
 
@@ -21,51 +20,51 @@ fn test_lt() {
     let xs = [1,2,3];
     let ys = [1,2,0];
 
-    assert!(!lt(xs.iter(), ys.iter()));
-    assert!(!le(xs.iter(), ys.iter()));
-    assert!( gt(xs.iter(), ys.iter()));
-    assert!( ge(xs.iter(), ys.iter()));
+    assert!(!xs.iter().lt(ys.iter()));
+    assert!(!xs.iter().le(ys.iter()));
+    assert!( xs.iter().gt(ys.iter()));
+    assert!( xs.iter().ge(ys.iter()));
 
-    assert!( lt(ys.iter(), xs.iter()));
-    assert!( le(ys.iter(), xs.iter()));
-    assert!(!gt(ys.iter(), xs.iter()));
-    assert!(!ge(ys.iter(), xs.iter()));
+    assert!( ys.iter().lt(xs.iter()));
+    assert!( ys.iter().le(xs.iter()));
+    assert!(!ys.iter().gt(xs.iter()));
+    assert!(!ys.iter().ge(xs.iter()));
 
-    assert!( lt(empty.iter(), xs.iter()));
-    assert!( le(empty.iter(), xs.iter()));
-    assert!(!gt(empty.iter(), xs.iter()));
-    assert!(!ge(empty.iter(), xs.iter()));
+    assert!( empty.iter().lt(xs.iter()));
+    assert!( empty.iter().le(xs.iter()));
+    assert!(!empty.iter().gt(xs.iter()));
+    assert!(!empty.iter().ge(xs.iter()));
 
     // Sequence with NaN
     let u = [1.0f64, 2.0];
     let v = [0.0f64/0.0, 3.0];
 
-    assert!(!lt(u.iter(), v.iter()));
-    assert!(!le(u.iter(), v.iter()));
-    assert!(!gt(u.iter(), v.iter()));
-    assert!(!ge(u.iter(), v.iter()));
+    assert!(!u.iter().lt(v.iter()));
+    assert!(!u.iter().le(v.iter()));
+    assert!(!u.iter().gt(v.iter()));
+    assert!(!u.iter().ge(v.iter()));
 
     let a = [0.0f64/0.0];
     let b = [1.0f64];
     let c = [2.0f64];
 
-    assert!(lt(a.iter(), b.iter()) == (a[0] <  b[0]));
-    assert!(le(a.iter(), b.iter()) == (a[0] <= b[0]));
-    assert!(gt(a.iter(), b.iter()) == (a[0] >  b[0]));
-    assert!(ge(a.iter(), b.iter()) == (a[0] >= b[0]));
+    assert!(a.iter().lt(b.iter()) == (a[0] <  b[0]));
+    assert!(a.iter().le(b.iter()) == (a[0] <= b[0]));
+    assert!(a.iter().gt(b.iter()) == (a[0] >  b[0]));
+    assert!(a.iter().ge(b.iter()) == (a[0] >= b[0]));
 
-    assert!(lt(c.iter(), b.iter()) == (c[0] <  b[0]));
-    assert!(le(c.iter(), b.iter()) == (c[0] <= b[0]));
-    assert!(gt(c.iter(), b.iter()) == (c[0] >  b[0]));
-    assert!(ge(c.iter(), b.iter()) == (c[0] >= b[0]));
+    assert!(c.iter().lt(b.iter()) == (c[0] <  b[0]));
+    assert!(c.iter().le(b.iter()) == (c[0] <= b[0]));
+    assert!(c.iter().gt(b.iter()) == (c[0] >  b[0]));
+    assert!(c.iter().ge(b.iter()) == (c[0] >= b[0]));
 }
 
 #[test]
 fn test_multi_iter() {
     let xs = [1,2,3,4];
     let ys = [4,3,2,1];
-    assert!(eq(xs.iter(), ys.iter().rev()));
-    assert!(lt(xs.iter(), xs.iter().skip(2)));
+    assert!(xs.iter().eq(ys.iter().rev()));
+    assert!(xs.iter().lt(xs.iter().skip(2)));
 }
 
 #[test]
