@@ -112,7 +112,7 @@ pub struct CrateAnalysis {
 #[derive(Copy, Clone)]
 pub enum DtorKind {
     NoDtor,
-    TraitDtor(DefId, bool)
+    TraitDtor(bool)
 }
 
 impl DtorKind {
@@ -126,7 +126,7 @@ impl DtorKind {
     pub fn has_drop_flag(&self) -> bool {
         match self {
             &NoDtor => false,
-            &TraitDtor(_, flag) => flag
+            &TraitDtor(flag) => flag
         }
     }
 }
@@ -796,12 +796,6 @@ pub struct ctxt<'tcx> {
 
     /// True if the variance has been computed yet; false otherwise.
     pub variance_computed: Cell<bool>,
-
-    /// A mapping from the def ID of an enum or struct type to the def ID
-    /// of the method that implements its destructor. If the type is not
-    /// present in this map, it does not have a destructor. This map is
-    /// populated during the coherence phase of typechecking.
-    pub destructor_for_type: RefCell<DefIdMap<DefId>>,
 
     /// A method will be in this list if and only if it is a destructor.
     pub destructors: RefCell<DefIdSet>,
@@ -1502,7 +1496,62 @@ pub struct DebruijnIndex {
     pub depth: u32,
 }
 
-/// Representation of regions:
+/// Representation of regions.
+///
+/// Unlike types, most region variants are "fictitious", not concrete,
+/// regions. Among these, `ReStatic`, `ReEmpty` and `ReScope` are the only
+/// ones representing concrete regions.
+///
+/// ## Bound Regions
+///
+/// These are regions that are stored behind a binder and must be substituted
+/// with some concrete region before being used. There are 2 kind of
+/// bound regions: early-bound, which are bound in a TypeScheme/TraitDef,
+/// and are substituted by a Substs,  and late-bound, which are part of
+/// higher-ranked types (e.g. `for<'a> fn(&'a ())`) and are substituted by
+/// the likes of `liberate_late_bound_regions`. The distinction exists
+/// because higher-ranked lifetimes aren't supported in all places. See [1][2].
+///
+/// Unlike TyParam-s, bound regions are not supposed to exist "in the wild"
+/// outside their binder, e.g. in types passed to type inference, and
+/// should first be substituted (by skolemized regions, free regions,
+/// or region variables).
+///
+/// ## Skolemized and Free Regions
+///
+/// One often wants to work with bound regions without knowing their precise
+/// identity. For example, when checking a function, the lifetime of a borrow
+/// can end up being assigned to some region parameter. In these cases,
+/// it must be ensured that bounds on the region can't be accidentally
+/// assumed without being checked.
+///
+/// The process of doing that is called "skolemization". The bound regions
+/// are replaced by skolemized markers, which don't satisfy any relation
+/// not explicity provided.
+///
+/// There are 2 kinds of skolemized regions in rustc: `ReFree` and
+/// `ReSkolemized`. When checking an item's body, `ReFree` is supposed
+/// to be used. These also support explicit bounds: both the internally-stored
+/// *scope*, which the region is assumed to outlive, as well as other
+/// relations stored in the `FreeRegionMap`. Note that these relations
+/// aren't checked when you `make_subregion` (or `mk_eqty`), only by
+/// `resolve_regions_and_report_errors`.
+///
+/// When working with higher-ranked types, some region relations aren't
+/// yet known, so you can't just call `resolve_regions_and_report_errors`.
+/// `ReSkolemized` is designed for this purpose. In these contexts,
+/// there's also the risk that some inference variable laying around will
+/// get unified with your skolemized region: if you want to check whether
+/// `for<'a> Foo<'_>: 'a`, and you substitute your bound region `'a`
+/// with a skolemized region `'%a`, the variable `'_` would just be
+/// instantiated to the skolemized region `'%a`, which is wrong because
+/// the inference variable is supposed to satisfy the relation
+/// *for every value of the skolemized region*. To ensure that doesn't
+/// happen, you can use `leak_check`. This is more clearly explained
+/// by infer/higher_ranked/README.md.
+///
+/// [1] http://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
+/// [2] http://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 #[derive(Clone, PartialEq, Eq, Hash, Copy)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
@@ -1532,7 +1581,7 @@ pub enum Region {
 
     /// A skolemized region - basically the higher-ranked version of ReFree.
     /// Should not exist after typeck.
-    ReSkolemized(u32, BoundRegion),
+    ReSkolemized(SkolemizedRegionVid, BoundRegion),
 
     /// Empty lifetime is for data that is never accessed.
     /// Bottom in the region lattice. We treat ReEmpty somewhat
@@ -2165,6 +2214,11 @@ pub struct FloatVid {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct RegionVid {
+    pub index: u32
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SkolemizedRegionVid {
     pub index: u32
 }
 
@@ -2997,7 +3051,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             _ => return Err(TypeIsStructural),
         };
 
-        if adt.has_dtor(tcx) {
+        if adt.has_dtor() {
             return Err(TypeHasDestructor)
         }
 
@@ -3202,6 +3256,7 @@ bitflags! {
         const IS_PHANTOM_DATA     = 1 << 3,
         const IS_SIMD             = 1 << 4,
         const IS_FUNDAMENTAL      = 1 << 5,
+        const IS_NO_DROP_FLAG     = 1 << 6,
     }
 }
 
@@ -3252,6 +3307,7 @@ pub struct FieldDefData<'tcx, 'container: 'tcx> {
 pub struct AdtDefData<'tcx, 'container: 'tcx> {
     pub did: DefId,
     pub variants: Vec<VariantDefData<'tcx, 'container>>,
+    destructor: Cell<Option<DefId>>,
     flags: Cell<AdtFlags>,
 }
 
@@ -3287,6 +3343,9 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
         if attr::contains_name(&attrs, "fundamental") {
             flags = flags | AdtFlags::IS_FUNDAMENTAL;
         }
+        if attr::contains_name(&attrs, "unsafe_no_drop_flag") {
+            flags = flags | AdtFlags::IS_NO_DROP_FLAG;
+        }
         if tcx.lookup_simd(did) {
             flags = flags | AdtFlags::IS_SIMD;
         }
@@ -3300,6 +3359,7 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
             did: did,
             variants: variants,
             flags: Cell::new(flags),
+            destructor: Cell::new(None)
         }
     }
 
@@ -3350,8 +3410,11 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     }
 
     /// Returns whether this type has a destructor.
-    pub fn has_dtor(&self, tcx: &ctxt<'tcx>) -> bool {
-        tcx.destructor_for_type.borrow().contains_key(&self.did)
+    pub fn has_dtor(&self) -> bool {
+        match self.dtor_kind() {
+            NoDtor => false,
+            TraitDtor(..) => true
+        }
     }
 
     /// Asserts this is a struct and returns the struct's unique
@@ -3411,6 +3474,24 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
             def::DefVariant(_, vid, _) => self.variant_with_id(vid),
             def::DefStruct(..) | def::DefTy(..) => self.struct_variant(),
             _ => panic!("unexpected def {:?} in variant_of_def", def)
+        }
+    }
+
+    pub fn destructor(&self) -> Option<DefId> {
+        self.destructor.get()
+    }
+
+    pub fn set_destructor(&self, dtor: DefId) {
+        assert!(self.destructor.get().is_none());
+        self.destructor.set(Some(dtor));
+    }
+
+    pub fn dtor_kind(&self) -> DtorKind {
+        match self.destructor.get() {
+            Some(_) => {
+                TraitDtor(!self.flags.get().intersects(AdtFlags::IS_NO_DROP_FLAG))
+            }
+            None => NoDtor,
         }
     }
 }
@@ -3796,7 +3877,6 @@ impl<'tcx> ctxt<'tcx> {
             normalized_cache: RefCell::new(FnvHashMap()),
             lang_items: lang_items,
             provided_method_sources: RefCell::new(DefIdMap()),
-            destructor_for_type: RefCell::new(DefIdMap()),
             destructors: RefCell::new(DefIdSet()),
             inherent_impls: RefCell::new(DefIdMap()),
             impl_items: RefCell::new(DefIdMap()),
@@ -4619,7 +4699,7 @@ impl<'tcx> TyS<'tcx> {
                             })
                         });
 
-                    if def.has_dtor(cx) {
+                    if def.has_dtor() {
                         res = res | TC::OwnsDtor;
                     }
 
@@ -5957,18 +6037,6 @@ impl<'tcx> ctxt<'tcx> {
         self.with_path(id, |path| ast_map::path_to_string(path))
     }
 
-    /* If struct_id names a struct with a dtor. */
-    pub fn ty_dtor(&self, struct_id: DefId) -> DtorKind {
-        match self.destructor_for_type.borrow().get(&struct_id) {
-            Some(&method_def_id) => {
-                let flag = !self.has_attr(struct_id, "unsafe_no_drop_flag");
-
-                TraitDtor(method_def_id, flag)
-            }
-            None => NoDtor,
-        }
-    }
-
     pub fn with_path<T, F>(&self, id: DefId, f: F) -> T where
         F: FnOnce(ast_map::PathElems) -> T,
     {
@@ -6051,6 +6119,11 @@ impl<'tcx> ctxt<'tcx> {
         // when reverse-variance goes away, a transmute::<AdtDefMaster,AdtDef>
         // woud be needed here.
         self.lookup_adt_def_master(did)
+    }
+
+    /// Return the list of all interned ADT definitions
+    pub fn adt_defs(&self) -> Vec<AdtDef<'tcx>> {
+        self.adt_defs.borrow().values().cloned().collect()
     }
 
     /// Given the did of an item, returns its full set of predicates.
@@ -6700,8 +6773,8 @@ impl<'tcx> ctxt<'tcx> {
     /// Returns true if this ADT is a dtorck type, i.e. whether it being
     /// safe for destruction requires it to be alive
     fn is_adt_dtorck(&self, adt: AdtDef<'tcx>) -> bool {
-        let dtor_method = match self.destructor_for_type.borrow().get(&adt.did) {
-            Some(dtor) => *dtor,
+        let dtor_method = match adt.destructor() {
+            Some(dtor) => dtor,
             None => return false
         };
         let impl_did = self.impl_of_method(dtor_method).unwrap_or_else(|| {

@@ -373,7 +373,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         let sc = self.skolemization_count.get();
         self.skolemization_count.set(sc + 1);
-        ReSkolemized(sc, br)
+        ReSkolemized(ty::SkolemizedRegionVid { index: sc }, br)
     }
 
     pub fn new_bound(&self, debruijn: ty::DebruijnIndex) -> Region {

@@ -180,7 +180,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         mc::cat_interior(ref b, mc::InteriorElement(Kind::Pattern, _)) => {
             match b.ty.sty {
                 ty::TyStruct(def, _) | ty::TyEnum(def, _) => {
-                    if def.has_dtor(bccx.tcx) {
+                    if def.has_dtor() {
                         Some(cmt.clone())
                     } else {
                         check_and_get_illegal_move_origin(bccx, b)

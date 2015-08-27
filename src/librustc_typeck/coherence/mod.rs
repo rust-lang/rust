@@ -311,9 +311,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             match self_type.ty.sty {
                 ty::TyEnum(type_def, _) |
                 ty::TyStruct(type_def, _) => {
-                    tcx.destructor_for_type
-                       .borrow_mut()
-                       .insert(type_def.did, method_def_id.def_id());
+                    type_def.set_destructor(method_def_id.def_id());
                     tcx.destructors
                        .borrow_mut()
                        .insert(method_def_id.def_id());

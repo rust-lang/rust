@@ -239,8 +239,9 @@ impl OverloadedCallType {
 // mem_categorization, it requires a TYPER, which is a type that
 // supplies types from the tree. After type checking is complete, you
 // can just use the tcx as the typer.
-
-pub struct ExprUseVisitor<'d, 't, 'a: 't, 'tcx:'a+'d> {
+//
+// FIXME(stage0): the :'t here is probably only important for stage0
+pub struct ExprUseVisitor<'d, 't, 'a: 't, 'tcx:'a+'d+'t> {
     typer: &'t infer::InferCtxt<'a, 'tcx>,
     mc: mc::MemCategorizationContext<'t, 'a, 'tcx>,
     delegate: &'d mut (Delegate<'tcx>+'d),

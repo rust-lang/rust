@@ -16,11 +16,9 @@
 use back::link::*;
 use llvm;
 use llvm::{ValueRef, get_param};
-use metadata::csearch;
-use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::lang_items::ExchangeFreeFnLangItem;
-use middle::subst;
-use middle::subst::{Subst, Substs};
+use middle::subst::{Substs};
+use middle::traits;
 use middle::ty::{self, Ty};
 use trans::adt;
 use trans::adt::GetDtorType; // for tcx.dtor_type()
@@ -33,16 +31,15 @@ use trans::common::*;
 use trans::debuginfo::DebugLoc;
 use trans::declare;
 use trans::expr;
-use trans::foreign;
-use trans::inline;
 use trans::machine::*;
 use trans::monomorphize;
-use trans::type_of::{type_of, type_of_dtor, sizing_type_of, align_of};
+use trans::type_of::{type_of, sizing_type_of, align_of};
 use trans::type_::Type;
 
 use arena::TypedArena;
 use libc::c_uint;
 use syntax::ast;
+use syntax::codemap::DUMMY_SP;
 
 pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                            v: ValueRef,
@@ -287,10 +284,7 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                       t: Ty<'tcx>,
-                                      struct_data: ValueRef,
-                                      dtor_did: DefId,
-                                      class_did: DefId,
-                                      substs: &subst::Substs<'tcx>)
+                                      struct_data: ValueRef)
                                       -> Block<'blk, 'tcx> {
     assert!(type_is_sized(bcx.tcx(), t), "Precondition: caller must ensure t is sized");
 
@@ -318,59 +312,19 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let drop_flag_dtor_needed = ICmp(bcx, llvm::IntEQ, loaded, init_val, DebugLoc::None);
     with_cond(bcx, drop_flag_dtor_needed, |cx| {
-        trans_struct_drop(cx, t, struct_data, dtor_did, class_did, substs)
+        trans_struct_drop(cx, t, struct_data)
     })
 }
-
-pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                              did: DefId,
-                              parent_id: DefId,
-                              substs: &Substs<'tcx>)
-                              -> ValueRef {
-    let _icx = push_ctxt("trans_res_dtor");
-    let did = inline::maybe_instantiate_inline(ccx, did);
-
-    if !substs.types.is_empty() {
-        assert_eq!(did.krate, LOCAL_CRATE);
-
-        // Since we're in trans we don't care for any region parameters
-        let substs = ccx.tcx().mk_substs(Substs::erased(substs.types.clone()));
-
-        let (val, _, _) = monomorphize::monomorphic_fn(ccx, did, substs, None);
-
-        val
-    } else if did.is_local() {
-        get_item_val(ccx, did.node)
-    } else {
-        let tcx = ccx.tcx();
-        let name = csearch::get_symbol(&ccx.sess().cstore, did);
-        let class_ty = tcx.lookup_item_type(parent_id).ty.subst(tcx, substs);
-        let llty = type_of_dtor(ccx, class_ty);
-        foreign::get_extern_fn(ccx, &mut *ccx.externs().borrow_mut(), &name[..], llvm::CCallConv,
-                               llty, ccx.tcx().mk_nil())
-    }
-}
-
 fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  t: Ty<'tcx>,
-                                 v0: ValueRef,
-                                 dtor_did: DefId,
-                                 class_did: DefId,
-                                 substs: &subst::Substs<'tcx>)
+                                 v0: ValueRef)
                                  -> Block<'blk, 'tcx>
 {
     debug!("trans_struct_drop t: {}", t);
+    let tcx = bcx.tcx();
+    let mut bcx = bcx;
 
-    // Find and call the actual destructor
-    let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, class_did, substs);
-
-    // Class dtors have no explicit args, so the params should
-    // just consist of the environment (self).
-    let params = unsafe {
-        let ty = Type::from_ref(llvm::LLVMTypeOf(dtor_addr));
-        ty.element_type().func_params()
-    };
-    assert_eq!(params.len(), if type_is_sized(bcx.tcx(), t) { 1 } else { 2 });
+    let def = t.ty_adt_def().unwrap();
 
     // Be sure to put the contents into a scope so we can use an invoke
     // instruction to call the user destructor but still call the field
@@ -384,14 +338,36 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // discriminant (if any) in case of variant swap in drop code.
     bcx.fcx.schedule_drop_adt_contents(cleanup::CustomScope(contents_scope), v0, t);
 
-    let glue_type = get_drop_glue_type(bcx.ccx(), t);
-    let dtor_ty = bcx.tcx().mk_ctor_fn(class_did, &[glue_type], bcx.tcx().mk_nil());
-    let (_, bcx) = if type_is_sized(bcx.tcx(), t) {
-        invoke(bcx, dtor_addr, &[v0], dtor_ty, DebugLoc::None)
+    let (sized_args, unsized_args);
+    let args: &[ValueRef] = if type_is_sized(tcx, t) {
+        sized_args = [v0];
+        &sized_args
     } else {
-        let args = [Load(bcx, expr::get_dataptr(bcx, v0)), Load(bcx, expr::get_meta(bcx, v0))];
-        invoke(bcx, dtor_addr, &args, dtor_ty, DebugLoc::None)
+        unsized_args = [Load(bcx, expr::get_dataptr(bcx, v0)), Load(bcx, expr::get_meta(bcx, v0))];
+        &unsized_args
     };
+
+    bcx = callee::trans_call_inner(bcx, DebugLoc::None, |bcx, _| {
+        let trait_ref = ty::Binder(ty::TraitRef {
+            def_id: tcx.lang_items.drop_trait().unwrap(),
+            substs: tcx.mk_substs(Substs::trans_empty().with_self_ty(t))
+        });
+        let vtbl = match fulfill_obligation(bcx.ccx(), DUMMY_SP, trait_ref) {
+            traits::VtableImpl(data) => data,
+            _ => tcx.sess.bug(&format!("dtor for {:?} is not an impl???", t))
+        };
+        let dtor_did = def.destructor().unwrap();
+        let datum = callee::trans_fn_ref_with_substs(bcx.ccx(),
+                                                     dtor_did,
+                                                     ExprId(0),
+                                                     bcx.fcx.param_substs,
+                                                     vtbl.substs);
+        callee::Callee {
+            bcx: bcx,
+            data: callee::Fn(datum.val),
+            ty: datum.ty
+        }
+    }, callee::ArgVals(args), Some(expr::Ignore)).bcx;
 
     bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx, contents_scope)
 }
@@ -557,27 +533,26 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                 })
             }
         }
-        ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
-            let tcx = bcx.tcx();
-            match (tcx.ty_dtor(def.did), skip_dtor) {
-                (ty::TraitDtor(dtor, true), false) => {
+        ty::TyStruct(def, _) | ty::TyEnum(def, _) => {
+            match (def.dtor_kind(), skip_dtor) {
+                (ty::TraitDtor(true), false) => {
                     // FIXME(16758) Since the struct is unsized, it is hard to
                     // find the drop flag (which is at the end of the struct).
                     // Lets just ignore the flag and pretend everything will be
                     // OK.
                     if type_is_sized(bcx.tcx(), t) {
-                        trans_struct_drop_flag(bcx, t, v0, dtor, def.did, substs)
+                        trans_struct_drop_flag(bcx, t, v0)
                     } else {
                         // Give the user a heads up that we are doing something
                         // stupid and dangerous.
                         bcx.sess().warn(&format!("Ignoring drop flag in destructor for {}\
                                                  because the struct is unsized. See issue\
                                                  #16758", t));
-                        trans_struct_drop(bcx, t, v0, dtor, def.did, substs)
+                        trans_struct_drop(bcx, t, v0)
                     }
                 }
-                (ty::TraitDtor(dtor, false), false) => {
-                    trans_struct_drop(bcx, t, v0, dtor, def.did, substs)
+                (ty::TraitDtor(false), false) => {
+                    trans_struct_drop(bcx, t, v0)
                 }
                 (ty::NoDtor, _) | (_, true) => {
                     // No dtor? Just the default case

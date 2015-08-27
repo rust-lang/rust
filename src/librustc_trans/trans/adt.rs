@@ -250,7 +250,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 monomorphize::field_ty(cx.tcx(), substs, field)
             }).collect::<Vec<_>>();
             let packed = cx.tcx().lookup_packed(def.did);
-            let dtor = cx.tcx().ty_dtor(def.did).has_drop_flag();
+            let dtor = def.dtor_kind().has_drop_flag();
             if dtor {
                 ftys.push(cx.tcx().dtor_type());
             }
@@ -265,7 +265,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let hint = *cx.tcx().lookup_repr_hints(def.did).get(0)
                 .unwrap_or(&attr::ReprAny);
 
-            let dtor = cx.tcx().ty_dtor(def.did).has_drop_flag();
+            let dtor = def.dtor_kind().has_drop_flag();
 
             if cases.is_empty() {
                 // Uninhabitable; represent as unit
