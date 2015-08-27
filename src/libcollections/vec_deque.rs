@@ -20,7 +20,7 @@
 
 use core::cmp::Ordering;
 use core::fmt;
-use core::iter::{self, repeat, FromIterator};
+use core::iter::{repeat, FromIterator};
 use core::ops::{Index, IndexMut};
 use core::ptr;
 use core::slice;
@@ -1676,7 +1676,7 @@ impl<A: Eq> Eq for VecDeque<A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialOrd> PartialOrd for VecDeque<A> {
     fn partial_cmp(&self, other: &VecDeque<A>) -> Option<Ordering> {
-        iter::order::partial_cmp(self.iter(), other.iter())
+        self.iter().partial_cmp(other.iter())
     }
 }
 
@@ -1684,7 +1684,7 @@ impl<A: PartialOrd> PartialOrd for VecDeque<A> {
 impl<A: Ord> Ord for VecDeque<A> {
     #[inline]
     fn cmp(&self, other: &VecDeque<A>) -> Ordering {
-        iter::order::cmp(self.iter(), other.iter())
+        self.iter().cmp(other.iter())
     }
 }
 
