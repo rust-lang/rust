@@ -8,7 +8,7 @@ use syntax::ast::*;
 use syntax::codemap::Spanned;
 
 use eq_op::is_exp_equal;
-use utils::{match_type, span_help_and_lint, walk_ptrs_ty, get_parent_expr};
+use utils::{match_type, span_lint, walk_ptrs_ty, get_parent_expr};
 use utils::STRING_PATH;
 
 declare_lint! {
@@ -45,19 +45,15 @@ impl LintPass for StringAdd {
                         }
                     }
                 }
-                span_help_and_lint(cx, STRING_ADD, e.span,
+                span_lint(cx, STRING_ADD, e.span,
                     "you added something to a string. \
-                     Consider using `String::push_str()` instead",
-                    "for further information see https://github.com/\
-                     Manishearth/rust-clippy/wiki#string_add")
+                     Consider using `String::push_str()` instead")
             }
         } else if let &ExprAssign(ref target, ref  src) = &e.node {
             if is_string(cx, target) && is_add(cx, src, target) {
-                span_help_and_lint(cx, STRING_ADD_ASSIGN, e.span,
+                span_lint(cx, STRING_ADD_ASSIGN, e.span,
                     "you assigned the result of adding something to this string. \
-                     Consider using `String::push_str()` instead",
-                    "for further information see https://github.com/\
-                    Manishearth/rust-clippy/wiki#string_add_assign")
+                     Consider using `String::push_str()` instead")
             }
         }
     }

@@ -31,17 +31,14 @@ impl LintPass for TypePass {
                     span_help_and_lint(
                         cx, BOX_VEC, ast_ty.span,
                         "you seem to be trying to use `Box<Vec<T>>`. Did you mean to use `Vec<T>`?",
-                        "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation. \
-                         for further information see https://github.com/\
-                         Manishearth/rust-clippy/wiki#box_vec");
+                        "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
                 }
             }
             else if match_type(cx, ty, &LL_PATH) {
                 span_help_and_lint(
                     cx, LINKEDLIST, ast_ty.span,
                     "I see you're using a LinkedList! Perhaps you meant some other data structure?",
-                    "a RingBuf might work; for further information see \
-                     https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask");
+                    "a RingBuf might work");
             }
         }
     }
@@ -141,15 +138,12 @@ fn span_precision_loss_lint(cx: &Context, expr: &Expr, cast_from: &ty::TyS, cast
     let from_nbits_str = if arch_dependent {"64".to_owned()}
                          else if is_isize_or_usize(cast_from) {"32 or 64".to_owned()}
                          else {int_ty_to_nbits(cast_from).to_string()};
-    span_help_and_lint(cx, CAST_PRECISION_LOSS, expr.span,
+    span_lint(cx, CAST_PRECISION_LOSS, expr.span,
         &format!("casting {0} to {1} causes a loss of precision {2}\
             ({0} is {3} bits wide, but {1}'s mantissa is only {4} bits wide)",
             cast_from, if cast_to_f64 {"f64"} else {"f32"},
             if arch_dependent {arch_dependent_str} else {""},
-            from_nbits_str,
-            mantissa_nbits),
-        "for further information see https://github.com/\
-        Manishearth/rust-clippy/wiki#cast_precision_loss");
+            from_nbits_str, mantissa_nbits));
 }
 
 enum ArchSuffix {
@@ -183,26 +177,22 @@ fn check_truncation_and_wrapping(cx: &Context, expr: &Expr, cast_from: &ty::TyS,
                 ),
         };
     if span_truncation {
-        span_help_and_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
+        span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
             &format!("casting {} to {} may truncate the value{}",
                cast_from, cast_to,
                match suffix_truncation {
                    ArchSuffix::_32 => arch_32_suffix,
                    ArchSuffix::_64 => arch_64_suffix,
-                   ArchSuffix::None => "" }),
-            "for further information see https://github.com/\
-            Manishearth/rust-clippy/wiki#cast_possible_truncation");
+                   ArchSuffix::None => "" }));
     }
     if span_wrap {
-        span_help_and_lint(cx, CAST_POSSIBLE_WRAP, expr.span,
+        span_lint(cx, CAST_POSSIBLE_WRAP, expr.span,
             &format!("casting {} to {} may wrap around the value{}",
                 cast_from, cast_to,
                 match suffix_wrap {
                     ArchSuffix::_32 => arch_32_suffix,
                     ArchSuffix::_64 => arch_64_suffix,
-                    ArchSuffix::None => "" }),
-            "for further information see https://github.com/\
-            Manishearth/rust-clippy/wiki#cast_possible_wrap");
+                    ArchSuffix::None => "" }));
     }
 }
 
@@ -227,37 +217,29 @@ impl LintPass for CastPass {
                         }
                     },
                     (false, true) => {
-                        span_help_and_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
-                            &format!("casting {} to {} may truncate the value", 
-                                  cast_from, cast_to),
-                            "for further information see https://github.com/\
-                            Manishearth/rust-clippy/wiki#cast_possible_truncation");
+                        span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span,
+                            &format!("casting {} to {} may truncate the value",
+                                  cast_from, cast_to));
                         if !cast_to.is_signed() {
-                            span_help_and_lint(cx, CAST_SIGN_LOSS, expr.span,
-                                &format!("casting {} to {} may lose the sign of the value", 
-                                    cast_from, cast_to),
-                                "for further information see https://github.com/\
-                                Manishearth/rust-clippy/wiki#cast_sign_loss");
+                            span_lint(cx, CAST_SIGN_LOSS, expr.span,
+                                &format!("casting {} to {} may lose the sign of the value",
+                                    cast_from, cast_to));
                         }
                     },
                     (true, true) => {
                         if cast_from.is_signed() && !cast_to.is_signed() {
-                            span_help_and_lint(cx, CAST_SIGN_LOSS, expr.span,
-                                &format!("casting {} to {} may lose the sign of the value", 
-                                    cast_from, cast_to),
-                                "for further information see https://github.com/\
-                                Manishearth/rust-clippy/wiki#cast_sign_loss");
+                            span_lint(cx, CAST_SIGN_LOSS, expr.span,
+                                &format!("casting {} to {} may lose the sign of the value",
+                                    cast_from, cast_to));
                         }
                         check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
                     }
                     (false, false) => {
                         if let (&ty::TyFloat(ast::TyF64),
                                 &ty::TyFloat(ast::TyF32)) = (&cast_from.sty, &cast_to.sty) {
-                            span_help_and_lint(cx, CAST_POSSIBLE_TRUNCATION, 
-                                expr.span, 
-                                "casting f64 to f32 may truncate the value",
-                                "for further information see https://github.com/\
-                                Manishearth/rust-clippy/wiki#cast_possible_truncation");
+                            span_lint(cx, CAST_POSSIBLE_TRUNCATION,
+                                expr.span,
+                                "casting f64 to f32 may truncate the value");
                         }
                     }
                 }
