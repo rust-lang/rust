@@ -98,6 +98,13 @@ pub trait Iterator {
     ///
     /// An upper bound of `None` means either there is no known upper bound, or
     /// the upper bound does not fit within a `usize`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let it = (0..10).filter(|x| x % 2 == 0).chain(15..20);
+    /// assert_eq!((5, Some(15)), it.size_hint());
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn size_hint(&self) -> (usize, Option<usize>) { (0, None) }
