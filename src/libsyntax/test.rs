@@ -30,7 +30,7 @@ use ext::expand::ExpansionConfig;
 use fold::{Folder, MoveMap};
 use fold;
 use owned_slice::OwnedSlice;
-use parse::token::InternedString;
+use parse::token::{intern, InternedString};
 use parse::{token, ParseSess};
 use print::pprust;
 use {ast, ast_util};
@@ -265,7 +265,7 @@ fn generate_test_harness(sess: &ParseSess,
     cx.ext_cx.bt_push(ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
-            format: MacroAttribute("test".to_string()),
+            format: MacroAttribute(intern("test")),
             span: None,
             allow_internal_unstable: false,
         }
@@ -297,7 +297,7 @@ fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
     let info = ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
-            format: MacroAttribute("test".to_string()),
+            format: MacroAttribute(intern("test")),
             span: None,
             allow_internal_unstable: true,
         }

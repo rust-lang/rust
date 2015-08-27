@@ -543,7 +543,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac,
                         fld.cx.bt_push(ExpnInfo {
                                 call_site: span,
                                 callee: NameAndSpan {
-                                    format: MacroBang(extname.to_string()),
+                                    format: MacroBang(extname),
                                     span: exp_span,
                                     allow_internal_unstable: allow_internal_unstable,
                                 },
@@ -721,7 +721,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
-                            format: MacroBang(extname.to_string()),
+                            format: MacroBang(extname),
                             span: span,
                             allow_internal_unstable: allow_internal_unstable,
                         }
@@ -740,7 +740,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
-                            format: MacroBang(extname.to_string()),
+                            format: MacroBang(extname),
                             span: span,
                             allow_internal_unstable: allow_internal_unstable,
                         }
@@ -760,7 +760,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
-                            format: MacroBang(extname.to_string()),
+                            format: MacroBang(extname),
                             span: None,
                             // `macro_rules!` doesn't directly allow
                             // unstable (this is orthogonal to whether
@@ -1087,7 +1087,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                     fld.cx.bt_push(ExpnInfo {
                         call_site: span,
                         callee: NameAndSpan {
-                            format: MacroBang(extname.to_string()),
+                            format: MacroBang(extname),
                             span: tt_span,
                             allow_internal_unstable: allow_internal_unstable,
                         }
@@ -1289,8 +1289,8 @@ fn expand_decorators(a: Annotatable,
                      new_attrs: &mut Vec<ast::Attribute>)
 {
     for attr in a.attrs() {
-        let mname = attr.name();
-        match fld.cx.syntax_env.find(&intern(&mname)) {
+        let mname = intern(&attr.name());
+        match fld.cx.syntax_env.find(&mname) {
             Some(rc) => match *rc {
                 Decorator(ref dec) => {
                     attr::mark_used(&attr);
@@ -1298,7 +1298,7 @@ fn expand_decorators(a: Annotatable,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
                         callee: NameAndSpan {
-                            format: MacroAttribute(mname.to_string()),
+                            format: MacroAttribute(mname),
                             span: Some(attr.span),
                             // attributes can do whatever they like,
                             // for now.
@@ -1325,7 +1325,7 @@ fn expand_decorators(a: Annotatable,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
                         callee: NameAndSpan {
-                            format: MacroAttribute(mname.to_string()),
+                            format: MacroAttribute(mname),
                             span: Some(attr.span),
                             // attributes can do whatever they like,
                             // for now.
@@ -1366,16 +1366,16 @@ fn expand_item_multi_modifier(mut it: Annotatable,
     }
 
     for attr in &modifiers {
-        let mname = attr.name();
+        let mname = intern(&attr.name());
 
-        match fld.cx.syntax_env.find(&intern(&mname)) {
+        match fld.cx.syntax_env.find(&mname) {
             Some(rc) => match *rc {
                 MultiModifier(ref mac) => {
                     attr::mark_used(attr);
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
                         callee: NameAndSpan {
-                            format: MacroAttribute(mname.to_string()),
+                            format: MacroAttribute(mname),
                             span: Some(attr.span),
                             // attributes can do whatever they like,
                             // for now
@@ -1414,16 +1414,16 @@ fn expand_item_modifiers(mut it: P<ast::Item>,
     }
 
     for attr in &modifiers {
-        let mname = attr.name();
+        let mname = intern(&attr.name());
 
-        match fld.cx.syntax_env.find(&intern(&mname)) {
+        match fld.cx.syntax_env.find(&mname) {
             Some(rc) => match *rc {
                 Modifier(ref mac) => {
                     attr::mark_used(attr);
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
                         callee: NameAndSpan {
-                            format: MacroAttribute(mname.to_string()),
+                            format: MacroAttribute(mname),
                             span: Some(attr.span),
                             // attributes can do whatever they like,
                             // for now
