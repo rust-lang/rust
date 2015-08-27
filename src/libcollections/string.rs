@@ -768,18 +768,27 @@ impl fmt::Display for FromUtf16Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
-    fn from_iter<I: IntoIterator<Item=char>>(iter: I) -> String {
+    fn from_iter<I: IntoIterator<Item=char>>(iterable: I) -> String {
         let mut buf = String::new();
-        buf.extend(iter);
+        buf.extend(iterable);
         buf
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
-    fn from_iter<I: IntoIterator<Item=&'a str>>(iter: I) -> String {
+    fn from_iter<I: IntoIterator<Item=&'a str>>(iterable: I) -> String {
         let mut buf = String::new();
-        buf.extend(iter);
+        buf.extend(iterable);
+        buf
+    }
+}
+
+#[stable(feature = "extend_string", since = "1.4.0")]
+impl FromIterator<String> for String {
+    fn from_iter<I: IntoIterator<Item=String>>(iterable: I) -> String {
+        let mut buf = String::new();
+        buf.extend(iterable);
         buf
     }
 }
@@ -798,8 +807,8 @@ impl Extend<char> for String {
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a> Extend<&'a char> for String {
-    fn extend<I: IntoIterator<Item=&'a char>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
+    fn extend<I: IntoIterator<Item=&'a char>>(&mut self, iterable: I) {
+        self.extend(iterable.into_iter().cloned());
     }
 }
 
@@ -808,6 +817,15 @@ impl<'a> Extend<&'a str> for String {
     fn extend<I: IntoIterator<Item=&'a str>>(&mut self, iterable: I) {
         for s in iterable {
             self.push_str(s)
+        }
+    }
+}
+
+#[stable(feature = "extend_string", since = "1.4.0")]
+impl Extend<String> for String {
+    fn extend<I: IntoIterator<Item=String>>(&mut self, iterable: I) {
+        for s in iterable {
+            self.push_str(&s)
         }
     }
 }
