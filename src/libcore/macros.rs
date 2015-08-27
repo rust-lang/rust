@@ -239,7 +239,8 @@ macro_rules! writeln {
 /// ```
 #[macro_export]
 #[unstable(feature = "core",
-           reason = "relationship with panic is unclear")]
+           reason = "relationship with panic is unclear",
+           issue = "27701")]
 macro_rules! unreachable {
     () => ({
         panic!("internal error: entered unreachable code")
@@ -256,7 +257,8 @@ macro_rules! unreachable {
 /// message `"not yet implemented"` when executed.
 #[macro_export]
 #[unstable(feature = "core",
-           reason = "relationship with panic is unclear")]
+           reason = "relationship with panic is unclear",
+           issue = "27701")]
 macro_rules! unimplemented {
     () => (panic!("not yet implemented"))
 }
