@@ -1,7 +1,7 @@
-- Feature Name: set_recovery
+- Feature Name: `set_recovery`
 - Start Date: 2015-07-08
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1194](https://github.com/rust-lang/rfcs/pull/1194)
+- Rust Issue: [rust-lang/rust#28050](https://github.com/rust-lang/rust/issues/28050)
 
 # Summary
 
