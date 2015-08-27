@@ -5,8 +5,8 @@
 
 # Summary
 
-Move `std::thread::catch_panic` to `std::panic::catch` after removing the `Send`
-and `'static` bounds from the closure parameter.
+Move `std::thread::catch_panic` to `std::panic::recover` after removing the
+`Send` bound from the closure parameter.
 
 # Motivation
 
@@ -180,11 +180,11 @@ this RFC.
 
 At its heart, the change this RFC is proposing is to move
 `std::thread::catch_panic` to a new `std::panic` module and rename the function
-to `catch`. Additionally, the `Send` and `'static` bounds from the closure
-parameter will be removed, modifying the signature to be:
+to `catch`. Additionally, the `Send` bound from the closure parameter will be
+removed (`'static` will stay), modifying the signature to be:
 
 ```rust
-fn catch<F: FnOnce() -> R, R>(f: F) -> thread::Result<R>
+fn recover<F: FnOnce() -> R + 'static, R>(f: F) -> thread::Result<R>
 ```
 
 More generally, however, this RFC also claims that this stable function does
@@ -197,10 +197,9 @@ exist in the form of panics. What this RFC is adding, however, is a construct
 via which to catch these exceptions within a thread, bringing the standard
 library closer to the exception support in other languages.
 
-Catching a panic (and especially not having `'static` on the bounds list) makes
-it easier to observe broken invariants of data structures shared across the
-`catch_panic` boundary, which can possibly increase the likelihood of exception
-safety issues arising.
+Catching a panic makes it easier to observe broken invariants of data structures
+shared across the `catch_panic` boundary, which can possibly increase the
+likelihood of exception safety issues arising.
 
 The risk of this step is that catching panics becomes an idiomatic way to deal
 with error-handling, thereby making exception safety much more of a headache
@@ -277,26 +276,24 @@ roughly analogous to an opaque "an unexpected error has occurred" message.
 Stabilizing `catch_panic` does little to change the tradeoffs around `Result`
 and `panic` that led to these conventions.
 
-## Why remove the bounds?
+## Why remove `Send`?
 
-There are a few reasons to remove the `'static` and `Send` bounds on the
-`catch_panic` function:
+One of the primary use cases of `recover` is in an FFI context, where lots
+of `*mut` and `*const` pointers are flying around. These two types aren't
+`Send` by default, so having their values cross the `catch_panic` boundary
+would be highly un-ergonomic (albeit still possible). As a result, this RFC
+proposes removing the `Send` bound from the function.
 
-* One of the primary use cases of `catch_panic` is in an FFI context, where lots
-  of `*mut` and `*const` pointers are flying around. These two types aren't
-  `Send` by default, so having their values cross the `catch_panic` boundary
-  would be highly un-ergonomic (albeit still possible). As a result, this RFC
-  proposes removing the `Send` bound from the function.
+## Why keep `'static`?
 
-* A reason to remove the `'static` bound is that it doesn't provide rock-solid
-  exception-safety mitigation. Using thread-local storage it's possible to
-  share mutable data across a call to `catch_panic` even if that data isn't
-  `'static`.
+This RFC proposes leaving the `'static` bound on the closure parameter for now.
+There isn't a clearly strong case (such as for `Send`) to remove this parameter
+just yet, and it helps mitigate exception safety issues related to shared
+references across the `recover` boundary.
 
-* Borrowed data, in particular, is helpful for thread pools that need
-  to execute closures with borrowed data within them; essentially, the worker
-  threads are executing multiple "semantic threads" over their lifetime, and the
-  `catch_panic` boundary represents the end of these "semantic threads".
+There is conversely also not a clearly strong case for *keeping* this bound, but
+as it's the more conservative route (and backwards compatible to remove) it will
+remain for now.
 
 # Drawbacks
 
