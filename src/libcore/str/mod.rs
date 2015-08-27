@@ -827,7 +827,7 @@ generate_pattern_iterators! {
 /// Created with the method `.lines()`.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct Lines<'a>(SplitTerminator<'a, char>);
+pub struct Lines<'a>(Map<SplitTerminator<'a, char>, LinesAnyMap>);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Lines<'a> {
@@ -854,8 +854,10 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 
 /// Created with the method `.lines_any()`.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.4.0", reason = "use lines()/Lines instead now")]
 #[derive(Clone)]
-pub struct LinesAny<'a>(Map<Lines<'a>, LinesAnyMap>);
+#[allow(deprecated)]
+pub struct LinesAny<'a>(Lines<'a>);
 
 /// A nameable, clonable fn type
 #[derive(Clone)]
@@ -887,6 +889,7 @@ impl<'a> FnOnce<(&'a str,)> for LinesAnyMap {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl<'a> Iterator for LinesAny<'a> {
     type Item = &'a str;
 
@@ -902,6 +905,7 @@ impl<'a> Iterator for LinesAny<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl<'a> DoubleEndedIterator for LinesAny<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> {
@@ -1289,6 +1293,7 @@ pub trait StrExt {
     fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
     fn lines(&self) -> Lines;
+    #[allow(deprecated)]
     fn lines_any(&self) -> LinesAny;
     fn char_len(&self) -> usize;
     fn slice_chars(&self, begin: usize, end: usize) -> &str;
@@ -1428,12 +1433,13 @@ impl StrExt for str {
     }
     #[inline]
     fn lines(&self) -> Lines {
-        Lines(self.split_terminator('\n'))
+        Lines(self.split_terminator('\n').map(LinesAnyMap))
     }
 
     #[inline]
+    #[allow(deprecated)]
     fn lines_any(&self) -> LinesAny {
-        LinesAny(self.lines().map(LinesAnyMap))
+        LinesAny(self.lines())
     }
 
     #[inline]
