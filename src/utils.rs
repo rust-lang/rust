@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use syntax::ast::*;
-use syntax::codemap::{ExpnInfo, Span};
+use syntax::codemap::{ExpnInfo, Span, ExpnFormat};
 use rustc::ast_map::Node::NodeExpr;
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty;
@@ -18,6 +18,14 @@ pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "Linke
 pub fn in_macro(cx: &Context, opt_info: Option<&ExpnInfo>) -> bool {
     // no ExpnInfo = no macro
     opt_info.map_or(false, |info| {
+        if info.callee.format == ExpnFormat::CompilerExpansion {
+            if info.callee.name == "closure expansion" {
+                return false;
+            }
+        } else if info.callee.format == ExpnFormat::MacroAttribute {
+            // these are all plugins
+            return true;
+        }
         // no span for the callee = external macro
         info.callee.span.map_or(true, |span| {
             // no snippet = external macro or compiler-builtin expansion
@@ -31,6 +39,7 @@ pub fn in_macro(cx: &Context, opt_info: Option<&ExpnInfo>) -> bool {
 }
 
 /// invokes in_macro with the expansion info of the given span
+/// slightly heavy, try to use this after other checks have already happened
 pub fn in_external_macro(cx: &Context, span: Span) -> bool {
     cx.sess().codemap().with_expn_info(span.expn_id,
             |info| in_macro(cx, info))

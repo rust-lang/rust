@@ -1,3 +1,5 @@
+#![allow(cast_possible_truncation)]
+
 use rustc::lint::Context;
 use rustc::middle::const_eval::lookup_const_by_id;
 use rustc::middle::def::PathResolution;

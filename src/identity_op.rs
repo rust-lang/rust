@@ -4,7 +4,7 @@ use syntax::codemap::Span;
 
 use consts::{constant, is_negative};
 use consts::Constant::ConstantInt;
-use utils::{span_lint, snippet};
+use utils::{span_lint, snippet, in_external_macro};
 
 declare_lint! { pub IDENTITY_OP, Warn,
                 "using identity operations, e.g. `x + 0` or `y / 1`" }
@@ -53,6 +53,7 @@ fn check(cx: &Context, e: &Expr, m: i8, span: Span, arg: Span) {
                 1 => !is_negative(ty) && v == 1,
                 _ => unreachable!(),
             } {
+                if in_external_macro(cx, e.span) {return;}
                 span_lint(cx, IDENTITY_OP, span, &format!(
                     "the operation is ineffective. Consider reducing it to `{}`",
                    snippet(cx, arg, "..")));

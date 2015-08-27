@@ -3,7 +3,8 @@ use syntax::ast;
 use syntax::ast::*;
 use std::borrow::Cow;
 
-use utils::{snippet, snippet_block, span_lint, span_help_and_lint};
+use utils::{snippet, snippet_block};
+use utils::{span_lint, span_help_and_lint, in_external_macro};
 
 declare_lint!(pub SINGLE_MATCH, Warn,
               "a match statement with a single nontrivial arm (i.e, where the other arm \
@@ -36,6 +37,7 @@ impl LintPass for MatchPass {
                 // finally, we don't want any content in the second arm (unit or empty block)
                 is_unit_expr(&arms[1].body)
             {
+                if in_external_macro(cx, expr.span) {return;}
                 let body_code = snippet_block(cx, arms[0].body.span, "..");
                 let body_code = if let ExprBlock(_) = arms[0].body.node {
                     body_code
