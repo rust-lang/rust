@@ -254,6 +254,51 @@ macro_rules! unreachable {
 
 /// A standardised placeholder for marking unfinished code. It panics with the
 /// message `"not yet implemented"` when executed.
+///
+/// This can be useful if you are prototyping and are just looking to have your
+/// code typecheck, or if you're implementing a trait that requires multiple
+/// methods, and you're only planning on using one of them.
+///
+/// # Examples
+///
+/// Here's an example of some in-progress code. We have a trait `Foo`:
+///
+/// ```
+/// trait Foo {
+///     fn bar(&self);
+///     fn baz(&self);
+/// }
+/// ```
+///
+/// We want to implement `Foo` on one of our types, but we also want to work on
+/// just `bar()` first. In order for our code to compile, we need to implement
+/// `baz()`, so we can use `unimplemented!`:
+///
+/// ```
+/// # trait Foo {
+/// #     fn foo(&self);
+/// #     fn bar(&self);
+/// # }
+/// struct MyStruct;
+///
+/// impl Foo for MyStruct {
+///     fn foo(&self) {
+///         // implementation goes here
+///     }
+///
+///     fn bar(&self) {
+///         // let's not worry about implementing bar() for now
+///         unimplemented!();
+///     }
+/// }
+///
+/// fn main() {
+///     let s = MyStruct;
+///     s.foo();
+///
+///     // we aren't even using bar() yet, so this is fine.
+/// }
+/// ```
 #[macro_export]
 #[unstable(feature = "core",
            reason = "relationship with panic is unclear")]
