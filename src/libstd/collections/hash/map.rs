@@ -769,7 +769,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// If the key already exists, the hashtable will be returned untouched
     /// and a reference to the existing element will be returned.
     fn insert_hashed_nocheck(&mut self, hash: SafeHash, k: K, v: V) -> &mut V {
-        self.insert_or_replace_with(hash, k, v, |_, _, _| ())
+        self.insert_or_replace_with(hash, k, v, |_, _, _, _| ())
     }
 
     fn insert_or_replace_with<'a, F>(&'a mut self,
@@ -778,7 +778,7 @@ impl<K, V, S> HashMap<K, V, S>
                                      v: V,
                                      mut found_existing: F)
                                      -> &'a mut V where
-        F: FnMut(&mut K, &mut V, V),
+        F: FnMut(&mut K, &mut V, K, V),
     {
         // Worst case, we'll find one empty bucket among `size + 1` buckets.
         let size = self.table.size();
@@ -801,7 +801,7 @@ impl<K, V, S> HashMap<K, V, S>
                     let (bucket_k, bucket_v) = bucket.into_mut_refs();
                     debug_assert!(k == *bucket_k);
                     // Key already exists. Get its reference.
-                    found_existing(bucket_k, bucket_v, v);
+                    found_existing(bucket_k, bucket_v, k, v);
                     return bucket_v;
                 }
             }
@@ -1123,7 +1123,7 @@ impl<K, V, S> HashMap<K, V, S>
         self.reserve(1);
 
         let mut retval = None;
-        self.insert_or_replace_with(hash, k, v, |_, val_ref, val| {
+        self.insert_or_replace_with(hash, k, v, |_, val_ref, _, val| {
             retval = Some(replace(val_ref, val));
         });
         retval
@@ -1627,6 +1627,35 @@ impl Default for RandomState {
     #[inline]
     fn default() -> RandomState {
         RandomState::new()
+    }
+}
+
+impl<K, S, Q: ?Sized> super::Recover<Q> for HashMap<K, (), S>
+    where K: Eq + Hash + Borrow<Q>, S: HashState, Q: Eq + Hash
+{
+    type Key = K;
+
+    fn get(&self, key: &Q) -> Option<&K> {
+        self.search(key).map(|bucket| bucket.into_refs().0)
+    }
+
+    fn take(&mut self, key: &Q) -> Option<K> {
+        if self.table.size() == 0 {
+            return None
+        }
+
+        self.search_mut(key).map(|bucket| pop_internal(bucket).0)
+    }
+
+    fn replace(&mut self, key: K) -> Option<K> {
+        let hash = self.make_hash(&key);
+        self.reserve(1);
+
+        let mut retkey = None;
+        self.insert_or_replace_with(hash, key, (), |key_ref, _, key, _| {
+            retkey = Some(replace(key_ref, key));
+        });
+        retkey
     }
 }
 
