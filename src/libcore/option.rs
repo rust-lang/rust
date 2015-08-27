@@ -779,6 +779,26 @@ impl<T> IntoIterator for Option<T> {
     }
 }
 
+#[stable(since = "1.4.0", feature = "option_iter")]
+impl<'a, T> IntoIterator for &'a Option<T> {
+    type Item = &'a T;
+    type IntoIter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
+}
+
+#[stable(since = "1.4.0", feature = "option_iter")]
+impl<'a, T> IntoIterator for &'a mut Option<T> {
+    type Item = &'a mut T;
+    type IntoIter = IterMut<'a, T>;
+
+    fn into_iter(mut self) -> IterMut<'a, T> {
+        self.iter_mut()
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // The Option Iterators
 /////////////////////////////////////////////////////////////////////////////
