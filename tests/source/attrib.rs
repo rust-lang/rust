@@ -19,6 +19,7 @@ impl Bar {
     /// Blah blah bing.
     /// Blah blah bing.
 
+
     /// Blah blah bing.
     /// Blah blah bing.
     /// Blah blah bing.
@@ -31,11 +32,11 @@ impl Bar {
     }
 
     /// Blah blah bing.
+
     #[attrib1]
     /// Blah blah bing.
     #[attrib2]
-    // Another comment that needs rewrite because it's tooooooooooooooooooooooooooooooo
-    // loooooooooooong.
+    // Another comment that needs rewrite because it's tooooooooooooooooooooooooooooooo loooooooooooong.
     /// Blah blah bing.
     fn f4(self) -> Cat {
     }
