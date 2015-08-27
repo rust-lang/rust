@@ -423,7 +423,7 @@ pub trait Rem<RHS=Self> {
     fn rem(self, rhs: RHS) -> Self::Output;
 }
 
-macro_rules! rem_impl {
+macro_rules! rem_impl_integer {
     ($($t:ty)*) => ($(
         /// This operation satisfies `n % d == n - (n / d) * d`.  The
         /// result has the same sign as the left operand.
@@ -439,9 +439,28 @@ macro_rules! rem_impl {
     )*)
 }
 
-rem_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+rem_impl_integer! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+
+#[cfg(not(stage0))]
+macro_rules! rem_impl_float {
+    ($($t:ty)*) => ($(
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl Rem for $t {
+            type Output = $t;
+
+            #[inline]
+            fn rem(self, other: $t) -> $t { self % other }
+        }
+
+        forward_ref_binop! { impl Rem, rem for $t, $t }
+    )*)
+}
+
+#[cfg(not(stage0))]
+rem_impl_float! { f32 f64 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 impl Rem for f32 {
     type Output = f32;
 
@@ -463,6 +482,7 @@ impl Rem for f32 {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 impl Rem for f64 {
     type Output = f64;
 
@@ -473,7 +493,9 @@ impl Rem for f64 {
     }
 }
 
+#[cfg(stage0)]
 forward_ref_binop! { impl Rem, rem for f64, f64 }
+#[cfg(stage0)]
 forward_ref_binop! { impl Rem, rem for f32, f32 }
 
 /// The `Neg` trait is used to specify the functionality of unary `-`.
