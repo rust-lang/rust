@@ -180,11 +180,14 @@ fn test_iter() {
     assert_eq!(it.next(), Some(&val));
     assert_eq!(it.size_hint(), (0, Some(0)));
     assert!(it.next().is_none());
+
+    let mut it = (&x).into_iter();
+    assert_eq!(it.next(), Some(&val));
 }
 
 #[test]
 fn test_mut_iter() {
-    let val = 5;
+    let mut val = 5;
     let new_val = 11;
 
     let mut x = Some(val);
@@ -205,6 +208,10 @@ fn test_mut_iter() {
         assert!(it.next().is_none());
     }
     assert_eq!(x, Some(new_val));
+
+    let mut y = Some(val);
+    let mut it = (&mut y).into_iter();
+    assert_eq!(it.next(), Some(&mut val));
 }
 
 #[test]
