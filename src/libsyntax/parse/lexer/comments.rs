@@ -132,7 +132,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
 
     if comment.starts_with("/*") {
         let lines = comment[3..comment.len() - 2]
-            .lines_any()
+            .lines()
             .map(|s| s.to_string())
             .collect::<Vec<String> >();
 
