@@ -16,6 +16,7 @@ extern crate syntax;
 
 use syntax::codemap::DUMMY_SP;
 use syntax::print::pprust::*;
+use syntax::parse::token::intern;
 
 fn main() {
     let ps = syntax::parse::ParseSess::new();
@@ -27,8 +28,7 @@ fn main() {
     cx.bt_push(syntax::codemap::ExpnInfo {
         call_site: DUMMY_SP,
         callee: syntax::codemap::NameAndSpan {
-            name: "".to_string(),
-            format: syntax::codemap::MacroBang,
+            format: syntax::codemap::MacroBang(intern("")),
             allow_internal_unstable: false,
             span: None,
         }
