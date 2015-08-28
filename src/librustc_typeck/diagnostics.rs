@@ -3020,6 +3020,34 @@ parameters. You can read more about it in the API documentation:
 https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 "##,
 
+E0440: r##"
+A platform-specific intrinsic function has wrong number of type
+parameters. Erroneous code example:
+
+```
+#[repr(simd)]
+struct f64x2(f64, f64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_movemask_pd<T>(x: f64x2) -> i32;
+    // error: platform-specific intrinsic has wrong number of type
+    //        parameters
+}
+```
+
+Please refer to the function declaration to see if it corresponds
+with yours. Example:
+
+```
+#[repr(simd)]
+struct f64x2(f64, f64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_movemask_pd(x: f64x2) -> i32;
+}
+```
+"##,
+
 E0441: r##"
 An unknown platform-specific intrinsic function was used. Erroneous
 code example:
@@ -3218,5 +3246,4 @@ register_diagnostics! {
            // type `{}` was overridden
     E0436,  // functional record update requires a struct
     E0439, // invalid `simd_shuffle`, needs length: `{}`
-    E0440, // platform-specific intrinsic has wrong number of type parameters
 }
