@@ -171,9 +171,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let _icx = push_ctxt("trans_intrinsic_call");
 
-    let ret_ty = match callee_ty.sty {
+    let (arg_tys, ret_ty) = match callee_ty.sty {
         ty::TyBareFn(_, ref f) => {
-            bcx.tcx().erase_late_bound_regions(&f.sig.output())
+            (bcx.tcx().erase_late_bound_regions(&f.sig.inputs()),
+             bcx.tcx().erase_late_bound_regions(&f.sig.output()))
         }
         _ => panic!("expected bare_fn in trans_intrinsic_call")
     };
@@ -924,25 +925,94 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 Some(intr) => intr,
                 None => ccx.sess().span_bug(foreign_item.span, "unknown intrinsic"),
             };
-            fn ty_to_type(ccx: &CrateContext, t: &intrinsics::Type) -> Type {
+            fn one<T>(x: Vec<T>) -> T {
+                assert_eq!(x.len(), 1);
+                x.into_iter().next().unwrap()
+            }
+            fn ty_to_type(ccx: &CrateContext, t: &intrinsics::Type,
+                          any_flattened_aggregate: &mut bool) -> Vec<Type> {
                 use intrinsics::Type::*;
                 match *t {
-                    Integer(_signed, x) => Type::ix(ccx, x as u64),
+                    Integer(_signed, x) => vec![Type::ix(ccx, x as u64)],
                     Float(x) => {
                         match x {
-                            32 => Type::f32(ccx),
-                            64 => Type::f64(ccx),
+                            32 => vec![Type::f32(ccx)],
+                            64 => vec![Type::f64(ccx)],
                             _ => unreachable!()
                         }
                     }
                     Pointer(_) => unimplemented!(),
-                    Vector(ref t, length) => Type::vector(&ty_to_type(ccx, t),
-                                                          length as u64)
+                    Vector(ref t, length) => {
+                        let elem = one(ty_to_type(ccx, t,
+                                                  any_flattened_aggregate));
+                        vec![Type::vector(&elem,
+                                          length as u64)]
+                    }
+                    Aggregate(false, _) => unimplemented!(),
+                    Aggregate(true, ref contents) => {
+                        *any_flattened_aggregate = true;
+                        contents.iter()
+                                .flat_map(|t| ty_to_type(ccx, t, any_flattened_aggregate))
+                                .collect()
+                    }
                 }
             }
 
-            let inputs = intr.inputs.iter().map(|t| ty_to_type(ccx, t)).collect::<Vec<_>>();
-            let outputs = ty_to_type(ccx, &intr.output);
+            // This allows an argument list like `foo, (bar, baz),
+            // qux` to be converted into `foo, bar, baz, qux`.
+            fn flatten_aggregate<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                             t: &intrinsics::Type,
+                                             arg_type: Ty<'tcx>,
+                                             llarg: ValueRef)
+                                             -> Vec<ValueRef>
+            {
+                match *t {
+                    intrinsics::Type::Aggregate(true, ref contents) => {
+                        // We found a tuple that needs squishing! So
+                        // run over the tuple and load each field.
+                        //
+                        // This assumes the type is "simple", i.e. no
+                        // destructors, and the contents are SIMD
+                        // etc.
+                        assert!(!bcx.fcx.type_needs_drop(arg_type));
+
+                        let repr = adt::represent_type(bcx.ccx(), arg_type);
+                        let repr_ptr = &*repr;
+                        (0..contents.len())
+                            .map(|i| {
+                                Load(bcx, adt::trans_field_ptr(bcx, repr_ptr, llarg, 0, i))
+                            })
+                            .collect()
+                    }
+                    _ => vec![llarg],
+                }
+            }
+
+
+            let mut any_flattened_aggregate = false;
+            let inputs = intr.inputs.iter()
+                                    .flat_map(|t| ty_to_type(ccx, t, &mut any_flattened_aggregate))
+                                    .collect::<Vec<_>>();
+
+            let mut out_flattening = false;
+            let outputs = one(ty_to_type(ccx, &intr.output, &mut out_flattening));
+            // outputting a flattened aggregate is nonsense
+            assert!(!out_flattening);
+
+            let llargs = if !any_flattened_aggregate {
+                // no aggregates to flatten, so no change needed
+                llargs
+            } else {
+                // there are some aggregates that need to be flattened
+                // in the LLVM call, so we need to run over the types
+                // again to find them and extract the arguments
+                intr.inputs.iter()
+                           .zip(&llargs)
+                           .zip(&arg_tys)
+                           .flat_map(|((t, llarg), ty)| flatten_aggregate(bcx, t, ty, *llarg))
+                           .collect()
+            };
+
             match intr.definition {
                 intrinsics::IntrinsicDef::Named(name) => {
                     let f = declare::declare_cfn(ccx,

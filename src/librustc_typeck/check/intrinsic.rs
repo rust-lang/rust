@@ -507,5 +507,22 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
                                          inner_expected,
                                          t_ty)
         }
+        Aggregate(_flatten, ref expected_contents) => {
+            match t.sty {
+                ty::TyTuple(ref contents) => {
+                    if contents.len() != expected_contents.len() {
+                        simple_error(&format!("tuple with length {}", contents.len()),
+                                     &format!("tuple with length {}", expected_contents.len()));
+                        return
+                    }
+                    for (e, c) in expected_contents.iter().zip(contents) {
+                        match_intrinsic_type_to_type(tcx, position, span, structural_to_nominal,
+                                                     e, c)
+                    }
+                }
+                _ => simple_error(&format!("`{}`", t),
+                                  &format!("tuple")),
+            }
+        }
     }
 }
