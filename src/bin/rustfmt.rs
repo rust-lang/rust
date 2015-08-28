@@ -53,7 +53,7 @@ fn lookup_and_read_project_file() -> io::Result<(PathBuf, String)> {
 
 fn execute() -> i32 {
     let (args, write_mode) = match determine_params(std::env::args()) {
-        Some((args, write_mode)) => (args, write_mode),
+        Some(params) => params,
         None => return 1,
     };
 
