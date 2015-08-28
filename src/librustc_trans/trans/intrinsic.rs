@@ -927,7 +927,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             fn ty_to_type(ccx: &CrateContext, t: &intrinsics::Type) -> Type {
                 use intrinsics::Type::*;
                 match *t {
-                    Integer(x) => Type::ix(ccx, x as u64),
+                    Integer(_signed, x) => Type::ix(ccx, x as u64),
                     Float(x) => {
                         match x {
                             32 => Type::f32(ccx),
