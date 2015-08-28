@@ -134,7 +134,7 @@ Outputs:
 ```text
 0: Content of line one
 1: Content of line two
-2: Content of line tree
+2: Content of line three
 3: Content of line four
 ```
 
