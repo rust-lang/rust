@@ -71,3 +71,11 @@ fn issue177() {
     }
     let foo = Foo::<i64> { memb: 10 };
 }
+
+fn issue201() {
+    let s = S { a: 0, ..b };
+}
+
+fn issue201_2() {
+    let s = S { a: S2 { ..c }, ..b };
+}
