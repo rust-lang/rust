@@ -65,28 +65,15 @@ Read ["Installing Rust"] from [The Book].
    tools.
 
    ```sh
+   # Update package mirrors (may be needed if you have a fresh install of MSYS2)
+   $ pacman -Sy&&pacman -S pacman-mirrors
+   
    # Choose one based on platform:
    $ pacman -S mingw-w64-i686-toolchain
    $ pacman -S mingw-w64-x86_64-toolchain
 
    $ pacman -S base-devel
    ```
-
-   > ***Note:*** If the package install fails during retrieval, you may need to update
-   > `pacman`'s mirrors before attempting to install the `mingw64` toolchain. An example
-   > of the symptom of this problem would be...
-  
-   > ```sh
-   > error: failed retrieving file 'mingw-w64-x86_64-libiconv-1.14-4-any.pkg.tar.xz'
-   > from downloads.sourceforge.net : The requested URL returned error: 404
-   > ```
-  
-   > To update the mirrors for pacman, simply run the following commands in your
-   > MSYS2 terminal and retry installing the `mingw64` toolchain.
-  
-   > ```sh
-   > $ pacman -Sy&&pacman -S pacman-mirrors
-   > ```
 
 3. Run `mingw32_shell.bat` or `mingw64_shell.bat` from wherever you installed
    MSYS2 (i.e. `C:\msys`), depending on whether you want 32-bit or 64-bit Rust.
