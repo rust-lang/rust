@@ -168,7 +168,7 @@ macro_rules! try {
 ///
 /// For more information about select, see the `std::sync::mpsc::Select` structure.
 #[macro_export]
-#[unstable(feature = "mpsc_select")]
+#[unstable(feature = "mpsc_select", issue = "27800")]
 macro_rules! select {
     (
         $($name:pat = $rx:ident.$meth:ident() => $code:expr),+

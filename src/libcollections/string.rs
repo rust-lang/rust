@@ -734,7 +734,8 @@ impl String {
     ///
     /// Note that this will drop any excess capacity.
     #[unstable(feature = "box_str",
-               reason = "recently added, matches RFC")]
+               reason = "recently added, matches RFC",
+               issue = "27785")]
     #[deprecated(since = "1.4.0", reason = "renamed to `into_boxed_str`")]
     pub fn into_boxed_slice(self) -> Box<str> {
         self.into_boxed_str()
