@@ -3020,6 +3020,67 @@ parameters. You can read more about it in the API documentation:
 https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 "##,
 
+E0442: r##"
+Intrinsic argument(s) and/or return value have the wrong length.
+Erroneous code example:
+
+```
+#[repr(simd)]
+struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8,
+             i8, i8, i8, i8, i8, i8, i8, i8);
+#[repr(simd)]
+struct i32x4(i32, i32, i32, i32);
+#[repr(simd)]
+struct i64x2(i64, i64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
+    // error: intrinsic arguments/return value have wrong length
+}
+```
+
+To fix this error, please refer to the function declaration to give
+it the awaited types with the awaited length. Example:
+
+```
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i16x8; // ok!
+}
+```
+"##,
+
+E0443: r##"
+Intrinsic argument(s) and/or return value have the wrong type.
+Erroneous code example:
+
+```
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+#[repr(simd)]
+struct i64x8(i64, i64, i64, i64, i64, i64, i64, i64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i64x8;
+    // error: intrinsic argument/return value has wrong type
+}
+```
+
+To fix this error, please refer to the function declaration to give
+it the awaited types. Example:
+
+```
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i16x8; // ok!
+}
+```
+"##,
+
 E0444: r##"
 A platform-specific intrinsic function has wrong number of arguments.
 Erroneous code example:
@@ -3046,38 +3107,6 @@ extern "platform-intrinsic" {
 }
 ```
 "##,
-
-E0442: r##"
-Intrinsic argument(s) and/or return value have the wrong length.
-Erroneous code example:
-
-```
-#[repr(simd)]
-struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8,
-             i8, i8, i8, i8, i8, i8, i8, i8);
-#[repr(simd)]
-struct i32x4(i32, i32, i32, i32);
-#[repr(simd)]
-struct i64x2(i64, i64);
-
-extern "platform-intrinsic" {
-    fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
-    // error: intrinsic arguments have wrong length
-}
-```
-
-To fix this error, please refer to the function declaration to give
-it the awaited types with the awaited length. Example:
-
-```
-#[repr(simd)]
-struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
-
-extern "platform-intrinsic" {
-    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i16x8; // ok!
-}
-```
-"##
 
 }
 
@@ -3163,6 +3192,4 @@ register_diagnostics! {
     E0439, // invalid `simd_shuffle`, needs length: `{}`
     E0440, // platform-specific intrinsic has wrong number of type parameters
     E0441, // unrecognized platform-specific intrinsic function
-    E0443, // intrinsic {} has wrong type: found `{}`, expected `{}` which
-           // was used for this vector type previously in this signature
 }
