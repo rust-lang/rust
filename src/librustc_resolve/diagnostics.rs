@@ -398,15 +398,15 @@ impl Bar {
 "##,
 
 E0411: r##"
-`Self` keyword was used outside an impl or a trait. Erroneous code
-example:
+The `Self` keyword was used outside an impl or a trait. Erroneous
+code example:
 
 ```
 <Self>::foo; // error: use of `Self` outside of an impl or trait
 ```
 
 The `Self` keyword represents the current type, which explains why it
-can only be used inside an impl or a trait. It gives access to
+can only be used inside an impl or a trait. It gives access to the
 associated items of a type:
 
 ```
@@ -436,8 +436,8 @@ trait Baz : Foo + Foo2 {
 }
 ```
 
-It can be solved by specifying from which trait we want to use the
-`Bar` type:
+This problem can be solved by specifying from which trait we want
+to use the `Bar` type:
 
 ```
 trait Baz : Foo + Foo2 {
@@ -872,8 +872,8 @@ impl Foo for i32 {}
 }
 
 register_diagnostics! {
-//  E0153,
-//  E0157,
+//  E0153, unused error code
+//  E0157, unused error code
     E0254, // import conflicts with imported crate in this module
     E0257,
     E0258,

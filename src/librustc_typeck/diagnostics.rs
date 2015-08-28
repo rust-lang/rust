@@ -3020,8 +3020,29 @@ parameters. You can read more about it in the API documentation:
 https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 "##,
 
+E0439: r##"
+The length of the platform-intrinsic function `simd_shuffle`
+wasn't specified. Erroneous code example:
+
+```
+extern "platform-intrinsic" {
+    fn simd_shuffle<A,B>(a: A, b: A, c: [u32; 8]) -> B;
+    // error: invalid `simd_shuffle`, needs length: `simd_shuffle`
+}
+```
+
+The `simd_shuffle` function needs the length of the array passed as
+last parameter in its name. Example:
+
+```
+extern "platform-intrinsic" {
+    fn simd_shuffle8<A,B>(a: A, b: A, c: [u32; 8]) -> B;
+}
+```
+"##,
+
 E0440: r##"
-A platform-specific intrinsic function has wrong number of type
+A platform-specific intrinsic function has the wrong number of type
 parameters. Erroneous code example:
 
 ```
@@ -3062,8 +3083,8 @@ extern "platform-intrinsic" {
 }
 ```
 
-Please check you didn't misspell the function's name or that it is
-declared in the rust source code (in the file
+Please verify that the function name wasn't misspelled, and ensure
+that it is declared in the rust source code (in the file
 src/librustc_platform_intrinsics/x86.rs). Example:
 
 ```
@@ -3077,7 +3098,7 @@ extern "platform-intrinsic" {
 "##,
 
 E0442: r##"
-Intrinsic argument(s) and/or return value have the wrong length.
+Intrinsic argument(s) and/or return value have the wrong type.
 Erroneous code example:
 
 ```
@@ -3091,12 +3112,12 @@ struct i64x2(i64, i64);
 
 extern "platform-intrinsic" {
     fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
-    // error: intrinsic arguments/return value have wrong length
+    // error: intrinsic arguments/return value have wrong type
 }
 ```
 
 To fix this error, please refer to the function declaration to give
-it the awaited types with the awaited length. Example:
+it the awaited types. Example:
 
 ```
 #[repr(simd)]
@@ -3245,5 +3266,4 @@ register_diagnostics! {
     E0399, // trait items need to be implemented because the associated
            // type `{}` was overridden
     E0436,  // functional record update requires a struct
-    E0439, // invalid `simd_shuffle`, needs length: `{}`
 }
