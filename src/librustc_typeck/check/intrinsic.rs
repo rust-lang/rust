@@ -456,13 +456,15 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
     };
 
     match *expected {
-        Integer(bits) => match (bits, &t.sty) {
-            (8, &ty::TyInt(ast::TyI8)) | (8, &ty::TyUint(ast::TyU8)) |
-            (16, &ty::TyInt(ast::TyI16)) | (16, &ty::TyUint(ast::TyU16)) |
-            (32, &ty::TyInt(ast::TyI32)) | (32, &ty::TyUint(ast::TyU32)) |
-            (64, &ty::TyInt(ast::TyI64)) | (64, &ty::TyUint(ast::TyU64)) => {},
+        Integer(signed, bits) => match (signed, bits, &t.sty) {
+            (true, 8, &ty::TyInt(ast::TyI8)) | (false, 8, &ty::TyUint(ast::TyU8)) |
+            (true, 16, &ty::TyInt(ast::TyI16)) | (false, 16, &ty::TyUint(ast::TyU16)) |
+            (true, 32, &ty::TyInt(ast::TyI32)) | (false, 32, &ty::TyUint(ast::TyU32)) |
+            (true, 64, &ty::TyInt(ast::TyI64)) | (false, 64, &ty::TyUint(ast::TyU64)) => {},
             _ => simple_error(&format!("`{}`", t),
-                              &format!("`i{n}` or `u{n}`", n = bits)),
+                              &format!("`{}{n}`",
+                                       if signed {"i"} else {"u"},
+                                       n = bits)),
         },
         Float(bits) => match (bits, &t.sty) {
             (32, &ty::TyFloat(ast::TyF32)) |

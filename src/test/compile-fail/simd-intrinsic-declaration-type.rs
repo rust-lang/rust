@@ -25,27 +25,38 @@ struct f32x4(f32, f32, f32, f32);
 #[repr(simd)]
 struct i64x2(i64, i64);
 
-// signed vs. unsigned doesn't matter
-mod i {
-    use i16x8;
+// correct signatures work well
+mod right {
+    use {i16x8, u16x8};
     extern "platform-intrinsic" {
         fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i16x8;
+        fn x86_mm_adds_epu16(x: u16x8, y: u16x8) -> u16x8;
     }
 }
-mod u {
-    use u16x8;
+// but incorrect ones don't.
+
+mod signedness {
+    use {i16x8, u16x8};
+    // signedness matters
     extern "platform-intrinsic" {
         fn x86_mm_adds_epi16(x: u16x8, y: u16x8) -> u16x8;
+        //~^ ERROR intrinsic argument 1 has wrong type
+        //~^^ ERROR intrinsic argument 2 has wrong type
+        //~^^^ ERROR intrinsic return value has wrong type
+        fn x86_mm_adds_epu16(x: i16x8, y: i16x8) -> i16x8;
+        //~^ ERROR intrinsic argument 1 has wrong type
+        //~^^ ERROR intrinsic argument 2 has wrong type
+        //~^^^ ERROR intrinsic return value has wrong type
     }
 }
-// but lengths do
+// as do lengths
 extern "platform-intrinsic" {
     fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
     //~^ ERROR intrinsic argument 1 has wrong type
     //~^^ ERROR intrinsic argument 2 has wrong type
     //~^^^ ERROR intrinsic return value has wrong type
 }
-// and so does int vs. float
+// and so does int vs. float:
 extern "platform-intrinsic" {
     fn x86_mm_max_ps(x: i32x4, y: i32x4) -> i32x4;
     //~^ ERROR intrinsic argument 1 has wrong type
