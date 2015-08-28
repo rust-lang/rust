@@ -10,6 +10,8 @@
 
 // Format comments.
 
+use std::iter;
+
 use string::{StringFormat, rewrite_string};
 use utils::make_indent;
 
@@ -118,27 +120,18 @@ pub trait FindUncommented {
 impl FindUncommented for str {
     fn find_uncommented(&self, pat: &str) -> Option<usize> {
         let mut needle_iter = pat.chars();
-        let mut possible_comment = false;
-
-        for (i, b) in self.char_indices() {
+        for (kind, (i, b)) in CharClasses::new(self.char_indices()) {
             match needle_iter.next() {
-                Some(c) => {
-                    if b != c {
+                None => {
+                    return Some(i - pat.len());
+                }
+                Some(c) => match kind {
+                    CodeCharKind::Normal if b == c => {}
+                    _ => {
                         needle_iter = pat.chars();
                     }
-                }
-                None => return Some(i - pat.len()),
+                },
             }
-
-            if possible_comment && (b == '/' || b == '*') {
-                return find_comment_end(&self[(i-1)..])
-                    .and_then(|end| {
-                        self[(end + i - 1)..].find_uncommented(pat)
-                                             .map(|idx| idx + end + i - 1)
-                    });
-            }
-
-            possible_comment = b == '/';
         }
 
         // Handle case where the pattern is a suffix of the search string
@@ -167,6 +160,11 @@ fn test_find_uncommented() {
     check("hel/*lohello*/lo", "hello", None);
     check("acb", "ab", None);
     check(",/*A*/ ", ",", Some(0));
+    check("abc", "abc", Some(0));
+    check("/* abc */", "abc", None);
+    check("/**/abc/* */", "abc", Some(4));
+    check("\"/* abc */\"", "abc", Some(4));
+    check("\"/* abc", "abc", Some(4));
 }
 
 // Returns the first byte position after the first comment. The given string
@@ -174,29 +172,17 @@ fn test_find_uncommented() {
 // Good: "/* /* inner */ outer */ code();"
 // Bad:  "code(); // hello\n world!"
 pub fn find_comment_end(s: &str) -> Option<usize> {
-    if s.starts_with("//") {
-        s.find('\n').map(|idx| idx + 1)
-    } else {
-        // Block comment
-        let mut levels = 0;
-        let mut prev_char = 'a';
-
-        for (i, mut c) in s.char_indices() {
-            if c == '*' && prev_char == '/' {
-                levels += 1;
-                c = 'a'; // Invalidate prev_char
-            } else if c == '/' && prev_char == '*' {
-                levels -= 1;
-
-                if levels == 0 {
-                    return Some(i + 1);
-                }
-                c = 'a';
-            }
-
-            prev_char = c;
+    let mut iter = CharClasses::new(s.char_indices());
+    for (kind, (i, _c)) in &mut iter {
+        if kind == CodeCharKind::Normal {
+            return Some(i);
         }
+    }
 
+    // Handle case where the comment ends at the end of s.
+    if iter.status == CharClassesStatus::Normal {
+        Some(s.len())
+    } else {
         None
     }
 }
@@ -210,4 +196,165 @@ fn comment_end() {
     assert_eq!(None, find_comment_end("/* hi /* test */"));
     assert_eq!(None, find_comment_end("// hi /* test */"));
     assert_eq!(Some(9), find_comment_end("// hi /*\n."));
+}
+
+
+/// Returns true if text contains any comment.
+pub fn contains_comment(text: &str) -> bool {
+    CharClasses::new(text.chars()).any(|(kind, _)| kind == CodeCharKind::Comment )
+}
+
+pub fn uncommented(text: &str) -> String {
+    CharClasses::new(text.chars()).filter_map(|(s, c)| match s {
+        CodeCharKind::Normal => Some(c),
+        CodeCharKind::Comment => None
+    }).collect()
+}
+
+#[test]
+fn test_uncommented() {
+    assert_eq!(&uncommented("abc/*...*/"), "abc");
+    assert_eq!(&uncommented("// .... /* \n../* /* *** / */ */a/* // */c\n"), "..ac\n");
+    assert_eq!(&uncommented("abc \" /* */\" qsdf"), "abc \" /* */\" qsdf");
+}
+
+#[test]
+fn test_contains_comment() {
+    assert_eq!(contains_comment("abc"), false);
+    assert_eq!(contains_comment("abc // qsdf"), true);
+    assert_eq!(contains_comment("abc /* kqsdf"), true);
+    assert_eq!(contains_comment("abc \" /* */\" qsdf"), false);
+}
+
+struct CharClasses<T>
+    where T: Iterator,
+          T::Item: RichChar
+{
+    base: iter::Peekable<T>,
+    status: CharClassesStatus,
+}
+
+trait RichChar {
+    fn get_char(&self) -> char;
+}
+
+impl RichChar for char {
+    fn get_char(&self) -> char {
+        *self
+    }
+}
+
+impl RichChar for (usize, char) {
+    fn get_char(&self) -> char {
+        self.1
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+enum CharClassesStatus {
+    Normal,
+    LitString,
+    LitStringEscape,
+    LitChar,
+    LitCharEscape,
+    // The u32 is the nesting deepness of the comment
+    BlockComment(u32),
+    // Status when the '/' has been consumed, but not yet the '*', deepness is the new deepness
+    // (after the comment opening).
+    BlockCommentOpening(u32),
+    // Status when the '*' has been consumed, but not yet the '/', deepness is the new deepness
+    // (after the comment closing).
+    BlockCommentClosing(u32),
+    LineComment,
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+enum CodeCharKind {
+    Normal,
+    Comment,
+}
+
+impl<T> CharClasses<T> where T: Iterator, T::Item: RichChar {
+    fn new(base: T) -> CharClasses<T> {
+        CharClasses { base: base.peekable(), status: CharClassesStatus::Normal }
+    }
+}
+
+impl<T> Iterator for CharClasses<T> where T: Iterator, T::Item: RichChar {
+    type Item = (CodeCharKind, T::Item);
+
+    fn next(&mut self) -> Option<(CodeCharKind, T::Item)> {
+        let item = try_opt!(self.base.next());
+        let chr = item.get_char();
+        self.status = match self.status {
+            CharClassesStatus::LitString => match chr {
+                '"' => CharClassesStatus::Normal,
+                '\\' => CharClassesStatus::LitStringEscape,
+                _ => CharClassesStatus::LitString,
+            },
+            CharClassesStatus::LitStringEscape => CharClassesStatus::LitString,
+            CharClassesStatus::LitChar => match chr {
+                '\\' => CharClassesStatus::LitCharEscape,
+                '\'' => CharClassesStatus::Normal,
+                _ => CharClassesStatus::LitChar,
+            },
+            CharClassesStatus::LitCharEscape => CharClassesStatus::LitChar,
+            CharClassesStatus::Normal => {
+                match chr {
+                    '"' => CharClassesStatus::LitString,
+                    '\'' => CharClassesStatus::LitChar,
+                    '/' => match self.base.peek() {
+                        Some(next) if next.get_char() == '*' => {
+                            self.status = CharClassesStatus::BlockCommentOpening(1);
+                            return Some((CodeCharKind::Comment, item));
+                        }
+                        Some(next) if next.get_char() == '/' => {
+                            self.status = CharClassesStatus::LineComment;
+                            return Some((CodeCharKind::Comment, item));
+                        }
+                        _ => CharClassesStatus::Normal,
+                    },
+                    _ => CharClassesStatus::Normal,
+                }
+            }
+            CharClassesStatus::BlockComment(deepness) => {
+                if deepness == 0 {
+                    // This is the closing '/'
+                    assert_eq!(chr, '/');
+                    self.status = CharClassesStatus::Normal;
+                    return Some((CodeCharKind::Comment, item));
+                }
+                self.status = match self.base.peek() {
+                    Some(next) if next.get_char() == '/' && chr == '*' =>
+                        CharClassesStatus::BlockCommentClosing(deepness - 1),
+                    Some(next) if next.get_char() == '*' && chr == '/' =>
+                        CharClassesStatus::BlockCommentOpening(deepness + 1),
+                    _ => CharClassesStatus::BlockComment(deepness),
+                };
+                return Some((CodeCharKind::Comment, item));
+            }
+            CharClassesStatus::BlockCommentOpening(deepness) => {
+                assert_eq!(chr, '*');
+                self.status = CharClassesStatus::BlockComment(deepness);
+                return Some((CodeCharKind::Comment, item));
+            }
+            CharClassesStatus::BlockCommentClosing(deepness) => {
+                assert_eq!(chr, '/');
+                self.status = if deepness == 0 {
+                    CharClassesStatus::Normal
+                } else {
+                    CharClassesStatus::BlockComment(deepness)
+                };
+                return Some((CodeCharKind::Comment, item));
+            }
+            CharClassesStatus::LineComment => {
+                self.status = match chr {
+                    '\n' => CharClassesStatus::Normal,
+                    _ => CharClassesStatus::LineComment,
+                };
+                return Some((CodeCharKind::Comment, item));
+            }
+        };
+        return Some((CodeCharKind::Normal, item));
+    }
 }

@@ -15,7 +15,7 @@ use StructLitStyle;
 use utils::{span_after, make_indent, extra_offset, first_line_width, last_line_width};
 use visitor::FmtVisitor;
 use config::BlockIndentStyle;
-use comment::{FindUncommented, rewrite_comment};
+use comment::{FindUncommented, rewrite_comment, contains_comment};
 use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg, rewrite_fn_input};
 
@@ -518,8 +518,7 @@ fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
 
     let snippet = codemap.span_to_snippet(block.span).unwrap();
 
-    // FIXME: fails when either // or /* is contained in a string literal.
-    !snippet.contains("//") && !snippet.contains("/*")
+    !contains_comment(&snippet)
 }
 
 fn rewrite_match(context: &RewriteContext,
