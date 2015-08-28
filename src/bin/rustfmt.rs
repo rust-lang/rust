@@ -10,7 +10,6 @@
 #![feature(path_ext)]
 #![feature(rustc_private)]
 #![cfg(not(test))]
-#![feature(result_expect)]
 
 #[macro_use]
 extern crate log;
@@ -52,8 +51,11 @@ fn lookup_and_read_project_file() -> io::Result<(PathBuf, String)> {
     Ok((path, toml))
 }
 
-fn main() {
-    let (args, write_mode) = determine_params(std::env::args());
+fn execute() -> i32 {
+    let (args, write_mode) = match determine_params(std::env::args()) {
+        Some((args, write_mode)) => (args, write_mode),
+        None => return 1,
+    };
 
     let config = match lookup_and_read_project_file() {
         Ok((path, toml)) => {
@@ -64,15 +66,26 @@ fn main() {
     };
 
     run(args, write_mode, Box::new(config));
-    std::process::exit(0);
+    0
 }
 
-fn usage<S: Into<String>>(reason: S) {
-    print!("{}\n\r usage: rustfmt [-h Help] [--write-mode=[true/false]] <file_name>", reason.into());
-    std::process::exit(1);
+fn main() {
+    use std::io::Write;
+    let exit_code = execute();
+    // Make sure standard output is flushed before we exit
+    std::io::stdout().flush().unwrap();
+    // Exit with given exit code.
+    //
+    // NOTE: This immediately terminates the process without doing any cleanup,
+    // so make sure to finish all necessary cleanup before this is called.
+    std::process::exit(exit_code);
 }
 
-fn determine_params<I>(args: I) -> (Vec<String>, WriteMode)
+fn print_usage<S: Into<String>>(reason: S) {
+    println!("{}\n\r usage: rustfmt [-h Help] [--write-mode=[true/false]] <file_name>", reason.into());
+}
+
+fn determine_params<I>(args: I) -> Option<(Vec<String>, WriteMode)>
     where I: Iterator<Item = String>
 {
     let arg_prefix = "-";
@@ -80,27 +93,38 @@ fn determine_params<I>(args: I) -> (Vec<String>, WriteMode)
     let help_mode = "-h";
     let long_help_mode = "--help";
     let mut write_mode = WriteMode::Replace;
+    let args: Vec<String> = args.collect();
 
     // The NewFile option currently isn't supported because it requires another
     // parameter, but it can be added later.
-    let args:Vec<String> = args.filter(|arg| {
+    if args.iter().any(|arg| {
         if arg.starts_with(write_mode_prefix) {
-            write_mode = FromStr::from_str(&arg[write_mode_prefix.len()..]).expect("Unrecognized write mode");
+            write_mode = match FromStr::from_str(&arg[write_mode_prefix.len()..]) {
+                Ok(mode) => mode,
+                Err(_) => {
+                    print_usage("Unrecognized write mode");
+                    return true;
+                }
+            };
             false
         } else if arg.starts_with(help_mode) || arg.starts_with(long_help_mode) {
-            usage("");
-            false
-        } else if arg.starts_with(arg_prefix) {
-            usage("Invalid argument");
-            false
-        } else {
+            print_usage("");
             true
+        } else if arg.starts_with(arg_prefix) {
+            print_usage("Invalid argument");
+            true
+        } else {
+            false
         }
-    }).collect();
+    }) {
+        return None;
+    }
+
     if args.len() < 2 {
-        usage("Please provide a file to be formatted");
+        print_usage("Please provide a file to be formatted");
+        return None;
     }
 
 
-    (args, write_mode)
+    Some((args, write_mode))
 }
