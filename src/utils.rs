@@ -18,13 +18,17 @@ pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "Linke
 pub fn in_macro(cx: &Context, opt_info: Option<&ExpnInfo>) -> bool {
     // no ExpnInfo = no macro
     opt_info.map_or(false, |info| {
-        if info.callee.format == ExpnFormat::CompilerExpansion {
-            if info.callee.name == "closure expansion" {
-                return false;
-            }
-        } else if info.callee.format == ExpnFormat::MacroAttribute {
-            // these are all plugins
-            return true;
+        match info.callee.format {
+            ExpnFormat::CompilerExpansion(..) => {
+                if info.callee.name() == "closure expansion" {
+                    return false;
+                }
+            }, 
+            ExpnFormat::MacroAttribute(..) => {
+                // these are all plugins
+                return true;
+            },
+            _ => (),
         }
         // no span for the callee = external macro
         info.callee.span.map_or(true, |span| {
