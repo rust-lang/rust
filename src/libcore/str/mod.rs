@@ -292,6 +292,18 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
     }
 }
 
+impl<'a> Chars<'a> {
+    /// View the underlying data as a subslice of the original data.
+    ///
+    /// This has the same lifetime as the original slice, and so the
+    /// iterator can continue to be used while this exists.
+    #[unstable(feature = "iter_to_slice", issue = "27775")]
+    #[inline]
+    pub fn as_str(&self) -> &'a str {
+        unsafe { from_utf8_unchecked(self.iter.as_slice()) }
+    }
+}
+
 /// Iterator for a string's characters and their byte offsets.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -336,6 +348,18 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
                 Some((index, ch))
             }
         }
+    }
+}
+
+impl<'a> CharIndices<'a> {
+    /// View the underlying data as a subslice of the original data.
+    ///
+    /// This has the same lifetime as the original slice, and so the
+    /// iterator can continue to be used while this exists.
+    #[unstable(feature = "iter_to_slice", issue = "27775")]
+    #[inline]
+    pub fn as_str(&self) -> &'a str {
+        self.iter.as_str()
     }
 }
 
