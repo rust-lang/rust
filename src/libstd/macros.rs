@@ -67,6 +67,26 @@ macro_rules! panic {
 /// Note that stdout is frequently line-buffered by default so it may be
 /// necessary to use `io::stdout().flush()` to ensure the output is emitted
 /// immediately.
+///
+/// # Examples
+///
+/// ```
+/// use std::io::{self, Write};
+///
+/// print!("this ");
+/// print!("will ");
+/// print!("be ");
+/// print!("on ");
+/// print!("the ");
+/// print!("same ");
+/// print!("line ");
+///
+/// io::stdout().flush().unwrap();
+///
+/// print!("this string has a newline, why not choose println! instead?\n");
+///
+/// io::stdout().flush().unwrap();
+/// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
