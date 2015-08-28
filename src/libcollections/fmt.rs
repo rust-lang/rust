@@ -481,6 +481,7 @@ pub use core::fmt::{LowerHex, UpperHex, Pointer};
 pub use core::fmt::{LowerExp, UpperExp};
 pub use core::fmt::Error;
 pub use core::fmt::{ArgumentV1, Arguments, write, radix, Radix, RadixFmt};
+pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
 use string;
 
