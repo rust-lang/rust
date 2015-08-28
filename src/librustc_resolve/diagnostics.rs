@@ -406,8 +406,20 @@ example:
 ```
 
 The `Self` keyword represents the current type, which explains why it
-can only be used inside an impl or a trait. For example, it is used
-to solve conflicts like this one:
+can only be used inside an impl or a trait. It gives access to
+associated items of a type:
+
+```
+trait Foo {
+    type Bar;
+}
+
+trait Baz : Foo {
+    fn bar() -> Self::Bar; // like this
+}
+```
+
+However, be careful when two types has a common associated type:
 
 ```
 trait Foo {
@@ -424,23 +436,11 @@ trait Baz : Foo + Foo2 {
 }
 ```
 
-Which can be solved by specifying from which trait we want to use
-the `Bar` type:
+It can be solved by specifying from which trait we want to use the
+`Bar` type:
 
 ```
 trait Baz : Foo + Foo2 {
-    fn bar() -> <Self as Foo>::Bar; // ok!
-}
-```
-
-A more simple example gives:
-
-```
-trait Foo {
-    type Bar;
-}
-
-trait Baz : Foo {
     fn bar() -> <Self as Foo>::Bar; // ok!
 }
 ```
@@ -872,8 +872,8 @@ impl Foo for i32 {}
 }
 
 register_diagnostics! {
-    E0153, // called no where
-    E0157, // called from no where
+//  E0153,
+//  E0157,
     E0254, // import conflicts with imported crate in this module
     E0257,
     E0258,
