@@ -96,11 +96,11 @@ mod aarch64;
 impl Intrinsic {
     pub fn find<'tcx>(tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         if name.starts_with("x86_") {
-            x86::find(tcx, &name["x86_".len()..])
+            x86::find(tcx, name)
         } else if name.starts_with("arm_") {
-            arm::find(tcx, &name["arm_".len()..])
+            arm::find(tcx, name)
         } else if name.starts_with("aarch64_") {
-            aarch64::find(tcx, &name["aarch64_".len()..])
+            aarch64::find(tcx, name)
         } else {
             None
         }

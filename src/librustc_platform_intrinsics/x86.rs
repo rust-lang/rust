@@ -18,8 +18,8 @@ macro_rules! p {
 }
 
 pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
-    if name.starts_with("mm_") {
-        Some(match &name["mm_".len()..] {
+    if name.starts_with("x86_mm_") {
+        Some(match &name["x86_mm_".len()..] {
             "sqrt_ps" => plain!("llvm.sqrt.v4f32", (f32x4) -> f32x4),
             "sqrt_pd" => plain!("llvm.sqrt.v2f64", (f64x2) -> f64x2),
 
@@ -105,8 +105,8 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
 
             _ => return None
         })
-    } else if name.starts_with("mm256_") {
-        Some(match &name["mm256_".len()..] {
+    } else if name.starts_with("x86_mm256_") {
+        Some(match &name["x86_mm256_".len()..] {
             "addsub_pd" => p!("avx.addsub.pd.256", (f64x4, f64x4) -> f64x4),
             "addsub_ps" => p!("avx.addsub.ps.256", (f32x8, f32x8) -> f32x8),
             "hadd_pd" => p!("avx.hadd.pd.256", (f64x4, f64x4) -> f64x4),

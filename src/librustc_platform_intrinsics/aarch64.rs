@@ -17,7 +17,7 @@ macro_rules! p {
     }
 }
 pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
-    Some(match name {
+    Some(match name["aarch64_".len()..] {
         "vmaxvq_u8" => p!("umaxv.i8.v16i8", (i8x16) -> i8),
         "vmaxvq_u16" => p!("umaxv.i16.v8i16", (i16x8) -> i16),
         "vmaxvq_u32" => p!("umaxv.i32.v4i32", (i32x4) -> i32),

@@ -17,8 +17,8 @@ macro_rules! p {
     }
 }
 pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
-    if !name.starts_with("v") { return None }
-    Some(match &name["v".len()..] {
+    if !name.starts_with("arm_v") { return None }
+    Some(match &name["arm_v".len()..] {
         "sqrtq_f32" => plain!("llvm.sqrt.v4f32", (f32x4) -> f32x4),
         "sqrtq_f64" => plain!("llvm.sqrt.v2f64", (f64x2) -> f64x2),
 
