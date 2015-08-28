@@ -73,7 +73,7 @@ fn lookup_hash<'a, F>(d: rbml::Doc<'a>, mut eq_fn: F, hash: u64) -> Option<rbml:
 {
     let index = reader::get_doc(d, tag_index);
     let table = reader::get_doc(index, tag_index_table);
-    let hash_pos = table.start + (hash % 256 * 4) as usize;
+    let hash_pos = table.start + (hash % 4096 * 4) as usize;
     let pos = u32_from_be_bytes(&d.data[hash_pos..]) as usize;
     let tagged_doc = reader::doc_at(d.data, pos).unwrap();
 
