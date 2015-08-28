@@ -959,8 +959,14 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              |item| {
                                  match *item {
                                      StructLitField::Regular(ref field) => field.span.lo,
-                                     // 2 = ..
-                                     StructLitField::Base(ref expr) => expr.span.lo - BytePos(2),
+                                     StructLitField::Base(ref expr) => {
+                                         let last_field_hi =
+                                             fields.last().map_or(span.lo, |field| field.span.hi);
+                                         let snippet =
+                                             context.snippet(mk_sp(last_field_hi, expr.span.lo));
+                                         let pos = snippet.find_uncommented("..").unwrap();
+                                         last_field_hi + BytePos(pos as u32)
+                                     }
                                  }
                              },
                              |item| {
