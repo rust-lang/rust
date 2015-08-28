@@ -3020,6 +3020,34 @@ parameters. You can read more about it in the API documentation:
 https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 "##,
 
+E0441: r##"
+An unknown platform-specific intrinsic function was used. Erroneous
+code example:
+
+```
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_ep16(x: i16x8, y: i16x8) -> i16x8;
+    // error: unrecognized platform-specific intrinsic function
+}
+```
+
+Please check you didn't misspell the function's name or that it is
+declared in the rust source code (in the file
+src/librustc_platform_intrinsics/x86.rs). Example:
+
+```
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i16x8; // ok!
+}
+```
+"##,
+
 E0442: r##"
 Intrinsic argument(s) and/or return value have the wrong length.
 Erroneous code example:
@@ -3191,5 +3219,4 @@ register_diagnostics! {
     E0436,  // functional record update requires a struct
     E0439, // invalid `simd_shuffle`, needs length: `{}`
     E0440, // platform-specific intrinsic has wrong number of type parameters
-    E0441, // unrecognized platform-specific intrinsic function
 }
