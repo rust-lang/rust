@@ -34,6 +34,7 @@ pub enum Type {
     Float(u8),
     Pointer(Box<Type>),
     Vector(Box<Type>, u8),
+    Aggregate(bool, Vec<Type>),
 }
 
 pub enum IntrinsicDef {
@@ -44,6 +45,9 @@ fn i(width: u8) -> Type { Type::Integer(true, width) }
 fn u(width: u8) -> Type { Type::Integer(false, width) }
 fn f(width: u8) -> Type { Type::Float(width) }
 fn v(x: Type, length: u8) -> Type { Type::Vector(Box::new(x), length) }
+fn agg(flatten: bool, types: Vec<Type>) -> Type {
+    Type::Aggregate(flatten, types)
+}
 
 macro_rules! ty {
     (f32x8) => (v(f(32), 8));
