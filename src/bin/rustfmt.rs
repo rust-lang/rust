@@ -93,38 +93,36 @@ fn determine_params<I>(args: I) -> Option<(Vec<String>, WriteMode)>
     let help_mode = "-h";
     let long_help_mode = "--help";
     let mut write_mode = WriteMode::Replace;
-    let args: Vec<String> = args.collect();
+    let mut rustc_args = Vec::new();
 
     // The NewFile option currently isn't supported because it requires another
     // parameter, but it can be added later.
-    if args.iter().any(|arg| {
+    for arg in args {
         if arg.starts_with(write_mode_prefix) {
-            write_mode = match FromStr::from_str(&arg[write_mode_prefix.len()..]) {
-                Ok(mode) => mode,
+            match FromStr::from_str(&arg[write_mode_prefix.len()..]) {
+                Ok(mode) => write_mode = mode,
                 Err(_) => {
                     print_usage("Unrecognized write mode");
-                    return true;
+                    return None;
                 }
-            };
-            false
+            }
         } else if arg.starts_with(help_mode) || arg.starts_with(long_help_mode) {
             print_usage("");
-            true
+            return None;
         } else if arg.starts_with(arg_prefix) {
             print_usage("Invalid argument");
-            true
+            return None;
         } else {
-            false
+            // Pass everything else to rustc
+            rustc_args.push(arg);
         }
-    }) {
-        return None;
     }
 
-    if args.len() < 2 {
+    if rustc_args.len() < 2 {
         print_usage("Please provide a file to be formatted");
         return None;
     }
 
 
-    Some((args, write_mode))
+    Some((rustc_args, write_mode))
 }
