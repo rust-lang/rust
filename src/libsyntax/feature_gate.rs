@@ -24,6 +24,7 @@
 
 use self::Status::*;
 use self::AttributeType::*;
+use self::AttributeGate::*;
 
 use abi::Abi;
 use ast::NodeId;
@@ -203,135 +204,137 @@ enum Status {
 }
 
 // Attributes that have a special meaning to rustc or rustdoc
-pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
+pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGate)] = &[
     // Normal attributes
 
-    ("warn", Normal),
-    ("allow", Normal),
-    ("forbid", Normal),
-    ("deny", Normal),
+    ("warn", Normal, Ungated),
+    ("allow", Normal, Ungated),
+    ("forbid", Normal, Ungated),
+    ("deny", Normal, Ungated),
 
-    ("macro_reexport", Normal),
-    ("macro_use", Normal),
-    ("macro_export", Normal),
-    ("plugin_registrar", Normal),
+    ("macro_reexport", Normal, Ungated),
+    ("macro_use", Normal, Ungated),
+    ("macro_export", Normal, Ungated),
+    ("plugin_registrar", Normal, Ungated),
 
-    ("cfg", Normal),
-    ("cfg_attr", Normal),
-    ("main", Normal),
-    ("start", Normal),
-    ("test", Normal),
-    ("bench", Normal),
-    ("simd", Normal),
-    ("repr", Normal),
-    ("path", Normal),
-    ("abi", Normal),
-    ("automatically_derived", Normal),
-    ("no_mangle", Normal),
-    ("no_link", Normal),
-    ("derive", Normal),
-    ("should_panic", Normal),
-    ("ignore", Normal),
-    ("no_implicit_prelude", Normal),
-    ("reexport_test_harness_main", Normal),
-    ("link_args", Normal),
-    ("macro_escape", Normal),
+    ("cfg", Normal, Ungated),
+    ("cfg_attr", Normal, Ungated),
+    ("main", Normal, Ungated),
+    ("start", Normal, Ungated),
+    ("test", Normal, Ungated),
+    ("bench", Normal, Ungated),
+    ("simd", Normal, Ungated),
+    ("repr", Normal, Ungated),
+    ("path", Normal, Ungated),
+    ("abi", Normal, Ungated),
+    ("automatically_derived", Normal, Ungated),
+    ("no_mangle", Normal, Ungated),
+    ("no_link", Normal, Ungated),
+    ("derive", Normal, Ungated),
+    ("should_panic", Normal, Ungated),
+    ("ignore", Normal, Ungated),
+    ("no_implicit_prelude", Normal, Ungated),
+    ("reexport_test_harness_main", Normal, Ungated),
+    ("link_args", Normal, Ungated),
+    ("macro_escape", Normal, Ungated),
 
     // Not used any more, but we can't feature gate it
-    ("no_stack_check", Normal),
+    ("no_stack_check", Normal, Ungated),
 
-    ("staged_api", Gated("staged_api",
-                         "staged_api is for use by rustc only")),
-    ("plugin", Gated("plugin",
-                     "compiler plugins are experimental \
-                      and possibly buggy")),
-    ("no_std", Gated("no_std",
-                     "no_std is experimental")),
-    ("no_core", Gated("no_core",
-                     "no_core is experimental")),
-    ("lang", Gated("lang_items",
-                     "language items are subject to change")),
-    ("linkage", Gated("linkage",
-                      "the `linkage` attribute is experimental \
-                       and not portable across platforms")),
-    ("thread_local", Gated("thread_local",
-                            "`#[thread_local]` is an experimental feature, and does not \
-                             currently handle destructors. There is no corresponding \
-                             `#[task_local]` mapping to the task model")),
+    ("staged_api", CrateLevel, Gated("staged_api",
+                                     "staged_api is for use by rustc only")),
+    ("plugin", CrateLevel, Gated("plugin",
+                                 "compiler plugins are experimental \
+                                  and possibly buggy")),
+    ("no_std", CrateLevel, Gated("no_std",
+                                 "no_std is experimental")),
+    ("no_core", CrateLevel, Gated("no_core",
+                                  "no_core is experimental")),
+    ("lang", Normal, Gated("lang_items",
+                           "language items are subject to change")),
+    ("linkage", Whitelisted, Gated("linkage",
+                                   "the `linkage` attribute is experimental \
+                                    and not portable across platforms")),
+    ("thread_local", Whitelisted, Gated("thread_local",
+                                        "`#[thread_local]` is an experimental feature, and does \
+                                         not currently handle destructors. There is no \
+                                         corresponding `#[task_local]` mapping to the task \
+                                         model")),
 
-    ("rustc_on_unimplemented", Gated("on_unimplemented",
-                                     "the `#[rustc_on_unimplemented]` attribute \
+    ("rustc_on_unimplemented", Normal, Gated("on_unimplemented",
+                                             "the `#[rustc_on_unimplemented]` attribute \
+                                              is an experimental feature")),
+    ("allocator", Whitelisted, Gated("allocator",
+                                     "the `#[allocator]` attribute is an experimental feature")),
+    ("needs_allocator", Normal, Gated("needs_allocator",
+                                      "the `#[needs_allocator]` \
+                                       attribute is an experimental \
+                                       feature")),
+    ("rustc_variance", Normal, Gated("rustc_attrs",
+                                     "the `#[rustc_variance]` attribute \
                                       is an experimental feature")),
-    ("allocator", Gated("allocator",
-                        "the `#[allocator]` attribute is an experimental feature")),
-    ("needs_allocator", Gated("needs_allocator", "the `#[needs_allocator]` \
-                                                  attribute is an experimental \
-                                                  feature")),
-    ("rustc_variance", Gated("rustc_attrs",
-                             "the `#[rustc_variance]` attribute \
-                              is an experimental feature")),
-    ("rustc_error", Gated("rustc_attrs",
-                          "the `#[rustc_error]` attribute \
-                           is an experimental feature")),
-    ("rustc_move_fragments", Gated("rustc_attrs",
-                                   "the `#[rustc_move_fragments]` attribute \
-                                    is an experimental feature")),
+    ("rustc_error", Whitelisted, Gated("rustc_attrs",
+                                       "the `#[rustc_error]` attribute \
+                                        is an experimental feature")),
+    ("rustc_move_fragments", Normal, Gated("rustc_attrs",
+                                           "the `#[rustc_move_fragments]` attribute \
+                                            is an experimental feature")),
 
-    ("allow_internal_unstable", Gated("allow_internal_unstable",
-                                      EXPLAIN_ALLOW_INTERNAL_UNSTABLE)),
+    ("allow_internal_unstable", Normal, Gated("allow_internal_unstable",
+                                              EXPLAIN_ALLOW_INTERNAL_UNSTABLE)),
 
-    ("fundamental", Gated("fundamental",
-                          "the `#[fundamental]` attribute \
-                           is an experimental feature")),
+    ("fundamental", Whitelisted, Gated("fundamental",
+                                       "the `#[fundamental]` attribute \
+                                        is an experimental feature")),
 
-    ("linked_from", Gated("linked_from",
-                          "the `#[linked_from]` attribute \
-                           is an experimental feature")),
+    ("linked_from", Normal, Gated("linked_from",
+                                  "the `#[linked_from]` attribute \
+                                   is an experimental feature")),
 
     // FIXME: #14408 whitelist docs since rustdoc looks at them
-    ("doc", Whitelisted),
+    ("doc", Whitelisted, Ungated),
 
     // FIXME: #14406 these are processed in trans, which happens after the
     // lint pass
-    ("cold", Whitelisted),
-    ("export_name", Whitelisted),
-    ("inline", Whitelisted),
-    ("link", Whitelisted),
-    ("link_name", Whitelisted),
-    ("link_section", Whitelisted),
-    ("no_builtins", Whitelisted),
-    ("no_mangle", Whitelisted),
-    ("no_debug", Whitelisted),
-    ("omit_gdb_pretty_printer_section", Whitelisted),
-    ("unsafe_no_drop_flag", Gated("unsafe_no_drop_flag",
-                                  "unsafe_no_drop_flag has unstable semantics \
-                                   and may be removed in the future")),
+    ("cold", Whitelisted, Ungated),
+    ("export_name", Whitelisted, Ungated),
+    ("inline", Whitelisted, Ungated),
+    ("link", Whitelisted, Ungated),
+    ("link_name", Whitelisted, Ungated),
+    ("link_section", Whitelisted, Ungated),
+    ("no_builtins", Whitelisted, Ungated),
+    ("no_mangle", Whitelisted, Ungated),
+    ("no_debug", Whitelisted, Ungated),
+    ("omit_gdb_pretty_printer_section", Whitelisted, Ungated),
+    ("unsafe_no_drop_flag", Whitelisted, Gated("unsafe_no_drop_flag",
+                                               "unsafe_no_drop_flag has unstable semantics \
+                                                and may be removed in the future")),
 
     // used in resolve
-    ("prelude_import", Gated("prelude_import",
-                             "`#[prelude_import]` is for use by rustc only")),
+    ("prelude_import", Whitelisted, Gated("prelude_import",
+                                          "`#[prelude_import]` is for use by rustc only")),
 
     // FIXME: #14407 these are only looked at on-demand so we can't
     // guarantee they'll have already been checked
-    ("deprecated", Whitelisted),
-    ("must_use", Whitelisted),
-    ("stable", Whitelisted),
-    ("unstable", Whitelisted),
+    ("deprecated", Whitelisted, Ungated),
+    ("must_use", Whitelisted, Ungated),
+    ("stable", Whitelisted, Ungated),
+    ("unstable", Whitelisted, Ungated),
 
-    ("rustc_paren_sugar", Gated("unboxed_closures",
-                                "unboxed_closures are still evolving")),
-    ("rustc_reflect_like", Gated("reflect",
-                                 "defining reflective traits is still evolving")),
+    ("rustc_paren_sugar", Normal, Gated("unboxed_closures",
+                                        "unboxed_closures are still evolving")),
+    ("rustc_reflect_like", Whitelisted, Gated("reflect",
+                                              "defining reflective traits is still evolving")),
 
     // Crate level attributes
-    ("crate_name", CrateLevel),
-    ("crate_type", CrateLevel),
-    ("crate_id", CrateLevel),
-    ("feature", CrateLevel),
-    ("no_start", CrateLevel),
-    ("no_main", CrateLevel),
-    ("no_builtins", CrateLevel),
-    ("recursion_limit", CrateLevel),
+    ("crate_name", CrateLevel, Ungated),
+    ("crate_type", CrateLevel, Ungated),
+    ("crate_id", CrateLevel, Ungated),
+    ("feature", CrateLevel, Ungated),
+    ("no_start", CrateLevel, Ungated),
+    ("no_main", CrateLevel, Ungated),
+    ("no_builtins", CrateLevel, Ungated),
+    ("recursion_limit", CrateLevel, Ungated),
 ];
 
 macro_rules! cfg_fn {
@@ -398,12 +401,17 @@ pub enum AttributeType {
     /// will be ignored by the unused_attribute lint
     Whitelisted,
 
-    /// Is gated by a given feature gate and reason
-    /// These get whitelisted too
-    Gated(&'static str, &'static str),
-
     /// Builtin attribute that is only allowed at the crate level
     CrateLevel,
+}
+
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub enum AttributeGate {
+    /// Is gated by a given feature gate and reason
+    Gated(&'static str, &'static str),
+
+    /// Ungated attribute, can be used on all release channels
+    Ungated,
 }
 
 /// A set of features to be used by later passes.
@@ -522,12 +530,12 @@ impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
         let name = &*attr.name();
-        for &(n, ty) in KNOWN_ATTRIBUTES {
+        for &(n, ty, gateage) in KNOWN_ATTRIBUTES {
             if n == name {
-                if let Gated(gate, desc) = ty {
+                if let Gated(gate, desc) = gateage {
                     self.gate_feature(gate, attr.span, desc);
                 }
-                debug!("check_attribute: {:?} is known, {:?}", name, ty);
+                debug!("check_attribute: {:?} is known, {:?}, {:?}", name, ty, gateage);
                 return;
             }
         }

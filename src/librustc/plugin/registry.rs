@@ -145,11 +145,6 @@ impl<'a> Registry<'a> {
     /// `Whitelisted` attributes will additionally not trigger the `unused_attribute`
     /// lint. `CrateLevel` attributes will not be allowed on anything other than a crate.
     pub fn register_attribute(&mut self, name: String, ty: AttributeType) {
-        if let AttributeType::Gated(..) = ty {
-            self.sess.span_err(self.krate_span, "plugin tried to register a gated \
-                                                 attribute. Only `Normal`, `Whitelisted`, \
-                                                 and `CrateLevel` attributes are allowed");
-        }
         self.attributes.push((name, ty));
     }
 }
