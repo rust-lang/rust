@@ -887,10 +887,9 @@ impl LintPass for UnusedAttributes {
 
     fn check_attribute(&mut self, cx: &Context, attr: &ast::Attribute) {
         // Note that check_name() marks the attribute as used if it matches.
-        for &(ref name, ty) in KNOWN_ATTRIBUTES {
+        for &(ref name, ty, _) in KNOWN_ATTRIBUTES {
             match ty {
-                AttributeType::Whitelisted
-                | AttributeType::Gated(_, _) if attr.check_name(name) => {
+                AttributeType::Whitelisted if attr.check_name(name) => {
                     break;
                 },
                 _ => ()
@@ -907,8 +906,11 @@ impl LintPass for UnusedAttributes {
         if !attr::is_used(attr) {
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
-            let known_crate = KNOWN_ATTRIBUTES.contains(&(&attr.name(),
-                                                          AttributeType::CrateLevel));
+            let known_crate = KNOWN_ATTRIBUTES.iter().find(|&&(name, ty, _)| {
+                attr.name() == name &&
+                ty == AttributeType::CrateLevel
+            }).is_some();
+
             // Has a plugin registered this attribute as one which must be used at
             // the crate level?
             let plugin_crate = plugin_attributes.iter()
