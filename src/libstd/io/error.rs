@@ -153,7 +153,7 @@ pub enum ErrorKind {
     /// This typically means that an operation could only succeed if it read a
     /// particular number of bytes but only a smaller number of bytes could be
     /// read.
-    #[unstable(feature = "read_exact", reason = "recently added")]
+    #[unstable(feature = "read_exact", reason = "recently added", issue = "27585")]
     UnexpectedEOF,
 
     /// Any I/O error not part of this list.

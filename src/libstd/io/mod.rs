@@ -363,7 +363,7 @@ pub trait Read {
     /// # Ok(())
     /// # }
     /// ```
-    #[unstable(feature = "read_exact", reason = "recently added")]
+    #[unstable(feature = "read_exact", reason = "recently added", issue = "27585")]
     fn read_exact(&mut self, mut buf: &mut [u8]) -> Result<()> {
         while !buf.is_empty() {
             match self.read(buf) {
