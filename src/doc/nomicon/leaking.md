@@ -155,7 +155,6 @@ impl<T> Rc<T> {
 impl<T> Drop for Rc<T> {
     fn drop(&mut self) {
         unsafe {
-            let inner = &mut ;
             (*self.ptr).ref_count -= 1;
             if (*self.ptr).ref_count == 0 {
                 // drop the data and then free it
