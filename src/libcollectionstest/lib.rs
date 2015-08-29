@@ -25,6 +25,7 @@
 #![feature(rand)]
 #![feature(range_inclusive)]
 #![feature(rustc_private)]
+#![feature(set_recovery)]
 #![feature(slice_bytes)]
 #![feature(slice_splits)]
 #![feature(split_off)]
