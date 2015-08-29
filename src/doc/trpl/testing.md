@@ -502,31 +502,35 @@ documentation tests: the `_0` is generated for the module test, and `add_two_0`
 for the function test. These will auto increment with names like `add_two_1` as
 you add more examples.
 
-In many cases, we would like to import other crates in our documentation tests.
-To keep simple things simple while allowing more sophisticated testing, Rust
-implements the following logic when building the final test program:
+Behind the scences, Rust wraps doctests with the following for a module named
+`foo` to compile the doctest into source code:
 
-- The current module is automatically imported under its own name when no
-  `extern crate` is present in the doctest and the entire contents of the
-  doctest are placed within a `fn main() {}` block.
+```rust
+extern crate foo;
 
-- When the string  `extern crate` is present in the doctest, the current module
-  is not imported and again the entire contents of the doctest are placed within
-  a `fn main() {}` block.
+fn main() {
+  // our doctest code here.
+}
+```
 
-- To specify the final test program in its entirety, context is given by lines
-  starting with `# `.
+In many cases, we would like to import other crates in our documentation tests
+or otherwise exert more control over the doctest context.
+
+- To stop crate injection (`extern crate foo;` above), add any string `extern
+  crate` to the doctest.
+
+- To stop `fn main {}` wrapping, add the string `fn main` to the doctest.
 
 An example that specifies its entire context is given here:
 
-```
-# extern crate foo;
+```rust
+extern crate foo;
 
-# use foo::{bar, baz};
+use foo::{bar, baz};
 
-# fn main() {
-    // Your test code here...
+fn main() {
+    // Our test code here...
     bar();
     baz();
-# }
+}
 ```
