@@ -85,6 +85,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
         path: path_std!(cx, core::cmp::PartialEq),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
+        is_unsafe: false,
         methods: vec!(
             md!("eq", cs_eq),
             md!("ne", cs_ne)

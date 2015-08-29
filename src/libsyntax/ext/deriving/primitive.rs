@@ -32,6 +32,7 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
         path: path_std!(cx, core::num::FromPrimitive),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
+        is_unsafe: false,
         methods: vec!(
             MethodDef {
                 name: "from_i64",

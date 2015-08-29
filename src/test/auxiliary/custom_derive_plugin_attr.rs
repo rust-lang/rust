@@ -48,6 +48,7 @@ fn expand(cx: &mut ExtCtxt,
         additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         associated_types: vec![],
+        is_unsafe: false,
         methods: vec![
             MethodDef {
                 name: "total_sum",

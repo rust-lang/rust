@@ -40,6 +40,7 @@ pub fn expand_deriving_copy(cx: &mut ExtCtxt,
         path: path,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
+        is_unsafe: false,
         methods: Vec::new(),
         associated_types: Vec::new(),
     };
