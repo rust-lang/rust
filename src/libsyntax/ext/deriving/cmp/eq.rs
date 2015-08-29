@@ -51,6 +51,7 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
         path: path_std!(cx, core::cmp::Eq),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
+        is_unsafe: false,
         methods: vec!(
             MethodDef {
                 name: "assert_receiver_is_total_eq",

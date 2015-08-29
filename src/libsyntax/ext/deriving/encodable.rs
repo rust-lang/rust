@@ -135,6 +135,7 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
         path: Path::new_(vec!(krate, "Encodable"), None, vec!(), true),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
+        is_unsafe: false,
         methods: vec!(
             MethodDef {
                 name: "encode",

@@ -229,6 +229,9 @@ pub struct TraitDef<'a> {
     /// Any extra lifetimes and/or bounds, e.g. `D: serialize::Decoder`
     pub generics: LifetimeBounds<'a>,
 
+    /// Is it an `unsafe` trait?
+    pub is_unsafe: bool,
+
     pub methods: Vec<MethodDef<'a>>,
 
     pub associated_types: Vec<(ast::Ident, Ty<'a>)>,
@@ -625,11 +628,18 @@ impl<'a> TraitDef<'a> {
                                            InternedString::new("unused_qualifications"))]));
         let mut a = vec![attr, unused_qual];
         a.extend(self.attributes.iter().cloned());
+
+        let unsafety = if self.is_unsafe {
+            ast::Unsafety::Unsafe
+        } else {
+            ast::Unsafety::Normal
+        };
+
         cx.item(
             self.span,
             ident,
             a,
-            ast::ItemImpl(ast::Unsafety::Normal,
+            ast::ItemImpl(unsafety,
                           ast::ImplPolarity::Positive,
                           trait_generics,
                           opt_trait_ref,
