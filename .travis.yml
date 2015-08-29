@@ -20,7 +20,7 @@ sudo: false
 before_script:
   - ./configure --enable-ccache
 script:
-  - make tidy check -j4
+  - make tidy && make check -j4
 
 env:
   - CXX=/usr/bin/g++-4.7
