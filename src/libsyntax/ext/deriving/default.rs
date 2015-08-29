@@ -31,6 +31,7 @@ pub fn expand_deriving_default(cx: &mut ExtCtxt,
         path: path_std!(cx, core::default::Default),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
+        is_unsafe: false,
         methods: vec!(
             MethodDef {
                 name: "default",

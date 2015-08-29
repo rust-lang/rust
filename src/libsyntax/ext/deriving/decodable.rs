@@ -59,6 +59,7 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
         path: Path::new_(vec!(krate, "Decodable"), None, vec!(), true),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
+        is_unsafe: false,
         methods: vec!(
             MethodDef {
                 name: "decode",
