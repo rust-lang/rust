@@ -24,9 +24,9 @@ class PlatformInfo(object):
     def __init__(self, json):
         self._platform = json['platform']
         self._intrinsic_prefix = json['intrinsic_prefix']
+
     def intrinsic_prefix(self):
         return self._intrinsic_prefix
-
 
 class IntrinsicSet(object):
     def __init__(self, platform, json):
@@ -41,10 +41,13 @@ class IntrinsicSet(object):
             yield GenericIntrinsic(self,
                                    raw['intrinsic'], raw['width'], raw['llvm'],
                                    raw['ret'], raw['args'])
+
     def platform(self):
         return self._platform
+
     def llvm_prefix(self):
         return self._llvm_prefix
+
     def width_info(self, bitwidth):
         return self._widths[str(bitwidth)]
 
@@ -67,8 +70,10 @@ class PlatformTypeInfo(object):
     def __init__(self, llvm_name, properties):
         self.properties = properties
         self.llvm_name = llvm_name
+
     def __getattr__(self, name):
         return self.properties[name]
+
     def vectorize(self, length, width_info):
         props = self.properties.copy()
         props.update(width_info)
@@ -80,12 +85,14 @@ class Type(object):
 
     def bitwidth(self):
         return self._bitwidth
+
     def modify(self, spec, width):
         raise NotImplementedError()
 
 class Number(Type):
     def __init__(self, bitwidth):
         Type.__init__(self, bitwidth)
+
     def modify(self, spec, width):
         if spec == 'u':
             return Unsigned(self.bitwidth())
@@ -106,30 +113,40 @@ class Number(Type):
 class Signed(Number):
     def __init__(self, bitwidth):
         Number.__init__(self, bitwidth)
+
     def compiler_ctor(self):
         return 'i({})'.format(self.bitwidth())
+
     def llvm_name(self):
         return 'i{}'.format(self.bitwidth())
+
     def rust_name(self):
         return 'i{}'.format(self.bitwidth())
 
 class Unsigned(Number):
     def __init__(self, bitwidth):
         Number.__init__(self, bitwidth)
+
     def compiler_ctor(self):
         return 'u({})'.format(self.bitwidth())
+
     def llvm_name(self):
         return 'i{}'.format(self.bitwidth())
+
     def rust_name(self):
         return 'u{}'.format(self.bitwidth())
+
 class Float(Number):
     def __init__(self, bitwidth):
         assert bitwidth in (32, 64)
         Number.__init__(self, bitwidth)
+
     def compiler_ctor(self):
         return 'f({})'.format(self.bitwidth())
+
     def llvm_name(self):
         return 'f{}'.format(self.bitwidth())
+
     def rust_name(self):
         return 'f{}'.format(self.bitwidth())
 
@@ -140,6 +157,7 @@ class Vector(Type):
                       elem.bitwidth() * length)
         self._length = length
         self._elem = elem
+
     def modify(self, spec, width):
         if spec == 'h':
             return Vector(self._elem, self._length // 2)
@@ -150,10 +168,13 @@ class Vector(Type):
             return Vector(self._elem, new_bitwidth // self._elem.bitwidth())
         else:
             return Vector(self._elem.modify(spec, width), self._length)
+
     def compiler_ctor(self):
         return 'v({}, {})'.format(self._elem.compiler_ctor(), self._length)
+
     def rust_name(self):
         return '{}x{}'.format(self._elem.rust_name(), self._length)
+
     def type_info(self, platform_info):
         elem_info = self._elem.type_info(platform_info)
         return elem_info.vectorize(self._length,
@@ -163,15 +184,18 @@ class Aggregate(Type):
     def __init__(self, flatten, elems):
         self._flatten = flatten
         self._elems = elems
-        Type.__init__(self,
-                      sum(elem.bitwidth() for elem in elems))
+        Type.__init__(self, sum(elem.bitwidth() for elem in elems))
+
     def __repr__(self):
         return '<Aggregate {}>'.format(self._elems)
+
     def compiler_ctor(self):
         return 'agg({}, vec![{}])'.format('true' if self._flatten else 'false',
                                           ', '.join(elem.compiler_ctor() for elem in self._elems))
+
     def rust_name(self):
         return '({})'.format(', '.join(elem.rust_name() for elem in self._elems))
+
     def type_info(self, platform_info):
         #return PlatformTypeInfo(None, None, self._llvm_name)
         return None
@@ -188,6 +212,7 @@ class TypeSpec(object):
             spec = [spec]
 
         self.spec = spec
+
     def enumerate(self, width):
         for spec in self.spec:
             match = SPEC.match(spec)
@@ -208,13 +233,13 @@ class TypeSpec(object):
                     for ctor in type_ctors:
                         scalar = ctor(bitwidth)
                         if is_vector:
-
                             yield Vector(scalar, width // bitwidth)
                         else:
                             yield scalar
                     bitwidth *= 2
             else:
                 print('Failed to parse: `{}`'.format(spec), file=sys.stderr)
+
     def resolve(self, width, zero):
         assert len(self.spec) == 1
         spec = self.spec[0]
@@ -272,23 +297,30 @@ class MonomorphicIntrinsic(object):
         self._ret = ret.type_info(platform)
         self._args_raw = args
         self._args = [arg.type_info(platform) for arg in args]
+
     def llvm_name(self):
         if self._llvm_name.startswith('!'):
             return self._llvm_name[1:].format(self._ret, *self._args)
         else:
             return self._platform.llvm_prefix() + self._llvm_name.format(self._ret, *self._args)
+
     def intrinsic_suffix(self):
         return self._intrinsic.format(self._ret,
                                       *self._args,
                                       width = self._width)
+
     def intrinsic_name(self):
         return self._platform.platform().intrinsic_prefix() + self.intrinsic_suffix()
+
     def compiler_args(self):
         return ', '.join(arg.compiler_ctor() for arg in self._args_raw)
+
     def compiler_ret(self):
         return self._ret_raw.compiler_ctor()
+
     def compiler_signature(self):
         return '({}) -> {}'.format(self.compiler_args(), self.compiler_ret())
+
     def intrinsic_signature(self):
         names = 'xyzwabcdef'
         return '({}) -> {}'.format(', '.join('{}: {}'.format(name, arg.rust_name())
@@ -410,17 +442,21 @@ def parse_args():
 class ExternBlock(object):
     def __init__(self):
         pass
+
     def open(self, platform):
         return 'extern "platform-intrinsic" {'
+
     def render(self, mono):
         return '    fn {}{};'.format(mono.intrinsic_name(),
                                      mono.intrinsic_signature())
+
     def close(self):
         return '}'
 
 class CompilerDefs(object):
     def __init__(self):
         pass
+
     def open(self, platform):
         return '''\
 // Copyright 2015 The Rust Project Developers. See the COPYRIGHT
@@ -456,6 +492,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {{
                       mono.compiler_args(),
                       mono.compiler_ret(),
                       mono.llvm_name())
+
     def close(self):
         return '''\
         _ => return None,
@@ -499,6 +536,7 @@ def main():
         for intr in intrinsics.intrinsics():
             for mono in intr.monomorphise():
                 print(out_format.render(mono), file=out)
+
     print(out_format.close(), file=out)
 
 if __name__ == '__main__':
