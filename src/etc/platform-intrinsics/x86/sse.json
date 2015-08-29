@@ -1,0 +1,40 @@
+{
+    "llvm_prefix": "llvm.x86.sse.",
+    "intrinsics": [
+        {
+            "intrinsic": "_movemask_ps",
+            "width": [128],
+            "llvm": "movmsk.ps",
+            "ret": "S32",
+            "args": ["f32"]
+        },
+        {
+            "intrinsic": "_max_ps",
+            "width": [128],
+            "llvm": "max.ps",
+            "ret": "f32",
+            "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "_min_ps",
+            "width": [128],
+            "llvm": "min.ps",
+            "ret": "f32",
+            "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "_rsqrt_ps",
+            "width": [128],
+            "llvm": "rsqrt.ps",
+            "ret": "f32",
+            "args": ["0"]
+        },
+        {
+            "intrinsic": "_rcp_ps",
+            "width": [128],
+            "llvm": "rcp.ps",
+            "ret": "f32",
+            "args": ["0"]
+        }
+    ]
+}

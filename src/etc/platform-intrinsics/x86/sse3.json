@@ -1,0 +1,26 @@
+{
+    "llvm_prefix": "llvm.x86.sse3.",
+    "intrinsics": [
+        {
+            "intrinsic": "_addsub_{0.data_type}",
+            "width": [128],
+            "llvm": "addsub.{0.data_type}",
+            "ret": "f(32-64)",
+            "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "_hadd_{0.data_type}",
+            "width": [128],
+            "llvm": "hadd.{0.data_type}",
+            "ret": "f(32-64)",
+            "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "_hsub_{0.data_type}",
+            "width": [128],
+            "llvm": "hsub.{0.data_type}",
+            "ret": "f(32-64)",
+            "args": ["0", "0"]
+        }
+    ]
+}
