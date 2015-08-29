@@ -459,7 +459,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 }
             });
             match result {
-                Finished(ret) => return ret,
+                Finished(ret) => return ret.map(|(_, v)| v),
                 Continue(new_stack) => stack = new_stack
             }
         }
@@ -693,16 +693,16 @@ mod stack {
     impl<'a, K, V> SearchStack<'a, K, V, handle::KV, handle::Leaf> {
         /// Removes the key and value in the top element of the stack, then handles underflows as
         /// described in BTree's pop function.
-        fn remove_leaf(mut self) -> V {
+        fn remove_leaf(mut self) -> (K, V) {
             self.map.length -= 1;
 
             // Remove the key-value pair from the leaf that this search stack points to.
             // Then, note if the leaf is underfull, and promptly forget the leaf and its ptr
             // to avoid ownership issues.
-            let (value, mut underflow) = unsafe {
-                let (_, value) = self.top.from_raw_mut().remove_as_leaf();
+            let (key_val, mut underflow) = unsafe {
+                let key_val = self.top.from_raw_mut().remove_as_leaf();
                 let underflow = self.top.from_raw().node().is_underfull();
-                (value, underflow)
+                (key_val, underflow)
             };
 
             loop {
@@ -717,7 +717,7 @@ mod stack {
                             self.map.depth -= 1;
                             self.map.root.hoist_lone_child();
                         }
-                        return value;
+                        return key_val;
                     }
                     Some(mut handle) => {
                         if underflow {
@@ -728,7 +728,7 @@ mod stack {
                             }
                         } else {
                             // All done!
-                            return value;
+                            return key_val;
                         }
                     }
                 }
@@ -739,7 +739,7 @@ mod stack {
     impl<'a, K, V> SearchStack<'a, K, V, handle::KV, handle::LeafOrInternal> {
         /// Removes the key and value in the top element of the stack, then handles underflows as
         /// described in BTree's pop function.
-        pub fn remove(self) -> V {
+        pub fn remove(self) -> (K, V) {
             // Ensure that the search stack goes to a leaf. This is necessary to perform deletion
             // in a BTree. Note that this may put the tree in an inconsistent state (further
             // described in into_leaf's comments), but this is immediately fixed by the
@@ -1208,7 +1208,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// Takes the value of the entry out of the map, and returns it.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(self) -> V {
-        self.stack.remove()
+        self.stack.remove().1
     }
 }
 
@@ -1602,6 +1602,89 @@ impl<K: Ord, V> BTreeMap<K, V> {
             match result {
                 Finished(finished) => return finished,
                 Continue((new_stack, renewed_key)) => {
+                    stack = new_stack;
+                    key = renewed_key;
+                }
+            }
+        }
+    }
+}
+
+impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()> where K: Borrow<Q> + Ord, Q: Ord {
+    type Key = K;
+
+    fn get(&self, key: &Q) -> Option<&K> {
+        let mut cur_node = &self.root;
+        loop {
+            match Node::search(cur_node, key) {
+                Found(handle) => return Some(handle.into_kv().0),
+                GoDown(handle) => match handle.force() {
+                    Leaf(_) => return None,
+                    Internal(internal_handle) => {
+                        cur_node = internal_handle.into_edge();
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
+    fn take(&mut self, key: &Q) -> Option<K> {
+        // See `remove` for an explanation of this.
+
+        let mut stack = stack::PartialSearchStack::new(self);
+        loop {
+            let result = stack.with(move |pusher, node| {
+                match Node::search(node, key) {
+                    Found(handle) => {
+                        // Perfect match. Terminate the stack here, and remove the entry
+                        Finished(Some(pusher.seal(handle).remove()))
+                    },
+                    GoDown(handle) => {
+                        // We need to keep searching, try to go down the next edge
+                        match handle.force() {
+                            // We're at a leaf; the key isn't in here
+                            Leaf(_) => Finished(None),
+                            Internal(internal_handle) => Continue(pusher.push(internal_handle))
+                        }
+                    }
+                }
+            });
+            match result {
+                Finished(ret) => return ret.map(|(k, _)| k),
+                Continue(new_stack) => stack = new_stack
+            }
+        }
+    }
+
+    fn replace(&mut self, mut key: K) -> Option<K> {
+        // See `insert` for an explanation of this.
+
+        let mut stack = stack::PartialSearchStack::new(self);
+
+        loop {
+            let result = stack.with(move |pusher, node| {
+                match Node::search::<K, _>(node, &key) {
+                    Found(mut handle) => {
+                        mem::swap(handle.key_mut(), &mut key);
+                        Finished(Some(key))
+                    },
+                    GoDown(handle) => {
+                        match handle.force() {
+                            Leaf(leaf_handle) => {
+                                pusher.seal(leaf_handle).insert(key, ());
+                                Finished(None)
+                            }
+                            Internal(internal_handle) => {
+                                Continue((pusher.push(internal_handle), key, ()))
+                            }
+                        }
+                    }
+                }
+            });
+            match result {
+                Finished(ret) => return ret,
+                Continue((new_stack, renewed_key, _)) => {
                     stack = new_stack;
                     key = renewed_key;
                 }
