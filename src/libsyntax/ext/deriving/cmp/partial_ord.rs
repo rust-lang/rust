@@ -73,6 +73,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
         path: path_std!(cx, core::cmp::PartialOrd),
         additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
+        is_unsafe: false,
         methods: vec![
             partial_cmp_def,
             md!("lt", true, false),

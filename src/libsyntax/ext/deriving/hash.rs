@@ -32,6 +32,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
         path: path,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
+        is_unsafe: false,
         methods: vec!(
             MethodDef {
                 name: "hash",
