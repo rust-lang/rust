@@ -20,51 +20,59 @@ SPEC = re.compile(
     r'|(?P<reference>\d+)(?P<modifiers>[vShdnwus]*)(?P<force_width>x\d+)?)$'
 )
 
-class IntrinsicSet(object):
+class PlatformInfo(object):
     def __init__(self, json):
         self._platform = json['platform']
         self._intrinsic_prefix = json['intrinsic_prefix']
+    def intrinsic_prefix(self):
+        return self._intrinsic_prefix
+
+
+class IntrinsicSet(object):
+    def __init__(self, platform, json):
         self._llvm_prefix = json['llvm_prefix']
-        self._intrinsics = json['intrinsics']
         self._type_info = json['number_info']
-        self._widths = json['widths']
+        self._intrinsics = json['intrinsics']
+        self._widths = json['width_info']
+        self._platform = platform
 
     def intrinsics(self):
         for raw in self._intrinsics:
             yield GenericIntrinsic(self,
                                    raw['intrinsic'], raw['width'], raw['llvm'],
                                    raw['ret'], raw['args'])
+    def platform(self):
+        return self._platform
     def llvm_prefix(self):
         return self._llvm_prefix
-    def intrinsic_prefix(self):
-        return self._intrinsic_prefix
-
-    def width_name(self, bitwidth):
+    def width_info(self, bitwidth):
         return self._widths[str(bitwidth)]
 
     def number_type_info(self, value):
         data = self._type_info[value.__class__.__name__.lower()]
         bitwidth = value.bitwidth()
-        raw_dtype = data['data_type']
-        try:
-            dtype = raw_dtype[str(bitwidth)]
-        except KeyError:
-            dtype = raw_dtype['pattern'].format(bitwidth = bitwidth)
-        return PlatformTypeInfo(data['kind'],
-                                dtype,
-                                value.llvm_name())
+        def lookup(raw):
+            if not isinstance(raw, dict):
+                return raw
+
+            try:
+                return raw[str(bitwidth)]
+            except KeyError:
+                return raw['pattern'].format(bitwidth = bitwidth)
+
+        return PlatformTypeInfo(value.llvm_name(),
+                                {k: lookup(v) for k, v in data.items()})
 
 class PlatformTypeInfo(object):
-    def __init__(self, kind, data_type, llvm_name, width = None):
-        self.kind = kind
-        self.data_type = data_type
+    def __init__(self, llvm_name, properties):
+        self.properties = properties
         self.llvm_name = llvm_name
-        if width is not None:
-            self.width = width
-    def vectorize(self, length, width):
-        return PlatformTypeInfo(self.kind, self.data_type,
-                                'v{}{}'.format(length, self.llvm_name),
-                                width)
+    def __getattr__(self, name):
+        return self.properties[name]
+    def vectorize(self, length, width_info):
+        props = self.properties.copy()
+        props.update(width_info)
+        return PlatformTypeInfo('v{}{}'.format(length, self.llvm_name), props)
 
 class Type(object):
     def __init__(self, bitwidth):
@@ -79,7 +87,11 @@ class Number(Type):
     def __init__(self, bitwidth):
         Type.__init__(self, bitwidth)
     def modify(self, spec, width):
-        if spec == 'w':
+        if spec == 'u':
+            return Unsigned(self.bitwidth())
+        elif spec == 's':
+            return Signed(self.bitwidth())
+        elif spec == 'w':
             return self.__class__(self.bitwidth() * 2)
         elif spec == 'n':
             return self.__class__(self.bitwidth() // 2)
@@ -94,13 +106,6 @@ class Number(Type):
 class Signed(Number):
     def __init__(self, bitwidth):
         Number.__init__(self, bitwidth)
-    def modify(self, spec, width):
-        if spec == 'u':
-            return Unsigned(self.bitwidth())
-        elif spec == 's':
-            return Signed(self.bitwidth())
-        else:
-            return Number.modify(self, spec, width)
     def compiler_ctor(self):
         return 'i({})'.format(self.bitwidth())
     def llvm_name(self):
@@ -111,13 +116,6 @@ class Signed(Number):
 class Unsigned(Number):
     def __init__(self, bitwidth):
         Number.__init__(self, bitwidth)
-    def modify(self, spec, width):
-        if spec == 'u':
-            return Unsigned(self.bitwidth())
-        elif spec == 's':
-            return Signed(self.bitwidth())
-        else:
-            return Number.modify(self, spec, width)
     def compiler_ctor(self):
         return 'u({})'.format(self.bitwidth())
     def llvm_name(self):
@@ -159,7 +157,7 @@ class Vector(Type):
     def type_info(self, platform_info):
         elem_info = self._elem.type_info(platform_info)
         return elem_info.vectorize(self._length,
-                                   platform_info.width_name(self.bitwidth()))
+                                   platform_info.width_info(self.bitwidth()))
 
 class Aggregate(Type):
     def __init__(self, flatten, elems):
@@ -216,7 +214,7 @@ class TypeSpec(object):
                             yield scalar
                     bitwidth *= 2
             else:
-                print('Failed to parse: {}'.format(spec), file=sys.stderr)
+                print('Failed to parse: `{}`'.format(spec), file=sys.stderr)
     def resolve(self, width, zero):
         assert len(self.spec) == 1
         spec = self.spec[0]
@@ -257,7 +255,8 @@ class GenericIntrinsic(object):
 
     def monomorphise(self):
         for width in self.widths:
-            assert width in (64, 128)
+            # must be a power of two
+            assert width & (width - 1) == 0
             for ret in self.ret.enumerate(width):
                 args = [arg.resolve(width, ret) for arg in self.args]
                 yield MonomorphicIntrinsic(self._platform, self.intrinsic, width, self.llvm_name,
@@ -283,7 +282,7 @@ class MonomorphicIntrinsic(object):
                                       *self._args,
                                       width = self._width)
     def intrinsic_name(self):
-        return self._platform.intrinsic_prefix() + self.intrinsic_suffix()
+        return self._platform.platform().intrinsic_prefix() + self.intrinsic_suffix()
     def compiler_args(self):
         return ', '.join(arg.compiler_ctor() for arg in self._args_raw)
     def compiler_ret(self):
@@ -294,7 +293,7 @@ class MonomorphicIntrinsic(object):
         names = 'xyzwabcdef'
         return '({}) -> {}'.format(', '.join('{}: {}'.format(name, arg.rust_name())
                                              for name, arg in zip(names, self._args_raw)),
-                                   self._ret.rust_name())
+                                   self._ret_raw.rust_name())
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -400,8 +399,11 @@ def parse_args():
                         help = 'Output format.')
     parser.add_argument('-o', '--out', type=argparse.FileType('w'), default=sys.stdout,
                         help = 'File to output to (default stdout).')
-    parser.add_argument('in_', metavar="FILE", type=argparse.FileType('r'),
-                        help = 'JSON file to load')
+    parser.add_argument('-i', '--info', type=argparse.FileType('r'),
+                        help = 'File containing platform specific information to merge into'
+                                'the input files\' header.')
+    parser.add_argument('in_', metavar="FILE", type=argparse.FileType('r'), nargs='+',
+                        help = 'JSON files to load')
     return parser.parse_args()
 
 
@@ -466,16 +468,35 @@ FORMATS = {
 
 def main():
     args = parse_args()
-    in_ = args.in_
+    ins = args.in_
     out = args.out
     out_format = FORMATS[args.format]
+    info = args.info
+    one_file_no_info = False
+    if len(ins) > 1 and info is None:
+        print('error: cannot have multiple inputs without an info header.', file=sys.stderr)
+        sys.exit(1)
 
-    intrinsics = IntrinsicSet(json.load(in_))
+    elif info is None:
+        info = ins[0]
+        one_file_no_info = True
+    info_json = json.load(info)
+    platform = PlatformInfo(info_json)
 
-    print(out_format.open(intrinsics), file=out)
-    for intr in intrinsics.intrinsics():
-        for mono in intr.monomorphise():
-            print(out_format.render(mono), file=out)
+    print(out_format.open(platform), file=out)
+
+    for in_ in ins:
+
+        if one_file_no_info:
+            data = info_json
+        else:
+            data = json.load(in_)
+            data.update(info_json)
+
+        intrinsics = IntrinsicSet(platform, data)
+        for intr in intrinsics.intrinsics():
+            for mono in intr.monomorphise():
+                print(out_format.render(mono), file=out)
     print(out_format.close(), file=out)
 
 if __name__ == '__main__':
