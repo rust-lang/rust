@@ -16,9 +16,9 @@
             "data_type": { "pattern": "f{bitwidth}" }
         }
     },
-    "widths": {
-        "64": "",
-        "128": "q"
+    "width_info": {
+        "64": { "width": "" },
+        "128": { "width": "q" }
     },
     "intrinsics": [
         {
