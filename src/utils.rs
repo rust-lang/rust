@@ -103,6 +103,16 @@ pub fn snippet_block<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, 
     trim_multiline(snip, true)
 }
 
+/// Like snippet_block, but add braces if the expr is not an ExprBlock
+pub fn expr_block<'a>(cx: &Context, expr: &Expr, default: &'a str) -> Cow<'a, str> {
+    let code = snippet_block(cx, expr.span, default);
+    if let ExprBlock(_) = expr.node {
+        code
+    } else {
+        Cow::Owned(format!("{{ {} }}", code))
+    }
+}
+
 /// Trim indentation from a multiline string
 /// with possibility of ignoring the first line
 pub fn trim_multiline(s: Cow<str>, ignore_first: bool) -> Cow<str> {

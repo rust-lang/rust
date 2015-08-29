@@ -1,10 +1,8 @@
 use rustc::lint::*;
 use syntax::ast;
 use syntax::ast::*;
-use std::borrow::Cow;
 
-use utils::{snippet, snippet_block};
-use utils::{span_lint, span_help_and_lint, in_external_macro};
+use utils::{snippet, span_lint, span_help_and_lint, in_external_macro, expr_block};
 
 declare_lint!(pub SINGLE_MATCH, Warn,
               "a match statement with a single nontrivial arm (i.e, where the other arm \
@@ -38,12 +36,6 @@ impl LintPass for MatchPass {
                 is_unit_expr(&arms[1].body)
             {
                 if in_external_macro(cx, expr.span) {return;}
-                let body_code = snippet_block(cx, arms[0].body.span, "..");
-                let body_code = if let ExprBlock(_) = arms[0].body.node {
-                    body_code
-                } else {
-                    Cow::Owned(format!("{{ {} }}", body_code))
-                };
                 span_help_and_lint(cx, SINGLE_MATCH, expr.span,
                       "you seem to be trying to use match for \
                       destructuring a single pattern. Did you mean to \
@@ -51,8 +43,7 @@ impl LintPass for MatchPass {
                       &format!("try\nif let {} = {} {}",
                                snippet(cx, arms[0].pats[0].span, ".."),
                                snippet(cx, ex.span, ".."),
-                               body_code)
-                );
+                               expr_block(cx, &arms[0].body, "..")));
             }
 
             // check preconditions for MATCH_REF_PATS

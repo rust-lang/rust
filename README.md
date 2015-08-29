@@ -4,7 +4,7 @@
 A collection of lints that give helpful tips to newbies and catch oversights.
 
 ##Lints
-There are 49 lints included in this crate:
+There are 50 lints included in this crate:
 
 name                                                                                                 | default | meaning
 -----------------------------------------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -56,6 +56,7 @@ name                                                                            
 [toplevel_ref_arg](https://github.com/Manishearth/rust-clippy/wiki#toplevel_ref_arg)                 | warn    | a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`)
 [type_complexity](https://github.com/Manishearth/rust-clippy/wiki#type_complexity)                   | warn    | usage of very complex types; recommends factoring out parts into `type` definitions
 [unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                 | warn    | comparing unit values (which is always `true` or `false`, respectively)
+[while_let_loop](https://github.com/Manishearth/rust-clippy/wiki#while_let_loop)                     | warn    | `loop { if let { ... } else break }` can be written as a `while let` loop
 [zero_width_space](https://github.com/Manishearth/rust-clippy/wiki#zero_width_space)                 | deny    | using a zero-width space in a string literal, which is confusing
 
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!
