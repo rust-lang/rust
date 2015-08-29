@@ -1325,6 +1325,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
+        fn search_child_modules(needle: Name, module: &Rc<Module>)
+                                -> Option<Rc<Module>> {
+            for (name, name_bindings) in &*module.children.borrow() {
+                if let Some(x) = name_bindings.get_module_if_available() {
+                    if needle.as_str() == name.as_str() {
+                        return Some(x)
+                    }
+                    let result = search_child_modules(needle, &x);
+                    if result.is_some() {
+                        return result
+                    }
+                }
+            }
+            None
+        }
         let mut search_module = module_;
         let mut index = index;
         let module_path_len = module_path.len();
@@ -1363,8 +1378,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                                 format!("Did you mean `{}{}`?", prefix, path_str)
                             },
-                            None => format!("Maybe a missing `extern crate {}`?",
-                                            segment_name),
+                            None => match search_child_modules(name,
+                                                               &self.current_module) {
+                                Some(x) => format!("Maybe a missing `extern crate {}`, \
+                                                   or do you mean ::{} for {}?",
+                                                   segment_name,
+                                                   module_to_string(&x),
+                                                   name.as_str()),
+                                None => format!("Maybe a missing `extern crate {}`?",
+                                                segment_name),
+
+                            },
                         }
                     } else {
                         format!("Could not find `{}` in `{}`",
