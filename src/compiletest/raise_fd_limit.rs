@@ -50,7 +50,7 @@ pub unsafe fn raise_fd_limit() {
     // Fetch the kern.maxfilesperproc value
     let mut mib: [libc::c_int; 2] = [CTL_KERN, KERN_MAXFILESPERPROC];
     let mut maxfiles: libc::c_int = 0;
-    let mut size: libc::size_t = size_of_val(&maxfiles) as libc::size_t;
+    let mut size = size_of_val(&maxfiles);
     if sysctl(&mut mib[0], 2, &mut maxfiles as *mut _ as *mut _, &mut size,
               null_mut(), 0) != 0 {
         let err = io::Error::last_os_error();

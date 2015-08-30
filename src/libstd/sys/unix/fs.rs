@@ -14,7 +14,7 @@ use os::unix::prelude::*;
 use ffi::{CString, CStr, OsString, OsStr};
 use fmt;
 use io::{self, Error, ErrorKind, SeekFrom};
-use libc::{self, c_int, size_t, off_t, c_char, mode_t};
+use libc::{self, c_int, off_t, c_char, mode_t};
 use mem;
 use path::{Path, PathBuf};
 use ptr;
@@ -477,7 +477,7 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
 
     loop {
         let buf_read = try!(cvt(unsafe {
-            libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity() as libc::size_t)
+            libc::readlink(p, buf.as_mut_ptr() as *mut _, buf.capacity())
         })) as usize;
 
         unsafe { buf.set_len(buf_read); }
