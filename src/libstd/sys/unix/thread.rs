@@ -360,8 +360,8 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     });
 
     match unsafe { __pthread_get_minstack } {
-        None => PTHREAD_STACK_MIN as usize,
-        Some(f) => unsafe { f(attr) as usize },
+        None => PTHREAD_STACK_MIN,
+        Some(f) => unsafe { f(attr) },
     }
 }
 
@@ -369,7 +369,7 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
 // platforms.
 #[cfg(not(target_os = "linux"))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
-    PTHREAD_STACK_MIN as usize
+    PTHREAD_STACK_MIN
 }
 
 extern {
