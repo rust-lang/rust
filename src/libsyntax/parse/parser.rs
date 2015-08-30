@@ -2142,7 +2142,6 @@ impl<'a> Parser<'a> {
                     return self.parse_loop_expr(None, lo);
                 }
                 if try!(self.eat_keyword(keywords::Continue) ){
-                    let lo = self.span.lo;
                     let ex = if self.token.is_lifetime() {
                         let lifetime = self.get_lifetime();
                         try!(self.bump());
