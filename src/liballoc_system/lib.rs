@@ -92,16 +92,16 @@ mod imp {
 
     pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {
         if align <= MIN_ALIGN {
-            libc::malloc(size as libc::size_t) as *mut u8
+            libc::malloc(size) as *mut u8
         } else {
             #[cfg(target_os = "android")]
             unsafe fn more_aligned_malloc(size: usize, align: usize) -> *mut u8 {
-                memalign(align as libc::size_t, size as libc::size_t) as *mut u8
+                memalign(align, size) as *mut u8
             }
             #[cfg(not(target_os = "android"))]
             unsafe fn more_aligned_malloc(size: usize, align: usize) -> *mut u8 {
                 let mut out = ptr::null_mut();
-                let ret = posix_memalign(&mut out, align as libc::size_t, size as libc::size_t);
+                let ret = posix_memalign(&mut out, align, size);
                 if ret != 0 {
                     ptr::null_mut()
                 } else {
@@ -114,7 +114,7 @@ mod imp {
 
     pub unsafe fn reallocate(ptr: *mut u8, old_size: usize, size: usize, align: usize) -> *mut u8 {
         if align <= MIN_ALIGN {
-            libc::realloc(ptr as *mut libc::c_void, size as libc::size_t) as *mut u8
+            libc::realloc(ptr as *mut libc::c_void, size) as *mut u8
         } else {
             let new_ptr = allocate(size, align);
             ptr::copy(ptr, new_ptr, cmp::min(size, old_size));
@@ -171,7 +171,7 @@ mod imp {
         if align <= MIN_ALIGN {
             HeapAlloc(GetProcessHeap(), 0, size as SIZE_T) as *mut u8
         } else {
-            let ptr = HeapAlloc(GetProcessHeap(), 0, (size + align) as SIZE_T) as *mut u8;
+            let ptr = HeapAlloc(GetProcessHeap(), 0, size + align) as *mut u8;
             if ptr.is_null() {
                 return ptr
             }
@@ -204,7 +204,7 @@ mod imp {
             let new = HeapReAlloc(GetProcessHeap(),
                                   HEAP_REALLOC_IN_PLACE_ONLY,
                                   ptr as LPVOID,
-                                  size as SIZE_T) as *mut u8;
+                                  size) as *mut u8;
             if new.is_null() {
                 old_size
             } else {

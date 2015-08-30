@@ -100,7 +100,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             time(sess.time_passes(), &format!("ll link {}", name), || unsafe {
                 if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                         ptr as *const libc::c_char,
-                                                        bc_decoded.len() as libc::size_t) {
+                                                        bc_decoded.len()) {
                     write::llvm_err(sess.diagnostic().handler(),
                                     format!("failed to load bc of `{}`",
                                             &name[..]));
@@ -118,7 +118,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
     unsafe {
         llvm::LLVMRustRunRestrictionPass(llmod,
                                          ptr as *const *const libc::c_char,
-                                         arr.len() as libc::size_t);
+                                         arr.len());
     }
 
     if sess.no_landing_pads() {

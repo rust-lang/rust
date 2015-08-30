@@ -83,7 +83,7 @@ pub fn error_string(errno: i32) -> String {
 
     let p = buf.as_mut_ptr();
     unsafe {
-        if strerror_r(errno as c_int, p, buf.len() as libc::size_t) < 0 {
+        if strerror_r(errno as c_int, p, buf.len()) < 0 {
             panic!("strerror_r failure");
         }
 
@@ -97,7 +97,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
     loop {
         unsafe {
             let ptr = buf.as_mut_ptr() as *mut libc::c_char;
-            if !libc::getcwd(ptr, buf.capacity() as libc::size_t).is_null() {
+            if !libc::getcwd(ptr, buf.capacity()).is_null() {
                 let len = CStr::from_ptr(buf.as_ptr() as *const libc::c_char).to_bytes().len();
                 buf.set_len(len);
                 buf.shrink_to_fit();
@@ -488,8 +488,7 @@ pub fn home_dir() -> Option<PathBuf> {
             let mut passwd: c::passwd = mem::zeroed();
             let mut result = ptr::null_mut();
             match c::getpwuid_r(me, &mut passwd, buf.as_mut_ptr(),
-                                buf.capacity() as libc::size_t,
-                                &mut result) {
+                                buf.capacity(), &mut result) {
                 0 if !result.is_null() => {}
                 _ => return None
             }

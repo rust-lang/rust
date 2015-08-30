@@ -77,7 +77,7 @@ fn align_to_flags(align: usize) -> c_int {
 #[no_mangle]
 pub extern "C" fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
     let flags = align_to_flags(align);
-    unsafe { je_mallocx(size as size_t, flags) as *mut u8 }
+    unsafe { je_mallocx(size, flags) as *mut u8 }
 }
 
 #[no_mangle]
@@ -87,7 +87,7 @@ pub extern "C" fn __rust_reallocate(ptr: *mut u8,
                                     align: usize)
                                     -> *mut u8 {
     let flags = align_to_flags(align);
-    unsafe { je_rallocx(ptr as *mut c_void, size as size_t, flags) as *mut u8 }
+    unsafe { je_rallocx(ptr as *mut c_void, size, flags) as *mut u8 }
 }
 
 #[no_mangle]
@@ -97,17 +97,17 @@ pub extern "C" fn __rust_reallocate_inplace(ptr: *mut u8,
                                             align: usize)
                                             -> usize {
     let flags = align_to_flags(align);
-    unsafe { je_xallocx(ptr as *mut c_void, size as size_t, 0, flags) as usize }
+    unsafe { je_xallocx(ptr as *mut c_void, size, 0, flags) as usize }
 }
 
 #[no_mangle]
 pub extern "C" fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize) {
     let flags = align_to_flags(align);
-    unsafe { je_sdallocx(ptr as *mut c_void, old_size as size_t, flags) }
+    unsafe { je_sdallocx(ptr as *mut c_void, old_size, flags) }
 }
 
 #[no_mangle]
 pub extern "C" fn __rust_usable_size(size: usize, align: usize) -> usize {
     let flags = align_to_flags(align);
-    unsafe { je_nallocx(size as size_t, flags) as usize }
+    unsafe { je_nallocx(size, flags) as usize }
 }
