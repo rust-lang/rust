@@ -1733,7 +1733,7 @@ pub struct FreeRegion {
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-         RustcEncodable, RustcDecodable, Copy, Debug)]
+         RustcEncodable, RustcDecodable, Copy)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(u32),
@@ -2325,7 +2325,7 @@ pub struct TypeParameterDef<'tcx> {
     pub object_lifetime_default: ObjectLifetimeDefault,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct RegionParameterDef {
     pub name: ast::Name,
     pub def_id: DefId,

@@ -307,8 +307,20 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
 
 impl<'tcx> fmt::Debug for ty::TypeParameterDef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TypeParameterDef({:?}, {:?}/{})",
-               self.def_id, self.space, self.index)
+        write!(f, "TypeParameterDef({}, {}:{}, {:?}/{})",
+               self.name,
+               self.def_id.krate, self.def_id.node,
+               self.space, self.index)
+    }
+}
+
+impl fmt::Debug for ty::RegionParameterDef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RegionParameterDef({}, {}:{}, {:?}/{}, {:?})",
+               self.name,
+               self.def_id.krate, self.def_id.node,
+               self.space, self.index,
+               self.bounds)
     }
 }
 
@@ -384,6 +396,19 @@ impl fmt::Display for ty::BoundRegion {
         match *self {
             BrNamed(_, name) => write!(f, "{}", name),
             BrAnon(_) | BrFresh(_) | BrEnv => Ok(())
+        }
+    }
+}
+
+impl fmt::Debug for ty::BoundRegion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            BrAnon(n) => write!(f, "BrAnon({:?})", n),
+            BrFresh(n) => write!(f, "BrFresh({:?})", n),
+            BrNamed(did, name) => {
+                write!(f, "BrNamed({}:{}, {:?})", did.krate, did.node, name)
+            }
+            BrEnv => "BrEnv".fmt(f),
         }
     }
 }

@@ -480,6 +480,7 @@ impl<'ast> Map<'ast> {
             NodeImplItem(ii) => PathName(ii.ident.name),
             NodeTraitItem(ti) => PathName(ti.ident.name),
             NodeVariant(v) => PathName(v.node.name.name),
+            NodeLifetime(lt) => PathName(lt.name),
             _ => panic!("no path elem for {:?}", node)
         }
     }
