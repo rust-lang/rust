@@ -74,6 +74,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box types::CastPass as LintPassObject);
     reg.register_lint_pass(box types::TypeComplexityPass as LintPassObject);
     reg.register_lint_pass(box matches::MatchPass as LintPassObject);
+    reg.register_lint_pass(box misc::PatternPass as LintPassObject);
 
     reg.register_lint_group("shadow", vec![
         shadow::SHADOW_REUSE,
@@ -110,6 +111,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         misc::FLOAT_CMP,
         misc::MODULO_ONE,
         misc::PRECEDENCE,
+        misc::REDUNDANT_PATTERN,
         misc::TOPLEVEL_REF_ARG,
         mut_mut::MUT_MUT,
         needless_bool::NEEDLESS_BOOL,

@@ -4,7 +4,7 @@
 A collection of lints that give helpful tips to newbies and catch oversights.
 
 ##Lints
-There are 51 lints included in this crate:
+There are 52 lints included in this crate:
 
 name                                                                                                 | default | meaning
 -----------------------------------------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -43,6 +43,7 @@ name                                                                            
 [ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                   | allow   | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
 [range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)             | warn    | using Range::step_by(0), which produces an infinite iterator
 [redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)               | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
+[redundant_pattern](https://github.com/Manishearth/rust-clippy/wiki#redundant_pattern)               | warn    | using `name @ _` in a pattern
 [result_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#result_unwrap_used)             | allow   | using `Result.unwrap()`, which might be better handled
 [shadow_reuse](https://github.com/Manishearth/rust-clippy/wiki#shadow_reuse)                         | allow   | rebinding a name to an expression that re-uses the original value, e.g. `let x = x + 1`
 [shadow_same](https://github.com/Manishearth/rust-clippy/wiki#shadow_same)                           | allow   | rebinding a name to itself, e.g. `let mut x = &mut x`
