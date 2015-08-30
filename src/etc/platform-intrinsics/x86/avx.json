@@ -13,7 +13,7 @@
             "width": [256],
             "llvm": "dp.ps.256",
             "ret": "f32",
-            "args": ["0", "0", "S32"]
+            "args": ["0", "0", "S32/8"]
         },
         {
             "intrinsic": "256_hadd_{0.data_type}",

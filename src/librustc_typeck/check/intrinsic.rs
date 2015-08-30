@@ -456,7 +456,8 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
     };
 
     match *expected {
-        Integer(signed, bits) => match (signed, bits, &t.sty) {
+        // (The width we pass to LLVM doesn't concern the type checker.)
+        Integer(signed, bits, _llvm_width) => match (signed, bits, &t.sty) {
             (true, 8, &ty::TyInt(ast::TyI8)) | (false, 8, &ty::TyUint(ast::TyU8)) |
             (true, 16, &ty::TyInt(ast::TyI16)) | (false, 16, &ty::TyUint(ast::TyU16)) |
             (true, 32, &ty::TyInt(ast::TyI32)) | (false, 32, &ty::TyUint(ast::TyU32)) |

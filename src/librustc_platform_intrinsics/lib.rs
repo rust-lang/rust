@@ -30,7 +30,7 @@ pub struct Intrinsic {
 
 #[derive(Clone, Hash, Eq, PartialEq)]
 pub enum Type {
-    Integer(/* signed */ bool, u8),
+    Integer(/* signed */ bool, u8, /* llvm width */ u8),
     Float(u8),
     Pointer(Box<Type>),
     Vector(Box<Type>, u8),
@@ -41,8 +41,11 @@ pub enum IntrinsicDef {
     Named(&'static str),
 }
 
-fn i(width: u8) -> Type { Type::Integer(true, width) }
-fn u(width: u8) -> Type { Type::Integer(false, width) }
+fn i(width: u8) -> Type { Type::Integer(true, width, width) }
+fn i_(width: u8, llvm_width: u8) -> Type { Type::Integer(true, width, llvm_width) }
+fn u(width: u8) -> Type { Type::Integer(false, width, width) }
+#[allow(dead_code)]
+fn u_(width: u8, llvm_width: u8) -> Type { Type::Integer(false, width, llvm_width) }
 fn f(width: u8) -> Type { Type::Float(width) }
 fn v(x: Type, length: u8) -> Type { Type::Vector(Box::new(x), length) }
 fn agg(flatten: bool, types: Vec<Type>) -> Type {

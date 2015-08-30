@@ -79,6 +79,20 @@
             "args": ["0", "0"]
         },
         {
+            "intrinsic": "256_movemask_epi8",
+            "width": [256],
+            "llvm": "pmovmskb",
+            "ret": "S32",
+            "args": ["s8"]
+        },
+        {
+            "intrinsic": "256_mpsadbw_epu8",
+            "width": [256],
+            "llvm": "mpsadbw",
+            "ret": "u16",
+            "args": ["u8", "u8", "S32/8"]
+        },
+        {
             "intrinsic": "256_mul_{0.data_type}",
             "width": [256],
             "llvm": "pmul{0.data_type_short}.dq",

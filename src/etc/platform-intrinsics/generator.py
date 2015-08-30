@@ -16,7 +16,8 @@ import re
 import textwrap
 
 SPEC = re.compile(
-    r'^(?:(?P<id>[iusfIUSF])(?:\((?P<start>\d*)-(?P<end>\d*)\)|(?P<width>\d*))' +
+    r'^(?:(?P<id>[iusfIUSF])(?:\((?P<start>\d+)-(?P<end>\d+)\)|'
+    r'(?P<width>\d+)(:?/(?P<llvm_width>\d+))?)'
     r'|(?P<reference>\d+)(?P<modifiers>[vShdnwus]*)(?P<force_width>x\d+)?)$'
 )
 
@@ -111,27 +112,39 @@ class Number(Type):
         return platform_info.number_type_info(self)
 
 class Signed(Number):
-    def __init__(self, bitwidth):
+    def __init__(self, bitwidth, llvm_bitwidth = None):
         Number.__init__(self, bitwidth)
+        self._llvm_bitwidth = llvm_bitwidth
 
     def compiler_ctor(self):
-        return 'i({})'.format(self.bitwidth())
+        if self._llvm_bitwidth is None:
+            return 'i({})'.format(self.bitwidth())
+        else:
+            return 'i_({}, {})'.format(self.bitwidth(),
+                                       self._llvm_bitwidth)
 
     def llvm_name(self):
-        return 'i{}'.format(self.bitwidth())
+        bw = self._llvm_bitwidth or self.bitwidth()
+        return 'i{}'.format(bw)
 
     def rust_name(self):
         return 'i{}'.format(self.bitwidth())
 
 class Unsigned(Number):
-    def __init__(self, bitwidth):
+    def __init__(self, bitwidth, llvm_bitwidth = None):
         Number.__init__(self, bitwidth)
+        self._llvm_bitwidth = llvm_bitwidth
 
     def compiler_ctor(self):
-        return 'u({})'.format(self.bitwidth())
+        if self._llvm_bitwidth is None:
+            return 'u({})'.format(self.bitwidth())
+        else:
+            return 'u_({}, {})'.format(self.bitwidth(),
+                                       self._llvm_bitwidth)
 
     def llvm_name(self):
-        return 'i{}'.format(self.bitwidth())
+        bw = self._llvm_bitwidth or self.bitwidth()
+        return 'i{}'.format(bw)
 
     def rust_name(self):
         return 'u{}'.format(self.bitwidth())
@@ -220,18 +233,28 @@ class TypeSpec(object):
                 id = match.group('id')
                 is_vector = id.islower()
                 type_ctors = TYPE_ID_LOOKUP[id.lower()]
+
                 start = match.group('start')
                 if start is not None:
                     end = match.group('end')
+                    llvm_width = None
                 else:
                     start = end = match.group('width')
+                    llvm_width = match.group('llvm_width')
                 start = int(start)
                 end = int(end)
 
                 bitwidth = start
                 while bitwidth <= end:
                     for ctor in type_ctors:
-                        scalar = ctor(bitwidth)
+                        if llvm_width is not None:
+                            assert not is_vector
+                            llvm_width = int(llvm_width)
+                            assert llvm_width < bitwidth
+                            scalar = ctor(bitwidth, llvm_width)
+                        else:
+                            scalar = ctor(bitwidth)
+
                         if is_vector:
                             yield Vector(scalar, width // bitwidth)
                         else:
@@ -351,8 +374,9 @@ def parse_args():
         vector := vector_elem width |
         vector_elem := 'i' | 'u' | 's' | 'f'
 
-        scalar := scalar_type number
+        scalar := scalar_type number llvm_width?
         scalar_type := 'U' | 'S' | 'F'
+        llvm_width := '/' number
 
         aggregate := '(' (type),* ')' 'f'?
 
@@ -387,7 +411,11 @@ def parse_args():
         ## Scalars
 
         Similar to vectors, but these describe a single concrete type,
-        not a range. The number is the bitwidth.
+        not a range. The number is the bitwidth. The optional
+        `llvm_width` is the bitwidth of the integer that should be
+        passed to LLVM (by truncating the Rust argument): this only
+        works with scalar integers and the LLVM width must be smaller
+        than the Rust width.
 
         ### Types
 
@@ -474,7 +502,7 @@ class CompilerDefs(object):
 
 #![allow(unused_imports)]
 
-use {{Intrinsic, i, u, f, v, agg}};
+use {{Intrinsic, i, i_, u, u_, f, v, agg}};
 use IntrinsicDef::Named;
 use rustc::middle::ty;
 

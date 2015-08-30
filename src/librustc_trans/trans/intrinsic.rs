@@ -930,10 +930,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 x.into_iter().next().unwrap()
             }
             fn ty_to_type(ccx: &CrateContext, t: &intrinsics::Type,
-                          any_flattened_aggregate: &mut bool) -> Vec<Type> {
+                          any_changes_needed: &mut bool) -> Vec<Type> {
                 use intrinsics::Type::*;
                 match *t {
-                    Integer(_signed, x) => vec![Type::ix(ccx, x as u64)],
+                    Integer(_signed, width, llvm_width) => {
+                        *any_changes_needed |= width != llvm_width;
+                        vec![Type::ix(ccx, llvm_width as u64)]
+                    }
                     Float(x) => {
                         match x {
                             32 => vec![Type::f32(ccx)],
@@ -944,27 +947,28 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     Pointer(_) => unimplemented!(),
                     Vector(ref t, length) => {
                         let elem = one(ty_to_type(ccx, t,
-                                                  any_flattened_aggregate));
+                                                  any_changes_needed));
                         vec![Type::vector(&elem,
                                           length as u64)]
                     }
                     Aggregate(false, _) => unimplemented!(),
                     Aggregate(true, ref contents) => {
-                        *any_flattened_aggregate = true;
+                        *any_changes_needed = true;
                         contents.iter()
-                                .flat_map(|t| ty_to_type(ccx, t, any_flattened_aggregate))
+                                .flat_map(|t| ty_to_type(ccx, t, any_changes_needed))
                                 .collect()
                     }
                 }
             }
 
             // This allows an argument list like `foo, (bar, baz),
-            // qux` to be converted into `foo, bar, baz, qux`.
-            fn flatten_aggregate<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                             t: &intrinsics::Type,
-                                             arg_type: Ty<'tcx>,
-                                             llarg: ValueRef)
-                                             -> Vec<ValueRef>
+            // qux` to be converted into `foo, bar, baz, qux`, and
+            // integer arguments to be truncated as needed.
+            fn modify_as_needed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                            t: &intrinsics::Type,
+                                            arg_type: Ty<'tcx>,
+                                            llarg: ValueRef)
+                                            -> Vec<ValueRef>
             {
                 match *t {
                     intrinsics::Type::Aggregate(true, ref contents) => {
@@ -984,22 +988,28 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                             })
                             .collect()
                     }
+                    intrinsics::Type::Integer(_, width, llvm_width) if width != llvm_width => {
+                        // the LLVM intrinsic uses a smaller integer
+                        // size than the C intrinsic's signature, so
+                        // we have to trim it down here.
+                        vec![Trunc(bcx, llarg, Type::ix(bcx.ccx(), llvm_width as u64))]
+                    }
                     _ => vec![llarg],
                 }
             }
 
 
-            let mut any_flattened_aggregate = false;
+            let mut any_changes_needed = false;
             let inputs = intr.inputs.iter()
-                                    .flat_map(|t| ty_to_type(ccx, t, &mut any_flattened_aggregate))
+                                    .flat_map(|t| ty_to_type(ccx, t, &mut any_changes_needed))
                                     .collect::<Vec<_>>();
 
-            let mut out_flattening = false;
-            let outputs = one(ty_to_type(ccx, &intr.output, &mut out_flattening));
+            let mut out_changes = false;
+            let outputs = one(ty_to_type(ccx, &intr.output, &mut out_changes));
             // outputting a flattened aggregate is nonsense
-            assert!(!out_flattening);
+            assert!(!out_changes);
 
-            let llargs = if !any_flattened_aggregate {
+            let llargs = if !any_changes_needed {
                 // no aggregates to flatten, so no change needed
                 llargs
             } else {
@@ -1009,9 +1019,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 intr.inputs.iter()
                            .zip(&llargs)
                            .zip(&arg_tys)
-                           .flat_map(|((t, llarg), ty)| flatten_aggregate(bcx, t, ty, *llarg))
+                           .flat_map(|((t, llarg), ty)| modify_as_needed(bcx, t, ty, *llarg))
                            .collect()
             };
+            assert_eq!(inputs.len(), llargs.len());
 
             match intr.definition {
                 intrinsics::IntrinsicDef::Named(name) => {
