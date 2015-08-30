@@ -1487,6 +1487,26 @@ fn main() {
 ```
 "##,
 
+E0281: r##"
+You tried to supply a type which doesn't implement some trait in a location
+which expected that trait. This error typically occurs when working with
+`Fn`-based types. Erroneous code example:
+
+```
+fn foo<F: Fn()>(x: F) { }
+
+fn main() {
+    // type mismatch: the type ... implements the trait `core::ops::Fn<(_,)>`,
+    // but the trait `core::ops::Fn<()>` is required (expected (), found tuple
+    // [E0281]
+    foo(|y| { });
+}
+```
+
+The issue in this case is that `foo` is defined as accepting a `Fn` with no
+arguments, but the closure we attempted to pass to it requires one argument.
+"##,
+
 E0282: r##"
 This error indicates that type inference did not result in one unique possible
 type, and extra information is required. In most cases this can be provided
@@ -1867,7 +1887,6 @@ register_diagnostics! {
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
-    E0281, // type implements trait but other trait is required
     E0283, // cannot resolve type
     E0284, // cannot resolve type
     E0285, // overflow evaluation builtin bounds
