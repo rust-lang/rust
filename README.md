@@ -39,7 +39,7 @@ name                                                                            
 [needless_return](https://github.com/Manishearth/rust-clippy/wiki#needless_return)                   | warn    | using a return statement like `return expr;` where an expression would suffice
 [non_ascii_literal](https://github.com/Manishearth/rust-clippy/wiki#non_ascii_literal)               | allow   | using any literal non-ASCII chars in a string literal; suggests using the \\u escape instead
 [option_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#option_unwrap_used)             | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
-[precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                             | warn    | expressions where precedence may trip up the unwary reader of the source; suggests adding parentheses, e.g. `x << 2 + y` will be parsed as `x << (2 + y)`
+[precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                             | warn    | catches operations where precedence may be unclear. See the wiki for a list of cases caught
 [ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                   | allow   | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
 [range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)             | warn    | using Range::step_by(0), which produces an infinite iterator
 [redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)               | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)

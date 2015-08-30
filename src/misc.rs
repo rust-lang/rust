@@ -109,50 +109,6 @@ fn is_float(cx: &Context, expr: &Expr) -> bool {
     }
 }
 
-declare_lint!(pub PRECEDENCE, Warn,
-              "expressions where precedence may trip up the unwary reader of the source; \
-               suggests adding parentheses, e.g. `x << 2 + y` will be parsed as `x << (2 + y)`");
-
-#[derive(Copy,Clone)]
-pub struct Precedence;
-
-impl LintPass for Precedence {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(PRECEDENCE)
-    }
-
-    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-        if let ExprBinary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
-            if is_bit_op(op) && (is_arith_expr(left) || is_arith_expr(right)) {
-                span_lint(cx, PRECEDENCE, expr.span,
-                    "operator precedence can trip the unwary. Consider adding parentheses \
-                     to the subexpression");
-            }
-        }
-    }
-}
-
-fn is_arith_expr(expr : &Expr) -> bool {
-    match expr.node {
-        ExprBinary(Spanned { node: op, ..}, _, _) => is_arith_op(op),
-        _ => false
-    }
-}
-
-fn is_bit_op(op : BinOp_) -> bool {
-    match op {
-        BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr => true,
-        _ => false
-    }
-}
-
-fn is_arith_op(op : BinOp_) -> bool {
-    match op {
-        BiAdd | BiSub | BiMul | BiDiv | BiRem => true,
-        _ => false
-    }
-}
-
 declare_lint!(pub CMP_OWNED, Warn,
               "creating owned instances for comparing with others, e.g. `x == \"foo\".to_string()`");
 
