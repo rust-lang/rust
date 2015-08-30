@@ -473,13 +473,13 @@ pub fn expect<T, M>(sess: &Session, opt: Option<T>, msg: M) -> T where
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
-pub fn early_error(msg: &str) -> ! {
-    let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
+pub fn early_error(color: diagnostic::ColorConfig, msg: &str) -> ! {
+    let mut emitter = diagnostic::EmitterWriter::stderr(color, None);
     emitter.emit(None, msg, None, diagnostic::Fatal);
     panic!(diagnostic::FatalError);
 }
 
-pub fn early_warn(msg: &str) {
-    let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
+pub fn early_warn(color: diagnostic::ColorConfig, msg: &str) {
+    let mut emitter = diagnostic::EmitterWriter::stderr(color, None);
     emitter.emit(None, msg, None, diagnostic::Warning);
 }
