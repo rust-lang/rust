@@ -3018,7 +3018,34 @@ PhantomData can also be used to express information about unused type
 parameters. You can read more about it in the API documentation:
 
 https://doc.rust-lang.org/std/marker/struct.PhantomData.html
-"##
+"##,
+
+E0444: r##"
+A platform-specific intrinsic function has wrong number of arguments.
+Erroneous code example:
+
+```
+#[repr(simd)]
+struct f64x2(f64, f64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_movemask_pd(x: f64x2, y: f64x2, z: f64x2) -> i32;
+    // error: platform-specific intrinsic has invalid number of arguments
+}
+```
+
+Please refer to the function declaration to see if it corresponds
+with yours. Example:
+
+```
+#[repr(simd)]
+struct f64x2(f64, f64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_movemask_pd(x: f64x2, y: f64x2) -> i32; // ok!
+}
+```
+"##,
 
 }
 
