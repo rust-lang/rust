@@ -150,6 +150,15 @@ pub enum ErrorKind {
     #[stable(feature = "rust1", since = "1.0.0")]
     Other,
 
+    /// An error returned when an operation could not be completed because an
+    /// "end of file" was reached prematurely.
+    ///
+    /// This typically means that an operation could only succeed if it read a
+    /// particular number of bytes but only a smaller number of bytes could be
+    /// read.
+    #[unstable(feature = "read_exact", reason = "recently added", issue = "27585")]
+    UnexpectedEOF,
+
     /// Any I/O error not part of this list.
     #[unstable(feature = "io_error_internals",
                reason = "better expressed through extensible enums that this \
