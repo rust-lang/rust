@@ -6,7 +6,7 @@
             "width": [128],
             "llvm": "dp{0.data_type}",
             "ret": "f(32-64)",
-            "args": ["0", "0", "S32"]
+            "args": ["0", "0", "S32/8"]
         },
         {
             "intrinsic": "_max_{0.data_type}",
@@ -34,7 +34,7 @@
             "width": [128],
             "llvm": "mpsadbw",
             "ret": "u16",
-            "args": ["u8", "u8", "S32"]
+            "args": ["u8", "u8", "S32/8"]
         },
         {
             "intrinsic": "_mul_epi32",
