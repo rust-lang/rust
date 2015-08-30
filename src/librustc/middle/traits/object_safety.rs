@@ -92,14 +92,13 @@ fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
     // Check methods for violations.
     let mut violations: Vec<_> =
         tcx.trait_items(trait_def_id).iter()
-        .flat_map(|item| {
+        .filter_map(|item| {
             match *item {
                 ty::MethodTraitItem(ref m) => {
                     object_safety_violation_for_method(tcx, trait_def_id, &**m)
                         .map(|code| ObjectSafetyViolation::Method(m.clone(), code))
-                        .into_iter()
                 }
-                _ => None.into_iter(),
+                _ => None,
             }
         })
         .collect();
