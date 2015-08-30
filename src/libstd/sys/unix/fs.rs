@@ -388,7 +388,7 @@ impl fmt::Debug for File {
                 return None;
             }
             let l = buf.iter().position(|&c| c == 0).unwrap();
-            buf.truncate(l as usize);
+            buf.truncate(l);
             buf.shrink_to_fit();
             Some(PathBuf::from(OsString::from_vec(buf)))
         }

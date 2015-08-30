@@ -232,7 +232,7 @@ impl CString {
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut libc::c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
-        let slice = slice::from_raw_parts(ptr, len as usize);
+        let slice = slice::from_raw_parts(ptr, len);
         CString { inner: mem::transmute(slice) }
     }
 
@@ -447,7 +447,7 @@ impl CStr {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const libc::c_char) -> &'a CStr {
         let len = libc::strlen(ptr);
-        mem::transmute(slice::from_raw_parts(ptr, len as usize + 1))
+        mem::transmute(slice::from_raw_parts(ptr, len + 1))
     }
 
     /// Returns the inner pointer to this C string.
