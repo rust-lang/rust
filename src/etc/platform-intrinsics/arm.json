@@ -337,56 +337,56 @@
             "args": ["0", "0"]
         },
         {
-            "intrinsic": "qtbl1_{0.data_type}",
+            "intrinsic": "tbl1_{0.data_type}",
             "width": [64],
             "llvm": "tbl1",
             "ret": "i8",
-            "args": ["0x128", "0u"]
+            "args": ["0", "0u"]
         },
         {
-            "intrinsic": "qtbx1_{0.data_type}",
+            "intrinsic": "tbx1_{0.data_type}",
             "width": [64],
             "llvm": "tbx1",
             "ret": "i8",
             "args": ["0", "0", "0u"]
         },
         {
-            "intrinsic": "qtbl2_{0.data_type}",
+            "intrinsic": "tbl2_{0.data_type}",
             "width": [64],
             "llvm": "tbl2",
             "ret": "i8",
             "args": ["(0,0)f", "0u"]
         },
         {
-            "intrinsic": "qtbx2_{0.data_type}",
+            "intrinsic": "tbx2_{0.data_type}",
             "width": [64],
             "llvm": "tbx2",
             "ret": "i8",
             "args": ["(0,0)f", "0u"]
         },
         {
-            "intrinsic": "qtbl3_{0.data_type}",
+            "intrinsic": "tbl3_{0.data_type}",
             "width": [64],
             "llvm": "tbl3",
             "ret": "i8",
             "args": ["(0,0,0)f", "0u"]
         },
         {
-            "intrinsic": "qtbx3_{0.data_type}",
+            "intrinsic": "tbx3_{0.data_type}",
             "width": [64],
             "llvm": "tbx3",
             "ret": "i8",
             "args": ["0", "(0,0,0)f", "0u"]
         },
         {
-            "intrinsic": "qtbl4_{0.data_type}",
+            "intrinsic": "tbl4_{0.data_type}",
             "width": [64],
             "llvm": "tbl4",
             "ret": "i8",
             "args": ["(0,0,0,0)f", "0u"]
         },
         {
-            "intrinsic": "qtbx4_{0.data_type}",
+            "intrinsic": "tbx4_{0.data_type}",
             "width": [64],
             "llvm": "tbx4",
             "ret": "i8",

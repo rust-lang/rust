@@ -45,6 +45,11 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(f(32), 4),
             definition: Named("llvm.x86.sse.rcp.ps")
         },
+        "_sqrt_ps" => Intrinsic {
+            inputs: vec![v(f(32), 4)],
+            output: v(f(32), 4),
+            definition: Named("llvm.sqrt.v4f32")
+        },
         "_adds_epi8" => Intrinsic {
             inputs: vec![v(i(8), 16), v(i(8), 16)],
             output: v(i(8), 16),
@@ -154,6 +159,11 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![v(u(8), 16), v(u(8), 16)],
             output: v(u(64), 2),
             definition: Named("llvm.x86.sse2.psad.bw")
+        },
+        "_sqrt_pd" => Intrinsic {
+            inputs: vec![v(f(64), 2)],
+            output: v(f(64), 2),
+            definition: Named("llvm.sqrt.v2f64")
         },
         "_subs_epi8" => Intrinsic {
             inputs: vec![v(i(8), 16), v(i(8), 16)],
@@ -378,7 +388,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         "_cmpestrm" => Intrinsic {
             inputs: vec![v(i(8), 16), i(32), v(i(8), 16), i(32), i(32)],
             output: v(i(8), 16),
-            definition: Named("llvm.x86.sse42.pcmpestrim128")
+            definition: Named("llvm.x86.sse42.pcmpestrm128")
         },
         "_cmpestro" => Intrinsic {
             inputs: vec![v(i(8), 16), i(32), v(i(8), 16), i(32), i(32)],
@@ -396,37 +406,37 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             definition: Named("llvm.x86.sse42.pcmpestriz128")
         },
         "_cmpistra" => Intrinsic {
-            inputs: vec![v(i(8), 16), i(32), v(i(8), 16), i(32), i(32)],
+            inputs: vec![v(i(8), 16), v(i(8), 16), i(32)],
             output: i(32),
             definition: Named("llvm.x86.sse42.pcmpistria128")
         },
         "_cmpistrc" => Intrinsic {
-            inputs: vec![v(i(8), 16), i(32), v(i(8), 16), i(32), i(32)],
+            inputs: vec![v(i(8), 16), v(i(8), 16), i(32)],
             output: i(32),
             definition: Named("llvm.x86.sse42.pcmpistric128")
         },
         "_cmpistri" => Intrinsic {
-            inputs: vec![v(i(8), 16), i(32), v(i(8), 16), i(32), i(32)],
+            inputs: vec![v(i(8), 16), v(i(8), 16), i(32)],
             output: i(32),
-            definition: Named("llvm.x86.sse42.pcmpistrii128")
+            definition: Named("llvm.x86.sse42.pcmpistri128")
         },
         "_cmpistrm" => Intrinsic {
-            inputs: vec![v(i(8), 16), i(32), v(i(8), 16), i(32), i(32)],
+            inputs: vec![v(i(8), 16), v(i(8), 16), i(32)],
             output: v(i(8), 16),
-            definition: Named("llvm.x86.sse42.pcmpistrim128")
+            definition: Named("llvm.x86.sse42.pcmpistrm128")
         },
         "_cmpistro" => Intrinsic {
-            inputs: vec![v(i(8), 16), i(32), v(i(8), 16), i(32), i(32)],
+            inputs: vec![v(i(8), 16), v(i(8), 16), i(32)],
             output: i(32),
             definition: Named("llvm.x86.sse42.pcmpistrio128")
         },
         "_cmpistrs" => Intrinsic {
-            inputs: vec![v(i(8), 16), i(32), v(i(8), 16), i(32), i(32)],
+            inputs: vec![v(i(8), 16), v(i(8), 16), i(32)],
             output: i(32),
             definition: Named("llvm.x86.sse42.pcmpistris128")
         },
         "_cmpistrz" => Intrinsic {
-            inputs: vec![v(i(8), 16), i(32), v(i(8), 16), i(32), i(32)],
+            inputs: vec![v(i(8), 16), v(i(8), 16), i(32)],
             output: i(32),
             definition: Named("llvm.x86.sse42.pcmpistriz128")
         },

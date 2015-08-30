@@ -2000,82 +2000,82 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(f(32), 4),
             definition: Named("llvm.neon.vpminf.v4f32")
         },
-        "qtbl1_s8" => Intrinsic {
-            inputs: vec![v(i(8), 16), v(u(8), 8)],
+        "tbl1_s8" => Intrinsic {
+            inputs: vec![v(i(8), 8), v(u(8), 8)],
             output: v(i(8), 8),
             definition: Named("llvm.neon.vtbl1")
         },
-        "qtbl1_u8" => Intrinsic {
-            inputs: vec![v(u(8), 16), v(u(8), 8)],
+        "tbl1_u8" => Intrinsic {
+            inputs: vec![v(u(8), 8), v(u(8), 8)],
             output: v(u(8), 8),
             definition: Named("llvm.neon.vtbl1")
         },
-        "qtbx1_s8" => Intrinsic {
+        "tbx1_s8" => Intrinsic {
             inputs: vec![v(i(8), 8), v(i(8), 8), v(u(8), 8)],
             output: v(i(8), 8),
             definition: Named("llvm.neon.vtbx1")
         },
-        "qtbx1_u8" => Intrinsic {
+        "tbx1_u8" => Intrinsic {
             inputs: vec![v(u(8), 8), v(u(8), 8), v(u(8), 8)],
             output: v(u(8), 8),
             definition: Named("llvm.neon.vtbx1")
         },
-        "qtbl2_s8" => Intrinsic {
+        "tbl2_s8" => Intrinsic {
             inputs: vec![agg(true, vec![v(i(8), 8), v(i(8), 8)]), v(u(8), 8)],
             output: v(i(8), 8),
             definition: Named("llvm.neon.vtbl2")
         },
-        "qtbl2_u8" => Intrinsic {
+        "tbl2_u8" => Intrinsic {
             inputs: vec![agg(true, vec![v(u(8), 8), v(u(8), 8)]), v(u(8), 8)],
             output: v(u(8), 8),
             definition: Named("llvm.neon.vtbl2")
         },
-        "qtbx2_s8" => Intrinsic {
+        "tbx2_s8" => Intrinsic {
             inputs: vec![agg(true, vec![v(i(8), 8), v(i(8), 8)]), v(u(8), 8)],
             output: v(i(8), 8),
             definition: Named("llvm.neon.vtbx2")
         },
-        "qtbx2_u8" => Intrinsic {
+        "tbx2_u8" => Intrinsic {
             inputs: vec![agg(true, vec![v(u(8), 8), v(u(8), 8)]), v(u(8), 8)],
             output: v(u(8), 8),
             definition: Named("llvm.neon.vtbx2")
         },
-        "qtbl3_s8" => Intrinsic {
+        "tbl3_s8" => Intrinsic {
             inputs: vec![agg(true, vec![v(i(8), 8), v(i(8), 8), v(i(8), 8)]), v(u(8), 8)],
             output: v(i(8), 8),
             definition: Named("llvm.neon.vtbl3")
         },
-        "qtbl3_u8" => Intrinsic {
+        "tbl3_u8" => Intrinsic {
             inputs: vec![agg(true, vec![v(u(8), 8), v(u(8), 8), v(u(8), 8)]), v(u(8), 8)],
             output: v(u(8), 8),
             definition: Named("llvm.neon.vtbl3")
         },
-        "qtbx3_s8" => Intrinsic {
+        "tbx3_s8" => Intrinsic {
             inputs: vec![v(i(8), 8), agg(true, vec![v(i(8), 8), v(i(8), 8), v(i(8), 8)]), v(u(8), 8)],
             output: v(i(8), 8),
             definition: Named("llvm.neon.vtbx3")
         },
-        "qtbx3_u8" => Intrinsic {
+        "tbx3_u8" => Intrinsic {
             inputs: vec![v(u(8), 8), agg(true, vec![v(u(8), 8), v(u(8), 8), v(u(8), 8)]), v(u(8), 8)],
             output: v(u(8), 8),
             definition: Named("llvm.neon.vtbx3")
         },
-        "qtbl4_s8" => Intrinsic {
+        "tbl4_s8" => Intrinsic {
             inputs: vec![agg(true, vec![v(i(8), 8), v(i(8), 8), v(i(8), 8), v(i(8), 8)]), v(u(8), 8)],
             output: v(i(8), 8),
             definition: Named("llvm.neon.vtbl4")
         },
-        "qtbl4_u8" => Intrinsic {
+        "tbl4_u8" => Intrinsic {
             inputs: vec![agg(true, vec![v(u(8), 8), v(u(8), 8), v(u(8), 8), v(u(8), 8)]), v(u(8), 8)],
             output: v(u(8), 8),
             definition: Named("llvm.neon.vtbl4")
         },
-        "qtbx4_s8" => Intrinsic {
+        "tbx4_s8" => Intrinsic {
             inputs: vec![v(i(8), 8), agg(true, vec![v(i(8), 8), v(i(8), 8), v(i(8), 8), v(i(8), 8)]), v(u(8), 8)],
             output: v(i(8), 8),
             definition: Named("llvm.neon.vtbx4")
         },
-        "qtbx4_u8" => Intrinsic {
+        "tbx4_u8" => Intrinsic {
             inputs: vec![v(u(8), 8), agg(true, vec![v(u(8), 8), v(u(8), 8), v(u(8), 8), v(u(8), 8)]), v(u(8), 8)],
             output: v(u(8), 8),
             definition: Named("llvm.neon.vtbx4")
