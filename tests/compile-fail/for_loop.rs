@@ -15,6 +15,7 @@ impl Unrelated {
 }
 
 #[deny(needless_range_loop, explicit_iter_loop, iter_next_loop)]
+#[deny(unused_collect)]
 #[allow(linkedlist)]
 fn main() {
     let mut vec = vec![1, 2, 3, 4];
@@ -56,4 +57,8 @@ fn main() {
     let u = Unrelated(vec![]);
     for _v in u.next() { } // no error
     for _v in u.iter() { } // no error
+
+    let mut out = vec![];
+    vec.iter().map(|x| out.push(x)).collect::<Vec<_>>(); //~ERROR you are collect()ing an iterator
+    let _y = vec.iter().map(|x| out.push(x)).collect::<Vec<_>>(); // this is fine
 }

@@ -20,13 +20,17 @@ declare_lint!{ pub ITER_NEXT_LOOP, Warn,
 declare_lint!{ pub WHILE_LET_LOOP, Warn,
                "`loop { if let { ... } else break }` can be written as a `while let` loop" }
 
+declare_lint!{ pub UNUSED_COLLECT, Warn,
+               "`collect()`ing an iterator without using the result; this is usually better \
+                written as a for loop" }
+
 #[derive(Copy, Clone)]
 pub struct LoopsPass;
 
 impl LintPass for LoopsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_RANGE_LOOP, EXPLICIT_ITER_LOOP, ITER_NEXT_LOOP,
-                    WHILE_LET_LOOP)
+                    WHILE_LET_LOOP, UNUSED_COLLECT)
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
@@ -107,6 +111,20 @@ impl LintPass for LoopsPass {
                                                         expr_block(cx, &arms[0].body, "..")));
                         },
                         _ => ()
+                    }
+                }
+            }
+        }
+    }
+
+    fn check_stmt(&mut self, cx: &Context, stmt: &Stmt) {
+        if let StmtSemi(ref expr, _) = stmt.node {
+            if let ExprMethodCall(ref method, _, ref args) = expr.node {
+                if args.len() == 1 && method.node.name == "collect" {
+                    if match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
+                        span_lint(cx, UNUSED_COLLECT, expr.span, &format!(
+                            "you are collect()ing an iterator and throwing away the result. \
+                             Consider using an explicit for loop to exhaust the iterator"));
                     }
                 }
             }
