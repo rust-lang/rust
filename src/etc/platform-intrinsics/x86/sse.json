@@ -35,6 +35,13 @@
             "llvm": "rcp.ps",
             "ret": "f32",
             "args": ["0"]
+        },
+        {
+            "intrinsic": "_sqrt_ps",
+            "width": [128],
+            "llvm": "!llvm.sqrt.v4f32",
+            "ret": "f32",
+            "args": ["0"]
         }
     ]
 }

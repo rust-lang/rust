@@ -100,6 +100,13 @@
             "args": ["u8", "u8"]
         },
         {
+            "intrinsic": "_sqrt_pd",
+            "width": [128],
+            "llvm": "!llvm.sqrt.v2f64",
+            "ret": "f64",
+            "args": ["0"]
+        },
+        {
             "intrinsic": "_subs_{0.data_type}",
             "width": [128],
             "llvm": "psub{0.kind_short}s.{0.data_type_short}",
