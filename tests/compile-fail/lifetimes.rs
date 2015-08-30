@@ -31,6 +31,10 @@ fn deep_reference_2<'a>(x: Result<&'a u8, &'a u8>) -> &'a u8 { x.unwrap() } // n
 fn deep_reference_3<'a>(x: &'a u8, _y: u8) -> Result<&'a u8, ()> { Ok(x) }
 //~^ERROR explicit lifetimes given
 
+// where clause, but without lifetimes
+fn where_clause_without_lt<'a, T>(x: &'a u8, _y: u8) -> Result<&'a u8, ()> where T: Copy { Ok(x) }
+//~^ERROR explicit lifetimes given
+
 type Ref<'r> = &'r u8;
 
 fn lifetime_param_1<'a>(_x: Ref<'a>, _y: &'a u8) { } // no error, same lifetime on two params
@@ -39,6 +43,8 @@ fn lifetime_param_2<'a, 'b>(_x: Ref<'a>, _y: &'b u8) { }
 //~^ERROR explicit lifetimes given
 
 fn lifetime_param_3<'a, 'b: 'a>(_x: Ref<'a>, _y: &'b u8) { } // no error, bounded lifetime
+
+fn lifetime_param_4<'a, 'b>(_x: Ref<'a>, _y: &'b u8) where 'b: 'a { } // no error, bounded lifetime
 
 struct X {
     x: u8,

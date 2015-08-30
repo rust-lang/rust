@@ -20,21 +20,21 @@ impl LintPass for LifetimePass {
 
     fn check_item(&mut self, cx: &Context, item: &Item) {
         if let ItemFn(ref decl, _, _, _, ref generics, _) = item.node {
-            check_fn_inner(cx, decl, None, &generics.lifetimes, item.span);
+            check_fn_inner(cx, decl, None, &generics, item.span);
         }
     }
 
     fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) {
         if let MethodImplItem(ref sig, _) = item.node {
             check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self),
-                           &sig.generics.lifetimes, item.span);
+                           &sig.generics, item.span);
         }
     }
 
     fn check_trait_item(&mut self, cx: &Context, item: &TraitItem) {
         if let MethodTraitItem(ref sig, _) = item.node {
             check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self),
-                           &sig.generics.lifetimes, item.span);
+                           &sig.generics, item.span);
         }
     }
 }
@@ -49,11 +49,11 @@ enum RefLt {
 use self::RefLt::*;
 
 fn check_fn_inner(cx: &Context, decl: &FnDecl, slf: Option<&ExplicitSelf>,
-                  named_lts: &[LifetimeDef], span: Span) {
-    if in_external_macro(cx, span) {
+                  generics: &Generics, span: Span) {
+    if in_external_macro(cx, span) || has_where_lifetimes(&generics.where_clause) {
         return;
     }
-    if could_use_elision(decl, slf, named_lts) {
+    if could_use_elision(decl, slf, &generics.lifetimes) {
         span_lint(cx, NEEDLESS_LIFETIMES, span,
                   "explicit lifetimes given in parameter types where they could be elided");
     }
@@ -181,4 +181,22 @@ impl<'v> Visitor<'v> for RefVisitor {
 
     // for lifetime bounds; the default impl calls visit_lifetime_ref
     fn visit_lifetime_bound(&mut self, _: &'v Lifetime) { }
+}
+
+/// Are any lifetimes mentioned in the `where` clause? If yes, we don't try to
+/// reason about elision.
+fn has_where_lifetimes(where_clause: &WhereClause) -> bool {
+    let mut where_visitor = RefVisitor(Vec::new());
+    for predicate in &where_clause.predicates {
+        match *predicate {
+            WherePredicate::RegionPredicate(..) => return true,
+            WherePredicate::BoundPredicate(ref pred) => {
+                walk_ty(&mut where_visitor, &pred.bounded_ty);
+            }
+            WherePredicate::EqPredicate(ref pred) => {
+                walk_ty(&mut where_visitor, &pred.ty);
+            }
+        }
+    }
+    !where_visitor.into_vec().is_empty()
 }
