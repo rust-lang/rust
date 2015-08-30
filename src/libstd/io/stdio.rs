@@ -271,6 +271,9 @@ impl Read for Stdin {
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
         self.lock().read_to_string(buf)
     }
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        self.lock().read_exact(buf)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
