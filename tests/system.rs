@@ -13,13 +13,16 @@
 extern crate rustfmt;
 extern crate diff;
 extern crate regex;
+extern crate term;
 
-use std::collections::HashMap;
+use std::collections::{VecDeque, HashMap};
 use std::fs;
 use std::io::{self, Read, BufRead, BufReader};
 use std::thread;
 use rustfmt::*;
 use rustfmt::config::Config;
+
+static DIFF_CONTEXT_SIZE: usize = 3;
 
 fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
     let path = dir_entry.ok().expect("Couldn't get DirEntry.").path();
@@ -87,16 +90,40 @@ fn check_files<I>(files: I) -> (u32, u32)
     (count, fails)
 }
 
-fn print_mismatches(result: HashMap<String, String>) {
-    for (_, fmt_text) in result {
-        println!("{}", fmt_text);
+fn print_mismatches(result: HashMap<String, Vec<Mismatch>>) {
+    let mut t = term::stdout().unwrap();
+
+    for (file_name, diff) in result {
+        for mismatch in diff {
+            t.fg(term::color::BRIGHT_WHITE).unwrap();
+            writeln!(t, "\nMismatch at {}:{}:", file_name, mismatch.line_number).unwrap();
+
+            for line in mismatch.lines {
+                match line {
+                    DiffLine::Context(ref str) => {
+                        t.fg(term::color::WHITE).unwrap();
+                        writeln!(t, " {}⏎", str).unwrap();
+                    }
+                    DiffLine::Expected(ref str) => {
+                        t.fg(term::color::GREEN).unwrap();
+                        writeln!(t, "+{}⏎", str).unwrap();
+                    }
+                    DiffLine::Resulting(ref str) => {
+                        t.fg(term::color::RED).unwrap();
+                        writeln!(t, "-{}⏎", str).unwrap();
+                    }
+                }
+            }
+        }
     }
+
+    assert!(t.reset().unwrap());
 }
 
 // Ick, just needed to get a &'static to handle_result.
 static HANDLE_RESULT: &'static Fn(HashMap<String, String>) = &handle_result;
 
-pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, String>> {
+pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, Vec<Mismatch>>> {
     let sig_comments = read_significant_comments(&filename);
     let mut config = get_config(sig_comments.get("config").map(|x| &(*x)[..]));
     let args = vec!["rustfmt".to_owned(), filename];
@@ -179,10 +206,11 @@ fn handle_result(result: HashMap<String, String>) {
         // TODO: speedup by running through bytes iterator
         f.read_to_string(&mut text).ok().expect("Failed reading target.");
         if fmt_text != text {
-            let diff_str = make_diff(&file_name, &fmt_text, &text);
-            failures.insert(file_name, diff_str);
+            let diff = make_diff(&fmt_text, &text, DIFF_CONTEXT_SIZE);
+            failures.insert(file_name, diff);
         }
     }
+
     if !failures.is_empty() {
         panic!(failures);
     }
@@ -199,36 +227,79 @@ fn get_target(file_name: &str, target: Option<&str>) -> String {
     }
 }
 
-// Produces a diff string between the expected output and actual output of
-// rustfmt on a given file
-fn make_diff(file_name: &str, expected: &str, actual: &str) -> String {
+pub enum DiffLine {
+    Context(String),
+    Expected(String),
+    Resulting(String),
+}
+
+pub struct Mismatch {
+    line_number: u32,
+    pub lines: Vec<DiffLine>,
+}
+
+impl Mismatch {
+    fn new(line_number: u32) -> Mismatch {
+        Mismatch { line_number: line_number, lines: Vec::new() }
+    }
+}
+
+// Produces a diff between the expected output and actual output of rustfmt.
+fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Mismatch> {
     let mut line_number = 1;
-    let mut prev_both = true;
-    let mut text = String::new();
+    let mut context_queue: VecDeque<&str> = VecDeque::with_capacity(context_size);
+    let mut lines_since_mismatch = context_size + 1;
+    let mut results = Vec::new();
+    let mut mismatch = Mismatch::new(0);
 
     for result in diff::lines(expected, actual) {
         match result {
             diff::Result::Left(str) => {
-                if prev_both {
-                    text.push_str(&format!("Mismatch @ {}:{}\n", file_name, line_number));
+                if lines_since_mismatch >= context_size {
+                    results.push(mismatch);
+                    mismatch = Mismatch::new(line_number - context_queue.len() as u32);
                 }
-                text.push_str(&format!("-{}⏎\n", str));
-                prev_both = false;
+
+                while let Some(line) = context_queue.pop_front() {
+                    mismatch.lines.push(DiffLine::Context(line.to_owned()));
+                }
+
+                mismatch.lines.push(DiffLine::Resulting(str.to_owned()));
+                lines_since_mismatch = 0;
             }
             diff::Result::Right(str) => {
-                if prev_both {
-                    text.push_str(&format!("Mismatch @ {}:{}\n", file_name, line_number));
+                if lines_since_mismatch >= context_size {
+                    results.push(mismatch);
+                    mismatch = Mismatch::new(line_number - context_queue.len() as u32);
                 }
-                text.push_str(&format!("+{}⏎\n", str));
-                prev_both = false;
+
+                while let Some(line) = context_queue.pop_front() {
+                    mismatch.lines.push(DiffLine::Context(line.to_owned()));
+                }
+
+                mismatch.lines.push(DiffLine::Expected(str.to_owned()));
                 line_number += 1;
+                lines_since_mismatch = 0;
             }
-            diff::Result::Both(..) => {
+            diff::Result::Both(str, _) => {
+                if context_queue.len() >= context_size {
+                    let _ = context_queue.pop_front();
+                }
+
+                if lines_since_mismatch < context_size {
+                    mismatch.lines.push(DiffLine::Context(str.to_owned()));
+                } else {
+                    context_queue.push_back(str);
+                }
+
                 line_number += 1;
-                prev_both = true;
+                lines_since_mismatch += 1;
             }
         }
     }
 
-    text
+    results.push(mismatch);
+    results.remove(0);
+
+    results
 }

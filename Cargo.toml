@@ -19,3 +19,4 @@ rustc-serialize = "0.3.14"
 [dev-dependencies]
 diff = "0.1.0"
 regex = "0.1"
+term = "0.2"
