@@ -248,6 +248,7 @@
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(macro_reexport)]
+#![feature(on_unimplemented)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
 #![feature(placement_in_syntax)]
@@ -255,6 +256,7 @@
 #![feature(range_inclusive)]
 #![feature(raw)]
 #![feature(reflect_marker)]
+#![feature(shared)]
 #![feature(slice_bytes)]
 #![feature(slice_concat_ext)]
 #![feature(slice_patterns)]
@@ -424,6 +426,7 @@ pub mod fs;
 pub mod io;
 pub mod net;
 pub mod os;
+pub mod panic;
 pub mod path;
 pub mod process;
 pub mod sync;
