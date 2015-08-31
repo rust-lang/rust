@@ -59,8 +59,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
                 b: &'v Block, s: Span, id: ast::NodeId) {
         match fk {
-            visit::FkItemFn(..) |
-            visit::FkMethod(..) => {
+            FnKind::ItemFn(..) |
+            FnKind::Method(..) => {
                 let new_free_region_map = self.tcx.free_region_map(id);
                 let old_free_region_map =
                     mem::replace(&mut self.free_region_map, new_free_region_map);
@@ -68,7 +68,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
                 self.free_region_map = old_free_region_map;
             }
 
-            visit::FkClosure => {
+            FnKind::Closure => {
                 borrowck_fn(self, fk, fd, b, s, id);
             }
         }

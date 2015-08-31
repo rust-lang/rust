@@ -19,7 +19,7 @@ use middle::ty::MethodCall;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::visit;
-use syntax::visit::Visitor;
+use syntax::visit::{FnKind, Visitor};
 
 #[derive(Copy, Clone)]
 struct UnsafeContext {
@@ -75,13 +75,13 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
-    fn visit_fn(&mut self, fn_kind: visit::FnKind<'v>, fn_decl: &'v ast::FnDecl,
+    fn visit_fn(&mut self, fn_kind: FnKind<'v>, fn_decl: &'v ast::FnDecl,
                 block: &'v ast::Block, span: Span, _: ast::NodeId) {
 
         let (is_item_fn, is_unsafe_fn) = match fn_kind {
-            visit::FkItemFn(_, _, unsafety, _, _, _) =>
+            FnKind::ItemFn(_, _, unsafety, _, _, _) =>
                 (true, unsafety == ast::Unsafety::Unsafe),
-            visit::FkMethod(_, sig, _) =>
+            FnKind::Method(_, sig, _) =>
                 (true, sig.unsafety == ast::Unsafety::Unsafe),
             _ => (false, false),
         };
