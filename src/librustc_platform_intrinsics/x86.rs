@@ -82,7 +82,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         },
         "_madd_epi16" => Intrinsic {
             inputs: vec![v(i(16), 8), v(i(16), 8)],
-            output: v(i(16), 8),
+            output: v(i(32), 4),
             definition: Named("llvm.x86.sse2.pmadd.wd")
         },
         "_max_epi16" => Intrinsic {
@@ -126,11 +126,11 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             definition: Named("llvm.x86.sse2.pmovmskb.128")
         },
         "_mul_epu32" => Intrinsic {
-            inputs: vec![v(i(32), 4), v(i(32), 4)],
-            output: v(i(64), 2),
+            inputs: vec![v(u(32), 4), v(u(32), 4)],
+            output: v(u(64), 2),
             definition: Named("llvm.x86.sse2.pmulu.dq")
         },
-        "_mulhi_eps16" => Intrinsic {
+        "_mulhi_epi16" => Intrinsic {
             inputs: vec![v(i(16), 8), v(i(16), 8)],
             output: v(i(16), 8),
             definition: Named("llvm.x86.sse2.pmulh.w")
@@ -218,17 +218,17 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         "_abs_epi8" => Intrinsic {
             inputs: vec![v(i(8), 16)],
             output: v(i(8), 16),
-            definition: Named("llvm.x86.ssse3.pabs.b")
+            definition: Named("llvm.x86.ssse3.pabs.b.128")
         },
         "_abs_epi16" => Intrinsic {
             inputs: vec![v(i(16), 8)],
             output: v(i(16), 8),
-            definition: Named("llvm.x86.ssse3.pabs.w")
+            definition: Named("llvm.x86.ssse3.pabs.w.128")
         },
         "_abs_epi32" => Intrinsic {
             inputs: vec![v(i(32), 4)],
             output: v(i(32), 4),
-            definition: Named("llvm.x86.ssse3.pabs.d")
+            definition: Named("llvm.x86.ssse3.pabs.d.128")
         },
         "_hadd_epi16" => Intrinsic {
             inputs: vec![v(i(16), 8), v(i(16), 8)],
@@ -261,7 +261,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             definition: Named("llvm.x86.ssse3.phsub.sw.128")
         },
         "_maddubs_epi16" => Intrinsic {
-            inputs: vec![v(i(8), 16), v(i(8), 16)],
+            inputs: vec![v(u(8), 16), v(i(8), 16)],
             output: v(i(16), 8),
             definition: Named("llvm.x86.ssse3.pmadd.ub.sw.128")
         },
@@ -284,6 +284,11 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![v(i(16), 8), v(i(16), 8)],
             output: v(i(16), 8),
             definition: Named("llvm.x86.ssse3.psign.w.128")
+        },
+        "_sign_epi32" => Intrinsic {
+            inputs: vec![v(i(32), 4), v(i(32), 4)],
+            output: v(i(32), 4),
+            definition: Named("llvm.x86.ssse3.psign.d.128")
         },
         "_dp_ps" => Intrinsic {
             inputs: vec![v(f(32), 4), v(f(32), 4), i_(32, 8)],
@@ -348,7 +353,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         "_mul_epi32" => Intrinsic {
             inputs: vec![v(i(32), 4), v(i(32), 4)],
             output: v(i(64), 2),
-            definition: Named("llvm.x86.sse41.muldq")
+            definition: Named("llvm.x86.sse41.pmuldq")
         },
         "_packus_epi32" => Intrinsic {
             inputs: vec![v(i(32), 4), v(i(32), 4)],
@@ -360,10 +365,10 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: i(32),
             definition: Named("llvm.x86.sse41.ptestc")
         },
-        "_testncz_si128" => Intrinsic {
+        "_testnzc_si128" => Intrinsic {
             inputs: vec![v(u(64), 2), v(u(64), 2)],
             output: i(32),
-            definition: Named("llvm.x86.sse41.ptest.nzc")
+            definition: Named("llvm.x86.sse41.ptestnzc")
         },
         "_testz_si128" => Intrinsic {
             inputs: vec![v(u(64), 2), v(u(64), 2)],
