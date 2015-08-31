@@ -1421,6 +1421,18 @@ impl<'a, I, T: 'a> Iterator for Cloned<I>
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
     }
+
+    fn count(self) -> usize {
+        self.it.count()
+    }
+
+    fn last(self) -> Option<T> {
+        self.it.last().cloned()
+    }
+
+    fn nth(&mut self, n: usize) -> Option<T> {
+        self.it.nth(n).cloned()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
