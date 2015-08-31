@@ -408,6 +408,13 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                     let mut structural_to_nomimal = HashMap::new();
 
                     let sig = tcx.no_late_bound_regions(i_ty.ty.fn_sig()).unwrap();
+                    if intr.inputs.len() != sig.inputs.len() {
+                        span_err!(tcx.sess, it.span, E0444,
+                                  "platform-specific intrinsic has invalid number of \
+                                   arguments: found {}, expected {}",
+                                  intr.inputs.len(), sig.inputs.len());
+                        return
+                    }
                     let input_pairs = intr.inputs.iter().zip(&sig.inputs);
                     for (i, (expected_arg, arg)) in input_pairs.enumerate() {
                         match_intrinsic_type_to_type(tcx, &format!("argument {}", i + 1), it.span,
