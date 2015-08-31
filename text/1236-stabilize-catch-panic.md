@@ -1,7 +1,7 @@
-- Feature Name: `catch_panic`
+- Feature Name: `recover`
 - Start Date: 2015-07-24
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1236](https://github.com/rust-lang/rfcs/pull/1236)
+- Rust Issue: [rust-lang/rust#27719](https://github.com/rust-lang/rust/issues/27719)
 
 # Summary
 
@@ -180,7 +180,7 @@ this RFC.
 
 At its heart, the change this RFC is proposing is to move
 `std::thread::catch_panic` to a new `std::panic` module and rename the function
-to `catch`. Additionally, the `Send` bound from the closure parameter will be
+to `recover`. Additionally, the `Send` bound from the closure parameter will be
 removed (`'static` will stay), modifying the signature to be:
 
 ```rust
