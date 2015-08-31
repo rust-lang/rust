@@ -834,6 +834,37 @@ fn test_bytes_revator() {
 }
 
 #[test]
+fn test_bytesator_nth() {
+    let s = "ศไทย中华Việt Nam";
+    let v = [
+        224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
+        184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
+        109
+    ];
+
+    let mut b = s.bytes();
+    assert_eq!(b.nth(2).unwrap(), v[2]);
+    assert_eq!(b.nth(10).unwrap(), v[10]);
+    assert_eq!(b.nth(200), None);
+}
+
+#[test]
+fn test_bytesator_count() {
+    let s = "ศไทย中华Việt Nam";
+
+    let b = s.bytes();
+    assert_eq!(b.count(), 28)
+}
+
+#[test]
+fn test_bytesator_last() {
+    let s = "ศไทย中华Việt Nam";
+
+    let b = s.bytes();
+    assert_eq!(b.last().unwrap(), 109)
+}
+
+#[test]
 fn test_char_indicesator() {
     let s = "ศไทย中华Việt Nam";
     let p = [0, 3, 6, 9, 12, 15, 18, 19, 20, 23, 24, 25, 26, 27];
