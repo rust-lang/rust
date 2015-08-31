@@ -117,7 +117,6 @@ use syntax::attr::AttrMetaMethods;
 use syntax::ast::{self, Visibility};
 use syntax::ast_util;
 use syntax::codemap::{self, Span};
-use syntax::feature_gate::emit_feature_err;
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::{self, InternedString};
 use syntax::print::pprust;
@@ -669,7 +668,6 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     let tcx = ccx.tcx;
 
     check_representable(tcx, span, id, "struct");
-    check_instantiable(tcx, span, id);
 
     if tcx.lookup_simd(DefId::local(id)) {
         check_simd(tcx, span, id);
@@ -4202,22 +4200,6 @@ pub fn check_representable(tcx: &ty::ctxt,
     return true
 }
 
-/// Checks whether a type can be constructed at runtime without
-/// an existing instance of that type.
-pub fn check_instantiable(tcx: &ty::ctxt,
-                          sp: Span,
-                          item_id: ast::NodeId) {
-    let item_ty = tcx.node_id_to_type(item_id);
-    if !item_ty.is_instantiable(tcx) &&
-            !tcx.sess.features.borrow().static_recursion {
-        emit_feature_err(&tcx.sess.parse_sess.span_diagnostic,
-                         "static_recursion",
-                         sp,
-                         "this type cannot be instantiated at runtime \
-                          without an instance of itself");
-    }
-}
-
 pub fn check_simd(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) {
     let t = tcx.node_id_to_type(id);
     match t.sty {
@@ -4352,7 +4334,6 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     do_check(ccx, vs, id, hint);
 
     check_representable(ccx.tcx, sp, id, "enum");
-    check_instantiable(ccx.tcx, sp, id);
 }
 
 // Returns the type parameter count and the type for the given definition.
