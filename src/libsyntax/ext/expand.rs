@@ -459,15 +459,12 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
         }
 
         ast::ExprClosure(capture_clause, fn_decl, block) => {
-            push_compiler_expansion(fld, span, CompilerExpansionFormat::Closure);
             let (rewritten_fn_decl, rewritten_block)
                 = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
             let new_node = ast::ExprClosure(capture_clause,
                                             rewritten_fn_decl,
                                             rewritten_block);
-            let result = P(ast::Expr{id:id, node: new_node, span: fld.new_span(span)});
-            fld.cx.bt_pop();
-            result
+            P(ast::Expr{id:id, node: new_node, span: fld.new_span(span)})
         }
 
         _ => {

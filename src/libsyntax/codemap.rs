@@ -275,7 +275,6 @@ pub enum CompilerExpansionFormat {
     PlacementIn,
     WhileLet,
     ForLoop,
-    Closure,
 }
 
 impl CompilerExpansionFormat {
@@ -285,7 +284,6 @@ impl CompilerExpansionFormat {
             CompilerExpansionFormat::PlacementIn => "placement-in expansion",
             CompilerExpansionFormat::WhileLet => "while let expansion",
             CompilerExpansionFormat::ForLoop => "for loop expansion",
-            CompilerExpansionFormat::Closure => "closure expansion",
         }
     }
 }
