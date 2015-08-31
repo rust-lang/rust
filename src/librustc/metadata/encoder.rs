@@ -25,11 +25,11 @@ use metadata::tyencode;
 use middle::def;
 use middle::ty::{self, Ty};
 use middle::stability;
-use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
+use util::nodemap::{FnvHashMap, NodeMap, NodeSet, FnvHasher};
 
 use serialize::Encodable;
 use std::cell::RefCell;
-use std::hash::{Hash, Hasher, SipHasher};
+use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
 use syntax::abi;
@@ -1626,7 +1626,7 @@ fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: 
 {
     let mut buckets: Vec<Vec<entry<T>>> = (0..4096u16).map(|_| Vec::new()).collect();
     for elt in index {
-        let mut s = SipHasher::new();
+        let mut s = FnvHasher::default();
         elt.val.hash(&mut s);
         let h = s.finish() as usize;
         (&mut buckets[h % 4096]).push(elt);

@@ -31,11 +31,11 @@ use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{self, RegionEscape, Ty};
-use util::nodemap::FnvHashMap;
+use util::nodemap::{FnvHashMap, FnvHasher};
 
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use std::hash::{Hash, SipHasher, Hasher};
+use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
 use std::io;
 use std::rc::Rc;
@@ -90,7 +90,7 @@ pub fn maybe_find_item<'a>(item_id: ast::NodeId,
     fn eq_item(bytes: &[u8], item_id: ast::NodeId) -> bool {
         u32_from_be_bytes(bytes) == item_id
     }
-    let mut s = SipHasher::new_with_keys(0, 0);
+    let mut s = FnvHasher::default();
     (item_id as i64).hash(&mut s);
     lookup_hash(items, |a| eq_item(a, item_id), s.finish())
 }
