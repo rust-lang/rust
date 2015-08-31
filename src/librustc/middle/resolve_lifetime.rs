@@ -30,7 +30,7 @@ use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::lifetime_to_string;
 use syntax::visit;
-use syntax::visit::Visitor;
+use syntax::visit::{FnKind, Visitor};
 use util::nodemap::NodeMap;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
@@ -173,20 +173,20 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         replace(&mut self.labels_in_fn, saved);
     }
 
-    fn visit_fn(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v ast::FnDecl,
                 b: &'v ast::Block, s: Span, _: ast::NodeId) {
         match fk {
-            visit::FkItemFn(_, generics, _, _, _, _) => {
+            FnKind::ItemFn(_, generics, _, _, _, _) => {
                 self.visit_early_late(subst::FnSpace, generics, |this| {
                     this.walk_fn(fk, fd, b, s)
                 })
             }
-            visit::FkMethod(_, sig, _) => {
+            FnKind::Method(_, sig, _) => {
                 self.visit_early_late(subst::FnSpace, &sig.generics, |this| {
                     this.walk_fn(fk, fd, b, s)
                 })
             }
-            visit::FkClosure(..) => {
+            FnKind::Closure(..) => {
                 self.walk_fn(fk, fd, b, s)
             }
         }
@@ -470,21 +470,21 @@ impl<'a> LifetimeContext<'a> {
     // labels of the function body and swaps them in before visiting
     // the function body itself.
     fn walk_fn<'b>(&mut self,
-                   fk: visit::FnKind,
+                   fk: FnKind,
                    fd: &ast::FnDecl,
                    fb: &'b ast::Block,
                    _span: Span) {
         match fk {
-            visit::FkItemFn(_, generics, _, _, _, _) => {
+            FnKind::ItemFn(_, generics, _, _, _, _) => {
                 visit::walk_fn_decl(self, fd);
                 self.visit_generics(generics);
             }
-            visit::FkMethod(_, sig, _) => {
+            FnKind::Method(_, sig, _) => {
                 visit::walk_fn_decl(self, fd);
                 self.visit_generics(&sig.generics);
                 self.visit_explicit_self(&sig.explicit_self);
             }
-            visit::FkClosure(..) => {
+            FnKind::Closure(..) => {
                 visit::walk_fn_decl(self, fd);
             }
         }

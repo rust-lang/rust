@@ -28,7 +28,7 @@ use syntax::abi;
 use syntax::ast::{Block, FnDecl, NodeId};
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::visit;
+use syntax::visit::FnKind;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
 /// and a body (as well as a NodeId, a span, etc).
@@ -50,7 +50,7 @@ pub trait MaybeFnLike { fn is_fn_like(&self) -> bool; }
 pub struct FnParts<'a> {
     pub decl: &'a FnDecl,
     pub body: &'a Block,
-    pub kind: visit::FnKind<'a>,
+    pub kind: FnKind<'a>,
     pub span: Span,
     pub id:   NodeId,
 }
@@ -186,15 +186,15 @@ impl<'a> FnLikeNode<'a> {
                     |c: ClosureParts|    c.id)
     }
 
-    pub fn kind(self) -> visit::FnKind<'a> {
-        let item = |p: ItemFnParts<'a>| -> visit::FnKind<'a> {
-            visit::FkItemFn(p.ident, p.generics, p.unsafety, p.constness, p.abi, p.vis)
+    pub fn kind(self) -> FnKind<'a> {
+        let item = |p: ItemFnParts<'a>| -> FnKind<'a> {
+            FnKind::ItemFn(p.ident, p.generics, p.unsafety, p.constness, p.abi, p.vis)
         };
         let closure = |_: ClosureParts| {
-            visit::FkClosure
+            FnKind::Closure
         };
         let method = |_, ident, sig: &'a ast::MethodSig, vis, _, _| {
-            visit::FkMethod(ident, sig, vis)
+            FnKind::Method(ident, sig, vis)
         };
         self.handle(item, method, closure)
     }

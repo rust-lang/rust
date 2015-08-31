@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types)]
+//#![allow(non_camel_case_types)]
 
 use self::ConstVal::*;
 use self::ErrKind::*;
@@ -26,10 +26,10 @@ use middle::astconv_util::ast_ty_to_prim_ty;
 use util::num::ToPrimitive;
 
 use syntax::ast::{self, Expr};
-use syntax::codemap::Span;
+use syntax::codemap::{self, Span};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-use syntax::{codemap, visit};
+use syntax::visit::FnKind;
 
 use std::borrow::{Cow, IntoCow};
 use std::num::wrapping::OverflowingOps;
@@ -246,10 +246,10 @@ pub fn lookup_const_fn_by_id<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: DefId)
     };
 
     match fn_like.kind() {
-        visit::FkItemFn(_, _, _, ast::Constness::Const, _, _) => {
+        FnKind::ItemFn(_, _, _, ast::Constness::Const, _, _) => {
             Some(fn_like)
         }
-        visit::FkMethod(_, m, _) => {
+        FnKind::Method(_, m, _) => {
             if m.constness == ast::Constness::Const {
                 Some(fn_like)
             } else {
