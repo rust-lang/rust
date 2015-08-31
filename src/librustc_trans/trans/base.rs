@@ -1758,6 +1758,17 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             }
             _ => ccx.sess().bug("expected expr as arguments for variant/struct tuple constructor")
         }
+    } else {
+        // Just eval all the expressions (if any). Since expressions in Rust can have arbitrary
+        // contents, there could be side-effects we need from them.
+        match args {
+            callee::ArgExprs(exprs) => {
+                for expr in exprs {
+                    bcx = expr::trans_into(bcx, expr, expr::Ignore);
+                }
+            }
+            _ => ()
+        }
     }
 
     // If the caller doesn't care about the result
