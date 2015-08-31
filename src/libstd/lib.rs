@@ -365,6 +365,7 @@ pub mod fs;
 pub mod io;
 pub mod net;
 pub mod os;
+pub mod panic;
 pub mod path;
 pub mod process;
 pub mod sync;

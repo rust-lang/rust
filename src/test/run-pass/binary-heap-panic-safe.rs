@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(std_misc, collections, catch_panic, rand, sync_poison)]
+#![feature(collections, recover, std_panic, rand)]
 
 use std::__rand::{thread_rng, Rng};
-use std::thread;
+use std::panic;
 
 use std::collections::BinaryHeap;
 use std::cmp;
@@ -74,7 +74,7 @@ fn test_integrity() {
 
 
                 // push the panicking item to the heap and catch the panic
-                let thread_result = thread::catch_panic(move || {
+                let thread_result = panic::recover(move || {
                     heap.lock().unwrap().push(panic_item);
                 });
                 assert!(thread_result.is_err());
