@@ -191,3 +191,24 @@ fn is_lit_one(expr: &Expr) -> bool {
     }
     false
 }
+
+declare_lint!(pub REDUNDANT_PATTERN, Warn, "using `name @ _` in a pattern");
+
+#[derive(Copy,Clone)]
+pub struct PatternPass;
+
+impl LintPass for PatternPass {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(REDUNDANT_PATTERN)
+    }
+
+    fn check_pat(&mut self, cx: &Context, pat: &Pat) {
+        if let PatIdent(_, ref ident, Some(ref right)) = pat.node {
+            if right.node == PatWild(PatWildSingle) {
+                cx.span_lint(REDUNDANT_PATTERN, pat.span, &format!(
+                    "the `{} @ _` pattern can be written as just `{}`",
+                    ident.node.name, ident.node.name));
+            }
+        }
+    }
+}
