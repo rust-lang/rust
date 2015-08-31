@@ -1134,11 +1134,10 @@ fn rewrite_unary_op(context: &RewriteContext,
         ast::UnOp::UnNot => "!",
         ast::UnOp::UnNeg => "-",
     };
+    let operator_len = operator_str.len();
 
-    let subexpr =
-        try_opt!(expr.rewrite(context, try_opt!(width.checked_sub(operator_str.len())), offset));
-
-    Some(format!("{}{}", operator_str, subexpr))
+    expr.rewrite(context, try_opt!(width.checked_sub(operator_len)), offset + operator_len)
+        .map(|r| format!("{}{}", operator_str, r))
 }
 
 fn rewrite_assignment(context: &RewriteContext,
