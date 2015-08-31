@@ -192,7 +192,6 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
 /// for &T and &mut T, such as Vec.
 fn is_ref_iterable_type(cx: &Context, e: &Expr) -> bool {
     let ty = walk_ptrs_ty(cx.tcx.expr_ty(e));
-    println!("mt {:?} {:?}", e, ty);
     is_array(ty) ||
         match_type(cx, ty, &VEC_PATH) ||
         match_type(cx, ty, &LL_PATH) ||
