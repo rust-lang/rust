@@ -1,7 +1,7 @@
 use syntax::ast::*;
 use rustc::lint::*;
 use syntax::codemap::Span;
-use syntax::visit::{Visitor, walk_ty};
+use syntax::visit::{Visitor, walk_ty, walk_ty_param_bound};
 use std::collections::HashSet;
 
 use utils::{in_external_macro, span_lint};
@@ -68,14 +68,7 @@ fn could_use_elision(func: &FnDecl, slf: Option<&ExplicitSelf>,
     // level of the current item.
 
     // check named LTs
-    let mut allowed_lts = HashSet::new();
-    for lt in named_lts {
-        if lt.bounds.is_empty() {
-            allowed_lts.insert(Named(lt.lifetime.name));
-        }
-    }
-    allowed_lts.insert(Unnamed);
-    allowed_lts.insert(Static);
+    let allowed_lts = allowed_lts_from(named_lts);
 
     // these will collect all the lifetimes for references in arg/return types
     let mut input_visitor = RefVisitor(Vec::new());
@@ -142,6 +135,18 @@ fn could_use_elision(func: &FnDecl, slf: Option<&ExplicitSelf>,
     false
 }
 
+fn allowed_lts_from(named_lts: &[LifetimeDef]) -> HashSet<RefLt> {
+    let mut allowed_lts = HashSet::new();
+    for lt in named_lts {
+        if lt.bounds.is_empty() {
+            allowed_lts.insert(Named(lt.lifetime.name));
+        }
+    }
+    allowed_lts.insert(Unnamed);
+    allowed_lts.insert(Static);
+    allowed_lts
+}
+
 /// Number of unique lifetimes in the given vector.
 fn unique_lifetimes(lts: &[RefLt]) -> usize {
     lts.iter().collect::<HashSet<_>>().len()
@@ -186,17 +191,34 @@ impl<'v> Visitor<'v> for RefVisitor {
 /// Are any lifetimes mentioned in the `where` clause? If yes, we don't try to
 /// reason about elision.
 fn has_where_lifetimes(where_clause: &WhereClause) -> bool {
-    let mut where_visitor = RefVisitor(Vec::new());
     for predicate in &where_clause.predicates {
         match *predicate {
             WherePredicate::RegionPredicate(..) => return true,
             WherePredicate::BoundPredicate(ref pred) => {
-                walk_ty(&mut where_visitor, &pred.bounded_ty);
+                // a predicate like F: Trait or F: for<'a> Trait<'a>
+                let mut visitor = RefVisitor(Vec::new());
+                // walk the type F, it may not contain LT refs
+                walk_ty(&mut visitor, &pred.bounded_ty);
+                if !visitor.0.is_empty() { return true; }
+                // if the bounds define new lifetimes, they are fine to occur
+                let allowed_lts = allowed_lts_from(&pred.bound_lifetimes);
+                // now walk the bounds
+                for bound in pred.bounds.iter() {
+                    walk_ty_param_bound(&mut visitor, bound);
+                }
+                // and check that all lifetimes are allowed
+                for lt in visitor.into_vec() {
+                    if !allowed_lts.contains(&lt) {
+                        return true;
+                    }
+                }
             }
             WherePredicate::EqPredicate(ref pred) => {
-                walk_ty(&mut where_visitor, &pred.ty);
+                let mut visitor = RefVisitor(Vec::new());
+                walk_ty(&mut visitor, &pred.ty);
+                if !visitor.0.is_empty() { return true; }
             }
         }
     }
-    !where_visitor.into_vec().is_empty()
+    false
 }

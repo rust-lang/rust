@@ -46,6 +46,18 @@ fn lifetime_param_3<'a, 'b: 'a>(_x: Ref<'a>, _y: &'b u8) { } // no error, bounde
 
 fn lifetime_param_4<'a, 'b>(_x: Ref<'a>, _y: &'b u8) where 'b: 'a { } // no error, bounded lifetime
 
+struct Lt<'a, I: 'static> {
+    x: &'a I
+}
+
+fn fn_bound<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
+    where F: Fn(Lt<'a, I>) -> Lt<'a, I>  // no error, fn bound references 'a
+{ unreachable!() }
+
+fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>  //~ERROR explicit lifetimes given
+    where for<'x> F: Fn(Lt<'x, I>) -> Lt<'x, I>
+{ unreachable!() }
+
 struct X {
     x: u8,
 }
