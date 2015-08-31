@@ -19,8 +19,8 @@
             "intrinsic": "_madd_epi16",
             "width": [128],
             "llvm": "pmadd.wd",
-            "ret": "s16",
-            "args": ["0", "0"]
+            "ret": "s32",
+            "args": ["s16", "s16"]
         },
         {
             "intrinsic": "_max_{0.data_type}",
@@ -68,11 +68,11 @@
             "intrinsic": "_mul_epu32",
             "width": [128],
             "llvm": "pmulu.dq",
-            "ret": "s64",
+            "ret": "u64",
             "args": ["0dn", "0dn"]
         },
         {
-            "intrinsic": "_mulhi_ep{0.kind}16",
+            "intrinsic": "_mulhi_{0.data_type}",
             "width": [128],
             "llvm": "pmulh{0.kind_short}.w",
             "ret": "i16",
