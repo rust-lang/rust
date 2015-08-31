@@ -1026,7 +1026,7 @@ fn rewrite_field(context: &RewriteContext,
                  -> Option<String> {
     let name = &field.ident.node.to_string();
     let overhead = name.len() + 2;
-    let expr = field.expr.rewrite(context, width - overhead, offset + overhead);
+    let expr = field.expr.rewrite(context, try_opt!(width.checked_sub(overhead)), offset + overhead);
     expr.map(|s| format!("{}: {}", name, s))
 }
 
