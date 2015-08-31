@@ -4,7 +4,7 @@ use syntax::visit::{Visitor, walk_expr};
 use rustc::middle::ty;
 use std::collections::HashSet;
 
-use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, walk_ptrs_ty,
+use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type,
             in_external_macro, expr_block, span_help_and_lint};
 use utils::{VEC_PATH, LL_PATH};
 
@@ -191,8 +191,9 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
 /// Return true if the type of expr is one that provides IntoIterator impls
 /// for &T and &mut T, such as Vec.
 fn is_ref_iterable_type(cx: &Context, e: &Expr) -> bool {
-    let ty = walk_ptrs_ty(cx.tcx.expr_ty(e));
-    println!("mt {:?} {:?}", e, ty);
+    // no walk_ptrs_ty: calling iter() on a reference can make sense because it
+    // will allow further borrows afterwards
+    let ty = cx.tcx.expr_ty(e);
     is_array(ty) ||
         match_type(cx, ty, &VEC_PATH) ||
         match_type(cx, ty, &LL_PATH) ||
