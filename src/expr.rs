@@ -219,7 +219,8 @@ fn rewrite_closure(capture: ast::CaptureClause,
 
         // 1 = the separating space between arguments and the body.
         let extra_offset = extra_offset(&prefix, offset) + 1;
-        let rewrite = inner_expr.rewrite(context, width - extra_offset, offset + extra_offset);
+        let budget = try_opt!(width.checked_sub(extra_offset));
+        let rewrite = inner_expr.rewrite(context, budget, offset + extra_offset);
 
         // Checks if rewrite succeeded and fits on a single line.
         let accept_rewrite = rewrite.as_ref().map(|result| !result.contains('\n')).unwrap_or(false);
@@ -263,7 +264,8 @@ impl Rewrite for ast::Block {
 
                 if !trimmed.is_empty() {
                     // 9 = "unsafe  {".len(), 7 = "unsafe ".len()
-                    format!("unsafe {} ", rewrite_comment(trimmed, true, width - 9, offset + 7))
+                    let budget = try_opt!(width.checked_sub(9));
+                    format!("unsafe {} ", rewrite_comment(trimmed, true, budget, offset + 7))
                 } else {
                     "unsafe ".to_owned()
                 }
@@ -357,7 +359,7 @@ impl<'a> Rewrite for Loop<'a> {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
         let label_string = rewrite_label(self.label);
         // 2 = " {".len()
-        let inner_width = width - self.keyword.len() - 2 - label_string.len();
+        let inner_width = try_opt!(width.checked_sub(self.keyword.len() + 2 + label_string.len()));
         let inner_offset = offset + self.keyword.len() + label_string.len();
 
         let pat_expr_string = match self.cond {
@@ -393,14 +395,17 @@ fn rewrite_range(context: &RewriteContext,
                  offset: usize)
                  -> Option<String> {
     let left_string = match left {
-        Some(expr) => try_opt!(expr.rewrite(context, width - 2, offset)),
+        Some(expr) => {
+            // 2 = ..
+            let max_width = try_opt!(width.checked_sub(2));
+            try_opt!(expr.rewrite(context, max_width, offset))
+        }
         None => String::new(),
     };
 
     let right_string = match right {
         Some(expr) => {
-            // 2 = ..
-            let max_width = (width - 2).checked_sub(left_string.len()).unwrap_or(0);
+            let max_width = try_opt!(width.checked_sub(left_string.len() + 2));
             try_opt!(expr.rewrite(context, max_width, offset + 2 + left_string.len()))
         }
         None => String::new(),
@@ -532,7 +537,8 @@ fn rewrite_match(context: &RewriteContext,
     }
 
     // `match `cond` {`
-    let cond_str = try_opt!(cond.rewrite(context, width - 8, offset + 6));
+    let cond_budget = try_opt!(width.checked_sub(8));
+    let cond_str = try_opt!(cond.rewrite(context, cond_budget, offset + 6));
     let mut result = format!("match {} {{", cond_str);
 
     let block_indent = context.block_indent;
@@ -632,17 +638,20 @@ impl Rewrite for ast::Arm {
         };
 
         // Patterns
-        let pat_strs = try_opt!(pats.iter().map(|p| p.rewrite(context,
-                                                     // 5 = ` => {`
-                                                     width - 5,
-                                                     offset + context.config.tab_spaces))
+        // 5 = ` => {`
+        let pat_budget = try_opt!(width.checked_sub(5));
+        let pat_strs = try_opt!(pats.iter().map(|p| {
+                                               p.rewrite(context,
+                                                         pat_budget,
+                                                         offset + context.config.tab_spaces)
+                                           })
                                            .collect::<Option<Vec<_>>>());
 
         let mut total_width = pat_strs.iter().fold(0, |a, p| a + p.len());
         // Add ` | `.len().
         total_width += (pat_strs.len() - 1) * 3;
 
-        let mut vertical = total_width > width - 5 || pat_strs.iter().any(|p| p.contains('\n'));
+        let mut vertical = total_width > pat_budget || pat_strs.iter().any(|p| p.contains('\n'));
         if !vertical {
             // If the patterns were previously stacked, keep them stacked.
             // FIXME should be an option.
@@ -710,9 +719,8 @@ impl Rewrite for ast::Arm {
             return None;
         }
 
-        let body_str = try_opt!(body.rewrite(context,
-                                             width - context.config.tab_spaces,
-                                             nested_indent));
+        let body_budget = try_opt!(width.checked_sub(context.config.tab_spaces));
+        let body_str = try_opt!(body.rewrite(context, body_budget, nested_indent));
         Some(format!("{}{} =>\n{}{},",
                      attr_str.trim_left(),
                      pats_str,
@@ -775,9 +783,8 @@ fn rewrite_pat_expr(context: &RewriteContext,
     let pat_offset = offset + matcher.len();
     let mut result = match pat {
         Some(pat) => {
-            let pat_string = try_opt!(pat.rewrite(context,
-                                                  width - connector.len() - matcher.len(),
-                                                  pat_offset));
+            let pat_budget = try_opt!(width.checked_sub(connector.len() + matcher.len()));
+            let pat_string = try_opt!(pat.rewrite(context, pat_budget, pat_offset));
             format!("{}{}{}", matcher, pat_string, connector)
         }
         None => String::new(),
@@ -930,7 +937,8 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     }
 
     // 2 = " {".len()
-    let path_str = try_opt!(path.rewrite(context, width - 2, offset));
+    let path_budget = try_opt!(width.checked_sub(2));
+    let path_str = try_opt!(path.rewrite(context, path_budget, offset));
 
     // Foo { a: Foo } - indent is +3, width is -5.
     let h_budget = try_opt!(width.checked_sub(path_str.len() + 5));
@@ -1041,7 +1049,8 @@ fn rewrite_tuple_lit(context: &RewriteContext,
     // In case of length 1, need a trailing comma
     if items.len() == 1 {
         // 3 = "(" + ",)"
-        return items[0].rewrite(context, width - 3, indent).map(|s| format!("({},)", s));
+        let budget = try_opt!(width.checked_sub(3));
+        return items[0].rewrite(context, budget, indent).map(|s| format!("({},)", s));
     }
 
     let items = itemize_list(context.codemap,
@@ -1057,7 +1066,8 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                              span.lo + BytePos(1), // Remove parens
                              span.hi - BytePos(1));
 
-    let fmt = ListFormatting::for_fn(width - 2, indent);
+    let budget = try_opt!(width.checked_sub(2));
+    let fmt = ListFormatting::for_fn(budget, indent);
 
     Some(format!("({})", write_list(&items.collect::<Vec<_>>(), &fmt)))
 }
