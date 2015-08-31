@@ -355,26 +355,9 @@ pub fn panicking() -> bool {
 /// with exception safety. Furthermore, a `Send` bound is also required,
 /// providing the same safety guarantees as `thread::spawn` (ensuring the
 /// closure is properly isolated from the parent).
-///
-/// # Examples
-///
-/// ```
-/// #![feature(catch_panic)]
-///
-/// use std::thread;
-///
-/// let result = thread::catch_panic(|| {
-///     println!("hello!");
-/// });
-/// assert!(result.is_ok());
-///
-/// let result = thread::catch_panic(|| {
-///     panic!("oh no!");
-/// });
-/// assert!(result.is_err());
-/// ```
 #[unstable(feature = "catch_panic", reason = "recent API addition",
            issue = "27719")]
+#[rustc_deprecated(since = "1.6.0", reason = "renamed to std::panic::recover")]
 pub fn catch_panic<F, R>(f: F) -> Result<R>
     where F: FnOnce() -> R + Send + 'static
 {
