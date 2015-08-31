@@ -105,3 +105,9 @@ fn qux() {
         // A block with a comment.
     }
 }
+
+fn issue227() {
+    {
+        let handler = box DocumentProgressHandler::new(addr, DocumentProgressTask::DOMContentLoaded);
+    }
+}
