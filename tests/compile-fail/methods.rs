@@ -15,6 +15,9 @@ impl T {
     fn sub(&self, other: T) -> &T { self } // no error, self is a ref
     fn div(self) -> T { self } // no error, different #arguments
     fn rem(self, other: T) { } // no error, wrong return type
+
+    fn into_u32(self) -> u32 { 0 } // fine
+    fn into_u16(&self) -> u16 { 0 } //~ERROR methods called `into_*` usually take self by value
 }
 
 impl Mul<T> for T {
