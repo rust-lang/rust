@@ -26,7 +26,7 @@ use default::Default;
 use fmt;
 use hash::{Hash, self};
 use iter::IntoIterator;
-use marker::{Copy, Sized};
+use marker::{Copy, Sized, Unsize};
 use option::Option;
 use slice::{Iter, IterMut, SliceExt};
 
@@ -41,21 +41,21 @@ pub trait FixedSizeArray<T> {
     fn as_mut_slice(&mut self) -> &mut [T];
 }
 
+impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
+    #[inline]
+    fn as_slice(&self) -> &[T] {
+        self
+    }
+    #[inline]
+    fn as_mut_slice(&mut self) -> &mut [T] {
+        self
+    }
+}
+
 // macro for implementing n-ary tuple functions and operations
 macro_rules! array_impls {
     ($($N:expr)+) => {
         $(
-            impl<T> FixedSizeArray<T> for [T; $N] {
-                #[inline]
-                fn as_slice(&self) -> &[T] {
-                    &self[..]
-                }
-                #[inline]
-                fn as_mut_slice(&mut self) -> &mut [T] {
-                    &mut self[..]
-                }
-            }
-
             impl<T> AsRef<[T]> for [T; $N] {
                 #[inline]
                 fn as_ref(&self) -> &[T] {
