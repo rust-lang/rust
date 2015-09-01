@@ -17,9 +17,8 @@ fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
     // Need to be sure to put both the lib_path and the aux path in the dylib
     // search path for the child.
     let mut path = DynamicLibrary::search_path();
-    match aux_path {
-        Some(p) => path.insert(0, PathBuf::from(p)),
-        None => {}
+    if let Some(p) = aux_path {
+        path.insert(0, PathBuf::from(p))
     }
     path.insert(0, PathBuf::from(lib_path));
 
