@@ -287,6 +287,15 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
     for variant in &def.variants {
         let vid = variant.did;
         assert!(vid.is_local());
+
+        if let ty::VariantKind::Dict = variant.kind() {
+            // tuple-like enum variant fields aren't really items so
+            // don't try to encode them.
+            for field in &variant.fields {
+                encode_field(ecx, rbml_w, field, index);
+            }
+        }
+
         index.push(entry {
             val: vid.node as i64,
             pos: rbml_w.mark_stable_position(),
@@ -307,11 +316,6 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
 
         let stab = stability::lookup(ecx.tcx, vid);
         encode_stability(rbml_w, stab);
-
-        if let ty::VariantKind::Dict = variant.kind() {
-            let idx = encode_info_for_struct(ecx, rbml_w, variant, index);
-            encode_index(rbml_w, idx, write_i64);
-        }
 
         encode_struct_fields(rbml_w, variant, vid);
 
@@ -618,41 +622,29 @@ fn encode_provided_source(rbml_w: &mut Encoder,
     }
 }
 
-/* Returns an index of items in this class */
-fn encode_info_for_struct<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
-                                    rbml_w: &mut Encoder,
-                                    variant: ty::VariantDef<'tcx>,
-                                    global_index: &mut Vec<entry<i64>>)
-                                    -> Vec<entry<i64>> {
-    /* Each class has its own index, since different classes
-       may have fields with the same name */
-    let mut index = Vec::new();
-     /* We encode both private and public fields -- need to include
-        private fields to get the offsets right */
-    for field in &variant.fields {
-        let nm = field.name;
-        let id = field.did.node;
+fn encode_field<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                          rbml_w: &mut Encoder,
+                          field: ty::FieldDef<'tcx>,
+                          global_index: &mut Vec<entry<i64>>) {
+    let nm = field.name;
+    let id = field.did.node;
 
-        let pos = rbml_w.mark_stable_position();
-        index.push(entry {val: id as i64, pos: pos});
-        global_index.push(entry {
-            val: id as i64,
-            pos: pos,
-        });
-        rbml_w.start_tag(tag_items_data_item);
-        debug!("encode_info_for_struct: doing {} {}",
-               nm, id);
-        encode_struct_field_family(rbml_w, field.vis);
-        encode_name(rbml_w, nm);
-        encode_bounds_and_type_for_item(rbml_w, ecx, id);
-        encode_def_id(rbml_w, DefId::local(id));
+    let pos = rbml_w.mark_stable_position();
+    global_index.push(entry {
+        val: id as i64,
+        pos: pos,
+    });
+    rbml_w.start_tag(tag_items_data_item);
+    debug!("encode_field: encoding {} {}", nm, id);
+    encode_struct_field_family(rbml_w, field.vis);
+    encode_name(rbml_w, nm);
+    encode_bounds_and_type_for_item(rbml_w, ecx, id);
+    encode_def_id(rbml_w, DefId::local(id));
 
-        let stab = stability::lookup(ecx.tcx, field.did);
-        encode_stability(rbml_w, stab);
+    let stab = stability::lookup(ecx.tcx, field.did);
+    encode_stability(rbml_w, stab);
 
-        rbml_w.end_tag();
-    }
-    index
+    rbml_w.end_tag();
 }
 
 fn encode_info_for_struct_ctor(ecx: &EncodeContext,
@@ -1146,11 +1138,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
         let def = ecx.tcx.lookup_adt_def(def_id);
         let variant = def.struct_variant();
 
-        /* First, encode the fields
-           These come first because we need to write them to make
-           the index, and the index needs to be in the item for the
-           class itself */
-        let idx = encode_info_for_struct(ecx, rbml_w, variant, index);
+        for field in &variant.fields {
+            encode_field(ecx, rbml_w, field, index);
+        }
 
         /* Index the class*/
         add_to_index(item, rbml_w, index);
@@ -1179,8 +1169,6 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, rbml_w, def_id);
 
-        /* Each class has its own index -- encode it */
-        encode_index(rbml_w, idx, write_i64);
         rbml_w.end_tag();
 
         // If this is a tuple-like struct, encode the type of the constructor.
