@@ -3020,6 +3020,144 @@ parameters. You can read more about it in the API documentation:
 https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 "##,
 
+E0439: r##"
+The length of the platform-intrinsic function `simd_shuffle`
+wasn't specified. Erroneous code example:
+
+```
+extern "platform-intrinsic" {
+    fn simd_shuffle<A,B>(a: A, b: A, c: [u32; 8]) -> B;
+    // error: invalid `simd_shuffle`, needs length: `simd_shuffle`
+}
+```
+
+The `simd_shuffle` function needs the length of the array passed as
+last parameter in its name. Example:
+
+```
+extern "platform-intrinsic" {
+    fn simd_shuffle8<A,B>(a: A, b: A, c: [u32; 8]) -> B;
+}
+```
+"##,
+
+E0440: r##"
+A platform-specific intrinsic function has the wrong number of type
+parameters. Erroneous code example:
+
+```
+#[repr(simd)]
+struct f64x2(f64, f64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_movemask_pd<T>(x: f64x2) -> i32;
+    // error: platform-specific intrinsic has wrong number of type
+    //        parameters
+}
+```
+
+Please refer to the function declaration to see if it corresponds
+with yours. Example:
+
+```
+#[repr(simd)]
+struct f64x2(f64, f64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_movemask_pd(x: f64x2) -> i32;
+}
+```
+"##,
+
+E0441: r##"
+An unknown platform-specific intrinsic function was used. Erroneous
+code example:
+
+```
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_ep16(x: i16x8, y: i16x8) -> i16x8;
+    // error: unrecognized platform-specific intrinsic function
+}
+```
+
+Please verify that the function name wasn't misspelled, and ensure
+that it is declared in the rust source code (in the file
+src/librustc_platform_intrinsics/x86.rs). Example:
+
+```
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i16x8; // ok!
+}
+```
+"##,
+
+E0442: r##"
+Intrinsic argument(s) and/or return value have the wrong type.
+Erroneous code example:
+
+```
+#[repr(simd)]
+struct i8x16(i8, i8, i8, i8, i8, i8, i8, i8,
+             i8, i8, i8, i8, i8, i8, i8, i8);
+#[repr(simd)]
+struct i32x4(i32, i32, i32, i32);
+#[repr(simd)]
+struct i64x2(i64, i64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_epi16(x: i8x16, y: i32x4) -> i64x2;
+    // error: intrinsic arguments/return value have wrong type
+}
+```
+
+To fix this error, please refer to the function declaration to give
+it the awaited types. Example:
+
+```
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i16x8; // ok!
+}
+```
+"##,
+
+E0443: r##"
+Intrinsic argument(s) and/or return value have the wrong type.
+Erroneous code example:
+
+```
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+#[repr(simd)]
+struct i64x8(i64, i64, i64, i64, i64, i64, i64, i64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i64x8;
+    // error: intrinsic argument/return value has wrong type
+}
+```
+
+To fix this error, please refer to the function declaration to give
+it the awaited types. Example:
+
+```
+#[repr(simd)]
+struct i16x8(i16, i16, i16, i16, i16, i16, i16, i16);
+
+extern "platform-intrinsic" {
+    fn x86_mm_adds_epi16(x: i16x8, y: i16x8) -> i16x8; // ok!
+}
+```
+"##,
+
 E0444: r##"
 A platform-specific intrinsic function has wrong number of arguments.
 Erroneous code example:
@@ -3128,10 +3266,4 @@ register_diagnostics! {
     E0399, // trait items need to be implemented because the associated
            // type `{}` was overridden
     E0436,  // functional record update requires a struct
-    E0439, // invalid `simd_shuffle`, needs length: `{}`
-    E0440, // platform-specific intrinsic has wrong number of type parameters
-    E0441, // unrecognized platform-specific intrinsic function
-    E0442, // intrinsic {} has wrong type: found {}, expected {}
-    E0443, // intrinsic {} has wrong type: found `{}`, expected `{}` which
-           // was used for this vector type previously in this signature
 }
