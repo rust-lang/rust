@@ -377,7 +377,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(deque_extras)]
     ///
     /// use std::collections::VecDeque;
     ///
@@ -387,6 +387,9 @@ impl<T> VecDeque<T> {
     /// buf.shrink_to_fit();
     /// assert!(buf.capacity() >= 4);
     /// ```
+    #[unstable(feature = "deque_extras",
+               reason = "needs to be audited",
+               issue = "27788")]
     pub fn shrink_to_fit(&mut self) {
         // +1 since the ringbuffer always leaves one space empty
         // len + 1 can't overflow for an existing, well-formed ringbuffer.
@@ -928,7 +931,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Examples
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(deque_extras)]
     ///
     /// use std::collections::VecDeque;
     ///
@@ -938,6 +941,9 @@ impl<T> VecDeque<T> {
     /// buf.insert(1, 11);
     /// assert_eq!(Some(&11), buf.get(1));
     /// ```
+    #[unstable(feature = "deque_extras",
+               reason = "needs to be audited",
+               issue = "27788")]
     pub fn insert(&mut self, index: usize, value: T) {
         assert!(index <= self.len(), "index out of bounds");
         if self.is_full() {
