@@ -93,26 +93,6 @@ fn left_trim_comment_line<'a>(line: &'a str) -> &'a str {
     }
 }
 
-#[test]
-fn format_comments() {
-    assert_eq!("/* test */", rewrite_comment(" //test", true, 100, 100));
-    assert_eq!("// comment\n// on a", rewrite_comment("// comment on a", false, 10, 0));
-
-    assert_eq!("//  A multi line comment\n            // between args.",
-               rewrite_comment("//  A multi line comment\n             // between args.",
-                               false,
-                               60,
-                               12));
-
-    let input = "// comment";
-    let expected = "/* com\n                                                                      \
-                    * men\n                                                                      \
-                    * t */";
-    assert_eq!(expected, rewrite_comment(input, true, 9, 69));
-
-    assert_eq!("/* trimmed */", rewrite_comment("/*   trimmed    */", true, 100, 100));
-}
-
 pub trait FindUncommented {
     fn find_uncommented(&self, pat: &str) -> Option<usize>;
 }
@@ -140,31 +120,6 @@ impl FindUncommented for str {
             None => Some(self.len() - pat.len()),
         }
     }
-}
-
-#[test]
-fn test_find_uncommented() {
-    fn check(haystack: &str, needle: &str, expected: Option<usize>) {
-        println!("haystack {:?}, needle: {:?}", haystack, needle);
-        assert_eq!(expected, haystack.find_uncommented(needle));
-    }
-
-    check("/*/ */test", "test", Some(6));
-    check("//test\ntest", "test", Some(7));
-    check("/* comment only */", "whatever", None);
-    check("/* comment */ some text /* more commentary */ result", "result", Some(46));
-    check("sup // sup", "p", Some(2));
-    check("sup", "x", None);
-    check("π? /**/ π is nice!", "π is nice", Some(9));
-    check("/*sup yo? \n sup*/ sup", "p", Some(20));
-    check("hel/*lohello*/lo", "hello", None);
-    check("acb", "ab", None);
-    check(",/*A*/ ", ",", Some(0));
-    check("abc", "abc", Some(0));
-    check("/* abc */", "abc", None);
-    check("/**/abc/* */", "abc", Some(4));
-    check("\"/* abc */\"", "abc", Some(4));
-    check("\"/* abc", "abc", Some(4));
 }
 
 // Returns the first byte position after the first comment. The given string
@@ -204,27 +159,6 @@ pub fn contains_comment(text: &str) -> bool {
     CharClasses::new(text.chars()).any(|(kind, _)| kind == CodeCharKind::Comment )
 }
 
-pub fn uncommented(text: &str) -> String {
-    CharClasses::new(text.chars()).filter_map(|(s, c)| match s {
-        CodeCharKind::Normal => Some(c),
-        CodeCharKind::Comment => None
-    }).collect()
-}
-
-#[test]
-fn test_uncommented() {
-    assert_eq!(&uncommented("abc/*...*/"), "abc");
-    assert_eq!(&uncommented("// .... /* \n../* /* *** / */ */a/* // */c\n"), "..ac\n");
-    assert_eq!(&uncommented("abc \" /* */\" qsdf"), "abc \" /* */\" qsdf");
-}
-
-#[test]
-fn test_contains_comment() {
-    assert_eq!(contains_comment("abc"), false);
-    assert_eq!(contains_comment("abc // qsdf"), true);
-    assert_eq!(contains_comment("abc /* kqsdf"), true);
-    assert_eq!(contains_comment("abc \" /* */\" qsdf"), false);
-}
 
 struct CharClasses<T>
     where T: Iterator,
@@ -356,5 +290,79 @@ impl<T> Iterator for CharClasses<T> where T: Iterator, T::Item: RichChar {
             }
         };
         return Some((CodeCharKind::Normal, item));
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{CharClasses, CodeCharKind, contains_comment, rewrite_comment, FindUncommented};
+
+    #[test]
+    fn format_comments() {
+        assert_eq!("/* test */", rewrite_comment(" //test", true, 100, 100));
+        assert_eq!("// comment\n// on a", rewrite_comment("// comment on a", false, 10, 0));
+
+        assert_eq!("//  A multi line comment\n            // between args.",
+                   rewrite_comment("//  A multi line comment\n             // between args.",
+                                   false,
+                                   60,
+                                   12));
+
+        let input = "// comment";
+        let expected = "/* com\n                                                                      \
+                        * men\n                                                                      \
+                        * t */";
+        assert_eq!(expected, rewrite_comment(input, true, 9, 69));
+
+        assert_eq!("/* trimmed */", rewrite_comment("/*   trimmed    */", true, 100, 100));
+    }
+
+    // This is probably intended to be a non-test fn, but it is not used. I'm
+    // keeping it around unless it helps us test stuff.
+    fn uncommented(text: &str) -> String {
+        CharClasses::new(text.chars()).filter_map(|(s, c)| match s {
+            CodeCharKind::Normal => Some(c),
+            CodeCharKind::Comment => None
+        }).collect()
+    }
+
+    #[test]
+    fn test_uncommented() {
+        assert_eq!(&uncommented("abc/*...*/"), "abc");
+        assert_eq!(&uncommented("// .... /* \n../* /* *** / */ */a/* // */c\n"), "..ac\n");
+        assert_eq!(&uncommented("abc \" /* */\" qsdf"), "abc \" /* */\" qsdf");
+    }
+
+    #[test]
+    fn test_contains_comment() {
+        assert_eq!(contains_comment("abc"), false);
+        assert_eq!(contains_comment("abc // qsdf"), true);
+        assert_eq!(contains_comment("abc /* kqsdf"), true);
+        assert_eq!(contains_comment("abc \" /* */\" qsdf"), false);
+    }
+
+    #[test]
+    fn test_find_uncommented() {
+        fn check(haystack: &str, needle: &str, expected: Option<usize>) {
+            println!("haystack {:?}, needle: {:?}", haystack, needle);
+            assert_eq!(expected, haystack.find_uncommented(needle));
+        }
+
+        check("/*/ */test", "test", Some(6));
+        check("//test\ntest", "test", Some(7));
+        check("/* comment only */", "whatever", None);
+        check("/* comment */ some text /* more commentary */ result", "result", Some(46));
+        check("sup // sup", "p", Some(2));
+        check("sup", "x", None);
+        check("π? /**/ π is nice!", "π is nice", Some(9));
+        check("/*sup yo? \n sup*/ sup", "p", Some(20));
+        check("hel/*lohello*/lo", "hello", None);
+        check("acb", "ab", None);
+        check(",/*A*/ ", ",", Some(0));
+        check("abc", "abc", Some(0));
+        check("/* abc */", "abc", None);
+        check("/**/abc/* */", "abc", Some(4));
+        check("\"/* abc */\"", "abc", Some(4));
+        check("\"/* abc", "abc", Some(4));
     }
 }
