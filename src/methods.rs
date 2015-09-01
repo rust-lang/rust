@@ -68,10 +68,10 @@ impl LintPass for MethodsPass {
     }
 
     fn check_item(&mut self, cx: &Context, item: &Item) {
-        if let ItemImpl(_, _, _, None, _, ref items) = item.node {
-            for item in items {
-                let name = item.ident.name;
-                if let MethodImplItem(ref sig, _) = item.node {
+        if let ItemImpl(_, _, _, None, ref ty, ref items) = item.node {
+            for implitem in items {
+                let name = implitem.ident.name;
+                if let MethodImplItem(ref sig, _) = implitem.node {
                     // check missing trait implementations
                     for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
                         if_let_chain! {
@@ -79,9 +79,9 @@ impl LintPass for MethodsPass {
                                 name == method_name,
                                 sig.decl.inputs.len() == n_args,
                                 out_type.matches(&sig.decl.output),
-                                self_kind.matches(&sig.explicit_self.node)
+                                self_kind.matches(&sig.explicit_self.node, false)
                             ], {
-                                span_lint(cx, SHOULD_IMPLEMENT_TRAIT, item.span, &format!(
+                                span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
                                     "defining a method called `{}` on this type; consider implementing \
                                      the `{}` trait or choosing a less ambiguous name", name, trait_name));
                             }
@@ -89,7 +89,8 @@ impl LintPass for MethodsPass {
                     }
                     // check conventions w.r.t. conversion method names and predicates
                     for &(prefix, self_kind) in &CONVENTIONS {
-                        if name.as_str().starts_with(prefix) && !self_kind.matches(&sig.explicit_self.node) {
+                        if name.as_str().starts_with(prefix) &&
+                                !self_kind.matches(&sig.explicit_self.node, is_copy(cx, &ty, &item)) {
                             span_lint(cx, WRONG_SELF_CONVENTION, sig.explicit_self.span, &format!(
                                 "methods called `{}*` usually take {}; consider choosing a less \
                                  ambiguous name", prefix, self_kind.description()));
@@ -151,22 +152,26 @@ enum SelfKind {
 }
 
 impl SelfKind {
-    fn matches(&self, slf: &ExplicitSelf_) -> bool {
+    fn matches(&self, slf: &ExplicitSelf_, allow_value_for_ref: bool) -> bool {
         match (self, slf) {
             (&ValueSelf, &SelfValue(_)) => true,
             (&RefSelf, &SelfRegion(_, Mutability::MutImmutable, _)) => true,
             (&RefMutSelf, &SelfRegion(_, Mutability::MutMutable, _)) => true,
+            (&RefSelf, &SelfValue(_)) => allow_value_for_ref,
+            (&RefMutSelf, &SelfValue(_)) => allow_value_for_ref,
             (&NoSelf, &SelfStatic) => true,
-            (_, &SelfExplicit(ref ty, _)) => self.matches_explicit_type(ty),
+            (_, &SelfExplicit(ref ty, _)) => self.matches_explicit_type(ty, allow_value_for_ref),
             _ => false
         }
     }
 
-    fn matches_explicit_type(&self, ty: &Ty) -> bool {
+    fn matches_explicit_type(&self, ty: &Ty, allow_value_for_ref: bool) -> bool {
         match (self, &ty.node) {
             (&ValueSelf, &TyPath(..)) => true,
             (&RefSelf, &TyRptr(_, MutTy { mutbl: Mutability::MutImmutable, .. })) => true,
             (&RefMutSelf, &TyRptr(_, MutTy { mutbl: Mutability::MutMutable, .. })) => true,
+            (&RefSelf, &TyPath(..)) => allow_value_for_ref,
+            (&RefMutSelf, &TyPath(..)) => allow_value_for_ref,
             _ => false
         }
     }
@@ -211,4 +216,14 @@ fn is_bool(ty: &Ty) -> bool {
         }
     }
     false
+}
+
+fn is_copy(cx: &Context, ast_ty: &Ty, item: &Item) -> bool {
+    match cx.tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
+        None => false,
+        Some(ty) => {
+            let env = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
+            !ty.moves_by_default(&env, ast_ty.span)
+        }
+    }
 }
