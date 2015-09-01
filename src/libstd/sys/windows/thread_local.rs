@@ -221,8 +221,24 @@ unsafe fn unregister_dtor(key: Key) -> bool {
 //
 // # The article mentions crazy stuff about "/INCLUDE"?
 //
-// It sure does! We include it below for MSVC targets, but it look like for GNU
-// targets we don't require it.
+// It sure does! Specifically we're talking about this quote:
+//
+//      The Microsoft run-time library facilitates this process by defining a
+//      memory image of the TLS Directory and giving it the special name
+//      “__tls_used” (Intel x86 platforms) or “_tls_used” (other platforms). The
+//      linker looks for this memory image and uses the data there to create the
+//      TLS Directory. Other compilers that support TLS and work with the
+//      Microsoft linker must use this same technique.
+//
+// Basically what this means is that if we want support for our TLS
+// destructors/our hook being called then we need to make sure the linker does
+// not omit this symbol. Otherwise it will omit it and our callback won't be
+// wired up.
+//
+// We don't actually use the `/INCLUDE` linker flag here like the article
+// mentions because the Rust compiler doesn't propagate linker flags, but
+// instead we use a shim function which performs a volatile 1-byte load from
+// the address of the symbol to ensure it sticks around.
 
 #[link_section = ".CRT$XLB"]
 #[linkage = "external"]
@@ -230,13 +246,6 @@ unsafe fn unregister_dtor(key: Key) -> bool {
 pub static p_thread_callback: unsafe extern "system" fn(LPVOID, DWORD,
                                                         LPVOID) =
         on_tls_callback;
-
-#[cfg(all(target_env = "msvc", target_pointer_width = "64"))]
-#[link_args = "/INCLUDE:_tls_used"]
-extern {}
-#[cfg(all(target_env = "msvc", target_pointer_width = "32"))]
-#[link_args = "/INCLUDE:__tls_used"]
-extern {}
 
 #[allow(warnings)]
 unsafe extern "system" fn on_tls_callback(h: LPVOID,
@@ -247,6 +256,17 @@ unsafe extern "system" fn on_tls_callback(h: LPVOID,
     if dwReason == DLL_THREAD_DETACH || dwReason == DLL_PROCESS_DETACH {
         run_dtors();
     }
+
+    // See comments above for what this is doing. Note that we don't need this
+    // trickery on GNU windows, just on MSVC.
+    reference_tls_used();
+    #[cfg(target_env = "msvc")]
+    unsafe fn reference_tls_used() {
+        extern { static _tls_used: u8; }
+        ::intrinsics::volatile_load(&_tls_used);
+    }
+    #[cfg(not(target_env = "msvc"))]
+    unsafe fn reference_tls_used() {}
 }
 
 #[allow(dead_code)] // actually called above
