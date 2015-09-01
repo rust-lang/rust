@@ -106,7 +106,7 @@ impl<'a,'tcx:'a> Hair for Cx<'a, 'tcx> {
 
     fn needs_drop(&mut self, ty: Ty<'tcx>, span: Self::Span) -> bool {
         if self.infcx.type_moves_by_default(ty, span) {
-            // TODO we should do an add'l check here to determine if
+            // FIXME(#21859) we should do an add'l check here to determine if
             // any dtor will execute, but the relevant fn
             // (`type_needs_drop`) is currently factored into
             // `librustc_trans`, so we can't easily do so.
