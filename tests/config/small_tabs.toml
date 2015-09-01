@@ -8,6 +8,7 @@ fn_return_indent = "WithArgs"
 fn_args_paren_newline = true
 fn_args_layout = "Tall"
 fn_arg_indent = "Visual"
+generics_indent = "Visual"
 struct_trailing_comma = "Vertical"
 struct_lit_trailing_comma = "Vertical"
 struct_lit_style = "BlockIndent"

@@ -196,6 +196,7 @@ impl<'a> FmtVisitor<'a> {
         // Generics.
         let generics_indent = indent + result.len();
         result.push_str(&self.rewrite_generics(generics,
+                                               indent,
                                                generics_indent,
                                                codemap::mk_sp(span.lo,
                                                               span_for_return(&fd.output).lo)));
@@ -432,6 +433,7 @@ impl<'a> FmtVisitor<'a> {
         let body_start = span.lo + BytePos(enum_snippet.find_uncommented("{").unwrap() as u32 + 1);
         let generics_str = self.format_generics(generics,
                                                 " {",
+                                                self.block_indent,
                                                 self.block_indent + self.config.tab_spaces,
                                                 codemap::mk_sp(span.lo,
                                                                body_start));
@@ -573,6 +575,7 @@ impl<'a> FmtVisitor<'a> {
         let generics_str = match generics {
             Some(g) => self.format_generics(g,
                                             opener,
+                                            offset,
                                             offset + header_str.len(),
                                             codemap::mk_sp(span.lo,
                                                            struct_def.fields[0].span.lo)),
@@ -670,9 +673,10 @@ impl<'a> FmtVisitor<'a> {
                        generics: &ast::Generics,
                        opener: &str,
                        offset: usize,
+                       generics_offset: usize,
                        span: Span)
                        -> String {
-        let mut result = self.rewrite_generics(generics, offset, span);
+        let mut result = self.rewrite_generics(generics, offset, generics_offset, span);
 
         if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
             result.push_str(&self.rewrite_where_clause(&generics.where_clause,
@@ -722,7 +726,12 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    fn rewrite_generics(&self, generics: &ast::Generics, offset: usize, span: Span) -> String {
+    fn rewrite_generics(&self,
+                        generics: &ast::Generics,
+                        offset: usize,
+                        generics_offset: usize,
+                        span: Span)
+                        -> String {
         // FIXME convert bounds to where clauses where they get too big or if
         // there is a where clause at all.
         let lifetimes: &[_] = &generics.lifetimes;
@@ -731,18 +740,24 @@ impl<'a> FmtVisitor<'a> {
             return String::new();
         }
 
-        let budget = self.config.max_width - offset - 2;
+        let offset = match self.config.generics_indent {
+            BlockIndentStyle::Inherit => offset,
+            BlockIndentStyle::Tabbed => offset + self.config.tab_spaces,
+            // 1 = <
+            BlockIndentStyle::Visual => generics_offset + 1,
+        };
+
+        let h_budget = self.config.max_width - generics_offset - 2;
         // TODO might need to insert a newline if the generics are really long
 
         // Strings for the generics.
-        // 1 = <
         let context = self.get_context();
         // FIXME: don't unwrap
         let lt_strs = lifetimes.iter().map(|lt| {
-            lt.rewrite(&context, budget, offset + 1).unwrap()
+            lt.rewrite(&context, h_budget, offset).unwrap()
         });
         let ty_strs = tys.iter().map(|ty_param| {
-            ty_param.rewrite(&context, budget, offset + 1).unwrap()
+            ty_param.rewrite(&context, h_budget, offset).unwrap()
         });
 
         // Extract comments between generics.
@@ -770,7 +785,7 @@ impl<'a> FmtVisitor<'a> {
             item.item = ty;
         }
 
-        let fmt = ListFormatting::for_fn(budget, offset + 1);
+        let fmt = ListFormatting::for_fn(h_budget, offset);
 
         format!("<{}>", write_list(&items, &fmt))
     }
