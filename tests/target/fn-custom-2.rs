@@ -1,6 +1,7 @@
 // rustfmt-fn_arg_indent: Inherit
 // rustfmt-generics_indent: Tabbed
 // rustfmt-where_indent: Inherit
+// rustfmt-where_layout: Mixed
 // Test different indents.
 
 fn foo(a: Aaaaaaaaaaaaaaa,
@@ -20,6 +21,13 @@ fn bar<'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
 
 fn baz()
 where X: TTTTTTTT
+{
+    baz();
+}
+
+fn qux()
+where X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT, X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
+      X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT, X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT
 {
     baz();
 }

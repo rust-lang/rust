@@ -823,7 +823,7 @@ impl<'a> FmtVisitor<'a> {
                                  span_end);
 
         let fmt = ListFormatting {
-            tactic: ListTactic::Vertical,
+            tactic: self.config.where_layout,
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
             indent: offset,

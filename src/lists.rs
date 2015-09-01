@@ -28,6 +28,8 @@ pub enum ListTactic {
     Mixed,
 }
 
+impl_enum_decodable!(ListTactic, Vertical, Horizontal, HorizontalVertical, Mixed);
+
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum SeparatorTactic {
     Always,
