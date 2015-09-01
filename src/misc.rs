@@ -22,7 +22,7 @@ impl LintPass for TopLevelRefPass {
     }
 
     fn check_fn(&mut self, cx: &Context, k: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
-        if let FnKind::FkClosure = k {
+        if let FnKind::Closure = k {
             // Does not apply to closures
             return
         }
