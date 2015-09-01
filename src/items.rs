@@ -18,7 +18,7 @@ use expr::rewrite_assign_rhs;
 use comment::FindUncommented;
 use visitor::FmtVisitor;
 use rewrite::Rewrite;
-use config::{Config, BlockIndentStyle};
+use config::{Config, BlockIndentStyle, Density};
 
 use syntax::{ast, abi};
 use syntax::codemap::{self, Span, BytePos};
@@ -99,7 +99,7 @@ impl<'a> FmtVisitor<'a> {
                       vis: ast::Visibility,
                       span: Span)
                       -> String {
-        let newline_brace = self.newline_for_brace(&generics.where_clause);
+        let mut newline_brace = self.newline_for_brace(&generics.where_clause);
 
         let mut result = self.rewrite_fn_base(indent,
                                               ident,
@@ -112,6 +112,10 @@ impl<'a> FmtVisitor<'a> {
                                               vis,
                                               span,
                                               newline_brace);
+
+        if self.config.fn_brace_style != BraceStyle::AlwaysNextLine && !result.contains('\n') {
+            newline_brace = false;
+        }
 
         // Prepare for the function body by possibly adding a newline and
         // indent.
@@ -281,10 +285,18 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
+        let where_density = if self.config.where_density == Density::Compressed &&
+                               !result.contains('\n') {
+            Density::Compressed
+        } else {
+            Density::Tall
+        };
+
         // Where clause.
         result.push_str(&self.rewrite_where_clause(where_clause,
                                                    self.config,
                                                    indent,
+                                                   where_density,
                                                    span.hi));
 
         result
@@ -682,6 +694,7 @@ impl<'a> FmtVisitor<'a> {
             result.push_str(&self.rewrite_where_clause(&generics.where_clause,
                                                        self.config,
                                                        self.block_indent,
+                                                       Density::Tall,
                                                        span.hi));
             result.push_str(&make_indent(self.block_indent));
             result.push('\n');
@@ -794,6 +807,7 @@ impl<'a> FmtVisitor<'a> {
                             where_clause: &ast::WhereClause,
                             config: &Config,
                             indent: usize,
+                            density: Density,
                             span_end: BytePos)
                             -> String {
         if where_clause.predicates.is_empty() {
@@ -839,10 +853,17 @@ impl<'a> FmtVisitor<'a> {
             v_width: budget,
             ends_with_newline: true,
         };
+        let preds_str = write_list(&items.collect::<Vec<_>>(), &fmt);
 
-        format!("\n{}where {}",
-                make_indent(indent + extra_indent),
-                write_list(&items.collect::<Vec<_>>(), &fmt))
+        // 9 = " where ".len() + " {".len()
+        if density == Density::Tall || preds_str.contains('\n') ||
+           indent + 9 + preds_str.len() > self.config.max_width {
+            format!("\n{}where {}",
+                    make_indent(indent + extra_indent),
+                    preds_str)
+        } else {
+            format!(" where {}", preds_str)
+        }
     }
 
     fn rewrite_return(&self, ret: &ast::FunctionRetTy) -> String {

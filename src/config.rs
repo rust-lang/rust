@@ -91,6 +91,8 @@ create_config! {
     fn_args_paren_newline: bool,
     fn_args_layout: Density,
     fn_arg_indent: BlockIndentStyle,
+    where_density: Density, // Should we at least try to put the where clause on the same line as
+                            // the rest of the function decl?
     where_indent: BlockIndentStyle, // Visual will be treated like Tabbed
     where_layout: ListTactic,
     where_pred_indent: BlockIndentStyle,
@@ -121,6 +123,7 @@ impl Default for Config {
             fn_args_paren_newline: true,
             fn_args_layout: Density::Tall,
             fn_arg_indent: BlockIndentStyle::Visual,
+            where_density: Density::Tall,
             where_indent: BlockIndentStyle::Tabbed,
             where_layout: ListTactic::Vertical,
             where_pred_indent: BlockIndentStyle::Visual,
