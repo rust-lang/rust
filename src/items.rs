@@ -18,7 +18,7 @@ use expr::rewrite_assign_rhs;
 use comment::FindUncommented;
 use visitor::FmtVisitor;
 use rewrite::Rewrite;
-use config::Config;
+use config::{Config, BlockIndentStyle};
 
 use syntax::{ast, abi};
 use syntax::codemap::{self, Span, BytePos};
@@ -237,6 +237,7 @@ impl<'a> FmtVisitor<'a> {
                                            explicit_self,
                                            one_line_budget,
                                            multi_line_budget,
+                                           indent,
                                            arg_indent,
                                            args_span));
         result.push(')');
@@ -293,6 +294,7 @@ impl<'a> FmtVisitor<'a> {
                     explicit_self: Option<&ast::ExplicitSelf>,
                     one_line_budget: usize,
                     multi_line_budget: usize,
+                    indent: usize,
                     arg_indent: usize,
                     span: Span)
                     -> String {
@@ -341,11 +343,17 @@ impl<'a> FmtVisitor<'a> {
             item.item = arg;
         }
 
+        let indent = match self.config.fn_arg_indent {
+            BlockIndentStyle::Inherit => indent,
+            BlockIndentStyle::Tabbed => indent + self.config.tab_spaces,
+            BlockIndentStyle::Visual => arg_indent,
+        };
+
         let fmt = ListFormatting {
             tactic: self.config.fn_args_layout.to_list_tactic(),
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
-            indent: arg_indent,
+            indent: indent,
             h_width: one_line_budget,
             v_width: multi_line_budget,
             ends_with_newline: false,
