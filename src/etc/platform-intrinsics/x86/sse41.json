@@ -39,7 +39,7 @@
         {
             "intrinsic": "_mul_epi32",
             "width": [128],
-            "llvm": "muldq",
+            "llvm": "pmuldq",
             "ret": "s64",
             "args": ["s32", "s32"]
         },
@@ -58,9 +58,9 @@
             "args": ["u64", "u64"]
         },
         {
-            "intrinsic": "_testncz_si128",
+            "intrinsic": "_testnzc_si128",
             "width": [128],
-            "llvm": "ptest.nzc",
+            "llvm": "ptestnzc",
             "ret": "S32",
             "args": ["u64", "u64"]
         },

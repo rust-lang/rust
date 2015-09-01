@@ -501,14 +501,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             debug!("const_expr_unadjusted: te1={}, ty={:?}",
                    cx.tn().val_to_string(te1),
                    ty);
-            let is_simd = ty.is_simd();
-            let intype = if is_simd {
-                ty.simd_type(cx.tcx())
-            } else {
-                ty
-            };
-            let is_float = intype.is_fp();
-            let signed = intype.is_signed();
+            assert!(!ty.is_simd());
+            let is_float = ty.is_fp();
+            let signed = ty.is_signed();
 
             let (te2, _) = const_expr(cx, &**e2, param_substs, fn_args);
 
@@ -552,14 +547,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         ConstFCmp(cmp, te1, te2)
                     } else {
                         let cmp = base::bin_op_to_icmp_predicate(cx, b.node, signed);
-                        let bool_val = ConstICmp(cmp, te1, te2);
-                        if is_simd {
-                            // LLVM outputs an `< size x i1 >`, so we need to perform
-                            // a sign extension to get the correctly sized type.
-                            llvm::LLVMConstIntCast(bool_val, val_ty(te1).to_ref(), True)
-                        } else {
-                            bool_val
-                        }
+                        ConstICmp(cmp, te1, te2)
                     }
                 },
             } } // unsafe { match b.node {
