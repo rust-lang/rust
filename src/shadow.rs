@@ -60,8 +60,12 @@ fn check_decl(cx: &Context, decl: &Decl, bindings: &mut Vec<Name>) {
     if let DeclLocal(ref local) = decl.node {
         let Local{ ref pat, ref ty, ref init, id: _, span } = **local;
         if let &Some(ref t) = ty { check_ty(cx, t, bindings) }
-        if let &Some(ref o) = init { check_expr(cx, o, bindings) }
-        check_pat(cx, pat, init, span, bindings);
+        if let &Some(ref o) = init { 
+            check_expr(cx, o, bindings);
+            check_pat(cx, pat, &Some(o), span, bindings);
+        } else {
+            check_pat(cx, pat, &None, span, bindings);
+        }
     }
 }
 
@@ -72,8 +76,8 @@ fn is_binding(cx: &Context, pat: &Pat) -> bool {
     }
 }
 
-fn check_pat<T>(cx: &Context, pat: &Pat, init: &Option<T>, span: Span,
-        bindings: &mut Vec<Name>) where T: Deref<Target=Expr> {
+fn check_pat(cx: &Context, pat: &Pat, init: &Option<&Expr>, span: Span,
+        bindings: &mut Vec<Name>) {
     //TODO: match more stuff / destructuring
     match pat.node {
         PatIdent(_, ref ident, ref inner) => {
@@ -88,9 +92,43 @@ fn check_pat<T>(cx: &Context, pat: &Pat, init: &Option<T>, span: Span,
             if let Some(ref p) = *inner { check_pat(cx, p, init, span, bindings); }
         },
         //PatEnum(Path, Option<Vec<P<Pat>>>),
-        //PatQPath(QSelf, Path),
-        //PatStruct(Path, Vec<Spanned<FieldPat>>, bool),
-        //PatTup(Vec<P<Pat>>),
+        PatStruct(_, ref pfields, _) => 
+            if let Some(ref init_struct) = *init { // TODO follow
+                if let ExprStruct(_, ref efields, ref _base) = init_struct.node {
+                    // TODO: follow base
+                    for field in pfields {
+                        let ident = field.node.ident;
+                        let efield = efields.iter()
+                            .find(|ref f| f.ident.node == ident)
+                            .map(|f| &*f.expr);
+                        check_pat(cx, &field.node.pat, &efield, span, bindings);
+                    }
+                } else {
+                    for field in pfields {
+                        check_pat(cx, &field.node.pat, &None, span, bindings);
+                    }
+                }
+            } else {
+                for field in pfields {
+                    check_pat(cx, &field.node.pat, &None, span, bindings);
+                }
+            },
+        PatTup(ref inner) =>
+            if let Some(ref init_tup) = *init { //TODO: follow
+                if let ExprTup(ref tup) = init_tup.node {
+                    for (i, p) in inner.iter().enumerate() { 
+                        check_pat(cx, p, &Some(&tup[i]), p.span, bindings);
+                    }
+                } else {
+                    for p in inner {
+                        check_pat(cx, p, &None, span, bindings);
+                    }
+                }
+            } else {
+                for p in inner {
+                    check_pat(cx, p, &None, span, bindings);
+                }
+            },
         PatBox(ref inner) => {
             if let Some(ref initp) = *init {
                 match initp.node {
