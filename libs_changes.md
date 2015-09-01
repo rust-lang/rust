@@ -27,8 +27,7 @@
       at this point in time can still mean major community breakage regardless of trains,
       however.
     * HOWEVER: Big PRs can be a lot of work to make only to have that work rejected for
-      details that could have been hashed out first. *This is the motivation for
-      having RFCs*.
+      details that could have been hashed out first.
 
 * RFCs are *only* meaningful if a significant and diverse portion of the
 community actively   participates in them. The official teams are not
@@ -95,10 +94,10 @@ current implementation.
 * Once something has been merged as unstable, a shepherd should be assigned
   to promote and obtain feedback on the design.
 
-* Once the API has been unstable for at least one full cycle (6 weeks),
-  the shepherd (or any library sub-team member) may nominate an API for a
-  *final comment period* of another cycle. Feedback and other comments should be
-  posted to the tracking issue. This should be publicized.
+* Every time a release cycle ends, the libs teams assesses the current unstable
+  APIs and selects some number of them for potential stabilization during the
+  next cycle. These are announced for FCP at the beginning of the cycle, and
+  (possibly) stabilized just before the beta is cut.
 
 * After the final comment period, an API should ideally take one of two paths:
   * **Stabilize** if the change is desired, and consensus is reached

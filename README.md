@@ -199,7 +199,9 @@ and the RFC seems to be in a steady state, the shepherd and/or sub-team leader
 will announce an FCP. In general, the idea here is to "front-load" as much of
 the feedback as possible before the point where we actually reach a decision -
 by the end of the FCP, the decision on whether or not to accept the RFC should
-be obvious from the RFC discussion thread.
+usually be obvious from the RFC discussion thread. On occasion, there may not be
+consensus but discussion has stalled. In this case, the relevant team will make
+a decision.
 
 
 ## The RFC life-cycle
@@ -248,9 +250,9 @@ posted back to the RFC pull request.
 A sub-team makes final decisions about RFCs after the benefits and drawbacks are
 well understood. These decisions can be made at any time, but the sub-team will
 regularly issue decisions. When a decision is made, the RFC PR will either be
-merged or closed, in either case with a comment describing the rationale for the
-decision. The comment should largely be a summary of discussion already on the
-comment thread.
+merged or closed. In either case, if the reasoning is not clear from the
+discussion in thread, the sub-team will add a comment describing the rationale
+for the decision.
 
 
 ## Implementing an RFC

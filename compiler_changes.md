@@ -26,7 +26,12 @@ submitted later if there is scope for large changes to the language RFC.
   non-trivial ways
 * Adding, removing, or changing a stable compiler flag
 * The implementation of new language features where there is significant change
-  or addition to the compiler
+  or addition to the compiler. There is obviously some room for interpretation
+  about what consitutes a "significant" change and how much detail the
+  implementation RFC needs. For guidance, [associated items](text/0195-associated-items.md)
+  and [UFCS](text/0132-ufcs.md) would clearly need an implementation RFC,
+  [type ascription](text/0803-type-ascription.md) and
+  [lifetime elision](text/0141-lifetime-elision.md) would not.
 * Any other change which causes backwards incompatible changes to stable
   behaviour of the compiler, language, or libraries
 
