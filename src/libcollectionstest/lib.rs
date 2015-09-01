@@ -10,6 +10,7 @@
 
 #![feature(ascii)]
 #![feature(append)]
+#![feature(binary_heap_extras)]
 #![feature(box_syntax)]
 #![feature(btree_range)]
 #![feature(collections)]
