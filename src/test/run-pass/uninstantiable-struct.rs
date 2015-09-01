@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Z(&'static Z);
-//~^ ERROR this type cannot be instantiated
+pub struct Z(&'static Z);
 
 pub fn main() {}
