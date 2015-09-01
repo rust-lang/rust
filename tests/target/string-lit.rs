@@ -25,5 +25,10 @@ not
 remove
 formatting"#;
 
+    let xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx = funktion("yyyyyyyyyyyyyyyyyyyyy\
+                                                                            yyyyyyyyyyyyyyyyyyyyy\
+                                                                            yyyyyyyyyyyyyyyyyyyyy\
+                                                                            yyyyyyyyyy");
+
     "stuff"
 }

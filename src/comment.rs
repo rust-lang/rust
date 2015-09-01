@@ -354,7 +354,7 @@ mod test {
         check("/* comment */ some text /* more commentary */ result", "result", Some(46));
         check("sup // sup", "p", Some(2));
         check("sup", "x", None);
-        check("π? /**/ π is nice!", "π is nice", Some(9));
+        check(r#"π? /**/ π is nice!"#, r#"π is nice"#, Some(9));
         check("/*sup yo? \n sup*/ sup", "p", Some(20));
         check("hel/*lohello*/lo", "hello", None);
         check("acb", "ab", None);
