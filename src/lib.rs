@@ -114,6 +114,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         methods::SHOULD_IMPLEMENT_TRAIT,
         methods::STR_TO_STRING,
         methods::STRING_TO_STRING,
+        methods::WRONG_SELF_CONVENTION,
         misc::CMP_NAN,
         misc::CMP_OWNED,
         misc::FLOAT_CMP,

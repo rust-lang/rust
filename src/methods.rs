@@ -23,11 +23,14 @@ declare_lint!(pub STRING_TO_STRING, Warn,
               "calling `String.to_string()` which is a no-op");
 declare_lint!(pub SHOULD_IMPLEMENT_TRAIT, Warn,
               "defining a method that should be implementing a std trait");
+declare_lint!(pub WRONG_SELF_CONVENTION, Warn,
+              "defining a method named with an established prefix (like \"into_\") that takes \
+               `self` with the wrong convention");
 
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(OPTION_UNWRAP_USED, RESULT_UNWRAP_USED, STR_TO_STRING, STRING_TO_STRING,
-                    SHOULD_IMPLEMENT_TRAIT)
+                    SHOULD_IMPLEMENT_TRAIT, WRONG_SELF_CONVENTION)
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
@@ -68,18 +71,28 @@ impl LintPass for MethodsPass {
         if let ItemImpl(_, _, _, None, _, ref items) = item.node {
             for item in items {
                 let name = item.ident.name;
-                for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
-                    if_let_chain! {
-                        [
-                            name == method_name,
-                            let MethodImplItem(ref sig, _) = item.node,
-                            sig.decl.inputs.len() == n_args,
-                            out_type.matches(&sig.decl.output),
-                            self_kind.matches(&sig.explicit_self.node)
-                        ], {
-                            span_lint(cx, SHOULD_IMPLEMENT_TRAIT, item.span, &format!(
-                                "defining a method called `{}` on this type; consider implementing \
-                                 the `{}` trait or choosing a less ambiguous name", name, trait_name));
+                if let MethodImplItem(ref sig, _) = item.node {
+                    // check missing trait implementations
+                    for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
+                        if_let_chain! {
+                            [
+                                name == method_name,
+                                sig.decl.inputs.len() == n_args,
+                                out_type.matches(&sig.decl.output),
+                                self_kind.matches(&sig.explicit_self.node)
+                            ], {
+                                span_lint(cx, SHOULD_IMPLEMENT_TRAIT, item.span, &format!(
+                                    "defining a method called `{}` on this type; consider implementing \
+                                     the `{}` trait or choosing a less ambiguous name", name, trait_name));
+                            }
+                        }
+                    }
+                    // check conventions w.r.t. conversion method names and predicates
+                    for &(prefix, self_kind) in &CONVENTIONS {
+                        if name.as_str().starts_with(prefix) && !self_kind.matches(&sig.explicit_self.node) {
+                            span_lint(cx, WRONG_SELF_CONVENTION, sig.explicit_self.span, &format!(
+                                "methods called `{}*` usually take {}; consider choosing a less \
+                                 ambiguous name", prefix, self_kind.description()));
                         }
                     }
                 }
@@ -87,6 +100,14 @@ impl LintPass for MethodsPass {
         }
     }
 }
+
+const CONVENTIONS: [(&'static str, SelfKind); 5] = [
+    ("into_", ValueSelf),
+    ("to_", RefSelf),
+    ("as_", RefSelf),
+    ("is_", RefSelf),
+    ("from_", NoSelf),
+];
 
 const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30] = [
     ("add",        2, ValueSelf,  AnyType,  "std::ops::Add`"),
@@ -126,7 +147,7 @@ enum SelfKind {
     ValueSelf,
     RefSelf,
     RefMutSelf,
-    NoSelf
+    NoSelf,
 }
 
 impl SelfKind {
@@ -136,7 +157,26 @@ impl SelfKind {
             (&RefSelf, &SelfRegion(_, Mutability::MutImmutable, _)) => true,
             (&RefMutSelf, &SelfRegion(_, Mutability::MutMutable, _)) => true,
             (&NoSelf, &SelfStatic) => true,
+            (_, &SelfExplicit(ref ty, _)) => self.matches_explicit_type(ty),
             _ => false
+        }
+    }
+
+    fn matches_explicit_type(&self, ty: &Ty) -> bool {
+        match (self, &ty.node) {
+            (&ValueSelf, &TyPath(..)) => true,
+            (&RefSelf, &TyRptr(_, MutTy { mutbl: Mutability::MutImmutable, .. })) => true,
+            (&RefMutSelf, &TyRptr(_, MutTy { mutbl: Mutability::MutMutable, .. })) => true,
+            _ => false
+        }
+    }
+
+    fn description(&self) -> &'static str {
+        match *self {
+            ValueSelf => "self by value",
+            RefSelf => "self by reference",
+            RefMutSelf => "self by mutable reference",
+            NoSelf => "no self",
         }
     }
 }
