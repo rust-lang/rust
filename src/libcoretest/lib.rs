@@ -15,11 +15,12 @@
 #![feature(const_fn)]
 #![feature(core)]
 #![feature(core_float)]
+#![feature(dec2flt)]
+#![feature(decode_utf16)]
+#![feature(fixed_size_array)]
 #![feature(float_extras)]
 #![feature(float_from_str_radix)]
 #![feature(flt2dec)]
-#![feature(dec2flt)]
-#![feature(decode_utf16)]
 #![feature(fmt_radix)]
 #![feature(iter_arith)]
 #![feature(iter_arith)]
@@ -48,6 +49,7 @@ extern crate rustc_unicode;
 extern crate rand;
 
 mod any;
+mod array;
 mod atomic;
 mod cell;
 mod char;
