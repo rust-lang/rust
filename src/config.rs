@@ -89,7 +89,7 @@ create_config! {
     fn_brace_style: BraceStyle,
     fn_return_indent: ReturnIndent,
     fn_args_paren_newline: bool,
-    fn_args_layout: Density,
+    fn_args_density: Density,
     fn_arg_indent: BlockIndentStyle,
     where_density: Density, // Should we at least try to put the where clause on the same line as
                             // the rest of the function decl?
@@ -122,7 +122,7 @@ impl Default for Config {
             fn_brace_style: BraceStyle::SameLineWhere,
             fn_return_indent: ReturnIndent::WithArgs,
             fn_args_paren_newline: true,
-            fn_args_layout: Density::Tall,
+            fn_args_density: Density::Tall,
             fn_arg_indent: BlockIndentStyle::Visual,
             where_density: Density::Tall,
             where_indent: BlockIndentStyle::Tabbed,
