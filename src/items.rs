@@ -800,9 +800,14 @@ impl<'a> FmtVisitor<'a> {
             return String::new();
         }
 
+        let extra_indent = match self.config.where_indent {
+            BlockIndentStyle::Inherit => 0,
+            BlockIndentStyle::Tabbed | BlockIndentStyle::Visual => config.tab_spaces,
+        };
+
         let context = self.get_context();
         // 6 = "where ".len()
-        let offset = indent + config.tab_spaces + 6;
+        let offset = indent + extra_indent + 6;
         let budget = self.config.ideal_width + self.config.leeway - offset;
         let span_start = span_for_where_pred(&where_clause.predicates[0]).lo;
         let items = itemize_list(self.codemap,
@@ -828,7 +833,7 @@ impl<'a> FmtVisitor<'a> {
         };
 
         format!("\n{}where {}",
-                make_indent(indent + config.tab_spaces),
+                make_indent(indent + extra_indent),
                 write_list(&items.collect::<Vec<_>>(), &fmt))
     }
 

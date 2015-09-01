@@ -1,5 +1,6 @@
 // rustfmt-fn_arg_indent: Inherit
 // rustfmt-generics_indent: Tabbed
+// rustfmt-where_indent: Inherit
 // Test different indents.
 
 fn foo(a: Aaaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbbbb, c: Ccccccccccccccccc, d: Ddddddddddddddddddddddddd, e: Eeeeeeeeeeeeeeeeeee) {
@@ -10,6 +11,10 @@ fn bar<'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb, TTTTTTTTTTTTT, UUUUUUUUUUUUUUUUUUUU: WW
     bar();
 }
 
+fn baz() where X: TTTTTTTT {
+    baz();
+}
+
 impl Foo {
     fn foo(self, a: Aaaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbbbb, c: Ccccccccccccccccc, d: Ddddddddddddddddddddddddd, e: Eeeeeeeeeeeeeeeeeee) {
         foo();
@@ -17,6 +22,10 @@ impl Foo {
 
     fn bar<'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb, TTTTTTTTTTTTT, UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW>(a: Aaaaaaaaaaaaaaa) {
         bar();
+    }
+
+    fn baz() where X: TTTTTTTT {
+        baz();
     }
 }
 

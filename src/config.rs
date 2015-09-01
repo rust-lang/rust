@@ -91,6 +91,7 @@ create_config! {
     fn_args_paren_newline: bool,
     fn_args_layout: Density,
     fn_arg_indent: BlockIndentStyle,
+    where_indent: BlockIndentStyle, // Visual will be treated like Tabbed
     generics_indent: BlockIndentStyle,
     struct_trailing_comma: SeparatorTactic,
     struct_lit_trailing_comma: SeparatorTactic,
@@ -118,6 +119,7 @@ impl Default for Config {
             fn_args_paren_newline: true,
             fn_args_layout: Density::Tall,
             fn_arg_indent: BlockIndentStyle::Visual,
+            where_indent: BlockIndentStyle::Tabbed,
             generics_indent: BlockIndentStyle::Visual,
             struct_trailing_comma: SeparatorTactic::Vertical,
             struct_lit_trailing_comma: SeparatorTactic::Vertical,
