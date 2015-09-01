@@ -11,7 +11,7 @@
 extern crate toml;
 
 use {NewlineStyle, BraceStyle, ReturnIndent, StructLitStyle};
-use lists::SeparatorTactic;
+use lists::{SeparatorTactic, ListTactic};
 use issues::ReportTactic;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -25,6 +25,25 @@ pub enum BlockIndentStyle {
 }
 
 impl_enum_decodable!(BlockIndentStyle, Inherit, Tabbed, Visual);
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum Density {
+    // Fit as much on one line as possible.
+    Compressed,
+    // Use more lines.
+    Tall,
+}
+
+impl_enum_decodable!(Density, Compressed, Tall);
+
+impl Density {
+    pub fn to_list_tactic(self) -> ListTactic {
+        match self {
+            Density::Compressed => ListTactic::Mixed,
+            Density::Tall => ListTactic::HorizontalVertical,
+        }
+    }
+}
 
 macro_rules! create_config {
     ($($i:ident: $ty:ty),+ $(,)*) => (
@@ -70,6 +89,7 @@ create_config! {
     fn_brace_style: BraceStyle,
     fn_return_indent: ReturnIndent,
     fn_args_paren_newline: bool,
+    fn_args_layout: Density,
     struct_trailing_comma: SeparatorTactic,
     struct_lit_trailing_comma: SeparatorTactic,
     struct_lit_style: StructLitStyle,
@@ -94,6 +114,7 @@ impl Default for Config {
             fn_brace_style: BraceStyle::SameLineWhere,
             fn_return_indent: ReturnIndent::WithArgs,
             fn_args_paren_newline: true,
+            fn_args_layout: Density::Tall,
             struct_trailing_comma: SeparatorTactic::Vertical,
             struct_lit_trailing_comma: SeparatorTactic::Vertical,
             struct_lit_style: StructLitStyle::BlockIndent,

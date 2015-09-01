@@ -342,7 +342,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let fmt = ListFormatting {
-            tactic: ListTactic::HorizontalVertical,
+            tactic: self.config.fn_args_layout.to_list_tactic(),
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
             indent: arg_indent,
