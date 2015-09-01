@@ -397,6 +397,55 @@ impl Bar {
 ```
 "##,
 
+E0411: r##"
+The `Self` keyword was used outside an impl or a trait. Erroneous
+code example:
+
+```
+<Self>::foo; // error: use of `Self` outside of an impl or trait
+```
+
+The `Self` keyword represents the current type, which explains why it
+can only be used inside an impl or a trait. It gives access to the
+associated items of a type:
+
+```
+trait Foo {
+    type Bar;
+}
+
+trait Baz : Foo {
+    fn bar() -> Self::Bar; // like this
+}
+```
+
+However, be careful when two types has a common associated type:
+
+```
+trait Foo {
+    type Bar;
+}
+
+trait Foo2 {
+    type Bar;
+}
+
+trait Baz : Foo + Foo2 {
+    fn bar() -> Self::Bar;
+    // error: ambiguous associated type `Bar` in bounds of `Self`
+}
+```
+
+This problem can be solved by specifying from which trait we want
+to use the `Bar` type:
+
+```
+trait Baz : Foo + Foo2 {
+    fn bar() -> <Self as Foo>::Bar; // ok!
+}
+```
+"##,
+
 E0412: r##"
 An undeclared type name was used. Example of erroneous codes:
 
@@ -823,8 +872,8 @@ impl Foo for i32 {}
 }
 
 register_diagnostics! {
-    E0153, // called no where
-    E0157, // called from no where
+//  E0153, unused error code
+//  E0157, unused error code
     E0254, // import conflicts with imported crate in this module
     E0257,
     E0258,
@@ -835,7 +884,6 @@ register_diagnostics! {
     E0409, // variable is bound with different mode in pattern # than in
            // pattern #1
     E0410, // variable from pattern is not bound in pattern 1
-    E0411, // use of `Self` outside of an impl or trait
     E0414, // only irrefutable patterns allowed here
     E0418, // is not an enum variant, struct or const
     E0420, // is not an associated const
