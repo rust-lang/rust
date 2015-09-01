@@ -87,7 +87,9 @@ impl Category {
             ExprKind::Break { .. } |
             ExprKind::Continue { .. } |
             ExprKind::Return { .. } =>
-                Some(Category::Rvalue(RvalueFunc::Into)), // TODO
+                // FIXME(#27840) these probably want their own
+                // category, like "nonterminating"
+                Some(Category::Rvalue(RvalueFunc::Into)),
         }
     }
 }
