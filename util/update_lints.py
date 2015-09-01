@@ -38,7 +38,7 @@ def gen_table(lints, link=None):
     """Write lint table in Markdown format."""
     if link:
         lints = [(p, '[%s](%s#%s)' % (l, link, l), lvl, d)
-                    for (p, l, lvl, d) in lints]
+                 for (p, l, lvl, d) in lints]
     # first and third column widths
     w_name = max(len(l[1]) for l in lints)
     w_desc = max(len(l[3]) for l in lints)
@@ -50,8 +50,10 @@ def gen_table(lints, link=None):
         yield '%-*s | %-7s | %s\n' % (w_name, name, default, meaning)
 
 
-def gen_group(lints):
+def gen_group(lints, levels=None):
     """Write lint group (list of all lints in the form module::NAME)."""
+    if levels:
+        lints = [tup for tup in lints if tup[2] in levels]
     for (module, name, _, _) in sorted(lints):
         yield '        %s::%s,\n' % (module, name.upper())
 
@@ -113,19 +115,28 @@ def main(print_only=False, check=False):
         return
 
     # replace table in README.md
-    changed = replace_region('README.md', r'^name +\|', '^$',
-                             lambda: gen_table(lints, link=wiki_link),
-                             write_back=not check)
+    changed = replace_region(
+        'README.md', r'^name +\|', '^$',
+        lambda: gen_table(lints, link=wiki_link),
+        write_back=not check)
 
-    changed |= replace_region('README.md',
+    changed |= replace_region(
+        'README.md',
         r'^There are \d+ lints included in this crate:', "",
         lambda: ['There are %d lints included in this crate:\n' % len(lints)],
         write_back=not check)
 
     # same for "clippy" lint collection
-    changed |= replace_region('src/lib.rs', r'reg.register_lint_group\("clippy"', r'\]\);',
-                              lambda: gen_group(lints), replace_start=False,
-                              write_back=not check)
+    changed |= replace_region(
+        'src/lib.rs', r'reg.register_lint_group\("clippy"', r'\]\);',
+        lambda: gen_group(lints, levels=('warn', 'deny')),
+        replace_start=False, write_back=not check)
+
+    # same for "clippy_pedantic" lint collection
+    changed |= replace_region(
+        'src/lib.rs', r'reg.register_lint_group\("clippy_pedantic"', r'\]\);',
+        lambda: gen_group(lints, levels=('allow',)),
+        replace_start=False, write_back=not check)
 
     if check and changed:
         print('Please run util/update_lints.py to regenerate lints lists.')

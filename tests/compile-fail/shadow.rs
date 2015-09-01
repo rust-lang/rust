@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![allow(unused_parens, unused_variables)]
-#![deny(shadow)]
+#![deny(clippy, clippy_pedantic)]
 
 fn id<T>(x: T) -> T { x }
 
@@ -19,9 +19,9 @@ fn main() {
     let x = first(x); //~ERROR: x is shadowed by first(x) which reuses
     let y = 1;
     let x = y; //~ERROR: x is shadowed by y in this declaration
-    
+
     let o = Some(1u8);
-    
+
     if let Some(p) = o { assert_eq!(1, p); }
     match o {
         Some(p) => p, // no error, because the p above is in its own scope

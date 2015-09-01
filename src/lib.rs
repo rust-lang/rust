@@ -77,10 +77,19 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box matches::MatchPass as LintPassObject);
     reg.register_lint_pass(box misc::PatternPass as LintPassObject);
 
-    reg.register_lint_group("shadow", vec![
+    reg.register_lint_group("clippy_pedantic", vec![
+        methods::OPTION_UNWRAP_USED,
+        methods::RESULT_UNWRAP_USED,
+        ptr_arg::PTR_ARG,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
-        shadow::SHADOW_UNRELATED,
+        strings::STRING_ADD,
+        strings::STRING_ADD_ASSIGN,
+        types::CAST_POSSIBLE_TRUNCATION,
+        types::CAST_POSSIBLE_WRAP,
+        types::CAST_PRECISION_LOSS,
+        types::CAST_SIGN_LOSS,
+        unicode::NON_ASCII_LITERAL,
     ]);
 
     reg.register_lint_group("clippy", vec![
@@ -102,8 +111,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
         loops::WHILE_LET_LOOP,
         matches::MATCH_REF_PATS,
         matches::SINGLE_MATCH,
-        methods::OPTION_UNWRAP_USED,
-        methods::RESULT_UNWRAP_USED,
         methods::SHOULD_IMPLEMENT_TRAIT,
         methods::STR_TO_STRING,
         methods::STRING_TO_STRING,
@@ -116,25 +123,15 @@ pub fn plugin_registrar(reg: &mut Registry) {
         mut_mut::MUT_MUT,
         needless_bool::NEEDLESS_BOOL,
         precedence::PRECEDENCE,
-        ptr_arg::PTR_ARG,
         ranges::RANGE_STEP_BY_ZERO,
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
-        shadow::SHADOW_REUSE,
-        shadow::SHADOW_SAME,
         shadow::SHADOW_UNRELATED,
-        strings::STRING_ADD,
-        strings::STRING_ADD_ASSIGN,
         types::BOX_VEC,
-        types::CAST_POSSIBLE_TRUNCATION,
-        types::CAST_POSSIBLE_WRAP,
-        types::CAST_PRECISION_LOSS,
-        types::CAST_SIGN_LOSS,
         types::LET_UNIT_VALUE,
         types::LINKEDLIST,
         types::TYPE_COMPLEXITY,
         types::UNIT_CMP,
-        unicode::NON_ASCII_LITERAL,
         unicode::ZERO_WIDTH_SPACE,
     ]);
 }

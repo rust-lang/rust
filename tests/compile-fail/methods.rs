@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![allow(unused)]
-#![deny(clippy)]
+#![deny(clippy, clippy_pedantic)]
 
 use std::ops::Mul;
 
