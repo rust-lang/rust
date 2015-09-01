@@ -60,7 +60,7 @@ fn check_decl(cx: &Context, decl: &Decl, bindings: &mut Vec<Name>) {
     if let DeclLocal(ref local) = decl.node {
         let Local{ ref pat, ref ty, ref init, id: _, span } = **local;
         if let &Some(ref t) = ty { check_ty(cx, t, bindings) }
-        if let &Some(ref o) = init { 
+        if let &Some(ref o) = init {
             check_expr(cx, o, bindings);
             check_pat(cx, pat, &Some(o), span, bindings);
         } else {
@@ -92,10 +92,9 @@ fn check_pat(cx: &Context, pat: &Pat, init: &Option<&Expr>, span: Span,
             if let Some(ref p) = *inner { check_pat(cx, p, init, span, bindings); }
         },
         //PatEnum(Path, Option<Vec<P<Pat>>>),
-        PatStruct(_, ref pfields, _) => 
-            if let Some(ref init_struct) = *init { // TODO follow
-                if let ExprStruct(_, ref efields, ref _base) = init_struct.node {
-                    // TODO: follow base
+        PatStruct(_, ref pfields, _) =>
+            if let Some(ref init_struct) = *init {
+                if let ExprStruct(_, ref efields, _) = init_struct.node {
                     for field in pfields {
                         let ident = field.node.ident;
                         let efield = efields.iter()
@@ -105,7 +104,7 @@ fn check_pat(cx: &Context, pat: &Pat, init: &Option<&Expr>, span: Span,
                     }
                 } else {
                     for field in pfields {
-                        check_pat(cx, &field.node.pat, &None, span, bindings);
+                        check_pat(cx, &field.node.pat, init, span, bindings);
                     }
                 }
             } else {
@@ -114,14 +113,14 @@ fn check_pat(cx: &Context, pat: &Pat, init: &Option<&Expr>, span: Span,
                 }
             },
         PatTup(ref inner) =>
-            if let Some(ref init_tup) = *init { //TODO: follow
+            if let Some(ref init_tup) = *init {
                 if let ExprTup(ref tup) = init_tup.node {
-                    for (i, p) in inner.iter().enumerate() { 
+                    for (i, p) in inner.iter().enumerate() {
                         check_pat(cx, p, &Some(&tup[i]), p.span, bindings);
                     }
                 } else {
                     for p in inner {
-                        check_pat(cx, p, &None, span, bindings);
+                        check_pat(cx, p, init, span, bindings);
                     }
                 }
             } else {
