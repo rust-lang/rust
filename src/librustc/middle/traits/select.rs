@@ -37,7 +37,8 @@ use super::{VtableImplData, VtableObjectData, VtableBuiltinData,
 use super::object_safety;
 use super::util;
 
-use middle::def_id::{DefId, LOCAL_CRATE};
+use metadata::cstore::LOCAL_CRATE;
+use middle::def_id::DefId;
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::subst::{Subst, Substs, TypeSpace};

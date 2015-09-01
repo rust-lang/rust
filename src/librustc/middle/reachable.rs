@@ -16,8 +16,9 @@
 // reachable as well.
 
 use front::map as ast_map;
+use metadata::cstore::LOCAL_CRATE;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::ty;
 use middle::privacy;
 use session::config;

@@ -19,6 +19,7 @@ use rustc_front::fold::Folder;
 
 use metadata::common as c;
 use metadata::cstore as cstore;
+use metadata::cstore::LOCAL_CRATE;
 use session::Session;
 use metadata::decoder;
 use metadata::encoder as e;
@@ -31,7 +32,7 @@ use middle::ty::adjustment;
 use middle::ty::cast;
 use middle::check_const::ConstQualif;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::privacy::{AllPublic, LastMod};
 use middle::region;
 use middle::subst;

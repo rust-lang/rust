@@ -20,7 +20,8 @@ use borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
 use borrowck::LoanPathElem::{LpDeref, LpInterior};
 use borrowck::move_data::InvalidMovePathIndex;
 use borrowck::move_data::{MoveData, MovePathIndex};
-use rustc::middle::def_id::{DefId, LOCAL_CRATE};
+use rustc::metadata::cstore::LOCAL_CRATE;
+use rustc::middle::def_id::{DefId};
 use rustc::middle::ty;
 use rustc::middle::mem_categorization as mc;
 

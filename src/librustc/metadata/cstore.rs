@@ -109,6 +109,10 @@ pub struct CStore {
     pub intr: Rc<IdentInterner>,
 }
 
+/// Item definitions in the currently-compiled crate would have the CrateNum
+/// LOCAL_CRATE in their DefId.
+pub const LOCAL_CRATE: ast::CrateNum = 0;
+
 impl CStore {
     pub fn new(intr: Rc<IdentInterner>) -> CStore {
         CStore {
