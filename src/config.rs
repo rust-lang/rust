@@ -93,6 +93,7 @@ create_config! {
     fn_arg_indent: BlockIndentStyle,
     where_indent: BlockIndentStyle, // Visual will be treated like Tabbed
     where_layout: ListTactic,
+    where_pred_indent: BlockIndentStyle,
     generics_indent: BlockIndentStyle,
     struct_trailing_comma: SeparatorTactic,
     struct_lit_trailing_comma: SeparatorTactic,
@@ -122,6 +123,7 @@ impl Default for Config {
             fn_arg_indent: BlockIndentStyle::Visual,
             where_indent: BlockIndentStyle::Tabbed,
             where_layout: ListTactic::Vertical,
+            where_pred_indent: BlockIndentStyle::Visual,
             generics_indent: BlockIndentStyle::Visual,
             struct_trailing_comma: SeparatorTactic::Vertical,
             struct_lit_trailing_comma: SeparatorTactic::Vertical,

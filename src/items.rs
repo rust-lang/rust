@@ -806,8 +806,16 @@ impl<'a> FmtVisitor<'a> {
         };
 
         let context = self.get_context();
-        // 6 = "where ".len()
-        let offset = indent + extra_indent + 6;
+
+        let offset = match self.config.where_pred_indent {
+            BlockIndentStyle::Inherit => indent + extra_indent,
+            BlockIndentStyle::Tabbed => indent + extra_indent + config.tab_spaces,
+            // 6 = "where ".len()
+            BlockIndentStyle::Visual => indent + extra_indent + 6,
+        };
+        // FIXME: if where_pred_indent != Visual, then the budgets below might
+        // be out by a char or two.
+
         let budget = self.config.ideal_width + self.config.leeway - offset;
         let span_start = span_for_where_pred(&where_clause.predicates[0]).lo;
         let items = itemize_list(self.codemap,
