@@ -178,7 +178,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("filter: {}",
                     opt_str(&config.filter
                                    .as_ref()
-                                   .map(|re| re.to_string()))));
+                                   .map(|re| re.to_owned()))));
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
     logv(c, format!("host-rustcflags: {}",
                     opt_str(&config.host_rustcflags)));
@@ -205,19 +205,16 @@ pub fn opt_str<'a>(maybestr: &'a Option<String>) -> &'a str {
 
 pub fn opt_str2(maybestr: Option<String>) -> String {
     match maybestr {
-        None => "(none)".to_string(),
+        None => "(none)".to_owned(),
         Some(s) => s,
     }
 }
 
 pub fn run_tests(config: &Config) {
     if config.target.contains("android") {
-        match config.mode {
-            DebugInfoGdb => {
-                println!("{} debug-info test uses tcp 5039 port.\
-                         please reserve it", config.target);
-            }
-            _ =>{}
+        if let DebugInfoGdb = config.mode {
+            println!("{} debug-info test uses tcp 5039 port.\
+                     please reserve it", config.target);
         }
 
         // android debug-info test uses remote debugger
@@ -289,10 +286,10 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
         match config.mode {
-          Pretty => vec!(".rs".to_string()),
-          _ => vec!(".rc".to_string(), ".rs".to_string())
+          Pretty => vec!(".rs".to_owned()),
+          _ => vec!(".rc".to_owned(), ".rs".to_owned())
         };
-    let invalid_prefixes = vec!(".".to_string(), "#".to_string(), "~".to_string());
+    let invalid_prefixes = vec!(".".to_owned(), "#".to_owned(), "~".to_owned());
     let name = testfile.file_name().unwrap().to_str().unwrap();
 
     let mut valid = false;
@@ -364,7 +361,7 @@ fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
                    full_version_line.char_at(pos + 3).is_digit(10) {
                     continue
                 }
-                return Some(full_version_line[pos..pos+3].to_string());
+                return Some(full_version_line[pos..pos+3].to_owned());
             }
             println!("Could not extract GDB version from line '{}'",
                      full_version_line);
@@ -386,9 +383,8 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
     // We are only interested in the major version number, so this function
     // will return `Some("179")` and `Some("300")` respectively.
 
-    match full_version_line {
-        Some(ref full_version_line)
-          if !full_version_line.trim().is_empty() => {
+    if let Some(ref full_version_line) = full_version_line {
+        if !full_version_line.trim().is_empty() {
             let full_version_line = full_version_line.trim();
 
             for (pos, l) in full_version_line.char_indices() {
@@ -410,8 +406,7 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
             }
             println!("Could not extract LLDB version from line '{}'",
                      full_version_line);
-            None
-        },
-        _ => None
+        }
     }
+    None
 }

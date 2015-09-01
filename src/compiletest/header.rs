@@ -67,10 +67,9 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut pretty_compare_only = false;
     let mut forbid_output = Vec::new();
     iter_header(testfile, &mut |ln| {
-        match parse_error_pattern(ln) {
-          Some(ep) => error_patterns.push(ep),
-          None => ()
-        };
+        if let Some(ep) = parse_error_pattern(ln) {
+           error_patterns.push(ep);
+        }
 
         if compile_flags.is_none() {
             compile_flags = parse_compile_flags(ln);
@@ -108,24 +107,20 @@ pub fn load_props(testfile: &Path) -> TestProps {
             pretty_compare_only = parse_pretty_compare_only(ln);
         }
 
-        match parse_aux_build(ln) {
-            Some(ab) => { aux_builds.push(ab); }
-            None => {}
+        if let  Some(ab) = parse_aux_build(ln) {
+            aux_builds.push(ab);
         }
 
-        match parse_exec_env(ln) {
-            Some(ee) => { exec_env.push(ee); }
-            None => {}
+        if let Some(ee) = parse_exec_env(ln) {
+            exec_env.push(ee);
         }
 
-        match parse_check_line(ln) {
-            Some(cl) => check_lines.push(cl),
-            None => ()
-        };
+        if let Some(cl) =  parse_check_line(ln) {
+            check_lines.push(cl);
+        }
 
-        match parse_forbid_output(ln) {
-            Some(of) => forbid_output.push(of),
-            None => (),
+        if let Some(of) = parse_forbid_output(ln) {
+            forbid_output.push(of);
         }
 
         true
@@ -134,8 +129,8 @@ pub fn load_props(testfile: &Path) -> TestProps {
     for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
         match env::var(key) {
             Ok(val) =>
-                if exec_env.iter().find(|&&(ref x, _)| *x == key.to_string()).is_none() {
-                    exec_env.push((key.to_string(), val))
+                if exec_env.iter().find(|&&(ref x, _)| *x == key).is_none() {
+                    exec_env.push((key.to_owned(), val))
                 },
             Err(..) => {}
         }
@@ -153,7 +148,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
         pretty_expanded: pretty_expanded,
-        pretty_mode: pretty_mode.unwrap_or("normal".to_string()),
+        pretty_mode: pretty_mode.unwrap_or("normal".to_owned()),
         pretty_compare_only: pretty_compare_only,
         forbid_output: forbid_output,
     }
@@ -182,22 +177,21 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
             return true;
         }
 
-        match config.gdb_version {
-            Some(ref actual_version) => {
-                if line.contains("min-gdb-version") {
-                    let min_version = line.trim()
-                                          .split(' ')
-                                          .last()
-                                          .expect("Malformed GDB version directive");
-                    // Ignore if actual version is smaller the minimum required
-                    // version
-                    gdb_version_to_int(actual_version) <
-                        gdb_version_to_int(min_version)
-                } else {
-                    false
-                }
+        if let Some(ref actual_version) = config.gdb_version {
+            if line.contains("min-gdb-version") {
+                let min_version = line.trim()
+                                      .split(' ')
+                                      .last()
+                                      .expect("Malformed GDB version directive");
+                // Ignore if actual version is smaller the minimum required
+                // version
+                gdb_version_to_int(actual_version) <
+                    gdb_version_to_int(min_version)
+            } else {
+                false
             }
-            None => false
+        } else {
+            false
         }
     }
 
@@ -210,22 +204,21 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
             return true;
         }
 
-        match config.lldb_version {
-            Some(ref actual_version) => {
-                if line.contains("min-lldb-version") {
-                    let min_version = line.trim()
-                                          .split(' ')
-                                          .last()
-                                          .expect("Malformed lldb version directive");
-                    // Ignore if actual version is smaller the minimum required
-                    // version
-                    lldb_version_to_int(actual_version) <
-                        lldb_version_to_int(min_version)
-                } else {
-                    false
-                }
+        if let Some(ref actual_version) = config.lldb_version {
+            if line.contains("min-lldb-version") {
+                let min_version = line.trim()
+                                      .split(' ')
+                                      .last()
+                                      .expect("Malformed lldb version directive");
+                // Ignore if actual version is smaller the minimum required
+                // version
+                lldb_version_to_int(actual_version) <
+                    lldb_version_to_int(min_version)
+            } else {
+                false
             }
-            None => false
+        } else {
+            false
         }
     }
 
@@ -316,11 +309,11 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
         // nv is either FOO or FOO=BAR
         let mut strs: Vec<String> = nv
                                       .splitn(2, '=')
-                                      .map(|s| s.to_string())
+                                      .map(str::to_owned)
                                       .collect();
 
         match strs.len() {
-          1 => (strs.pop().unwrap(), "".to_string()),
+          1 => (strs.pop().unwrap(), "".to_owned()),
           2 => {
               let end = strs.pop().unwrap();
               (strs.pop().unwrap(), end)
@@ -331,33 +324,31 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
 }
 
 fn parse_pp_exact(line: &str, testfile: &Path) -> Option<PathBuf> {
-    match parse_name_value_directive(line, "pp-exact") {
-      Some(s) => Some(PathBuf::from(&s)),
-      None => {
+    if let Some(s) = parse_name_value_directive(line, "pp-exact") {
+        Some(PathBuf::from(&s))
+    } else {
         if parse_name_directive(line, "pp-exact") {
-            testfile.file_name().map(|s| PathBuf::from(s))
+            testfile.file_name().map(PathBuf::from)
         } else {
             None
         }
-      }
     }
 }
 
 fn parse_name_directive(line: &str, directive: &str) -> bool {
     // This 'no-' rule is a quick hack to allow pretty-expanded and no-pretty-expanded to coexist
-    line.contains(directive) && !line.contains(&("no-".to_string() + directive))
+    line.contains(directive) && !line.contains(&("no-".to_owned() + directive))
 }
 
 pub fn parse_name_value_directive(line: &str, directive: &str)
                                   -> Option<String> {
     let keycolon = format!("{}:", directive);
-    match line.find(&keycolon) {
-        Some(colon) => {
-            let value = line[(colon + keycolon.len()) .. line.len()].to_string();
-            debug!("{}: {}", directive, value);
-            Some(value)
-        }
-        None => None
+    if let Some(colon) = line.find(&keycolon) {
+        let value = line[(colon + keycolon.len()) .. line.len()].to_owned();
+        debug!("{}: {}", directive, value);
+        Some(value)
+    } else {
+        None
     }
 }
 
