@@ -1,4 +1,4 @@
-// rustfmt-struct_lit_style: VisualIndent
+// rustfmt-struct_lit_style: Visual
 
 // Struct literal expressions.
 
