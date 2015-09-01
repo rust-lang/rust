@@ -4,7 +4,7 @@
         {
             "intrinsic": "_abs_{0.data_type}",
             "width": [128],
-            "llvm": "pabs.{0.data_type_short}",
+            "llvm": "pabs.{0.data_type_short}.128",
             "ret": "s(8-32)",
             "args": ["0"]
         },
@@ -41,7 +41,7 @@
             "width": [128],
             "llvm": "pmadd.ub.sw.128",
             "ret": "s16",
-            "args": ["s8", "s8"]
+            "args": ["u8", "s8"]
         },
         {
             "intrinsic": "_mulhrs_epi16",
@@ -61,7 +61,7 @@
             "intrinsic": "_sign_{0.data_type}",
             "width": [128],
             "llvm": "psign.{0.data_type_short}.128",
-            "ret": "s(8-16)",
+            "ret": "s(8-32)",
             "args": ["0", "0"]
         }
     ]

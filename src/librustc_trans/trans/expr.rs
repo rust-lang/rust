@@ -1693,14 +1693,9 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_eager_binop");
 
     let tcx = bcx.tcx();
-    let is_simd = lhs_t.is_simd();
-    let intype = if is_simd {
-        lhs_t.simd_type(tcx)
-    } else {
-        lhs_t
-    };
-    let is_float = intype.is_fp();
-    let is_signed = intype.is_signed();
+    assert!(!lhs_t.is_simd());
+    let is_float = lhs_t.is_fp();
+    let is_signed = lhs_t.is_signed();
     let info = expr_info(binop_expr);
 
     let binop_debug_loc = binop_expr.debug_loc();
@@ -1710,8 +1705,6 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       ast::BiAdd => {
         if is_float {
             FAdd(bcx, lhs, rhs, binop_debug_loc)
-        } else if is_simd {
-            Add(bcx, lhs, rhs, binop_debug_loc)
         } else {
             let (newbcx, res) = with_overflow_check(
                 bcx, OverflowOp::Add, info, lhs_t, lhs, rhs, binop_debug_loc);
@@ -1722,8 +1715,6 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       ast::BiSub => {
         if is_float {
             FSub(bcx, lhs, rhs, binop_debug_loc)
-        } else if is_simd {
-            Sub(bcx, lhs, rhs, binop_debug_loc)
         } else {
             let (newbcx, res) = with_overflow_check(
                 bcx, OverflowOp::Sub, info, lhs_t, lhs, rhs, binop_debug_loc);
@@ -1734,8 +1725,6 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       ast::BiMul => {
         if is_float {
             FMul(bcx, lhs, rhs, binop_debug_loc)
-        } else if is_simd {
-            Mul(bcx, lhs, rhs, binop_debug_loc)
         } else {
             let (newbcx, res) = with_overflow_check(
                 bcx, OverflowOp::Mul, info, lhs_t, lhs, rhs, binop_debug_loc);
@@ -1828,11 +1817,7 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
           res
       }
       ast::BiEq | ast::BiNe | ast::BiLt | ast::BiGe | ast::BiLe | ast::BiGt => {
-        if is_simd {
-            base::compare_simd_types(bcx, lhs, rhs, intype, val_ty(lhs), op.node, binop_debug_loc)
-        } else {
-            base::compare_scalar_types(bcx, lhs, rhs, intype, op.node, binop_debug_loc)
-        }
+          base::compare_scalar_types(bcx, lhs, rhs, lhs_t, op.node, binop_debug_loc)
       }
       _ => {
         bcx.tcx().sess.span_bug(binop_expr.span, "unexpected binop");
@@ -2533,14 +2518,7 @@ fn build_unchecked_rshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let rhs = base::cast_shift_expr_rhs(bcx, ast::BinOp_::BiShr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bcx, rhs, binop_debug_loc);
-    let tcx = bcx.tcx();
-    let is_simd = lhs_t.is_simd();
-    let intype = if is_simd {
-        lhs_t.simd_type(tcx)
-    } else {
-        lhs_t
-    };
-    let is_signed = intype.is_signed();
+    let is_signed = lhs_t.is_signed();
     if is_signed {
         AShr(bcx, lhs, rhs, binop_debug_loc)
     } else {
