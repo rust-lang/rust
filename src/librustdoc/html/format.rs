@@ -18,7 +18,8 @@
 use std::fmt;
 use std::iter::repeat;
 
-use rustc::middle::def_id::{DefId, LOCAL_CRATE};
+use rustc::metadata::cstore::LOCAL_CRATE;
+use rustc::middle::def_id::DefId;
 use syntax::abi::Abi;
 use syntax::ast;
 use rustc_front::hir;

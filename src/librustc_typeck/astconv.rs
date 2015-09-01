@@ -48,11 +48,12 @@
 //! case but `&a` in the second.  Basically, defaults that appear inside
 //! an rptr (`&r.T`) use the region `r` that appears in the rptr.
 
+use metadata::cstore::LOCAL_CRATE;
 use middle::astconv_util::{prim_ty_to_ty, prohibit_type_params, prohibit_projection};
 use middle::const_eval::{self, ConstVal};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};

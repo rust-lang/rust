@@ -53,6 +53,7 @@ use externalfiles::ExternalHtml;
 
 use serialize::json::{self, ToJson};
 use syntax::{abi, ast, attr};
+use rustc::metadata::cstore::LOCAL_CRATE;
 use rustc::middle::def_id::{DefId, LOCAL_CRATE};
 use rustc::util::nodemap::NodeSet;
 use rustc_front::hir;

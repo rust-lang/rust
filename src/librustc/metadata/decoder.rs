@@ -20,6 +20,7 @@ use rustc_front::hir;
 
 use back::svh::Svh;
 use metadata::cstore::crate_metadata;
+use metadata::cstore::LOCAL_CRATE;
 use metadata::common::*;
 use metadata::csearch::MethodInfo;
 use metadata::csearch;
@@ -29,7 +30,7 @@ use metadata::index;
 use metadata::inline::InlinedItem;
 use metadata::tydecode::TyDecoder;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::lang_items;
 use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};

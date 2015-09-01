@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use metadata::cstore::LOCAL_CRATE;
 use middle::ty;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 
 use std::env;
 use std::fs::{self, File};

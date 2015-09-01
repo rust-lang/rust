@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use metadata::cstore::LOCAL_CRATE;
 use middle::ty;
 use syntax::ast::{CrateNum, NodeId};
 use std::fmt;
@@ -55,8 +56,4 @@ impl DefId {
     }
 }
 
-
-/// Item definitions in the currently-compiled crate would have the CrateNum
-/// LOCAL_CRATE in their DefId.
-pub const LOCAL_CRATE: CrateNum = 0;
 

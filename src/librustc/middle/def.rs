@@ -10,7 +10,8 @@
 
 pub use self::Def::*;
 
-use middle::def_id::{DefId, LOCAL_CRATE};
+use metadata::cstore::LOCAL_CRATE;
+use middle::def_id::DefId;
 use middle::privacy::LastPrivate;
 use middle::subst::ParamSpace;
 use util::nodemap::NodeMap;

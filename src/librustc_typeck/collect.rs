@@ -65,8 +65,9 @@ There are some shortcomings in this design:
 */
 
 use astconv::{self, AstConv, ty_of_arg, ast_ty_to_ty, ast_region_to_region};
+use metadata::cstore::LOCAL_CRATE;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::free_region::FreeRegionMap;

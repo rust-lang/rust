@@ -13,8 +13,9 @@
 
 use session::Session;
 use lint;
+use metadata::cstore::LOCAL_CRATE;
 use middle::def;
-use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::def_id::DefId;
 use middle::ty;
 use middle::privacy::PublicItems;
 use metadata::csearch;

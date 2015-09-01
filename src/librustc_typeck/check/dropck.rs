@@ -10,7 +10,8 @@
 
 use check::regionck::{self, Rcx};
 
-use middle::def_id::{DefId, LOCAL_CRATE};
+use metadata::cstore::LOCAL_CRATE;
+use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use middle::infer;
 use middle::region;
