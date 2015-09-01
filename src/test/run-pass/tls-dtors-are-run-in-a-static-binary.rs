@@ -8,36 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-thread_local!(static FOO: Foo = Foo);
-thread_local!(static BAR: Bar = Bar(1));
-thread_local!(static BAZ: Baz = Baz);
+// no-prefer-dynamic
 
 static mut HIT: bool = false;
 
 struct Foo;
-struct Bar(i32);
-struct Baz;
 
 impl Drop for Foo {
-    fn drop(&mut self) {
-        BAR.with(|_| {});
-    }
-}
-
-impl Drop for Bar {
-    fn drop(&mut self) {
-        assert_eq!(self.0, 1);
-        self.0 = 2;
-        BAZ.with(|_| {});
-        assert_eq!(self.0, 2);
-    }
-}
-
-impl Drop for Baz {
     fn drop(&mut self) {
         unsafe { HIT = true; }
     }
 }
+
+thread_local!(static FOO: Foo = Foo);
 
 fn main() {
     std::thread::spawn(|| {
