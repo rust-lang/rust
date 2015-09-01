@@ -828,6 +828,9 @@ fn rewrite_string_lit(context: &RewriteContext,
                       width: usize,
                       offset: usize)
                       -> Option<String> {
+    if context.config.format_strings == false {
+        return Some(context.snippet(span));
+    }
     // Check if there is anything to fix: we always try to fixup multi-line
     // strings, or if the string is too long for the line.
     let l_loc = context.codemap.lookup_char_pos(span.lo);
