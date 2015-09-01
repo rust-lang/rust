@@ -31,6 +31,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
         path: path_std!(cx, core::clone::Clone),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
+        is_unsafe: false,
         methods: vec!(
             MethodDef {
                 name: "clone",

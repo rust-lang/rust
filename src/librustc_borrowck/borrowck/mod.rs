@@ -27,6 +27,7 @@ use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
 use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
+use rustc::middle::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::mem_categorization as mc;
@@ -58,8 +59,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl,
                 b: &'v Block, s: Span, id: ast::NodeId) {
         match fk {
-            visit::FkItemFn(..) |
-            visit::FkMethod(..) => {
+            FnKind::ItemFn(..) |
+            FnKind::Method(..) => {
                 let new_free_region_map = self.tcx.free_region_map(id);
                 let old_free_region_map =
                     mem::replace(&mut self.free_region_map, new_free_region_map);
@@ -67,7 +68,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
                 self.free_region_map = old_free_region_map;
             }
 
-            visit::FkFnBlock => {
+            FnKind::Closure => {
                 borrowck_fn(self, fk, fd, b, s, id);
             }
         }
@@ -190,6 +191,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                                           -> AnalysisData<'a, 'tcx>
 {
     // Check the body of fn items.
+    let tcx = this.tcx;
     let id_range = ast_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
     let (all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, id, decl, body);
@@ -203,8 +205,9 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                              id_range,
                              all_loans.len());
     for (loan_idx, loan) in all_loans.iter().enumerate() {
-        loan_dfcx.add_gen(loan.gen_scope.node_id(), loan_idx);
-        loan_dfcx.add_kill(KillFrom::ScopeEnd, loan.kill_scope.node_id(), loan_idx);
+        loan_dfcx.add_gen(loan.gen_scope.node_id(&tcx.region_maps), loan_idx);
+        loan_dfcx.add_kill(KillFrom::ScopeEnd,
+                           loan.kill_scope.node_id(&tcx.region_maps), loan_idx);
     }
     loan_dfcx.add_kills_from_flow_exits(cfg);
     loan_dfcx.propagate(cfg, body);
@@ -349,7 +352,7 @@ impl<'tcx> PartialEq for LoanPath<'tcx> {
 pub enum LoanPathKind<'tcx> {
     LpVar(ast::NodeId),                         // `x` in README.md
     LpUpvar(ty::UpvarId),                       // `x` captured by-value into closure
-    LpDowncast(Rc<LoanPath<'tcx>>, ast::DefId), // `x` downcast to particular enum variant
+    LpDowncast(Rc<LoanPath<'tcx>>, DefId), // `x` downcast to particular enum variant
     LpExtend(Rc<LoanPath<'tcx>>, mc::MutabilityCategory, LoanPathElem)
 }
 
@@ -413,7 +416,7 @@ impl<'tcx> LoanPath<'tcx> {
             LpVar(local_id) => tcx.region_maps.var_scope(local_id),
             LpUpvar(upvar_id) => {
                 let block_id = closure_to_block(upvar_id.closure_expr_id, tcx);
-                region::CodeExtent::from_node_id(block_id)
+                tcx.region_maps.node_extent(block_id)
             }
             LpDowncast(ref base, _) |
             LpExtend(ref base, _, _) => base.kill_scope(tcx),
@@ -1134,7 +1137,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 fn statement_scope_span(tcx: &ty::ctxt, region: ty::Region) -> Option<Span> {
     match region {
         ty::ReScope(scope) => {
-            match tcx.map.find(scope.node_id()) {
+            match tcx.map.find(scope.node_id(&tcx.region_maps)) {
                 Some(ast_map::NodeStmt(stmt)) => Some(stmt.span),
                 _ => None
             }
@@ -1192,7 +1195,7 @@ impl<'tcx> fmt::Debug for LoanPath<'tcx> {
             }
 
             LpDowncast(ref lp, variant_def_id) => {
-                let variant_str = if variant_def_id.krate == ast::LOCAL_CRATE {
+                let variant_str = if variant_def_id.is_local() {
                     ty::tls::with(|tcx| tcx.item_path_str(variant_def_id))
                 } else {
                     format!("{:?}", variant_def_id)
@@ -1224,7 +1227,7 @@ impl<'tcx> fmt::Display for LoanPath<'tcx> {
             }
 
             LpDowncast(ref lp, variant_def_id) => {
-                let variant_str = if variant_def_id.krate == ast::LOCAL_CRATE {
+                let variant_str = if variant_def_id.is_local() {
                     ty::tls::with(|tcx| tcx.item_path_str(variant_def_id))
                 } else {
                     format!("{:?}", variant_def_id)

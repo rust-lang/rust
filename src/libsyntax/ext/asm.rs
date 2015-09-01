@@ -19,7 +19,7 @@ use codemap::Span;
 use ext::base;
 use ext::base::*;
 use feature_gate;
-use parse::token::InternedString;
+use parse::token::{intern, InternedString};
 use parse::token;
 use ptr::P;
 
@@ -211,8 +211,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
         call_site: sp,
         callee: codemap::NameAndSpan {
-            name: "asm".to_string(),
-            format: codemap::MacroBang,
+            format: codemap::MacroBang(intern("asm")),
             span: None,
             allow_internal_unstable: false,
         },

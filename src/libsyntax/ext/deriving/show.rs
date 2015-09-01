@@ -34,6 +34,7 @@ pub fn expand_deriving_show(cx: &mut ExtCtxt,
         path: path_std!(cx, core::fmt::Debug),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
+        is_unsafe: false,
         methods: vec![
             MethodDef {
                 name: "fmt",

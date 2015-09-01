@@ -14,6 +14,7 @@ use self::MapEntry::*;
 
 use metadata::inline::InlinedItem;
 use metadata::inline::InlinedItem as II;
+use middle::def_id::DefId;
 use syntax::abi;
 use syntax::ast::*;
 use syntax::ast_util;
@@ -378,7 +379,7 @@ impl<'ast> Map<'ast> {
         match self.find_entry(parent) {
             Some(RootInlinedParent(&InlinedParent {ii: II::TraitItem(did, _), ..})) => did,
             Some(RootInlinedParent(&InlinedParent {ii: II::ImplItem(did, _), ..})) => did,
-            _ => ast_util::local_def(parent)
+            _ => DefId::local(parent)
         }
     }
 
@@ -479,6 +480,7 @@ impl<'ast> Map<'ast> {
             NodeImplItem(ii) => PathName(ii.ident.name),
             NodeTraitItem(ti) => PathName(ti.ident.name),
             NodeVariant(v) => PathName(v.node.name.name),
+            NodeLifetime(lt) => PathName(lt.name),
             _ => panic!("no path elem for {:?}", node)
         }
     }
@@ -591,7 +593,7 @@ impl<'ast> Map<'ast> {
     }
 
     pub fn def_id_span(&self, def_id: DefId, fallback: Span) -> Span {
-        if def_id.krate == LOCAL_CRATE {
+        if def_id.is_local() {
             self.opt_span(def_id.node).unwrap_or(fallback)
         } else {
             fallback

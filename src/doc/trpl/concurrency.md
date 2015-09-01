@@ -343,12 +343,14 @@ threads as a simple isolation mechanism:
 ```rust
 use std::thread;
 
-let result = thread::spawn(move || {
+let handle = thread::spawn(move || {
     panic!("oops!");
-}).join();
+});
+
+let result = handle.join();
 
 assert!(result.is_err());
 ```
 
-Our `Thread` gives us a `Result` back, which allows us to check if the thread
+`Thread.join()` gives us a `Result` back, which allows us to check if the thread
 has panicked or not.

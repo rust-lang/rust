@@ -20,6 +20,7 @@ use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef};
 use llvm::{True, False, Bool};
 use middle::cfg;
 use middle::def;
+use middle::def_id::DefId;
 use middle::infer;
 use middle::lang_items::LangItem;
 use middle::subst::{self, Substs};
@@ -49,7 +50,6 @@ use std::cell::{Cell, RefCell};
 use std::result::Result as StdResult;
 use std::vec::Vec;
 use syntax::ast;
-use syntax::ast_util::local_def;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
@@ -504,7 +504,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
                         output: ty::FnOutput<'tcx>,
                         name: &str) -> ValueRef {
         if self.needs_ret_allocas {
-            base::alloca_no_lifetime(bcx, match output {
+            base::alloca(bcx, match output {
                 ty::FnConverging(output_type) => type_of::type_of(bcx.ccx(), output_type),
                 ty::FnDiverging => Type::void(bcx.ccx())
             }, name)
@@ -1228,7 +1228,7 @@ pub fn langcall(bcx: Block,
                 span: Option<Span>,
                 msg: &str,
                 li: LangItem)
-                -> ast::DefId {
+                -> DefId {
     match bcx.tcx().lang_items.require(li) {
         Ok(id) => id,
         Err(s) => {
@@ -1257,7 +1257,7 @@ pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         _ => ctor_ty
     }.ty_adt_def().unwrap();
     adt_def.variants.iter().find(|v| {
-        local_def(inlined_vid) == v.did ||
+        DefId::local(inlined_vid) == v.did ||
             ccx.external().borrow().get(&v.did) == Some(&Some(inlined_vid))
     }).unwrap_or_else(|| {
         ccx.sess().bug(&format!("no variant for {:?}::{}", adt_def, inlined_vid))

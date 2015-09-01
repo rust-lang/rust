@@ -733,14 +733,14 @@ impl EmitterWriter {
                     let ss = ei.callee.span.map_or(String::new(),
                                                    |span| cm.span_to_string(span));
                     let (pre, post) = match ei.callee.format {
-                        codemap::MacroAttribute => ("#[", "]"),
-                        codemap::MacroBang => ("", "!"),
-                        codemap::CompilerExpansion => ("", ""),
+                        codemap::MacroAttribute(..) => ("#[", "]"),
+                        codemap::MacroBang(..) => ("", "!"),
+                        codemap::CompilerExpansion(..) => ("", ""),
                     };
                     try!(self.print_diagnostic(&ss, Note,
                                                &format!("in expansion of {}{}{}",
                                                         pre,
-                                                        ei.callee.name,
+                                                        ei.callee.name(),
                                                         post),
                                                None));
                     let ss = cm.span_to_string(ei.call_site);

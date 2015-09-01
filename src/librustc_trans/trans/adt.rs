@@ -177,15 +177,12 @@ pub fn represent_type<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     repr
 }
 
-macro_rules! repeat_u8_as_u32 {
-    ($name:expr) => { (($name as u32) << 24 |
-                       ($name as u32) << 16 |
-                       ($name as u32) <<  8 |
-                       ($name as u32)) }
+const fn repeat_u8_as_u32(val: u8) -> u32 {
+    (val as u32) << 24 | (val as u32) << 16 | (val as u32) << 8 | val as u32
 }
-macro_rules! repeat_u8_as_u64 {
-    ($name:expr) => { ((repeat_u8_as_u32!($name) as u64) << 32 |
-                       (repeat_u8_as_u32!($name) as u64)) }
+
+const fn repeat_u8_as_u64(val: u8) -> u64 {
+    (repeat_u8_as_u32(val) as u64) << 32 | repeat_u8_as_u32(val) as u64
 }
 
 /// `DTOR_NEEDED_HINT` is a stack-local hint that just means
@@ -203,8 +200,8 @@ pub const DTOR_NEEDED_HINT: u8 = 0x3d;
 pub const DTOR_MOVED_HINT: u8 = 0x2d;
 
 pub const DTOR_NEEDED: u8 = 0xd4;
-pub const DTOR_NEEDED_U32: u32 = repeat_u8_as_u32!(DTOR_NEEDED);
-pub const DTOR_NEEDED_U64: u64 = repeat_u8_as_u64!(DTOR_NEEDED);
+pub const DTOR_NEEDED_U32: u32 = repeat_u8_as_u32(DTOR_NEEDED);
+pub const DTOR_NEEDED_U64: u64 = repeat_u8_as_u64(DTOR_NEEDED);
 #[allow(dead_code)]
 pub fn dtor_needed_usize(ccx: &CrateContext) -> usize {
     match &ccx.tcx().sess.target.target.target_pointer_width[..] {
@@ -215,8 +212,8 @@ pub fn dtor_needed_usize(ccx: &CrateContext) -> usize {
 }
 
 pub const DTOR_DONE: u8 = 0x1d;
-pub const DTOR_DONE_U32: u32 = repeat_u8_as_u32!(DTOR_DONE);
-pub const DTOR_DONE_U64: u64 = repeat_u8_as_u64!(DTOR_DONE);
+pub const DTOR_DONE_U32: u32 = repeat_u8_as_u32(DTOR_DONE);
+pub const DTOR_DONE_U64: u64 = repeat_u8_as_u64(DTOR_DONE);
 #[allow(dead_code)]
 pub fn dtor_done_usize(ccx: &CrateContext) -> usize {
     match &ccx.tcx().sess.target.target.target_pointer_width[..] {
@@ -250,7 +247,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 monomorphize::field_ty(cx.tcx(), substs, field)
             }).collect::<Vec<_>>();
             let packed = cx.tcx().lookup_packed(def.did);
-            let dtor = cx.tcx().ty_dtor(def.did).has_drop_flag();
+            let dtor = def.dtor_kind().has_drop_flag();
             if dtor {
                 ftys.push(cx.tcx().dtor_type());
             }
@@ -265,7 +262,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let hint = *cx.tcx().lookup_repr_hints(def.did).get(0)
                 .unwrap_or(&attr::ReprAny);
 
-            let dtor = cx.tcx().ty_dtor(def.did).has_drop_flag();
+            let dtor = def.dtor_kind().has_drop_flag();
 
             if cases.is_empty() {
                 // Uninhabitable; represent as unit
@@ -892,7 +889,7 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
     let val = match *r {
         CEnum(ity, min, max) => load_discr(bcx, ity, scrutinee, min, max),
         General(ity, ref cases, _) => {
-            let ptr = GEPi(bcx, scrutinee, &[0, 0]);
+            let ptr = StructGEP(bcx, scrutinee, 0);
             load_discr(bcx, ity, ptr, 0, (cases.len() - 1) as Disr)
         }
         Univariant(..) => C_u8(bcx.ccx(), 0),
@@ -986,13 +983,13 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                 Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED), ptr);
             }
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
-                  GEPi(bcx, val, &[0, 0]));
+                  StructGEP(bcx, val, 0));
         }
         Univariant(ref st, dtor) => {
             assert_eq!(discr, 0);
             if dtor_active(dtor) {
                 Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED),
-                    GEPi(bcx, val, &[0, st.fields.len() - 1]));
+                      StructGEP(bcx, val, st.fields.len() - 1));
             }
         }
         RawNullablePointer { nndiscr, nnty, ..} => {
@@ -1091,7 +1088,7 @@ pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, v
         val
     };
 
-    GEPi(bcx, val, &[0, ix])
+    StructGEP(bcx, val, ix)
 }
 
 pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
@@ -1162,7 +1159,7 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let ptr_ty = bcx.tcx().mk_imm_ptr(tcx.dtor_type());
     match *r {
         Univariant(ref st, dtor) if dtor_active(dtor) => {
-            let flag_ptr = GEPi(bcx, val, &[0, st.fields.len() - 1]);
+            let flag_ptr = StructGEP(bcx, val, st.fields.len() - 1);
             datum::immediate_rvalue_bcx(bcx, flag_ptr, ptr_ty).to_expr_datumblock()
         }
         General(_, _, dtor) if dtor_active(dtor) => {

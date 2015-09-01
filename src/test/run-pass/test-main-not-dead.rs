@@ -1,4 +1,4 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The pointer-sized signed integer type.
-//!
-//! *[See also the `isize` primitive type](../primitive.isize.html).*
+// compile-flags: --test
 
-#![stable(feature = "rust1", since = "1.0.0")]
+#![deny(dead_code)]
 
-pub use core::isize::{BITS, BYTES, MIN, MAX};
-
-int_module! { isize }
+fn main() { panic!(); }

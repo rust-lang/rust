@@ -10,6 +10,7 @@
 
 #![allow(non_camel_case_types)]
 
+use middle::def_id::DefId;
 use middle::subst;
 use trans::adt;
 use trans::common::*;
@@ -469,7 +470,7 @@ pub fn align_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
 }
 
 fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                            did: ast::DefId,
+                            did: DefId,
                             tps: &[Ty<'tcx>])
                             -> String {
     let base = cx.tcx().item_path_str(did);
@@ -484,13 +485,5 @@ fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         tstr
     } else {
         format!("{}.{}", did.krate, tstr)
-    }
-}
-
-pub fn type_of_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, self_ty: Ty<'tcx>) -> Type {
-    if type_is_sized(ccx.tcx(), self_ty) {
-        Type::func(&[type_of(ccx, self_ty).ptr_to()], &Type::void(ccx))
-    } else {
-        Type::func(&type_of(ccx, self_ty).field_types(), &Type::void(ccx))
     }
 }

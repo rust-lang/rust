@@ -292,6 +292,18 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
     }
 }
 
+impl<'a> Chars<'a> {
+    /// View the underlying data as a subslice of the original data.
+    ///
+    /// This has the same lifetime as the original slice, and so the
+    /// iterator can continue to be used while this exists.
+    #[unstable(feature = "iter_to_slice", issue = "27775")]
+    #[inline]
+    pub fn as_str(&self) -> &'a str {
+        unsafe { from_utf8_unchecked(self.iter.as_slice()) }
+    }
+}
+
 /// Iterator for a string's characters and their byte offsets.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -336,6 +348,18 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
                 Some((index, ch))
             }
         }
+    }
+}
+
+impl<'a> CharIndices<'a> {
+    /// View the underlying data as a subslice of the original data.
+    ///
+    /// This has the same lifetime as the original slice, and so the
+    /// iterator can continue to be used while this exists.
+    #[unstable(feature = "iter_to_slice", issue = "27775")]
+    #[inline]
+    pub fn as_str(&self) -> &'a str {
+        self.iter.as_str()
     }
 }
 
@@ -386,6 +410,21 @@ impl<'a> Iterator for Bytes<'a> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.0.size_hint()
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.0.count()
+    }
+
+    #[inline]
+    fn last(self) -> Option<Self::Item> {
+        self.0.last()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        self.0.nth(n)
     }
 }
 

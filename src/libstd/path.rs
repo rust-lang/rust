@@ -598,8 +598,11 @@ impl<'a> Components<'a> {
     /// how much of the prefix is left from the point of view of iteration?
     #[inline]
     fn prefix_remaining(&self) -> usize {
-        if self.front == State::Prefix { self.prefix_len() }
-        else { 0 }
+        if self.front == State::Prefix {
+            self.prefix_len()
+        } else {
+            0
+        }
     }
 
     // Given the iteration so far, how much of the pre-State::Body path is left?
@@ -632,9 +635,11 @@ impl<'a> Components<'a> {
     /// ```
     /// use std::path::Path;
     ///
-    /// let path = Path::new("/tmp/foo/bar.txt");
+    /// let mut components = Path::new("/tmp/foo/bar.txt").components();
+    /// components.next();
+    /// components.next();
     ///
-    /// println!("{:?}", path.components().as_path());
+    /// assert_eq!(Path::new("foo/bar.txt"), components.as_path());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &'a Path {
@@ -882,7 +887,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::PartialEq for Components<'a> {
     fn eq(&self, other: &Components<'a>) -> bool {
-        iter::order::eq(self.clone(), other.clone())
+        Iterator::eq(self.clone(), other.clone())
     }
 }
 
@@ -892,14 +897,14 @@ impl<'a> cmp::Eq for Components<'a> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::PartialOrd for Components<'a> {
     fn partial_cmp(&self, other: &Components<'a>) -> Option<cmp::Ordering> {
-        iter::order::partial_cmp(self.clone(), other.clone())
+        Iterator::partial_cmp(self.clone(), other.clone())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::Ord for Components<'a> {
     fn cmp(&self, other: &Components<'a>) -> cmp::Ordering {
-        iter::order::cmp(self.clone(), other.clone())
+        Iterator::cmp(self.clone(), other.clone())
     }
 }
 
@@ -1162,14 +1167,14 @@ impl cmp::Eq for PathBuf {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialOrd for PathBuf {
     fn partial_cmp(&self, other: &PathBuf) -> Option<cmp::Ordering> {
-        self.components().partial_cmp(&other.components())
+        self.components().partial_cmp(other.components())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Ord for PathBuf {
     fn cmp(&self, other: &PathBuf) -> cmp::Ordering {
-        self.components().cmp(&other.components())
+        self.components().cmp(other.components())
     }
 }
 
@@ -1691,7 +1696,7 @@ impl<'a> fmt::Display for Display<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialEq for Path {
     fn eq(&self, other: &Path) -> bool {
-        iter::order::eq(self.components(), other.components())
+        self.components().eq(other.components())
     }
 }
 
@@ -1701,14 +1706,14 @@ impl cmp::Eq for Path {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialOrd for Path {
     fn partial_cmp(&self, other: &Path) -> Option<cmp::Ordering> {
-        self.components().partial_cmp(&other.components())
+        self.components().partial_cmp(other.components())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Ord for Path {
     fn cmp(&self, other: &Path) -> cmp::Ordering {
-        self.components().cmp(&other.components())
+        self.components().cmp(other.components())
     }
 }
 

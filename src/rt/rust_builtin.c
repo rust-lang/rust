@@ -39,6 +39,13 @@ rust_list_dir_val(struct dirent* entry_ptr) {
     return entry_ptr->d_name;
 }
 
+// Android's struct dirent does have d_type from the very beginning
+// (android-3). _DIRENT_HAVE_D_TYPE is not defined all the way to android-21
+// though...
+#if defined(__ANDROID__)
+# define _DIRENT_HAVE_D_TYPE
+#endif
+
 int
 rust_dir_get_mode(struct dirent* entry_ptr) {
 #if defined(_DIRENT_HAVE_D_TYPE) || defined(__APPLE__)
@@ -334,7 +341,11 @@ const char * rust_current_exe()
   char **paths;
   size_t sz;
   int i;
-  char buf[2*PATH_MAX], exe[2*PATH_MAX];
+  /* If `PATH_MAX` is defined on the platform, `realpath` will truncate the
+   * resolved path up to `PATH_MAX`. While this can make the resolution fail if
+   * the executable is placed in a deep path, the usage of a buffer whose
+   * length depends on `PATH_MAX` is still memory safe. */
+  char buf[2*PATH_MAX], exe[PATH_MAX];
 
   if (self != NULL)
     return self;

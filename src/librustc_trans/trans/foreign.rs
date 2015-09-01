@@ -296,13 +296,10 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // Ensure that we always have the Rust value indirectly,
         // because it makes bitcasting easier.
         if !rust_indirect {
-            let scratch =
-                base::alloca(bcx,
-                             type_of::type_of(ccx, passed_arg_tys[i]),
-                             "__arg");
+            let scratch = base::alloc_ty(bcx, passed_arg_tys[i], "__arg");
             if type_is_fat_ptr(ccx.tcx(), passed_arg_tys[i]) {
                 Store(bcx, llargs_rust[i + offset], expr::get_dataptr(bcx, scratch));
-                Store(bcx, llargs_rust[i + offset + 1], expr::get_len(bcx, scratch));
+                Store(bcx, llargs_rust[i + offset + 1], expr::get_meta(bcx, scratch));
                 offset += 1;
             } else {
                 base::store_ty(bcx, llarg_rust, scratch, passed_arg_tys[i]);
@@ -432,6 +429,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // - Truncating foreign type to correct integral type and then
             //   bitcasting to the struct type yields invalid cast errors.
             let llscratch = base::alloca(bcx, llforeign_ret_ty, "__cast");
+            base::call_lifetime_start(bcx, llscratch);
             Store(bcx, llforeign_retval, llscratch);
             let llscratch_i8 = BitCast(bcx, llscratch, Type::i8(ccx).ptr_to());
             let llretptr_i8 = BitCast(bcx, llretptr, Type::i8(ccx).ptr_to());
@@ -442,6 +440,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             debug!("llrust_size={}", llrust_size);
             base::call_memcpy(bcx, llretptr_i8, llscratch_i8,
                               C_uint(ccx, llrust_size), llalign as u32);
+            base::call_lifetime_end(bcx, llscratch);
         }
     }
 
@@ -821,10 +820,10 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                    i, ccx.tn().val_to_string(llrust_arg));
             if type_is_fat_ptr(ccx.tcx(), rust_ty) {
                 let next_llrust_ty = rust_param_tys.next().expect("Not enough parameter types!");
-                llrust_args.push(builder.load(builder.bitcast(builder.gepi(
-                                llrust_arg, &[0, abi::FAT_PTR_ADDR]), llrust_ty.ptr_to())));
-                llrust_args.push(builder.load(builder.bitcast(builder.gepi(
-                                llrust_arg, &[0, abi::FAT_PTR_EXTRA]), next_llrust_ty.ptr_to())));
+                llrust_args.push(builder.load(builder.bitcast(builder.struct_gep(
+                                llrust_arg, abi::FAT_PTR_ADDR), llrust_ty.ptr_to())));
+                llrust_args.push(builder.load(builder.bitcast(builder.struct_gep(
+                                llrust_arg, abi::FAT_PTR_EXTRA), next_llrust_ty.ptr_to())));
             } else {
                 llrust_args.push(llrust_arg);
             }

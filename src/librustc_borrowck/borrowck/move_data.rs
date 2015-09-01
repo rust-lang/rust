@@ -494,7 +494,7 @@ impl<'tcx> MoveData<'tcx> {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = path.loan_path.kill_scope(tcx);
                     let path = *self.path_map.borrow().get(&path.loan_path).unwrap();
-                    self.kill_moves(path, kill_scope.node_id(),
+                    self.kill_moves(path, kill_scope.node_id(&tcx.region_maps),
                                     KillFrom::ScopeEnd, dfcx_moves);
                 }
                 LpExtend(..) => {}
@@ -509,7 +509,7 @@ impl<'tcx> MoveData<'tcx> {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = lp.kill_scope(tcx);
                     dfcx_assign.add_kill(KillFrom::ScopeEnd,
-                                         kill_scope.node_id(),
+                                         kill_scope.node_id(&tcx.region_maps),
                                          assignment_index);
                 }
                 LpExtend(..) => {

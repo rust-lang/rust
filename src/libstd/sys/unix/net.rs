@@ -13,9 +13,10 @@ use prelude::v1::*;
 use ffi::CStr;
 use io;
 use libc::{self, c_int, size_t};
-use str;
-use sys::c;
 use net::SocketAddr;
+use str;
+use sync::atomic::{self, AtomicBool};
+use sys::c;
 use sys::fd::FileDesc;
 use sys_common::{AsInner, FromInner, IntoInner};
 use sys_common::net::{getsockopt, setsockopt};
@@ -66,10 +67,29 @@ impl Socket {
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
-        let fd = try!(cvt(unsafe { libc::dup(self.0.raw()) }));
-        let fd = FileDesc::new(fd);
-        fd.set_cloexec();
-        Ok(Socket(fd))
+        use libc::funcs::posix88::fcntl::fcntl;
+        let make_socket = |fd| {
+            let fd = FileDesc::new(fd);
+            fd.set_cloexec();
+            Socket(fd)
+        };
+        static EMULATE_F_DUPFD_CLOEXEC: AtomicBool = AtomicBool::new(false);
+        if !EMULATE_F_DUPFD_CLOEXEC.load(atomic::Ordering::Relaxed) {
+            match cvt(unsafe { fcntl(self.0.raw(), libc::F_DUPFD_CLOEXEC, 0) }) {
+                // `EINVAL` can only be returned on two occasions: Invalid
+                // command (second parameter) or invalid third parameter. 0 is
+                // always a valid third parameter, so it must be the second
+                // parameter.
+                //
+                // Store the result in a global variable so we don't try each
+                // syscall twice.
+                Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {
+                    EMULATE_F_DUPFD_CLOEXEC.store(true, atomic::Ordering::Relaxed);
+                }
+                res => return res.map(make_socket),
+            }
+        }
+        cvt(unsafe { fcntl(self.0.raw(), libc::F_DUPFD, 0) }).map(make_socket)
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {

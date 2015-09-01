@@ -65,6 +65,7 @@ use trans::cleanup::{self, CleanupMethods, DropHintMethods};
 use trans::common::*;
 use trans::datum::*;
 use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
+use trans::declare;
 use trans::glue;
 use trans::machine;
 use trans::meth;
@@ -245,9 +246,8 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Maybe just get the value directly, instead of loading it?
             immediate_rvalue(load_ty(bcx, global, const_ty), const_ty)
         } else {
-            let llty = type_of::type_of(bcx.ccx(), const_ty);
-            // HACK(eddyb) get around issues with lifetime intrinsics.
-            let scratch = alloca_no_lifetime(bcx, llty, "const");
+            let scratch = alloc_ty(bcx, const_ty, "const");
+            call_lifetime_start(bcx, scratch);
             let lldest = if !const_ty.is_structural() {
                 // Cast pointer to slot, because constants have different types.
                 PointerCast(bcx, scratch, val_ty(global))
@@ -281,17 +281,17 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     return DatumBlock::new(bcx, datum);
 }
 
-pub fn get_len(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
-    GEPi(bcx, fat_ptr, &[0, abi::FAT_PTR_EXTRA])
+pub fn get_meta(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
+    StructGEP(bcx, fat_ptr, abi::FAT_PTR_EXTRA)
 }
 
 pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
-    GEPi(bcx, fat_ptr, &[0, abi::FAT_PTR_ADDR])
+    StructGEP(bcx, fat_ptr, abi::FAT_PTR_ADDR)
 }
 
 pub fn copy_fat_ptr(bcx: Block, src_ptr: ValueRef, dst_ptr: ValueRef) {
     Store(bcx, Load(bcx, get_dataptr(bcx, src_ptr)), get_dataptr(bcx, dst_ptr));
-    Store(bcx, Load(bcx, get_len(bcx, src_ptr)), get_len(bcx, dst_ptr));
+    Store(bcx, Load(bcx, get_meta(bcx, src_ptr)), get_meta(bcx, dst_ptr));
 }
 
 /// Retrieve the information we are losing (making dynamic) in an unsizing
@@ -389,14 +389,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // (You might think there is a more elegant way to do this than a
             // skip_reborrows bool, but then you remember that the borrow checker exists).
             if skip_reborrows == 0 && adj.autoref.is_some() {
-                if !type_is_sized(bcx.tcx(), datum.ty) {
-                    // Arrange cleanup
-                    let lval = unpack_datum!(bcx,
-                        datum.to_lvalue_datum(bcx, "ref_fat_ptr", expr.id));
-                    datum = unpack_datum!(bcx, ref_fat_ptr(bcx, lval));
-                } else {
-                    datum = unpack_datum!(bcx, auto_ref(bcx, datum, expr));
-                }
+                datum = unpack_datum!(bcx, auto_ref(bcx, datum, expr));
             }
 
             if let Some(target) = adj.unsize {
@@ -409,10 +402,9 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     datum.to_rvalue_datum(bcx, "__coerce_source"));
 
                 let target = bcx.monomorphize(&target);
-                let llty = type_of::type_of(bcx.ccx(), target);
 
-                // HACK(eddyb) get around issues with lifetime intrinsics.
-                let scratch = alloca_no_lifetime(bcx, llty, "__coerce_target");
+                let scratch = alloc_ty(bcx, target, "__coerce_target");
+                call_lifetime_start(bcx, scratch);
                 let target_datum = Datum::new(scratch, target,
                                               Rvalue::new(ByRef));
                 bcx = coerce_unsized(bcx, expr.span, source_datum, target_datum);
@@ -453,7 +445,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // load out the original data pointer so we can repackage
                 // it.
                 (Load(bcx, get_dataptr(bcx, source.val)),
-                Some(Load(bcx, get_len(bcx, source.val))))
+                Some(Load(bcx, get_meta(bcx, source.val))))
             } else {
                 let val = if source.kind.is_by_ref() {
                     load_ty(bcx, source.val, source.ty)
@@ -472,7 +464,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let base = PointerCast(bcx, base, ptr_ty);
 
             Store(bcx, base, get_dataptr(bcx, target.val));
-            Store(bcx, info, get_len(bcx, target.val));
+            Store(bcx, info, get_meta(bcx, target.val));
         }
 
         // This can be extended to enums and tuples in the future.
@@ -728,8 +720,8 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     } else {
         let scratch = rvalue_scratch_datum(bcx, d.ty, "");
         Store(bcx, d.val, get_dataptr(bcx, scratch.val));
-        let info = Load(bcx, get_len(bcx, base_datum.val));
-        Store(bcx, info, get_len(bcx, scratch.val));
+        let info = Load(bcx, get_meta(bcx, base_datum.val));
+        Store(bcx, info, get_meta(bcx, scratch.val));
 
         // Always generate an lvalue datum, because this pointer doesn't own
         // the data and cleanup is scheduled elsewhere.
@@ -899,7 +891,7 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let const_ty = expr_ty(bcx, ref_expr);
 
             // For external constants, we don't inline.
-            let val = if did.krate == ast::LOCAL_CRATE {
+            let val = if did.is_local() {
                 // Case 1.
 
                 // The LLVM global has the type of its initializer,
@@ -1266,7 +1258,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         def::DefStruct(_) => {
             let ty = expr_ty(bcx, ref_expr);
             match ty.sty {
-                ty::TyStruct(def, _) if def.has_dtor(bcx.tcx()) => {
+                ty::TyStruct(def, _) if def.has_dtor() => {
                     let repr = adt::represent_type(bcx.ccx(), ty);
                     adt::trans_set_discr(bcx, &*repr, lldest, 0);
                 }
@@ -1446,7 +1438,11 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // temporary stack slot
     let addr = match dest {
         SaveIn(pos) => pos,
-        Ignore => alloc_ty(bcx, ty, "temp"),
+        Ignore => {
+            let llresult = alloc_ty(bcx, ty, "temp");
+            call_lifetime_start(bcx, llresult);
+            llresult
+        }
     };
 
     // This scope holds intermediates that must be cleaned should
@@ -1697,14 +1693,9 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_eager_binop");
 
     let tcx = bcx.tcx();
-    let is_simd = lhs_t.is_simd();
-    let intype = if is_simd {
-        lhs_t.simd_type(tcx)
-    } else {
-        lhs_t
-    };
-    let is_float = intype.is_fp();
-    let is_signed = intype.is_signed();
+    assert!(!lhs_t.is_simd());
+    let is_float = lhs_t.is_fp();
+    let is_signed = lhs_t.is_signed();
     let info = expr_info(binop_expr);
 
     let binop_debug_loc = binop_expr.debug_loc();
@@ -1714,8 +1705,6 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       ast::BiAdd => {
         if is_float {
             FAdd(bcx, lhs, rhs, binop_debug_loc)
-        } else if is_simd {
-            Add(bcx, lhs, rhs, binop_debug_loc)
         } else {
             let (newbcx, res) = with_overflow_check(
                 bcx, OverflowOp::Add, info, lhs_t, lhs, rhs, binop_debug_loc);
@@ -1726,8 +1715,6 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       ast::BiSub => {
         if is_float {
             FSub(bcx, lhs, rhs, binop_debug_loc)
-        } else if is_simd {
-            Sub(bcx, lhs, rhs, binop_debug_loc)
         } else {
             let (newbcx, res) = with_overflow_check(
                 bcx, OverflowOp::Sub, info, lhs_t, lhs, rhs, binop_debug_loc);
@@ -1738,8 +1725,6 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       ast::BiMul => {
         if is_float {
             FMul(bcx, lhs, rhs, binop_debug_loc)
-        } else if is_simd {
-            Mul(bcx, lhs, rhs, binop_debug_loc)
         } else {
             let (newbcx, res) = with_overflow_check(
                 bcx, OverflowOp::Mul, info, lhs_t, lhs, rhs, binop_debug_loc);
@@ -1767,7 +1752,43 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       }
       ast::BiRem => {
         if is_float {
-            FRem(bcx, lhs, rhs, binop_debug_loc)
+            // LLVM currently always lowers the `frem` instructions appropriate
+            // library calls typically found in libm. Notably f64 gets wired up
+            // to `fmod` and f32 gets wired up to `fmodf`. Inconveniently for
+            // us, 32-bit MSVC does not actually have a `fmodf` symbol, it's
+            // instead just an inline function in a header that goes up to a
+            // f64, uses `fmod`, and then comes back down to a f32.
+            //
+            // Although LLVM knows that `fmodf` doesn't exist on MSVC, it will
+            // still unconditionally lower frem instructions over 32-bit floats
+            // to a call to `fmodf`. To work around this we special case MSVC
+            // 32-bit float rem instructions and instead do the call out to
+            // `fmod` ourselves.
+            //
+            // Note that this is currently duplicated with src/libcore/ops.rs
+            // which does the same thing, and it would be nice to perhaps unify
+            // these two implementations on day! Also note that we call `fmod`
+            // for both 32 and 64-bit floats because if we emit any FRem
+            // instruction at all then LLVM is capable of optimizing it into a
+            // 32-bit FRem (which we're trying to avoid).
+            let use_fmod = tcx.sess.target.target.options.is_like_msvc &&
+                           tcx.sess.target.target.arch == "x86";
+            if use_fmod {
+                let f64t = Type::f64(bcx.ccx());
+                let fty = Type::func(&[f64t, f64t], &f64t);
+                let llfn = declare::declare_cfn(bcx.ccx(), "fmod", fty,
+                                                tcx.types.f64);
+                if lhs_t == tcx.types.f32 {
+                    let lhs = FPExt(bcx, lhs, f64t);
+                    let rhs = FPExt(bcx, rhs, f64t);
+                    let res = Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc);
+                    FPTrunc(bcx, res, Type::f32(bcx.ccx()))
+                } else {
+                    Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc)
+                }
+            } else {
+                FRem(bcx, lhs, rhs, binop_debug_loc)
+            }
         } else {
             // Only zero-check integers; fp %0 is NaN
             bcx = base::fail_if_zero_or_overflows(bcx,
@@ -1796,11 +1817,7 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
           res
       }
       ast::BiEq | ast::BiNe | ast::BiLt | ast::BiGe | ast::BiLe | ast::BiGt => {
-        if is_simd {
-            base::compare_simd_types(bcx, lhs, rhs, intype, val_ty(lhs), op.node, binop_debug_loc)
-        } else {
-            base::compare_scalar_types(bcx, lhs, rhs, intype, op.node, binop_debug_loc)
-        }
+          base::compare_scalar_types(bcx, lhs, rhs, lhs_t, op.node, binop_debug_loc)
       }
       _ => {
         bcx.tcx().sess.span_bug(binop_expr.span, "unexpected binop");
@@ -2501,14 +2518,7 @@ fn build_unchecked_rshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let rhs = base::cast_shift_expr_rhs(bcx, ast::BinOp_::BiShr, lhs, rhs);
     // #1877, #10183: Ensure that input is always valid
     let rhs = shift_mask_rhs(bcx, rhs, binop_debug_loc);
-    let tcx = bcx.tcx();
-    let is_simd = lhs_t.is_simd();
-    let intype = if is_simd {
-        lhs_t.simd_type(tcx)
-    } else {
-        lhs_t
-    };
-    let is_signed = intype.is_signed();
+    let is_signed = lhs_t.is_signed();
     if is_signed {
         AShr(bcx, lhs, rhs, binop_debug_loc)
     } else {

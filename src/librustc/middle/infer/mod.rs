@@ -19,6 +19,7 @@ pub use middle::ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
 pub use self::region_inference::{GenericKind, VerifyBound};
 
+use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
@@ -947,15 +948,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         })
     }
 
-    pub fn construct_skolemized_subst(&self,
-                                      generics: &ty::Generics<'tcx>,
-                                      snapshot: &CombinedSnapshot)
-                                      -> (subst::Substs<'tcx>, SkolemizationMap) {
-        /*! See `higher_ranked::construct_skolemized_subst` */
-
-        higher_ranked::construct_skolemized_substs(self, generics, snapshot)
-    }
-
     pub fn skolemize_late_bound_regions<T>(&self,
                                            value: &ty::Binder<T>,
                                            snapshot: &CombinedSnapshot)
@@ -1058,7 +1050,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn next_region_var(&self, origin: RegionVariableOrigin) -> ty::Region {
-        ty::ReInfer(ty::ReVar(self.region_vars.new_region_var(origin)))
+        ty::ReVar(self.region_vars.new_region_var(origin))
     }
 
     pub fn region_vars_for_defs(&self,
@@ -1483,7 +1475,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn node_method_id(&self, method_call: ty::MethodCall)
-                          -> Option<ast::DefId> {
+                          -> Option<DefId> {
         self.tables
             .borrow()
             .method_map
@@ -1517,14 +1509,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn closure_kind(&self,
-                        def_id: ast::DefId)
+                        def_id: DefId)
                         -> Option<ty::ClosureKind>
     {
         self.tables.borrow().closure_kinds.get(&def_id).cloned()
     }
 
     pub fn closure_type(&self,
-                        def_id: ast::DefId,
+                        def_id: DefId,
                         substs: &ty::ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {

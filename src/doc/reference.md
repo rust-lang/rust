@@ -1452,7 +1452,7 @@ fn draw_twice<T: Shape>(surface: Surface, sh: T) {
 }
 ```
 
-Traits also define an [trait object](#trait-objects) with the same
+Traits also define a [trait object](#trait-objects) with the same
 name as the trait. Values of this type are created by coercing from a
 pointer of some specific type to a pointer of trait type. For example,
 `&T` could be coerced to `&Shape` if `T: Shape` holds (and similarly
@@ -1881,11 +1881,15 @@ type int8_t = i8;
 - `no_start` - disable linking to the `native` crate, which specifies the
   "start" language item.
 - `no_std` - disable linking to the `std` crate.
-- `plugin` — load a list of named crates as compiler plugins, e.g.
+- `plugin` - load a list of named crates as compiler plugins, e.g.
              `#![plugin(foo, bar)]`. Optional arguments for each plugin,
              i.e. `#![plugin(foo(... args ...))]`, are provided to the plugin's
              registrar function.  The `plugin` feature gate is required to use
              this attribute.
+- `recursion_limit` - Sets the maximum depth for potentially
+                      infinitely-recursive compile-time operations like
+                      auto-dereference or macro expansion. The default is
+                      `#![recursion_limit="64"]`.
 
 ### Module-only attributes
 
@@ -2073,6 +2077,7 @@ The following configurations must be defined by the implementation:
 * `target_pointer_width = "..."`. Target pointer width in bits. This is set
   to `"32"` for targets with 32-bit pointers, and likewise set to `"64"` for
   64-bit pointers.
+* `test`. Enabled when compiling the test harness (using the `--test` flag).
 * `unix`. See `target_family`.
 * `windows`. See `target_family`.
 

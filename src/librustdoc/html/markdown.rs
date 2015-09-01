@@ -24,7 +24,6 @@
 //! // ... something using html
 //! ```
 
-#![allow(dead_code)]
 #![allow(non_camel_case_types)]
 
 use libc;
@@ -51,7 +50,7 @@ pub struct Markdown<'a>(pub &'a str);
 pub struct MarkdownWithToc<'a>(pub &'a str);
 
 const DEF_OUNIT: libc::size_t = 64;
-const HOEDOWN_EXT_NO_INTRA_EMPHASIS: libc::c_uint = 1 << 10;
+const HOEDOWN_EXT_NO_INTRA_EMPHASIS: libc::c_uint = 1 << 11;
 const HOEDOWN_EXT_TABLES: libc::c_uint = 1 << 0;
 const HOEDOWN_EXT_FENCED_CODE: libc::c_uint = 1 << 1;
 const HOEDOWN_EXT_AUTOLINK: libc::c_uint = 1 << 3;
@@ -65,52 +64,63 @@ const HOEDOWN_EXTENSIONS: libc::c_uint =
     HOEDOWN_EXT_STRIKETHROUGH | HOEDOWN_EXT_SUPERSCRIPT |
     HOEDOWN_EXT_FOOTNOTES;
 
-type hoedown_document = libc::c_void;  // this is opaque to us
+enum hoedown_document {}
 
 type blockcodefn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                                 *const hoedown_buffer, *mut libc::c_void);
+                                 *const hoedown_buffer, *const hoedown_renderer_data);
+
+type blockquotefn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                  *const hoedown_renderer_data);
 
 type headerfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                              libc::c_int, *mut libc::c_void);
+                              libc::c_int, *const hoedown_renderer_data);
+
+type blockhtmlfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                 *const hoedown_renderer_data);
 
 type codespanfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                                *mut libc::c_void) -> libc::c_int;
+                                *const hoedown_renderer_data) -> libc::c_int;
 
 type linkfn = extern "C" fn (*mut hoedown_buffer, *const hoedown_buffer,
                              *const hoedown_buffer, *const hoedown_buffer,
-                             *mut libc::c_void) -> libc::c_int;
+                             *const hoedown_renderer_data) -> libc::c_int;
+
+type entityfn = extern "C" fn (*mut hoedown_buffer, *const hoedown_buffer,
+                               *const hoedown_renderer_data);
 
 type normaltextfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                                  *mut libc::c_void);
+                                  *const hoedown_renderer_data);
+
+#[repr(C)]
+struct hoedown_renderer_data {
+    opaque: *mut libc::c_void,
+}
 
 #[repr(C)]
 struct hoedown_renderer {
     opaque: *mut libc::c_void,
 
     blockcode: Option<blockcodefn>,
-    blockquote: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                                     *mut libc::c_void)>,
-    blockhtml: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                                    *mut libc::c_void)>,
+    blockquote: Option<blockquotefn>,
     header: Option<headerfn>,
-    other_block_level_callbacks: [libc::size_t; 9],
+
+    other_block_level_callbacks: [libc::size_t; 11],
+
+    blockhtml: Option<blockhtmlfn>,
 
     /* span level callbacks - NULL or return 0 prints the span verbatim */
     autolink: libc::size_t, // unused
     codespan: Option<codespanfn>,
     other_span_level_callbacks_1: [libc::size_t; 7],
     link: Option<linkfn>,
-    other_span_level_callbacks_2: [libc::size_t; 5],
-    // hoedown will add `math` callback here, but we use an old version of it.
+    other_span_level_callbacks_2: [libc::size_t; 6],
 
     /* low level callbacks - NULL copies input directly into the output */
-    entity: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                                 *mut libc::c_void)>,
+    entity: Option<entityfn>,
     normal_text: Option<normaltextfn>,
 
     /* header and footer */
-    doc_header: Option<extern "C" fn(*mut hoedown_buffer, *mut libc::c_void)>,
-    doc_footer: Option<extern "C" fn(*mut hoedown_buffer, *mut libc::c_void)>,
+    other_callbacks: [libc::size_t; 2],
 }
 
 #[repr(C)]
@@ -120,7 +130,7 @@ struct hoedown_html_renderer_state {
     flags: libc::c_uint,
     link_attributes: Option<extern "C" fn(*mut hoedown_buffer,
                                           *const hoedown_buffer,
-                                          *mut libc::c_void)>,
+                                          *const hoedown_renderer_data)>,
 }
 
 #[repr(C)]
@@ -133,7 +143,7 @@ struct html_toc_data {
 
 struct MyOpaque {
     dfltblk: extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
-                           *const hoedown_buffer, *mut libc::c_void),
+                           *const hoedown_buffer, *const hoedown_renderer_data),
     toc_builder: Option<TocBuilder>,
 }
 
@@ -153,7 +163,7 @@ extern {
         -> *mut hoedown_renderer;
     fn hoedown_html_renderer_free(renderer: *mut hoedown_renderer);
 
-    fn hoedown_document_new(rndr: *mut hoedown_renderer,
+    fn hoedown_document_new(rndr: *const hoedown_renderer,
                             extensions: libc::c_uint,
                             max_nesting: libc::size_t) -> *mut hoedown_document;
     fn hoedown_document_render(doc: *mut hoedown_document,
@@ -212,11 +222,11 @@ thread_local!(pub static PLAYGROUND_KRATE: RefCell<Option<Option<String>>> = {
 
 pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     extern fn block(ob: *mut hoedown_buffer, orig_text: *const hoedown_buffer,
-                    lang: *const hoedown_buffer, opaque: *mut libc::c_void) {
+                    lang: *const hoedown_buffer, data: *const hoedown_renderer_data) {
         unsafe {
             if orig_text.is_null() { return }
 
-            let opaque = opaque as *mut hoedown_html_renderer_state;
+            let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
             let my_opaque: &MyOpaque = &*((*opaque).opaque as *const MyOpaque);
             let text = (*orig_text).as_bytes();
             let origtext = str::from_utf8(text).unwrap();
@@ -228,7 +238,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 let rlang = str::from_utf8(rlang).unwrap();
                 if !LangString::parse(rlang).rust {
                     (my_opaque.dfltblk)(ob, orig_text, lang,
-                                        opaque as *mut libc::c_void);
+                                        opaque as *const hoedown_renderer_data);
                     true
                 } else {
                     false
@@ -261,7 +271,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     }
 
     extern fn header(ob: *mut hoedown_buffer, text: *const hoedown_buffer,
-                     level: libc::c_int, opaque: *mut libc::c_void) {
+                     level: libc::c_int, data: *const hoedown_renderer_data) {
         // hoedown does this, we may as well too
         unsafe { hoedown_buffer_puts(ob, "\n\0".as_ptr() as *const _); }
 
@@ -280,7 +290,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         // This is a terrible hack working around how hoedown gives us rendered
         // html for text rather than the raw text.
 
-        let opaque = opaque as *mut hoedown_html_renderer_state;
+        let opaque = unsafe { (*data).opaque as *mut hoedown_html_renderer_state };
         let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
 
         // Make sure our hyphenated ID is unique for this page
@@ -320,7 +330,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
     extern fn codespan(
         ob: *mut hoedown_buffer,
         text: *const hoedown_buffer,
-        _: *mut libc::c_void,
+        _: *const hoedown_renderer_data,
     ) -> libc::c_int {
         let content = if text.is_null() {
             "".to_string()
@@ -375,7 +385,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     extern fn block(_ob: *mut hoedown_buffer,
                     text: *const hoedown_buffer,
                     lang: *const hoedown_buffer,
-                    opaque: *mut libc::c_void) {
+                    data: *const hoedown_renderer_data) {
         unsafe {
             if text.is_null() { return }
             let block_info = if lang.is_null() {
@@ -387,7 +397,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             };
             if !block_info.rust { return }
             let text = (*text).as_bytes();
-            let opaque = opaque as *mut hoedown_html_renderer_state;
+            let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
             let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
             let text = str::from_utf8(text).unwrap();
             let lines = text.lines().map(|l| {
@@ -402,9 +412,9 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
 
     extern fn header(_ob: *mut hoedown_buffer,
                      text: *const hoedown_buffer,
-                     level: libc::c_int, opaque: *mut libc::c_void) {
+                     level: libc::c_int, data: *const hoedown_renderer_data) {
         unsafe {
-            let opaque = opaque as *mut hoedown_html_renderer_state;
+            let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
             let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
             if text.is_null() {
                 tests.register_header("", level as u32);
@@ -514,11 +524,11 @@ pub fn plain_summary_line(md: &str) -> String {
                        _link: *const hoedown_buffer,
                        _title: *const hoedown_buffer,
                        content: *const hoedown_buffer,
-                       opaque: *mut libc::c_void) -> libc::c_int
+                       data: *const hoedown_renderer_data) -> libc::c_int
     {
         unsafe {
             if !content.is_null() && (*content).size > 0 {
-                let ob = opaque as *mut hoedown_buffer;
+                let ob = (*data).opaque as *mut hoedown_buffer;
                 hoedown_buffer_put(ob, (*content).data as *const libc::c_char,
                                    (*content).size);
             }
@@ -528,10 +538,10 @@ pub fn plain_summary_line(md: &str) -> String {
 
     extern fn normal_text(_ob: *mut hoedown_buffer,
                               text: *const hoedown_buffer,
-                              opaque: *mut libc::c_void)
+                              data: *const hoedown_renderer_data)
     {
         unsafe {
-            let ob = opaque as *mut hoedown_buffer;
+            let ob = (*data).opaque as *mut hoedown_buffer;
             hoedown_buffer_put(ob, (*text).data as *const libc::c_char,
                                (*text).size);
         }

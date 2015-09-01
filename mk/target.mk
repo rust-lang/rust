@@ -13,6 +13,10 @@
 # this exists can be found on issue #2400
 export CFG_COMPILER_HOST_TRIPLE
 
+# Used as defaults for the runtime ar and cc tools
+export CFG_DEFAULT_LINKER
+export CFG_DEFAULT_AR
+
 # The standard libraries should be held up to a higher standard than any old
 # code, make sure that these common warnings are denied by default. These can
 # be overridden during development temporarily. For stage0, we allow warnings

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 8-bit signed integer type.
-//!
-//! *[See also the `i8` primitive type](../primitive.i8.html).*
+// Make sure that a continue span actually contains the keyword.
 
-#![stable(feature = "rust1", since = "1.0.0")]
-
-pub use core::i8::{BITS, BYTES, MIN, MAX};
-
-int_module! { i8 }
+fn main() {
+    'a: loop {
+        if false {
+            continue //~ ERROR use of undeclared label
+            'b;
+        } else {
+            break //~ ERROR use of undeclared label
+            'c;
+        }
+    }
+}

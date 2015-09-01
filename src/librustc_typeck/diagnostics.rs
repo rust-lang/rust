@@ -73,10 +73,39 @@ the enum.
 "##,
 
 E0025: r##"
-Each field of a struct can only be bound once in a pattern. Each occurrence of a
-field name binds the value of that field, so to fix this error you will have to
-remove or alter the duplicate uses of the field name. Perhaps you misspelt
-another field name?
+Each field of a struct can only be bound once in a pattern. Erroneous code
+example:
+
+```
+struct Foo {
+    a: u8,
+    b: u8,
+}
+
+fn main(){
+    let x = Foo { a:1, b:2 };
+
+    let Foo { a: x, a: y } = x;
+    // error: field `a` bound multiple times in the pattern
+}
+```
+
+Each occurrence of a field name binds the value of that field, so to fix this
+error you will have to remove or alter the duplicate uses of the field name.
+Perhaps you misspelled another field name? Example:
+
+```
+struct Foo {
+    a: u8,
+    b: u8,
+}
+
+fn main(){
+    let x = Foo { a:1, b:2 };
+
+    let Foo { a: x, b: y } = x; // ok!
+}
+```
 "##,
 
 E0026: r##"
@@ -401,10 +430,35 @@ extern "C" {
 "##,
 
 E0046: r##"
+Items are missing in a trait implementation. Erroneous code example:
+
+```
+trait Foo {
+    fn foo();
+}
+
+struct Bar;
+
+impl Foo for Bar {}
+// error: not all trait items implemented, missing: `foo`
+```
+
 When trying to make some type implement a trait `Foo`, you must, at minimum,
 provide implementations for all of `Foo`'s required methods (meaning the
 methods that do not have default implementations), as well as any required
-trait items like associated types or constants.
+trait items like associated types or constants. Example:
+
+```
+trait Foo {
+    fn foo();
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    fn foo() {} // ok!
+}
+```
 "##,
 
 E0049: r##"
@@ -615,14 +669,62 @@ variadic functions (except for its C-FFI).
 
 E0062: r##"
 This error indicates that during an attempt to build a struct or struct-like
-enum variant, one of the fields was specified more than once. Each field should
-be specified exactly one time.
+enum variant, one of the fields was specified more than once. Erroneous code
+example:
+
+```
+struct Foo {
+    x: i32
+}
+
+fn main() {
+    let x = Foo {
+                x: 0,
+                x: 0, // error: field `x` specified more than once
+            };
+}
+```
+
+Each field should be specified exactly one time. Example:
+
+```
+struct Foo {
+    x: i32
+}
+
+fn main() {
+    let x = Foo { x: 0 }; // ok!
+}
+```
 "##,
 
 E0063: r##"
 This error indicates that during an attempt to build a struct or struct-like
-enum variant, one of the fields was not provided. Each field should be
-specified exactly once.
+enum variant, one of the fields was not provided. Erroneous code example:
+
+```
+struct Foo {
+    x: i32,
+    y: i32
+}
+
+fn main() {
+    let x = Foo { x: 0 }; // error: missing field: `y`
+}
+```
+
+Each field should be specified exactly once. Example:
+
+```
+struct Foo {
+    x: i32,
+    y: i32
+}
+
+fn main() {
+    let x = Foo { x: 0, y: 0 }; // ok!
+}
+```
 "##,
 
 E0066: r##"
@@ -1025,7 +1127,7 @@ fn main() {
 }
 ```
 
-The number of supplied parameters much exactly match the number of defined type
+The number of supplied parameters must exactly match the number of defined type
 parameters.
 "##,
 
@@ -1540,6 +1642,26 @@ static BAR: _ = "test"; // error, explicitly write out the type instead
 ```
 "##,
 
+E0122: r##"
+An attempt was made to add a generic constraint to a type alias. While Rust will
+allow this with a warning, it will not currently enforce the constraint.
+Consider the example below:
+
+```
+trait Foo{}
+
+type MyType<R: Foo> = (R, ());
+
+fn main() {
+    let t: MyType<u32>;
+}
+```
+
+We're able to declare a variable of type `MyType<u32>`, despite the fact that
+`u32` does not implement `Foo`. As a result, one should avoid using generic
+constraints in concert with type aliases.
+"##,
+
 E0124: r##"
 You declared two fields of a struct with the same name. Erroneous code
 example:
@@ -1620,6 +1742,12 @@ extern {
 E0131: r##"
 It is not possible to define `main` with type parameters, or even with function
 parameters. When `main` is present, it must take no arguments and return `()`.
+Erroneous code example:
+
+```
+fn main<T>() { // error: main function is not allowed to have type parameters
+}
+```
 "##,
 
 E0132: r##"
@@ -1627,7 +1755,7 @@ It is not possible to declare type parameters on a function that has the `start`
 attribute. Such a function must have the following type signature:
 
 ```
-fn(isize, *const *const u8) -> isize
+fn(isize, *const *const u8) -> isize;
 ```
 "##,
 
@@ -1779,7 +1907,7 @@ rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
 
 E0193: r##"
 `where` clauses must use generic type parameters: it does not make sense to use
-them otherwise.  An example causing this error:
+them otherwise. An example causing this error:
 
 ```
 trait Foo {
@@ -1881,7 +2009,6 @@ unsafe impl Foo { }
 // converting it to this will fix it
 impl Foo { }
 ```
-
 "##,
 
 E0198: r##"
@@ -1898,7 +2025,6 @@ unsafe impl !Clone for Foo { }
 // this will compile
 impl !Clone for Foo { }
 ```
-
 "##,
 
 E0199: r##"
@@ -1916,7 +2042,6 @@ unsafe impl Bar for Foo { }
 // this will compile
 impl Bar for Foo { }
 ```
-
 "##,
 
 E0200: r##"
@@ -1934,7 +2059,6 @@ impl Bar for Foo { }
 // this will compile
 unsafe impl Bar for Foo { }
 ```
-
 "##,
 
 E0201: r##"
@@ -2400,6 +2524,132 @@ for types as needed by the compiler, and it is currently disallowed to
 explicitly implement it for a type.
 "##,
 
+E0323: r##"
+An associated const was implemented when another trait item was expected.
+Erroneous code example:
+
+```
+trait Foo {
+    type N;
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    const N : u32 = 0;
+    // error: item `N` is an associated const, which doesn't match its
+    //        trait `<Bar as Foo>`
+}
+```
+
+Please verify that the associated const wasn't misspelled and the correct trait
+was implemented. Example:
+
+```
+struct Bar;
+
+trait Foo {
+    type N;
+}
+
+impl Foo for Bar {
+    type N = u32; // ok!
+}
+
+// or:
+trait Foo {
+    const N : u32;
+}
+
+impl Foo for Bar {
+    const N : u32 = 0; // ok!
+}
+```
+"##,
+
+E0324: r##"
+A method was implemented when another trait item was expected. Erroneous
+code example:
+
+```
+struct Bar;
+
+trait Foo {
+    const N : u32;
+
+    fn M();
+}
+
+impl Foo for Bar {
+    fn N() {}
+    // error: item `N` is an associated method, which doesn't match its
+    //        trait `<Bar as Foo>`
+}
+```
+
+To fix this error, please verify that the method name wasn't misspelled and
+verify that you are indeed implementing the correct trait items. Example:
+
+```
+struct Bar;
+
+trait Foo {
+    const N : u32;
+
+    fn M();
+}
+
+impl Foo for Bar {
+    const N : u32 = 0;
+
+    fn M() {} // ok!
+}
+```
+"##,
+
+E0325: r##"
+An associated type was implemented when another trait item was expected.
+Erroneous code example:
+
+```
+struct Bar;
+
+trait Foo {
+    const N : u32;
+}
+
+impl Foo for Bar {
+    type N = u32;
+    // error: item `N` is an associated type, which doesn't match its
+    //        trait `<Bar as Foo>`
+}
+```
+
+Please verify that the associated type name wasn't misspelled and your
+implementation corresponds to the trait definition. Example:
+
+```
+struct Bar;
+
+trait Foo {
+    type N;
+}
+
+impl Foo for Bar {
+    type N = u32; // ok!
+}
+
+//or:
+trait Foo {
+    const N : u32;
+}
+
+impl Foo for Bar {
+    const N : u32 = 0; // ok!
+}
+```
+"##,
+
 E0326: r##"
 The types of any associated constants in a trait implementation must match the
 types in the trait definition. This error indicates that there was a mismatch.
@@ -2566,6 +2816,61 @@ to change this.
 [RFC 953]: https://github.com/rust-lang/rfcs/pull/953
 "##,
 
+E0369: r##"
+A binary operation was attempted on a type which doesn't support it.
+Erroneous code example:
+
+```
+let x = 12f32; // error: binary operation `<<` cannot be applied to
+               //        type `f32`
+
+x << 2;
+```
+
+To fix this error, please check that this type implements this binary
+operation. Example:
+
+```
+let x = 12u32; // the `u32` type does implement it:
+               // https://doc.rust-lang.org/stable/std/ops/trait.Shl.html
+
+x << 2; // ok!
+```
+
+It is also possible to overload most operators for your own type by
+implementing traits from `std::ops`.
+"##,
+
+E0370: r##"
+The maximum value of an enum was reached, so it cannot be automatically
+set in the next enum value. Erroneous code example:
+
+```
+enum Foo {
+    X = 0x7fffffffffffffff,
+    Y // error: enum discriminant overflowed on value after
+      //        9223372036854775807: i64; set explicitly via
+      //        Y = -9223372036854775808 if that is desired outcome
+}
+```
+
+To fix this, please set manually the next enum value or put the enum variant
+with the maximum value at the end of the enum. Examples:
+
+```
+enum Foo {
+    X = 0x7fffffffffffffff,
+    Y = 0, // ok!
+}
+
+// or:
+enum Foo {
+    Y = 0, // ok!
+    X = 0x7fffffffffffffff,
+}
+```
+"##,
+
 E0371: r##"
 When `Trait2` is a subtrait of `Trait1` (for example, when `Trait2` has a
 definition like `trait Trait2: Trait1 { ... }`), it is not allowed to implement
@@ -2605,6 +2910,37 @@ E0380: r##"
 Default impls are only allowed for traits with no methods or associated items.
 For more information see the [opt-in builtin traits RFC](https://github.com/rust
 -lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
+"##,
+
+E0390: r##"
+You tried to implement methods for a primitive type. Erroneous code example:
+
+```
+struct Foo {
+    x: i32
+}
+
+impl *mut Foo {}
+// error: only a single inherent implementation marked with
+//        `#[lang = "mut_ptr"]` is allowed for the `*mut T` primitive
+```
+
+This isn't allowed, but using a trait to implement a method is a good solution.
+Example:
+
+```
+struct Foo {
+    x: i32
+}
+
+trait Bar {
+    fn bar();
+}
+
+impl Bar for *mut Foo {
+    fn bar() {} // ok!
+}
+```
 "##,
 
 E0391: r##"
@@ -2682,49 +3018,75 @@ PhantomData can also be used to express information about unused type
 parameters. You can read more about it in the API documentation:
 
 https://doc.rust-lang.org/std/marker/struct.PhantomData.html
-"##
+"##,
+
+E0444: r##"
+A platform-specific intrinsic function has wrong number of arguments.
+Erroneous code example:
+
+```
+#[repr(simd)]
+struct f64x2(f64, f64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_movemask_pd(x: f64x2, y: f64x2, z: f64x2) -> i32;
+    // error: platform-specific intrinsic has invalid number of arguments
+}
+```
+
+Please refer to the function declaration to see if it corresponds
+with yours. Example:
+
+```
+#[repr(simd)]
+struct f64x2(f64, f64);
+
+extern "platform-intrinsic" {
+    fn x86_mm_movemask_pd(x: f64x2) -> i32; // ok!
+}
+```
+"##,
 
 }
 
 register_diagnostics! {
-    E0068,
-    E0085,
-    E0086,
+//  E0068,
+//  E0085,
+//  E0086,
     E0090,
-    E0103,
+    E0103, // @GuillaumeGomez: I was unable to get this error, try your best!
     E0104,
     E0118,
-    E0122,
-    E0123,
-    E0127,
-    E0129,
-    E0141,
+//  E0123,
+//  E0127,
+//  E0129,
+//  E0141,
 //  E0159, // use of trait `{}` as struct constructor
     E0163,
     E0164,
     E0167,
 //  E0168,
-    E0173, // manual implementations of unboxed closure traits are experimental
+//  E0173, // manual implementations of unboxed closure traits are experimental
     E0174, // explicit use of unboxed closure methods are experimental
     E0182,
     E0183,
-    E0187, // can't infer the kind of the closure
-    E0188, // can not cast a immutable reference to a mutable pointer
-    E0189, // deprecated: can only cast a boxed pointer to a boxed object
-    E0190, // deprecated: can only cast a &-pointer to an &-object
+//  E0187, // can't infer the kind of the closure
+//  E0188, // can not cast a immutable reference to a mutable pointer
+//  E0189, // deprecated: can only cast a boxed pointer to a boxed object
+//  E0190, // deprecated: can only cast a &-pointer to an &-object
     E0196, // cannot determine a type for this closure
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
     E0208,
-    E0209, // builtin traits can only be implemented on structs or enums
+//  E0209, // builtin traits can only be implemented on structs or enums
     E0212, // cannot extract an associated type from a higher-ranked trait bound
-    E0213, // associated types are not accepted in this context
+//  E0213, // associated types are not accepted in this context
     E0214, // parenthesized parameters may only be used with a trait
 //  E0215, // angle-bracket notation is not stable with `Fn`
 //  E0216, // parenthetical notation is only stable with `Fn`
-    E0217, // ambiguous associated type, defined in multiple supertraits
-    E0218, // no associated type defined
-    E0219, // associated type defined in higher-ranked supertrait
+//  E0217, // ambiguous associated type, defined in multiple supertraits
+//  E0218, // no associated type defined
+//  E0219, // associated type defined in higher-ranked supertrait
 //  E0222, // Error code E0045 (variadic function must have C calling
            // convention) duplicate
     E0224, // at least one non-builtin train is required for an object type
@@ -2734,29 +3096,24 @@ register_diagnostics! {
     E0229, // associated type bindings are not allowed here
     E0230, // there is no type parameter on trait
     E0231, // only named substitution parameters are allowed
-    E0233,
-    E0234,
+//  E0233,
+//  E0234,
 //  E0235, // structure constructor specifies a structure of type but
     E0236, // no lang item for range syntax
     E0237, // no lang item for range syntax
     E0238, // parenthesized parameters may only be used with a trait
-    E0239, // `next` method of `Iterator` trait has unexpected type
-    E0240,
-    E0241,
+//  E0239, // `next` method of `Iterator` trait has unexpected type
+//  E0240,
+//  E0241,
     E0242, // internal error looking up a definition
     E0245, // not a trait
-    E0246, // invalid recursive type
+//  E0246, // invalid recursive type
     E0247, // found module name used as a type
-    E0319, // trait impls for defaulted traits allowed just for structs/enums
+//  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
-    E0323, // implemented an associated const when another trait item expected
-    E0324, // implemented a method when another trait item expected
-    E0325, // implemented an associated type when another trait item expected
     E0328, // cannot implement Unsize explicitly
     E0329, // associated const depends on type parameter or Self.
-    E0369, // binary operation `<op>` cannot be applied to types
-    E0370, // discriminant overflow
     E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with one field being coerced, none found
     E0375, // the trait `CoerceUnsized` may only be implemented for a coercion
@@ -2766,8 +3123,6 @@ register_diagnostics! {
            // between structures
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0390, // only a single inherent implementation marked with
-           // `#[lang = \"{}\"]` is allowed for the `{}` primitive
     E0393, // the type parameter `{}` must be explicitly specified in an object
            // type because its default value `{}` references the type `Self`"
     E0399, // trait items need to be implemented because the associated

@@ -65,7 +65,6 @@ use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use print::pprust;
 use ptr::P;
 
-use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -371,37 +370,7 @@ pub type CrateNum = u32;
 
 pub type NodeId = u32;
 
-#[derive(Clone, Eq, Ord, PartialOrd, PartialEq, RustcEncodable,
-           RustcDecodable, Hash, Copy)]
-pub struct DefId {
-    pub krate: CrateNum,
-    pub node: NodeId,
-}
-
-fn default_def_id_debug(_: DefId, _: &mut fmt::Formatter) -> fmt::Result { Ok(()) }
-
-thread_local!(pub static DEF_ID_DEBUG: Cell<fn(DefId, &mut fmt::Formatter) -> fmt::Result> =
-                Cell::new(default_def_id_debug));
-
-impl fmt::Debug for DefId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "DefId {{ krate: {}, node: {} }}",
-                    self.krate, self.node));
-        DEF_ID_DEBUG.with(|def_id_debug| def_id_debug.get()(*self, f))
-    }
-}
-
-impl DefId {
-    /// Read the node id, asserting that this def-id is krate-local.
-    pub fn local_id(&self) -> NodeId {
-        assert_eq!(self.krate, LOCAL_CRATE);
-        self.node
-    }
-}
-
-/// Item definitions in the currently-compiled crate would have the CrateNum
-/// LOCAL_CRATE in their DefId.
-pub const LOCAL_CRATE: CrateNum = 0;
+/// Node id used to represent the root of the crate.
 pub const CRATE_NODE_ID: NodeId = 0;
 
 /// When parsing and doing expansions, we initially give all AST nodes this AST
@@ -1216,16 +1185,6 @@ pub enum LitIntType {
     UnsuffixedIntLit(Sign)
 }
 
-impl LitIntType {
-    pub fn suffix_len(&self) -> usize {
-        match *self {
-            UnsuffixedIntLit(_) => 0,
-            SignedIntLit(s, _) => s.suffix_len(),
-            UnsignedIntLit(u) => u.suffix_len()
-        }
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Lit_ {
     /// A string literal (`"foo"`)
@@ -1333,12 +1292,6 @@ impl fmt::Display for IntTy {
 }
 
 impl IntTy {
-    pub fn suffix_len(&self) -> usize {
-        match *self {
-            TyIs | TyI8 => 2,
-            TyI16 | TyI32 | TyI64  => 3,
-        }
-    }
     pub fn bit_width(&self) -> Option<usize> {
         Some(match *self {
             TyIs => return None,
@@ -1360,12 +1313,6 @@ pub enum UintTy {
 }
 
 impl UintTy {
-    pub fn suffix_len(&self) -> usize {
-        match *self {
-            TyUs | TyU8 => 2,
-            TyU16 | TyU32 | TyU64  => 3,
-        }
-    }
     pub fn bit_width(&self) -> Option<usize> {
         Some(match *self {
             TyUs => return None,
@@ -1408,11 +1355,6 @@ impl fmt::Display for FloatTy {
 }
 
 impl FloatTy {
-    pub fn suffix_len(&self) -> usize {
-        match *self {
-            TyF32 | TyF64 => 3, // add F128 handling here
-        }
-    }
     pub fn bit_width(&self) -> usize {
         match *self {
             TyF32 => 32,
@@ -1430,8 +1372,6 @@ pub struct TypeBinding {
     pub span: Span,
 }
 
-
-// NB PartialEq method appears below.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Ty {
     pub id: NodeId,

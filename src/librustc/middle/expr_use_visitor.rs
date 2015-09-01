@@ -20,7 +20,8 @@ pub use self::MatchMode::*;
 use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
-use middle::{def, region, pat_util};
+use middle::{def, pat_util};
+use middle::def_id::{DefId};
 use middle::infer;
 use middle::mem_categorization as mc;
 use middle::ty;
@@ -206,7 +207,7 @@ enum OverloadedCallType {
 }
 
 impl OverloadedCallType {
-    fn from_trait_id(tcx: &ty::ctxt, trait_id: ast::DefId)
+    fn from_trait_id(tcx: &ty::ctxt, trait_id: DefId)
                      -> OverloadedCallType {
         for &(maybe_function_trait, overloaded_call_type) in &[
             (tcx.lang_items.fn_once_trait(), FnOnceOverloadedCall),
@@ -224,7 +225,7 @@ impl OverloadedCallType {
         tcx.sess.bug("overloaded call didn't map to known function trait")
     }
 
-    fn from_method_id(tcx: &ty::ctxt, method_id: ast::DefId)
+    fn from_method_id(tcx: &ty::ctxt, method_id: DefId)
                       -> OverloadedCallType {
         let method = tcx.impl_or_trait_item(method_id);
         OverloadedCallType::from_trait_id(tcx, method.container().id())
@@ -238,8 +239,9 @@ impl OverloadedCallType {
 // mem_categorization, it requires a TYPER, which is a type that
 // supplies types from the tree. After type checking is complete, you
 // can just use the tcx as the typer.
-
-pub struct ExprUseVisitor<'d, 't, 'a: 't, 'tcx:'a+'d> {
+//
+// FIXME(stage0): the :'t here is probably only important for stage0
+pub struct ExprUseVisitor<'d, 't, 'a: 't, 'tcx:'a+'d+'t> {
     typer: &'t infer::InferCtxt<'a, 'tcx>,
     mc: mc::MemCategorizationContext<'t, 'a, 'tcx>,
     delegate: &'d mut (Delegate<'tcx>+'d),
@@ -295,7 +297,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         for arg in &decl.inputs {
             let arg_ty = return_if_err!(self.typer.node_ty(arg.pat.id));
 
-            let fn_body_scope = region::CodeExtent::from_node_id(body.id);
+            let fn_body_scope = self.tcx().region_maps.node_extent(body.id);
             let arg_cmt = self.mc.cat_rvalue(
                 arg.id,
                 arg.pat.span,
@@ -578,7 +580,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         let callee_ty = return_if_err!(self.typer.expr_ty_adjusted(callee));
         debug!("walk_callee: callee={:?} callee_ty={:?}",
                callee, callee_ty);
-        let call_scope = region::CodeExtent::from_node_id(call.id);
+        let call_scope = self.tcx().region_maps.node_extent(call.id);
         match callee_ty.sty {
             ty::TyBareFn(..) => {
                 self.consume_expr(callee);
@@ -861,7 +863,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 // Converting from a &T to *T (or &mut T to *mut T) is
                 // treated as borrowing it for the enclosing temporary
                 // scope.
-                let r = ty::ReScope(region::CodeExtent::from_node_id(expr.id));
+                let r = ty::ReScope(self.tcx().region_maps.node_extent(expr.id));
 
                 self.delegate.borrow(expr.id,
                                      expr.span,
@@ -916,7 +918,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         // methods are implicitly autoref'd which sadly does not use
         // adjustments, so we must hardcode the borrow here.
 
-        let r = ty::ReScope(region::CodeExtent::from_node_id(expr.id));
+        let r = ty::ReScope(self.tcx().region_maps.node_extent(expr.id));
         let bk = ty::ImmBorrow;
 
         for &arg in &rhs {

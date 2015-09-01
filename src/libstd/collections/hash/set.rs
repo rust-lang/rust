@@ -20,6 +20,7 @@ use iter::{Iterator, IntoIterator, ExactSizeIterator, FromIterator, Map, Chain, 
 use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, self};
 
+use super::Recover;
 use super::map::{self, HashMap, Keys, RandomState};
 use super::state::HashState;
 
@@ -459,6 +460,18 @@ impl<T, S> HashSet<T, S>
         self.map.contains_key(value)
     }
 
+    /// Returns a reference to the value in the set, if any, that is equal to the given value.
+    ///
+    /// The value may be any borrowed form of the set's value type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the value type.
+    #[unstable(feature = "set_recovery", issue = "28050")]
+    pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
+        where T: Borrow<Q>, Q: Hash + Eq
+    {
+        Recover::get(&self.map, value)
+    }
+
     /// Returns `true` if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
@@ -544,6 +557,13 @@ impl<T, S> HashSet<T, S>
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, value: T) -> bool { self.map.insert(value, ()).is_none() }
 
+    /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
+    /// one. Returns the replaced value.
+    #[unstable(feature = "set_recovery", issue = "28050")]
+    pub fn replace(&mut self, value: T) -> Option<T> {
+        Recover::replace(&mut self.map, value)
+    }
+
     /// Removes a value from the set. Returns `true` if the value was
     /// present in the set.
     ///
@@ -567,6 +587,18 @@ impl<T, S> HashSet<T, S>
         where T: Borrow<Q>, Q: Hash + Eq
     {
         self.map.remove(value).is_some()
+    }
+
+    /// Removes and returns the value in the set, if any, that is equal to the given one.
+    ///
+    /// The value may be any borrowed form of the set's value type, but
+    /// `Hash` and `Eq` on the borrowed form *must* match those for
+    /// the value type.
+    #[unstable(feature = "set_recovery", issue = "28050")]
+    pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
+        where T: Borrow<Q>, Q: Hash + Eq
+    {
+        Recover::take(&mut self.map, value)
     }
 }
 
@@ -619,6 +651,16 @@ impl<T, S> Extend<T> for HashSet<T, S>
         for k in iter {
             self.insert(k);
         }
+    }
+}
+
+#[stable(feature = "hash_extend_copy", since = "1.4.0")]
+impl<'a, T, S> Extend<&'a T> for HashSet<T, S>
+    where T: 'a + Eq + Hash + Copy,
+          S: HashState,
+{
+    fn extend<I: IntoIterator<Item=&'a T>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
     }
 }
 
@@ -1260,5 +1302,65 @@ mod test_set {
             // reset to try again.
             s.extend(1..100);
         }
+    }
+
+    #[test]
+    fn test_replace() {
+        use hash;
+
+        #[derive(Debug)]
+        struct Foo(&'static str, i32);
+
+        impl PartialEq for Foo {
+            fn eq(&self, other: &Self) -> bool {
+                self.0 == other.0
+            }
+        }
+
+        impl Eq for Foo {}
+
+        impl hash::Hash for Foo {
+            fn hash<H: hash::Hasher>(&self, h: &mut H) {
+                self.0.hash(h);
+            }
+        }
+
+        let mut s = HashSet::new();
+        assert_eq!(s.replace(Foo("a", 1)), None);
+        assert_eq!(s.len(), 1);
+        assert_eq!(s.replace(Foo("a", 2)), Some(Foo("a", 1)));
+        assert_eq!(s.len(), 1);
+
+        let mut it = s.iter();
+        assert_eq!(it.next(), Some(&Foo("a", 2)));
+        assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn test_extend_ref() {
+        let mut a = HashSet::new();
+        a.insert(1);
+
+        a.extend(&[2, 3, 4]);
+
+        assert_eq!(a.len(), 4);
+        assert!(a.contains(&1));
+        assert!(a.contains(&2));
+        assert!(a.contains(&3));
+        assert!(a.contains(&4));
+
+        let mut b = HashSet::new();
+        b.insert(5);
+        b.insert(6);
+
+        a.extend(&b);
+
+        assert_eq!(a.len(), 6);
+        assert!(a.contains(&1));
+        assert!(a.contains(&2));
+        assert!(a.contains(&3));
+        assert!(a.contains(&4));
+        assert!(a.contains(&5));
+        assert!(a.contains(&6));
     }
 }

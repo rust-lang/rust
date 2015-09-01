@@ -31,60 +31,6 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::default::Default;
 
-#[unstable(feature = "rustc_private")]
-#[deprecated(since = "1.0.0", reason = "replaced by MultiItemDecorator")]
-pub trait ItemDecorator {
-    fn expand(&self,
-              ecx: &mut ExtCtxt,
-              sp: Span,
-              meta_item: &ast::MetaItem,
-              item: &ast::Item,
-              push: &mut FnMut(P<ast::Item>));
-}
-
-#[allow(deprecated)]
-#[unstable(feature = "rustc_private")]
-#[deprecated(since = "1.0.0", reason = "replaced by MultiItemDecorator")]
-impl<F> ItemDecorator for F
-    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &ast::Item, &mut FnMut(P<ast::Item>))
-{
-    fn expand(&self,
-              ecx: &mut ExtCtxt,
-              sp: Span,
-              meta_item: &ast::MetaItem,
-              item: &ast::Item,
-              push: &mut FnMut(P<ast::Item>)) {
-        (*self)(ecx, sp, meta_item, item, push)
-    }
-}
-
-#[unstable(feature = "rustc_private")]
-#[deprecated(since = "1.0.0", reason = "replaced by MultiItemModifier")]
-pub trait ItemModifier {
-    fn expand(&self,
-              ecx: &mut ExtCtxt,
-              span: Span,
-              meta_item: &ast::MetaItem,
-              item: P<ast::Item>)
-              -> P<ast::Item>;
-}
-
-#[allow(deprecated)]
-#[unstable(feature = "rustc_private")]
-#[deprecated(since = "1.0.0", reason = "replaced by MultiItemModifier")]
-impl<F> ItemModifier for F
-    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, P<ast::Item>) -> P<ast::Item>
-{
-
-    fn expand(&self,
-              ecx: &mut ExtCtxt,
-              span: Span,
-              meta_item: &ast::MetaItem,
-              item: P<ast::Item>)
-              -> P<ast::Item> {
-        (*self)(ecx, span, meta_item, item)
-    }
-}
 
 #[derive(Debug,Clone)]
 pub enum Annotatable {
@@ -462,23 +408,9 @@ impl MacResult for DummyResult {
 pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and creates new items
     /// based upon it.
-    #[unstable(feature = "rustc_private")]
-    #[deprecated(since = "1.0.0", reason = "replaced by MultiDecorator")]
-    #[allow(deprecated)]
-    Decorator(Box<ItemDecorator + 'static>),
-
-    /// A syntax extension that is attached to an item and creates new items
-    /// based upon it.
     ///
     /// `#[derive(...)]` is a `MultiItemDecorator`.
     MultiDecorator(Box<MultiItemDecorator + 'static>),
-
-    /// A syntax extension that is attached to an item and modifies it
-    /// in-place.
-    #[unstable(feature = "rustc_private")]
-    #[deprecated(since = "1.0.0", reason = "replaced by MultiModifier")]
-    #[allow(deprecated)]
-    Modifier(Box<ItemModifier + 'static>),
 
     /// A syntax extension that is attached to an item and modifies it
     /// in-place. More flexible version than Modifier.
@@ -714,13 +646,14 @@ impl<'a> ExtCtxt<'a> {
         loop {
             if self.codemap().with_expn_info(expn_id, |info| {
                 info.map_or(None, |i| {
-                    if i.callee.name == "include" {
+                    if i.callee.name() == "include" {
                         // Stop going up the backtrace once include! is encountered
                         return None;
                     }
                     expn_id = i.call_site.expn_id;
-                    if i.callee.format != CompilerExpansion {
-                        last_macro = Some(i.call_site)
+                    match i.callee.format {
+                        CompilerExpansion(..) => (),
+                        _ => last_macro = Some(i.call_site),
                     }
                     return Some(());
                 })
@@ -744,7 +677,7 @@ impl<'a> ExtCtxt<'a> {
         if self.recursion_count > self.ecfg.recursion_limit {
             panic!(self.span_fatal(ei.call_site,
                             &format!("recursion limit reached while expanding the macro `{}`",
-                                    ei.callee.name)));
+                                    ei.callee.name())));
         }
 
         let mut call_site = ei.call_site;

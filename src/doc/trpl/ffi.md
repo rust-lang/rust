@@ -496,9 +496,11 @@ strings are not terminated with `\0`. If you need a NUL-terminated string for
 interoperability with C, you should use the `CString` type in the `std::ffi`
 module.
 
-The standard library includes type aliases and function definitions for the C
-standard library in the `libc` module, and Rust links against `libc` and `libm`
-by default.
+The [`libc` crate on crates.io][libc] includes type aliases and function
+definitions for the C standard library in the `libc` module, and Rust links
+against `libc` and `libm` by default.
+
+[libc]: https://crates.io/crates/libc
 
 # The "nullable pointer optimization"
 

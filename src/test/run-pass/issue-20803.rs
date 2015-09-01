@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 8-bit unsigned integer type.
-//!
-//! *[See also the `u8` primitive type](../primitive.u8.html).*
+use std::ops::Add;
 
-#![stable(feature = "rust1", since = "1.0.0")]
+fn foo<T>(x: T) -> <i32 as Add<T>>::Output where i32: Add<T> {
+    42i32 + x
+}
 
-pub use core::u8::{BITS, BYTES, MIN, MAX};
-
-uint_module! { u8 }
+fn main() {
+    println!("{}", foo(0i32));
+}

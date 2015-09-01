@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::subst::Substs;
+use middle::def_id::DefId;
 use middle::infer::InferCtxt;
+use middle::subst::Substs;
 use middle::ty::{self, HasTypeFlags, Ty, ToPredicate, ToPolyTraitRef};
 use std::fmt;
-use syntax::ast;
 use syntax::codemap::Span;
 use util::common::ErrorReported;
 use util::nodemap::FnvHashSet;
@@ -226,12 +226,12 @@ pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
 
 pub struct SupertraitDefIds<'cx, 'tcx:'cx> {
     tcx: &'cx ty::ctxt<'tcx>,
-    stack: Vec<ast::DefId>,
-    visited: FnvHashSet<ast::DefId>,
+    stack: Vec<DefId>,
+    visited: FnvHashSet<DefId>,
 }
 
 pub fn supertrait_def_ids<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
-                                     trait_def_id: ast::DefId)
+                                     trait_def_id: DefId)
                                      -> SupertraitDefIds<'cx, 'tcx>
 {
     SupertraitDefIds {
@@ -242,9 +242,9 @@ pub fn supertrait_def_ids<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
 }
 
 impl<'cx, 'tcx> Iterator for SupertraitDefIds<'cx, 'tcx> {
-    type Item = ast::DefId;
+    type Item = DefId;
 
-    fn next(&mut self) -> Option<ast::DefId> {
+    fn next(&mut self) -> Option<DefId> {
         let def_id = match self.stack.pop() {
             Some(def_id) => def_id,
             None => { return None; }
@@ -307,7 +307,7 @@ impl<'tcx,I:Iterator<Item=ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {
 // variables.
 pub fn fresh_type_vars_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                           span: Span,
-                                          impl_def_id: ast::DefId)
+                                          impl_def_id: DefId)
                                           -> Substs<'tcx>
 {
     let tcx = infcx.tcx;
@@ -368,7 +368,7 @@ pub fn predicate_for_trait_ref<'tcx>(
 pub fn predicate_for_trait_def<'tcx>(
     tcx: &ty::ctxt<'tcx>,
     cause: ObligationCause<'tcx>,
-    trait_def_id: ast::DefId,
+    trait_def_id: DefId,
     recursion_depth: usize,
     param_ty: Ty<'tcx>,
     ty_params: Vec<Ty<'tcx>>)
@@ -398,7 +398,7 @@ pub fn predicate_for_builtin_bound<'tcx>(
 /// supertrait.
 pub fn upcast<'tcx>(tcx: &ty::ctxt<'tcx>,
                     source_trait_ref: ty::PolyTraitRef<'tcx>,
-                    target_trait_def_id: ast::DefId)
+                    target_trait_def_id: DefId)
                     -> Vec<ty::PolyTraitRef<'tcx>>
 {
     if source_trait_ref.def_id() == target_trait_def_id {
@@ -432,7 +432,7 @@ pub fn count_own_vtable_entries<'tcx>(tcx: &ty::ctxt<'tcx>,
 /// `object.upcast_trait_ref`) within the vtable for `object`.
 pub fn get_vtable_index_of_object_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                object: &super::VtableObjectData<'tcx>,
-                                               method_def_id: ast::DefId) -> usize {
+                                               method_def_id: DefId) -> usize {
     // Count number of methods preceding the one we are selecting and
     // add them to the total offset.
     // Skip over associated types and constants.
@@ -460,7 +460,7 @@ pub enum TupleArgumentsFlag { Yes, No }
 
 pub fn closure_trait_ref_and_return_type<'tcx>(
     tcx: &ty::ctxt<'tcx>,
-    fn_trait_def_id: ast::DefId,
+    fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
     sig: &ty::PolyFnSig<'tcx>,
     tuple_arguments: TupleArgumentsFlag)

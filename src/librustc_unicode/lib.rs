@@ -30,6 +30,7 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/",
+       issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
        test(no_crate_inject))]
 #![no_std]
 
@@ -45,6 +46,7 @@ mod tables;
 mod u_str;
 pub mod char;
 
+#[allow(deprecated)]
 pub mod str {
     pub use u_str::{UnicodeStr, SplitWhitespace};
     pub use u_str::{utf8_char_width, is_utf16, Utf16Items, Utf16Item};

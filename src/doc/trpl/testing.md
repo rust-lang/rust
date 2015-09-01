@@ -120,11 +120,24 @@ And that's reflected in the summary line:
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured
 ```
 
-We also get a non-zero status code:
+We also get a non-zero status code. We can use `$?` on OS X and Linux:
 
 ```bash
 $ echo $?
 101
+```
+
+On Windows, if you’re using `cmd`:
+
+```bash
+> echo %ERRORLEVEL%
+```
+
+And if you’re using PowerShell:
+
+```bash
+> echo $LASTEXITCODE # the code itself
+> echo $? # a boolean, fail or succeed
 ```
 
 This is useful if you want to integrate `cargo test` into other tooling.
@@ -218,6 +231,66 @@ fn it_works() {
 
 This is a very common use of `assert_eq!`: call some function with
 some known arguments and compare it to the expected output.
+
+# The `ignore` attribute
+
+Sometimes a few specific tests can be very time-consuming to execute. These
+can be disabled by default by using the `ignore` attribute:
+
+```rust
+#[test]
+fn it_works() {
+    assert_eq!(4, add_two(2));
+}
+
+#[test]
+#[ignore]
+fn expensive_test() {
+    // code that takes an hour to run
+}
+```
+
+Now we run our tests and see that `it_works` is run, but `expensive_test` is
+not:
+
+```bash
+$ cargo test
+   Compiling adder v0.0.1 (file:///home/you/projects/adder)
+     Running target/adder-91b3e234d4ed382a
+
+running 2 tests
+test expensive_test ... ignored
+test it_works ... ok
+
+test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured
+
+   Doc-tests adder
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+```
+
+The expensive tests can be run explicitly using `cargo test -- --ignored`:
+
+```bash
+$ cargo test -- --ignored
+     Running target/adder-91b3e234d4ed382a
+
+running 1 test
+test expensive_test ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
+
+   Doc-tests adder
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
+```
+
+The `--ignored` argument is an argument to the test binary, and not to cargo,
+which is why the command is `cargo test -- --ignored`.
 
 # The `tests` module
 
@@ -355,8 +428,8 @@ Let's finally check out that third section: documentation tests.
 Nothing is better than documentation with examples. Nothing is worse than
 examples that don't actually work, because the code has changed since the
 documentation has been written. To this end, Rust supports automatically
-running examples in your documentation. Here's a fleshed-out `src/lib.rs`
-with examples:
+running examples in your documentation (**note:** this only works in library
+crates, not binary crates). Here's a fleshed-out `src/lib.rs` with examples:
 
 ```rust,ignore
 //! The `adder` crate provides functions that add numbers to other numbers.

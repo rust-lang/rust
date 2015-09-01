@@ -30,6 +30,7 @@
 
 use metadata::{csearch, decoder};
 use middle::{cfg, def, infer, pat_util, stability, traits};
+use middle::def_id::DefId;
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use middle::const_eval::{eval_const_expr_partial, ConstVal};
@@ -44,13 +45,13 @@ use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
 use syntax::{abi, ast};
-use syntax::ast_util::{self, is_shift_binop, local_def};
+use syntax::ast_util::is_shift_binop;
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ptr::P;
-use syntax::visit::{self, Visitor};
+use syntax::visit::{self, FnKind, Visitor};
 
 // hardwired lints from librustc
 pub use lint::builtin::*;
@@ -400,8 +401,8 @@ struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
 enum FfiResult {
     FfiSafe,
     FfiUnsafe(&'static str),
-    FfiBadStruct(ast::DefId, &'static str),
-    FfiBadEnum(ast::DefId, &'static str)
+    FfiBadStruct(DefId, &'static str),
+    FfiBadEnum(DefId, &'static str)
 }
 
 /// Check if this enum can be safely exported based on the
@@ -850,7 +851,7 @@ impl LintPass for RawPointerDerive {
             }
             _ => return,
         };
-        if !ast_util::is_local(did) {
+        if !did.is_local() {
             return;
         }
         let item = match cx.tcx.map.find(did.node) {
@@ -886,10 +887,9 @@ impl LintPass for UnusedAttributes {
 
     fn check_attribute(&mut self, cx: &Context, attr: &ast::Attribute) {
         // Note that check_name() marks the attribute as used if it matches.
-        for &(ref name, ty) in KNOWN_ATTRIBUTES {
+        for &(ref name, ty, _) in KNOWN_ATTRIBUTES {
             match ty {
-                AttributeType::Whitelisted
-                | AttributeType::Gated(_, _) if attr.check_name(name) => {
+                AttributeType::Whitelisted if attr.check_name(name) => {
                     break;
                 },
                 _ => ()
@@ -906,8 +906,11 @@ impl LintPass for UnusedAttributes {
         if !attr::is_used(attr) {
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
-            let known_crate = KNOWN_ATTRIBUTES.contains(&(&attr.name(),
-                                                          AttributeType::CrateLevel));
+            let known_crate = KNOWN_ATTRIBUTES.iter().find(|&&(name, ty, _)| {
+                attr.name() == name &&
+                ty == AttributeType::CrateLevel
+            }).is_some();
+
             // Has a plugin registered this attribute as one which must be used at
             // the crate level?
             let plugin_crate = plugin_attributes.iter()
@@ -992,7 +995,7 @@ impl LintPass for UnusedResults {
             ty::TyBool => return,
             ty::TyStruct(def, _) |
             ty::TyEnum(def, _) => {
-                if ast_util::is_local(def.did) {
+                if def.did.is_local() {
                     if let ast_map::NodeItem(it) = cx.tcx.map.get(def.did.node) {
                         check_must_use(cx, &it.attrs, s.span)
                     } else {
@@ -1128,7 +1131,7 @@ enum MethodContext {
 }
 
 fn method_context(cx: &Context, id: ast::NodeId, span: Span) -> MethodContext {
-    match cx.tcx.impl_or_trait_items.borrow().get(&local_def(id)) {
+    match cx.tcx.impl_or_trait_items.borrow().get(&DefId::local(id)) {
         None => cx.sess().span_bug(span, "missing method descriptor?!"),
         Some(item) => match item.container() {
             ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
@@ -1239,10 +1242,10 @@ impl LintPass for NonSnakeCase {
     }
 
     fn check_fn(&mut self, cx: &Context,
-                fk: visit::FnKind, _: &ast::FnDecl,
+                fk: FnKind, _: &ast::FnDecl,
                 _: &ast::Block, span: Span, id: ast::NodeId) {
         match fk {
-            visit::FkMethod(ident, _, _) => match method_context(cx, id, span) {
+            FnKind::Method(ident, _, _) => match method_context(cx, id, span) {
                 MethodContext::PlainImpl => {
                     self.check_snake_case(cx, "method", &ident.name.as_str(), Some(span))
                 },
@@ -1251,7 +1254,7 @@ impl LintPass for NonSnakeCase {
                 },
                 _ => (),
             },
-            visit::FkItemFn(ident, _, _, _, _, _) => {
+            FnKind::ItemFn(ident, _, _, _, _, _) => {
                 self.check_snake_case(cx, "function", &ident.name.as_str(), Some(span))
             },
             _ => (),
@@ -1597,13 +1600,13 @@ impl LintPass for UnsafeCode {
         }
     }
 
-    fn check_fn(&mut self, cx: &Context, fk: visit::FnKind, _: &ast::FnDecl,
+    fn check_fn(&mut self, cx: &Context, fk: FnKind, _: &ast::FnDecl,
                 _: &ast::Block, span: Span, _: ast::NodeId) {
         match fk {
-            visit::FkItemFn(_, _, ast::Unsafety::Unsafe, _, _, _) =>
+            FnKind::ItemFn(_, _, ast::Unsafety::Unsafe, _, _, _) =>
                 cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
 
-            visit::FkMethod(_, sig, _) => {
+            FnKind::Method(_, sig, _) => {
                 if sig.unsafety == ast::Unsafety::Unsafe {
                     cx.span_lint(UNSAFE_CODE, span, "implementation of an `unsafe` method")
                 }
@@ -1684,7 +1687,7 @@ impl LintPass for UnusedMut {
     }
 
     fn check_fn(&mut self, cx: &Context,
-                _: visit::FnKind, decl: &ast::FnDecl,
+                _: FnKind, decl: &ast::FnDecl,
                 _: &ast::Block, _: Span, _: ast::NodeId) {
         for a in &decl.inputs {
             self.check_unused_mut_pat(cx, slice::ref_slice(&a.pat));
@@ -1951,26 +1954,26 @@ impl LintPass for MissingCopyImplementations {
         if !cx.exported_items.contains(&item.id) {
             return;
         }
-        if cx.tcx.destructor_for_type.borrow().contains_key(&local_def(item.id)) {
-            return;
-        }
-        let ty = match item.node {
+        let (def, ty) = match item.node {
             ast::ItemStruct(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                cx.tcx.mk_struct(cx.tcx.lookup_adt_def(local_def(item.id)),
-                                 cx.tcx.mk_substs(Substs::empty()))
+                let def = cx.tcx.lookup_adt_def(DefId::local(item.id));
+                (def, cx.tcx.mk_struct(def,
+                                       cx.tcx.mk_substs(Substs::empty())))
             }
             ast::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                cx.tcx.mk_enum(cx.tcx.lookup_adt_def(local_def(item.id)),
-                               cx.tcx.mk_substs(Substs::empty()))
+                let def = cx.tcx.lookup_adt_def(DefId::local(item.id));
+                (def, cx.tcx.mk_enum(def,
+                                     cx.tcx.mk_substs(Substs::empty())))
             }
             _ => return,
         };
+        if def.has_dtor() { return; }
         let parameter_environment = cx.tcx.empty_parameter_environment();
         // FIXME (@jroesch) should probably inver this so that the parameter env still impls this
         // method
@@ -2028,7 +2031,7 @@ impl LintPass for MissingDebugImplementations {
             let debug_def = cx.tcx.lookup_trait_def(debug);
             let mut impls = NodeSet();
             debug_def.for_each_impl(cx.tcx, |d| {
-                if d.krate == ast::LOCAL_CRATE {
+                if d.is_local() {
                     if let Some(ty_def) = cx.tcx.node_id_to_type(d.node).ty_to_def_id() {
                         impls.insert(ty_def.node);
                     }
@@ -2059,7 +2062,7 @@ declare_lint! {
 pub struct Stability;
 
 impl Stability {
-    fn lint(&self, cx: &Context, _id: ast::DefId,
+    fn lint(&self, cx: &Context, _id: DefId,
             span: Span, stability: &Option<&attr::Stability>) {
         // Deprecated attributes apply in-crate and cross-crate.
         let (lint, label) = match *stability {
@@ -2125,18 +2128,18 @@ impl LintPass for UnconditionalRecursion {
         lint_array![UNCONDITIONAL_RECURSION]
     }
 
-    fn check_fn(&mut self, cx: &Context, fn_kind: visit::FnKind, _: &ast::FnDecl,
+    fn check_fn(&mut self, cx: &Context, fn_kind: FnKind, _: &ast::FnDecl,
                 blk: &ast::Block, sp: Span, id: ast::NodeId) {
         type F = for<'tcx> fn(&ty::ctxt<'tcx>,
                               ast::NodeId, ast::NodeId, ast::Ident, ast::NodeId) -> bool;
 
         let method = match fn_kind {
-            visit::FkItemFn(..) => None,
-            visit::FkMethod(..) => {
-                cx.tcx.impl_or_trait_item(local_def(id)).as_opt_method()
+            FnKind::ItemFn(..) => None,
+            FnKind::Method(..) => {
+                cx.tcx.impl_or_trait_item(DefId::local(id)).as_opt_method()
             }
             // closures can't recur, so they don't matter.
-            visit::FkFnBlock => return
+            FnKind::Closure => return
         };
 
         // Walk through this function (say `f`) looking to see if
@@ -2247,7 +2250,7 @@ impl LintPass for UnconditionalRecursion {
             match tcx.map.get(id) {
                 ast_map::NodeExpr(&ast::Expr { node: ast::ExprCall(ref callee, _), .. }) => {
                     tcx.def_map.borrow().get(&callee.id)
-                        .map_or(false, |def| def.def_id() == local_def(fn_id))
+                        .map_or(false, |def| def.def_id() == DefId::local(fn_id))
                 }
                 _ => false
             }
@@ -2298,7 +2301,7 @@ impl LintPass for UnconditionalRecursion {
         // and instantiated with `callee_substs` refers to method `method`.
         fn method_call_refers_to_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                               method: &ty::Method,
-                                              callee_id: ast::DefId,
+                                              callee_id: DefId,
                                               callee_substs: &Substs<'tcx>,
                                               expr_id: ast::NodeId) -> bool {
             let callee_item = tcx.impl_or_trait_item(callee_id);
@@ -2475,7 +2478,6 @@ impl LintPass for MutableTransmutes {
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &ast::Expr) {
-        use syntax::ast::DefId;
         use syntax::abi::RustIntrinsic;
         let msg = "mutating transmuted &mut T from &T may cause undefined behavior,\
                    consider instead using an UnsafeCell";
@@ -2569,7 +2571,7 @@ impl LintPass for DropWithReprExtern {
     fn check_crate(&mut self, ctx: &Context, _: &ast::Crate) {
         for dtor_did in ctx.tcx.destructors.borrow().iter() {
             let (drop_impl_did, dtor_self_type) =
-                if dtor_did.krate == ast::LOCAL_CRATE {
+                if dtor_did.is_local() {
                     let impl_did = ctx.tcx.map.get_parent_did(dtor_did.node);
                     let ty = ctx.tcx.lookup_item_type(impl_did).ty;
                     (impl_did, ty)
@@ -2583,7 +2585,7 @@ impl LintPass for DropWithReprExtern {
                     let self_type_did = self_type_def.did;
                     let hints = ctx.tcx.lookup_repr_hints(self_type_did);
                     if hints.iter().any(|attr| *attr == attr::ReprExtern) &&
-                        ctx.tcx.ty_dtor(self_type_did).has_drop_flag() {
+                        self_type_def.dtor_kind().has_drop_flag() {
                         let drop_impl_span = ctx.tcx.map.def_id_span(drop_impl_did,
                                                                      codemap::DUMMY_SP);
                         let self_defn_span = ctx.tcx.map.def_id_span(self_type_did,

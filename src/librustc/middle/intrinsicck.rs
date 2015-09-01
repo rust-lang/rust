@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use middle::def::DefFn;
+use middle::def_id::DefId;
 use middle::subst::{Subst, Substs, EnumeratedItems};
 use middle::ty::{TransmuteRestriction, ctxt, TyBareFn};
 use middle::ty::{self, Ty, HasTypeFlags};
@@ -16,10 +17,9 @@ use middle::ty::{self, Ty, HasTypeFlags};
 use std::fmt;
 
 use syntax::abi::RustIntrinsic;
-use syntax::ast::DefId;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::visit::Visitor;
+use syntax::visit::{FnKind, Visitor};
 use syntax::visit;
 
 pub fn check_crate(tcx: &ctxt) {
@@ -216,16 +216,16 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
-    fn visit_fn(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v ast::FnDecl,
                 b: &'v ast::Block, s: Span, id: ast::NodeId) {
         match fk {
-            visit::FkItemFn(..) | visit::FkMethod(..) => {
+            FnKind::ItemFn(..) | FnKind::Method(..) => {
                 let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
                 self.param_envs.push(param_env);
                 visit::walk_fn(self, fk, fd, b, s);
                 self.param_envs.pop();
             }
-            visit::FkFnBlock(..) => {
+            FnKind::Closure(..) => {
                 visit::walk_fn(self, fk, fd, b, s);
             }
         }

@@ -37,6 +37,7 @@ use llvm;
 use metadata::{csearch, encoder, loader};
 use middle::astencode;
 use middle::cfg;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::pat_util::simple_identifier;
@@ -92,7 +93,6 @@ use std::mem;
 use std::str;
 use std::{i8, i16, i32, i64};
 use syntax::abi::{Rust, RustCall, RustIntrinsic, PlatformIntrinsic, Abi};
-use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
 use syntax::codemap::Span;
@@ -179,7 +179,7 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
 }
 
 fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
-                                name: &str, did: ast::DefId) -> ValueRef {
+                                name: &str, did: DefId) -> ValueRef {
     match ccx.externs().borrow().get(name) {
         Some(n) => return *n,
         None => ()
@@ -195,7 +195,7 @@ fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
 }
 
 pub fn self_type_for_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                       closure_id: ast::DefId,
+                                       closure_id: DefId,
                                        fn_ty: Ty<'tcx>)
                                        -> Ty<'tcx>
 {
@@ -211,11 +211,11 @@ pub fn self_type_for_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn kind_for_closure(ccx: &CrateContext, closure_id: ast::DefId) -> ty::ClosureKind {
+pub fn kind_for_closure(ccx: &CrateContext, closure_id: DefId) -> ty::ClosureKind {
     *ccx.tcx().tables.borrow().closure_kinds.get(&closure_id).unwrap()
 }
 
-pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
+pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: DefId,
                                   t: Ty<'tcx>) -> ValueRef {
     let name = csearch::get_symbol(&ccx.sess().cstore, did);
     let ty = type_of(ccx, t);
@@ -245,7 +245,7 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
 }
 
 fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                info_ty: Ty<'tcx>, it: LangItem) -> ast::DefId {
+                                info_ty: Ty<'tcx>, it: LangItem) -> DefId {
     match bcx.tcx().lang_items.require(it) {
         Ok(id) => id,
         Err(s) => {
@@ -403,8 +403,8 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
     let (data_ptr, info) = if common::type_is_sized(cx.tcx(), t) {
         (av, None)
     } else {
-        let data = GEPi(cx, av, &[0, abi::FAT_PTR_ADDR]);
-        let info = GEPi(cx, av, &[0, abi::FAT_PTR_EXTRA]);
+        let data = expr::get_dataptr(cx, av);
+        let info = expr::get_meta(cx, av);
         (Load(cx, data), Some(Load(cx, info)))
     };
 
@@ -420,8 +420,8 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                   llfld_a
               } else {
                   let scratch = datum::rvalue_scratch_datum(cx, field_ty, "__fat_ptr_iter");
-                  Store(cx, llfld_a, GEPi(cx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
-                  Store(cx, info.unwrap(), GEPi(cx, scratch.val, &[0, abi::FAT_PTR_EXTRA]));
+                  Store(cx, llfld_a, expr::get_dataptr(cx, scratch.val));
+                  Store(cx, info.unwrap(), expr::get_meta(cx, scratch.val));
                   scratch.val
               };
               cx = f(cx, val, field_ty);
@@ -663,7 +663,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
 }
 
 pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                     did: ast::DefId, t: Ty<'tcx>) -> ValueRef {
+                                     did: DefId, t: Ty<'tcx>) -> ValueRef {
     let name = csearch::get_symbol(&ccx.sess().cstore, did);
     match t.sty {
         ty::TyBareFn(_, ref fn_ty) => {
@@ -835,7 +835,7 @@ pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t
 
     if common::type_is_fat_ptr(cx.tcx(), t) {
         Store(cx, ExtractValue(cx, v, abi::FAT_PTR_ADDR), expr::get_dataptr(cx, dst));
-        Store(cx, ExtractValue(cx, v, abi::FAT_PTR_EXTRA), expr::get_len(cx, dst));
+        Store(cx, ExtractValue(cx, v, abi::FAT_PTR_EXTRA), expr::get_meta(cx, dst));
     } else {
         let store = Store(cx, from_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t));
         unsafe {
@@ -917,10 +917,14 @@ pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
     let _icx = push_ctxt("lifetime_start");
     let ccx = cx.ccx();
 
-    let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
+    let size = machine::llsize_of_alloc(ccx, val_ty(ptr).element_type());
+    if size == 0 {
+        return;
+    }
+
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
     let lifetime_start = ccx.get_intrinsic(&"llvm.lifetime.start");
-    Call(cx, lifetime_start, &[llsize, ptr], None, DebugLoc::None);
+    Call(cx, lifetime_start, &[C_u64(ccx, size), ptr], None, DebugLoc::None);
 }
 
 pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
@@ -931,10 +935,14 @@ pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
     let _icx = push_ctxt("lifetime_end");
     let ccx = cx.ccx();
 
-    let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
+    let size = machine::llsize_of_alloc(ccx, val_ty(ptr).element_type());
+    if size == 0 {
+        return;
+    }
+
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
     let lifetime_end = ccx.get_intrinsic(&"llvm.lifetime.end");
-    Call(cx, lifetime_end, &[llsize, ptr], None, DebugLoc::None);
+    Call(cx, lifetime_end, &[C_u64(ccx, size), ptr], None, DebugLoc::None);
 }
 
 pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
@@ -956,6 +964,11 @@ pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              t: Ty<'tcx>) {
     let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
+
+    if type_is_zero_size(ccx, t) {
+        return;
+    }
+
     if t.is_structural() {
         let llty = type_of::type_of(ccx, t);
         let llsz = llsize_of(ccx, llty);
@@ -1007,17 +1020,10 @@ pub fn alloc_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, name: &str) -> 
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);
     assert!(!t.has_param_types());
-    let val = alloca(bcx, ty, name);
-    return val;
+    alloca(bcx, ty, name)
 }
 
 pub fn alloca(cx: Block, ty: Type, name: &str) -> ValueRef {
-    let p = alloca_no_lifetime(cx, ty, name);
-    call_lifetime_start(cx, p);
-    p
-}
-
-pub fn alloca_no_lifetime(cx: Block, ty: Type, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloca");
     if cx.unreachable.get() {
         unsafe {
@@ -1281,7 +1287,7 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
 
     // Create the drop-flag hints for every unfragmented path in the function.
     let tcx = fcx.ccx.tcx();
-    let fn_did = ast::DefId { krate: ast::LOCAL_CRATE, node: fcx.id };
+    let fn_did = DefId { krate: LOCAL_CRATE, node: fcx.id };
     let mut hints = fcx.lldropflag_hints.borrow_mut();
     let fragment_infos = tcx.fragment_infos.borrow();
 
@@ -1389,7 +1395,7 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                                                         arg_scope_id, (data, extra),
                                                         |(data, extra), bcx, dst| {
                     Store(bcx, data, expr::get_dataptr(bcx, dst));
-                    Store(bcx, extra, expr::get_len(bcx, dst));
+                    Store(bcx, extra, expr::get_meta(bcx, dst));
                     bcx
                 }))
             } else {
@@ -1415,12 +1421,12 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
                                                                llval| {
                         for (j, &tupled_arg_ty) in
                                     tupled_arg_tys.iter().enumerate() {
-                            let lldest = GEPi(bcx, llval, &[0, j]);
+                            let lldest = StructGEP(bcx, llval, j);
                             if common::type_is_fat_ptr(bcx.tcx(), tupled_arg_ty) {
                                 let data = get_param(bcx.fcx.llfn, idx);
                                 let extra = get_param(bcx.fcx.llfn, idx + 1);
                                 Store(bcx, data, expr::get_dataptr(bcx, lldest));
-                                Store(bcx, extra, expr::get_len(bcx, lldest));
+                                Store(bcx, extra, expr::get_meta(bcx, lldest));
                                 idx += 2;
                             } else {
                                 let datum = datum::Datum::new(
@@ -1729,7 +1735,9 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         expr::SaveIn(d) => d,
         expr::Ignore => {
             if !type_is_zero_size(ccx, result_ty) {
-                alloc_ty(bcx, result_ty, "constructor_result")
+                let llresult = alloc_ty(bcx, result_ty, "constructor_result");
+                call_lifetime_start(bcx, llresult);
+                llresult
             } else {
                 C_undef(type_of::type_of(ccx, result_ty).ptr_to())
             }
@@ -1749,6 +1757,17 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                       debug_loc);
             }
             _ => ccx.sess().bug("expected expr as arguments for variant/struct tuple constructor")
+        }
+    } else {
+        // Just eval all the expressions (if any). Since expressions in Rust can have arbitrary
+        // contents, there could be side-effects we need from them.
+        match args {
+            callee::ArgExprs(exprs) => {
+                for expr in exprs {
+                    bcx = expr::trans_into(bcx, expr, expr::Ignore);
+                }
+            }
+            _ => ()
         }
     }
 
@@ -1822,7 +1841,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
                                                  i);
             if common::type_is_fat_ptr(bcx.tcx(), arg_ty) {
                 Store(bcx, get_param(fcx.llfn, llarg_idx), expr::get_dataptr(bcx, lldestptr));
-                Store(bcx, get_param(fcx.llfn, llarg_idx + 1), expr::get_len(bcx, lldestptr));
+                Store(bcx, get_param(fcx.llfn, llarg_idx + 1), expr::get_meta(bcx, lldestptr));
                 llarg_idx += 2;
             } else {
                 let arg = get_param(fcx.llfn, llarg_idx);
@@ -2067,7 +2086,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                     // error in trans. This is used to write compile-fail tests
                     // that actually test that compilation succeeds without
                     // reporting an error.
-                    if ccx.tcx().has_attr(local_def(item.id), "rustc_error") {
+                    if ccx.tcx().has_attr(DefId::local(item.id), "rustc_error") {
                         ccx.tcx().sess.span_fatal(item.span, "compilation successful");
                     }
                 }
@@ -2234,7 +2253,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
                     Ok(id) => id,
                     Err(s) => { ccx.sess().fatal(&s[..]); }
                 };
-                let start_fn = if start_def_id.krate == ast::LOCAL_CRATE {
+                let start_fn = if start_def_id.is_local() {
                     get_item_val(ccx, start_def_id.node)
                 } else {
                     let start_fn_type = csearch::get_type(ccx.tcx(),

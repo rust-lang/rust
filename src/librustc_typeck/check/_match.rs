@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use middle::def;
+use middle::def_id::DefId;
 use middle::infer;
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
 use middle::pat_util::pat_is_resolved_const;
@@ -201,7 +202,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             } else if qself.position == 0 {
                 def::PathResolution {
                     // This is just a sentinel for finish_resolving_def_to_ty.
-                    base_def: def::DefMod(ast_util::local_def(ast::CRATE_NODE_ID)),
+                    base_def: def::DefMod(DefId::local(ast::CRATE_NODE_ID)),
                     last_private: LastMod(AllPublic),
                     depth: path.segments.len()
                 }

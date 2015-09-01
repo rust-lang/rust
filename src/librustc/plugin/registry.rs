@@ -14,7 +14,7 @@ use lint::{LintPassObject, LintId, Lint};
 use session::Session;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
-use syntax::ext::base::{IdentTT, Decorator, Modifier, MultiModifier, MultiDecorator};
+use syntax::ext::base::{IdentTT, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroExpanderFn, MacroRulesTT};
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -98,9 +98,7 @@ impl<'a> Registry<'a> {
             IdentTT(ext, _, allow_internal_unstable) => {
                 IdentTT(ext, Some(self.krate_span), allow_internal_unstable)
             }
-            Decorator(ext) => Decorator(ext),
             MultiDecorator(ext) => MultiDecorator(ext),
-            Modifier(ext) => Modifier(ext),
             MultiModifier(ext) => MultiModifier(ext),
             MacroRulesTT => {
                 self.sess.err("plugin tried to register a new MacroRulesTT");
@@ -145,11 +143,6 @@ impl<'a> Registry<'a> {
     /// `Whitelisted` attributes will additionally not trigger the `unused_attribute`
     /// lint. `CrateLevel` attributes will not be allowed on anything other than a crate.
     pub fn register_attribute(&mut self, name: String, ty: AttributeType) {
-        if let AttributeType::Gated(..) = ty {
-            self.sess.span_err(self.krate_span, "plugin tried to register a gated \
-                                                 attribute. Only `Normal`, `Whitelisted`, \
-                                                 and `CrateLevel` attributes are allowed");
-        }
         self.attributes.push((name, ty));
     }
 }

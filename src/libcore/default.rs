@@ -78,7 +78,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-/// A trait that types which have a useful default value should implement.
+/// A trait for giving a type a useful default value.
 ///
 /// A struct can derive default implementations of `Default` for basic types using
 /// `#[derive(Default)]`.

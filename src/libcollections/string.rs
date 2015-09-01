@@ -20,8 +20,8 @@ use core::ops::{self, Deref, Add, Index};
 use core::ptr;
 use core::slice;
 use core::str::pattern::Pattern;
+use rustc_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use rustc_unicode::str as unicode_str;
-use rustc_unicode::str::Utf16Item;
 
 use borrow::{Cow, IntoCow};
 use range::RangeArgument;
@@ -267,14 +267,7 @@ impl String {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {
-        let mut s = String::with_capacity(v.len());
-        for c in unicode_str::utf16_items(v) {
-            match c {
-                Utf16Item::ScalarValue(c) => s.push(c),
-                Utf16Item::LoneSurrogate(_) => return Err(FromUtf16Error(())),
-            }
-        }
-        Ok(s)
+        decode_utf16(v.iter().cloned()).collect::<Result<_, _>>().map_err(|_| FromUtf16Error(()))
     }
 
     /// Decode a UTF-16 encoded vector `v` into a string, replacing
@@ -294,7 +287,7 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
-        unicode_str::utf16_items(v).map(|c| c.to_char_lossy()).collect()
+        decode_utf16(v.iter().cloned()).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER)).collect()
     }
 
     /// Creates a new `String` from a length, capacity, and pointer.
@@ -741,7 +734,8 @@ impl String {
     ///
     /// Note that this will drop any excess capacity.
     #[unstable(feature = "box_str",
-               reason = "recently added, matches RFC")]
+               reason = "recently added, matches RFC",
+               issue = "27785")]
     #[deprecated(since = "1.4.0", reason = "renamed to `into_boxed_str`")]
     pub fn into_boxed_slice(self) -> Box<str> {
         self.into_boxed_str()
@@ -775,18 +769,27 @@ impl fmt::Display for FromUtf16Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
-    fn from_iter<I: IntoIterator<Item=char>>(iter: I) -> String {
+    fn from_iter<I: IntoIterator<Item=char>>(iterable: I) -> String {
         let mut buf = String::new();
-        buf.extend(iter);
+        buf.extend(iterable);
         buf
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
-    fn from_iter<I: IntoIterator<Item=&'a str>>(iter: I) -> String {
+    fn from_iter<I: IntoIterator<Item=&'a str>>(iterable: I) -> String {
         let mut buf = String::new();
-        buf.extend(iter);
+        buf.extend(iterable);
+        buf
+    }
+}
+
+#[stable(feature = "extend_string", since = "1.4.0")]
+impl FromIterator<String> for String {
+    fn from_iter<I: IntoIterator<Item=String>>(iterable: I) -> String {
+        let mut buf = String::new();
+        buf.extend(iterable);
         buf
     }
 }
@@ -805,20 +808,25 @@ impl Extend<char> for String {
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a> Extend<&'a char> for String {
-    fn extend<I: IntoIterator<Item=&'a char>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
+    fn extend<I: IntoIterator<Item=&'a char>>(&mut self, iterable: I) {
+        self.extend(iterable.into_iter().cloned());
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
     fn extend<I: IntoIterator<Item=&'a str>>(&mut self, iterable: I) {
-        let iterator = iterable.into_iter();
-        // A guess that at least one byte per iterator element will be needed.
-        let (lower_bound, _) = iterator.size_hint();
-        self.reserve(lower_bound);
-        for s in iterator {
+        for s in iterable {
             self.push_str(s)
+        }
+    }
+}
+
+#[stable(feature = "extend_string", since = "1.4.0")]
+impl Extend<String> for String {
+    fn extend<I: IntoIterator<Item=String>>(&mut self, iterable: I) {
+        for s in iterable {
+            self.push_str(&s)
         }
     }
 }

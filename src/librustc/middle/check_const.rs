@@ -28,6 +28,7 @@ use middle::cast::{CastKind};
 use middle::const_eval;
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::def;
+use middle::def_id::DefId;
 use middle::expr_use_visitor as euv;
 use middle::infer;
 use middle::mem_categorization as mc;
@@ -37,7 +38,7 @@ use util::nodemap::NodeMap;
 
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::visit::{self, Visitor};
+use syntax::visit::{self, FnKind, Visitor};
 
 use std::collections::hash_map::Entry;
 use std::cmp::Ordering;
@@ -141,7 +142,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn fn_like(&mut self,
-               fk: visit::FnKind,
+               fk: FnKind,
                fd: &ast::FnDecl,
                b: &ast::Block,
                s: Span,
@@ -156,10 +157,10 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         }
 
         let mode = match fk {
-            visit::FkItemFn(_, _, _, ast::Constness::Const, _, _) => {
+            FnKind::ItemFn(_, _, _, ast::Constness::Const, _, _) => {
                 Mode::ConstFn
             }
-            visit::FkMethod(_, m, _) => {
+            FnKind::Method(_, m, _) => {
                 if m.constness == ast::Constness::Const {
                     Mode::ConstFn
                 } else {
@@ -204,7 +205,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     /// Returns true if the call is to a const fn or method.
     fn handle_const_fn_call(&mut self,
                             expr: &ast::Expr,
-                            def_id: ast::DefId,
+                            def_id: DefId,
                             ret_ty: Ty<'tcx>)
                             -> bool {
         if let Some(fn_like) = const_eval::lookup_const_fn_by_id(self.tcx, def_id) {
@@ -351,7 +352,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn visit_fn(&mut self,
-                fk: visit::FnKind<'v>,
+                fk: FnKind<'v>,
                 fd: &'v ast::FnDecl,
                 b: &'v ast::Block,
                 s: Span,
@@ -547,7 +548,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                         e: &ast::Expr, node_ty: Ty<'tcx>) {
     match node_ty.sty {
         ty::TyStruct(def, _) |
-        ty::TyEnum(def, _) if def.has_dtor(v.tcx) => {
+        ty::TyEnum(def, _) if def.has_dtor() => {
             v.add_qualif(ConstQualif::NEEDS_DROP);
             if v.mode != Mode::Var {
                 v.tcx.sess.span_err(e.span,

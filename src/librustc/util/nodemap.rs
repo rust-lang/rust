@@ -12,6 +12,7 @@
 
 #![allow(non_snake_case)]
 
+use middle::def_id::DefId;
 use std::collections::hash_state::DefaultState;
 use std::collections::{HashMap, HashSet};
 use std::default::Default;
@@ -22,10 +23,10 @@ pub type FnvHashMap<K, V> = HashMap<K, V, DefaultState<FnvHasher>>;
 pub type FnvHashSet<V> = HashSet<V, DefaultState<FnvHasher>>;
 
 pub type NodeMap<T> = FnvHashMap<ast::NodeId, T>;
-pub type DefIdMap<T> = FnvHashMap<ast::DefId, T>;
+pub type DefIdMap<T> = FnvHashMap<DefId, T>;
 
 pub type NodeSet = FnvHashSet<ast::NodeId>;
-pub type DefIdSet = FnvHashSet<ast::DefId>;
+pub type DefIdSet = FnvHashSet<DefId>;
 
 pub fn FnvHashMap<K: Hash + Eq, V>() -> FnvHashMap<K, V> {
     Default::default()

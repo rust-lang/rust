@@ -67,6 +67,26 @@ macro_rules! panic {
 /// Note that stdout is frequently line-buffered by default so it may be
 /// necessary to use `io::stdout().flush()` to ensure the output is emitted
 /// immediately.
+///
+/// # Examples
+///
+/// ```
+/// use std::io::{self, Write};
+///
+/// print!("this ");
+/// print!("will ");
+/// print!("be ");
+/// print!("on ");
+/// print!("the ");
+/// print!("same ");
+/// print!("line ");
+///
+/// io::stdout().flush().unwrap();
+///
+/// print!("this string has a newline, why not choose println! instead?\n");
+///
+/// io::stdout().flush().unwrap();
+/// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
@@ -168,7 +188,7 @@ macro_rules! try {
 ///
 /// For more information about select, see the `std::sync::mpsc::Select` structure.
 #[macro_export]
-#[unstable(feature = "mpsc_select")]
+#[unstable(feature = "mpsc_select", issue = "27800")]
 macro_rules! select {
     (
         $($name:pat = $rx:ident.$meth:ident() => $code:expr),+
@@ -195,6 +215,15 @@ macro_rules! log {
     ($lvl:expr, $($args:tt)*) => (
         if log_enabled!($lvl) { println!($($args)*) }
     )
+}
+
+#[cfg(test)]
+macro_rules! assert_approx_eq {
+    ($a:expr, $b:expr) => ({
+        let (a, b) = (&$a, &$b);
+        assert!((*a - *b).abs() < 1.0e-6,
+                "{} is not approximately equal to {}", *a, *b);
+    })
 }
 
 /// Built-in macros to the compiler itself.

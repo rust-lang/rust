@@ -15,7 +15,7 @@
 #[doc(inline)]
 pub use self::arch::{dev_t, mode_t, blkcnt_t, blksize_t, ino_t, nlink_t, off_t, stat, time_t};
 
-#[cfg(target_arch = "arm")]
+#[cfg(any(target_arch = "arm", target_arch = "x86"))]
 mod arch {
     use os::raw::{c_uint, c_uchar, c_ulonglong, c_longlong, c_ulong};
     use os::unix::raw::{uid_t, gid_t};
@@ -150,3 +150,4 @@ mod arch {
         pub st_ino: ino_t,
     }
 }
+

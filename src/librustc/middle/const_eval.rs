@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_camel_case_types)]
+//#![allow(non_camel_case_types)]
 
 use self::ConstVal::*;
 use self::ErrKind::*;
@@ -19,17 +19,17 @@ use ast_map::blocks::FnLikeNode;
 use metadata::csearch;
 use metadata::inline::InlinedItem;
 use middle::{astencode, def, infer, subst, traits};
+use middle::def_id::{DefId};
 use middle::pat_util::def_to_path;
 use middle::ty::{self, Ty};
 use middle::astconv_util::ast_ty_to_prim_ty;
 use util::num::ToPrimitive;
 
 use syntax::ast::{self, Expr};
-use syntax::ast_util;
-use syntax::codemap::Span;
+use syntax::codemap::{self, Span};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-use syntax::{codemap, visit};
+use syntax::visit::FnKind;
 
 use std::borrow::{Cow, IntoCow};
 use std::num::wrapping::OverflowingOps;
@@ -53,8 +53,8 @@ fn lookup_const<'a>(tcx: &'a ty::ctxt, e: &Expr) -> Option<&'a Expr> {
 }
 
 fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
-                            enum_def: ast::DefId,
-                            variant_def: ast::DefId)
+                            enum_def: DefId,
+                            variant_def: DefId)
                             -> Option<&'a Expr> {
     fn variant_expr<'a>(variants: &'a [P<ast::Variant>], id: ast::NodeId)
                         -> Option<&'a Expr> {
@@ -66,7 +66,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
         None
     }
 
-    if ast_util::is_local(enum_def) {
+    if enum_def.is_local() {
         match tcx.map.find(enum_def.node) {
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
@@ -105,10 +105,10 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
 }
 
 pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
-                                        def_id: ast::DefId,
+                                        def_id: DefId,
                                         maybe_ref_id: Option<ast::NodeId>)
                                         -> Option<&'tcx Expr> {
-    if ast_util::is_local(def_id) {
+    if def_id.is_local() {
         match tcx.map.find(def_id.node) {
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
@@ -203,7 +203,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
     }
 }
 
-fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: ast::DefId)
+fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: DefId)
                                        -> Option<ast::NodeId> {
     match tcx.extern_const_fns.borrow().get(&def_id) {
         Some(&ast::DUMMY_NODE_ID) => return None,
@@ -227,10 +227,10 @@ fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: ast::DefId)
     fn_id
 }
 
-pub fn lookup_const_fn_by_id<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: ast::DefId)
+pub fn lookup_const_fn_by_id<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: DefId)
                                    -> Option<FnLikeNode<'tcx>>
 {
-    let fn_id = if !ast_util::is_local(def_id) {
+    let fn_id = if !def_id.is_local() {
         if let Some(fn_id) = inline_const_fn_from_external_crate(tcx, def_id) {
             fn_id
         } else {
@@ -246,10 +246,10 @@ pub fn lookup_const_fn_by_id<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: ast::DefId)
     };
 
     match fn_like.kind() {
-        visit::FkItemFn(_, _, _, ast::Constness::Const, _, _) => {
+        FnKind::ItemFn(_, _, _, ast::Constness::Const, _, _) => {
             Some(fn_like)
         }
-        visit::FkMethod(_, m, _) => {
+        FnKind::Method(_, m, _) => {
             if m.constness == ast::Constness::Const {
                 Some(fn_like)
             } else {
@@ -916,7 +916,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           let opt_def = tcx.def_map.borrow().get(&e.id).map(|d| d.full_def());
           let (const_expr, const_ty) = match opt_def {
               Some(def::DefConst(def_id)) => {
-                  if ast_util::is_local(def_id) {
+                  if def_id.is_local() {
                       match tcx.map.find(def_id.node) {
                           Some(ast_map::NodeItem(it)) => match it.node {
                               ast::ItemConst(ref ty, ref expr) => {
@@ -931,7 +931,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                   }
               }
               Some(def::DefAssociatedConst(def_id)) => {
-                  if ast_util::is_local(def_id) {
+                  if def_id.is_local() {
                       match tcx.impl_or_trait_item(def_id).container() {
                           ty::TraitContainer(trait_id) => match tcx.map.find(def_id.node) {
                               Some(ast_map::NodeTraitItem(ti)) => match ti.node {
@@ -1062,7 +1062,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                                                 ti: &'tcx ast::TraitItem,
-                                                trait_id: ast::DefId,
+                                                trait_id: DefId,
                                                 rcvr_substs: subst::Substs<'tcx>)
                                                 -> Option<&'tcx Expr>
 {

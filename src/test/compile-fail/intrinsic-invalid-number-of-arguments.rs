@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 16-bit signed integer type.
-//!
-//! *[See also the `i16` primitive type](../primitive.i16.html).*
+// Test number of arguments in platform-specific intrinsic function
+// This is the error E0444
 
-#![stable(feature = "rust1", since = "1.0.0")]
+#![feature(repr_simd, platform_intrinsics)]
 
-pub use core::i16::{BITS, BYTES, MIN, MAX};
+#[repr(simd)]
+struct f64x2(f64, f64);
 
-int_module! { i16 }
+extern "platform-intrinsic" {
+    fn x86_mm_movemask_pd(x: f64x2, y: f64x2, z: f64x2) -> i32; //~ platform-specific intrinsic
+}
+
+pub fn main() {
+}

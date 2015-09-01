@@ -18,6 +18,7 @@
 
 pub use self::DefIdSource::*;
 
+use middle::def_id::DefId;
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
@@ -58,7 +59,7 @@ pub enum DefIdSource {
     ClosureSource
 }
 
-pub type DefIdConvert<'a> = &'a mut FnMut(DefIdSource, ast::DefId) -> ast::DefId;
+pub type DefIdConvert<'a> = &'a mut FnMut(DefIdSource, DefId) -> DefId;
 
 pub struct TyDecoder<'a, 'tcx: 'a> {
     data: &'a [u8],
@@ -206,6 +207,10 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'B' => {
                 assert_eq!(self.next(), '[');
+                // this is the wrong NodeId, but `param_id` is only accessed
+                // by the receiver-matching code in collect, which won't
+                // be going down this code path, and anyway I will kill it
+                // the moment wfcheck becomes the standard.
                 let node_id = self.parse_uint() as ast::NodeId;
                 assert_eq!(self.next(), '|');
                 let space = self.parse_param_space();
@@ -222,7 +227,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'f' => {
                 assert_eq!(self.next(), '[');
-                let scope = self.parse_destruction_scope_data();
+                let scope = self.parse_scope();
                 assert_eq!(self.next(), '|');
                 let br = self.parse_bound_region();
                 assert_eq!(self.next(), ']');
@@ -245,43 +250,44 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     }
 
     fn parse_scope(&mut self) -> region::CodeExtent {
-        match self.next() {
+        self.tcx.region_maps.bogus_code_extent(match self.next() {
+            // This creates scopes with the wrong NodeId. This isn't
+            // actually a problem because scopes only exist *within*
+            // functions, and functions aren't loaded until trans which
+            // doesn't care about regions.
+            //
+            // May still be worth fixing though.
             'P' => {
                 assert_eq!(self.next(), '[');
                 let fn_id = self.parse_uint() as ast::NodeId;
                 assert_eq!(self.next(), '|');
                 let body_id = self.parse_uint() as ast::NodeId;
                 assert_eq!(self.next(), ']');
-                region::CodeExtent::ParameterScope {
+                region::CodeExtentData::ParameterScope {
                     fn_id: fn_id, body_id: body_id
                 }
             }
             'M' => {
                 let node_id = self.parse_uint() as ast::NodeId;
-                region::CodeExtent::Misc(node_id)
+                region::CodeExtentData::Misc(node_id)
             }
             'D' => {
                 let node_id = self.parse_uint() as ast::NodeId;
-                region::CodeExtent::DestructionScope(node_id)
+                region::CodeExtentData::DestructionScope(node_id)
             }
             'B' => {
                 assert_eq!(self.next(), '[');
                 let node_id = self.parse_uint() as ast::NodeId;
                 assert_eq!(self.next(), '|');
-                let first_stmt_index = self.parse_uint();
+                let first_stmt_index = self.parse_u32();
                 assert_eq!(self.next(), ']');
                 let block_remainder = region::BlockRemainder {
                     block: node_id, first_statement_index: first_stmt_index,
                 };
-                region::CodeExtent::Remainder(block_remainder)
+                region::CodeExtentData::Remainder(block_remainder)
             }
             _ => panic!("parse_scope: bad input")
-        }
-    }
-
-    fn parse_destruction_scope_data(&mut self) -> region::DestructionScopeData {
-        let node_id = self.parse_uint() as ast::NodeId;
-        region::DestructionScopeData::new(node_id)
+        })
     }
 
     fn parse_opt<T, F>(&mut self, f: F) -> Option<T>
@@ -473,7 +479,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         ty::TypeAndMut { ty: self.parse_ty(), mutbl: m }
     }
 
-    fn parse_def(&mut self, source: DefIdSource) -> ast::DefId {
+    fn parse_def(&mut self, source: DefIdSource) -> DefId {
         let def_id = parse_defid(self.scan(|c| c == '|'));
         return (self.conv_def_id)(source, def_id);
     }
@@ -618,6 +624,33 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
+    pub fn parse_region_param_def(&mut self) -> ty::RegionParameterDef {
+        let name = self.parse_name(':');
+        let def_id = self.parse_def(NominalType);
+        let space = self.parse_param_space();
+        assert_eq!(self.next(), '|');
+        let index = self.parse_u32();
+        assert_eq!(self.next(), '|');
+        let mut bounds = vec![];
+        loop {
+            match self.next() {
+                'R' => bounds.push(self.parse_region()),
+                '.' => { break; }
+                c => {
+                    panic!("parse_region_param_def: bad bounds ('{}')", c)
+                }
+            }
+        }
+        ty::RegionParameterDef {
+            name: name,
+            def_id: def_id,
+            space: space,
+            index: index,
+            bounds: bounds
+        }
+    }
+
+
     fn parse_object_lifetime_default(&mut self) -> ty::ObjectLifetimeDefault {
         match self.next() {
             'a' => ty::ObjectLifetimeDefault::Ambiguous,
@@ -680,7 +713,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
 }
 
 // Rust metadata parsing
-fn parse_defid(buf: &[u8]) -> ast::DefId {
+fn parse_defid(buf: &[u8]) -> DefId {
     let mut colon_idx = 0;
     let len = buf.len();
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1; }
@@ -706,7 +739,7 @@ fn parse_defid(buf: &[u8]) -> ast::DefId {
         None => panic!("internal error: parse_defid: id expected, found {:?}",
                        def_part)
     };
-    ast::DefId { krate: crate_num, node: def_num }
+    DefId { krate: crate_num, node: def_num }
 }
 
 fn parse_unsafety(c: char) -> ast::Unsafety {
@@ -716,4 +749,3 @@ fn parse_unsafety(c: char) -> ast::Unsafety {
         _ => panic!("parse_unsafety: bad unsafety {}", c)
     }
 }
-

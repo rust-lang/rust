@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 32-bit unsigned integer type.
-//!
-//! *[See also the `u32` primitive type](../primitive.u32.html).*
-
-#![stable(feature = "rust1", since = "1.0.0")]
-
-pub use core::u32::{BITS, BYTES, MIN, MAX};
-
-uint_module! { u32 }
+extern "C" {
+    // @has variadic/fn.foo.html //pre 'pub unsafe extern fn foo(x: i32, ...)'
+    pub fn foo(x: i32, ...);
+}

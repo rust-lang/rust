@@ -602,10 +602,15 @@ valopt python "" "set path to python"
 valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
 valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
 valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path (deprecated)"
+valopt i686-linux-android-ndk "" "i686-linux-android NDK standalone path"
 valopt arm-linux-androideabi-ndk "" "arm-linux-androideabi NDK standalone path"
 valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
 valopt release-channel "dev" "the name of the release channel to build"
 valopt musl-root "/usr/local" "MUSL root installation directory"
+
+# Used on systems where "cc" and "ar" are unavailable
+valopt default-linker "cc" "the default linker"
+valopt default-ar     "ar" "the default ar"
 
 # Many of these are saved below during the "writing configuration" step
 # (others are conditionally saved).
@@ -1689,6 +1694,7 @@ putvar CFG_LIBDIR_RELATIVE
 putvar CFG_DISABLE_MANAGE_SUBMODULES
 putvar CFG_AARCH64_LINUX_ANDROID_NDK
 putvar CFG_ARM_LINUX_ANDROIDEABI_NDK
+putvar CFG_I686_LINUX_ANDROID_NDK
 putvar CFG_MANDIR
 
 # Avoid spurious warnings from clang by feeding it original source on

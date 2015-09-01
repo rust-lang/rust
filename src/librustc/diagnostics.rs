@@ -731,9 +731,14 @@ type X = u32; // ok!
 "##,
 
 E0133: r##"
-Using unsafe functionality, such as dereferencing raw pointers and calling
-functions via FFI or marked as unsafe, is potentially dangerous and disallowed
-by safety checks. These safety checks can be relaxed for a section of the code
+Using unsafe functionality, is potentially dangerous and disallowed
+by safety checks. Examples:
+
+- Dereferencing raw pointers
+- Calling functions via FFI
+- Calling functions marked unsafe
+
+These safety checks can be relaxed for a section of the code
 by wrapping the unsafe instructions with an `unsafe` block. For instance:
 
 ```
@@ -831,9 +836,7 @@ is a size mismatch in one of the impls.
 It is also possible to manually transmute:
 
 ```
-let result: SomeType = mem::uninitialized();
-unsafe { copy_nonoverlapping(&v, &result) };
-result // `v` transmuted to type `SomeType`
+ptr::read(&v as *const _ as *const SomeType) // `v` transmuted to `SomeType`
 ```
 "##,
 
@@ -1484,6 +1487,26 @@ fn main() {
 ```
 "##,
 
+E0281: r##"
+You tried to supply a type which doesn't implement some trait in a location
+which expected that trait. This error typically occurs when working with
+`Fn`-based types. Erroneous code example:
+
+```
+fn foo<F: Fn()>(x: F) { }
+
+fn main() {
+    // type mismatch: the type ... implements the trait `core::ops::Fn<(_,)>`,
+    // but the trait `core::ops::Fn<()>` is required (expected (), found tuple
+    // [E0281]
+    foo(|y| { });
+}
+```
+
+The issue in this case is that `foo` is defined as accepting a `Fn` with no
+arguments, but the closure we attempted to pass to it requires one argument.
+"##,
+
 E0282: r##"
 This error indicates that type inference did not result in one unique possible
 type, and extra information is required. In most cases this can be provided
@@ -1864,7 +1887,6 @@ register_diagnostics! {
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
-    E0281, // type implements trait but other trait is required
     E0283, // cannot resolve type
     E0284, // cannot resolve type
     E0285, // overflow evaluation builtin bounds

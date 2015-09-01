@@ -35,6 +35,7 @@ use std::mem::replace;
 
 use rustc::ast_map;
 use rustc::middle::def;
+use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::ImportUse::*;
 use rustc::middle::privacy::LastPrivate::*;
 use rustc::middle::privacy::PrivateDep::*;
@@ -43,7 +44,6 @@ use rustc::middle::ty::{self, Ty};
 use rustc::util::nodemap::{NodeMap, NodeSet};
 
 use syntax::ast;
-use syntax::ast_util::{is_local, local_def};
 use syntax::codemap::Span;
 use syntax::visit::{self, Visitor};
 
@@ -260,16 +260,16 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                             def::DefPrimTy(..) => true,
                             def => {
                                 let did = def.def_id();
-                                !is_local(did) ||
+                                !did.is_local() ||
                                  self.exported_items.contains(&did.node)
                             }
                         }
                     }
                     _ => true,
                 };
-                let tr = self.tcx.impl_trait_ref(local_def(item.id));
+                let tr = self.tcx.impl_trait_ref(DefId::local(item.id));
                 let public_trait = tr.clone().map_or(false, |tr| {
-                    !is_local(tr.def_id) ||
+                    !tr.def_id.is_local() ||
                      self.exported_items.contains(&tr.def_id.node)
                 });
 
@@ -330,7 +330,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                         def::DefPrimTy(..) | def::DefTyParam(..) => {},
                         def => {
                             let did = def.def_id();
-                            if is_local(did) {
+                            if did.is_local() {
                                 self.exported_items.insert(did.node);
                             }
                         }
@@ -359,7 +359,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         if self.prev_exported {
             assert!(self.export_map.contains_key(&id), "wut {}", id);
             for export in self.export_map.get(&id).unwrap() {
-                if is_local(export.def_id) {
+                if export.def_id.is_local() {
                     self.reexports.insert(export.def_id.node);
                 }
             }
@@ -400,8 +400,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
 
     // Determines whether the given definition is public from the point of view
     // of the current item.
-    fn def_privacy(&self, did: ast::DefId) -> PrivacyResult {
-        if !is_local(did) {
+    fn def_privacy(&self, did: DefId) -> PrivacyResult {
+        if !did.is_local() {
             if self.external_exports.contains(&did) {
                 debug!("privacy - {:?} was externally exported", did);
                 return Allowable;
@@ -627,8 +627,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     /// Guarantee that a particular definition is public. Returns a CheckResult
     /// which contains any errors found. These can be reported using `report_error`.
     /// If the result is `None`, no errors were found.
-    fn ensure_public(&self, span: Span, to_check: ast::DefId,
-                     source_did: Option<ast::DefId>, msg: &str) -> CheckResult {
+    fn ensure_public(&self, span: Span, to_check: DefId,
+                     source_did: Option<DefId>, msg: &str) -> CheckResult {
         let id = match self.def_privacy(to_check) {
             ExternallyDenied => {
                 return Some((span, format!("{} is private", msg), None))
@@ -661,7 +661,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                         };
                         let def = self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def();
                         let did = def.def_id();
-                        assert!(is_local(did));
+                        assert!(did.is_local());
                         match self.tcx.map.get(did.node) {
                             ast_map::NodeItem(item) => item,
                             _ => self.tcx.sess.span_bug(item.span,
@@ -698,7 +698,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             UnnamedField(idx) => &v.fields[idx]
         };
         if field.vis == ast::Public ||
-            (is_local(field.did) && self.private_accessible(field.did.node)) {
+            (field.did.is_local() && self.private_accessible(field.did.node)) {
             return
         }
 
@@ -720,7 +720,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     // Given the ID of a method, checks to ensure it's in scope.
     fn check_static_method(&mut self,
                            span: Span,
-                           method_id: ast::DefId,
+                           method_id: DefId,
                            name: ast::Name) {
         // If the method is a default method, we need to use the def_id of
         // the default implementation.
@@ -747,7 +747,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         debug!("privacy - path {}", self.nodestr(path_id));
         let path_res = *self.tcx.def_map.borrow().get(&path_id).unwrap();
         let ck = |tyname: &str| {
-            let ck_public = |def: ast::DefId| {
+            let ck_public = |def: DefId| {
                 debug!("privacy - ck_public {:?}", def);
                 let origdid = path_res.def_id();
                 self.ensure_public(span,
@@ -837,7 +837,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     }
 
     // Checks that a method is in scope.
-    fn check_method(&mut self, span: Span, method_def_id: ast::DefId,
+    fn check_method(&mut self, span: Span, method_def_id: DefId,
                     name: ast::Name) {
         match self.tcx.impl_or_trait_item(method_def_id).container() {
             ty::ImplContainer(_) => {
@@ -923,7 +923,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                     }.ty_adt_def().unwrap();
                     let any_priv = def.struct_variant().fields.iter().any(|f| {
                         f.vis != ast::Public && (
-                            !is_local(f.did) ||
+                            !f.did.is_local() ||
                                     !self.private_accessible(f.did.node))
                         });
                     if any_priv {
@@ -1168,7 +1168,7 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
         };
         // A path can only be private if:
         // it's in this crate...
-        if !is_local(did) {
+        if !did.is_local() {
             return false
         }
 
@@ -1277,7 +1277,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                                               |tr| {
                         let did = self.tcx.trait_ref_to_def_id(tr);
 
-                        !is_local(did) || self.trait_is_public(did.node)
+                        !did.is_local() || self.trait_is_public(did.node)
                     });
 
                 // `true` iff this is a trait impl or at least one method is public.

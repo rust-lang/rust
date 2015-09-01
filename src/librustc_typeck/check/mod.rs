@@ -86,11 +86,11 @@ use check::_match::pat_ctxt;
 use fmt_macros::{Parser, Piece, Position};
 use middle::astconv_util::{check_path_args, NO_TPS, NO_REGIONS};
 use middle::def;
+use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::infer;
 use middle::infer::type_variable;
 use middle::pat_util::{self, pat_id_map};
 use middle::privacy::{AllPublic, LastMod};
-use middle::region::{self};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
 use middle::traits::{self, report_fulfillment_errors};
 use middle::ty::{FnSig, GenericPredicates, TypeScheme};
@@ -114,8 +114,8 @@ use std::mem::replace;
 use std::slice;
 use syntax::{self, abi, attr};
 use syntax::attr::AttrMetaMethods;
-use syntax::ast::{self, DefId, Visibility};
-use syntax::ast_util::{self, local_def};
+use syntax::ast::{self, Visibility};
+use syntax::ast_util;
 use syntax::codemap::{self, Span};
 use syntax::feature_gate::emit_feature_err;
 use syntax::owned_slice::OwnedSlice;
@@ -426,7 +426,7 @@ pub fn check_item_bodies(ccx: &CrateCtxt) {
 
 pub fn check_drop_impls(ccx: &CrateCtxt) {
     for drop_method_did in ccx.tcx.destructors.borrow().iter() {
-        if drop_method_did.krate == ast::LOCAL_CRATE {
+        if drop_method_did.is_local() {
             let drop_impl_did = ccx.tcx.map.get_parent_did(drop_method_did.node);
             match dropck::check_drop_impl(ccx.tcx, drop_impl_did) {
                 Ok(()) => {}
@@ -454,11 +454,11 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let inh = Inherited::new(ccx.tcx, &tables, param_env);
 
             // Compute the fty from point of view of inside fn.
+            let fn_scope = ccx.tcx.region_maps.item_extent(body.id);
             let fn_sig =
                 fn_ty.sig.subst(ccx.tcx, &inh.infcx.parameter_environment.free_substs);
             let fn_sig =
-                ccx.tcx.liberate_late_bound_regions(region::DestructionScopeData::new(body.id),
-                                                    &fn_sig);
+                ccx.tcx.liberate_late_bound_regions(fn_scope, &fn_sig);
             let fn_sig =
                 inh.normalize_associated_types_in(body.span,
                                                   body.id,
@@ -671,7 +671,7 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     check_representable(tcx, span, id, "struct");
     check_instantiable(tcx, span, id);
 
-    if tcx.lookup_simd(local_def(id)) {
+    if tcx.lookup_simd(DefId::local(id)) {
         check_simd(tcx, span, id);
     }
 }
@@ -679,7 +679,7 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
 pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
     debug!("check_item_type(it.id={}, it.ident={})",
            it.id,
-           ccx.tcx.item_path_str(local_def(it.id)));
+           ccx.tcx.item_path_str(DefId::local(it.id)));
     let _indenter = indenter();
     match it.node {
       // Consts can play a role in type-checking, so they are included here.
@@ -694,7 +694,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
       ast::ItemFn(..) => {} // entirely within check_item_body
       ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
           debug!("ItemImpl {} with id {}", it.ident, it.id);
-          match ccx.tcx.impl_trait_ref(local_def(it.id)) {
+          match ccx.tcx.impl_trait_ref(DefId::local(it.id)) {
               Some(impl_trait_ref) => {
                 check_impl_items_against_trait(ccx,
                                                it.span,
@@ -725,10 +725,13 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
             }
         } else {
             for item in &m.items {
-                let pty = ccx.tcx.lookup_item_type(local_def(item.id));
+                let pty = ccx.tcx.lookup_item_type(DefId::local(item.id));
                 if !pty.generics.types.is_empty() {
                     span_err!(ccx.tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
+                    span_help!(ccx.tcx.sess, item.span,
+                        "consider using specialization instead of \
+                        type parameters");
                 }
 
                 if let ast::ForeignItemFn(ref fn_decl, _) = item.node {
@@ -744,18 +747,18 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
 pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
     debug!("check_item_body(it.id={}, it.ident={})",
            it.id,
-           ccx.tcx.item_path_str(local_def(it.id)));
+           ccx.tcx.item_path_str(DefId::local(it.id)));
     let _indenter = indenter();
     match it.node {
       ast::ItemFn(ref decl, _, _, _, _, ref body) => {
-        let fn_pty = ccx.tcx.lookup_item_type(ast_util::local_def(it.id));
+        let fn_pty = ccx.tcx.lookup_item_type(DefId::local(it.id));
         let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
         check_bare_fn(ccx, &**decl, &**body, it.id, it.span, fn_pty.ty, param_env);
       }
       ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
         debug!("ItemImpl {} with id {}", it.ident, it.id);
 
-        let impl_pty = ccx.tcx.lookup_item_type(ast_util::local_def(it.id));
+        let impl_pty = ccx.tcx.lookup_item_type(DefId::local(it.id));
 
         for impl_item in impl_items {
             match impl_item.node {
@@ -774,7 +777,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
         }
       }
       ast::ItemTrait(_, _, _, ref trait_items) => {
-        let trait_def = ccx.tcx.lookup_trait_def(local_def(it.id));
+        let trait_def = ccx.tcx.lookup_trait_def(DefId::local(it.id));
         for trait_item in trait_items {
             match trait_item.node {
                 ast::ConstTraitItem(_, Some(ref expr)) => {
@@ -893,7 +896,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items {
-        let ty_impl_item = ccx.tcx.impl_or_trait_item(local_def(impl_item.id));
+        let ty_impl_item = ccx.tcx.impl_or_trait_item(DefId::local(impl_item.id));
         let ty_trait_item = trait_items.iter()
             .find(|ac| ac.name() == ty_impl_item.name())
             .unwrap_or_else(|| {
@@ -1117,19 +1120,19 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> { self.ccx.tcx }
 
-    fn get_item_type_scheme(&self, _: Span, id: ast::DefId)
+    fn get_item_type_scheme(&self, _: Span, id: DefId)
                             -> Result<ty::TypeScheme<'tcx>, ErrorReported>
     {
         Ok(self.tcx().lookup_item_type(id))
     }
 
-    fn get_trait_def(&self, _: Span, id: ast::DefId)
+    fn get_trait_def(&self, _: Span, id: DefId)
                      -> Result<&'tcx ty::TraitDef<'tcx>, ErrorReported>
     {
         Ok(self.tcx().lookup_trait_def(id))
     }
 
-    fn ensure_super_predicates(&self, _: Span, _: ast::DefId) -> Result<(), ErrorReported> {
+    fn ensure_super_predicates(&self, _: Span, _: DefId) -> Result<(), ErrorReported> {
         // all super predicates are ensured during collect pass
         Ok(())
     }
@@ -1166,7 +1169,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 
     fn trait_defines_associated_type_named(&self,
-                                           trait_def_id: ast::DefId,
+                                           trait_def_id: DefId,
                                            assoc_name: ast::Name)
                                            -> bool
     {
@@ -1280,14 +1283,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn record_deferred_call_resolution(&self,
-                                       closure_def_id: ast::DefId,
+                                       closure_def_id: DefId,
                                        r: DeferredCallResolutionHandler<'tcx>) {
         let mut deferred_call_resolutions = self.inh.deferred_call_resolutions.borrow_mut();
         deferred_call_resolutions.entry(closure_def_id).or_insert(vec![]).push(r);
     }
 
     fn remove_deferred_call_resolutions(&self,
-                                        closure_def_id: ast::DefId)
+                                        closure_def_id: DefId)
                                         -> Vec<DeferredCallResolutionHandler<'tcx>>
     {
         let mut deferred_call_resolutions = self.inh.deferred_call_resolutions.borrow_mut();
@@ -1420,7 +1423,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Note that this function is only intended to be used with type-paths,
     /// not with value-paths.
     pub fn instantiate_type(&self,
-                            did: ast::DefId,
+                            did: DefId,
                             path: &ast::Path)
                             -> Ty<'tcx>
     {
@@ -1937,7 +1940,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .unwrap_or(type_variable::Default {
                                 ty: self.infcx().next_ty_var(),
                                 origin_span: codemap::DUMMY_SP,
-                                def_id: local_def(0) // what do I put here?
+                                def_id: DefId::local(0) // what do I put here?
                             });
 
                     // This is to ensure that we elimnate any non-determinism from the error
@@ -2721,7 +2724,7 @@ fn check_expr_with_lvalue_pref<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, expr: &'tcx ast::
 // variables.
 pub fn impl_self_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               span: Span, // (potential) receiver for this impl
-                              did: ast::DefId)
+                              did: DefId)
                               -> TypeAndSubsts<'tcx> {
     let tcx = fcx.tcx();
 
@@ -3002,7 +3005,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 continue;
             }
             // ignore private fields from non-local crates
-            if variant.did.krate != ast::LOCAL_CRATE && elem.vis != Visibility::Public {
+            if variant.did.krate != LOCAL_CRATE && elem.vis != Visibility::Public {
                 continue;
             }
             let dist = lev_distance(&n, &name);
@@ -3382,7 +3385,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           } else if let Some(ast::QSelf { position: 0, .. }) = *maybe_qself {
                 // Create some fake resolution that can't possibly be a type.
                 def::PathResolution {
-                    base_def: def::DefMod(local_def(ast::CRATE_NODE_ID)),
+                    base_def: def::DefMod(DefId::local(ast::CRATE_NODE_ID)),
                     last_private: LastMod(AllPublic),
                     depth: path.segments.len()
                 }
@@ -4152,7 +4155,7 @@ fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let inh = static_inherited_fields(ccx, &tables);
     let rty = ccx.tcx.node_id_to_type(id);
     let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(rty), e.id);
-    let declty = fcx.ccx.tcx.lookup_item_type(local_def(id)).ty;
+    let declty = fcx.ccx.tcx.lookup_item_type(DefId::local(id)).ty;
     check_const_with_ty(&fcx, sp, e, declty);
 }
 
@@ -4295,7 +4298,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             }
         }
 
-        let def_id = local_def(id);
+        let def_id = DefId::local(id);
 
         let variants = &ccx.tcx.lookup_adt_def(def_id).variants;
         for (v, variant) in vs.iter().zip(variants.iter()) {
@@ -4333,7 +4336,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         }
     }
 
-    let hint = *ccx.tcx.lookup_repr_hints(ast::DefId { krate: ast::LOCAL_CRATE, node: id })
+    let hint = *ccx.tcx.lookup_repr_hints(DefId { krate: LOCAL_CRATE, node: id })
         .get(0).unwrap_or(&attr::ReprAny);
 
     if hint != attr::ReprAny && vs.len() <= 1 {

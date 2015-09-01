@@ -1327,47 +1327,6 @@ pub trait Float: Sized {
     fn to_radians(self) -> Self;
 }
 
-macro_rules! from_str_float_impl {
-    ($t:ty, $func:ident) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl FromStr for $t {
-            type Err = ParseFloatError;
-
-            /// Converts a string in base 10 to a float.
-            /// Accepts an optional decimal exponent.
-            ///
-            /// This function accepts strings such as
-            ///
-            /// * '3.14'
-            /// * '-3.14'
-            /// * '2.5E10', or equivalently, '2.5e10'
-            /// * '2.5E-10'
-            /// * '.' (understood as 0)
-            /// * '5.'
-            /// * '.5', or, equivalently,  '0.5'
-            /// * 'inf', '-inf', 'NaN'
-            ///
-            /// Leading and trailing whitespace represent an error.
-            ///
-            /// # Arguments
-            ///
-            /// * src - A string
-            ///
-            /// # Return value
-            ///
-            /// `Err(ParseFloatError)` if the string did not represent a valid
-            /// number.  Otherwise, `Ok(n)` where `n` is the floating-point
-            /// number represented by `src`.
-            #[inline]
-            fn from_str(src: &str) -> Result<Self, ParseFloatError> {
-                dec2flt::$func(src)
-            }
-        }
-    }
-}
-from_str_float_impl!(f32, to_f32);
-from_str_float_impl!(f64, to_f64);
-
 macro_rules! from_str_radix_int_impl {
     ($($t:ty)*) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -1510,40 +1469,4 @@ impl fmt::Display for ParseIntError {
     }
 }
 
-/// An error which can be returned when parsing a float.
-#[derive(Debug, Clone, PartialEq)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct ParseFloatError {
-    #[doc(hidden)]
-    #[unstable(feature = "float_error_internals",
-               reason = "should not be exposed publicly",
-               issue = "0")]
-    pub __kind: FloatErrorKind
-}
-
-#[derive(Debug, Clone, PartialEq)]
-#[unstable(feature = "float_error_internals",
-           reason = "should not be exposed publicly",
-           issue = "0")]
-#[doc(hidden)]
-pub enum FloatErrorKind {
-    Empty,
-    Invalid,
-}
-
-impl ParseFloatError {
-    #[doc(hidden)]
-    pub fn __description(&self) -> &str {
-        match self.__kind {
-            FloatErrorKind::Empty => "cannot parse float from empty string",
-            FloatErrorKind::Invalid => "invalid float literal",
-        }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Display for ParseFloatError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.__description().fmt(f)
-    }
-}
+pub use num::dec2flt::ParseFloatError;

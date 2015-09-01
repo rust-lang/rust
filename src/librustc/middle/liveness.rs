@@ -111,7 +111,6 @@ use self::VarKind::*;
 
 use middle::def::*;
 use middle::pat_util;
-use middle::region;
 use middle::ty;
 use lint;
 use util::nodemap::NodeMap;
@@ -1509,7 +1508,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // within the fn body, late-bound regions are liberated:
         let fn_ret =
             self.ir.tcx.liberate_late_bound_regions(
-                region::DestructionScopeData::new(body.id),
+                self.ir.tcx.region_maps.item_extent(body.id),
                 &self.fn_ret(id));
 
         match fn_ret {

@@ -37,7 +37,9 @@ impl<'al,'adds_bnd>     Drop for L<'al,'adds_bnd> where 'adds_bnd:'al {    // RE
 impl<'ml>               Drop for M<'ml>         { fn drop(&mut self) { } } // ACCEPT
 
 impl                    Drop for N<'static>     { fn drop(&mut self) { } } // REJECT
-//~^ ERROR Implementations of Drop cannot be specialized
+//~^ ERROR mismatched types
+//~| expected `N<'n>`
+//~|    found `N<'static>`
 
 impl<Cok_nobound> Drop for O<Cok_nobound> { fn drop(&mut self) { } } // ACCEPT
 
@@ -57,9 +59,9 @@ impl<'t,Bt:'t>    Drop for T<'t,Bt>       { fn drop(&mut self) { } } // ACCEPT
 impl              Drop for U              { fn drop(&mut self) { } } // ACCEPT
 
 impl<One>         Drop for V<One,One>     { fn drop(&mut self) { } } // REJECT
-//~^ERROR Implementations of Drop cannot be specialized
+//~^ ERROR Implementations of Drop cannot be specialized
 
 impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
-//~^ERROR Implementations of Drop cannot be specialized
+//~^ ERROR cannot infer an appropriate lifetime
 
 pub fn main() { }

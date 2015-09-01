@@ -9,10 +9,11 @@
 // except according to those terms.
 
 
+use middle::def_id::DefId;
 use middle::subst::{self, Subst};
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
 use middle::ty::{ReEarlyBound, BrFresh, ctxt};
-use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region, ReEmpty};
+use middle::ty::{ReFree, ReScope, ReStatic, Region, ReEmpty};
 use middle::ty::{ReSkolemized, ReVar, BrEnv};
 use middle::ty::{TyBool, TyChar, TyStruct, TyEnum};
 use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyBareFn};
@@ -64,7 +65,7 @@ fn fn_sig(f: &mut fmt::Formatter,
 
 fn parameterized<GG>(f: &mut fmt::Formatter,
                      substs: &subst::Substs,
-                     did: ast::DefId,
+                     did: DefId,
                      projections: &[ty::ProjectionPredicate],
                      get_generics: GG)
                      -> fmt::Result
@@ -229,7 +230,7 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
             ty::BrEnv => {
                 let name = token::intern("'r");
                 let _ = write!(f, "{}", name);
-                ty::BrNamed(ast_util::local_def(ast::DUMMY_NODE_ID), name)
+                ty::BrNamed(DefId::local(ast::DUMMY_NODE_ID), name)
             }
         })
     }).0;
@@ -306,8 +307,20 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
 
 impl<'tcx> fmt::Debug for ty::TypeParameterDef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TypeParameterDef({:?}, {:?}/{})",
-               self.def_id, self.space, self.index)
+        write!(f, "TypeParameterDef({}, {}:{}, {:?}/{})",
+               self.name,
+               self.def_id.krate, self.def_id.node,
+               self.space, self.index)
+    }
+}
+
+impl fmt::Debug for ty::RegionParameterDef {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "RegionParameterDef({}, {}:{}, {:?}/{}, {:?})",
+               self.name,
+               self.def_id.krate, self.def_id.node,
+               self.space, self.index,
+               self.bounds)
     }
 }
 
@@ -387,6 +400,19 @@ impl fmt::Display for ty::BoundRegion {
     }
 }
 
+impl fmt::Debug for ty::BoundRegion {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            BrAnon(n) => write!(f, "BrAnon({:?})", n),
+            BrFresh(n) => write!(f, "BrFresh({:?})", n),
+            BrNamed(did, name) => {
+                write!(f, "BrNamed({}:{}, {:?})", did.krate, did.node, name)
+            }
+            BrEnv => "BrEnv".fmt(f),
+        }
+    }
+}
+
 impl fmt::Debug for ty::Region {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -412,12 +438,12 @@ impl fmt::Debug for ty::Region {
 
             ty::ReStatic => write!(f, "ReStatic"),
 
-            ty::ReInfer(ReVar(ref vid)) => {
+            ty::ReVar(ref vid) => {
                 write!(f, "{:?}", vid)
             }
 
-            ty::ReInfer(ReSkolemized(id, ref bound_region)) => {
-                write!(f, "ReSkolemized({}, {:?})", id, bound_region)
+            ty::ReSkolemized(id, ref bound_region) => {
+                write!(f, "ReSkolemized({}, {:?})", id.index, bound_region)
             }
 
             ty::ReEmpty => write!(f, "ReEmpty")
@@ -441,11 +467,11 @@ impl fmt::Display for ty::Region {
             }
             ty::ReLateBound(_, br) |
             ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
-            ty::ReInfer(ReSkolemized(_, br)) => {
+            ty::ReSkolemized(_, br) => {
                 write!(f, "{}", br)
             }
             ty::ReScope(_) |
-            ty::ReInfer(ReVar(_)) => Ok(()),
+            ty::ReVar(_) => Ok(()),
             ty::ReStatic => write!(f, "'static"),
             ty::ReEmpty => write!(f, "'<empty>"),
         }
@@ -658,7 +684,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
             TyEnum(def, substs) | TyStruct(def, substs) => {
                 ty::tls::with(|tcx| {
-                    if def.did.krate == ast::LOCAL_CRATE &&
+                    if def.did.is_local() &&
                           !tcx.tcache.borrow().contains_key(&def.did) {
                         write!(f, "{}<..>", tcx.item_path_str(def.did))
                     } else {
@@ -673,7 +699,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyClosure(ref did, ref substs) => ty::tls::with(|tcx| {
                 try!(write!(f, "[closure"));
 
-                if did.krate == ast::LOCAL_CRATE {
+                if did.is_local() {
                     try!(write!(f, "@{:?}", tcx.map.span(did.node)));
                     let mut sep = " ";
                     try!(tcx.with_freevars(did.node, |freevars| {

@@ -112,11 +112,13 @@ pub mod middle {
     pub mod check_static_recursion;
     pub mod check_loop;
     pub mod check_match;
+    pub mod check_no_asm;
     pub mod check_rvalues;
     pub mod const_eval;
     pub mod dataflow;
     pub mod dead;
     pub mod def;
+    pub mod def_id;
     pub mod dependency_format;
     pub mod effect;
     pub mod entry;

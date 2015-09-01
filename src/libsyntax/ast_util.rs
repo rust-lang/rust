@@ -17,7 +17,7 @@ use owned_slice::OwnedSlice;
 use parse::token;
 use print::pprust;
 use ptr::P;
-use visit::Visitor;
+use visit::{FnKind, Visitor};
 use visit;
 
 use std::cmp;
@@ -27,12 +27,6 @@ pub fn path_name_i(idents: &[Ident]) -> String {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     idents.iter().map(|i| i.to_string()).collect::<Vec<String>>().join("::")
 }
-
-pub fn local_def(id: NodeId) -> DefId {
-    ast::DefId { krate: LOCAL_CRATE, node: id }
-}
-
-pub fn is_local(did: ast::DefId) -> bool { did.krate == LOCAL_CRATE }
 
 pub fn stmt_id(s: &Stmt) -> NodeId {
     match s.node {
@@ -429,8 +423,8 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
                 node_id: NodeId) {
         if !self.pass_through_items {
             match function_kind {
-                visit::FkMethod(..) if self.visited_outermost => return,
-                visit::FkMethod(..) => self.visited_outermost = true,
+                FnKind::Method(..) if self.visited_outermost => return,
+                FnKind::Method(..) => self.visited_outermost = true,
                 _ => {}
             }
         }
@@ -438,13 +432,13 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         self.operation.visit_id(node_id);
 
         match function_kind {
-            visit::FkItemFn(_, generics, _, _, _, _) => {
+            FnKind::ItemFn(_, generics, _, _, _, _) => {
                 self.visit_generics_helper(generics)
             }
-            visit::FkMethod(_, sig, _) => {
+            FnKind::Method(_, sig, _) => {
                 self.visit_generics_helper(&sig.generics)
             }
-            visit::FkFnBlock => {}
+            FnKind::Closure => {}
         }
 
         for argument in &function_declaration.inputs {
@@ -458,7 +452,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
                        span);
 
         if !self.pass_through_items {
-            if let visit::FkMethod(..) = function_kind {
+            if let FnKind::Method(..) = function_kind {
                 self.visited_outermost = false;
             }
         }
@@ -524,7 +518,7 @@ impl IdVisitingOperation for IdRangeComputingVisitor {
 }
 
 /// Computes the id range for a single fn body, ignoring nested items.
-pub fn compute_id_range_for_fn_body(fk: visit::FnKind,
+pub fn compute_id_range_for_fn_body(fk: FnKind,
                                     decl: &FnDecl,
                                     body: &Block,
                                     sp: Span,

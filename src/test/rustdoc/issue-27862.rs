@@ -1,4 +1,4 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The pointer-sized unsigned integer type.
-//!
-//! *[See also the `usize` primitive type](../primitive.usize.html).*
 
-#![stable(feature = "rust1", since = "1.0.0")]
-
-pub use core::usize::{BITS, BYTES, MIN, MAX};
-
-uint_module! { usize }
+/// Test  | Table
+/// ------|-------------
+/// t = b | id = \|x\| x
+pub struct Foo; // @has issue_27862/struct.Foo.html //td 'id = |x| x'

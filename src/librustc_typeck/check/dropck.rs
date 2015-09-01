@@ -10,9 +10,12 @@
 
 use check::regionck::{self, Rcx};
 
+use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::free_region::FreeRegionMap;
 use middle::infer;
 use middle::region;
 use middle::subst::{self, Subst};
+use middle::traits;
 use middle::ty::{self, Ty};
 use util::nodemap::FnvHashSet;
 
@@ -37,7 +40,7 @@ use syntax::parse::token::special_idents;
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: ast::DefId) -> Result<(), ()> {
+pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: DefId) -> Result<(), ()> {
     let ty::TypeScheme { generics: ref dtor_generics,
                          ty: dtor_self_type } = tcx.lookup_item_type(drop_impl_did);
     let dtor_predicates = tcx.lookup_predicates(drop_impl_did);
@@ -69,58 +72,28 @@ pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: ast::DefId) -> Result<(), 
 
 fn ensure_drop_params_and_item_params_correspond<'tcx>(
     tcx: &ty::ctxt<'tcx>,
-    drop_impl_did: ast::DefId,
+    drop_impl_did: DefId,
     drop_impl_generics: &ty::Generics<'tcx>,
     drop_impl_ty: &ty::Ty<'tcx>,
-    self_type_did: ast::DefId) -> Result<(), ()>
+    self_type_did: DefId) -> Result<(), ()>
 {
-    // New strategy based on review suggestion from nikomatsakis.
-    //
-    // (In the text and code below, "named" denotes "struct/enum", and
-    // "generic params" denotes "type and region params")
-    //
-    // 1. Create fresh skolemized type/region "constants" for each of
-    //    the named type's generic params.  Instantiate the named type
-    //    with the fresh constants, yielding `named_skolem`.
-    //
-    // 2. Create unification variables for each of the Drop impl's
-    //    generic params.  Instantiate the impl's Self's type with the
-    //    unification-vars, yielding `drop_unifier`.
-    //
-    // 3. Attempt to unify Self_unif with Type_skolem.  If unification
-    //    succeeds, continue (i.e. with the predicate checks).
+    assert!(drop_impl_did.is_local() && self_type_did.is_local());
 
-    let ty::TypeScheme { generics: ref named_type_generics,
-                         ty: named_type } =
-        tcx.lookup_item_type(self_type_did);
+    // check that the impl type can be made to match the trait type.
 
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, false);
+    let impl_param_env = ty::ParameterEnvironment::for_item(tcx, self_type_did.node);
+    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(impl_param_env), true);
 
-    infcx.commit_if_ok(|snapshot| {
-        let (named_type_to_skolem, skol_map) =
-            infcx.construct_skolemized_subst(named_type_generics, snapshot);
-        let named_type_skolem = named_type.subst(tcx, &named_type_to_skolem);
+    let named_type = tcx.lookup_item_type(self_type_did).ty;
+    let named_type = named_type.subst(tcx, &infcx.parameter_environment.free_substs);
 
-        let drop_impl_span = tcx.map.def_id_span(drop_impl_did, codemap::DUMMY_SP);
-        let drop_to_unifier =
-            infcx.fresh_substs_for_generics(drop_impl_span, drop_impl_generics);
-        let drop_unifier = drop_impl_ty.subst(tcx, &drop_to_unifier);
+    let drop_impl_span = tcx.map.def_id_span(drop_impl_did, codemap::DUMMY_SP);
+    let fresh_impl_substs =
+        infcx.fresh_substs_for_generics(drop_impl_span, drop_impl_generics);
+    let fresh_impl_self_ty = drop_impl_ty.subst(tcx, &fresh_impl_substs);
 
-        if let Ok(()) = infer::mk_eqty(&infcx, true, infer::TypeOrigin::Misc(drop_impl_span),
-                                       named_type_skolem, drop_unifier) {
-            // Even if we did manage to equate the types, the process
-            // may have just gathered unsolvable region constraints
-            // like `R == 'static` (represented as a pair of subregion
-            // constraints) for some skolemization constant R.
-            //
-            // However, the leak_check method allows us to confirm
-            // that no skolemized regions escaped (i.e. were related
-            // to other regions in the constraint graph).
-            if let Ok(()) = infcx.leak_check(&skol_map, snapshot) {
-                return Ok(())
-            }
-        }
-
+    if let Err(_) = infer::mk_eqty(&infcx, true, infer::TypeOrigin::Misc(drop_impl_span),
+                                   named_type, fresh_impl_self_ty) {
         span_err!(tcx.sess, drop_impl_span, E0366,
                   "Implementations of Drop cannot be specialized");
         let item_span = tcx.map.span(self_type_did.node);
@@ -128,16 +101,26 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
                            "Use same sequence of generic type and region \
                             parameters that is on the struct/enum definition");
         return Err(());
-    })
+    }
+
+    if let Err(ref errors) = infcx.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+        // this could be reached when we get lazy normalization
+        traits::report_fulfillment_errors(&infcx, errors);
+        return Err(());
+    }
+
+    let free_regions = FreeRegionMap::new();
+    infcx.resolve_regions_and_report_errors(&free_regions, drop_impl_did.node);
+    Ok(())
 }
 
 /// Confirms that every predicate imposed by dtor_predicates is
 /// implied by assuming the predicates attached to self_type_did.
 fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     tcx: &ty::ctxt<'tcx>,
-    drop_impl_did: ast::DefId,
+    drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
-    self_type_did: ast::DefId,
+    self_type_did: DefId,
     self_to_impl_substs: &subst::Substs<'tcx>) -> Result<(), ()> {
 
     // Here is an example, analogous to that from
@@ -175,7 +158,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // absent. So we report an error that the Drop impl injected a
     // predicate that is not present on the struct definition.
 
-    assert_eq!(self_type_did.krate, ast::LOCAL_CRATE);
+    assert_eq!(self_type_did.krate, LOCAL_CRATE);
 
     let drop_impl_span = tcx.map.def_id_span(drop_impl_did, codemap::DUMMY_SP);
 
@@ -321,7 +304,7 @@ enum Error<'tcx> {
 enum TypeContext {
     Root,
     ADT {
-        def_id: ast::DefId,
+        def_id: DefId,
         variant: ast::Name,
         field: ast::Name,
         field_index: usize

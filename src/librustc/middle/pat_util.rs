@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use middle::def::*;
+use middle::def_id::DefId;
 use middle::ty;
 use util::nodemap::FnvHashMap;
 
@@ -191,7 +192,7 @@ pub fn simple_identifier<'a>(pat: &'a ast::Pat) -> Option<&'a ast::Ident> {
     }
 }
 
-pub fn def_to_path(tcx: &ty::ctxt, id: ast::DefId) -> ast::Path {
+pub fn def_to_path(tcx: &ty::ctxt, id: DefId) -> ast::Path {
     tcx.with_path(id, |path| ast::Path {
         global: false,
         segments: path.last().map(|elem| ast::PathSegment {

@@ -36,13 +36,13 @@
 #![feature(path_relative_from)]
 #![feature(path_relative_from)]
 #![feature(quote)]
-#![feature(rc_weak)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(unicode)]
 #![feature(unicode)]
 #![feature(vec_push_all)]
+#![feature(rc_weak)]
 
 #![allow(trivial_casts)]
 

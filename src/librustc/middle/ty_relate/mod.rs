@@ -13,6 +13,7 @@
 //! can be other things. Examples of type relations are subtyping,
 //! type equality, etc.
 
+use middle::def_id::DefId;
 use middle::subst::{ErasedRegions, NonerasedRegions, ParamSpace, Substs};
 use middle::ty::{self, HasTypeFlags, Ty, TypeError};
 use middle::ty_fold::TypeFoldable;
@@ -117,7 +118,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::TypeAndMut<'tcx> {
 // but they is an important subroutine for things that ARE relatable,
 // like traits etc.
 fn relate_item_substs<'a,'tcx:'a,R>(relation: &mut R,
-                                    item_def_id: ast::DefId,
+                                    item_def_id: DefId,
                                     a_subst: &Substs<'tcx>,
                                     b_subst: &Substs<'tcx>)
                                     -> RelateResult<'tcx, Substs<'tcx>>

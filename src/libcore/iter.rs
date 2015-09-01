@@ -58,7 +58,7 @@
 
 use clone::Clone;
 use cmp;
-use cmp::{Ord, PartialOrd, PartialEq};
+use cmp::{Ord, PartialOrd, PartialEq, Ordering};
 use default::Default;
 use marker;
 use mem;
@@ -98,6 +98,13 @@ pub trait Iterator {
     ///
     /// An upper bound of `None` means either there is no known upper bound, or
     /// the upper bound does not fit within a `usize`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let it = (0..10).filter(|x| x % 2 == 0).chain(15..20);
+    /// assert_eq!((5, Some(15)), it.size_hint());
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn size_hint(&self) -> (usize, Option<usize>) { (0, None) }
@@ -184,7 +191,7 @@ pub trait Iterator {
     fn chain<U>(self, other: U) -> Chain<Self, U::IntoIter> where
         Self: Sized, U: IntoIterator<Item=Self::Item>,
     {
-        Chain{a: self, b: other.into_iter(), flag: false}
+        Chain{a: self, b: other.into_iter(), state: ChainState::Both}
     }
 
     /// Creates an iterator that iterates over both this and the specified
@@ -1005,6 +1012,198 @@ pub trait Iterator {
     {
         self.fold(One::one(), |p, e| p * e)
     }
+
+    /// Lexicographically compares the elements of this `Iterator` with those
+    /// of another.
+    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    fn cmp<I>(mut self, other: I) -> Ordering where
+        I: IntoIterator<Item = Self::Item>,
+        Self::Item: Ord,
+        Self: Sized,
+    {
+        let mut other = other.into_iter();
+
+        loop {
+            match (self.next(), other.next()) {
+                (None, None) => return Ordering::Equal,
+                (None, _   ) => return Ordering::Less,
+                (_   , None) => return Ordering::Greater,
+                (Some(x), Some(y)) => match x.cmp(&y) {
+                    Ordering::Equal => (),
+                    non_eq => return non_eq,
+                },
+            }
+        }
+    }
+
+    /// Lexicographically compares the elements of this `Iterator` with those
+    /// of another.
+    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    fn partial_cmp<I>(mut self, other: I) -> Option<Ordering> where
+        I: IntoIterator,
+        Self::Item: PartialOrd<I::Item>,
+        Self: Sized,
+    {
+        let mut other = other.into_iter();
+
+        loop {
+            match (self.next(), other.next()) {
+                (None, None) => return Some(Ordering::Equal),
+                (None, _   ) => return Some(Ordering::Less),
+                (_   , None) => return Some(Ordering::Greater),
+                (Some(x), Some(y)) => match x.partial_cmp(&y) {
+                    Some(Ordering::Equal) => (),
+                    non_eq => return non_eq,
+                },
+            }
+        }
+    }
+
+    /// Determines if the elements of this `Iterator` are equal to those of
+    /// another.
+    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    fn eq<I>(mut self, other: I) -> bool where
+        I: IntoIterator,
+        Self::Item: PartialEq<I::Item>,
+        Self: Sized,
+    {
+        let mut other = other.into_iter();
+
+        loop {
+            match (self.next(), other.next()) {
+                (None, None) => return true,
+                (None, _) | (_, None) => return false,
+                (Some(x), Some(y)) => if x != y { return false },
+            }
+        }
+    }
+
+    /// Determines if the elements of this `Iterator` are unequal to those of
+    /// another.
+    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    fn ne<I>(mut self, other: I) -> bool where
+        I: IntoIterator,
+        Self::Item: PartialEq<I::Item>,
+        Self: Sized,
+    {
+        let mut other = other.into_iter();
+
+        loop {
+            match (self.next(), other.next()) {
+                (None, None) => return false,
+                (None, _) | (_, None) => return true,
+                (Some(x), Some(y)) => if x.ne(&y) { return true },
+            }
+        }
+    }
+
+    /// Determines if the elements of this `Iterator` are lexicographically
+    /// less than those of another.
+    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    fn lt<I>(mut self, other: I) -> bool where
+        I: IntoIterator,
+        Self::Item: PartialOrd<I::Item>,
+        Self: Sized,
+    {
+        let mut other = other.into_iter();
+
+        loop {
+            match (self.next(), other.next()) {
+                (None, None) => return false,
+                (None, _   ) => return true,
+                (_   , None) => return false,
+                (Some(x), Some(y)) => {
+                    match x.partial_cmp(&y) {
+                        Some(Ordering::Less) => return true,
+                        Some(Ordering::Equal) => {}
+                        Some(Ordering::Greater) => return false,
+                        None => return false,
+                    }
+                },
+            }
+        }
+    }
+
+    /// Determines if the elements of this `Iterator` are lexicographically
+    /// less or equal to those of another.
+    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    fn le<I>(mut self, other: I) -> bool where
+        I: IntoIterator,
+        Self::Item: PartialOrd<I::Item>,
+        Self: Sized,
+    {
+        let mut other = other.into_iter();
+
+        loop {
+            match (self.next(), other.next()) {
+                (None, None) => return true,
+                (None, _   ) => return true,
+                (_   , None) => return false,
+                (Some(x), Some(y)) => {
+                    match x.partial_cmp(&y) {
+                        Some(Ordering::Less) => return true,
+                        Some(Ordering::Equal) => {}
+                        Some(Ordering::Greater) => return false,
+                        None => return false,
+                    }
+                },
+            }
+        }
+    }
+
+    /// Determines if the elements of this `Iterator` are lexicographically
+    /// greater than those of another.
+    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    fn gt<I>(mut self, other: I) -> bool where
+        I: IntoIterator,
+        Self::Item: PartialOrd<I::Item>,
+        Self: Sized,
+    {
+        let mut other = other.into_iter();
+
+        loop {
+            match (self.next(), other.next()) {
+                (None, None) => return false,
+                (None, _   ) => return false,
+                (_   , None) => return true,
+                (Some(x), Some(y)) => {
+                    match x.partial_cmp(&y) {
+                        Some(Ordering::Less) => return false,
+                        Some(Ordering::Equal) => {}
+                        Some(Ordering::Greater) => return true,
+                        None => return false,
+                    }
+                }
+            }
+        }
+    }
+
+    /// Determines if the elements of this `Iterator` are lexicographically
+    /// greater than or equal to those of another.
+    #[unstable(feature = "iter_order", reason = "needs review and revision", issue = "27737")]
+    fn ge<I>(mut self, other: I) -> bool where
+        I: IntoIterator,
+        Self::Item: PartialOrd<I::Item>,
+        Self: Sized,
+    {
+        let mut other = other.into_iter();
+
+        loop {
+            match (self.next(), other.next()) {
+                (None, None) => return true,
+                (None, _   ) => return false,
+                (_   , None) => return true,
+                (Some(x), Some(y)) => {
+                    match x.partial_cmp(&y) {
+                        Some(Ordering::Less) => return false,
+                        Some(Ordering::Equal) => {}
+                        Some(Ordering::Greater) => return true,
+                        None => return false,
+                    }
+                },
+            }
+        }
+    }
 }
 
 /// Select an element from an iterator based on the given projection
@@ -1277,7 +1476,30 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
 pub struct Chain<A, B> {
     a: A,
     b: B,
-    flag: bool,
+    state: ChainState,
+}
+
+// The iterator protocol specifies that iteration ends with the return value
+// `None` from `.next()` (or `.next_back()`) and it is unspecified what
+// further calls return. The chain adaptor must account for this since it uses
+// two subiterators.
+//
+//  It uses three states:
+//
+//  - Both: `a` and `b` are remaining
+//  - Front: `a` remaining
+//  - Back: `b` remaining
+//
+//  The fourth state (neither iterator is remaining) only occurs after Chain has
+//  returned None once, so we don't need to store this state.
+#[derive(Clone)]
+enum ChainState {
+    // both front and back iterator are remaining
+    Both,
+    // only front is remaining
+    Front,
+    // only back is remaining
+    Back,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1289,42 +1511,58 @@ impl<A, B> Iterator for Chain<A, B> where
 
     #[inline]
     fn next(&mut self) -> Option<A::Item> {
-        if self.flag {
-            self.b.next()
-        } else {
-            match self.a.next() {
-                Some(x) => return Some(x),
-                _ => ()
-            }
-            self.flag = true;
-            self.b.next()
+        match self.state {
+            ChainState::Both => match self.a.next() {
+                elt @ Some(..) => return elt,
+                None => {
+                    self.state = ChainState::Back;
+                    self.b.next()
+                }
+            },
+            ChainState::Front => self.a.next(),
+            ChainState::Back => self.b.next(),
         }
     }
 
     #[inline]
     fn count(self) -> usize {
-        (if !self.flag { self.a.count() } else { 0 }) + self.b.count()
+        match self.state {
+            ChainState::Both => self.a.count() + self.b.count(),
+            ChainState::Front => self.a.count(),
+            ChainState::Back => self.b.count(),
+        }
     }
 
     #[inline]
     fn nth(&mut self, mut n: usize) -> Option<A::Item> {
-        if !self.flag {
-            for x in self.a.by_ref() {
-                if n == 0 {
-                    return Some(x)
+        match self.state {
+            ChainState::Both | ChainState::Front => {
+                for x in self.a.by_ref() {
+                    if n == 0 {
+                        return Some(x)
+                    }
+                    n -= 1;
                 }
-                n -= 1;
+                if let ChainState::Both = self.state {
+                    self.state = ChainState::Back;
+                }
             }
-            self.flag = true;
+            ChainState::Back => {}
         }
-        self.b.nth(n)
+        if let ChainState::Back = self.state {
+            self.b.nth(n)
+        } else {
+            None
+        }
     }
 
     #[inline]
     fn last(self) -> Option<A::Item> {
-        let a_last = if self.flag { None } else { self.a.last() };
-        let b_last = self.b.last();
-        b_last.or(a_last)
+        match self.state {
+            ChainState::Both => self.b.last().or(self.a.last()),
+            ChainState::Front => self.a.last(),
+            ChainState::Back => self.b.last()
+        }
     }
 
     #[inline]
@@ -1350,9 +1588,16 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
 {
     #[inline]
     fn next_back(&mut self) -> Option<A::Item> {
-        match self.b.next_back() {
-            Some(x) => Some(x),
-            None => self.a.next_back()
+        match self.state {
+            ChainState::Both => match self.b.next_back() {
+                elt @ Some(..) => return elt,
+                None => {
+                    self.state = ChainState::Front;
+                    self.a.next_back()
+                }
+            },
+            ChainState::Front => self.a.next_back(),
+            ChainState::Back => self.b.next_back(),
         }
     }
 }
@@ -2654,146 +2899,79 @@ pub fn once<T>(value: T) -> Once<T> {
 ///
 /// If two sequences are equal up until the point where one ends,
 /// the shorter sequence compares less.
+#[deprecated(since = "1.4.0", reason = "use the equivalent methods on `Iterator` instead")]
 #[unstable(feature = "iter_order", reason = "needs review and revision",
            issue = "27737")]
 pub mod order {
     use cmp;
     use cmp::{Eq, Ord, PartialOrd, PartialEq};
-    use cmp::Ordering::{Equal, Less, Greater};
     use option::Option;
-    use option::Option::{Some, None};
     use super::Iterator;
 
     /// Compare `a` and `b` for equality using `Eq`
-    pub fn equals<A, L, R>(mut a: L, mut b: R) -> bool where
+    pub fn equals<A, L, R>(a: L, b: R) -> bool where
         A: Eq,
         L: Iterator<Item=A>,
         R: Iterator<Item=A>,
     {
-        loop {
-            match (a.next(), b.next()) {
-                (None, None) => return true,
-                (None, _) | (_, None) => return false,
-                (Some(x), Some(y)) => if x != y { return false },
-            }
-        }
+        a.eq(b)
     }
 
     /// Order `a` and `b` lexicographically using `Ord`
-    pub fn cmp<A, L, R>(mut a: L, mut b: R) -> cmp::Ordering where
+    pub fn cmp<A, L, R>(a: L, b: R) -> cmp::Ordering where
         A: Ord,
         L: Iterator<Item=A>,
         R: Iterator<Item=A>,
     {
-        loop {
-            match (a.next(), b.next()) {
-                (None, None) => return Equal,
-                (None, _   ) => return Less,
-                (_   , None) => return Greater,
-                (Some(x), Some(y)) => match x.cmp(&y) {
-                    Equal => (),
-                    non_eq => return non_eq,
-                },
-            }
-        }
+        a.cmp(b)
     }
 
     /// Order `a` and `b` lexicographically using `PartialOrd`
-    pub fn partial_cmp<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> Option<cmp::Ordering> where
+    pub fn partial_cmp<L: Iterator, R: Iterator>(a: L, b: R) -> Option<cmp::Ordering> where
         L::Item: PartialOrd<R::Item>
     {
-        loop {
-            match (a.next(), b.next()) {
-                (None, None) => return Some(Equal),
-                (None, _   ) => return Some(Less),
-                (_   , None) => return Some(Greater),
-                (Some(x), Some(y)) => match x.partial_cmp(&y) {
-                    Some(Equal) => (),
-                    non_eq => return non_eq,
-                },
-            }
-        }
+        a.partial_cmp(b)
     }
 
     /// Compare `a` and `b` for equality (Using partial equality, `PartialEq`)
-    pub fn eq<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> bool where
+    pub fn eq<L: Iterator, R: Iterator>(a: L, b: R) -> bool where
         L::Item: PartialEq<R::Item>,
     {
-        loop {
-            match (a.next(), b.next()) {
-                (None, None) => return true,
-                (None, _) | (_, None) => return false,
-                (Some(x), Some(y)) => if !x.eq(&y) { return false },
-            }
-        }
+        a.eq(b)
     }
 
     /// Compares `a` and `b` for nonequality (Using partial equality, `PartialEq`)
-    pub fn ne<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> bool where
+    pub fn ne<L: Iterator, R: Iterator>(a: L, b: R) -> bool where
         L::Item: PartialEq<R::Item>,
     {
-        loop {
-            match (a.next(), b.next()) {
-                (None, None) => return false,
-                (None, _) | (_, None) => return true,
-                (Some(x), Some(y)) => if x.ne(&y) { return true },
-            }
-        }
+        a.ne(b)
     }
 
     /// Returns `a` < `b` lexicographically (Using partial order, `PartialOrd`)
-    pub fn lt<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> bool where
+    pub fn lt<L: Iterator, R: Iterator>(a: L, b: R) -> bool where
         L::Item: PartialOrd<R::Item>,
     {
-        loop {
-            match (a.next(), b.next()) {
-                (None, None) => return false,
-                (None, _   ) => return true,
-                (_   , None) => return false,
-                (Some(x), Some(y)) => if x.ne(&y) { return x.lt(&y) },
-            }
-        }
+        a.lt(b)
     }
 
     /// Returns `a` <= `b` lexicographically (Using partial order, `PartialOrd`)
-    pub fn le<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> bool where
+    pub fn le<L: Iterator, R: Iterator>(a: L, b: R) -> bool where
         L::Item: PartialOrd<R::Item>,
     {
-        loop {
-            match (a.next(), b.next()) {
-                (None, None) => return true,
-                (None, _   ) => return true,
-                (_   , None) => return false,
-                (Some(x), Some(y)) => if x.ne(&y) { return x.le(&y) },
-            }
-        }
+        a.le(b)
     }
 
     /// Returns `a` > `b` lexicographically (Using partial order, `PartialOrd`)
-    pub fn gt<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> bool where
+    pub fn gt<L: Iterator, R: Iterator>(a: L, b: R) -> bool where
         L::Item: PartialOrd<R::Item>,
     {
-        loop {
-            match (a.next(), b.next()) {
-                (None, None) => return false,
-                (None, _   ) => return false,
-                (_   , None) => return true,
-                (Some(x), Some(y)) => if x.ne(&y) { return x.gt(&y) },
-            }
-        }
+        a.gt(b)
     }
 
     /// Returns `a` >= `b` lexicographically (Using partial order, `PartialOrd`)
-    pub fn ge<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> bool where
+    pub fn ge<L: Iterator, R: Iterator>(a: L, b: R) -> bool where
         L::Item: PartialOrd<R::Item>,
     {
-        loop {
-            match (a.next(), b.next()) {
-                (None, None) => return true,
-                (None, _   ) => return false,
-                (_   , None) => return true,
-                (Some(x), Some(y)) => if x.ne(&y) { return x.ge(&y) },
-            }
-        }
+        a.ge(b)
     }
 }

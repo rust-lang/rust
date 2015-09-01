@@ -13,6 +13,7 @@
 
 use astconv::AstConv;
 use intrinsics;
+use middle::def_id::DefId;
 use middle::subst;
 use middle::ty::FnSig;
 use middle::ty::{self, Ty};
@@ -23,7 +24,6 @@ use std::collections::{HashMap};
 use syntax::abi;
 use syntax::attr::AttrMetaMethods;
 use syntax::ast;
-use syntax::ast_util::local_def;
 use syntax::codemap::Span;
 use syntax::parse::token;
 
@@ -41,7 +41,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: &ty::ctxt<'tcx>, it: &ast::ForeignItem,
             variadic: false,
         }),
     }));
-    let i_ty = tcx.lookup_item_type(local_def(it.id));
+    let i_ty = tcx.lookup_item_type(DefId::local(it.id));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
     if i_n_tps != n_tps {
         span_err!(tcx.sess, it.span, E0094,
@@ -363,7 +363,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
     };
 
     let tcx = ccx.tcx;
-    let i_ty = tcx.lookup_item_type(local_def(it.id));
+    let i_ty = tcx.lookup_item_type(DefId::local(it.id));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
     let name = it.ident.name.as_str();
 
@@ -408,6 +408,13 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                     let mut structural_to_nomimal = HashMap::new();
 
                     let sig = tcx.no_late_bound_regions(i_ty.ty.fn_sig()).unwrap();
+                    if intr.inputs.len() != sig.inputs.len() {
+                        span_err!(tcx.sess, it.span, E0444,
+                                  "platform-specific intrinsic has invalid number of \
+                                   arguments: found {}, expected {}",
+                                  intr.inputs.len(), sig.inputs.len());
+                        return
+                    }
                     let input_pairs = intr.inputs.iter().zip(&sig.inputs);
                     for (i, (expected_arg, arg)) in input_pairs.enumerate() {
                         match_intrinsic_type_to_type(tcx, &format!("argument {}", i + 1), it.span,
@@ -456,13 +463,16 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
     };
 
     match *expected {
-        Integer(bits) => match (bits, &t.sty) {
-            (8, &ty::TyInt(ast::TyI8)) | (8, &ty::TyUint(ast::TyU8)) |
-            (16, &ty::TyInt(ast::TyI16)) | (16, &ty::TyUint(ast::TyU16)) |
-            (32, &ty::TyInt(ast::TyI32)) | (32, &ty::TyUint(ast::TyU32)) |
-            (64, &ty::TyInt(ast::TyI64)) | (64, &ty::TyUint(ast::TyU64)) => {},
+        // (The width we pass to LLVM doesn't concern the type checker.)
+        Integer(signed, bits, _llvm_width) => match (signed, bits, &t.sty) {
+            (true, 8, &ty::TyInt(ast::TyI8)) | (false, 8, &ty::TyUint(ast::TyU8)) |
+            (true, 16, &ty::TyInt(ast::TyI16)) | (false, 16, &ty::TyUint(ast::TyU16)) |
+            (true, 32, &ty::TyInt(ast::TyI32)) | (false, 32, &ty::TyUint(ast::TyU32)) |
+            (true, 64, &ty::TyInt(ast::TyI64)) | (false, 64, &ty::TyUint(ast::TyU64)) => {},
             _ => simple_error(&format!("`{}`", t),
-                              &format!("`i{n}` or `u{n}`", n = bits)),
+                              &format!("`{}{n}`",
+                                       if signed {"i"} else {"u"},
+                                       n = bits)),
         },
         Float(bits) => match (bits, &t.sty) {
             (32, &ty::TyFloat(ast::TyF32)) |
@@ -504,6 +514,23 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
                                          structural_to_nominal,
                                          inner_expected,
                                          t_ty)
+        }
+        Aggregate(_flatten, ref expected_contents) => {
+            match t.sty {
+                ty::TyTuple(ref contents) => {
+                    if contents.len() != expected_contents.len() {
+                        simple_error(&format!("tuple with length {}", contents.len()),
+                                     &format!("tuple with length {}", expected_contents.len()));
+                        return
+                    }
+                    for (e, c) in expected_contents.iter().zip(contents) {
+                        match_intrinsic_type_to_type(tcx, position, span, structural_to_nominal,
+                                                     e, c)
+                    }
+                }
+                _ => simple_error(&format!("`{}`", t),
+                                  &format!("tuple")),
+            }
         }
     }
 }

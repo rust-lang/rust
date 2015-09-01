@@ -14,8 +14,7 @@ use codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
 use codemap;
 use fold::Folder;
 use fold;
-use parse::token::InternedString;
-use parse::token::special_idents;
+use parse::token::{intern, InternedString, special_idents};
 use parse::{token, ParseSess};
 use ptr::P;
 use util::small_vector::SmallVector;
@@ -27,8 +26,7 @@ fn ignored_span(sess: &ParseSess, sp: Span) -> Span {
     let info = ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
-            name: "std_inject".to_string(),
-            format: MacroAttribute,
+            format: MacroAttribute(intern("std_inject")),
             span: None,
             allow_internal_unstable: true,
         }

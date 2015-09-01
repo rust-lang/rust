@@ -73,10 +73,10 @@ pub use self::categorization::*;
 use self::Aliasability::*;
 
 use ast_map;
+use middle::def_id::DefId;
 use middle::infer;
 use middle::check_const;
 use middle::def;
-use middle::region;
 use middle::ty::{self, Ty};
 
 use syntax::ast::{MutImmutable, MutMutable};
@@ -94,7 +94,7 @@ pub enum categorization<'tcx> {
     cat_local(ast::NodeId),                    // local variable
     cat_deref(cmt<'tcx>, usize, PointerKind),   // deref of a ptr
     cat_interior(cmt<'tcx>, InteriorKind),     // something interior: field, tuple, etc
-    cat_downcast(cmt<'tcx>, ast::DefId),       // selects a particular enum variant (*1)
+    cat_downcast(cmt<'tcx>, DefId),       // selects a particular enum variant (*1)
 
     // (*1) downcast is only required if the enum has more than one variant
 }
@@ -748,7 +748,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: region::DestructionScopeData::new(fn_body_id),
+            scope: self.tcx().region_maps.item_extent(fn_body_id),
             bound_region: ty::BrEnv
         });
 
@@ -1132,7 +1132,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                                     node: &N,
                                     base_cmt: cmt<'tcx>,
                                     downcast_ty: Ty<'tcx>,
-                                    variant_did: ast::DefId)
+                                    variant_did: DefId)
                                     -> cmt<'tcx> {
         let ret = Rc::new(cmt_ {
             id: node.id(),

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 64-bit signed integer type.
-//!
-//! *[See also the `i64` primitive type](../primitive.i64.html).*
+// compile-flags: --test
 
-#![stable(feature = "rust1", since = "1.0.0")]
+#![feature(main)]
 
-pub use core::i64::{BITS, BYTES, MIN, MAX};
+#![deny(dead_code)]
 
-int_module! { i64 }
+#[main]
+fn foo() { panic!(); }

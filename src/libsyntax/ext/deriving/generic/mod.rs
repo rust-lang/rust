@@ -205,7 +205,7 @@ use codemap::Span;
 use diagnostic::SpanHandler;
 use fold::MoveMap;
 use owned_slice::OwnedSlice;
-use parse::token::InternedString;
+use parse::token::{intern, InternedString};
 use parse::token::special_idents;
 use ptr::P;
 
@@ -228,6 +228,9 @@ pub struct TraitDef<'a> {
 
     /// Any extra lifetimes and/or bounds, e.g. `D: serialize::Decoder`
     pub generics: LifetimeBounds<'a>,
+
+    /// Is it an `unsafe` trait?
+    pub is_unsafe: bool,
 
     pub methods: Vec<MethodDef<'a>>,
 
@@ -617,13 +620,26 @@ impl<'a> TraitDef<'a> {
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
         let ident = ast_util::impl_pretty_name(&opt_trait_ref, Some(&*self_type));
-        let mut a = vec![attr];
+        let unused_qual = cx.attribute(
+            self.span,
+            cx.meta_list(self.span,
+                         InternedString::new("allow"),
+                         vec![cx.meta_word(self.span,
+                                           InternedString::new("unused_qualifications"))]));
+        let mut a = vec![attr, unused_qual];
         a.extend(self.attributes.iter().cloned());
+
+        let unsafety = if self.is_unsafe {
+            ast::Unsafety::Unsafe
+        } else {
+            ast::Unsafety::Normal
+        };
+
         cx.item(
             self.span,
             ident,
             a,
-            ast::ItemImpl(ast::Unsafety::Normal,
+            ast::ItemImpl(unsafety,
                           ast::ImplPolarity::Positive,
                           trait_generics,
                           opt_trait_ref,
@@ -1430,8 +1446,7 @@ impl<'a> TraitDef<'a> {
         to_set.expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
             call_site: to_set,
             callee: codemap::NameAndSpan {
-                name: format!("derive({})", trait_name),
-                format: codemap::MacroAttribute,
+                format: codemap::MacroAttribute(intern(&format!("derive({})", trait_name))),
                 span: Some(self.span),
                 allow_internal_unstable: false,
             }
