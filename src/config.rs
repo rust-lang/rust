@@ -80,6 +80,7 @@ create_config! {
     expr_indent_style: BlockIndentStyle,
     closure_indent_style: BlockIndentStyle,
     single_line_if_else: bool,
+    format_strings: bool,
 }
 
 impl Default for Config {
@@ -104,6 +105,7 @@ impl Default for Config {
             expr_indent_style: BlockIndentStyle::Tabbed,
             closure_indent_style: BlockIndentStyle::Visual,
             single_line_if_else: false,
+            format_strings: true,
         }
     }
 
