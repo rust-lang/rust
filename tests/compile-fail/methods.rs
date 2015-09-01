@@ -18,6 +18,15 @@ impl T {
 
     fn into_u32(self) -> u32 { 0 } // fine
     fn into_u16(&self) -> u16 { 0 } //~ERROR methods called `into_*` usually take self by value
+
+    fn to_something(self) -> u32 { 0 } //~ERROR methods called `to_*` usually take self by reference
+}
+
+#[derive(Clone,Copy)]
+struct U;
+
+impl U {
+    fn to_something(self) -> u32 { 0 } // ok because U is Copy
 }
 
 impl Mul<T> for T {
