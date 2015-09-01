@@ -10,7 +10,7 @@
 
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
-use {ReturnIndent, BraceStyle};
+use {ReturnIndent, BraceStyle, StructLitStyle};
 use utils::{format_mutability, format_visibility, make_indent, contains_skip, span_after,
             end_typaram};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
@@ -225,6 +225,10 @@ impl<'a> FmtVisitor<'a> {
                 result.push_str("(\n");
                 result.push_str(&make_indent(arg_indent));
             }
+        } else if self.config.fn_args_layout == StructLitStyle::Block {
+            arg_indent = indent + self.config.tab_spaces;
+            result.push_str("(\n");
+            result.push_str(&make_indent(arg_indent));
         } else {
             result.push('(');
         }
@@ -245,14 +249,20 @@ impl<'a> FmtVisitor<'a> {
                                            indent,
                                            arg_indent,
                                            args_span));
+        if self.config.fn_args_layout == StructLitStyle::Block {
+            result.push('\n');
+        }
         result.push(')');
 
         // Return type.
         if !ret_str.is_empty() {
             // If we've already gone multi-line, or the return type would push
             // over the max width, then put the return type on a new line.
-            if result.contains("\n") ||
-               result.len() + indent + ret_str.len() > self.config.max_width {
+            // Unless we are formatting args like a block, in which case there
+            // should always be room for the return type.
+            if (result.contains("\n") ||
+                result.len() + indent + ret_str.len() > self.config.max_width) &&
+               self.config.fn_args_layout != StructLitStyle::Block {
                 let indent = match self.config.fn_return_indent {
                     ReturnIndent::WithWhereClause => indent + 4,
                     // TODO we might want to check that using the arg indent doesn't
@@ -285,8 +295,11 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
-        let where_density = if self.config.where_density == Density::Compressed &&
-                               !result.contains('\n') {
+        let where_density = if (self.config.where_density == Density::Compressed &&
+                                (!result.contains('\n') ||
+                                 self.config.fn_args_layout == StructLitStyle::Block)) ||
+                               (self.config.fn_args_layout == StructLitStyle::Block &&
+                                ret_str.is_empty()) {
             Density::Compressed
         } else {
             Density::Tall
@@ -363,7 +376,7 @@ impl<'a> FmtVisitor<'a> {
         };
 
         let fmt = ListFormatting {
-            tactic: self.config.fn_args_layout.to_list_tactic(),
+            tactic: self.config.fn_args_density.to_list_tactic(),
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
             indent: indent,

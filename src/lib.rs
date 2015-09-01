@@ -133,13 +133,13 @@ impl_enum_decodable!(ReturnIndent, WithArgs, WithWhereClause);
 pub enum StructLitStyle {
     // First line on the same line as the opening brace, all lines aligned with
     // the first line.
-    VisualIndent,
+    Visual,
     // First line is on a new line and all lines align with block indent.
-    BlockIndent,
+    Block,
     // FIXME Maybe we should also have an option to align types.
 }
 
-impl_enum_decodable!(StructLitStyle, VisualIndent, BlockIndent);
+impl_enum_decodable!(StructLitStyle, Visual, Block);
 
 enum ErrorKind {
     // Line has exceeded character limit

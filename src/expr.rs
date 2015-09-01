@@ -940,10 +940,10 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     // Foo { a: Foo } - indent is +3, width is -5.
     let h_budget = try_opt!(width.checked_sub(path_str.len() + 5));
     let (indent, v_budget) = match context.config.struct_lit_style {
-        StructLitStyle::VisualIndent => {
+        StructLitStyle::Visual => {
             (offset + path_str.len() + 3, h_budget)
         }
-        StructLitStyle::BlockIndent => {
+        StructLitStyle::Block => {
             // If we are all on one line, then we'll ignore the indent, and we
             // have a smaller budget.
             let indent = context.block_indent + context.config.tab_spaces;
@@ -1012,7 +1012,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     let fields_str = write_list(&items.collect::<Vec<_>>(), &fmt);
 
     match context.config.struct_lit_style {
-        StructLitStyle::BlockIndent if fields_str.contains('\n') => {
+        StructLitStyle::Block if fields_str.contains('\n') => {
             let inner_indent = make_indent(context.block_indent + context.config.tab_spaces);
             let outer_indent = make_indent(context.block_indent);
             Some(format!("{} {{\n{}{}\n{}}}", path_str, inner_indent, fields_str, outer_indent))
@@ -1020,7 +1020,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         _ => Some(format!("{} {{ {} }}", path_str, fields_str)),
     }
 
-    // FIXME if context.config.struct_lit_style == VisualIndent, but we run out
+    // FIXME if context.config.struct_lit_style == Visual, but we run out
     // of space, we should fall back to BlockIndent.
 }
 
