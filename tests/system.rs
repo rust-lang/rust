@@ -26,9 +26,9 @@ use rustfmt::rustfmt_diff::*;
 static DIFF_CONTEXT_SIZE: usize = 3;
 
 fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
-    let path = dir_entry.ok().expect("Couldn't get DirEntry.").path();
+    let path = dir_entry.ok().expect("Couldn\'t get DirEntry.").path();
 
-    path.to_str().expect("Couldn't stringify path.").to_owned()
+    path.to_str().expect("Couldn\'t stringify path.").to_owned()
 }
 
 // Integration tests. The files in the tests/source are formatted and compared
@@ -40,7 +40,7 @@ fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
 #[test]
 fn system_tests() {
     // Get all files in the tests/source directory
-    let files = fs::read_dir("tests/source").ok().expect("Couldn't read source dir.");
+    let files = fs::read_dir("tests/source").ok().expect("Couldn\'t read source dir.");
     // turn a DirEntry into a String that represents the relative path to the file
     let files = files.map(get_path_string);
 
@@ -56,9 +56,9 @@ fn system_tests() {
 #[test]
 fn idempotence_tests() {
     // Get all files in the tests/target directory
-    let files = fs::read_dir("tests/target").ok().expect("Couldn't read target dir.");
-    let files = files.chain(fs::read_dir("tests").ok().expect("Couldn't read tests dir."));
-    let files = files.chain(fs::read_dir("src/bin").ok().expect("Couldn't read src dir."));
+    let files = fs::read_dir("tests/target").ok().expect("Couldn\'t read target dir.");
+    let files = files.chain(fs::read_dir("tests").ok().expect("Couldn\'t read tests dir."));
+    let files = files.chain(fs::read_dir("src/bin").ok().expect("Couldn\'t read src dir."));
     // turn a DirEntry into a String that represents the relative path to the file
     let files = files.map(get_path_string);
     // hack because there's no `IntoIterator` impl for `[T; N]`
@@ -137,9 +137,11 @@ fn get_config(config_file: Option<&str>) -> Box<Config> {
         }
     };
 
-    let mut def_config_file = fs::File::open(config_file_name).ok().expect("Couldn't open config.");
+    let mut def_config_file = fs::File::open(config_file_name)
+                                  .ok()
+                                  .expect("Couldn\'t open config.");
     let mut def_config = String::new();
-    def_config_file.read_to_string(&mut def_config).ok().expect("Couldn't read config.");
+    def_config_file.read_to_string(&mut def_config).ok().expect("Couldn\'t read config.");
 
     Box::new(Config::from_toml(&def_config))
 }
@@ -147,7 +149,9 @@ fn get_config(config_file: Option<&str>) -> Box<Config> {
 // Reads significant comments of the form: // rustfmt-key: value
 // into a hash map.
 fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
-    let file = fs::File::open(file_name).ok().expect(&format!("Couldn't read file {}.", file_name));
+    let file = fs::File::open(file_name)
+                   .ok()
+                   .expect(&format!("Couldn\'t read file {}.", file_name));
     let reader = BufReader::new(file);
     let pattern = r"^\s*//\s*rustfmt-([^:]+):\s*(\S+)";
     let regex = regex::Regex::new(&pattern).ok().expect("Failed creating pattern 1.");
@@ -164,8 +168,8 @@ fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
             regex.captures_iter(&line)
                 .next()
                 .map(|capture| {
-                    (capture.at(1).expect("Couldn't unwrap capture.").to_owned(),
-                     capture.at(2).expect("Couldn't unwrap capture.").to_owned())
+                    (capture.at(1).expect("Couldn\'t unwrap capture.").to_owned(),
+                     capture.at(2).expect("Couldn\'t unwrap capture.").to_owned())
                 })
         })
         .collect()
@@ -183,7 +187,7 @@ fn handle_result(result: HashMap<String, String>) {
 
         // If file is in tests/source, compare to file with same name in tests/target.
         let target = get_target(&file_name, sig_comments.get("target").map(|x| &(*x)[..]));
-        let mut f = fs::File::open(&target).ok().expect("Couldn't open target.");
+        let mut f = fs::File::open(&target).ok().expect("Couldn\'t open target.");
 
         let mut text = String::new();
         // TODO: speedup by running through bytes iterator
