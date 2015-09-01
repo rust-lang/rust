@@ -130,7 +130,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         let indent = self.block_indent;
         match fk {
-            visit::FkItemFn(ident,
+            visit::FnKind::ItemFn(ident,
                             ref generics,
                             ref unsafety,
                             ref constness,
@@ -148,7 +148,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              codemap::mk_sp(s.lo, b.span.lo));
                 self.buffer.push_str(&new_fn);
             }
-            visit::FkMethod(ident, ref sig, vis) => {
+            visit::FnKind::Method(ident, ref sig, vis) => {
                 let new_fn = self.rewrite_fn(indent,
                                              ident,
                                              fd,
@@ -161,7 +161,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              codemap::mk_sp(s.lo, b.span.lo));
                 self.buffer.push_str(&new_fn);
             }
-            visit::FkClosure(..) => {}
+            visit::FnKind::Closure => {}
         }
 
         self.last_pos = b.span.lo;
