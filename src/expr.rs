@@ -20,7 +20,7 @@ use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg, rewrite_fn_input};
 
 use syntax::{ast, ptr};
-use syntax::codemap::{CodeMap, Pos, Span, BytePos, mk_sp};
+use syntax::codemap::{CodeMap, Span, BytePos, mk_sp};
 use syntax::visit::Visitor;
 
 impl Rewrite for ast::Expr {
@@ -831,13 +831,7 @@ fn rewrite_string_lit(context: &RewriteContext,
     if context.config.format_strings == false {
         return Some(context.snippet(span));
     }
-    // Check if there is anything to fix: we always try to fixup multi-line
-    // strings, or if the string is too long for the line.
-    let l_loc = context.codemap.lookup_char_pos(span.lo);
-    let r_loc = context.codemap.lookup_char_pos(span.hi);
-    if l_loc.line == r_loc.line && r_loc.col.to_usize() <= context.config.max_width {
-        return Some(context.snippet(span));
-    }
+
     let fmt = StringFormat {
         opener: "\"",
         closer: "\"",
