@@ -31,60 +31,6 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::default::Default;
 
-#[unstable(feature = "rustc_private")]
-#[deprecated(since = "1.0.0", reason = "replaced by MultiItemDecorator")]
-pub trait ItemDecorator {
-    fn expand(&self,
-              ecx: &mut ExtCtxt,
-              sp: Span,
-              meta_item: &ast::MetaItem,
-              item: &ast::Item,
-              push: &mut FnMut(P<ast::Item>));
-}
-
-#[allow(deprecated)]
-#[unstable(feature = "rustc_private")]
-#[deprecated(since = "1.0.0", reason = "replaced by MultiItemDecorator")]
-impl<F> ItemDecorator for F
-    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &ast::Item, &mut FnMut(P<ast::Item>))
-{
-    fn expand(&self,
-              ecx: &mut ExtCtxt,
-              sp: Span,
-              meta_item: &ast::MetaItem,
-              item: &ast::Item,
-              push: &mut FnMut(P<ast::Item>)) {
-        (*self)(ecx, sp, meta_item, item, push)
-    }
-}
-
-#[unstable(feature = "rustc_private")]
-#[deprecated(since = "1.0.0", reason = "replaced by MultiItemModifier")]
-pub trait ItemModifier {
-    fn expand(&self,
-              ecx: &mut ExtCtxt,
-              span: Span,
-              meta_item: &ast::MetaItem,
-              item: P<ast::Item>)
-              -> P<ast::Item>;
-}
-
-#[allow(deprecated)]
-#[unstable(feature = "rustc_private")]
-#[deprecated(since = "1.0.0", reason = "replaced by MultiItemModifier")]
-impl<F> ItemModifier for F
-    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, P<ast::Item>) -> P<ast::Item>
-{
-
-    fn expand(&self,
-              ecx: &mut ExtCtxt,
-              span: Span,
-              meta_item: &ast::MetaItem,
-              item: P<ast::Item>)
-              -> P<ast::Item> {
-        (*self)(ecx, span, meta_item, item)
-    }
-}
 
 #[derive(Debug,Clone)]
 pub enum Annotatable {
@@ -462,23 +408,9 @@ impl MacResult for DummyResult {
 pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and creates new items
     /// based upon it.
-    #[unstable(feature = "rustc_private")]
-    #[deprecated(since = "1.0.0", reason = "replaced by MultiDecorator")]
-    #[allow(deprecated)]
-    Decorator(Box<ItemDecorator + 'static>),
-
-    /// A syntax extension that is attached to an item and creates new items
-    /// based upon it.
     ///
     /// `#[derive(...)]` is a `MultiItemDecorator`.
     MultiDecorator(Box<MultiItemDecorator + 'static>),
-
-    /// A syntax extension that is attached to an item and modifies it
-    /// in-place.
-    #[unstable(feature = "rustc_private")]
-    #[deprecated(since = "1.0.0", reason = "replaced by MultiModifier")]
-    #[allow(deprecated)]
-    Modifier(Box<ItemModifier + 'static>),
 
     /// A syntax extension that is attached to an item and modifies it
     /// in-place. More flexible version than Modifier.

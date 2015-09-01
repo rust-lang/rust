@@ -636,9 +636,9 @@ macro_rules! with_exts_frame {
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
                    -> SmallVector<P<ast::Item>> {
-    let it = expand_item_modifiers(it, fld);
+    let it = expand_item_multi_modifier(Annotatable::Item(it), fld);
 
-    expand_annotatable(Annotatable::Item(it), fld)
+    expand_annotatable(it, fld)
         .into_iter().map(|i| i.expect_item()).collect()
 }
 
@@ -1275,11 +1275,9 @@ macro_rules! partition {
     }
 }
 
-partition!(modifiers, Modifier);
 partition!(multi_modifiers, MultiModifier);
 
 
-#[allow(deprecated)] // The `allow` is needed because the `Decorator` variant is used.
 fn expand_decorators(a: Annotatable,
                      fld: &mut MacroExpander,
                      decorator_items: &mut SmallVector<Annotatable>,
@@ -1289,33 +1287,6 @@ fn expand_decorators(a: Annotatable,
         let mname = intern(&attr.name());
         match fld.cx.syntax_env.find(&mname) {
             Some(rc) => match *rc {
-                Decorator(ref dec) => {
-                    attr::mark_used(&attr);
-
-                    fld.cx.bt_push(ExpnInfo {
-                        call_site: attr.span,
-                        callee: NameAndSpan {
-                            format: MacroAttribute(mname),
-                            span: Some(attr.span),
-                            // attributes can do whatever they like,
-                            // for now.
-                            allow_internal_unstable: true,
-                        }
-                    });
-
-                    // we'd ideally decorator_items.push_all(expand_item(item, fld)),
-                    // but that double-mut-borrows fld
-                    let mut items: SmallVector<Annotatable> = SmallVector::zero();
-                    dec.expand(fld.cx,
-                               attr.span,
-                               &attr.node.value,
-                               &a.clone().expect_item(),
-                               &mut |item| items.push(Annotatable::Item(item)));
-                    decorator_items.extend(items.into_iter()
-                        .flat_map(|ann| expand_annotatable(ann, fld).into_iter()));
-
-                    fld.cx.bt_pop();
-                }
                 MultiDecorator(ref dec) => {
                     attr::mark_used(&attr);
 
@@ -1390,58 +1361,6 @@ fn expand_item_multi_modifier(mut it: Annotatable,
 
     // Expansion may have added new ItemModifiers.
     expand_item_multi_modifier(it, fld)
-}
-
-#[allow(deprecated)] // This is needed because the `ItemModifier` trait is used
-fn expand_item_modifiers(mut it: P<ast::Item>,
-                         fld: &mut MacroExpander)
-                         -> P<ast::Item> {
-    // partition the attributes into ItemModifiers and others
-    let (modifiers, other_attrs) = modifiers(&it.attrs, fld);
-
-    // update the attrs, leave everything else alone. Is this mutation really a good idea?
-    it = P(ast::Item {
-        attrs: other_attrs,
-        ..(*it).clone()
-    });
-
-    if modifiers.is_empty() {
-        let it = expand_item_multi_modifier(Annotatable::Item(it), fld);
-        return it.expect_item();
-    }
-
-    for attr in &modifiers {
-        let mname = intern(&attr.name());
-
-        match fld.cx.syntax_env.find(&mname) {
-            Some(rc) => match *rc {
-                Modifier(ref mac) => {
-                    attr::mark_used(attr);
-                    fld.cx.bt_push(ExpnInfo {
-                        call_site: attr.span,
-                        callee: NameAndSpan {
-                            format: MacroAttribute(mname),
-                            span: Some(attr.span),
-                            // attributes can do whatever they like,
-                            // for now
-                            allow_internal_unstable: true,
-                        }
-                    });
-                    it = mac.expand(fld.cx, attr.span, &*attr.node.value, it);
-                    fld.cx.bt_pop();
-                }
-                _ => unreachable!()
-            },
-            _ => unreachable!()
-        }
-    }
-
-    // Expansion may have added new ItemModifiers.
-    // It is possible, that an item modifier could expand to a multi-modifier or
-    // vice versa. In this case we will expand all modifiers before multi-modifiers,
-    // which might give an odd ordering. However, I think it is unlikely that the
-    // two kinds will be mixed, and old-style multi-modifiers are deprecated.
-    expand_item_modifiers(it, fld)
 }
 
 fn expand_impl_item(ii: P<ast::ImplItem>, fld: &mut MacroExpander)

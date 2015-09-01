@@ -17,10 +17,6 @@
 #[macro_use] #[no_link]
 extern crate macro_crate_test;
 
-#[into_foo]
-#[derive(PartialEq, Clone, Debug)]
-fn foo() -> AFakeTypeThatHadBetterGoAway {}
-
 #[into_multi_foo]
 #[derive(PartialEq, Clone, Debug)]
 fn foo() -> AnotherFakeTypeThatHadBetterGoAway {}
@@ -40,9 +36,6 @@ impl Qux for u8 {}
 pub fn main() {
     assert_eq!(1, make_a_1!());
     assert_eq!(2, exported_macro!());
-
-    assert_eq!(Foo::Bar, Foo::Bar);
-    test(None::<Foo>);
 
     assert_eq!(Foo2::Bar2, Foo2::Bar2);
     test(None::<Foo2>);

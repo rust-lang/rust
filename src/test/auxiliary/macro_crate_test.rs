@@ -31,10 +31,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("make_a_1", expand_make_a_1);
     reg.register_macro("identity", expand_identity);
     reg.register_syntax_extension(
-        token::intern("into_foo"),
-        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-        Modifier(Box::new(expand_into_foo)));
-    reg.register_syntax_extension(
         token::intern("into_multi_foo"),
         // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         MultiModifier(Box::new(expand_into_foo_multi)));
@@ -60,14 +56,6 @@ fn expand_identity(cx: &mut ExtCtxt, _span: Span, tts: &[TokenTree])
         cx.cfg(), tts.to_vec());
     let expr = parser.parse_expr();
     MacEager::expr(quote_expr!(&mut *cx, $expr))
-}
-
-fn expand_into_foo(cx: &mut ExtCtxt, sp: Span, attr: &MetaItem, it: P<Item>)
-                   -> P<Item> {
-    P(Item {
-        attrs: it.attrs.clone(),
-        ..(*quote_item!(cx, enum Foo { Bar, Baz }).unwrap()).clone()
-    })
 }
 
 fn expand_into_foo_multi(cx: &mut ExtCtxt,
