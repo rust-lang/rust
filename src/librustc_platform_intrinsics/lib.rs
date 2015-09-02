@@ -32,7 +32,7 @@ pub struct Intrinsic {
 pub enum Type {
     Integer(/* signed */ bool, u8, /* llvm width */ u8),
     Float(u8),
-    Pointer(Box<Type>),
+    Pointer(Box<Type>, Option<Box<Type>>, /* const */ bool),
     Vector(Box<Type>, u8),
     Aggregate(bool, Vec<Type>),
 }
@@ -50,6 +50,9 @@ fn f(width: u8) -> Type { Type::Float(width) }
 fn v(x: Type, length: u8) -> Type { Type::Vector(Box::new(x), length) }
 fn agg(flatten: bool, types: Vec<Type>) -> Type {
     Type::Aggregate(flatten, types)
+}
+fn p(const_: bool, elem: Type, llvm_elem: Option<Type>) -> Type {
+    Type::Pointer(Box::new(elem), llvm_elem.map(Box::new), const_)
 }
 
 mod x86;
