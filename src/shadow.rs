@@ -255,29 +255,55 @@ fn path_eq_name(name: Name, path: &Path) -> bool {
 
 fn contains_self(name: Name, expr: &Expr) -> bool {
     match expr.node {
+        // the "self" name itself (maybe)
+        ExprPath(_, ref path) => path_eq_name(name, path),
+        // no subexprs
+        ExprLit(_) => false,
+        // one subexpr
         ExprUnary(_, ref e) | ExprParen(ref e) | ExprField(ref e, _) |
-        ExprTupField(ref e, _) | ExprAddrOf(_, ref e) | ExprBox(_, ref e)
-            => contains_self(name, e),
-        ExprBinary(_, ref l, ref r) =>
+        ExprTupField(ref e, _) | ExprAddrOf(_, ref e) | ExprBox(_, ref e) |
+        ExprCast(ref e, _) =>
+            contains_self(name, e),
+        // two subexprs
+        ExprBinary(_, ref l, ref r) | ExprIndex(ref l, ref r) |
+        ExprAssign(ref l, ref r) | ExprAssignOp(_, ref l, ref r) |
+        ExprRepeat(ref l, ref r) =>
             contains_self(name, l) || contains_self(name, r),
-        ExprBlock(ref block) | ExprLoop(ref block, _) =>
+        // one optional subexpr
+        ExprRet(ref oe) =>
+            oe.as_ref().map_or(false, |ref e| contains_self(name, e)),
+        // two optional subexprs
+        ExprRange(ref ol, ref or) =>
+            ol.as_ref().map_or(false, |ref e| contains_self(name, e)) ||
+            or.as_ref().map_or(false, |ref e| contains_self(name, e)),
+        // one subblock
+        ExprBlock(ref block) | ExprLoop(ref block, _) |
+        ExprClosure(_, _, ref block) =>
             contains_block_self(name, block),
-        ExprCall(ref fun, ref args) => contains_self(name, fun) ||
+        // one vec
+        ExprMethodCall(_, _, ref v) | ExprVec(ref v) | ExprTup(ref v) =>
+            v.iter().any(|ref a| contains_self(name, a)),
+        // one expr, one vec
+        ExprCall(ref fun, ref args) =>
+            contains_self(name, fun) ||
             args.iter().any(|ref a| contains_self(name, a)),
-        ExprMethodCall(_, _, ref args) =>
-            args.iter().any(|ref a| contains_self(name, a)),
-        ExprVec(ref v) | ExprTup(ref v) =>
-            v.iter().any(|ref e| contains_self(name, e)),
+        // special ones
         ExprIf(ref cond, ref then, ref otherwise) =>
             contains_self(name, cond) || contains_block_self(name, then) ||
             otherwise.as_ref().map_or(false, |ref e| contains_self(name, e)),
         ExprWhile(ref e, ref block, _)  =>
             contains_self(name, e) || contains_block_self(name, block),
         ExprMatch(ref e, ref arms, _) =>
-            arms.iter().any(|ref arm| arm.pats.iter().any(|ref pat|
-                contains_pat_self(name, pat))) || contains_self(name, e),
-        ExprPath(_, ref path) => path_eq_name(name, path),
-        _ => false
+            contains_self(name, e) ||
+            arms.iter().any(
+                |ref arm|
+                arm.pats.iter().any(|ref pat| contains_pat_self(name, pat)) ||
+                arm.guard.as_ref().map_or(false, |ref g| contains_self(name, g)) ||
+                contains_self(name, &arm.body)),
+        ExprStruct(_, ref fields, ref other) =>
+            fields.iter().any(|ref f| contains_self(name, &f.expr)) ||
+            other.as_ref().map_or(false, |ref e| contains_self(name, e)),
+        _ => false,
     }
 }
 
