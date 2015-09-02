@@ -1,6 +1,9 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
+#![deny(float_cmp)]
+#![allow(unused)]
+
 use std::ops::Add;
 
 const ZERO : f32 = 0.0;
@@ -10,8 +13,26 @@ fn twice<T>(x : T) -> T where T : Add<T, Output = T>, T : Copy {
     x + x
 }
 
-#[deny(float_cmp)]
-#[allow(unused)]
+fn eq_fl(x: f32, y: f32) -> bool {
+    if x.is_nan() { y.is_nan() } else { x == y } // no error, inside "eq" fn
+}
+
+fn fl_eq(x: f32, y: f32) -> bool {
+    if x.is_nan() { y.is_nan() } else { x == y } // no error, inside "eq" fn
+}
+
+struct X { val: f32 }
+
+impl PartialEq for X {
+    fn eq(&self, o: &X) -> bool {
+        if self.val.is_nan() {
+            o.val.is_nan()
+        } else {
+            self.val == o.val // no error, inside "eq" fn
+        }
+    }
+}
+
 fn main() {
     ZERO == 0f32; //no error, comparison with zero is ok
     ZERO == 0.0; //no error, comparison with zero is ok

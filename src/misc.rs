@@ -4,6 +4,7 @@ use syntax::ast::*;
 use syntax::ast_util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::{Span, Spanned};
 use syntax::visit::FnKind;
+use rustc::ast_map::Node::*;
 use rustc::middle::ty;
 
 use utils::{match_path, snippet, span_lint, walk_ptrs_ty};
@@ -90,6 +91,17 @@ impl LintPass for FloatCmp {
                 if constant(cx, left).or_else(|| constant(cx, right)).map_or(
                         false, |c| c.0.as_float().map_or(false, |f| f == 0.0)) {
                     return;
+                }
+                let parent_id = cx.tcx.map.get_parent(expr.id);
+                match cx.tcx.map.find(parent_id) {
+                    Some(NodeItem(&Item{ ref ident, .. })) |
+                    Some(NodeTraitItem(&TraitItem{ id: _, ref ident, .. })) |
+                    Some(NodeImplItem(&ImplItem{ id: _, ref ident, .. })) => {
+                        let name = ident.name.as_str();
+                        if &*name == "eq" || name.starts_with("eq_") ||
+                                name.ends_with("_eq") { return; }
+                    },
+                    _ => (),
                 }
                 span_lint(cx, FLOAT_CMP, expr.span, &format!(
                     "{}-comparison of f32 or f64 detected. Consider changing this to \
