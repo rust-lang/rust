@@ -18,14 +18,14 @@ use middle::def_id::DefId;
 use std::io::Write;
 
 use syntax::ast;
-use syntax::ast::{NodeId};
+use syntax::ast::NodeId;
 use syntax::codemap::*;
 
 const ZERO_DEF_ID: DefId = DefId { node: 0, krate: 0 };
 
 pub struct Recorder {
     // output file
-    pub out: Box<Write+'static>,
+    pub out: Box<Write + 'static>,
     pub dump_spans: bool,
 }
 
@@ -37,11 +37,7 @@ impl Recorder {
         }
     }
 
-    pub fn dump_span(&mut self,
-                     su: SpanUtils,
-                     kind: &str,
-                     span: Span,
-                     _sub_span: Option<Span>) {
+    pub fn dump_span(&mut self, su: SpanUtils, kind: &str, span: Span, _sub_span: Option<Span>) {
         assert!(self.dump_spans);
         let result = format!("span,kind,{},{},text,\"{}\"\n",
                              kind, su.extent_str(span), escape(su.snippet(span)));
@@ -96,10 +92,7 @@ pub enum Row {
 
 impl<'a> FmtStrs<'a> {
     pub fn new(rec: Box<Recorder>, span: SpanUtils<'a>) -> FmtStrs<'a> {
-        FmtStrs {
-            recorder: rec,
-            span: span,
-        }
+        FmtStrs { recorder: rec, span: span }
     }
 
     // A map from kind of item to a tuple of
@@ -111,47 +104,51 @@ impl<'a> FmtStrs<'a> {
         match r {
             Variable => ("variable",
                          vec!("id","name","qualname","value","type","scopeid"),
-                         true, true),
+                         true,
+                         true),
             Enum => ("enum", vec!("id","qualname","scopeid","value"), true, true),
             Variant => ("variant",
                         vec!("id","name","qualname","type","value","scopeid"),
-                        true, true),
+                        true,
+                        true),
             VariantStruct => ("variant_struct",
                               vec!("id","ctor_id","qualname","type","value","scopeid"),
-                              true, true),
+                              true,
+                              true),
             Function => ("function",
                          vec!("id","qualname","declid","declidcrate","scopeid"),
-                         true, true),
+                         true,
+                         true),
             MethodDecl => ("method_decl", vec!("id","qualname","scopeid"), true, true),
             Struct => ("struct", vec!("id","ctor_id","qualname","scopeid","value"), true, true),
             Trait => ("trait", vec!("id","qualname","scopeid","value"), true, true),
             Impl => ("impl",
                      vec!("id","refid","refidcrate","traitid","traitidcrate","scopeid"),
-                     true, true),
+                     true,
+                     true),
             Module => ("module", vec!("id","qualname","scopeid","def_file"), true, false),
-            UseAlias => ("use_alias",
-                         vec!("id","refid","refidcrate","name","scopeid"),
-                         true, true),
+            UseAlias => ("use_alias", vec!("id","refid","refidcrate","name","scopeid"), true, true),
             UseGlob => ("use_glob", vec!("id","value","scopeid"), true, true),
             ExternCrate => ("extern_crate",
                             vec!("id","name","location","crate","scopeid"),
-                            true, true),
+                            true,
+                            true),
             Inheritance => ("inheritance",
                             vec!("base","basecrate","derived","derivedcrate"),
-                            true, false),
+                            true,
+                            false),
             MethodCall => ("method_call",
                            vec!("refid","refidcrate","declid","declidcrate","scopeid"),
-                           true, true),
+                           true,
+                           true),
             Typedef => ("typedef", vec!("id","qualname","value"), true, true),
             ExternalCrate => ("external_crate", vec!("name","crate","file_name"), false, false),
             Crate => ("crate", vec!("name"), true, false),
             FnCall => ("fn_call", vec!("refid","refidcrate","qualname","scopeid"), true, true),
             ModRef => ("mod_ref", vec!("refid","refidcrate","qualname","scopeid"), true, true),
             VarRef => ("var_ref", vec!("refid","refidcrate","qualname","scopeid"), true, true),
-            TypeRef => ("type_ref",
-                        vec!("refid","refidcrate","qualname","scopeid"),
-                        true, true),
-            FnRef => ("fn_ref", vec!("refid","refidcrate","qualname","scopeid"), true, true)
+            TypeRef => ("type_ref", vec!("refid","refidcrate","qualname","scopeid"), true, true),
+            FnRef => ("fn_ref", vec!("refid","refidcrate","qualname","scopeid"), true, true),
         }
     }
 
@@ -159,7 +156,8 @@ impl<'a> FmtStrs<'a> {
                            kind: &'static str,
                            fields: &Vec<&'static str>,
                            values: Vec<String>,
-                           span: Span) -> Option<String> {
+                           span: Span)
+                           -> Option<String> {
         if values.len() != fields.len() {
             self.span.sess.span_bug(span, &format!(
                 "Mismatch between length of fields for '{}', expected '{}', found '{}'",
@@ -183,10 +181,7 @@ impl<'a> FmtStrs<'a> {
         }))
     }
 
-    pub fn record_without_span(&mut self,
-                               kind: Row,
-                               values: Vec<String>,
-                               span: Span) {
+    pub fn record_without_span(&mut self, kind: Row, values: Vec<String>, span: Span) {
         let (label, ref fields, needs_span, dump_spans) = FmtStrs::lookup_row(kind);
 
         if needs_span {
@@ -387,7 +382,7 @@ impl<'a> FmtStrs<'a> {
                       scope_id: NodeId) {
         let values = match decl_id {
             Some(decl_id) => svec!(id, name, decl_id.node, decl_id.krate, scope_id),
-            None => svec!(id, name, "", "", scope_id)
+            None => svec!(id, name, "", "", scope_id),
         };
         self.check_and_record(Function,
                               span,
@@ -476,7 +471,7 @@ impl<'a> FmtStrs<'a> {
                          parent: NodeId) {
         let (mod_node, mod_crate) = match mod_id {
             Some(mod_id) => (mod_id.node, mod_id.krate),
-            None => (0, 0)
+            None => (0, 0),
         };
         self.check_and_record(UseAlias,
                               span,
@@ -528,7 +523,7 @@ impl<'a> FmtStrs<'a> {
                        span: Span,
                        sub_span: Option<Span>,
                        id: DefId,
-                       scope_id:NodeId) {
+                       scope_id: NodeId) {
         self.check_and_record(FnCall,
                               span,
                               sub_span,
@@ -543,11 +538,11 @@ impl<'a> FmtStrs<'a> {
                          scope_id: NodeId) {
         let (dfn, dfk) = match defid {
             Some(defid) => (defid.node, defid.krate),
-            None => (0, 0)
+            None => (0, 0),
         };
         let (dcn, dck) = match declid {
             Some(declid) => (s!(declid.node), s!(declid.krate)),
-            None => ("".to_string(), "".to_string())
+            None => ("".to_string(), "".to_string()),
         };
         self.check_and_record(MethodCall,
                               span,
@@ -555,11 +550,7 @@ impl<'a> FmtStrs<'a> {
                               svec!(dfn, dfk, dcn, dck, scope_id));
     }
 
-    pub fn sub_mod_ref_str(&mut self,
-                           span: Span,
-                           sub_span: Span,
-                           qualname: &str,
-                           parent:NodeId) {
+    pub fn sub_mod_ref_str(&mut self, span: Span, sub_span: Span, qualname: &str, parent: NodeId) {
         self.record_with_span(ModRef,
                               span,
                               sub_span,
@@ -578,29 +569,21 @@ impl<'a> FmtStrs<'a> {
                               svec!(id, qualname, value));
     }
 
-    pub fn crate_str(&mut self,
-                     span: Span,
-                     name: &str) {
+    pub fn crate_str(&mut self, span: Span, name: &str) {
         self.record_with_span(Crate,
                               span,
                               span,
                               svec!(name));
     }
 
-    pub fn external_crate_str(&mut self,
-                              span: Span,
-                              name: &str,
-                              num: ast::CrateNum) {
+    pub fn external_crate_str(&mut self, span: Span, name: &str, num: ast::CrateNum) {
         let lo_loc = self.span.sess.codemap().lookup_char_pos(span.lo);
         self.record_without_span(ExternalCrate,
                                  svec!(name, num, lo_loc.file.name),
                                  span);
     }
 
-    pub fn sub_type_ref_str(&mut self,
-                            span: Span,
-                            sub_span: Span,
-                            qualname: &str) {
+    pub fn sub_type_ref_str(&mut self, span: Span, sub_span: Span, qualname: &str) {
         self.record_with_span(TypeRef,
                               span,
                               sub_span,
