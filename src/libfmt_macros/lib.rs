@@ -190,7 +190,7 @@ impl<'a> Parser<'a> {
     /// String, but I think it does when this eventually uses conditions so it
     /// might as well start using it now.
     fn err(&mut self, msg: &str) {
-        self.errors.push(msg.to_string());
+        self.errors.push(msg.to_owned());
     }
 
     /// Optionally consumes the specified character. If the character is not at
@@ -353,7 +353,7 @@ impl<'a> Parser<'a> {
         } else {
             spec.ty = self.word();
         }
-        return spec;
+        spec
     }
 
     /// Parses a Count parameter at the current position. This does not check
@@ -417,25 +417,19 @@ impl<'a> Parser<'a> {
     fn integer(&mut self) -> Option<usize> {
         let mut cur = 0;
         let mut found = false;
-        loop {
-            match self.cur.clone().next() {
-                Some((_, c)) => {
-                    match c.to_digit(10) {
-                        Some(i) => {
-                            cur = cur * 10 + i as usize;
-                            found = true;
-                            self.cur.next();
-                        }
-                        None => { break }
-                    }
-                }
-                None => { break }
+        while let Some((_, c)) = self.cur.clone().next() {
+            if let Some(i) = c.to_digit(10) {
+                cur = cur * 10 + i as usize;
+                found = true;
+                self.cur.next();
+            } else {
+                break
             }
         }
         if found {
-            return Some(cur);
+            Some(cur)
         } else {
-            return None;
+            None
         }
     }
 }
