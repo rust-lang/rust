@@ -647,7 +647,8 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         }
     }
 
-    fn process_mod(&mut self, item: &ast::Item) {  // The module in question, represented as an item.
+    // `item` is the module in question, represented as an item.
+    fn process_mod(&mut self, item: &ast::Item) {
         let mod_data = self.save_ctxt.get_item_data(item);
         down_cast_data!(mod_data, ModData, self, item.span);
         self.fmt.mod_str(item.span,
