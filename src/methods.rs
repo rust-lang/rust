@@ -1,6 +1,7 @@
 use syntax::ast::*;
 use rustc::lint::*;
 use rustc::middle::ty;
+use rustc::middle::subst::Subst;
 use std::iter;
 use std::borrow::Cow;
 
@@ -225,7 +226,7 @@ fn is_copy(cx: &Context, ast_ty: &Ty, item: &Item) -> bool {
         None => false,
         Some(ty) => {
             let env = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
-            !ty.moves_by_default(&env, ast_ty.span)
+            !ty.subst(cx.tcx, &env.free_substs).moves_by_default(&env, ast_ty.span)
         }
     }
 }
