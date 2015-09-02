@@ -21,6 +21,7 @@
 
 pub use self::LangItem::*;
 
+use front::map as hir_map;
 use session::Session;
 use metadata::csearch::each_lang_item;
 use middle::def_id::DefId;
@@ -144,21 +145,23 @@ impl LanguageItems {
     )*
 }
 
-struct LanguageItemCollector<'a> {
+struct LanguageItemCollector<'a, 'tcx: 'a> {
     items: LanguageItems,
+
+    ast_map: &'a hir_map::Map<'tcx>,
 
     session: &'a Session,
 
     item_refs: FnvHashMap<&'static str, usize>,
 }
 
-impl<'a, 'v> Visitor<'v> for LanguageItemCollector<'a> {
+impl<'a, 'v, 'tcx> Visitor<'v> for LanguageItemCollector<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         if let Some(value) = extract(&item.attrs) {
             let item_index = self.item_refs.get(&value[..]).cloned();
 
             if let Some(item_index) = item_index {
-                self.collect_item(item_index, DefId::local(item.id), item.span)
+                self.collect_item(item_index, self.ast_map.local_def_id(item.id), item.span)
             }
         }
 
@@ -166,16 +169,18 @@ impl<'a, 'v> Visitor<'v> for LanguageItemCollector<'a> {
     }
 }
 
-impl<'a> LanguageItemCollector<'a> {
-    pub fn new(session: &'a Session) -> LanguageItemCollector<'a> {
+impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
+    pub fn new(session: &'a Session, ast_map: &'a hir_map::Map<'tcx>)
+               -> LanguageItemCollector<'a, 'tcx> {
         let mut item_refs = FnvHashMap();
 
         $( item_refs.insert($name, $variant as usize); )*
 
         LanguageItemCollector {
             session: session,
+            ast_map: ast_map,
             items: LanguageItems::new(),
-            item_refs: item_refs
+            item_refs: item_refs,
         }
     }
 
@@ -230,9 +235,11 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<InternedString> {
     return None;
 }
 
-pub fn collect_language_items(krate: &hir::Crate,
-                              session: &Session) -> LanguageItems {
-    let mut collector = LanguageItemCollector::new(session);
+pub fn collect_language_items(session: &Session,
+                              map: &hir_map::Map)
+                              -> LanguageItems {
+    let krate: &hir::Crate = map.krate();
+    let mut collector = LanguageItemCollector::new(session, map);
     collector.collect(krate);
     let LanguageItemCollector { mut items, .. } = collector;
     weak_lang_items::check_crate(krate, session, &mut items);

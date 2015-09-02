@@ -555,7 +555,7 @@ impl LateLintPass for MissingCopyImplementations {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(DefId::local(item.id));
+                let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
                 (def, cx.tcx.mk_struct(def,
                                        cx.tcx.mk_substs(Substs::empty())))
             }
@@ -563,7 +563,7 @@ impl LateLintPass for MissingCopyImplementations {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                let def = cx.tcx.lookup_adt_def(DefId::local(item.id));
+                let def = cx.tcx.lookup_adt_def(cx.tcx.map.local_def_id(item.id));
                 (def, cx.tcx.mk_enum(def,
                                      cx.tcx.mk_substs(Substs::empty())))
             }
@@ -764,7 +764,7 @@ impl LateLintPass for UnconditionalRecursion {
         let method = match fn_kind {
             FnKind::ItemFn(..) => None,
             FnKind::Method(..) => {
-                cx.tcx.impl_or_trait_item(DefId::local(id)).as_opt_method()
+                cx.tcx.impl_or_trait_item(cx.tcx.map.local_def_id(id)).as_opt_method()
             }
             // closures can't recur, so they don't matter.
             FnKind::Closure => return
@@ -877,8 +877,11 @@ impl LateLintPass for UnconditionalRecursion {
                                   id: ast::NodeId) -> bool {
             match tcx.map.get(id) {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
-                    tcx.def_map.borrow().get(&callee.id)
-                        .map_or(false, |def| def.def_id() == DefId::local(fn_id))
+                    tcx.def_map
+                       .borrow()
+                       .get(&callee.id)
+                       .map_or(false,
+                               |def| def.def_id() == tcx.map.local_def_id(fn_id))
                 }
                 _ => false
             }

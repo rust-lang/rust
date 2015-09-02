@@ -272,7 +272,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     }
                     _ => true,
                 };
-                let tr = self.tcx.impl_trait_ref(DefId::local(item.id));
+                let tr = self.tcx.impl_trait_ref(self.tcx.map.local_def_id(item.id));
                 let public_trait = tr.clone().map_or(false, |tr| {
                     !tr.def_id.is_local() ||
                      self.exported_items.contains(&tr.def_id.node)

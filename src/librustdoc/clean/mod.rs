@@ -189,7 +189,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     attrs: child.attrs.clone(),
                     visibility: Some(hir::Public),
                     stability: None,
-                    def_id: DefId::local(prim.to_node_id()),
+                    def_id: cx.map.local_def_id(prim.to_node_id()),
                     inner: PrimitiveItem(prim),
                 });
             }
@@ -420,7 +420,7 @@ impl Clean<Item> for doctree::Module {
             source: whence.clean(cx),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             inner: ModuleItem(Module {
                is_crate: self.is_crate,
                items: items
@@ -1088,7 +1088,7 @@ impl Clean<Item> for doctree::Function {
             source: self.whence.clean(cx),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             inner: FunctionItem(Function {
                 decl: self.decl.clean(cx),
                 generics: self.generics.clean(cx),
@@ -1211,7 +1211,7 @@ impl Clean<Item> for doctree::Trait {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: TraitItem(Trait {
@@ -1261,9 +1261,9 @@ impl Clean<Item> for hir::TraitItem {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             visibility: None,
-            stability: get_stability(cx, DefId::local(self.id)),
+            stability: get_stability(cx, cx.map.local_def_id(self.id)),
             inner: inner
         }
     }
@@ -1294,9 +1294,9 @@ impl Clean<Item> for hir::ImplItem {
             name: Some(self.name.clean(cx)),
             source: self.span.clean(cx),
             attrs: self.attrs.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             visibility: self.vis.clean(cx),
-            stability: get_stability(cx, DefId::local(self.id)),
+            stability: get_stability(cx, cx.map.local_def_id(self.id)),
             inner: inner
         }
     }
@@ -1660,7 +1660,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     type_params: Vec::new(),
                     where_predicates: Vec::new()
                 },
-                decl: (DefId::local(0), &fty.sig).clean(cx),
+                decl: (cx.map.local_def_id(0), &fty.sig).clean(cx),
                 abi: fty.abi.to_string(),
             }),
             ty::TyStruct(def, substs) |
@@ -1728,8 +1728,8 @@ impl Clean<Item> for hir::StructField {
             attrs: self.node.attrs.clean(cx),
             source: self.span.clean(cx),
             visibility: Some(vis),
-            stability: get_stability(cx, DefId::local(self.node.id)),
-            def_id: DefId::local(self.node.id),
+            stability: get_stability(cx, cx.map.local_def_id(self.node.id)),
+            def_id: cx.map.local_def_id(self.node.id),
             inner: StructFieldItem(TypedStructField(self.node.ty.clean(cx))),
         }
     }
@@ -1782,7 +1782,7 @@ impl Clean<Item> for doctree::Struct {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: StructItem(Struct {
@@ -1828,7 +1828,7 @@ impl Clean<Item> for doctree::Enum {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: EnumItem(Enum {
@@ -1853,7 +1853,7 @@ impl Clean<Item> for doctree::Variant {
             source: self.whence.clean(cx),
             visibility: None,
             stability: self.stab.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             inner: VariantItem(Variant {
                 kind: self.kind.clean(cx),
             }),
@@ -2083,7 +2083,7 @@ impl Clean<Item> for doctree::Typedef {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: DefId::local(self.id.clone()),
+            def_id: cx.map.local_def_id(self.id.clone()),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: TypedefItem(Typedef {
@@ -2134,7 +2134,7 @@ impl Clean<Item> for doctree::Static {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: StaticItem(Static {
@@ -2158,7 +2158,7 @@ impl Clean<Item> for doctree::Constant {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: ConstantItem(Constant {
@@ -2232,7 +2232,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: ImplItem(Impl {
@@ -2314,7 +2314,7 @@ impl Clean<Item> for doctree::DefaultImpl {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             visibility: Some(hir::Public),
             stability: None,
             inner: DefaultImplItem(DefaultImpl {
@@ -2331,7 +2331,7 @@ impl Clean<Item> for doctree::ExternCrate {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: DefId::local(0),
+            def_id: cx.map.local_def_id(0),
             visibility: self.vis.clean(cx),
             stability: None,
             inner: ExternCrateItem(self.name.clean(cx), self.path.clone())
@@ -2396,7 +2396,7 @@ impl Clean<Vec<Item>> for doctree::Import {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: DefId::local(0),
+            def_id: cx.map.local_def_id(0),
             visibility: self.vis.clean(cx),
             stability: None,
             inner: ImportItem(inner)
@@ -2482,9 +2482,9 @@ impl Clean<Item> for hir::ForeignItem {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             visibility: self.vis.clean(cx),
-            stability: get_stability(cx, DefId::local(self.id)),
+            stability: get_stability(cx, cx.map.local_def_id(self.id)),
             inner: inner,
         }
     }
@@ -2662,7 +2662,7 @@ impl Clean<Item> for doctree::Macro {
             source: self.whence.clean(cx),
             visibility: hir::Public.clean(cx),
             stability: self.stab.clean(cx),
-            def_id: DefId::local(self.id),
+            def_id: cx.map.local_def_id(self.id),
             inner: MacroItem(Macro {
                 source: self.whence.to_src(cx),
                 imported_from: self.imported_from.clean(cx),

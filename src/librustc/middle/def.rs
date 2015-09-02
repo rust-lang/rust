@@ -10,7 +10,6 @@
 
 pub use self::Def::*;
 
-use metadata::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;
 use middle::privacy::LastPrivate;
 use middle::subst::ParamSpace;
@@ -115,10 +114,24 @@ pub struct Export {
 }
 
 impl Def {
-    pub fn local_node_id(&self) -> ast::NodeId {
-        let def_id = self.def_id();
-        assert_eq!(def_id.krate, LOCAL_CRATE);
-        def_id.node
+    pub fn node_id(&self) -> ast::NodeId {
+        match *self {
+            DefLocal(id) |
+            DefUpvar(id, _, _) |
+            DefRegion(id) |
+            DefLabel(id)  |
+            DefSelfTy(_, Some((_, id))) => {
+                id
+            }
+
+            DefFn(_, _) | DefMod(_) | DefForeignMod(_) | DefStatic(_, _) |
+            DefVariant(_, _, _) | DefTy(_, _) | DefAssociatedTy(_, _) |
+            DefTyParam(_, _, _, _) | DefUse(_) | DefStruct(_) | DefTrait(_) |
+            DefMethod(_) | DefConst(_) | DefAssociatedConst(_) |
+            DefSelfTy(Some(_), None) | DefPrimTy(_) | DefSelfTy(..) => {
+                panic!("attempted .def_id() on invalid {:?}", self)
+            }
+        }
     }
 
     pub fn def_id(&self) -> DefId {
@@ -130,12 +143,13 @@ impl Def {
             DefSelfTy(Some(id), None)=> {
                 id
             }
+
             DefLocal(id) |
             DefUpvar(id, _, _) |
             DefRegion(id) |
             DefLabel(id)  |
             DefSelfTy(_, Some((_, id))) => {
-                DefId::local(id)
+                DefId::xxx_local(id) // TODO, clearly
             }
 
             DefPrimTy(_) => panic!("attempted .def_id() on DefPrimTy"),

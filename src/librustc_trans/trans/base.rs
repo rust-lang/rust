@@ -2086,7 +2086,8 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                     // error in trans. This is used to write compile-fail tests
                     // that actually test that compilation succeeds without
                     // reporting an error.
-                    if ccx.tcx().has_attr(DefId::local(item.id), "rustc_error") {
+                    let item_def_id = ccx.tcx().map.local_def_id(item.id);
+                    if ccx.tcx().has_attr(item_def_id, "rustc_error") {
                         ccx.tcx().sess.span_fatal(item.span, "compilation successful");
                     }
                 }

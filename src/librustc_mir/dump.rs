@@ -26,7 +26,6 @@ use repr::Mir;
 use std::fs::File;
 use tcx::{PatNode, Cx};
 
-use self::rustc::middle::def_id::DefId;
 use self::rustc::middle::infer;
 use self::rustc::middle::region::CodeExtentData;
 use self::rustc::middle::ty::{self, Ty};
@@ -210,7 +209,7 @@ fn closure_self_ty<'a,'tcx>(tcx: &ty::ctxt<'tcx>,
     let region =
         tcx.mk_region(region);
 
-    match tcx.closure_kind(DefId::local(closure_expr_id)) {
+    match tcx.closure_kind(tcx.map.local_def_id(closure_expr_id)) {
         ty::ClosureKind::FnClosureKind =>
             tcx.mk_ref(region,
                        ty::TypeAndMut { ty: closure_ty,

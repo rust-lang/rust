@@ -618,7 +618,7 @@ pub struct RegionParameterDef {
 impl RegionParameterDef {
     pub fn to_early_bound_region(&self) -> ty::Region {
         ty::ReEarlyBound(ty::EarlyBoundRegion {
-            param_id: self.def_id.node,
+            param_id: self.def_id,
             space: self.space,
             index: self.index,
             name: self.name,
@@ -1125,7 +1125,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the impl
                         let impl_id = cx.map.get_parent(id);
-                        let impl_def_id = DefId::local(impl_id);
+                        let impl_def_id = cx.map.local_def_id(impl_id);
                         let scheme = cx.lookup_item_type(impl_def_id);
                         let predicates = cx.lookup_predicates(impl_def_id);
                         cx.construct_parameter_environment(impl_item.span,
@@ -1134,7 +1134,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            id)
                     }
                     hir::ConstImplItem(_, _) => {
-                        let def_id = DefId::local(id);
+                        let def_id = cx.map.local_def_id(id);
                         let scheme = cx.lookup_item_type(def_id);
                         let predicates = cx.lookup_predicates(def_id);
                         cx.construct_parameter_environment(impl_item.span,
@@ -1143,7 +1143,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            id)
                     }
                     hir::MethodImplItem(_, ref body) => {
-                        let method_def_id = DefId::local(id);
+                        let method_def_id = cx.map.local_def_id(id);
                         match cx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
                                 let method_generics = &method_ty.generics;
@@ -1169,7 +1169,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the trait
                         let trait_id = cx.map.get_parent(id);
-                        let trait_def_id = DefId::local(trait_id);
+                        let trait_def_id = cx.map.local_def_id(trait_id);
                         let trait_def = cx.lookup_trait_def(trait_def_id);
                         let predicates = cx.lookup_predicates(trait_def_id);
                         cx.construct_parameter_environment(trait_item.span,
@@ -1178,7 +1178,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            id)
                     }
                     hir::ConstTraitItem(..) => {
-                        let def_id = DefId::local(id);
+                        let def_id = cx.map.local_def_id(id);
                         let scheme = cx.lookup_item_type(def_id);
                         let predicates = cx.lookup_predicates(def_id);
                         cx.construct_parameter_environment(trait_item.span,
@@ -1191,8 +1191,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         // block, unless this is a trait method with
                         // no default, then fallback to the method id.
                         let body_id = body.as_ref().map(|b| b.id).unwrap_or(id);
-                        let method_def_id = DefId::local(id);
-
+                        let method_def_id = cx.map.local_def_id(id);
                         match cx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
                                 let method_generics = &method_ty.generics;
@@ -1217,7 +1216,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                 match item.node {
                     hir::ItemFn(_, _, _, _, _, ref body) => {
                         // We assume this is a function.
-                        let fn_def_id = DefId::local(id);
+                        let fn_def_id = cx.map.local_def_id(id);
                         let fn_scheme = cx.lookup_item_type(fn_def_id);
                         let fn_predicates = cx.lookup_predicates(fn_def_id);
 
@@ -1231,7 +1230,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     hir::ItemImpl(..) |
                     hir::ItemConst(..) |
                     hir::ItemStatic(..) => {
-                        let def_id = DefId::local(id);
+                        let def_id = cx.map.local_def_id(id);
                         let scheme = cx.lookup_item_type(def_id);
                         let predicates = cx.lookup_predicates(def_id);
                         cx.construct_parameter_environment(item.span,
@@ -1240,7 +1239,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            id)
                     }
                     hir::ItemTrait(..) => {
-                        let def_id = DefId::local(id);
+                        let def_id = cx.map.local_def_id(id);
                         let trait_def = cx.lookup_trait_def(def_id);
                         let predicates = cx.lookup_predicates(def_id);
                         cx.construct_parameter_environment(item.span,
@@ -2106,7 +2105,7 @@ impl<'tcx> ctxt<'tcx> {
             if let ItemTrait(_, _, _, ref ms) = self.map.expect_item(id.node).node {
                 ms.iter().filter_map(|ti| {
                     if let hir::MethodTraitItem(_, Some(_)) = ti.node {
-                        match self.impl_or_trait_item(DefId::local(ti.id)) {
+                        match self.impl_or_trait_item(self.map.local_def_id(ti.id)) {
                             MethodTraitItem(m) => Some(m),
                             _ => {
                                 self.sess.bug("provided_trait_methods(): \
@@ -2132,7 +2131,7 @@ impl<'tcx> ctxt<'tcx> {
                 ItemTrait(_, _, _, ref tis) => {
                     tis.iter().filter_map(|ti| {
                         if let hir::ConstTraitItem(_, _) = ti.node {
-                            match self.impl_or_trait_item(DefId::local(ti.id)) {
+                            match self.impl_or_trait_item(self.map.local_def_id(ti.id)) {
                                 ConstTraitItem(ac) => Some(ac),
                                 _ => {
                                     self.sess.bug("associated_consts(): \
@@ -2148,7 +2147,7 @@ impl<'tcx> ctxt<'tcx> {
                 ItemImpl(_, _, _, _, _, ref iis) => {
                     iis.iter().filter_map(|ii| {
                         if let hir::ConstImplItem(_, _) = ii.node {
-                            match self.impl_or_trait_item(DefId::local(ii.id)) {
+                            match self.impl_or_trait_item(self.map.local_def_id(ii.id)) {
                                 ConstTraitItem(ac) => Some(ac),
                                 _ => {
                                     self.sess.bug("associated_consts(): \

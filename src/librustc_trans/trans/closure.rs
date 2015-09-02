@@ -43,7 +43,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("closure::load_closure_environment");
 
     // Special case for small by-value selfs.
-    let closure_id = DefId::local(bcx.fcx.id);
+    let closure_id = bcx.tcx().map.local_def_id(bcx.fcx.id);
     let self_type = self_type_for_closure(bcx.ccx(), closure_id,
                                                   node_id_type(bcx, closure_id.node));
     let kind = kind_for_closure(bcx.ccx(), closure_id);
@@ -69,7 +69,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     for (i, freevar) in freevars.iter().enumerate() {
-        let upvar_id = ty::UpvarId { var_id: freevar.def.local_node_id(),
+        let upvar_id = ty::UpvarId { var_id: freevar.def.node_id(),
                                      closure_expr_id: closure_id.node };
         let upvar_capture = bcx.tcx().upvar_capture(upvar_id).unwrap();
         let mut upvar_ptr = StructGEP(bcx, llenv, i);
@@ -190,7 +190,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
 
     debug!("trans_closure_expr()");
 
-    let closure_id = DefId::local(id);
+    let closure_id = tcx.map.local_def_id(id);
     let llfn = get_or_create_closure_declaration(ccx, closure_id, closure_substs);
 
     // Get the type of this closure. Use the current `param_substs` as
@@ -235,7 +235,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     for (i, freevar) in freevars.iter().enumerate() {
         let datum = expr::trans_local_var(bcx, freevar.def);
         let upvar_slot_dest = adt::trans_field_ptr(bcx, &*repr, dest_addr, 0, i);
-        let upvar_id = ty::UpvarId { var_id: freevar.def.local_node_id(),
+        let upvar_id = ty::UpvarId { var_id: freevar.def.node_id(),
                                      closure_expr_id: id };
         match tcx.upvar_capture(upvar_id).unwrap() {
             ty::UpvarCapture::ByValue => {

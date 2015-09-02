@@ -23,7 +23,7 @@ use std::fmt;
 use std::ops;
 use std::mem;
 use syntax::abi;
-use syntax::ast::{self, Name, NodeId};
+use syntax::ast::{self, Name};
 use syntax::parse::token::special_idents;
 
 use rustc_front::hir;
@@ -675,7 +675,7 @@ pub enum Region {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct EarlyBoundRegion {
-    pub param_id: NodeId,
+    pub param_id: DefId,
     pub space: subst::ParamSpace,
     pub index: u32,
     pub name: Name,

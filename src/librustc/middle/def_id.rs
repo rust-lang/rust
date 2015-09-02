@@ -41,7 +41,7 @@ impl fmt::Debug for DefId {
 
 
 impl DefId {
-    pub fn local(id: NodeId) -> DefId {
+    pub fn xxx_local(id: NodeId) -> DefId {
         DefId { krate: LOCAL_CRATE, node: id }
     }
 

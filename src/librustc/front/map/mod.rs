@@ -12,6 +12,7 @@ pub use self::Node::*;
 pub use self::PathElem::*;
 use self::MapEntry::*;
 
+use metadata::cstore::LOCAL_CRATE;
 use metadata::inline::InlinedItem;
 use metadata::inline::InlinedItem as II;
 use middle::def_id::DefId;
@@ -267,6 +268,18 @@ pub struct Map<'ast> {
 }
 
 impl<'ast> Map<'ast> {
+    pub fn local_def_id(&self, node: NodeId) -> DefId {
+        DefId::xxx_local(node)
+    }
+
+    pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
+        if def_id.krate == LOCAL_CRATE {
+            Some(def_id.node)
+        } else {
+            None
+        }
+    }
+
     fn entry_count(&self) -> usize {
         self.map.borrow().len()
     }
@@ -383,7 +396,7 @@ impl<'ast> Map<'ast> {
         match self.find_entry(parent) {
             Some(RootInlinedParent(&InlinedParent {ii: II::TraitItem(did, _), ..})) => did,
             Some(RootInlinedParent(&InlinedParent {ii: II::ImplItem(did, _), ..})) => did,
-            _ => DefId::local(parent)
+            _ => self.local_def_id(parent)
         }
     }
 
@@ -1134,3 +1147,4 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
     }
 }
+

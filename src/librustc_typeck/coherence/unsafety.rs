@@ -11,7 +11,6 @@
 //! Unsafety checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use middle::def_id::DefId;
 use middle::ty;
 use rustc_front::visit;
 use rustc_front::hir;
@@ -30,7 +29,7 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
     fn check_unsafety_coherence(&mut self, item: &'v hir::Item,
                                 unsafety: hir::Unsafety,
                                 polarity: hir::ImplPolarity) {
-        match self.tcx.impl_trait_ref(DefId::local(item.id)) {
+        match self.tcx.impl_trait_ref(self.tcx.map.local_def_id(item.id)) {
             None => {
                 // Inherent impl.
                 match unsafety {

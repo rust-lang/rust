@@ -452,9 +452,10 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         // "invalid item id" from "item id with no
         // parameters".
         if self.num_inferred() == inferreds_on_entry {
+            let item_def_id = self.tcx.map.local_def_id(item_id);
             let newly_added =
                 self.tcx.item_variance_map.borrow_mut().insert(
-                    DefId::local(item_id),
+                    item_def_id,
                     self.empty_variances.clone()).is_none();
             assert!(newly_added);
         }
@@ -487,7 +488,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
                 param_id={}, \
                 inf_index={:?}, \
                 initial_variance={:?})",
-               self.tcx.item_path_str(DefId::local(item_id)),
+               self.tcx.item_path_str(self.tcx.map.local_def_id(item_id)),
                item_id, kind, space, index, param_id, inf_index,
                initial_variance);
     }
@@ -597,8 +598,8 @@ fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        let did = DefId::local(item.id);
         let tcx = self.terms_cx.tcx;
+        let did = tcx.map.local_def_id(item.id);
 
         debug!("visit_item item={}", tcx.map.node_to_string(item.id));
 
@@ -1012,8 +1013,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    variance: VarianceTermPtr<'a>) {
         match region {
             ty::ReEarlyBound(ref data) => {
-                if self.is_to_be_inferred(data.param_id) {
-                    let index = self.inferred_index(data.param_id);
+                let node_id = self.tcx().map.as_local_node_id(data.param_id).unwrap();
+                if self.is_to_be_inferred(node_id) {
+                    let index = self.inferred_index(node_id);
                     self.add_constraint(index, variance);
                 }
             }
@@ -1164,7 +1166,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                     item_id,
                     item_variances);
 
-            let item_def_id = DefId::local(item_id);
+            let item_def_id = tcx.map.local_def_id(item_id);
 
             // For unit testing: check for a special "rustc_variance"
             // attribute and report an error with various results if found.

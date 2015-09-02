@@ -2156,7 +2156,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                TypeSpace,
                                                                ItemRibKind),
                                              |this| {
-                    this.with_self_rib(DefSelfTy(Some(DefId::local(item.id)), None), |this| {
+                    let local_def_id = this.ast_map.local_def_id(item.id);
+                    this.with_self_rib(DefSelfTy(Some(local_def_id), None), |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_ty_param_bound, bounds);
 
@@ -2280,7 +2281,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     function_type_rib.bindings.insert(name,
                         DlDef(DefTyParam(space,
                                          index as u32,
-                                         DefId::local(type_parameter.id),
+                                         self.ast_map.local_def_id(type_parameter.id),
                                          name)));
                 }
                 self.type_ribs.push(function_type_rib);

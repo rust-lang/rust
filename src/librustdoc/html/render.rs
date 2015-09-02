@@ -214,7 +214,7 @@ pub struct Cache {
     // then the fully qualified name of the structure isn't presented in `paths`
     // yet when its implementation methods are being indexed. Caches such methods
     // and their parent id here and indexes them at the end of crate parsing.
-    orphan_methods: Vec<(ast::NodeId, clean::Item)>,
+    orphan_methods: Vec<(DefId, clean::Item)>,
 }
 
 /// Helper struct to render all source code to HTML pages
@@ -460,8 +460,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
 
         // Attach all orphan methods to the type's definition if the type
         // has since been learned.
-        for &(pid, ref item) in orphan_methods {
-            let did = DefId::local(pid);
+        for &(did, ref item) in orphan_methods {
             match paths.get(&did) {
                 Some(&(ref fqp, _)) => {
                     // Needed to determine `self` type.
@@ -969,7 +968,7 @@ impl DocFolder for Cache {
                     if parent.is_local() {
                         // We have a parent, but we don't know where they're
                         // defined yet. Wait for later to index this item.
-                        self.orphan_methods.push((parent.node, item.clone()))
+                        self.orphan_methods.push((parent, item.clone()))
                     }
                 }
                 _ => {}
@@ -1034,7 +1033,7 @@ impl DocFolder for Cache {
                     ref t => {
                         match t.primitive_type() {
                             Some(prim) => {
-                                let did = DefId::local(prim.to_node_id());
+                                let did = DefId::xxx_local(prim.to_node_id()); // TODO
                                 self.parent_stack.push(did);
                                 true
                             }

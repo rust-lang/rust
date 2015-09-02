@@ -349,7 +349,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_method_data(&self, id: ast::NodeId, name: ast::Name, span: Span) -> FunctionData {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
-        let qualname = match self.tcx.impl_of_method(DefId::local(id)) {
+        let qualname = match self.tcx.impl_of_method(self.tcx.map.local_def_id(id)) {
             Some(impl_id) => match self.tcx.map.get(impl_id.node) {
                 NodeItem(item) => {
                     match item.node {
@@ -357,7 +357,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             let mut result = String::from("<");
                             result.push_str(&rustc_front::print::pprust::ty_to_string(&**ty));
 
-                            match self.tcx.trait_of_item(DefId::local(id)) {
+                            match self.tcx.trait_of_item(self.tcx.map.local_def_id(id)) {
                                 Some(def_id) => {
                                     result.push_str(" as ");
                                     result.push_str(
@@ -381,7 +381,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                  impl_id.node, id, self.tcx.map.get(impl_id.node)));
                 }
             },
-            None => match self.tcx.trait_of_item(DefId::local(id)) {
+            None => match self.tcx.trait_of_item(self.tcx.map.local_def_id(id)) {
                 Some(def_id) => {
                     match self.tcx.map.get(def_id.node) {
                         NodeItem(_) => {
@@ -403,11 +403,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         let qualname = format!("{}::{}", qualname, name);
 
-        let decl_id = self.tcx.trait_item_of_item(DefId::local(id))
+        let def_id = self.tcx.map.local_def_id(id);
+        let decl_id =
+            self.tcx.trait_item_of_item(def_id)
             .and_then(|new_id| {
-                let def_id = new_id.def_id();
-                if def_id.node != 0 && def_id != DefId::local(id) {
-                    Some(def_id)
+                let new_def_id = new_id.def_id();
+                if new_def_id.node != 0 && new_def_id != def_id {
+                    Some(new_def_id)
                 } else {
                     None
                 }
