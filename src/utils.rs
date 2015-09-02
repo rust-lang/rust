@@ -23,7 +23,7 @@ pub fn in_macro(cx: &Context, opt_info: Option<&ExpnInfo>) -> bool {
                 if info.callee.name() == "closure expansion" {
                     return false;
                 }
-            }, 
+            },
             ExpnFormat::MacroAttribute(..) => {
                 // these are all plugins
                 return true;
@@ -177,11 +177,26 @@ pub fn span_lint(cx: &Context, lint: &'static Lint, sp: Span, msg: &str) {
 
 pub fn span_help_and_lint(cx: &Context, lint: &'static Lint, span: Span,
         msg: &str, help: &str) {
-    span_lint(cx, lint, span, msg);
+    cx.span_lint(lint, span, msg);
     if cx.current_level(lint) != Level::Allow {
         cx.sess().fileline_help(span, &format!("{}\nfor further information \
             visit https://github.com/Manishearth/rust-clippy/wiki#{}",
             help, lint.name_lower()))
+    }
+}
+
+pub fn span_note_and_lint(cx: &Context, lint: &'static Lint, span: Span,
+        msg: &str, note_span: Span, note: &str) {
+    cx.span_lint(lint, span, msg);
+    if cx.current_level(lint) != Level::Allow {
+        if note_span == span {
+            cx.sess().fileline_note(note_span, note)
+        } else {
+            cx.sess().span_note(note_span, note)
+        }
+        cx.sess().fileline_help(span, &format!("for further information visit \
+            https://github.com/Manishearth/rust-clippy/wiki#{}",
+            lint.name_lower()))
     }
 }
 
