@@ -14,8 +14,8 @@ use super::utils::{DIB, debug_context};
 
 use llvm;
 use llvm::debuginfo::DIScope;
-use rustc::ast_map;
 use rustc::middle::def_id::DefId;
+use rustc::front::map as hir_map;
 use trans::common::CrateContext;
 
 use std::ffi::CString;
@@ -60,7 +60,7 @@ pub fn namespace_for_item(cx: &CrateContext, def_id: DefId) -> Rc<NamespaceTreeN
         // prepend crate name if not already present
         let krate = if def_id.is_local() {
             let crate_namespace_name = token::intern(crate_root_namespace(cx));
-            Some(ast_map::PathMod(crate_namespace_name))
+            Some(hir_map::PathMod(crate_namespace_name))
         } else {
             None
         };

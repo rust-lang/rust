@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,14 +15,17 @@ use self::MapEntry::*;
 use metadata::inline::InlinedItem;
 use metadata::inline::InlinedItem as II;
 use middle::def_id::DefId;
+
 use syntax::abi;
-use syntax::ast::*;
-use syntax::ast_util;
-use syntax::codemap::{DUMMY_SP, Span, Spanned};
-use syntax::fold::Folder;
+use syntax::ast::{Name, NodeId, Ident, CRATE_NODE_ID, DUMMY_NODE_ID};
+use syntax::codemap::{Span, Spanned};
 use syntax::parse::token;
-use syntax::print::pprust;
-use syntax::visit::{self, Visitor};
+
+use rustc_front::hir::*;
+use rustc_front::fold::Folder;
+use rustc_front::visit::{self, Visitor};
+use rustc_front::util;
+use rustc_front::print::pprust;
 
 use arena::TypedArena;
 use std::cell::RefCell;
@@ -159,7 +162,7 @@ impl<'ast> Clone for MapEntry<'ast> {
 }
 
 #[derive(Debug)]
-struct InlinedParent {
+pub struct InlinedParent {
     path: Vec<PathElem>,
     ii: InlinedItem
 }
@@ -227,7 +230,7 @@ impl<'ast> MapEntry<'ast> {
 
 /// Stores a crate and any number of inlined items from other crates.
 pub struct Forest {
-    krate: Crate,
+    pub krate: Crate,
     inlined_items: TypedArena<InlinedParent>
 }
 
@@ -246,9 +249,10 @@ impl Forest {
 
 /// Represents a mapping from Node IDs to AST elements and their parent
 /// Node IDs
+#[derive(Clone)]
 pub struct Map<'ast> {
     /// The backing storage for all the AST nodes.
-    forest: &'ast Forest,
+    pub forest: &'ast Forest,
 
     /// NodeIds are sequential integers from 0, so we can be
     /// super-compact by storing them in a vector. Not everything with
@@ -870,7 +874,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_stmt(&mut self, stmt: &'ast Stmt) {
-        let id = ast_util::stmt_id(stmt);
+        let id = util::stmt_id(stmt);
         self.insert(id, NodeStmt(stmt));
         let parent_node = self.parent_node;
         self.parent_node = id;
@@ -917,20 +921,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 }
 
-pub fn map_crate<'ast, F: FoldOps>(forest: &'ast mut Forest, fold_ops: F) -> Map<'ast> {
-    // Replace the crate with an empty one to take it out.
-    let krate = mem::replace(&mut forest.krate, Crate {
-        module: Mod {
-            inner: DUMMY_SP,
-            items: vec![],
-        },
-        attrs: vec![],
-        config: vec![],
-        exported_macros: vec![],
-        span: DUMMY_SP
-    });
-    forest.krate = IdAndSpanUpdater { fold_ops: fold_ops }.fold_crate(krate);
-
+pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
     let mut collector = NodeCollector {
         map: vec![],
         parent_node: CRATE_NODE_ID,
@@ -974,11 +965,11 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
         II::Item(i) => II::Item(fld.fold_item(i).expect_one("expected one item")),
         II::TraitItem(d, ti) => {
             II::TraitItem(fld.fold_ops.new_def_id(d),
-                          fld.fold_trait_item(ti).expect_one("expected one trait item"))
+                        fld.fold_trait_item(ti).expect_one("expected one trait item"))
         }
         II::ImplItem(d, ii) => {
             II::ImplItem(fld.fold_ops.new_def_id(d),
-                         fld.fold_impl_item(ii).expect_one("expected one impl item"))
+                       fld.fold_impl_item(ii).expect_one("expected one impl item"))
         }
         II::Foreign(i) => II::Foreign(fld.fold_foreign_item(i))
     };
@@ -1064,7 +1055,6 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemTrait(..) => "trait",
                 ItemImpl(..) => "impl",
                 ItemDefaultImpl(..) => "default impl",
-                ItemMac(..) => "macro"
             };
             format!("{} {}{}", item_str, path_str, id_str)
         }
@@ -1090,10 +1080,6 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                             ii.ident,
                             map.path_to_string(id),
                             id_str)
-                }
-                MacImplItem(ref mac) => {
-                    format!("method macro {}{}",
-                            pprust::mac_to_string(mac), id_str)
                 }
             }
         }

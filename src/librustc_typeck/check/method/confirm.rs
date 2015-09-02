@@ -19,14 +19,14 @@ use middle::ty::{self, Ty};
 use middle::ty_fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
-use syntax::ast;
 use syntax::codemap::Span;
+use rustc_front::hir;
 
 struct ConfirmContext<'a, 'tcx:'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
-    self_expr: &'tcx ast::Expr,
-    call_expr: &'tcx ast::Expr,
+    self_expr: &'tcx hir::Expr,
+    call_expr: &'tcx hir::Expr,
 }
 
 struct InstantiatedMethodSig<'tcx> {
@@ -45,8 +45,8 @@ struct InstantiatedMethodSig<'tcx> {
 
 pub fn confirm<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                          span: Span,
-                         self_expr: &'tcx ast::Expr,
-                         call_expr: &'tcx ast::Expr,
+                         self_expr: &'tcx hir::Expr,
+                         call_expr: &'tcx hir::Expr,
                          unadjusted_self_ty: Ty<'tcx>,
                          pick: probe::Pick<'tcx>,
                          supplied_method_types: Vec<Ty<'tcx>>)
@@ -64,8 +64,8 @@ pub fn confirm<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     fn new(fcx: &'a FnCtxt<'a, 'tcx>,
            span: Span,
-           self_expr: &'tcx ast::Expr,
-           call_expr: &'tcx ast::Expr)
+           self_expr: &'tcx hir::Expr,
+           call_expr: &'tcx hir::Expr)
            -> ConfirmContext<'a, 'tcx>
     {
         ConfirmContext { fcx: fcx, span: span, self_expr: self_expr, call_expr: call_expr }
@@ -456,7 +456,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         match sig.0.inputs[0].sty {
             ty::TyRef(_, ty::TypeAndMut {
                 ty: _,
-                mutbl: ast::MutMutable,
+                mutbl: hir::MutMutable,
             }) => {}
             _ => return,
         }
@@ -467,11 +467,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         loop {
             let last = exprs[exprs.len() - 1];
             match last.node {
-                ast::ExprParen(ref expr) |
-                ast::ExprField(ref expr, _) |
-                ast::ExprTupField(ref expr, _) |
-                ast::ExprIndex(ref expr, _) |
-                ast::ExprUnary(ast::UnDeref, ref expr) => exprs.push(&**expr),
+                hir::ExprParen(ref expr) |
+                hir::ExprField(ref expr, _) |
+                hir::ExprTupField(ref expr, _) |
+                hir::ExprIndex(ref expr, _) |
+                hir::ExprUnary(hir::UnDeref, ref expr) => exprs.push(&**expr),
                 _ => break,
             }
         }
@@ -515,7 +515,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             // Don't retry the first one or we might infinite loop!
             if i != 0 {
                 match expr.node {
-                    ast::ExprIndex(ref base_expr, ref index_expr) => {
+                    hir::ExprIndex(ref base_expr, ref index_expr) => {
                         // If this is an overloaded index, the
                         // adjustment will include an extra layer of
                         // autoref because the method is an &self/&mut
@@ -583,7 +583,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                             demand::suptype(self.fcx, expr.span, expr_ty, return_ty);
                         }
                     }
-                    ast::ExprUnary(ast::UnDeref, ref base_expr) => {
+                    hir::ExprUnary(hir::UnDeref, ref base_expr) => {
                         // if this is an overloaded deref, then re-evaluate with
                         // a preference for mut
                         let method_call = ty::MethodCall::expr(expr.id);

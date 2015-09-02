@@ -72,14 +72,15 @@ pub use self::categorization::*;
 
 use self::Aliasability::*;
 
-use ast_map;
 use middle::def_id::DefId;
+use front::map as ast_map;
 use middle::infer;
 use middle::check_const;
 use middle::def;
 use middle::ty::{self, Ty};
 
-use syntax::ast::{MutImmutable, MutMutable};
+use rustc_front::hir::{MutImmutable, MutMutable};
+use rustc_front::hir;
 use syntax::ast;
 use syntax::codemap::Span;
 
@@ -116,7 +117,7 @@ pub enum PointerKind {
     BorrowedPtr(ty::BorrowKind, ty::Region),
 
     /// `*T`
-    UnsafePtr(ast::Mutability),
+    UnsafePtr(hir::Mutability),
 
     /// Implicit deref of the `&T` that results from an overloaded index `[]`.
     Implicit(ty::BorrowKind, ty::Region),
@@ -244,12 +245,12 @@ pub trait ast_node {
     fn span(&self) -> Span;
 }
 
-impl ast_node for ast::Expr {
+impl ast_node for hir::Expr {
     fn id(&self) -> ast::NodeId { self.id }
     fn span(&self) -> Span { self.span }
 }
 
-impl ast_node for ast::Pat {
+impl ast_node for hir::Pat {
     fn id(&self) -> ast::NodeId { self.id }
     fn span(&self) -> Span { self.span }
 }
@@ -262,7 +263,7 @@ pub struct MemCategorizationContext<'t, 'a: 't, 'tcx : 'a> {
 pub type McResult<T> = Result<T, ()>;
 
 impl MutabilityCategory {
-    pub fn from_mutbl(m: ast::Mutability) -> MutabilityCategory {
+    pub fn from_mutbl(m: hir::Mutability) -> MutabilityCategory {
         let ret = match m {
             MutImmutable => McImmutable,
             MutMutable => McDeclared
@@ -304,8 +305,8 @@ impl MutabilityCategory {
     fn from_local(tcx: &ty::ctxt, id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.map.get(id) {
             ast_map::NodeLocal(p) | ast_map::NodeArg(p) => match p.node {
-                ast::PatIdent(bind_mode, _, _) => {
-                    if bind_mode == ast::BindByValue(ast::MutMutable) {
+                hir::PatIdent(bind_mode, _, _) => {
+                    if bind_mode == hir::BindByValue(hir::MutMutable) {
                         McDeclared
                     } else {
                         McImmutable
@@ -366,7 +367,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         self.typer.tcx
     }
 
-    fn expr_ty(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
+    fn expr_ty(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
         match self.typer.node_ty(expr.id) {
             Ok(t) => Ok(t),
             Err(()) => {
@@ -376,7 +377,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         }
     }
 
-    fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>> {
+    fn expr_ty_adjusted(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
         let unadjusted_ty = try!(self.expr_ty(expr));
         Ok(unadjusted_ty.adjust(
             self.tcx(), expr.span, expr.id,
@@ -388,14 +389,14 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         self.typer.node_ty(id)
     }
 
-    fn pat_ty(&self, pat: &ast::Pat) -> McResult<Ty<'tcx>> {
+    fn pat_ty(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
         let base_ty = try!(self.typer.node_ty(pat.id));
         // FIXME (Issue #18207): This code detects whether we are
         // looking at a `ref x`, and if so, figures out what the type
         // *being borrowed* is.  But ideally we would put in a more
         // fundamental fix to this conflated use of the node id.
         let ret_ty = match pat.node {
-            ast::PatIdent(ast::BindByRef(_), _, _) => {
+            hir::PatIdent(hir::BindByRef(_), _, _) => {
                 // a bind-by-ref means that the base_ty will be the type of the ident itself,
                 // but what we want here is the type of the underlying value being borrowed.
                 // So peel off one-level, turning the &T into T.
@@ -411,7 +412,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         Ok(ret_ty)
     }
 
-    pub fn cat_expr(&self, expr: &ast::Expr) -> McResult<cmt<'tcx>> {
+    pub fn cat_expr(&self, expr: &hir::Expr) -> McResult<cmt<'tcx>> {
         match self.typer.adjustments().get(&expr.id) {
             None => {
                 // No adjustments.
@@ -443,7 +444,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
     }
 
     pub fn cat_expr_autoderefd(&self,
-                               expr: &ast::Expr,
+                               expr: &hir::Expr,
                                autoderefs: usize)
                                -> McResult<cmt<'tcx>> {
         let mut cmt = try!(self.cat_expr_unadjusted(expr));
@@ -456,17 +457,17 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         return Ok(cmt);
     }
 
-    pub fn cat_expr_unadjusted(&self, expr: &ast::Expr) -> McResult<cmt<'tcx>> {
+    pub fn cat_expr_unadjusted(&self, expr: &hir::Expr) -> McResult<cmt<'tcx>> {
         debug!("cat_expr: id={} expr={:?}", expr.id, expr);
 
         let expr_ty = try!(self.expr_ty(expr));
         match expr.node {
-          ast::ExprUnary(ast::UnDeref, ref e_base) => {
+          hir::ExprUnary(hir::UnDeref, ref e_base) => {
             let base_cmt = try!(self.cat_expr(&**e_base));
             self.cat_deref(expr, base_cmt, 0, None)
           }
 
-          ast::ExprField(ref base, f_name) => {
+          hir::ExprField(ref base, f_name) => {
             let base_cmt = try!(self.cat_expr(&**base));
             debug!("cat_expr(cat_field): id={} expr={:?} base={:?}",
                    expr.id,
@@ -475,12 +476,12 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             Ok(self.cat_field(expr, base_cmt, f_name.node.name, expr_ty))
           }
 
-          ast::ExprTupField(ref base, idx) => {
+          hir::ExprTupField(ref base, idx) => {
             let base_cmt = try!(self.cat_expr(&**base));
             Ok(self.cat_tup_field(expr, base_cmt, idx.node, expr_ty))
           }
 
-          ast::ExprIndex(ref base, _) => {
+          hir::ExprIndex(ref base, _) => {
             let method_call = ty::MethodCall::expr(expr.id());
             let context = InteriorOffsetKind::Index;
             match self.typer.node_method_ty(method_call) {
@@ -512,37 +513,27 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             }
           }
 
-          ast::ExprPath(..) => {
+          hir::ExprPath(..) => {
             let def = self.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
-          ast::ExprParen(ref e) => {
+          hir::ExprParen(ref e) => {
             self.cat_expr(&**e)
           }
 
-          ast::ExprAddrOf(..) | ast::ExprCall(..) |
-          ast::ExprAssign(..) | ast::ExprAssignOp(..) |
-          ast::ExprClosure(..) | ast::ExprRet(..) |
-          ast::ExprUnary(..) | ast::ExprRange(..) |
-          ast::ExprMethodCall(..) | ast::ExprCast(..) |
-          ast::ExprVec(..) | ast::ExprTup(..) | ast::ExprIf(..) |
-          ast::ExprBinary(..) | ast::ExprWhile(..) |
-          ast::ExprBlock(..) | ast::ExprLoop(..) | ast::ExprMatch(..) |
-          ast::ExprLit(..) | ast::ExprBreak(..) | ast::ExprMac(..) |
-          ast::ExprAgain(..) | ast::ExprStruct(..) | ast::ExprRepeat(..) |
-          ast::ExprInlineAsm(..) | ast::ExprBox(..) => {
+          hir::ExprAddrOf(..) | hir::ExprCall(..) |
+          hir::ExprAssign(..) | hir::ExprAssignOp(..) |
+          hir::ExprClosure(..) | hir::ExprRet(..) |
+          hir::ExprUnary(..) | hir::ExprRange(..) |
+          hir::ExprMethodCall(..) | hir::ExprCast(..) |
+          hir::ExprVec(..) | hir::ExprTup(..) | hir::ExprIf(..) |
+          hir::ExprBinary(..) | hir::ExprWhile(..) |
+          hir::ExprBlock(..) | hir::ExprLoop(..) | hir::ExprMatch(..) |
+          hir::ExprLit(..) | hir::ExprBreak(..) |
+          hir::ExprAgain(..) | hir::ExprStruct(..) | hir::ExprRepeat(..) |
+          hir::ExprInlineAsm(..) | hir::ExprBox(..) => {
             Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
-          }
-
-          ast::ExprIfLet(..) => {
-            self.tcx().sess.span_bug(expr.span, "non-desugared ExprIfLet");
-          }
-          ast::ExprWhileLet(..) => {
-            self.tcx().sess.span_bug(expr.span, "non-desugared ExprWhileLet");
-          }
-          ast::ExprForLoop(..) => {
-            self.tcx().sess.span_bug(expr.span, "non-desugared ExprForLoop");
           }
         }
     }
@@ -738,7 +729,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             };
 
             match fn_expr.node {
-                ast::ExprClosure(_, _, ref body) => body.id,
+                hir::ExprClosure(_, _, ref body) => body.id,
                 _ => unreachable!()
             }
         };
@@ -1078,8 +1069,8 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
     /// These last two bits of info happen to be things that borrowck needs.
     pub fn cat_slice_pattern(&self,
                              vec_cmt: cmt<'tcx>,
-                             slice_pat: &ast::Pat)
-                             -> McResult<(cmt<'tcx>, ast::Mutability, ty::Region)> {
+                             slice_pat: &hir::Pat)
+                             -> McResult<(cmt<'tcx>, hir::Mutability, ty::Region)> {
         let slice_ty = try!(self.node_ty(slice_pat.id));
         let (slice_mutbl, slice_r) = vec_slice_info(self.tcx(),
                                                     slice_pat,
@@ -1093,9 +1084,9 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         /// ..ref c], then the type of `ref c` will be `&&[]`, so to extract the slice details we
         /// have to recurse through rptrs.
         fn vec_slice_info(tcx: &ty::ctxt,
-                          pat: &ast::Pat,
+                          pat: &hir::Pat,
                           slice_ty: Ty)
-                          -> (ast::Mutability, ty::Region) {
+                          -> (hir::Mutability, ty::Region) {
             match slice_ty.sty {
                 ty::TyRef(r, ref mt) => match mt.ty.sty {
                     ty::TySlice(_) => (mt.mutbl, *r),
@@ -1146,16 +1137,16 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         ret
     }
 
-    pub fn cat_pattern<F>(&self, cmt: cmt<'tcx>, pat: &ast::Pat, mut op: F) -> McResult<()>
-        where F: FnMut(&MemCategorizationContext<'t, 'a, 'tcx>, cmt<'tcx>, &ast::Pat),
+    pub fn cat_pattern<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, mut op: F) -> McResult<()>
+        where F: FnMut(&MemCategorizationContext<'t, 'a, 'tcx>, cmt<'tcx>, &hir::Pat),
     {
         self.cat_pattern_(cmt, pat, &mut op)
     }
 
     // FIXME(#19596) This is a workaround, but there should be a better way to do this
-    fn cat_pattern_<F>(&self, cmt: cmt<'tcx>, pat: &ast::Pat, op: &mut F)
+    fn cat_pattern_<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, op: &mut F)
                        -> McResult<()>
-        where F : FnMut(&MemCategorizationContext<'t, 'a, 'tcx>, cmt<'tcx>, &ast::Pat),
+        where F : FnMut(&MemCategorizationContext<'t, 'a, 'tcx>, cmt<'tcx>, &hir::Pat),
     {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
@@ -1223,14 +1214,14 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         };
 
         match pat.node {
-          ast::PatWild(_) => {
+          hir::PatWild(_) => {
             // _
           }
 
-          ast::PatEnum(_, None) => {
+          hir::PatEnum(_, None) => {
             // variant(..)
           }
-          ast::PatEnum(_, Some(ref subpats)) => {
+          hir::PatEnum(_, Some(ref subpats)) => {
             match opt_def {
                 Some(def::DefVariant(..)) => {
                     // variant(x, y, z)
@@ -1268,19 +1259,19 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             }
           }
 
-          ast::PatQPath(..) => {
+          hir::PatQPath(..) => {
               // Lone constant: ignore
           }
 
-          ast::PatIdent(_, _, Some(ref subpat)) => {
+          hir::PatIdent(_, _, Some(ref subpat)) => {
               try!(self.cat_pattern_(cmt, &**subpat, op));
           }
 
-          ast::PatIdent(_, _, None) => {
+          hir::PatIdent(_, _, None) => {
               // nullary variant or identifier: ignore
           }
 
-          ast::PatStruct(_, ref field_pats, _) => {
+          hir::PatStruct(_, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
             for fp in field_pats {
                 let field_ty = try!(self.pat_ty(&*fp.node.pat)); // see (*2)
@@ -1289,7 +1280,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             }
           }
 
-          ast::PatTup(ref subpats) => {
+          hir::PatTup(ref subpats) => {
             // (p1, ..., pN)
             for (i, subpat) in subpats.iter().enumerate() {
                 let subpat_ty = try!(self.pat_ty(&**subpat)); // see (*2)
@@ -1301,7 +1292,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             }
           }
 
-          ast::PatBox(ref subpat) | ast::PatRegion(ref subpat, _) => {
+          hir::PatBox(ref subpat) | hir::PatRegion(ref subpat, _) => {
             // box p1, &p1, &mut p1.  we can ignore the mutability of
             // PatRegion since that information is already contained
             // in the type.
@@ -1309,7 +1300,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
               try!(self.cat_pattern_(subcmt, &**subpat, op));
           }
 
-          ast::PatVec(ref before, ref slice, ref after) => {
+          hir::PatVec(ref before, ref slice, ref after) => {
               let context = InteriorOffsetKind::Pattern;
               let vec_cmt = try!(self.deref_vec(pat, cmt, context));
               let elt_cmt = try!(self.cat_index(pat, vec_cmt, context));
@@ -1326,12 +1317,8 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
               }
           }
 
-          ast::PatLit(_) | ast::PatRange(_, _) => {
+          hir::PatLit(_) | hir::PatRange(_, _) => {
               /*always ok*/
-          }
-
-          ast::PatMac(_) => {
-              self.tcx().sess.span_bug(pat.span, "unexpanded macro");
           }
         }
 

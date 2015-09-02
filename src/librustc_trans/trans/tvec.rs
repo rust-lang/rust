@@ -28,7 +28,8 @@ use trans::type_::Type;
 use trans::type_of;
 use middle::ty::{self, Ty};
 
-use syntax::ast;
+use rustc_front::hir;
+
 use syntax::parse::token::InternedString;
 
 #[derive(Copy, Clone)]
@@ -46,7 +47,7 @@ impl<'tcx> VecTypes<'tcx> {
 }
 
 pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                      expr: &ast::Expr,
+                                      expr: &hir::Expr,
                                       dest: expr::Dest)
                                       -> Block<'blk, 'tcx> {
     //!
@@ -76,8 +77,8 @@ pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// caller must make the reference).  "..." is similar except that the memory can be statically
 /// allocated and we return a reference (strings are always by-ref).
 pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                   slice_expr: &ast::Expr,
-                                   content_expr: &ast::Expr)
+                                   slice_expr: &hir::Expr,
+                                   content_expr: &hir::Expr)
                                    -> DatumBlock<'blk, 'tcx, Expr> {
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
@@ -89,8 +90,8 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let vec_ty = node_id_type(bcx, slice_expr.id);
 
     // Handle the "..." case (returns a slice since strings are always unsized):
-    if let ast::ExprLit(ref lit) = content_expr.node {
-        if let ast::LitStr(ref s, _) = lit.node {
+    if let hir::ExprLit(ref lit) = content_expr.node {
+        if let hir::LitStr(ref s, _) = lit.node {
             let scratch = rvalue_scratch_datum(bcx, vec_ty, "");
             bcx = trans_lit_str(bcx,
                                 content_expr,
@@ -131,7 +132,7 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// Literal strings translate to slices into static memory.  This is different from
 /// trans_slice_vstore() above because it doesn't need to copy the content anywhere.
 pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                 lit_expr: &ast::Expr,
+                                 lit_expr: &hir::Expr,
                                  str_lit: InternedString,
                                  dest: Dest)
                                  -> Block<'blk, 'tcx> {
@@ -155,8 +156,8 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              vt: &VecTypes<'tcx>,
-                             vstore_expr: &ast::Expr,
-                             content_expr: &ast::Expr,
+                             vstore_expr: &hir::Expr,
+                             content_expr: &hir::Expr,
                              dest: Dest)
                              -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("tvec::write_content");
@@ -169,9 +170,9 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            vstore_expr);
 
     match content_expr.node {
-        ast::ExprLit(ref lit) => {
+        hir::ExprLit(ref lit) => {
             match lit.node {
-                ast::LitStr(ref s, _) => {
+                hir::LitStr(ref s, _) => {
                     match dest {
                         Ignore => return bcx,
                         SaveIn(lldest) => {
@@ -193,7 +194,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
             }
         }
-        ast::ExprVec(ref elements) => {
+        hir::ExprVec(ref elements) => {
             match dest {
                 Ignore => {
                     for element in elements {
@@ -218,7 +219,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
             return bcx;
         }
-        ast::ExprRepeat(ref element, ref count_expr) => {
+        hir::ExprRepeat(ref element, ref count_expr) => {
             match dest {
                 Ignore => {
                     return expr::trans_into(bcx, &**element, Ignore);
@@ -247,7 +248,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-fn vec_types_from_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, vec_expr: &ast::Expr)
+fn vec_types_from_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, vec_expr: &hir::Expr)
                                    -> VecTypes<'tcx> {
     let vec_ty = node_id_type(bcx, vec_expr.id);
     vec_types(bcx, vec_ty.sequence_element_type(bcx.tcx()))
@@ -261,21 +262,21 @@ fn vec_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, unit_ty: Ty<'tcx>)
     }
 }
 
-fn elements_required(bcx: Block, content_expr: &ast::Expr) -> usize {
+fn elements_required(bcx: Block, content_expr: &hir::Expr) -> usize {
     //! Figure out the number of elements we need to store this content
 
     match content_expr.node {
-        ast::ExprLit(ref lit) => {
+        hir::ExprLit(ref lit) => {
             match lit.node {
-                ast::LitStr(ref s, _) => s.len(),
+                hir::LitStr(ref s, _) => s.len(),
                 _ => {
                     bcx.tcx().sess.span_bug(content_expr.span,
                                             "unexpected evec content")
                 }
             }
         },
-        ast::ExprVec(ref es) => es.len(),
-        ast::ExprRepeat(_, ref count_expr) => {
+        hir::ExprVec(ref es) => es.len(),
+        hir::ExprRepeat(_, ref count_expr) => {
             bcx.tcx().eval_repeat_count(&**count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,

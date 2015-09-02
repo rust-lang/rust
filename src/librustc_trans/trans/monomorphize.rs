@@ -18,7 +18,6 @@ use middle::subst;
 use middle::subst::{Subst, Substs};
 use middle::traits;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
-use rustc::ast_map;
 use trans::attributes;
 use trans::base::{trans_enum_variant, push_ctxt, get_item_val};
 use trans::base::trans_fn;
@@ -27,10 +26,13 @@ use trans::common::*;
 use trans::declare;
 use trans::foreign;
 use middle::ty::{self, HasTypeFlags, Ty};
+use rustc::front::map as hir_map;
+
+use rustc_front::hir;
+use rustc_front::attr;
 
 use syntax::abi;
 use syntax::ast;
-use syntax::attr;
 use syntax::codemap::DUMMY_SP;
 use std::hash::{Hasher, Hash, SipHasher};
 
@@ -90,7 +92,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     fn_id)
         });
 
-    if let ast_map::NodeForeignItem(_) = map_node {
+    if let hir_map::NodeForeignItem(_) = map_node {
         let abi = ccx.tcx().map.get_foreign_abi(fn_id.node);
         if abi != abi::RustIntrinsic && abi != abi::PlatformIntrinsic {
             // Foreign externs don't have to be monomorphized.
@@ -146,7 +148,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ccx.monomorphized().borrow_mut().insert(hash_id.take().unwrap(), lldecl);
         lldecl
     };
-    let setup_lldecl = |lldecl, attrs: &[ast::Attribute]| {
+    let setup_lldecl = |lldecl, attrs: &[hir::Attribute]| {
         base::update_linkage(ccx, lldecl, None, base::OriginalTranslation);
         attributes::from_fn_attrs(ccx, attrs, lldecl);
 
@@ -167,10 +169,10 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
 
     let lldecl = match map_node {
-        ast_map::NodeItem(i) => {
+        hir_map::NodeItem(i) => {
             match *i {
-              ast::Item {
-                  node: ast::ItemFn(ref decl, _, _, abi, _, ref body),
+              hir::Item {
+                  node: hir::ItemFn(ref decl, _, _, abi, _, ref body),
                   ..
               } => {
                   let d = mk_lldecl(abi);
@@ -192,7 +194,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
               }
             }
         }
-        ast_map::NodeVariant(v) => {
+        hir_map::NodeVariant(v) => {
             let variant = inlined_variant_def(ccx, fn_id.node);
             assert_eq!(v.node.name.name, variant.name);
             let d = mk_lldecl(abi::Rust);
@@ -200,9 +202,9 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             trans_enum_variant(ccx, fn_id.node, variant.disr_val, psubsts, d);
             d
         }
-        ast_map::NodeImplItem(impl_item) => {
+        hir_map::NodeImplItem(impl_item) => {
             match impl_item.node {
-                ast::MethodImplItem(ref sig, ref body) => {
+                hir::MethodImplItem(ref sig, ref body) => {
                     let d = mk_lldecl(abi::Rust);
                     let needs_body = setup_lldecl(d, &impl_item.attrs);
                     if needs_body {
@@ -222,9 +224,9 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        ast_map::NodeTraitItem(trait_item) => {
+        hir_map::NodeTraitItem(trait_item) => {
             match trait_item.node {
-                ast::MethodTraitItem(ref sig, Some(ref body)) => {
+                hir::MethodTraitItem(ref sig, Some(ref body)) => {
                     let d = mk_lldecl(abi::Rust);
                     let needs_body = setup_lldecl(d, &trait_item.attrs);
                     if needs_body {
@@ -239,7 +241,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        ast_map::NodeStructCtor(struct_def) => {
+        hir_map::NodeStructCtor(struct_def) => {
             let d = mk_lldecl(abi::Rust);
             attributes::inline(d, attributes::InlineAttr::Hint);
             base::trans_tuple_struct(ccx,
@@ -251,15 +253,15 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
 
         // Ugh -- but this ensures any new variants won't be forgotten
-        ast_map::NodeForeignItem(..) |
-        ast_map::NodeLifetime(..) |
-        ast_map::NodeTyParam(..) |
-        ast_map::NodeExpr(..) |
-        ast_map::NodeStmt(..) |
-        ast_map::NodeArg(..) |
-        ast_map::NodeBlock(..) |
-        ast_map::NodePat(..) |
-        ast_map::NodeLocal(..) => {
+        hir_map::NodeForeignItem(..) |
+        hir_map::NodeLifetime(..) |
+        hir_map::NodeTyParam(..) |
+        hir_map::NodeExpr(..) |
+        hir_map::NodeStmt(..) |
+        hir_map::NodeArg(..) |
+        hir_map::NodeBlock(..) |
+        hir_map::NodePat(..) |
+        hir_map::NodeLocal(..) => {
             ccx.sess().bug(&format!("can't monomorphize a {:?}",
                                    map_node))
         }

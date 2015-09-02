@@ -20,7 +20,7 @@ use session::config::NoDebugInfo;
 
 use std::ffi::CString;
 use std::ptr;
-use syntax::attr;
+use rustc_front::attr;
 
 
 /// Inserts a side-effect free instruction sequence that makes sure that the

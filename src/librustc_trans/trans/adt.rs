@@ -51,8 +51,9 @@ use middle::subst;
 use middle::ty::{self, Ty};
 use middle::ty::Disr;
 use syntax::ast;
-use syntax::attr;
-use syntax::attr::IntType;
+use rustc_front::attr;
+use rustc_front::attr::IntType;
+use rustc_front::hir;
 use trans::_match;
 use trans::build::*;
 use trans::cleanup;
@@ -386,11 +387,11 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let ity = if use_align {
                 // Use the overall alignment
                 match align {
-                    1 => attr::UnsignedInt(ast::TyU8),
-                    2 => attr::UnsignedInt(ast::TyU16),
-                    4 => attr::UnsignedInt(ast::TyU32),
+                    1 => attr::UnsignedInt(hir::TyU8),
+                    2 => attr::UnsignedInt(hir::TyU16),
+                    4 => attr::UnsignedInt(hir::TyU32),
                     8 if machine::llalign_of_min(cx, Type::i64(cx)) == 8 =>
-                        attr::UnsignedInt(ast::TyU64),
+                        attr::UnsignedInt(hir::TyU64),
                     _ => min_ity // use min_ity as a fallback
                 }
             } else {
@@ -582,12 +583,12 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
     // Lists of sizes to try.  u64 is always allowed as a fallback.
     #[allow(non_upper_case_globals)]
     const choose_shortest: &'static [IntType] = &[
-        attr::UnsignedInt(ast::TyU8), attr::SignedInt(ast::TyI8),
-        attr::UnsignedInt(ast::TyU16), attr::SignedInt(ast::TyI16),
-        attr::UnsignedInt(ast::TyU32), attr::SignedInt(ast::TyI32)];
+        attr::UnsignedInt(hir::TyU8), attr::SignedInt(hir::TyI8),
+        attr::UnsignedInt(hir::TyU16), attr::SignedInt(hir::TyI16),
+        attr::UnsignedInt(hir::TyU32), attr::SignedInt(hir::TyI32)];
     #[allow(non_upper_case_globals)]
     const at_least_32: &'static [IntType] = &[
-        attr::UnsignedInt(ast::TyU32), attr::SignedInt(ast::TyI32)];
+        attr::UnsignedInt(hir::TyU32), attr::SignedInt(hir::TyI32)];
 
     let attempts;
     match hint {
@@ -621,7 +622,7 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
             return ity;
         }
     }
-    return attr::UnsignedInt(ast::TyU64);
+    return attr::UnsignedInt(hir::TyU64);
 }
 
 pub fn ll_inttype(cx: &CrateContext, ity: IntType) -> Type {

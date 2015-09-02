@@ -25,7 +25,7 @@ use metadata::loader::METADATA_FILENAME;
 use metadata::{encoder, cstore, filesearch, csearch, creader};
 use middle::dependency_format::Linkage;
 use middle::ty::{self, Ty};
-use rustc::ast_map::{PathElem, PathElems, PathName};
+use rustc::front::map::{PathElem, PathElems, PathName};
 use trans::{CrateContext, CrateTranslation, gensym_name};
 use util::common::time;
 use util::sha2::{Digest, Sha256};
@@ -43,9 +43,12 @@ use std::str;
 use flate;
 use serialize::hex::ToHex;
 use syntax::ast;
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::parse::token;
+use syntax::attr::AttrMetaMethods;
+use rustc_front::attr::AttrMetaMethods as FrontAttrMetaMethods;
+
+use rustc_front::hir;
 
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
 // Version 1
@@ -178,7 +181,7 @@ pub fn find_crate_name(sess: Option<&Session>,
     "rust_out".to_string()
 }
 
-pub fn build_link_meta(sess: &Session, krate: &ast::Crate,
+pub fn build_link_meta(sess: &Session, krate: &hir::Crate,
                        name: String) -> LinkMeta {
     let r = LinkMeta {
         crate_name: name,

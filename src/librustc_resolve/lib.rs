@@ -30,6 +30,7 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
+extern crate rustc_front;
 
 extern crate rustc;
 
@@ -50,7 +51,7 @@ use self::ParentLink::*;
 use self::ModuleKind::*;
 use self::FallbackChecks::*;
 
-use rustc::ast_map;
+use rustc::front::map as hir_map;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::metadata::csearch;
@@ -64,31 +65,34 @@ use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 use rustc::util::lev_distance::lev_distance;
 
-use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block};
-use syntax::ast::{ConstImplItem, Crate, CrateNum};
-use syntax::ast::{Expr, ExprAgain, ExprBreak, ExprField};
-use syntax::ast::{ExprLoop, ExprWhile, ExprMethodCall};
-use syntax::ast::{ExprPath, ExprStruct, FnDecl};
-use syntax::ast::{ForeignItemFn, ForeignItemStatic, Generics};
-use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
-use syntax::ast::{ItemFn, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
-use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
-use syntax::ast::{Local, MethodImplItem, Name, NodeId};
-use syntax::ast::{Pat, PatEnum, PatIdent, PatLit, PatQPath};
-use syntax::ast::{PatRange, PatStruct, Path, PrimTy};
-use syntax::ast::{TraitRef, Ty, TyBool, TyChar, TyF32};
-use syntax::ast::{TyF64, TyFloat, TyIs, TyI8, TyI16, TyI32, TyI64, TyInt};
-use syntax::ast::{TyPath, TyPtr};
-use syntax::ast::{TyRptr, TyStr, TyUs, TyU8, TyU16, TyU32, TyU64, TyUint};
-use syntax::ast::TypeImplItem;
 use syntax::ast;
-use syntax::ast_util::{walk_pat};
+use syntax::ast::{Ident, Name, NodeId, CrateNum};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
 use syntax::parse::token::{self, special_names, special_idents};
 use syntax::ptr::P;
 use syntax::codemap::{self, Span, Pos};
-use syntax::visit::{self, FnKind, Visitor};
+
+use rustc_front::visit::{self, FnKind, Visitor};
+use rustc_front::hir;
+use rustc_front::hir::{Arm, BindByRef, BindByValue, BindingMode, Block};
+use rustc_front::hir::{ConstImplItem, Crate};
+use rustc_front::hir::{Expr, ExprAgain, ExprBreak, ExprField};
+use rustc_front::hir::{ExprLoop, ExprWhile, ExprMethodCall};
+use rustc_front::hir::{ExprPath, ExprStruct, FnDecl};
+use rustc_front::hir::{ForeignItemFn, ForeignItemStatic, Generics};
+use rustc_front::hir::{ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
+use rustc_front::hir::{ItemFn, ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaultImpl};
+use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
+use rustc_front::hir::{Local, MethodImplItem};
+use rustc_front::hir::{Pat, PatEnum, PatIdent, PatLit, PatQPath};
+use rustc_front::hir::{PatRange, PatStruct, Path, PrimTy};
+use rustc_front::hir::{TraitRef, Ty, TyBool, TyChar, TyF32};
+use rustc_front::hir::{TyF64, TyFloat, TyIs, TyI8, TyI16, TyI32, TyI64, TyInt};
+use rustc_front::hir::{TyPath, TyPtr};
+use rustc_front::hir::{TyRptr, TyStr, TyUs, TyU8, TyU16, TyU32, TyU64, TyUint};
+use rustc_front::hir::TypeImplItem;
+use rustc_front::util::walk_pat;
 
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -457,22 +461,22 @@ enum NameDefinition {
 
 impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
-        execute_callback!(ast_map::Node::NodeItem(item), self);
+        execute_callback!(hir_map::Node::NodeItem(item), self);
         self.resolve_item(item);
     }
     fn visit_arm(&mut self, arm: &Arm) {
         self.resolve_arm(arm);
     }
     fn visit_block(&mut self, block: &Block) {
-        execute_callback!(ast_map::Node::NodeBlock(block), self);
+        execute_callback!(hir_map::Node::NodeBlock(block), self);
         self.resolve_block(block);
     }
     fn visit_expr(&mut self, expr: &Expr) {
-        execute_callback!(ast_map::Node::NodeExpr(expr), self);
+        execute_callback!(hir_map::Node::NodeExpr(expr), self);
         self.resolve_expr(expr);
     }
     fn visit_local(&mut self, local: &Local) {
-        execute_callback!(ast_map::Node::NodeLocal(&*local.pat), self);
+        execute_callback!(hir_map::Node::NodeLocal(&*local.pat), self);
         self.resolve_local(local);
     }
     fn visit_ty(&mut self, ty: &Ty) {
@@ -482,16 +486,16 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         self.resolve_generics(generics);
     }
     fn visit_poly_trait_ref(&mut self,
-                            tref: &ast::PolyTraitRef,
-                            m: &ast::TraitBoundModifier) {
+                            tref: &hir::PolyTraitRef,
+                            m: &hir::TraitBoundModifier) {
         match self.resolve_trait_reference(tref.trait_ref.ref_id, &tref.trait_ref.path, 0) {
             Ok(def) => self.record_def(tref.trait_ref.ref_id, def),
             Err(_) => { /* error already reported */ }
         }
         visit::walk_poly_trait_ref(self, tref, m);
     }
-    fn visit_variant(&mut self, variant: &ast::Variant, generics: &Generics) {
-        execute_callback!(ast_map::Node::NodeVariant(variant), self);
+    fn visit_variant(&mut self, variant: &hir::Variant, generics: &Generics) {
+        execute_callback!(hir_map::Node::NodeVariant(variant), self);
         if let Some(ref dis_expr) = variant.node.disr_expr {
             // resolve the discriminator expr as a constant
             self.with_constant_rib(|this| {
@@ -501,12 +505,12 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
 
         // `visit::walk_variant` without the discriminant expression.
         match variant.node.kind {
-            ast::TupleVariantKind(ref variant_arguments) => {
+            hir::TupleVariantKind(ref variant_arguments) => {
                 for variant_argument in variant_arguments {
                     self.visit_ty(&*variant_argument.ty);
                 }
             }
-            ast::StructVariantKind(ref struct_definition) => {
+            hir::StructVariantKind(ref struct_definition) => {
                 self.visit_struct_def(&**struct_definition,
                                       variant.node.name,
                                       generics,
@@ -514,8 +518,8 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
             }
         }
     }
-    fn visit_foreign_item(&mut self, foreign_item: &ast::ForeignItem) {
-        execute_callback!(ast_map::Node::NodeForeignItem(foreign_item), self);
+    fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem) {
+        execute_callback!(hir_map::Node::NodeForeignItem(foreign_item), self);
         let type_parameters = match foreign_item.node {
             ForeignItemFn(_, ref generics) => {
                 HasTypeParameters(generics, FnSpace, ItemRibKind)
@@ -1113,7 +1117,7 @@ impl PrimitiveTypeTable {
 pub struct Resolver<'a, 'tcx:'a> {
     session: &'a Session,
 
-    ast_map: &'a ast_map::Map<'tcx>,
+    ast_map: &'a hir_map::Map<'tcx>,
 
     graph_root: NameBindings,
 
@@ -1167,7 +1171,7 @@ pub struct Resolver<'a, 'tcx:'a> {
     used_crates: HashSet<CrateNum>,
 
     // Callback function for intercepting walks
-    callback: Option<Box<Fn(ast_map::Node, &mut bool) -> bool>>,
+    callback: Option<Box<Fn(hir_map::Node, &mut bool) -> bool>>,
     // The intention is that the callback modifies this flag.
     // Once set, the resolver falls out of the walk, preserving the ribs.
     resolved: bool,
@@ -1182,7 +1186,7 @@ enum FallbackChecks {
 
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn new(session: &'a Session,
-           ast_map: &'a ast_map::Map<'tcx>,
+           ast_map: &'a hir_map::Map<'tcx>,
            crate_span: Span,
            make_glob_map: MakeGlobMap) -> Resolver<'a, 'tcx> {
         let graph_root = NameBindings::new();
@@ -2094,7 +2098,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         None
     }
 
-    fn resolve_crate(&mut self, krate: &ast::Crate) {
+    fn resolve_crate(&mut self, krate: &hir::Crate) {
         debug!("(resolving crate) starting");
 
         visit::walk_crate(self, krate);
@@ -2161,7 +2165,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                         for trait_item in trait_items {
                             match trait_item.node {
-                                ast::ConstTraitItem(_, ref default) => {
+                                hir::ConstTraitItem(_, ref default) => {
                                     // Only impose the restrictions of
                                     // ConstRibKind if there's an actual constant
                                     // expression in a provided default.
@@ -2173,7 +2177,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         visit::walk_trait_item(this, trait_item)
                                     }
                                 }
-                                ast::MethodTraitItem(ref sig, _) => {
+                                hir::MethodTraitItem(ref sig, _) => {
                                     let type_parameters =
                                         HasTypeParameters(&sig.generics,
                                                           FnSpace,
@@ -2182,7 +2186,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         visit::walk_trait_item(this, trait_item)
                                     });
                                 }
-                                ast::TypeTraitItem(..) => {
+                                hir::TypeTraitItem(..) => {
                                     this.check_if_primitive_type_name(trait_item.ident.name,
                                                                       trait_item.span);
                                     this.with_type_parameter_rib(NoTypeParameters, |this| {
@@ -2209,7 +2213,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ItemUse(ref view_path) => {
                 // check for imports shadowing primitive types
-                if let ast::ViewPathSimple(ident, _) = view_path.node {
+                if let hir::ViewPathSimple(ident, _) = view_path.node {
                     match self.def_map.borrow().get(&item.id).map(|d| d.full_def()) {
                         Some(DefTy(..)) | Some(DefStruct(..)) | Some(DefTrait(..)) | None => {
                             self.check_if_primitive_type_name(ident.name, item.span);
@@ -2219,7 +2223,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             }
 
-            ItemExternCrate(_) | ItemMac(..) => {
+            ItemExternCrate(_) => {
                 // do nothing, these are just around to be encoded
             }
         }
@@ -2363,9 +2367,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
         for predicate in &generics.where_clause.predicates {
             match predicate {
-                &ast::WherePredicate::BoundPredicate(_) |
-                &ast::WherePredicate::RegionPredicate(_) => {}
-                &ast::WherePredicate::EqPredicate(ref eq_pred) => {
+                &hir::WherePredicate::BoundPredicate(_) |
+                &hir::WherePredicate::RegionPredicate(_) => {}
+                &hir::WherePredicate::EqPredicate(ref eq_pred) => {
                     let path_res = self.resolve_path(eq_pred.id, &eq_pred.path, 0, TypeNS, true);
                     if let Some(PathResolution { base_def: DefTyParam(..), .. }) = path_res {
                         self.record_def(eq_pred.id, path_res.unwrap());
@@ -2488,7 +2492,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                                     this.visit_ty(ty);
                                 }
-                                ast::MacImplItem(_) => {}
                             }
                         }
                     });
@@ -2618,8 +2621,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Check for imports appearing after non-item statements.
         let mut found_non_item = false;
         for statement in &block.stmts {
-            if let ast::StmtDecl(ref declaration, _) = statement.node {
-                if let ast::DeclItem(ref i) = declaration.node {
+            if let hir::StmtDecl(ref declaration, _) = statement.node {
+                if let hir::DeclItem(ref i) = declaration.node {
                     match i.node {
                         ItemExternCrate(_) | ItemUse(_) if found_non_item => {
                             span_err!(self.session, i.span, E0154,
@@ -3039,7 +3042,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Handles paths that may refer to associated items
     fn resolve_possibly_assoc_item(&mut self,
                                    id: NodeId,
-                                   maybe_qself: Option<&ast::QSelf>,
+                                   maybe_qself: Option<&hir::QSelf>,
                                    path: &Path,
                                    namespace: Namespace,
                                    check_ribs: bool)
@@ -3228,7 +3231,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // resolve a "module-relative" path, e.g. a::b::c
     fn resolve_module_relative_path(&mut self,
                                     span: Span,
-                                    segments: &[ast::PathSegment],
+                                    segments: &[hir::PathSegment],
                                     namespace: Namespace)
                                     -> Option<(Def, LastPrivate)> {
         let module_path = segments.split_last().unwrap().1.iter()
@@ -3285,7 +3288,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// import resolution.
     fn resolve_crate_relative_path(&mut self,
                                    span: Span,
-                                   segments: &[ast::PathSegment],
+                                   segments: &[hir::PathSegment],
                                    namespace: Namespace)
                                        -> Option<(Def, LastPrivate)> {
         let module_path = segments.split_last().unwrap().1.iter()
@@ -3469,17 +3472,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         fn is_static_method(this: &Resolver, did: DefId) -> bool {
             if did.is_local() {
                 let sig = match this.ast_map.get(did.node) {
-                    ast_map::NodeTraitItem(trait_item) => match trait_item.node {
-                        ast::MethodTraitItem(ref sig, _) => sig,
+                    hir_map::NodeTraitItem(trait_item) => match trait_item.node {
+                        hir::MethodTraitItem(ref sig, _) => sig,
                         _ => return false
                     },
-                    ast_map::NodeImplItem(impl_item) => match impl_item.node {
-                        ast::MethodImplItem(ref sig, _) => sig,
+                    hir_map::NodeImplItem(impl_item) => match impl_item.node {
+                        hir::MethodImplItem(ref sig, _) => sig,
                         _ => return false
                     },
                     _ => return false
                 };
-                sig.explicit_self.node == ast::SelfStatic
+                sig.explicit_self.node == hir::SelfStatic
             } else {
                 csearch::is_static_method(&this.session.cstore, did)
             }
@@ -4024,7 +4027,7 @@ pub enum MakeGlobMap {
 
 /// Entry point to crate resolution.
 pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
-                               ast_map: &'a ast_map::Map<'tcx>,
+                               ast_map: &'a hir_map::Map<'tcx>,
                                make_glob_map: MakeGlobMap)
                                -> CrateMap {
     let krate = ast_map.krate();
@@ -4058,10 +4061,10 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
 /// calls to be made with the correct scope info. The node in the
 /// callback corresponds to the current node in the walk.
 pub fn create_resolver<'a, 'tcx>(session: &'a Session,
-                                 ast_map: &'a ast_map::Map<'tcx>,
+                                 ast_map: &'a hir_map::Map<'tcx>,
                                  krate: &'a Crate,
                                  make_glob_map: MakeGlobMap,
-                                 callback: Option<Box<Fn(ast_map::Node, &mut bool) -> bool>>)
+                                 callback: Option<Box<Fn(hir_map::Node, &mut bool) -> bool>>)
                                  -> Resolver<'a, 'tcx> {
     let mut resolver = Resolver::new(session, ast_map, krate.span, make_glob_map);
 

@@ -20,7 +20,7 @@ use trans::expr;
 use trans::type_of;
 use trans::type_::Type;
 
-use syntax::ast;
+use rustc_front::hir as ast;
 use std::ffi::CString;
 use libc::{c_uint, c_char};
 

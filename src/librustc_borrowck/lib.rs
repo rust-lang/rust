@@ -34,6 +34,7 @@
 // refers to the borrowck-specific graphviz adapter traits.
 extern crate graphviz as dot;
 extern crate rustc;
+extern crate rustc_front;
 
 pub use borrowck::check_crate;
 pub use borrowck::build_borrowck_dataflow_data_for_fn;

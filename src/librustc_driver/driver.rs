@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::front;
+use rustc::front::map as hir_map;
 use rustc::session::Session;
 use rustc::session::config::{self, Input, OutputFilenames};
 use rustc::session::search_paths::PathKind;
-use rustc::ast_map;
 use rustc::lint;
 use rustc::metadata;
 use rustc::metadata::creader::LocalCrateReader;
@@ -28,6 +29,8 @@ use rustc_trans::back::write;
 use rustc_trans::trans;
 use rustc_typeck as typeck;
 use rustc_privacy;
+use rustc_front::hir;
+use rustc_front::lowering::lower_crate;
 use super::Compilation;
 
 use serialize::json;
@@ -41,6 +44,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::diagnostics;
+use syntax::fold::Folder;
 use syntax::parse;
 use syntax::parse::token;
 use syntax;
@@ -104,9 +108,13 @@ pub fn compile_input(sess: Session,
                                                                  &expanded_crate,
                                                                  &id[..]));
 
-        let mut forest = ast_map::Forest::new(expanded_crate);
+        let expanded_crate = assign_node_ids(&sess, expanded_crate);
+        // Lower ast -> hir.
+        let mut hir_forest = time(sess.time_passes(),
+                                  "lowering ast -> hir",
+                                  || hir_map::Forest::new(lower_crate(&expanded_crate)));
         let arenas = ty::CtxtArenas::new();
-        let ast_map = assign_node_ids_and_map(&sess, &mut forest);
+        let ast_map = make_map(&sess, &mut hir_forest);
 
         write_out_deps(&sess, input, &outputs, &id[..]);
 
@@ -116,11 +124,14 @@ pub fn compile_input(sess: Session,
                                                                      &sess,
                                                                      outdir,
                                                                      &ast_map,
+                                                                     &expanded_crate,
                                                                      &ast_map.krate(),
                                                                      &id[..]));
 
+
         phase_3_run_analysis_passes(sess,
                                     ast_map,
+                                    &expanded_crate,
                                     &arenas,
                                     id,
                                     control.make_glob_map,
@@ -130,6 +141,7 @@ pub fn compile_input(sess: Session,
                 let state = CompileState::state_after_analysis(input,
                                                                &tcx.sess,
                                                                outdir,
+                                                               &expanded_crate,
                                                                tcx.map.krate(),
                                                                &analysis,
                                                                tcx);
@@ -254,7 +266,8 @@ pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
     pub output_filenames: Option<&'a OutputFilenames>,
     pub out_dir: Option<&'a Path>,
     pub expanded_crate: Option<&'a ast::Crate>,
-    pub ast_map: Option<&'a ast_map::Map<'ast>>,
+    pub hir_crate: Option<&'a hir::Crate>,
+    pub ast_map: Option<&'a hir_map::Map<'ast>>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<&'a ty::ctxt<'tcx>>,
     pub trans: Option<&'a trans::CrateTranslation>,
@@ -274,6 +287,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
             crate_name: None,
             output_filenames: None,
             expanded_crate: None,
+            hir_crate: None,
             ast_map: None,
             analysis: None,
             tcx: None,
@@ -308,14 +322,16 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     fn state_after_write_deps(input: &'a Input,
                               session: &'a Session,
                               out_dir: &'a Option<PathBuf>,
-                              ast_map: &'a ast_map::Map<'ast>,
-                              expanded_crate: &'a ast::Crate,
+                              ast_map: &'a hir_map::Map<'ast>,
+                              krate: &'a ast::Crate,
+                              hir_crate: &'a hir::Crate,
                               crate_name: &'a str)
                               -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
             ast_map: Some(ast_map),
-            expanded_crate: Some(expanded_crate),
+            krate: Some(krate),
+            hir_crate: Some(hir_crate),
             .. CompileState::empty(input, session, out_dir)
         }
     }
@@ -323,14 +339,16 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     fn state_after_analysis(input: &'a Input,
                             session: &'a Session,
                             out_dir: &'a Option<PathBuf>,
-                            expanded_crate: &'a ast::Crate,
+                            krate: &'a ast::Crate,
+                            hir_crate: &'a hir::Crate,
                             analysis: &'a ty::CrateAnalysis,
                             tcx: &'a ty::ctxt<'tcx>)
                             -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             analysis: Some(analysis),
             tcx: Some(tcx),
-            expanded_crate: Some(expanded_crate),
+            krate: Some(krate),
+            hir_crate: Some(hir_crate),
             .. CompileState::empty(input, session, out_dir)
         }
     }
@@ -582,26 +600,37 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     Some(krate)
 }
 
-pub fn assign_node_ids_and_map<'ast>(sess: &Session,
-                                     forest: &'ast mut ast_map::Forest)
-                                     -> ast_map::Map<'ast> {
+pub fn assign_node_ids(sess: &Session,
+                       krate: ast::Crate) -> ast::Crate {
     struct NodeIdAssigner<'a> {
         sess: &'a Session
     }
 
-    impl<'a> ast_map::FoldOps for NodeIdAssigner<'a> {
-        fn new_id(&self, old_id: ast::NodeId) -> ast::NodeId {
+    impl<'a> Folder for NodeIdAssigner<'a> {
+        fn new_id(&mut self, old_id: ast::NodeId) -> ast::NodeId {
             assert_eq!(old_id, ast::DUMMY_NODE_ID);
             self.sess.next_node_id()
         }
     }
 
-    let map = time(sess.time_passes(), "assigning node ids and indexing ast", move ||
-                   ast_map::map_crate(forest, NodeIdAssigner { sess: sess }));
+    let krate = time(sess.time_passes(),
+                     "assigning node ids",
+                     || NodeIdAssigner { sess: sess }.fold_crate(krate));
 
     if sess.opts.debugging_opts.ast_json {
-        println!("{}", json::as_json(map.krate()));
+        println!("{}", json::as_json(&krate));
     }
+
+    krate
+}
+
+pub fn make_map<'ast>(sess: &Session,
+                      forest: &'ast mut front::map::Forest)
+                      -> front::map::Map<'ast> {
+    // Construct the 'ast'-map
+    let map = time(sess.time_passes(),
+                   "indexing hir",
+                   move || front::map::map_crate(forest));
 
     map
 }
@@ -610,14 +639,15 @@ pub fn assign_node_ids_and_map<'ast>(sess: &Session,
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
-                                               ast_map: ast_map::Map<'tcx>,
+                                               ast_map: front::map::Map<'tcx>,
+                                               ast_crate: &ast::Crate,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: String,
                                                make_glob_map: resolve::MakeGlobMap,
                                                f: F)
                                                -> (Session, R)
                                                where F: for<'a> FnOnce(&'a ty::ctxt<'tcx>,
-                                                               ty::CrateAnalysis) -> R
+                                                                       ty::CrateAnalysis) -> R
 {
     let time_passes = sess.time_passes();
     let krate = ast_map.krate();
@@ -731,7 +761,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
                 &tcx.sess, lib_features_used));
 
         time(time_passes, "lint checking", ||
-            lint::check_crate(tcx, &exported_items));
+            lint::check_crate(tcx, ast_crate, &exported_items));
 
         // The above three passes generate errors w/o aborting
         tcx.sess.abort_if_errors();

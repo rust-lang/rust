@@ -283,6 +283,7 @@ macro_rules! run_lints { ($cx:expr, $f:ident, $($args:expr),*) => ({
 
 /// Parse the lint attributes into a vector, with `Err`s for malformed lint
 /// attributes. Writing this as an iterator is an enormous mess.
+// See also the hir version just below.
 pub fn gather_attrs(attrs: &[ast::Attribute])
                     -> Vec<Result<(InternedString, Level, Span), Span>> {
     let mut out = vec!();
@@ -306,6 +307,40 @@ pub fn gather_attrs(attrs: &[ast::Attribute])
         for meta in metas {
             out.push(match meta.node {
                 ast::MetaWord(ref lint_name) => Ok((lint_name.clone(), level, meta.span)),
+                _ => Err(meta.span),
+            });
+        }
+    }
+    out
+}
+// Copy-pasted from the above function :-(
+pub fn gather_attrs_from_hir(attrs: &[::rustc_front::hir::Attribute])
+                             -> Vec<Result<(InternedString, Level, Span), Span>> {
+    use ::rustc_front::attr::AttrMetaMethods;
+
+    let mut out = vec!();
+    for attr in attrs {
+        let level = match Level::from_str(&attr.name()) {
+            None => continue,
+            Some(lvl) => lvl,
+        };
+
+        ::rustc_front::attr::mark_used(attr);
+
+        let meta = &attr.node.value;
+        let metas = match meta.node {
+            ::rustc_front::hir::MetaList(_, ref metas) => metas,
+            _ => {
+                out.push(Err(meta.span));
+                continue;
+            }
+        };
+
+        for meta in metas {
+            out.push(match meta.node {
+                ::rustc_front::hir::MetaWord(ref lint_name) => {
+                    Ok((lint_name.clone(), level, meta.span))
+                }
                 _ => Err(meta.span),
             });
         }
@@ -696,9 +731,9 @@ impl LintPass for GatherNodeLevels {
 ///
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate(tcx: &ty::ctxt,
+                   krate: &ast::Crate,
                    exported_items: &ExportedItems) {
 
-    let krate = tcx.map.krate();
     let mut cx = Context::new(tcx, krate, exported_items);
 
     // Visit the whole crate.

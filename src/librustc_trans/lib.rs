@@ -53,6 +53,7 @@ extern crate graphviz;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
+extern crate rustc_front;
 extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate serialize;

@@ -27,6 +27,7 @@ use rustc::middle::region;
 use rustc::middle::ty;
 use syntax::ast;
 use syntax::codemap::Span;
+use rustc_front::hir;
 
 use std::rc::Rc;
 
@@ -104,12 +105,12 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
     }
 
     fn matched_pat(&mut self,
-                   _matched_pat: &ast::Pat,
+                   _matched_pat: &hir::Pat,
                    _cmt: mc::cmt,
                    _mode: euv::MatchMode) { }
 
     fn consume_pat(&mut self,
-                   consume_pat: &ast::Pat,
+                   consume_pat: &hir::Pat,
                    cmt: mc::cmt<'tcx>,
                    mode: euv::ConsumeMode) {
         debug!("consume_pat(consume_pat={:?}, cmt={:?}, mode={:?})",
@@ -194,8 +195,8 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      move_data: &move_data::FlowedMoveData<'c, 'tcx>,
                                      all_loans: &[Loan<'tcx>],
                                      fn_id: ast::NodeId,
-                                     decl: &ast::FnDecl,
-                                     body: &ast::Block) {
+                                     decl: &hir::FnDecl,
+                                     body: &hir::Block) {
     debug!("check_loans(body id={})", body.id);
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);

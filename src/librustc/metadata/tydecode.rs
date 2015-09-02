@@ -18,6 +18,8 @@
 
 pub use self::DefIdSource::*;
 
+use rustc_front::hir;
+
 use middle::def_id::DefId;
 use middle::region;
 use middle::subst;
@@ -467,10 +469,10 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    fn parse_mutability(&mut self) -> ast::Mutability {
+    fn parse_mutability(&mut self) -> hir::Mutability {
         match self.peek() {
-            'm' => { self.next(); ast::MutMutable }
-            _ => { ast::MutImmutable }
+            'm' => { self.next(); hir::MutMutable }
+            _ => { hir::MutImmutable }
         }
     }
 
@@ -742,10 +744,10 @@ fn parse_defid(buf: &[u8]) -> DefId {
     DefId { krate: crate_num, node: def_num }
 }
 
-fn parse_unsafety(c: char) -> ast::Unsafety {
+fn parse_unsafety(c: char) -> hir::Unsafety {
     match c {
-        'u' => ast::Unsafety::Unsafe,
-        'n' => ast::Unsafety::Normal,
+        'u' => hir::Unsafety::Unsafe,
+        'n' => hir::Unsafety::Normal,
         _ => panic!("parse_unsafety: bad unsafety {}", c)
     }
 }

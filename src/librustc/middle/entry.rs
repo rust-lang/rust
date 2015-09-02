@@ -9,15 +9,15 @@
 // except according to those terms.
 
 
-use ast_map;
+use front::map as ast_map;
 use session::{config, Session};
-use syntax;
-use syntax::ast::{NodeId, Item};
-use syntax::attr;
+use syntax::ast::NodeId;
+use rustc_front::hir::{Item, ItemFn};
+use rustc_front::attr;
 use syntax::codemap::Span;
 use syntax::entry::EntryPointType;
-use syntax::visit;
-use syntax::visit::Visitor;
+use rustc_front::visit;
+use rustc_front::visit::Visitor;
 
 struct EntryContext<'a> {
     session: &'a Session,
@@ -76,8 +76,33 @@ pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
     configure_main(&mut ctxt);
 }
 
+// Beware, this is duplicated in libsyntax/entry.rs, make sure to keep
+// them in sync.
+fn entry_point_type(item: &Item, depth: usize) -> EntryPointType {
+    match item.node {
+        ItemFn(..) => {
+            if attr::contains_name(&item.attrs, "start") {
+                EntryPointType::Start
+            } else if attr::contains_name(&item.attrs, "main") {
+                EntryPointType::MainAttr
+            } else if item.ident.name == "main" {
+                if depth == 1 {
+                    // This is a top-level function so can be 'main'
+                    EntryPointType::MainNamed
+                } else {
+                    EntryPointType::OtherMain
+                }
+            } else {
+                EntryPointType::None
+            }
+        }
+        _ => EntryPointType::None,
+    }
+}
+
+
 fn find_item(item: &Item, ctxt: &mut EntryContext) {
-    match syntax::entry::entry_point_type(item, ctxt.depth) {
+    match entry_point_type(item, ctxt.depth) {
         EntryPointType::MainNamed => {
             if ctxt.main_fn.is_none() {
                 ctxt.main_fn = Some((item.id, item.span));

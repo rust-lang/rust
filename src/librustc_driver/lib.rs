@@ -42,6 +42,7 @@ extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_borrowck;
+extern crate rustc_front;
 extern crate rustc_lint;
 extern crate rustc_privacy;
 extern crate rustc_resolve;
@@ -389,6 +390,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 time(state.session.time_passes(),
                      "save analysis",
                      || save::process_crate(state.tcx.unwrap(),
+                                            state.krate.unwrap(),
                                             state.analysis.unwrap(),
                                             state.out_dir));
             };
