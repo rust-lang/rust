@@ -936,6 +936,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                           any_changes_needed: &mut bool) -> Vec<Type> {
                 use intrinsics::Type::*;
                 match *t {
+                    Void => vec![Type::void(ccx)],
                     Integer(_signed, width, llvm_width) => {
                         *any_changes_needed |= width != llvm_width;
                         vec![Type::ix(ccx, llvm_width as u64)]
