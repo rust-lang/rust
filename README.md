@@ -92,7 +92,7 @@ fn main(){
 
 Produce this warning:
 ```
-src/main.rs:8:5: 11:6 warning: You seem to be trying to use match for destructuring a single type. Did you mean to use `if let`?, #[warn(single_match)] on by default
+src/main.rs:8:5: 11:6 warning: you seem to be trying to use match for destructuring a single type. Consider using `if let`, #[warn(single_match)] on by default
 src/main.rs:8     match x {
 src/main.rs:9         Some(y) => println!("{:?}", y),
 src/main.rs:10         _ => ()
