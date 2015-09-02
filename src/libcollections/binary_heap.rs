@@ -154,6 +154,7 @@
 use core::iter::{FromIterator};
 use core::mem::swap;
 use core::ptr;
+use core::fmt;
 
 use slice;
 use vec::{self, Vec};
@@ -176,6 +177,13 @@ pub struct BinaryHeap<T> {
 impl<T: Ord> Default for BinaryHeap<T> {
     #[inline]
     fn default() -> BinaryHeap<T> { BinaryHeap::new() }
+}
+
+#[stable(feature = "binaryheap_debug", since = "1.4.0")]
+impl<T: fmt::Debug + Ord> fmt::Debug for BinaryHeap<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
+    }
 }
 
 impl<T: Ord> BinaryHeap<T> {
