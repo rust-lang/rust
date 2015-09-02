@@ -28,7 +28,7 @@ fn foo(a: isize, b: u32 /* blah blah */, c: f64) {
 
 }
 
-fn foo()
+fn foo() -> Box<Write + 'static>
     where 'a: 'b,
           for<'a> D<'b>: 'a
 {

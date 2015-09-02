@@ -22,7 +22,7 @@ mod other;
 
 }
 
-fn foo() where 'a: 'b, for<'a> D<'b>: 'a {
+fn foo()->Box<Write+'static> where 'a: 'b, for<'a> D<'b>: 'a {
     hello!()
 }
 
