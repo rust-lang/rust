@@ -250,7 +250,7 @@ impl Rewrite for ast::Block {
         }
 
         let mut visitor = FmtVisitor::from_codemap(context.codemap, context.config);
-        visitor.block_indent = context.block_indent;
+        visitor.block_indent = context.block_indent + context.overflow_indent;
 
         let prefix = match self.rules {
             ast::BlockCheckMode::PushUnsafeBlock(..) |
@@ -541,9 +541,9 @@ fn rewrite_match(context: &RewriteContext,
     let cond_str = try_opt!(cond.rewrite(context, cond_budget, offset + 6));
     let mut result = format!("match {} {{", cond_str);
 
-    let block_indent = context.block_indent;
     let nested_context = context.nested_context();
-    let arm_indent_str = make_indent(nested_context.block_indent);
+    let arm_indent = nested_context.block_indent + context.overflow_indent;
+    let arm_indent_str = make_indent(arm_indent);
 
     let open_brace_pos = span_after(mk_sp(cond.span.hi, arm_start_pos(&arms[0])),
                                     "{",
@@ -579,8 +579,8 @@ fn rewrite_match(context: &RewriteContext,
 
         let arm_str = arm.rewrite(&nested_context,
                                   context.config.max_width -
-                                      nested_context.block_indent,
-                                  nested_context.block_indent);
+                                      arm_indent,
+                                  arm_indent);
         if let Some(ref arm_str) = arm_str {
             result.push_str(arm_str);
         } else {
@@ -594,7 +594,7 @@ fn rewrite_match(context: &RewriteContext,
     // match expression, but meh.
 
     result.push('\n');
-    result.push_str(&make_indent(block_indent));
+    result.push_str(&make_indent(context.block_indent + context.overflow_indent));
     result.push('}');
     Some(result)
 }
@@ -1192,7 +1192,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
             result.push_str(&format!("\n{}", make_indent(new_offset)));
 
             let max_width = try_opt!(context.config.max_width.checked_sub(new_offset + 1));
-            let rhs = try_opt!(ex.rewrite(&context, max_width, new_offset));
+            let rhs = try_opt!(ex.rewrite(&context.overflow_context(), max_width, new_offset));
 
             result.push_str(&rhs);
         }

@@ -53,3 +53,12 @@ fn foo() {
         Blurb     =>     {                  }
     };
 }
+
+// Test that a match on an overflow line is laid out properly.
+fn main() {
+    let sub_span =
+        match self.span.sub_span_after_keywooooooooooooooooooooord(use_item.span, keywords::As) {
+            Some(sub_span) => Some(sub_span),
+            None => sub_span,
+        };
+}
