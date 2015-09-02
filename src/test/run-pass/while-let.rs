@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#![feature(collections)]
+#![feature(binary_heap_extras)]
 
 use std::collections::BinaryHeap;
 
