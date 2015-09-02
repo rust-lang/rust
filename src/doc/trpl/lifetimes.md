@@ -108,7 +108,7 @@ If we wanted an `&mut` reference, we’d do this:
 
 If you compare `&mut i32` to `&'a mut i32`, they’re the same, it’s just that
 the lifetime `'a` has snuck in between the `&` and the `mut i32`. We read `&mut
-i32` as ‘a mutable reference to an i32’ and `&'a mut i32` as ‘a mutable
+i32` as ‘a mutable reference to an `i32`’ and `&'a mut i32` as ‘a mutable
 reference to an `i32` with the lifetime `'a`’.
 
 # In `struct`s
