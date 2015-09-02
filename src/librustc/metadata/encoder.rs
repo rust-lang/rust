@@ -19,6 +19,7 @@ use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
+use metadata::index::{self, IndexEntry};
 use metadata::inline::InlinedItemRef;
 use middle::def;
 use middle::def_id::{DefId, LOCAL_CRATE};
@@ -29,7 +30,6 @@ use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use serialize::Encodable;
 use std::cell::RefCell;
-use std::hash::{Hash, Hasher, SipHasher};
 use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
 use std::rc::Rc;
@@ -84,12 +84,6 @@ fn encode_impl_type_basename(rbml_w: &mut Encoder, name: Name) {
 
 fn encode_def_id(rbml_w: &mut Encoder, id: DefId) {
     rbml_w.wr_tagged_u64(tag_def_id, def_to_u64(id));
-}
-
-#[derive(Clone)]
-struct entry<T> {
-    val: T,
-    pos: u64
 }
 
 fn encode_trait_ref<'a, 'tcx>(rbml_w: &mut Encoder,
@@ -279,7 +273,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                             rbml_w: &mut Encoder,
                             id: NodeId,
                             vis: ast::Visibility,
-                            index: &mut Vec<entry<i64>>) {
+                            index: &mut Vec<IndexEntry>) {
     debug!("encode_enum_variant_info(id={})", id);
 
     let mut disr_val = 0;
@@ -296,8 +290,8 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
             }
         }
 
-        index.push(entry {
-            val: vid.node as i64,
+        index.push(IndexEntry {
+            node: vid.node,
             pos: rbml_w.mark_stable_position(),
         });
         rbml_w.start_tag(tag_items_data_item);
@@ -625,13 +619,13 @@ fn encode_provided_source(rbml_w: &mut Encoder,
 fn encode_field<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                           rbml_w: &mut Encoder,
                           field: ty::FieldDef<'tcx>,
-                          global_index: &mut Vec<entry<i64>>) {
+                          global_index: &mut Vec<IndexEntry>) {
     let nm = field.name;
     let id = field.did.node;
 
     let pos = rbml_w.mark_stable_position();
-    global_index.push(entry {
-        val: id as i64,
+    global_index.push(IndexEntry {
+        node: id,
         pos: pos,
     });
     rbml_w.start_tag(tag_items_data_item);
@@ -651,10 +645,10 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                rbml_w: &mut Encoder,
                                name: Name,
                                ctor_id: NodeId,
-                               index: &mut Vec<entry<i64>>,
+                               index: &mut Vec<IndexEntry>,
                                struct_id: NodeId) {
-    index.push(entry {
-        val: ctor_id as i64,
+    index.push(IndexEntry {
+        node: ctor_id,
         pos: rbml_w.mark_stable_position(),
     });
 
@@ -989,15 +983,15 @@ fn encode_stability(rbml_w: &mut Encoder, stab_opt: Option<&attr::Stability>) {
 fn encode_info_for_item(ecx: &EncodeContext,
                         rbml_w: &mut Encoder,
                         item: &ast::Item,
-                        index: &mut Vec<entry<i64>>,
+                        index: &mut Vec<IndexEntry>,
                         path: PathElems,
                         vis: ast::Visibility) {
     let tcx = ecx.tcx;
 
     fn add_to_index(item: &ast::Item, rbml_w: &mut Encoder,
-                    index: &mut Vec<entry<i64>>) {
-        index.push(entry {
-            val: item.id as i64,
+                    index: &mut Vec<IndexEntry>) {
+        index.push(IndexEntry {
+            node: item.id,
             pos: rbml_w.mark_stable_position(),
         });
     }
@@ -1261,8 +1255,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 None
             };
 
-            index.push(entry {
-                val: trait_item_def_id.def_id().node as i64,
+            index.push(IndexEntry {
+                node: trait_item_def_id.def_id().node,
                 pos: rbml_w.mark_stable_position(),
             });
 
@@ -1352,8 +1346,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         for (i, &item_def_id) in r.iter().enumerate() {
             assert_eq!(item_def_id.def_id().krate, LOCAL_CRATE);
 
-            index.push(entry {
-                val: item_def_id.def_id().node as i64,
+            index.push(IndexEntry {
+                node: item_def_id.def_id().node,
                 pos: rbml_w.mark_stable_position(),
             });
 
@@ -1474,11 +1468,11 @@ fn encode_info_for_item(ecx: &EncodeContext,
 fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 rbml_w: &mut Encoder,
                                 nitem: &ast::ForeignItem,
-                                index: &mut Vec<entry<i64>>,
+                                index: &mut Vec<IndexEntry>,
                                 path: PathElems,
                                 abi: abi::Abi) {
-    index.push(entry {
-        val: nitem.id as i64,
+    index.push(IndexEntry {
+        node: nitem.id,
         pos: rbml_w.mark_stable_position(),
     });
 
@@ -1522,7 +1516,7 @@ fn my_visit_expr(_e: &ast::Expr) { }
 fn my_visit_item(i: &ast::Item,
                  rbml_w: &mut Encoder,
                  ecx: &EncodeContext,
-                 index: &mut Vec<entry<i64>>) {
+                 index: &mut Vec<IndexEntry>) {
     ecx.tcx.map.with_path(i.id, |path| {
         encode_info_for_item(ecx, rbml_w, i, index, path, i.vis);
     });
@@ -1531,7 +1525,7 @@ fn my_visit_item(i: &ast::Item,
 fn my_visit_foreign_item(ni: &ast::ForeignItem,
                          rbml_w: &mut Encoder,
                          ecx: &EncodeContext,
-                         index: &mut Vec<entry<i64>>) {
+                         index: &mut Vec<IndexEntry>) {
     debug!("writing foreign item {}::{}",
             ecx.tcx.map.path_to_string(ni.id),
             ni.ident);
@@ -1547,7 +1541,7 @@ fn my_visit_foreign_item(ni: &ast::ForeignItem,
 struct EncodeVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
     rbml_w_for_visit_item: &'a mut Encoder<'b>,
     ecx: &'a EncodeContext<'c,'tcx>,
-    index: &'a mut Vec<entry<i64>>,
+    index: &'a mut Vec<IndexEntry>,
 }
 
 impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for EncodeVisitor<'a, 'b, 'c, 'tcx> {
@@ -1574,11 +1568,11 @@ impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for EncodeVisitor<'a, 'b, 'c, 'tcx> {
 fn encode_info_for_items(ecx: &EncodeContext,
                          rbml_w: &mut Encoder,
                          krate: &ast::Crate)
-                         -> Vec<entry<i64>> {
+                         -> Vec<IndexEntry> {
     let mut index = Vec::new();
     rbml_w.start_tag(tag_items_data);
-    index.push(entry {
-        val: CRATE_NODE_ID as i64,
+    index.push(IndexEntry {
+        node: CRATE_NODE_ID,
         pos: rbml_w.mark_stable_position(),
     });
     encode_info_for_mod(ecx,
@@ -1601,62 +1595,13 @@ fn encode_info_for_items(ecx: &EncodeContext,
 }
 
 
-// Path and definition ID indexing
 
-fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: F) where
-    F: FnMut(&mut Cursor<Vec<u8>>, &T),
-    T: Hash,
+
+fn encode_index(rbml_w: &mut Encoder, index: Vec<IndexEntry>)
 {
-    let mut buckets: Vec<Vec<entry<T>>> = (0..256u16).map(|_| Vec::new()).collect();
-    for elt in index {
-        let mut s = SipHasher::new();
-        elt.val.hash(&mut s);
-        let h = s.finish() as usize;
-        (&mut buckets[h % 256]).push(elt);
-    }
-
     rbml_w.start_tag(tag_index);
-    let mut bucket_locs = Vec::new();
-    rbml_w.start_tag(tag_index_buckets);
-    for bucket in &buckets {
-        bucket_locs.push(rbml_w.mark_stable_position());
-        rbml_w.start_tag(tag_index_buckets_bucket);
-        for elt in bucket {
-            rbml_w.start_tag(tag_index_buckets_bucket_elt);
-            assert!(elt.pos < 0xffff_ffff);
-            {
-                let wr: &mut Cursor<Vec<u8>> = rbml_w.writer;
-                write_be_u32(wr, elt.pos as u32);
-            }
-            write_fn(rbml_w.writer, &elt.val);
-            rbml_w.end_tag();
-        }
-        rbml_w.end_tag();
-    }
+    index::write_index(index, rbml_w.writer);
     rbml_w.end_tag();
-    rbml_w.start_tag(tag_index_table);
-    for pos in &bucket_locs {
-        assert!(*pos < 0xffff_ffff);
-        let wr: &mut Cursor<Vec<u8>> = rbml_w.writer;
-        write_be_u32(wr, *pos as u32);
-    }
-    rbml_w.end_tag();
-    rbml_w.end_tag();
-}
-
-fn write_i64(writer: &mut Cursor<Vec<u8>>, &n: &i64) {
-    let wr: &mut Cursor<Vec<u8>> = writer;
-    assert!(n < 0x7fff_ffff);
-    write_be_u32(wr, n as u32);
-}
-
-fn write_be_u32(w: &mut Write, u: u32) {
-    w.write_all(&[
-        (u >> 24) as u8,
-        (u >> 16) as u8,
-        (u >>  8) as u8,
-        (u >>  0) as u8,
-    ]);
 }
 
 fn encode_meta_item(rbml_w: &mut Encoder, mi: &ast::MetaItem) {
@@ -2160,11 +2105,11 @@ fn encode_metadata_inner(wr: &mut Cursor<Vec<u8>>,
     i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     let items_index = encode_info_for_items(&ecx, &mut rbml_w, krate);
     stats.item_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+    rbml_w.end_tag();
 
     i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
-    encode_index(&mut rbml_w, items_index, write_i64);
+    encode_index(&mut rbml_w, items_index);
     stats.index_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
-    rbml_w.end_tag();
 
     encode_struct_field_attrs(&mut rbml_w, krate);
 
