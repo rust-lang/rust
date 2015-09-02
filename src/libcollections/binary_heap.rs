@@ -154,6 +154,7 @@
 use core::iter::{FromIterator};
 use core::mem::swap;
 use core::ptr;
+use core::fmt;
 
 use slice;
 use vec::{self, Vec};
@@ -176,6 +177,13 @@ pub struct BinaryHeap<T> {
 impl<T: Ord> Default for BinaryHeap<T> {
     #[inline]
     fn default() -> BinaryHeap<T> { BinaryHeap::new() }
+}
+
+#[stable(feature = "binaryheap_debug", since = "1.4.0")]
+impl<T: fmt::Debug + Ord> fmt::Debug for BinaryHeap<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
+    }
 }
 
 impl<T: Ord> BinaryHeap<T> {
@@ -214,11 +222,14 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(binary_heap_extras)]
     ///
     /// use std::collections::BinaryHeap;
     /// let heap = BinaryHeap::from_vec(vec![9, 1, 2, 7, 3, 2]);
     /// ```
+    #[unstable(feature = "binary_heap_extras",
+               reason = "needs to be audited",
+               issue = "28147")]
     pub fn from_vec(vec: Vec<T>) -> BinaryHeap<T> {
         let mut heap = BinaryHeap { data: vec };
         let mut n = heap.len() / 2;
@@ -235,7 +246,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(binary_heap_extras)]
     ///
     /// use std::collections::BinaryHeap;
     /// let heap = BinaryHeap::from_vec(vec![1, 2, 3, 4]);
@@ -341,7 +352,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(binary_heap_extras)]
     ///
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::from_vec(vec![1, 3]);
@@ -388,7 +399,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(binary_heap_extras)]
     ///
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
@@ -400,6 +411,9 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.len(), 2);
     /// assert_eq!(heap.peek(), Some(&3));
     /// ```
+    #[unstable(feature = "binary_heap_extras",
+               reason = "needs to be audited",
+               issue = "28147")]
     pub fn push_pop(&mut self, mut item: T) -> T {
         match self.data.get_mut(0) {
             None => return item,
@@ -421,7 +435,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(binary_heap_extras)]
     ///
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
@@ -431,6 +445,9 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.len(), 1);
     /// assert_eq!(heap.peek(), Some(&3));
     /// ```
+    #[unstable(feature = "binary_heap_extras",
+               reason = "needs to be audited",
+               issue = "28147")]
     pub fn replace(&mut self, mut item: T) -> Option<T> {
         if !self.is_empty() {
             swap(&mut item, &mut self.data[0]);
@@ -448,7 +465,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(binary_heap_extras)]
     ///
     /// use std::collections::BinaryHeap;
     /// let heap = BinaryHeap::from_vec(vec![1, 2, 3, 4, 5, 6, 7]);
@@ -459,6 +476,9 @@ impl<T: Ord> BinaryHeap<T> {
     ///     println!("{}", x);
     /// }
     /// ```
+    #[unstable(feature = "binary_heap_extras",
+               reason = "needs to be audited",
+               issue = "28147")]
     pub fn into_vec(self) -> Vec<T> { self.data }
 
     /// Consumes the `BinaryHeap` and returns a vector in sorted
@@ -467,7 +487,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(binary_heap_extras)]
     ///
     /// use std::collections::BinaryHeap;
     ///
@@ -478,6 +498,9 @@ impl<T: Ord> BinaryHeap<T> {
     /// let vec = heap.into_sorted_vec();
     /// assert_eq!(vec, [1, 2, 3, 4, 5, 6, 7]);
     /// ```
+    #[unstable(feature = "binary_heap_extras",
+               reason = "needs to be audited",
+               issue = "28147")]
     pub fn into_sorted_vec(mut self) -> Vec<T> {
         let mut end = self.len();
         while end > 1 {
@@ -730,7 +753,7 @@ impl<T: Ord> IntoIterator for BinaryHeap<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(collections)]
+    /// #![feature(binary_heap_extras)]
     ///
     /// use std::collections::BinaryHeap;
     /// let heap = BinaryHeap::from_vec(vec![1, 2, 3, 4]);
