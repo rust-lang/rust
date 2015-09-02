@@ -228,7 +228,7 @@ pub fn necessary_variants(dm: &DefMap, pat: &hir::Pat) -> Vec<ast::NodeId> {
             hir::PatStruct(..) => {
                 match dm.borrow().get(&p.id) {
                     Some(&PathResolution { base_def: DefVariant(_, id, _), .. }) => {
-                        variants.push(id.node);
+                        variants.push(id.node); // XXX
                     }
                     _ => ()
                 }
