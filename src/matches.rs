@@ -37,13 +37,12 @@ impl LintPass for MatchPass {
             {
                 if in_external_macro(cx, expr.span) {return;}
                 span_help_and_lint(cx, SINGLE_MATCH, expr.span,
-                      "you seem to be trying to use match for \
-                      destructuring a single pattern. Did you mean to \
-                      use `if let`?",
-                      &format!("try\nif let {} = {} {}",
-                               snippet(cx, arms[0].pats[0].span, ".."),
-                               snippet(cx, ex.span, ".."),
-                               expr_block(cx, &arms[0].body, "..")));
+                                   "you seem to be trying to use match for destructuring a \
+                                    single pattern. Consider using `if let`",
+                                   &format!("try\nif let {} = {} {}",
+                                            snippet(cx, arms[0].pats[0].span, ".."),
+                                            snippet(cx, ex.span, ".."),
+                                            expr_block(cx, &arms[0].body, "..")));
             }
 
             // check preconditions for MATCH_REF_PATS

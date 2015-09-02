@@ -30,7 +30,7 @@ impl LintPass for TypePass {
                 if match_type(cx, inner, &VEC_PATH) {
                     span_help_and_lint(
                         cx, BOX_VEC, ast_ty.span,
-                        "you seem to be trying to use `Box<Vec<T>>`. Did you mean to use `Vec<T>`?",
+                        "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
                         "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
                 }
             }
