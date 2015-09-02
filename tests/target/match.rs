@@ -62,3 +62,18 @@ fn main() {
             None => sub_span,
         };
 }
+
+// Test that one-line bodies align.
+fn main() {
+    match r {
+        Variableeeeeeeeeeeeeeeeee => ("variable",
+                                      vec!("id","name","qualname","value","type","scopeid"),
+                                      true,
+                                      true),
+        Enummmmmmmmmmmmmmmmmmmmm => ("enum", vec!("id","qualname","scopeid","value"), true, true),
+        Variantttttttttttttttttttttttt => ("variant",
+                                           vec!("id","name","qualname","type","value","scopeid"),
+                                           true,
+                                           true),
+    }
+}

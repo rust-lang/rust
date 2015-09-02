@@ -578,8 +578,7 @@ fn rewrite_match(context: &RewriteContext,
         result.push_str(&arm_indent_str);
 
         let arm_str = arm.rewrite(&nested_context,
-                                  context.config.max_width -
-                                      arm_indent,
+                                  context.config.max_width - arm_indent,
                                   arm_indent);
         if let Some(ref arm_str) = arm_str {
             result.push_str(arm_str);
@@ -694,7 +693,6 @@ impl Rewrite for ast::Arm {
         } else {
             ","
         };
-        let nested_indent = context.block_indent + context.config.tab_spaces;
 
         // Let's try and get the arm body on the same line as the condition.
         // 4 = ` => `.len()
@@ -702,7 +700,7 @@ impl Rewrite for ast::Arm {
             let budget = context.config.max_width - line_start - comma.len() - 4;
             if let Some(ref body_str) = body.rewrite(context,
                                                      budget,
-                                                     nested_indent) {
+                                                     line_start + 4) {
                 if first_line_width(body_str) <= budget {
                     return Some(format!("{}{} => {}{}",
                                         attr_str.trim_left(),
@@ -720,7 +718,9 @@ impl Rewrite for ast::Arm {
         }
 
         let body_budget = try_opt!(width.checked_sub(context.config.tab_spaces));
-        let body_str = try_opt!(body.rewrite(context, body_budget, nested_indent));
+        let body_str = try_opt!(body.rewrite(context,
+                                             body_budget,
+                                             context.block_indent));
         Some(format!("{}{} =>\n{}{},",
                      attr_str.trim_left(),
                      pats_str,
