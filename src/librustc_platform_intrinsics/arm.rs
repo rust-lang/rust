@@ -13,7 +13,7 @@
 
 #![allow(unused_imports)]
 
-use {Intrinsic, i, u, f, v, agg};
+use {Intrinsic, i, i_, u, u_, f, v, agg, p};
 use IntrinsicDef::Named;
 use rustc::middle::ty;
 

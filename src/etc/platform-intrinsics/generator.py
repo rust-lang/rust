@@ -18,7 +18,8 @@ import textwrap
 SPEC = re.compile(
     r'^(?:(?P<id>[iusfIUSF])(?:\((?P<start>\d+)-(?P<end>\d+)\)|'
     r'(?P<width>\d+)(:?/(?P<llvm_width>\d+))?)'
-    r'|(?P<reference>\d+)(?P<modifiers>[vShdnwus]*)(?P<force_width>x\d+)?)$'
+    r'|(?P<reference>\d+)(?P<modifiers>[vShdnwusDMC]*)(?P<force_width>x\d+)?)'
+    r'(?:(?P<pointer>Pm|Pc)(?P<llvm_pointer>/.*)?)?$'
 )
 
 class PlatformInfo(object):
@@ -79,6 +80,11 @@ class PlatformTypeInfo(object):
         props = self.properties.copy()
         props.update(width_info)
         return PlatformTypeInfo('v{}{}'.format(length, self.llvm_name), props)
+
+    def pointer(self):
+        return PlatformTypeInfo('p0{}'.format(self.llvm_name), self.properties)
+
+BITWIDTH_POINTER = '<pointer>'
 
 class Type(object):
     def __init__(self, bitwidth):
@@ -193,6 +199,39 @@ class Vector(Type):
         return elem_info.vectorize(self._length,
                                    platform_info.width_info(self.bitwidth()))
 
+class Pointer(Type):
+    def __init__(self, elem, llvm_elem, const):
+        self._elem = elem;
+        self._llvm_elem = llvm_elem
+        self._const = const
+        Type.__init__(self, BITWIDTH_POINTER)
+
+    def modify(self, spec, width):
+        if spec == 'D':
+            return self._elem
+        elif spec == 'M':
+            return Pointer(self._elem, self._llvm_elem, False)
+        elif spec == 'C':
+            return Pointer(self._elem, self._llvm_elem, True)
+        else:
+            return Pointer(self._elem.modify(spec, width), self._llvm_elem, self._const)
+
+    def compiler_ctor(self):
+        if self._llvm_elem is None:
+            llvm_elem = 'None'
+        else:
+            llvm_elem = 'Some({})'.format(self._llvm_elem.compiler_ctor())
+        return 'p({}, {}, {})'.format('true' if self._const else 'false',
+                                      self._elem.compiler_ctor(),
+                                      llvm_elem)
+
+    def rust_name(self):
+        return '*{} {}'.format('const' if self._const else 'mut',
+                               self._elem.rust_name())
+
+    def type_info(self, platform_info):
+        return self._elem.type_info(platform_info).pointer()
+
 class Aggregate(Type):
     def __init__(self, flatten, elems):
         self._flatten = flatten
@@ -219,6 +258,22 @@ TYPE_ID_LOOKUP = {'i': [Signed, Unsigned],
                   'u': [Unsigned],
                   'f': [Float]}
 
+def ptrify(match, elem, width):
+    ptr = match.group('pointer')
+    if ptr is None:
+        return elem
+    else:
+        llvm_ptr = match.group('llvm_pointer')
+        if llvm_ptr is None:
+            llvm_elem = None
+        else:
+            assert llvm_ptr.startswith('/')
+            options = list(TypeSpec(llvm_ptr[1:]).enumerate(width))
+            assert len(options) == 1
+            llvm_elem = options[0]
+        assert ptr in ('Pc', 'Pm')
+        return Pointer(elem, llvm_elem, ptr == 'Pc')
+
 class TypeSpec(object):
     def __init__(self, spec):
         if not isinstance(spec, list):
@@ -229,8 +284,10 @@ class TypeSpec(object):
     def enumerate(self, width):
         for spec in self.spec:
             match = SPEC.match(spec)
-            if match:
+            assert match is not None
+            if True:
                 id = match.group('id')
+                assert id is not None
                 is_vector = id.islower()
                 type_ctors = TYPE_ID_LOOKUP[id.lower()]
 
@@ -256,19 +313,21 @@ class TypeSpec(object):
                             scalar = ctor(bitwidth)
 
                         if is_vector:
-                            yield Vector(scalar, width // bitwidth)
+                            elem = Vector(scalar, width // bitwidth)
                         else:
-                            yield scalar
+                            elem = scalar
+                        yield ptrify(match, elem, width)
                     bitwidth *= 2
             else:
-                print('Failed to parse: `{}`'.format(spec), file=sys.stderr)
+                pass
+                #print('Failed to parse: `{}`'.format(spec), file=sys.stderr)
 
     def resolve(self, width, zero):
         assert len(self.spec) == 1
         spec = self.spec[0]
         match = SPEC.match(spec)
         if match:
-            id  = match.group('id')
+            id = match.group('id')
             if id is not None:
                 options = list(self.enumerate(width))
                 assert len(options) == 1
@@ -282,7 +341,7 @@ class TypeSpec(object):
             force = match.group('force_width')
             if force is not None:
                 ret = ret.modify(force, width)
-            return ret
+            return ptrify(match, ret, width)
         elif spec.startswith('('):
             if spec.endswith(')'):
                 raise NotImplementedError()
@@ -291,6 +350,8 @@ class TypeSpec(object):
                 flatten = True
             elems = [TypeSpec(subspec).resolve(width, zero) for subspec in true_spec.split(',')]
             return Aggregate(flatten, elems)
+        else:
+            assert False, 'Failed to resolve: {}'.format(spec)
 
 class GenericIntrinsic(object):
     def __init__(self, platform, intrinsic, widths, llvm_name, ret, args):
@@ -369,7 +430,10 @@ def parse_args():
         ## Type specifier grammar
 
         ```
-        type := vector | scalar | aggregate | reference
+        type := ( vector | scalar | aggregate | reference ) pointer?
+
+        pointer := 'Pm' llvm_pointer? | 'Pc' llvm_pointer?
+        llvm_pointer := '/' type
 
         vector := vector_elem width |
         vector_elem := 'i' | 'u' | 's' | 'f'
@@ -389,6 +453,18 @@ def parse_args():
 
         number = [0-9]+
         ```
+
+        ## Pointers
+
+        Pointers can be created to any type. The `m` vs. `c` chooses
+        mut vs. const. e.g. `S32Pm` corresponds to `*mut i32`, and
+        `i32Pc` corresponds (with width 128) to `*const i8x16`,
+        `*const u32x4`, etc.
+
+        The type after the `/` (optional) represents the type used
+        internally to LLVM, e.g. `S32pm/S8` is exposed as `*mut i32`
+        in Rust, but is `i8*` in LLVM. (This defaults to the main
+        type).
 
         ## Vectors
 
@@ -454,6 +530,9 @@ def parse_args():
         - 'u': force an integer (vector or scalar) to be unsigned (i32x4 -> u32x4)
         - 's': force an integer (vector or scalar) to be signed (u32x4 -> i32x4)
         - 'x' number: force the type to be a vector of bitwidth `number`.
+        - 'D': dereference a pointer (*mut u32 -> u32)
+        - 'C': make a pointer const (*mut u32 -> *const u32)
+        - 'M': make a pointer mut (*const u32 -> *mut u32)
         '''))
     parser.add_argument('--format', choices=FORMATS, required=True,
                         help = 'Output format.')
@@ -502,7 +581,7 @@ class CompilerDefs(object):
 
 #![allow(unused_imports)]
 
-use {{Intrinsic, i, i_, u, u_, f, v, agg}};
+use {{Intrinsic, i, i_, u, u_, f, v, agg, p}};
 use IntrinsicDef::Named;
 use rustc::middle::ty;
 

@@ -947,7 +947,14 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                             _ => unreachable!()
                         }
                     }
-                    Pointer(_) => unimplemented!(),
+                    Pointer(ref t, ref llvm_elem, _const) => {
+                        *any_changes_needed |= llvm_elem.is_some();
+
+                        let t = llvm_elem.as_ref().unwrap_or(t);
+                        let elem = one(ty_to_type(ccx, t,
+                                                  any_changes_needed));
+                        vec![elem.ptr_to()]
+                    }
                     Vector(ref t, length) => {
                         let elem = one(ty_to_type(ccx, t,
                                                   any_changes_needed));
@@ -965,8 +972,9 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             }
 
             // This allows an argument list like `foo, (bar, baz),
-            // qux` to be converted into `foo, bar, baz, qux`, and
-            // integer arguments to be truncated as needed.
+            // qux` to be converted into `foo, bar, baz, qux`, integer
+            // arguments to be truncated as needed and pointers to be
+            // cast.
             fn modify_as_needed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                             t: &intrinsics::Type,
                                             arg_type: Ty<'tcx>,
@@ -990,6 +998,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                 Load(bcx, adt::trans_field_ptr(bcx, repr_ptr, llarg, 0, i))
                             })
                             .collect()
+                    }
+                    intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
+                        let llvm_elem = one(ty_to_type(bcx.ccx(), llvm_elem, &mut false));
+                        vec![PointerCast(bcx, llarg,
+                                         llvm_elem.ptr_to())]
                     }
                     intrinsics::Type::Integer(_, width, llvm_width) if width != llvm_width => {
                         // the LLVM intrinsic uses a smaller integer

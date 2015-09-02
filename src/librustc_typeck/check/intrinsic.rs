@@ -485,7 +485,20 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
             _ => simple_error(&format!("`{}`", t),
                               &format!("`f{n}`", n = bits)),
         },
-        Pointer(_) => unimplemented!(),
+        Pointer(ref inner_expected, ref _llvm_type, const_) => {
+            match t.sty {
+                ty::TyRawPtr(ty::TypeAndMut { ty, mutbl }) => {
+                    if (mutbl == hir::MutImmutable) != const_ {
+                        simple_error(&format!("`{}`", t),
+                                     if const_ {"const pointer"} else {"mut pointer"})
+                    }
+                    match_intrinsic_type_to_type(tcx, position, span, structural_to_nominal,
+                                                 inner_expected, ty)
+                }
+                _ => simple_error(&format!("`{}`", t),
+                                  &format!("raw pointer")),
+            }
+        }
         Vector(ref inner_expected, len) => {
             if !t.is_simd() {
                 simple_error(&format!("non-simd type `{}`", t),
