@@ -15,6 +15,7 @@ use CrateCtxt;
 
 use astconv::AstConv;
 use check::{self, FnCtxt};
+use front::map as hir_map;
 use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate, HasTypeFlags};
 use middle::def;
 use middle::def_id::DefId;
@@ -385,14 +386,16 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
         // Crate-local:
         //
         // meh.
-        struct Visitor<'a> {
+        struct Visitor<'a, 'tcx:'a> {
+            map: &'a hir_map::Map<'tcx>,
             traits: &'a mut AllTraitsVec,
         }
-        impl<'v, 'a> visit::Visitor<'v> for Visitor<'a> {
+        impl<'v, 'a, 'tcx> visit::Visitor<'v> for Visitor<'a, 'tcx> {
             fn visit_item(&mut self, i: &'v hir::Item) {
                 match i.node {
                     hir::ItemTrait(..) => {
-                        self.traits.push(TraitInfo::new(DefId::local(i.id)));
+                        let def_id = self.map.local_def_id(i.id);
+                        self.traits.push(TraitInfo::new(def_id));
                     }
                     _ => {}
                 }
@@ -400,6 +403,7 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
             }
         }
         visit::walk_crate(&mut Visitor {
+            map: &ccx.tcx.map,
             traits: &mut traits
         }, ccx.tcx.map.krate());
 

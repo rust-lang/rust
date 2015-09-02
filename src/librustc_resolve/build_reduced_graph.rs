@@ -427,18 +427,20 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let name_bindings = self.add_child(name, parent, ForbidDuplicateValues, sp);
                 let mutbl = m == hir::MutMutable;
 
-                name_bindings.define_value(DefStatic(DefId::local(item.id), mutbl), sp, modifiers);
+                name_bindings.define_value(DefStatic(self.ast_map.local_def_id(item.id), mutbl),
+                                           sp,
+                                           modifiers);
                 parent.clone()
             }
             ItemConst(_, _) => {
                 self.add_child(name, parent, ForbidDuplicateValues, sp)
-                    .define_value(DefConst(DefId::local(item.id)), sp, modifiers);
+                    .define_value(DefConst(self.ast_map.local_def_id(item.id)), sp, modifiers);
                 parent.clone()
             }
             ItemFn(_, _, _, _, _, _) => {
                 let name_bindings = self.add_child(name, parent, ForbidDuplicateValues, sp);
 
-                let def = DefFn(DefId::local(item.id), false);
+                let def = DefFn(self.ast_map.local_def_id(item.id), false);
                 name_bindings.define_value(def, sp, modifiers);
                 parent.clone()
             }
@@ -448,12 +450,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let name_bindings =
                     self.add_child(name, parent, ForbidDuplicateTypesAndModules, sp);
 
-                name_bindings.define_type(DefTy(DefId::local(item.id), false), sp,
+                name_bindings.define_type(DefTy(self.ast_map.local_def_id(item.id), false), sp,
                                           modifiers);
 
                 let parent_link = self.get_parent_link(parent, name);
                 name_bindings.set_module_kind(parent_link,
-                                              Some(DefId::local(item.id)),
+                                              Some(self.ast_map.local_def_id(item.id)),
                                               TypeModuleKind,
                                               false,
                                               is_public,
@@ -465,11 +467,13 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let name_bindings =
                     self.add_child(name, parent, ForbidDuplicateTypesAndModules, sp);
 
-                name_bindings.define_type(DefTy(DefId::local(item.id), true), sp, modifiers);
+                name_bindings.define_type(DefTy(self.ast_map.local_def_id(item.id), true),
+                                          sp,
+                                          modifiers);
 
                 let parent_link = self.get_parent_link(parent, name);
                 name_bindings.set_module_kind(parent_link,
-                                              Some(DefId::local(item.id)),
+                                              Some(self.ast_map.local_def_id(item.id)),
                                               EnumModuleKind,
                                               false,
                                               is_public,
@@ -478,9 +482,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let module = name_bindings.get_module();
 
                 for variant in &(*enum_definition).variants {
+                    let item_def_id = self.ast_map.local_def_id(item.id);
                     self.build_reduced_graph_for_variant(
                         &**variant,
-                        DefId::local(item.id),
+                        item_def_id,
                         &module);
                 }
                 parent.clone()
@@ -497,12 +502,16 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let name_bindings = self.add_child(name, parent, forbid, sp);
 
                 // Define a name in the type namespace.
-                name_bindings.define_type(DefTy(DefId::local(item.id), false), sp, modifiers);
+                name_bindings.define_type(DefTy(self.ast_map.local_def_id(item.id), false),
+                                          sp,
+                                          modifiers);
 
                 // If this is a newtype or unit-like struct, define a name
                 // in the value namespace as well
                 if let Some(cid) = ctor_id {
-                    name_bindings.define_value(DefStruct(DefId::local(cid)), sp, modifiers);
+                    name_bindings.define_value(DefStruct(self.ast_map.local_def_id(cid)),
+                                               sp,
+                                               modifiers);
                 }
 
                 // Record the def ID and fields of this struct.
@@ -512,7 +521,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         UnnamedField(_) => None
                     }
                 }).collect();
-                self.structs.insert(DefId::local(item.id), named_fields);
+                let item_def_id = self.ast_map.local_def_id(item.id);
+                self.structs.insert(item_def_id, named_fields);
 
                 parent.clone()
             }
@@ -527,14 +537,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 // Add all the items within to a new module.
                 let parent_link = self.get_parent_link(parent, name);
                 name_bindings.define_module(parent_link,
-                                            Some(DefId::local(item.id)),
+                                            Some(self.ast_map.local_def_id(item.id)),
                                             TraitModuleKind,
                                             false,
                                             is_public,
                                             sp);
                 let module_parent = name_bindings.get_module();
 
-                let def_id = DefId::local(item.id);
+                let def_id = self.ast_map.local_def_id(item.id);
 
                 // Add the names of all the items to the trait info.
                 for trait_item in items {
@@ -545,25 +555,25 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                     match trait_item.node {
                         hir::ConstTraitItem(..) => {
-                            let def = DefAssociatedConst(DefId::local(trait_item.id));
+                            let def = DefAssociatedConst(self.ast_map.local_def_id(trait_item.id));
                             // NB: not DefModifiers::IMPORTABLE
                             name_bindings.define_value(def, trait_item.span, DefModifiers::PUBLIC);
                         }
                         hir::MethodTraitItem(..) => {
-                            let def = DefMethod(DefId::local(trait_item.id));
+                            let def = DefMethod(self.ast_map.local_def_id(trait_item.id));
                             // NB: not DefModifiers::IMPORTABLE
                             name_bindings.define_value(def, trait_item.span, DefModifiers::PUBLIC);
                         }
                         hir::TypeTraitItem(..) => {
-                            let def = DefAssociatedTy(DefId::local(item.id),
-                                                      DefId::local(trait_item.id));
+                            let def = DefAssociatedTy(self.ast_map.local_def_id(item.id),
+                                                      self.ast_map.local_def_id(trait_item.id));
                             // NB: not DefModifiers::IMPORTABLE
                             name_bindings.define_type(def, trait_item.span, DefModifiers::PUBLIC);
                         }
                     }
 
-                    self.trait_item_map.insert((trait_item.name, def_id),
-                                               DefId::local(trait_item.id));
+                    let trait_item_def_id = self.ast_map.local_def_id(trait_item.id);
+                    self.trait_item_map.insert((trait_item.name, def_id), trait_item_def_id);
                 }
 
                 name_bindings.define_type(DefTrait(def_id), sp, modifiers);
@@ -583,7 +593,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             TupleVariantKind(_) => false,
             StructVariantKind(_) => {
                 // Not adding fields for variants as they are not accessed with a self receiver
-                self.structs.insert(DefId::local(variant.node.id), Vec::new());
+                let variant_def_id = self.ast_map.local_def_id(variant.node.id);
+                self.structs.insert(variant_def_id, Vec::new());
                 true
             }
         };
@@ -594,10 +605,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         // variants are always treated as importable to allow them to be glob
         // used
         child.define_value(DefVariant(item_id,
-                                      DefId::local(variant.node.id), is_exported),
+                                      self.ast_map.local_def_id(variant.node.id), is_exported),
                            variant.span, DefModifiers::PUBLIC | DefModifiers::IMPORTABLE);
         child.define_type(DefVariant(item_id,
-                                     DefId::local(variant.node.id), is_exported),
+                                     self.ast_map.local_def_id(variant.node.id), is_exported),
                           variant.span, DefModifiers::PUBLIC | DefModifiers::IMPORTABLE);
     }
 
@@ -618,10 +629,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
         let def = match foreign_item.node {
             ForeignItemFn(..) => {
-                DefFn(DefId::local(foreign_item.id), false)
+                DefFn(self.ast_map.local_def_id(foreign_item.id), false)
             }
             ForeignItemStatic(_, m) => {
-                DefStatic(DefId::local(foreign_item.id), m)
+                DefStatic(self.ast_map.local_def_id(foreign_item.id), m)
             }
         };
         name_bindings.define_value(def, foreign_item.span, modifiers);

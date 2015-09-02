@@ -351,7 +351,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // somehow (storing a path in the hir_map, or construct a path using the
     // enclosing function).
     let (linkage_name, containing_scope) = if has_path {
-        let namespace_node = namespace_for_item(cx, DefId::local(fn_ast_id));
+        let fn_ast_def_id = cx.tcx().map.local_def_id(fn_ast_id);
+        let namespace_node = namespace_for_item(cx, fn_ast_def_id);
         let linkage_name = namespace_node.mangled_name_of_contained_item(
             &function_name[..]);
         let containing_scope = namespace_node.scope;

@@ -213,15 +213,14 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 // by the receiver-matching code in collect, which won't
                 // be going down this code path, and anyway I will kill it
                 // the moment wfcheck becomes the standard.
-                let node_id = self.parse_uint() as ast::NodeId;
-                assert_eq!(self.next(), '|');
+                let def_id = self.parse_def(NominalType);
                 let space = self.parse_param_space();
                 assert_eq!(self.next(), '|');
                 let index = self.parse_u32();
                 assert_eq!(self.next(), '|');
                 let name = token::intern(&self.parse_str(']'));
                 ty::ReEarlyBound(ty::EarlyBoundRegion {
-                    param_id: node_id,
+                    param_id: def_id,
                     space: space,
                     index: index,
                     name: name

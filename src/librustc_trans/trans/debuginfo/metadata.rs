@@ -1887,7 +1887,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
     let variable_type = cx.tcx().node_id_to_type(node_id);
     let type_metadata = type_metadata(cx, variable_type, span);
-    let namespace_node = namespace_for_item(cx, DefId::local(node_id));
+    let node_def_id = cx.tcx().map.local_def_id(node_id);
+    let namespace_node = namespace_for_item(cx, node_def_id);
     let var_name = name.to_string();
     let linkage_name =
         namespace_node.mangled_name_of_contained_item(&var_name[..]);

@@ -1145,8 +1145,9 @@ pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }), ..}) => ty,
         _ => ctor_ty
     }.ty_adt_def().unwrap();
+    let inlined_vid_def_id = ccx.tcx().map.local_def_id(inlined_vid);
     adt_def.variants.iter().find(|v| {
-        DefId::local(inlined_vid) == v.did ||
+        inlined_vid_def_id == v.did ||
             ccx.external().borrow().get(&v.did) == Some(&Some(inlined_vid))
     }).unwrap_or_else(|| {
         ccx.sess().bug(&format!("no variant for {:?}::{}", adt_def, inlined_vid))

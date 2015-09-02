@@ -88,7 +88,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         self.tcx.def_map.borrow().get(id).map(|def| {
             match def.full_def() {
                 def::DefConst(_) | def::DefAssociatedConst(..) => {
-                    self.check_def_id(def.def_id())
+                    self.check_def_id(def.def_id());
                 }
                 _ if self.ignore_non_const_paths => (),
                 def::DefPrimTy(_) => (),
@@ -481,7 +481,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // method of a private type is used, but the type itself is never
         // called directly.
         let impl_items = self.tcx.impl_items.borrow();
-        match self.tcx.inherent_impls.borrow().get(&DefId::local(id)) {
+        match self.tcx.inherent_impls.borrow().get(&self.tcx.map.local_def_id(id)) {
             None => (),
             Some(impl_list) => {
                 for impl_did in impl_list.iter() {

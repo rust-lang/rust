@@ -113,7 +113,8 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                             "An API can't be stabilized after it is deprecated");
                     }
 
-                    self.index.map.insert(DefId::local(id), Some(stab));
+                    let def_id = self.tcx.map.local_def_id(id);
+                    self.index.map.insert(def_id, Some(stab));
 
                     // Don't inherit #[stable(feature = "rust1", since = "1.0.0")]
                     if stab.level != attr::Stable {
@@ -129,7 +130,8 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                            use_parent, self.parent);
                     if use_parent {
                         if let Some(stab) = self.parent {
-                            self.index.map.insert(DefId::local(id), Some(stab));
+                            let def_id = self.tcx.map.local_def_id(id);
+                            self.index.map.insert(def_id, Some(stab));
                         } else if self.index.staged_api[&LOCAL_CRATE] && required
                             && self.export_map.contains(&id)
                             && !self.tcx.sess.opts.test {

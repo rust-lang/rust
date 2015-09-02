@@ -21,7 +21,6 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
 use rustc::front::map as hir_map;
-use rustc::middle::def_id::DefId;
 use rustc::middle::stability;
 
 use rustc_front::hir;
@@ -64,7 +63,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
         self.cx.tcx_opt().and_then(
-            |tcx| stability::lookup(tcx, DefId::local(id)).map(|x| x.clone()))
+            |tcx| stability::lookup(tcx, self.cx.map.local_def_id(id)).map(|x| x.clone()))
     }
 
     pub fn visit(&mut self, krate: &hir::Crate) {

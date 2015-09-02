@@ -30,7 +30,8 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
             // Already inline
             debug!("instantiate_inline({}): already inline as node id {}",
                    ccx.tcx().item_path_str(fn_id), node_id);
-            return Some(DefId::local(node_id));
+            let node_def_id = ccx.tcx().map.local_def_id(node_id);
+            return Some(node_def_id);
         }
         Some(&None) => {
             return None; // Not inlinable
@@ -144,8 +145,9 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
             // reuse that code, it needs to be able to look up the traits for
             // inlined items.
             let ty_trait_item = ccx.tcx().impl_or_trait_item(fn_id).clone();
+            let trait_item_def_id = ccx.tcx().map.local_def_id(trait_item.id);
             ccx.tcx().impl_or_trait_items.borrow_mut()
-                     .insert(DefId::local(trait_item.id), ty_trait_item);
+                     .insert(trait_item_def_id, ty_trait_item);
 
             // If this is a default method, we can't look up the
             // impl type. But we aren't going to translate anyways, so
@@ -185,7 +187,8 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
         }
     };
 
-    Some(DefId::local(inline_id))
+    let inline_def_id = ccx.tcx().map.local_def_id(inline_id);
+    Some(inline_def_id)
 }
 
 pub fn get_local_instance(ccx: &CrateContext, fn_id: DefId)

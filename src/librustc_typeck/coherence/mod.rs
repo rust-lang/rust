@@ -139,7 +139,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
     fn check_implementation(&self, item: &Item) {
         let tcx = self.crate_context.tcx;
-        let impl_did = DefId::local(item.id);
+        let impl_did = tcx.map.local_def_id(item.id);
         let self_type = tcx.lookup_item_type(impl_did);
 
         // If there are no traits, then this implementation must have a
@@ -195,15 +195,16 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         match item.node {
             ItemImpl(_, _, _, _, _, ref impl_items) => {
                 impl_items.iter().map(|impl_item| {
+                    let impl_def_id = self.crate_context.tcx.map.local_def_id(impl_item.id);
                     match impl_item.node {
                         hir::ConstImplItem(..) => {
-                            ConstTraitItemId(DefId::local(impl_item.id))
+                            ConstTraitItemId(impl_def_id)
                         }
                         hir::MethodImplItem(..) => {
-                            MethodTraitItemId(DefId::local(impl_item.id))
+                            MethodTraitItemId(impl_def_id)
                         }
                         hir::TypeImplItem(_) => {
-                            TypeTraitItemId(DefId::local(impl_item.id))
+                            TypeTraitItemId(impl_def_id)
                         }
                     }
                 }).collect()

@@ -232,7 +232,7 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
             ty::BrEnv => {
                 let name = token::intern("'r");
                 let _ = write!(f, "{}", name);
-                ty::BrNamed(DefId::local(DUMMY_NODE_ID), name)
+                ty::BrNamed(tcx.map.local_def_id(DUMMY_NODE_ID), name)
             }
         })
     }).0;
@@ -466,7 +466,7 @@ impl fmt::Debug for ty::Region {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ty::ReEarlyBound(ref data) => {
-                write!(f, "ReEarlyBound({}, {:?}, {}, {})",
+                write!(f, "ReEarlyBound({:?}, {:?}, {}, {})",
                        data.param_id,
                        data.space,
                        data.index,
@@ -896,7 +896,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     let mut sep = " ";
                     try!(tcx.with_freevars(did.node, |freevars| {
                         for (freevar, upvar_ty) in freevars.iter().zip(&substs.upvar_tys) {
-                            let node_id = freevar.def.local_node_id();
+                            let node_id = freevar.def.node_id();
                             try!(write!(f,
                                         "{}{}:{}",
                                         sep,

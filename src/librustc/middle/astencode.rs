@@ -934,7 +934,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             rbml_w.tag(c::tag_table_upvar_capture_map, |rbml_w| {
                 rbml_w.id(id);
 
-                let var_id = freevar.def.def_id().node;
+                let var_id = freevar.def.node_id();
                 let upvar_id = ty::UpvarId {
                     var_id: var_id,
                     closure_expr_id: id
@@ -997,14 +997,14 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    if let Some(closure_type) = tcx.tables.borrow().closure_tys.get(&DefId::local(id)) {
+    if let Some(closure_type) = tcx.tables.borrow().closure_tys.get(&tcx.map.local_def_id(id)) {
         rbml_w.tag(c::tag_table_closure_tys, |rbml_w| {
             rbml_w.id(id);
             rbml_w.emit_closure_type(ecx, closure_type);
         })
     }
 
-    if let Some(closure_kind) = tcx.tables.borrow().closure_kinds.get(&DefId::local(id)) {
+    if let Some(closure_kind) = tcx.tables.borrow().closure_kinds.get(&tcx.map.local_def_id(id)) {
         rbml_w.tag(c::tag_table_closure_kinds, |rbml_w| {
             rbml_w.id(id);
             encode_closure_kind(rbml_w, *closure_kind)
@@ -1476,14 +1476,16 @@ fn decode_side_tables(dcx: &DecodeContext,
                     c::tag_table_closure_tys => {
                         let closure_ty =
                             val_dsr.read_closure_ty(dcx);
-                        dcx.tcx.tables.borrow_mut().closure_tys.insert(DefId::local(id),
-                                                                closure_ty);
+                        dcx.tcx.tables.borrow_mut().closure_tys.insert(
+                            dcx.tcx.map.local_def_id(id),
+                            closure_ty);
                     }
                     c::tag_table_closure_kinds => {
                         let closure_kind =
                             val_dsr.read_closure_kind(dcx);
-                        dcx.tcx.tables.borrow_mut().closure_kinds.insert(DefId::local(id),
-                                                                  closure_kind);
+                        dcx.tcx.tables.borrow_mut().closure_kinds.insert(
+                            dcx.tcx.map.local_def_id(id),
+                            closure_kind);
                     }
                     c::tag_table_cast_kinds => {
                         let cast_kind =

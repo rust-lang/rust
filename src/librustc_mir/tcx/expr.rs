@@ -17,7 +17,6 @@ use tcx::block;
 use tcx::pattern::PatNode;
 use tcx::rustc::front::map;
 use tcx::rustc::middle::def;
-use tcx::rustc::middle::def_id::DefId;
 use tcx::rustc::middle::region::CodeExtent;
 use tcx::rustc::middle::pat_util;
 use tcx::rustc::middle::ty::{self, Ty};
@@ -612,7 +611,7 @@ fn convert_var<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
             let region =
                 cx.tcx.mk_region(region);
 
-            let self_expr = match cx.tcx.closure_kind(DefId::local(closure_expr_id)) {
+            let self_expr = match cx.tcx.closure_kind(cx.tcx.map.local_def_id(closure_expr_id)) {
                 ty::ClosureKind::FnClosureKind => {
                     let ref_closure_ty =
                         cx.tcx.mk_ref(region,

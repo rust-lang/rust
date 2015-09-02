@@ -130,7 +130,7 @@ fn test_env<F>(source_string: &str,
     let krate = ast_map.krate();
 
     // run just enough stuff to build a tcx:
-    let lang_items = lang_items::collect_language_items(krate, &sess);
+    let lang_items = lang_items::collect_language_items(&sess, &ast_map);
     let resolve::CrateMap { def_map, freevars, .. } =
         resolve::resolve_crate(&sess, &ast_map, resolve::MakeGlobMap::No);
     let named_region_map = resolve_lifetime::krate(&sess, krate, &def_map);
