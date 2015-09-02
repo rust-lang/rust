@@ -2149,7 +2149,7 @@ impl<'a> Parser<'a> {
                     } else {
                         ExprAgain(None)
                     };
-                    let hi = self.span.hi;
+                    let hi = self.last_span.hi;
                     return Ok(self.mk_expr(lo, hi, ex));
                 }
                 if try!(self.eat_keyword(keywords::Match) ){
@@ -2178,7 +2178,7 @@ impl<'a> Parser<'a> {
                     } else {
                         ex = ExprBreak(None);
                     }
-                    hi = self.span.hi;
+                    hi = self.last_span.hi;
                 } else if self.check(&token::ModSep) ||
                         self.token.is_ident() &&
                         !self.check_keyword(keywords::True) &&
