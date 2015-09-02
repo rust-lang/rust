@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Make sure that a continue span actually contains the keyword.
+// Make sure that label for continue and break is spanned correctly
 
 fn main() {
-    continue //~ ERROR `continue` outside of loop
+    continue
+    'b //~ ERROR use of undeclared label
     ;
-    break //~ ERROR `break` outside of loop
+    break
+    'c //~ ERROR use of undeclared label
     ;
 }
