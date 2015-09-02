@@ -891,9 +891,9 @@ pub enum Expr_ {
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Option<Ident>),
+    ExprBreak(Option<SpannedIdent>),
     /// A `continue`, with an optional label
-    ExprAgain(Option<Ident>),
+    ExprAgain(Option<SpannedIdent>),
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
