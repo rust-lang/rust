@@ -102,7 +102,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         self.add_exports_for_module(&mut exports, module_);
         match module_.def_id.get() {
             Some(def_id) => {
-                self.export_map.insert(def_id.node, exports);
+                self.export_map.insert(def_id.node, exports); // XXX
                 debug!("(computing exports) writing exports for {} (some)",
                        def_id.node);
             }

@@ -558,7 +558,7 @@ fn is_param<'tcx>(tcx: &ty::ctxt<'tcx>,
     if let hir::TyPath(None, _) = ast_ty.node {
         let path_res = *tcx.def_map.borrow().get(&ast_ty.id).unwrap();
         match path_res.base_def {
-            def::DefSelfTy(Some(def_id), None) => {
+            def::DefSelfTy(Some(def_id), None) => { // XXX
                 path_res.depth == 0 && def_id.node == param_id
             }
             def::DefTyParam(_, _, def_id, _) => {
