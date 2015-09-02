@@ -14,6 +14,7 @@ import argparse
 import sys
 import re
 import textwrap
+import itertools
 
 SPEC = re.compile(
     r'^(?:(?P<id>[iusfIUSF])(?:\((?P<start>\d+)-(?P<end>\d+)\)|'
@@ -258,7 +259,7 @@ TYPE_ID_LOOKUP = {'i': [Signed, Unsigned],
                   'u': [Unsigned],
                   'f': [Float]}
 
-def ptrify(match, elem, width):
+def ptrify(match, elem, width, previous):
     ptr = match.group('pointer')
     if ptr is None:
         return elem
@@ -268,7 +269,7 @@ def ptrify(match, elem, width):
             llvm_elem = None
         else:
             assert llvm_ptr.startswith('/')
-            options = list(TypeSpec(llvm_ptr[1:]).enumerate(width))
+            options = list(TypeSpec(llvm_ptr[1:]).enumerate(width, previous))
             assert len(options) == 1
             llvm_elem = options[0]
         assert ptr in ('Pc', 'Pm')
@@ -281,77 +282,70 @@ class TypeSpec(object):
 
         self.spec = spec
 
-    def enumerate(self, width):
+    def enumerate(self, width, previous):
         for spec in self.spec:
             match = SPEC.match(spec)
-            assert match is not None
-            if True:
+            if match is not None:
                 id = match.group('id')
-                assert id is not None
-                is_vector = id.islower()
-                type_ctors = TYPE_ID_LOOKUP[id.lower()]
+                reference = match.group('reference')
 
-                start = match.group('start')
-                if start is not None:
-                    end = match.group('end')
-                    llvm_width = None
+                if id is not None:
+                    is_vector = id.islower()
+                    type_ctors = TYPE_ID_LOOKUP[id.lower()]
+
+                    start = match.group('start')
+                    if start is not None:
+                        end = match.group('end')
+                        llvm_width = None
+                    else:
+                        start = end = match.group('width')
+                        llvm_width = match.group('llvm_width')
+                    start = int(start)
+                    end = int(end)
+
+                    bitwidth = start
+                    while bitwidth <= end:
+                        for ctor in type_ctors:
+                            if llvm_width is not None:
+                                assert not is_vector
+                                llvm_width = int(llvm_width)
+                                assert llvm_width < bitwidth
+                                scalar = ctor(bitwidth, llvm_width)
+                            else:
+                                scalar = ctor(bitwidth)
+
+                            if is_vector:
+                                elem = Vector(scalar, width // bitwidth)
+                            else:
+                                elem = scalar
+                            yield ptrify(match, elem, width, previous)
+                        bitwidth *= 2
+                elif reference is not None:
+                    reference = int(reference)
+                    assert reference < len(previous), \
+                        'referring to argument {}, but only {} are known'.format(reference,
+                                                                                 len(previous))
+                    ret = previous[reference]
+                    for x in match.group('modifiers') or []:
+                        ret = ret.modify(x, width)
+                    force = match.group('force_width')
+                    if force is not None:
+                        ret = ret.modify(force, width)
+                    yield ptrify(match, ret, width, previous)
                 else:
-                    start = end = match.group('width')
-                    llvm_width = match.group('llvm_width')
-                start = int(start)
-                end = int(end)
+                    assert False, 'matched `{}`, but didn\'t understand it?'.format(spec)
+            elif spec.startswith('('):
+                if spec.endswith(')'):
+                    raise NotImplementedError()
+                elif spec.endswith(')f'):
+                    true_spec = spec[1:-2]
+                    flatten = True
 
-                bitwidth = start
-                while bitwidth <= end:
-                    for ctor in type_ctors:
-                        if llvm_width is not None:
-                            assert not is_vector
-                            llvm_width = int(llvm_width)
-                            assert llvm_width < bitwidth
-                            scalar = ctor(bitwidth, llvm_width)
-                        else:
-                            scalar = ctor(bitwidth)
-
-                        if is_vector:
-                            elem = Vector(scalar, width // bitwidth)
-                        else:
-                            elem = scalar
-                        yield ptrify(match, elem, width)
-                    bitwidth *= 2
+                for elems in itertools.product(*(TypeSpec(subspec).enumerate(width, previous)
+                                                 for subspec in true_spec.split(','))):
+                    yield Aggregate(flatten, elems)
             else:
-                pass
-                #print('Failed to parse: `{}`'.format(spec), file=sys.stderr)
-
-    def resolve(self, width, zero):
-        assert len(self.spec) == 1
-        spec = self.spec[0]
-        match = SPEC.match(spec)
-        if match:
-            id = match.group('id')
-            if id is not None:
-                options = list(self.enumerate(width))
-                assert len(options) == 1
-                return options[0]
-            reference = match.group('reference')
-            if reference != '0':
-                raise NotImplementedError('only argument 0 (return value) references are supported')
-            ret = zero
-            for x in match.group('modifiers') or []:
-                ret = ret.modify(x, width)
-            force = match.group('force_width')
-            if force is not None:
-                ret = ret.modify(force, width)
-            return ptrify(match, ret, width)
-        elif spec.startswith('('):
-            if spec.endswith(')'):
-                raise NotImplementedError()
-            elif spec.endswith(')f'):
-                true_spec = spec[1:-2]
-                flatten = True
-            elems = [TypeSpec(subspec).resolve(width, zero) for subspec in true_spec.split(',')]
-            return Aggregate(flatten, elems)
-        else:
-            assert False, 'Failed to resolve: {}'.format(spec)
+                assert False, 'Failed to parse `{}`'.format(spec)
 
 class GenericIntrinsic(object):
     def __init__(self, platform, intrinsic, widths, llvm_name, ret, args):
@@ -366,10 +360,22 @@ class GenericIntrinsic(object):
         for width in self.widths:
             # must be a power of two
             assert width & (width - 1) == 0
-            for ret in self.ret.enumerate(width):
-                args = [arg.resolve(width, ret) for arg in self.args]
-                yield MonomorphicIntrinsic(self._platform, self.intrinsic, width, self.llvm_name,
-                                           ret, args)
+            def recur(processed, untouched):
+                if untouched == []:
+                    ret = processed[0]
+                    args = processed[1:]
+                    yield MonomorphicIntrinsic(self._platform, self.intrinsic, width,
+                                               self.llvm_name,
+                                               ret, args)
+                else:
+                    raw_arg = untouched[0]
+                    rest = untouched[1:]
+                    for arg in raw_arg.enumerate(width, processed):
+                        for intr in recur(processed + [arg], rest):
+                            yield intr
+
+            for x in recur([], [self.ret] + self.args):
+                yield x
 
 class MonomorphicIntrinsic(object):
     def __init__(self, platform, intrinsic, width, llvm_name, ret, args):
@@ -517,8 +523,7 @@ def parse_args():
         A reference uses the type of another argument, with possible
         modifications. The number refers to the type to use, starting
         with 0 == return value, 1 == first argument, 2 == second
-        argument, etc. (Currently only referencing 0, the return
-        value, is supported.)
+        argument, etc.
 
         ### Modifiers
 
