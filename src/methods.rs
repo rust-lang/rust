@@ -88,12 +88,14 @@ impl LintPass for MethodsPass {
                         }
                     }
                     // check conventions w.r.t. conversion method names and predicates
-                    for &(prefix, self_kind) in &CONVENTIONS {
+                    let is_copy = is_copy(cx, &ty, &item);
+                    for &(prefix, self_kinds) in &CONVENTIONS {
                         if name.as_str().starts_with(prefix) &&
-                                !self_kind.matches(&sig.explicit_self.node, is_copy(cx, &ty, &item)) {
+                                !self_kinds.iter().any(|k| k.matches(&sig.explicit_self.node, is_copy)) {
                             span_lint(cx, WRONG_SELF_CONVENTION, sig.explicit_self.span, &format!(
                                 "methods called `{}*` usually take {}; consider choosing a less \
-                                 ambiguous name", prefix, self_kind.description()));
+                                 ambiguous name", prefix,
+                                &self_kinds.iter().map(|k| k.description()).collect::<Vec<_>>().join(" or ")));
                         }
                     }
                 }
@@ -102,12 +104,12 @@ impl LintPass for MethodsPass {
     }
 }
 
-const CONVENTIONS: [(&'static str, SelfKind); 5] = [
-    ("into_", ValueSelf),
-    ("to_", RefSelf),
-    ("as_", RefSelf),
-    ("is_", RefSelf),
-    ("from_", NoSelf),
+const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [
+    ("into_", &[ValueSelf]),
+    ("to_",   &[RefSelf]),
+    ("as_",   &[RefSelf]),
+    ("is_",   &[RefSelf, NoSelf]),
+    ("from_", &[NoSelf]),
 ];
 
 const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30] = [
