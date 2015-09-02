@@ -130,17 +130,17 @@ fn check_pat(cx: &Context, pat: &Pat, init: &Option<&Expr>, span: Span,
             },
         PatBox(ref inner) => {
             if let Some(ref initp) = *init {
-                match initp.node {
-                    ExprBox(_, ref inner_init) =>
-                        check_pat(cx, inner, &Some(&**inner_init), span, bindings),
-                    //TODO: ExprCall on Box::new
-                    _ => check_pat(cx, inner, init, span, bindings),
+                if let ExprBox(_, ref inner_init) = initp.node {
+                    check_pat(cx, inner, &Some(&**inner_init), span, bindings),
+                } else {
+                    check_pat(cx, inner, init, span, bindings),
                 }
             } else {
                 check_pat(cx, inner, init, span, bindings);
             }
         },
-        //PatRegion(P<Pat>, Mutability),
+        PatRegion(ref inner, _) =>
+            check_pat(cx, inner, init, span, bindings),
         //PatRange(P<Expr>, P<Expr>),
         //PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
         _ => (),
