@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(catch_panic, start)]
+#![feature(std_panic, recover, start)]
 
 use std::ffi::CStr;
 use std::process::{Command, Output};
-use std::thread;
+use std::panic;
 use std::str;
 
 #[start]
@@ -22,8 +22,8 @@ fn start(argc: isize, argv: *const *const u8) -> isize {
             match **argv.offset(1) as char {
                 '1' => {}
                 '2' => println!("foo"),
-                '3' => assert!(thread::catch_panic(|| {}).is_ok()),
-                '4' => assert!(thread::catch_panic(|| panic!()).is_err()),
+                '3' => assert!(panic::recover(|| {}).is_ok()),
+                '4' => assert!(panic::recover(|| panic!()).is_err()),
                 '5' => assert!(Command::new("test").spawn().is_err()),
                 _ => panic!()
             }

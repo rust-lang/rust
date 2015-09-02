@@ -22,9 +22,9 @@
             issue = "0")]
 #![allow(missing_docs)]
 
+use panic;
 use prelude::v1::*;
 use sys;
-use thread;
 
 // Reexport some of our utilities which are expected by other crates.
 pub use self::util::min_stack;
@@ -96,7 +96,7 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
         args::init(argc, argv);
 
         // And finally, let's run some code!
-        let res = thread::catch_panic(mem::transmute::<_, fn()>(main));
+        let res = panic::recover(mem::transmute::<_, fn()>(main));
         cleanup();
         res.is_err()
     };
