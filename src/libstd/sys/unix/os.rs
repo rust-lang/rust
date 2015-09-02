@@ -83,7 +83,7 @@ pub fn error_string(errno: i32) -> String {
 
     let p = buf.as_mut_ptr();
     unsafe {
-        if strerror_r(errno as c_int, p, buf.len() as libc::size_t) < 0 {
+        if strerror_r(errno as c_int, p, buf.len()) < 0 {
             panic!("strerror_r failure");
         }
 
@@ -97,7 +97,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
     loop {
         unsafe {
             let ptr = buf.as_mut_ptr() as *mut libc::c_char;
-            if !libc::getcwd(ptr, buf.capacity() as libc::size_t).is_null() {
+            if !libc::getcwd(ptr, buf.capacity()).is_null() {
                 let len = CStr::from_ptr(buf.as_ptr() as *const libc::c_char).to_bytes().len();
                 buf.set_len(len);
                 buf.shrink_to_fit();
@@ -193,17 +193,16 @@ pub fn current_exe() -> io::Result<PathBuf> {
                            -1 as c_int];
         let mut sz: libc::size_t = 0;
         let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
-                         ptr::null_mut(), &mut sz, ptr::null_mut(),
-                         0 as libc::size_t);
+                         ptr::null_mut(), &mut sz, ptr::null_mut(), 0);
         if err != 0 { return Err(io::Error::last_os_error()); }
         if sz == 0 { return Err(io::Error::last_os_error()); }
-        let mut v: Vec<u8> = Vec::with_capacity(sz as usize);
+        let mut v: Vec<u8> = Vec::with_capacity(sz);
         let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
                          v.as_mut_ptr() as *mut libc::c_void, &mut sz,
-                         ptr::null_mut(), 0 as libc::size_t);
+                         ptr::null_mut(), 0);
         if err != 0 { return Err(io::Error::last_os_error()); }
         if sz == 0 { return Err(io::Error::last_os_error()); }
-        v.set_len(sz as usize - 1); // chop off trailing NUL
+        v.set_len(sz - 1); // chop off trailing NUL
         Ok(PathBuf::from(OsString::from_vec(v)))
     }
 }
@@ -247,10 +246,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
         let mut sz: u32 = 0;
         _NSGetExecutablePath(ptr::null_mut(), &mut sz);
         if sz == 0 { return Err(io::Error::last_os_error()); }
-        let mut v: Vec<u8> = Vec::with_capacity(sz as usize);
+        let mut v: Vec<u8> = Vec::with_capacity(sz);
         let err = _NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
         if err != 0 { return Err(io::Error::last_os_error()); }
-        v.set_len(sz as usize - 1); // chop off trailing NUL
+        v.set_len(sz - 1); // chop off trailing NUL
         Ok(PathBuf::from(OsString::from_vec(v)))
     }
 }
@@ -483,8 +482,7 @@ pub fn home_dir() -> Option<PathBuf> {
             let mut passwd: c::passwd = mem::zeroed();
             let mut result = 0 as *mut _;
             match c::getpwuid_r(me, &mut passwd, buf.as_mut_ptr(),
-                                buf.capacity() as libc::size_t,
-                                &mut result) {
+                                buf.capacity(), &mut result) {
                 0 if !result.is_null() => {}
                 _ => return None
             }

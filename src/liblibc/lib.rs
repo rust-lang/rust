@@ -228,6 +228,50 @@ pub mod types {
     }
 
     // Standard types that are scalar but vary by OS and arch.
+    //
+    // ISO C's `size_t` is defined to be the type of the result of the
+    // `sizeof` operator and the type of the size parameter to `malloc`. That
+    // is, C's `size_t` is only required to hold the size of the largest object
+    // that can be allocated. In particular, it is legal for a C implementation
+    // to have a maximum object size smaller than the entire address space. For
+    // example, a C implementation may have an maximum object size of 2^32
+    // bytes with a 64-bit address space, and typedef `size_t` as `uint32_t` so
+    // that `sizeof(size_t) == 4` and `sizeof(void*) == 8`.
+    //
+    // Rust's `usize`, on the other hand, is defined to always be the same size
+    // as a pointer. This means that it is possible, in theory, to have a
+    // platform where `usize` can represent values that `size_t` cannot
+    // represent. However, on the vast majority of systems, `usize` and
+    // `size_t` are represented the same way. If it were required to explicitly
+    // cast `usize` to `size_t` on common platforms, then many programmers
+    // would habitually write expressions such as
+    // `my_slice.len() as libc::size_t` expecting this to always work and be
+    // safe. But such a cast is *not* safe on the uncommon platforms where
+    // `mem::sizeof(libc::size_t) < mem::size_t(usize)`. Consequently, to
+    // reduce the chances of programmers becoming habituated to such casts that
+    // would be unsafe on unusual platforms, we have adopted the following
+    // convention:
+    //
+    // * On common platforms where
+    //   `mem::sizeof(libc::size_t) == mem::sizeof(usize)`, `libc::size_t` must
+    //   be a type alias of `usize`, and `libc::ssize_t` must be a type alias
+    //   of `isize`.
+    //
+    // * On uncommon platforms where
+    //   `mem::sizeof(libc::size_t) != mem::sizeof(usize)`, `libc::size_t` and
+    //   `libc::ssize_t` must be defined as types other than `usize` and
+    //   `isize`.
+    //
+    // * Code that was written without consideration for the uncommon platforms
+    //   should not do any explicit casting between `libc::size_t` and `usize`
+    //   or `libc::ssize_t` and `isize`. Such code will fail to compile on the
+    //   uncommon platforms; this is better than executing with unsafe
+    //   truncations.
+    //
+    // * Code that was written with full consideration of the uncommon
+    //   platforms should have explicit casts using `num::cast` or other
+    //   methods that avoid unintended truncation. Such code will then work on
+    //   all platforms.
 
     #[cfg(any(target_os = "linux", target_os = "android", target_os = "nacl"))]
     pub mod os {
@@ -429,7 +473,7 @@ pub mod types {
                 pub type c_ulong = u32;
                 pub type c_float = f32;
                 pub type c_double = f64;
-                pub type size_t = u32;
+                pub type size_t = usize;
                 pub type ptrdiff_t = i32;
                 pub type clock_t = i32;
                 pub type time_t = i32;
@@ -459,7 +503,7 @@ pub mod types {
                 pub type gid_t = u32;
                 pub type useconds_t = u32;
                 pub type mode_t = u32;
-                pub type ssize_t = i32;
+                pub type ssize_t = isize;
             }
             #[cfg(all(any(target_arch = "arm", target_arch = "x86"),
                       target_os = "android"))]
@@ -474,7 +518,7 @@ pub mod types {
                 pub type useconds_t = u32;
 
                 pub type mode_t = u16;
-                pub type ssize_t = i32;
+                pub type ssize_t = isize;
             }
             #[cfg(any(all(any(target_arch = "arm", target_arch = "x86"),
                           not(target_os = "android")),
@@ -655,7 +699,7 @@ pub mod types {
                 pub type c_ulong = u64;
                 pub type c_float = f32;
                 pub type c_double = f64;
-                pub type size_t = u64;
+                pub type size_t = usize;
                 pub type ptrdiff_t = i64;
                 pub type clock_t = i64;
                 pub type time_t = i64;
@@ -682,7 +726,7 @@ pub mod types {
                 pub type gid_t = u32;
                 pub type useconds_t = u32;
                 pub type mode_t = u32;
-                pub type ssize_t = i64;
+                pub type ssize_t = isize;
             }
             #[cfg(not(target_arch = "aarch64"))]
             pub mod posix01 {
@@ -980,7 +1024,7 @@ pub mod types {
                 pub type c_ulong = u32;
                 pub type c_float = f32;
                 pub type c_double = f64;
-                pub type size_t = u32;
+                pub type size_t = usize;
                 pub type ptrdiff_t = i32;
                 pub type clock_t = i32;
                 pub type time_t = i32;
@@ -1004,7 +1048,7 @@ pub mod types {
                 pub type gid_t = u32;
                 pub type useconds_t = u32;
                 pub type mode_t = u16;
-                pub type ssize_t = i32;
+                pub type ssize_t = isize;
             }
             pub mod posix01 {
                 use types::common::c95::{c_void};
@@ -1074,7 +1118,7 @@ pub mod types {
                 pub type c_ulong = u64;
                 pub type c_float = f32;
                 pub type c_double = f64;
-                pub type size_t = u64;
+                pub type size_t = usize;
                 pub type ptrdiff_t = i64;
                 pub type clock_t = i32;
                 pub type time_t = i64;
@@ -1098,7 +1142,7 @@ pub mod types {
                 pub type gid_t = u32;
                 pub type useconds_t = u32;
                 pub type mode_t = u16;
-                pub type ssize_t = i64;
+                pub type ssize_t = isize;
             }
             pub mod posix01 {
                 use types::common::c95::{c_void};
@@ -1340,7 +1384,7 @@ pub mod types {
                 pub type c_ulong = u64;
                 pub type c_float = f32;
                 pub type c_double = f64;
-                pub type size_t = u64;
+                pub type size_t = usize;
                 pub type ptrdiff_t = i64;
                 pub type clock_t = i32;
                 pub type time_t = i64;
@@ -1363,7 +1407,7 @@ pub mod types {
                 pub type gid_t = u32;
                 pub type useconds_t = u32;
                 pub type mode_t = u16;
-                pub type ssize_t = i64;
+                pub type ssize_t = isize;
             }
             pub mod posix01 {
                 use types::common::c95::{c_void};
@@ -1625,7 +1669,7 @@ pub mod types {
                 pub type c_ulong = u64;
                 pub type c_float = f32;
                 pub type c_double = f64;
-                pub type size_t = u64;
+                pub type size_t = usize;
                 pub type ptrdiff_t = i64;
                 pub type clock_t = i64;
                 pub type time_t = i64;
@@ -1649,7 +1693,7 @@ pub mod types {
                 pub type gid_t = u32;
                 pub type useconds_t = u32;
                 pub type mode_t = u32;
-                pub type ssize_t = c_long;
+                pub type ssize_t = isize;
             }
             pub mod posix01 {
                 use types::common::c95::{c_void};
@@ -1845,10 +1889,7 @@ pub mod types {
                 pub type c_float = f32;
                 pub type c_double = f64;
 
-                #[cfg(target_arch = "x86")]
-                pub type size_t = u32;
-                #[cfg(target_arch = "x86_64")]
-                pub type size_t = u64;
+                pub type size_t = usize;
 
                 #[cfg(target_arch = "x86")]
                 pub type ptrdiff_t = i32;
@@ -1898,10 +1939,7 @@ pub mod types {
                 pub type useconds_t = u32;
                 pub type mode_t = u16;
 
-                #[cfg(target_arch = "x86")]
-                pub type ssize_t = i32;
-                #[cfg(target_arch = "x86_64")]
-                pub type ssize_t = i64;
+                pub type ssize_t = isize;
             }
 
             pub mod posix01 {
@@ -2345,7 +2383,7 @@ pub mod types {
                 pub type gid_t = u32;
                 pub type useconds_t = u32;
                 pub type mode_t = u16;
-                pub type ssize_t = c_long;
+                pub type ssize_t = isize;
             }
             pub mod posix01 {
                 use types::common::c99::{int32_t, int64_t, uint32_t};
@@ -2453,7 +2491,7 @@ pub mod types {
                 pub type gid_t = u32;
                 pub type useconds_t = u32;
                 pub type mode_t = u16;
-                pub type ssize_t = c_long;
+                pub type ssize_t = isize;
             }
             pub mod posix01 {
                 use types::common::c99::{int32_t, int64_t};
@@ -4713,7 +4751,7 @@ pub mod consts {
 
             pub const PTHREAD_CREATE_JOINABLE : c_int = 0;
             pub const PTHREAD_CREATE_DETACHED : c_int = 1;
-            pub const PTHREAD_STACK_MIN : size_t = 2048;
+            pub const PTHREAD_STACK_MIN: size_t = 2048;
 
             pub const CLOCK_REALTIME : c_int = 0;
             pub const CLOCK_MONOTONIC : c_int = 3;

@@ -102,9 +102,7 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Bytes {
     unsafe {
         let mut outsz: size_t = 0;
         let res = tdefl_compress_mem_to_heap(bytes.as_ptr() as *const _,
-                                             bytes.len() as size_t,
-                                             &mut outsz,
-                                             flags);
+                                             bytes.len(), &mut outsz, flags);
         assert!(!res.is_null());
         Bytes {
             ptr: Unique::new(res as *mut u8),
@@ -127,9 +125,7 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Result<Bytes,Error> {
     unsafe {
         let mut outsz: size_t = 0;
         let res = tinfl_decompress_mem_to_heap(bytes.as_ptr() as *const _,
-                                               bytes.len() as size_t,
-                                               &mut outsz,
-                                               flags);
+                                               bytes.len(), &mut outsz, flags);
         if !res.is_null() {
             Ok(Bytes {
                 ptr: Unique::new(res as *mut u8),

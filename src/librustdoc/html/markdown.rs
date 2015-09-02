@@ -361,8 +361,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         (*renderer).codespan = Some(codespan);
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
-        hoedown_document_render(document, ob, s.as_ptr(),
-                                s.len() as libc::size_t);
+        hoedown_document_render(document, ob, s.as_ptr(), s.len());
         hoedown_document_free(document);
 
         hoedown_html_renderer_free(renderer);
@@ -435,8 +434,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 = tests as *mut _ as *mut libc::c_void;
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
-        hoedown_document_render(document, ob, doc.as_ptr(),
-                                doc.len() as libc::size_t);
+        hoedown_document_render(document, ob, doc.as_ptr(), doc.len());
         hoedown_document_free(document);
 
         hoedown_html_renderer_free(renderer);
@@ -556,8 +554,7 @@ pub fn plain_summary_line(md: &str) -> String {
         (*renderer).normal_text = Some(normal_text);
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
-        hoedown_document_render(document, ob, md.as_ptr(),
-                                md.len() as libc::size_t);
+        hoedown_document_render(document, ob, md.as_ptr(), md.len());
         hoedown_document_free(document);
         let plain_slice = (*ob).as_bytes();
         let plain = match str::from_utf8(plain_slice) {

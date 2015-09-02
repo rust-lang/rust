@@ -20,7 +20,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::str;
 
-use libc;
 use llvm::archive_ro::{ArchiveRO, Child};
 use llvm::{self, ArchiveKind};
 use rustc::metadata::loader::METADATA_FILENAME;
@@ -485,8 +484,7 @@ impl<'a> ArchiveBuilder<'a> {
 
             let dst = self.config.dst.to_str().unwrap().as_bytes();
             let dst = try!(CString::new(dst));
-            let r = llvm::LLVMRustWriteArchive(dst.as_ptr(),
-                                               members.len() as libc::size_t,
+            let r = llvm::LLVMRustWriteArchive(dst.as_ptr(), members.len(),
                                                members.as_ptr(),
                                                self.should_update_symbols,
                                                kind);

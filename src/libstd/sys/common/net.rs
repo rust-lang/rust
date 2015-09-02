@@ -153,8 +153,8 @@ pub fn lookup_addr(addr: &IpAddr) -> io::Result<String> {
 
     let data = unsafe {
         try!(cvt_gai(getnameinfo(inner, len,
-                                 hostbuf.as_mut_ptr(), NI_MAXHOST as libc::size_t,
-                                 0 as *mut _, 0, 0)));
+                                 hostbuf.as_mut_ptr(), NI_MAXHOST, 0 as *mut _,
+                                 0, 0)));
 
         CStr::from_ptr(hostbuf.as_ptr())
     };

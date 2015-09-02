@@ -23,7 +23,7 @@ pub static mut HITS: usize = 0;
 pub extern fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
     unsafe {
         HITS += 1;
-        libc::malloc(size as libc::size_t) as *mut u8
+        libc::malloc(size) as *mut u8
     }
 }
 
@@ -39,7 +39,7 @@ pub extern fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize) {
 pub extern fn __rust_reallocate(ptr: *mut u8, old_size: usize, size: usize,
                                 align: usize) -> *mut u8 {
     unsafe {
-        libc::realloc(ptr as *mut _, size as libc::size_t) as *mut u8
+        libc::realloc(ptr as *mut _, size) as *mut u8
     }
 }
 
