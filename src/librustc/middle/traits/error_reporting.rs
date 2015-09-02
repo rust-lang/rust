@@ -31,7 +31,7 @@ use middle::ty_fold::TypeFoldable;
 use std::collections::HashMap;
 use std::fmt;
 use syntax::codemap::Span;
-use syntax::attr::{AttributeMethods, AttrMetaMethods};
+use rustc_front::attr::{AttributeMethods, AttrMetaMethods};
 
 pub fn report_fulfillment_errors<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                            errors: &Vec<FulfillmentError<'tcx>>) {

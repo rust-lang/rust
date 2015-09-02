@@ -43,7 +43,7 @@ use middle::weak_lang_items;
 use middle::pat_util::simple_identifier;
 use middle::subst::Substs;
 use middle::ty::{self, Ty, HasTypeFlags};
-use rustc::ast_map;
+use rustc::front::map as hir_map;
 use session::config::{self, NoDebugInfo, FullDebugInfo};
 use session::Session;
 use trans::_match;
@@ -93,13 +93,15 @@ use std::mem;
 use std::str;
 use std::{i8, i16, i32, i64};
 use syntax::abi::{Rust, RustCall, RustIntrinsic, PlatformIntrinsic, Abi};
-use syntax::attr::AttrMetaMethods;
-use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
-use syntax::visit::Visitor;
-use syntax::visit;
-use syntax::{ast, ast_util};
+use rustc_front;
+use rustc_front::attr::AttrMetaMethods;
+use rustc_front::attr;
+use rustc_front::visit::Visitor;
+use rustc_front::visit;
+use rustc_front::hir;
+use syntax::ast;
 
 thread_local! {
     static TASK_LOCAL_INSN_KEY: RefCell<Option<Vec<&'static str>>> = {
@@ -277,15 +279,15 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 
-pub fn bin_op_to_icmp_predicate(ccx: &CrateContext, op: ast::BinOp_, signed: bool)
+pub fn bin_op_to_icmp_predicate(ccx: &CrateContext, op: hir::BinOp_, signed: bool)
                                 -> llvm::IntPredicate {
     match op {
-        ast::BiEq => llvm::IntEQ,
-        ast::BiNe => llvm::IntNE,
-        ast::BiLt => if signed { llvm::IntSLT } else { llvm::IntULT },
-        ast::BiLe => if signed { llvm::IntSLE } else { llvm::IntULE },
-        ast::BiGt => if signed { llvm::IntSGT } else { llvm::IntUGT },
-        ast::BiGe => if signed { llvm::IntSGE } else { llvm::IntUGE },
+        hir::BiEq => llvm::IntEQ,
+        hir::BiNe => llvm::IntNE,
+        hir::BiLt => if signed { llvm::IntSLT } else { llvm::IntULT },
+        hir::BiLe => if signed { llvm::IntSLE } else { llvm::IntULE },
+        hir::BiGt => if signed { llvm::IntSGT } else { llvm::IntUGT },
+        hir::BiGe => if signed { llvm::IntSGE } else { llvm::IntUGE },
         op => {
             ccx.sess().bug(&format!("comparison_op_to_icmp_predicate: expected \
                                      comparison operator, found {:?}", op));
@@ -293,15 +295,15 @@ pub fn bin_op_to_icmp_predicate(ccx: &CrateContext, op: ast::BinOp_, signed: boo
     }
 }
 
-pub fn bin_op_to_fcmp_predicate(ccx: &CrateContext, op: ast::BinOp_)
+pub fn bin_op_to_fcmp_predicate(ccx: &CrateContext, op: hir::BinOp_)
                                 -> llvm::RealPredicate {
     match op {
-        ast::BiEq => llvm::RealOEQ,
-        ast::BiNe => llvm::RealUNE,
-        ast::BiLt => llvm::RealOLT,
-        ast::BiLe => llvm::RealOLE,
-        ast::BiGt => llvm::RealOGT,
-        ast::BiGe => llvm::RealOGE,
+        hir::BiEq => llvm::RealOEQ,
+        hir::BiNe => llvm::RealUNE,
+        hir::BiLt => llvm::RealOLT,
+        hir::BiLe => llvm::RealOLE,
+        hir::BiGt => llvm::RealOGT,
+        hir::BiGe => llvm::RealOGE,
         op => {
             ccx.sess().bug(&format!("comparison_op_to_fcmp_predicate: expected \
                                      comparison operator, found {:?}", op));
@@ -313,7 +315,7 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         lhs: ValueRef,
                                         rhs: ValueRef,
                                         t: Ty<'tcx>,
-                                        op: ast::BinOp_,
+                                        op: hir::BinOp_,
                                         debug_loc: DebugLoc)
                                         -> ValueRef {
     match t.sty {
@@ -321,8 +323,8 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // We don't need to do actual comparisons for nil.
             // () == () holds but () < () does not.
             match op {
-                ast::BiEq | ast::BiLe | ast::BiGe => return C_bool(bcx.ccx(), true),
-                ast::BiNe | ast::BiLt | ast::BiGt => return C_bool(bcx.ccx(), false),
+                hir::BiEq | hir::BiLe | hir::BiGe => return C_bool(bcx.ccx(), true),
+                hir::BiNe | hir::BiLt | hir::BiGt => return C_bool(bcx.ccx(), false),
                 // refinements would be nice
                 _ => bcx.sess().bug("compare_scalar_types: must be a comparison operator")
             }
@@ -349,7 +351,7 @@ pub fn compare_simd_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                       rhs: ValueRef,
                                       t: Ty<'tcx>,
                                       ret_ty: Type,
-                                      op: ast::BinOp_,
+                                      op: hir::BinOp_,
                                       debug_loc: DebugLoc)
                                       -> ValueRef {
     let signed = match t.sty {
@@ -526,7 +528,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
 }
 
 pub fn cast_shift_expr_rhs(cx: Block,
-                           op: ast::BinOp_,
+                           op: hir::BinOp_,
                            lhs: ValueRef,
                            rhs: ValueRef)
                            -> ValueRef {
@@ -535,14 +537,14 @@ pub fn cast_shift_expr_rhs(cx: Block,
                    |a,b| ZExt(cx, a, b))
 }
 
-pub fn cast_shift_const_rhs(op: ast::BinOp_,
+pub fn cast_shift_const_rhs(op: hir::BinOp_,
                             lhs: ValueRef, rhs: ValueRef) -> ValueRef {
     cast_shift_rhs(op, lhs, rhs,
                    |a, b| unsafe { llvm::LLVMConstTrunc(a, b.to_ref()) },
                    |a, b| unsafe { llvm::LLVMConstZExt(a, b.to_ref()) })
 }
 
-fn cast_shift_rhs<F, G>(op: ast::BinOp_,
+fn cast_shift_rhs<F, G>(op: hir::BinOp_,
                         lhs: ValueRef,
                         rhs: ValueRef,
                         trunc: F,
@@ -552,7 +554,7 @@ fn cast_shift_rhs<F, G>(op: ast::BinOp_,
     G: FnOnce(ValueRef, Type) -> ValueRef,
 {
     // Shifts may have any size int on the rhs
-    if ast_util::is_shift_binop(op) {
+    if rustc_front::util::is_shift_binop(op) {
         let mut rhs_llty = val_ty(rhs);
         let mut lhs_llty = val_ty(lhs);
         if rhs_llty.kind() == Vector { rhs_llty = rhs_llty.element_type() }
@@ -579,12 +581,12 @@ pub fn llty_and_min_for_signed_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         ty::TyInt(t) => {
             let llty = Type::int_from_ty(cx.ccx(), t);
             let min = match t {
-                ast::TyIs if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
-                ast::TyIs => i64::MIN as u64,
-                ast::TyI8 => i8::MIN as u64,
-                ast::TyI16 => i16::MIN as u64,
-                ast::TyI32 => i32::MIN as u64,
-                ast::TyI64 => i64::MIN as u64,
+                hir::TyIs if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
+                hir::TyIs => i64::MIN as u64,
+                hir::TyI8 => i8::MIN as u64,
+                hir::TyI16 => i16::MIN as u64,
+                hir::TyI32 => i32::MIN as u64,
+                hir::TyI64 => i64::MIN as u64,
             };
             (llty, min)
         }
@@ -595,12 +597,12 @@ pub fn llty_and_min_for_signed_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
                                 cx: Block<'blk, 'tcx>,
                                 call_info: NodeIdAndSpan,
-                                divrem: ast::BinOp,
+                                divrem: hir::BinOp,
                                 lhs: ValueRef,
                                 rhs: ValueRef,
                                 rhs_t: Ty<'tcx>)
                                 -> Block<'blk, 'tcx> {
-    let (zero_text, overflow_text) = if divrem.node == ast::BiDiv {
+    let (zero_text, overflow_text) = if divrem.node == hir::BiDiv {
         ("attempted to divide by zero",
          "attempted to divide with overflow")
     } else {
@@ -871,7 +873,7 @@ pub fn to_arg_ty_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ptr: ValueRef, ty: Ty<'
     }
 }
 
-pub fn init_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, local: &ast::Local)
+pub fn init_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, local: &hir::Local)
                               -> Block<'blk, 'tcx> {
     debug!("init_local(bcx={}, local.id={})", bcx.to_str(), local.id);
     let _indenter = indenter();
@@ -1086,9 +1088,9 @@ impl FindNestedReturn {
 }
 
 impl<'v> Visitor<'v> for FindNestedReturn {
-    fn visit_expr(&mut self, e: &ast::Expr) {
+    fn visit_expr(&mut self, e: &hir::Expr) {
         match e.node {
-            ast::ExprRet(..) => {
+            hir::ExprRet(..) => {
                 self.found = true;
             }
             _ => visit::walk_expr(self, e)
@@ -1098,40 +1100,40 @@ impl<'v> Visitor<'v> for FindNestedReturn {
 
 fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
     let blk = match tcx.map.find(id) {
-        Some(ast_map::NodeItem(i)) => {
+        Some(hir_map::NodeItem(i)) => {
             match i.node {
-                ast::ItemFn(_, _, _, _, _, ref blk) => {
+                hir::ItemFn(_, _, _, _, _, ref blk) => {
                     blk
                 }
                 _ => tcx.sess.bug("unexpected item variant in has_nested_returns")
             }
         }
-        Some(ast_map::NodeTraitItem(trait_item)) => {
+        Some(hir_map::NodeTraitItem(trait_item)) => {
             match trait_item.node {
-                ast::MethodTraitItem(_, Some(ref body)) => body,
+                hir::MethodTraitItem(_, Some(ref body)) => body,
                 _ => {
                     tcx.sess.bug("unexpected variant: trait item other than a \
                                   provided method in has_nested_returns")
                 }
             }
         }
-        Some(ast_map::NodeImplItem(impl_item)) => {
+        Some(hir_map::NodeImplItem(impl_item)) => {
             match impl_item.node {
-                ast::MethodImplItem(_, ref body) => body,
+                hir::MethodImplItem(_, ref body) => body,
                 _ => {
                     tcx.sess.bug("unexpected variant: non-method impl item in \
                                   has_nested_returns")
                 }
             }
         }
-        Some(ast_map::NodeExpr(e)) => {
+        Some(hir_map::NodeExpr(e)) => {
             match e.node {
-                ast::ExprClosure(_, _, ref blk) => blk,
+                hir::ExprClosure(_, _, ref blk) => blk,
                 _ => tcx.sess.bug("unexpected expr variant in has_nested_returns")
             }
         }
-        Some(ast_map::NodeVariant(..)) |
-        Some(ast_map::NodeStructCtor(..)) => return (ast::DUMMY_NODE_ID, None),
+        Some(hir_map::NodeVariant(..)) |
+        Some(hir_map::NodeStructCtor(..)) => return (ast::DUMMY_NODE_ID, None),
 
         // glue, shims, etc
         None if id == ast::DUMMY_NODE_ID => return (ast::DUMMY_NODE_ID, None),
@@ -1157,8 +1159,8 @@ fn has_nested_returns(tcx: &ty::ctxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bo
     for index in cfg.graph.depth_traverse(cfg.entry) {
         let n = cfg.graph.node_data(index);
         match tcx.map.find(n.id()) {
-            Some(ast_map::NodeExpr(ex)) => {
-                if let ast::ExprRet(Some(ref ret_expr)) = ex.node {
+            Some(hir_map::NodeExpr(ex)) => {
+                if let hir::ExprRet(Some(ref ret_expr)) = ex.node {
                     let mut visitor = FindNestedReturn::new();
                     visit::walk_expr(&mut visitor, &**ret_expr);
                     if visitor.found {
@@ -1166,7 +1168,7 @@ fn has_nested_returns(tcx: &ty::ctxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bo
                     }
                 }
             }
-            Some(ast_map::NodeBlock(blk)) if blk.id == blk_id => {
+            Some(hir_map::NodeBlock(blk)) if blk.id == blk_id => {
                 let mut visitor = FindNestedReturn::new();
                 visit::walk_expr_opt(&mut visitor, &blk.expr);
                 if visitor.found {
@@ -1354,7 +1356,7 @@ pub fn arg_kind<'a, 'tcx>(cx: &FunctionContext<'a, 'tcx>, t: Ty<'tcx>)
 // create_datums_for_fn_args: creates lvalue datums for each of the
 // incoming function arguments.
 pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
-                                           args: &[ast::Arg],
+                                           args: &[hir::Arg],
                                            arg_tys: &[Ty<'tcx>],
                                            has_tupled_arg: bool,
                                            arg_scope: cleanup::CustomScopeIndex)
@@ -1559,12 +1561,12 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
 ///
 /// If the function closes over its environment a closure will be returned.
 pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                   decl: &ast::FnDecl,
-                                   body: &ast::Block,
+                                   decl: &hir::FnDecl,
+                                   body: &hir::Block,
                                    llfndecl: ValueRef,
                                    param_substs: &'tcx Substs<'tcx>,
                                    fn_ast_id: ast::NodeId,
-                                   _attributes: &[ast::Attribute],
+                                   _attributes: &[hir::Attribute],
                                    output_type: ty::FnOutput<'tcx>,
                                    abi: Abi,
                                    closure_env: closure::ClosureEnv<'b>) {
@@ -1678,12 +1680,12 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 /// Creates an LLVM function corresponding to a source language function.
 pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                          decl: &ast::FnDecl,
-                          body: &ast::Block,
+                          decl: &hir::FnDecl,
+                          body: &hir::Block,
                           llfndecl: ValueRef,
                           param_substs: &'tcx Substs<'tcx>,
                           id: ast::NodeId,
-                          attrs: &[ast::Attribute]) {
+                          attrs: &[hir::Attribute]) {
     let _s = StatRecorder::new(ccx, ccx.tcx().map.path_to_string(id).to_string());
     debug!("trans_fn(param_substs={:?})", param_substs);
     let _icx = push_ctxt("trans_fn");
@@ -1860,7 +1862,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
     finish_fn(&fcx, bcx, result_ty, DebugLoc::None);
 }
 
-fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span, id: ast::NodeId) {
+fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &hir::EnumDef, sp: Span, id: ast::NodeId) {
     let mut sizes = Vec::new(); // does no allocation if no pushes, thankfully
 
     let print_info = ccx.sess().print_enum_sizes();
@@ -1939,7 +1941,7 @@ pub struct TransItemVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for TransItemVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, i: &ast::Item) {
+    fn visit_item(&mut self, i: &hir::Item) {
         trans_item(self.ccx, i);
     }
 }
@@ -2010,7 +2012,7 @@ pub fn update_linkage(ccx: &CrateContext,
 
     if let Some(id) = id {
         let item = ccx.tcx().map.get(id);
-        if let ast_map::NodeItem(i) = item {
+        if let hir_map::NodeItem(i) = item {
             if let Some(name) = attr::first_attr_value_str_by_name(&i.attrs, "linkage") {
                 if let Some(linkage) = llvm_linkage_by_name(&name) {
                     llvm::SetLinkage(llval, linkage);
@@ -2037,7 +2039,7 @@ pub fn update_linkage(ccx: &CrateContext,
     }
 }
 
-fn set_global_section(ccx: &CrateContext, llval: ValueRef, i: &ast::Item) {
+fn set_global_section(ccx: &CrateContext, llval: ValueRef, i: &hir::Item) {
     match attr::first_attr_value_str_by_name(&i.attrs,
                                              "link_section") {
         Some(sect) => {
@@ -2054,13 +2056,13 @@ fn set_global_section(ccx: &CrateContext, llval: ValueRef, i: &ast::Item) {
     }
 }
 
-pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
+pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
     let _icx = push_ctxt("trans_item");
 
     let from_external = ccx.external_srcs().borrow().contains_key(&item.id);
 
     match item.node {
-      ast::ItemFn(ref decl, _, _, abi, ref generics, ref body) => {
+      hir::ItemFn(ref decl, _, _, abi, ref generics, ref body) => {
         if !generics.is_type_parameterized() {
             let trans_everywhere = attr::requests_inline(&item.attrs);
             // Ignore `trans_everywhere` for cross-crate inlined items
@@ -2098,29 +2100,29 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
         let mut v = TransItemVisitor{ ccx: ccx };
         v.visit_block(&**body);
       }
-      ast::ItemImpl(_, _, ref generics, _, _, ref impl_items) => {
+      hir::ItemImpl(_, _, ref generics, _, _, ref impl_items) => {
         meth::trans_impl(ccx,
                          item.ident,
                          &impl_items[..],
                          generics,
                          item.id);
       }
-      ast::ItemMod(ref m) => {
+      hir::ItemMod(ref m) => {
         trans_mod(&ccx.rotate(), m);
       }
-      ast::ItemEnum(ref enum_definition, ref gens) => {
+      hir::ItemEnum(ref enum_definition, ref gens) => {
         if gens.ty_params.is_empty() {
             // sizes only make sense for non-generic types
 
             enum_variant_size_lint(ccx, enum_definition, item.span, item.id);
         }
       }
-      ast::ItemConst(_, ref expr) => {
+      hir::ItemConst(_, ref expr) => {
           // Recurse on the expression to catch items in blocks
           let mut v = TransItemVisitor{ ccx: ccx };
           v.visit_expr(&**expr);
       }
-      ast::ItemStatic(_, m, ref expr) => {
+      hir::ItemStatic(_, m, ref expr) => {
           // Recurse on the expression to catch items in blocks
           let mut v = TransItemVisitor{ ccx: ccx };
           v.visit_expr(&**expr);
@@ -2129,10 +2131,10 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
           set_global_section(ccx, g, item);
           update_linkage(ccx, g, Some(item.id), OriginalTranslation);
       },
-      ast::ItemForeignMod(ref foreign_mod) => {
+      hir::ItemForeignMod(ref foreign_mod) => {
         foreign::trans_foreign_mod(ccx, foreign_mod);
       }
-      ast::ItemTrait(..) => {
+      hir::ItemTrait(..) => {
         // Inside of this trait definition, we won't be actually translating any
         // functions, but the trait still needs to be walked. Otherwise default
         // methods with items will not get translated and will cause ICE's when
@@ -2149,7 +2151,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
 // separate modules in the compiled program.  That's because modules exist
 // only as a convenience for humans working with the code, to organize names
 // and control visibility.
-pub fn trans_mod(ccx: &CrateContext, m: &ast::Mod) {
+pub fn trans_mod(ccx: &CrateContext, m: &hir::Mod) {
     let _icx = push_ctxt("trans_mod");
     for item in &m.items {
         trans_item(ccx, &**item);
@@ -2295,7 +2297,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
 }
 
 fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, id: ast::NodeId,
-                           ty: Ty<'tcx>, attrs: &[ast::Attribute]) -> String {
+                           ty: Ty<'tcx>, attrs: &[hir::Attribute]) -> String {
     match ccx.external_srcs().borrow().get(&id) {
         Some(&did) => {
             let sym = csearch::get_symbol(&ccx.sess().cstore, did);
@@ -2340,12 +2342,12 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     let item = ccx.tcx().map.get(id);
     debug!("get_item_val: id={} item={:?}", id, item);
     let val = match item {
-        ast_map::NodeItem(i) => {
+        hir_map::NodeItem(i) => {
             let ty = ccx.tcx().node_id_to_type(i.id);
             let sym = || exported_name(ccx, id, ty, &i.attrs);
 
             let v = match i.node {
-                ast::ItemStatic(..) => {
+                hir::ItemStatic(..) => {
                     // If this static came from an external crate, then
                     // we need to get the symbol from csearch instead of
                     // using the current crate's name/version
@@ -2366,7 +2368,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     g
                 }
 
-                ast::ItemFn(_, _, _, abi, _, _) => {
+                hir::ItemFn(_, _, _, abi, _, _) => {
                     let sym = sym();
                     let llfn = if abi == Rust {
                         register_fn(ccx, i.span, sym, i.id, ty)
@@ -2383,10 +2385,10 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             v
         }
 
-        ast_map::NodeTraitItem(trait_item) => {
+        hir_map::NodeTraitItem(trait_item) => {
             debug!("get_item_val(): processing a NodeTraitItem");
             match trait_item.node {
-                ast::MethodTraitItem(_, Some(_)) => {
+                hir::MethodTraitItem(_, Some(_)) => {
                     register_method(ccx, id, &trait_item.attrs, trait_item.span)
                 }
                 _ => {
@@ -2397,9 +2399,9 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             }
         }
 
-        ast_map::NodeImplItem(impl_item) => {
+        hir_map::NodeImplItem(impl_item) => {
             match impl_item.node {
-                ast::MethodImplItem(..) => {
+                hir::MethodImplItem(..) => {
                     register_method(ccx, id, &impl_item.attrs, impl_item.span)
                 }
                 _ => {
@@ -2410,9 +2412,9 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             }
         }
 
-        ast_map::NodeForeignItem(ni) => {
+        hir_map::NodeForeignItem(ni) => {
             match ni.node {
-                ast::ForeignItemFn(..) => {
+                hir::ForeignItemFn(..) => {
                     let abi = ccx.tcx().map.get_foreign_abi(id);
                     let ty = ccx.tcx().node_id_to_type(ni.id);
                     let name = foreign::link_name(&*ni);
@@ -2420,17 +2422,17 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     attributes::from_fn_attrs(ccx, &ni.attrs, llfn);
                     llfn
                 }
-                ast::ForeignItemStatic(..) => {
+                hir::ForeignItemStatic(..) => {
                     foreign::register_static(ccx, &*ni)
                 }
             }
         }
 
-        ast_map::NodeVariant(ref v) => {
+        hir_map::NodeVariant(ref v) => {
             let llfn;
             let args = match v.node.kind {
-                ast::TupleVariantKind(ref args) => args,
-                ast::StructVariantKind(_) => {
+                hir::TupleVariantKind(ref args) => args,
+                hir::StructVariantKind(_) => {
                     ccx.sess().bug("struct variant kind unexpected in get_item_val")
                 }
             };
@@ -2444,7 +2446,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                     &enm.attrs);
 
             llfn = match enm.node {
-                ast::ItemEnum(_, _) => {
+                hir::ItemEnum(_, _) => {
                     register_fn(ccx, (*v).span, sym, id, ty)
                 }
                 _ => ccx.sess().bug("NodeVariant, shouldn't happen")
@@ -2453,7 +2455,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             llfn
         }
 
-        ast_map::NodeStructCtor(struct_def) => {
+        hir_map::NodeStructCtor(struct_def) => {
             // Only register the constructor if this is a tuple-like struct.
             let ctor_id = match struct_def.ctor_id {
                 None => {
@@ -2495,7 +2497,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 }
 
 fn register_method(ccx: &CrateContext, id: ast::NodeId,
-                   attrs: &[ast::Attribute], span: Span) -> ValueRef {
+                   attrs: &[hir::Attribute], span: Span) -> ValueRef {
     let mty = ccx.tcx().node_id_to_type(id);
 
     let sym = exported_name(ccx, id, mty, &attrs);
@@ -2529,7 +2531,7 @@ pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'a, 'tcx>
     }
 }
 
-pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate,
+pub fn write_metadata(cx: &SharedCrateContext, krate: &hir::Crate,
                       reachable: &NodeSet) -> Vec<u8> {
     use flate;
 
@@ -2679,7 +2681,7 @@ pub fn filter_reachable_ids(ccx: &SharedCrateContext) -> NodeSet {
         // As a result, if this id is an FFI item (foreign item) then we only
         // let it through if it's included statically.
         match ccx.tcx().map.get(id) {
-            ast_map::NodeForeignItem(..) => {
+            hir_map::NodeForeignItem(..) => {
                 ccx.sess().cstore.is_statically_included_foreign_item(id)
             }
             _ => true,

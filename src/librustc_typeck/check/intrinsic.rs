@@ -23,17 +23,18 @@ use {CrateCtxt, require_same_types};
 use std::collections::{HashMap};
 use syntax::abi;
 use syntax::attr::AttrMetaMethods;
-use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;
 
-fn equate_intrinsic_type<'a, 'tcx>(tcx: &ty::ctxt<'tcx>, it: &ast::ForeignItem,
+use rustc_front::hir;
+
+fn equate_intrinsic_type<'a, 'tcx>(tcx: &ty::ctxt<'tcx>, it: &hir::ForeignItem,
                                    n_tps: usize,
                                    abi: abi::Abi,
                                    inputs: Vec<ty::Ty<'tcx>>,
                                    output: ty::FnOutput<'tcx>) {
     let fty = tcx.mk_fn(None, tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: ast::Unsafety::Unsafe,
+        unsafety: hir::Unsafety::Unsafe,
         abi: abi,
         sig: ty::Binder(FnSig {
             inputs: inputs,
@@ -64,7 +65,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: &ty::ctxt<'tcx>, it: &ast::ForeignItem,
 
 /// Remember to add all intrinsics here, in librustc_trans/trans/intrinsic.rs,
 /// and in libcore/intrinsics.rs
-pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
+pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
     fn param<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, n: u32) -> Ty<'tcx> {
         let name = token::intern(&format!("P{}", n));
         ccx.tcx.mk_param(subst::FnSpace, n, name)
@@ -140,13 +141,13 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                vec!(
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
-                      mutbl: ast::MutImmutable
+                      mutbl: hir::MutImmutable
                   }),
                   ccx.tcx.types.isize
                ),
                tcx.mk_ptr(ty::TypeAndMut {
                    ty: param(ccx, 0),
-                   mutbl: ast::MutImmutable
+                   mutbl: hir::MutImmutable
                }))
             }
             "copy" | "copy_nonoverlapping" => {
@@ -154,11 +155,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                vec!(
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
-                      mutbl: ast::MutImmutable
+                      mutbl: hir::MutImmutable
                   }),
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
-                      mutbl: ast::MutMutable
+                      mutbl: hir::MutMutable
                   }),
                   tcx.types.usize,
                ),
@@ -169,11 +170,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                vec!(
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
-                      mutbl: ast::MutMutable
+                      mutbl: hir::MutMutable
                   }),
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
-                      mutbl: ast::MutImmutable
+                      mutbl: hir::MutImmutable
                   }),
                   tcx.types.usize,
                ),
@@ -184,7 +185,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                vec!(
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(ccx, 0),
-                      mutbl: ast::MutMutable
+                      mutbl: hir::MutMutable
                   }),
                   tcx.types.u8,
                   tcx.types.usize,
@@ -324,7 +325,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "try" => {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
                 let fn_ty = ty::BareFnTy {
-                    unsafety: ast::Unsafety::Normal,
+                    unsafety: hir::Unsafety::Normal,
                     abi: abi::Rust,
                     sig: ty::Binder(FnSig {
                         inputs: vec![mut_u8],
@@ -356,7 +357,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
 pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
-                                     it: &ast::ForeignItem) {
+                                     it: &hir::ForeignItem) {
     let param = |n| {
         let name = token::intern(&format!("P{}", n));
         ccx.tcx.mk_param(subst::FnSpace, n, name)
@@ -465,18 +466,22 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
     match *expected {
         // (The width we pass to LLVM doesn't concern the type checker.)
         Integer(signed, bits, _llvm_width) => match (signed, bits, &t.sty) {
-            (true, 8, &ty::TyInt(ast::TyI8)) | (false, 8, &ty::TyUint(ast::TyU8)) |
-            (true, 16, &ty::TyInt(ast::TyI16)) | (false, 16, &ty::TyUint(ast::TyU16)) |
-            (true, 32, &ty::TyInt(ast::TyI32)) | (false, 32, &ty::TyUint(ast::TyU32)) |
-            (true, 64, &ty::TyInt(ast::TyI64)) | (false, 64, &ty::TyUint(ast::TyU64)) => {},
+            (true,  8,  &ty::TyInt(hir::IntTy::TyI8)) |
+            (false, 8,  &ty::TyUint(hir::UintTy::TyU8)) |
+            (true,  16, &ty::TyInt(hir::IntTy::TyI16)) |
+            (false, 16, &ty::TyUint(hir::UintTy::TyU16)) |
+            (true,  32, &ty::TyInt(hir::IntTy::TyI32)) |
+            (false, 32, &ty::TyUint(hir::UintTy::TyU32)) |
+            (true,  64, &ty::TyInt(hir::IntTy::TyI64)) |
+            (false, 64, &ty::TyUint(hir::UintTy::TyU64)) => {},
             _ => simple_error(&format!("`{}`", t),
                               &format!("`{}{n}`",
                                        if signed {"i"} else {"u"},
                                        n = bits)),
         },
         Float(bits) => match (bits, &t.sty) {
-            (32, &ty::TyFloat(ast::TyF32)) |
-            (64, &ty::TyFloat(ast::TyF64)) => {},
+            (32, &ty::TyFloat(hir::FloatTy::TyF32)) |
+            (64, &ty::TyFloat(hir::FloatTy::TyF64)) => {},
             _ => simple_error(&format!("`{}`", t),
                               &format!("`f{n}`", n = bits)),
         },

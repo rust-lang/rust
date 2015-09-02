@@ -47,6 +47,7 @@ extern crate syntax;
 extern crate rustc;
 #[macro_use]
 extern crate log;
+extern crate rustc_front;
 
 pub use rustc::lint as lint;
 pub use rustc::metadata as metadata;

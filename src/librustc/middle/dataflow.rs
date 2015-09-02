@@ -23,9 +23,12 @@ use std::io;
 use std::usize;
 use syntax::ast;
 use syntax::ast_util::IdRange;
-use syntax::visit;
-use syntax::print::{pp, pprust};
+use syntax::print::pp;
 use util::nodemap::NodeMap;
+use rustc_front::hir;
+use rustc_front::visit;
+use rustc_front::print::pprust;
+
 
 #[derive(Copy, Clone, Debug)]
 pub enum EntryOrExit {
@@ -158,7 +161,7 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
     }
 }
 
-fn build_nodeid_to_index(decl: Option<&ast::FnDecl>,
+fn build_nodeid_to_index(decl: Option<&hir::FnDecl>,
                          cfg: &cfg::CFG) -> NodeMap<Vec<CFGIndex>> {
     let mut index = NodeMap();
 
@@ -181,7 +184,7 @@ fn build_nodeid_to_index(decl: Option<&ast::FnDecl>,
     return index;
 
     fn add_entries_from_fn_decl(index: &mut NodeMap<Vec<CFGIndex>>,
-                                decl: &ast::FnDecl,
+                                decl: &hir::FnDecl,
                                 entry: CFGIndex) {
         //! add mappings from the ast nodes for the formal bindings to
         //! the entry-node in the graph.
@@ -192,7 +195,7 @@ fn build_nodeid_to_index(decl: Option<&ast::FnDecl>,
         let mut formals = Formals { entry: entry, index: index };
         visit::walk_fn_decl(&mut formals, decl);
         impl<'a, 'v> visit::Visitor<'v> for Formals<'a> {
-            fn visit_pat(&mut self, p: &ast::Pat) {
+            fn visit_pat(&mut self, p: &hir::Pat) {
                 self.index.entry(p.id).or_insert(vec![]).push(self.entry);
                 visit::walk_pat(self, p)
             }
@@ -222,7 +225,7 @@ pub enum KillFrom {
 impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
     pub fn new(tcx: &'a ty::ctxt<'tcx>,
                analysis_name: &'static str,
-               decl: Option<&ast::FnDecl>,
+               decl: Option<&hir::FnDecl>,
                cfg: &cfg::CFG,
                oper: O,
                id_range: IdRange,
@@ -495,7 +498,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
 impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
 //                                ^^^^^^^^^^^^^ only needed for pretty printing
-    pub fn propagate(&mut self, cfg: &cfg::CFG, blk: &ast::Block) {
+    pub fn propagate(&mut self, cfg: &cfg::CFG, blk: &hir::Block) {
         //! Performs the data flow analysis.
 
         if self.bits_per_id == 0 {
@@ -528,7 +531,7 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
     }
 
     fn pretty_print_to<'b>(&self, wr: Box<io::Write + 'b>,
-                           blk: &ast::Block) -> io::Result<()> {
+                           blk: &hir::Block) -> io::Result<()> {
         let mut ps = pprust::rust_printer_annotated(wr, self);
         try!(ps.cbox(pprust::indent_unit));
         try!(ps.ibox(0));

@@ -47,6 +47,8 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string};
 use syntax::ptr::P;
 
+use rustc_front::lowering::lower_expr;
+
 use super::span_utils::SpanUtils;
 use super::recorder::{Recorder, FmtStrs};
 
@@ -1074,8 +1076,9 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 visit::walk_expr(self, ex);
             }
             ast::ExprStruct(ref path, ref fields, ref base) => {
-                let adt = self.tcx.expr_ty(ex).ty_adt_def().unwrap();
-                let def = self.tcx.resolve_expr(ex);
+                let hir_expr = lower_expr(ex);
+                let adt = self.tcx.expr_ty(&hir_expr).ty_adt_def().unwrap();
+                let def = self.tcx.resolve_expr(&hir_expr);
                 self.process_struct_lit(ex,
                                         path,
                                         fields,
@@ -1106,7 +1109,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
                 self.visit_expr(&**sub_ex);
 
-                let ty = &self.tcx.expr_ty_adjusted(&**sub_ex).sty;
+                let hir_node = self.tcx.map.expect_expr(sub_ex.id);
+                let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
                 match *ty {
                     ty::TyStruct(def, _) => {
                         let sub_span = self.span.sub_span_after_token(ex.span, token::Dot);

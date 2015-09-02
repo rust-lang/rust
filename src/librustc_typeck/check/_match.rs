@@ -26,13 +26,15 @@ use util::nodemap::FnvHashMap;
 use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::ast;
-use syntax::ast_util;
 use syntax::codemap::{Span, Spanned};
-use syntax::print::pprust;
 use syntax::ptr::P;
 
+use rustc_front::hir;
+use rustc_front::print::pprust;
+use rustc_front::util as hir_util;
+
 pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
-                           pat: &'tcx ast::Pat,
+                           pat: &'tcx hir::Pat,
                            expected: Ty<'tcx>)
 {
     let fcx = pcx.fcx;
@@ -43,18 +45,18 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
            expected);
 
     match pat.node {
-        ast::PatWild(_) => {
+        hir::PatWild(_) => {
             fcx.write_ty(pat.id, expected);
         }
-        ast::PatLit(ref lt) => {
+        hir::PatLit(ref lt) => {
             check_expr(fcx, &**lt);
             let expr_ty = fcx.expr_ty(&**lt);
 
             // Byte string patterns behave the same way as array patterns
             // They can denote both statically and dynamically sized byte arrays
             let mut pat_ty = expr_ty;
-            if let ast::ExprLit(ref lt) = lt.node {
-                if let ast::LitBinary(_) = lt.node {
+            if let hir::ExprLit(ref lt) = lt.node {
+                if let hir::LitBinary(_) = lt.node {
                     let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
                     if let ty::TyRef(_, mt) = expected_ty.sty {
                         if let ty::TySlice(_) = mt.ty.sty {
@@ -81,7 +83,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             // that's equivalent to there existing a LUB.
             demand::suptype(fcx, pat.span, expected, pat_ty);
         }
-        ast::PatRange(ref begin, ref end) => {
+        hir::PatRange(ref begin, ref end) => {
             check_expr(fcx, begin);
             check_expr(fcx, end);
 
@@ -132,7 +134,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             // subtyping doesn't matter here, as the value is some kind of scalar
             demand::eqtype(fcx, pat.span, expected, lhs_ty);
         }
-        ast::PatEnum(..) | ast::PatIdent(..) if pat_is_resolved_const(&tcx.def_map, pat) => {
+        hir::PatEnum(..) | hir::PatIdent(..) if pat_is_resolved_const(&tcx.def_map, pat) => {
             let const_did = tcx.def_map.borrow().get(&pat.id).unwrap().def_id();
             let const_scheme = tcx.lookup_item_type(const_did);
             assert!(const_scheme.generics.is_empty());
@@ -148,10 +150,10 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             // is good enough.
             demand::suptype(fcx, pat.span, expected, const_ty);
         }
-        ast::PatIdent(bm, ref path, ref sub) if pat_is_binding(&tcx.def_map, pat) => {
+        hir::PatIdent(bm, ref path, ref sub) if pat_is_binding(&tcx.def_map, pat) => {
             let typ = fcx.local_ty(pat.span, pat.id);
             match bm {
-                ast::BindByRef(mutbl) => {
+                hir::BindByRef(mutbl) => {
                     // if the binding is like
                     //    ref x | ref const x | ref mut x
                     // then `x` is assigned a value of type `&M T` where M is the mutability
@@ -166,7 +168,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                     demand::eqtype(fcx, pat.span, region_ty, typ);
                 }
                 // otherwise the type of x is the expected type T
-                ast::BindByValue(_) => {
+                hir::BindByValue(_) => {
                     // As above, `T <: typeof(x)` is required but we
                     // use equality, see (*) below.
                     demand::eqtype(fcx, pat.span, expected, typ);
@@ -187,15 +189,15 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 check_pat(pcx, &**p, expected);
             }
         }
-        ast::PatIdent(_, ref path, _) => {
-            let path = ast_util::ident_to_path(path.span, path.node);
+        hir::PatIdent(_, ref path, _) => {
+            let path = hir_util::ident_to_path(path.span, path.node);
             check_pat_enum(pcx, pat, &path, Some(&[]), expected);
         }
-        ast::PatEnum(ref path, ref subpats) => {
+        hir::PatEnum(ref path, ref subpats) => {
             let subpats = subpats.as_ref().map(|v| &v[..]);
             check_pat_enum(pcx, pat, path, subpats, expected);
         }
-        ast::PatQPath(ref qself, ref path) => {
+        hir::PatQPath(ref qself, ref path) => {
             let self_ty = fcx.to_ty(&qself.ty);
             let path_res = if let Some(&d) = tcx.def_map.borrow().get(&pat.id) {
                 d
@@ -226,10 +228,10 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 }
             }
         }
-        ast::PatStruct(ref path, ref fields, etc) => {
+        hir::PatStruct(ref path, ref fields, etc) => {
             check_pat_struct(pcx, pat, path, fields, etc, expected);
         }
-        ast::PatTup(ref elements) => {
+        hir::PatTup(ref elements) => {
             let element_tys: Vec<_> =
                 (0..elements.len()).map(|_| fcx.infcx().next_ty_var())
                                         .collect();
@@ -240,7 +242,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 check_pat(pcx, &**element_pat, element_ty);
             }
         }
-        ast::PatBox(ref inner) => {
+        hir::PatBox(ref inner) => {
             let inner_ty = fcx.infcx().next_ty_var();
             let uniq_ty = tcx.mk_box(inner_ty);
 
@@ -256,7 +258,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 check_pat(pcx, &**inner, tcx.types.err);
             }
         }
-        ast::PatRegion(ref inner, mutbl) => {
+        hir::PatRegion(ref inner, mutbl) => {
             let inner_ty = fcx.infcx().next_ty_var();
 
             let mt = ty::TypeAndMut { ty: inner_ty, mutbl: mutbl };
@@ -275,7 +277,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 check_pat(pcx, &**inner, tcx.types.err);
             }
         }
-        ast::PatVec(ref before, ref slice, ref after) => {
+        hir::PatVec(ref before, ref slice, ref after) => {
             let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
             let inner_ty = fcx.infcx().next_ty_var();
             let pat_ty = match expected_ty.sty {
@@ -291,7 +293,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                     tcx.mk_ref(tcx.mk_region(region), ty::TypeAndMut {
                         ty: tcx.mk_slice(inner_ty),
                         mutbl: expected_ty.builtin_deref(true).map(|mt| mt.mutbl)
-                                                              .unwrap_or(ast::MutImmutable)
+                                                              .unwrap_or(hir::MutImmutable)
                     })
                 }
             };
@@ -309,7 +311,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             if let Some(ref slice) = *slice {
                 let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
                 let mutbl = expected_ty.builtin_deref(true)
-                    .map_or(ast::MutImmutable, |mt| mt.mutbl);
+                    .map_or(hir::MutImmutable, |mt| mt.mutbl);
 
                 let slice_ty = tcx.mk_ref(tcx.mk_region(region), ty::TypeAndMut {
                     ty: tcx.mk_slice(inner_ty),
@@ -321,7 +323,6 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 check_pat(pcx, &**elt, inner_ty);
             }
         }
-        ast::PatMac(_) => tcx.sess.bug("unexpanded macro")
     }
 
 
@@ -393,7 +394,7 @@ fn check_assoc_item_is_const(pcx: &pat_ctxt, def: def::Def, span: Span) -> bool 
 
 pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                                       span: Span, expected: Ty<'tcx>,
-                                      inner: &ast::Pat) -> bool {
+                                      inner: &hir::Pat) -> bool {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
     if pat_is_binding(&tcx.def_map, inner) {
@@ -415,11 +416,11 @@ pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 }
 
 pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                             expr: &'tcx ast::Expr,
-                             discrim: &'tcx ast::Expr,
-                             arms: &'tcx [ast::Arm],
+                             expr: &'tcx hir::Expr,
+                             discrim: &'tcx hir::Expr,
+                             arms: &'tcx [hir::Arm],
                              expected: Expectation<'tcx>,
-                             match_src: ast::MatchSource) {
+                             match_src: hir::MatchSource) {
     let tcx = fcx.ccx.tcx;
 
     // Not entirely obvious: if matches may create ref bindings, we
@@ -428,8 +429,8 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let contains_ref_bindings = arms.iter()
                                     .filter_map(|a| tcx.arm_contains_ref_binding(a))
                                     .max_by(|m| match *m {
-                                        ast::MutMutable => 1,
-                                        ast::MutImmutable => 0,
+                                        hir::MutMutable => 1,
+                                        hir::MutImmutable => 0,
                                     });
     let discrim_ty;
     if let Some(m) = contains_ref_bindings {
@@ -491,7 +492,7 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         } else {
             let (origin, expected, found) = match match_src {
                 /* if-let construct without an else block */
-                ast::MatchSource::IfLetDesugar { contains_else_clause }
+                hir::MatchSource::IfLetDesugar { contains_else_clause }
                 if !contains_else_clause => (
                     infer::IfExpressionWithNoElse(expr.span),
                     bty,
@@ -522,8 +523,8 @@ pub struct pat_ctxt<'a, 'tcx: 'a> {
     pub map: PatIdMap,
 }
 
-pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
-                                  path: &ast::Path, fields: &'tcx [Spanned<ast::FieldPat>],
+pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx hir::Pat,
+                                  path: &hir::Path, fields: &'tcx [Spanned<hir::FieldPat>],
                                   etc: bool, expected: Ty<'tcx>) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
@@ -557,9 +558,9 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
 }
 
 pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
-                                pat: &ast::Pat,
-                                path: &ast::Path,
-                                subpats: Option<&'tcx [P<ast::Pat>]>,
+                                pat: &hir::Pat,
+                                path: &hir::Path,
+                                subpats: Option<&'tcx [P<hir::Pat>]>,
                                 expected: Ty<'tcx>)
 {
     // Typecheck the path.
@@ -688,7 +689,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 /// `etc` is true if the pattern said '...' and false otherwise.
 pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                                          span: Span,
-                                         fields: &'tcx [Spanned<ast::FieldPat>],
+                                         fields: &'tcx [Spanned<hir::FieldPat>],
                                          variant: ty::VariantDef<'tcx>,
                                          substs: &Substs<'tcx>,
                                          etc: bool) {

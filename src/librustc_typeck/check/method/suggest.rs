@@ -25,7 +25,8 @@ use metadata::{csearch, cstore, decoder};
 
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::print::pprust;
+use rustc_front::print::pprust;
+use rustc_front::hir;
 
 use std::cell;
 use std::cmp::Ordering;
@@ -37,7 +38,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               span: Span,
                               rcvr_ty: Ty<'tcx>,
                               item_name: ast::Name,
-                              rcvr_expr: Option<&ast::Expr>,
+                              rcvr_expr: Option<&hir::Expr>,
                               error: MethodError<'tcx>)
 {
     // avoid suggestions when we don't know what's going on.
@@ -221,7 +222,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                       span: Span,
                                       rcvr_ty: Ty<'tcx>,
                                       item_name: ast::Name,
-                                      rcvr_expr: Option<&ast::Expr>,
+                                      rcvr_expr: Option<&hir::Expr>,
                                       valid_out_of_scope_traits: Vec<DefId>)
 {
     let tcx = fcx.tcx();
@@ -299,7 +300,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   span: Span,
                                   rcvr_ty: Ty<'tcx>,
-                                  rcvr_expr: Option<&ast::Expr>) -> bool {
+                                  rcvr_expr: Option<&hir::Expr>) -> bool {
     fn is_local(ty: Ty) -> bool {
         match ty.sty {
             ty::TyEnum(def, _) | ty::TyStruct(def, _) => def.did.is_local(),
@@ -370,7 +371,7 @@ impl Ord for TraitInfo {
 /// Retrieve all traits in this crate and any dependent crates.
 pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
     if ccx.all_traits.borrow().is_none() {
-        use syntax::visit;
+        use rustc_front::visit;
 
         let mut traits = vec![];
 
@@ -381,9 +382,9 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
             traits: &'a mut AllTraitsVec,
         }
         impl<'v, 'a> visit::Visitor<'v> for Visitor<'a> {
-            fn visit_item(&mut self, i: &'v ast::Item) {
+            fn visit_item(&mut self, i: &'v hir::Item) {
                 match i.node {
-                    ast::ItemTrait(..) => {
+                    hir::ItemTrait(..) => {
                         self.traits.push(TraitInfo::new(DefId::local(i.id)));
                     }
                     _ => {}

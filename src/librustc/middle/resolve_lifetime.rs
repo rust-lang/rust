@@ -28,10 +28,11 @@ use std::mem::replace;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
-use syntax::print::pprust::lifetime_to_string;
-use syntax::visit;
-use syntax::visit::{FnKind, Visitor};
 use util::nodemap::NodeMap;
+
+use rustc_front::hir;
+use rustc_front::print::pprust::lifetime_to_string;
+use rustc_front::visit::{self, Visitor, FnKind};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum DefRegion {
@@ -78,10 +79,10 @@ struct LifetimeContext<'a> {
 enum ScopeChain<'a> {
     /// EarlyScope(i, ['a, 'b, ...], s) extends s with early-bound
     /// lifetimes, assigning indexes 'a => i, 'b => i+1, ... etc.
-    EarlyScope(subst::ParamSpace, &'a Vec<ast::LifetimeDef>, Scope<'a>),
+    EarlyScope(subst::ParamSpace, &'a Vec<hir::LifetimeDef>, Scope<'a>),
     /// LateScope(['a, 'b, ...], s) extends s with late-bound
     /// lifetimes introduced by the declaration binder_id.
-    LateScope(&'a Vec<ast::LifetimeDef>, Scope<'a>),
+    LateScope(&'a Vec<hir::LifetimeDef>, Scope<'a>),
     /// lifetimes introduced by items within a code block are scoped
     /// to that block.
     BlockScope(region::DestructionScopeData, Scope<'a>),
@@ -92,7 +93,7 @@ type Scope<'a> = &'a ScopeChain<'a>;
 
 static ROOT_SCOPE: ScopeChain<'static> = RootScope;
 
-pub fn krate(sess: &Session, krate: &ast::Crate, def_map: &DefMap) -> NamedRegionMap {
+pub fn krate(sess: &Session, krate: &hir::Crate, def_map: &DefMap) -> NamedRegionMap {
     let mut named_region_map = NodeMap();
     visit::walk_crate(&mut LifetimeContext {
         sess: sess,
@@ -107,7 +108,7 @@ pub fn krate(sess: &Session, krate: &ast::Crate, def_map: &DefMap) -> NamedRegio
 }
 
 impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
-    fn visit_item(&mut self, item: &ast::Item) {
+    fn visit_item(&mut self, item: &hir::Item) {
         // Items save/restore the set of labels. This way inner items
         // can freely reuse names, be they loop labels or lifetimes.
         let saved = replace(&mut self.labels_in_fn, vec![]);
@@ -115,26 +116,25 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         // Items always introduce a new root scope
         self.with(RootScope, |_, this| {
             match item.node {
-                ast::ItemFn(..) => {
+                hir::ItemFn(..) => {
                     // Fn lifetimes get added in visit_fn below:
                     visit::walk_item(this, item);
                 }
-                ast::ItemExternCrate(_) |
-                ast::ItemUse(_) |
-                ast::ItemMod(..) |
-                ast::ItemMac(..) |
-                ast::ItemDefaultImpl(..) |
-                ast::ItemForeignMod(..) |
-                ast::ItemStatic(..) |
-                ast::ItemConst(..) => {
+                hir::ItemExternCrate(_) |
+                hir::ItemUse(_) |
+                hir::ItemMod(..) |
+                hir::ItemDefaultImpl(..) |
+                hir::ItemForeignMod(..) |
+                hir::ItemStatic(..) |
+                hir::ItemConst(..) => {
                     // These sorts of items have no lifetime parameters at all.
                     visit::walk_item(this, item);
                 }
-                ast::ItemTy(_, ref generics) |
-                ast::ItemEnum(_, ref generics) |
-                ast::ItemStruct(_, ref generics) |
-                ast::ItemTrait(_, ref generics, _, _) |
-                ast::ItemImpl(_, _, ref generics, _, _, _) => {
+                hir::ItemTy(_, ref generics) |
+                hir::ItemEnum(_, ref generics) |
+                hir::ItemStruct(_, ref generics) |
+                hir::ItemTrait(_, ref generics, _, _) |
+                hir::ItemImpl(_, _, ref generics, _, _, _) => {
                     // These kinds of items have only early bound lifetime parameters.
                     let lifetimes = &generics.lifetimes;
                     let early_scope = EarlyScope(subst::TypeSpace, lifetimes, &ROOT_SCOPE);
@@ -150,7 +150,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         replace(&mut self.labels_in_fn, saved);
     }
 
-    fn visit_foreign_item(&mut self, item: &ast::ForeignItem) {
+    fn visit_foreign_item(&mut self, item: &hir::ForeignItem) {
         // Items save/restore the set of labels. This way inner items
         // can freely reuse names, be they loop labels or lifetimes.
         let saved = replace(&mut self.labels_in_fn, vec![]);
@@ -158,12 +158,12 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         // Items always introduce a new root scope
         self.with(RootScope, |_, this| {
             match item.node {
-                ast::ForeignItemFn(_, ref generics) => {
+                hir::ForeignItemFn(_, ref generics) => {
                     this.visit_early_late(subst::FnSpace, generics, |this| {
                         visit::walk_foreign_item(this, item);
                     })
                 }
-                ast::ForeignItemStatic(..) => {
+                hir::ForeignItemStatic(..) => {
                     visit::walk_foreign_item(this, item);
                 }
             }
@@ -173,8 +173,8 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         replace(&mut self.labels_in_fn, saved);
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v ast::FnDecl,
-                b: &'v ast::Block, s: Span, _: ast::NodeId) {
+    fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v hir::FnDecl,
+                b: &'v hir::Block, s: Span, _: ast::NodeId) {
         match fk {
             FnKind::ItemFn(_, generics, _, _, _, _) => {
                 self.visit_early_late(subst::FnSpace, generics, |this| {
@@ -192,9 +192,9 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         }
     }
 
-    fn visit_ty(&mut self, ty: &ast::Ty) {
+    fn visit_ty(&mut self, ty: &hir::Ty) {
         match ty.node {
-            ast::TyBareFn(ref c) => {
+            hir::TyBareFn(ref c) => {
                 visit::walk_lifetime_decls_helper(self, &c.lifetimes);
                 self.with(LateScope(&c.lifetimes, self.scope), |old_scope, this| {
                     // a bare fn has no bounds, so everything
@@ -203,7 +203,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     visit::walk_ty(this, ty);
                 });
             }
-            ast::TyPath(None, ref path) => {
+            hir::TyPath(None, ref path) => {
                 // if this path references a trait, then this will resolve to
                 // a trait ref, which introduces a binding scope.
                 match self.def_map.borrow().get(&ty.id).map(|d| (d.base_def, d.depth)) {
@@ -223,12 +223,12 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         }
     }
 
-    fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
         // We reset the labels on every trait item, so that different
         // methods in an impl can reuse label names.
         let saved = replace(&mut self.labels_in_fn, vec![]);
 
-        if let ast::MethodTraitItem(ref sig, None) = trait_item.node {
+        if let hir::MethodTraitItem(ref sig, None) = trait_item.node {
             self.visit_early_late(
                 subst::FnSpace, &sig.generics,
                 |this| visit::walk_trait_item(this, trait_item))
@@ -239,13 +239,13 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         replace(&mut self.labels_in_fn, saved);
     }
 
-    fn visit_block(&mut self, b: &ast::Block) {
+    fn visit_block(&mut self, b: &hir::Block) {
         self.with(BlockScope(region::DestructionScopeData::new(b.id),
                              self.scope),
                   |_, this| visit::walk_block(this, b));
     }
 
-    fn visit_lifetime_ref(&mut self, lifetime_ref: &ast::Lifetime) {
+    fn visit_lifetime_ref(&mut self, lifetime_ref: &hir::Lifetime) {
         if lifetime_ref.name == special_idents::static_lifetime.name {
             self.insert_lifetime(lifetime_ref, DefStaticRegion);
             return;
@@ -253,7 +253,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         self.resolve_lifetime_ref(lifetime_ref);
     }
 
-    fn visit_generics(&mut self, generics: &ast::Generics) {
+    fn visit_generics(&mut self, generics: &hir::Generics) {
         for ty_param in generics.ty_params.iter() {
             visit::walk_ty_param_bounds_helper(self, &ty_param.bounds);
             match ty_param.default {
@@ -263,7 +263,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         }
         for predicate in &generics.where_clause.predicates {
             match predicate {
-                &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ ref bounded_ty,
+                &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate{ ref bounded_ty,
                                                                                ref bounds,
                                                                                ref bound_lifetimes,
                                                                                .. }) => {
@@ -282,7 +282,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                         visit::walk_ty_param_bounds_helper(self, bounds);
                     }
                 }
-                &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
+                &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate{ref lifetime,
                                                                                 ref bounds,
                                                                                 .. }) => {
 
@@ -291,7 +291,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                         self.visit_lifetime_ref(bound);
                     }
                 }
-                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ id,
+                &hir::WherePredicate::EqPredicate(hir::WhereEqPredicate{ id,
                                                                          ref path,
                                                                          ref ty,
                                                                          .. }) => {
@@ -303,8 +303,8 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     }
 
     fn visit_poly_trait_ref(&mut self,
-                            trait_ref: &ast::PolyTraitRef,
-                            _modifier: &ast::TraitBoundModifier) {
+                            trait_ref: &hir::PolyTraitRef,
+                            _modifier: &hir::TraitBoundModifier) {
         debug!("visit_poly_trait_ref trait_ref={:?}", trait_ref);
 
         if !self.trait_ref_hack || !trait_ref.bound_lifetimes.is_empty() {
@@ -337,10 +337,10 @@ fn original_label(span: Span) -> Original {
 fn shadower_label(span: Span) -> Shadower {
     Shadower { kind: ShadowKind::Label, span: span }
 }
-fn original_lifetime(l: &ast::Lifetime) -> Original {
+fn original_lifetime(l: &hir::Lifetime) -> Original {
     Original { kind: ShadowKind::Lifetime, span: l.span }
 }
-fn shadower_lifetime(l: &ast::Lifetime) -> Shadower {
+fn shadower_lifetime(l: &hir::Lifetime) -> Shadower {
     Shadower { kind: ShadowKind::Lifetime, span: l.span }
 }
 
@@ -376,7 +376,7 @@ fn signal_shadowing_problem(
 
 // Adds all labels in `b` to `ctxt.labels_in_fn`, signalling a warning
 // if one of the label shadows a lifetime or another label.
-fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v ast::Block) {
+fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
 
     struct GatherLabels<'a> {
         sess: &'a Session,
@@ -393,11 +393,11 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v ast::Block) {
     return;
 
     impl<'v, 'a> Visitor<'v> for GatherLabels<'a> {
-        fn visit_expr(&mut self, ex: &'v ast::Expr) {
+        fn visit_expr(&mut self, ex: &'v hir::Expr) {
             // do not recurse into closures defined in the block
             // since they are treated as separate fns from the POV of
             // labels_in_fn
-            if let ast::ExprClosure(..) = ex.node {
+            if let hir::ExprClosure(..) = ex.node {
                 return
             }
             if let Some(label) = expression_label(ex) {
@@ -421,17 +421,15 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v ast::Block) {
             visit::walk_expr(self, ex)
         }
 
-        fn visit_item(&mut self, _: &ast::Item) {
+        fn visit_item(&mut self, _: &hir::Item) {
             // do not recurse into items defined in the block
         }
     }
 
-    fn expression_label(ex: &ast::Expr) -> Option<ast::Ident> {
+    fn expression_label(ex: &hir::Expr) -> Option<ast::Ident> {
         match ex.node {
-            ast::ExprWhile(_, _, Some(label))       |
-            ast::ExprWhileLet(_, _, _, Some(label)) |
-            ast::ExprForLoop(_, _, _, Some(label))  |
-            ast::ExprLoop(_, Some(label))          => Some(label),
+            hir::ExprWhile(_, _, Some(label)) |
+            hir::ExprLoop(_, Some(label)) => Some(label),
             _ => None,
         }
     }
@@ -471,8 +469,8 @@ impl<'a> LifetimeContext<'a> {
     // the function body itself.
     fn walk_fn<'b>(&mut self,
                    fk: FnKind,
-                   fd: &ast::FnDecl,
-                   fb: &'b ast::Block,
+                   fd: &hir::FnDecl,
+                   fb: &'b hir::Block,
                    _span: Span) {
         match fk {
             FnKind::ItemFn(_, generics, _, _, _, _) => {
@@ -533,7 +531,7 @@ impl<'a> LifetimeContext<'a> {
     /// ordering is not important there.
     fn visit_early_late<F>(&mut self,
                            early_space: subst::ParamSpace,
-                           generics: &ast::Generics,
+                           generics: &hir::Generics,
                            walk: F) where
         F: FnOnce(&mut LifetimeContext),
     {
@@ -553,7 +551,7 @@ impl<'a> LifetimeContext<'a> {
         });
     }
 
-    fn resolve_lifetime_ref(&mut self, lifetime_ref: &ast::Lifetime) {
+    fn resolve_lifetime_ref(&mut self, lifetime_ref: &hir::Lifetime) {
         // Walk up the scope chain, tracking the number of fn scopes
         // that we pass through, until we find a lifetime with the
         // given name or we run out of scopes. If we encounter a code
@@ -610,7 +608,7 @@ impl<'a> LifetimeContext<'a> {
 
     fn resolve_free_lifetime_ref(&mut self,
                                  scope_data: region::DestructionScopeData,
-                                 lifetime_ref: &ast::Lifetime,
+                                 lifetime_ref: &hir::Lifetime,
                                  scope: Scope) {
         debug!("resolve_free_lifetime_ref \
                 scope_data: {:?} lifetime_ref: {:?} scope: {:?}",
@@ -660,13 +658,13 @@ impl<'a> LifetimeContext<'a> {
 
     }
 
-    fn unresolved_lifetime_ref(&self, lifetime_ref: &ast::Lifetime) {
+    fn unresolved_lifetime_ref(&self, lifetime_ref: &hir::Lifetime) {
         span_err!(self.sess, lifetime_ref.span, E0261,
             "use of undeclared lifetime name `{}`",
                     lifetime_ref.name);
     }
 
-    fn check_lifetime_defs(&mut self, old_scope: Scope, lifetimes: &Vec<ast::LifetimeDef>) {
+    fn check_lifetime_defs(&mut self, old_scope: Scope, lifetimes: &Vec<hir::LifetimeDef>) {
         for i in 0..lifetimes.len() {
             let lifetime_i = &lifetimes[i];
 
@@ -701,7 +699,7 @@ impl<'a> LifetimeContext<'a> {
 
     fn check_lifetime_def_for_shadowing(&self,
                                         mut old_scope: Scope,
-                                        lifetime: &ast::Lifetime)
+                                        lifetime: &hir::Lifetime)
     {
         for &(label, label_span) in &self.labels_in_fn {
             // FIXME (#24278): non-hygienic comparison
@@ -742,7 +740,7 @@ impl<'a> LifetimeContext<'a> {
     }
 
     fn insert_lifetime(&mut self,
-                       lifetime_ref: &ast::Lifetime,
+                       lifetime_ref: &hir::Lifetime,
                        def: DefRegion) {
         if lifetime_ref.id == ast::DUMMY_NODE_ID {
             self.sess.span_bug(lifetime_ref.span,
@@ -758,9 +756,9 @@ impl<'a> LifetimeContext<'a> {
     }
 }
 
-fn search_lifetimes<'a>(lifetimes: &'a Vec<ast::LifetimeDef>,
-                    lifetime_ref: &ast::Lifetime)
-                    -> Option<(u32, &'a ast::Lifetime)> {
+fn search_lifetimes<'a>(lifetimes: &'a Vec<hir::LifetimeDef>,
+                    lifetime_ref: &hir::Lifetime)
+                    -> Option<(u32, &'a hir::Lifetime)> {
     for (i, lifetime_decl) in lifetimes.iter().enumerate() {
         if lifetime_decl.lifetime.name == lifetime_ref.name {
             return Some((i as u32, &lifetime_decl.lifetime));
@@ -771,7 +769,7 @@ fn search_lifetimes<'a>(lifetimes: &'a Vec<ast::LifetimeDef>,
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> Vec<ast::LifetimeDef> {
+pub fn early_bound_lifetimes<'a>(generics: &'a hir::Generics) -> Vec<hir::LifetimeDef> {
     let referenced_idents = early_bound_lifetime_names(generics);
     if referenced_idents.is_empty() {
         return Vec::new();
@@ -785,7 +783,7 @@ pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> Vec<ast::Lifeti
 
 /// Given a set of generic declarations, returns a list of names containing all early bound
 /// lifetime names for those generics. (In fact, this list may also contain other names.)
-fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
+fn early_bound_lifetime_names(generics: &hir::Generics) -> Vec<ast::Name> {
     // Create two lists, dividing the lifetimes into early/late bound.
     // Initially, all of them are considered late, but we will move
     // things from late into early as we go if we find references to
@@ -805,13 +803,13 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
         }
         for predicate in &generics.where_clause.predicates {
             match predicate {
-                &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ref bounds,
+                &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate{ref bounds,
                                                                               ref bounded_ty,
                                                                               ..}) => {
                     collector.visit_ty(&**bounded_ty);
                     visit::walk_ty_param_bounds_helper(&mut collector, bounds);
                 }
-                &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
+                &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate{ref lifetime,
                                                                                 ref bounds,
                                                                                 ..}) => {
                     collector.visit_lifetime_ref(lifetime);
@@ -820,7 +818,7 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
                         collector.visit_lifetime_ref(bound);
                     }
                 }
-                &ast::WherePredicate::EqPredicate(_) => unimplemented!()
+                &hir::WherePredicate::EqPredicate(_) => unimplemented!()
             }
         }
     }
@@ -845,7 +843,7 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
     }
 
     impl<'a, 'v> Visitor<'v> for FreeLifetimeCollector<'a> {
-        fn visit_lifetime_ref(&mut self, lifetime_ref: &ast::Lifetime) {
+        fn visit_lifetime_ref(&mut self, lifetime_ref: &hir::Lifetime) {
             shuffle(self.early_bound, self.late_bound,
                     lifetime_ref.name);
         }

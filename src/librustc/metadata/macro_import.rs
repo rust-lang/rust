@@ -14,13 +14,14 @@ use session::Session;
 use metadata::creader::CrateReader;
 
 use std::collections::{HashSet, HashMap};
-use syntax::ast;
-use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token;
+use syntax::ast;
+use syntax::attr;
 use syntax::visit;
 use syntax::visit::Visitor;
 use syntax::attr::AttrMetaMethods;
+use rustc_front::attr::AttrMetaMethods as FrontAttrMetaMethods;
 
 struct MacroLoader<'a> {
     sess: &'a Session,

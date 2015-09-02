@@ -51,7 +51,8 @@ use middle::wf;
 use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
-use syntax::{abi, ast};
+use syntax::abi;
+use rustc_front::hir;
 use util::common::ErrorReported;
 use util::nodemap::FnvHashMap;
 
@@ -793,7 +794,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match candidate {
             ImplCandidate(def_id) => {
                 match self.tcx().trait_impl_polarity(def_id) {
-                    Some(ast::ImplPolarity::Negative) => return Err(Unimplemented),
+                    Some(hir::ImplPolarity::Negative) => return Err(Unimplemented),
                     _ => {}
                 }
             }
@@ -1217,7 +1218,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // provide an impl, but only for suitable `fn` pointers
             ty::TyBareFn(_, &ty::BareFnTy {
-                unsafety: ast::Unsafety::Normal,
+                unsafety: hir::Unsafety::Normal,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: _,
@@ -1676,10 +1677,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::BoundCopy => {
                         match mutbl {
                             // &mut T is affine and hence never `Copy`
-                            ast::MutMutable => Err(Unimplemented),
+                            hir::MutMutable => Err(Unimplemented),
 
                             // &T is always copyable
-                            ast::MutImmutable => ok_if(Vec::new()),
+                            hir::MutImmutable => ok_if(Vec::new()),
                         }
                     }
 

@@ -17,7 +17,7 @@ use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 use trans::context::CrateContext;
 use util::nodemap::FnvHashMap;
 
-use syntax::ast;
+use rustc_front::hir;
 
 use std::ffi::CString;
 use std::mem;
@@ -125,30 +125,30 @@ impl Type {
         }
     }
 
-    pub fn int_from_ty(ccx: &CrateContext, t: ast::IntTy) -> Type {
+    pub fn int_from_ty(ccx: &CrateContext, t: hir::IntTy) -> Type {
         match t {
-            ast::TyIs => ccx.int_type(),
-            ast::TyI8 => Type::i8(ccx),
-            ast::TyI16 => Type::i16(ccx),
-            ast::TyI32 => Type::i32(ccx),
-            ast::TyI64 => Type::i64(ccx)
+            hir::TyIs => ccx.int_type(),
+            hir::TyI8 => Type::i8(ccx),
+            hir::TyI16 => Type::i16(ccx),
+            hir::TyI32 => Type::i32(ccx),
+            hir::TyI64 => Type::i64(ccx)
         }
     }
 
-    pub fn uint_from_ty(ccx: &CrateContext, t: ast::UintTy) -> Type {
+    pub fn uint_from_ty(ccx: &CrateContext, t: hir::UintTy) -> Type {
         match t {
-            ast::TyUs => ccx.int_type(),
-            ast::TyU8 => Type::i8(ccx),
-            ast::TyU16 => Type::i16(ccx),
-            ast::TyU32 => Type::i32(ccx),
-            ast::TyU64 => Type::i64(ccx)
+            hir::TyUs => ccx.int_type(),
+            hir::TyU8 => Type::i8(ccx),
+            hir::TyU16 => Type::i16(ccx),
+            hir::TyU32 => Type::i32(ccx),
+            hir::TyU64 => Type::i64(ccx)
         }
     }
 
-    pub fn float_from_ty(ccx: &CrateContext, t: ast::FloatTy) -> Type {
+    pub fn float_from_ty(ccx: &CrateContext, t: hir::FloatTy) -> Type {
         match t {
-            ast::TyF32 => Type::f32(ccx),
-            ast::TyF64 => Type::f64(ccx),
+            hir::TyF32 => Type::f32(ccx),
+            hir::TyF64 => Type::f64(ccx),
         }
     }
 

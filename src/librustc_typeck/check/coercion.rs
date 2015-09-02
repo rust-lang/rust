@@ -72,7 +72,7 @@ use util::common::indent;
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use syntax::ast;
+use rustc_front::hir;
 
 struct Coerce<'a, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -99,7 +99,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     fn coerce(&self,
-              expr_a: &ast::Expr,
+              expr_a: &hir::Expr,
               a: Ty<'tcx>,
               b: Ty<'tcx>)
               -> CoerceResult<'tcx> {
@@ -160,10 +160,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     /// To match `A` with `B`, autoderef will be performed,
     /// calling `deref`/`deref_mut` where necessary.
     fn coerce_borrowed_pointer(&self,
-                               expr_a: &ast::Expr,
+                               expr_a: &hir::Expr,
                                a: Ty<'tcx>,
                                b: Ty<'tcx>,
-                               mutbl_b: ast::Mutability)
+                               mutbl_b: hir::Mutability)
                                -> CoerceResult<'tcx> {
         debug!("coerce_borrowed_pointer(a={:?}, b={:?})",
                a,
@@ -356,7 +356,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
             if let ty::TyBareFn(None, fn_ty_b) = b.sty {
                 match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
-                    (ast::Unsafety::Normal, ast::Unsafety::Unsafe) => {
+                    (hir::Unsafety::Normal, hir::Unsafety::Unsafe) => {
                         let unsafe_a = self.tcx().safe_to_unsafe_fn_ty(fn_ty_a);
                         try!(self.subtype(unsafe_a, b));
                         return Ok(Some(ty::AdjustUnsafeFnPointer));
@@ -396,7 +396,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn coerce_unsafe_ptr(&self,
                          a: Ty<'tcx>,
                          b: Ty<'tcx>,
-                         mutbl_b: ast::Mutability)
+                         mutbl_b: hir::Mutability)
                          -> CoerceResult<'tcx> {
         debug!("coerce_unsafe_ptr(a={:?}, b={:?})",
                a,
@@ -431,7 +431,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 }
 
 pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                             expr: &ast::Expr,
+                             expr: &hir::Expr,
                              a: Ty<'tcx>,
                              b: Ty<'tcx>)
                              -> RelateResult<'tcx, ()> {
@@ -465,13 +465,13 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     Ok(())
 }
 
-fn coerce_mutbls<'tcx>(from_mutbl: ast::Mutability,
-                       to_mutbl: ast::Mutability)
+fn coerce_mutbls<'tcx>(from_mutbl: hir::Mutability,
+                       to_mutbl: hir::Mutability)
                        -> CoerceResult<'tcx> {
     match (from_mutbl, to_mutbl) {
-        (ast::MutMutable, ast::MutMutable) |
-        (ast::MutImmutable, ast::MutImmutable) |
-        (ast::MutMutable, ast::MutImmutable) => Ok(None),
-        (ast::MutImmutable, ast::MutMutable) => Err(TypeError::Mutability)
+        (hir::MutMutable, hir::MutMutable) |
+        (hir::MutImmutable, hir::MutImmutable) |
+        (hir::MutMutable, hir::MutImmutable) => Ok(None),
+        (hir::MutImmutable, hir::MutMutable) => Err(TypeError::Mutability)
     }
 }

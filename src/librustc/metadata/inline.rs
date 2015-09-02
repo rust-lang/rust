@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use middle::def_id::DefId;
-use syntax::ast;
-use syntax::ast_util::{IdRange, IdRangeComputingVisitor,
-                       IdVisitor, IdVisitingOperation};
+use rustc_front::hir;
+use rustc_front::util::IdVisitor;
+use syntax::ast_util::{IdRange, IdRangeComputingVisitor, IdVisitingOperation};
 use syntax::ptr::P;
-use syntax::visit::Visitor;
+use rustc_front::visit::Visitor;
 use self::InlinedItem::*;
 
 /// The data we save and restore about an inlined item or method.  This is not
@@ -21,18 +21,18 @@ use self::InlinedItem::*;
 /// that we trans.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum InlinedItem {
-    Item(P<ast::Item>),
-    TraitItem(DefId /* impl id */, P<ast::TraitItem>),
-    ImplItem(DefId /* impl id */, P<ast::ImplItem>),
-    Foreign(P<ast::ForeignItem>),
+    Item(P<hir::Item>),
+    TraitItem(DefId /* impl id */, P<hir::TraitItem>),
+    ImplItem(DefId /* impl id */, P<hir::ImplItem>),
+    Foreign(P<hir::ForeignItem>),
 }
 
-/// A borrowed version of `ast::InlinedItem`.
+/// A borrowed version of `hir::InlinedItem`.
 pub enum InlinedItemRef<'a> {
-    Item(&'a ast::Item),
-    TraitItem(DefId, &'a ast::TraitItem),
-    ImplItem(DefId, &'a ast::ImplItem),
-    Foreign(&'a ast::ForeignItem)
+    Item(&'a hir::Item),
+    TraitItem(DefId, &'a hir::TraitItem),
+    ImplItem(DefId, &'a hir::ImplItem),
+    Foreign(&'a hir::ForeignItem)
 }
 
 impl InlinedItem {
@@ -62,4 +62,3 @@ impl InlinedItem {
         visitor.result()
     }
 }
-

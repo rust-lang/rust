@@ -28,12 +28,12 @@ use middle::ty;
 use middle::weak_lang_items;
 use util::nodemap::FnvHashMap;
 
-use syntax::ast;
-use syntax::attr::AttrMetaMethods;
+use rustc_front::attr::AttrMetaMethods;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
-use syntax::visit::Visitor;
-use syntax::visit;
+use rustc_front::visit::Visitor;
+use rustc_front::visit;
+use rustc_front::hir;
 
 use std::iter::Enumerate;
 use std::slice;
@@ -152,7 +152,7 @@ struct LanguageItemCollector<'a> {
 }
 
 impl<'a, 'v> Visitor<'v> for LanguageItemCollector<'a> {
-    fn visit_item(&mut self, item: &ast::Item) {
+    fn visit_item(&mut self, item: &hir::Item) {
         if let Some(value) = extract(&item.attrs) {
             let item_index = self.item_refs.get(&value[..]).cloned();
 
@@ -195,7 +195,7 @@ impl<'a> LanguageItemCollector<'a> {
         self.items.items[item_index] = Some(item_def_id);
     }
 
-    pub fn collect_local_language_items(&mut self, krate: &ast::Crate) {
+    pub fn collect_local_language_items(&mut self, krate: &hir::Crate) {
         visit::walk_crate(self, krate);
     }
 
@@ -210,13 +210,13 @@ impl<'a> LanguageItemCollector<'a> {
         })
     }
 
-    pub fn collect(&mut self, krate: &ast::Crate) {
+    pub fn collect(&mut self, krate: &hir::Crate) {
         self.collect_local_language_items(krate);
         self.collect_external_language_items();
     }
 }
 
-pub fn extract(attrs: &[ast::Attribute]) -> Option<InternedString> {
+pub fn extract(attrs: &[hir::Attribute]) -> Option<InternedString> {
     for attribute in attrs {
         match attribute.value_str() {
             Some(ref value) if attribute.check_name("lang") => {
@@ -229,7 +229,7 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<InternedString> {
     return None;
 }
 
-pub fn collect_language_items(krate: &ast::Crate,
+pub fn collect_language_items(krate: &hir::Crate,
                               session: &Session) -> LanguageItems {
     let mut collector = LanguageItemCollector::new(session);
     collector.collect(krate);

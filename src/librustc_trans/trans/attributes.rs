@@ -15,8 +15,8 @@ use middle::ty;
 use middle::infer;
 use session::config::NoDebugInfo;
 use syntax::abi;
-use syntax::ast;
-pub use syntax::attr::InlineAttr;
+use rustc_front::hir;
+pub use rustc_front::attr::InlineAttr;
 use trans::base;
 use trans::common;
 use trans::context::CrateContext;
@@ -91,8 +91,8 @@ pub fn set_optimize_for_size(val: ValueRef, optimize: bool) {
 
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
-pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
-    use syntax::attr::*;
+pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[hir::Attribute], llfn: ValueRef) {
+    use rustc_front::attr::*;
     inline(llfn, find_inline_attr(Some(ccx.sess().diagnostic()), attrs));
 
     // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a
@@ -262,11 +262,11 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
                 // on memory dependencies rather than pointer equality
                 let interior_unsafe = mt.ty.type_contents(ccx.tcx()).interior_unsafe();
 
-                if mt.mutbl == ast::MutMutable || !interior_unsafe {
+                if mt.mutbl == hir::MutMutable || !interior_unsafe {
                     attrs.arg(idx, llvm::Attribute::NoAlias);
                 }
 
-                if mt.mutbl == ast::MutImmutable && !interior_unsafe {
+                if mt.mutbl == hir::MutImmutable && !interior_unsafe {
                     attrs.arg(idx, llvm::Attribute::ReadOnly);
                 }
 

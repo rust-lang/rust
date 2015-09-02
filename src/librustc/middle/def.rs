@@ -15,6 +15,7 @@ use middle::privacy::LastPrivate;
 use middle::subst::ParamSpace;
 use util::nodemap::NodeMap;
 use syntax::ast;
+use rustc_front::hir;
 
 use std::cell::RefCell;
 
@@ -33,7 +34,7 @@ pub enum Def {
     DefTy(DefId, bool /* is_enum */),
     DefAssociatedTy(DefId /* trait */, DefId),
     DefTrait(DefId),
-    DefPrimTy(ast::PrimTy),
+    DefPrimTy(hir::PrimTy),
     DefTyParam(ParamSpace, u32, DefId, ast::Name),
     DefUse(DefId),
     DefUpvar(ast::NodeId,  // id of closed over local

@@ -14,6 +14,7 @@
 use rustc_data_structures::graph;
 use middle::ty;
 use syntax::ast;
+use rustc_front::hir;
 
 mod construct;
 pub mod graphviz;
@@ -58,7 +59,7 @@ pub type CFGEdge = graph::Edge<CFGEdgeData>;
 
 impl CFG {
     pub fn new(tcx: &ty::ctxt,
-               blk: &ast::Block) -> CFG {
+               blk: &hir::Block) -> CFG {
         construct::construct(tcx, blk)
     }
 

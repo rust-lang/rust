@@ -38,6 +38,7 @@ use trans::machine::llsize_of;
 use trans::type_::Type;
 use middle::ty::{self, Ty, HasTypeFlags};
 use middle::subst::Substs;
+use rustc_front::hir;
 use syntax::abi::{self, RustIntrinsic};
 use syntax::ast;
 use syntax::ptr::P;
@@ -45,7 +46,7 @@ use syntax::parse::token;
 
 use std::cmp::Ordering;
 
-pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
+pub fn get_simple_intrinsic(ccx: &CrateContext, item: &hir::ForeignItem) -> Option<ValueRef> {
     let name = match &*item.ident.name.as_str() {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
@@ -1373,7 +1374,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let tcx = ccx.tcx();
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
     let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: ast::Unsafety::Unsafe,
+        unsafety: hir::Unsafety::Unsafe,
         abi: abi::Rust,
         sig: ty::Binder(ty::FnSig {
             inputs: vec![i8p],
@@ -1384,7 +1385,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let fn_ty = tcx.mk_fn(None, fn_ty);
     let output = ty::FnOutput::FnConverging(i8p);
     let try_fn_ty  = tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: ast::Unsafety::Unsafe,
+        unsafety: hir::Unsafety::Unsafe,
         abi: abi::Rust,
         sig: ty::Binder(ty::FnSig {
             inputs: vec![fn_ty, i8p],
@@ -1402,7 +1403,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
      name: &str,
      substs: subst::Substs<'tcx>,
      callee_ty: Ty<'tcx>,
-     args: Option<&[P<ast::Expr>]>,
+     args: Option<&[P<hir::Expr>]>,
      llargs: &[ValueRef],
      ret_ty: Ty<'tcx>,
      llret_ty: Type,
@@ -1452,12 +1453,12 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
     let in_len = arg_tys[0].simd_size(tcx);
 
     let comparison = match name {
-        "simd_eq" => Some(ast::BiEq),
-        "simd_ne" => Some(ast::BiNe),
-        "simd_lt" => Some(ast::BiLt),
-        "simd_le" => Some(ast::BiLe),
-        "simd_gt" => Some(ast::BiGt),
-        "simd_ge" => Some(ast::BiGe),
+        "simd_eq" => Some(hir::BiEq),
+        "simd_ne" => Some(hir::BiNe),
+        "simd_lt" => Some(hir::BiLt),
+        "simd_le" => Some(hir::BiLe),
+        "simd_gt" => Some(hir::BiGt),
+        "simd_ge" => Some(hir::BiGe),
         _ => None
     };
 

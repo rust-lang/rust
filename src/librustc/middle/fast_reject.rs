@@ -10,7 +10,7 @@
 
 use middle::def_id::DefId;
 use middle::ty::{self, Ty};
-use syntax::ast;
+use rustc_front::hir;
 
 use self::SimplifiedType::*;
 
@@ -19,9 +19,9 @@ use self::SimplifiedType::*;
 pub enum SimplifiedType {
     BoolSimplifiedType,
     CharSimplifiedType,
-    IntSimplifiedType(ast::IntTy),
-    UintSimplifiedType(ast::UintTy),
-    FloatSimplifiedType(ast::FloatTy),
+    IntSimplifiedType(hir::IntTy),
+    UintSimplifiedType(hir::UintTy),
+    FloatSimplifiedType(hir::FloatTy),
     EnumSimplifiedType(DefId),
     StrSimplifiedType,
     VecSimplifiedType,
