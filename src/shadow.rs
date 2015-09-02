@@ -6,7 +6,7 @@ use syntax::visit::FnKind;
 use rustc::lint::{Context, LintArray, LintPass};
 use rustc::middle::def::Def::{DefVariant, DefStruct};
 
-use utils::{in_external_macro, snippet, span_lint};
+use utils::{in_external_macro, snippet, span_lint, span_note_and_lint};
 
 declare_lint!(pub SHADOW_SAME, Allow,
     "rebinding a name to itself, e.g. `let mut x = &mut x`");
@@ -131,9 +131,9 @@ fn check_pat(cx: &Context, pat: &Pat, init: &Option<&Expr>, span: Span,
         PatBox(ref inner) => {
             if let Some(ref initp) = *init {
                 if let ExprBox(_, ref inner_init) = initp.node {
-                    check_pat(cx, inner, &Some(&**inner_init), span, bindings),
+                    check_pat(cx, inner, &Some(&**inner_init), span, bindings);
                 } else {
-                    check_pat(cx, inner, init, span, bindings),
+                    check_pat(cx, inner, init, span, bindings);
                 }
             } else {
                 check_pat(cx, inner, init, span, bindings);
@@ -149,7 +149,7 @@ fn check_pat(cx: &Context, pat: &Pat, init: &Option<&Expr>, span: Span,
 
 fn lint_shadow<T>(cx: &Context, name: Name, span: Span, lspan: Span, init:
         &Option<T>) where T: Deref<Target=Expr> {
-    if let &Some(ref expr) = init {
+    if let Some(ref expr) = *init {
         if is_self_shadow(name, expr) {
             span_lint(cx, SHADOW_SAME, span, &format!(
                 "{} is shadowed by itself in {}",
@@ -157,20 +157,22 @@ fn lint_shadow<T>(cx: &Context, name: Name, span: Span, lspan: Span, init:
                 snippet(cx, expr.span, "..")));
         } else {
             if contains_self(name, expr) {
-                span_lint(cx, SHADOW_REUSE, span, &format!(
+                span_note_and_lint(cx, SHADOW_REUSE, lspan, &format!(
                     "{} is shadowed by {} which reuses the original value",
                     snippet(cx, lspan, "_"),
-                    snippet(cx, expr.span, "..")));
+                    snippet(cx, expr.span, "..")),
+                    expr.span, "initialization happens here");
             } else {
-                span_lint(cx, SHADOW_UNRELATED, span, &format!(
-                    "{} is shadowed by {} in this declaration",
+                span_note_and_lint(cx, SHADOW_UNRELATED, lspan, &format!(
+                    "{} is shadowed by {}",
                     snippet(cx, lspan, "_"),
-                    snippet(cx, expr.span, "..")));
+                    snippet(cx, expr.span, "..")),
+                    expr.span, "initialization happens here");
             }
         }
     } else {
         span_lint(cx, SHADOW_UNRELATED, span, &format!(
-            "{} is shadowed in this declaration", snippet(cx, lspan, "_")));
+            "{} shadows a previous declaration", snippet(cx, lspan, "_")));
     }
 }
 

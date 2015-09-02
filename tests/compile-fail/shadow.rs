@@ -18,7 +18,7 @@ fn main() {
     let x = (1, x); //~ERROR: x is shadowed by (1, x) which reuses
     let x = first(x); //~ERROR: x is shadowed by first(x) which reuses
     let y = 1;
-    let x = y; //~ERROR: x is shadowed by y in this declaration
+    let x = y; //~ERROR: x is shadowed by y
 
     let o = Some(1u8);
 
