@@ -17,7 +17,7 @@ import textwrap
 import itertools
 
 SPEC = re.compile(
-    r'^(?:(?P<id>[iusfIUSF])(?:\((?P<start>\d+)-(?P<end>\d+)\)|'
+    r'^(?:(?P<void>V)|(?P<id>[iusfIUSF])(?:\((?P<start>\d+)-(?P<end>\d+)\)|'
     r'(?P<width>\d+)(:?/(?P<llvm_width>\d+))?)'
     r'|(?P<reference>\d+)(?P<modifiers>[vShdnwusDMC]*)(?P<force_width>x\d+)?)'
     r'(?:(?P<pointer>Pm|Pc)(?P<llvm_pointer>/.*)?)?$'
@@ -96,6 +96,19 @@ class Type(object):
 
     def modify(self, spec, width):
         raise NotImplementedError()
+
+class Void(Type):
+    def __init__(self):
+        Type.__init__(self, 0)
+
+    def compiler_ctor(self):
+        return 'void()'
+
+    def rust_name(self):
+        return '()'
+
+    def type_info(self, platform_info):
+        return None
 
 class Number(Type):
     def __init__(self, bitwidth):
@@ -289,7 +302,10 @@ class TypeSpec(object):
                 id = match.group('id')
                 reference = match.group('reference')
 
-                if id is not None:
+                if match.group('void') is not None:
+                    assert spec == 'V'
+                    yield Void()
+                elif id is not None:
                     is_vector = id.islower()
                     type_ctors = TYPE_ID_LOOKUP[id.lower()]
 
@@ -436,10 +452,14 @@ def parse_args():
         ## Type specifier grammar
 
         ```
-        type := ( vector | scalar | aggregate | reference ) pointer?
+        type := core_type pointer?
+
+        core_type := void | vector | scalar | aggregate | reference
 
         pointer := 'Pm' llvm_pointer? | 'Pc' llvm_pointer?
         llvm_pointer := '/' type
+
+        void := 'V'
 
         vector := vector_elem width |
         vector_elem := 'i' | 'u' | 's' | 'f'
@@ -471,6 +491,11 @@ def parse_args():
         internally to LLVM, e.g. `S32pm/S8` is exposed as `*mut i32`
         in Rust, but is `i8*` in LLVM. (This defaults to the main
         type).
+
+        ## Void
+
+        The `V` type corresponds to `void` in LLVM (`()` in
+        Rust). It's likely to only work in return position.
 
         ## Vectors
 
@@ -586,7 +611,7 @@ class CompilerDefs(object):
 
 #![allow(unused_imports)]
 
-use {{Intrinsic, i, i_, u, u_, f, v, agg, p}};
+use {{Intrinsic, i, i_, u, u_, f, v, agg, p, void}};
 use IntrinsicDef::Named;
 use rustc::middle::ty;
 

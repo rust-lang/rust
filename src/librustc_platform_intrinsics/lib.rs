@@ -30,6 +30,7 @@ pub struct Intrinsic {
 
 #[derive(Clone, Hash, Eq, PartialEq)]
 pub enum Type {
+    Void,
     Integer(/* signed */ bool, u8, /* llvm width */ u8),
     Float(u8),
     Pointer(Box<Type>, Option<Box<Type>>, /* const */ bool),
@@ -53,6 +54,9 @@ fn agg(flatten: bool, types: Vec<Type>) -> Type {
 }
 fn p(const_: bool, elem: Type, llvm_elem: Option<Type>) -> Type {
     Type::Pointer(Box::new(elem), llvm_elem.map(Box::new), const_)
+}
+fn void() -> Type {
+    Type::Void
 }
 
 mod x86;

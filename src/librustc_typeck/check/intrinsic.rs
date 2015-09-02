@@ -464,6 +464,10 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
     };
 
     match *expected {
+        Void => match t.sty {
+            ty::TyTuple(ref v) if v.is_empty() => {},
+            _ => simple_error(&format!("`{}`", t), "()"),
+        },
         // (The width we pass to LLVM doesn't concern the type checker.)
         Integer(signed, bits, _llvm_width) => match (signed, bits, &t.sty) {
             (true,  8,  &ty::TyInt(hir::IntTy::TyI8)) |
