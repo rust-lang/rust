@@ -30,6 +30,10 @@ fn main() {
         println!("{} {}", vec[i], vec2[i]);
     }
 
+    for i in 5..vec.len() {      // not an error, not starting with 0
+        println!("{}", vec[i]);
+    }
+
     for _v in vec.iter() { } //~ERROR it is more idiomatic to loop over `&vec`
     for _v in vec.iter_mut() { } //~ERROR it is more idiomatic to loop over `&mut vec`
 

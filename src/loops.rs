@@ -37,26 +37,32 @@ impl LintPass for LoopsPass {
         if let Some((pat, arg, body)) = recover_for_loop(expr) {
             // check for looping over a range and then indexing a sequence with it
             // -> the iteratee must be a range literal
-            if let ExprRange(_, _) = arg.node {
-                // the var must be a single name
-                if let PatIdent(_, ref ident, _) = pat.node {
-                    let mut visitor = VarVisitor { cx: cx, var: ident.node.name,
-                                                   indexed: HashSet::new(), nonindex: false };
-                    walk_expr(&mut visitor, body);
-                    // linting condition: we only indexed one variable
-                    if visitor.indexed.len() == 1 {
-                        let indexed = visitor.indexed.into_iter().next().expect(
-                            "Len was nonzero, but no contents found");
-                        if visitor.nonindex {
-                            span_lint(cx, NEEDLESS_RANGE_LOOP, expr.span, &format!(
-                                "the loop variable `{}` is used to index `{}`. Consider using \
-                                 `for ({}, item) in {}.iter().enumerate()` or similar iterators",
-                                ident.node.name, indexed, ident.node.name, indexed));
-                        } else {
-                            span_lint(cx, NEEDLESS_RANGE_LOOP, expr.span, &format!(
-                                "the loop variable `{}` is only used to index `{}`. \
-                                 Consider using `for item in &{}` or similar iterators",
-                                ident.node.name, indexed, indexed));
+            if let ExprRange(Some(ref l), _) = arg.node {
+                // Range should start with `0`
+                if let ExprLit(ref lit) = l.node {
+                    if let LitInt(0, _) = lit.node {
+
+                        // the var must be a single name
+                        if let PatIdent(_, ref ident, _) = pat.node {
+                            let mut visitor = VarVisitor { cx: cx, var: ident.node.name,
+                                                           indexed: HashSet::new(), nonindex: false };
+                            walk_expr(&mut visitor, body);
+                            // linting condition: we only indexed one variable
+                            if visitor.indexed.len() == 1 {
+                                let indexed = visitor.indexed.into_iter().next().expect(
+                                    "Len was nonzero, but no contents found");
+                                if visitor.nonindex {
+                                    span_lint(cx, NEEDLESS_RANGE_LOOP, expr.span, &format!(
+                                        "the loop variable `{}` is used to index `{}`. Consider using \
+                                         `for ({}, item) in {}.iter().enumerate()` or similar iterators",
+                                        ident.node.name, indexed, ident.node.name, indexed));
+                                } else {
+                                    span_lint(cx, NEEDLESS_RANGE_LOOP, expr.span, &format!(
+                                        "the loop variable `{}` is only used to index `{}`. \
+                                         Consider using `for item in &{}` or similar iterators",
+                                        ident.node.name, indexed, indexed));
+                                }
+                            }
                         }
                     }
                 }
