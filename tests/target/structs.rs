@@ -55,8 +55,26 @@ struct Baz {
 }
 
 struct Baz {
+    a: A, // Comment A
+
+    b: B, // Comment B
+
+    c: C, // Comment C
+}
+
+struct Baz {
+    a: A,
+
+    b: B,
+    c: C,
+
+    d: D,
+}
+
+struct Baz {
     // Comment A
     a: A,
+
     // Comment B
     b: B,
     // Comment C

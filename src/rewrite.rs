@@ -28,7 +28,14 @@ pub trait Rewrite {
 pub struct RewriteContext<'a> {
     pub codemap: &'a CodeMap,
     pub config: &'a Config,
+
+    // Indentation due to nesting of blocks.
     pub block_indent: usize,
+    // *Extra* indentation due to overflowing to the next line, e.g.,
+    // let foo =
+    //     bar();
+    // The extra 4 spaces when formatting `bar()` is overflow_indent.
+    pub overflow_indent: usize,
 }
 
 impl<'a> RewriteContext<'a> {
@@ -37,6 +44,16 @@ impl<'a> RewriteContext<'a> {
             codemap: self.codemap,
             config: self.config,
             block_indent: self.block_indent + self.config.tab_spaces,
+            overflow_indent: self.overflow_indent,
+        }
+    }
+
+    pub fn overflow_context(&self, overflow: usize) -> RewriteContext<'a> {
+        RewriteContext {
+            codemap: self.codemap,
+            config: self.config,
+            block_indent: self.block_indent,
+            overflow_indent: overflow,
         }
     }
 

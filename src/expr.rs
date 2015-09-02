@@ -203,7 +203,7 @@ fn rewrite_closure(capture: ast::CaptureClause,
 
     let fmt = ListFormatting::for_fn(argument_budget, argument_offset);
     let prefix = format!("{}|{}|", mover, write_list(&arg_items.collect::<Vec<_>>(), &fmt));
-    let block_indent = closure_block_indent(context, offset);
+    let closure_indent = closure_indent(context, offset);
 
     // Try to format closure body as a single line expression without braces.
     if body.stmts.is_empty() {
@@ -232,11 +232,11 @@ fn rewrite_closure(capture: ast::CaptureClause,
 
     // We couldn't format the closure body as a single line expression; fall
     // back to block formatting.
-    let inner_context = &RewriteContext { block_indent: block_indent, ..*context };
+    let inner_context = context.overflow_context(closure_indent - context.block_indent);
     let body_rewrite = if let ast::Expr_::ExprBlock(ref inner) = body.expr.as_ref().unwrap().node {
-        inner.rewrite(inner_context, 0, 0)
+        inner.rewrite(&inner_context, 0, 0)
     } else {
-        body.rewrite(inner_context, 0, 0)
+        body.rewrite(&inner_context, 0, 0)
     };
 
     Some(format!("{} {}", prefix, try_opt!(body_rewrite)))
@@ -250,7 +250,7 @@ impl Rewrite for ast::Block {
         }
 
         let mut visitor = FmtVisitor::from_codemap(context.codemap, context.config);
-        visitor.block_indent = context.block_indent;
+        visitor.block_indent = context.block_indent + context.overflow_indent;
 
         let prefix = match self.rules {
             ast::BlockCheckMode::PushUnsafeBlock(..) |
@@ -541,9 +541,9 @@ fn rewrite_match(context: &RewriteContext,
     let cond_str = try_opt!(cond.rewrite(context, cond_budget, offset + 6));
     let mut result = format!("match {} {{", cond_str);
 
-    let block_indent = context.block_indent;
     let nested_context = context.nested_context();
-    let arm_indent_str = make_indent(nested_context.block_indent);
+    let arm_indent = nested_context.block_indent + context.overflow_indent;
+    let arm_indent_str = make_indent(arm_indent);
 
     let open_brace_pos = span_after(mk_sp(cond.span.hi, arm_start_pos(&arms[0])),
                                     "{",
@@ -578,9 +578,8 @@ fn rewrite_match(context: &RewriteContext,
         result.push_str(&arm_indent_str);
 
         let arm_str = arm.rewrite(&nested_context,
-                                  context.config.max_width -
-                                      nested_context.block_indent,
-                                  nested_context.block_indent);
+                                  context.config.max_width - arm_indent,
+                                  arm_indent);
         if let Some(ref arm_str) = arm_str {
             result.push_str(arm_str);
         } else {
@@ -594,7 +593,7 @@ fn rewrite_match(context: &RewriteContext,
     // match expression, but meh.
 
     result.push('\n');
-    result.push_str(&make_indent(block_indent));
+    result.push_str(&make_indent(context.block_indent + context.overflow_indent));
     result.push('}');
     Some(result)
 }
@@ -694,7 +693,6 @@ impl Rewrite for ast::Arm {
         } else {
             ","
         };
-        let nested_indent = context.block_indent + context.config.tab_spaces;
 
         // Let's try and get the arm body on the same line as the condition.
         // 4 = ` => `.len()
@@ -702,7 +700,7 @@ impl Rewrite for ast::Arm {
             let budget = context.config.max_width - line_start - comma.len() - 4;
             if let Some(ref body_str) = body.rewrite(context,
                                                      budget,
-                                                     nested_indent) {
+                                                     line_start + 4) {
                 if first_line_width(body_str) <= budget {
                     return Some(format!("{}{} => {}{}",
                                         attr_str.trim_left(),
@@ -720,7 +718,9 @@ impl Rewrite for ast::Arm {
         }
 
         let body_budget = try_opt!(width.checked_sub(context.config.tab_spaces));
-        let body_str = try_opt!(body.rewrite(context, body_budget, nested_indent));
+        let body_str = try_opt!(body.rewrite(context,
+                                             body_budget,
+                                             context.block_indent));
         Some(format!("{}{} =>\n{}{},",
                      attr_str.trim_left(),
                      pats_str,
@@ -868,8 +868,8 @@ fn rewrite_call(context: &RewriteContext,
     // 2 is for parens.
     let remaining_width = try_opt!(width.checked_sub(extra_offset + 2));
     let offset = offset + extra_offset + 1;
-    let block_indent = expr_block_indent(context, offset);
-    let inner_context = &RewriteContext { block_indent: block_indent, ..*context };
+    let inner_indent = expr_indent(context, offset);
+    let inner_context = context.overflow_context(inner_indent - context.block_indent);
 
     let items = itemize_list(context.codemap,
                              args.iter(),
@@ -878,7 +878,7 @@ fn rewrite_call(context: &RewriteContext,
                              |item| item.span.hi,
                              // Take old span when rewrite fails.
                              |item| {
-                                 item.rewrite(inner_context, remaining_width, offset)
+                                 item.rewrite(&inner_context, remaining_width, offset)
                                      .unwrap_or(context.snippet(item.span))
                              },
                              callee.span.hi + BytePos(1),
@@ -901,8 +901,8 @@ macro_rules! block_indent_helper {
     );
 }
 
-block_indent_helper!(expr_block_indent, expr_indent_style);
-block_indent_helper!(closure_block_indent, closure_indent_style);
+block_indent_helper!(expr_indent, expr_indent_style);
+block_indent_helper!(closure_indent, closure_indent_style);
 
 fn rewrite_paren(context: &RewriteContext,
                  subexpr: &ast::Expr,
@@ -1192,7 +1192,9 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
             result.push_str(&format!("\n{}", make_indent(new_offset)));
 
             let max_width = try_opt!(context.config.max_width.checked_sub(new_offset + 1));
-            let rhs = try_opt!(ex.rewrite(&context, max_width, new_offset));
+            let rhs = try_opt!(ex.rewrite(&context.overflow_context(context.config.tab_spaces),
+                                          max_width,
+                                          new_offset));
 
             result.push_str(&rhs);
         }

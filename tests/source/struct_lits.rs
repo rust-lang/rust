@@ -32,6 +32,13 @@ fn main() {
         second: Item
     };
 
+    Some(Data::MethodCallData(MethodCallData {
+        span: sub_span.unwrap(),
+        scope: self.enclosing_scope(id),
+        ref_id: def_id,
+        decl_id: Some(decl_id),
+    }));
+
     Diagram { /*                 o        This graph demonstrates how                  
                *                / \       significant whitespace is           
                *               o   o      preserved.  

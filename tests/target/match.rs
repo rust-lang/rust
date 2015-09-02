@@ -53,3 +53,27 @@ fn foo() {
         Blurb     =>     {                  }
     };
 }
+
+// Test that a match on an overflow line is laid out properly.
+fn main() {
+    let sub_span =
+        match self.span.sub_span_after_keywooooooooooooooooooooord(use_item.span, keywords::As) {
+            Some(sub_span) => Some(sub_span),
+            None => sub_span,
+        };
+}
+
+// Test that one-line bodies align.
+fn main() {
+    match r {
+        Variableeeeeeeeeeeeeeeeee => ("variable",
+                                      vec!("id","name","qualname","value","type","scopeid"),
+                                      true,
+                                      true),
+        Enummmmmmmmmmmmmmmmmmmmm => ("enum", vec!("id","qualname","scopeid","value"), true, true),
+        Variantttttttttttttttttttttttt => ("variant",
+                                           vec!("id","name","qualname","type","value","scopeid"),
+                                           true,
+                                           true),
+    }
+}

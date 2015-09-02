@@ -70,9 +70,11 @@ impl<'a> ListFormatting<'a> {
 
 pub struct ListItem {
     pub pre_comment: Option<String>,
-    // Item should include attributes and doc comments
+    // Item should include attributes and doc comments.
     pub item: String,
     pub post_comment: Option<String>,
+    // Whether there is extra whitespace before this item.
+    pub new_lines: bool,
 }
 
 impl ListItem {
@@ -86,7 +88,7 @@ impl ListItem {
     }
 
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
-        ListItem { pre_comment: None, item: s.into(), post_comment: None }
+        ListItem { pre_comment: None, item: s.into(), post_comment: None, new_lines: false }
     }
 }
 
@@ -206,10 +208,8 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
 
         // Post-comments
         if tactic != ListTactic::Vertical && item.post_comment.is_some() {
-            let formatted_comment = rewrite_comment(item.post_comment.as_ref().unwrap(),
-                                                    true,
-                                                    formatting.v_width,
-                                                    0);
+            let comment = item.post_comment.as_ref().unwrap();
+            let formatted_comment = rewrite_comment(comment, true, formatting.v_width, 0);
 
             result.push(' ');
             result.push_str(&formatted_comment);
@@ -233,6 +233,10 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
 
             result.push(' ');
             result.push_str(&formatted_comment);
+        }
+
+        if !last && tactic == ListTactic::Vertical && item.new_lines {
+            result.push('\n');
         }
     }
 
@@ -264,13 +268,14 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
         let white_space: &[_] = &[' ', '\t'];
 
         self.inner.next().map(|item| {
+            let mut new_lines = false;
             // Pre-comment
             let pre_snippet = self.codemap.span_to_snippet(codemap::mk_sp(self.prev_span_end,
                                                                           (self.get_lo)(&item)))
                                           .unwrap();
-            let pre_snippet = pre_snippet.trim();
-            let pre_comment = if !pre_snippet.is_empty() {
-                Some(pre_snippet.to_owned())
+            let trimmed_pre_snippet = pre_snippet.trim();
+            let pre_comment = if !trimmed_pre_snippet.is_empty() {
+                Some(trimmed_pre_snippet.to_owned())
             } else {
                 None
             };
@@ -307,7 +312,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                                      separator_index + 1)
                         }
                         // Potential *single* line comment.
-                        (_, Some(j)) => { j + 1 }
+                        (_, Some(j)) => j + 1,
                         _ => post_snippet.len()
                     }
                 },
@@ -317,18 +322,40 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                 }
             };
 
-            // Cleanup post-comment: strip separators and whitespace.
-            self.prev_span_end = (self.get_hi)(&item) + BytePos(comment_end as u32);
-            let mut post_snippet = post_snippet[..comment_end].trim();
+            if !post_snippet.is_empty() && comment_end > 0 {
+                // Account for extra whitespace between items. This is fiddly
+                // because of the way we divide pre- and post- comments.
 
-            if post_snippet.starts_with(',') {
-                post_snippet = post_snippet[1..].trim_matches(white_space);
-            } else if post_snippet.ends_with(",") {
-                post_snippet = post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space);
+                // Everything from the separator to the next item.
+                let test_snippet = &post_snippet[comment_end-1..];
+                let first_newline = test_snippet.find('\n').unwrap_or(test_snippet.len());
+                // From the end of the first line of comments.
+                let test_snippet = &test_snippet[first_newline..];
+                let first = test_snippet.find(|c: char| !c.is_whitespace())
+                                        .unwrap_or(test_snippet.len());
+                // From the end of the first line of comments to the next non-whitespace char.
+                let test_snippet = &test_snippet[..first];
+
+                if test_snippet.chars().filter(|c| c == &'\n').count() > 1 {
+                    // There were multiple line breaks which got trimmed to nothing.
+                    new_lines = true;
+                }
             }
 
-            let post_comment = if !post_snippet.is_empty() {
-                Some(post_snippet.to_owned())
+            // Cleanup post-comment: strip separators and whitespace.
+            self.prev_span_end = (self.get_hi)(&item) + BytePos(comment_end as u32);
+            let post_snippet = post_snippet[..comment_end].trim();
+
+            let post_snippet_trimmed = if post_snippet.starts_with(',') {
+                post_snippet[1..].trim_matches(white_space)
+            } else if post_snippet.ends_with(",") {
+                post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space)
+            } else {
+                post_snippet
+            };
+
+            let post_comment = if !post_snippet_trimmed.is_empty() {
+                Some(post_snippet_trimmed.to_owned())
             } else {
                 None
             };
@@ -337,6 +364,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                 pre_comment: pre_comment,
                 item: (self.get_item_string)(&item),
                 post_comment: post_comment,
+                new_lines: new_lines,
             }
         })
     }

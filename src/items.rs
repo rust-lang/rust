@@ -632,13 +632,11 @@ impl<'a> FmtVisitor<'a> {
         let break_line = !is_tuple || generics_str.contains('\n') ||
                          single_line_cost as usize + used_budget > self.config.max_width;
 
-        if break_line {
+        let tactic = if break_line {
             let indentation = make_indent(offset + self.config.tab_spaces);
             result.push('\n');
             result.push_str(&indentation);
-        }
 
-        let tactic = if break_line {
             ListTactic::Vertical
         } else {
             ListTactic::Horizontal
