@@ -13,13 +13,13 @@
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
 
-extern crate syntax;
+extern crate rustc_front;
 
 // Load rustc as a plugin to get macros
 #[macro_use]
 extern crate rustc;
 
-use syntax::ast;
+use rustc_front::hir;
 use rustc::lint::{Context, LintPass, LintPassObject, LintArray};
 use rustc::plugin::Registry;
 
@@ -34,7 +34,7 @@ impl LintPass for Pass {
         lint_array!(TEST_LINT, PLEASE_LINT)
     }
 
-    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
+    fn check_item(&mut self, cx: &Context, it: &hir::Item) {
         match &*it.ident.name.as_str() {
             "lintme" => cx.span_lint(TEST_LINT, it.span, "item is named 'lintme'"),
             "pleaselintme" => cx.span_lint(PLEASE_LINT, it.span, "item is named 'pleaselintme'"),
