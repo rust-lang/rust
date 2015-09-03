@@ -2299,6 +2299,21 @@ extern "rust-intrinsic" {
 ```
 "##,
 
+E0214: r##"
+A generic type was described using parentheses rather than angle brackets. For
+example:
+
+```
+fn main() {
+    let v: Vec(&str) = vec!["foo"];
+}
+```
+
+This is not currently supported: `v` should be defined as `Vec<&str>`.
+Parentheses are currently only used with generic types when defining parameters
+for `Fn`-family traits.
+"##,
+
 E0220: r##"
 You used an associated type which isn't defined in the trait.
 Erroneous code example:
@@ -3250,7 +3265,6 @@ register_diagnostics! {
 //  E0209, // builtin traits can only be implemented on structs or enums
     E0212, // cannot extract an associated type from a higher-ranked trait bound
 //  E0213, // associated types are not accepted in this context
-    E0214, // parenthesized parameters may only be used with a trait
 //  E0215, // angle-bracket notation is not stable with `Fn`
 //  E0216, // parenthetical notation is only stable with `Fn`
 //  E0217, // ambiguous associated type, defined in multiple supertraits
