@@ -956,7 +956,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                   any_changes_needed));
                         vec![elem.ptr_to()]
                     }
-                    Vector(ref t, length) => {
+                    Vector(ref t, ref llvm_elem, length) => {
+                        *any_changes_needed |= llvm_elem.is_some();
+
+                        let t = llvm_elem.as_ref().unwrap_or(t);
                         let elem = one(ty_to_type(ccx, t,
                                                   any_changes_needed));
                         vec![Type::vector(&elem,
@@ -1004,6 +1007,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         let llvm_elem = one(ty_to_type(bcx.ccx(), llvm_elem, &mut false));
                         vec![PointerCast(bcx, llarg,
                                          llvm_elem.ptr_to())]
+                    }
+                    intrinsics::Type::Vector(_, Some(ref llvm_elem), length) => {
+                        let llvm_elem = one(ty_to_type(bcx.ccx(), llvm_elem, &mut false));
+                        vec![BitCast(bcx, llarg,
+                                     Type::vector(&llvm_elem, length as u64))]
                     }
                     intrinsics::Type::Integer(_, width, llvm_width) if width != llvm_width => {
                         // the LLVM intrinsic uses a smaller integer

@@ -19,8 +19,8 @@ import itertools
 SPEC = re.compile(
     r'^(?:(?P<void>V)|(?P<id>[iusfIUSF])(?:\((?P<start>\d+)-(?P<end>\d+)\)|'
     r'(?P<width>\d+)(:?/(?P<llvm_width>\d+))?)'
-    r'|(?P<reference>\d+)(?P<modifiers>[vShdnwusDMC]*)(?P<force_width>x\d+)?)'
-    r'(?:(?P<pointer>Pm|Pc)(?P<llvm_pointer>/.*)?)?$'
+    r'|(?P<reference>\d+))(?P<modifiers>[vShdnwusDMC]*)(?P<force_width>x\d+)?'
+    r'(?:(?P<pointer>Pm|Pc)(?P<llvm_pointer>/.*)?|(?P<bitcast>->.*))?$'
 )
 
 class PlatformInfo(object):
@@ -74,6 +74,9 @@ class PlatformTypeInfo(object):
         self.properties = properties
         self.llvm_name = llvm_name
 
+    def __repr__(self):
+        return '<PlatformTypeInfo {}, {}>'.format(self.llvm_name, self.properties)
+
     def __getattr__(self, name):
         return self.properties[name]
 
@@ -94,8 +97,11 @@ class Type(object):
     def bitwidth(self):
         return self._bitwidth
 
-    def modify(self, spec, width):
+    def modify(self, spec, width, previous):
         raise NotImplementedError()
+
+    def __ne__(self, other):
+        return not (self == other)
 
 class Void(Type):
     def __init__(self):
@@ -110,11 +116,14 @@ class Void(Type):
     def type_info(self, platform_info):
         return None
 
+    def __eq__(self, other):
+        return isinstance(other, Void)
+
 class Number(Type):
     def __init__(self, bitwidth):
         Type.__init__(self, bitwidth)
 
-    def modify(self, spec, width):
+    def modify(self, spec, width, previous):
         if spec == 'u':
             return Unsigned(self.bitwidth())
         elif spec == 's':
@@ -131,10 +140,15 @@ class Number(Type):
     def type_info(self, platform_info):
         return platform_info.number_type_info(self)
 
+    def __eq__(self, other):
+        # print(self, other)
+        return self.__class__ == other.__class__ and self.bitwidth() == other.bitwidth()
+
 class Signed(Number):
     def __init__(self, bitwidth, llvm_bitwidth = None):
         Number.__init__(self, bitwidth)
         self._llvm_bitwidth = llvm_bitwidth
+
 
     def compiler_ctor(self):
         if self._llvm_bitwidth is None:
@@ -184,26 +198,47 @@ class Float(Number):
         return 'f{}'.format(self.bitwidth())
 
 class Vector(Type):
-    def __init__(self, elem, length):
+    def __init__(self, elem, length, bitcast = None):
         assert isinstance(elem, Type) and not isinstance(elem, Vector)
         Type.__init__(self,
                       elem.bitwidth() * length)
         self._length = length
         self._elem = elem
+        assert bitcast is None or (isinstance(bitcast, Vector) and
+                                   bitcast._bitcast is None and
+                                   bitcast._elem.bitwidth() == elem.bitwidth())
+        if bitcast is not None and bitcast._elem != elem:
+            self._bitcast = bitcast._elem
+        else:
+            self._bitcast = None
 
-    def modify(self, spec, width):
-        if spec == 'h':
+    def modify(self, spec, width, previous):
+        if spec == 'S':
+            return self._elem
+        elif spec == 'h':
             return Vector(self._elem, self._length // 2)
         elif spec == 'd':
             return Vector(self._elem, self._length * 2)
         elif spec.startswith('x'):
             new_bitwidth = int(spec[1:])
             return Vector(self._elem, new_bitwidth // self._elem.bitwidth())
+        elif spec.startswith('->'):
+            bitcast_to = TypeSpec(spec[2:])
+            choices = list(bitcast_to.enumerate(width, previous))
+            assert len(choices) == 1
+            bitcast_to = choices[0]
+            return Vector(self._elem, self._length, bitcast_to)
         else:
-            return Vector(self._elem.modify(spec, width), self._length)
+            return Vector(self._elem.modify(spec, width, previous), self._length)
 
     def compiler_ctor(self):
-        return 'v({}, {})'.format(self._elem.compiler_ctor(), self._length)
+        if self._bitcast is None:
+            return 'v({}, {})'.format(self._elem.compiler_ctor(),
+                                      self._length)
+        else:
+            return 'v_({}, {}, {})'.format(self._elem.compiler_ctor(),
+                                           self._bitcast.compiler_ctor(),
+                                           self._length)
 
     def rust_name(self):
         return '{}x{}'.format(self._elem.rust_name(), self._length)
@@ -213,6 +248,10 @@ class Vector(Type):
         return elem_info.vectorize(self._length,
                                    platform_info.width_info(self.bitwidth()))
 
+    def __eq__(self, other):
+        return isinstance(other, Vector) and self._length == other._length and \
+            self._elem == other._elem and self._bitcast == other._bitcast
+
 class Pointer(Type):
     def __init__(self, elem, llvm_elem, const):
         self._elem = elem;
@@ -220,7 +259,7 @@ class Pointer(Type):
         self._const = const
         Type.__init__(self, BITWIDTH_POINTER)
 
-    def modify(self, spec, width):
+    def modify(self, spec, width, previous):
         if spec == 'D':
             return self._elem
         elif spec == 'M':
@@ -228,7 +267,7 @@ class Pointer(Type):
         elif spec == 'C':
             return Pointer(self._elem, self._llvm_elem, True)
         else:
-            return Pointer(self._elem.modify(spec, width), self._llvm_elem, self._const)
+            return Pointer(self._elem.modify(spec, width, previous), self._llvm_elem, self._const)
 
     def compiler_ctor(self):
         if self._llvm_elem is None:
@@ -245,6 +284,10 @@ class Pointer(Type):
 
     def type_info(self, platform_info):
         return self._elem.type_info(platform_info).pointer()
+
+    def __eq__(self, other):
+        return isinstance(other, Pointer) and self._const == other._const \
+            and self._elem == other._elem and self._llvm_elem == other._llvm_elem
 
 class Aggregate(Type):
     def __init__(self, flatten, elems):
@@ -265,6 +308,10 @@ class Aggregate(Type):
     def type_info(self, platform_info):
         #return PlatformTypeInfo(None, None, self._llvm_name)
         return None
+
+    def __eq__(self, other):
+        return isinstance(other, Aggregate) and self._flatten == other._flatten and \
+            self._elems == other._elems
 
 
 TYPE_ID_LOOKUP = {'i': [Signed, Unsigned],
@@ -302,6 +349,14 @@ class TypeSpec(object):
                 id = match.group('id')
                 reference = match.group('reference')
 
+                modifiers = list(match.group('modifiers') or '')
+                force = match.group('force_width')
+                if force is not None:
+                    modifiers.append(force)
+                bitcast = match.group('bitcast')
+                if bitcast is not None:
+                    modifiers.append(bitcast)
+
                 if match.group('void') is not None:
                     assert spec == 'V'
                     yield Void()
@@ -333,7 +388,11 @@ class TypeSpec(object):
                             if is_vector:
                                 elem = Vector(scalar, width // bitwidth)
                             else:
+                                assert bitcast is None
                                 elem = scalar
+
+                            for x in modifiers:
+                                elem = elem.modify(x, width, previous)
                             yield ptrify(match, elem, width, previous)
                         bitwidth *= 2
                 elif reference is not None:
@@ -342,15 +401,13 @@ class TypeSpec(object):
                         'referring to argument {}, but only {} are known'.format(reference,
                                                                                  len(previous))
                     ret = previous[reference]
-                    for x in match.group('modifiers') or []:
-                        ret = ret.modify(x, width)
-                    force = match.group('force_width')
-                    if force is not None:
-                        ret = ret.modify(force, width)
+                    for x in modifiers:
+                        ret = ret.modify(x, width, previous)
                     yield ptrify(match, ret, width, previous)
                 else:
                     assert False, 'matched `{}`, but didn\'t understand it?'.format(spec)
             elif spec.startswith('('):
+                assert bitcast is None
                 if spec.endswith(')'):
                     raise NotImplementedError()
                 elif spec.endswith(')f'):
@@ -452,12 +509,16 @@ def parse_args():
         ## Type specifier grammar
 
         ```
-        type := core_type pointer?
+        type := core_type modifier* suffix?
 
         core_type := void | vector | scalar | aggregate | reference
 
+        modifier := 'v' | 'h' | 'd' | 'n' | 'w' | 'u' | 's' |
+                     'x' number
+        suffix := pointer | bitcast
         pointer := 'Pm' llvm_pointer? | 'Pc' llvm_pointer?
         llvm_pointer := '/' type
+        bitcast := '->' type
 
         void := 'V'
 
@@ -470,27 +531,12 @@ def parse_args():
 
         aggregate := '(' (type),* ')' 'f'?
 
-        reference := number modifiers*
-        modifiers := 'v' | 'h' | 'd' | 'n' | 'w' | 'u' | 's' |
-                     'x' number
-
+        reference := number
 
         width = number | '(' number '-' number ')'
 
         number = [0-9]+
         ```
-
-        ## Pointers
-
-        Pointers can be created to any type. The `m` vs. `c` chooses
-        mut vs. const. e.g. `S32Pm` corresponds to `*mut i32`, and
-        `i32Pc` corresponds (with width 128) to `*const i8x16`,
-        `*const u32x4`, etc.
-
-        The type after the `/` (optional) represents the type used
-        internally to LLVM, e.g. `S32pm/S8` is exposed as `*mut i32`
-        in Rust, but is `i8*` in LLVM. (This defaults to the main
-        type).
 
         ## Void
 
@@ -550,6 +596,11 @@ def parse_args():
         with 0 == return value, 1 == first argument, 2 == second
         argument, etc.
 
+        ## Affixes
+
+        The `modifier` and `suffix` adaptors change the precise
+        representation.
+
         ### Modifiers
 
         - 'v': put a scalar into a vector of the current width (u32 -> u32x4, when width == 128)
@@ -563,6 +614,26 @@ def parse_args():
         - 'D': dereference a pointer (*mut u32 -> u32)
         - 'C': make a pointer const (*mut u32 -> *const u32)
         - 'M': make a pointer mut (*const u32 -> *mut u32)
+
+        ### Pointers
+
+        Pointers can be created of any type by appending a `P*`
+        suffix. The `m` vs. `c` chooses mut vs. const. e.g. `S32Pm`
+        corresponds to `*mut i32`, and `i32Pc` corresponds (with width
+        128) to `*const i8x16`, `*const u32x4`, etc.
+
+        The type after the `/` (optional) represents the type used
+        internally to LLVM, e.g. `S32pm/S8` is exposed as `*mut i32`
+        in Rust, but is `i8*` in LLVM. (This defaults to the main
+        type).
+
+        ### Bitcast
+
+        The `'->' type` bitcast suffix will cause the value to be
+        bitcast to the right-hand type when calling the intrinsic,
+        e.g. `s32->f32` will expose the intrinsic as `i32x4` at the
+        Rust level, but will cast that vector to `f32x4` when calling
+        the LLVM intrinsic.
         '''))
     parser.add_argument('--format', choices=FORMATS, required=True,
                         help = 'Output format.')
@@ -611,7 +682,7 @@ class CompilerDefs(object):
 
 #![allow(unused_imports)]
 
-use {{Intrinsic, i, i_, u, u_, f, v, agg, p, void}};
+use {{Intrinsic, i, i_, u, u_, f, v, v_, agg, p, void}};
 use IntrinsicDef::Named;
 use rustc::middle::ty;
 
