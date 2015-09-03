@@ -146,7 +146,7 @@ mod imp {
               target_os = "netbsd",
               target_os = "openbsd")))]
 mod imp {
-    use libc;
+    use ptr;
 
     pub unsafe fn init() {
     }
