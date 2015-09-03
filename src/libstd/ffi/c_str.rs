@@ -209,7 +209,7 @@ impl CString {
                issue = "27769")]
     #[deprecated(since = "1.4.0", reason = "renamed to from_raw")]
     pub unsafe fn from_ptr(ptr: *const libc::c_char) -> CString {
-        CString::from_raw(ptr)
+        CString::from_raw(ptr as *mut _)
     }
 
     /// Retakes ownership of a CString that was transferred to C.
@@ -219,7 +219,7 @@ impl CString {
     /// using the pointer.
     #[unstable(feature = "cstr_memory", reason = "recently added",
                issue = "27769")]
-    pub unsafe fn from_raw(ptr: *const libc::c_char) -> CString {
+    pub unsafe fn from_raw(ptr: *mut libc::c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
         let slice = slice::from_raw_parts(ptr, len as usize);
         CString { inner: mem::transmute(slice) }
@@ -237,7 +237,7 @@ impl CString {
                issue = "27769")]
     #[deprecated(since = "1.4.0", reason = "renamed to into_raw")]
     pub fn into_ptr(self) -> *const libc::c_char {
-        self.into_raw()
+        self.into_raw() as *const _
     }
 
     /// Transfers ownership of the string to a C caller.
@@ -250,11 +250,8 @@ impl CString {
     /// Failure to call `from_ptr` will lead to a memory leak.
     #[unstable(feature = "cstr_memory", reason = "recently added",
                issue = "27769")]
-    pub fn into_raw(self) -> *const libc::c_char {
-        // It is important that the bytes be sized to fit - we need
-        // the capacity to be determinable from the string length, and
-        // shrinking to fit is the only way to be sure.
-        Box::into_raw(self.inner) as *const libc::c_char
+    pub fn into_raw(self) -> *mut libc::c_char {
+        Box::into_raw(self.inner) as *mut libc::c_char
     }
 
     /// Returns the contents of this `CString` as a slice of bytes.
