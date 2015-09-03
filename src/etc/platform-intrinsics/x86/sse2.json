@@ -16,11 +16,25 @@
             "args": ["0", "0"]
         },
         {
+            "intrinsic": "_lfence",
+            "width": [128],
+            "llvm": "lfence",
+            "ret": "V",
+            "args": []
+        },
+        {
             "intrinsic": "_madd_epi16",
             "width": [128],
             "llvm": "pmadd.wd",
             "ret": "s32",
             "args": ["s16", "s16"]
+        },
+        {
+            "intrinsic": "_maskmoveu_si128",
+            "width": [128],
+            "llvm": "maskmov.dqu",
+            "ret": "V",
+            "args": ["u8", "u8", "U8Pm"]
         },
         {
             "intrinsic": "_max_{0.data_type}",
@@ -35,6 +49,13 @@
             "llvm": "max.pd",
             "ret": "f64",
             "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "_mfence",
+            "width": [128],
+            "llvm": "fence",
+            "ret": "V",
+            "args": []
         },
         {
             "intrinsic": "_min_{0.data_type}",
@@ -100,11 +121,32 @@
             "args": ["u8", "u8"]
         },
         {
+            "intrinsic": "_sfence",
+            "width": [128],
+            "llvm": "sfence",
+            "ret": "V",
+            "args": []
+        },
+        {
             "intrinsic": "_sqrt_pd",
             "width": [128],
             "llvm": "!llvm.sqrt.v2f64",
             "ret": "f64",
             "args": ["0"]
+        },
+        {
+            "intrinsic": "_storeu_pd",
+            "width": [128],
+            "llvm": "storeu.pd",
+            "ret": "V",
+            "args": ["F64Pm/U8", "f64"]
+        },
+        {
+            "intrinsic": "_storeu_si128",
+            "width": [128],
+            "llvm": "storeu.dq",
+            "ret": "V",
+            "args": ["u8Pm/U8", "u8"]
         },
         {
             "intrinsic": "_subs_{0.data_type}",
