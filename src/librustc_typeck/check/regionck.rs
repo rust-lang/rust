@@ -1031,7 +1031,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                             r_deref_expr, *r_ptr);
         }
 
-        match derefd_ty.builtin_deref(true) {
+        match derefd_ty.builtin_deref(true, ty::NoPreference) {
             Some(mt) => derefd_ty = mt.ty,
             /* if this type can't be dereferenced, then there's already an error
                in the session saying so. Just bail out for now */

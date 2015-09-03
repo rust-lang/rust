@@ -17,12 +17,11 @@ use super::{
     demand,
     method,
     FnCtxt,
-    PreferMutLvalue,
     structurally_resolved_type,
 };
 use middle::def_id::DefId;
 use middle::traits;
-use middle::ty::{Ty, HasTypeFlags};
+use middle::ty::{Ty, HasTypeFlags, PreferMutLvalue};
 use syntax::ast;
 use syntax::parse::token;
 use rustc_front::hir;
