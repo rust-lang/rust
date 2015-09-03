@@ -636,31 +636,31 @@ lambda_expr : '|' ident_list '|' expr ;
 ### While loops
 
 ```antlr
-while_expr : [ lifetime ':' ] "while" no_struct_literal_expr '{' block '}' ;
+while_expr : [ lifetime ':' ] ? "while" no_struct_literal_expr '{' block '}' ;
 ```
 
 ### Infinite loops
 
 ```antlr
-loop_expr : [ lifetime ':' ] "loop" '{' block '}';
+loop_expr : [ lifetime ':' ] ? "loop" '{' block '}';
 ```
 
 ### Break expressions
 
 ```antlr
-break_expr : "break" [ lifetime ];
+break_expr : "break" [ lifetime ] ?;
 ```
 
 ### Continue expressions
 
 ```antlr
-continue_expr : "continue" [ lifetime ];
+continue_expr : "continue" [ lifetime ] ?;
 ```
 
 ### For expressions
 
 ```antlr
-for_expr : [ lifetime ':' ] "for" pat "in" no_struct_literal_expr '{' block '}' ;
+for_expr : [ lifetime ':' ] ? "for" pat "in" no_struct_literal_expr '{' block '}' ;
 ```
 
 ### If expressions
@@ -694,7 +694,7 @@ else_tail : "else" [ if_expr | if_let_expr | '{' block '}' ] ;
 ### While let loops
 
 ```antlr
-while_let_expr : "while" "let" pat '=' expr '{' block '}' ;
+while_let_expr : [ lifetime ':' ] ? "while" "let" pat '=' expr '{' block '}' ;
 ```
 
 ### Return expressions
