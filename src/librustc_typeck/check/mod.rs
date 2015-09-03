@@ -1876,9 +1876,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let _ = self.infcx().commit_if_ok(|_: &infer::CombinedSnapshot| {
                 for &(ref ty, ref default) in &has_user_default {
                     let default = default.clone();
-                    let normalized_default = self.inh.normalize_associated_types_in(codemap::DUMMY_SP, 0, &default.ty);
+
+                    let normalized_default = self.inh.normalize_associated_types_in(
+                        default.origin_span,
+                        0, &default.ty);
+
                     match infer::mk_eqty(self.infcx(), false,
-                                         infer::Misc(codemap::DUMMY_SP), // default.origin_span),
+                                         infer::Misc(default.origin_span),
                                          ty, normalized_default) {
                         Ok(()) => {}
                         Err(_) => {
@@ -1886,7 +1890,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-
 
                 // If there are conflicts we rollback, otherwise commit
                 if conflicts.len() > 0 {
@@ -1976,9 +1979,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // reporting for more then one conflict.
         for &(ref ty, ref default) in tys_with_defaults {
             let default = default.clone();
-            let normalized_default = self.inh.normalize_associated_types_in(codemap::DUMMY_SP, 0, &default.ty);
+
+            let normalized_default = self.inh.normalize_associated_types_in(
+                default.origin_span, 0,
+                &default.ty);
+
             match infer::mk_eqty(self.infcx(), false,
-                                 infer::Misc(codemap::DUMMY_SP), // default.origin_span),
+                                 infer::Misc(default.origin_span),
                                  ty, normalized_default) {
                 Ok(()) => {}
                 Err(_) => {
