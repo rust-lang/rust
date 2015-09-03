@@ -13,7 +13,7 @@
 
 #![allow(unused_imports)]
 
-use {Intrinsic, i, i_, u, u_, f, v, agg, p, void};
+use {Intrinsic, i, i_, u, u_, f, v, v_, agg, p, void};
 use IntrinsicDef::Named;
 use rustc::middle::ty;
 
@@ -50,6 +50,11 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(f(32), 4),
             definition: Named("llvm.sqrt.v4f32")
         },
+        "_storeu_ps" => Intrinsic {
+            inputs: vec![p(false, f(32), Some(i(8))), v(f(32), 4)],
+            output: void(),
+            definition: Named("llvm.x86.sse.storeu.ps")
+        },
         "_adds_epi8" => Intrinsic {
             inputs: vec![v(i(8), 16), v(i(8), 16)],
             output: v(i(8), 16),
@@ -80,10 +85,20 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(u(16), 8),
             definition: Named("llvm.x86.sse2.pavg.w")
         },
+        "_lfence" => Intrinsic {
+            inputs: vec![],
+            output: void(),
+            definition: Named("llvm.x86.sse2.lfence")
+        },
         "_madd_epi16" => Intrinsic {
             inputs: vec![v(i(16), 8), v(i(16), 8)],
             output: v(i(32), 4),
             definition: Named("llvm.x86.sse2.pmadd.wd")
+        },
+        "_maskmoveu_si128" => Intrinsic {
+            inputs: vec![v(u(8), 16), v(u(8), 16), p(false, u(8), None)],
+            output: void(),
+            definition: Named("llvm.x86.sse2.maskmov.dqu")
         },
         "_max_epi16" => Intrinsic {
             inputs: vec![v(i(16), 8), v(i(16), 8)],
@@ -99,6 +114,11 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![v(f(64), 2), v(f(64), 2)],
             output: v(f(64), 2),
             definition: Named("llvm.x86.sse2.max.pd")
+        },
+        "_mfence" => Intrinsic {
+            inputs: vec![],
+            output: void(),
+            definition: Named("llvm.x86.sse2.fence")
         },
         "_min_epi16" => Intrinsic {
             inputs: vec![v(i(16), 8), v(i(16), 8)],
@@ -160,10 +180,25 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(u(64), 2),
             definition: Named("llvm.x86.sse2.psad.bw")
         },
+        "_sfence" => Intrinsic {
+            inputs: vec![],
+            output: void(),
+            definition: Named("llvm.x86.sse2.sfence")
+        },
         "_sqrt_pd" => Intrinsic {
             inputs: vec![v(f(64), 2)],
             output: v(f(64), 2),
             definition: Named("llvm.sqrt.v2f64")
+        },
+        "_storeu_pd" => Intrinsic {
+            inputs: vec![p(false, f(64), Some(u(8))), v(f(64), 2)],
+            output: void(),
+            definition: Named("llvm.x86.sse2.storeu.pd")
+        },
+        "_storeu_si128" => Intrinsic {
+            inputs: vec![p(false, v(u(8), 16), Some(u(8))), v(u(8), 16)],
+            output: void(),
+            definition: Named("llvm.x86.sse2.storeu.dq")
         },
         "_subs_epi8" => Intrinsic {
             inputs: vec![v(i(8), 16), v(i(8), 16)],
@@ -214,6 +249,11 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![v(f(64), 2), v(f(64), 2)],
             output: v(f(64), 2),
             definition: Named("llvm.x86.sse3.hsub.pd")
+        },
+        "_lddqu_si128" => Intrinsic {
+            inputs: vec![p(true, v(u(8), 16), Some(i(8)))],
+            output: v(u(8), 16),
+            definition: Named("llvm.x86.sse3.ldu.dq")
         },
         "_abs_epi8" => Intrinsic {
             inputs: vec![v(i(8), 16)],
@@ -490,6 +530,46 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(f(64), 4),
             definition: Named("llvm.x86.avx.max.pd.256")
         },
+        "_maskload_ps" => Intrinsic {
+            inputs: vec![p(true, f(32), Some(i(8))), v_(i(32), f(32), 4)],
+            output: v(f(32), 4),
+            definition: Named("llvm.x86.avx.maskload.ps")
+        },
+        "_maskload_pd" => Intrinsic {
+            inputs: vec![p(true, f(64), Some(i(8))), v_(i(64), f(64), 2)],
+            output: v(f(64), 2),
+            definition: Named("llvm.x86.avx.maskload.pd")
+        },
+        "256_maskload_ps" => Intrinsic {
+            inputs: vec![p(true, f(32), Some(i(8))), v_(i(32), f(32), 8)],
+            output: v(f(32), 8),
+            definition: Named("llvm.x86.avx.maskload.ps.256")
+        },
+        "256_maskload_pd" => Intrinsic {
+            inputs: vec![p(true, f(64), Some(i(8))), v_(i(64), f(64), 4)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.avx.maskload.pd.256")
+        },
+        "_maskstore_ps" => Intrinsic {
+            inputs: vec![p(false, f(32), Some(i(8))), v_(i(32), f(32), 4), v(f(32), 4)],
+            output: void(),
+            definition: Named("llvm.x86.avx.maskstore.ps")
+        },
+        "_maskstore_pd" => Intrinsic {
+            inputs: vec![p(false, f(64), Some(i(8))), v_(i(64), f(64), 2), v(f(64), 2)],
+            output: void(),
+            definition: Named("llvm.x86.avx.maskstore.pd")
+        },
+        "256_maskstore_ps" => Intrinsic {
+            inputs: vec![p(false, f(32), Some(i(8))), v_(i(32), f(32), 8), v(f(32), 8)],
+            output: void(),
+            definition: Named("llvm.x86.avx.maskstore.ps.256")
+        },
+        "256_maskstore_pd" => Intrinsic {
+            inputs: vec![p(false, f(64), Some(i(8))), v_(i(64), f(64), 4), v(f(64), 4)],
+            output: void(),
+            definition: Named("llvm.x86.avx.maskstore.pd.256")
+        },
         "256_min_ps" => Intrinsic {
             inputs: vec![v(f(32), 8), v(f(32), 8)],
             output: v(f(32), 8),
@@ -539,6 +619,21 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![v(f(32), 8)],
             output: v(f(32), 8),
             definition: Named("llvm.x86.avx.rsqrt.ps.256")
+        },
+        "256_storeu_ps" => Intrinsic {
+            inputs: vec![p(false, v(f(32), 8), Some(u(8))), v(f(32), 8)],
+            output: void(),
+            definition: Named("llvm.x86.avx.storeu.ps.256")
+        },
+        "256_storeu_pd" => Intrinsic {
+            inputs: vec![p(false, v(f(64), 4), Some(u(8))), v(f(64), 4)],
+            output: void(),
+            definition: Named("llvm.x86.avx.storeu.ps.256")
+        },
+        "256_storeu_si256" => Intrinsic {
+            inputs: vec![p(false, v(u(8), 32), Some(u(8))), v(u(8), 32)],
+            output: void(),
+            definition: Named("llvm.x86.avx.storeu.dq.256")
         },
         "256_sqrt_ps" => Intrinsic {
             inputs: vec![v(f(32), 8)],
@@ -625,50 +720,60 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: i(32),
             definition: Named("llvm.x86.avx.ptestz.256")
         },
+        "256_zeroall" => Intrinsic {
+            inputs: vec![],
+            output: void(),
+            definition: Named("llvm.x86.avx.vzeroall")
+        },
+        "256_zeroupper" => Intrinsic {
+            inputs: vec![],
+            output: void(),
+            definition: Named("llvm.x86.avx.vzeroupper")
+        },
         "256_abs_epi8" => Intrinsic {
             inputs: vec![v(i(8), 32)],
             output: v(i(8), 32),
-            definition: Named("llvm.x86.avx2.avx2.pabs.b")
+            definition: Named("llvm.x86.avx2.pabs.b")
         },
         "256_abs_epi16" => Intrinsic {
             inputs: vec![v(i(16), 16)],
             output: v(i(16), 16),
-            definition: Named("llvm.x86.avx2.avx2.pabs.w")
+            definition: Named("llvm.x86.avx2.pabs.w")
         },
         "256_abs_epi32" => Intrinsic {
             inputs: vec![v(i(32), 8)],
             output: v(i(32), 8),
-            definition: Named("llvm.x86.avx2.avx2.pabs.d")
+            definition: Named("llvm.x86.avx2.pabs.d")
         },
         "256_adds_epi8" => Intrinsic {
             inputs: vec![v(i(8), 32), v(i(8), 32)],
             output: v(i(8), 32),
-            definition: Named("llvm.x86.avx2.avx2.padds.b")
+            definition: Named("llvm.x86.avx2.padds.b")
         },
         "256_adds_epu8" => Intrinsic {
             inputs: vec![v(u(8), 32), v(u(8), 32)],
             output: v(u(8), 32),
-            definition: Named("llvm.x86.avx2.avx2.paddus.b")
+            definition: Named("llvm.x86.avx2.paddus.b")
         },
         "256_adds_epi16" => Intrinsic {
             inputs: vec![v(i(16), 16), v(i(16), 16)],
             output: v(i(16), 16),
-            definition: Named("llvm.x86.avx2.avx2.padds.w")
+            definition: Named("llvm.x86.avx2.padds.w")
         },
         "256_adds_epu16" => Intrinsic {
             inputs: vec![v(u(16), 16), v(u(16), 16)],
             output: v(u(16), 16),
-            definition: Named("llvm.x86.avx2.avx2.paddus.w")
+            definition: Named("llvm.x86.avx2.paddus.w")
         },
         "256_avg_epu8" => Intrinsic {
             inputs: vec![v(u(8), 32), v(u(8), 32)],
             output: v(u(8), 32),
-            definition: Named("llvm.x86.avx2.avx2.pavg.b")
+            definition: Named("llvm.x86.avx2.pavg.b")
         },
         "256_avg_epu16" => Intrinsic {
             inputs: vec![v(u(16), 16), v(u(16), 16)],
             output: v(u(16), 16),
-            definition: Named("llvm.x86.avx2.avx2.pavg.w")
+            definition: Named("llvm.x86.avx2.pavg.w")
         },
         "256_hadd_epi16" => Intrinsic {
             inputs: vec![v(i(16), 16), v(i(16), 16)],
@@ -709,6 +814,126 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![v(i(8), 32), v(i(8), 32)],
             output: v(i(16), 16),
             definition: Named("llvm.x86.avx2.pmadd.ub.sw")
+        },
+        "_mask_i32gather_epi32" => Intrinsic {
+            inputs: vec![v(i(32), 4), p(true, i(32), Some(i(8))), v(i(32), 4), v(i(32), 4), i_(32, 8)],
+            output: v(i(32), 4),
+            definition: Named("llvm.x86.avx2.gather.d.d")
+        },
+        "_mask_i32gather_ps" => Intrinsic {
+            inputs: vec![v(f(32), 4), p(true, f(32), Some(i(8))), v(i(32), 4), v_(i(32), f(32), 4), i_(32, 8)],
+            output: v(f(32), 4),
+            definition: Named("llvm.x86.avx2.gather.d.ps")
+        },
+        "256_mask_i32gather_epi32" => Intrinsic {
+            inputs: vec![v(i(32), 8), p(true, i(32), Some(i(8))), v(i(32), 8), v(i(32), 8), i_(32, 8)],
+            output: v(i(32), 8),
+            definition: Named("llvm.x86.avx2.gather.d.d.256")
+        },
+        "256_mask_i32gather_ps" => Intrinsic {
+            inputs: vec![v(f(32), 8), p(true, f(32), Some(i(8))), v(i(32), 8), v_(i(32), f(32), 8), i_(32, 8)],
+            output: v(f(32), 8),
+            definition: Named("llvm.x86.avx2.gather.d.ps.256")
+        },
+        "_mask_i32gather_epi64" => Intrinsic {
+            inputs: vec![v(i(64), 2), p(true, i(64), Some(i(8))), v(i(32), 4), v(i(64), 2), i_(32, 8)],
+            output: v(i(64), 2),
+            definition: Named("llvm.x86.avx2.gather.d.q")
+        },
+        "_mask_i32gather_pd" => Intrinsic {
+            inputs: vec![v(f(64), 2), p(true, f(64), Some(i(8))), v(i(32), 4), v_(i(64), f(64), 2), i_(32, 8)],
+            output: v(f(64), 2),
+            definition: Named("llvm.x86.avx2.gather.d.pd")
+        },
+        "256_mask_i32gather_epi64" => Intrinsic {
+            inputs: vec![v(i(64), 4), p(true, i(64), Some(i(8))), v(i(32), 4), v(i(64), 4), i_(32, 8)],
+            output: v(i(64), 4),
+            definition: Named("llvm.x86.avx2.gather.d.q.256")
+        },
+        "256_mask_i32gather_pd" => Intrinsic {
+            inputs: vec![v(f(64), 4), p(true, f(64), Some(i(8))), v(i(32), 4), v_(i(64), f(64), 4), i_(32, 8)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.avx2.gather.d.pd.256")
+        },
+        "_mask_i64gather_epi32" => Intrinsic {
+            inputs: vec![v(i(32), 4), p(true, i(32), Some(i(8))), v(i(64), 2), v(i(32), 4), i_(32, 8)],
+            output: v(i(32), 4),
+            definition: Named("llvm.x86.avx2.gather.q.d")
+        },
+        "_mask_i64gather_ps" => Intrinsic {
+            inputs: vec![v(f(32), 4), p(true, f(32), Some(i(8))), v(i(64), 2), v_(i(32), f(32), 4), i_(32, 8)],
+            output: v(f(32), 4),
+            definition: Named("llvm.x86.avx2.gather.q.ps")
+        },
+        "256_mask_i64gather_epi32" => Intrinsic {
+            inputs: vec![v(i(32), 4), p(true, i(32), Some(i(8))), v(i(64), 4), v(i(32), 4), i_(32, 8)],
+            output: v(i(32), 4),
+            definition: Named("llvm.x86.avx2.gather.q.d")
+        },
+        "256_mask_i64gather_ps" => Intrinsic {
+            inputs: vec![v(f(32), 4), p(true, f(32), Some(i(8))), v(i(64), 4), v_(i(32), f(32), 4), i_(32, 8)],
+            output: v(f(32), 4),
+            definition: Named("llvm.x86.avx2.gather.q.ps")
+        },
+        "_mask_i64gather_epi64" => Intrinsic {
+            inputs: vec![v(i(64), 2), p(true, i(64), Some(i(8))), v(i(64), 2), v(i(64), 2), i_(32, 8)],
+            output: v(i(64), 2),
+            definition: Named("llvm.x86.avx2.gather.q.q")
+        },
+        "_mask_i64gather_pd" => Intrinsic {
+            inputs: vec![v(f(64), 2), p(true, f(64), Some(i(8))), v(i(64), 2), v_(i(64), f(64), 2), i_(32, 8)],
+            output: v(f(64), 2),
+            definition: Named("llvm.x86.avx2.gather.q.pd")
+        },
+        "256_mask_i64gather_epi64" => Intrinsic {
+            inputs: vec![v(i(64), 4), p(true, i(64), Some(i(8))), v(i(64), 4), v(i(64), 4), i_(32, 8)],
+            output: v(i(64), 4),
+            definition: Named("llvm.x86.avx2.gather.q.q.256")
+        },
+        "256_mask_i64gather_pd" => Intrinsic {
+            inputs: vec![v(f(64), 4), p(true, f(64), Some(i(8))), v(i(64), 4), v_(i(64), f(64), 4), i_(32, 8)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.avx2.gather.q.pd.256")
+        },
+        "_maskload_epi32" => Intrinsic {
+            inputs: vec![p(true, v(i(32), 4), Some(i(8))), v(i(32), 4)],
+            output: v(i(32), 4),
+            definition: Named("llvm.x86.avx2.maskload.d")
+        },
+        "_maskload_epi64" => Intrinsic {
+            inputs: vec![p(true, v(i(64), 2), Some(i(8))), v(i(64), 2)],
+            output: v(i(64), 2),
+            definition: Named("llvm.x86.avx2.maskload.q")
+        },
+        "256_maskload_epi32" => Intrinsic {
+            inputs: vec![p(true, v(i(32), 8), Some(i(8))), v(i(32), 8)],
+            output: v(i(32), 8),
+            definition: Named("llvm.x86.avx2.maskload.d.256")
+        },
+        "256_maskload_epi64" => Intrinsic {
+            inputs: vec![p(true, v(i(64), 4), Some(i(8))), v(i(64), 4)],
+            output: v(i(64), 4),
+            definition: Named("llvm.x86.avx2.maskload.q.256")
+        },
+        "_maskstore_epi32" => Intrinsic {
+            inputs: vec![p(false, i(32), Some(i(8))), v(i(32), 4), v(i(32), 4)],
+            output: void(),
+            definition: Named("llvm.x86.avx2.maskstore.d")
+        },
+        "_maskstore_epi64" => Intrinsic {
+            inputs: vec![p(false, i(64), Some(i(8))), v(i(64), 2), v(i(64), 2)],
+            output: void(),
+            definition: Named("llvm.x86.avx2.maskstore.q")
+        },
+        "256_maskstore_epi32" => Intrinsic {
+            inputs: vec![p(false, i(32), Some(i(8))), v(i(32), 8), v(i(32), 8)],
+            output: void(),
+            definition: Named("llvm.x86.avx2.maskstore.d.256")
+        },
+        "256_maskstore_epi64" => Intrinsic {
+            inputs: vec![p(false, i(64), Some(i(8))), v(i(64), 4), v(i(64), 4)],
+            output: void(),
+            definition: Named("llvm.x86.avx2.maskstore.q.256")
         },
         "256_max_epi8" => Intrinsic {
             inputs: vec![v(i(8), 32), v(i(8), 32)],
