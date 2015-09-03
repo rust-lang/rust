@@ -185,6 +185,7 @@ mod imp {
 
     use io;
     use mem;
+    use ptr;
     use rand::Rng;
     use libc::{c_int, size_t};
 
@@ -207,7 +208,7 @@ mod imp {
     enum SecRandom {}
 
     #[allow(non_upper_case_globals)]
-    const kSecRandomDefault: *const SecRandom = 0 as *const SecRandom;
+    const kSecRandomDefault: *const SecRandom = ptr::null();
 
     #[link(name = "Security", kind = "framework")]
     extern "C" {
