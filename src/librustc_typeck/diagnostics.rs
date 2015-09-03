@@ -2705,6 +2705,37 @@ fn main() {
 ```
 "##,
 
+E0329: r##"
+An attempt was made to access an associated constant through either a generic
+type parameter or `Self`. This is not supported yet. An example causing this
+error is shown below:
+
+```
+trait Foo {
+    const BAR: f64;
+}
+
+struct MyStruct;
+
+impl Foo for MyStruct {
+    const BAR: f64 = 0f64;
+}
+
+fn get_bar_bad<F: Foo>(t: F) -> f64 {
+    F::BAR
+}
+```
+
+Currently, the value of `BAR` for a particular type can only be accessed through
+a concrete type, as shown below:
+
+```
+fn get_bar_good() -> f64 {
+    <MyStruct as Foo>::BAR
+}
+```
+"##,
+
 E0366: r##"
 An attempt was made to implement `Drop` on a concrete specialization of a
 generic type. An example is shown below:
@@ -3251,7 +3282,6 @@ register_diagnostics! {
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
     E0328, // cannot implement Unsize explicitly
-    E0329, // associated const depends on type parameter or Self.
     E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with one field being coerced, none found
     E0375, // the trait `CoerceUnsized` may only be implemented for a coercion
