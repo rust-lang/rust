@@ -34,7 +34,7 @@ pub enum Type {
     Integer(/* signed */ bool, u8, /* llvm width */ u8),
     Float(u8),
     Pointer(Box<Type>, Option<Box<Type>>, /* const */ bool),
-    Vector(Box<Type>, u8),
+    Vector(Box<Type>, Option<Box<Type>>, u8),
     Aggregate(bool, Vec<Type>),
 }
 
@@ -48,7 +48,10 @@ fn u(width: u8) -> Type { Type::Integer(false, width, width) }
 #[allow(dead_code)]
 fn u_(width: u8, llvm_width: u8) -> Type { Type::Integer(false, width, llvm_width) }
 fn f(width: u8) -> Type { Type::Float(width) }
-fn v(x: Type, length: u8) -> Type { Type::Vector(Box::new(x), length) }
+fn v(x: Type, length: u8) -> Type { Type::Vector(Box::new(x), None, length) }
+fn v_(x: Type, bitcast: Type, length: u8) -> Type {
+    Type::Vector(Box::new(x), Some(Box::new(bitcast)), length)
+}
 fn agg(flatten: bool, types: Vec<Type>) -> Type {
     Type::Aggregate(flatten, types)
 }
