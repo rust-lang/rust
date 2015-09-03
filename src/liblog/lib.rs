@@ -184,6 +184,7 @@ use std::io::{self, Stderr};
 use std::io::prelude::*;
 use std::mem;
 use std::env;
+use std::ptr;
 use std::rt;
 use std::slice;
 use std::sync::{Once, StaticMutex};
@@ -209,11 +210,10 @@ static LOCK: StaticMutex = StaticMutex::new();
 /// logging statement should be run.
 static mut LOG_LEVEL: u32 = MAX_LOG_LEVEL;
 
-static mut DIRECTIVES: *mut Vec<directive::LogDirective> =
-    0 as *mut Vec<directive::LogDirective>;
+static mut DIRECTIVES: *mut Vec<directive::LogDirective> = ptr::null_mut();
 
 /// Optional filter.
-static mut FILTER: *mut String = 0 as *mut _;
+static mut FILTER: *mut String = ptr::null_mut();
 
 /// Debug log level
 pub const DEBUG: u32 = 4;
