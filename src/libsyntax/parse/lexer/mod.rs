@@ -1304,7 +1304,7 @@ impl<'a> StringReader<'a> {
         }
         let id = if valid { self.name_from(start) } else { token::intern("??") };
         self.bump();
-        return token::Binary(id);
+        return token::ByteStr(id);
     }
 
     fn scan_raw_byte_string(&mut self) -> token::Lit {
@@ -1355,7 +1355,7 @@ impl<'a> StringReader<'a> {
             self.bump();
         }
         self.bump();
-        return token::BinaryRaw(self.name_from_to(content_start_bpos,
+        return token::ByteStrRaw(self.name_from_to(content_start_bpos,
                                                   content_end_bpos),
                                 hash_count);
     }
@@ -1546,7 +1546,7 @@ mod tests {
         test!("'a'", Char, "a");
         test!("b'a'", Byte, "a");
         test!("\"a\"", Str_, "a");
-        test!("b\"a\"", Binary, "a");
+        test!("b\"a\"", ByteStr, "a");
         test!("1234", Integer, "1234");
         test!("0b101", Integer, "0b101");
         test!("0xABC", Integer, "0xABC");
@@ -1560,7 +1560,7 @@ mod tests {
                    token::Literal(token::StrRaw(token::intern("raw"), 3),
                                   Some(token::intern("suffix"))));
         assert_eq!(setup(&mk_sh(), "br###\"raw\"###suffix".to_string()).next_token().tok,
-                   token::Literal(token::BinaryRaw(token::intern("raw"), 3),
+                   token::Literal(token::ByteStrRaw(token::intern("raw"), 3),
                                   Some(token::intern("suffix"))));
     }
 

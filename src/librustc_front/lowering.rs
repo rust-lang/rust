@@ -664,7 +664,7 @@ pub fn lower_lit(l: &Lit) -> hir::Lit {
     Spanned {
         node: match l.node {
             LitStr(ref i, s) => hir::LitStr(i.clone(), lower_string_style(s)),
-            LitBinary(ref b) => hir::LitBinary(b.clone()),
+            LitByteStr(ref b) => hir::LitByteStr(b.clone()),
             LitByte(u) => hir::LitByte(u),
             LitChar(c) => hir::LitChar(c),
             LitInt(u, ref t) => hir::LitInt(u, lower_lit_int_type(t)),
@@ -680,7 +680,7 @@ pub fn unlower_lit(l: &hir::Lit) -> Lit {
     Spanned {
         node: match l.node {
             hir::LitStr(ref i, s) => LitStr(i.clone(), unlower_string_style(s)),
-            hir::LitBinary(ref b) => LitBinary(b.clone()),
+            hir::LitByteStr(ref b) => LitByteStr(b.clone()),
             hir::LitByte(u) => LitByte(u),
             hir::LitChar(c) => LitChar(c),
             hir::LitInt(u, ref t) => LitInt(u, unlower_lit_int_type(t)),
