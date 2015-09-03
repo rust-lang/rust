@@ -51,7 +51,7 @@
 //! fn main() {
 //!     // Create a reference counted Owner.
 //!     let gadget_owner : Rc<Owner> = Rc::new(
-//!             Owner { name: String::from("Gadget Man") }
+//!         Owner { name: String::from("Gadget Man") }
 //!     );
 //!
 //!     // Create Gadgets belonging to gadget_owner. To increment the reference
@@ -102,13 +102,13 @@
 //!
 //! struct Owner {
 //!     name: String,
-//!     gadgets: RefCell<Vec<Weak<Gadget>>>
+//!     gadgets: RefCell<Vec<Weak<Gadget>>>,
 //!     // ...other fields
 //! }
 //!
 //! struct Gadget {
 //!     id: i32,
-//!     owner: Rc<Owner>
+//!     owner: Rc<Owner>,
 //!     // ...other fields
 //! }
 //!
@@ -117,10 +117,10 @@
 //!     // Owner's vector of Gadgets inside a RefCell so that we can mutate it
 //!     // through a shared reference.
 //!     let gadget_owner : Rc<Owner> = Rc::new(
-//!             Owner {
-//!                 name: "Gadget Man".to_string(),
-//!                 gadgets: RefCell::new(Vec::new())
-//!             }
+//!         Owner {
+//!             name: "Gadget Man".to_string(),
+//!             gadgets: RefCell::new(Vec::new()),
+//!         }
 //!     );
 //!
 //!     // Create Gadgets belonging to gadget_owner as before.
