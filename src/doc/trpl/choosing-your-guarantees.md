@@ -1,6 +1,6 @@
 % Choosing your Guarantees
 
-One important feature of Rust as language is that it lets us control the costs and guarantees
+One important feature of Rust is that it lets us control the costs and guarantees
 of a program.
 
 There are various &ldquo;wrapper type&rdquo; abstractions in the Rust standard library which embody
@@ -40,7 +40,7 @@ allowed to share references to this by the regular borrowing rules, checked at c
 
 [box]: ../std/boxed/struct.Box.html
 
-## `&T` and `&mut T` 
+## `&T` and `&mut T`
 
 These are immutable and mutable references respectively. They follow the &ldquo;read-write lock&rdquo;
 pattern, such that one may either have only one mutable reference to some data, or any number of
