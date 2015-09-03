@@ -98,8 +98,11 @@ impl LintPass for FloatCmp {
                     Some(NodeTraitItem(&TraitItem{ id: _, ref ident, .. })) |
                     Some(NodeImplItem(&ImplItem{ id: _, ref ident, .. })) => {
                         let name = ident.name.as_str();
-                        if &*name == "eq" || name.starts_with("eq_") ||
-                                name.ends_with("_eq") { return; }
+                        if &*name == "eq" || &*name == "ne" ||
+                                name.starts_with("eq_") ||
+                                name.ends_with("_eq") {
+                            return;
+                        }
                     },
                     _ => (),
                 }
