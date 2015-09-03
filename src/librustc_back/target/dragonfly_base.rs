@@ -16,20 +16,10 @@ pub fn opts() -> TargetOptions {
         linker: "cc".to_string(),
         dynamic_linking: true,
         executables: true,
-        linker_is_gnu: true,
         has_rpath: true,
-        pre_link_args: vec!(
-            "-L/usr/local/lib".to_string(),
-            "-L/usr/lib/gcc47".to_string(),
-            // GNU-style linkers will use this to omit linking to libraries
-            // which don't actually fulfill any relocations, but only for
-            // libraries which follow this flag.  Thus, use it before
-            // specifying libraries to link to.
-            "-Wl,--as-needed".to_string(),
-        ),
-        position_independent_executables: true,
         archive_format: "gnu".to_string(),
         exe_allocation_crate: super::best_allocator(),
+
         .. Default::default()
     }
 }
