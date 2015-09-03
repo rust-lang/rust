@@ -390,7 +390,7 @@ fn normal<T: ConvertTo<i64>>(x: &T) -> i64 {
 
 // can be called with T == i64
 fn inverse<T>() -> T
-        // this is using ConvertTo as if it were "ConvertFrom<i32>"
+        // this is using ConvertTo as if it were "ConvertTo<i64>"
         where i32: ConvertTo<T> {
     42.convert()
 }
