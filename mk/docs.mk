@@ -191,6 +191,7 @@ ifdef CFG_DISABLE_DOCS
 endif
 
 docs: $(DOC_TARGETS)
+doc: docs
 compiler-docs: $(COMPILER_DOC_TARGETS)
 
 trpl: doc/book/index.html
