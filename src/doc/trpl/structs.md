@@ -1,6 +1,6 @@
 % Structs
 
-Structs are a way of creating more complex data types. For example, if we were
+`struct`s are a way of creating more complex data types. For example, if we were
 doing calculations involving coordinates in 2D space, we would need both an `x`
 and a `y` value:
 
@@ -9,7 +9,7 @@ let origin_x = 0;
 let origin_y = 0;
 ```
 
-A struct lets us combine these two into a single, unified datatype:
+A `struct` lets us combine these two into a single, unified datatype:
 
 ```rust
 struct Point {
@@ -28,14 +28,14 @@ There’s a lot going on here, so let’s break it down. We declare a `struct` w
 the `struct` keyword, and then with a name. By convention, `struct`s begin with
 a capital letter and are camel cased: `PointInSpace`, not `Point_In_Space`.
 
-We can create an instance of our struct via `let`, as usual, but we use a `key:
+We can create an instance of our `struct` via `let`, as usual, but we use a `key:
 value` style syntax to set each field. The order doesn’t need to be the same as
 in the original declaration.
 
 Finally, because fields have names, we can access the field through dot
 notation: `origin.x`.
 
-The values in structs are immutable by default, like other bindings in Rust.
+The values in `struct`s are immutable by default, like other bindings in Rust.
 Use `mut` to make them mutable:
 
 ```rust
@@ -91,7 +91,7 @@ fn main() {
 # Update syntax
 
 A `struct` can include `..` to indicate that you want to use a copy of some
-other struct for some of the values. For example:
+other `struct` for some of the values. For example:
 
 ```rust
 struct Point3d {
@@ -121,7 +121,7 @@ let point = Point3d { z: 1, x: 2, .. origin };
 # Tuple structs
 
 Rust has another data type that’s like a hybrid between a [tuple][tuple] and a
-struct, called a ‘tuple struct’. Tuple structs have a name, but
+`struct`, called a ‘tuple struct’. Tuple structs have a name, but
 their fields don’t:
 
 ```rust
@@ -140,7 +140,7 @@ let black = Color(0, 0, 0);
 let origin = Point(0, 0, 0);
 ```
 
-It is almost always better to use a struct than a tuple struct. We would write
+It is almost always better to use a `struct` than a tuple struct. We would write
 `Color` and `Point` like this instead:
 
 ```rust
@@ -158,7 +158,7 @@ struct Point {
 ```
 
 Now, we have actual names, rather than positions. Good names are important,
-and with a struct, we have actual names.
+and with a `struct`, we have actual names.
 
 There _is_ one case when a tuple struct is very useful, though, and that’s a
 tuple struct with only one element. We call this the ‘newtype’ pattern, because
@@ -180,13 +180,13 @@ destructuring `let`, just as with regular tuples. In this case, the
 
 # Unit-like structs
 
-You can define a struct with no members at all:
+You can define a `struct` with no members at all:
 
 ```rust
 struct Electron;
 ```
 
-Such a struct is called ‘unit-like’ because it resembles the empty
+Such a `struct` is called ‘unit-like’ because it resembles the empty
 tuple, `()`, sometimes called ‘unit’. Like a tuple struct, it defines a
 new type.
 
@@ -195,6 +195,6 @@ marker type), but in combination with other features, it can become
 useful. For instance, a library may ask you to create a structure that
 implements a certain [trait][trait] to handle events. If you don’t have
 any data you need to store in the structure, you can just create a
-unit-like struct.
+unit-like `struct`.
 
 [trait]: traits.html
