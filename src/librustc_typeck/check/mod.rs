@@ -76,7 +76,6 @@ type parameter).
 
 */
 
-pub use self::LvaluePreference::*;
 pub use self::Expectation::*;
 pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::TupleArgumentsFlag::*;
@@ -95,6 +94,7 @@ use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace
 use middle::traits::{self, report_fulfillment_errors};
 use middle::ty::{FnSig, GenericPredicates, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
+use middle::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::{MethodCall, MethodCallee};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
@@ -2086,21 +2086,6 @@ impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum LvaluePreference {
-    PreferMutLvalue,
-    NoPreference
-}
-
-impl LvaluePreference {
-    pub fn from_mutbl(m: hir::Mutability) -> Self {
-        match m {
-            hir::MutMutable => PreferMutLvalue,
-            hir::MutImmutable => NoPreference,
-        }
-    }
-}
-
 /// Whether `autoderef` requires types to resolve.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum UnresolvedTypeAction {
@@ -2156,7 +2141,7 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         // Otherwise, deref if type is derefable:
-        let mt = match resolved_t.builtin_deref(false) {
+        let mt = match resolved_t.builtin_deref(false, lvalue_pref) {
             Some(mt) => Some(mt),
             None => {
                 let method_call =
@@ -2245,7 +2230,7 @@ fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
 
             // method returns &T, but the type as visible to user is T, so deref
-            ret_ty.builtin_deref(true)
+            ret_ty.builtin_deref(true, NoPreference)
         }
         None => None,
     }
@@ -3293,7 +3278,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 }
                 hir::UnDeref => {
                     oprnd_t = structurally_resolved_type(fcx, expr.span, oprnd_t);
-                    oprnd_t = match oprnd_t.builtin_deref(true) {
+                    oprnd_t = match oprnd_t.builtin_deref(true, NoPreference) {
                         Some(mt) => mt.ty,
                         None => match try_overloaded_deref(fcx, expr.span,
                                                            Some(MethodCall::expr(expr.id)),

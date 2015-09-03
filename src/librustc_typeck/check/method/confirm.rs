@@ -10,12 +10,12 @@
 
 use super::probe;
 
-use check::{self, FnCtxt, NoPreference, PreferMutLvalue, callee, demand};
+use check::{self, FnCtxt, callee, demand};
 use check::UnresolvedTypeAction;
 use middle::def_id::DefId;
 use middle::subst::{self};
 use middle::traits;
-use middle::ty::{self, Ty};
+use middle::ty::{self, NoPreference, PreferMutLvalue, Ty};
 use middle::ty_fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
@@ -534,7 +534,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                 }
                                 Some(ty::AutoPtr(_, _)) => {
                                     (adr.autoderefs, adr.unsize.map(|target| {
-                                        target.builtin_deref(false)
+                                        target.builtin_deref(false, NoPreference)
                                               .expect("fixup: AutoPtr is not &T").ty
                                     }))
                                 }

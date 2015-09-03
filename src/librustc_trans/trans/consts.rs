@@ -155,7 +155,7 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                          v: ValueRef,
                          ty: Ty<'tcx>)
                          -> (ValueRef, Ty<'tcx>) {
-    match ty.builtin_deref(true) {
+    match ty.builtin_deref(true, ty::NoPreference) {
         Some(mt) => {
             if type_is_sized(cx.tcx(), mt.ty) {
                 (const_deref_ptr(cx, v), mt.ty)
@@ -329,7 +329,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                               param_substs,
                                                               &target);
 
-                let pointee_ty = ty.builtin_deref(true)
+                let pointee_ty = ty.builtin_deref(true, ty::NoPreference)
                     .expect("consts: unsizing got non-pointer type").ty;
                 let (base, old_info) = if !type_is_sized(cx.tcx(), pointee_ty) {
                     // Normally, the source is a thin pointer and we are
@@ -344,7 +344,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     (llconst, None)
                 };
 
-                let unsized_ty = target.builtin_deref(true)
+                let unsized_ty = target.builtin_deref(true, ty::NoPreference)
                     .expect("consts: unsizing got non-pointer target type").ty;
                 let ptr_ty = type_of::in_memory_type_of(cx, unsized_ty).ptr_to();
                 let base = ptrcast(base, ptr_ty);
@@ -642,7 +642,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
             if type_is_fat_ptr(cx.tcx(), t_expr) {
                 // Fat pointer casts.
-                let t_cast_inner = t_cast.builtin_deref(true).expect("cast to non-pointer").ty;
+                let t_cast_inner =
+                    t_cast.builtin_deref(true, ty::NoPreference).expect("cast to non-pointer").ty;
                 let ptr_ty = type_of::in_memory_type_of(cx, t_cast_inner).ptr_to();
                 let addr = ptrcast(const_get_elt(cx, v, &[abi::FAT_PTR_ADDR as u32]),
                                    ptr_ty);

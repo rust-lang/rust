@@ -664,7 +664,7 @@ fn is_useful(cx: &MatchCheckCtxt,
 
         match real_pat.node {
             hir::PatIdent(hir::BindByRef(..), _, _) => {
-                left_ty.builtin_deref(false).unwrap().ty
+                left_ty.builtin_deref(false, NoPreference).unwrap().ty
             }
             _ => left_ty,
         }

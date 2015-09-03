@@ -780,7 +780,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             let ref_ty = // invoked methods have LB regions instantiated:
                 bcx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap().unwrap();
-            let elt_ty = match ref_ty.builtin_deref(true) {
+            let elt_ty = match ref_ty.builtin_deref(true, ty::NoPreference) {
                 None => {
                     bcx.tcx().sess.span_bug(index_expr.span,
                                             "index method didn't return a \
@@ -1971,7 +1971,8 @@ pub fn cast_is_noop<'tcx>(tcx: &ty::ctxt<'tcx>,
         return true;
     }
 
-    match (t_in.builtin_deref(true), t_out.builtin_deref(true)) {
+    match (t_in.builtin_deref(true, ty::NoPreference),
+           t_out.builtin_deref(true, ty::NoPreference)) {
         (Some(ty::TypeAndMut{ ty: t_in, .. }), Some(ty::TypeAndMut{ ty: t_out, .. })) => {
             t_in == t_out
         }
