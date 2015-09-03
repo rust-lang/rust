@@ -69,48 +69,48 @@ use raw::Slice as RawSlice;
 pub trait SliceExt {
     type Item;
 
-    fn split_at<'a>(&'a self, mid: usize) -> (&'a [Self::Item], &'a [Self::Item]);
-    fn iter<'a>(&'a self) -> Iter<'a, Self::Item>;
-    fn split<'a, P>(&'a self, pred: P) -> Split<'a, Self::Item, P>
+    fn split_at(&self, mid: usize) -> (&[Self::Item], &[Self::Item]);
+    fn iter(&self) -> Iter<Self::Item>;
+    fn split<P>(&self, pred: P) -> Split<Self::Item, P>
                     where P: FnMut(&Self::Item) -> bool;
-    fn splitn<'a, P>(&'a self, n: usize, pred: P) -> SplitN<'a, Self::Item, P>
+    fn splitn<P>(&self, n: usize, pred: P) -> SplitN<Self::Item, P>
                      where P: FnMut(&Self::Item) -> bool;
-    fn rsplitn<'a, P>(&'a self,  n: usize, pred: P) -> RSplitN<'a, Self::Item, P>
+    fn rsplitn<P>(&self,  n: usize, pred: P) -> RSplitN<Self::Item, P>
                       where P: FnMut(&Self::Item) -> bool;
-    fn windows<'a>(&'a self, size: usize) -> Windows<'a, Self::Item>;
-    fn chunks<'a>(&'a self, size: usize) -> Chunks<'a, Self::Item>;
-    fn get<'a>(&'a self, index: usize) -> Option<&'a Self::Item>;
-    fn first<'a>(&'a self) -> Option<&'a Self::Item>;
-    fn tail<'a>(&'a self) -> &'a [Self::Item];
-    fn init<'a>(&'a self) -> &'a [Self::Item];
-    fn split_first<'a>(&'a self) -> Option<(&'a Self::Item, &'a [Self::Item])>;
-    fn split_last<'a>(&'a self) -> Option<(&'a Self::Item, &'a [Self::Item])>;
-    fn last<'a>(&'a self) -> Option<&'a Self::Item>;
-    unsafe fn get_unchecked<'a>(&'a self, index: usize) -> &'a Self::Item;
+    fn windows(&self, size: usize) -> Windows<Self::Item>;
+    fn chunks(&self, size: usize) -> Chunks<Self::Item>;
+    fn get(&self, index: usize) -> Option<&Self::Item>;
+    fn first(&self) -> Option<&Self::Item>;
+    fn tail(&self) -> &[Self::Item];
+    fn init(&self) -> &[Self::Item];
+    fn split_first(&self) -> Option<(&Self::Item, &[Self::Item])>;
+    fn split_last(&self) -> Option<(&Self::Item, &[Self::Item])>;
+    fn last(&self) -> Option<&Self::Item>;
+    unsafe fn get_unchecked(&self, index: usize) -> &Self::Item;
     fn as_ptr(&self) -> *const Self::Item;
     fn binary_search_by<F>(&self, f: F) -> Result<usize, usize> where
         F: FnMut(&Self::Item) -> Ordering;
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool { self.len() == 0 }
-    fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut Self::Item>;
-    fn iter_mut<'a>(&'a mut self) -> IterMut<'a, Self::Item>;
-    fn first_mut<'a>(&'a mut self) -> Option<&'a mut Self::Item>;
-    fn tail_mut<'a>(&'a mut self) -> &'a mut [Self::Item];
-    fn init_mut<'a>(&'a mut self) -> &'a mut [Self::Item];
-    fn split_first_mut<'a>(&'a mut self) -> Option<(&'a mut Self::Item, &'a mut [Self::Item])>;
-    fn split_last_mut<'a>(&'a mut self) -> Option<(&'a mut Self::Item, &'a mut [Self::Item])>;
-    fn last_mut<'a>(&'a mut self) -> Option<&'a mut Self::Item>;
-    fn split_mut<'a, P>(&'a mut self, pred: P) -> SplitMut<'a, Self::Item, P>
+    fn get_mut(&mut self, index: usize) -> Option<&mut Self::Item>;
+    fn iter_mut(&mut self) -> IterMut<Self::Item>;
+    fn first_mut(&mut self) -> Option<&mut Self::Item>;
+    fn tail_mut(&mut self) -> &mut [Self::Item];
+    fn init_mut(&mut self) -> &mut [Self::Item];
+    fn split_first_mut(&mut self) -> Option<(&mut Self::Item, &mut [Self::Item])>;
+    fn split_last_mut(&mut self) -> Option<(&mut Self::Item, &mut [Self::Item])>;
+    fn last_mut(&mut self) -> Option<&mut Self::Item>;
+    fn split_mut<P>(&mut self, pred: P) -> SplitMut<Self::Item, P>
                         where P: FnMut(&Self::Item) -> bool;
     fn splitn_mut<P>(&mut self, n: usize, pred: P) -> SplitNMut<Self::Item, P>
                      where P: FnMut(&Self::Item) -> bool;
     fn rsplitn_mut<P>(&mut self,  n: usize, pred: P) -> RSplitNMut<Self::Item, P>
                       where P: FnMut(&Self::Item) -> bool;
-    fn chunks_mut<'a>(&'a mut self, chunk_size: usize) -> ChunksMut<'a, Self::Item>;
+    fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<Self::Item>;
     fn swap(&mut self, a: usize, b: usize);
-    fn split_at_mut<'a>(&'a mut self, mid: usize) -> (&'a mut [Self::Item], &'a mut [Self::Item]);
+    fn split_at_mut(&mut self, mid: usize) -> (&mut [Self::Item], &mut [Self::Item]);
     fn reverse(&mut self);
-    unsafe fn get_unchecked_mut<'a>(&'a mut self, index: usize) -> &'a mut Self::Item;
+    unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut Self::Item;
     fn as_mut_ptr(&mut self) -> *mut Self::Item;
 
     fn position_elem(&self, t: &Self::Item) -> Option<usize> where Self::Item: PartialEq;
@@ -163,7 +163,7 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn iter<'a>(&'a self) -> Iter<'a, T> {
+    fn iter(&self) -> Iter<T> {
         unsafe {
             let p = if mem::size_of::<T>() == 0 {
                 1 as *const _
@@ -182,7 +182,7 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn split<'a, P>(&'a self, pred: P) -> Split<'a, T, P> where P: FnMut(&T) -> bool {
+    fn split<P>(&self, pred: P) -> Split<T, P> where P: FnMut(&T) -> bool {
         Split {
             v: self,
             pred: pred,
@@ -191,7 +191,7 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn splitn<'a, P>(&'a self, n: usize, pred: P) -> SplitN<'a, T, P> where
+    fn splitn<P>(&self, n: usize, pred: P) -> SplitN<T, P> where
         P: FnMut(&T) -> bool,
     {
         SplitN {
@@ -204,7 +204,7 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn rsplitn<'a, P>(&'a self, n: usize, pred: P) -> RSplitN<'a, T, P> where
+    fn rsplitn<P>(&self, n: usize, pred: P) -> RSplitN<T, P> where
         P: FnMut(&T) -> bool,
     {
         RSplitN {
@@ -311,7 +311,7 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
+    fn iter_mut(&mut self) -> IterMut<T> {
         unsafe {
             let p = if mem::size_of::<T>() == 0 {
                 1 as *mut _
@@ -368,12 +368,12 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn split_mut<'a, P>(&'a mut self, pred: P) -> SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
+    fn split_mut<P>(&mut self, pred: P) -> SplitMut<T, P> where P: FnMut(&T) -> bool {
         SplitMut { v: self, pred: pred, finished: false }
     }
 
     #[inline]
-    fn splitn_mut<'a, P>(&'a mut self, n: usize, pred: P) -> SplitNMut<'a, T, P> where
+    fn splitn_mut<P>(&mut self, n: usize, pred: P) -> SplitNMut<T, P> where
         P: FnMut(&T) -> bool
     {
         SplitNMut {
@@ -386,7 +386,7 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn rsplitn_mut<'a, P>(&'a mut self, n: usize, pred: P) -> RSplitNMut<'a, T, P> where
+    fn rsplitn_mut<P>(&mut self, n: usize, pred: P) -> RSplitNMut<T, P> where
         P: FnMut(&T) -> bool,
     {
         RSplitNMut {
@@ -1410,7 +1410,7 @@ impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
 
 /// Converts a pointer to A into a slice of length 1 (without copying).
 #[unstable(feature = "ref_slice", issue = "27774")]
-pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
+pub fn ref_slice<A>(s: &A) -> &[A] {
     unsafe {
         from_raw_parts(s, 1)
     }
@@ -1418,7 +1418,7 @@ pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
 
 /// Converts a pointer to A into a slice of length 1 (without copying).
 #[unstable(feature = "ref_slice", issue = "27774")]
-pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
+pub fn mut_ref_slice<A>(s: &mut A) -> &mut [A] {
     unsafe {
         from_raw_parts_mut(s, 1)
     }

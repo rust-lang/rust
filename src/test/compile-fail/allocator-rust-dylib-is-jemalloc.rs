@@ -10,6 +10,7 @@
 
 // ignore-msvc everything is the system allocator on msvc
 // ignore-musl no dylibs on musl right now
+// ignore-bitrig no jemalloc on bitrig
 // aux-build:allocator-dylib2.rs
 // error-pattern: cannot link together two allocators
 

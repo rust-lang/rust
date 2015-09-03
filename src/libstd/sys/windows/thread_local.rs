@@ -58,7 +58,7 @@ pub type Dtor = unsafe extern fn(*mut u8);
 // the thread infrastructure to be in place (useful on the borders of
 // initialization/destruction).
 static DTOR_LOCK: Mutex = Mutex::new();
-static mut DTORS: *mut Vec<(Key, Dtor)> = 0 as *mut _;
+static mut DTORS: *mut Vec<(Key, Dtor)> = ptr::null_mut();
 
 // -------------------------------------------------------------------------
 // Native bindings

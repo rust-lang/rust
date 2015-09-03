@@ -59,15 +59,16 @@ extern {
           target_os = "openbsd"))]
 mod os {
     use libc;
+    use ptr;
 
     pub type pthread_mutex_t = *mut libc::c_void;
     pub type pthread_mutexattr_t = *mut libc::c_void;
     pub type pthread_cond_t = *mut libc::c_void;
     pub type pthread_rwlock_t = *mut libc::c_void;
 
-    pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = 0 as *mut _;
-    pub const PTHREAD_COND_INITIALIZER: pthread_cond_t = 0 as *mut _;
-    pub const PTHREAD_RWLOCK_INITIALIZER: pthread_rwlock_t = 0 as *mut _;
+    pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = ptr::null_mut();
+    pub const PTHREAD_COND_INITIALIZER: pthread_cond_t = ptr::null_mut();
+    pub const PTHREAD_RWLOCK_INITIALIZER: pthread_rwlock_t = ptr::null_mut();
     pub const PTHREAD_MUTEX_RECURSIVE: libc::c_int = 2;
 }
 
@@ -213,6 +214,7 @@ mod os {
 #[cfg(target_os = "android")]
 mod os {
     use libc;
+    use ptr;
 
     #[repr(C)]
     pub struct pthread_mutex_t { value: libc::c_int }
@@ -243,7 +245,7 @@ mod os {
         writerThreadId: 0,
         pendingReaders: 0,
         pendingWriters: 0,
-        reserved: [0 as *mut _; 4],
+        reserved: [ptr::null_mut(); 4],
     };
     pub const PTHREAD_MUTEX_RECURSIVE: libc::c_int = 1;
 }
