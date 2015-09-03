@@ -1683,7 +1683,7 @@ impl<B, I: Iterator, F> Iterator for Map<I, F> where F: FnMut(I::Item) -> B {
 
     #[inline]
     fn next(&mut self) -> Option<B> {
-        self.iter.next().map(self.f)
+        self.iter.next().map(&mut self.f)
     }
 
     #[inline]
@@ -1698,7 +1698,7 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for Map<I, F> where
 {
     #[inline]
     fn next_back(&mut self) -> Option<B> {
-        self.iter.next_back().map(self.f)
+        self.iter.next_back().map(&mut self.f)
     }
 }
 
@@ -2210,7 +2210,7 @@ impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
                     return Some(x)
                 }
             }
-            match self.iter.next().map(self.f) {
+            match self.iter.next().map(&mut self.f) {
                 None => return self.backiter.as_mut().and_then(|it| it.next()),
                 next => self.frontiter = next.map(IntoIterator::into_iter),
             }
@@ -2243,7 +2243,7 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> wher
                     return Some(y)
                 }
             }
-            match self.iter.next_back().map(self.f) {
+            match self.iter.next_back().map(&mut self.f) {
                 None => return self.frontiter.as_mut().and_then(|it| it.next_back()),
                 next => self.backiter = next.map(IntoIterator::into_iter),
             }
