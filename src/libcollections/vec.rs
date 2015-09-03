@@ -1135,7 +1135,7 @@ impl<T> ops::Deref for Vec<T> {
     fn deref(&self) -> &[T] {
         unsafe {
             let p = self.buf.ptr();
-            assume(p != 0 as *mut T);
+            assume(!p.is_null());
             slice::from_raw_parts(p, self.len)
         }
     }

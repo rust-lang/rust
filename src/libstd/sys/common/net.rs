@@ -16,6 +16,7 @@ use io::{self, Error, ErrorKind};
 use libc::{self, c_int, c_char, c_void, socklen_t};
 use mem;
 use net::{SocketAddr, Shutdown, IpAddr};
+use ptr;
 use str::from_utf8;
 use sys::c;
 use sys::net::{cvt, cvt_r, cvt_gai, Socket, init, wrlen_t};
@@ -123,9 +124,9 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
     init();
 
     let c_host = try!(CString::new(host));
-    let mut res = 0 as *mut _;
+    let mut res = ptr::null_mut();
     unsafe {
-        try!(cvt_gai(getaddrinfo(c_host.as_ptr(), 0 as *const _, 0 as *const _,
+        try!(cvt_gai(getaddrinfo(c_host.as_ptr(), ptr::null(), ptr::null(),
                                  &mut res)));
         Ok(LookupHost { original: res, cur: res })
     }
@@ -154,7 +155,7 @@ pub fn lookup_addr(addr: &IpAddr) -> io::Result<String> {
     let data = unsafe {
         try!(cvt_gai(getnameinfo(inner, len,
                                  hostbuf.as_mut_ptr(), NI_MAXHOST as libc::size_t,
-                                 0 as *mut _, 0, 0)));
+                                 ptr::null_mut(), 0, 0)));
 
         CStr::from_ptr(hostbuf.as_ptr())
     };
