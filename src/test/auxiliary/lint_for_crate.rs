@@ -13,12 +13,12 @@
 #![feature(plugin_registrar, rustc_private)]
 #![feature(box_syntax)]
 
-extern crate syntax;
 #[macro_use] extern crate rustc;
+extern crate rustc_front;
 
-use syntax::{ast, attr};
 use rustc::lint::{Context, LintPass, LintPassObject, LintArray};
 use rustc::plugin::Registry;
+use rustc_front::{hir, attr};
 
 declare_lint!(CRATE_NOT_OKAY, Warn, "crate not marked with #![crate_okay]");
 
@@ -29,7 +29,7 @@ impl LintPass for Pass {
         lint_array!(CRATE_NOT_OKAY)
     }
 
-    fn check_crate(&mut self, cx: &Context, krate: &ast::Crate) {
+    fn check_crate(&mut self, cx: &Context, krate: &hir::Crate) {
         if !attr::contains_name(&krate.attrs, "crate_okay") {
             cx.span_lint(CRATE_NOT_OKAY, krate.span,
                          "crate is not marked with #![crate_okay]");
