@@ -211,7 +211,7 @@ macro_rules! define_bignum {
                 self
             }
 
-            pub fn add_small<'a>(&'a mut self, other: $ty) -> &'a mut $name {
+            pub fn add_small(&mut self, other: $ty) -> &mut $name {
                 use num::flt2dec::bignum::FullOps;
 
                 let (mut carry, v) = self.base[0].full_add(other, false);
@@ -248,7 +248,7 @@ macro_rules! define_bignum {
 
             /// Multiplies itself by a digit-sized `other` and returns its own
             /// mutable reference.
-            pub fn mul_small<'a>(&'a mut self, other: $ty) -> &'a mut $name {
+            pub fn mul_small(&mut self, other: $ty) -> &mut $name {
                 use num::flt2dec::bignum::FullOps;
 
                 let mut sz = self.size;
@@ -267,7 +267,7 @@ macro_rules! define_bignum {
             }
 
             /// Multiplies itself by `2^bits` and returns its own mutable reference.
-            pub fn mul_pow2<'a>(&'a mut self, bits: usize) -> &'a mut $name {
+            pub fn mul_pow2(&mut self, bits: usize) -> &mut $name {
                 use mem;
 
                 let digitbits = mem::size_of::<$ty>() * 8;
@@ -308,7 +308,7 @@ macro_rules! define_bignum {
             }
 
             /// Multiplies itself by `5^e` and returns its own mutable reference.
-            pub fn mul_pow5<'a>(&'a mut self, mut e: usize) -> &'a mut $name {
+            pub fn mul_pow5(&mut self, mut e: usize) -> &mut $name {
                 use mem;
                 use num::flt2dec::bignum::SMALL_POW5;
 
@@ -377,7 +377,7 @@ macro_rules! define_bignum {
 
             /// Divides itself by a digit-sized `other` and returns its own
             /// mutable reference *and* the remainder.
-            pub fn div_rem_small<'a>(&'a mut self, other: $ty) -> (&'a mut $name, $ty) {
+            pub fn div_rem_small(&mut self, other: $ty) -> (&mut $name, $ty) {
                 use num::flt2dec::bignum::FullOps;
 
                 assert!(other > 0);
