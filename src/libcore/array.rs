@@ -19,6 +19,7 @@
                       integer constants",
             issue = "27778")]
 
+use borrow::{Borrow, BorrowMut};
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use convert::{AsRef, AsMut};
@@ -67,6 +68,20 @@ macro_rules! array_impls {
                 #[inline]
                 fn as_mut(&mut self) -> &mut [T] {
                     &mut self[..]
+                }
+            }
+
+            #[stable(feature = "array_borrow", since = "1.4.0")]
+            impl<T> Borrow<[T]> for [T; $N] {
+                fn borrow(&self) -> &[T] {
+                    self
+                }
+            }
+
+            #[stable(feature = "array_borrow", since = "1.4.0")]
+            impl<T> BorrowMut<[T]> for [T; $N] {
+                fn borrow_mut(&mut self) -> &mut [T] {
+                    self
                 }
             }
 
