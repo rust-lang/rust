@@ -291,7 +291,7 @@ pub fn args() -> Args {
     };
     Args {
         iter: vec.into_iter(),
-        _dont_send_or_sync_me: 0 as *mut (),
+        _dont_send_or_sync_me: ptr::null_mut(),
     }
 }
 
@@ -347,7 +347,7 @@ pub fn args() -> Args {
         }
     }
 
-    Args { iter: res.into_iter(), _dont_send_or_sync_me: 0 as *mut _ }
+    Args { iter: res.into_iter(), _dont_send_or_sync_me: ptr::null_mut() }
 }
 
 #[cfg(any(target_os = "linux",
@@ -363,7 +363,7 @@ pub fn args() -> Args {
     let v: Vec<OsString> = bytes.into_iter().map(|v| {
         OsStringExt::from_vec(v)
     }).collect();
-    Args { iter: v.into_iter(), _dont_send_or_sync_me: 0 as *mut _ }
+    Args { iter: v.into_iter(), _dont_send_or_sync_me: ptr::null_mut() }
 }
 
 pub struct Env {
@@ -403,7 +403,7 @@ pub fn env() -> Env {
             result.push(parse(CStr::from_ptr(*environ).to_bytes()));
             environ = environ.offset(1);
         }
-        Env { iter: result.into_iter(), _dont_send_or_sync_me: 0 as *mut _ }
+        Env { iter: result.into_iter(), _dont_send_or_sync_me: ptr::null_mut() }
     };
 
     fn parse(input: &[u8]) -> (OsString, OsString) {
@@ -481,7 +481,7 @@ pub fn home_dir() -> Option<PathBuf> {
         loop {
             let mut buf = Vec::with_capacity(amt);
             let mut passwd: c::passwd = mem::zeroed();
-            let mut result = 0 as *mut _;
+            let mut result = ptr::null_mut();
             match c::getpwuid_r(me, &mut passwd, buf.as_mut_ptr(),
                                 buf.capacity() as libc::size_t,
                                 &mut result) {

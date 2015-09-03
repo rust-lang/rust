@@ -53,6 +53,7 @@ use prelude::v1::*;
 
 use any::Any;
 use libc::{c_ulong, DWORD, c_void};
+use ptr;
 use sys_common::thread_local::StaticKey;
 
 //                        0x R U S T
@@ -98,7 +99,7 @@ pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
     rtassert!(PANIC_DATA.get().is_null());
     PANIC_DATA.set(Box::into_raw(exception) as *mut u8);
 
-    RaiseException(RUST_PANIC, 0, 0, 0 as *const _);
+    RaiseException(RUST_PANIC, 0, 0, ptr::null());
     rtabort!("could not unwind stack");
 }
 
@@ -108,7 +109,7 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send + 'static> {
     rtassert!(ptr as DWORD == RUST_PANIC);
 
     let data = PANIC_DATA.get() as *mut Box<Any + Send + 'static>;
-    PANIC_DATA.set(0 as *mut u8);
+    PANIC_DATA.set(ptr::null_mut());
     rtassert!(!data.is_null());
 
     *Box::from_raw(data)
