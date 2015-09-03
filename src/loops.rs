@@ -1,6 +1,7 @@
 use rustc::lint::*;
-use syntax::ast::*;
-use syntax::visit::{Visitor, walk_expr};
+use rustc_front::hir::*;
+use reexport::*;
+use rustc_front::visit::{Visitor, walk_expr};
 use rustc::middle::ty;
 use std::collections::HashSet;
 

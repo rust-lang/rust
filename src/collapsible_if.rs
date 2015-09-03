@@ -13,7 +13,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-use syntax::ast::*;
+use rustc_front::hir::*;
 use syntax::codemap::{Spanned, ExpnInfo};
 
 use utils::{in_macro, span_help_and_lint, snippet, snippet_block};

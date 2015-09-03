@@ -4,8 +4,9 @@
 extern crate clippy;
 extern crate syntax;
 extern crate rustc;
+extern crate rustc_front;
 
-use syntax::ast::*;
+use rustc_front::hir::*;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::codemap::{Spanned, COMMAND_LINE_SP};

@@ -1,6 +1,5 @@
 use rustc::lint::*;
-use syntax::ast;
-use syntax::ast::*;
+use rustc_front::hir::*;
 
 use utils::{snippet, span_lint, span_help_and_lint, in_external_macro, expr_block};
 
@@ -20,7 +19,7 @@ impl LintPass for MatchPass {
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-        if let ExprMatch(ref ex, ref arms, ast::MatchSource::Normal) = expr.node {
+        if let ExprMatch(ref ex, ref arms, MatchSource::Normal) = expr.node {
             // check preconditions for SINGLE_MATCH
                 // only two arms
             if arms.len() == 2 &&

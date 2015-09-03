@@ -1,7 +1,8 @@
 //! checks for attributes
 
 use rustc::lint::*;
-use syntax::ast::*;
+use rustc_front::hir::*;
+use reexport::*;
 use syntax::codemap::ExpnInfo;
 
 use utils::{in_macro, match_path, span_lint};
@@ -68,7 +69,6 @@ fn is_relevant_block(block: &Block) -> bool {
             StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => {
                 return is_relevant_expr(expr);
             }
-            _ => ()
         }
     }
     block.expr.as_ref().map_or(false, |e| is_relevant_expr(e))
@@ -79,7 +79,7 @@ fn is_relevant_expr(expr: &Expr) -> bool {
         ExprBlock(ref block) => is_relevant_block(block),
         ExprRet(Some(ref e)) | ExprParen(ref e) =>
             is_relevant_expr(e),
-        ExprRet(None) | ExprBreak(_) | ExprMac(_) => false,
+        ExprRet(None) | ExprBreak(_) => false,
         ExprCall(ref path_expr, _) => {
             if let ExprPath(_, ref path) = path_expr.node {
                 !match_path(path, &["std", "rt", "begin_unwind"])

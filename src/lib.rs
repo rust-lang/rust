@@ -7,6 +7,8 @@
 extern crate syntax;
 #[macro_use]
 extern crate rustc;
+#[macro_use]
+extern crate rustc_front;
 
 // Only for the compile time checking of paths
 extern crate core;
@@ -41,6 +43,10 @@ pub mod loops;
 pub mod ranges;
 pub mod matches;
 pub mod precedence;
+
+mod reexport {
+    pub use syntax::ast::{Name, Ident, NodeId};
+}
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {

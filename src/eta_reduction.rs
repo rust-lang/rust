@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use syntax::ast::*;
+use rustc_front::hir::*;
 use rustc::middle::ty;
 
 use utils::{snippet, span_lint};

@@ -1,7 +1,8 @@
-use syntax::ast::*;
+use rustc_front::hir::*;
+use reexport::*;
 use rustc::lint::*;
 use syntax::codemap::Span;
-use syntax::visit::{Visitor, walk_ty, walk_ty_param_bound};
+use rustc_front::visit::{Visitor, walk_ty, walk_ty_param_bound};
 use std::collections::HashSet;
 
 use utils::{in_external_macro, span_lint};
@@ -152,7 +153,7 @@ fn unique_lifetimes(lts: &[RefLt]) -> usize {
     lts.iter().collect::<HashSet<_>>().len()
 }
 
-/// A visitor usable for syntax::visit::walk_ty().
+/// A visitor usable for rustc_front::visit::walk_ty().
 struct RefVisitor(Vec<RefLt>);
 
 impl RefVisitor {

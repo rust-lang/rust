@@ -1,7 +1,8 @@
 use std::ops::Deref;
-use syntax::ast::*;
+use rustc_front::hir::*;
+use reexport::*;
 use syntax::codemap::Span;
-use syntax::visit::FnKind;
+use rustc_front::visit::FnKind;
 
 use rustc::lint::{Context, LintArray, LintPass};
 use rustc::middle::def::Def::{DefVariant, DefStruct};
@@ -47,8 +48,7 @@ fn check_block(cx: &Context, block: &Block, bindings: &mut Vec<Name>) {
         match stmt.node {
             StmtDecl(ref decl, _) => check_decl(cx, decl, bindings),
             StmtExpr(ref e, _) | StmtSemi(ref e, _) =>
-                check_expr(cx, e, bindings),
-            _ => ()
+                check_expr(cx, e, bindings)
         }
     }
     if let Some(ref o) = block.expr { check_expr(cx, o, bindings); }
@@ -320,8 +320,7 @@ fn contains_block_self(name: Name, block: &Block) -> bool {
                 }
             },
             StmtExpr(ref e, _) | StmtSemi(ref e, _) =>
-                if contains_self(name, e) { return true },
-            _ => ()
+                if contains_self(name, e) { return true }
         }
     }
     if let Some(ref e) = block.expr { contains_self(name, e) } else { false }

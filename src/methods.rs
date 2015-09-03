@@ -1,4 +1,4 @@
-use syntax::ast::*;
+use rustc_front::hir::*;
 use rustc::lint::*;
 use rustc::middle::ty;
 use rustc::middle::subst::Subst;

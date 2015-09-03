@@ -1,5 +1,5 @@
 use rustc::lint::{Context, LintArray, LintPass};
-use syntax::ast::*;
+use rustc_front::hir::*;
 use syntax::codemap::Spanned;
 use utils::match_type;
 
