@@ -468,7 +468,7 @@ impl<T:?Sized> Deref for Unique<T> {
     type Target = *mut T;
 
     #[inline]
-    fn deref<'a>(&'a self) -> &'a *mut T {
+    fn deref(&self) -> &*mut T {
         unsafe { mem::transmute(&*self.pointer) }
     }
 }
