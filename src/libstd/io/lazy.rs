@@ -11,6 +11,7 @@
 use prelude::v1::*;
 
 use cell::Cell;
+use ptr;
 use rt;
 use sync::{StaticMutex, Arc};
 
@@ -26,7 +27,7 @@ impl<T: Send + Sync + 'static> Lazy<T> {
     pub const fn new(init: fn() -> Arc<T>) -> Lazy<T> {
         Lazy {
             lock: StaticMutex::new(),
-            ptr: Cell::new(0 as *mut _),
+            ptr: Cell::new(ptr::null_mut()),
             init: init
         }
     }

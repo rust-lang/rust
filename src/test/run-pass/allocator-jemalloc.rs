@@ -10,6 +10,7 @@
 
 // no-prefer-dynamic
 // ignore-msvc no jemalloc on msvc
+// ignore-bitrig no jemalloc on bitrig either
 
 #![feature(alloc_jemalloc)]
 

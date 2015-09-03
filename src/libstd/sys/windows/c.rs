@@ -16,6 +16,7 @@ use libc;
 use libc::{c_uint, c_ulong};
 use libc::{DWORD, BOOL, BOOLEAN, ERROR_CALL_NOT_IMPLEMENTED, LPVOID, HANDLE};
 use libc::{LPCWSTR, LONG};
+use ptr;
 
 pub use self::GET_FILEEX_INFO_LEVELS::*;
 pub use self::FILE_INFO_BY_HANDLE_CLASS::*;
@@ -294,9 +295,9 @@ pub struct CRITICAL_SECTION {
 }
 
 pub const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE {
-    ptr: 0 as *mut _,
+    ptr: ptr::null_mut(),
 };
-pub const SRWLOCK_INIT: SRWLOCK = SRWLOCK { ptr: 0 as *mut _ };
+pub const SRWLOCK_INIT: SRWLOCK = SRWLOCK { ptr: ptr::null_mut() };
 
 #[repr(C)]
 pub struct LUID {
