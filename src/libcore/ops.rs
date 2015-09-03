@@ -965,7 +965,7 @@ pub trait Index<Idx: ?Sized> {
 
     /// The method for the indexing (`Foo[Bar]`) operation
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn index<'a>(&'a self, index: Idx) -> &'a Self::Output;
+    fn index(&self, index: Idx) -> &Self::Output;
 }
 
 /// The `IndexMut` trait is used to specify the functionality of indexing
@@ -1008,7 +1008,7 @@ pub trait Index<Idx: ?Sized> {
 pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     /// The method for the indexing (`Foo[Bar]`) operation
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn index_mut<'a>(&'a mut self, index: Idx) -> &'a mut Self::Output;
+    fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
 }
 
 /// An unbounded range.
@@ -1119,7 +1119,7 @@ pub trait Deref {
 
     /// The method called to dereference a value
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn deref<'a>(&'a self) -> &'a Self::Target;
+    fn deref(&self) -> &Self::Target;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1180,7 +1180,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 pub trait DerefMut: Deref {
     /// The method called to mutably dereference a value
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn deref_mut<'a>(&'a mut self) -> &'a mut Self::Target;
+    fn deref_mut(&mut self) -> &mut Self::Target;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
