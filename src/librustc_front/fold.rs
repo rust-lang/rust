@@ -1124,8 +1124,14 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                 });
                 ExprPath(qself, folder.fold_path(path))
             }
-            ExprBreak(opt_ident) => ExprBreak(opt_ident.map(|x| folder.fold_ident(x))),
-            ExprAgain(opt_ident) => ExprAgain(opt_ident.map(|x| folder.fold_ident(x))),
+            ExprBreak(opt_ident) => ExprBreak(opt_ident.map(|label|
+                respan(folder.new_span(label.span),
+                       folder.fold_ident(label.node)))
+            ),
+            ExprAgain(opt_ident) => ExprAgain(opt_ident.map(|label|
+                respan(folder.new_span(label.span),
+                       folder.fold_ident(label.node)))
+            ),
             ExprRet(e) => ExprRet(e.map(|x| folder.fold_expr(x))),
             ExprInlineAsm(InlineAsm {
                 inputs,
