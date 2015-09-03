@@ -52,8 +52,8 @@ extern char *yytext;
 %token LIT_FLOAT
 %token LIT_STR
 %token LIT_STR_RAW
-%token LIT_BINARY
-%token LIT_BINARY_RAW
+%token LIT_BYTE_STR
+%token LIT_BYTE_STR_RAW
 %token IDENT
 %token UNDERSCORE
 %token LIFETIME
@@ -1772,8 +1772,8 @@ lit
 str
 : LIT_STR                    { $$ = mk_node("LitStr", 1, mk_atom(yytext), mk_atom("CookedStr")); }
 | LIT_STR_RAW                { $$ = mk_node("LitStr", 1, mk_atom(yytext), mk_atom("RawStr")); }
-| LIT_BINARY                 { $$ = mk_node("LitBinary", 1, mk_atom(yytext), mk_atom("BinaryStr")); }
-| LIT_BINARY_RAW             { $$ = mk_node("LitBinary", 1, mk_atom(yytext), mk_atom("RawBinaryStr")); }
+| LIT_BYTE_STR                 { $$ = mk_node("LitByteStr", 1, mk_atom(yytext), mk_atom("ByteStr")); }
+| LIT_BYTE_STR_RAW             { $$ = mk_node("LitByteStr", 1, mk_atom(yytext), mk_atom("RawByteStr")); }
 ;
 
 maybe_ident
@@ -1815,8 +1815,8 @@ unpaired_token
 | LIT_FLOAT                  { $$ = mk_atom(yytext); }
 | LIT_STR                    { $$ = mk_atom(yytext); }
 | LIT_STR_RAW                { $$ = mk_atom(yytext); }
-| LIT_BINARY                 { $$ = mk_atom(yytext); }
-| LIT_BINARY_RAW             { $$ = mk_atom(yytext); }
+| LIT_BYTE_STR                 { $$ = mk_atom(yytext); }
+| LIT_BYTE_STR_RAW             { $$ = mk_atom(yytext); }
 | IDENT                      { $$ = mk_atom(yytext); }
 | UNDERSCORE                 { $$ = mk_atom(yytext); }
 | LIFETIME                   { $$ = mk_atom(yytext); }

@@ -2549,7 +2549,7 @@ impl<'a> State<'a> {
             hir::LitBool(val) => {
                 if val { word(&mut self.s, "true") } else { word(&mut self.s, "false") }
             }
-            hir::LitBinary(ref v) => {
+            hir::LitByteStr(ref v) => {
                 let mut escaped: String = String::new();
                 for &ch in v.iter() {
                     escaped.extend(ascii::escape_default(ch)

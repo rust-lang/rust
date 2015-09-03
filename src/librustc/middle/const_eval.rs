@@ -269,7 +269,7 @@ pub enum ConstVal {
     Int(i64),
     Uint(u64),
     Str(InternedString),
-    Binary(Rc<Vec<u8>>),
+    ByteStr(Rc<Vec<u8>>),
     Bool(bool),
     Struct(ast::NodeId),
     Tuple(ast::NodeId),
@@ -283,7 +283,7 @@ impl ConstVal {
             Int(_) => "positive integer",
             Uint(_) => "unsigned integer",
             Str(_) => "string literal",
-            Binary(_) => "binary array",
+            ByteStr(_) => "byte string literal",
             Bool(_) => "boolean",
             Struct(_) => "struct",
             Tuple(_) => "tuple",
@@ -1175,8 +1175,8 @@ fn cast_const<'tcx>(tcx: &ty::ctxt<'tcx>, val: ConstVal, ty: Ty) -> CastResult {
 fn lit_to_const(lit: &hir::Lit, ty_hint: Option<Ty>) -> ConstVal {
     match lit.node {
         hir::LitStr(ref s, _) => Str((*s).clone()),
-        hir::LitBinary(ref data) => {
-            Binary(data.clone())
+        hir::LitByteStr(ref data) => {
+            ByteStr(data.clone())
         }
         hir::LitByte(n) => Uint(n as u64),
         hir::LitChar(n) => Uint(n as u64),
@@ -1214,7 +1214,7 @@ pub fn compare_const_vals(a: &ConstVal, b: &ConstVal) -> Option<Ordering> {
         }
         (&Str(ref a), &Str(ref b)) => a.cmp(b),
         (&Bool(a), &Bool(b)) => a.cmp(&b),
-        (&Binary(ref a), &Binary(ref b)) => a.cmp(b),
+        (&ByteStr(ref a), &ByteStr(ref b)) => a.cmp(b),
         _ => return None
     })
 }
