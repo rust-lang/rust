@@ -51,7 +51,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(scoped_tls)]
-#![feature(slice_bytes)]
 #![feature(slice_splits)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]

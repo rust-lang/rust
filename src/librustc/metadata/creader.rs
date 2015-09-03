@@ -304,6 +304,7 @@ impl<'a> CrateReader<'a> {
         let cmeta = Rc::new(cstore::crate_metadata {
             name: name.to_string(),
             local_path: RefCell::new(SmallVector::zero()),
+            index: decoder::load_index(metadata.as_slice()),
             data: metadata,
             cnum_map: RefCell::new(cnum_map),
             cnum: cnum,
@@ -521,7 +522,7 @@ impl<'a> CrateReader<'a> {
         }
 
         let registrar = decoder::get_plugin_registrar_fn(ekrate.metadata.as_slice())
-            .map(|id| decoder::get_symbol(ekrate.metadata.as_slice(), id));
+            .map(|id| decoder::get_symbol_from_buf(ekrate.metadata.as_slice(), id));
 
         match (ekrate.dylib.as_ref(), registrar) {
             (Some(dylib), Some(reg)) => Some((dylib.to_path_buf(), reg)),
