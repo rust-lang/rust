@@ -123,7 +123,7 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
     // FIXME: We also call self_exe_name() on DragonFly BSD. I haven't
     //        tested if this is required or not.
     unsafe fn init_state() -> *mut backtrace_state {
-        static mut STATE: *mut backtrace_state = 0 as *mut backtrace_state;
+        static mut STATE: *mut backtrace_state = ptr::null_mut();
         static mut LAST_FILENAME: [libc::c_char; 256] = [0; 256];
         if !STATE.is_null() { return STATE }
         let selfname = if cfg!(target_os = "freebsd") ||

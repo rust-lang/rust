@@ -405,7 +405,7 @@ fn make_envp(env: Option<&HashMap<OsString, OsString>>)
 
         (ptrs.as_ptr() as *const _, tmps, ptrs)
     } else {
-        (0 as *const _, Vec::new(), Vec::new())
+        (ptr::null(), Vec::new(), Vec::new())
     }
 }
 

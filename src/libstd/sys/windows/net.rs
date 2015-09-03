@@ -15,6 +15,7 @@ use mem;
 use net::SocketAddr;
 use num::One;
 use ops::Neg;
+use ptr;
 use rt;
 use sync::Once;
 use sys;
@@ -80,7 +81,7 @@ impl Socket {
             SocketAddr::V6(..) => libc::AF_INET6,
         };
         let socket = try!(unsafe {
-            match c::WSASocketW(fam, ty, 0, 0 as *mut _, 0,
+            match c::WSASocketW(fam, ty, 0, ptr::null_mut(), 0,
                                 c::WSA_FLAG_OVERLAPPED) {
                 INVALID_SOCKET => Err(last_error()),
                 n => Ok(Socket(n)),
