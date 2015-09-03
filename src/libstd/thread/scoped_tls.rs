@@ -226,6 +226,7 @@ impl<T> ScopedKey<T> {
 #[doc(hidden)]
 mod imp {
     use cell::Cell;
+    use ptr;
 
     pub struct KeyInner<T> { inner: Cell<*mut T> }
 
@@ -233,7 +234,7 @@ mod imp {
 
     impl<T> KeyInner<T> {
         pub const fn new() -> KeyInner<T> {
-            KeyInner { inner: Cell::new(0 as *mut _) }
+            KeyInner { inner: Cell::new(ptr::null_mut()) }
         }
         pub unsafe fn set(&self, ptr: *mut T) { self.inner.set(ptr); }
         pub unsafe fn get(&self) -> *mut T { self.inner.get() }

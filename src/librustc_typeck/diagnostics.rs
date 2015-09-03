@@ -2299,6 +2299,21 @@ extern "rust-intrinsic" {
 ```
 "##,
 
+E0214: r##"
+A generic type was described using parentheses rather than angle brackets. For
+example:
+
+```
+fn main() {
+    let v: Vec(&str) = vec!["foo"];
+}
+```
+
+This is not currently supported: `v` should be defined as `Vec<&str>`.
+Parentheses are currently only used with generic types when defining parameters
+for `Fn`-family traits.
+"##,
+
 E0220: r##"
 You used an associated type which isn't defined in the trait.
 Erroneous code example:
@@ -2701,6 +2716,37 @@ fn main() {
         B::bb => {} // ok!
         _ => {}
     }
+}
+```
+"##,
+
+E0329: r##"
+An attempt was made to access an associated constant through either a generic
+type parameter or `Self`. This is not supported yet. An example causing this
+error is shown below:
+
+```
+trait Foo {
+    const BAR: f64;
+}
+
+struct MyStruct;
+
+impl Foo for MyStruct {
+    const BAR: f64 = 0f64;
+}
+
+fn get_bar_bad<F: Foo>(t: F) -> f64 {
+    F::BAR
+}
+```
+
+Currently, the value of `BAR` for a particular type can only be accessed through
+a concrete type, as shown below:
+
+```
+fn get_bar_good() -> f64 {
+    <MyStruct as Foo>::BAR
 }
 ```
 "##,
@@ -3219,7 +3265,6 @@ register_diagnostics! {
 //  E0209, // builtin traits can only be implemented on structs or enums
     E0212, // cannot extract an associated type from a higher-ranked trait bound
 //  E0213, // associated types are not accepted in this context
-    E0214, // parenthesized parameters may only be used with a trait
 //  E0215, // angle-bracket notation is not stable with `Fn`
 //  E0216, // parenthetical notation is only stable with `Fn`
 //  E0217, // ambiguous associated type, defined in multiple supertraits
@@ -3251,7 +3296,6 @@ register_diagnostics! {
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
     E0328, // cannot implement Unsize explicitly
-    E0329, // associated const depends on type parameter or Self.
     E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with one field being coerced, none found
     E0375, // the trait `CoerceUnsized` may only be implemented for a coercion

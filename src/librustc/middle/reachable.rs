@@ -344,7 +344,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
 
     // Step 3: Mark all destructors as reachable.
     //
-    // FIXME(pcwalton): This is a conservative overapproximation, but fixing
+    // FIXME #10732: This is a conservative overapproximation, but fixing
     // this properly would result in the necessity of computing *type*
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&mut self) {

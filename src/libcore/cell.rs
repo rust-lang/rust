@@ -231,7 +231,7 @@ impl<T:Copy> Cell<T> {
     /// ```
     #[inline]
     #[unstable(feature = "as_unsafe_cell", issue = "27708")]
-    pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
+    pub unsafe fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
         &self.value
     }
 }
@@ -387,7 +387,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn borrow<'a>(&'a self) -> Ref<'a, T> {
+    pub fn borrow(&self) -> Ref<T> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => Ref {
                 _value: unsafe { &*self.value.get() },
@@ -433,7 +433,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn borrow_mut<'a>(&'a self) -> RefMut<'a, T> {
+    pub fn borrow_mut(&self) -> RefMut<T> {
         match BorrowRefMut::new(&self.borrow) {
             Some(b) => RefMut {
                 _value: unsafe { &mut *self.value.get() },
@@ -450,7 +450,7 @@ impl<T: ?Sized> RefCell<T> {
     /// This function is `unsafe` because `UnsafeCell`'s field is public.
     #[inline]
     #[unstable(feature = "as_unsafe_cell", issue = "27708")]
-    pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
+    pub unsafe fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
         &self.value
     }
 }
@@ -541,7 +541,7 @@ impl<'b, T: ?Sized> Deref for Ref<'b, T> {
     type Target = T;
 
     #[inline]
-    fn deref<'a>(&'a self) -> &'a T {
+    fn deref(&self) -> &T {
         self._value
     }
 }
@@ -750,7 +750,7 @@ impl<'b, T: ?Sized> Deref for RefMut<'b, T> {
     type Target = T;
 
     #[inline]
-    fn deref<'a>(&'a self) -> &'a T {
+    fn deref(&self) -> &T {
         self._value
     }
 }
@@ -758,7 +758,7 @@ impl<'b, T: ?Sized> Deref for RefMut<'b, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'b, T: ?Sized> DerefMut for RefMut<'b, T> {
     #[inline]
-    fn deref_mut<'a>(&'a mut self) -> &'a mut T {
+    fn deref_mut(&mut self) -> &mut T {
         self._value
     }
 }

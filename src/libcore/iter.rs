@@ -1513,7 +1513,7 @@ impl<A, B> Iterator for Chain<A, B> where
     fn next(&mut self) -> Option<A::Item> {
         match self.state {
             ChainState::Both => match self.a.next() {
-                elt @ Some(..) => return elt,
+                elt @ Some(..) => elt,
                 None => {
                     self.state = ChainState::Back;
                     self.b.next()
@@ -1590,7 +1590,7 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
     fn next_back(&mut self) -> Option<A::Item> {
         match self.state {
             ChainState::Both => match self.b.next_back() {
-                elt @ Some(..) => return elt,
+                elt @ Some(..) => elt,
                 None => {
                     self.state = ChainState::Front;
                     self.a.next_back()
@@ -1683,7 +1683,7 @@ impl<B, I: Iterator, F> Iterator for Map<I, F> where F: FnMut(I::Item) -> B {
 
     #[inline]
     fn next(&mut self) -> Option<B> {
-        self.iter.next().map(|a| (self.f)(a))
+        self.iter.next().map(&mut self.f)
     }
 
     #[inline]
@@ -1698,7 +1698,7 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for Map<I, F> where
 {
     #[inline]
     fn next_back(&mut self) -> Option<B> {
-        self.iter.next_back().map(|a| (self.f)(a))
+        self.iter.next_back().map(&mut self.f)
     }
 }
 
@@ -2210,7 +2210,7 @@ impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
                     return Some(x)
                 }
             }
-            match self.iter.next().map(|x| (self.f)(x)) {
+            match self.iter.next().map(&mut self.f) {
                 None => return self.backiter.as_mut().and_then(|it| it.next()),
                 next => self.frontiter = next.map(IntoIterator::into_iter),
             }
@@ -2243,7 +2243,7 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> wher
                     return Some(y)
                 }
             }
-            match self.iter.next_back().map(|x| (self.f)(x)) {
+            match self.iter.next_back().map(&mut self.f) {
                 None => return self.frontiter.as_mut().and_then(|it| it.next_back()),
                 next => self.backiter = next.map(IntoIterator::into_iter),
             }

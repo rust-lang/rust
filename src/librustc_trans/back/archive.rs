@@ -18,6 +18,7 @@ use std::io;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
+use std::ptr;
 use std::str;
 
 use libc;
@@ -449,7 +450,7 @@ impl<'a> ArchiveBuilder<'a> {
                     }
 
                     let name = try!(CString::new(child_name));
-                    members.push(llvm::LLVMRustArchiveMemberNew(0 as *const _,
+                    members.push(llvm::LLVMRustArchiveMemberNew(ptr::null(),
                                                                 name.as_ptr(),
                                                                 child.raw()));
                     strings.push(name);
@@ -462,7 +463,7 @@ impl<'a> ArchiveBuilder<'a> {
                         let name = try!(CString::new(name_in_archive));
                         members.push(llvm::LLVMRustArchiveMemberNew(path.as_ptr(),
                                                                     name.as_ptr(),
-                                                                    0 as *mut _));
+                                                                    ptr::null_mut()));
                         strings.push(path);
                         strings.push(name);
                     }
@@ -472,7 +473,7 @@ impl<'a> ArchiveBuilder<'a> {
                             if skip(child_name) { continue }
 
                             let name = try!(CString::new(child_name));
-                            let m = llvm::LLVMRustArchiveMemberNew(0 as *const _,
+                            let m = llvm::LLVMRustArchiveMemberNew(ptr::null(),
                                                                    name.as_ptr(),
                                                                    child.raw());
                             members.push(m);

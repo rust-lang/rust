@@ -217,6 +217,17 @@ And finally, we can try running it:
 
 ```bash
 $ ruby embed.rb
+Thread finished with count=5000000
+Thread finished with count=5000000
+Thread finished with count=5000000
+Thread finished with count=5000000
+Thread finished with count=5000000
+Thread finished with count=5000000
+Thread finished with count=5000000
+Thread finished with count=5000000
+Thread finished with count=5000000
+Thread finished with count=5000000
+done!
 done!
 $
 ```
