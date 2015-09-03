@@ -42,7 +42,7 @@ static POW10TO256: [Digit; 27] =
      0xcc5573c0, 0x65f9ef17, 0x55bc28f2, 0x80dcc7f7, 0xf46eeddc, 0x5fdcefce, 0x553f7];
 
 #[doc(hidden)]
-pub fn mul_pow10<'a>(x: &'a mut Big, n: usize) -> &'a mut Big {
+pub fn mul_pow10(x: &mut Big, n: usize) -> &mut Big {
     debug_assert!(n < 512);
     if n &   7 != 0 { x.mul_small(POW10[n & 7]); }
     if n &   8 != 0 { x.mul_small(POW10[8]); }
@@ -54,7 +54,7 @@ pub fn mul_pow10<'a>(x: &'a mut Big, n: usize) -> &'a mut Big {
     x
 }
 
-fn div_2pow10<'a>(x: &'a mut Big, mut n: usize) -> &'a mut Big {
+fn div_2pow10(x: &mut Big, mut n: usize) -> &mut Big {
     let largest = POW10.len() - 1;
     while n > largest {
         x.div_rem_small(POW10[largest]);
