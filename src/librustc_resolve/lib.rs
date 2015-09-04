@@ -3759,12 +3759,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
-                let renamed = mtwt::resolve(label);
+                let renamed = mtwt::resolve(label.node);
                 match self.search_label(renamed) {
                     None => {
                         resolve_error(self,
-                                      expr.span,
-                                      ResolutionError::UndeclaredLabel(&label.name.as_str()))
+                                      label.span,
+                                      ResolutionError::UndeclaredLabel(&label.node.name.as_str()))
                     }
                     Some(DlDef(def @ DefLabel(_))) => {
                         // Since this def is a label, it is never read.

@@ -2143,9 +2143,12 @@ impl<'a> Parser<'a> {
                 }
                 if try!(self.eat_keyword(keywords::Continue) ){
                     let ex = if self.token.is_lifetime() {
-                        let lifetime = self.get_lifetime();
+                        let ex = ExprAgain(Some(Spanned{
+                            node: self.get_lifetime(),
+                            span: self.span
+                        }));
                         try!(self.bump());
-                        ExprAgain(Some(lifetime))
+                        ex
                     } else {
                         ExprAgain(None)
                     };
@@ -2161,7 +2164,6 @@ impl<'a> Parser<'a> {
                         UnsafeBlock(ast::UserProvided));
                 }
                 if try!(self.eat_keyword(keywords::Return) ){
-                    // RETURN expression
                     if self.token.can_begin_expr() {
                         let e = try!(self.parse_expr_nopanic());
                         hi = e.span.hi;
@@ -2170,11 +2172,12 @@ impl<'a> Parser<'a> {
                         ex = ExprRet(None);
                     }
                 } else if try!(self.eat_keyword(keywords::Break) ){
-                    // BREAK expression
                     if self.token.is_lifetime() {
-                        let lifetime = self.get_lifetime();
+                        ex = ExprBreak(Some(Spanned {
+                            node: self.get_lifetime(),
+                            span: self.span
+                        }));
                         try!(self.bump());
-                        ex = ExprBreak(Some(lifetime));
                     } else {
                         ex = ExprBreak(None);
                     }

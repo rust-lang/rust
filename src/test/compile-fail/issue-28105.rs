@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,13 +11,8 @@
 // Make sure that a continue span actually contains the keyword.
 
 fn main() {
-    'a: loop {
-        if false {
-            continue //~ ERROR use of undeclared label
-            'b;
-        } else {
-            break //~ ERROR use of undeclared label
-            'c;
-        }
-    }
+    continue //~ ERROR `continue` outside of loop
+    ;
+    break //~ ERROR `break` outside of loop
+    ;
 }
