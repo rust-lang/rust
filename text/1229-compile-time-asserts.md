@@ -1,7 +1,7 @@
 - Feature Name: compile_time_asserts
 - Start Date: 2015-07-30
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1229](https://github.com/rust-lang/rfcs/pull/1229)
+- Rust Issue: [rust-lang/rust#28238](https://github.com/rust-lang/rust/issues/28238)
 
 # Summary
 
