@@ -218,6 +218,9 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
                     span_err!(cx.tcx.sess, ex.span, E0002,
                               "non-exhaustive patterns: type {} is non-empty",
                               pat_ty);
+                    span_help!(cx.tcx.sess, ex.span,
+                        "Please ensure that all possible cases are being handled; \
+                         possibly adding wildcards or more match arms.");
                 }
                 // If the type *is* empty, it's vacuously exhaustive
                 return;
