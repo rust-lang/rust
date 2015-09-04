@@ -365,13 +365,11 @@ impl PartialOrd for TraitInfo {
 }
 impl Ord for TraitInfo {
     fn cmp(&self, other: &TraitInfo) -> Ordering {
-        // accessible traits are more important/relevant than
-        // inaccessible ones, local crates are more important than
-        // remote ones (local: cnum == 0), and NodeIds just for
-        // totality.
+        // local crates are more important than remote ones (local:
+        // cnum == 0), and otherwise we throw in the defid for totality
 
-        let lhs = (other.def_id.krate, other.def_id.node);
-        let rhs = (self.def_id.krate, self.def_id.node);
+        let lhs = (other.def_id.krate, other.def_id);
+        let rhs = (self.def_id.krate, self.def_id);
         lhs.cmp(&rhs)
     }
 }

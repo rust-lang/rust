@@ -65,7 +65,6 @@ There are some shortcomings in this design:
 */
 
 use astconv::{self, AstConv, ty_of_arg, ast_ty_to_ty, ast_region_to_region};
-use metadata::cstore::LOCAL_CRATE;
 use middle::def;
 use middle::def_id::DefId;
 use constrained_type_params as ctp;
@@ -317,16 +316,16 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
     {
         let tcx = self.tcx;
 
-        if trait_id.krate != LOCAL_CRATE {
-            return tcx.lookup_trait_def(trait_id)
+        if let Some(trait_id) = tcx.map.as_local_node_id(trait_id) {
+            let item = match tcx.map.get(trait_id) {
+                hir_map::NodeItem(item) => item,
+                _ => tcx.sess.bug(&format!("get_trait_def({:?}): not an item", trait_id))
+            };
+
+            trait_def_of_item(self, &*item)
+        } else {
+            tcx.lookup_trait_def(trait_id)
         }
-
-        let item = match tcx.map.get(trait_id.node) {
-            hir_map::NodeItem(item) => item,
-            _ => tcx.sess.bug(&format!("get_trait_def({:?}): not an item", trait_id))
-        };
-
-        trait_def_of_item(self, &*item)
     }
 
     /// Ensure that the (transitive) super predicates for
@@ -403,8 +402,8 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
                                            assoc_name: ast::Name)
                                            -> bool
     {
-        if trait_def_id.is_local() {
-            trait_defines_associated_type_named(self.ccx, trait_def_id.node, assoc_name)
+        if let Some(trait_id) = self.tcx().map.as_local_node_id(trait_def_id) {
+            trait_defines_associated_type_named(self.ccx, trait_id, assoc_name)
         } else {
             let trait_def = self.tcx().lookup_trait_def(trait_def_id);
             trait_def.associated_type_names.contains(&assoc_name)
@@ -558,8 +557,8 @@ fn is_param<'tcx>(tcx: &ty::ctxt<'tcx>,
     if let hir::TyPath(None, _) = ast_ty.node {
         let path_res = *tcx.def_map.borrow().get(&ast_ty.id).unwrap();
         match path_res.base_def {
-            def::DefSelfTy(Some(def_id), None) => { // XXX
-                path_res.depth == 0 && def_id.node == param_id
+            def::DefSelfTy(Some(def_id), None) => {
+                path_res.depth == 0 && def_id == tcx.map.local_def_id(param_id)
             }
             def::DefTyParam(_, _, def_id, _) => {
                 path_res.depth == 0 && def_id == tcx.map.local_def_id(param_id)
@@ -1271,19 +1270,19 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
 
     debug!("ensure_super_predicates_step(trait_def_id={:?})", trait_def_id);
 
-    if trait_def_id.krate != LOCAL_CRATE {
+    let trait_node_id = if let Some(n) = tcx.map.as_local_node_id(trait_def_id) {
+        n
+    } else {
         // If this trait comes from an external crate, then all of the
         // supertraits it may depend on also must come from external
         // crates, and hence all of them already have their
         // super-predicates "converted" (and available from crate
         // meta-data), so there is no need to transitively test them.
         return Vec::new();
-    }
+    };
 
     let superpredicates = tcx.super_predicates.borrow().get(&trait_def_id).cloned();
     let superpredicates = superpredicates.unwrap_or_else(|| {
-        let trait_node_id = trait_def_id.node;
-
         let item = match ccx.tcx.map.get(trait_node_id) {
             hir_map::NodeItem(item) => item,
             _ => ccx.tcx.sess.bug(&format!("trait_node_id {} is not an item", trait_node_id))
@@ -1412,15 +1411,12 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             generics.lifetimes
                     .iter()
                     .enumerate()
-                    .map(|(i, def)| {
-                        let def_id = tcx.map.local_def_id(def.lifetime.id);
-                        ty::ReEarlyBound(ty::EarlyBoundRegion {
-                            param_id: def_id,
-                            space: TypeSpace,
-                            index: i as u32,
-                            name: def.lifetime.name
-                        })
-                    })
+                    .map(|(i, def)| ty::ReEarlyBound(ty::EarlyBoundRegion {
+                        def_id: tcx.map.local_def_id(def.lifetime.id),
+                        space: TypeSpace,
+                        index: i as u32,
+                        name: def.lifetime.name
+                    }))
                     .collect();
 
         // Start with the generics in the type parameters...
@@ -1540,23 +1536,23 @@ fn type_scheme_of_def_id<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                   def_id: DefId)
                                   -> ty::TypeScheme<'tcx>
 {
-    if def_id.krate != LOCAL_CRATE {
-        return ccx.tcx.lookup_item_type(def_id);
-    }
-
-    match ccx.tcx.map.find(def_id.node) {
-        Some(hir_map::NodeItem(item)) => {
-            type_scheme_of_item(ccx, &*item)
+    if let Some(node_id) = ccx.tcx.map.as_local_node_id(def_id) {
+        match ccx.tcx.map.find(node_id) {
+            Some(hir_map::NodeItem(item)) => {
+                type_scheme_of_item(ccx, &*item)
+            }
+            Some(hir_map::NodeForeignItem(foreign_item)) => {
+                let abi = ccx.tcx.map.get_foreign_abi(node_id);
+                type_scheme_of_foreign_item(ccx, &*foreign_item, abi)
+            }
+            x => {
+                ccx.tcx.sess.bug(&format!("unexpected sort of node \
+                                           in get_item_type_scheme(): {:?}",
+                                          x));
+            }
         }
-        Some(hir_map::NodeForeignItem(foreign_item)) => {
-            let abi = ccx.tcx.map.get_foreign_abi(def_id.node);
-            type_scheme_of_foreign_item(ccx, &*foreign_item, abi)
-        }
-        x => {
-            ccx.tcx.sess.bug(&format!("unexpected sort of node \
-                                            in get_item_type_scheme(): {:?}",
-                                       x));
-        }
+    } else {
+        ccx.tcx.lookup_item_type(def_id)
     }
 }
 
@@ -1894,7 +1890,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         let def_id = tcx.map.local_def_id(param.lifetime.id);
         let region =
             ty::ReEarlyBound(ty::EarlyBoundRegion {
-                param_id: def_id,
+                def_id: def_id,
                 space: space,
                 index: index,
                 name: param.lifetime.name
@@ -2392,9 +2388,10 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
         tcx.fold_regions(value, &mut false, |region, _| {
             match region {
                 ty::ReEarlyBound(data) => {
-                    let def_id = data.param_id;
-                    ty::ReFree(ty::FreeRegion { scope: scope,
-                                                bound_region: ty::BrNamed(def_id, data.name) })
+                    ty::ReFree(ty::FreeRegion {
+                        scope: scope,
+                        bound_region: ty::BrNamed(data.def_id, data.name)
+                    })
                 }
                 _ => region
             }
@@ -2453,7 +2450,7 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     for (index, lifetime_def) in ast_generics.lifetimes.iter().enumerate() {
         let def_id = tcx.map.local_def_id(lifetime_def.lifetime.id);
-        let region = ty::EarlyBoundRegion { param_id: def_id,
+        let region = ty::EarlyBoundRegion { def_id: def_id,
                                             space: TypeSpace,
                                             index: index as u32,
                                             name: lifetime_def.lifetime.name };

@@ -36,7 +36,6 @@ use syntax::ptr::P;
 
 use rustc_trans::back::link;
 use rustc::metadata::cstore;
-use rustc::metadata::cstore::LOCAL_CRATE;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 use rustc::middle::def;
@@ -496,7 +495,7 @@ impl Clean<TyParam> for hir::TyParam {
     fn clean(&self, cx: &DocContext) -> TyParam {
         TyParam {
             name: self.name.clean(cx),
-            did: DefId { krate: LOCAL_CRATE, node: self.id },
+            did: cx.map.local_def_id(self.id),
             bounds: self.bounds.clean(cx),
             default: self.default.clean(cx),
         }
@@ -1138,10 +1137,10 @@ impl<'tcx> Clean<Type> for ty::FnOutput<'tcx> {
 impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
     fn clean(&self, cx: &DocContext) -> FnDecl {
         let (did, sig) = *self;
-        let mut names = if did.node != 0 {
-            csearch::get_method_arg_names(&cx.tcx().sess.cstore, did).into_iter()
+        let mut names = if let Some(_) = cx.map.as_local_node_id(did) {
+            vec![].into_iter()
         } else {
-            Vec::new().into_iter()
+            csearch::get_method_arg_names(&cx.tcx().sess.cstore, did).into_iter()
         }.peekable();
         if names.peek().map(|s| &**s) == Some("self") {
             let _ = names.next();
@@ -1745,7 +1744,7 @@ impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
         let (name, attrs) = if self.name == unnamed_field.name {
             (None, None)
         } else {
-            (Some(self.name), Some(attr_map.get(&self.did.node).unwrap()))
+            (Some(self.name), Some(attr_map.get(&self.did.xxx_node).unwrap()))
         };
 
         Item {

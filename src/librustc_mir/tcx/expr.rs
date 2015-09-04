@@ -817,7 +817,7 @@ fn capture_freevar<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
                                freevar: &ty::Freevar,
                                freevar_ty: Ty<'tcx>)
                                -> ExprRef<Cx<'a,'tcx>> {
-    let id_var = freevar.def.def_id().node;
+    let id_var = freevar.def.node_id();
     let upvar_id = ty::UpvarId { var_id: id_var, closure_expr_id: closure_expr.id };
     let upvar_capture = cx.tcx.upvar_capture(upvar_id).unwrap();
     let temp_lifetime = cx.tcx.region_maps.temporary_scope(closure_expr.id);

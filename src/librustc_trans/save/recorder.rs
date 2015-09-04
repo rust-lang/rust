@@ -21,7 +21,7 @@ use syntax::ast;
 use syntax::ast::NodeId;
 use syntax::codemap::*;
 
-const ZERO_DEF_ID: DefId = DefId { node: 0, krate: 0 };
+const ZERO_DEF_ID: DefId = DefId { xxx_node: 0, krate: 0 };
 
 pub struct Recorder {
     // output file
@@ -381,7 +381,7 @@ impl<'a> FmtStrs<'a> {
                       decl_id: Option<DefId>,
                       scope_id: NodeId) {
         let values = match decl_id {
-            Some(decl_id) => svec!(id, name, decl_id.node, decl_id.krate, scope_id),
+            Some(decl_id) => svec!(id, name, decl_id.xxx_node, decl_id.krate, scope_id),
             None => svec!(id, name, "", "", scope_id),
         };
         self.check_and_record(Function,
@@ -442,9 +442,9 @@ impl<'a> FmtStrs<'a> {
                               span,
                               sub_span,
                               svec!(id,
-                                    ref_id.node,
+                                    ref_id.xxx_node,
                                     ref_id.krate,
-                                    trait_id.node,
+                                    trait_id.xxx_node,
                                     trait_id.krate,
                                     scope_id));
     }
@@ -470,7 +470,7 @@ impl<'a> FmtStrs<'a> {
                          name: &str,
                          parent: NodeId) {
         let (mod_node, mod_crate) = match mod_id {
-            Some(mod_id) => (mod_id.node, mod_id.krate),
+            Some(mod_id) => (mod_id.xxx_node, mod_id.krate),
             None => (0, 0),
         };
         self.check_and_record(UseAlias,
@@ -513,7 +513,7 @@ impl<'a> FmtStrs<'a> {
         self.check_and_record(Inheritance,
                               span,
                               sub_span,
-                              svec!(base_id.node,
+                              svec!(base_id.xxx_node,
                                     base_id.krate,
                                     deriv_id,
                                     0));
@@ -527,7 +527,7 @@ impl<'a> FmtStrs<'a> {
         self.check_and_record(FnCall,
                               span,
                               sub_span,
-                              svec!(id.node, id.krate, "", scope_id));
+                              svec!(id.xxx_node, id.krate, "", scope_id));
     }
 
     pub fn meth_call_str(&mut self,
@@ -537,11 +537,11 @@ impl<'a> FmtStrs<'a> {
                          declid: Option<DefId>,
                          scope_id: NodeId) {
         let (dfn, dfk) = match defid {
-            Some(defid) => (defid.node, defid.krate),
+            Some(defid) => (defid.xxx_node, defid.krate),
             None => (0, 0),
         };
         let (dcn, dck) = match declid {
-            Some(declid) => (s!(declid.node), s!(declid.krate)),
+            Some(declid) => (s!(declid.xxx_node), s!(declid.krate)),
             None => ("".to_string(), "".to_string()),
         };
         self.check_and_record(MethodCall,
@@ -600,6 +600,6 @@ impl<'a> FmtStrs<'a> {
         self.check_and_record(kind,
                               span,
                               sub_span,
-                              svec!(id.node, id.krate, "", scope_id));
+                              svec!(id.xxx_node, id.krate, "", scope_id));
     }
 }

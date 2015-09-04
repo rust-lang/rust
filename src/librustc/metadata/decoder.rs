@@ -170,7 +170,7 @@ fn item_symbol(item: rbml::Doc) -> String {
 
 fn translated_def_id(cdata: Cmd, d: rbml::Doc) -> DefId {
     let id = reader::doc_as_u64(d);
-    let def_id = DefId { krate: (id >> 32) as u32, node: id as u32 };
+    let def_id = DefId { krate: (id >> 32) as u32, xxx_node: id as u32 };
     translate_def_id(cdata, def_id)
 }
 
@@ -378,7 +378,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
         let mut disr_val = 0;
         reader::tagged_docs(doc, tag_items_data_item_variant).map(|p| {
             let did = translated_def_id(cdata, p);
-            let item = cdata.lookup_item(did.node);
+            let item = cdata.lookup_item(did.xxx_node);
 
             if let Some(disr) = variant_disr_val(item) {
                 disr_val = disr;
@@ -428,7 +428,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
     }
 
     let doc = cdata.lookup_item(item_id);
-    let did = DefId { krate: cdata.cnum, node: item_id };
+    let did = DefId { krate: cdata.cnum, xxx_node: item_id };
     let (kind, variants) = match item_family(doc) {
         Enum => (ty::AdtKind::Enum,
                  get_enum_variants(intr, cdata, doc, tcx)),
@@ -448,7 +448,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
             // from the ctor.
             debug!("evaluating the ctor-type of {:?}",
                    variant.name);
-            let ctor_ty = get_type(cdata, variant.did.node, tcx).ty;
+            let ctor_ty = get_type(cdata, variant.did.xxx_node, tcx).ty;
             debug!("evaluating the ctor-type of {:?}.. {:?}",
                    variant.name,
                    ctor_ty);
@@ -468,7 +468,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
         } else {
             for field in &variant.fields {
                 debug!("evaluating the type of {:?}::{:?}", variant.name, field.name);
-                let ty = get_type(cdata, field.did.node, tcx).ty;
+                let ty = get_type(cdata, field.did.xxx_node, tcx).ty;
                 field.fulfill_ty(ty);
                 debug!("evaluating the type of {:?}::{:?}: {:?}",
                        variant.name, field.name, ty);
@@ -501,7 +501,7 @@ pub fn get_type<'tcx>(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt<'tcx>)
                       -> ty::TypeScheme<'tcx>
 {
     let item_doc = cdata.lookup_item(id);
-    let t = item_type(DefId { krate: cdata.cnum, node: id }, item_doc, tcx,
+    let t = item_type(DefId { krate: cdata.cnum, xxx_node: id }, item_doc, tcx,
                       cdata);
     let generics = doc_generics(item_doc, tcx, cdata, tag_item_generics);
     ty::TypeScheme {
@@ -634,7 +634,7 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
         };
 
         // Get the item.
-        match crate_data.get_item(child_def_id.node) {
+        match crate_data.get_item(child_def_id.xxx_node) {
             None => {}
             Some(child_item_doc) => {
                 // Hand off the item to the callback.
@@ -652,12 +652,12 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
     for inherent_impl_def_id_doc in reader::tagged_docs(item_doc,
                                                              tag_items_data_item_inherent_impl) {
         let inherent_impl_def_id = item_def_id(inherent_impl_def_id_doc, cdata);
-        if let Some(inherent_impl_doc) = cdata.get_item(inherent_impl_def_id.node) {
+        if let Some(inherent_impl_doc) = cdata.get_item(inherent_impl_def_id.xxx_node) {
             for impl_item_def_id_doc in reader::tagged_docs(inherent_impl_doc,
                                                                  tag_item_impl_item) {
                 let impl_item_def_id = item_def_id(impl_item_def_id_doc,
                                                    cdata);
-                if let Some(impl_method_doc) = cdata.get_item(impl_item_def_id.node) {
+                if let Some(impl_method_doc) = cdata.get_item(impl_item_def_id.xxx_node) {
                     if let StaticMethod = item_family(impl_method_doc) {
                         // Hand off the static method to the callback.
                         let static_method_name = item_name(&*intr, impl_method_doc);
@@ -693,7 +693,7 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
         };
 
         // Get the item.
-        if let Some(child_item_doc) = crate_data.get_item(child_def_id.node) {
+        if let Some(child_item_doc) = crate_data.get_item(child_def_id.xxx_node) {
             // Hand off the item to the callback.
             let def_like = item_to_def_like(crate_data, child_item_doc, child_def_id);
             // These items have a public visibility because they're part of
@@ -771,7 +771,7 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeI
         Err(path) => {
             match item_parent_item(cdata, item_doc) {
                 Some(did) => {
-                    let parent_item = cdata.lookup_item(did.node);
+                    let parent_item = cdata.lookup_item(did.xxx_node);
                     match decode_inlined_item(cdata, tcx, path, parent_item) {
                         Ok(ii) => csearch::FoundAst::FoundParent(did, ii),
                         Err(_) => csearch::FoundAst::NotFound
@@ -852,7 +852,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
     let def_id = item_def_id(item_doc, cdata);
 
     let container_id = item_require_parent_item(cdata, item_doc);
-    let container_doc = cdata.lookup_item(container_id.node);
+    let container_doc = cdata.lookup_item(container_id.xxx_node);
     let container = match item_family(container_doc) {
         Trait => TraitContainer(container_id),
         _ => ImplContainer(container_id),
@@ -932,12 +932,12 @@ pub fn get_provided_trait_methods<'tcx>(intr: Rc<IdentInterner>,
 
     reader::tagged_docs(item, tag_item_trait_item).filter_map(|mth_id| {
         let did = item_def_id(mth_id, cdata);
-        let mth = cdata.lookup_item(did.node);
+        let mth = cdata.lookup_item(did.xxx_node);
 
         if item_sort(mth) == Some('p') {
             let trait_item = get_impl_or_trait_item(intr.clone(),
                                                     cdata,
-                                                    did.node,
+                                                    did.xxx_node,
                                                     tcx);
             if let ty::MethodTraitItem(ref method) = trait_item {
                 Some((*method).clone())
@@ -960,13 +960,13 @@ pub fn get_associated_consts<'tcx>(intr: Rc<IdentInterner>,
     [tag_item_trait_item, tag_item_impl_item].iter().flat_map(|&tag| {
         reader::tagged_docs(item, tag).filter_map(|ac_id| {
             let did = item_def_id(ac_id, cdata);
-            let ac_doc = cdata.lookup_item(did.node);
+            let ac_doc = cdata.lookup_item(did.xxx_node);
 
             match item_sort(ac_doc) {
                 Some('C') | Some('c') => {
                     let trait_item = get_impl_or_trait_item(intr.clone(),
                                                             cdata,
-                                                            did.node,
+                                                            did.xxx_node,
                                                             tcx);
                     if let ty::ConstTraitItem(ref ac) = trait_item {
                         Some((*ac).clone())
@@ -1011,7 +1011,7 @@ pub fn get_methods_if_impl(intr: Rc<IdentInterner>,
 
     let mut impl_methods = Vec::new();
     for impl_method_id in impl_method_ids {
-        let impl_method_doc = cdata.lookup_item(impl_method_id.node);
+        let impl_method_doc = cdata.lookup_item(impl_method_id.xxx_node);
         let family = item_family(impl_method_doc);
         match family {
             StaticMethod | Method => {
@@ -1047,7 +1047,7 @@ pub fn get_item_attrs(cdata: Cmd,
     // we assume that someone passing in a tuple struct ctor is actually wanting to
     // look at the definition
     let node_id = get_tuple_struct_definition_if_ctor(cdata, orig_node_id);
-    let node_id = node_id.map(|x| x.node).unwrap_or(orig_node_id);
+    let node_id = node_id.map(|x| x.xxx_node).unwrap_or(orig_node_id);
     let item = cdata.lookup_item(node_id);
     get_attributes(item)
 }
@@ -1228,14 +1228,14 @@ pub fn list_crate_metadata(bytes: &[u8], out: &mut io::Write) -> io::Result<()> 
 // crate to the correct local crate number.
 pub fn translate_def_id(cdata: Cmd, did: DefId) -> DefId {
     if did.is_local() {
-        return DefId { krate: cdata.cnum, node: did.node };
+        return DefId { krate: cdata.cnum, xxx_node: did.xxx_node };
     }
 
     match cdata.cnum_map.borrow().get(&did.krate) {
         Some(&n) => {
             DefId {
                 krate: n,
-                node: did.node,
+                xxx_node: did.xxx_node,
             }
         }
         None => panic!("didn't find a crate in the cnum_map")
@@ -1246,12 +1246,12 @@ pub fn translate_def_id(cdata: Cmd, did: DefId) -> DefId {
 // for an external crate.
 fn reverse_translate_def_id(cdata: Cmd, did: DefId) -> Option<DefId> {
     if did.krate == cdata.cnum {
-        return Some(DefId { krate: LOCAL_CRATE, node: did.node });
+        return Some(DefId { krate: LOCAL_CRATE, xxx_node: did.xxx_node });
     }
 
     for (&local, &global) in cdata.cnum_map.borrow().iter() {
         if global == did.krate {
-            return Some(DefId { krate: local, node: did.node });
+            return Some(DefId { krate: local, xxx_node: did.xxx_node });
         }
     }
 
@@ -1277,7 +1277,7 @@ pub fn each_implementation_for_trait<F>(cdata: Cmd,
     F: FnMut(DefId),
 {
     if cdata.cnum == def_id.krate {
-        let item_doc = cdata.lookup_item(def_id.node);
+        let item_doc = cdata.lookup_item(def_id.xxx_node);
         for impl_doc in reader::tagged_docs(item_doc, tag_items_data_item_extension_impl) {
             callback(item_def_id(impl_doc, cdata));
         }
@@ -1306,7 +1306,7 @@ pub fn get_trait_of_item(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
         None => return None,
         Some(item_id) => item_id,
     };
-    let parent_item_doc = cdata.lookup_item(parent_item_id.node);
+    let parent_item_doc = cdata.lookup_item(parent_item_id.xxx_node);
     match item_family(parent_item_doc) {
         Trait => Some(item_def_id(parent_item_doc, cdata)),
         Impl | DefaultImpl => {
@@ -1404,7 +1404,7 @@ pub fn get_reachable_ids(cdata: Cmd) -> Vec<DefId> {
     reader::tagged_docs(items, tag_reachable_id).map(|doc| {
         DefId {
             krate: cdata.cnum,
-            node: reader::doc_as_u32(doc),
+            xxx_node: reader::doc_as_u32(doc),
         }
     }).collect()
 }

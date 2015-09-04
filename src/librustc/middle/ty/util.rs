@@ -461,7 +461,7 @@ impl<'tcx> ty::ctxt<'tcx> {
                     tcx.sess.cstore.get_crate_hash(did.krate)
                 };
                 h.as_str().hash(state);
-                did.node.hash(state);
+                did.xxx_node.hash(state);
             };
             let mt = |state: &mut SipHasher, mt: TypeAndMut| {
                 mt.mutbl.hash(state);

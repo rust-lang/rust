@@ -383,7 +383,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &hir::Item, warn_about_defns: bool,
                 Some(cnum) => cnum,
                 None => return,
             };
-            let id = DefId { krate: cnum, node: ast::CRATE_NODE_ID };
+            let id = DefId { krate: cnum, xxx_node: ast::CRATE_NODE_ID };
             maybe_do_stability_check(tcx, id, item.span, cb);
         }
 

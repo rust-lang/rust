@@ -17,13 +17,13 @@ use std::fmt;
            RustcDecodable, Hash, Copy)]
 pub struct DefId {
     pub krate: CrateNum,
-    pub node: NodeId,
+    pub xxx_node: NodeId,
 }
 
 impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "DefId {{ krate: {}, node: {}",
-                    self.krate, self.node));
+                    self.krate, self.xxx_node));
 
         // Unfortunately, there seems to be no way to attempt to print
         // a path for a def-id, so I'll just make a best effort for now
@@ -42,13 +42,7 @@ impl fmt::Debug for DefId {
 
 impl DefId {
     pub fn xxx_local(id: NodeId) -> DefId {
-        DefId { krate: LOCAL_CRATE, node: id }
-    }
-
-    /// Read the node id, asserting that this def-id is krate-local.
-    pub fn local_id(&self) -> NodeId {
-        assert_eq!(self.krate, LOCAL_CRATE);
-        self.node
+        DefId { krate: LOCAL_CRATE, xxx_node: id }
     }
 
     pub fn is_local(&self) -> bool {

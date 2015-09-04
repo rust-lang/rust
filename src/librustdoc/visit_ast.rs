@@ -205,16 +205,18 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             None => return false
         };
         let def = tcx.def_map.borrow()[&id].def_id();
-        if !def.is_local() { return false }
+        let def_node_id = match tcx.map.as_local_node_id(def) {
+            Some(n) => n, None => return false
+        };
         let analysis = match self.analysis {
             Some(analysis) => analysis, None => return false
         };
-        if !please_inline && analysis.public_items.contains(&def.node) {
+        if !please_inline && analysis.public_items.contains(&def) {
             return false
         }
-        if !self.view_item_stack.insert(def.node) { return false }
+        if !self.view_item_stack.insert(def_node_id) { return false }
 
-        let ret = match tcx.map.get(def.node) {
+        let ret = match tcx.map.get(def_node_id) {
             hir_map::NodeItem(it) => {
                 if glob {
                     let prev = mem::replace(&mut self.inlining_from_glob, true);
@@ -235,7 +237,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             _ => false,
         };
-        self.view_item_stack.remove(&id);
+        self.view_item_stack.remove(&def_node_id);
         return ret;
     }
 

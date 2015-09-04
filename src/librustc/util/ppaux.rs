@@ -309,18 +309,18 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
 
 impl<'tcx> fmt::Debug for ty::TypeParameterDef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TypeParameterDef({}, {}:{}, {:?}/{})",
+        write!(f, "TypeParameterDef({}, {:?}, {:?}/{})",
                self.name,
-               self.def_id.krate, self.def_id.node,
+               self.def_id,
                self.space, self.index)
     }
 }
 
 impl fmt::Debug for ty::RegionParameterDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RegionParameterDef({}, {}:{}, {:?}/{}, {:?})",
+        write!(f, "RegionParameterDef({}, {:?}, {:?}/{}, {:?})",
                self.name,
-               self.def_id.krate, self.def_id.node,
+               self.def_id,
                self.space, self.index,
                self.bounds)
     }
@@ -455,7 +455,7 @@ impl fmt::Debug for ty::BoundRegion {
             BrAnon(n) => write!(f, "BrAnon({:?})", n),
             BrFresh(n) => write!(f, "BrFresh({:?})", n),
             BrNamed(did, name) => {
-                write!(f, "BrNamed({}:{}, {:?})", did.krate, did.node, name)
+                write!(f, "BrNamed({:?}, {:?})", did, name)
             }
             BrEnv => "BrEnv".fmt(f),
         }
@@ -467,7 +467,7 @@ impl fmt::Debug for ty::Region {
         match *self {
             ty::ReEarlyBound(ref data) => {
                 write!(f, "ReEarlyBound({:?}, {:?}, {}, {})",
-                       data.param_id,
+                       data.def_id,
                        data.space,
                        data.index,
                        data.name)
@@ -888,13 +888,13 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyTrait(ref data) => write!(f, "{}", data),
             ty::TyProjection(ref data) => write!(f, "{}", data),
             TyStr => write!(f, "str"),
-            TyClosure(ref did, ref substs) => ty::tls::with(|tcx| {
+            TyClosure(did, ref substs) => ty::tls::with(|tcx| {
                 try!(write!(f, "[closure"));
 
-                if did.is_local() {
-                    try!(write!(f, "@{:?}", tcx.map.span(did.node)));
+                if let Some(node_id) = tcx.map.as_local_node_id(did) {
+                    try!(write!(f, "@{:?}", tcx.map.span(node_id)));
                     let mut sep = " ";
-                    try!(tcx.with_freevars(did.node, |freevars| {
+                    try!(tcx.with_freevars(node_id, |freevars| {
                         for (freevar, upvar_ty) in freevars.iter().zip(&substs.upvar_tys) {
                             let node_id = freevar.def.node_id();
                             try!(write!(f,

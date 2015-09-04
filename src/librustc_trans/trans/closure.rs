@@ -44,8 +44,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Special case for small by-value selfs.
     let closure_id = bcx.tcx().map.local_def_id(bcx.fcx.id);
-    let self_type = self_type_for_closure(bcx.ccx(), closure_id,
-                                                  node_id_type(bcx, closure_id.node));
+    let self_type = self_type_for_closure(bcx.ccx(), closure_id, node_id_type(bcx, bcx.fcx.id));
     let kind = kind_for_closure(bcx.ccx(), closure_id);
     let llenv = if kind == ty::FnOnceClosureKind &&
             !arg_is_indirect(bcx.ccx(), self_type) {
@@ -70,7 +69,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     for (i, freevar) in freevars.iter().enumerate() {
         let upvar_id = ty::UpvarId { var_id: freevar.def.node_id(),
-                                     closure_expr_id: closure_id.node };
+                                     closure_expr_id: bcx.fcx.id };
         let upvar_capture = bcx.tcx().upvar_capture(upvar_id).unwrap();
         let mut upvar_ptr = StructGEP(bcx, llenv, i);
         let captured_by_ref = match upvar_capture {
@@ -80,21 +79,21 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 true
             }
         };
-        let def_id = freevar.def.def_id();
-        bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvar_ptr);
+        let node_id = freevar.def.node_id();
+        bcx.fcx.llupvars.borrow_mut().insert(node_id, upvar_ptr);
 
         if kind == ty::FnOnceClosureKind && !captured_by_ref {
             let hint = bcx.fcx.lldropflag_hints.borrow().hint_datum(upvar_id.var_id);
             bcx.fcx.schedule_drop_mem(arg_scope_id,
                                       upvar_ptr,
-                                      node_id_type(bcx, def_id.node),
+                                      node_id_type(bcx, node_id),
                                       hint)
         }
 
         if let Some(env_pointer_alloca) = env_pointer_alloca {
             debuginfo::create_captured_var_metadata(
                 bcx,
-                def_id.node,
+                node_id,
                 env_pointer_alloca,
                 i,
                 captured_by_ref,
@@ -133,6 +132,8 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                    closure_id: DefId,
                                                    substs: &ty::ClosureSubsts<'tcx>)
                                                    -> ValueRef {
+    let closure_node_id = ccx.tcx().map.as_local_node_id(closure_id).unwrap();
+
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
     let substs = ccx.tcx().erase_regions(substs);
@@ -147,7 +148,7 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         return llfn;
     }
 
-    let symbol = ccx.tcx().map.with_path(closure_id.node, |path| {
+    let symbol = ccx.tcx().map.with_path(closure_node_id, |path| {
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
 

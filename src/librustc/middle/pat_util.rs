@@ -219,7 +219,7 @@ pub fn def_to_path(tcx: &ty::ctxt, id: DefId) -> hir::Path {
 }
 
 /// Return variants that are necessary to exist for the pattern to match.
-pub fn necessary_variants(dm: &DefMap, pat: &hir::Pat) -> Vec<ast::NodeId> {
+pub fn necessary_variants(dm: &DefMap, pat: &hir::Pat) -> Vec<DefId> {
     let mut variants = vec![];
     walk_pat(pat, |p| {
         match p.node {
@@ -228,7 +228,7 @@ pub fn necessary_variants(dm: &DefMap, pat: &hir::Pat) -> Vec<ast::NodeId> {
             hir::PatStruct(..) => {
                 match dm.borrow().get(&p.id) {
                     Some(&PathResolution { base_def: DefVariant(_, id, _), .. }) => {
-                        variants.push(id.node); // XXX
+                        variants.push(id);
                     }
                     _ => ()
                 }

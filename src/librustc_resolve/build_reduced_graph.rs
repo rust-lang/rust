@@ -387,7 +387,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             ItemExternCrate(_) => {
                 // n.b. we don't need to look at the path option here, because cstore already did
                 if let Some(crate_id) = self.session.cstore.find_extern_mod_stmt_cnum(item.id) {
-                    let def_id = DefId { krate: crate_id, node: 0 };
+                    let def_id = DefId { krate: crate_id, xxx_node: 0 };
                     self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(Rc::downgrade(parent), name);
                     let external_module = Rc::new(Module::new(parent_link,
@@ -409,7 +409,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let name_bindings = self.add_child(name, parent, ForbidDuplicateModules, sp);
 
                 let parent_link = self.get_parent_link(parent, name);
-                let def_id = DefId { krate: 0, node: item.id };
+                let def_id = self.ast_map.local_def_id(item.id);
                 name_bindings.define_module(parent_link,
                                             Some(def_id),
                                             NormalModuleKind,

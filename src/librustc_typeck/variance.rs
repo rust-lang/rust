@@ -266,7 +266,6 @@ use self::ParamKind::*;
 
 use arena;
 use arena::TypedArena;
-use metadata::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use middle::subst;
@@ -404,10 +403,10 @@ fn lang_items(tcx: &ty::ctxt) -> Vec<(ast::NodeId,Vec<ty::Variance>)> {
 
         ];
 
-    all.into_iter()
+    all.into_iter() // iterating over (Option<DefId>, Variance)
        .filter(|&(ref d,_)| d.is_some())
-       .filter(|&(ref d,_)| d.as_ref().unwrap().is_local())
-       .map(|(d, v)| (d.unwrap().node, v))
+       .map(|(d, v)| (d.unwrap(), v)) // (DefId, Variance)
+       .filter_map(|(d, v)| tcx.map.as_local_node_id(d).map(|n| (n, v))) // (NodeId, Variance)
        .collect()
 }
 
@@ -741,11 +740,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                          -> VarianceTermPtr<'a> {
         assert_eq!(param_def_id.krate, item_def_id.krate);
 
-        if param_def_id.is_local() {
+        if let Some(param_node_id) = self.tcx().map.as_local_node_id(param_def_id) {
             // Parameter on an item defined within current crate:
             // variance not yet inferred, so return a symbolic
             // variance.
-            let InferredIndex(index) = self.inferred_index(param_def_id.node);
+            let InferredIndex(index) = self.inferred_index(param_node_id);
             self.terms_cx.inferred_infos[index].term
         } else {
             // Parameter on an item defined within another crate:
@@ -924,8 +923,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::TyParam(ref data) => {
                 let def_id = generics.types.get(data.space, data.idx as usize).def_id;
-                assert_eq!(def_id.krate, LOCAL_CRATE);
-                match self.terms_cx.inferred_map.get(&def_id.node) {
+                let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
+                match self.terms_cx.inferred_map.get(&node_id) {
                     Some(&index) => {
                         self.add_constraint(index, variance);
                     }
@@ -1013,7 +1012,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    variance: VarianceTermPtr<'a>) {
         match region {
             ty::ReEarlyBound(ref data) => {
-                let node_id = self.tcx().map.as_local_node_id(data.param_id).unwrap();
+                let node_id = self.tcx().map.as_local_node_id(data.def_id).unwrap();
                 if self.is_to_be_inferred(node_id) {
                     let index = self.inferred_index(node_id);
                     self.add_constraint(index, variance);

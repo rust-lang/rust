@@ -235,16 +235,16 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         tcx.with_freevars(closure_id, |freevars| {
             freevars.iter()
                     .map(|freevar| {
-                        let freevar_def_id = freevar.def.def_id();
-                        let freevar_ty = self.fcx.node_ty(freevar_def_id.node);
+                        let freevar_node_id = freevar.def.node_id();
+                        let freevar_ty = self.fcx.node_ty(freevar_node_id);
                         let upvar_id = ty::UpvarId {
-                            var_id: freevar_def_id.node,
+                            var_id: freevar_node_id,
                             closure_expr_id: closure_id
                         };
                         let capture = self.fcx.infcx().upvar_capture(upvar_id).unwrap();
 
-                        debug!("freevar_def_id={:?} freevar_ty={:?} capture={:?}",
-                               freevar_def_id, freevar_ty, capture);
+                        debug!("freevar_node_id={:?} freevar_ty={:?} capture={:?}",
+                               freevar_node_id, freevar_ty, capture);
 
                         match capture {
                             ty::UpvarCapture::ByValue => freevar_ty,

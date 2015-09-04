@@ -35,7 +35,6 @@ use lint;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
 use metadata::{csearch, encoder, loader};
-use metadata::cstore::LOCAL_CRATE;
 use middle::astencode;
 use middle::cfg;
 use middle::def_id::DefId;
@@ -1287,7 +1286,7 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
 
     // Create the drop-flag hints for every unfragmented path in the function.
     let tcx = fcx.ccx.tcx();
-    let fn_did = DefId { krate: LOCAL_CRATE, node: fcx.id };
+    let fn_did = tcx.map.local_def_id(fcx.id);
     let mut hints = fcx.lldropflag_hints.borrow_mut();
     let fragment_infos = tcx.fragment_infos.borrow();
 
@@ -2254,13 +2253,14 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
                     Ok(id) => id,
                     Err(s) => { ccx.sess().fatal(&s[..]); }
                 };
-                let start_fn = if start_def_id.is_local() {
-                    get_item_val(ccx, start_def_id.node)
-                } else {
-                    let start_fn_type = csearch::get_type(ccx.tcx(),
-                                                          start_def_id).ty;
-                    trans_external_path(ccx, start_def_id, start_fn_type)
-                };
+                let start_fn =
+                    if let Some(start_node_id) = ccx.tcx().map.as_local_node_id(start_def_id) {
+                        get_item_val(ccx, start_node_id)
+                    } else {
+                        let start_fn_type = csearch::get_type(ccx.tcx(),
+                                                              start_def_id).ty;
+                        trans_external_path(ccx, start_def_id, start_fn_type)
+                    };
 
                 let args = {
                     let opaque_rust_main = llvm::LLVMBuildPointerCast(bld,

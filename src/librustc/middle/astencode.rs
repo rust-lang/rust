@@ -229,7 +229,7 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
     /// refer to the current crate and to the new, inlined node-id.
     pub fn tr_intern_def_id(&self, did: DefId) -> DefId {
         assert_eq!(did.krate, LOCAL_CRATE);
-        DefId { krate: LOCAL_CRATE, node: self.tr_id(did.node) }
+        DefId { krate: LOCAL_CRATE, xxx_node: self.tr_id(did.xxx_node) }
     }
 
     /// Translates a `Span` from an extern crate to the corresponding `Span`
@@ -951,7 +951,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    let lid = DefId { krate: LOCAL_CRATE, node: id };
+    let lid = tcx.map.local_def_id(id);
     if let Some(type_scheme) = tcx.tcache.borrow().get(&lid) {
         rbml_w.tag(c::tag_table_tcache, |rbml_w| {
             rbml_w.id(id);
@@ -1453,7 +1453,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                     }
                     c::tag_table_tcache => {
                         let type_scheme = val_dsr.read_type_scheme(dcx);
-                        let lid = DefId { krate: LOCAL_CRATE, node: id };
+                        let lid = dcx.tcx.map.local_def_id(id);
                         dcx.tcx.register_item_type(lid, type_scheme);
                     }
                     c::tag_table_param_defs => {

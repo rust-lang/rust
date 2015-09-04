@@ -240,37 +240,43 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                 match self.def_map.borrow().get(&e.id).map(|d| d.base_def) {
                     Some(DefStatic(def_id, _)) |
                     Some(DefAssociatedConst(def_id)) |
-                    Some(DefConst(def_id)) if def_id.is_local() => {
-                        match self.ast_map.get(def_id.node) {
-                          ast_map::NodeItem(item) =>
-                            self.visit_item(item),
-                          ast_map::NodeTraitItem(item) =>
-                            self.visit_trait_item(item),
-                          ast_map::NodeImplItem(item) =>
-                            self.visit_impl_item(item),
-                          ast_map::NodeForeignItem(_) => {},
-                          _ => {
-                              self.sess.span_bug(
-                                  e.span,
-                                  &format!("expected item, found {}",
-                                           self.ast_map.node_to_string(def_id.node)));
-                          }
+                    Some(DefConst(def_id)) => {
+                        if let Some(node_id) = self.ast_map.as_local_node_id(def_id) {
+                            match self.ast_map.get(node_id) {
+                                ast_map::NodeItem(item) =>
+                                    self.visit_item(item),
+                                ast_map::NodeTraitItem(item) =>
+                                    self.visit_trait_item(item),
+                                ast_map::NodeImplItem(item) =>
+                                    self.visit_impl_item(item),
+                                ast_map::NodeForeignItem(_) => {},
+                                _ => {
+                                    self.sess.span_bug(
+                                        e.span,
+                                        &format!("expected item, found {}",
+                                                 self.ast_map.node_to_string(node_id)));
+                                }
+                            }
                         }
                     }
                     // For variants, we only want to check expressions that
                     // affect the specific variant used, but we need to check
                     // the whole enum definition to see what expression that
                     // might be (if any).
-                    Some(DefVariant(enum_id, variant_id, false)) if enum_id.is_local() => {
-                        if let hir::ItemEnum(ref enum_def, ref generics) =
-                               self.ast_map.expect_item(enum_id.local_id()).node {
-                            self.populate_enum_discriminants(enum_def);
-                            let variant = self.ast_map.expect_variant(variant_id.local_id());
-                            self.visit_variant(variant, generics);
-                        } else {
-                            self.sess.span_bug(e.span,
-                                "`check_static_recursion` found \
-                                 non-enum in DefVariant");
+                    Some(DefVariant(enum_id, variant_id, false)) => {
+                        if let Some(enum_node_id) = self.ast_map.as_local_node_id(enum_id) {
+                            if let hir::ItemEnum(ref enum_def, ref generics) =
+                                self.ast_map.expect_item(enum_node_id).node
+                            {
+                                self.populate_enum_discriminants(enum_def);
+                                let variant_id = self.ast_map.as_local_node_id(variant_id).unwrap();
+                                let variant = self.ast_map.expect_variant(variant_id);
+                                self.visit_variant(variant, generics);
+                            } else {
+                                self.sess.span_bug(e.span,
+                                                   "`check_static_recursion` found \
+                                                    non-enum in DefVariant");
+                            }
                         }
                     }
                     _ => ()
