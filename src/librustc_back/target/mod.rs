@@ -384,7 +384,6 @@ impl Target {
             i686_unknown_freebsd,
             x86_64_unknown_freebsd,
 
-            i686_unknown_dragonfly,
             x86_64_unknown_dragonfly,
 
             x86_64_unknown_bitrig,
