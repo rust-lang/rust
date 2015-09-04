@@ -94,8 +94,8 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &hir::Lit)
         }
         hir::LitBool(b) => C_bool(cx, b),
         hir::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
-        hir::LitBinary(ref data) => {
-            addr_of(cx, C_bytes(cx, &data[..]), "binary")
+        hir::LitByteStr(ref data) => {
+            addr_of(cx, C_bytes(cx, &data[..]), "byte_str")
         }
     }
 }

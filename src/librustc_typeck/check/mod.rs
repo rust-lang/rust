@@ -2633,7 +2633,7 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     match lit.node {
         hir::LitStr(..) => tcx.mk_static_str(),
-        hir::LitBinary(ref v) => {
+        hir::LitByteStr(ref v) => {
             tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic),
                             tcx.mk_array(tcx.types.u8, v.len()))
         }

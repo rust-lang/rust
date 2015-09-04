@@ -131,7 +131,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
                 match lit {
                     // text literals
                     token::Byte(..) | token::Char(..) |
-                        token::Binary(..) | token::BinaryRaw(..) |
+                        token::ByteStr(..) | token::ByteStrRaw(..) |
                         token::Str_(..) | token::StrRaw(..) => "string",
 
                     // number literals

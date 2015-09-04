@@ -259,8 +259,8 @@ pub fn token_to_string(tok: &Token) -> String {
                 token::StrRaw(s, n)      => format!("r{delim}\"{string}\"{delim}",
                                                     delim=repeat("#", n),
                                                     string=s),
-                token::Binary(v)         => format!("b\"{}\"", v),
-                token::BinaryRaw(s, n)   => format!("br{delim}\"{string}\"{delim}",
+                token::ByteStr(v)         => format!("b\"{}\"", v),
+                token::ByteStrRaw(s, n)   => format!("br{delim}\"{string}\"{delim}",
                                                     delim=repeat("#", n),
                                                     string=s),
             };
@@ -2887,7 +2887,7 @@ impl<'a> State<'a> {
             ast::LitBool(val) => {
                 if val { word(&mut self.s, "true") } else { word(&mut self.s, "false") }
             }
-            ast::LitBinary(ref v) => {
+            ast::LitByteStr(ref v) => {
                 let mut escaped: String = String::new();
                 for &ch in v.iter() {
                     escaped.extend(ascii::escape_default(ch)

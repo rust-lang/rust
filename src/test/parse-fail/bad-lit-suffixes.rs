@@ -20,10 +20,10 @@ extern
 {}
 
 fn main() {
-    ""suffix; //~ ERROR str literal with a suffix is invalid
-    b""suffix; //~ ERROR binary str literal with a suffix is invalid
-    r#""#suffix; //~ ERROR str literal with a suffix is invalid
-    br#""#suffix; //~ ERROR binary str literal with a suffix is invalid
+    ""suffix; //~ ERROR string literal with a suffix is invalid
+    b""suffix; //~ ERROR byte string literal with a suffix is invalid
+    r#""#suffix; //~ ERROR string literal with a suffix is invalid
+    br#""#suffix; //~ ERROR byte string literal with a suffix is invalid
     'a'suffix; //~ ERROR char literal with a suffix is invalid
     b'a'suffix; //~ ERROR byte literal with a suffix is invalid
 
