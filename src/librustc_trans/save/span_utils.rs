@@ -17,7 +17,7 @@ use std::cell::Cell;
 use syntax::ast;
 use syntax::codemap::*;
 use syntax::parse::lexer;
-use syntax::parse::lexer::{Reader,StringReader};
+use syntax::parse::lexer::{Reader, StringReader};
 use syntax::parse::token;
 use syntax::parse::token::{keywords, Token};
 
@@ -29,10 +29,7 @@ pub struct SpanUtils<'a> {
 
 impl<'a> SpanUtils<'a> {
     pub fn new(sess: &'a Session) -> SpanUtils<'a> {
-        SpanUtils {
-            sess: sess,
-            err_count: Cell::new(0)
-        }
+        SpanUtils { sess: sess, err_count: Cell::new(0) }
     }
 
     // Standard string for extents/location.
@@ -62,8 +59,7 @@ impl<'a> SpanUtils<'a> {
         match sub_span {
             None => None,
             Some(sub) => {
-                let FileMapAndBytePos {fm, pos} =
-                    self.sess.codemap().lookup_byte_offset(span.lo);
+                let FileMapAndBytePos {fm, pos} = self.sess.codemap().lookup_byte_offset(span.lo);
                 let base = pos + fm.start_pos;
                 Some(Span {
                     lo: base + self.sess.codemap().lookup_byte_offset(sub.lo).pos,
@@ -107,8 +103,7 @@ impl<'a> SpanUtils<'a> {
             if ts.tok == token::Eof {
                 return self.make_sub_span(span, result)
             }
-            if bracket_count == 0 &&
-               (ts.tok.is_ident() || ts.tok.is_keyword(keywords::SelfValue)) {
+            if bracket_count == 0 && (ts.tok.is_ident() || ts.tok.is_keyword(keywords::SelfValue)) {
                 result = Some(ts.sp);
             }
 
@@ -116,7 +111,7 @@ impl<'a> SpanUtils<'a> {
                 token::Lt => 1,
                 token::Gt => -1,
                 token::BinOp(token::Shr) => -2,
-                _ => 0
+                _ => 0,
             }
         }
     }
@@ -130,8 +125,7 @@ impl<'a> SpanUtils<'a> {
             if ts.tok == token::Eof {
                 return None;
             }
-            if bracket_count == 0 &&
-               (ts.tok.is_ident() || ts.tok.is_keyword(keywords::SelfValue)) {
+            if bracket_count == 0 && (ts.tok.is_ident() || ts.tok.is_keyword(keywords::SelfValue)) {
                 return self.make_sub_span(span, Some(ts.sp));
             }
 
@@ -139,7 +133,7 @@ impl<'a> SpanUtils<'a> {
                 token::Lt => 1,
                 token::Gt => -1,
                 token::BinOp(token::Shr) => -2,
-                _ => 0
+                _ => 0,
             }
         }
     }
@@ -156,20 +150,16 @@ impl<'a> SpanUtils<'a> {
             last_span = None;
             let mut next = toks.real_token();
 
-            if (next.tok == token::OpenDelim(token::Paren) ||
-                next.tok == token::Lt) &&
-               bracket_count == 0 &&
-               prev.tok.is_ident() {
+            if (next.tok == token::OpenDelim(token::Paren) || next.tok == token::Lt) &&
+               bracket_count == 0 && prev.tok.is_ident() {
                 result = Some(prev.sp);
             }
 
-            if bracket_count == 0 &&
-                next.tok == token::ModSep {
+            if bracket_count == 0 && next.tok == token::ModSep {
                 let old = prev;
                 prev = next;
                 next = toks.real_token();
-                if next.tok == token::Lt &&
-                   old.tok.is_ident() {
+                if next.tok == token::Lt && old.tok.is_ident() {
                     result = Some(old.sp);
                 }
             }
@@ -178,7 +168,7 @@ impl<'a> SpanUtils<'a> {
                 token::OpenDelim(token::Paren) | token::Lt => 1,
                 token::CloseDelim(token::Paren) | token::Gt => -1,
                 token::BinOp(token::Shr) => -2,
-                _ => 0
+                _ => 0,
             };
 
             if prev.tok.is_ident() && bracket_count == 0 {
@@ -202,9 +192,7 @@ impl<'a> SpanUtils<'a> {
         loop {
             let next = toks.real_token();
 
-            if (next.tok == token::Lt ||
-                next.tok == token::Colon) &&
-               bracket_count == 0 &&
+            if (next.tok == token::Lt || next.tok == token::Colon) && bracket_count == 0 &&
                prev.tok.is_ident() {
                 result = Some(prev.sp);
             }
@@ -214,7 +202,7 @@ impl<'a> SpanUtils<'a> {
                 token::Gt => -1,
                 token::BinOp(token::Shl) => 2,
                 token::BinOp(token::Shr) => -2,
-                _ => 0
+                _ => 0,
             };
 
             if next.tok == token::Eof {
@@ -265,7 +253,7 @@ impl<'a> SpanUtils<'a> {
                 token::Gt => -1,
                 token::BinOp(token::Shl) => 2,
                 token::BinOp(token::Shr) => -2,
-                _ => 0
+                _ => 0,
             };
 
             // Ignore the `>::` in `<Type as Trait>::AssocTy`.
@@ -316,21 +304,15 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    pub fn sub_span_after_keyword(&self,
-                                  span: Span,
-                                  keyword: keywords::Keyword) -> Option<Span> {
+    pub fn sub_span_after_keyword(&self, span: Span, keyword: keywords::Keyword) -> Option<Span> {
         self.sub_span_after(span, |t| t.is_keyword(keyword))
     }
 
-    pub fn sub_span_after_token(&self,
-                                span: Span,
-                                tok: Token) -> Option<Span> {
+    pub fn sub_span_after_token(&self, span: Span, tok: Token) -> Option<Span> {
         self.sub_span_after(span, |t| t == tok)
     }
 
-    fn sub_span_after<F: Fn(Token) -> bool>(&self,
-                                            span: Span,
-                                            f: F) -> Option<Span> {
+    fn sub_span_after<F: Fn(Token) -> bool>(&self, span: Span, f: F) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         loop {
             let ts = toks.real_token();
