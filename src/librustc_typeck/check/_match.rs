@@ -15,10 +15,10 @@ use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
 use middle::pat_util::pat_is_resolved_const;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::Substs;
-use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::{self, Ty, HasTypeFlags, LvaluePreference};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
 use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
-use check::{check_expr_with_lvalue_pref, LvaluePreference};
+use check::{check_expr_with_lvalue_pref};
 use check::{instantiate_path, resolve_ty_and_def_ufcs, structurally_resolved_type};
 use require_same_types;
 use util::nodemap::FnvHashMap;
@@ -292,7 +292,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                     let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
                     tcx.mk_ref(tcx.mk_region(region), ty::TypeAndMut {
                         ty: tcx.mk_slice(inner_ty),
-                        mutbl: expected_ty.builtin_deref(true).map(|mt| mt.mutbl)
+                        mutbl: expected_ty.builtin_deref(true, ty::NoPreference).map(|mt| mt.mutbl)
                                                               .unwrap_or(hir::MutImmutable)
                     })
                 }
@@ -310,7 +310,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             }
             if let Some(ref slice) = *slice {
                 let region = fcx.infcx().next_region_var(infer::PatternRegion(pat.span));
-                let mutbl = expected_ty.builtin_deref(true)
+                let mutbl = expected_ty.builtin_deref(true, ty::NoPreference)
                     .map_or(hir::MutImmutable, |mt| mt.mutbl);
 
                 let slice_ty = tcx.mk_ref(tcx.mk_region(region), ty::TypeAndMut {
@@ -399,7 +399,7 @@ pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     let tcx = pcx.fcx.ccx.tcx;
     if pat_is_binding(&tcx.def_map, inner) {
         let expected = fcx.infcx().shallow_resolve(expected);
-        expected.builtin_deref(true).map_or(true, |mt| match mt.ty.sty {
+        expected.builtin_deref(true, ty::NoPreference).map_or(true, |mt| match mt.ty.sty {
             ty::TyTrait(_) => {
                 // This is "x = SomeTrait" being reduced from
                 // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.

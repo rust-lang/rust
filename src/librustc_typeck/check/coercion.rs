@@ -60,13 +60,13 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::{autoderef, FnCtxt, LvaluePreference, UnresolvedTypeAction};
+use check::{autoderef, FnCtxt, UnresolvedTypeAction};
 
 use middle::infer::{self, Coercion};
 use middle::traits::{self, ObligationCause};
 use middle::traits::{predicate_for_trait_def, report_selection_error};
 use middle::ty::{AutoDerefRef, AdjustDerefRef};
-use middle::ty::{self, TypeAndMut, Ty, TypeError};
+use middle::ty::{self, LvaluePreference, TypeAndMut, Ty, TypeError};
 use middle::ty_relate::RelateResult;
 use util::common::indent;
 

@@ -14,13 +14,13 @@ use super::{CandidateSource, ImplSource, TraitSource};
 use super::suggest;
 
 use check;
-use check::{FnCtxt, NoPreference, UnresolvedTypeAction};
+use check::{FnCtxt, UnresolvedTypeAction};
 use middle::def_id::DefId;
 use middle::fast_reject;
 use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
-use middle::ty::{self, RegionEscape, Ty, ToPolyTraitRef, TraitRef};
+use middle::ty::{self, NoPreference, RegionEscape, Ty, ToPolyTraitRef, TraitRef};
 use middle::ty::HasTypeFlags;
 use middle::ty_fold::TypeFoldable;
 use middle::infer;

@@ -29,6 +29,7 @@ pub use self::BoundRegion::*;
 pub use self::TypeVariants::*;
 pub use self::IntVarValue::*;
 pub use self::CopyImplementationError::*;
+pub use self::LvaluePreference::*;
 
 pub use self::BuiltinBound::Send as BoundSend;
 pub use self::BuiltinBound::Sized as BoundSized;
@@ -4828,6 +4829,21 @@ impl<'tcx> TyS<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum LvaluePreference {
+    PreferMutLvalue,
+    NoPreference
+}
+
+impl LvaluePreference {
+    pub fn from_mutbl(m: hir::Mutability) -> Self {
+        match m {
+            hir::MutMutable => PreferMutLvalue,
+            hir::MutImmutable => NoPreference,
+        }
+    }
+}
+
 /// Describes whether a type is representable. For types that are not
 /// representable, 'SelfRecursive' and 'ContainsRecursive' are used to
 /// distinguish between types that are recursive with themselves and types that
@@ -5073,12 +5089,15 @@ impl<'tcx> TyS<'tcx> {
     //
     // The parameter `explicit` indicates if this is an *explicit* dereference.
     // Some types---notably unsafe ptrs---can only be dereferenced explicitly.
-    pub fn builtin_deref(&self, explicit: bool) -> Option<TypeAndMut<'tcx>> {
+    pub fn builtin_deref(&self, explicit: bool, pref: LvaluePreference)
+        -> Option<TypeAndMut<'tcx>>
+    {
         match self.sty {
             TyBox(ty) => {
                 Some(TypeAndMut {
                     ty: ty,
-                    mutbl: hir::MutImmutable,
+                    mutbl:
+                        if pref == PreferMutLvalue { hir::MutMutable } else { hir::MutImmutable },
                 })
             },
             TyRef(_, mt) => Some(mt),
@@ -5183,7 +5202,7 @@ impl<'tcx> TyS<'tcx> {
                                     }
                                     None => {}
                                 }
-                                match adjusted_ty.builtin_deref(true) {
+                                match adjusted_ty.builtin_deref(true, NoPreference) {
                                     Some(mt) => { adjusted_ty = mt.ty; }
                                     None => {
                                         cx.sess.span_bug(
