@@ -4,7 +4,7 @@
 //! disable the subsumed lint unless it has a higher level
 
 use rustc::lint::*;
-use syntax::ast::*;
+use rustc_front::hir::*;
 use syntax::codemap::Spanned;
 
 use eq_op::is_exp_equal;

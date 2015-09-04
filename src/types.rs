@@ -1,9 +1,9 @@
 use rustc::lint::*;
-use syntax::ast;
-use syntax::ast::*;
-use syntax::ast_util::{is_comparison_binop, binop_to_string};
+use rustc_front::hir::*;
+use reexport::*;
+use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::Span;
-use syntax::visit::{FnKind, Visitor, walk_ty};
+use rustc_front::visit::{FnKind, Visitor, walk_ty};
 use rustc::middle::ty;
 
 use utils::{match_type, snippet, span_lint, span_help_and_lint, in_external_macro};
@@ -24,7 +24,7 @@ impl LintPass for TypePass {
         lint_array!(BOX_VEC, LINKEDLIST)
     }
 
-    fn check_ty(&mut self, cx: &Context, ast_ty: &ast::Ty) {
+    fn check_ty(&mut self, cx: &Context, ast_ty: &Ty) {
         if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
             if let ty::TyBox(ref inner) = ty.sty {
                 if match_type(cx, inner, &VEC_PATH) {
@@ -126,7 +126,7 @@ fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
 
 fn is_isize_or_usize(typ: &ty::TyS) -> bool {
     match typ.sty {
-        ty::TyInt(ast::TyIs) | ty::TyUint(ast::TyUs) => true,
+        ty::TyInt(TyIs) | ty::TyUint(TyUs) => true,
         _ => false
     }
 }
@@ -211,7 +211,7 @@ impl LintPass for CastPass {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {
                         let from_nbits = int_ty_to_nbits(cast_from);
-                        let to_nbits = if let ty::TyFloat(ast::TyF32) = cast_to.sty {32} else {64};
+                        let to_nbits = if let ty::TyFloat(TyF32) = cast_to.sty {32} else {64};
                         if is_isize_or_usize(cast_from) || from_nbits >= to_nbits {
                             span_precision_loss_lint(cx, expr, cast_from, to_nbits == 64);
                         }
@@ -235,8 +235,8 @@ impl LintPass for CastPass {
                         check_truncation_and_wrapping(cx, expr, cast_from, cast_to);
                     }
                     (false, false) => {
-                        if let (&ty::TyFloat(ast::TyF64),
-                                &ty::TyFloat(ast::TyF32)) = (&cast_from.sty, &cast_to.sty) {
+                        if let (&ty::TyFloat(TyF64),
+                                &ty::TyFloat(TyF32)) = (&cast_from.sty, &cast_to.sty) {
                             span_lint(cx, CAST_POSSIBLE_TRUNCATION,
                                 expr.span,
                                 "casting f64 to f32 may truncate the value");
@@ -320,7 +320,7 @@ fn check_fndecl(cx: &Context, decl: &FnDecl) {
     }
 }
 
-fn check_type(cx: &Context, ty: &ast::Ty) {
+fn check_type(cx: &Context, ty: &Ty) {
     if in_external_macro(cx, ty.span) { return; }
     let score = {
         let mut visitor = TypeComplexityVisitor { score: 0, nest: 1 };
@@ -343,7 +343,7 @@ struct TypeComplexityVisitor {
 }
 
 impl<'v> Visitor<'v> for TypeComplexityVisitor {
-    fn visit_ty(&mut self, ty: &'v ast::Ty) {
+    fn visit_ty(&mut self, ty: &'v Ty) {
         let (add_score, sub_nest) = match ty.node {
             // _, &x and *x have only small overhead; don't mess with nesting level
             TyInfer |

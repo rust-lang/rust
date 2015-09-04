@@ -1,8 +1,8 @@
 use rustc::lint::*;
 use rustc::middle::const_eval::lookup_const_by_id;
 use rustc::middle::def::*;
-use syntax::ast::*;
-use syntax::ast_util::is_comparison_binop;
+use rustc_front::hir::*;
+use rustc_front::util::is_comparison_binop;
 use syntax::codemap::Span;
 
 use utils::span_lint;

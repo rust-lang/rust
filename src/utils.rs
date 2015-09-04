@@ -1,7 +1,8 @@
 use rustc::lint::*;
-use syntax::ast::*;
+use rustc_front::hir::*;
+use reexport::*;
 use syntax::codemap::{ExpnInfo, Span, ExpnFormat};
-use rustc::ast_map::Node::NodeExpr;
+use rustc::front::map::Node::NodeExpr;
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty;
 use std::borrow::Cow;

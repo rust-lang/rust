@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use syntax::ast::*;
+use rustc_front::hir::*;
 use syntax::ptr::P;
 use syntax::codemap::{Span, Spanned};
 use rustc::middle::def_id::DefId;

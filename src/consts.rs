@@ -4,7 +4,7 @@ use rustc::lint::Context;
 use rustc::middle::const_eval::lookup_const_by_id;
 use rustc::middle::def::PathResolution;
 use rustc::middle::def::Def::*;
-use syntax::ast::*;
+use rustc_front::hir::*;
 use syntax::ptr::P;
 use std::cmp::PartialOrd;
 use std::cmp::Ordering::{self, Greater, Less, Equal};

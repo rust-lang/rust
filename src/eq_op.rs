@@ -1,6 +1,6 @@
 use rustc::lint::*;
-use syntax::ast::*;
-use syntax::ast_util as ast_util;
+use rustc_front::hir::*;
+use rustc_front::util as ast_util;
 use syntax::ptr::P;
 
 use consts::constant;

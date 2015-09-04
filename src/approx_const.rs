@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use syntax::ast::*;
+use rustc_front::hir::*;
 use syntax::codemap::Span;
 use std::f64::consts as f64;
 

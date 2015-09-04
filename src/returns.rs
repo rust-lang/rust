@@ -1,7 +1,8 @@
 use rustc::lint::*;
-use syntax::ast::*;
+use rustc_front::hir::*;
+use reexport::*;
 use syntax::codemap::{Span, Spanned};
-use syntax::visit::FnKind;
+use rustc_front::visit::FnKind;
 
 use utils::{span_lint, snippet, match_path, in_external_macro};
 
@@ -42,8 +43,7 @@ impl ReturnPass {
             // an if/if let expr, check both exprs
             // note, if without else is going to be a type checking error anyways
             // (except for unit type functions) so we don't match it
-            ExprIf(_, ref ifblock, Some(ref elsexpr)) |
-            ExprIfLet(_, _, ref ifblock, Some(ref elsexpr)) => {
+            ExprIf(_, ref ifblock, Some(ref elsexpr)) => {
                 self.check_block_return(cx, ifblock);
                 self.check_final_expr(cx, elsexpr);
             }

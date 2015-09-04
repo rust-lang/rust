@@ -1,10 +1,11 @@
 use rustc::lint::*;
 use syntax::ptr::P;
-use syntax::ast::*;
-use syntax::ast_util::{is_comparison_binop, binop_to_string};
+use rustc_front::hir::*;
+use reexport::*;
+use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::{Span, Spanned};
-use syntax::visit::FnKind;
-use rustc::ast_map::Node::*;
+use rustc_front::visit::FnKind;
+use rustc::front::map::Node::*;
 use rustc::middle::ty;
 
 use utils::{match_path, snippet, span_lint, walk_ptrs_ty};
