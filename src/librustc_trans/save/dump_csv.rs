@@ -71,13 +71,14 @@ pub struct DumpCsvVisitor<'l, 'tcx: 'l> {
     span: SpanUtils<'l>,
     fmt: FmtStrs<'l>,
 
-    cur_scope: NodeId
+    cur_scope: NodeId,
 }
 
 impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
     pub fn new(tcx: &'l ty::ctxt<'tcx>,
                analysis: &'l ty::CrateAnalysis,
-               output_file: Box<File>) -> DumpCsvVisitor<'l, 'tcx> {
+               output_file: Box<File>)
+               -> DumpCsvVisitor<'l, 'tcx> {
         let span_utils = SpanUtils::new(&tcx.sess);
         DumpCsvVisitor {
             sess: &tcx.sess,
@@ -85,16 +86,14 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             save_ctxt: SaveContext::from_span_utils(tcx, span_utils.clone()),
             analysis: analysis,
             span: span_utils.clone(),
-            fmt: FmtStrs::new(box Recorder {
-                                out: output_file,
-                                dump_spans: false,
-                              }, span_utils),
-            cur_scope: 0
+            fmt: FmtStrs::new(box Recorder { out: output_file, dump_spans: false },
+                              span_utils),
+            cur_scope: 0,
         }
     }
 
-    fn nest<F>(&mut self, scope_id: NodeId, f: F) where
-        F: FnOnce(&mut DumpCsvVisitor<'l, 'tcx>),
+    fn nest<F>(&mut self, scope_id: NodeId, f: F)
+        where F: FnOnce(&mut DumpCsvVisitor<'l, 'tcx>)
     {
         let parent_scope = self.cur_scope;
         self.cur_scope = scope_id;
@@ -140,9 +139,11 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         let mut segs = vec!();
         for (i, (seg, span)) in path.segments.iter().zip(&spans).enumerate() {
             segs.push(seg.clone());
-            let sub_path = ast::Path{span: *span, // span for the last segment
-                                     global: path.global,
-                                     segments: segs};
+            let sub_path = ast::Path {
+                span: *span, // span for the last segment
+                global: path.global,
+                segments: segs,
+            };
             let qualname = if i == 0 && path.global {
                 format!("::{}", path_to_string(&sub_path))
             } else {
@@ -271,7 +272,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             def::DefPrimTy(_) => {
                 self.sess.span_bug(span, &format!("lookup_def_kind for unexpected item: {:?}",
                                                  def));
-            },
+            }
         }
     }
 
@@ -357,9 +358,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         }
     }
 
-    fn process_struct_field_def(&mut self,
-                                field: &ast::StructField,
-                                parent_id: NodeId) {
+    fn process_struct_field_def(&mut self, field: &ast::StructField, parent_id: NodeId) {
         let field_data = self.save_ctxt.get_field_data(field, parent_id);
         if let Some(field_data) = field_data {
             self.fmt.field_str(field.span,
@@ -374,7 +373,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
 
     // Dump generic params bindings, then visit_generics
     fn process_generic_params(&mut self,
-                              generics:&ast::Generics,
+                              generics: &ast::Generics,
                               full_span: Span,
                               prefix: &str,
                               id: NodeId) {
@@ -427,11 +426,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         self.nest(item.id, |v| v.visit_block(&body));
     }
 
-    fn process_static_or_const_item(&mut self,
-                                    item: &ast::Item,
-                                    typ: &ast::Ty,
-                                    expr: &ast::Expr)
-    {
+    fn process_static_or_const_item(&mut self, item: &ast::Item, typ: &ast::Ty, expr: &ast::Expr) {
         let var_data = self.save_ctxt.get_item_data(item);
         down_cast_data!(var_data, VariableData, self, item.span);
         self.fmt.static_str(item.span,
@@ -452,8 +447,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                      ident: &ast::Ident,
                      span: Span,
                      typ: &ast::Ty,
-                     expr: &ast::Expr)
-    {
+                     expr: &ast::Expr) {
         let qualname = format!("::{}", self.tcx.map.path_to_string(id));
 
         let sub_span = self.span.sub_span_after_keyword(span,
@@ -641,8 +635,8 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                                          sub_span,
                                          id,
                                          item.id);
-                },
-                None => ()
+                }
+                None => (),
             }
         }
 
@@ -653,8 +647,8 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         }
     }
 
-    fn process_mod(&mut self,
-                   item: &ast::Item) {  // The module in question, represented as an item.
+    // `item` is the module in question, represented as an item.
+    fn process_mod(&mut self, item: &ast::Item) {
         let mod_data = self.save_ctxt.get_item_data(item);
         down_cast_data!(mod_data, ModData, self, item.span);
         self.fmt.mod_str(item.span,
@@ -665,10 +659,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                          &mod_data.filename);
     }
 
-    fn process_path(&mut self,
-                    id: NodeId,
-                    path: &ast::Path,
-                    ref_kind: Option<recorder::Row>) {
+    fn process_path(&mut self, id: NodeId, path: &ast::Path, ref_kind: Option<recorder::Row>) {
         if generated_code(path.span) {
             return;
         }
@@ -737,7 +728,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             def::DefStruct(_) |
             def::DefVariant(..) |
             def::DefFn(..) => self.write_sub_paths_truncated(path, false),
-            _ => {},
+            _ => {}
         }
     }
 
@@ -783,9 +774,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         visit::walk_expr_opt(self, base)
     }
 
-    fn process_method_call(&mut self,
-                           ex: &ast::Expr,
-                           args: &Vec<P<ast::Expr>>) {
+    fn process_method_call(&mut self, ex: &ast::Expr, args: &Vec<P<ast::Expr>>) {
         if let Some(call_data) = self.save_ctxt.get_expr_data(ex) {
             down_cast_data!(call_data, MethodCallData, self, ex.span);
             self.fmt.meth_call_str(ex.span,
@@ -799,7 +788,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         visit::walk_exprs(self, &args);
     }
 
-    fn process_pat(&mut self, p:&ast::Pat) {
+    fn process_pat(&mut self, p: &ast::Pat) {
         if generated_code(p.span) {
             return;
         }
@@ -827,7 +816,7 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
                     self.visit_pat(&field.pat);
                 }
             }
-            _ => visit::walk_pat(self, p)
+            _ => visit::walk_pat(self, p),
         }
     }
 }
@@ -851,10 +840,10 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                                                    sub_span,
                                                                    def_id,
                                                                    self.cur_scope),
-                                    None => {},
+                                    None => {}
                                 }
                                 Some(def_id)
-                            },
+                            }
                             None => None,
                         };
 
@@ -902,20 +891,19 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                             match plid.node {
                                 ast::PathListIdent { id, .. } => {
                                     match self.lookup_type_ref(id) {
-                                        Some(def_id) =>
-                                            match self.lookup_def_kind(id, plid.span) {
-                                                Some(kind) => {
-                                                    self.fmt.ref_str(
+                                        Some(def_id) => match self.lookup_def_kind(id, plid.span) {
+                                            Some(kind) => {
+                                                self.fmt.ref_str(
                                                         kind, plid.span,
                                                         Some(plid.span),
                                                         def_id, self.cur_scope);
-                                                }
-                                                None => ()
-                                            },
-                                        None => ()
+                                            }
+                                            None => (),
+                                        },
+                                        None => (),
                                     }
-                                },
-                                ast::PathListMod { .. } => ()
+                                }
+                                ast::PathListMod { .. } => (),
                             }
                         }
 
@@ -978,7 +966,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
                 self.visit_ty(&**ty);
                 self.process_generic_params(ty_params, item.span, &qualname, item.id);
-            },
+            }
             ast::ItemMac(_) => (),
             _ => visit::walk_item(self, item),
         }
@@ -1048,14 +1036,14 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                          sub_span,
                                          id,
                                          self.cur_scope);
-                    },
-                    None => ()
+                    }
+                    None => (),
                 }
 
                 self.write_sub_paths_truncated(path, false);
 
                 visit::walk_path(self, path);
-            },
+            }
             _ => visit::walk_ty(self, t),
         }
     }
@@ -1101,7 +1089,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                      field_data.ref_id,
                                      field_data.scope);
                 }
-            },
+            }
             ast::ExprTupField(ref sub_ex, idx) => {
                 if generated_code(sub_ex.span) {
                     return
@@ -1125,7 +1113,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                                             &format!("Expected struct or tuple \
                                                       type, found {:?}", ty)),
                 }
-            },
+            }
             ast::ExprClosure(_, ref decl, ref body) => {
                 if generated_code(body.span) {
                     return
@@ -1146,7 +1134,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
                 // walk the body
                 self.nest(ex.id, |v| v.visit_block(&**body));
-            },
+            }
             _ => {
                 visit::walk_expr(self, ex)
             }
@@ -1182,7 +1170,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
             }
             let def = def_map.get(&id).unwrap().full_def();
             match def {
-                def::DefLocal(id)  => {
+                def::DefLocal(id) => {
                     let value = if immut == ast::MutImmutable {
                         self.span.snippet(p.span).to_string()
                     } else {
@@ -1205,7 +1193,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
                 def::DefConst(..) |
                 def::DefAssociatedConst(..) => {}
                 _ => error!("unexpected definition kind when processing collected paths: {:?}",
-                            def)
+                            def),
             }
         }
 
