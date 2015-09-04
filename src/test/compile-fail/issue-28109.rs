@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! foo {
-    () => { break 'x; } //~ ERROR use of undeclared label `'x`
-}
+// Make sure that label for continue and break is spanned correctly
 
-pub fn main() {
-    'x: loop { foo!() }
+fn main() {
+    continue
+    'b //~ ERROR use of undeclared label
+    ;
+    break
+    'c //~ ERROR use of undeclared label
+    ;
 }

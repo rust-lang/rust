@@ -1911,7 +1911,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "break"));
                 try!(space(&mut self.s));
                 if let Some(ident) = opt_ident {
-                    try!(self.print_ident(ident));
+                    try!(self.print_ident(ident.node));
                     try!(space(&mut self.s));
                 }
             }
@@ -1919,7 +1919,7 @@ impl<'a> State<'a> {
                 try!(word(&mut self.s, "continue"));
                 try!(space(&mut self.s));
                 if let Some(ident) = opt_ident {
-                    try!(self.print_ident(ident));
+                    try!(self.print_ident(ident.node));
                     try!(space(&mut self.s))
                 }
             }
