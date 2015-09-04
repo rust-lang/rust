@@ -18,9 +18,9 @@ Before proceeding, it is highly recommended that one reads about [ownership][own
 
 ## `Box<T>`
 
-[`Box<T>`][box] is pointer which is &ldquo;owned&rdquo;, or a &ldquo;box&rdquo;. While it can hand
-out references to the contained data, it is the only owner of the data. In particular, when
-something like the following occurs:
+[`Box<T>`][box] is an &ldquo;owned&rdquo; pointer, or a &ldquo;box&rdquo;. While it can hand
+out references to the contained data, it is the only owner of the data. In particular, consider
+the following:
 
 ```rust
 let x = Box::new(1);
@@ -40,7 +40,7 @@ allowed to share references to this by the regular borrowing rules, checked at c
 
 [box]: ../std/boxed/struct.Box.html
 
-## `&T` and `&mut T` 
+## `&T` and `&mut T`
 
 These are immutable and mutable references respectively. They follow the &ldquo;read-write lock&rdquo;
 pattern, such that one may either have only one mutable reference to some data, or any number of
