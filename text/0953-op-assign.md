@@ -1,7 +1,7 @@
 - Feature Name: op_assign
 - Start Date: 2015-03-08
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#953](https://github.com/rust-lang/rfcs/pull/953)
+- Rust Issue: [rust-lang/rust#28235](https://github.com/rust-lang/rust/issues/28235)
 
 # Summary
 
