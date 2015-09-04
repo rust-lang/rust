@@ -965,7 +965,12 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         vec![Type::vector(&elem,
                                           length as u64)]
                     }
-                    Aggregate(false, _) => unimplemented!(),
+                    Aggregate(false, ref contents) => {
+                        let elems = contents.iter()
+                                            .map(|t| one(ty_to_type(ccx, t, any_changes_needed)))
+                                            .collect::<Vec<_>>();
+                        vec![Type::struct_(ccx, &elems, false)]
+                    }
                     Aggregate(true, ref contents) => {
                         *any_changes_needed = true;
                         contents.iter()
@@ -1049,7 +1054,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             };
             assert_eq!(inputs.len(), llargs.len());
 
-            match intr.definition {
+            let val = match intr.definition {
                 intrinsics::IntrinsicDef::Named(name) => {
                     let f = declare::declare_cfn(ccx,
                                                  name,
@@ -1057,6 +1062,20 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                  tcx.mk_nil());
                     Call(bcx, f, &llargs, None, call_debug_location)
                 }
+            };
+
+            match intr.output {
+                intrinsics::Type::Aggregate(flatten, ref elems) => {
+                    // the output is a tuple so we need to munge it properly
+                    assert!(!flatten);
+
+                    for i in 0..elems.len() {
+                        let val = ExtractValue(bcx, val, i);
+                        Store(bcx, val, StructGEP(bcx, llresult, i));
+                    }
+                    C_nil(ccx)
+                }
+                _ => val,
             }
         }
     };
