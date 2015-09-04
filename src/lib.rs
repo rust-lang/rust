@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #![feature(rustc_private)]
-#![feature(str_escape)]
-#![feature(str_char)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 
@@ -29,6 +27,9 @@ extern crate syntax;
 extern crate rustc_serialize;
 
 extern crate strings;
+
+extern crate unicode_segmentation;
+extern crate regex;
 
 use rustc::session::Session;
 use rustc::session::config as rustc_config;
