@@ -64,7 +64,6 @@ mod imp {
 
     pub unsafe fn cleanup() {
         take();
-        LOCK.destroy();
     }
 
     pub fn take() -> Option<Vec<Vec<u8>>> {
