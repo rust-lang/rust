@@ -125,7 +125,7 @@ fn grow(&self, increment: f64) -> Circle {
 ```
 
 We just say we’re returning a `Circle`. With this method, we can grow a new
-`circle` to any arbitrary size.
+`Circle` to any arbitrary size.
 
 # Associated functions
 
