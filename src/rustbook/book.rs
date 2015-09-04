@@ -102,7 +102,7 @@ pub fn parse_summary(input: &mut Read, src: &Path) -> Result<Book, Vec<String>> 
     top_items.push(BookItem {
         title: "Introduction".to_string(),
         path: PathBuf::from("README.md"),
-        path_to_root: PathBuf::from("."),
+        path_to_root: PathBuf::from(""),
         children: vec!(),
     });
 
