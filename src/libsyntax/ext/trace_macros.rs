@@ -24,6 +24,7 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
         feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
                                        "trace_macros",
                                        sp,
+                                       feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_TRACE_MACROS);
         return base::DummyResult::any(sp);
     }
