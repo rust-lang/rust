@@ -306,7 +306,7 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
 
 ```antlr
 item : vis ? mod_item | fn_item | type_item | struct_item | enum_item
-     | const_item | static_item | trait_item | impl_item | extern_block ;
+     | const_item | static_item | trait_item | impl_item | extern_block_item ;
 ```
 
 ### Type Parameters
