@@ -14,6 +14,9 @@ extern crate rustc_front;
 extern crate core;
 extern crate collections;
 
+// for unicode nfc normalization
+extern crate unicode_normalization;
+
 use rustc::plugin::Registry;
 use rustc::lint::LintPassObject;
 
@@ -96,6 +99,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         types::CAST_PRECISION_LOSS,
         types::CAST_SIGN_LOSS,
         unicode::NON_ASCII_LITERAL,
+        unicode::UNICODE_NOT_NFC,
     ]);
 
     reg.register_lint_group("clippy", vec![

@@ -4,18 +4,17 @@
 #[deny(zero_width_space)]
 fn zero() {
     print!("Here >​< is a ZWS, and ​another");
-               //~^ ERROR zero-width space detected. Consider using `\u{200B}`
-                            //~^^ ERROR zero-width space detected. Consider using `\u{200B}`
+               //~^ ERROR zero-width space detected
 }
 
-//#[deny(unicode_canon)]
+#[deny(unicode_not_nfc)]
 fn canon() {
-    print!("̀ah?"); //not yet ~ERROR non-canonical unicode sequence detected. Consider using à
+    print!("̀àh?"); //~ERROR non-nfc unicode sequence detected
 }
 
 #[deny(non_ascii_literal)]
 fn uni() {
-    print!("Üben!"); //~ERROR literal non-ASCII character detected. Consider using `\u{DC}`
+    print!("Üben!"); //~ERROR literal non-ASCII character detected
 }
 
 fn main() {
