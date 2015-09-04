@@ -3200,16 +3200,6 @@ let z = match x { &0 => "zero", _ => "some" };
 assert_eq!(y, z);
 ```
 
-A pattern that's just an identifier, like `Nil` in the previous example, could
-either refer to an enum variant that's in scope, or bind a new variable. The
-compiler resolves this ambiguity by forbidding variable bindings that occur in
-`match` patterns from shadowing names of variants that are in scope. For
-example, wherever `List` is in scope, a `match` pattern would not be able to
-bind `Nil` as a new name. The compiler interprets a variable pattern `x` as a
-binding _only_ if there is no variant named `x` in scope. A convention you can
-use to avoid conflicts is simply to name variants with upper-case letters, and
-local variables with lower-case letters.
-
 Multiple match patterns may be joined with the `|` operator. A range of values
 may be specified with `...`. For example:
 
