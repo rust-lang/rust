@@ -16,6 +16,9 @@ keywords = ["clippy", "lint", "plugin"]
 name = "clippy"
 plugin = true
 
+[dependencies]
+unicode-normalization = "*"
+
 [dev-dependencies]
 compiletest_rs = "*"
 regex = "*"
