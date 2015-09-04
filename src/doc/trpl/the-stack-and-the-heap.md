@@ -51,7 +51,7 @@ we’ll throw them all away at the same time as well, we can get rid of it very
 fast too.
 
 The downside is that we can’t keep values around if we need them for longer
-than a single function. We also haven’t talked about what that name, ‘stack’
+than a single function. We also haven’t talked about what the word, ‘stack’,
 means. To do that, we need a slightly more complicated example:
 
 ```rust
