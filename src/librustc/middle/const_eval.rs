@@ -91,11 +91,11 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
         let expr_id = match csearch::maybe_get_item_ast(tcx, enum_def,
             Box::new(|a, b, c, d| astencode::decode_inlined_item(a, b, c, d))) {
             csearch::FoundAst::Found(&InlinedItem::Item(ref item)) => match item.node {
-                hir::ItemEnum(hir::EnumDef { ref variants }, _) => {
-                    // NOTE this doesn't do the right thing, it compares inlined
-                    // NodeId's to the original variant_def's NodeId, but they
-                    // come from different crates, so they will likely never match.
-                    variant_expr(&variants[..], variant_def.node).map(|e| e.id)
+                hir::ItemEnum(hir::EnumDef { .. }, _) => {
+                    tcx.sess.span_bug(
+                        item.span,
+                        &format!("cross-crate enum discr constant with enum {:?} variant {:?}",
+                                 enum_def, variant_def));
                 }
                 _ => None
             },
