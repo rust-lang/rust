@@ -81,7 +81,7 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
     s
 }
 
-fn left_trim_comment_line<'a>(line: &'a str) -> &'a str {
+fn left_trim_comment_line(line: &str) -> &str {
     if line.starts_with("/* ") || line.starts_with("// ") {
         &line[3..]
     } else if line.starts_with("/*") || line.starts_with("* ") || line.starts_with("//") {
@@ -289,7 +289,7 @@ impl<T> Iterator for CharClasses<T> where T: Iterator, T::Item: RichChar {
                 return Some((CodeCharKind::Comment, item));
             }
         };
-        return Some((CodeCharKind::Normal, item));
+        Some((CodeCharKind::Normal, item))
     }
 }
 

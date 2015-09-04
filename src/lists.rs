@@ -414,8 +414,8 @@ fn total_item_width(item: &ListItem) -> usize {
 }
 
 fn comment_len(comment: &Option<String>) -> usize {
-    match comment {
-        &Some(ref s) => {
+    match *comment {
+        Some(ref s) => {
             let text_len = s.trim().len();
             if text_len > 0 {
                 // We'll put " /*" before and " */" after inline comments.
@@ -424,6 +424,6 @@ fn comment_len(comment: &Option<String>) -> usize {
                 text_len
             }
         }
-        &None => 0,
+        None => 0,
     }
 }

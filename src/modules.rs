@@ -36,7 +36,7 @@ fn list_submodules<'a>(module: &'a ast::Mod,
                        codemap: &codemap::CodeMap,
                        result: &mut HashMap<PathBuf, &'a ast::Mod>) {
     debug!("list_submodules: search_dir: {:?}", search_dir);
-    for item in module.items.iter() {
+    for item in &module.items {
         if let ast::ItemMod(ref sub_mod) = item.node {
             if !utils::contains_skip(&item.attrs) {
                 let is_internal = codemap.span_to_filename(item.span) ==
