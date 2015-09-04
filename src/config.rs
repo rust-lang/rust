@@ -52,10 +52,30 @@ macro_rules! create_config {
             $(pub $i: $ty),+
         }
 
+        // Just like the Config struct but with each property wrapped
+        // as Option<T>. This is used to parse a rustfmt.toml that doesn't
+        // specity all properties of `Config`.
+        // We first parse into `ParsedConfig`, then create a default `Config`
+        // and overwrite the properties with corresponding values from `ParsedConfig`
+        #[derive(RustcDecodable, Clone)]
+        pub struct ParsedConfig {
+            $(pub $i: Option<$ty>),+
+        }
+
         impl Config {
+
+            fn fill_from_parsed_config(mut self, parsed: &ParsedConfig) -> Config {
+            $(
+                if let Some(val) = parsed.$i {
+                    self.$i = val;
+                }
+            )+
+                self
+            }
+
             pub fn from_toml(toml: &str) -> Config {
                 let parsed = toml.parse().unwrap();
-                match toml::decode(parsed) {
+                let parsed_config:ParsedConfig = match toml::decode(parsed) {
                     Some(decoded) => decoded,
                     None => {
                         println!("Decoding config file failed. Config:\n{}", toml);
@@ -63,7 +83,8 @@ macro_rules! create_config {
                         println!("\n\nParsed:\n{:?}", parsed);
                         panic!();
                     }
-                }
+                };
+                Config::default().fill_from_parsed_config(&parsed_config)
             }
 
             pub fn override_value(&mut self, key: &str, val: &str) {
