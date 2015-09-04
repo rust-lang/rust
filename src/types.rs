@@ -265,8 +265,8 @@ impl Rewrite for ast::WherePredicate {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
         // TODO dead spans?
         // TODO assumes we'll always fit on one line...
-        Some(match self {
-                &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ref bound_lifetimes,
+        Some(match *self {
+                ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ref bound_lifetimes,
                                                                           ref bounded_ty,
                                                                           ref bounds,
                                                                           ..}) => {
@@ -299,7 +299,7 @@ impl Rewrite for ast::WherePredicate {
                         format!("{}: {}", type_str, bounds_str)
                     }
                 }
-                &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
+                ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
                                                                             ref bounds,
                                                                             ..}) => {
                     format!("{}: {}",
@@ -307,7 +307,7 @@ impl Rewrite for ast::WherePredicate {
                         bounds.iter().map(pprust::lifetime_to_string)
                               .collect::<Vec<_>>().join(" + "))
                 }
-                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
+                ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
                     let ty_str = pprust::ty_to_string(ty);
                 // 3 = " = ".len()
                     let used_width = 3 + ty_str.len();

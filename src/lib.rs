@@ -198,7 +198,7 @@ struct FormatReport {
 impl fmt::Display for FormatReport {
     // Prints all the formatting errors.
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        for (file, errors) in self.file_error_map.iter() {
+        for (file, errors) in &self.file_error_map {
             for error in errors {
                 try!(write!(fmt,
                             "{} {}:{}: {} {}\n",
@@ -292,7 +292,7 @@ fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
             truncate_todo.push((f.to_owned(), text.len - newline_count + 1))
         }
 
-        for &(l, _, _) in trims.iter() {
+        for &(l, _, _) in &trims {
             errors.push(FormattingError {
                 line: l,
                 kind: ErrorKind::TrailingWhitespace

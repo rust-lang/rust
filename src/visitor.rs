@@ -49,10 +49,10 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     fn visit_stmt(&mut self, stmt: &'v ast::Stmt) {
         match stmt.node {
             ast::Stmt_::StmtDecl(ref decl, _) => {
-                return match decl.node {
+                match decl.node {
                     ast::Decl_::DeclLocal(ref local) => self.visit_let(local, stmt.span),
                     ast::Decl_::DeclItem(..) => visit::walk_stmt(self, stmt),
-                };
+                }
             }
             ast::Stmt_::StmtExpr(ref ex, _) | ast::Stmt_::StmtSemi(ref ex, _) => {
                 self.format_missing_with_indent(stmt.span.lo);
