@@ -1,6 +1,6 @@
 % Choosing your Guarantees
 
-One important feature of Rust as language is that it lets us control the costs and guarantees
+One important feature of Rust is that it lets us control the costs and guarantees
 of a program.
 
 There are various &ldquo;wrapper type&rdquo; abstractions in the Rust standard library which embody
@@ -18,9 +18,9 @@ Before proceeding, it is highly recommended that one reads about [ownership][own
 
 ## `Box<T>`
 
-[`Box<T>`][box] is pointer which is &ldquo;owned&rdquo;, or a &ldquo;box&rdquo;. While it can hand
-out references to the contained data, it is the only owner of the data. In particular, when
-something like the following occurs:
+[`Box<T>`][box] is an &ldquo;owned&rdquo; pointer, or a &ldquo;box&rdquo;. While it can hand
+out references to the contained data, it is the only owner of the data. In particular, consider
+the following:
 
 ```rust
 let x = Box::new(1);
@@ -40,7 +40,7 @@ allowed to share references to this by the regular borrowing rules, checked at c
 
 [box]: ../std/boxed/struct.Box.html
 
-## `&T` and `&mut T` 
+## `&T` and `&mut T`
 
 These are immutable and mutable references respectively. They follow the &ldquo;read-write lock&rdquo;
 pattern, such that one may either have only one mutable reference to some data, or any number of
@@ -243,7 +243,7 @@ Many of the types above cannot be used in a threadsafe manner. Particularly, `Rc
 `RefCell<T>`, which both use non-atomic reference counts (_atomic_ reference counts are those which
 can be incremented from multiple threads without causing a data race), cannot be used this way. This
 makes them cheaper to use, but we need thread safe versions of these too. They exist, in the form of
-`Arc<T>` and `Mutex<T>`/`RWLock<T>`
+`Arc<T>` and `Mutex<T>`/`RwLock<T>`
 
 Note that the non-threadsafe types _cannot_ be sent between threads, and this is checked at compile
 time.

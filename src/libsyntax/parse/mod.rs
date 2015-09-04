@@ -499,7 +499,7 @@ pub fn byte_lit(lit: &str) -> (u8, usize) {
     }
 }
 
-pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
+pub fn byte_str_lit(lit: &str) -> Rc<Vec<u8>> {
     let mut res = Vec::with_capacity(lit.len());
 
     // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
@@ -517,7 +517,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
         }
     }
 
-    // binary literals *must* be ASCII, but the escapes don't have to be
+    // byte string literals *must* be ASCII, but the escapes don't have to be
     let mut chars = lit.bytes().enumerate().peekable();
     loop {
         match chars.next() {

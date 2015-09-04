@@ -200,7 +200,7 @@ while    { return WHILE; }
 <ltorchar><<EOF>>                     { BEGIN(INITIAL); return -1; }
 
 b\x22              { BEGIN(bytestr); yymore(); }
-<bytestr>\x22      { BEGIN(suffix); return LIT_BINARY; }
+<bytestr>\x22      { BEGIN(suffix); return LIT_BYTE_STR; }
 
 <bytestr><<EOF>>                { return -1; }
 <bytestr>\\[n\nrt\\\x27\x220]   { yymore(); }
@@ -210,7 +210,7 @@ b\x22              { BEGIN(bytestr); yymore(); }
 <bytestr>(.|\n)                 { yymore(); }
 
 br\x22                      { BEGIN(rawbytestr_nohash); yymore(); }
-<rawbytestr_nohash>\x22     { BEGIN(suffix); return LIT_BINARY_RAW; }
+<rawbytestr_nohash>\x22     { BEGIN(suffix); return LIT_BYTE_STR_RAW; }
 <rawbytestr_nohash>(.|\n)   { yymore(); }
 <rawbytestr_nohash><<EOF>>  { return -1; }
 
@@ -228,7 +228,7 @@ br/# {
         end_hashes++;
         if (end_hashes == num_hashes) {
             BEGIN(INITIAL);
-            return LIT_BINARY_RAW;
+            return LIT_BYTE_STR_RAW;
         }
     }
     yymore();
@@ -237,7 +237,7 @@ br/# {
     end_hashes = 1;
     if (end_hashes == num_hashes) {
         BEGIN(INITIAL);
-        return LIT_BINARY_RAW;
+        return LIT_BYTE_STR_RAW;
     }
     yymore();
 }
