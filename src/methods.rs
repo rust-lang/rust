@@ -108,7 +108,7 @@ impl LintPass for MethodsPass {
 const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [
     ("into_", &[ValueSelf]),
     ("to_",   &[RefSelf]),
-    ("as_",   &[RefSelf]),
+    ("as_",   &[RefSelf, RefMutSelf]),
     ("is_",   &[RefSelf, NoSelf]),
     ("from_", &[NoSelf]),
 ];
