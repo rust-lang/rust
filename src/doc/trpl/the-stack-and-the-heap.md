@@ -38,7 +38,7 @@ local variables and some other information. This is called a ‘stack frame’, 
 for the purpose of this tutorial, we’re going to ignore the extra information
 and just consider the local variables we’re allocating. So in this case, when
 `main()` is run, we’ll allocate a single 32-bit integer for our stack frame.
-This is automatically handled for you, as you can see, we didn’t have to write
+This is automatically handled for you, as you can see; we didn’t have to write
 any special Rust code or anything.
 
 When the function is over, its stack frame gets deallocated. This happens
