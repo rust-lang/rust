@@ -308,7 +308,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
 }
 
 pub fn unindent(s: &str) -> String {
-    let lines = s.lines_any().collect::<Vec<&str> >();
+    let lines = s.lines().collect::<Vec<&str> >();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
     let min_indent = lines.iter().fold(usize::MAX, |min_indent, line| {
