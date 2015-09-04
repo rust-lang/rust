@@ -29,17 +29,15 @@ use syntax::attr::{self, AttrMetaMethods};
 // explored. For example, if it's a live NodeItem that is a
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
-fn should_explore(tcx: &ty::ctxt, def_id: DefId) -> bool {
-    if !def_id.is_local() {
-        return false;
-    }
-
-    match tcx.map.find(def_id.node) {
-        Some(ast_map::NodeItem(..))
-        | Some(ast_map::NodeImplItem(..))
-        | Some(ast_map::NodeForeignItem(..))
-        | Some(ast_map::NodeTraitItem(..)) => true,
-        _ => false
+fn should_explore(tcx: &ty::ctxt, node_id: ast::NodeId) -> bool {
+    match tcx.map.find(node_id) {
+        Some(ast_map::NodeItem(..)) |
+        Some(ast_map::NodeImplItem(..)) |
+        Some(ast_map::NodeForeignItem(..)) |
+        Some(ast_map::NodeTraitItem(..)) =>
+            true,
+        _ =>
+            false
     }
 }
 
@@ -50,7 +48,7 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     struct_has_extern_repr: bool,
     ignore_non_const_paths: bool,
     inherited_pub_visibility: bool,
-    ignore_variant_stack: Vec<ast::NodeId>,
+    ignore_variant_stack: Vec<DefId>,
 }
 
 impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
@@ -68,10 +66,19 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn check_def_id(&mut self, def_id: DefId) {
-        if should_explore(self.tcx, def_id) {
-            self.worklist.push(def_id.node);
+        if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
+            if should_explore(self.tcx, node_id) {
+                self.worklist.push(node_id);
+            }
+            self.live_symbols.insert(node_id);
         }
-        self.live_symbols.insert(def_id.node);
+    }
+
+    fn insert_def_id(&mut self, def_id: DefId) {
+        if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
+            debug_assert!(!should_explore(self.tcx, node_id));
+            self.live_symbols.insert(node_id);
+        }
     }
 
     fn lookup_and_handle_definition(&mut self, id: &ast::NodeId) {
@@ -94,7 +101,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                 def::DefPrimTy(_) => (),
                 def::DefVariant(enum_id, variant_id, _) => {
                     self.check_def_id(enum_id);
-                    if !self.ignore_variant_stack.contains(&variant_id.node) {
+                    if !self.ignore_variant_stack.contains(&variant_id) {
                         self.check_def_id(variant_id);
                     }
                 }
@@ -113,7 +120,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
         if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(lhs).sty {
-            self.live_symbols.insert(def.struct_variant().field_named(name).did.node);
+            self.insert_def_id(def.struct_variant().field_named(name).did);
         } else {
             self.tcx.sess.span_bug(lhs.span, "named field access on non-struct")
         }
@@ -121,7 +128,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_tup_field_access(&mut self, lhs: &hir::Expr, idx: usize) {
         if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(lhs).sty {
-            self.live_symbols.insert(def.struct_variant().fields[idx].did.node);
+            self.insert_def_id(def.struct_variant().fields[idx].did);
         }
     }
 
@@ -137,7 +144,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             if let hir::PatWild(hir::PatWildSingle) = pat.node.pat.node {
                 continue;
             }
-            self.live_symbols.insert(variant.field_named(pat.node.name).did.node);
+            self.insert_def_id(variant.field_named(pat.node.name).did);
         }
     }
 
@@ -469,8 +476,10 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     // `ctor_id`. On the other hand, in a statement like
     // `type <ident> <generics> = <ty>;` where <ty> refers to a struct_ctor,
     // DefMap maps <ty> to `id` instead.
-    fn symbol_is_live(&mut self, id: ast::NodeId,
-                      ctor_id: Option<ast::NodeId>) -> bool {
+    fn symbol_is_live(&mut self,
+                      id: ast::NodeId,
+                      ctor_id: Option<ast::NodeId>)
+                      -> bool {
         if self.live_symbols.contains(&id)
            || ctor_id.map_or(false,
                              |ctor| self.live_symbols.contains(&ctor)) {
@@ -486,9 +495,11 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
             Some(impl_list) => {
                 for impl_did in impl_list.iter() {
                     for item_did in impl_items.get(impl_did).unwrap().iter() {
-                        if self.live_symbols.contains(&item_did.def_id()
-                                                               .node) {
-                            return true;
+                        if let Some(item_node_id) =
+                                self.tcx.map.as_local_node_id(item_did.def_id()) {
+                            if self.live_symbols.contains(&item_node_id) {
+                                return true;
+                            }
                         }
                     }
                 }

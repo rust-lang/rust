@@ -13,9 +13,10 @@ use rustc_lint;
 use rustc_driver::{driver, target_features};
 use rustc::session::{self, config};
 use rustc::middle::def_id::DefId;
-use rustc::middle::{privacy, ty};
+use rustc::middle::ty;
 use rustc::front::map as hir_map;
 use rustc::lint;
+use rustc::util::nodemap::DefIdSet;
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_front::lowering::lower_crate;
@@ -76,8 +77,8 @@ impl<'b, 'tcx> DocContext<'b, 'tcx> {
 }
 
 pub struct CrateAnalysis {
-    pub exported_items: privacy::ExportedItems,
-    pub public_items: privacy::PublicItems,
+    pub exported_items: DefIdSet,
+    pub public_items: DefIdSet,
     pub external_paths: ExternalPaths,
     pub external_typarams: RefCell<Option<HashMap<DefId, String>>>,
     pub inlined: RefCell<Option<HashSet<DefId>>>,
@@ -145,6 +146,17 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
                                         resolve::MakeGlobMap::No,
                                         |tcx, analysis| {
         let ty::CrateAnalysis { exported_items, public_items, .. } = analysis;
+
+        // Convert from a NodeId set to a DefId set since we don't always have easy access
+        // to the map from defid -> nodeid
+        let exported_items: DefIdSet =
+            exported_items.into_iter()
+                          .map(|n| tcx.map.local_def_id(n))
+                          .collect();
+        let public_items: DefIdSet =
+            public_items.into_iter()
+                        .map(|n| tcx.map.local_def_id(n))
+                        .collect();
 
         let ctxt = DocContext {
             map: &tcx.map,

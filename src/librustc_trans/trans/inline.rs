@@ -193,7 +193,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId)
 
 pub fn get_local_instance(ccx: &CrateContext, fn_id: DefId)
     -> Option<DefId> {
-    if fn_id.is_local() {
+    if let Some(_) = ccx.tcx().map.as_local_node_id(fn_id) {
         Some(fn_id)
     } else {
         instantiate_inline(ccx, fn_id)

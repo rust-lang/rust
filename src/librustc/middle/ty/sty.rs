@@ -675,7 +675,7 @@ pub enum Region {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub struct EarlyBoundRegion {
-    pub param_id: DefId,
+    pub def_id: DefId,
     pub space: subst::ParamSpace,
     pub index: u32,
     pub name: Name,

@@ -295,7 +295,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     {
         let name = token::intern(name);
         ty::ReEarlyBound(ty::EarlyBoundRegion {
-            param_id: ast::DUMMY_NODE_ID,
+            def_id: self.infcx.tcx.map.local_def_id(ast::DUMMY_NODE_ID),
             space: space,
             index: index,
             name: name

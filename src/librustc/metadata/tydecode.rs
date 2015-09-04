@@ -209,10 +209,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'B' => {
                 assert_eq!(self.next(), '[');
-                // this is the wrong NodeId, but `param_id` is only accessed
-                // by the receiver-matching code in collect, which won't
-                // be going down this code path, and anyway I will kill it
-                // the moment wfcheck becomes the standard.
                 let def_id = self.parse_def(NominalType);
                 let space = self.parse_param_space();
                 assert_eq!(self.next(), '|');
@@ -220,7 +216,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 assert_eq!(self.next(), '|');
                 let name = token::intern(&self.parse_str(']'));
                 ty::ReEarlyBound(ty::EarlyBoundRegion {
-                    param_id: def_id,
+                    def_id: def_id,
                     space: space,
                     index: index,
                     name: name
@@ -739,7 +735,7 @@ fn parse_defid(buf: &[u8]) -> DefId {
         None => panic!("internal error: parse_defid: id expected, found {:?}",
                        def_part)
     };
-    DefId { krate: crate_num, node: def_num }
+    DefId { krate: crate_num, xxx_node: def_num }
 }
 
 fn parse_unsafety(c: char) -> hir::Unsafety {

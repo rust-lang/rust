@@ -202,10 +202,12 @@ impl LateLintPass for RawPointerDerive {
             }
             _ => return,
         };
-        if !did.is_local() {
+        let node_id = if let Some(node_id) = cx.tcx.map.as_local_node_id(did) {
+            node_id
+        } else {
             return;
-        }
-        let item = match cx.tcx.map.find(did.node) {
+        };
+        let item = match cx.tcx.map.find(node_id) {
             Some(hir_map::NodeItem(item)) => item,
             _ => return,
         };
@@ -458,13 +460,15 @@ impl LateLintPass for MissingDoc {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
                 let real_trait = cx.tcx.trait_ref_to_def_id(trait_ref);
-                match cx.tcx.map.find(real_trait.node) {
-                    Some(hir_map::NodeItem(item)) => if item.vis == hir::Visibility::Inherited {
-                        for itm in impl_items {
-                            self.private_traits.insert(itm.id);
-                        }
-                    },
-                    _ => { }
+                if let Some(node_id) = cx.tcx.map.as_local_node_id(real_trait) {
+                    match cx.tcx.map.find(node_id) {
+                        Some(hir_map::NodeItem(item)) => if item.vis == hir::Visibility::Inherited {
+                            for itm in impl_items {
+                                self.private_traits.insert(itm.id);
+                            }
+                        },
+                        _ => { }
+                    }
                 }
                 return
             },
@@ -629,9 +633,11 @@ impl LateLintPass for MissingDebugImplementations {
             let debug_def = cx.tcx.lookup_trait_def(debug);
             let mut impls = NodeSet();
             debug_def.for_each_impl(cx.tcx, |d| {
-                if d.is_local() {
-                    if let Some(ty_def) = cx.tcx.node_id_to_type(d.node).ty_to_def_id() {
-                        impls.insert(ty_def.node);
+                if let Some(n) = cx.tcx.map.as_local_node_id(d) {
+                    if let Some(ty_def) = cx.tcx.node_id_to_type(n).ty_to_def_id() {
+                        if let Some(node_id) = cx.tcx.map.as_local_node_id(ty_def) {
+                            impls.insert(node_id);
+                        }
                     }
                 }
             });
@@ -956,7 +962,12 @@ impl LateLintPass for UnconditionalRecursion {
                         traits::Obligation::new(traits::ObligationCause::misc(span, expr_id),
                                                 trait_ref.to_poly_trait_predicate());
 
-                    let param_env = ty::ParameterEnvironment::for_item(tcx, method.def_id.node);
+                    // unwrap() is ok here b/c `method` is the method
+                    // defined in this crate whose body we are
+                    // checking, so it's always local
+                    let node_id = tcx.map.as_local_node_id(method.def_id).unwrap();
+
+                    let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
                     let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env), false);
                     let mut selcx = traits::SelectionContext::new(&infcx);
                     match selcx.select(&obligation) {

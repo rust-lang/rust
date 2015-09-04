@@ -387,7 +387,7 @@ fn primitive_link(f: &mut fmt::Formatter,
         Some(&cnum) => {
             let path = &m.paths[&DefId {
                 krate: cnum,
-                node: ast::CRATE_NODE_ID,
+                xxx_node: ast::CRATE_NODE_ID,
             }];
             let loc = match m.extern_locations[&cnum] {
                 (_, render::Remote(ref s)) => Some(s.to_string()),

@@ -112,7 +112,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
             }
         } else if impl2_def_id.krate != LOCAL_CRATE {
             Some((impl1_def_id, impl2_def_id))
-        } else if impl1_def_id.node < impl2_def_id.node {
+        } else if impl1_def_id < impl2_def_id {
             Some((impl1_def_id, impl2_def_id))
         } else {
             Some((impl2_def_id, impl1_def_id))
@@ -165,8 +165,8 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
     }
 
     fn span_of_impl(&self, impl_did: DefId) -> Span {
-        assert_eq!(impl_did.krate, LOCAL_CRATE);
-        self.tcx.map.span(impl_did.node)
+        let node_id = self.tcx.map.as_local_node_id(impl_did).unwrap();
+        self.tcx.map.span(node_id)
     }
 }
 

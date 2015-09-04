@@ -960,6 +960,9 @@ fn get_static_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                             did: DefId,
                             ty: Ty<'tcx>)
                             -> ValueRef {
-    if did.is_local() { return base::get_item_val(ccx, did.node) }
-    base::trans_external_path(ccx, did, ty)
+    if let Some(node_id) = ccx.tcx().map.as_local_node_id(did) {
+        base::get_item_val(ccx, node_id)
+    } else {
+        base::trans_external_path(ccx, did, ty)
+    }
 }

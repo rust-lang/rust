@@ -209,7 +209,7 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
         let crate_store = &self.session.cstore;
         crate_store.iter_crate_data(|crate_number, _crate_metadata| {
             each_lang_item(crate_store, crate_number, |node_id, item_index| {
-                let def_id = DefId { krate: crate_number, node: node_id };
+                let def_id = DefId { krate: crate_number, xxx_node: node_id };
                 self.collect_item(item_index, def_id, DUMMY_SP);
                 true
             });

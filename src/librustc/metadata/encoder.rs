@@ -75,6 +75,12 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     pub reachable: &'a NodeSet,
 }
 
+impl<'a, 'tcx> EncodeContext<'a,'tcx> {
+    fn local_id(&self, def_id: DefId) -> NodeId {
+        self.tcx.map.as_local_node_id(def_id).unwrap()
+    }
+}
+
 fn encode_name(rbml_w: &mut Encoder, name: Name) {
     rbml_w.wr_tagged_str(tag_paths_data_name, &name.as_str());
 }
@@ -109,11 +115,11 @@ fn encode_family(rbml_w: &mut Encoder, c: char) {
 }
 
 pub fn def_to_u64(did: DefId) -> u64 {
-    (did.krate as u64) << 32 | (did.node as u64)
+    (did.krate as u64) << 32 | (did.xxx_node as u64)
 }
 
 pub fn def_to_string(did: DefId) -> String {
-    format!("{}:{}", did.krate, did.node)
+    format!("{}:{}", did.krate, did.xxx_node)
 }
 
 fn encode_item_variances(rbml_w: &mut Encoder,
@@ -281,7 +287,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
     let def = ecx.tcx.lookup_adt_def(ecx.tcx.map.local_def_id(id));
     for variant in &def.variants {
         let vid = variant.did;
-        assert!(vid.is_local());
+        let variant_node_id = ecx.local_id(vid);
 
         if let ty::VariantKind::Dict = variant.kind() {
             // tuple-like enum variant fields aren't really items so
@@ -292,7 +298,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         }
 
         index.push(IndexEntry {
-            node: vid.node,
+            node: vid.xxx_node,
             pos: rbml_w.mark_stable_position(),
         });
         rbml_w.start_tag(tag_items_data_item);
@@ -319,9 +325,9 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
             encode_disr_val(ecx, rbml_w, specified_disr_val);
             disr_val = specified_disr_val;
         }
-        encode_bounds_and_type_for_item(rbml_w, ecx, vid.node);
+        encode_bounds_and_type_for_item(rbml_w, ecx, variant_node_id);
 
-        ecx.tcx.map.with_path(vid.node, |path| encode_path(rbml_w, path));
+        ecx.tcx.map.with_path(variant_node_id, |path| encode_path(rbml_w, path));
         rbml_w.end_tag();
         disr_val = disr_val.wrapping_add(1);
     }
@@ -405,8 +411,21 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
                                     rbml_w: &mut Encoder,
                                     mod_path: PathElems,
                                     exp: &def::Export) {
-    if let Some(ast_map::NodeItem(item)) = ecx.tcx.map.find(exp.def_id.node) {
-        let path_differs = ecx.tcx.map.with_path(exp.def_id.node, |path| {
+    let exp_node_id = if let Some(n) = ecx.tcx.map.as_local_node_id(exp.def_id) {
+        n
+    } else {
+        // Before the refactor that introducd `as_local_node_id`, we
+        // were just extracting the node and checking into the
+        // ast-map. Since the node might have been from another crate,
+        // this was a tenuous thing to do at best. Anyway, I'm not
+        // 100% clear on why it's ok to ignore things from other
+        // crates, but it seems to be what we were doing pre-refactor.
+        // -nmatsakis
+        return;
+    };
+
+    if let Some(ast_map::NodeItem(item)) = ecx.tcx.map.find(exp_node_id) {
+        let path_differs = ecx.tcx.map.with_path(exp_node_id, |path| {
             let (mut a, mut b) = (path, mod_path.clone());
             loop {
                 match (a.next(), b.next()) {
@@ -476,11 +495,10 @@ fn encode_reexports(ecx: &EncodeContext,
         Some(exports) => {
             debug!("(encoding info for module) found reexports for {}", id);
             for exp in exports {
-                debug!("(encoding info for module) reexport '{}' ({}/{}) for \
+                debug!("(encoding info for module) reexport '{}' ({:?}) for \
                         {}",
                        exp.name,
-                       exp.def_id.krate,
-                       exp.def_id.node,
+                       exp.def_id,
                        id);
                 rbml_w.start_tag(tag_items_data_item_reexport);
                 rbml_w.wr_tagged_u64(tag_items_data_item_reexport_def_id,
@@ -615,7 +633,7 @@ fn encode_field<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                           field: ty::FieldDef<'tcx>,
                           global_index: &mut Vec<IndexEntry>) {
     let nm = field.name;
-    let id = field.did.node;
+    let id = ecx.local_id(field.did);
 
     let pos = rbml_w.mark_stable_position();
     global_index.push(IndexEntry {
@@ -792,7 +810,7 @@ fn encode_info_for_associated_const(ecx: &EncodeContext,
     encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(parent_id));
     encode_item_sort(rbml_w, 'C');
 
-    encode_bounds_and_type_for_item(rbml_w, ecx, associated_const.def_id.local_id());
+    encode_bounds_and_type_for_item(rbml_w, ecx, ecx.local_id(associated_const.def_id));
 
     let stab = stability::lookup(ecx.tcx, associated_const.def_id);
     encode_stability(rbml_w, stab);
@@ -831,7 +849,8 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_stability(rbml_w, stab);
 
     // The type for methods gets encoded twice, which is unfortunate.
-    encode_bounds_and_type_for_item(rbml_w, ecx, m.def_id.local_id());
+    let m_node_id = ecx.local_id(m.def_id);
+    encode_bounds_and_type_for_item(rbml_w, ecx, m_node_id);
 
     let elem = ast_map::PathName(m.name);
     encode_path(rbml_w, impl_path.chain(Some(elem)));
@@ -850,7 +869,8 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             }
             encode_constness(rbml_w, sig.constness);
             if !any_types {
-                encode_symbol(ecx, rbml_w, m.def_id.node);
+                let m_id = ecx.local_id(m.def_id);
+                encode_symbol(ecx, rbml_w, m_id);
             }
             encode_method_argument_names(rbml_w, &sig.decl);
         }
@@ -1166,7 +1186,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         match struct_def.ctor_id {
             Some(ctor_id) => {
                 encode_info_for_struct_ctor(ecx, rbml_w, item.name,
-                                            ctor_id, index, def_id.node);
+                                            ctor_id, index, item.id);
             }
             None => {}
         }
@@ -1253,7 +1273,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             };
 
             index.push(IndexEntry {
-                node: trait_item_def_id.def_id().node,
+                node: trait_item_def_id.def_id().xxx_node,
                 pos: rbml_w.mark_stable_position(),
             });
 
@@ -1344,7 +1364,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             assert_eq!(item_def_id.def_id().krate, LOCAL_CRATE);
 
             index.push(IndexEntry {
-                node: item_def_id.def_id().node,
+                node: item_def_id.def_id().xxx_node,
                 pos: rbml_w.mark_stable_position(),
             });
 
@@ -1370,8 +1390,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
                     encode_family(rbml_w, 'C');
 
-                    encode_bounds_and_type_for_item(rbml_w, ecx,
-                                                    associated_const.def_id.local_id());
+                    encode_bounds_and_type_for_item(rbml_w,
+                                                    ecx,
+                                                    ecx.local_id(associated_const.def_id));
 
                     is_nonstatic_method = false;
                 }
@@ -1394,7 +1415,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                           METHOD_FAMILY);
                         }
                     }
-                    encode_bounds_and_type_for_item(rbml_w, ecx, method_def_id.local_id());
+                    encode_bounds_and_type_for_item(rbml_w, ecx, ecx.local_id(method_def_id));
 
                     is_nonstatic_method = method_ty.explicit_self !=
                         ty::StaticExplicitSelfCategory;
@@ -1439,8 +1460,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     if is_nonstatic_method {
                         // FIXME: I feel like there is something funny
                         // going on.
-                        encode_bounds_and_type_for_item(rbml_w, ecx,
-                            item_def_id.def_id().local_id());
+                        encode_bounds_and_type_for_item(
+                            rbml_w,
+                            ecx,
+                            ecx.local_id(item_def_id.def_id()));
                     }
 
                     if body.is_some() {
@@ -1716,10 +1739,10 @@ fn encode_lang_items(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 
     for (i, &def_id) in ecx.tcx.lang_items.items() {
         if let Some(id) = def_id {
-            if id.is_local() {
+            if let Some(id) = ecx.tcx.map.as_local_node_id(id) {
                 rbml_w.start_tag(tag_lang_items_item);
                 rbml_w.wr_tagged_u32(tag_lang_items_item_id, i as u32);
-                rbml_w.wr_tagged_u32(tag_lang_items_item_node_id, id.node as u32);
+                rbml_w.wr_tagged_u32(tag_lang_items_item_node_id, id as u32);
                 rbml_w.end_tag();
             }
         }

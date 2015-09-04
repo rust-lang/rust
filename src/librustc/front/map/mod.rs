@@ -274,7 +274,7 @@ impl<'ast> Map<'ast> {
 
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
         if def_id.krate == LOCAL_CRATE {
-            Some(def_id.node)
+            Some(def_id.xxx_node)
         } else {
             None
         }
@@ -299,6 +299,10 @@ impl<'ast> Map<'ast> {
             Some(node) => node,
             None => panic!("couldn't find node id {} in the AST map", id)
         }
+    }
+
+    pub fn get_if_local(&self, id: DefId) -> Option<Node<'ast>> {
+        self.as_local_node_id(id).map(|id| self.get(id))
     }
 
     /// Retrieve the Node corresponding to `id`, returning None if
@@ -609,9 +613,13 @@ impl<'ast> Map<'ast> {
             .unwrap_or_else(|| panic!("AstMap.span: could not find span for id {:?}", id))
     }
 
+    pub fn span_if_local(&self, id: DefId) -> Option<Span> {
+        self.as_local_node_id(id).map(|id| self.span(id))
+    }
+
     pub fn def_id_span(&self, def_id: DefId, fallback: Span) -> Span {
-        if def_id.is_local() {
-            self.opt_span(def_id.node).unwrap_or(fallback)
+        if let Some(node_id) = self.as_local_node_id(def_id) {
+            self.opt_span(node_id).unwrap_or(fallback)
         } else {
             fallback
         }

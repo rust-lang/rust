@@ -4248,7 +4248,8 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 Some(i) => {
                     span_err!(ccx.tcx.sess, v.span, E0081,
                         "discriminant value `{}` already exists", disr_vals[i]);
-                    span_note!(ccx.tcx.sess, ccx.tcx.map.span(variants[i].did.node),
+                    let variant_i_node_id = ccx.tcx.map.as_local_node_id(variants[i].did).unwrap();
+                    span_note!(ccx.tcx.sess, ccx.tcx.map.span(variant_i_node_id),
                         "conflicting discriminant here")
                 }
                 None => {}
@@ -4275,8 +4276,8 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         }
     }
 
-    let hint = *ccx.tcx.lookup_repr_hints(DefId { krate: LOCAL_CRATE, node: id })
-        .get(0).unwrap_or(&attr::ReprAny);
+    let def_id = ccx.tcx.map.local_def_id(id);
+    let hint = *ccx.tcx.lookup_repr_hints(def_id).get(0).unwrap_or(&attr::ReprAny);
 
     if hint != attr::ReprAny && vs.len() <= 1 {
         if vs.len() == 1 {

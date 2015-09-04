@@ -923,13 +923,13 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let const_ty = expr_ty(bcx, ref_expr);
 
             // For external constants, we don't inline.
-            let val = if did.is_local() {
+            let val = if let Some(node_id) = bcx.tcx().map.as_local_node_id(did) {
                 // Case 1.
 
                 // The LLVM global has the type of its initializer,
                 // which may not be equal to the enum's type for
                 // non-C-like enums.
-                let val = base::get_item_val(bcx.ccx(), did.node);
+                let val = base::get_item_val(bcx.ccx(), node_id);
                 let pty = type_of::type_of(bcx.ccx(), const_ty).ptr_to();
                 PointerCast(bcx, val, pty)
             } else {

@@ -69,12 +69,13 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
         None
     }
 
-    if enum_def.is_local() {
-        match tcx.map.find(enum_def.node) {
+    if let Some(enum_node_id) = tcx.map.as_local_node_id(enum_def) {
+        let variant_node_id = tcx.map.as_local_node_id(variant_def).unwrap();
+        match tcx.map.find(enum_node_id) {
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
                 hir::ItemEnum(hir::EnumDef { ref variants }, _) => {
-                    variant_expr(&variants[..], variant_def.node)
+                    variant_expr(&variants[..], variant_node_id)
                 }
                 _ => None
             },
@@ -88,8 +89,11 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
             }
             None => {}
         }
-        let expr_id = match csearch::maybe_get_item_ast(tcx, enum_def,
-            Box::new(|a, b, c, d| astencode::decode_inlined_item(a, b, c, d))) {
+        let expr_id = match
+            csearch::maybe_get_item_ast(
+                tcx, enum_def,
+                Box::new(|a, b, c, d| astencode::decode_inlined_item(a, b, c, d)))
+        {
             csearch::FoundAst::Found(&InlinedItem::Item(ref item)) => match item.node {
                 hir::ItemEnum(hir::EnumDef { .. }, _) => {
                     tcx.sess.span_bug(
@@ -111,8 +115,8 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                                         def_id: DefId,
                                         maybe_ref_id: Option<ast::NodeId>)
                                         -> Option<&'tcx Expr> {
-    if def_id.is_local() {
-        match tcx.map.find(def_id.node) {
+    if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
+        match tcx.map.find(node_id) {
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
                 hir::ItemConst(_, ref const_expr) => {
@@ -233,14 +237,14 @@ fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: DefId)
 pub fn lookup_const_fn_by_id<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: DefId)
                                    -> Option<FnLikeNode<'tcx>>
 {
-    let fn_id = if !def_id.is_local() {
+    let fn_id = if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
+        node_id
+    } else {
         if let Some(fn_id) = inline_const_fn_from_external_crate(tcx, def_id) {
             fn_id
         } else {
             return None;
         }
-    } else {
-        def_id.node
     };
 
     let fn_like = match FnLikeNode::from_node(tcx.map.get(fn_id)) {
@@ -919,8 +923,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           let opt_def = tcx.def_map.borrow().get(&e.id).map(|d| d.full_def());
           let (const_expr, const_ty) = match opt_def {
               Some(def::DefConst(def_id)) => {
-                  if def_id.is_local() {
-                      match tcx.map.find(def_id.node) {
+                  if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
+                      match tcx.map.find(node_id) {
                           Some(ast_map::NodeItem(it)) => match it.node {
                               hir::ItemConst(ref ty, ref expr) => {
                                   (Some(&**expr), Some(&**ty))
@@ -934,9 +938,9 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                   }
               }
               Some(def::DefAssociatedConst(def_id)) => {
-                  if def_id.is_local() {
+                  if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
                       match tcx.impl_or_trait_item(def_id).container() {
-                          ty::TraitContainer(trait_id) => match tcx.map.find(def_id.node) {
+                          ty::TraitContainer(trait_id) => match tcx.map.find(node_id) {
                               Some(ast_map::NodeTraitItem(ti)) => match ti.node {
                                   hir::ConstTraitItem(ref ty, _) => {
                                       if let ExprTypeChecked = ty_hint {
@@ -954,7 +958,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                               },
                               _ => (None, None)
                           },
-                          ty::ImplContainer(_) => match tcx.map.find(def_id.node) {
+                          ty::ImplContainer(_) => match tcx.map.find(node_id) {
                               Some(ast_map::NodeImplItem(ii)) => match ii.node {
                                   hir::ConstImplItem(ref ty, ref expr) => {
                                       (Some(&**expr), Some(&**ty))

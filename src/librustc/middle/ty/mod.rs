@@ -618,7 +618,7 @@ pub struct RegionParameterDef {
 impl RegionParameterDef {
     pub fn to_early_bound_region(&self) -> ty::Region {
         ty::ReEarlyBound(ty::EarlyBoundRegion {
-            param_id: self.def_id,
+            def_id: self.def_id,
             space: self.space,
             index: self.index,
             name: self.name,
@@ -2101,8 +2101,8 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn provided_trait_methods(&self, id: DefId) -> Vec<Rc<Method<'tcx>>> {
-        if id.is_local() {
-            if let ItemTrait(_, _, _, ref ms) = self.map.expect_item(id.node).node {
+        if let Some(id) = self.map.as_local_node_id(id) {
+            if let ItemTrait(_, _, _, ref ms) = self.map.expect_item(id).node {
                 ms.iter().filter_map(|ti| {
                     if let hir::MethodTraitItem(_, Some(_)) = ti.node {
                         match self.impl_or_trait_item(self.map.local_def_id(ti.id)) {
@@ -2126,8 +2126,8 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn associated_consts(&self, id: DefId) -> Vec<Rc<AssociatedConst<'tcx>>> {
-        if id.is_local() {
-            match self.map.expect_item(id.node).node {
+        if let Some(id) = self.map.as_local_node_id(id) {
+            match self.map.expect_item(id).node {
                 ItemTrait(_, _, _, ref tis) => {
                     tis.iter().filter_map(|ti| {
                         if let hir::ConstTraitItem(_, _) = ti.node {
@@ -2187,8 +2187,8 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn trait_impl_polarity(&self, id: DefId) -> Option<hir::ImplPolarity> {
-        if id.is_local() {
-            match self.map.find(id.node) {
+        if let Some(id) = self.map.as_local_node_id(id) {
+            match self.map.find(id) {
                 Some(ast_map::NodeItem(item)) => {
                     match item.node {
                         hir::ItemImpl(_, polarity, _, _, _, _) => Some(polarity),
@@ -2243,9 +2243,9 @@ impl<'tcx> ctxt<'tcx> {
 
     /// Returns whether this DefId refers to an impl
     pub fn is_impl(&self, id: DefId) -> bool {
-        if id.is_local() {
+        if let Some(id) = self.map.as_local_node_id(id) {
             if let Some(ast_map::NodeItem(
-                &hir::Item { node: hir::ItemImpl(..), .. })) = self.map.find(id.node) {
+                &hir::Item { node: hir::ItemImpl(..), .. })) = self.map.find(id) {
                 true
             } else {
                 false
@@ -2266,16 +2266,16 @@ impl<'tcx> ctxt<'tcx> {
     pub fn with_path<T, F>(&self, id: DefId, f: F) -> T where
         F: FnOnce(ast_map::PathElems) -> T,
     {
-        if id.is_local() {
-            self.map.with_path(id.node, f)
+        if let Some(id) = self.map.as_local_node_id(id) {
+            self.map.with_path(id, f)
         } else {
             f(csearch::get_item_path(self, id).iter().cloned().chain(LinkedPath::empty()))
         }
     }
 
     pub fn item_name(&self, id: DefId) -> ast::Name {
-        if id.is_local() {
-            self.map.get_path_elem(id.node).name()
+        if let Some(id) = self.map.as_local_node_id(id) {
+            self.map.get_path_elem(id).name()
         } else {
             csearch::get_item_name(self, id)
         }
@@ -2335,8 +2335,8 @@ impl<'tcx> ctxt<'tcx> {
 
     /// Get the attributes of a definition.
     pub fn get_attrs(&self, did: DefId) -> Cow<'tcx, [ast::Attribute]> {
-        if did.is_local() {
-            Cow::Borrowed(self.map.attrs(did.node))
+        if let Some(id) = self.map.as_local_node_id(did) {
+            Cow::Borrowed(self.map.attrs(id))
         } else {
             Cow::Owned(csearch::get_item_attrs(&self.sess.cstore, did))
         }

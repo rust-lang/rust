@@ -54,8 +54,8 @@ use externalfiles::ExternalHtml;
 use serialize::json::{self, ToJson};
 use syntax::{abi, ast, attr};
 use rustc::metadata::cstore::LOCAL_CRATE;
-use rustc::middle::def_id::{DefId, LOCAL_CRATE};
-use rustc::util::nodemap::NodeSet;
+use rustc::middle::def_id::DefId;
+use rustc::util::nodemap::DefIdSet;
 use rustc_front::hir;
 
 use clean::{self, SelfTy};
@@ -206,7 +206,7 @@ pub struct Cache {
     search_index: Vec<IndexItem>,
     privmod: bool,
     remove_priv: bool,
-    public_items: NodeSet,
+    public_items: DefIdSet,
     deref_trait_did: Option<DefId>,
 
     // In rare case where a structure is defined in one module but implemented
@@ -378,7 +378,7 @@ pub fn run(mut krate: clean::Crate,
     let analysis = ::ANALYSISKEY.with(|a| a.clone());
     let analysis = analysis.borrow();
     let public_items = analysis.as_ref().map(|a| a.public_items.clone());
-    let public_items = public_items.unwrap_or(NodeSet());
+    let public_items = public_items.unwrap_or(DefIdSet());
     let paths: HashMap<DefId, (Vec<String>, ItemType)> =
       analysis.as_ref().map(|a| {
         let paths = a.external_paths.borrow_mut().take().unwrap();
@@ -413,7 +413,7 @@ pub fn run(mut krate: clean::Crate,
     for &(n, ref e) in &krate.externs {
         cache.extern_locations.insert(n, (e.name.clone(),
                                           extern_location(e, &cx.dst)));
-        let did = DefId { krate: n, node: ast::CRATE_NODE_ID };
+        let did = DefId { krate: n, xxx_node: ast::CRATE_NODE_ID };
         cache.paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
     }
 
@@ -994,10 +994,11 @@ impl DocFolder for Cache {
                 // `public_items` map, so we can skip inserting into the
                 // paths map if there was already an entry present and we're
                 // not a public item.
-                let id = item.def_id.node;
-                if !self.paths.contains_key(&item.def_id) ||
-                   !item.def_id.is_local() ||
-                   self.public_items.contains(&id) {
+                if
+                    !self.paths.contains_key(&item.def_id) ||
+                    !item.def_id.is_local() ||
+                    self.public_items.contains(&item.def_id)
+                {
                     self.paths.insert(item.def_id,
                                       (self.stack.clone(), shortty(&item)));
                 }
@@ -1079,7 +1080,7 @@ impl DocFolder for Cache {
                                 t.primitive_type().and_then(|t| {
                                     self.primitive_locations.get(&t).map(|n| {
                                         let id = t.to_node_id();
-                                        DefId { krate: *n, node: id }
+                                        DefId { krate: *n, xxx_node: id }
                                     })
                                 })
                             }
@@ -1420,7 +1421,7 @@ impl<'a> Item<'a> {
                          root = root,
                          path = path[..path.len() - 1].join("/"),
                          file = item_path(self.item),
-                         goto = self.item.def_id.node))
+                         goto = self.item.def_id.xxx_node))
         }
     }
 }
@@ -1480,7 +1481,7 @@ impl<'a> fmt::Display for Item<'a> {
                 Some(l) => {
                     try!(write!(fmt, "<a id='src-{}' class='srclink' \
                                        href='{}' title='{}'>[src]</a>",
-                                self.item.def_id.node, l, "goto source code"));
+                                self.item.def_id.xxx_node, l, "goto source code"));
                 }
                 None => {}
             }
@@ -2336,7 +2337,7 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl) -> f
         _ => {
             if let Some(prim) = target.primitive_type() {
                 if let Some(c) = cache().primitive_locations.get(&prim) {
-                    let did = DefId { krate: *c, node: prim.to_node_id() };
+                    let did = DefId { krate: *c, xxx_node: prim.to_node_id() };
                     try!(render_assoc_items(w, cx, did, what));
                 }
             }
