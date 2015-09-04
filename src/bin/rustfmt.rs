@@ -82,7 +82,7 @@ fn main() {
 }
 
 fn print_usage<S: Into<String>>(reason: S) {
-    println!("{}\n\r usage: rustfmt [-h Help] [--write-mode=[true/false]] <file_name>", reason.into());
+    println!("{}\n\r usage: rustfmt [-h Help] [--write-mode=[replace|overwrite|display]] <file_name>", reason.into());
 }
 
 fn determine_params<I>(args: I) -> Option<(Vec<String>, WriteMode)>
