@@ -2518,7 +2518,7 @@ impl ToSource for syntax::codemap::Span {
 fn lit_to_string(lit: &hir::Lit) -> String {
     match lit.node {
         hir::LitStr(ref st, _) => st.to_string(),
-        hir::LitBinary(ref data) => format!("{:?}", data),
+        hir::LitByteStr(ref data) => format!("{:?}", data),
         hir::LitByte(b) => {
             let mut res = String::from("b'");
             for c in (b as char).escape_default() {

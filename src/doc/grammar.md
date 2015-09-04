@@ -281,7 +281,7 @@ type_path_tail : '<' type_expr [ ',' type_expr ] + '>'
 ## Macros
 
 ```antlr
-expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')' ';' 
+expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')' ';'
                  | "macro_rules" '!' ident '{' macro_rule * '}' ;
 macro_rule : '(' matcher * ')' "=>" '(' transcriber * ')' ';' ;
 matcher : '(' matcher * ')' | '[' matcher * ']'
@@ -306,7 +306,7 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
 
 ```antlr
 item : vis ? mod_item | fn_item | type_item | struct_item | enum_item
-     | const_item | static_item | trait_item | impl_item | extern_block ;
+     | const_item | static_item | trait_item | impl_item | extern_block_item ;
 ```
 
 ### Type Parameters
@@ -636,31 +636,31 @@ lambda_expr : '|' ident_list '|' expr ;
 ### While loops
 
 ```antlr
-while_expr : [ lifetime ':' ] "while" no_struct_literal_expr '{' block '}' ;
+while_expr : [ lifetime ':' ] ? "while" no_struct_literal_expr '{' block '}' ;
 ```
 
 ### Infinite loops
 
 ```antlr
-loop_expr : [ lifetime ':' ] "loop" '{' block '}';
+loop_expr : [ lifetime ':' ] ? "loop" '{' block '}';
 ```
 
 ### Break expressions
 
 ```antlr
-break_expr : "break" [ lifetime ];
+break_expr : "break" [ lifetime ] ?;
 ```
 
 ### Continue expressions
 
 ```antlr
-continue_expr : "continue" [ lifetime ];
+continue_expr : "continue" [ lifetime ] ?;
 ```
 
 ### For expressions
 
 ```antlr
-for_expr : [ lifetime ':' ] "for" pat "in" no_struct_literal_expr '{' block '}' ;
+for_expr : [ lifetime ':' ] ? "for" pat "in" no_struct_literal_expr '{' block '}' ;
 ```
 
 ### If expressions
@@ -688,13 +688,12 @@ match_pat : pat [ '|' pat ] * [ "if" expr ] ? ;
 ```antlr
 if_let_expr : "if" "let" pat '=' expr '{' block '}'
                else_tail ? ;
-else_tail : "else" [ if_expr | if_let_expr | '{' block '}' ] ;
 ```
 
 ### While let loops
 
 ```antlr
-while_let_expr : "while" "let" pat '=' expr '{' block '}' ;
+while_let_expr : [ lifetime ':' ] ? "while" "let" pat '=' expr '{' block '}' ;
 ```
 
 ### Return expressions
@@ -754,8 +753,6 @@ return_expr : "return" expr ? ;
 ```antlr
 closure_type := [ 'unsafe' ] [ '<' lifetime-list '>' ] '|' arg-list '|'
                 [ ':' bound-list ] [ '->' type ]
-procedure_type := 'proc' [ '<' lifetime-list '>' ] '(' arg-list ')'
-                  [ ':' bound-list ] [ '->' type ]
 lifetime-list := lifetime | lifetime ',' lifetime-list
 arg-list := ident ':' type | ident ':' type ',' arg-list
 bound-list := bound | bound '+' bound-list

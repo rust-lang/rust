@@ -34,7 +34,7 @@ use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemDefaultImpl};
 use ast::{ItemExternCrate, ItemUse};
 use ast::{LifetimeDef, Lit, Lit_};
-use ast::{LitBool, LitChar, LitByte, LitBinary};
+use ast::{LitBool, LitChar, LitByte, LitByteStr};
 use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchSource};
@@ -1543,11 +1543,11 @@ impl<'a> Parser<'a> {
                             token::intern_and_get_ident(&parse::raw_str_lit(&s.as_str())),
                             ast::RawStr(n)))
                     }
-                    token::Binary(i) =>
-                        (true, LitBinary(parse::binary_lit(&i.as_str()))),
-                    token::BinaryRaw(i, _) =>
+                    token::ByteStr(i) =>
+                        (true, LitByteStr(parse::byte_str_lit(&i.as_str()))),
+                    token::ByteStrRaw(i, _) =>
                         (true,
-                         LitBinary(Rc::new(i.to_string().into_bytes()))),
+                         LitByteStr(Rc::new(i.to_string().into_bytes()))),
                 };
 
                 if suffix_illegal {
@@ -5826,7 +5826,7 @@ impl<'a> Parser<'a> {
         match try!(self.parse_optional_str()) {
             Some((s, style, suf)) => {
                 let sp = self.last_span;
-                self.expect_no_suffix(sp, "str literal", suf);
+                self.expect_no_suffix(sp, "string literal", suf);
                 Ok((s, style))
             }
             _ =>  Err(self.fatal("expected string literal"))
