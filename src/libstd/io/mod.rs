@@ -1439,7 +1439,7 @@ pub trait BufRead: Read {
     ///
     /// The iterator returned from this function will yield instances of
     /// `io::Result<String>`. Each string returned will *not* have a newline
-    /// byte (the 0xA byte) at the end.
+    /// byte (the 0xA byte) or CRLF (0xD, 0xA bytes) at the end.
     ///
     /// # Examples
     ///
@@ -1763,6 +1763,9 @@ impl<B: BufRead> Iterator for Lines<B> {
             Ok(_n) => {
                 if buf.ends_with("\n") {
                     buf.pop();
+                    if buf.ends_with("\r") {
+                        buf.pop();
+                    }
                 }
                 Some(Ok(buf))
             }
@@ -1834,12 +1837,12 @@ mod tests {
 
     #[test]
     fn lines() {
-        let buf = Cursor::new(&b"12"[..]);
+        let buf = Cursor::new(&b"12\r"[..]);
         let mut s = buf.lines();
-        assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
+        assert_eq!(s.next().unwrap().unwrap(), "12\r".to_string());
         assert!(s.next().is_none());
 
-        let buf = Cursor::new(&b"12\n\n"[..]);
+        let buf = Cursor::new(&b"12\r\n\n"[..]);
         let mut s = buf.lines();
         assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
         assert_eq!(s.next().unwrap().unwrap(), "".to_string());
