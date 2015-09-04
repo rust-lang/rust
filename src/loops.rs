@@ -9,7 +9,7 @@ use rustc::front::map::Node::{NodeBlock};
 use std::collections::{HashSet,HashMap};
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type,
-            in_external_macro, expr_block, span_help_and_lint};
+            in_external_macro, expr_block, span_help_and_lint, is_integer_literal};
 use utils::{VEC_PATH, LL_PATH};
 
 declare_lint!{ pub NEEDLESS_RANGE_LOOP, Warn,
@@ -339,7 +339,7 @@ impl<'v, 't> Visitor<'v> for IncrementVisitor<'v, 't> {
                 match parent.node {
                     ExprAssignOp(op, ref lhs, ref rhs) =>
                         if lhs.id == expr.id {
-                            if op.node == BiAdd && is_lit_one(rhs) {
+                            if op.node == BiAdd && is_integer_literal(rhs, 1) {
                                 *state = match *state {
                                     VarState::Initial if self.depth == 0 => VarState::IncrOnce,
                                     _ => VarState::DontWarn
@@ -392,7 +392,7 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
                     self.name = Some(ident.node.name);
 
                     self.state = if let Some(ref init) = local.init {
-                        if is_lit_zero(init) {
+                        if is_integer_literal(init, 0) {
                             VarState::Warn
                         } else {
                             VarState::Declared
@@ -425,7 +425,7 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
                         self.state = VarState::DontWarn;
                     },
                     ExprAssign(ref lhs, ref rhs) if lhs.id == expr.id => {
-                        self.state = if is_lit_zero(rhs) && self.depth == 0 {
+                        self.state = if is_integer_literal(rhs, 0) && self.depth == 0 {
                             VarState::Warn
                         } else {
                             VarState::DontWarn
@@ -472,24 +472,4 @@ fn is_conditional(expr: &Expr) -> bool {
         ExprIf(..) | ExprMatch(..) => true,
         _ => false
     }
-}
-
-// FIXME: copy/paste from misc.rs
-fn is_lit_one(expr: &Expr) -> bool {
-    if let ExprLit(ref spanned) = expr.node {
-        if let LitInt(1, _) = spanned.node {
-            return true;
-        }
-    }
-    false
-}
-
-// FIXME: copy/paste from ranges.rs
-fn is_lit_zero(expr: &Expr) -> bool {
-    if let ExprLit(ref spanned) = expr.node {
-        if let LitInt(0, _) = spanned.node {
-            return true;
-        }
-    }
-    false
 }

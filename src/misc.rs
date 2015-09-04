@@ -7,7 +7,7 @@ use syntax::codemap::{Span, Spanned};
 use rustc_front::visit::FnKind;
 use rustc::middle::ty;
 
-use utils::{get_item_name, match_path, snippet, span_lint, walk_ptrs_ty};
+use utils::{get_item_name, match_path, snippet, span_lint, walk_ptrs_ty, is_integer_literal};
 use consts::constant;
 
 declare_lint!(pub TOPLEVEL_REF_ARG, Warn,
@@ -183,21 +183,12 @@ impl LintPass for ModuloOne {
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
         if let ExprBinary(ref cmp, _, ref right) = expr.node {
             if let &Spanned {node: BinOp_::BiRem, ..} = cmp {
-                if is_lit_one(right) {
+                if is_integer_literal(right, 1) {
                     cx.span_lint(MODULO_ONE, expr.span, "any number modulo 1 will be 0");
                 }
             }
         }
     }
-}
-
-fn is_lit_one(expr: &Expr) -> bool {
-    if let ExprLit(ref spanned) = expr.node {
-        if let LitInt(1, _) = spanned.node {
-            return true;
-        }
-    }
-    false
 }
 
 declare_lint!(pub REDUNDANT_PATTERN, Warn, "using `name @ _` in a pattern");

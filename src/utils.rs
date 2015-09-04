@@ -244,6 +244,17 @@ pub fn walk_ptrs_ty_depth(ty: ty::Ty) -> (ty::Ty, usize) {
     inner(ty, 0)
 }
 
+pub fn is_integer_literal(expr: &Expr, value: u64) -> bool
+{
+    // FIXME: use constant folding
+    if let ExprLit(ref spanned) = expr.node {
+        if let LitInt(v, _) = spanned.node {
+            return v == value;
+        }
+    }
+    false
+}
+
 /// Produce a nested chain of if-lets and ifs from the patterns:
 ///
 ///     if_let_chain! {
