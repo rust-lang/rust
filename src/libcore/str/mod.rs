@@ -24,7 +24,7 @@ use convert::AsRef;
 use default::Default;
 use fmt;
 use iter::ExactSizeIterator;
-use iter::{Map, Iterator, DoubleEndedIterator};
+use iter::{Map, Cloned, Iterator, DoubleEndedIterator};
 use marker::Sized;
 use mem;
 use ops::{Fn, FnMut, FnOnce};
@@ -369,34 +369,7 @@ impl<'a> CharIndices<'a> {
 /// Created with the method `.bytes()`.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct Bytes<'a>(Map<slice::Iter<'a, u8>, BytesDeref>);
-
-/// A nameable, clonable fn type
-#[derive(Clone)]
-struct BytesDeref;
-
-impl<'a> Fn<(&'a u8,)> for BytesDeref {
-    #[inline]
-    extern "rust-call" fn call(&self, (ptr,): (&'a u8,)) -> u8 {
-        *ptr
-    }
-}
-
-impl<'a> FnMut<(&'a u8,)> for BytesDeref {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, (ptr,): (&'a u8,)) -> u8 {
-        Fn::call(&*self, (ptr,))
-    }
-}
-
-impl<'a> FnOnce<(&'a u8,)> for BytesDeref {
-    type Output = u8;
-
-    #[inline]
-    extern "rust-call" fn call_once(self, (ptr,): (&'a u8,)) -> u8 {
-        Fn::call(&self, (ptr,))
-    }
-}
+pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Bytes<'a> {
@@ -1352,7 +1325,7 @@ impl StrExt for str {
 
     #[inline]
     fn bytes(&self) -> Bytes {
-        Bytes(self.as_bytes().iter().map(BytesDeref))
+        Bytes(self.as_bytes().iter().cloned())
     }
 
     #[inline]
