@@ -1,3 +1,41 @@
+2015-08-24  Ulrich Weigand  <Ulrich.Weigand@de.ibm.com>
+
+	* configure.ac: Set have_mmap to no on spu-*-* targets.
+	* configure: Regenerate.
+
+2015-08-13  Ian Lance Taylor  <iant@google.com>
+
+	* dwarf.c (read_function_entry): Add vec_inlined parameter.
+	Change all callers.
+
+2015-06-11  Martin Sebor  <msebor@redhat.com>
+
+	PR sanitizer/65479
+	* dwarf.c (struct line): Add new field idx.
+	(line_compare): Use it.
+	(add_line): Set it.
+	(read_line_info): Reset it.
+
+2015-05-29  Tristan Gingold  <gingold@adacore.com>
+
+	* pecoff.c: New file.
+	* Makefile.am (FORMAT_FILES): Add pecoff.c and dependencies.
+	* Makefile.in: Regenerate.
+	* filetype.awk: Detect pecoff.
+	* configure.ac: Define BACKTRACE_SUPPORTS_DATA on elf platforms.
+	Add pecoff.
+	* btest.c (test5): Test enabled only if BACKTRACE_SUPPORTS_DATA is
+	true.
+	* backtrace-supported.h.in (BACKTRACE_SUPPORTS_DATA): Define.
+	* configure: Regenerate.
+	* pecoff.c: New file.
+
+2015-05-13  Michael Haubenwallner  <michael.haubenwallner@ssi-schaefer.com>
+
+	* Makefile.in: Regenerated with automake-1.11.6.
+	* aclocal.m4: Likewise.
+	* configure: Likewise.
+
 2015-01-24  Matthias Klose  <doko@ubuntu.com>
 
 	* configure.ac: Move AM_ENABLE_MULTILIB before AC_PROG_CC.

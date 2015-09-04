@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // no-pretty-expanded FIXME #15189
-// ignore-windows FIXME #13259
 // ignore-android FIXME #17520
+// ignore-msvc FIXME #28133
 
 use std::env;
 use std::process::{Command, Stdio};
@@ -89,6 +89,7 @@ fn runtest(me: &str) {
             "bad output4: {}", s);
 }
 
+#[cfg(not(all(windows, target_arch = "x86")))]
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() >= 2 && args[1] == "fail" {
@@ -99,3 +100,7 @@ fn main() {
         runtest(&args[0]);
     }
 }
+
+// See issue 28218
+#[cfg(all(windows, target_arch = "x86"))]
+fn main() {}

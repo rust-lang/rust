@@ -8,15 +8,41 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::prelude::*;
-
 use io;
+use io::prelude::*;
+use str;
+use libc;
 
 #[cfg(target_pointer_width = "64")]
 pub const HEX_WIDTH: usize = 18;
 
 #[cfg(target_pointer_width = "32")]
 pub const HEX_WIDTH: usize = 10;
+
+
+// These output functions should now be used everywhere to ensure consistency.
+pub fn output(w: &mut Write, idx: isize, addr: *mut libc::c_void,
+              s: Option<&[u8]>) -> io::Result<()> {
+    try!(write!(w, "  {:2}: {:2$?} - ", idx, addr, HEX_WIDTH));
+    match s.and_then(|s| str::from_utf8(s).ok()) {
+        Some(string) => try!(demangle(w, string)),
+        None => try!(write!(w, "<unknown>")),
+    }
+    w.write_all(&['\n' as u8])
+}
+
+#[allow(dead_code)]
+pub fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
+                       more: bool) -> io::Result<()> {
+    let file = str::from_utf8(file).unwrap_or("<unknown>");
+    // prior line: "  ##: {:2$} - func"
+    try!(write!(w, "      {:3$}at {}:{}", "", file, line, HEX_WIDTH));
+    if more {
+        try!(write!(w, " <... and possibly more>"));
+    }
+    w.write_all(&['\n' as u8])
+}
+
 
 // All rust symbols are in theory lists of "::"-separated identifiers. Some
 // assemblers, however, can't handle these characters in symbol names. To get
