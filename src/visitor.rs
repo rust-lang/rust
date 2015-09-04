@@ -87,7 +87,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         // Check if this block has braces.
         let snippet = self.snippet(b.span);
-        let has_braces = snippet.chars().next().unwrap() == '{' || &snippet[..6] == "unsafe";
+        let has_braces = &snippet[..1] == "{" || &snippet[..6] == "unsafe";
         let brace_compensation = if has_braces {
             BytePos(1)
         } else {
@@ -125,43 +125,45 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 b: &'v ast::Block,
                 s: Span,
                 _: ast::NodeId) {
-        self.format_missing_with_indent(s.lo);
-        self.last_pos = s.lo;
-
         let indent = self.block_indent;
-        match fk {
+        let rewrite = match fk {
             visit::FnKind::ItemFn(ident,
-                            ref generics,
-                            ref unsafety,
-                            ref constness,
-                            ref abi,
-                            vis) => {
-                let new_fn = self.rewrite_fn(indent,
-                                             ident,
-                                             fd,
-                                             None,
-                                             generics,
-                                             unsafety,
-                                             constness,
-                                             abi,
-                                             vis,
-                                             codemap::mk_sp(s.lo, b.span.lo));
-                self.buffer.push_str(&new_fn);
+                                  ref generics,
+                                  ref unsafety,
+                                  ref constness,
+                                  ref abi,
+                                  vis) => {
+                self.rewrite_fn(indent,
+                                ident,
+                                fd,
+                                None,
+                                generics,
+                                unsafety,
+                                constness,
+                                abi,
+                                vis,
+                                codemap::mk_sp(s.lo, b.span.lo))
             }
             visit::FnKind::Method(ident, ref sig, vis) => {
-                let new_fn = self.rewrite_fn(indent,
-                                             ident,
-                                             fd,
-                                             Some(&sig.explicit_self),
-                                             &sig.generics,
-                                             &sig.unsafety,
-                                             &sig.constness,
-                                             &sig.abi,
-                                             vis.unwrap_or(ast::Visibility::Inherited),
-                                             codemap::mk_sp(s.lo, b.span.lo));
-                self.buffer.push_str(&new_fn);
+                self.rewrite_fn(indent,
+                                ident,
+                                fd,
+                                Some(&sig.explicit_self),
+                                &sig.generics,
+                                &sig.unsafety,
+                                &sig.constness,
+                                &sig.abi,
+                                vis.unwrap_or(ast::Visibility::Inherited),
+                                codemap::mk_sp(s.lo, b.span.lo))
             }
-            visit::FnKind::Closure => {}
+            visit::FnKind::Closure => None,
+        };
+
+        if let Some(fn_str) = rewrite {
+            self.format_missing_with_indent(s.lo);
+            self.buffer.push_str(&fn_str);
+        } else {
+            self.format_missing(b.span.lo);
         }
 
         self.last_pos = b.span.lo;
@@ -239,8 +241,11 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                                   sig,
                                                   ti.span);
 
-            self.buffer.push_str(&new_fn);
-            self.last_pos = ti.span.hi;
+
+            if let Some(fn_str) = new_fn {
+                self.buffer.push_str(&fn_str);
+                self.last_pos = ti.span.hi;
+            }
         }
         // TODO format trait types
 

@@ -164,6 +164,38 @@ macro_rules! try_opt {
     })
 }
 
+pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: usize) -> Option<S> {
+    let snippet = s.as_ref();
+
+    if !snippet.contains('\n') && snippet.len() > width {
+        return None;
+    } else {
+        let mut lines = snippet.lines();
+
+        // The caller of this function has already placed `offset`
+        // characters on the first line.
+        let first_line_max_len = try_opt!(max_width.checked_sub(offset));
+        if lines.next().unwrap().len() > first_line_max_len {
+            return None;
+        }
+
+        // The other lines must fit within the maximum width.
+        if lines.find(|line| line.len() > max_width).is_some() {
+            return None;
+        }
+
+        // `width` is the maximum length of the last line, excluding
+        // indentation.
+        // A special check for the last line, since the caller may
+        // place trailing characters on this line.
+        if snippet.lines().rev().next().unwrap().len() > offset + width {
+            return None;
+        }
+    }
+
+    Some(s)
+}
+
 #[test]
 fn power_rounding() {
     assert_eq!(0, round_up_to_power_of_two(0));

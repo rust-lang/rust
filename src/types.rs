@@ -87,6 +87,12 @@ fn rewrite_path_segments<'a, I>(mut buffer: String,
     let mut first = true;
 
     for segment in iter {
+        if first {
+            first = false;
+        } else {
+            buffer.push_str("::");
+        }
+
         let extra_offset = extra_offset(&buffer, offset);
         let remaining_width = try_opt!(width.checked_sub(extra_offset));
         let new_offset = offset + extra_offset;
@@ -96,12 +102,6 @@ fn rewrite_path_segments<'a, I>(mut buffer: String,
                                                       context,
                                                       remaining_width,
                                                       new_offset));
-
-        if first {
-            first = false;
-        } else {
-            buffer.push_str("::");
-        }
 
         buffer.push_str(&segment_string);
     }
@@ -218,18 +218,20 @@ fn rewrite_segment(segment: &ast::PathSegment,
                                      ">",
                                      |param| param.get_span().lo,
                                      |param| param.get_span().hi,
+                                     // FIXME: need better params
                                      |seg| {
-                                         seg.rewrite(context, list_width, offset + extra_offset).unwrap()
+                                         seg.rewrite(context, 1000, offset + extra_offset).unwrap()
                                      },
                                      list_lo,
                                      span_hi);
 
             let fmt = ListFormatting::for_fn(list_width, offset + extra_offset);
+            let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
             // update pos
             *span_lo = next_span_lo;
 
-            format!("{}<{}>", separator, write_list(&items.collect::<Vec<_>>(), &fmt))
+            format!("{}<{}>", separator, list_str)
         }
         ast::PathParameters::ParenthesizedParameters(ref data) => {
             let output = match data.output {
@@ -252,11 +254,12 @@ fn rewrite_segment(segment: &ast::PathSegment,
 
             // 1 for (
             let fmt = ListFormatting::for_fn(budget, offset + 1);
+            let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
             // update pos
             *span_lo = data.span.hi + BytePos(1);
 
-            format!("({}){}", write_list(&items.collect::<Vec<_>>(), &fmt), output)
+            format!("({}){}", list_str, output)
         }
         _ => String::new(),
     };
@@ -354,7 +357,8 @@ impl Rewrite for ast::TyParamBound {
 
 impl Rewrite for ast::TyParamBounds {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
-        let strs: Vec<_> = self.iter().map(|b| b.rewrite(context, width, offset).unwrap()).collect();
+        let strs: Vec<_> =
+            self.iter().map(|b| b.rewrite(context, width, offset).unwrap()).collect();
         Some(strs.join(" + "))
     }
 }

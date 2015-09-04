@@ -99,20 +99,20 @@ impl<'a> FmtVisitor<'a> {
                       abi: &abi::Abi,
                       vis: ast::Visibility,
                       span: Span)
-                      -> String {
+                      -> Option<String> {
         let mut newline_brace = self.newline_for_brace(&generics.where_clause);
 
-        let mut result = self.rewrite_fn_base(indent,
-                                              ident,
-                                              fd,
-                                              explicit_self,
-                                              generics,
-                                              unsafety,
-                                              constness,
-                                              abi,
-                                              vis,
-                                              span,
-                                              newline_brace);
+        let mut result = try_opt!(self.rewrite_fn_base(indent,
+                                                       ident,
+                                                       fd,
+                                                       explicit_self,
+                                                       generics,
+                                                       unsafety,
+                                                       constness,
+                                                       abi,
+                                                       vis,
+                                                       span,
+                                                       newline_brace));
 
         if self.config.fn_brace_style != BraceStyle::AlwaysNextLine && !result.contains('\n') {
             newline_brace = false;
@@ -130,7 +130,7 @@ impl<'a> FmtVisitor<'a> {
             result.push(' ');
         }
 
-        result
+        Some(result)
     }
 
     pub fn rewrite_required_fn(&mut self,
@@ -138,26 +138,26 @@ impl<'a> FmtVisitor<'a> {
                                ident: ast::Ident,
                                sig: &ast::MethodSig,
                                span: Span)
-                               -> String {
+                               -> Option<String> {
         // Drop semicolon or it will be interpreted as comment
         let span = codemap::mk_sp(span.lo, span.hi - BytePos(1));
 
-        let mut result = self.rewrite_fn_base(indent,
-                                              ident,
-                                              &sig.decl,
-                                              Some(&sig.explicit_self),
-                                              &sig.generics,
-                                              &sig.unsafety,
-                                              &sig.constness,
-                                              &sig.abi,
-                                              ast::Visibility::Inherited,
-                                              span,
-                                              false);
+        let mut result = try_opt!(self.rewrite_fn_base(indent,
+                                                       ident,
+                                                       &sig.decl,
+                                                       Some(&sig.explicit_self),
+                                                       &sig.generics,
+                                                       &sig.unsafety,
+                                                       &sig.constness,
+                                                       &sig.abi,
+                                                       ast::Visibility::Inherited,
+                                                       span,
+                                                       false));
 
         // Re-attach semicolon
         result.push(';');
 
-        result
+        Some(result)
     }
 
     fn rewrite_fn_base(&mut self,
@@ -172,7 +172,7 @@ impl<'a> FmtVisitor<'a> {
                        vis: ast::Visibility,
                        span: Span,
                        newline_brace: bool)
-                       -> String {
+                       -> Option<String> {
         // FIXME we'll lose any comments in between parts of the function decl, but anyone
         // who comments there probably deserves what they get.
 
@@ -200,11 +200,12 @@ impl<'a> FmtVisitor<'a> {
 
         // Generics.
         let generics_indent = indent + result.len();
-        result.push_str(&self.rewrite_generics(generics,
-                                               indent,
-                                               generics_indent,
-                                               codemap::mk_sp(span.lo,
-                                                              span_for_return(&fd.output).lo)));
+        let generics_span = codemap::mk_sp(span.lo, span_for_return(&fd.output).lo);
+        let generics_str = try_opt!(self.rewrite_generics(generics,
+                                                          indent,
+                                                          generics_indent,
+                                                          generics_span));
+        result.push_str(&generics_str);
 
         let ret_str = self.rewrite_return(&fd.output, indent);
 
@@ -243,13 +244,14 @@ impl<'a> FmtVisitor<'a> {
                                                   "(",
                                                   self.codemap),
                                        span_for_return(&fd.output).lo);
-        result.push_str(&self.rewrite_args(&fd.inputs,
-                                           explicit_self,
-                                           one_line_budget,
-                                           multi_line_budget,
-                                           indent,
-                                           arg_indent,
-                                           args_span));
+        let arg_str = try_opt!(self.rewrite_args(&fd.inputs,
+                                                 explicit_self,
+                                                 one_line_budget,
+                                                 multi_line_budget,
+                                                 indent,
+                                                 arg_indent,
+                                                 args_span));
+        result.push_str(&arg_str);
         if self.config.fn_args_layout == StructLitStyle::Block {
             result.push('\n');
         }
@@ -307,13 +309,14 @@ impl<'a> FmtVisitor<'a> {
         };
 
         // Where clause.
-        result.push_str(&self.rewrite_where_clause(where_clause,
-                                                   self.config,
-                                                   indent,
-                                                   where_density,
-                                                   span.hi));
+        let where_clause_str = try_opt!(self.rewrite_where_clause(where_clause,
+                                                                  self.config,
+                                                                  indent,
+                                                                  where_density,
+                                                                  span.hi));
+        result.push_str(&where_clause_str);
 
-        result
+        Some(result)
     }
 
     fn rewrite_args(&self,
@@ -324,7 +327,7 @@ impl<'a> FmtVisitor<'a> {
                     indent: usize,
                     arg_indent: usize,
                     span: Span)
-                    -> String {
+                    -> Option<String> {
         let mut arg_item_strs: Vec<_> = args.iter().map(rewrite_fn_input).collect();
         // Account for sugary self.
         // FIXME: the comment for the self argument is dropped. This is blocked
@@ -461,8 +464,8 @@ impl<'a> FmtVisitor<'a> {
                                                 " {",
                                                 self.block_indent,
                                                 self.block_indent + self.config.tab_spaces,
-                                                codemap::mk_sp(span.lo,
-                                                               body_start));
+                                                codemap::mk_sp(span.lo, body_start))
+                               .unwrap();
         self.buffer.push_str(&generics_str);
 
         self.last_pos = body_start;
@@ -534,7 +537,12 @@ impl<'a> FmtVisitor<'a> {
                         v_width: budget,
                         ends_with_newline: true,
                     };
-                    result.push_str(&write_list(&items.collect::<Vec<_>>(), &fmt));
+                    let list_str = match write_list(&items.collect::<Vec<_>>(), &fmt) {
+                        Some(list_str) => list_str,
+                        None => return,
+                    };
+
+                    result.push_str(&list_str);
                     result.push(')');
                 }
 
@@ -554,13 +562,18 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::VariantKind::StructVariantKind(ref struct_def) => {
                 // TODO Should limit the width, as we have a trailing comma
-                self.format_struct("",
-                                   field.node.name,
-                                   field.node.vis,
-                                   struct_def,
-                                   None,
-                                   field.span,
-                                   self.block_indent)
+                let struct_rewrite = self.format_struct("",
+                                                        field.node.name,
+                                                        field.node.vis,
+                                                        struct_def,
+                                                        None,
+                                                        field.span,
+                                                        self.block_indent);
+
+                match struct_rewrite {
+                    Some(struct_str) => struct_str,
+                    None => return,
+                }
             }
         };
         self.buffer.push_str(&result);
@@ -580,7 +593,7 @@ impl<'a> FmtVisitor<'a> {
                      generics: Option<&ast::Generics>,
                      span: Span,
                      offset: usize)
-                     -> String {
+                     -> Option<String> {
         let mut result = String::with_capacity(1024);
 
         let header_str = self.format_header(item_name, ident, vis);
@@ -588,7 +601,7 @@ impl<'a> FmtVisitor<'a> {
 
         if struct_def.fields.is_empty() {
             result.push(';');
-            return result;
+            return Some(result);
         }
 
         let is_tuple = match struct_def.fields[0].node.kind {
@@ -603,12 +616,14 @@ impl<'a> FmtVisitor<'a> {
         };
 
         let generics_str = match generics {
-            Some(g) => self.format_generics(g,
-                                            opener,
-                                            offset,
-                                            offset + header_str.len(),
-                                            codemap::mk_sp(span.lo,
-                                                           struct_def.fields[0].span.lo)),
+            Some(g) => {
+                try_opt!(self.format_generics(g,
+                                              opener,
+                                              offset,
+                                              offset + header_str.len(),
+                                              codemap::mk_sp(span.lo,
+                                                             struct_def.fields[0].span.lo)))
+            }
             None => opener.to_owned(),
         };
         result.push_str(&generics_str);
@@ -658,8 +673,9 @@ impl<'a> FmtVisitor<'a> {
             v_width: budget,
             ends_with_newline: true,
         };
+        let list_str = write_list(&items.collect::<Vec<_>>(), &fmt).unwrap();
 
-        result.push_str(&write_list(&items.collect::<Vec<_>>(), &fmt));
+        result.push_str(&list_str);
 
         if break_line {
             result.push('\n');
@@ -672,7 +688,7 @@ impl<'a> FmtVisitor<'a> {
             result.push(';');
         }
 
-        result
+        Some(result)
     }
 
     pub fn visit_struct(&mut self,
@@ -688,7 +704,9 @@ impl<'a> FmtVisitor<'a> {
                                         struct_def,
                                         Some(generics),
                                         span,
-                                        indent);
+                                        indent)
+                         .unwrap();
+
         self.buffer.push_str(&result);
         self.last_pos = span.hi;
     }
@@ -703,15 +721,16 @@ impl<'a> FmtVisitor<'a> {
                        offset: usize,
                        generics_offset: usize,
                        span: Span)
-                       -> String {
-        let mut result = self.rewrite_generics(generics, offset, generics_offset, span);
+                       -> Option<String> {
+        let mut result = try_opt!(self.rewrite_generics(generics, offset, generics_offset, span));
 
         if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
-            result.push_str(&self.rewrite_where_clause(&generics.where_clause,
-                                                       self.config,
-                                                       self.block_indent,
-                                                       Density::Tall,
-                                                       span.hi));
+            let where_clause_str = try_opt!(self.rewrite_where_clause(&generics.where_clause,
+                                                                      self.config,
+                                                                      self.block_indent,
+                                                                      Density::Tall,
+                                                                      span.hi));
+            result.push_str(&where_clause_str);
             result.push_str(&make_indent(self.block_indent));
             result.push('\n');
             result.push_str(opener.trim());
@@ -719,7 +738,7 @@ impl<'a> FmtVisitor<'a> {
             result.push_str(opener);
         }
 
-        result
+        Some(result)
     }
 
     // Field of a struct
@@ -761,13 +780,13 @@ impl<'a> FmtVisitor<'a> {
                         offset: usize,
                         generics_offset: usize,
                         span: Span)
-                        -> String {
+                        -> Option<String> {
         // FIXME convert bounds to where clauses where they get too big or if
         // there is a where clause at all.
         let lifetimes: &[_] = &generics.lifetimes;
         let tys: &[_] = &generics.ty_params;
         if lifetimes.is_empty() && tys.is_empty() {
-            return String::new();
+            return Some(String::new());
         }
 
         let offset = match self.config.generics_indent {
@@ -816,8 +835,9 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let fmt = ListFormatting::for_fn(h_budget, offset);
+        let list_str = try_opt!(write_list(&items, &fmt));
 
-        format!("<{}>", write_list(&items, &fmt))
+        Some(format!("<{}>", list_str))
     }
 
     fn rewrite_where_clause(&self,
@@ -826,9 +846,9 @@ impl<'a> FmtVisitor<'a> {
                             indent: usize,
                             density: Density,
                             span_end: BytePos)
-                            -> String {
+                            -> Option<String> {
         if where_clause.predicates.is_empty() {
-            return String::new();
+            return Some(String::new());
         }
 
         let extra_indent = match self.config.where_indent {
@@ -870,16 +890,16 @@ impl<'a> FmtVisitor<'a> {
             v_width: budget,
             ends_with_newline: true,
         };
-        let preds_str = write_list(&items.collect::<Vec<_>>(), &fmt);
+        let preds_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
         // 9 = " where ".len() + " {".len()
         if density == Density::Tall || preds_str.contains('\n') ||
            indent + 9 + preds_str.len() > self.config.max_width {
-            format!("\n{}where {}",
-                    make_indent(indent + extra_indent),
-                    preds_str)
+            Some(format!("\n{}where {}",
+                         make_indent(indent + extra_indent),
+                         preds_str))
         } else {
-            format!(" where {}", preds_str)
+            Some(format!(" where {}", preds_str))
         }
     }
 
