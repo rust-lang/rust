@@ -45,6 +45,26 @@ impl Density {
     }
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum MultilineStyle {
+    // Use horizontal layout if it fits in one line, fall back to vertical
+    PreferSingle,
+    // Use vertical layout
+    ForceMulti,
+}
+
+
+impl_enum_decodable!(MultilineStyle, PreferSingle, ForceMulti);
+
+impl MultilineStyle {
+    pub fn to_list_tactic(self) -> ListTactic {
+        match self {
+            MultilineStyle::PreferSingle => ListTactic::HorizontalVertical,
+            MultilineStyle::ForceMulti => ListTactic::Vertical,
+        }
+    }
+}
+
 macro_rules! create_config {
     ($($i:ident: $ty:ty),+ $(,)*) => (
         #[derive(RustcDecodable, Clone)]
@@ -122,6 +142,7 @@ create_config! {
     struct_trailing_comma: SeparatorTactic,
     struct_lit_trailing_comma: SeparatorTactic,
     struct_lit_style: StructLitStyle,
+    struct_lit_multiline_style: MultilineStyle,
     enum_trailing_comma: bool,
     report_todo: ReportTactic,
     report_fixme: ReportTactic,
@@ -155,6 +176,7 @@ impl Default for Config {
             struct_trailing_comma: SeparatorTactic::Vertical,
             struct_lit_trailing_comma: SeparatorTactic::Vertical,
             struct_lit_style: StructLitStyle::Block,
+            struct_lit_multiline_style: MultilineStyle::PreferSingle,
             enum_trailing_comma: true,
             report_todo: ReportTactic::Always,
             report_fixme: ReportTactic::Never,
