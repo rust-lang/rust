@@ -55,4 +55,6 @@ lexicographic order or addr -> unsize lexicographic order.
 
 # Unresolved questions
 
-See Alternatives.
+What form of ordering should be adopted, if any?
+
+
