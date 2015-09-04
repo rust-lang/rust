@@ -22,6 +22,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
         feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
                                        "log_syntax",
                                        sp,
+                                       feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_LOG_SYNTAX);
         return base::DummyResult::any(sp);
     }

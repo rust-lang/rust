@@ -47,147 +47,147 @@ use std::cmp;
 // stable (active).
 // NB: The featureck.py script parses this information directly out of the source
 // so take care when modifying it.
-const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
-    ("globs", "1.0.0", Accepted),
-    ("macro_rules", "1.0.0", Accepted),
-    ("struct_variant", "1.0.0", Accepted),
-    ("asm", "1.0.0", Active),
-    ("managed_boxes", "1.0.0", Removed),
-    ("non_ascii_idents", "1.0.0", Active),
-    ("thread_local", "1.0.0", Active),
-    ("link_args", "1.0.0", Active),
-    ("plugin_registrar", "1.0.0", Active),
-    ("log_syntax", "1.0.0", Active),
-    ("trace_macros", "1.0.0", Active),
-    ("concat_idents", "1.0.0", Active),
-    ("intrinsics", "1.0.0", Active),
-    ("lang_items", "1.0.0", Active),
+const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status)] = &[
+    ("globs", "1.0.0", None, Accepted),
+    ("macro_rules", "1.0.0", None, Accepted),
+    ("struct_variant", "1.0.0", None, Accepted),
+    ("asm", "1.0.0", None, Active),
+    ("managed_boxes", "1.0.0", None, Removed),
+    ("non_ascii_idents", "1.0.0", None, Active),
+    ("thread_local", "1.0.0", None, Active),
+    ("link_args", "1.0.0", None, Active),
+    ("plugin_registrar", "1.0.0", None, Active),
+    ("log_syntax", "1.0.0", None, Active),
+    ("trace_macros", "1.0.0", None, Active),
+    ("concat_idents", "1.0.0", None, Active),
+    ("intrinsics", "1.0.0", None, Active),
+    ("lang_items", "1.0.0", None, Active),
 
-    ("simd", "1.0.0", Active),
-    ("default_type_params", "1.0.0", Accepted),
-    ("quote", "1.0.0", Active),
-    ("link_llvm_intrinsics", "1.0.0", Active),
-    ("linkage", "1.0.0", Active),
-    ("struct_inherit", "1.0.0", Removed),
+    ("simd", "1.0.0", Some(27731), Active),
+    ("default_type_params", "1.0.0", None, Accepted),
+    ("quote", "1.0.0", None, Active),
+    ("link_llvm_intrinsics", "1.0.0", None, Active),
+    ("linkage", "1.0.0", None, Active),
+    ("struct_inherit", "1.0.0", None, Removed),
 
-    ("quad_precision_float", "1.0.0", Removed),
+    ("quad_precision_float", "1.0.0", None, Removed),
 
-    ("rustc_diagnostic_macros", "1.0.0", Active),
-    ("unboxed_closures", "1.0.0", Active),
-    ("reflect", "1.0.0", Active),
-    ("import_shadowing", "1.0.0", Removed),
-    ("advanced_slice_patterns", "1.0.0", Active),
-    ("tuple_indexing", "1.0.0", Accepted),
-    ("associated_types", "1.0.0", Accepted),
-    ("visible_private_types", "1.0.0", Active),
-    ("slicing_syntax", "1.0.0", Accepted),
-    ("box_syntax", "1.0.0", Active),
-    ("placement_in_syntax", "1.0.0", Active),
-    ("pushpop_unsafe", "1.2.0", Active),
-    ("on_unimplemented", "1.0.0", Active),
-    ("simd_ffi", "1.0.0", Active),
-    ("allocator", "1.0.0", Active),
-    ("needs_allocator", "1.4.0", Active),
-    ("linked_from", "1.3.0", Active),
+    ("rustc_diagnostic_macros", "1.0.0", None, Active),
+    ("unboxed_closures", "1.0.0", None, Active),
+    ("reflect", "1.0.0", None, Active),
+    ("import_shadowing", "1.0.0", None, Removed),
+    ("advanced_slice_patterns", "1.0.0", None, Active),
+    ("tuple_indexing", "1.0.0", None, Accepted),
+    ("associated_types", "1.0.0", None, Accepted),
+    ("visible_private_types", "1.0.0", None, Active),
+    ("slicing_syntax", "1.0.0", None, Accepted),
+    ("box_syntax", "1.0.0", None, Active),
+    ("placement_in_syntax", "1.0.0", None, Active),
+    ("pushpop_unsafe", "1.2.0", None, Active),
+    ("on_unimplemented", "1.0.0", None, Active),
+    ("simd_ffi", "1.0.0", None, Active),
+    ("allocator", "1.0.0", None, Active),
+    ("needs_allocator", "1.4.0", None, Active),
+    ("linked_from", "1.3.0", None, Active),
 
-    ("if_let", "1.0.0", Accepted),
-    ("while_let", "1.0.0", Accepted),
+    ("if_let", "1.0.0", None, Accepted),
+    ("while_let", "1.0.0", None, Accepted),
 
-    ("plugin", "1.0.0", Active),
-    ("start", "1.0.0", Active),
-    ("main", "1.0.0", Active),
+    ("plugin", "1.0.0", None, Active),
+    ("start", "1.0.0", None, Active),
+    ("main", "1.0.0", None, Active),
 
-    ("fundamental", "1.0.0", Active),
+    ("fundamental", "1.0.0", None, Active),
 
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
-    ("issue_5723_bootstrap", "1.0.0", Accepted),
+    ("issue_5723_bootstrap", "1.0.0", None, Accepted),
 
     // A way to temporarily opt out of opt in copy. This will *never* be accepted.
-    ("opt_out_copy", "1.0.0", Removed),
+    ("opt_out_copy", "1.0.0", None, Removed),
 
     // OIBIT specific features
-    ("optin_builtin_traits", "1.0.0", Active),
+    ("optin_builtin_traits", "1.0.0", None, Active),
 
     // macro reexport needs more discussion and stabilization
-    ("macro_reexport", "1.0.0", Active),
+    ("macro_reexport", "1.0.0", None, Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
-    ("test_accepted_feature", "1.0.0", Accepted),
-    ("test_removed_feature", "1.0.0", Removed),
+    ("test_accepted_feature", "1.0.0", None, Accepted),
+    ("test_removed_feature", "1.0.0", None, Removed),
 
     // Allows use of #[staged_api]
-    ("staged_api", "1.0.0", Active),
+    ("staged_api", "1.0.0", None, Active),
 
     // Allows using items which are missing stability attributes
-    ("unmarked_api", "1.0.0", Active),
+    ("unmarked_api", "1.0.0", None, Active),
 
     // Allows using #![no_std]
-    ("no_std", "1.0.0", Active),
+    ("no_std", "1.0.0", None, Active),
 
     // Allows using #![no_core]
-    ("no_core", "1.3.0", Active),
+    ("no_core", "1.3.0", None, Active),
 
     // Allows using `box` in patterns; RFC 469
-    ("box_patterns", "1.0.0", Active),
+    ("box_patterns", "1.0.0", None, Active),
 
     // Allows using the unsafe_no_drop_flag attribute (unlikely to
     // switch to Accepted; see RFC 320)
-    ("unsafe_no_drop_flag", "1.0.0", Active),
+    ("unsafe_no_drop_flag", "1.0.0", None, Active),
 
     // Allows the use of custom attributes; RFC 572
-    ("custom_attribute", "1.0.0", Active),
+    ("custom_attribute", "1.0.0", None, Active),
 
     // Allows the use of #[derive(Anything)] as sugar for
     // #[derive_Anything].
-    ("custom_derive", "1.0.0", Active),
+    ("custom_derive", "1.0.0", None, Active),
 
     // Allows the use of rustc_* attributes; RFC 572
-    ("rustc_attrs", "1.0.0", Active),
+    ("rustc_attrs", "1.0.0", None, Active),
 
     // Allows the use of #[allow_internal_unstable]. This is an
     // attribute on macro_rules! and can't use the attribute handling
     // below (it has to be checked before expansion possibly makes
     // macros disappear).
-    ("allow_internal_unstable", "1.0.0", Active),
+    ("allow_internal_unstable", "1.0.0", None, Active),
 
     // #23121. Array patterns have some hazards yet.
-    ("slice_patterns", "1.0.0", Active),
+    ("slice_patterns", "1.0.0", None, Active),
 
     // Allows use of unary negate on unsigned integers, e.g. -e for e: u8
-    ("negate_unsigned", "1.0.0", Active),
+    ("negate_unsigned", "1.0.0", None, Active),
 
     // Allows the definition of associated constants in `trait` or `impl`
     // blocks.
-    ("associated_consts", "1.0.0", Active),
+    ("associated_consts", "1.0.0", None, Active),
 
     // Allows the definition of `const fn` functions.
-    ("const_fn", "1.2.0", Active),
+    ("const_fn", "1.2.0", None, Active),
 
     // Allows using #[prelude_import] on glob `use` items.
-    ("prelude_import", "1.2.0", Active),
+    ("prelude_import", "1.2.0", None, Active),
 
     // Allows the definition recursive static items.
-    ("static_recursion", "1.3.0", Active),
+    ("static_recursion", "1.3.0", None, Active),
 
     // Allows default type parameters to influence type inference.
-    ("default_type_parameter_fallback", "1.3.0", Active),
+    ("default_type_parameter_fallback", "1.3.0", None, Active),
 
     // Allows associated type defaults
-    ("associated_type_defaults", "1.2.0", Active),
+    ("associated_type_defaults", "1.2.0", None, Active),
     // Allows macros to appear in the type position.
 
-    ("type_macros", "1.3.0", Active),
+    ("type_macros", "1.3.0", Some(27336), Active),
 
     // allow `repr(simd)`, and importing the various simd intrinsics
-    ("repr_simd", "1.4.0", Active),
+    ("repr_simd", "1.4.0", Some(27731), Active),
 
     // Allows cfg(target_feature = "...").
-    ("cfg_target_feature", "1.4.0", Active),
+    ("cfg_target_feature", "1.4.0", None, Active),
 
     // allow `extern "platform-intrinsic" { ... }`
-    ("platform_intrinsics", "1.4.0", Active),
+    ("platform_intrinsics", "1.4.0", Some(27731), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -386,7 +386,7 @@ impl GatedCfg {
         let (cfg, feature, has_feature) = GATED_CFGS[self.index];
         if !has_feature(features) {
             let explain = format!("`cfg({})` is experimental and subject to change", cfg);
-            emit_feature_err(diagnostic, feature, self.span, &explain);
+            emit_feature_err(diagnostic, feature, self.span, GateIssue::Language, &explain);
         }
     }
 }
@@ -488,21 +488,21 @@ pub fn check_for_box_syntax(f: Option<&Features>, diag: &SpanHandler, span: Span
     if let Some(&Features { allow_box: true, .. }) = f {
         return;
     }
-    emit_feature_err(diag, "box_syntax", span, EXPLAIN_BOX_SYNTAX);
+    emit_feature_err(diag, "box_syntax", span, GateIssue::Language, EXPLAIN_BOX_SYNTAX);
 }
 
 pub fn check_for_placement_in(f: Option<&Features>, diag: &SpanHandler, span: Span) {
     if let Some(&Features { allow_placement_in: true, .. }) = f {
         return;
     }
-    emit_feature_err(diag, "placement_in_syntax", span, EXPLAIN_PLACEMENT_IN);
+    emit_feature_err(diag, "placement_in_syntax", span, GateIssue::Language, EXPLAIN_PLACEMENT_IN);
 }
 
 pub fn check_for_pushpop_syntax(f: Option<&Features>, diag: &SpanHandler, span: Span) {
     if let Some(&Features { allow_pushpop_unsafe: true, .. }) = f {
         return;
     }
-    emit_feature_err(diag, "pushpop_unsafe", span, EXPLAIN_PUSHPOP_UNSAFE);
+    emit_feature_err(diag, "pushpop_unsafe", span, GateIssue::Language, EXPLAIN_PUSHPOP_UNSAFE);
 }
 
 struct Context<'a> {
@@ -522,7 +522,7 @@ impl<'a> Context<'a> {
         let has_feature = self.has_feature(feature);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", feature, span, has_feature);
         if !has_feature {
-            emit_feature_err(self.span_handler, feature, span, explain);
+            emit_feature_err(self.span_handler, feature, span, GateIssue::Language, explain);
         }
     }
     fn has_feature(&self, feature: &str) -> bool {
@@ -576,8 +576,35 @@ impl<'a> Context<'a> {
     }
 }
 
-pub fn emit_feature_err(diag: &SpanHandler, feature: &str, span: Span, explain: &str) {
-    diag.span_err(span, explain);
+fn find_lang_feature_issue(feature: &str) -> Option<u32> {
+    let info = KNOWN_FEATURES.iter()
+                              .find(|t| t.0 == feature)
+                              .unwrap();
+    let issue = info.2;
+    if let Active = info.3 {
+        // FIXME (#28244): enforce that active features have issue numbers
+        // assert!(issue.is_some())
+    }
+    issue
+}
+
+pub enum GateIssue {
+    Language,
+    Library(Option<u32>)
+}
+
+pub fn emit_feature_err(diag: &SpanHandler, feature: &str, span: Span, issue: GateIssue,
+                        explain: &str) {
+    let issue = match issue {
+        GateIssue::Language => find_lang_feature_issue(feature),
+        GateIssue::Library(lib) => lib,
+    };
+
+    if let Some(n) = issue {
+        diag.span_err(span, &format!("{} (see issue #{})", explain, n));
+    } else {
+        diag.span_err(span, explain);
+    }
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
     if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some() { return; }
@@ -948,14 +975,14 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
                         }
                     };
                     match KNOWN_FEATURES.iter()
-                                        .find(|& &(n, _, _)| name == n) {
-                        Some(&(name, _, Active)) => {
+                                        .find(|& &(n, _, _, _)| name == n) {
+                        Some(&(name, _, _, Active)) => {
                             cx.enable_feature(name);
                         }
-                        Some(&(_, _, Removed)) => {
+                        Some(&(_, _, _, Removed)) => {
                             span_handler.span_err(mi.span, "feature has been removed");
                         }
-                        Some(&(_, _, Accepted)) => {
+                        Some(&(_, _, _, Accepted)) => {
                             accepted_features.push(mi.span);
                         }
                         None => {
