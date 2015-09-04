@@ -616,6 +616,8 @@ f33 (int f1line, int f2line)
   return failures;
 }
 
+#if BACKTRACE_SUPPORTS_DATA
+
 int global = 1;
 
 static int
@@ -684,6 +686,8 @@ test5 (void)
   return failures;
 }
 
+#endif /* BACKTRACE_SUPPORTS_DATA  */
+
 static void
 error_callback_create (void *data ATTRIBUTE_UNUSED, const char *msg,
 		       int errnum)
@@ -708,7 +712,9 @@ main (int argc ATTRIBUTE_UNUSED, char **argv)
   test2 ();
   test3 ();
   test4 ();
+#if BACKTRACE_SUPPORTS_DATA
   test5 ();
+#endif
 #endif
 
   exit (failures ? EXIT_FAILURE : EXIT_SUCCESS);

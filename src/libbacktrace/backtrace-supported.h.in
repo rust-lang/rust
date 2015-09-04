@@ -59,3 +59,8 @@ POSSIBILITY OF SUCH DAMAGE.  */
    as 0.  */
 
 #define BACKTRACE_SUPPORTS_THREADS @BACKTRACE_SUPPORTS_THREADS@
+
+/* BACKTRACE_SUPPORTS_DATA will be #defined'd as 1 if the backtrace_syminfo
+   will work for variables.  It will always work for functions.  */
+
+#define BACKTRACE_SUPPORTS_DATA @BACKTRACE_SUPPORTS_DATA@
