@@ -1,7 +1,7 @@
 - Feature Name: inclusive_range_syntax
 - Start Date: 2015-07-07
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1192](https://github.com/rust-lang/rfcs/pull/1192)
+- Rust Issue: [rust-lang/rust#28237](https://github.com/rust-lang/rust/issues/28237)
 
 # Summary
 
