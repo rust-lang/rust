@@ -7,7 +7,7 @@ can be awkward. Consider this code:
 baz(bar(foo));
 ```
 
-We would read this left-to right, and so we see ‘baz bar foo’. But this isn’t the
+We would read this left-to-right, and so we see ‘baz bar foo’. But this isn’t the
 order that the functions would get called in, that’s inside-out: ‘foo bar baz’.
 Wouldn’t it be nice if we could do this instead?
 
@@ -45,17 +45,17 @@ This will print `12.566371`.
 
 
 
-We’ve made a struct that represents a circle. We then write an `impl` block,
+We’ve made a `struct` that represents a circle. We then write an `impl` block,
 and inside it, define a method, `area`.
 
-Methods take a  special first parameter, of which there are three variants:
+Methods take a special first parameter, of which there are three variants:
 `self`, `&self`, and `&mut self`. You can think of this first parameter as
 being the `foo` in `foo.bar()`. The three variants correspond to the three
 kinds of things `foo` could be: `self` if it’s just a value on the stack,
 `&self` if it’s a reference, and `&mut self` if it’s a mutable reference.
 Because we took the `&self` parameter to `area`, we can use it just like any
 other parameter. Because we know it’s a `Circle`, we can access the `radius`
-just like we would with any other struct. 
+just like we would with any other `struct`. 
 
 We should default to using `&self`, as you should prefer borrowing over taking
 ownership, as well as taking immutable references over mutable ones. Here’s an
@@ -120,12 +120,12 @@ Check the return type:
 ```rust
 # struct Circle;
 # impl Circle {
-fn grow(&self) -> Circle {
+fn grow(&self, increment: f64) -> Circle {
 # Circle } }
 ```
 
 We just say we’re returning a `Circle`. With this method, we can grow a new
-circle to any arbitrary size.
+`circle` to any arbitrary size.
 
 # Associated functions
 
@@ -161,7 +161,7 @@ methods’.
 
 # Builder Pattern
 
-Let’s say that we want our users to be able to create Circles, but we will
+Let’s say that we want our users to be able to create `Circle`s, but we will
 allow them to only set the properties they care about. Otherwise, the `x`
 and `y` attributes will be `0.0`, and the `radius` will be `1.0`. Rust doesn’t
 have method overloading, named arguments, or variable arguments. We employ
@@ -224,7 +224,7 @@ fn main() {
 }
 ```
 
-What we’ve done here is make another struct, `CircleBuilder`. We’ve defined our
+What we’ve done here is make another `struct`, `CircleBuilder`. We’ve defined our
 builder methods on it. We’ve also defined our `area()` method on `Circle`. We
 also made one more method on `CircleBuilder`: `finalize()`. This method creates
 our final `Circle` from the builder. Now, we’ve used the type system to enforce
