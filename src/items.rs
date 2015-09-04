@@ -35,7 +35,8 @@ impl<'a> FmtVisitor<'a> {
 
             if let Some(ref ty) = local.ty {
                 infix.push_str(": ");
-                infix.push_str(&pprust::ty_to_string(ty));
+                // FIXME silly width, indent
+                infix.push_str(&ty.rewrite(&self.get_context(), 1000, 0).unwrap());
             }
 
             if local.init.is_some() {
@@ -205,7 +206,7 @@ impl<'a> FmtVisitor<'a> {
                                                codemap::mk_sp(span.lo,
                                                               span_for_return(&fd.output).lo)));
 
-        let ret_str = self.rewrite_return(&fd.output);
+        let ret_str = self.rewrite_return(&fd.output, indent);
 
         // Args.
         let (one_line_budget, multi_line_budget, mut arg_indent) =
@@ -504,7 +505,11 @@ impl<'a> FmtVisitor<'a> {
                                              ")",
                                              |arg| arg.ty.span.lo,
                                              |arg| arg.ty.span.hi,
-                                             |arg| pprust::ty_to_string(&arg.ty),
+                                             |arg| {
+                                                 // FIXME silly width, indent
+                                                 arg.ty.rewrite(&self.get_context(), 1000, 0)
+                                                       .unwrap()
+                                             },
                                              span_after(field.span, "(", self.codemap),
                                              next_span_start);
 
@@ -731,7 +736,8 @@ impl<'a> FmtVisitor<'a> {
             ast::StructFieldKind::NamedField(_, vis) |
             ast::StructFieldKind::UnnamedField(vis) => format_visibility(vis),
         };
-        let typ = pprust::ty_to_string(&field.node.ty);
+        // FIXME silly width, indent
+        let typ = field.node.ty.rewrite(&self.get_context(), 1000, 0).unwrap();
 
         let indent = self.block_indent + self.config.tab_spaces;
         let mut attr_str = field.node.attrs
@@ -877,11 +883,14 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    fn rewrite_return(&self, ret: &ast::FunctionRetTy) -> String {
+    fn rewrite_return(&self, ret: &ast::FunctionRetTy, indent: usize) -> String {
         match *ret {
             ast::FunctionRetTy::DefaultReturn(_) => String::new(),
             ast::FunctionRetTy::NoReturn(_) => "-> !".to_owned(),
-            ast::FunctionRetTy::Return(ref ty) => "-> ".to_owned() + &pprust::ty_to_string(ty),
+            ast::FunctionRetTy::Return(ref ty) => {
+                let ctxt = &self.get_context();
+                format!("-> {}", ty.rewrite(ctxt, ctxt.config.max_width, indent).unwrap())
+            }
         }
     }
 }

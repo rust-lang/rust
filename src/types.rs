@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt;
-
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::codemap::{self, Span, BytePos, CodeMap};
@@ -108,6 +106,7 @@ fn rewrite_path_segments<'a, I>(mut buffer: String,
     Some(buffer)
 }
 
+#[derive(Debug)]
 enum SegmentParam<'a> {
     LifeTime(&'a ast::Lifetime),
     Type(&'a ast::Ty),
@@ -124,19 +123,20 @@ impl<'a> SegmentParam<'a> {
     }
 }
 
-impl<'a> fmt::Display for SegmentParam<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            SegmentParam::LifeTime(ref lt) => {
-                write!(f, "{}", pprust::lifetime_to_string(lt))
-            }
-            SegmentParam::Type(ref ty) => {
-                write!(f, "{}", pprust::ty_to_string(ty))
-            }
-            SegmentParam::Binding(ref binding) => {
-                write!(f, "{} = {}", binding.ident, pprust::ty_to_string(&*binding.ty))
-            }
-        }
+impl<'a> Rewrite for SegmentParam<'a> {
+    // FIXME doesn't always use width, offset
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+        Some(match *self {
+                SegmentParam::LifeTime(ref lt) => {
+                    pprust::lifetime_to_string(lt)
+                }
+                SegmentParam::Type(ref ty) => {
+                    try_opt!(ty.rewrite(context, width, offset))
+                }
+                SegmentParam::Binding(ref binding) => {
+                    format!("{} = {}", binding.ident, try_opt!(binding.ty.rewrite(context, width, offset)))
+                }
+            })
     }
 }
 
@@ -205,19 +205,22 @@ fn rewrite_segment(segment: &ast::PathSegment,
             let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi), "<", context.codemap);
             let separator = get_path_separator(context.codemap, *span_lo, list_lo);
 
+            // 1 for <
+            let extra_offset = 1 + separator.len();
+            // 1 for >
+            let list_width = try_opt!(width.checked_sub(extra_offset + 1));
+
             let items = itemize_list(context.codemap,
                                      param_list.into_iter(),
                                      ">",
                                      |param| param.get_span().lo,
                                      |param| param.get_span().hi,
-                                     ToString::to_string,
+                                     |seg| {
+                                         seg.rewrite(context, list_width, offset + extra_offset).unwrap()
+                                     },
                                      list_lo,
                                      span_hi);
 
-            // 1 for <
-            let extra_offset = 1 + separator.len();
-            // 1 for >
-            let list_width = try_opt!(width.checked_sub(extra_offset + 1));
             let fmt = ListFormatting::for_fn(list_width, offset + extra_offset);
 
             // update pos
@@ -346,6 +349,13 @@ impl Rewrite for ast::TyParamBound {
     }
 }
 
+impl Rewrite for ast::TyParamBounds {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+        let strs: Vec<_> = self.iter().map(|b| b.rewrite(context, width, offset).unwrap()).collect();
+        Some(strs.join(" + "))
+    }
+}
+
 // FIXME: this assumes everything will fit on one line
 impl Rewrite for ast::TyParam {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
@@ -386,6 +396,23 @@ impl Rewrite for ast::PolyTraitRef {
             Some(format!("for<{}> {}", lifetime_str, path_str))
         } else {
             self.trait_ref.path.rewrite(context, width, offset)
+        }
+    }
+}
+
+impl Rewrite for ast::Ty {
+    // FIXME doesn't always use width, offset
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+        match self.node {
+            ast::TyPath(None, ref p) => {
+                p.rewrite(context, width, offset)
+            }
+            ast::TyObjectSum(ref ty, ref bounds) => {
+                Some(format!("{} + {}",
+                             try_opt!(ty.rewrite(context, width, offset)),
+                             try_opt!(bounds.rewrite(context, width, offset))))
+            }
+            _ => Some(pprust::ty_to_string(self)),
         }
     }
 }
