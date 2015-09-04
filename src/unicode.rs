@@ -4,7 +4,7 @@ use syntax::codemap::Span;
 
 use unicode_normalization::UnicodeNormalization;
 
-use utils::span_help_and_lint;
+use utils::{snippet, span_help_and_lint};
 
 declare_lint!{ pub ZERO_WIDTH_SPACE, Deny,
                "using a zero-width space in a string literal, which is confusing" }
@@ -26,8 +26,8 @@ impl LintPass for Unicode {
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
         if let ExprLit(ref lit) = expr.node {
-            if let LitStr(ref string, _) = lit.node {
-                check_str(cx, string, lit.span)
+            if let LitStr(_, _) = lit.node {
+                check_str(cx, lit.span)
             }
         }
     }
@@ -45,7 +45,8 @@ fn escape<T: Iterator<Item=char>>(s: T) -> String {
     result
 }
 
-fn check_str(cx: &Context, string: &str, span: Span) {
+fn check_str(cx: &Context, span: Span) {
+    let string = snippet(cx, span, "");
     if string.contains('\u{200B}') {
         span_help_and_lint(cx, ZERO_WIDTH_SPACE, span,
             "zero-width space detected",
@@ -62,12 +63,11 @@ fn check_str(cx: &Context, string: &str, span: Span) {
                     escape(string.nfc())
                 }));
     }
-    if string.chars().zip(string.nfc()).any(|(a, b)| a != b) {
-        if cx.current_level(NON_ASCII_LITERAL) == Level::Allow {
-            span_help_and_lint(cx, UNICODE_NOT_NFC, span,
-                "non-nfc unicode sequence detected",
-                &format!("Consider replacing the string with:\n\"{}\"",
-                    string.nfc().collect::<String>()));
-        }
+    if cx.current_level(NON_ASCII_LITERAL) == Level::Allow &&
+            string.chars().zip(string.nfc()).any(|(a, b)| a != b) {
+        span_help_and_lint(cx, UNICODE_NOT_NFC, span,
+            "non-nfc unicode sequence detected",
+            &format!("Consider replacing the string with:\n\"{}\"",
+                string.nfc().collect::<String>()));
     }
 }
