@@ -121,10 +121,10 @@ impl PartialOrd for Constant {
             (&ConstantInt(ref lv, lty), &ConstantInt(ref rv, rty)) =>
                 Some(match (is_negative(lty) && *lv != 0,
                             is_negative(rty) && *rv != 0) {
-                    (true, true) => lv.cmp(rv),
-                    (false, false) => rv.cmp(lv),
-                    (true, false) => Greater,
-                    (false, true) => Less,
+                    (true, true) => rv.cmp(lv),
+                    (false, false) => lv.cmp(rv),
+                    (true, false) => Less,
+                    (false, true) => Greater,
                 }),
             (&ConstantFloat(ref ls, lw), &ConstantFloat(ref rs, rw)) =>
                 if match (lw, rw) {
@@ -154,8 +154,8 @@ impl PartialOrd for Constant {
 fn lit_to_constant(lit: &Lit_) -> Constant {
     match *lit {
         LitStr(ref is, style) => ConstantStr(is.to_string(), style),
-        LitBinary(ref blob) => ConstantBinary(blob.clone()),
         LitByte(b) => ConstantByte(b),
+        LitByteStr(ref s) => ConstantBinary(s.clone()),
         LitChar(c) => ConstantChar(c),
         LitInt(value, ty) => ConstantInt(value, ty),
         LitFloat(ref is, ty) => ConstantFloat(is.to_string(), ty.into()),
