@@ -13,7 +13,7 @@
 
 #![allow(unused_imports)]
 
-use {Intrinsic, i, u, f, v, agg};
+use {Intrinsic, i, i_, u, u_, f, v, v_, agg, p, void};
 use IntrinsicDef::Named;
 use rustc::middle::ty;
 
@@ -1909,6 +1909,606 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![v(u(8), 16)],
             output: v(u(8), 16),
             definition: Named("llvm.aarch64.neon.rbit.v16i8")
+        },
+        "ld2_s8" => Intrinsic {
+            inputs: vec![p(true, i(8), Some(v(i(8), 8)))],
+            output: agg(false, vec![v(i(8), 8), v(i(8), 8)]),
+            definition: Named("llvm.aarch64.neon.ld2.v8i8.p0v8i8")
+        },
+        "ld2_u8" => Intrinsic {
+            inputs: vec![p(true, u(8), Some(v(u(8), 8)))],
+            output: agg(false, vec![v(u(8), 8), v(u(8), 8)]),
+            definition: Named("llvm.aarch64.neon.ld2.v8i8.p0v8i8")
+        },
+        "ld2_s16" => Intrinsic {
+            inputs: vec![p(true, i(16), Some(v(i(16), 4)))],
+            output: agg(false, vec![v(i(16), 4), v(i(16), 4)]),
+            definition: Named("llvm.aarch64.neon.ld2.v4i16.p0v4i16")
+        },
+        "ld2_u16" => Intrinsic {
+            inputs: vec![p(true, u(16), Some(v(u(16), 4)))],
+            output: agg(false, vec![v(u(16), 4), v(u(16), 4)]),
+            definition: Named("llvm.aarch64.neon.ld2.v4i16.p0v4i16")
+        },
+        "ld2_s32" => Intrinsic {
+            inputs: vec![p(true, i(32), Some(v(i(32), 2)))],
+            output: agg(false, vec![v(i(32), 2), v(i(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld2.v2i32.p0v2i32")
+        },
+        "ld2_u32" => Intrinsic {
+            inputs: vec![p(true, u(32), Some(v(u(32), 2)))],
+            output: agg(false, vec![v(u(32), 2), v(u(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld2.v2i32.p0v2i32")
+        },
+        "ld2_s64" => Intrinsic {
+            inputs: vec![p(true, i(64), Some(v(i(64), 1)))],
+            output: agg(false, vec![v(i(64), 1), v(i(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld2.v1i64.p0v1i64")
+        },
+        "ld2_u64" => Intrinsic {
+            inputs: vec![p(true, u(64), Some(v(u(64), 1)))],
+            output: agg(false, vec![v(u(64), 1), v(u(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld2.v1i64.p0v1i64")
+        },
+        "ld2_f32" => Intrinsic {
+            inputs: vec![p(true, f(32), Some(v(f(32), 2)))],
+            output: agg(false, vec![v(f(32), 2), v(f(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld2.v2f32.p0v2f32")
+        },
+        "ld2_f64" => Intrinsic {
+            inputs: vec![p(true, f(64), Some(v(f(64), 1)))],
+            output: agg(false, vec![v(f(64), 1), v(f(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld2.v1f64.p0v1f64")
+        },
+        "ld2q_s8" => Intrinsic {
+            inputs: vec![p(true, i(8), Some(v(i(8), 16)))],
+            output: agg(false, vec![v(i(8), 16), v(i(8), 16)]),
+            definition: Named("llvm.aarch64.neon.ld2.v16i8.p0v16i8")
+        },
+        "ld2q_u8" => Intrinsic {
+            inputs: vec![p(true, u(8), Some(v(u(8), 16)))],
+            output: agg(false, vec![v(u(8), 16), v(u(8), 16)]),
+            definition: Named("llvm.aarch64.neon.ld2.v16i8.p0v16i8")
+        },
+        "ld2q_s16" => Intrinsic {
+            inputs: vec![p(true, i(16), Some(v(i(16), 8)))],
+            output: agg(false, vec![v(i(16), 8), v(i(16), 8)]),
+            definition: Named("llvm.aarch64.neon.ld2.v8i16.p0v8i16")
+        },
+        "ld2q_u16" => Intrinsic {
+            inputs: vec![p(true, u(16), Some(v(u(16), 8)))],
+            output: agg(false, vec![v(u(16), 8), v(u(16), 8)]),
+            definition: Named("llvm.aarch64.neon.ld2.v8i16.p0v8i16")
+        },
+        "ld2q_s32" => Intrinsic {
+            inputs: vec![p(true, i(32), Some(v(i(32), 4)))],
+            output: agg(false, vec![v(i(32), 4), v(i(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld2.v4i32.p0v4i32")
+        },
+        "ld2q_u32" => Intrinsic {
+            inputs: vec![p(true, u(32), Some(v(u(32), 4)))],
+            output: agg(false, vec![v(u(32), 4), v(u(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld2.v4i32.p0v4i32")
+        },
+        "ld2q_s64" => Intrinsic {
+            inputs: vec![p(true, i(64), Some(v(i(64), 2)))],
+            output: agg(false, vec![v(i(64), 2), v(i(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld2.v2i64.p0v2i64")
+        },
+        "ld2q_u64" => Intrinsic {
+            inputs: vec![p(true, u(64), Some(v(u(64), 2)))],
+            output: agg(false, vec![v(u(64), 2), v(u(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld2.v2i64.p0v2i64")
+        },
+        "ld2q_f32" => Intrinsic {
+            inputs: vec![p(true, f(32), Some(v(f(32), 4)))],
+            output: agg(false, vec![v(f(32), 4), v(f(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld2.v4f32.p0v4f32")
+        },
+        "ld2q_f64" => Intrinsic {
+            inputs: vec![p(true, f(64), Some(v(f(64), 2)))],
+            output: agg(false, vec![v(f(64), 2), v(f(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld2.v2f64.p0v2f64")
+        },
+        "ld3_s8" => Intrinsic {
+            inputs: vec![p(true, i(8), Some(v(i(8), 8)))],
+            output: agg(false, vec![v(i(8), 8), v(i(8), 8), v(i(8), 8)]),
+            definition: Named("llvm.aarch64.neon.ld3.v8i8.p0v8i8")
+        },
+        "ld3_u8" => Intrinsic {
+            inputs: vec![p(true, u(8), Some(v(u(8), 8)))],
+            output: agg(false, vec![v(u(8), 8), v(u(8), 8), v(u(8), 8)]),
+            definition: Named("llvm.aarch64.neon.ld3.v8i8.p0v8i8")
+        },
+        "ld3_s16" => Intrinsic {
+            inputs: vec![p(true, i(16), Some(v(i(16), 4)))],
+            output: agg(false, vec![v(i(16), 4), v(i(16), 4), v(i(16), 4)]),
+            definition: Named("llvm.aarch64.neon.ld3.v4i16.p0v4i16")
+        },
+        "ld3_u16" => Intrinsic {
+            inputs: vec![p(true, u(16), Some(v(u(16), 4)))],
+            output: agg(false, vec![v(u(16), 4), v(u(16), 4), v(u(16), 4)]),
+            definition: Named("llvm.aarch64.neon.ld3.v4i16.p0v4i16")
+        },
+        "ld3_s32" => Intrinsic {
+            inputs: vec![p(true, i(32), Some(v(i(32), 2)))],
+            output: agg(false, vec![v(i(32), 2), v(i(32), 2), v(i(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld3.v2i32.p0v2i32")
+        },
+        "ld3_u32" => Intrinsic {
+            inputs: vec![p(true, u(32), Some(v(u(32), 2)))],
+            output: agg(false, vec![v(u(32), 2), v(u(32), 2), v(u(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld3.v2i32.p0v2i32")
+        },
+        "ld3_s64" => Intrinsic {
+            inputs: vec![p(true, i(64), Some(v(i(64), 1)))],
+            output: agg(false, vec![v(i(64), 1), v(i(64), 1), v(i(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld3.v1i64.p0v1i64")
+        },
+        "ld3_u64" => Intrinsic {
+            inputs: vec![p(true, u(64), Some(v(u(64), 1)))],
+            output: agg(false, vec![v(u(64), 1), v(u(64), 1), v(u(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld3.v1i64.p0v1i64")
+        },
+        "ld3_f32" => Intrinsic {
+            inputs: vec![p(true, f(32), Some(v(f(32), 2)))],
+            output: agg(false, vec![v(f(32), 2), v(f(32), 2), v(f(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld3.v2f32.p0v2f32")
+        },
+        "ld3_f64" => Intrinsic {
+            inputs: vec![p(true, f(64), Some(v(f(64), 1)))],
+            output: agg(false, vec![v(f(64), 1), v(f(64), 1), v(f(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld3.v1f64.p0v1f64")
+        },
+        "ld3q_s8" => Intrinsic {
+            inputs: vec![p(true, i(8), Some(v(i(8), 16)))],
+            output: agg(false, vec![v(i(8), 16), v(i(8), 16), v(i(8), 16)]),
+            definition: Named("llvm.aarch64.neon.ld3.v16i8.p0v16i8")
+        },
+        "ld3q_u8" => Intrinsic {
+            inputs: vec![p(true, u(8), Some(v(u(8), 16)))],
+            output: agg(false, vec![v(u(8), 16), v(u(8), 16), v(u(8), 16)]),
+            definition: Named("llvm.aarch64.neon.ld3.v16i8.p0v16i8")
+        },
+        "ld3q_s16" => Intrinsic {
+            inputs: vec![p(true, i(16), Some(v(i(16), 8)))],
+            output: agg(false, vec![v(i(16), 8), v(i(16), 8), v(i(16), 8)]),
+            definition: Named("llvm.aarch64.neon.ld3.v8i16.p0v8i16")
+        },
+        "ld3q_u16" => Intrinsic {
+            inputs: vec![p(true, u(16), Some(v(u(16), 8)))],
+            output: agg(false, vec![v(u(16), 8), v(u(16), 8), v(u(16), 8)]),
+            definition: Named("llvm.aarch64.neon.ld3.v8i16.p0v8i16")
+        },
+        "ld3q_s32" => Intrinsic {
+            inputs: vec![p(true, i(32), Some(v(i(32), 4)))],
+            output: agg(false, vec![v(i(32), 4), v(i(32), 4), v(i(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld3.v4i32.p0v4i32")
+        },
+        "ld3q_u32" => Intrinsic {
+            inputs: vec![p(true, u(32), Some(v(u(32), 4)))],
+            output: agg(false, vec![v(u(32), 4), v(u(32), 4), v(u(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld3.v4i32.p0v4i32")
+        },
+        "ld3q_s64" => Intrinsic {
+            inputs: vec![p(true, i(64), Some(v(i(64), 2)))],
+            output: agg(false, vec![v(i(64), 2), v(i(64), 2), v(i(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld3.v2i64.p0v2i64")
+        },
+        "ld3q_u64" => Intrinsic {
+            inputs: vec![p(true, u(64), Some(v(u(64), 2)))],
+            output: agg(false, vec![v(u(64), 2), v(u(64), 2), v(u(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld3.v2i64.p0v2i64")
+        },
+        "ld3q_f32" => Intrinsic {
+            inputs: vec![p(true, f(32), Some(v(f(32), 4)))],
+            output: agg(false, vec![v(f(32), 4), v(f(32), 4), v(f(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld3.v4f32.p0v4f32")
+        },
+        "ld3q_f64" => Intrinsic {
+            inputs: vec![p(true, f(64), Some(v(f(64), 2)))],
+            output: agg(false, vec![v(f(64), 2), v(f(64), 2), v(f(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld3.v2f64.p0v2f64")
+        },
+        "ld4_s8" => Intrinsic {
+            inputs: vec![p(true, i(8), Some(v(i(8), 8)))],
+            output: agg(false, vec![v(i(8), 8), v(i(8), 8), v(i(8), 8), v(i(8), 8)]),
+            definition: Named("llvm.aarch64.neon.ld4.v8i8.p0v8i8")
+        },
+        "ld4_u8" => Intrinsic {
+            inputs: vec![p(true, u(8), Some(v(u(8), 8)))],
+            output: agg(false, vec![v(u(8), 8), v(u(8), 8), v(u(8), 8), v(u(8), 8)]),
+            definition: Named("llvm.aarch64.neon.ld4.v8i8.p0v8i8")
+        },
+        "ld4_s16" => Intrinsic {
+            inputs: vec![p(true, i(16), Some(v(i(16), 4)))],
+            output: agg(false, vec![v(i(16), 4), v(i(16), 4), v(i(16), 4), v(i(16), 4)]),
+            definition: Named("llvm.aarch64.neon.ld4.v4i16.p0v4i16")
+        },
+        "ld4_u16" => Intrinsic {
+            inputs: vec![p(true, u(16), Some(v(u(16), 4)))],
+            output: agg(false, vec![v(u(16), 4), v(u(16), 4), v(u(16), 4), v(u(16), 4)]),
+            definition: Named("llvm.aarch64.neon.ld4.v4i16.p0v4i16")
+        },
+        "ld4_s32" => Intrinsic {
+            inputs: vec![p(true, i(32), Some(v(i(32), 2)))],
+            output: agg(false, vec![v(i(32), 2), v(i(32), 2), v(i(32), 2), v(i(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld4.v2i32.p0v2i32")
+        },
+        "ld4_u32" => Intrinsic {
+            inputs: vec![p(true, u(32), Some(v(u(32), 2)))],
+            output: agg(false, vec![v(u(32), 2), v(u(32), 2), v(u(32), 2), v(u(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld4.v2i32.p0v2i32")
+        },
+        "ld4_s64" => Intrinsic {
+            inputs: vec![p(true, i(64), Some(v(i(64), 1)))],
+            output: agg(false, vec![v(i(64), 1), v(i(64), 1), v(i(64), 1), v(i(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld4.v1i64.p0v1i64")
+        },
+        "ld4_u64" => Intrinsic {
+            inputs: vec![p(true, u(64), Some(v(u(64), 1)))],
+            output: agg(false, vec![v(u(64), 1), v(u(64), 1), v(u(64), 1), v(u(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld4.v1i64.p0v1i64")
+        },
+        "ld4_f32" => Intrinsic {
+            inputs: vec![p(true, f(32), Some(v(f(32), 2)))],
+            output: agg(false, vec![v(f(32), 2), v(f(32), 2), v(f(32), 2), v(f(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld4.v2f32.p0v2f32")
+        },
+        "ld4_f64" => Intrinsic {
+            inputs: vec![p(true, f(64), Some(v(f(64), 1)))],
+            output: agg(false, vec![v(f(64), 1), v(f(64), 1), v(f(64), 1), v(f(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld4.v1f64.p0v1f64")
+        },
+        "ld4q_s8" => Intrinsic {
+            inputs: vec![p(true, i(8), Some(v(i(8), 16)))],
+            output: agg(false, vec![v(i(8), 16), v(i(8), 16), v(i(8), 16), v(i(8), 16)]),
+            definition: Named("llvm.aarch64.neon.ld4.v16i8.p0v16i8")
+        },
+        "ld4q_u8" => Intrinsic {
+            inputs: vec![p(true, u(8), Some(v(u(8), 16)))],
+            output: agg(false, vec![v(u(8), 16), v(u(8), 16), v(u(8), 16), v(u(8), 16)]),
+            definition: Named("llvm.aarch64.neon.ld4.v16i8.p0v16i8")
+        },
+        "ld4q_s16" => Intrinsic {
+            inputs: vec![p(true, i(16), Some(v(i(16), 8)))],
+            output: agg(false, vec![v(i(16), 8), v(i(16), 8), v(i(16), 8), v(i(16), 8)]),
+            definition: Named("llvm.aarch64.neon.ld4.v8i16.p0v8i16")
+        },
+        "ld4q_u16" => Intrinsic {
+            inputs: vec![p(true, u(16), Some(v(u(16), 8)))],
+            output: agg(false, vec![v(u(16), 8), v(u(16), 8), v(u(16), 8), v(u(16), 8)]),
+            definition: Named("llvm.aarch64.neon.ld4.v8i16.p0v8i16")
+        },
+        "ld4q_s32" => Intrinsic {
+            inputs: vec![p(true, i(32), Some(v(i(32), 4)))],
+            output: agg(false, vec![v(i(32), 4), v(i(32), 4), v(i(32), 4), v(i(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld4.v4i32.p0v4i32")
+        },
+        "ld4q_u32" => Intrinsic {
+            inputs: vec![p(true, u(32), Some(v(u(32), 4)))],
+            output: agg(false, vec![v(u(32), 4), v(u(32), 4), v(u(32), 4), v(u(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld4.v4i32.p0v4i32")
+        },
+        "ld4q_s64" => Intrinsic {
+            inputs: vec![p(true, i(64), Some(v(i(64), 2)))],
+            output: agg(false, vec![v(i(64), 2), v(i(64), 2), v(i(64), 2), v(i(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld4.v2i64.p0v2i64")
+        },
+        "ld4q_u64" => Intrinsic {
+            inputs: vec![p(true, u(64), Some(v(u(64), 2)))],
+            output: agg(false, vec![v(u(64), 2), v(u(64), 2), v(u(64), 2), v(u(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld4.v2i64.p0v2i64")
+        },
+        "ld4q_f32" => Intrinsic {
+            inputs: vec![p(true, f(32), Some(v(f(32), 4)))],
+            output: agg(false, vec![v(f(32), 4), v(f(32), 4), v(f(32), 4), v(f(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld4.v4f32.p0v4f32")
+        },
+        "ld4q_f64" => Intrinsic {
+            inputs: vec![p(true, f(64), Some(v(f(64), 2)))],
+            output: agg(false, vec![v(f(64), 2), v(f(64), 2), v(f(64), 2), v(f(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld4.v2f64.p0v2f64")
+        },
+        "ld2_dup_s8" => Intrinsic {
+            inputs: vec![p(true, i(8), None)],
+            output: agg(false, vec![v(i(8), 8), v(i(8), 8)]),
+            definition: Named("llvm.aarch64.neon.ld2.v8i8.p0i8")
+        },
+        "ld2_dup_u8" => Intrinsic {
+            inputs: vec![p(true, u(8), None)],
+            output: agg(false, vec![v(u(8), 8), v(u(8), 8)]),
+            definition: Named("llvm.aarch64.neon.ld2.v8i8.p0i8")
+        },
+        "ld2_dup_s16" => Intrinsic {
+            inputs: vec![p(true, i(16), None)],
+            output: agg(false, vec![v(i(16), 4), v(i(16), 4)]),
+            definition: Named("llvm.aarch64.neon.ld2.v4i16.p0i16")
+        },
+        "ld2_dup_u16" => Intrinsic {
+            inputs: vec![p(true, u(16), None)],
+            output: agg(false, vec![v(u(16), 4), v(u(16), 4)]),
+            definition: Named("llvm.aarch64.neon.ld2.v4i16.p0i16")
+        },
+        "ld2_dup_s32" => Intrinsic {
+            inputs: vec![p(true, i(32), None)],
+            output: agg(false, vec![v(i(32), 2), v(i(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld2.v2i32.p0i32")
+        },
+        "ld2_dup_u32" => Intrinsic {
+            inputs: vec![p(true, u(32), None)],
+            output: agg(false, vec![v(u(32), 2), v(u(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld2.v2i32.p0i32")
+        },
+        "ld2_dup_s64" => Intrinsic {
+            inputs: vec![p(true, i(64), None)],
+            output: agg(false, vec![v(i(64), 1), v(i(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld2.v1i64.p0i64")
+        },
+        "ld2_dup_u64" => Intrinsic {
+            inputs: vec![p(true, u(64), None)],
+            output: agg(false, vec![v(u(64), 1), v(u(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld2.v1i64.p0i64")
+        },
+        "ld2_dup_f32" => Intrinsic {
+            inputs: vec![p(true, f(32), None)],
+            output: agg(false, vec![v(f(32), 2), v(f(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld2.v2f32.p0f32")
+        },
+        "ld2_dup_f64" => Intrinsic {
+            inputs: vec![p(true, f(64), None)],
+            output: agg(false, vec![v(f(64), 1), v(f(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld2.v1f64.p0f64")
+        },
+        "ld2q_dup_s8" => Intrinsic {
+            inputs: vec![p(true, i(8), None)],
+            output: agg(false, vec![v(i(8), 16), v(i(8), 16)]),
+            definition: Named("llvm.aarch64.neon.ld2.v16i8.p0i8")
+        },
+        "ld2q_dup_u8" => Intrinsic {
+            inputs: vec![p(true, u(8), None)],
+            output: agg(false, vec![v(u(8), 16), v(u(8), 16)]),
+            definition: Named("llvm.aarch64.neon.ld2.v16i8.p0i8")
+        },
+        "ld2q_dup_s16" => Intrinsic {
+            inputs: vec![p(true, i(16), None)],
+            output: agg(false, vec![v(i(16), 8), v(i(16), 8)]),
+            definition: Named("llvm.aarch64.neon.ld2.v8i16.p0i16")
+        },
+        "ld2q_dup_u16" => Intrinsic {
+            inputs: vec![p(true, u(16), None)],
+            output: agg(false, vec![v(u(16), 8), v(u(16), 8)]),
+            definition: Named("llvm.aarch64.neon.ld2.v8i16.p0i16")
+        },
+        "ld2q_dup_s32" => Intrinsic {
+            inputs: vec![p(true, i(32), None)],
+            output: agg(false, vec![v(i(32), 4), v(i(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld2.v4i32.p0i32")
+        },
+        "ld2q_dup_u32" => Intrinsic {
+            inputs: vec![p(true, u(32), None)],
+            output: agg(false, vec![v(u(32), 4), v(u(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld2.v4i32.p0i32")
+        },
+        "ld2q_dup_s64" => Intrinsic {
+            inputs: vec![p(true, i(64), None)],
+            output: agg(false, vec![v(i(64), 2), v(i(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld2.v2i64.p0i64")
+        },
+        "ld2q_dup_u64" => Intrinsic {
+            inputs: vec![p(true, u(64), None)],
+            output: agg(false, vec![v(u(64), 2), v(u(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld2.v2i64.p0i64")
+        },
+        "ld2q_dup_f32" => Intrinsic {
+            inputs: vec![p(true, f(32), None)],
+            output: agg(false, vec![v(f(32), 4), v(f(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld2.v4f32.p0f32")
+        },
+        "ld2q_dup_f64" => Intrinsic {
+            inputs: vec![p(true, f(64), None)],
+            output: agg(false, vec![v(f(64), 2), v(f(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld2.v2f64.p0f64")
+        },
+        "ld3_dup_s8" => Intrinsic {
+            inputs: vec![p(true, i(8), None)],
+            output: agg(false, vec![v(i(8), 8), v(i(8), 8), v(i(8), 8)]),
+            definition: Named("llvm.aarch64.neon.ld3.v8i8.p0i8")
+        },
+        "ld3_dup_u8" => Intrinsic {
+            inputs: vec![p(true, u(8), None)],
+            output: agg(false, vec![v(u(8), 8), v(u(8), 8), v(u(8), 8)]),
+            definition: Named("llvm.aarch64.neon.ld3.v8i8.p0i8")
+        },
+        "ld3_dup_s16" => Intrinsic {
+            inputs: vec![p(true, i(16), None)],
+            output: agg(false, vec![v(i(16), 4), v(i(16), 4), v(i(16), 4)]),
+            definition: Named("llvm.aarch64.neon.ld3.v4i16.p0i16")
+        },
+        "ld3_dup_u16" => Intrinsic {
+            inputs: vec![p(true, u(16), None)],
+            output: agg(false, vec![v(u(16), 4), v(u(16), 4), v(u(16), 4)]),
+            definition: Named("llvm.aarch64.neon.ld3.v4i16.p0i16")
+        },
+        "ld3_dup_s32" => Intrinsic {
+            inputs: vec![p(true, i(32), None)],
+            output: agg(false, vec![v(i(32), 2), v(i(32), 2), v(i(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld3.v2i32.p0i32")
+        },
+        "ld3_dup_u32" => Intrinsic {
+            inputs: vec![p(true, u(32), None)],
+            output: agg(false, vec![v(u(32), 2), v(u(32), 2), v(u(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld3.v2i32.p0i32")
+        },
+        "ld3_dup_s64" => Intrinsic {
+            inputs: vec![p(true, i(64), None)],
+            output: agg(false, vec![v(i(64), 1), v(i(64), 1), v(i(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld3.v1i64.p0i64")
+        },
+        "ld3_dup_u64" => Intrinsic {
+            inputs: vec![p(true, u(64), None)],
+            output: agg(false, vec![v(u(64), 1), v(u(64), 1), v(u(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld3.v1i64.p0i64")
+        },
+        "ld3_dup_f32" => Intrinsic {
+            inputs: vec![p(true, f(32), None)],
+            output: agg(false, vec![v(f(32), 2), v(f(32), 2), v(f(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld3.v2f32.p0f32")
+        },
+        "ld3_dup_f64" => Intrinsic {
+            inputs: vec![p(true, f(64), None)],
+            output: agg(false, vec![v(f(64), 1), v(f(64), 1), v(f(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld3.v1f64.p0f64")
+        },
+        "ld3q_dup_s8" => Intrinsic {
+            inputs: vec![p(true, i(8), None)],
+            output: agg(false, vec![v(i(8), 16), v(i(8), 16), v(i(8), 16)]),
+            definition: Named("llvm.aarch64.neon.ld3.v16i8.p0i8")
+        },
+        "ld3q_dup_u8" => Intrinsic {
+            inputs: vec![p(true, u(8), None)],
+            output: agg(false, vec![v(u(8), 16), v(u(8), 16), v(u(8), 16)]),
+            definition: Named("llvm.aarch64.neon.ld3.v16i8.p0i8")
+        },
+        "ld3q_dup_s16" => Intrinsic {
+            inputs: vec![p(true, i(16), None)],
+            output: agg(false, vec![v(i(16), 8), v(i(16), 8), v(i(16), 8)]),
+            definition: Named("llvm.aarch64.neon.ld3.v8i16.p0i16")
+        },
+        "ld3q_dup_u16" => Intrinsic {
+            inputs: vec![p(true, u(16), None)],
+            output: agg(false, vec![v(u(16), 8), v(u(16), 8), v(u(16), 8)]),
+            definition: Named("llvm.aarch64.neon.ld3.v8i16.p0i16")
+        },
+        "ld3q_dup_s32" => Intrinsic {
+            inputs: vec![p(true, i(32), None)],
+            output: agg(false, vec![v(i(32), 4), v(i(32), 4), v(i(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld3.v4i32.p0i32")
+        },
+        "ld3q_dup_u32" => Intrinsic {
+            inputs: vec![p(true, u(32), None)],
+            output: agg(false, vec![v(u(32), 4), v(u(32), 4), v(u(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld3.v4i32.p0i32")
+        },
+        "ld3q_dup_s64" => Intrinsic {
+            inputs: vec![p(true, i(64), None)],
+            output: agg(false, vec![v(i(64), 2), v(i(64), 2), v(i(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld3.v2i64.p0i64")
+        },
+        "ld3q_dup_u64" => Intrinsic {
+            inputs: vec![p(true, u(64), None)],
+            output: agg(false, vec![v(u(64), 2), v(u(64), 2), v(u(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld3.v2i64.p0i64")
+        },
+        "ld3q_dup_f32" => Intrinsic {
+            inputs: vec![p(true, f(32), None)],
+            output: agg(false, vec![v(f(32), 4), v(f(32), 4), v(f(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld3.v4f32.p0f32")
+        },
+        "ld3q_dup_f64" => Intrinsic {
+            inputs: vec![p(true, f(64), None)],
+            output: agg(false, vec![v(f(64), 2), v(f(64), 2), v(f(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld3.v2f64.p0f64")
+        },
+        "ld4_dup_s8" => Intrinsic {
+            inputs: vec![p(true, i(8), None)],
+            output: agg(false, vec![v(i(8), 8), v(i(8), 8), v(i(8), 8), v(i(8), 8)]),
+            definition: Named("llvm.aarch64.neon.ld4.v8i8.p0i8")
+        },
+        "ld4_dup_u8" => Intrinsic {
+            inputs: vec![p(true, u(8), None)],
+            output: agg(false, vec![v(u(8), 8), v(u(8), 8), v(u(8), 8), v(u(8), 8)]),
+            definition: Named("llvm.aarch64.neon.ld4.v8i8.p0i8")
+        },
+        "ld4_dup_s16" => Intrinsic {
+            inputs: vec![p(true, i(16), None)],
+            output: agg(false, vec![v(i(16), 4), v(i(16), 4), v(i(16), 4), v(i(16), 4)]),
+            definition: Named("llvm.aarch64.neon.ld4.v4i16.p0i16")
+        },
+        "ld4_dup_u16" => Intrinsic {
+            inputs: vec![p(true, u(16), None)],
+            output: agg(false, vec![v(u(16), 4), v(u(16), 4), v(u(16), 4), v(u(16), 4)]),
+            definition: Named("llvm.aarch64.neon.ld4.v4i16.p0i16")
+        },
+        "ld4_dup_s32" => Intrinsic {
+            inputs: vec![p(true, i(32), None)],
+            output: agg(false, vec![v(i(32), 2), v(i(32), 2), v(i(32), 2), v(i(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld4.v2i32.p0i32")
+        },
+        "ld4_dup_u32" => Intrinsic {
+            inputs: vec![p(true, u(32), None)],
+            output: agg(false, vec![v(u(32), 2), v(u(32), 2), v(u(32), 2), v(u(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld4.v2i32.p0i32")
+        },
+        "ld4_dup_s64" => Intrinsic {
+            inputs: vec![p(true, i(64), None)],
+            output: agg(false, vec![v(i(64), 1), v(i(64), 1), v(i(64), 1), v(i(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld4.v1i64.p0i64")
+        },
+        "ld4_dup_u64" => Intrinsic {
+            inputs: vec![p(true, u(64), None)],
+            output: agg(false, vec![v(u(64), 1), v(u(64), 1), v(u(64), 1), v(u(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld4.v1i64.p0i64")
+        },
+        "ld4_dup_f32" => Intrinsic {
+            inputs: vec![p(true, f(32), None)],
+            output: agg(false, vec![v(f(32), 2), v(f(32), 2), v(f(32), 2), v(f(32), 2)]),
+            definition: Named("llvm.aarch64.neon.ld4.v2f32.p0f32")
+        },
+        "ld4_dup_f64" => Intrinsic {
+            inputs: vec![p(true, f(64), None)],
+            output: agg(false, vec![v(f(64), 1), v(f(64), 1), v(f(64), 1), v(f(64), 1)]),
+            definition: Named("llvm.aarch64.neon.ld4.v1f64.p0f64")
+        },
+        "ld4q_dup_s8" => Intrinsic {
+            inputs: vec![p(true, i(8), None)],
+            output: agg(false, vec![v(i(8), 16), v(i(8), 16), v(i(8), 16), v(i(8), 16)]),
+            definition: Named("llvm.aarch64.neon.ld4.v16i8.p0i8")
+        },
+        "ld4q_dup_u8" => Intrinsic {
+            inputs: vec![p(true, u(8), None)],
+            output: agg(false, vec![v(u(8), 16), v(u(8), 16), v(u(8), 16), v(u(8), 16)]),
+            definition: Named("llvm.aarch64.neon.ld4.v16i8.p0i8")
+        },
+        "ld4q_dup_s16" => Intrinsic {
+            inputs: vec![p(true, i(16), None)],
+            output: agg(false, vec![v(i(16), 8), v(i(16), 8), v(i(16), 8), v(i(16), 8)]),
+            definition: Named("llvm.aarch64.neon.ld4.v8i16.p0i16")
+        },
+        "ld4q_dup_u16" => Intrinsic {
+            inputs: vec![p(true, u(16), None)],
+            output: agg(false, vec![v(u(16), 8), v(u(16), 8), v(u(16), 8), v(u(16), 8)]),
+            definition: Named("llvm.aarch64.neon.ld4.v8i16.p0i16")
+        },
+        "ld4q_dup_s32" => Intrinsic {
+            inputs: vec![p(true, i(32), None)],
+            output: agg(false, vec![v(i(32), 4), v(i(32), 4), v(i(32), 4), v(i(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld4.v4i32.p0i32")
+        },
+        "ld4q_dup_u32" => Intrinsic {
+            inputs: vec![p(true, u(32), None)],
+            output: agg(false, vec![v(u(32), 4), v(u(32), 4), v(u(32), 4), v(u(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld4.v4i32.p0i32")
+        },
+        "ld4q_dup_s64" => Intrinsic {
+            inputs: vec![p(true, i(64), None)],
+            output: agg(false, vec![v(i(64), 2), v(i(64), 2), v(i(64), 2), v(i(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld4.v2i64.p0i64")
+        },
+        "ld4q_dup_u64" => Intrinsic {
+            inputs: vec![p(true, u(64), None)],
+            output: agg(false, vec![v(u(64), 2), v(u(64), 2), v(u(64), 2), v(u(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld4.v2i64.p0i64")
+        },
+        "ld4q_dup_f32" => Intrinsic {
+            inputs: vec![p(true, f(32), None)],
+            output: agg(false, vec![v(f(32), 4), v(f(32), 4), v(f(32), 4), v(f(32), 4)]),
+            definition: Named("llvm.aarch64.neon.ld4.v4f32.p0f32")
+        },
+        "ld4q_dup_f64" => Intrinsic {
+            inputs: vec![p(true, f(64), None)],
+            output: agg(false, vec![v(f(64), 2), v(f(64), 2), v(f(64), 2), v(f(64), 2)]),
+            definition: Named("llvm.aarch64.neon.ld4.v2f64.p0f64")
         },
         "padd_s8" => Intrinsic {
             inputs: vec![v(i(8), 8), v(i(8), 8)],
