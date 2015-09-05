@@ -8,7 +8,7 @@ use consts::{Constant, constant_simple};
 use utils::{match_path, span_lint};
 use self::MinMax::{Min, Max};
 
-declare_lint!(pub MIN_MAX, Deny,
+declare_lint!(pub MIN_MAX, Warn,
     "`min(_, max(_, _))` (or vice versa) with bounds clamping the result \
     to a constant");
 
