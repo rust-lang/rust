@@ -263,6 +263,10 @@ the `phrases` crate. We can then use `phrases`’ modules in this one. As we
 mentioned earlier, you can use double colons to refer to sub-modules and the
 functions inside of them.
 
+(Note: when importing a crate that has dashes in its name "like-this", which is
+not a valid Rust identifier, it will be converted by changing the dashes to
+underscores, so you would write `extern crate like_this;`.)
+
 Also, Cargo assumes that `src/main.rs` is the crate root of a binary crate,
 rather than a library crate. Our package now has two crates: `src/lib.rs` and
 `src/main.rs`. This pattern is quite common for executable crates: most
