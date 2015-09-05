@@ -154,8 +154,8 @@ impl PartialOrd for Constant {
 fn lit_to_constant(lit: &Lit_) -> Constant {
     match *lit {
         LitStr(ref is, style) => ConstantStr(is.to_string(), style),
-        LitBinary(ref blob) => ConstantBinary(blob.clone()),
         LitByte(b) => ConstantByte(b),
+        LitByteStr(ref s) => ConstantBinary(s.clone()),
         LitChar(c) => ConstantChar(c),
         LitInt(value, ty) => ConstantInt(value, ty),
         LitFloat(ref is, ty) => ConstantFloat(is.to_string(), ty.into()),
