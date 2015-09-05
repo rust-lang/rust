@@ -83,7 +83,7 @@ rust_dirent_t_size() {
 }
 
 #if defined(__BSD__)
-int
+static int
 get_num_cpus() {
     /* swiped from http://stackoverflow.com/questions/150355/
        programmatically-find-the-number-of-cores-on-a-machine */
@@ -110,7 +110,7 @@ get_num_cpus() {
     return numCPU;
 }
 #elif defined(__GNUC__)
-int
+static int
 get_num_cpus() {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
