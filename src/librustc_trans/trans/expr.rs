@@ -1682,20 +1682,70 @@ fn trans_addr_of<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-// Important to get types for both lhs and rhs, because one might be _|_
-// and the other not.
-fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                 binop_expr: &hir::Expr,
-                                 binop_ty: Ty<'tcx>,
-                                 op: hir::BinOp,
-                                 lhs_t: Ty<'tcx>,
-                                 lhs: ValueRef,
-                                 rhs_t: Ty<'tcx>,
-                                 rhs: ValueRef)
-                                 -> DatumBlock<'blk, 'tcx, Expr> {
-    let _icx = push_ctxt("trans_eager_binop");
+fn trans_fat_ptr_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                   binop_expr: &hir::Expr,
+                                   binop_ty: Ty<'tcx>,
+                                   op: hir::BinOp,
+                                   lhs: Datum<'tcx, Rvalue>,
+                                   rhs: Datum<'tcx, Rvalue>)
+                                   -> DatumBlock<'blk, 'tcx, Expr>
+{
+    let debug_loc = binop_expr.debug_loc();
+
+    let lhs_addr = Load(bcx, GEPi(bcx, lhs.val, &[0, abi::FAT_PTR_ADDR]));
+    let lhs_extra = Load(bcx, GEPi(bcx, lhs.val, &[0, abi::FAT_PTR_EXTRA]));
+
+    let rhs_addr = Load(bcx, GEPi(bcx, rhs.val, &[0, abi::FAT_PTR_ADDR]));
+    let rhs_extra = Load(bcx, GEPi(bcx, rhs.val, &[0, abi::FAT_PTR_EXTRA]));
+
+    let val = match op.node {
+        hir::BiEq => {
+            let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
+            let extra_eq = ICmp(bcx, llvm::IntEQ, lhs_extra, rhs_extra, debug_loc);
+            And(bcx, addr_eq, extra_eq, debug_loc)
+        }
+        hir::BiNe => {
+            let addr_eq = ICmp(bcx, llvm::IntNE, lhs_addr, rhs_addr, debug_loc);
+            let extra_eq = ICmp(bcx, llvm::IntNE, lhs_extra, rhs_extra, debug_loc);
+            Or(bcx, addr_eq, extra_eq, debug_loc)
+        }
+        hir::BiLe | hir::BiLt | hir::BiGe | hir::BiGt => {
+            // a OP b ~ a.0 STRICT(OP) b.0 | (a.0 == b.0 && a.1 OP a.1)
+            let (op, strict_op) = match op.node {
+                hir::BiLt => (llvm::IntULT, llvm::IntULT),
+                hir::BiLe => (llvm::IntULE, llvm::IntULT),
+                hir::BiGt => (llvm::IntUGT, llvm::IntUGT),
+                hir::BiGe => (llvm::IntUGE, llvm::IntUGT),
+                _ => unreachable!()
+            };
+
+            let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
+            let extra_op = ICmp(bcx, op, lhs_extra, rhs_extra, debug_loc);
+            let addr_eq_extra_op = And(bcx, addr_eq, extra_op, debug_loc);
+
+            let addr_strict = ICmp(bcx, strict_op, lhs_addr, rhs_addr, debug_loc);
+            Or(bcx, addr_strict, addr_eq_extra_op, debug_loc)
+        }
+        _ => {
+            bcx.tcx().sess.span_bug(binop_expr.span, "unexpected binop");
+        }
+    };
+
+    immediate_rvalue_bcx(bcx, val, binop_ty).to_expr_datumblock()
+}
+
+fn trans_scalar_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                  binop_expr: &hir::Expr,
+                                  binop_ty: Ty<'tcx>,
+                                  op: hir::BinOp,
+                                  lhs: Datum<'tcx, Rvalue>,
+                                  rhs: Datum<'tcx, Rvalue>)
+                                  -> DatumBlock<'blk, 'tcx, Expr>
+{
+    let _icx = push_ctxt("trans_scalar_binop");
 
     let tcx = bcx.tcx();
+    let lhs_t = lhs.ty;
     assert!(!lhs_t.is_simd());
     let is_float = lhs_t.is_fp();
     let is_signed = lhs_t.is_signed();
@@ -1704,6 +1754,8 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let binop_debug_loc = binop_expr.debug_loc();
 
     let mut bcx = bcx;
+    let lhs = lhs.to_llscalarish(bcx);
+    let rhs = rhs.to_llscalarish(bcx);
     let val = match op.node {
       hir::BiAdd => {
         if is_float {
@@ -1745,7 +1797,7 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                   op,
                                                   lhs,
                                                   rhs,
-                                                  rhs_t);
+                                                  lhs_t);
             if is_signed {
                 SDiv(bcx, lhs, rhs, binop_debug_loc)
             } else {
@@ -1796,7 +1848,7 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Only zero-check integers; fp %0 is NaN
             bcx = base::fail_if_zero_or_overflows(bcx,
                                                   expr_info(binop_expr),
-                                                  op, lhs, rhs, rhs_t);
+                                                  op, lhs, rhs, lhs_t);
             if is_signed {
                 SRem(bcx, lhs, rhs, binop_debug_loc)
             } else {
@@ -1896,23 +1948,26 @@ fn trans_binary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         _ => {
             let mut bcx = bcx;
-            let lhs_datum = unpack_datum!(bcx, trans(bcx, lhs));
-            let rhs_datum = unpack_datum!(bcx, trans(bcx, rhs));
             let binop_ty = expr_ty(bcx, expr);
 
-            debug!("trans_binary (expr {}): lhs_datum={}",
-                   expr.id,
-                   lhs_datum.to_string(ccx));
-            let lhs_ty = lhs_datum.ty;
-            let lhs = lhs_datum.to_llscalarish(bcx);
+            let lhs = unpack_datum!(bcx, trans(bcx, lhs));
+            let lhs = unpack_datum!(bcx, lhs.to_rvalue_datum(bcx, "binop_lhs"));
+            debug!("trans_binary (expr {}): lhs={}",
+                   expr.id, lhs.to_string(ccx));
+            let rhs = unpack_datum!(bcx, trans(bcx, rhs));
+            let rhs = unpack_datum!(bcx, rhs.to_rvalue_datum(bcx, "binop_rhs"));
+            debug!("trans_binary (expr {}): rhs={}",
+                   expr.id, rhs.to_string(ccx));
 
-            debug!("trans_binary (expr {}): rhs_datum={}",
-                   expr.id,
-                   rhs_datum.to_string(ccx));
-            let rhs_ty = rhs_datum.ty;
-            let rhs = rhs_datum.to_llscalarish(bcx);
-            trans_eager_binop(bcx, expr, binop_ty, op,
-                              lhs_ty, lhs, rhs_ty, rhs)
+            if type_is_fat_ptr(ccx.tcx(), lhs.ty) {
+                assert!(type_is_fat_ptr(ccx.tcx(), rhs.ty),
+                        "built-in binary operators on fat pointers are homogeneous");
+                trans_fat_ptr_binop(bcx, expr, binop_ty, op, lhs, rhs)
+            } else {
+                assert!(!type_is_fat_ptr(ccx.tcx(), rhs.ty),
+                        "built-in binary operators on fat pointers are homogeneous");
+                trans_scalar_binop(bcx, expr, binop_ty, op, lhs, rhs)
+            }
         }
     }
 }
@@ -2123,21 +2178,19 @@ fn trans_assign_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     assert!(!bcx.tcx().is_method_call(expr.id));
 
     // Evaluate LHS (destination), which should be an lvalue
-    let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, dst, "assign_op"));
-    assert!(!bcx.fcx.type_needs_drop(dst_datum.ty));
-    let dst_ty = dst_datum.ty;
-    let dst = load_ty(bcx, dst_datum.val, dst_datum.ty);
+    let dst = unpack_datum!(bcx, trans_to_lvalue(bcx, dst, "assign_op"));
+    assert!(!bcx.fcx.type_needs_drop(dst.ty));
+    let lhs = load_ty(bcx, dst.val, dst.ty);
+    let lhs = immediate_rvalue(lhs, dst.ty);
 
-    // Evaluate RHS
-    let rhs_datum = unpack_datum!(bcx, trans(bcx, &*src));
-    let rhs_ty = rhs_datum.ty;
-    let rhs = rhs_datum.to_llscalarish(bcx);
+    // Evaluate RHS - FIXME(#28160) this sucks
+    let rhs = unpack_datum!(bcx, trans(bcx, &*src));
+    let rhs = unpack_datum!(bcx, rhs.to_rvalue_datum(bcx, "assign_op_rhs"));
 
     // Perform computation and store the result
     let result_datum = unpack_datum!(
-        bcx, trans_eager_binop(bcx, expr, dst_datum.ty, op,
-                               dst_ty, dst, rhs_ty, rhs));
-    return result_datum.store_to(bcx, dst_datum.val);
+        bcx, trans_scalar_binop(bcx, expr, dst.ty, op, lhs, rhs));
+    return result_datum.store_to(bcx, dst.val);
 }
 
 fn auto_ref<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
