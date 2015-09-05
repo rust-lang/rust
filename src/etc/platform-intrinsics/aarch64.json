@@ -337,6 +337,48 @@
             "args": ["0"]
         },
         {
+            "intrinsic": "ld2{0[0].width}_{0[0].data_type}",
+            "width": [64, 128],
+            "llvm": "ld2.{0[0].llvm_name}.{1.llvm_name}",
+            "ret": ["[i(8-64);2]","[f(32-64);2]"],
+            "args": ["0.0SPc/0.0"]
+        },
+        {
+            "intrinsic": "ld3{0[0].width}_{0[0].data_type}",
+            "width": [64, 128],
+            "llvm": "ld3.{0[0].llvm_name}.{1.llvm_name}",
+            "ret": ["[i(8-64);3]","[f(32-64);3]"],
+            "args": ["0.0SPc/0.0"]
+        },
+        {
+            "intrinsic": "ld4{0[0].width}_{0[0].data_type}",
+            "width": [64, 128],
+            "llvm": "ld4.{0[0].llvm_name}.{1.llvm_name}",
+            "ret": ["[i(8-64);4]","[f(32-64);4]"],
+            "args": ["0.0SPc/0.0"]
+        },
+        {
+            "intrinsic": "ld2{0[0].width}_dup_{0[0].data_type}",
+            "width": [64, 128],
+            "llvm": "ld2.{0[0].llvm_name}.{1.llvm_name}",
+            "ret": ["[i(8-64);2]","[f(32-64);2]"],
+            "args": ["0.0SPc"]
+        },
+        {
+            "intrinsic": "ld3{0[0].width}_dup_{0[0].data_type}",
+            "width": [64, 128],
+            "llvm": "ld3.{0[0].llvm_name}.{1.llvm_name}",
+            "ret": ["[i(8-64);3]","[f(32-64);3]"],
+            "args": ["0.0SPc"]
+        },
+        {
+            "intrinsic": "ld4{0[0].width}_dup_{0[0].data_type}",
+            "width": [64, 128],
+            "llvm": "ld4.{0[0].llvm_name}.{1.llvm_name}",
+            "ret": ["[i(8-64);4]","[f(32-64);4]"],
+            "args": ["0.0SPc"]
+        },
+        {
             "intrinsic": "padd{0.width}_{0.data_type}",
             "width": [64, 128],
             "llvm": "addp.{0.llvm_name}",

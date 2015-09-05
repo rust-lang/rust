@@ -42,6 +42,13 @@
             "llvm": "!llvm.sqrt.v4f32",
             "ret": "f32",
             "args": ["0"]
+        },
+        {
+            "intrinsic": "_storeu_ps",
+            "width": [128],
+            "llvm": "storeu.ps",
+            "ret": "V",
+            "args": ["F32Pm/S8", "f32"]
         }
     ]
 }

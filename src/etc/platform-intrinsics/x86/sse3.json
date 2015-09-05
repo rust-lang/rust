@@ -21,6 +21,13 @@
             "llvm": "hsub.{0.data_type}",
             "ret": "f(32-64)",
             "args": ["0", "0"]
+        },
+        {
+            "intrinsic": "_lddqu_si128",
+            "width": [128],
+            "llvm": "ldu.dq",
+            "ret": "u8",
+            "args": ["0Pc/S8"]
         }
     ]
 }

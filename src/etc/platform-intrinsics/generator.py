@@ -14,11 +14,13 @@ import argparse
 import sys
 import re
 import textwrap
+import itertools
 
 SPEC = re.compile(
-    r'^(?:(?P<id>[iusfIUSF])(?:\((?P<start>\d+)-(?P<end>\d+)\)|'
+    r'^(?:(?P<void>V)|(?P<id>[iusfIUSF])(?:\((?P<start>\d+)-(?P<end>\d+)\)|'
     r'(?P<width>\d+)(:?/(?P<llvm_width>\d+))?)'
-    r'|(?P<reference>\d+)(?P<modifiers>[vShdnwus]*)(?P<force_width>x\d+)?)$'
+    r'|(?P<reference>\d+))(?P<index>\.\d+)?(?P<modifiers>[vShdnwusfDMC]*)(?P<force_width>x\d+)?'
+    r'(?:(?P<pointer>Pm|Pc)(?P<llvm_pointer>/.*)?|(?P<bitcast>->.*))?$'
 )
 
 class PlatformInfo(object):
@@ -68,17 +70,34 @@ class IntrinsicSet(object):
                                 {k: lookup(v) for k, v in data.items()})
 
 class PlatformTypeInfo(object):
-    def __init__(self, llvm_name, properties):
-        self.properties = properties
-        self.llvm_name = llvm_name
+    def __init__(self, llvm_name, properties, elems = None):
+        if elems is None:
+            self.properties = properties
+            self.llvm_name = llvm_name
+        else:
+            assert properties is None and llvm_name is None
+            self.properties = {}
+            self.elems = elems
+
+    def __repr__(self):
+        return '<PlatformTypeInfo {}, {}>'.format(self.llvm_name, self.properties)
 
     def __getattr__(self, name):
         return self.properties[name]
+
+    def __getitem__(self, idx):
+        return self.elems[idx]
 
     def vectorize(self, length, width_info):
         props = self.properties.copy()
         props.update(width_info)
         return PlatformTypeInfo('v{}{}'.format(length, self.llvm_name), props)
+
+    def pointer(self, llvm_elem):
+        name = self.llvm_name if llvm_elem is None else llvm_elem.llvm_name
+        return PlatformTypeInfo('p0{}'.format(name), self.properties)
+
+BITWIDTH_POINTER = '<pointer>'
 
 class Type(object):
     def __init__(self, bitwidth):
@@ -87,18 +106,39 @@ class Type(object):
     def bitwidth(self):
         return self._bitwidth
 
-    def modify(self, spec, width):
+    def modify(self, spec, width, previous):
         raise NotImplementedError()
+
+    def __ne__(self, other):
+        return not (self == other)
+
+class Void(Type):
+    def __init__(self):
+        Type.__init__(self, 0)
+
+    def compiler_ctor(self):
+        return 'void()'
+
+    def rust_name(self):
+        return '()'
+
+    def type_info(self, platform_info):
+        return None
+
+    def __eq__(self, other):
+        return isinstance(other, Void)
 
 class Number(Type):
     def __init__(self, bitwidth):
         Type.__init__(self, bitwidth)
 
-    def modify(self, spec, width):
+    def modify(self, spec, width, previous):
         if spec == 'u':
             return Unsigned(self.bitwidth())
         elif spec == 's':
             return Signed(self.bitwidth())
+        elif spec == 'f':
+            return Float(self.bitwidth())
         elif spec == 'w':
             return self.__class__(self.bitwidth() * 2)
         elif spec == 'n':
@@ -111,10 +151,15 @@ class Number(Type):
     def type_info(self, platform_info):
         return platform_info.number_type_info(self)
 
+    def __eq__(self, other):
+        # print(self, other)
+        return self.__class__ == other.__class__ and self.bitwidth() == other.bitwidth()
+
 class Signed(Number):
     def __init__(self, bitwidth, llvm_bitwidth = None):
         Number.__init__(self, bitwidth)
         self._llvm_bitwidth = llvm_bitwidth
+
 
     def compiler_ctor(self):
         if self._llvm_bitwidth is None:
@@ -164,26 +209,47 @@ class Float(Number):
         return 'f{}'.format(self.bitwidth())
 
 class Vector(Type):
-    def __init__(self, elem, length):
+    def __init__(self, elem, length, bitcast = None):
         assert isinstance(elem, Type) and not isinstance(elem, Vector)
         Type.__init__(self,
                       elem.bitwidth() * length)
         self._length = length
         self._elem = elem
+        assert bitcast is None or (isinstance(bitcast, Vector) and
+                                   bitcast._bitcast is None and
+                                   bitcast._elem.bitwidth() == elem.bitwidth())
+        if bitcast is not None and bitcast._elem != elem:
+            self._bitcast = bitcast._elem
+        else:
+            self._bitcast = None
 
-    def modify(self, spec, width):
-        if spec == 'h':
+    def modify(self, spec, width, previous):
+        if spec == 'S':
+            return self._elem
+        elif spec == 'h':
             return Vector(self._elem, self._length // 2)
         elif spec == 'd':
             return Vector(self._elem, self._length * 2)
         elif spec.startswith('x'):
             new_bitwidth = int(spec[1:])
             return Vector(self._elem, new_bitwidth // self._elem.bitwidth())
+        elif spec.startswith('->'):
+            bitcast_to = TypeSpec(spec[2:])
+            choices = list(bitcast_to.enumerate(width, previous))
+            assert len(choices) == 1
+            bitcast_to = choices[0]
+            return Vector(self._elem, self._length, bitcast_to)
         else:
-            return Vector(self._elem.modify(spec, width), self._length)
+            return Vector(self._elem.modify(spec, width, previous), self._length)
 
     def compiler_ctor(self):
-        return 'v({}, {})'.format(self._elem.compiler_ctor(), self._length)
+        if self._bitcast is None:
+            return 'v({}, {})'.format(self._elem.compiler_ctor(),
+                                      self._length)
+        else:
+            return 'v_({}, {}, {})'.format(self._elem.compiler_ctor(),
+                                           self._bitcast.compiler_ctor(),
+                                           self._length)
 
     def rust_name(self):
         return '{}x{}'.format(self._elem.rust_name(), self._length)
@@ -192,6 +258,51 @@ class Vector(Type):
         elem_info = self._elem.type_info(platform_info)
         return elem_info.vectorize(self._length,
                                    platform_info.width_info(self.bitwidth()))
+
+    def __eq__(self, other):
+        return isinstance(other, Vector) and self._length == other._length and \
+            self._elem == other._elem and self._bitcast == other._bitcast
+
+class Pointer(Type):
+    def __init__(self, elem, llvm_elem, const):
+        self._elem = elem;
+        self._llvm_elem = llvm_elem
+        self._const = const
+        Type.__init__(self, BITWIDTH_POINTER)
+
+    def modify(self, spec, width, previous):
+        if spec == 'D':
+            return self._elem
+        elif spec == 'M':
+            return Pointer(self._elem, self._llvm_elem, False)
+        elif spec == 'C':
+            return Pointer(self._elem, self._llvm_elem, True)
+        else:
+            return Pointer(self._elem.modify(spec, width, previous), self._llvm_elem, self._const)
+
+    def compiler_ctor(self):
+        if self._llvm_elem is None:
+            llvm_elem = 'None'
+        else:
+            llvm_elem = 'Some({})'.format(self._llvm_elem.compiler_ctor())
+        return 'p({}, {}, {})'.format('true' if self._const else 'false',
+                                      self._elem.compiler_ctor(),
+                                      llvm_elem)
+
+    def rust_name(self):
+        return '*{} {}'.format('const' if self._const else 'mut',
+                               self._elem.rust_name())
+
+    def type_info(self, platform_info):
+        if self._llvm_elem is None:
+            llvm_elem = None
+        else:
+            llvm_elem = self._llvm_elem.type_info(platform_info)
+        return self._elem.type_info(platform_info).pointer(llvm_elem)
+
+    def __eq__(self, other):
+        return isinstance(other, Pointer) and self._const == other._const \
+            and self._elem == other._elem and self._llvm_elem == other._llvm_elem
 
 class Aggregate(Type):
     def __init__(self, flatten, elems):
@@ -202,6 +313,14 @@ class Aggregate(Type):
     def __repr__(self):
         return '<Aggregate {}>'.format(self._elems)
 
+    def modify(self, spec, width, previous):
+        if spec.startswith('.'):
+            num = int(spec[1:])
+            return self._elems[num]
+        else:
+            print(spec)
+            raise NotImplementedError()
+
     def compiler_ctor(self):
         return 'agg({}, vec![{}])'.format('true' if self._flatten else 'false',
                                           ', '.join(elem.compiler_ctor() for elem in self._elems))
@@ -210,14 +329,33 @@ class Aggregate(Type):
         return '({})'.format(', '.join(elem.rust_name() for elem in self._elems))
 
     def type_info(self, platform_info):
-        #return PlatformTypeInfo(None, None, self._llvm_name)
-        return None
+        return PlatformTypeInfo(None, None, [elem.type_info(platform_info) for elem in self._elems])
+
+    def __eq__(self, other):
+        return isinstance(other, Aggregate) and self._flatten == other._flatten and \
+            self._elems == other._elems
 
 
 TYPE_ID_LOOKUP = {'i': [Signed, Unsigned],
                   's': [Signed],
                   'u': [Unsigned],
                   'f': [Float]}
+
+def ptrify(match, elem, width, previous):
+    ptr = match.group('pointer')
+    if ptr is None:
+        return elem
+    else:
+        llvm_ptr = match.group('llvm_pointer')
+        if llvm_ptr is None:
+            llvm_elem = None
+        else:
+            assert llvm_ptr.startswith('/')
+            options = list(TypeSpec(llvm_ptr[1:]).enumerate(width, previous))
+            assert len(options) == 1
+            llvm_elem = options[0]
+        assert ptr in ('Pc', 'Pm')
+        return Pointer(elem, llvm_elem, ptr == 'Pc')
 
 class TypeSpec(object):
     def __init__(self, spec):
@@ -226,71 +364,103 @@ class TypeSpec(object):
 
         self.spec = spec
 
-    def enumerate(self, width):
+    def enumerate(self, width, previous):
         for spec in self.spec:
             match = SPEC.match(spec)
-            if match:
+            if match is not None:
                 id = match.group('id')
-                is_vector = id.islower()
-                type_ctors = TYPE_ID_LOOKUP[id.lower()]
+                reference = match.group('reference')
 
-                start = match.group('start')
-                if start is not None:
-                    end = match.group('end')
-                    llvm_width = None
+                modifiers = []
+                index = match.group('index')
+                if index is not None:
+                    modifiers.append(index)
+                modifiers += list(match.group('modifiers') or '')
+                force = match.group('force_width')
+                if force is not None:
+                    modifiers.append(force)
+                bitcast = match.group('bitcast')
+                if bitcast is not None:
+                    modifiers.append(bitcast)
+
+                if match.group('void') is not None:
+                    assert spec == 'V'
+                    yield Void()
+                elif id is not None:
+                    is_vector = id.islower()
+                    type_ctors = TYPE_ID_LOOKUP[id.lower()]
+
+                    start = match.group('start')
+                    if start is not None:
+                        end = match.group('end')
+                        llvm_width = None
+                    else:
+                        start = end = match.group('width')
+                        llvm_width = match.group('llvm_width')
+                    start = int(start)
+                    end = int(end)
+
+                    bitwidth = start
+                    while bitwidth <= end:
+                        for ctor in type_ctors:
+                            if llvm_width is not None:
+                                assert not is_vector
+                                llvm_width = int(llvm_width)
+                                assert llvm_width < bitwidth
+                                scalar = ctor(bitwidth, llvm_width)
+                            else:
+                                scalar = ctor(bitwidth)
+
+                            if is_vector:
+                                elem = Vector(scalar, width // bitwidth)
+                            else:
+                                assert bitcast is None
+                                elem = scalar
+
+                            for x in modifiers:
+                                elem = elem.modify(x, width, previous)
+                            yield ptrify(match, elem, width, previous)
+                        bitwidth *= 2
+                elif reference is not None:
+                    reference = int(reference)
+                    assert reference < len(previous), \
+                        'referring to argument {}, but only {} are known'.format(reference,
+                                                                                 len(previous))
+                    ret = previous[reference]
+                    for x in modifiers:
+                        ret = ret.modify(x, width, previous)
+                    yield ptrify(match, ret, width, previous)
                 else:
-                    start = end = match.group('width')
-                    llvm_width = match.group('llvm_width')
-                start = int(start)
-                end = int(end)
+                    assert False, 'matched `{}`, but didn\'t understand it?'.format(spec)
+            elif spec.startswith('('):
+                if spec.endswith(')'):
+                    true_spec = spec[1:-1]
+                    flatten = False
+                elif spec.endswith(')f'):
+                    true_spec = spec[1:-2]
+                    flatten = True
+                else:
+                    assert False, 'found unclosed aggregate `{}`'.format(spec)
 
-                bitwidth = start
-                while bitwidth <= end:
-                    for ctor in type_ctors:
-                        if llvm_width is not None:
-                            assert not is_vector
-                            llvm_width = int(llvm_width)
-                            assert llvm_width < bitwidth
-                            scalar = ctor(bitwidth, llvm_width)
-                        else:
-                            scalar = ctor(bitwidth)
+                for elems in itertools.product(*(TypeSpec(subspec).enumerate(width, previous)
+                                                 for subspec in true_spec.split(','))):
+                    yield Aggregate(flatten, elems)
+            elif spec.startswith('['):
+                if spec.endswith(']'):
+                    true_spec = spec[1:-1]
+                    flatten = False
+                elif spec.endswith(']f'):
+                    true_spec = spec[1:-2]
+                    flatten = True
+                else:
+                    assert False, 'found unclosed aggregate `{}`'.format(spec)
+                elem_spec, count = true_spec.split(';')
 
-                        if is_vector:
-                            yield Vector(scalar, width // bitwidth)
-                        else:
-                            yield scalar
-                    bitwidth *= 2
+                count = int(count)
+                for elem in TypeSpec(elem_spec).enumerate(width, previous):
+                    yield Aggregate(flatten, [elem] * count)
             else:
-                print('Failed to parse: `{}`'.format(spec), file=sys.stderr)
-
-    def resolve(self, width, zero):
-        assert len(self.spec) == 1
-        spec = self.spec[0]
-        match = SPEC.match(spec)
-        if match:
-            id  = match.group('id')
-            if id is not None:
-                options = list(self.enumerate(width))
-                assert len(options) == 1
-                return options[0]
-            reference = match.group('reference')
-            if reference != '0':
-                raise NotImplementedError('only argument 0 (return value) references are supported')
-            ret = zero
-            for x in match.group('modifiers') or []:
-                ret = ret.modify(x, width)
-            force = match.group('force_width')
-            if force is not None:
-                ret = ret.modify(force, width)
-            return ret
-        elif spec.startswith('('):
-            if spec.endswith(')'):
-                raise NotImplementedError()
-            elif spec.endswith(')f'):
-                true_spec = spec[1:-2]
-                flatten = True
-            elems = [TypeSpec(subspec).resolve(width, zero) for subspec in true_spec.split(',')]
-            return Aggregate(flatten, elems)
+                assert False, 'Failed to parse `{}`'.format(spec)
 
 class GenericIntrinsic(object):
     def __init__(self, platform, intrinsic, widths, llvm_name, ret, args):
@@ -305,10 +475,22 @@ class GenericIntrinsic(object):
         for width in self.widths:
             # must be a power of two
             assert width & (width - 1) == 0
-            for ret in self.ret.enumerate(width):
-                args = [arg.resolve(width, ret) for arg in self.args]
-                yield MonomorphicIntrinsic(self._platform, self.intrinsic, width, self.llvm_name,
-                                           ret, args)
+            def recur(processed, untouched):
+                if untouched == []:
+                    ret = processed[0]
+                    args = processed[1:]
+                    yield MonomorphicIntrinsic(self._platform, self.intrinsic, width,
+                                               self.llvm_name,
+                                               ret, args)
+                else:
+                    raw_arg = untouched[0]
+                    rest = untouched[1:]
+                    for arg in raw_arg.enumerate(width, processed):
+                        for intr in recur(processed + [arg], rest):
+                            yield intr
+
+            for x in recur([], [self.ret] + self.args):
+                yield x
 
 class MonomorphicIntrinsic(object):
     def __init__(self, platform, intrinsic, width, llvm_name, ret, args):
@@ -369,7 +551,18 @@ def parse_args():
         ## Type specifier grammar
 
         ```
-        type := vector | scalar | aggregate | reference
+        type := core_type modifier* suffix?
+
+        core_type := void | vector | scalar | aggregate | reference
+
+        modifier := 'v' | 'h' | 'd' | 'n' | 'w' | 'u' | 's' |
+                     'x' number | '.' number
+        suffix := pointer | bitcast
+        pointer := 'Pm' llvm_pointer? | 'Pc' llvm_pointer?
+        llvm_pointer := '/' type
+        bitcast := '->' type
+
+        void := 'V'
 
         vector := vector_elem width |
         vector_elem := 'i' | 'u' | 's' | 'f'
@@ -378,17 +571,19 @@ def parse_args():
         scalar_type := 'U' | 'S' | 'F'
         llvm_width := '/' number
 
-        aggregate := '(' (type),* ')' 'f'?
+        aggregate := '(' (type),* ')' 'f'? | '[' type ';' number ']' 'f'?
 
-        reference := number modifiers*
-        modifiers := 'v' | 'h' | 'd' | 'n' | 'w' | 'u' | 's' |
-                     'x' number
-
+        reference := number
 
         width = number | '(' number '-' number ')'
 
         number = [0-9]+
         ```
+
+        ## Void
+
+        The `V` type corresponds to `void` in LLVM (`()` in
+        Rust). It's likely to only work in return position.
 
         ## Vectors
 
@@ -433,6 +628,12 @@ def parse_args():
         - no `f` corresponds to `declare ... @llvm.foo({float, i32})`.
         - having an `f` corresponds to `declare ... @llvm.foo(float, i32)`.
 
+        The `[type;number]` form is a just shorter way to write
+        `(...)`, except avoids doing a cartesian product of generic
+        types, e.g. `[S32;2]` is the same as `(S32, S32)`, while
+        `[I32;2]` is describing just the two types `(S32,S32)` and
+        `(U32,U32)` (i.e. doesn't include `(S32,U32)`, `(U32,S32)` as
+        `(I32,I32)` would).
 
         (Currently aggregates can not contain other aggregates.)
 
@@ -441,19 +642,49 @@ def parse_args():
         A reference uses the type of another argument, with possible
         modifications. The number refers to the type to use, starting
         with 0 == return value, 1 == first argument, 2 == second
-        argument, etc. (Currently only referencing 0, the return
-        value, is supported.)
+        argument, etc.
+
+        ## Affixes
+
+        The `modifier` and `suffix` adaptors change the precise
+        representation.
 
         ### Modifiers
 
         - 'v': put a scalar into a vector of the current width (u32 -> u32x4, when width == 128)
+        - 'S': get the scalar element of a vector (u32x4 -> u32)
         - 'h': half the length of the vector (u32x4 -> u32x2)
         - 'd': double the length of the vector (u32x2 -> u32x4)
         - 'n': narrow the element of the vector (u32x4 -> u16x4)
         - 'w': widen the element of the vector (u16x4 -> u32x4)
-        - 'u': force an integer (vector or scalar) to be unsigned (i32x4 -> u32x4)
-        - 's': force an integer (vector or scalar) to be signed (u32x4 -> i32x4)
+        - 'u': force a number (vector or scalar) to be unsigned int (f32x4 -> u32x4)
+        - 's': force a number (vector or scalar) to be signed int (u32x4 -> i32x4)
+        - 'f': force a number (vector or scalar) to be float (u32x4 -> f32x4)
         - 'x' number: force the type to be a vector of bitwidth `number`.
+        - '.' number: get the `number`th element of an aggregate
+        - 'D': dereference a pointer (*mut u32 -> u32)
+        - 'C': make a pointer const (*mut u32 -> *const u32)
+        - 'M': make a pointer mut (*const u32 -> *mut u32)
+
+        ### Pointers
+
+        Pointers can be created of any type by appending a `P*`
+        suffix. The `m` vs. `c` chooses mut vs. const. e.g. `S32Pm`
+        corresponds to `*mut i32`, and `i32Pc` corresponds (with width
+        128) to `*const i8x16`, `*const u32x4`, etc.
+
+        The type after the `/` (optional) represents the type used
+        internally to LLVM, e.g. `S32pm/S8` is exposed as `*mut i32`
+        in Rust, but is `i8*` in LLVM. (This defaults to the main
+        type).
+
+        ### Bitcast
+
+        The `'->' type` bitcast suffix will cause the value to be
+        bitcast to the right-hand type when calling the intrinsic,
+        e.g. `s32->f32` will expose the intrinsic as `i32x4` at the
+        Rust level, but will cast that vector to `f32x4` when calling
+        the LLVM intrinsic.
         '''))
     parser.add_argument('--format', choices=FORMATS, required=True,
                         help = 'Output format.')
@@ -502,7 +733,7 @@ class CompilerDefs(object):
 
 #![allow(unused_imports)]
 
-use {{Intrinsic, i, i_, u, u_, f, v, agg}};
+use {{Intrinsic, i, i_, u, u_, f, v, v_, agg, p, void}};
 use IntrinsicDef::Named;
 use rustc::middle::ty;
 
