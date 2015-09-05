@@ -413,8 +413,7 @@ impl<'a> Id<'a> {
         {
             let mut chars = name.chars();
             match chars.next() {
-                Some(c) if is_letter_or_underscore(c) => { ;
-                }
+                Some(c) if is_letter_or_underscore(c) => {}
                 _ => return Err(()),
             }
             if !chars.all(is_constituent) {
@@ -781,8 +780,7 @@ mod tests {
         fn to_opt_strs(self) -> Vec<Option<&'static str>> {
             match self {
                 UnlabelledNodes(len) => vec![None; len],
-                AllNodesLabelled(lbls) => lbls.into_iter().map(
-                        |l|Some(l)).collect(),
+                AllNodesLabelled(lbls) => lbls.into_iter().map(|l| Some(l)).collect(),
                 SomeNodesLabelled(lbls) => lbls.into_iter().collect(),
             }
         }
@@ -1015,8 +1013,10 @@ r#"digraph single_cyclic_node {
         let labels = AllNodesLabelled(vec!("{x,y}", "{x}", "{y}", "{}"));
         let r = test_input(LabelledGraph::new("hasse_diagram",
                                               labels,
-                                              vec![edge(0, 1, "", Style::None), edge(0, 2, "", Style::None),
-                 edge(1, 3, "", Style::None), edge(2, 3, "", Style::None)],
+                                              vec![edge(0, 1, "", Style::None),
+                                                   edge(0, 2, "", Style::None),
+                                                   edge(1, 3, "", Style::None),
+                                                   edge(2, 3, "", Style::None)],
                                               None));
         assert_eq!(r.unwrap(),
 r#"digraph hasse_diagram {
@@ -1050,8 +1050,10 @@ r#"digraph hasse_diagram {
 
         let g = LabelledGraphWithEscStrs::new("syntax_tree",
                                               labels,
-                                              vec![edge(0, 1, "then", Style::None), edge(0, 2, "else", Style::None),
-                 edge(1, 3, ";", Style::None),    edge(2, 3, ";", Style::None)]);
+                                              vec![edge(0, 1, "then", Style::None),
+                                                   edge(0, 2, "else", Style::None),
+                                                   edge(1, 3, ";", Style::None),
+                                                   edge(2, 3, ";", Style::None)]);
 
         render(&g, &mut writer).unwrap();
         let mut r = String::new();
@@ -1075,8 +1077,7 @@ r#"digraph syntax_tree {
     fn simple_id_construction() {
         let id1 = Id::new("hello");
         match id1 {
-            Ok(_) => {;
-            }
+            Ok(_) => {}
             Err(..) => panic!("'hello' is not a valid value for id anymore"),
         }
     }
@@ -1086,8 +1087,7 @@ r#"digraph syntax_tree {
         let id2 = Id::new("Weird { struct : ure } !!!");
         match id2 {
             Ok(_) => panic!("graphviz id suddenly allows spaces, brackets and stuff"),
-            Err(..) => {;
-            }
+            Err(..) => {}
         }
     }
 }
