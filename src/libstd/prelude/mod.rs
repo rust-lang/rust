@@ -103,8 +103,8 @@
 //!   `Some` and `None`.
 //! * `std::result::Result::`{
 //!     [`self`](../result/enum.Result.html),
-//!     [`Some`](../result/enum.Result.html),
-//!     [`None`](../result/enum.Result.html)
+//!     [`Ok`](../result/enum.Result.html),
+//!     [`Err`](../result/enum.Result.html)
 //!   }.
 //!   The ubiquitous `Result` type and its two [variants][book-enums],
 //!   `Ok` and `Err`.
