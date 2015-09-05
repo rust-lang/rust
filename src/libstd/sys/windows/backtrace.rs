@@ -60,6 +60,9 @@ extern "system" {
 type SymFromAddrFn =
     extern "system" fn(libc::HANDLE, u64, *mut u64,
                        *mut SYMBOL_INFO) -> libc::BOOL;
+type SymGetLineFromAddr64Fn =
+    extern "system" fn(libc::HANDLE, u64, *mut u32,
+                       *mut IMAGEHLP_LINE64) -> libc::BOOL;
 type SymInitializeFn =
     extern "system" fn(libc::HANDLE, *mut libc::c_void,
                        libc::BOOL) -> libc::BOOL;
@@ -99,6 +102,14 @@ struct SYMBOL_INFO {
     Name: [libc::c_char; MAX_SYM_NAME],
 }
 
+#[repr(C)]
+struct IMAGEHLP_LINE64 {
+    SizeOfStruct: u32,
+    Key: *const libc::c_void,
+    LineNumber: u32,
+    Filename: *const libc::c_char,
+    Address: u64,
+}
 
 #[repr(C)]
 enum ADDRESS_MODE {
