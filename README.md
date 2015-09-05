@@ -31,7 +31,7 @@ name                                                                            
 [let_unit_value](https://github.com/Manishearth/rust-clippy/wiki#let_unit_value)                     | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
 [linkedlist](https://github.com/Manishearth/rust-clippy/wiki#linkedlist)                             | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a RingBuf
 [match_ref_pats](https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats)                     | warn    | a match has all arms prefixed with `&`; the match expression can be dereferenced instead
-[min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                   | deny    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
+[min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                   | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
 [modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                             | warn    | taking a number modulo 1, which always returns 0
 [mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                   | warn    | usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, or shows a fundamental misunderstanding of references)
 [needless_bool](https://github.com/Manishearth/rust-clippy/wiki#needless_bool)                       | warn    | if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
