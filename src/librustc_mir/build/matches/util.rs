@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use build::Builder;
+use build::{BlockAnd, Builder};
 use build::matches::MatchPair;
 use hair::*;
 use repr::*;
@@ -32,11 +32,54 @@ impl<H:Hair> Builder<H> {
         MatchPair::new(lvalue, pattern)
     }
 
-    pub fn append_prefix_suffix_pairs(&mut self,
-                                      match_pairs: &mut Vec<MatchPair<H>>,
-                                      lvalue: Lvalue<H>,
-                                      prefix: Vec<PatternRef<H>>,
-                                      suffix: Vec<PatternRef<H>>)
+    /// When processing an array/slice pattern like `lv @ [x, y, ..s, z]`,
+    /// this function converts the prefix (`x`, `y`) and suffix (`z`) into
+    /// distinct match pairs:
+    ///
+    ///     lv[0 of 3] @ x  // see ProjectionElem::ConstantIndex (and its Debug impl)
+    ///     lv[1 of 3] @ y  // to explain the `[x of y]` notation
+    ///     lv[-1 of 3] @ z
+    ///
+    /// If a slice like `s` is present, then the function also creates
+    /// a temporary like:
+    ///
+    ///     tmp0 = lv[2..-1] // using the special Rvalue::Slice
+    ///
+    /// and creates a match pair `tmp0 @ s`
+    pub fn prefix_suffix_slice(&mut self,
+                               match_pairs: &mut Vec<MatchPair<H>>,
+                               block: BasicBlock,
+                               lvalue: Lvalue<H>,
+                               prefix: Vec<PatternRef<H>>,
+                               opt_slice: Option<PatternRef<H>>,
+                               suffix: Vec<PatternRef<H>>)
+                               -> BlockAnd<()>
+    {
+        // If there is a `..P` pattern, create a temporary `t0` for
+        // the slice and then a match pair `t0 @ P`:
+        if let Some(slice) = opt_slice {
+            let slice = self.hir.mirror(slice);
+            let prefix_len = prefix.len();
+            let suffix_len = suffix.len();
+            let rvalue = Rvalue::Slice { input: lvalue.clone(),
+                                         from_start: prefix_len,
+                                         from_end: suffix_len };
+            let temp = self.temp(slice.ty.clone()); // no need to schedule drop, temp is always copy
+            self.cfg.push_assign(block, slice.span, &temp, rvalue);
+            match_pairs.push(MatchPair::new(temp, slice));
+        }
+
+        self.prefix_suffix(match_pairs, lvalue, prefix, suffix);
+
+        block.unit()
+    }
+
+    /// Helper for `prefix_suffix_slice` which just processes the prefix and suffix.
+    fn prefix_suffix(&mut self,
+                     match_pairs: &mut Vec<MatchPair<H>>,
+                     lvalue: Lvalue<H>,
+                     prefix: Vec<PatternRef<H>>,
+                     suffix: Vec<PatternRef<H>>)
     {
         let min_length = prefix.len() + suffix.len();
         assert!(min_length < u32::MAX as usize);

@@ -116,7 +116,7 @@ impl<H:Hair> Builder<H> {
     }
 
     pub fn lvalue_into_pattern(&mut self,
-                               block: BasicBlock,
+                               mut block: BasicBlock,
                                var_extent: H::CodeExtent,
                                irrefutable_pat: PatternRef<H>,
                                initializer: &Lvalue<H>)
@@ -132,7 +132,7 @@ impl<H:Hair> Builder<H> {
 
         // Simplify the candidate. Since the pattern is irrefutable, this should
         // always convert all match-pairs into bindings.
-        self.simplify_candidate(&mut candidate);
+        unpack!(block = self.simplify_candidate(block, &mut candidate));
 
         if !candidate.match_pairs.is_empty() {
             self.hir.span_bug(
@@ -233,15 +233,7 @@ enum TestKind<H:Hair> {
 #[derive(Debug)]
 struct Test<H:Hair> {
     span: H::Span,
-
-    // the kind of test to be performed,
     kind: TestKind<H>,
-
-    // the outcome we expect,
-    outcome: usize,
-
-    // and the match pairs that will result
-    match_pairs: Vec<MatchPair<H>>
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -261,7 +253,7 @@ impl<H:Hair> Builder<H> {
         // complete, all the match pairs which remain require some
         // form of test, whether it be a switch or pattern comparison.
         for candidate in &mut candidates {
-            self.simplify_candidate(candidate);
+            unpack!(block = self.simplify_candidate(block, candidate));
         }
 
         // The candidates are inversely sorted by priority. Check to
@@ -293,14 +285,16 @@ impl<H:Hair> Builder<H> {
         debug!("match_candidates: test={:?} match_pair={:?}", test, match_pair);
         let target_blocks = self.perform_test(block, &match_pair.lvalue, &test);
 
-        for (outcome, target_block) in target_blocks.into_iter().enumerate() {
+        for (outcome, mut target_block) in target_blocks.into_iter().enumerate() {
             let applicable_candidates: Vec<Candidate<H>> =
                 candidates.iter()
                           .filter_map(|candidate| {
-                              self.candidate_under_assumption(&match_pair.lvalue,
-                                                              &test.kind,
-                                                              outcome,
-                                                              candidate)
+                              unpack!(target_block =
+                                      self.candidate_under_assumption(target_block,
+                                                                      &match_pair.lvalue,
+                                                                      &test.kind,
+                                                                      outcome,
+                                                                      candidate))
                           })
                           .collect();
             self.match_candidates(span, var_extent, applicable_candidates, target_block);

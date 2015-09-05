@@ -15,7 +15,7 @@
 // identify what tests are needed, perform the tests, and then filter
 // the candidates based on the result.
 
-use build::Builder;
+use build::{BlockAnd, Builder};
 use build::matches::{Candidate, MatchPair, Test, TestKind};
 use hair::*;
 use repr::*;
@@ -25,70 +25,38 @@ impl<H:Hair> Builder<H> {
     ///
     /// It is a bug to call this with a simplifyable pattern.
     pub fn test(&mut self, match_pair: &MatchPair<H>) -> Test<H> {
-        match match_pair.pattern.kind.clone() {
-            PatternKind::Variant { adt_def, variant_index, subpatterns } => {
-                let elem = ProjectionElem::Downcast(adt_def, variant_index);
-                let downcast_lvalue = match_pair.lvalue.clone().elem(elem);
-
-                let consequent_match_pairs =
-                    subpatterns.into_iter()
-                               .map(|subpattern| {
-                                   let lvalue =
-                                       downcast_lvalue.clone().field(
-                                           subpattern.field);
-                                   self.match_pair(lvalue, subpattern.pattern)
-                               })
-                               .collect();
-
+        match match_pair.pattern.kind {
+            PatternKind::Variant { ref adt_def, variant_index: _, subpatterns: _ } => {
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Switch { adt_def: adt_def },
-                    outcome: variant_index,
-                    match_pairs: consequent_match_pairs,
+                    kind: TestKind::Switch { adt_def: adt_def.clone() },
                 }
             }
 
-            PatternKind::Constant { expr } => {
-                let expr = self.as_constant(expr);
+            PatternKind::Constant { ref expr } => {
+                let expr = self.as_constant(expr.clone());
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Eq { value: expr,
-                                         ty: match_pair.pattern.ty.clone() },
-                    outcome: 0, // 0 == true, of course. :)
-                    match_pairs: vec![]
+                    kind: TestKind::Eq { value: expr, ty: match_pair.pattern.ty.clone() },
                 }
             }
 
-            PatternKind::Range { lo, hi } => {
-                let lo = self.as_constant(lo);
-                let hi = self.as_constant(hi);
+            PatternKind::Range { ref lo, ref hi } => {
+                let lo = self.as_constant(lo.clone());
+                let hi = self.as_constant(hi.clone());
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Range { lo: lo,
-                                            hi: hi,
-                                            ty: match_pair.pattern.ty.clone() },
-                    outcome: 0, // 0 == true, of course. :)
-                    match_pairs: vec![]
+                    kind: TestKind::Range { lo: lo, hi: hi, ty: match_pair.pattern.ty.clone() },
                 }
             }
 
-            PatternKind::Slice { prefix, slice: None, suffix } => {
+            PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
                 let len = prefix.len() + suffix.len();
-                let mut consequent_match_pairs = vec![];
-                self.append_prefix_suffix_pairs(
-                    &mut consequent_match_pairs, match_pair.lvalue.clone(), prefix, suffix);
+                let op = if slice.is_some() {BinOp::Ge} else {BinOp::Eq};
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Len { len: len, op: BinOp::Eq },
-                    outcome: 0, // 0 == true, of course. :)
-                    match_pairs: consequent_match_pairs
+                    kind: TestKind::Len { len: len, op: op },
                 }
-            }
-
-            PatternKind::Slice { prefix: _, slice: Some(_), suffix: _ } => {
-                self.hir.span_bug(
-                    match_pair.pattern.span,
-                    &format!("slice patterns not implemented in MIR"));
             }
 
             PatternKind::Array { .. } |
@@ -225,28 +193,36 @@ impl<H:Hair> Builder<H> {
     /// were `Ok`, we would return `Some([x.0.downcast<Ok>.0 @ P1, x.1
     /// @ 22])`.
     pub fn candidate_under_assumption(&mut self,
+                                      mut block: BasicBlock,
                                       test_lvalue: &Lvalue<H>,
                                       test_kind: &TestKind<H>,
                                       test_outcome: usize,
                                       candidate: &Candidate<H>)
-                                      -> Option<Candidate<H>> {
+                                      -> BlockAnd<Option<Candidate<H>>> {
         let candidate = candidate.clone();
         let match_pairs = candidate.match_pairs;
-        match self.match_pairs_under_assumption(test_lvalue, test_kind, test_outcome, match_pairs) {
+        let result = unpack!(block = self.match_pairs_under_assumption(block,
+                                                                       test_lvalue,
+                                                                       test_kind,
+                                                                       test_outcome,
+                                                                       match_pairs));
+        block.and(match result {
             Some(match_pairs) => Some(Candidate { match_pairs: match_pairs, ..candidate }),
             None => None
-        }
+        })
     }
 
     /// Helper for candidate_under_assumption that does the actual
     /// work of transforming the list of match pairs.
     fn match_pairs_under_assumption(&mut self,
+                                    mut block: BasicBlock,
                                     test_lvalue: &Lvalue<H>,
                                     test_kind: &TestKind<H>,
                                     test_outcome: usize,
                                     match_pairs: Vec<MatchPair<H>>)
-                                    -> Option<Vec<MatchPair<H>>> {
+                                    -> BlockAnd<Option<Vec<MatchPair<H>>>> {
         let mut result = vec![];
+
         for match_pair in match_pairs {
             // if the match pair is testing a different lvalue, it
             // is unaffected by this test.
@@ -275,22 +251,92 @@ impl<H:Hair> Builder<H> {
                 continue;
             }
 
-            if test_outcome != desired_test.outcome {
-                // if we did the right kind of test, but it had the
-                // wrong outcome, then this *entire candidate* can no
-                // longer apply, huzzah! Therefore, we can stop this
-                // iteration and just return `None` to our caller.
-                return None;
+            let opt_consequent_match_pairs =
+                unpack!(block = self.consequent_match_pairs_under_assumption(block,
+                                                                             match_pair,
+                                                                             test_outcome));
+            match opt_consequent_match_pairs {
+                None => {
+                    // Right kind of test, but wrong outcome. That
+                    // means this **entire candidate** is
+                    // inapplicable, since the candidate is only
+                    // applicable if all of its match-pairs apply (and
+                    // this one doesn't).
+                    return block.and(None);
+                }
+
+                Some(consequent_match_pairs) => {
+                    // Test passed; add any new patterns we have to test to the final result.
+                    result.extend(consequent_match_pairs)
+                }
+            }
+        }
+        block.and(Some(result))
+    }
+
+    /// Identifies what test is needed to decide if `match_pair` is applicable.
+    ///
+    /// It is a bug to call this with a simplifyable pattern.
+    pub fn consequent_match_pairs_under_assumption(&mut self,
+                                                   mut block: BasicBlock,
+                                                   match_pair: MatchPair<H>,
+                                                   test_outcome: usize)
+                                                   -> BlockAnd<Option<Vec<MatchPair<H>>>> {
+        match match_pair.pattern.kind {
+            PatternKind::Variant { adt_def, variant_index, subpatterns } => {
+                if test_outcome != variant_index {
+                    return block.and(None);
+                }
+
+                let elem = ProjectionElem::Downcast(adt_def, variant_index);
+                let downcast_lvalue = match_pair.lvalue.clone().elem(elem);
+                let consequent_match_pairs =
+                    subpatterns.into_iter()
+                               .map(|subpattern| {
+                                   let lvalue =
+                                       downcast_lvalue.clone().field(
+                                           subpattern.field);
+                                   self.match_pair(lvalue, subpattern.pattern)
+                               })
+                               .collect();
+                block.and(Some(consequent_match_pairs))
             }
 
-            // otherwise, the test passed, so we now have to include the
-            // "unlocked" set of match pairs. For example, if we had `x @
-            // Some(P1)`, and here we `test_kind==Switch` and
-            // `outcome=Some`, then we would return `x.downcast<Some>.0 @
-            // P1`.
-            result.extend(desired_test.match_pairs);
+            PatternKind::Constant { .. } |
+            PatternKind::Range { .. } => {
+                // these are boolean tests: if we are on the 0th
+                // successor, then they passed, and otherwise they
+                // failed, but there are never any more tests to come.
+                if test_outcome == 0 {
+                    block.and(Some(vec![]))
+                } else {
+                    block.and(None)
+                }
+            }
+
+            PatternKind::Slice { prefix, slice, suffix } => {
+                if test_outcome == 0 {
+                    let mut consequent_match_pairs = vec![];
+                    unpack!(block = self.prefix_suffix_slice(&mut consequent_match_pairs,
+                                                             block,
+                                                             match_pair.lvalue,
+                                                             prefix,
+                                                             slice,
+                                                             suffix));
+                    block.and(Some(consequent_match_pairs))
+                } else {
+                    block.and(None)
+                }
+            }
+
+            PatternKind::Array { .. } |
+            PatternKind::Wild |
+            PatternKind::Binding { .. } |
+            PatternKind::Leaf { .. } |
+            PatternKind::Deref { .. } => {
+                self.error_simplifyable(&match_pair)
+            }
         }
-        Some(result)
     }
 
     fn error_simplifyable(&mut self, match_pair: &MatchPair<H>) -> ! {

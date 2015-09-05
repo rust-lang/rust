@@ -182,7 +182,7 @@ RUSTFLAGS2_$(1) += -Z always-build-mir
 endef
 $(foreach crate,$(TARGET_CRATES),$(eval $(call ADD_MIR_FLAG,$(crate))))
 $(foreach crate,$(RUSTC_CRATES),$(eval $(call ADD_MIR_FLAG,$(crate))))
-$(foreach crate,syntax,$(eval $(call ADD_MIR_FLAG,$(crate))))
+$(foreach crate,$(HOST_CRATES),$(eval $(call ADD_MIR_FLAG,$(crate))))
 
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)mk/platform.mk
