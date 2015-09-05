@@ -1533,6 +1533,26 @@ For information on the design of the orphan rules, see [RFC 1023].
 [RFC 1023]: https://github.com/rust-lang/rfcs/pull/1023
 "##,
 
+EO118: r##"
+Rust can't find a base type for an implementation you are providing, or the type
+cannot have an implementation. For example, a typedef can't have an implementation,
+since it isn't its own type (this was done in PR #6087):
+
+```
+type NineString = [char, ..9]
+impl NineString {
+    // Some code here
+}
+```
+
+In the other, simpler case, Rust just can't find the type you are providing an
+impelementation for:
+
+```
+impl SomeTypeThatDoesntExist {  }
+```
+"##
+
 E0119: r##"
 There are conflicting trait implementations for the same type.
 Example of erroneous code:
