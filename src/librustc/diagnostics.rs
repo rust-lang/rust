@@ -44,7 +44,7 @@ E0002: r##"
 This error indicates that an empty match expression is invalid because the type
 it is matching on is non-empty (there exist values of this type). In safe code
 it is impossible to create an instance of an empty type, so empty match
-expressions are almost never desired.  This error is typically fixed by adding
+expressions are almost never desired. This error is typically fixed by adding
 one or more cases to the match expression.
 
 An example of an empty type is `enum Empty { }`. So, the following will work:
@@ -218,7 +218,14 @@ match x {
 E0010: r##"
 The value of statics and constants must be known at compile time, and they live
 for the entire lifetime of a program. Creating a boxed value allocates memory on
-the heap at runtime, and therefore cannot be done at compile time.
+the heap at runtime, and therefore cannot be done at compile time. Erroneous
+code example:
+
+```
+#![feature(box_syntax)]
+
+const CON : Box<i32> = box 0;
+```
 "##,
 
 E0011: r##"
@@ -335,7 +342,6 @@ is not allowed.
 
 If you really want global mutable state, try using `static mut` or a global
 `UnsafeCell`.
-
 "##,
 
 E0018: r##"
@@ -399,7 +405,13 @@ fn main() {
 
 E0020: r##"
 This error indicates that an attempt was made to divide by zero (or take the
-remainder of a zero divisor) in a static or constant expression.
+remainder of a zero divisor) in a static or constant expression. Erroneous
+code example:
+
+```
+const X: i32 = 42 / 0;
+// error: attempted to divide by zero in a constant expression
+```
 "##,
 
 E0022: r##"
