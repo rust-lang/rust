@@ -119,14 +119,14 @@ impl Rewrite for ast::Expr {
             // `continue`
             ast::Expr_::ExprAgain(ref opt_ident) => {
                 let id_str = match *opt_ident {
-                    Some(ident) => format!(" {}", ident),
+                    Some(ident) => format!(" {}", ident.node),
                     None => String::new(),
                 };
                 Some(format!("continue{}", id_str))
             }
             ast::Expr_::ExprBreak(ref opt_ident) => {
                 let id_str = match *opt_ident {
-                    Some(ident) => format!(" {}", ident),
+                    Some(ident) => format!(" {}", ident.node),
                     None => String::new(),
                 };
                 Some(format!("break{}", id_str))
