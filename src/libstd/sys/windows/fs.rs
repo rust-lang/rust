@@ -11,12 +11,13 @@
 use io::prelude::*;
 use os::windows::prelude::*;
 
+use env;
 use ffi::OsString;
 use fmt;
 use io::{self, Error, SeekFrom};
 use libc::{self, HANDLE};
 use mem;
-use path::{Path, PathBuf};
+use path::{self, Path, PathBuf};
 use ptr;
 use slice;
 use sync::Arc;
@@ -227,7 +228,7 @@ impl File {
     }
 
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let path = to_utf16(path);
+        let path = try!(to_system_path(path));
         let handle = unsafe {
             libc::CreateFileW(path.as_ptr(),
                               opts.get_desired_access(),
@@ -378,8 +379,76 @@ impl fmt::Debug for File {
     }
 }
 
-pub fn to_utf16(s: &Path) -> Vec<u16> {
-    s.as_os_str().encode_wide().chain(Some(0)).collect()
+pub fn to_u16s(path: &Path) -> Vec<u16> {
+    path.as_os_str().encode_wide().chain(Some(0)).collect()
+}
+
+fn to_system_path(path: &Path) -> io::Result<Vec<u16>> {
+    Ok(to_u16s(&*try!(to_system_path_impl(path, 0))))
+}
+
+pub fn to_system_path_impl(path: &Path, recursion: u8) -> io::Result<PathBuf> {
+    if recursion > 1 { unreachable!(); }
+    let recursion = recursion + 1;
+
+    let mut components = path.components();
+    let maybe_prefix = {
+        let mut copy = components.clone();
+        copy.next().and_then(|c| {
+            match c {
+                path::Component::Prefix(p) => {
+                    components = copy;
+                    Some(p.kind())
+                }
+                _ => None,
+            }
+        })
+    };
+    let mut new_path: PathBuf = match maybe_prefix {
+        Some(path::Prefix::Verbatim(..))
+        | Some(path::Prefix::VerbatimUNC(..))
+        | Some(path::Prefix::VerbatimDisk(..))
+        | Some(path::Prefix::DeviceNS(..)) => {
+            return Ok(path.into())
+        }
+        // unwrap: The function can only fail getting the current directory,
+        // but since the working directory is already absolute, it will not
+        // need this value again.
+        None => to_system_path_impl(&*try!(env::current_dir()), recursion).unwrap(),
+        Some(path::Prefix::Disk(disk)) => {
+            let current_dir = try!(env::current_dir());
+            // unwrap: Absolute paths always have a prefix.
+            let current_drive = match current_dir.prefix().unwrap() {
+                path::Prefix::VerbatimDisk(d) | path::Prefix::Disk(d) => Some(d),
+                _ => None,
+            };
+            if !path.has_root() && current_drive == Some(disk) {
+                // unwrap: See above.
+                to_system_path_impl(&current_dir, recursion).unwrap()
+            } else {
+                format!(r"\\?\{}:\", disk as char).into()
+            }
+        }
+        Some(path::Prefix::UNC(server, share)) => {
+            let mut new_path = OsString::new();
+            new_path.push(r"\\?\UNC\");
+            new_path.push(server);
+            new_path.push(r"\");
+            new_path.push(share);
+            new_path.push(r"\");
+            new_path.into()
+        }
+    };
+    for c in components {
+        use path::Component::*;
+        match c {
+            Prefix(..) => unreachable!(),
+            CurDir => {},
+            ParentDir => { let _ = new_path.pop(); }
+            RootDir | Normal(..) => new_path.push(c.as_os_str()),
+        }
+    }
+    Ok(new_path)
 }
 
 impl FileAttr {
@@ -450,7 +519,7 @@ impl DirBuilder {
     pub fn new() -> DirBuilder { DirBuilder }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let p = to_utf16(p);
+        let p = try!(to_system_path(p));
         try!(cvt(unsafe {
             libc::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
         }));
@@ -461,7 +530,7 @@ impl DirBuilder {
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = p.to_path_buf();
     let star = p.join("*");
-    let path = to_utf16(&star);
+    let path = try!(to_system_path(&star));
 
     unsafe {
         let mut wfd = mem::zeroed();
@@ -479,14 +548,14 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let p_utf16 = to_utf16(p);
+    let p_utf16 = try!(to_system_path(p));
     try!(cvt(unsafe { libc::DeleteFileW(p_utf16.as_ptr()) }));
     Ok(())
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let old = to_utf16(old);
-    let new = to_utf16(new);
+    let old = try!(to_system_path(old));
+    let new = try!(to_system_path(new));
     try!(cvt(unsafe {
         libc::MoveFileExW(old.as_ptr(), new.as_ptr(),
                           libc::MOVEFILE_REPLACE_EXISTING)
@@ -495,7 +564,7 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let p = to_utf16(p);
+    let p = try!(to_system_path(p));
     try!(cvt(unsafe { c::RemoveDirectoryW(p.as_ptr()) }));
     Ok(())
 }
@@ -510,8 +579,8 @@ pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
 }
 
 pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
-    let src = to_utf16(src);
-    let dst = to_utf16(dst);
+    let src = try!(to_system_path(src));
+    let dst = try!(to_system_path(dst));
     let flags = if dir { c::SYMBOLIC_LINK_FLAG_DIRECTORY } else { 0 };
     try!(cvt(unsafe {
         c::CreateSymbolicLinkW(dst.as_ptr(), src.as_ptr(), flags) as libc::BOOL
@@ -520,8 +589,8 @@ pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
 }
 
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = to_utf16(src);
-    let dst = to_utf16(dst);
+    let src = try!(to_system_path(src));
+    let dst = try!(to_system_path(dst));
     try!(cvt(unsafe {
         libc::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::null_mut())
     }));
@@ -547,7 +616,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    let utf16 = to_utf16(p);
+    let utf16 = try!(to_system_path(p));
     unsafe {
         let mut attr: FileAttr = mem::zeroed();
         try!(cvt(c::GetFileAttributesExW(utf16.as_ptr(),
@@ -564,7 +633,7 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    let p = to_utf16(p);
+    let p = try!(to_system_path(p));
     unsafe {
         try!(cvt(c::SetFileAttributesW(p.as_ptr(), perm.attrs)));
         Ok(())
@@ -602,8 +671,8 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         *(lpData as *mut i64) = TotalBytesTransferred;
         c::PROGRESS_CONTINUE
     }
-    let pfrom = to_utf16(from);
-    let pto = to_utf16(to);
+    let pfrom = try!(to_system_path(from));
+    let pto = try!(to_system_path(to));
     let mut size = 0i64;
     try!(cvt(unsafe {
         c::CopyFileExW(pfrom.as_ptr(), pto.as_ptr(), Some(callback),
