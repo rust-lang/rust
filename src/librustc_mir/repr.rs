@@ -471,9 +471,9 @@ impl<H:Hair> Debug for Lvalue<H> {
                     ProjectionElem::Index(ref index) =>
                         write!(fmt,"{:?}[{:?}]", data.base, index),
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: false } =>
-                        write!(fmt,"{:?}[{:?}; {:?}]", data.base, offset, min_length),
+                        write!(fmt,"{:?}[{:?} of {:?}]", data.base, offset, min_length),
                     ProjectionElem::ConstantIndex { offset, min_length, from_end: true } =>
-                        write!(fmt,"{:?}[-{:?}; {:?}]", data.base, offset, min_length),
+                        write!(fmt,"{:?}[-{:?} of {:?}]", data.base, offset, min_length),
                 },
         }
     }
@@ -534,6 +534,17 @@ pub enum Rvalue<H:Hair> {
     // that `Foo` has a destructor. These rvalues can be optimized
     // away after type-checking and before lowering.
     Aggregate(AggregateKind<H>, Vec<Operand<H>>),
+
+    // Generates a slice of the form `&input[from_start..L-from_end]`
+    // where `L` is the length of the slice. This is only created by
+    // slice pattern matching, so e.g. a pattern of the form `[x, y,
+    // .., z]` might create a slice with `from_start=2` and
+    // `from_end=1`.
+    Slice {
+        input: Lvalue<H>,
+        from_start: usize,
+        from_end: usize,
+    },
 
     InlineAsm(H::InlineAsm),
 }
@@ -623,6 +634,8 @@ impl<H:Hair> Debug for Rvalue<H> {
             Box(ref t) => write!(fmt, "Box {:?}", t),
             Aggregate(ref kind, ref lvs) => write!(fmt, "Aggregate<{:?}>({:?})", kind, lvs),
             InlineAsm(ref asm) => write!(fmt, "InlineAsm({:?})", asm),
+            Slice { ref input, from_start, from_end } => write!(fmt, "{:?}[{:?}..-{:?}]",
+                                                                input, from_start, from_end),
         }
     }
 }

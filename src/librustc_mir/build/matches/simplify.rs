@@ -22,7 +22,7 @@
 //! sort of test: for example, testing which variant an enum is, or
 //! testing a value against a constant.
 
-use build::Builder;
+use build::{BlockAnd, Builder};
 use build::matches::{Binding, MatchPair, Candidate};
 use hair::*;
 use repr::*;
@@ -31,20 +31,25 @@ use std::mem;
 
 impl<H:Hair> Builder<H> {
     pub fn simplify_candidate(&mut self,
+                              mut block: BasicBlock,
                               candidate: &mut Candidate<H>)
+                              -> BlockAnd<()>
     {
         // repeatedly simplify match pairs until fixed point is reached
         loop {
             let match_pairs = mem::replace(&mut candidate.match_pairs, vec![]);
             let mut progress = match_pairs.len(); // count how many were simplified
             for match_pair in match_pairs {
-                if let Err(match_pair) = self.simplify_match_pair(match_pair, candidate) {
-                    candidate.match_pairs.push(match_pair);
-                    progress -= 1; // this one was not simplified
+                match self.simplify_match_pair(block, match_pair, candidate) {
+                    Ok(b) => { block = b; }
+                    Err(match_pair) => {
+                        candidate.match_pairs.push(match_pair);
+                        progress -= 1; // this one was not simplified
+                    }
                 }
             }
             if progress == 0 {
-                return; // if we were not able to simplify any, done.
+                return block.unit(); // if we were not able to simplify any, done.
             }
         }
     }
@@ -54,14 +59,15 @@ impl<H:Hair> Builder<H> {
     /// have been pushed into the candidate. On failure (if false is
     /// returned), no changes are made to candidate.
     fn simplify_match_pair(&mut self,
+                           mut block: BasicBlock,
                            match_pair: MatchPair<H>,
                            candidate: &mut Candidate<H>)
-                           -> Result<(), MatchPair<H>> // returns Err() if cannot simplify
+                           -> Result<BasicBlock, MatchPair<H>> // returns Err() if cannot simplify
     {
         match match_pair.pattern.kind {
             PatternKind::Wild(..) => {
                 // nothing left to do
-                Ok(())
+                Ok(block)
             }
 
             PatternKind::Binding { name, mutability, mode, var, ty, subpattern } => {
@@ -81,7 +87,7 @@ impl<H:Hair> Builder<H> {
                     candidate.match_pairs.push(MatchPair::new(match_pair.lvalue, subpattern));
                 }
 
-                Ok(())
+                Ok(block)
             }
 
             PatternKind::Constant { .. } => {
@@ -89,16 +95,14 @@ impl<H:Hair> Builder<H> {
                 Err(match_pair)
             }
 
-            PatternKind::Array { prefix, slice: None, suffix } => {
-                self.append_prefix_suffix_pairs(
-                    &mut candidate.match_pairs, match_pair.lvalue.clone(), prefix, suffix);
-                Ok(())
-            }
-
-            PatternKind::Array { prefix: _, slice: Some(_), suffix: _ } => {
-                self.hir.span_bug(
-                    match_pair.pattern.span,
-                    &format!("slice patterns not implemented in MIR"));
+            PatternKind::Array { prefix, slice, suffix } => {
+                unpack!(block = self.prefix_suffix_slice(&mut candidate.match_pairs,
+                                                         block,
+                                                         match_pair.lvalue.clone(),
+                                                         prefix,
+                                                         slice,
+                                                         suffix));
+                Ok(block)
             }
 
             PatternKind::Slice { .. } |
@@ -112,14 +116,14 @@ impl<H:Hair> Builder<H> {
                 // tuple struct, match subpats (if any)
                 candidate.match_pairs.extend(
                     self.field_match_pairs(match_pair.lvalue, subpatterns));
-                Ok(())
+                Ok(block)
             }
 
             PatternKind::Deref { subpattern } => {
                 let lvalue = match_pair.lvalue.deref();
                 let subpattern = self.hir.mirror(subpattern);
                 candidate.match_pairs.push(MatchPair::new(lvalue, subpattern));
-                Ok(())
+                Ok(block)
             }
         }
     }
