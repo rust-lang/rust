@@ -580,13 +580,8 @@ pub fn walk_fn_decl<'v, V: Visitor<'v>>(visitor: &mut V, function_declaration: &
     walk_fn_ret_ty(visitor, &function_declaration.output)
 }
 
-pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
-                                   function_kind: FnKind<'v>,
-                                   function_declaration: &'v FnDecl,
-                                   function_body: &'v Block,
-                                   _span: Span) {
-    walk_fn_decl(visitor, function_declaration);
-
+pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V,
+                                        function_kind: FnKind<'v>) {
     match function_kind {
         FnKind::ItemFn(_, generics, _, _, _, _) => {
             visitor.visit_generics(generics);
@@ -597,7 +592,15 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
         }
         FnKind::Closure(..) => {}
     }
+}
 
+pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
+                                   function_kind: FnKind<'v>,
+                                   function_declaration: &'v FnDecl,
+                                   function_body: &'v Block,
+                                   _span: Span) {
+    walk_fn_decl(visitor, function_declaration);
+    walk_fn_kind(visitor, function_kind);
     visitor.visit_block(function_body)
 }
 

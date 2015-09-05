@@ -317,7 +317,10 @@ impl RegionMaps {
         self.intern_code_extent(e, DUMMY_CODE_EXTENT)
     }
     pub fn lookup_code_extent(&self, e: CodeExtentData) -> CodeExtent {
-        self.code_extent_interner.borrow()[&e]
+        match self.code_extent_interner.borrow().get(&e) {
+            Some(&d) => d,
+            None => panic!("unknown code extent {:?}", e)
+        }
     }
     pub fn node_extent(&self, n: ast::NodeId) -> CodeExtent {
         self.lookup_code_extent(CodeExtentData::Misc(n))
@@ -1069,7 +1072,7 @@ fn resolve_item(visitor: &mut RegionResolutionVisitor, item: &hir::Item) {
 }
 
 fn resolve_fn(visitor: &mut RegionResolutionVisitor,
-              _: FnKind,
+              kind: FnKind,
               decl: &hir::FnDecl,
               body: &hir::Block,
               sp: Span,
@@ -1102,6 +1105,7 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
     };
 
     visit::walk_fn_decl(visitor, decl);
+    visit::walk_fn_kind(visitor, kind);
 
     // The body of the every fn is a root scope.
     visitor.cx = Context {
