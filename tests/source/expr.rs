@@ -93,6 +93,14 @@ fn baz() {
     unsafe {
         // Regular unsafe block
     }
+
+    unsafe {
+        foo()
+    }
+
+    unsafe {
+        foo();
+    }
 }
 
 // Test some empty blocks.
