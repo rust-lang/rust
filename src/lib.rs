@@ -32,6 +32,7 @@ pub mod needless_bool;
 pub mod approx_const;
 pub mod eta_reduction;
 pub mod identity_op;
+pub mod minmax;
 pub mod mut_mut;
 pub mod len_zero;
 pub mod attrs;
@@ -85,6 +86,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box types::TypeComplexityPass as LintPassObject);
     reg.register_lint_pass(box matches::MatchPass as LintPassObject);
     reg.register_lint_pass(box misc::PatternPass as LintPassObject);
+    reg.register_lint_pass(box minmax::MinMaxPass as LintPassObject);
 
     reg.register_lint_group("clippy_pedantic", vec![
         methods::OPTION_UNWRAP_USED,
@@ -125,6 +127,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         methods::STR_TO_STRING,
         methods::STRING_TO_STRING,
         methods::WRONG_SELF_CONVENTION,
+        minmax::MIN_MAX,
         misc::CMP_NAN,
         misc::CMP_OWNED,
         misc::FLOAT_CMP,
