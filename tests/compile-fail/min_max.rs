@@ -5,6 +5,8 @@
 
 use std::cmp::{min, max};
 
+const LARGE : usize = 3;
+
 fn main() {
     let x;
     x = 2usize;
@@ -14,6 +16,8 @@ fn main() {
     max(3, min(x, 1)); //~ERROR this min/max combination leads to constant result
 
     min(3, max(1, x)); // ok, could be 1, 2 or 3 depending on x
+
+    min(1, max(LARGE, x)); // no error, we don't lookup consts here
 
     let s;
     s = "Hello";
