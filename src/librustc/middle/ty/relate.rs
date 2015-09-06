@@ -16,7 +16,7 @@
 use middle::def_id::DefId;
 use middle::subst::{ErasedRegions, NonerasedRegions, ParamSpace, Substs};
 use middle::ty::{self, HasTypeFlags, Ty, TypeError};
-use middle::ty_fold::TypeFoldable;
+use middle::ty::fold::TypeFoldable;
 use std::rc::Rc;
 use syntax::abi;
 use rustc_front::hir as ast;

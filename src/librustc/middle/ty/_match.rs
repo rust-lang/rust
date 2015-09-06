@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::ty::{self, Ty};
-use middle::ty_relate::{self, Relate, TypeRelation, RelateResult};
+use middle::ty::relate::{self, Relate, TypeRelation, RelateResult};
 
 /// A type "A" *matches* "B" if the fresh types in B could be
 /// substituted with values so as to make it equal to A. Matching is
@@ -73,7 +73,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
 
             (&ty::TyInfer(_), _) |
             (_, &ty::TyInfer(_)) => {
-                Err(ty::TypeError::Sorts(ty_relate::expected_found(self, &a, &b)))
+                Err(ty::TypeError::Sorts(relate::expected_found(self, &a, &b)))
             }
 
             (&ty::TyError, _) | (_, &ty::TyError) => {
@@ -81,7 +81,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
             }
 
             _ => {
-                ty_relate::super_relate_tys(self, a, b)
+                relate::super_relate_tys(self, a, b)
             }
         }
     }

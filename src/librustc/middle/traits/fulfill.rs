@@ -10,7 +10,6 @@
 
 use middle::infer::InferCtxt;
 use middle::ty::{self, RegionEscape, Ty, HasTypeFlags};
-use middle::wf;
 
 use std::fmt;
 use syntax::ast;
@@ -496,8 +495,8 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                 ObligationCauseCode::RFC1214(_) => true,
                 _ => false,
             };
-            match wf::obligations(selcx.infcx(), obligation.cause.body_id,
-                                  ty, obligation.cause.span, rfc1214) {
+            match ty::wf::obligations(selcx.infcx(), obligation.cause.body_id,
+                                      ty, obligation.cause.span, rfc1214) {
                 Some(obligations) => {
                     new_obligations.extend(obligations);
                     true

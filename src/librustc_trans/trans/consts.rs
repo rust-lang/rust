@@ -33,9 +33,9 @@ use trans::declare;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
-use middle::cast::{CastTy,IntTy};
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
+use middle::ty::cast::{CastTy,IntTy};
 use util::nodemap::NodeMap;
 
 use rustc_front::hir;

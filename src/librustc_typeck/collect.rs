@@ -78,7 +78,7 @@ use middle::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerPar
 use middle::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty, TypeScheme, IntTypeExt};
 use middle::ty::{VariantKind};
-use middle::ty_fold::{self, TypeFolder, TypeFoldable};
+use middle::ty::fold::{TypeFolder, TypeFoldable};
 use middle::infer;
 use rscope::*;
 use rustc::front::map as hir_map;
@@ -2374,7 +2374,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
          * before we really have a `ParameterEnvironment` to check.
          */
 
-        ty_fold::fold_regions(tcx, value, &mut false, |region, _| {
+        ty::fold::fold_regions(tcx, value, &mut false, |region, _| {
             match region {
                 ty::ReEarlyBound(data) => {
                     let def_id = DefId::local(data.param_id);

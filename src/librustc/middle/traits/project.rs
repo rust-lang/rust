@@ -24,7 +24,7 @@ use super::util;
 use middle::infer;
 use middle::subst::Subst;
 use middle::ty::{self, ToPredicate, RegionEscape, HasTypeFlags, ToPolyTraitRef, Ty};
-use middle::ty_fold::{self, TypeFoldable, TypeFolder};
+use middle::ty::fold::{TypeFoldable, TypeFolder};
 use syntax::parse::token;
 use util::common::FN_OUTPUT_NAME;
 
@@ -265,7 +265,7 @@ impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
         // normalize it when we instantiate those bound regions (which
         // should occur eventually).
 
-        let ty = ty_fold::super_fold_ty(self, ty);
+        let ty = ty::fold::super_fold_ty(self, ty);
         match ty.sty {
             ty::TyProjection(ref data) if !data.has_escaping_regions() => { // (*)
 

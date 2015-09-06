@@ -53,13 +53,12 @@ use middle::const_eval::{self, ConstVal};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def;
 use middle::def_id::{DefId, LOCAL_CRATE};
-use middle::wf::object_region_bounds;
 use middle::resolve_lifetime as rl;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
 use middle::traits;
 use middle::ty::{self, RegionEscape, Ty, ToPredicate, HasTypeFlags};
-use middle::ty_fold;
+use middle::ty::wf::object_region_bounds;
 use require_c_abi_if_variadic;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope,
@@ -535,9 +534,9 @@ fn find_implied_output_region<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     for (input_type, input_pat) in input_tys.iter().zip(input_pats) {
         let mut regions = FnvHashSet();
-        let have_bound_regions = ty_fold::collect_regions(tcx,
-                                                          input_type,
-                                                          &mut regions);
+        let have_bound_regions = ty::fold::collect_regions(tcx,
+                                                           input_type,
+                                                           &mut regions);
 
         debug!("find_implied_output_regions: collected {:?} from {:?} \
                 have_bound_regions={:?}", &regions, input_type, have_bound_regions);
@@ -2249,7 +2248,7 @@ impl<'tcx> Bounds<'tcx> {
         for &region_bound in &self.region_bounds {
             // account for the binder being introduced below; no need to shift `param_ty`
             // because, at present at least, it can only refer to early-bound regions
-            let region_bound = ty_fold::shift_region(region_bound, 1);
+            let region_bound = ty::fold::shift_region(region_bound, 1);
             vec.push(ty::Binder(ty::OutlivesPredicate(param_ty, region_bound)).to_predicate());
         }
 

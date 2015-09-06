@@ -17,7 +17,7 @@ use middle::infer;
 use middle::subst;
 use middle::subst::{Subst, Substs};
 use middle::traits;
-use middle::ty_fold::{TypeFolder, TypeFoldable};
+use middle::ty::fold::{TypeFolder, TypeFoldable};
 use trans::attributes;
 use trans::base::{trans_enum_variant, push_ctxt, get_item_val};
 use trans::base::trans_fn;

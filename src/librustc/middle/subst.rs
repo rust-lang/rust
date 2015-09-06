@@ -14,7 +14,7 @@ pub use self::ParamSpace::*;
 pub use self::RegionSubsts::*;
 
 use middle::ty::{self, Ty, HasTypeFlags, RegionEscape};
-use middle::ty_fold::{self, TypeFoldable, TypeFolder};
+use middle::ty::fold::{TypeFoldable, TypeFolder};
 
 use std::fmt;
 use std::iter::IntoIterator;
@@ -643,7 +643,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
                 self.ty_for_param(p, t)
             }
             _ => {
-                ty_fold::super_fold_ty(self, t)
+                ty::fold::super_fold_ty(self, t)
             }
         };
 
@@ -731,13 +731,13 @@ impl<'a,'tcx> SubstFolder<'a,'tcx> {
             return ty;
         }
 
-        let result = ty_fold::shift_regions(self.tcx(), self.region_binders_passed, &ty);
+        let result = ty::fold::shift_regions(self.tcx(), self.region_binders_passed, &ty);
         debug!("shift_regions: shifted result = {:?}", result);
 
         result
     }
 
     fn shift_region_through_binders(&self, region: ty::Region) -> ty::Region {
-        ty_fold::shift_region(region, self.region_binders_passed)
+        ty::fold::shift_region(region, self.region_binders_passed)
     }
 }

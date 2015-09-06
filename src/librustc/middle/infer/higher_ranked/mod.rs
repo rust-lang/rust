@@ -15,8 +15,8 @@ use super::{CombinedSnapshot, InferCtxt, HigherRankedType, SkolemizationMap};
 use super::combine::CombineFields;
 
 use middle::ty::{self, TypeError, Binder};
-use middle::ty_fold::{self, TypeFoldable};
-use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::fold::TypeFoldable;
+use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
@@ -358,7 +358,7 @@ fn fold_regions_in<'tcx, T, F>(tcx: &ty::ctxt<'tcx>,
     where T: TypeFoldable<'tcx>,
           F: FnMut(ty::Region, ty::DebruijnIndex) -> ty::Region,
 {
-    ty_fold::fold_regions(tcx, unbound_value, &mut false, |region, current_depth| {
+    ty::fold::fold_regions(tcx, unbound_value, &mut false, |region, current_depth| {
         // we should only be encountering "escaping" late-bound regions here,
         // because the ones at the current level should have been replaced
         // with fresh variables
@@ -438,7 +438,7 @@ impl<'a,'tcx> InferCtxtExt for InferCtxt<'a,'tcx> {
 
         let mut escaping_region_vars = FnvHashSet();
         for ty in &escaping_types {
-            ty_fold::collect_regions(self.tcx, ty, &mut escaping_region_vars);
+            ty::fold::collect_regions(self.tcx, ty, &mut escaping_region_vars);
         }
 
         region_vars.retain(|&region_vid| {
@@ -468,7 +468,7 @@ pub fn skolemize_late_bound_regions<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
      * details.
      */
 
-    let (result, map) = ty_fold::replace_late_bound_regions(infcx.tcx, binder, |br| {
+    let (result, map) = ty::fold::replace_late_bound_regions(infcx.tcx, binder, |br| {
         infcx.region_vars.new_skolemized(br, &snapshot.region_vars_snapshot)
     });
 
@@ -590,7 +590,7 @@ pub fn plug_leaks<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     // binder is that we encountered in `value`. The caller is
     // responsible for ensuring that (a) `value` contains at least one
     // binder and (b) that binder is the one we want to use.
-    let result = ty_fold::fold_regions(infcx.tcx, &value, &mut false, |r, current_depth| {
+    let result = ty::fold::fold_regions(infcx.tcx, &value, &mut false, |r, current_depth| {
         match inv_skol_map.get(&r) {
             None => r,
             Some(br) => {

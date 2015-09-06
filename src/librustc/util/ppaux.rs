@@ -21,7 +21,7 @@ use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use middle::ty::TyClosure;
 use middle::ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
 use middle::ty::{self, TypeAndMut, Ty, HasTypeFlags};
-use middle::ty_fold::{self, TypeFoldable};
+use middle::ty::fold::{self, TypeFoldable};
 
 use std::fmt;
 use syntax::abi;
@@ -219,7 +219,7 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
         }
     };
 
-    let new_value = ty_fold::replace_late_bound_regions(tcx, &value, |br| {
+    let new_value = fold::replace_late_bound_regions(tcx, &value, |br| {
         let _ = start_or_continue(f, "for<", ", ");
         ty::ReLateBound(ty::DebruijnIndex::new(1), match br {
             ty::BrNamed(_, name) => {
@@ -255,7 +255,7 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
 struct TraitAndProjections<'tcx>(ty::TraitRef<'tcx>, Vec<ty::ProjectionPredicate<'tcx>>);
 
 impl<'tcx> TypeFoldable<'tcx> for TraitAndProjections<'tcx> {
-    fn fold_with<F:ty_fold::TypeFolder<'tcx>>(&self, folder: &mut F)
+    fn fold_with<F: fold::TypeFolder<'tcx>>(&self, folder: &mut F)
                                               -> TraitAndProjections<'tcx> {
         TraitAndProjections(self.0.fold_with(folder), self.1.fold_with(folder))
     }

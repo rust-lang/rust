@@ -67,7 +67,7 @@ use middle::traits::{self, ObligationCause};
 use middle::traits::{predicate_for_trait_def, report_selection_error};
 use middle::ty::{AutoDerefRef, AdjustDerefRef};
 use middle::ty::{self, LvaluePreference, TypeAndMut, Ty, TypeError};
-use middle::ty_relate::RelateResult;
+use middle::ty::relate::RelateResult;
 use util::common::indent;
 
 use std::cell::RefCell;

@@ -38,15 +38,13 @@ use super::object_safety;
 use super::util;
 
 use middle::def_id::{DefId, LOCAL_CRATE};
-use middle::fast_reject;
-use middle::subst::{Subst, Substs, TypeSpace};
-use middle::ty::{self, ToPredicate, RegionEscape, ToPolyTraitRef, Ty, HasTypeFlags};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
-use middle::ty_fold::TypeFoldable;
-use middle::ty_match;
-use middle::ty_relate::TypeRelation;
-use middle::wf;
+use middle::subst::{Subst, Substs, TypeSpace};
+use middle::ty::{self, ToPredicate, RegionEscape, ToPolyTraitRef, Ty, HasTypeFlags};
+use middle::ty::fast_reject;
+use middle::ty::fold::TypeFoldable;
+use middle::ty::relate::TypeRelation;
 
 use std::cell::RefCell;
 use std::fmt;
@@ -471,9 +469,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Predicate::WellFormed(ty) => {
-                match wf::obligations(self.infcx, obligation.cause.body_id,
-                                      ty, obligation.cause.span,
-                                      obligation.cause.code.is_rfc1214()) {
+                match ty::wf::obligations(self.infcx, obligation.cause.body_id,
+                                          ty, obligation.cause.span,
+                                          obligation.cause.code.is_rfc1214()) {
                     Some(obligations) =>
                         self.evaluate_predicates_recursively(previous_stack, obligations.iter()),
                     None =>
@@ -2824,7 +2822,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                               current: &ty::PolyTraitRef<'tcx>)
                               -> bool
     {
-        let mut matcher = ty_match::Match::new(self.tcx());
+        let mut matcher = ty::_match::Match::new(self.tcx());
         matcher.relate(previous, current).is_ok()
     }
 

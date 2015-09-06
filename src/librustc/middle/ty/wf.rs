@@ -10,7 +10,7 @@
 
 use middle::def_id::DefId;
 use middle::infer::InferCtxt;
-use middle::outlives::{self, Component};
+use middle::ty::outlives::{self, Component};
 use middle::subst::Substs;
 use middle::traits;
 use middle::ty::{self, RegionEscape, ToPredicate, Ty};
@@ -544,4 +544,3 @@ pub fn object_region_bounds<'tcx>(
 
     tcx.required_region_bounds(open_ty, predicates)
 }
-
