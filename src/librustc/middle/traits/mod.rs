@@ -168,7 +168,7 @@ pub enum SelectionError<'tcx> {
     Unimplemented,
     OutputTypeParameterMismatch(ty::PolyTraitRef<'tcx>,
                                 ty::PolyTraitRef<'tcx>,
-                                ty::TypeError<'tcx>),
+                                ty::error::TypeError<'tcx>),
     TraitNotObjectSafe(DefId),
 }
 
