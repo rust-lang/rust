@@ -199,7 +199,7 @@ fn is_ref_iterable_type(cx: &Context, e: &Expr) -> bool {
     // no walk_ptrs_ty: calling iter() on a reference can make sense because it
     // will allow further borrows afterwards
     let ty = cx.tcx.expr_ty(e);
-    is_array(ty) ||
+    is_iterable_array(ty) ||
         match_type(cx, ty, &VEC_PATH) ||
         match_type(cx, ty, &LL_PATH) ||
         match_type(cx, ty, &["std", "collections", "hash", "map", "HashMap"]) ||
@@ -210,9 +210,10 @@ fn is_ref_iterable_type(cx: &Context, e: &Expr) -> bool {
         match_type(cx, ty, &["collections", "btree", "set", "BTreeSet"])
 }
 
-fn is_array(ty: ty::Ty) -> bool {
+fn is_iterable_array(ty: ty::Ty) -> bool {
+    //IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.sty {
-        ty::TyArray(..) => true,
+        ty::TyArray(_, 0...32) => true,
         _ => false
     }
 }

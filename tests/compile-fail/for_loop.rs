@@ -42,6 +42,8 @@ fn main() {
 
     for _v in [1, 2, 3].iter() { } //~ERROR it is more idiomatic to loop over `&[
     for _v in (&mut [1, 2, 3]).iter() { } // no error
+    for _v in [0; 32].iter() {} //~ERROR it is more idiomatic to loop over `&[
+    for _v in [0; 33].iter() {} // no error
     let ll: LinkedList<()> = LinkedList::new();
     for _v in ll.iter() { } //~ERROR it is more idiomatic to loop over `&ll`
     let vd: VecDeque<()> = VecDeque::new();
