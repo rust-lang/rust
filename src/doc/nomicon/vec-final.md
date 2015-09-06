@@ -158,7 +158,7 @@ impl<T> Vec<T> {
         unsafe {
             let iter = RawValIter::new(&self);
 
-            // this is a mem::forget safety thing. If this is forgotten, we just
+            // this is a mem::forget safety thing. If Drain is forgotten, we just
             // leak the whole Vec's contents. Also we need to do this *eventually*
             // anyway, so why not do it now?
             self.len = 0;
