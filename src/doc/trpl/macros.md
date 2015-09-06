@@ -313,7 +313,7 @@ fn main() {
 }
 ```
 
-This works because Rust has a [hygienic macro system][]. Each macro expansion
+This works because Rust has a [hygienic macro system][https://en.wikipedia.org/wiki/Hygienic_macro]. Each macro expansion
 happens in a distinct ‘syntax context’, and each variable is tagged with the
 syntax context where it was introduced. It’s as though the variable `state`
 inside `main` is painted a different "color" from the variable `state` inside
