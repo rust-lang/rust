@@ -9,7 +9,7 @@ use utils::span_lint;
 
 declare_lint! {
     pub BAD_BIT_MASK,
-    Deny,
+    Warn,
     "expressions of the form `_ & mask == select` that will only ever return `true` or `false` \
      (because in the example `select` containing bits that `mask` doesn't have)"
 }
@@ -98,7 +98,7 @@ fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_,
                   mask_value: u64, cmp_value: u64, span: &Span) {
     match cmp_op {
         BiEq | BiNe => match bit_op {
-            BiBitAnd => if mask_value & cmp_value != mask_value {
+            BiBitAnd => if mask_value & cmp_value != cmp_value {
                 if cmp_value != 0 {
                     span_lint(cx, BAD_BIT_MASK, *span, &format!(
                         "incompatible bit mask: `_ & {}` can never be equal to `{}`",

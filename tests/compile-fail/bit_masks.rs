@@ -25,6 +25,9 @@ fn main() {
     x | 2 > 1; //~ERROR incompatible bit mask
     x | 2 <= 2; // ok (if a bit silly), equals x <= 2
 
+    x & 192 == 128; // ok, tests for bit 7 and not bit 6
+    x & 0xffc0 == 0xfe80; // ok
+    
     // this also now works with constants
     x & THREE_BITS == 8; //~ERROR incompatible bit mask
     x | EVEN_MORE_REDIRECTION < 7; //~ERROR incompatible bit mask
