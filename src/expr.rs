@@ -11,6 +11,7 @@
 use std::cmp::Ordering;
 use std::borrow::Borrow;
 
+use Indent;
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
 use string::{StringFormat, rewrite_string};
@@ -29,7 +30,7 @@ use syntax::codemap::{CodeMap, Span, BytePos, mk_sp};
 use syntax::visit::Visitor;
 
 impl Rewrite for ast::Expr {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match self.node {
             ast::Expr_::ExprVec(ref expr_vec) => {
                 rewrite_array(expr_vec.iter().map(|e| &**e), self.span, context, width, offset)
@@ -164,7 +165,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                             span: Span,
                             context: &RewriteContext,
                             width: usize,
-                            offset: usize)
+                            offset: Indent)
                             -> Option<String>
     where I: Iterator<Item = &'a ast::Expr>
 {
@@ -201,6 +202,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
         h_width: max_item_width,
         v_width: max_item_width,
         ends_with_newline: false,
+        config: context.config,
     };
     let list_str = try_opt!(write_list(&items, &fmt));
 
@@ -215,7 +217,7 @@ fn rewrite_closure(capture: ast::CaptureClause,
                    span: Span,
                    context: &RewriteContext,
                    width: usize,
-                   offset: usize)
+                   offset: Indent)
                    -> Option<String> {
     let mover = if capture == ast::CaptureClause::CaptureByValue {
         "move "
@@ -258,6 +260,7 @@ fn rewrite_closure(capture: ast::CaptureClause,
         h_width: horizontal_budget,
         v_width: budget,
         ends_with_newline: false,
+        config: context.config,
     };
     let list_str = try_opt!(write_list(&arg_items.collect::<Vec<_>>(), &fmt));
     let mut prefix = format!("{}|{}|", mover, list_str);
@@ -265,7 +268,7 @@ fn rewrite_closure(capture: ast::CaptureClause,
     if !ret_str.is_empty() {
         if prefix.contains('\n') {
             prefix.push('\n');
-            prefix.push_str(&make_indent(argument_offset));
+            prefix.push_str(&make_indent(argument_offset, context.config));
         } else {
             prefix.push(' ');
         }
@@ -308,18 +311,18 @@ fn rewrite_closure(capture: ast::CaptureClause,
                            .as_ref()
                            .and_then(|body_expr| {
                                if let ast::Expr_::ExprBlock(ref inner) = body_expr.node {
-                                   Some(inner.rewrite(&context, 2, 0))
+                                   Some(inner.rewrite(&context, 2, Indent::new(0, 0)))
                                } else {
                                    None
                                }
                            })
-                           .unwrap_or_else(|| body.rewrite(&context, 2, 0));
+                           .unwrap_or_else(|| body.rewrite(&context, 2, Indent::new(0, 0)));
 
     Some(format!("{} {}", prefix, try_opt!(body_rewrite)))
 }
 
 impl Rewrite for ast::Block {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         let user_str = context.snippet(self.span);
         if user_str == "{}" && width >= 2 {
             return Some(user_str);
@@ -341,7 +344,8 @@ impl Rewrite for ast::Block {
                 let prefix = if !trimmed.is_empty() {
                     // 9 = "unsafe  {".len(), 7 = "unsafe ".len()
                     let budget = try_opt!(width.checked_sub(9));
-                    format!("unsafe {} ", rewrite_comment(trimmed, true, budget, offset + 7))
+                    format!("unsafe {} ",
+                            rewrite_comment(trimmed, true, budget, offset + 7, context.config))
                 } else {
                     "unsafe ".to_owned()
                 };
@@ -381,7 +385,7 @@ impl Rewrite for ast::Block {
 
 // FIXME(#18): implement pattern formatting
 impl Rewrite for ast::Pat {
-    fn rewrite(&self, context: &RewriteContext, _: usize, _: usize) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, _: usize, _: Indent) -> Option<String> {
         Some(context.snippet(self.span))
     }
 }
@@ -447,7 +451,7 @@ impl<'a> Loop<'a> {
 }
 
 impl<'a> Rewrite for Loop<'a> {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         let label_string = rewrite_label(self.label);
         // 2 = " {".len()
         let inner_width = try_opt!(width.checked_sub(self.keyword.len() + 2 + label_string.len()));
@@ -483,7 +487,7 @@ fn rewrite_range(context: &RewriteContext,
                  left: Option<&ast::Expr>,
                  right: Option<&ast::Expr>,
                  width: usize,
-                 offset: usize)
+                 offset: Indent)
                  -> Option<String> {
     let left_string = match left {
         Some(expr) => {
@@ -513,7 +517,7 @@ fn rewrite_if_else(context: &RewriteContext,
                    else_block_opt: Option<&ast::Expr>,
                    pat: Option<&ast::Pat>,
                    width: usize,
-                   offset: usize,
+                   offset: Indent,
                    allow_single_line: bool)
                    -> Option<String> {
     // 3 = "if ", 2 = " {"
@@ -588,11 +592,11 @@ fn single_line_if_else(context: &RewriteContext,
 
         let new_width = try_opt!(width.checked_sub(pat_expr_str.len() + fixed_cost));
         let if_expr = if_node.expr.as_ref().unwrap();
-        let if_str = try_opt!(if_expr.rewrite(context, new_width, 0));
+        let if_str = try_opt!(if_expr.rewrite(context, new_width, Indent::new(0, 0)));
 
         let new_width = try_opt!(new_width.checked_sub(if_str.len()));
         let else_expr = else_node.expr.as_ref().unwrap();
-        let else_str = try_opt!(else_expr.rewrite(context, new_width, 0));
+        let else_str = try_opt!(else_expr.rewrite(context, new_width, Indent::new(0, 0)));
 
         // FIXME: this check shouldn't be necessary. Rewrites should either fail
         // or wrap to a newline when the object does not fit the width.
@@ -621,7 +625,7 @@ fn rewrite_match(context: &RewriteContext,
                  cond: &ast::Expr,
                  arms: &[ast::Arm],
                  width: usize,
-                 offset: usize)
+                 offset: Indent)
                  -> Option<String> {
     if arms.is_empty() {
         return None;
@@ -634,7 +638,7 @@ fn rewrite_match(context: &RewriteContext,
 
     let nested_context = context.nested_context();
     let arm_indent = nested_context.block_indent + context.overflow_indent;
-    let arm_indent_str = make_indent(arm_indent);
+    let arm_indent_str = make_indent(arm_indent, context.config);
 
     let open_brace_pos = span_after(mk_sp(cond.span.hi, arm_start_pos(&arms[0])),
                                     "{",
@@ -669,7 +673,7 @@ fn rewrite_match(context: &RewriteContext,
         result.push_str(&arm_indent_str);
 
         let arm_str = arm.rewrite(&nested_context,
-                                  context.config.max_width - arm_indent,
+                                  context.config.max_width - arm_indent.width(),
                                   arm_indent);
         if let Some(ref arm_str) = arm_str {
             result.push_str(arm_str);
@@ -684,7 +688,7 @@ fn rewrite_match(context: &RewriteContext,
     // match expression, but meh.
 
     result.push('\n');
-    result.push_str(&make_indent(context.block_indent + context.overflow_indent));
+    result.push_str(&make_indent(context.block_indent + context.overflow_indent, context.config));
     result.push('}');
     Some(result)
 }
@@ -704,9 +708,9 @@ fn arm_end_pos(arm: &ast::Arm) -> BytePos {
 
 // Match arms.
 impl Rewrite for ast::Arm {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         let &ast::Arm { ref attrs, ref pats, ref guard, ref body } = self;
-        let indent_str = make_indent(offset);
+        let indent_str = make_indent(offset, context.config);
 
         // FIXME this is all a bit grotty, would be nice to abstract out the
         // treatment of attributes.
@@ -734,7 +738,7 @@ impl Rewrite for ast::Arm {
                                     .map(|p| {
                                         p.rewrite(context,
                                                   pat_budget,
-                                                  offset + context.config.tab_spaces)
+                                                  offset.block_indent(context.config.tab_spaces))
                                     })
                                     .collect::<Option<Vec<_>>>());
 
@@ -775,7 +779,12 @@ impl Rewrite for ast::Arm {
         // Where the next text can start.
         let mut line_start = last_line_width(&pats_str);
         if pats_str.find('\n').is_none() {
-            line_start += offset;
+            line_start += offset.width();
+        }
+
+        let mut line_indent = offset + pats_width;
+        if vertical {
+            line_indent = line_indent.block_indent(context.config.tab_spaces);
         }
 
         let comma = if let ast::ExprBlock(_) = body.node {
@@ -788,7 +797,7 @@ impl Rewrite for ast::Arm {
         // 4 = ` => `.len()
         if context.config.max_width > line_start + comma.len() + 4 {
             let budget = context.config.max_width - line_start - comma.len() - 4;
-            if let Some(ref body_str) = body.rewrite(context, budget, line_start + 4) {
+            if let Some(ref body_str) = body.rewrite(context, budget, line_indent + 4) {
                 if first_line_width(body_str) <= budget {
                     return Some(format!("{}{} => {}{}",
                                         attr_str.trim_left(),
@@ -810,7 +819,7 @@ impl Rewrite for ast::Arm {
         Some(format!("{}{} =>\n{}{},",
                      attr_str.trim_left(),
                      pats_str,
-                     make_indent(offset + context.config.tab_spaces),
+                     make_indent(offset.block_indent(context.config.tab_spaces), context.config),
                      body_str))
     }
 }
@@ -819,7 +828,7 @@ impl Rewrite for ast::Arm {
 fn rewrite_guard(context: &RewriteContext,
                  guard: &Option<ptr::P<ast::Expr>>,
                  width: usize,
-                 offset: usize,
+                 offset: Indent,
                  // The amount of space used up on this line for the pattern in
                  // the arm (excludes offset).
                  pattern_width: usize)
@@ -840,10 +849,11 @@ fn rewrite_guard(context: &RewriteContext,
         if overhead < width {
             let cond_str = guard.rewrite(context,
                                          width - overhead,
-                                         offset + context.config.tab_spaces);
+                                         offset.block_indent(context.config.tab_spaces));
             if let Some(cond_str) = cond_str {
                 return Some(format!("\n{}if {}",
-                                    make_indent(offset + context.config.tab_spaces),
+                                    make_indent(offset.block_indent(context.config.tab_spaces),
+                                                context.config),
                                     cond_str));
             }
         }
@@ -862,7 +872,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
                     // *without* trailing space.
                     connector: &str,
                     width: usize,
-                    offset: usize)
+                    offset: Indent)
                     -> Option<String> {
     let pat_offset = offset + matcher.len();
     let mut result = match pat {
@@ -898,9 +908,11 @@ fn rewrite_pat_expr(context: &RewriteContext,
 
     // The expression won't fit on the current line, jump to next.
     result.push('\n');
-    result.push_str(&make_indent(pat_offset));
+    result.push_str(&make_indent(pat_offset, context.config));
 
-    let expr_rewrite = expr.rewrite(context, context.config.max_width - pat_offset, pat_offset);
+    let expr_rewrite = expr.rewrite(context,
+                                    context.config.max_width - pat_offset.width(),
+                                    pat_offset);
     result.push_str(&&try_opt!(expr_rewrite));
 
     Some(result)
@@ -909,7 +921,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
 fn rewrite_string_lit(context: &RewriteContext,
                       span: Span,
                       width: usize,
-                      offset: usize)
+                      offset: Indent)
                       -> Option<String> {
     if !context.config.format_strings {
         return Some(context.snippet(span));
@@ -923,6 +935,7 @@ fn rewrite_string_lit(context: &RewriteContext,
         width: width,
         offset: offset,
         trim_end: false,
+        config: context.config,
     };
 
     let string_lit = context.snippet(span);
@@ -936,7 +949,7 @@ pub fn rewrite_call<R>(context: &RewriteContext,
                        args: &[ptr::P<ast::Expr>],
                        span: Span,
                        width: usize,
-                       offset: usize)
+                       offset: Indent)
                        -> Option<String>
     where R: Rewrite
 {
@@ -955,7 +968,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                          args: &[ptr::P<ast::Expr>],
                          span: Span,
                          width: usize,
-                         offset: usize)
+                         offset: Indent)
                          -> Result<String, Ordering>
     where R: Rewrite
 {
@@ -1003,7 +1016,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                              span.lo,
                              span.hi);
 
-    let fmt = ListFormatting::for_fn(remaining_width, offset);
+    let fmt = ListFormatting::for_fn(remaining_width, offset, context.config);
     let list_str = match write_list(&items.collect::<Vec<_>>(), &fmt) {
         Some(str) => str,
         None => return Err(Ordering::Less),
@@ -1015,9 +1028,9 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
 fn rewrite_paren(context: &RewriteContext,
                  subexpr: &ast::Expr,
                  width: usize,
-                 offset: usize)
+                 offset: Indent)
                  -> Option<String> {
-    debug!("rewrite_paren, width: {}, offset: {}", width, offset);
+    debug!("rewrite_paren, width: {}, offset: {:?}", width, offset);
     // 1 is for opening paren, 2 is for opening+closing, we want to keep the closing
     // paren on the same line as the subexpr.
     let subexpr_str = subexpr.rewrite(context, try_opt!(width.checked_sub(2)), offset + 1);
@@ -1031,9 +1044,9 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                           base: Option<&'a ast::Expr>,
                           span: Span,
                           width: usize,
-                          offset: usize)
+                          offset: Indent)
                           -> Option<String> {
-    debug!("rewrite_struct_lit: width {}, offset {}", width, offset);
+    debug!("rewrite_struct_lit: width {}, offset {:?}", width, offset);
     assert!(!fields.is_empty() || base.is_some());
 
     enum StructLitField<'a> {
@@ -1054,8 +1067,8 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         StructLitStyle::Block => {
             // If we are all on one line, then we'll ignore the indent, and we
             // have a smaller budget.
-            let indent = context.block_indent + context.config.tab_spaces;
-            let v_budget = context.config.max_width.checked_sub(indent).unwrap_or(0);
+            let indent = context.block_indent.block_indent(context.config.tab_spaces);
+            let v_budget = context.config.max_width.checked_sub(indent.width()).unwrap_or(0);
             (indent, v_budget)
         }
     };
@@ -1121,12 +1134,15 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         h_width: h_budget,
         v_width: v_budget,
         ends_with_newline: false,
+        config: context.config,
     };
     let fields_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
     let format_on_newline = || {
-        let inner_indent = make_indent(context.block_indent + context.config.tab_spaces);
-        let outer_indent = make_indent(context.block_indent);
+        let inner_indent = make_indent(context.block_indent
+                                              .block_indent(context.config.tab_spaces),
+                                       context.config);
+        let outer_indent = make_indent(context.block_indent, context.config);
         Some(format!("{} {{\n{}{}\n{}}}", path_str, inner_indent, fields_str, outer_indent))
     };
 
@@ -1143,7 +1159,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
 fn rewrite_field(context: &RewriteContext,
                  field: &ast::Field,
                  width: usize,
-                 offset: usize)
+                 offset: Indent)
                  -> Option<String> {
     let name = &field.ident.node.to_string();
     let overhead = name.len() + 2;
@@ -1156,9 +1172,9 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                      items: &[ptr::P<ast::Expr>],
                      span: Span,
                      width: usize,
-                     offset: usize)
+                     offset: Indent)
                      -> Option<String> {
-    debug!("rewrite_tuple_lit: width: {}, offset: {}", width, offset);
+    debug!("rewrite_tuple_lit: width: {}, offset: {:?}", width, offset);
     let indent = offset + 1;
     // In case of length 1, need a trailing comma
     if items.len() == 1 {
@@ -1173,7 +1189,7 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                              |item| item.span.lo,
                              |item| item.span.hi,
                              |item| {
-                                 let inner_width = context.config.max_width - indent - 1;
+                                 let inner_width = context.config.max_width - indent.width() - 1;
                                  item.rewrite(context, inner_width, indent)
                                      .unwrap_or(context.snippet(item.span))
                              },
@@ -1181,7 +1197,7 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                              span.hi - BytePos(1));
 
     let budget = try_opt!(width.checked_sub(2));
-    let fmt = ListFormatting::for_fn(budget, indent);
+    let fmt = ListFormatting::for_fn(budget, indent, context.config);
     let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
     Some(format!("({})", list_str))
@@ -1192,7 +1208,7 @@ fn rewrite_binary_op(context: &RewriteContext,
                      lhs: &ast::Expr,
                      rhs: &ast::Expr,
                      width: usize,
-                     offset: usize)
+                     offset: Indent)
                      -> Option<String> {
     // FIXME: format comments between operands and operator
 
@@ -1233,11 +1249,13 @@ fn rewrite_binary_op(context: &RewriteContext,
     // We have to use multiple lines.
 
     // Re-evaluate the lhs because we have more space now:
-    let budget = try_opt!(context.config.max_width.checked_sub(offset + 1 + operator_str.len()));
+    let budget = try_opt!(context.config
+                                 .max_width
+                                 .checked_sub(offset.width() + 1 + operator_str.len()));
     Some(format!("{} {}\n{}{}",
                  try_opt!(lhs.rewrite(context, budget, offset)),
                  operator_str,
-                 make_indent(offset),
+                 make_indent(offset, context.config),
                  rhs_result))
 }
 
@@ -1245,7 +1263,7 @@ fn rewrite_unary_op(context: &RewriteContext,
                     op: &ast::UnOp,
                     expr: &ast::Expr,
                     width: usize,
-                    offset: usize)
+                    offset: Indent)
                     -> Option<String> {
     // For some reason, an UnOp is not spanned like BinOp!
     let operator_str = match *op {
@@ -1265,7 +1283,7 @@ fn rewrite_assignment(context: &RewriteContext,
                       rhs: &ast::Expr,
                       op: Option<&ast::BinOp>,
                       width: usize,
-                      offset: usize)
+                      offset: Indent)
                       -> Option<String> {
     let operator_str = match op {
         Some(op) => context.snippet(op.span),
@@ -1285,7 +1303,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
                                            lhs: S,
                                            ex: &ast::Expr,
                                            width: usize,
-                                           offset: usize)
+                                           offset: Indent)
                                            -> Option<String> {
     let mut result = lhs.into();
 
@@ -1301,13 +1319,14 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
         None => {
             // Expression did not fit on the same line as the identifier. Retry
             // on the next line.
-            let new_offset = offset + context.config.tab_spaces;
-            result.push_str(&format!("\n{}", make_indent(new_offset)));
+            let new_offset = offset.block_indent(context.config.tab_spaces);
+            result.push_str(&format!("\n{}", make_indent(new_offset, context.config)));
 
             // FIXME: we probably should related max_width to width instead of config.max_width
             // where is the 1 coming from anyway?
-            let max_width = try_opt!(context.config.max_width.checked_sub(new_offset + 1));
-            let overflow_context = context.overflow_context(context.config.tab_spaces);
+            let max_width = try_opt!(context.config.max_width.checked_sub(new_offset.width() + 1));
+            let rhs_indent = Indent::new(context.config.tab_spaces, 0);
+            let overflow_context = context.overflow_context(rhs_indent);
             let rhs = ex.rewrite(&overflow_context, max_width, new_offset);
 
             result.push_str(&&try_opt!(rhs));

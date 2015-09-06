@@ -13,17 +13,19 @@ use std::cmp::Ordering;
 use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItem_};
 use syntax::codemap::{CodeMap, Span, BytePos};
 
+use Indent;
 use comment::FindUncommented;
+use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 
 use SKIP_ANNOTATION;
 
 // Computes the length of a string's last line, minus offset.
 #[inline]
-pub fn extra_offset(text: &str, offset: usize) -> usize {
+pub fn extra_offset(text: &str, offset: Indent) -> usize {
     match text.rfind('\n') {
         // 1 for newline character
-        Some(idx) => text.len() - idx - 1 - offset,
+        Some(idx) => text.len() - idx - 1 - offset.width(),
         None => text.len(),
     }
 }
@@ -36,12 +38,8 @@ pub fn span_after(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
 }
 
 #[inline]
-pub fn make_indent(width: usize) -> String {
-    let mut indent = String::with_capacity(width);
-    for _ in 0..width {
-        indent.push(' ')
-    }
-    indent
+pub fn make_indent(indent: Indent, config: &Config) -> String {
+    indent.to_string(config)
 }
 
 #[inline]
@@ -186,7 +184,7 @@ macro_rules! try_opt {
 
 // Wraps string-like values in an Option. Returns Some when the string adheres
 // to the Rewrite constraints defined for the Rewrite trait and else otherwise.
-pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: usize) -> Option<S> {
+pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: Indent) -> Option<S> {
     {
         let snippet = s.as_ref();
 
@@ -197,7 +195,7 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: usi
 
             // The caller of this function has already placed `offset`
             // characters on the first line.
-            let first_line_max_len = try_opt!(max_width.checked_sub(offset));
+            let first_line_max_len = try_opt!(max_width.checked_sub(offset.width()));
             if lines.next().unwrap().len() > first_line_max_len {
                 return None;
             }
@@ -211,7 +209,7 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: usi
             // indentation.
             // A special check for the last line, since the caller may
             // place trailing characters on this line.
-            if snippet.lines().rev().next().unwrap().len() > offset + width {
+            if snippet.lines().rev().next().unwrap().len() > offset.width() + width {
                 return None;
             }
         }
@@ -221,7 +219,7 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: usi
 }
 
 impl Rewrite for String {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         wrap_str(self, context.config.max_width, width, offset).map(ToOwned::to_owned)
     }
 }

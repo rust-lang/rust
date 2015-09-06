@@ -12,6 +12,7 @@
 
 use syntax::codemap::{CodeMap, Span};
 
+use Indent;
 use config::Config;
 
 pub trait Rewrite {
@@ -22,7 +23,7 @@ pub trait Rewrite {
     /// `width` is the maximum number of characters on the last line
     /// (excluding offset). The width of other lines is not limited by
     /// `width`.
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String>;
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String>;
 }
 
 pub struct RewriteContext<'a> {
@@ -30,12 +31,12 @@ pub struct RewriteContext<'a> {
     pub config: &'a Config,
 
     // Indentation due to nesting of blocks.
-    pub block_indent: usize,
+    pub block_indent: Indent,
     // *Extra* indentation due to overflowing to the next line, e.g.,
     // let foo =
     //     bar();
     // The extra 4 spaces when formatting `bar()` is overflow_indent.
-    pub overflow_indent: usize,
+    pub overflow_indent: Indent,
 }
 
 impl<'a> RewriteContext<'a> {
@@ -43,12 +44,12 @@ impl<'a> RewriteContext<'a> {
         RewriteContext {
             codemap: self.codemap,
             config: self.config,
-            block_indent: self.block_indent + self.config.tab_spaces,
+            block_indent: self.block_indent.block_indent(self.config.tab_spaces),
             overflow_indent: self.overflow_indent,
         }
     }
 
-    pub fn overflow_context(&self, overflow: usize) -> RewriteContext<'a> {
+    pub fn overflow_context(&self, overflow: Indent) -> RewriteContext<'a> {
         RewriteContext {
             codemap: self.codemap,
             config: self.config,

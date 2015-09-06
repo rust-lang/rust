@@ -13,8 +13,10 @@ use std::iter::Peekable;
 
 use syntax::codemap::{self, CodeMap, BytePos};
 
+use Indent;
 use utils::{round_up_to_power_of_two, make_indent, wrap_str};
 use comment::{FindUncommented, rewrite_comment, find_comment_end};
+use config::Config;
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum ListTactic {
@@ -44,7 +46,7 @@ pub struct ListFormatting<'a> {
     pub tactic: ListTactic,
     pub separator: &'a str,
     pub trailing_separator: SeparatorTactic,
-    pub indent: usize,
+    pub indent: Indent,
     // Available width if we layout horizontally.
     pub h_width: usize,
     // Available width if we layout vertically
@@ -52,10 +54,11 @@ pub struct ListFormatting<'a> {
     // Non-expressions, e.g. items, will have a new line at the end of the list.
     // Important for comment styles.
     pub ends_with_newline: bool,
+    pub config: &'a Config,
 }
 
 impl<'a> ListFormatting<'a> {
-    pub fn for_fn(width: usize, offset: usize) -> ListFormatting<'a> {
+    pub fn for_fn(width: usize, offset: Indent, config: &'a Config) -> ListFormatting<'a> {
         ListFormatting {
             tactic: ListTactic::HorizontalVertical,
             separator: ",",
@@ -64,6 +67,7 @@ impl<'a> ListFormatting<'a> {
             h_width: width,
             v_width: width,
             ends_with_newline: false,
+            config: config,
         }
     }
 }
@@ -146,12 +150,12 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
     let alloc_width = if tactic == ListTactic::Horizontal {
         total_width + total_sep_len
     } else {
-        total_width + items.len() * (formatting.indent + 1)
+        total_width + items.len() * (formatting.indent.width() + 1)
     };
     let mut result = String::with_capacity(round_up_to_power_of_two(alloc_width));
 
     let mut line_len = 0;
-    let indent_str = &make_indent(formatting.indent);
+    let indent_str = &make_indent(formatting.indent, formatting.config);
     for (i, item) in items.iter().enumerate() {
         let first = i == 0;
         let last = i == items.len() - 1;
@@ -196,7 +200,8 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
             let block_mode = tactic != ListTactic::Vertical;
             // Width restriction is only relevant in vertical mode.
             let max_width = formatting.v_width;
-            result.push_str(&rewrite_comment(comment, block_mode, max_width, formatting.indent));
+            result.push_str(&rewrite_comment(comment, block_mode, max_width, formatting.indent,
+                                             formatting.config));
 
             if tactic == ListTactic::Vertical {
                 result.push('\n');
@@ -206,14 +211,18 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
             }
         }
 
-        let max_width = formatting.indent + formatting.v_width;
+        let max_width = formatting.indent.width() + formatting.v_width;
         let item_str = wrap_str(&item.item[..], max_width, formatting.v_width, formatting.indent);
         result.push_str(&&try_opt!(item_str));
 
         // Post-comments
         if tactic != ListTactic::Vertical && item.post_comment.is_some() {
             let comment = item.post_comment.as_ref().unwrap();
-            let formatted_comment = rewrite_comment(comment, true, formatting.v_width, 0);
+            let formatted_comment = rewrite_comment(comment,
+                                                    true,
+                                                    formatting.v_width,
+                                                    Indent::new(0, 0),
+                                                    formatting.config);
 
             result.push(' ');
             result.push_str(&formatted_comment);
@@ -226,14 +235,19 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
         if tactic == ListTactic::Vertical && item.post_comment.is_some() {
             // 1 = space between item and comment.
             let width = formatting.v_width.checked_sub(item_width + 1).unwrap_or(1);
-            let offset = formatting.indent + item_width + 1;
+            let mut offset = formatting.indent;
+            offset.alignment += item_width + 1;
             let comment = item.post_comment.as_ref().unwrap();
             // Use block-style only for the last item or multiline comments.
             let block_style = !formatting.ends_with_newline && last ||
                               comment.trim().contains('\n') ||
                               comment.trim().len() > width;
 
-            let formatted_comment = rewrite_comment(comment, block_style, width, offset);
+            let formatted_comment = rewrite_comment(comment,
+                                                    block_style,
+                                                    width,
+                                                    offset,
+                                                    formatting.config);
 
             result.push(' ');
             result.push_str(&formatted_comment);

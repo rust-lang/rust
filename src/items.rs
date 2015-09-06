@@ -10,6 +10,7 @@
 
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
+use Indent;
 use utils::{format_mutability, format_visibility, make_indent, contains_skip, span_after,
             end_typaram, wrap_str};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
@@ -26,7 +27,7 @@ use syntax::parse::token;
 
 impl<'a> FmtVisitor<'a> {
     pub fn visit_let(&mut self, local: &ast::Local, span: Span) {
-        self.format_missing_with_indent(span.lo);
+        self.format_missing_with_indent(span.lo, self.config);
 
         // String that is placed within the assignment pattern and expression.
         let infix = {
@@ -34,8 +35,7 @@ impl<'a> FmtVisitor<'a> {
 
             if let Some(ref ty) = local.ty {
                 infix.push_str(": ");
-                // FIXME: silly width, indent
-                infix.push_str(&ty.rewrite(&self.get_context(), 1000, 0).unwrap());
+                infix.push_str(&ty.rewrite(&self.get_context(), 1000, Indent::new(0, 0)).unwrap());
             }
 
             if local.init.is_some() {
@@ -52,12 +52,13 @@ impl<'a> FmtVisitor<'a> {
             let mut result = "let ".to_owned();
             let pattern_offset = self.block_indent + result.len() + infix.len();
             // 1 = ;
-            let pattern_width = match self.config.max_width.checked_sub(pattern_offset + 1) {
+            let pattern_width = self.config.max_width.checked_sub(pattern_offset.width() + 1);
+            let pattern_width = match pattern_width {
                 Some(width) => width,
                 None => return,
             };
 
-            match local.pat.rewrite(&context, pattern_offset, pattern_width) {
+            match local.pat.rewrite(&context, pattern_width, pattern_offset) {
                 Some(ref pat_string) => result.push_str(pat_string),
                 None => return,
             }
@@ -65,7 +66,8 @@ impl<'a> FmtVisitor<'a> {
             result.push_str(&infix);
 
             if let Some(ref ex) = local.init {
-                let max_width = match self.config.max_width.checked_sub(context.block_indent + 1) {
+                let max_width = self.config.max_width.checked_sub(context.block_indent.width() + 1);
+                let max_width = match max_width {
                     Some(width) => width,
                     None => return,
                 };
@@ -88,7 +90,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub fn rewrite_fn(&mut self,
-                      indent: usize,
+                      indent: Indent,
                       ident: ast::Ident,
                       fd: &ast::FnDecl,
                       explicit_self: Option<&ast::ExplicitSelf>,
@@ -124,7 +126,7 @@ impl<'a> FmtVisitor<'a> {
         // this.
         if newline_brace {
             result.push('\n');
-            result.push_str(&make_indent(indent));
+            result.push_str(&make_indent(indent, self.config));
         } else {
             result.push(' ');
         }
@@ -133,7 +135,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     pub fn rewrite_required_fn(&mut self,
-                               indent: usize,
+                               indent: Indent,
                                ident: ast::Ident,
                                sig: &ast::MethodSig,
                                span: Span)
@@ -160,7 +162,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn rewrite_fn_base(&mut self,
-                       indent: usize,
+                       indent: Indent,
                        ident: ast::Ident,
                        fd: &ast::FnDecl,
                        explicit_self: Option<&ast::ExplicitSelf>,
@@ -207,13 +209,15 @@ impl<'a> FmtVisitor<'a> {
         result.push_str(&generics_str);
 
         let context = self.get_context();
-        let ret_str = fd.output.rewrite(&context, self.config.max_width - indent, indent).unwrap();
+        let ret_str = fd.output
+                        .rewrite(&context, self.config.max_width - indent.width(), indent)
+                        .unwrap();
 
         // Args.
         let (one_line_budget, multi_line_budget, mut arg_indent) =
             self.compute_budgets_for_args(&result, indent, ret_str.len(), newline_brace);
 
-        debug!("rewrite_fn: one_line_budget: {}, multi_line_budget: {}, arg_indent: {}",
+        debug!("rewrite_fn: one_line_budget: {}, multi_line_budget: {}, arg_indent: {:?}",
                one_line_budget,
                multi_line_budget,
                arg_indent);
@@ -222,17 +226,17 @@ impl<'a> FmtVisitor<'a> {
         if one_line_budget <= 0 {
             if self.config.fn_args_paren_newline {
                 result.push('\n');
-                result.push_str(&make_indent(arg_indent));
+                result.push_str(&make_indent(arg_indent, self.config));
                 arg_indent = arg_indent + 1; // extra space for `(`
                 result.push('(');
             } else {
                 result.push_str("(\n");
-                result.push_str(&make_indent(arg_indent));
+                result.push_str(&make_indent(arg_indent, self.config));
             }
         } else if self.config.fn_args_layout == StructLitStyle::Block {
-            arg_indent = indent + self.config.tab_spaces;
+            arg_indent = indent.block_indent(self.config.tab_spaces);
             result.push_str("(\n");
-            result.push_str(&make_indent(arg_indent));
+            result.push_str(&make_indent(arg_indent, self.config));
         } else {
             result.push('(');
         }
@@ -266,7 +270,7 @@ impl<'a> FmtVisitor<'a> {
             // Unless we are formatting args like a block, in which case there
             // should always be room for the return type.
             if (result.contains("\n") ||
-                result.len() + indent + ret_str.len() > self.config.max_width) &&
+                result.len() + indent.width() + ret_str.len() > self.config.max_width) &&
                self.config.fn_args_layout != StructLitStyle::Block {
                 let indent = match self.config.fn_return_indent {
                     ReturnIndent::WithWhereClause => indent + 4,
@@ -277,7 +281,7 @@ impl<'a> FmtVisitor<'a> {
                 };
 
                 result.push('\n');
-                result.push_str(&make_indent(indent));
+                result.push_str(&make_indent(indent, self.config));
             } else {
                 result.push(' ');
             }
@@ -326,8 +330,8 @@ impl<'a> FmtVisitor<'a> {
                     explicit_self: Option<&ast::ExplicitSelf>,
                     one_line_budget: usize,
                     multi_line_budget: usize,
-                    indent: usize,
-                    arg_indent: usize,
+                    indent: Indent,
+                    arg_indent: Indent,
                     span: Span)
                     -> Option<String> {
         let context = self.get_context();
@@ -386,7 +390,7 @@ impl<'a> FmtVisitor<'a> {
 
         let indent = match self.config.fn_arg_indent {
             BlockIndentStyle::Inherit => indent,
-            BlockIndentStyle::Tabbed => indent + self.config.tab_spaces,
+            BlockIndentStyle::Tabbed => indent.block_indent(self.config.tab_spaces),
             BlockIndentStyle::Visual => arg_indent,
         };
 
@@ -398,6 +402,7 @@ impl<'a> FmtVisitor<'a> {
             h_width: one_line_budget,
             v_width: multi_line_budget,
             ends_with_newline: false,
+            config: self.config,
         };
 
         write_list(&arg_items, &fmt)
@@ -405,16 +410,16 @@ impl<'a> FmtVisitor<'a> {
 
     fn compute_budgets_for_args(&self,
                                 result: &str,
-                                indent: usize,
+                                indent: Indent,
                                 ret_str_len: usize,
                                 newline_brace: bool)
-                                -> (usize, usize, usize) {
+                                -> (usize, usize, Indent) {
         let mut budgets = None;
 
         // Try keeping everything on the same line
         if !result.contains("\n") {
             // 3 = `() `, space is before ret_string
-            let mut used_space = indent + result.len() + ret_str_len + 3;
+            let mut used_space = indent.width() + result.len() + ret_str_len + 3;
             if !newline_brace {
                 used_space += 2;
             }
@@ -425,7 +430,7 @@ impl<'a> FmtVisitor<'a> {
             };
 
             // 2 = `()`
-            let used_space = indent + result.len() + 2;
+            let used_space = indent.width() + result.len() + 2;
             let max_space = self.config.ideal_width + self.config.leeway;
             debug!("compute_budgets_for_args: used_space: {}, max_space: {}",
                    used_space,
@@ -439,8 +444,8 @@ impl<'a> FmtVisitor<'a> {
 
         // Didn't work. we must force vertical layout and put args on a newline.
         if let None = budgets {
-            let new_indent = indent + self.config.tab_spaces;
-            let used_space = new_indent + 2; // account for `(` and `)`
+            let new_indent = indent.block_indent(self.config.tab_spaces);
+            let used_space = new_indent.width() + 2; // account for `(` and `)`
             let max_space = self.config.ideal_width + self.config.leeway;
             if used_space > max_space {
                 // Whoops! bankrupt.
@@ -475,13 +480,14 @@ impl<'a> FmtVisitor<'a> {
         let generics_str = self.format_generics(generics,
                                                 " {",
                                                 self.block_indent,
-                                                self.block_indent + self.config.tab_spaces,
+                                                self.block_indent
+                                                    .block_indent(self.config.tab_spaces),
                                                 codemap::mk_sp(span.lo, body_start))
                                .unwrap();
         self.buffer.push_str(&generics_str);
 
         self.last_pos = body_start;
-        self.block_indent += self.config.tab_spaces;
+        self.block_indent = self.block_indent.block_indent(self.config.tab_spaces);
         for (i, f) in enum_def.variants.iter().enumerate() {
             let next_span_start: BytePos = if i == enum_def.variants.len() - 1 {
                 span.hi
@@ -491,9 +497,10 @@ impl<'a> FmtVisitor<'a> {
 
             self.visit_variant(f, i == enum_def.variants.len() - 1, next_span_start);
         }
-        self.block_indent -= self.config.tab_spaces;
+        self.block_indent = self.block_indent.block_unindent(self.config.tab_spaces);
 
-        self.format_missing_with_indent(span.lo + BytePos(enum_snippet.rfind('}').unwrap() as u32));
+        self.format_missing_with_indent(span.lo + BytePos(enum_snippet.rfind('}').unwrap() as u32),
+                                        self.config);
         self.buffer.push_str("}");
     }
 
@@ -503,7 +510,7 @@ impl<'a> FmtVisitor<'a> {
             return;
         }
 
-        self.format_missing_with_indent(field.span.lo);
+        self.format_missing_with_indent(field.span.lo, self.config);
 
         let result = match field.node.kind {
             ast::VariantKind::TupleVariantKind(ref types) => {
@@ -521,7 +528,9 @@ impl<'a> FmtVisitor<'a> {
                                              |arg| {
                                                  // FIXME silly width, indent
                                                  arg.ty
-                                                    .rewrite(&self.get_context(), 1000, 0)
+                                                    .rewrite(&self.get_context(),
+                                                             1000,
+                                                             Indent::new(0, 0))
                                                     .unwrap()
                                              },
                                              span_after(field.span, "(", self.codemap),
@@ -536,7 +545,7 @@ impl<'a> FmtVisitor<'a> {
                     } else {
                         0
                     };
-                    let budget = self.config.ideal_width - indent - comma_cost - 1; // 1 = )
+                    let budget = self.config.ideal_width - indent.width() - comma_cost - 1; // 1 = )
 
                     let fmt = ListFormatting {
                         tactic: ListTactic::HorizontalVertical,
@@ -546,6 +555,7 @@ impl<'a> FmtVisitor<'a> {
                         h_width: budget,
                         v_width: budget,
                         ends_with_newline: true,
+                        config: self.config,
                     };
                     let list_str = match write_list(&items.collect::<Vec<_>>(), &fmt) {
                         Some(list_str) => list_str,
@@ -601,7 +611,7 @@ impl<'a> FmtVisitor<'a> {
                      struct_def: &ast::StructDef,
                      generics: Option<&ast::Generics>,
                      span: Span,
-                     offset: usize)
+                     offset: Indent)
                      -> Option<String> {
         let mut result = String::with_capacity(1024);
 
@@ -654,7 +664,7 @@ impl<'a> FmtVisitor<'a> {
                                  span.hi);
 
         // 2 terminators and a semicolon
-        let used_budget = offset + header_str.len() + generics_str.len() + 3;
+        let used_budget = offset.width() + header_str.len() + generics_str.len() + 3;
 
         // Conservative approximation
         let single_line_cost = (span.hi - struct_def.fields[0].span.lo).0;
@@ -662,7 +672,7 @@ impl<'a> FmtVisitor<'a> {
                          single_line_cost as usize + used_budget > self.config.max_width;
 
         let tactic = if break_line {
-            let indentation = make_indent(offset + self.config.tab_spaces);
+            let indentation = make_indent(offset.block_indent(self.config.tab_spaces), self.config);
             result.push('\n');
             result.push_str(&indentation);
 
@@ -672,15 +682,16 @@ impl<'a> FmtVisitor<'a> {
         };
 
         // 1 = ,
-        let budget = self.config.ideal_width - offset + self.config.tab_spaces - 1;
+        let budget = self.config.ideal_width - offset.width() + self.config.tab_spaces - 1;
         let fmt = ListFormatting {
             tactic: tactic,
             separator: ",",
             trailing_separator: self.config.struct_trailing_comma,
-            indent: offset + self.config.tab_spaces,
+            indent: offset.block_indent(self.config.tab_spaces),
             h_width: self.config.max_width,
             v_width: budget,
             ends_with_newline: true,
+            config: self.config,
         };
         let list_str = write_list(&items.collect::<Vec<_>>(), &fmt).unwrap();
 
@@ -688,7 +699,7 @@ impl<'a> FmtVisitor<'a> {
 
         if break_line {
             result.push('\n');
-            result.push_str(&make_indent(offset));
+            result.push_str(&make_indent(offset, self.config));
         }
 
         result.push_str(terminator);
@@ -727,8 +738,8 @@ impl<'a> FmtVisitor<'a> {
     fn format_generics(&self,
                        generics: &ast::Generics,
                        opener: &str,
-                       offset: usize,
-                       generics_offset: usize,
+                       offset: Indent,
+                       generics_offset: Indent,
                        span: Span)
                        -> Option<String> {
         let mut result = try_opt!(self.rewrite_generics(generics, offset, generics_offset, span));
@@ -740,7 +751,7 @@ impl<'a> FmtVisitor<'a> {
                                                                       Density::Tall,
                                                                       span.hi));
             result.push_str(&where_clause_str);
-            result.push_str(&make_indent(self.block_indent));
+            result.push_str(&make_indent(self.block_indent, self.config));
             result.push('\n');
             result.push_str(opener.trim());
         } else {
@@ -765,18 +776,18 @@ impl<'a> FmtVisitor<'a> {
             ast::StructFieldKind::UnnamedField(vis) => format_visibility(vis),
         };
         // FIXME silly width, indent
-        let typ = field.node.ty.rewrite(&self.get_context(), 1000, 0).unwrap();
+        let typ = field.node.ty.rewrite(&self.get_context(), 1000, Indent::new(0, 0)).unwrap();
 
         let indent = self.block_indent + self.config.tab_spaces;
         let mut attr_str = field.node
                                 .attrs
                                 .rewrite(&self.get_context(),
-                                         self.config.max_width - indent,
+                                         self.config.max_width - indent.width(),
                                          indent)
                                 .unwrap();
         if !attr_str.is_empty() {
             attr_str.push('\n');
-            attr_str.push_str(&make_indent(indent));
+            attr_str.push_str(&make_indent(indent, self.config));
         }
 
         match name {
@@ -787,8 +798,8 @@ impl<'a> FmtVisitor<'a> {
 
     fn rewrite_generics(&self,
                         generics: &ast::Generics,
-                        offset: usize,
-                        generics_offset: usize,
+                        offset: Indent,
+                        generics_offset: Indent,
                         span: Span)
                         -> Option<String> {
         // FIXME: convert bounds to where clauses where they get too big or if
@@ -801,12 +812,12 @@ impl<'a> FmtVisitor<'a> {
 
         let offset = match self.config.generics_indent {
             BlockIndentStyle::Inherit => offset,
-            BlockIndentStyle::Tabbed => offset + self.config.tab_spaces,
+            BlockIndentStyle::Tabbed => offset.block_indent(self.config.tab_spaces),
             // 1 = <
             BlockIndentStyle::Visual => generics_offset + 1,
         };
 
-        let h_budget = self.config.max_width - generics_offset - 2;
+        let h_budget = self.config.max_width - generics_offset.width() - 2;
         // TODO: might need to insert a newline if the generics are really long.
 
         // Strings for the generics.
@@ -841,7 +852,7 @@ impl<'a> FmtVisitor<'a> {
             item.item = ty;
         }
 
-        let fmt = ListFormatting::for_fn(h_budget, offset);
+        let fmt = ListFormatting::for_fn(h_budget, offset, self.config);
         let list_str = try_opt!(write_list(&items, &fmt));
 
         Some(format!("<{}>", list_str))
@@ -850,7 +861,7 @@ impl<'a> FmtVisitor<'a> {
     fn rewrite_where_clause(&self,
                             where_clause: &ast::WhereClause,
                             config: &Config,
-                            indent: usize,
+                            indent: Indent,
                             density: Density,
                             span_end: BytePos)
                             -> Option<String> {
@@ -859,22 +870,23 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let extra_indent = match self.config.where_indent {
-            BlockIndentStyle::Inherit => 0,
-            BlockIndentStyle::Tabbed | BlockIndentStyle::Visual => config.tab_spaces,
+            BlockIndentStyle::Inherit => Indent::new(0, 0),
+            BlockIndentStyle::Tabbed | BlockIndentStyle::Visual => Indent::new(config.tab_spaces,
+                                                                               0),
         };
 
         let context = self.get_context();
 
         let offset = match self.config.where_pred_indent {
             BlockIndentStyle::Inherit => indent + extra_indent,
-            BlockIndentStyle::Tabbed => indent + extra_indent + config.tab_spaces,
+            BlockIndentStyle::Tabbed => indent + extra_indent.block_indent(config.tab_spaces),
             // 6 = "where ".len()
             BlockIndentStyle::Visual => indent + extra_indent + 6,
         };
         // FIXME: if where_pred_indent != Visual, then the budgets below might
         // be out by a char or two.
 
-        let budget = self.config.ideal_width + self.config.leeway - offset;
+        let budget = self.config.ideal_width + self.config.leeway - offset.width();
         let span_start = span_for_where_pred(&where_clause.predicates[0]).lo;
         let items = itemize_list(self.codemap,
                                  where_clause.predicates.iter(),
@@ -896,13 +908,16 @@ impl<'a> FmtVisitor<'a> {
             h_width: budget,
             v_width: budget,
             ends_with_newline: true,
+            config: self.config,
         };
         let preds_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
         // 9 = " where ".len() + " {".len()
         if density == Density::Tall || preds_str.contains('\n') ||
-           indent + 9 + preds_str.len() > self.config.max_width {
-            Some(format!("\n{}where {}", make_indent(indent + extra_indent), preds_str))
+           indent.width() + 9 + preds_str.len() > self.config.max_width {
+            Some(format!("\n{}where {}",
+                         make_indent(indent + extra_indent, self.config),
+                         preds_str))
         } else {
             Some(format!(" where {}", preds_str))
         }
@@ -910,7 +925,7 @@ impl<'a> FmtVisitor<'a> {
 }
 
 impl Rewrite for ast::FunctionRetTy {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match *self {
             ast::FunctionRetTy::DefaultReturn(_) => Some(String::new()),
             ast::FunctionRetTy::NoReturn(_) => {
@@ -929,7 +944,7 @@ impl Rewrite for ast::FunctionRetTy {
 }
 
 impl Rewrite for ast::Arg {
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         if is_named_arg(self) {
             if let ast::Ty_::TyInfer = self.ty.node {
                 wrap_str(pprust::pat_to_string(&self.pat), context.config.max_width, width, offset)

@@ -25,6 +25,7 @@ use syntax::ast;
 use syntax::parse::token::{Eof, Comma, Token};
 use syntax::parse::{ParseSess, tts_to_parser};
 
+use Indent;
 use rewrite::RewriteContext;
 use expr::{rewrite_call, rewrite_array};
 use comment::FindUncommented;
@@ -46,7 +47,7 @@ enum MacroStyle {
 pub fn rewrite_macro(mac: &ast::Mac,
                      context: &RewriteContext,
                      width: usize,
-                     offset: usize)
+                     offset: Indent)
                      -> Option<String> {
     let ast::Mac_::MacInvocTT(ref path, ref tt_vec, _) = mac.node;
     let style = macro_style(mac, context);

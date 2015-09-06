@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use Indent;
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
 use utils::span_after;
 use rewrite::{Rewrite, RewriteContext};
@@ -20,7 +21,7 @@ use syntax::codemap::Span;
 
 impl Rewrite for ast::ViewPath {
     // Returns an empty string when the ViewPath is empty (like foo::bar::{})
-    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match self.node {
             ast::ViewPath_::ViewPathList(_, ref path_list) if path_list.is_empty() => {
                 Some(String::new())
@@ -68,7 +69,7 @@ fn rewrite_single_use_list(path_str: String, vpi: ast::PathListItem) -> String {
 // Pretty prints a multi-item import.
 // Assumes that path_list.len() > 0.
 pub fn rewrite_use_list(width: usize,
-                        offset: usize,
+                        offset: Indent,
                         path: &ast::Path,
                         path_list: &[ast::PathListItem],
                         span: Span,
@@ -105,6 +106,7 @@ pub fn rewrite_use_list(width: usize,
         // (loose 1 column (";"))
         v_width: remaining_width,
         ends_with_newline: false,
+        config: context.config,
     };
 
     let mut items = {
