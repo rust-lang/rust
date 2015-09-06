@@ -3475,6 +3475,13 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
             .expect("variant_with_id: unknown variant")
     }
 
+    pub fn variant_index_with_id(&self, vid: DefId) -> usize {
+        self.variants
+            .iter()
+            .position(|v| v.did == vid)
+            .expect("variant_index_with_id: unknown variant")
+    }
+
     pub fn variant_of_def(&self, def: def::Def) -> &VariantDefData<'tcx, 'container> {
         match def {
             def::DefVariant(_, vid, _) => self.variant_with_id(vid),
@@ -5191,28 +5198,12 @@ impl<'tcx> TyS<'tcx> {
 
                         if !adjusted_ty.references_error() {
                             for i in 0..adj.autoderefs {
-                                let method_call = MethodCall::autoderef(expr_id, i as u32);
-                                match method_type(method_call) {
-                                    Some(method_ty) => {
-                                        // Overloaded deref operators have all late-bound
-                                        // regions fully instantiated and coverge.
-                                        let fn_ret =
-                                            cx.no_late_bound_regions(&method_ty.fn_ret()).unwrap();
-                                        adjusted_ty = fn_ret.unwrap();
-                                    }
-                                    None => {}
-                                }
-                                match adjusted_ty.builtin_deref(true, NoPreference) {
-                                    Some(mt) => { adjusted_ty = mt.ty; }
-                                    None => {
-                                        cx.sess.span_bug(
-                                            span,
-                                            &format!("the {}th autoderef failed: {}",
-                                                    i,
-                                                     adjusted_ty)
-                                            );
-                                    }
-                                }
+                                adjusted_ty =
+                                    adjusted_ty.adjust_for_autoderef(cx,
+                                                                     expr_id,
+                                                                     span,
+                                                                     i as u32,
+                                                                     &mut method_type);
                             }
                         }
 
@@ -5226,6 +5217,36 @@ impl<'tcx> TyS<'tcx> {
             }
             None => self
         };
+    }
+
+    pub fn adjust_for_autoderef<F>(&'tcx self,
+                                   cx: &ctxt<'tcx>,
+                                   expr_id: ast::NodeId,
+                                   expr_span: Span,
+                                   autoderef: u32, // how many autoderefs so far?
+                                   mut method_type: F)
+                                   -> Ty<'tcx> where
+        F: FnMut(MethodCall) -> Option<Ty<'tcx>>,
+    {
+        let method_call = MethodCall::autoderef(expr_id, autoderef);
+        let mut adjusted_ty = self;
+        if let Some(method_ty) = method_type(method_call) {
+            // Method calls always have all late-bound regions
+            // fully instantiated.
+            let fn_ret = cx.no_late_bound_regions(&method_ty.fn_ret()).unwrap();
+            adjusted_ty = fn_ret.unwrap();
+        }
+        match adjusted_ty.builtin_deref(true, NoPreference) {
+            Some(mt) => mt.ty,
+            None => {
+                cx.sess.span_bug(
+                    expr_span,
+                    &format!("the {}th autoderef failed: {}",
+                             autoderef,
+                             adjusted_ty)
+                        );
+            }
+        }
     }
 
     pub fn adjust_for_autoref(&'tcx self, cx: &ctxt<'tcx>,

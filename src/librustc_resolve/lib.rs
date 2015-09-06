@@ -62,7 +62,7 @@ use rustc::middle::pat_util::pat_bindings;
 use rustc::middle::privacy::*;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
-use rustc::util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
+use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 use rustc::util::lev_distance::lev_distance;
 
 use syntax::ast;
@@ -95,7 +95,6 @@ use rustc_front::hir::TypeImplItem;
 use rustc_front::util::walk_pat;
 
 use std::collections::{HashMap, HashSet};
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::mem::replace;
@@ -1152,7 +1151,7 @@ pub struct Resolver<'a, 'tcx:'a> {
 
     def_map: DefMap,
     freevars: RefCell<FreevarMap>,
-    freevars_seen: RefCell<NodeMap<NodeSet>>,
+    freevars_seen: RefCell<NodeMap<NodeMap<usize>>>,
     export_map: ExportMap,
     trait_map: TraitMap,
     external_exports: ExternalExports,
@@ -1992,21 +1991,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         ClosureRibKind(function_id) => {
                             let prev_def = def;
-                            def = DefUpvar(node_id, function_id);
 
                             let mut seen = self.freevars_seen.borrow_mut();
-                            let seen = match seen.entry(function_id) {
-                                Occupied(v) => v.into_mut(),
-                                Vacant(v) => v.insert(NodeSet()),
-                            };
-                            if seen.contains(&node_id) {
+                            let seen = seen.entry(function_id).or_insert_with(|| NodeMap());
+                            if let Some(&index) = seen.get(&node_id) {
+                                def = DefUpvar(node_id, index, function_id);
                                 continue;
                             }
-                            match self.freevars.borrow_mut().entry(function_id) {
-                                Occupied(v) => v.into_mut(),
-                                Vacant(v) => v.insert(vec![]),
-                            }.push(Freevar { def: prev_def, span: span });
-                            seen.insert(node_id);
+                            let mut freevars = self.freevars.borrow_mut();
+                            let vec = freevars.entry(function_id)
+                                              .or_insert_with(|| vec![]);
+                            let depth = vec.len();
+                            vec.push(Freevar { def: prev_def, span: span });
+
+                            def = DefUpvar(node_id, depth, function_id);
+                            seen.insert(node_id, depth);
                         }
                         ItemRibKind | MethodRibKind => {
                             // This was an attempt to access an upvar inside a

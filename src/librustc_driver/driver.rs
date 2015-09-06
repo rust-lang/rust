@@ -10,6 +10,7 @@
 
 use rustc::front;
 use rustc::front::map as hir_map;
+use rustc_mir as mir;
 use rustc::session::Session;
 use rustc::session::config::{self, Input, OutputFilenames};
 use rustc::session::search_paths::PathKind;
@@ -705,6 +706,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
 
         // passes are timed inside typeck
         typeck::check_crate(tcx, trait_map);
+
+        time(time_passes, "MIR dump", ||
+             mir::dump::dump_crate(tcx));
 
         time(time_passes, "const checking", ||
             middle::check_const::check_crate(tcx));
