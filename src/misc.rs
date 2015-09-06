@@ -5,10 +5,9 @@ use reexport::*;
 use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::{Span, Spanned};
 use rustc_front::visit::FnKind;
-use rustc::front::map::Node::*;
 use rustc::middle::ty;
 
-use utils::{match_path, snippet, span_lint, walk_ptrs_ty};
+use utils::{get_item_name, match_path, snippet, span_lint, walk_ptrs_ty};
 use consts::constant;
 
 declare_lint!(pub TOPLEVEL_REF_ARG, Warn,
@@ -93,19 +92,12 @@ impl LintPass for FloatCmp {
                         false, |c| c.0.as_float().map_or(false, |f| f == 0.0)) {
                     return;
                 }
-                let parent_id = cx.tcx.map.get_parent(expr.id);
-                match cx.tcx.map.find(parent_id) {
-                    Some(NodeItem(&Item{ ref ident, .. })) |
-                    Some(NodeTraitItem(&TraitItem{ id: _, ref ident, .. })) |
-                    Some(NodeImplItem(&ImplItem{ id: _, ref ident, .. })) => {
-                        let name = ident.name.as_str();
-                        if &*name == "eq" || &*name == "ne" ||
-                                name.starts_with("eq_") ||
-                                name.ends_with("_eq") {
-                            return;
-                        }
-                    },
-                    _ => (),
+                if let Some(name) = get_item_name(cx, expr) {
+                    if name == "eq" || name == "ne" ||
+                            name.as_str().starts_with("eq_") ||
+                            name.as_str().ends_with("_eq") {
+                        return;
+                    }
                 }
                 span_lint(cx, FLOAT_CMP, expr.span, &format!(
                     "{}-comparison of f32 or f64 detected. Consider changing this to \

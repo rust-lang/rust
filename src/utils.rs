@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use reexport::*;
 use syntax::codemap::{ExpnInfo, Span, ExpnFormat};
-use rustc::front::map::Node::NodeExpr;
+use rustc::front::map::Node::*;
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty;
 use std::borrow::Cow;
@@ -98,6 +98,19 @@ pub fn match_trait_method(cx: &Context, expr: &Expr, path: &[&str]) -> bool {
 pub fn match_path(path: &Path, segments: &[&str]) -> bool {
     path.segments.iter().rev().zip(segments.iter().rev()).all(
         |(a, b)| &a.identifier.name == b)
+}
+
+/// get the name of the item the expression is in, if available
+pub fn get_item_name(cx: &Context, expr: &Expr) -> Option<Name> {
+    let parent_id = cx.tcx.map.get_parent(expr.id);
+    match cx.tcx.map.find(parent_id) {
+        Some(NodeItem(&Item{ ref ident, .. })) |
+        Some(NodeTraitItem(&TraitItem{ id: _, ref ident, .. })) |
+        Some(NodeImplItem(&ImplItem{ id: _, ref ident, .. })) => {
+            Some(ident.name)
+        },
+        _ => None,
+    }
 }
 
 /// convert a span to a code snippet if available, otherwise use default, e.g.

@@ -5,7 +5,7 @@ use syntax::codemap::{Span, Spanned};
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
 
-use utils::{span_lint, walk_ptrs_ty, snippet};
+use utils::{get_item_name, snippet, span_lint, walk_ptrs_ty};
 
 declare_lint!(pub LEN_ZERO, Warn,
               "checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` \
@@ -33,14 +33,14 @@ impl LintPass for LenZero {
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-        if let &ExprBinary(Spanned{node: cmp, ..}, ref left, ref right) =
-            &expr.node {
-                match cmp {
-                    BiEq => check_cmp(cx, expr.span, left, right, ""),
-                    BiGt | BiNe => check_cmp(cx, expr.span, left, right, "!"),
-                    _ => ()
-                }
+        if let ExprBinary(Spanned{node: cmp, ..}, ref left, ref right) =
+                expr.node {
+            match cmp {
+                BiEq => check_cmp(cx, expr.span, left, right, ""),
+                BiGt | BiNe => check_cmp(cx, expr.span, left, right, "!"),
+                _ => ()
             }
+        }
     }
 }
 
@@ -89,7 +89,11 @@ fn is_self_sig(sig: &MethodSig) -> bool {
         false } else { sig.decl.inputs.len() == 1 }
 }
 
-fn check_cmp(cx: &Context, span: Span, left: &Expr, right: &Expr, op: &str) {
+fn check_cmp(cx: &Context, span: Span, left: &Expr, right: &Expr, op: &str) {    
+    // check if we are in an is_empty() method 
+    if let Some(name) = get_item_name(cx, left) {
+        if name == "is_empty" { return; }
+    }
     match (&left.node, &right.node) {
         (&ExprLit(ref lit), &ExprMethodCall(ref method, _, ref args)) =>
             check_len_zero(cx, span, method, args, lit, op),
