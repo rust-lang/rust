@@ -1551,7 +1551,7 @@ impelementation for:
 ```
 impl SomeTypeThatDoesntExist {  }
 ```
-"##
+"##,
 
 E0119: r##"
 There are conflicting trait implementations for the same type.
@@ -3214,7 +3214,7 @@ register_diagnostics! {
     E0090,
     E0103, // @GuillaumeGomez: I was unable to get this error, try your best!
     E0104,
-//  E0118,
+    E0118,
 //  E0123,
 //  E0127,
 //  E0129,
