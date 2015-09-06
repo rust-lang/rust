@@ -85,7 +85,7 @@ impl LintPass for UnitCmp {
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-        if in_macro(expr) { return; }
+        if in_macro(cx, expr.span) { return; }
         if let ExprBinary(ref cmp, ref left, _) = expr.node {
             let op = cmp.node;
             let sty = &cx.tcx.expr_ty(left).sty;
