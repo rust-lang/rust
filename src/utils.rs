@@ -33,31 +33,6 @@ pub fn span_after(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
 }
 
 #[inline]
-pub fn prev_char(s: &str, mut i: usize) -> usize {
-    if i == 0 {
-        return 0;
-    }
-
-    i -= 1;
-    while !s.is_char_boundary(i) {
-        i -= 1;
-    }
-    i
-}
-
-#[inline]
-pub fn next_char(s: &str, mut i: usize) -> usize {
-    if i >= s.len() {
-        return s.len();
-    }
-
-    while !s.is_char_boundary(i) {
-        i += 1;
-    }
-    i
-}
-
-#[inline]
 pub fn make_indent(width: usize) -> String {
     let mut indent = String::with_capacity(width);
     for _ in 0..width {

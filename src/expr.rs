@@ -28,8 +28,8 @@ impl Rewrite for ast::Expr {
         match self.node {
             ast::Expr_::ExprLit(ref l) => {
                 match l.node {
-                    ast::Lit_::LitStr(ref is, ast::StrStyle::CookedStr) => {
-                        rewrite_string_lit(context, &is, l.span, width, offset)
+                    ast::Lit_::LitStr(_, ast::StrStyle::CookedStr) => {
+                        rewrite_string_lit(context, l.span, width, offset)
                     }
                     _ => Some(context.snippet(self.span)),
                 }
@@ -823,7 +823,6 @@ fn rewrite_pat_expr(context: &RewriteContext,
 }
 
 fn rewrite_string_lit(context: &RewriteContext,
-                      s: &str,
                       span: Span,
                       width: usize,
                       offset: usize)
@@ -842,7 +841,10 @@ fn rewrite_string_lit(context: &RewriteContext,
         trim_end: false,
     };
 
-    Some(rewrite_string(&s.escape_default(), &fmt))
+    let string_lit = context.snippet(span);
+    let str_lit = &string_lit[1..string_lit.len() - 1]; // Remove the quote characters.
+
+    Some(rewrite_string(str_lit, &fmt))
 }
 
 fn rewrite_call(context: &RewriteContext,

@@ -10,7 +10,12 @@
 
 // Format string literals.
 
-use utils::{make_indent, next_char, prev_char, round_up_to_power_of_two};
+
+
+use unicode_segmentation::UnicodeSegmentation;
+use regex::Regex;
+
+use utils::{make_indent, round_up_to_power_of_two};
 
 use MIN_STRING;
 
@@ -26,8 +31,12 @@ pub struct StringFormat<'a> {
 
 // TODO: simplify this!
 pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> String {
-    // FIXME I bet this stomps unicode escapes in the source string
     // TODO if lo.col > IDEAL - 10, start a new line (need cur indent for that)
+    // Strip line breaks.
+    let re = Regex::new(r"(\\[:space:]+)").unwrap();
+    let stripped_str = re.replace_all(s, "");
+
+    let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false).collect::<Vec<&str>>();
 
     let indent = make_indent(fmt.offset);
     let indent = &indent;
@@ -39,41 +48,36 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> String {
     let ender_length = fmt.line_end.len();
     let max_chars = fmt.width.checked_sub(fmt.opener.len()).unwrap_or(0)
                              .checked_sub(ender_length).unwrap_or(1);
-
     loop {
         let mut cur_end = cur_start + max_chars;
 
-        if cur_end >= s.len() {
-            result.push_str(&s[cur_start..]);
+        if cur_end >= graphemes.len() {
+            let line = &graphemes[cur_start..].join("");
+            result.push_str(line);
             break;
         }
-
-        // Make sure we're on a char boundary.
-        cur_end = next_char(&s, cur_end);
-
         // Push cur_end left until we reach whitespace.
-        while !s.char_at(cur_end - 1).is_whitespace() {
-            cur_end = prev_char(&s, cur_end);
-
+        while !(graphemes[cur_end - 1].trim().len() == 0) {
+            cur_end -= 1;
             if cur_end - cur_start < MIN_STRING {
                 // We can't break at whitespace, fall back to splitting
                 // anywhere that doesn't break an escape sequence.
-                cur_end = next_char(&s, cur_start + max_chars);
-                while s.char_at(prev_char(&s, cur_end)) == '\\' {
-                    cur_end = prev_char(&s, cur_end);
+                cur_end = cur_start + max_chars;
+                while graphemes[cur_end - 1] == "\\" {
+                    cur_end -= 1;
                 }
                 break;
             }
         }
         // Make sure there is no whitespace to the right of the break.
-        while cur_end < s.len() && s.char_at(cur_end).is_whitespace() {
-            cur_end = next_char(&s, cur_end + 1);
+        while cur_end < s.len() && graphemes[cur_end].trim().len() == 0 {
+            cur_end += 1;
         }
-
+        let raw_line = graphemes[cur_start..cur_end].join("");
         let line: &str = if fmt.trim_end {
-            &s[cur_start..cur_end].trim_right_matches(char::is_whitespace)
+            &(raw_line.trim())
         } else {
-            &s[cur_start..cur_end]
+            &raw_line
         };
 
         result.push_str(line);
