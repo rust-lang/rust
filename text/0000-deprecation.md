@@ -25,14 +25,19 @@ interface to use while maximizing usefulness of the metadata introduced.
 # Detailed design
 
 Public API items (both plain `fn`s, methods, trait- and inherent 
-`impl`ementations as well as `const` definitions) can be given a `#[deprecate]`
-attribute.
+`impl`ementations as well as `const` definitions, type definitions, struct
+fields and enum variants) can be given a `#[deprecate]` attribute.
 
-This attribute *must* have the `since` field, which contains the version of the 
-crate that deprecated the item, as defined by Cargo.toml (thus following the 
-semver scheme). It makes no sense to put a version number higher than the 
-current newest version here, and this is not checked (but could be by external
-lints, e.g. [rust-clippy](https://github.com/Manishearth/rust-clippy).
+This attribute *must* have the `since` field, which contains at least the 
+version of the crate that deprecated the item, as defined by Cargo.toml 
+(thus following the semver scheme). It makes no sense to put a version number 
+higher than the current newest version here, and this is not checked (but 
+could be by external lints, e.g. 
+[rust-clippy](https://github.com/Manishearth/rust-clippy).
+
+Following semantic versioning would mean that the supplied value could
+actually be a version *range*, which could imply an end-of-life for the
+feature.
 
 Other optional fields are:
 
@@ -79,12 +84,14 @@ quite complex.
 # Alternatives
 
 * Do nothing
+* make the `since` field optional
 * Optionally the deprecation lint chould check the current version as set by
 cargo in the CARGO_CRATE_VERSION environment variable (the rust build process 
 should set this environment variable, too). This would allow future 
 deprecations to be shown in the docs early, but not warned against by the
 stability lint (there could however be a `future-deprecation` lint that should
 be `Allow` by default)
+* require either `reason` or `surrogate` be present
 * `reason` could include markdown formatting
 * The `surrogate` could simply be plain text, which would remove much of the
 complexity here
@@ -94,3 +101,4 @@ complexity here
 * What other restrictions should we introduce now to avoid being bound to a 
 possibly flawed design?
 * Can / Should the `std` library make use of the `#[deprecate]` extensions?
+* Bikeshedding: Are the names good enough?
