@@ -155,13 +155,16 @@ impl<T> Vec<T> {
     }
 
     pub fn drain(&mut self) -> Drain<T> {
-        // this is a mem::forget safety thing. If this is forgotten, we just
-        // leak the whole Vec's contents. Also we need to do this *eventually*
-        // anyway, so why not do it now?
-        self.len = 0;
         unsafe {
+            let iter = RawValIter::new(&self);
+
+            // this is a mem::forget safety thing. If this is forgotten, we just
+            // leak the whole Vec's contents. Also we need to do this *eventually*
+            // anyway, so why not do it now?
+            self.len = 0;
+
             Drain {
-                iter: RawValIter::new(&self),
+                iter: iter,
                 vec: PhantomData,
             }
         }
