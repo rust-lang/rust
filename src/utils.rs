@@ -100,14 +100,14 @@ pub fn match_path(path: &Path, segments: &[&str]) -> bool {
         |(a, b)| &a.identifier.name == b)
 }
 
-pub fn with_item_name<T, F>(cx: &Context, expr: &Expr, f: F) -> Option<T>
-where F: FnOnce(Name) -> T {
+/// get the name of the item the expression is in, if available
+pub fn get_item_name(cx: &Context, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.map.get_parent(expr.id);
     match cx.tcx.map.find(parent_id) {
         Some(NodeItem(&Item{ ref ident, .. })) |
         Some(NodeTraitItem(&TraitItem{ id: _, ref ident, .. })) |
         Some(NodeImplItem(&ImplItem{ id: _, ref ident, .. })) => {
-            Some(f(ident.name))
+            Some(ident.name)
         },
         _ => None,
     }

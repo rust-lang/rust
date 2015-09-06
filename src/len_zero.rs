@@ -5,7 +5,7 @@ use syntax::codemap::{Span, Spanned};
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
 
-use utils::{snippet, span_lint, walk_ptrs_ty, with_item_name};
+use utils::{get_item_name, snippet, span_lint, walk_ptrs_ty};
 
 declare_lint!(pub LEN_ZERO, Warn,
               "checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` \
@@ -91,8 +91,8 @@ fn is_self_sig(sig: &MethodSig) -> bool {
 
 fn check_cmp(cx: &Context, span: Span, left: &Expr, right: &Expr, op: &str) {    
     // check if we are in an is_empty() method 
-    if let Some(true) = with_item_name(cx, left, |n| n == "is_empty") {
-        return;
+    if let Some(name) = get_item_name(cx, left) {
+        if name == "is_empty" { return; }
     }
     match (&left.node, &right.node) {
         (&ExprLit(ref lit), &ExprMethodCall(ref method, _, ref args)) =>
