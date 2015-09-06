@@ -53,7 +53,7 @@ TARGET_CRATES := libc std flate arena term \
                  serialize getopts collections test rand \
                  log graphviz core rbml alloc \
                  rustc_unicode rustc_bitflags \
-		 alloc_system
+                 alloc_system aster
 RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_front rustc_platform_intrinsics
@@ -105,6 +105,7 @@ DEPS_rand := core
 DEPS_log := std
 DEPS_fmt_macros = std
 DEPS_alloc_system := core libc
+DEPS_aster := std syntax
 
 TOOL_DEPS_compiletest := test getopts
 TOOL_DEPS_rustdoc := rustdoc
