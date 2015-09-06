@@ -54,7 +54,7 @@ TARGET_CRATES := libc std flate arena term \
                  log graphviz core rbml alloc \
                  rustc_unicode rustc_bitflags \
 		 alloc_system
-RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
+RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_front rustc_platform_intrinsics
 HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
@@ -70,11 +70,12 @@ DEPS_std := core libc rand alloc collections rustc_unicode \
 DEPS_graphviz := std
 DEPS_syntax := std term serialize log fmt_macros arena libc rustc_bitflags
 DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
-                     rustc_typeck rustc_resolve log syntax serialize rustc_llvm \
+                     rustc_typeck rustc_mir rustc_resolve log syntax serialize rustc_llvm \
 		             rustc_trans rustc_privacy rustc_lint rustc_front
 
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
 	                log syntax serialize rustc_llvm rustc_front rustc_platform_intrinsics
+DEPS_rustc_mir := rustc rustc_front syntax
 DEPS_rustc_typeck := rustc syntax rustc_front rustc_platform_intrinsics
 DEPS_rustc_borrowck := rustc rustc_front log graphviz syntax
 DEPS_rustc_resolve := rustc rustc_front log syntax

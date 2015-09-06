@@ -12,9 +12,9 @@
 
 // Test that `#[rustc_*]` attributes are gated by `rustc_attrs` feature gate.
 
-#[rustc_variance] //~ ERROR the `#[rustc_variance]` attribute is an experimental feature
-#[rustc_error] //~ ERROR the `#[rustc_error]` attribute is an experimental feature
-#[rustc_move_fragments] //~ ERROR the `#[rustc_move_fragments]` attribute is an experimental feature
+#[rustc_variance] //~ ERROR the `#[rustc_variance]` attribute is just used for rustc unit tests and will never be stable
+#[rustc_error] //~ ERROR the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable
+#[rustc_move_fragments] //~ ERROR the `#[rustc_move_fragments]` attribute is just used for rustc unit tests and will never be stable
 #[rustc_foo]
 //~^ ERROR unless otherwise specified, attributes with the prefix `rustc_` are reserved for internal compiler diagnostics
 

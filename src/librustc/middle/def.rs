@@ -38,6 +38,7 @@ pub enum Def {
     DefTyParam(ParamSpace, u32, DefId, ast::Name),
     DefUse(DefId),
     DefUpvar(ast::NodeId,  // id of closed over local
+             usize,        // index in the freevars list of the closure
              ast::NodeId), // expr node that creates the closure
 
     /// Note that if it's a tuple struct's definition, the node id of the DefId
@@ -129,7 +130,7 @@ impl Def {
                 id
             }
             DefLocal(id) |
-            DefUpvar(id, _) |
+            DefUpvar(id, _, _) |
             DefRegion(id) |
             DefLabel(id)  |
             DefSelfTy(_, Some((_, id))) => {

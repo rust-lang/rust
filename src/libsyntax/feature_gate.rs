@@ -272,13 +272,20 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                        feature")),
     ("rustc_variance", Normal, Gated("rustc_attrs",
                                      "the `#[rustc_variance]` attribute \
-                                      is an experimental feature")),
+                                      is just used for rustc unit tests \
+                                      and will never be stable")),
     ("rustc_error", Whitelisted, Gated("rustc_attrs",
                                        "the `#[rustc_error]` attribute \
-                                        is an experimental feature")),
+                                        is just used for rustc unit tests \
+                                        and will never be stable")),
     ("rustc_move_fragments", Normal, Gated("rustc_attrs",
                                            "the `#[rustc_move_fragments]` attribute \
-                                            is an experimental feature")),
+                                            is just used for rustc unit tests \
+                                            and will never be stable")),
+    ("rustc_mir", Normal, Gated("rustc_attrs",
+                                "the `#[rustc_mir]` attribute \
+                                 is just used for rustc unit tests \
+                                 and will never be stable")),
 
     ("allow_internal_unstable", Normal, Gated("allow_internal_unstable",
                                               EXPLAIN_ALLOW_INTERNAL_UNSTABLE)),

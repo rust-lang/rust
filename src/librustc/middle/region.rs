@@ -329,6 +329,9 @@ impl RegionMaps {
     pub fn item_extent(&self, n: ast::NodeId) -> CodeExtent {
         self.lookup_code_extent(CodeExtentData::DestructionScope(n))
     }
+    pub fn opt_destruction_extent(&self, n: ast::NodeId) -> Option<CodeExtent> {
+        self.code_extent_interner.borrow().get(&CodeExtentData::DestructionScope(n)).cloned()
+    }
     pub fn intern_code_extent(&self,
                               e: CodeExtentData,
                               parent: CodeExtent) -> CodeExtent {
