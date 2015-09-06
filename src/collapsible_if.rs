@@ -14,7 +14,7 @@
 
 use rustc::lint::*;
 use rustc_front::hir::*;
-use syntax::codemap::{Spanned, ExpnInfo};
+use syntax::codemap::Spanned;
 
 use utils::{in_macro, span_help_and_lint, snippet, snippet_block};
 
@@ -34,14 +34,13 @@ impl LintPass for CollapsibleIf {
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-        cx.sess().codemap().with_expn_info(expr.span.expn_id,
-            |info| check_expr_expd(cx, expr, info))
+		if !in_macro(cx, expr.span) {
+			check_if(cx, expr)
+		}
     }
 }
 
-fn check_expr_expd(cx: &Context, e: &Expr, info: Option<&ExpnInfo>) {
-    if in_macro(cx, info) { return; }
-
+fn check_if(cx: &Context, e: &Expr) {
     if let ExprIf(ref check, ref then, None) = e.node {
         if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), span: sp, ..}) =
             single_stmt_of_block(then) {

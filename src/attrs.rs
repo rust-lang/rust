@@ -3,7 +3,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use reexport::*;
-use syntax::codemap::ExpnInfo;
+use syntax::codemap::Span;
 
 use utils::{in_macro, match_path, span_lint};
 
@@ -21,22 +21,19 @@ impl LintPass for AttrPass {
 
     fn check_item(&mut self, cx: &Context, item: &Item) {
         if is_relevant_item(item) {
-            cx.sess().codemap().with_expn_info(item.span.expn_id,
-                |info| check_attrs(cx, info, &item.ident, &item.attrs))
+            check_attrs(cx, item.span, &item.ident, &item.attrs)
         }
     }
 
     fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) {
         if is_relevant_impl(item) {
-            cx.sess().codemap().with_expn_info(item.span.expn_id,
-                |info| check_attrs(cx, info, &item.ident, &item.attrs))
+            check_attrs(cx, item.span, &item.ident, &item.attrs)
         }
     }
 
     fn check_trait_item(&mut self, cx: &Context, item: &TraitItem) {
         if is_relevant_trait(item) {
-            cx.sess().codemap().with_expn_info(item.span.expn_id,
-                |info| check_attrs(cx, info, &item.ident, &item.attrs))
+            check_attrs(cx, item.span, &item.ident, &item.attrs)
         }
     }
 }
@@ -89,9 +86,9 @@ fn is_relevant_expr(expr: &Expr) -> bool {
     }
 }
 
-fn check_attrs(cx: &Context, info: Option<&ExpnInfo>, ident: &Ident,
-               attrs: &[Attribute]) {
-    if in_macro(cx, info) { return; }
+fn check_attrs(cx: &Context, span: Span, ident: &Ident,
+        attrs: &[Attribute]) {
+    if in_macro(cx, span) { return; }
 
     for attr in attrs {
         if let MetaList(ref inline, ref values) = attr.node.value.node {

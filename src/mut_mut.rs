@@ -1,9 +1,8 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
-use syntax::codemap::ExpnInfo;
 use rustc::middle::ty::{TypeAndMut, TyRef};
 
-use utils::{in_macro, span_lint};
+use utils::{in_external_macro, span_lint};
 
 declare_lint!(pub MUT_MUT, Warn,
               "usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, \
@@ -18,8 +17,7 @@ impl LintPass for MutMut {
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-        cx.sess().codemap().with_expn_info(expr.span.expn_id,
-            |info| check_expr_expd(cx, expr, info))
+       check_expr_mut(cx, expr)
     }
 
     fn check_ty(&mut self, cx: &Context, ty: &Ty) {
@@ -28,8 +26,8 @@ impl LintPass for MutMut {
     }
 }
 
-fn check_expr_expd(cx: &Context, expr: &Expr, info: Option<&ExpnInfo>) {
-    if in_macro(cx, info) { return; }
+fn check_expr_mut(cx: &Context, expr: &Expr) {
+    if in_external_macro(cx, expr.span) { return; }
 
     fn unwrap_addr(expr : &Expr) -> Option<&Expr> {
         match expr.node {

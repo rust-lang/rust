@@ -84,12 +84,11 @@ impl LintPass for LoopsPass {
                         }
                     }
                     // check for looping over Iterator::next() which is not what you want
-                    else if method_name == "next" {
-                        if match_trait_method(cx, arg, &["core", "iter", "Iterator"]) {
-                            span_lint(cx, ITER_NEXT_LOOP, expr.span,
-                                      "you are iterating over `Iterator::next()` which is an Option; \
-                                       this will compile but is probably not what you want");
-                        }
+                    else if method_name == "next" &&
+                            match_trait_method(cx, arg, &["core", "iter", "Iterator"]) {
+                        span_lint(cx, ITER_NEXT_LOOP, expr.span,
+                                  "you are iterating over `Iterator::next()` which is an Option; \
+                                   this will compile but is probably not what you want");
                     }
                 }
             }
@@ -127,12 +126,11 @@ impl LintPass for LoopsPass {
     fn check_stmt(&mut self, cx: &Context, stmt: &Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
-                if args.len() == 1 && method.node.name == "collect" {
-                    if match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
-                        span_lint(cx, UNUSED_COLLECT, expr.span, &format!(
-                            "you are collect()ing an iterator and throwing away the result. \
-                             Consider using an explicit for loop to exhaust the iterator"));
-                    }
+                if args.len() == 1 && method.node.name == "collect" && 
+                        match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
+                    span_lint(cx, UNUSED_COLLECT, expr.span, &format!(
+                        "you are collect()ing an iterator and throwing away the result. \
+                         Consider using an explicit for loop to exhaust the iterator"));
                 }
             }
         }
