@@ -42,19 +42,22 @@ pub fn rewrite_path(context: &RewriteContext,
     if let Some(ref qself) = qself {
         result.push('<');
         result.push_str(&pprust::ty_to_string(&qself.ty));
-        result.push_str(" as ");
 
-        let extra_offset = extra_offset(&result, offset);
-        // 3 = ">::".len()
-        let budget = try_opt!(width.checked_sub(extra_offset)) - 3;
+        if skip_count > 0 {
+            result.push_str(" as ");
 
-        result = try_opt!(rewrite_path_segments(result,
-                                                path.segments.iter().take(skip_count),
-                                                span_lo,
-                                                path.span.hi,
-                                                context,
-                                                budget,
-                                                offset + extra_offset));
+            let extra_offset = extra_offset(&result, offset);
+            // 3 = ">::".len()
+            let budget = try_opt!(width.checked_sub(extra_offset)) - 3;
+
+            result = try_opt!(rewrite_path_segments(result,
+                                                    path.segments.iter().take(skip_count),
+                                                    span_lo,
+                                                    path.span.hi,
+                                                    context,
+                                                    budget,
+                                                    offset + extra_offset));
+        }
 
         result.push_str(">::");
         span_lo = qself.ty.span.hi + BytePos(1);
