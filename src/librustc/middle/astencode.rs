@@ -27,7 +27,7 @@ use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId};
 use metadata::tydecode::{RegionParameter, ClosureSource};
 use metadata::tyencode;
-use middle::cast;
+use middle::ty::cast;
 use middle::check_const::ConstQualif;
 use middle::def;
 use middle::def_id::{DefId, LOCAL_CRATE};

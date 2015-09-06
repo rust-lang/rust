@@ -43,13 +43,11 @@ use front::map as ast_map;
 use front::map::LinkedPath;
 use metadata::csearch;
 use middle;
-use middle::cast;
 use middle::check_const;
 use middle::const_eval::{self, ConstVal, ErrKind};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def::{self, DefMap, ExportMap};
 use middle::def_id::{DefId, LOCAL_CRATE};
-use middle::fast_reject;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::region;
@@ -62,8 +60,8 @@ use middle::stability;
 use middle::subst::{self, ParamSpace, Subst, Substs, VecPerParamSpace};
 use middle::traits;
 use middle::ty;
-use middle::ty_fold::{self, TypeFoldable, TypeFolder};
-use middle::ty_walk::{self, TypeWalker};
+use middle::ty::fold::{TypeFoldable, TypeFolder};
+use middle::ty::walk::{TypeWalker};
 use util::common::{memoized, ErrorReported};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::FnvHashMap;
@@ -95,6 +93,15 @@ use rustc_front::hir;
 use rustc_front::hir::{ItemImpl, ItemTrait};
 use rustc_front::hir::{MutImmutable, MutMutable, Visibility};
 use rustc_front::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
+
+pub mod cast;
+pub mod fast_reject;
+pub mod fold;
+pub mod _match;
+pub mod outlives;
+pub mod relate;
+pub mod walk;
+pub mod wf;
 
 pub type Disr = u64;
 
@@ -4252,7 +4259,7 @@ impl<'tcx> TyS<'tcx> {
     /// `Foo<Bar<i32>, u32>` yields the sequence `[Bar<i32>, u32]`
     /// (but not `i32`, like `walk`).
     pub fn walk_shallow(&'tcx self) -> IntoIter<Ty<'tcx>> {
-        ty_walk::walk_shallow(self)
+        walk::walk_shallow(self)
     }
 
     pub fn as_opt_param_ty(&self) -> Option<ty::ParamTy> {
@@ -6879,7 +6886,7 @@ impl<'tcx> ctxt<'tcx> {
         -> T
         where T : TypeFoldable<'tcx>
     {
-        ty_fold::replace_late_bound_regions(
+        fold::replace_late_bound_regions(
             self, value,
             |br| ty::ReFree(ty::FreeRegion{scope: all_outlive_scope, bound_region: br})).0
     }
@@ -6891,8 +6898,8 @@ impl<'tcx> ctxt<'tcx> {
         where T: TypeFoldable<'tcx>
     {
         let bound0_value = bound2_value.skip_binder().skip_binder();
-        let value = ty_fold::fold_regions(self, bound0_value, &mut false,
-                                          |region, current_depth| {
+        let value = fold::fold_regions(self, bound0_value, &mut false,
+                                       |region, current_depth| {
             match region {
                 ty::ReLateBound(debruijn, br) if debruijn.depth >= current_depth => {
                     // should be true if no escaping regions from bound2_value
@@ -6922,7 +6929,7 @@ impl<'tcx> ctxt<'tcx> {
     pub fn erase_late_bound_regions<T>(&self, value: &Binder<T>) -> T
         where T : TypeFoldable<'tcx>
     {
-        ty_fold::replace_late_bound_regions(self, value, |_| ty::ReStatic).0
+        fold::replace_late_bound_regions(self, value, |_| ty::ReStatic).0
     }
 
     /// Rewrite any late-bound regions so that they are anonymous.  Region numbers are
@@ -6937,7 +6944,7 @@ impl<'tcx> ctxt<'tcx> {
         where T : TypeFoldable<'tcx>,
     {
         let mut counter = 0;
-        ty::Binder(ty_fold::replace_late_bound_regions(self, sig, |_| {
+        ty::Binder(fold::replace_late_bound_regions(self, sig, |_| {
             counter += 1;
             ReLateBound(ty::DebruijnIndex::new(1), BrAnon(counter))
         }).0)

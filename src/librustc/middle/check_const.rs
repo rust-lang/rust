@@ -24,7 +24,7 @@
 // - It's not possible to take the address of a static item with unsafe interior. This is enforced
 // by borrowck::gather_loans
 
-use middle::cast::{CastKind};
+use middle::ty::cast::{CastKind};
 use middle::const_eval;
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use middle::def;

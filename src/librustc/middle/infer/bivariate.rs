@@ -30,7 +30,7 @@ use super::type_variable::{BiTo};
 
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
-use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 
 pub struct Bivariate<'a, 'tcx: 'a> {
     fields: CombineFields<'a, 'tcx>

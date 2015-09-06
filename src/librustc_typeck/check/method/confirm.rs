@@ -16,7 +16,7 @@ use middle::def_id::DefId;
 use middle::subst::{self};
 use middle::traits;
 use middle::ty::{self, NoPreference, PreferMutLvalue, Ty};
-use middle::ty_fold::TypeFoldable;
+use middle::ty::fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
 use syntax::codemap::Span;

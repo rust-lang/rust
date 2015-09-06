@@ -18,7 +18,7 @@ use check::FnCtxt;
 use middle::def_id::DefId;
 use middle::pat_util;
 use middle::ty::{self, Ty, MethodCall, MethodCallee};
-use middle::ty_fold::{TypeFolder,TypeFoldable};
+use middle::ty::fold::{TypeFolder,TypeFoldable};
 use middle::infer;
 use write_substs_to_tcx;
 use write_ty_to_tcx;

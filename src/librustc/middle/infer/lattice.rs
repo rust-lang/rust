@@ -34,7 +34,7 @@ use super::InferCtxt;
 
 use middle::ty::TyVar;
 use middle::ty::{self, Ty};
-use middle::ty_relate::{RelateResult, TypeRelation};
+use middle::ty::relate::{RelateResult, TypeRelation};
 
 pub trait LatticeDir<'f,'tcx> : TypeRelation<'f,'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;

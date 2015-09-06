@@ -24,7 +24,7 @@ use rustc_typeck::middle::stability;
 use rustc_typeck::middle::subst;
 use rustc_typeck::middle::subst::Subst;
 use rustc_typeck::middle::ty::{self, Ty, RegionEscape};
-use rustc_typeck::middle::ty_relate::TypeRelation;
+use rustc_typeck::middle::ty::relate::TypeRelation;
 use rustc_typeck::middle::infer;
 use rustc_typeck::middle::infer::lub::Lub;
 use rustc_typeck::middle::infer::glb::Glb;

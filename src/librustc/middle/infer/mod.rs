@@ -32,8 +32,8 @@ use middle::traits::{self, FulfillmentContext, Normalized,
                      SelectionContext, ObligationCause};
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
 use middle::ty::{self, Ty, TypeError, HasTypeFlags};
-use middle::ty_fold::{self, TypeFolder, TypeFoldable};
-use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::fold::{TypeFolder, TypeFoldable};
+use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{RefCell, Ref};
 use std::fmt;
@@ -583,7 +583,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
 /// Returns an equivalent value with all free regions removed (note
 /// that late-bound regions remain, because they are important for
 /// subtyping, but they are anonymized and normalized as well). This
-/// is a stronger, caching version of `ty_fold::erase_regions`.
+/// is a stronger, caching version of `ty::fold::erase_regions`.
 pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
     where T : TypeFoldable<'tcx>
 {
@@ -603,7 +603,7 @@ pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
                 Some(u) => return u
             }
 
-            let t_norm = ty_fold::super_fold_ty(self, ty);
+            let t_norm = ty::fold::super_fold_ty(self, ty);
             self.tcx().normalized_cache.borrow_mut().insert(ty, t_norm);
             return t_norm;
         }
@@ -612,7 +612,7 @@ pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
             where T : TypeFoldable<'tcx>
         {
             let u = self.tcx().anonymize_late_bound_regions(t);
-            ty_fold::super_fold_binder(self, &u)
+            ty::fold::super_fold_binder(self, &u)
         }
 
         fn fold_region(&mut self, r: ty::Region) -> ty::Region {
@@ -1406,7 +1406,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
         where T : TypeFoldable<'tcx>
     {
-        ty_fold::replace_late_bound_regions(
+        ty::fold::replace_late_bound_regions(
             self.tcx,
             value,
             |br| self.next_region_var(LateBoundRegion(span, br, lbrct)))

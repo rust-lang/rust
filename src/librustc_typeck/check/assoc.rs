@@ -12,7 +12,7 @@ use middle::infer::InferCtxt;
 use middle::traits::{self, FulfillmentContext, Normalized, MiscObligation,
                      SelectionContext, ObligationCause};
 use middle::ty::HasTypeFlags;
-use middle::ty_fold::TypeFoldable;
+use middle::ty::fold::TypeFoldable;
 use syntax::ast;
 use syntax::codemap::Span;
 
