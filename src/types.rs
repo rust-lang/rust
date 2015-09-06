@@ -6,7 +6,7 @@ use syntax::codemap::Span;
 use rustc_front::visit::{FnKind, Visitor, walk_ty};
 use rustc::middle::ty;
 
-use utils::{match_type, snippet, span_lint, span_help_and_lint, in_external_macro};
+use utils::{match_type, snippet, span_lint, span_help_and_lint, in_macro, in_external_macro};
 use utils::{LL_PATH, VEC_PATH};
 
 /// Handles all the linting of funky types
@@ -321,7 +321,7 @@ fn check_fndecl(cx: &Context, decl: &FnDecl) {
 }
 
 fn check_type(cx: &Context, ty: &Ty) {
-    if in_external_macro(cx, ty.span) { return; }
+    if in_macro(cx, ty.span) { return; }
     let score = {
         let mut visitor = TypeComplexityVisitor { score: 0, nest: 1 };
         visitor.visit_ty(ty);
