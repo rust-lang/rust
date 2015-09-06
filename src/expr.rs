@@ -262,13 +262,26 @@ impl Rewrite for ast::Block {
                 // Extract comment between unsafe and block start.
                 let trimmed = &snippet[6..open_pos].trim();
 
-                if !trimmed.is_empty() {
+                let prefix = if !trimmed.is_empty() {
                     // 9 = "unsafe  {".len(), 7 = "unsafe ".len()
                     let budget = try_opt!(width.checked_sub(9));
                     format!("unsafe {} ", rewrite_comment(trimmed, true, budget, offset + 7))
                 } else {
                     "unsafe ".to_owned()
+                };
+
+                if is_simple_block(self, context.codemap) && prefix.len() < width {
+                    let body =
+                        self.expr.as_ref().unwrap().rewrite(context, width - prefix.len(), offset);
+                    if let Some(ref expr_str) = body {
+                        let result = format!("{}{{ {} }}", prefix, expr_str);
+                        if result.len() <= width && !result.contains('\n') {
+                            return Some(result);
+                        }
+                    }
                 }
+
+                prefix
             }
             ast::BlockCheckMode::PopUnsafeBlock(..) |
             ast::BlockCheckMode::DefaultBlock => {
