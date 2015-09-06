@@ -534,9 +534,7 @@ fn find_implied_output_region<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     for (input_type, input_pat) in input_tys.iter().zip(input_pats) {
         let mut regions = FnvHashSet();
-        let have_bound_regions = ty::fold::collect_regions(tcx,
-                                                           input_type,
-                                                           &mut regions);
+        let have_bound_regions = tcx.collect_regions(input_type, &mut regions);
 
         debug!("find_implied_output_regions: collected {:?} from {:?} \
                 have_bound_regions={:?}", &regions, input_type, have_bound_regions);

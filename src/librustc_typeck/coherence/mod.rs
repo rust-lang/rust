@@ -446,7 +446,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
                 if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
                     infcx.report_mismatched_types(span, mk_ptr(mt_b.ty),
-                                                  target, &ty::TypeError::Mutability);
+                                                  target, &ty::error::TypeError::Mutability);
                 }
                 (mt_a.ty, mt_b.ty, unsize_trait, None)
             };

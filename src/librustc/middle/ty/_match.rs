@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use middle::ty::{self, Ty};
+use middle::ty::error::TypeError;
 use middle::ty::relate::{self, Relate, TypeRelation, RelateResult};
 
 /// A type "A" *matches* "B" if the fresh types in B could be
@@ -73,7 +74,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
 
             (&ty::TyInfer(_), _) |
             (_, &ty::TyInfer(_)) => {
-                Err(ty::TypeError::Sorts(relate::expected_found(self, &a, &b)))
+                Err(TypeError::Sorts(relate::expected_found(self, &a, &b)))
             }
 
             (&ty::TyError, _) | (_, &ty::TyError) => {

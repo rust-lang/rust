@@ -2374,7 +2374,7 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
          * before we really have a `ParameterEnvironment` to check.
          */
 
-        ty::fold::fold_regions(tcx, value, &mut false, |region, _| {
+        tcx.fold_regions(value, &mut false, |region, _| {
             match region {
                 ty::ReEarlyBound(data) => {
                     let def_id = DefId::local(data.param_id);
