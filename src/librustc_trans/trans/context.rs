@@ -229,9 +229,8 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
-    let custom_data_layout = &sess.target.target.options.data_layout[..];
-    if custom_data_layout.len() > 0 {
-        let data_layout = CString::new(custom_data_layout).unwrap();
+    if let Some(ref custom_data_layout) = sess.target.target.options.data_layout {
+        let data_layout = CString::new(&custom_data_layout[..]).unwrap();
         llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
     } else {
         let tm = ::back::write::create_target_machine(sess);
