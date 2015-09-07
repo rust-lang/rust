@@ -119,7 +119,7 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
 /// Returns `Ok` if the handler was successfully registered, meaning that the
 /// closure will be run once the main thread exits. Returns `Err` to indicate
 /// that the closure could not be registered, meaning that it is not scheduled
-/// to be rune.
+/// to be run.
 pub fn at_exit<F: FnOnce() + Send + 'static>(f: F) -> Result<(), ()> {
     if at_exit_imp::push(Box::new(f)) {Ok(())} else {Err(())}
 }
