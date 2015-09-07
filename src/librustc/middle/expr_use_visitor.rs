@@ -1160,7 +1160,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
 
         self.tcx().with_freevars(closure_expr.id, |freevars| {
             for freevar in freevars {
-                let id_var = freevar.def.node_id();
+                let id_var = freevar.def.var_id();
                 let upvar_id = ty::UpvarId { var_id: id_var,
                                              closure_expr_id: closure_expr.id };
                 let upvar_capture = self.typer.upvar_capture(upvar_id).unwrap();
@@ -1192,7 +1192,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                         -> mc::McResult<mc::cmt<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_id = upvar_def.node_id();
+        let var_id = upvar_def.var_id();
         let var_ty = try!(self.typer.node_ty(var_id));
         self.mc.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }

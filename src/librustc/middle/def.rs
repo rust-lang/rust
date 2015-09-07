@@ -114,21 +114,18 @@ pub struct Export {
 }
 
 impl Def {
-    pub fn node_id(&self) -> ast::NodeId {
+    pub fn var_id(&self) -> ast::NodeId {
         match *self {
             DefLocal(id) |
-            DefUpvar(id, _, _) |
-            DefRegion(id) |
-            DefLabel(id)  |
-            DefSelfTy(_, Some((_, id))) => {
+            DefUpvar(id, _, _) => {
                 id
             }
 
-            DefFn(_, _) | DefMod(_) | DefForeignMod(_) | DefStatic(_, _) |
-            DefVariant(_, _, _) | DefTy(_, _) | DefAssociatedTy(_, _) |
-            DefTyParam(_, _, _, _) | DefUse(_) | DefStruct(_) | DefTrait(_) |
-            DefMethod(_) | DefConst(_) | DefAssociatedConst(_) |
-            DefSelfTy(Some(_), None) | DefPrimTy(_) | DefSelfTy(..) => {
+            DefFn(..) | DefMod(..) | DefForeignMod(..) | DefStatic(..) |
+            DefVariant(..) | DefTy(..) | DefAssociatedTy(..) |
+            DefTyParam(..) | DefUse(..) | DefStruct(..) | DefTrait(..) |
+            DefMethod(..) | DefConst(..) | DefAssociatedConst(..) |
+            DefPrimTy(..) | DefRegion(..) | DefLabel(..) | DefSelfTy(..) => {
                 panic!("attempted .def_id() on invalid {:?}", self)
             }
         }
