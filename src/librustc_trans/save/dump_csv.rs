@@ -264,7 +264,6 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
             def::DefFn(..) => Some(recorder::FnRef),
 
             def::DefSelfTy(..) |
-            def::DefRegion(_) |
             def::DefLabel(_) |
             def::DefTyParam(..) |
             def::DefUse(_) |

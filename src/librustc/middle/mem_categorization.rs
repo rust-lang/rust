@@ -551,7 +551,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
           }
           def::DefMod(_) | def::DefForeignMod(_) | def::DefUse(_) |
           def::DefTrait(_) | def::DefTy(..) | def::DefPrimTy(_) |
-          def::DefTyParam(..) | def::DefRegion(_) |
+          def::DefTyParam(..) |
           def::DefLabel(_) | def::DefSelfTy(..) |
           def::DefAssociatedTy(..) => {
               Ok(Rc::new(cmt_ {

@@ -4318,7 +4318,6 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefMod(..) |
         def::DefForeignMod(..) |
         def::DefUse(..) |
-        def::DefRegion(..) |
         def::DefLabel(..) |
         def::DefSelfTy(..) => {
             fcx.ccx.tcx.sess.span_bug(sp, &format!("expected value, found {:?}", defn));
@@ -4489,7 +4488,6 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefForeignMod(..) |
         def::DefLocal(..) |
         def::DefUse(..) |
-        def::DefRegion(..) |
         def::DefLabel(..) |
         def::DefUpvar(..) => {
             segment_spaces = vec![None; segments.len()];

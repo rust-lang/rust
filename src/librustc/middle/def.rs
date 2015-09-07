@@ -50,7 +50,6 @@ pub enum Def {
     /// - If it's an ExprPath referring to some tuple struct, then DefMap maps
     ///   it to a def whose id is the StructDef.ctor_id.
     DefStruct(DefId),
-    DefRegion(ast::NodeId),
     DefLabel(ast::NodeId),
     DefMethod(DefId),
 }
@@ -125,7 +124,7 @@ impl Def {
             DefVariant(..) | DefTy(..) | DefAssociatedTy(..) |
             DefTyParam(..) | DefUse(..) | DefStruct(..) | DefTrait(..) |
             DefMethod(..) | DefConst(..) | DefAssociatedConst(..) |
-            DefPrimTy(..) | DefRegion(..) | DefLabel(..) | DefSelfTy(..) => {
+            DefPrimTy(..) | DefLabel(..) | DefSelfTy(..) => {
                 panic!("attempted .def_id() on invalid {:?}", self)
             }
         }
@@ -143,7 +142,6 @@ impl Def {
 
             DefLocal(id) |
             DefUpvar(id, _, _) |
-            DefRegion(id) |
             DefLabel(id)  |
             DefSelfTy(_, Some((_, id))) => {
                 DefId::xxx_local(id) // TODO, clearly

@@ -476,7 +476,6 @@ impl tr for def::Def {
             def::DefUpvar(dcx.tr_id(nid1), index, dcx.tr_id(nid2))
           }
           def::DefStruct(did) => def::DefStruct(did.tr(dcx)),
-          def::DefRegion(nid) => def::DefRegion(dcx.tr_id(nid)),
           def::DefLabel(nid) => def::DefLabel(dcx.tr_id(nid))
         }
     }
