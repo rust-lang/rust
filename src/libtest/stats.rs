@@ -169,7 +169,6 @@ impl Stats for [f64] {
             // This inner loop applies `hi`/`lo` summation to each
             // partial so that the list of partial sums remains exact.
             for mut y in &mut partials {
-                let mut y: f64 = partials[i];
                 if x.abs() < y.abs() {
                     mem::swap(&mut x, &mut y);
                 }
