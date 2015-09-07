@@ -22,13 +22,11 @@ impl Rewrite for ast::ViewPath {
     // Returns an empty string when the ViewPath is empty (like foo::bar::{})
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
         match self.node {
+            ast::ViewPath_::ViewPathList(_, ref path_list) if path_list.is_empty() => {
+                Some(String::new())
+            }
             ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
-                Some(rewrite_use_list(width,
-                                      offset,
-                                      path,
-                                      path_list,
-                                      self.span,
-                                      context).unwrap_or("".to_owned()))
+                rewrite_use_list(width, offset, path, path_list, self.span, context)
             }
             ast::ViewPath_::ViewPathGlob(_) => {
                 // FIXME convert to list?
@@ -67,8 +65,8 @@ fn rewrite_single_use_list(path_str: String, vpi: ast::PathListItem) -> String {
     }
 }
 
-// Basically just pretty prints a multi-item import.
-// Returns None when the import can be removed.
+// Pretty prints a multi-item import.
+// Assumes that path_list.len() > 0.
 pub fn rewrite_use_list(width: usize,
                         offset: usize,
                         path: &ast::Path,
@@ -80,7 +78,7 @@ pub fn rewrite_use_list(width: usize,
     let path_str = try_opt!(path.rewrite(context, width - 1, offset));
 
     match path_list.len() {
-        0 => return None,
+        0 => unreachable!(),
         1 => return Some(rewrite_single_use_list(path_str, path_list[0])),
         _ => (),
     }
@@ -149,12 +147,12 @@ pub fn rewrite_use_list(width: usize,
         items[1..].sort_by(|a, b| a.item.cmp(&b.item));
     }
 
-    let list = write_list(&items[first_index..], &fmt);
+    let list_str = try_opt!(write_list(&items[first_index..], &fmt));
 
     Some(if path_str.is_empty() {
-            format!("{{{}}}", list)
+            format!("{{{}}}", list_str)
         } else {
-            format!("{}::{{{}}}", path_str, list)
+            format!("{}::{{{}}}", path_str, list_str)
         })
 }
 

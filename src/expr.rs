@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cmp::Ordering;
+
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
 use string::{StringFormat, rewrite_string};
 use StructLitStyle;
-use utils::{span_after, make_indent, extra_offset, first_line_width, last_line_width};
+use utils::{span_after, make_indent, extra_offset, first_line_width, last_line_width, wrap_str,
+            binary_search};
 use visitor::FmtVisitor;
 use config::BlockIndentStyle;
 use comment::{FindUncommented, rewrite_comment, contains_comment};
@@ -134,37 +137,9 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprClosure(capture, ref fn_decl, ref body) => {
                 rewrite_closure(capture, fn_decl, body, self.span, context, width, offset)
             }
-            _ => {
-                // We do not format these expressions yet, but they should still
-                // satisfy our width restrictions.
-                let snippet = context.snippet(self.span);
-
-                {
-                    let mut lines = snippet.lines();
-
-                    // The caller of this function has already placed `offset`
-                    // characters on the first line.
-                    let first_line_max_len = try_opt!(context.config.max_width.checked_sub(offset));
-                    if lines.next().unwrap().len() > first_line_max_len {
-                        return None;
-                    }
-
-                    // The other lines must fit within the maximum width.
-                    if lines.find(|line| line.len() > context.config.max_width).is_some() {
-                        return None;
-                    }
-
-                    // `width` is the maximum length of the last line, excluding
-                    // indentation.
-                    // A special check for the last line, since the caller may
-                    // place trailing characters on this line.
-                    if snippet.lines().rev().next().unwrap().len() > offset + width {
-                        return None;
-                    }
-                }
-
-                Some(snippet)
-            }
+            // We do not format these expressions yet, but they should still
+            // satisfy our width restrictions.
+            _ => wrap_str(context.snippet(self.span), context.config.max_width, width, offset),
         }
     }
 }
@@ -202,7 +177,8 @@ fn rewrite_closure(capture: ast::CaptureClause,
                                  body.span.lo);
 
     let fmt = ListFormatting::for_fn(argument_budget, argument_offset);
-    let prefix = format!("{}|{}|", mover, write_list(&arg_items.collect::<Vec<_>>(), &fmt));
+    let list_str = try_opt!(write_list(&arg_items.collect::<Vec<_>>(), &fmt));
+    let prefix = format!("{}|{}|", mover, list_str);
     let closure_indent = closure_indent(context, offset);
 
     // Try to format closure body as a single line expression without braces.
@@ -867,21 +843,48 @@ fn rewrite_call(context: &RewriteContext,
                 width: usize,
                 offset: usize)
                 -> Option<String> {
-    debug!("rewrite_call, width: {}, offset: {}", width, offset);
+    let callback = |callee_max_width| {
+                       rewrite_call_inner(context,
+                                          callee,
+                                          callee_max_width,
+                                          args,
+                                          span,
+                                          width,
+                                          offset)
+                   };
 
-    // FIXME using byte lens instead of char lens (and probably all over the place too)
     // 2 is for parens
-    let max_callee_width = try_opt!(width.checked_sub(2));
-    let callee_str = try_opt!(callee.rewrite(context, max_callee_width, offset));
-    debug!("rewrite_call, callee_str: `{}`", callee_str);
+    let max_width = try_opt!(width.checked_sub(2));
+    binary_search(1, max_width, callback)
+}
 
-    if args.is_empty() {
-        return Some(format!("{}()", callee_str));
-    }
+fn rewrite_call_inner(context: &RewriteContext,
+                      callee: &ast::Expr,
+                      max_callee_width: usize,
+                      args: &[ptr::P<ast::Expr>],
+                      span: Span,
+                      width: usize,
+                      offset: usize)
+                      -> Result<String, Ordering> {
+    // FIXME using byte lens instead of char lens (and probably all over the
+    // place too)
+    let callee_str = match callee.rewrite(context, max_callee_width, offset) {
+        Some(string) => {
+            if !string.contains('\n') && string.len() > max_callee_width {
+                panic!("{:?} {}", string, max_callee_width);
+            } else {
+                string
+            }
+        }
+        None => return Err(Ordering::Greater),
+    };
 
     let extra_offset = extra_offset(&callee_str, offset);
     // 2 is for parens.
-    let remaining_width = try_opt!(width.checked_sub(extra_offset + 2));
+    let remaining_width = match width.checked_sub(extra_offset + 2) {
+        Some(str) => str,
+        None => return Err(Ordering::Greater),
+    };
     let offset = offset + extra_offset + 1;
     let inner_indent = expr_indent(context, offset);
     let inner_context = context.overflow_context(inner_indent - context.block_indent);
@@ -900,8 +903,12 @@ fn rewrite_call(context: &RewriteContext,
                              span.hi);
 
     let fmt = ListFormatting::for_fn(remaining_width, offset);
+    let list_str = match write_list(&items.collect::<Vec<_>>(), &fmt) {
+        Some(str) => str,
+        None => return Err(Ordering::Less),
+    };
 
-    Some(format!("{}({})", callee_str, write_list(&items.collect::<Vec<_>>(), &fmt)))
+    Ok(format!("{}({})", callee_str, list_str))
 }
 
 macro_rules! block_indent_helper {
@@ -1024,7 +1031,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         v_width: v_budget,
         ends_with_newline: false,
     };
-    let fields_str = write_list(&items.collect::<Vec<_>>(), &fmt);
+    let fields_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
     match context.config.struct_lit_style {
         StructLitStyle::Block if fields_str.contains('\n') => {
@@ -1046,7 +1053,8 @@ fn rewrite_field(context: &RewriteContext,
                  -> Option<String> {
     let name = &field.ident.node.to_string();
     let overhead = name.len() + 2;
-    let expr = field.expr.rewrite(context, try_opt!(width.checked_sub(overhead)), offset + overhead);
+    let expr =
+        field.expr.rewrite(context, try_opt!(width.checked_sub(overhead)), offset + overhead);
     expr.map(|s| format!("{}: {}", name, s))
 }
 
@@ -1080,8 +1088,9 @@ fn rewrite_tuple_lit(context: &RewriteContext,
 
     let budget = try_opt!(width.checked_sub(2));
     let fmt = ListFormatting::for_fn(budget, indent);
+    let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
-    Some(format!("({})", write_list(&items.collect::<Vec<_>>(), &fmt)))
+    Some(format!("({})", list_str))
 }
 
 fn rewrite_binary_op(context: &RewriteContext,
@@ -1206,12 +1215,13 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
             let new_offset = offset + context.config.tab_spaces;
             result.push_str(&format!("\n{}", make_indent(new_offset)));
 
+            // FIXME: we probably should related max_width to width instead of config.max_width
+            // where is the 1 coming from anyway?
             let max_width = try_opt!(context.config.max_width.checked_sub(new_offset + 1));
-            let rhs = try_opt!(ex.rewrite(&context.overflow_context(context.config.tab_spaces),
-                                          max_width,
-                                          new_offset));
+            let overflow_context = context.overflow_context(context.config.tab_spaces);
+            let rhs = ex.rewrite(&overflow_context, max_width, new_offset);
 
-            result.push_str(&rhs);
+            result.push_str(&&try_opt!(rhs));
         }
     }
 

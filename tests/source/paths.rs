@@ -1,6 +1,5 @@
 
 fn main() {
-    // FIXME(#133): the list rewrite should fail and force a different format
    let constellation_chan = Constellation::<layout::layout_task::LayoutTask,  script::script_task::ScriptTask> ::start(
      compositor_proxy,
      resource_task,

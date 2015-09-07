@@ -13,7 +13,7 @@ use std::iter::Peekable;
 
 use syntax::codemap::{self, CodeMap, BytePos};
 
-use utils::{round_up_to_power_of_two, make_indent};
+use utils::{round_up_to_power_of_two, make_indent, wrap_str};
 use comment::{FindUncommented, rewrite_comment, find_comment_end};
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
@@ -95,9 +95,9 @@ impl ListItem {
 // Format a list of commented items into a string.
 // FIXME: this has grown into a monstrosity
 // TODO: add unit tests
-pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> String {
+pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Option<String> {
     if items.is_empty() {
-        return String::new();
+        return Some(String::new());
     }
 
     let mut tactic = formatting.tactic;
@@ -204,7 +204,9 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
             }
         }
 
-        result.push_str(&item.item);
+        let max_width = formatting.indent + formatting.v_width;
+        let item_str = wrap_str(&item.item[..], max_width, formatting.v_width, formatting.indent);
+        result.push_str(&&try_opt!(item_str));
 
         // Post-comments
         if tactic != ListTactic::Vertical && item.post_comment.is_some() {
@@ -240,7 +242,7 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> St
         }
     }
 
-    result
+    Some(result)
 }
 
 pub struct ListItems<'a, I, F1, F2, F3>
