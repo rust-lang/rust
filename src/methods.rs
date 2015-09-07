@@ -96,7 +96,7 @@ impl LintPass for MethodsPass {
                     for &(prefix, self_kinds) in &CONVENTIONS {
                         if name.as_str().starts_with(prefix) &&
                                 !self_kinds.iter().any(|k| k.matches(&sig.explicit_self.node, is_copy)) {
-                            let lint = if let Visibility::Public = item.vis {
+                            let lint = if item.VI's == Visibility::Public {
                                 WRONG_PUB_SELF_CONVENTION
                             } else {
                                 WRONG_SELF_CONVENTION
