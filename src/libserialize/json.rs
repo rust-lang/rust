@@ -1324,7 +1324,7 @@ impl Stack {
     pub fn is_equal_to(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() != rhs.len() { return false; }
         for (i, r) in rhs.iter().enumerate() {
-            if &self.get(i) != r { return false; }
+            if self.get(i) != *r { return false; }
         }
         true
     }
@@ -1334,7 +1334,7 @@ impl Stack {
     pub fn starts_with(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() < rhs.len() { return false; }
         for (i, r) in rhs.iter().enumerate() {
-            if &self.get(i) != r { return false; }
+            if self.get(i) != *r { return false; }
         }
         true
     }
@@ -1345,7 +1345,7 @@ impl Stack {
         if self.stack.len() < rhs.len() { return false; }
         let offset = self.stack.len() - rhs.len();
         for (i, r) in rhs.iter().enumerate() {
-            if &self.get(i + offset) != r { return false; }
+            if self.get(i + offset) != *r { return false; }
         }
         true
     }
