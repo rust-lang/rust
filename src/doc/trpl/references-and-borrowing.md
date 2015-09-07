@@ -296,7 +296,7 @@ for i in &v {
 
 We can’t modify `v` because it’s borrowed by the loop.
 
-### use after free
+### Use after free
 
 References must live as long as the resource they refer to. Rust will check the
 scopes of your references to ensure that this is true.
