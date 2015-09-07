@@ -934,7 +934,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             rbml_w.tag(c::tag_table_upvar_capture_map, |rbml_w| {
                 rbml_w.id(id);
 
-                let var_id = freevar.def.node_id();
+                let var_id = freevar.def.var_id();
                 let upvar_id = ty::UpvarId {
                     var_id: var_id,
                     closure_expr_id: id

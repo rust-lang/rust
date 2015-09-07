@@ -68,7 +68,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     for (i, freevar) in freevars.iter().enumerate() {
-        let upvar_id = ty::UpvarId { var_id: freevar.def.node_id(),
+        let upvar_id = ty::UpvarId { var_id: freevar.def.var_id(),
                                      closure_expr_id: bcx.fcx.id };
         let upvar_capture = bcx.tcx().upvar_capture(upvar_id).unwrap();
         let mut upvar_ptr = StructGEP(bcx, llenv, i);
@@ -79,7 +79,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 true
             }
         };
-        let node_id = freevar.def.node_id();
+        let node_id = freevar.def.var_id();
         bcx.fcx.llupvars.borrow_mut().insert(node_id, upvar_ptr);
 
         if kind == ty::FnOnceClosureKind && !captured_by_ref {
@@ -236,7 +236,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     for (i, freevar) in freevars.iter().enumerate() {
         let datum = expr::trans_local_var(bcx, freevar.def);
         let upvar_slot_dest = adt::trans_field_ptr(bcx, &*repr, dest_addr, 0, i);
-        let upvar_id = ty::UpvarId { var_id: freevar.def.node_id(),
+        let upvar_id = ty::UpvarId { var_id: freevar.def.var_id(),
                                      closure_expr_id: id };
         match tcx.upvar_capture(upvar_id).unwrap() {
             ty::UpvarCapture::ByValue => {
