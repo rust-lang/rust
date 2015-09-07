@@ -397,7 +397,7 @@ enum Flavor<T> {
 
 #[doc(hidden)]
 trait UnsafeFlavor<T> {
-    fn inner_unsafe<'a>(&'a self) -> &'a UnsafeCell<Flavor<T>>;
+    fn inner_unsafe(&self) -> &UnsafeCell<Flavor<T>>;
     unsafe fn inner_mut<'a>(&'a self) -> &'a mut Flavor<T> {
         &mut *self.inner_unsafe().get()
     }
@@ -406,12 +406,12 @@ trait UnsafeFlavor<T> {
     }
 }
 impl<T> UnsafeFlavor<T> for Sender<T> {
-    fn inner_unsafe<'a>(&'a self) -> &'a UnsafeCell<Flavor<T>> {
+    fn inner_unsafe(&self) -> &UnsafeCell<Flavor<T>> {
         &self.inner
     }
 }
 impl<T> UnsafeFlavor<T> for Receiver<T> {
-    fn inner_unsafe<'a>(&'a self) -> &'a UnsafeCell<Flavor<T>> {
+    fn inner_unsafe(&self) -> &UnsafeCell<Flavor<T>> {
         &self.inner
     }
 }
@@ -677,7 +677,7 @@ impl<T> SyncSender<T> {
 impl<T> Clone for SyncSender<T> {
     fn clone(&self) -> SyncSender<T> {
         unsafe { (*self.inner.get()).clone_chan(); }
-        return SyncSender::new(self.inner.clone());
+        SyncSender::new(self.inner.clone())
     }
 }
 

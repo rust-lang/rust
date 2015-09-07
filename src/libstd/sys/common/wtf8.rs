@@ -282,19 +282,13 @@ impl Wtf8Buf {
     /// like concatenating ill-formed UTF-16 strings effectively would.
     #[inline]
     pub fn push(&mut self, code_point: CodePoint) {
-        match code_point.to_u32() {
-            trail @ 0xDC00...0xDFFF => {
-                match (&*self).final_lead_surrogate() {
-                    Some(lead) => {
-                        let len_without_lead_surrogate = self.len() - 3;
-                        self.bytes.truncate(len_without_lead_surrogate);
-                        self.push_char(decode_surrogate_pair(lead, trail as u16));
-                        return
-                    }
-                    _ => {}
-                }
+        if let trail @ 0xDC00...0xDFFF = code_point.to_u32() {
+            if let Some(lead) = (&*self).final_lead_surrogate() {
+                let len_without_lead_surrogate = self.len() - 3;
+                self.bytes.truncate(len_without_lead_surrogate);
+                self.push_char(decode_surrogate_pair(lead, trail as u16));
+                return
             }
-            _ => {}
         }
 
         // No newly paired surrogates at the boundary.

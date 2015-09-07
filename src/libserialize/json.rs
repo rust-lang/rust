@@ -1039,8 +1039,8 @@ impl Json {
      /// If the Json value is an Object, returns the value associated with the provided key.
     /// Otherwise, returns None.
     pub fn find<'a>(&'a self, key: &str) -> Option<&'a Json>{
-        match self {
-            &Json::Object(ref map) => map.get(key),
+        match *self {
+            Json::Object(ref map) => map.get(key),
             _ => None
         }
     }
@@ -1083,41 +1083,41 @@ impl Json {
     }
 
     /// Returns true if the Json value is an Object. Returns false otherwise.
-    pub fn is_object<'a>(&'a self) -> bool {
+    pub fn is_object(&self) -> bool {
         self.as_object().is_some()
     }
 
     /// If the Json value is an Object, returns the associated BTreeMap.
     /// Returns None otherwise.
-    pub fn as_object<'a>(&'a self) -> Option<&'a Object> {
-        match self {
-            &Json::Object(ref map) => Some(map),
+    pub fn as_object(&self) -> Option<&Object> {
+        match *self {
+            Json::Object(ref map) => Some(map),
             _ => None
         }
     }
 
     /// Returns true if the Json value is an Array. Returns false otherwise.
-    pub fn is_array<'a>(&'a self) -> bool {
+    pub fn is_array(&self) -> bool {
         self.as_array().is_some()
     }
 
     /// If the Json value is an Array, returns the associated vector.
     /// Returns None otherwise.
-    pub fn as_array<'a>(&'a self) -> Option<&'a Array> {
-        match self {
-            &Json::Array(ref array) => Some(&*array),
+    pub fn as_array(&self) -> Option<&Array> {
+        match *self {
+            Json::Array(ref array) => Some(&*array),
             _ => None
         }
     }
 
     /// Returns true if the Json value is a String. Returns false otherwise.
-    pub fn is_string<'a>(&'a self) -> bool {
+    pub fn is_string(&self) -> bool {
         self.as_string().is_some()
     }
 
     /// If the Json value is a String, returns the associated str.
     /// Returns None otherwise.
-    pub fn as_string<'a>(&'a self) -> Option<&'a str> {
+    pub fn as_string(&self) -> Option<&str> {
         match *self {
             Json::String(ref s) => Some(&s[..]),
             _ => None
@@ -1195,8 +1195,8 @@ impl Json {
     /// If the Json value is a Boolean, returns the associated bool.
     /// Returns None otherwise.
     pub fn as_boolean(&self) -> Option<bool> {
-        match self {
-            &Json::Boolean(b) => Some(b),
+        match *self {
+            Json::Boolean(b) => Some(b),
             _ => None
         }
     }
@@ -1209,8 +1209,8 @@ impl Json {
     /// If the Json value is a Null, returns ().
     /// Returns None otherwise.
     pub fn as_null(&self) -> Option<()> {
-        match self {
-            &Json::Null => Some(()),
+        match *self {
+            Json::Null => Some(()),
             _ => None
         }
     }
@@ -1228,8 +1228,8 @@ impl Index<usize> for Json {
     type Output = Json;
 
     fn index<'a>(&'a self, idx: usize) -> &'a Json {
-        match self {
-            &Json::Array(ref v) => &v[idx],
+        match *self {
+            Json::Array(ref v) => &v[idx],
             _ => panic!("can only index Json with usize if it is an array")
         }
     }
@@ -1323,20 +1323,20 @@ impl Stack {
     /// Compares this stack with an array of StackElements.
     pub fn is_equal_to(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() != rhs.len() { return false; }
-        for i in 0..rhs.len() {
-            if self.get(i) != rhs[i] { return false; }
+        for (i, r) in rhs.iter().enumerate() {
+            if &self.get(i) != r { return false; }
         }
-        return true;
+        true
     }
 
     /// Returns true if the bottom-most elements of this stack are the same as
     /// the ones passed as parameter.
     pub fn starts_with(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() < rhs.len() { return false; }
-        for i in 0..rhs.len() {
-            if self.get(i) != rhs[i] { return false; }
+        for (i, r) in rhs.iter().enumerate() {
+            if &self.get(i) != r { return false; }
         }
-        return true;
+        true
     }
 
     /// Returns true if the top-most elements of this stack are the same as
@@ -1344,15 +1344,15 @@ impl Stack {
     pub fn ends_with(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() < rhs.len() { return false; }
         let offset = self.stack.len() - rhs.len();
-        for i in 0..rhs.len() {
-            if self.get(i + offset) != rhs[i] { return false; }
+        for (i, r) in rhs.iter().enumerate() {
+            if &self.get(i + offset) != r { return false; }
         }
-        return true;
+        true
     }
 
     /// Returns the top-most element (if any).
     pub fn top<'l>(&'l self) -> Option<StackElement<'l>> {
-        return match self.stack.last() {
+        match self.stack.last() {
             None => None,
             Some(&InternalIndex(i)) => Some(StackElement::Index(i)),
             Some(&InternalKey(start, size)) => {
@@ -1442,7 +1442,7 @@ impl<T: Iterator<Item=char>> Iterator for Parser<T> {
             }
         }
 
-        return Some(self.parse());
+        Some(self.parse())
     }
 }
 
@@ -1458,13 +1458,13 @@ impl<T: Iterator<Item=char>> Parser<T> {
             state: ParseStart,
         };
         p.bump();
-        return p;
+        p
     }
 
     /// Provides access to the current position in the logical structure of the
     /// JSON stream.
     pub fn stack<'l>(&'l self) -> &'l Stack {
-        return &self.stack;
+        &self.stack
     }
 
     fn eof(&self) -> bool { self.ch.is_none() }
@@ -1559,9 +1559,8 @@ impl<T: Iterator<Item=char>> Parser<T> {
                 self.bump();
 
                 // A leading '0' must be the only digit before the decimal point.
-                match self.ch_or_null() {
-                    '0' ... '9' => return self.error(InvalidNumber),
-                    _ => ()
+                if let '0' ... '9' = self.ch_or_null() {
+                    return self.error(InvalidNumber)
                 }
             },
             '1' ... '9' => {
@@ -1798,7 +1797,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
             ObjectStart => ParseObject(true),
             _ => ParseBeforeFinish,
         };
-        return val;
+        val
     }
 
     fn parse_array(&mut self, first: bool) -> JsonEvent {
@@ -1905,7 +1904,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
             ObjectStart => ParseObject(true),
             _ => ParseObjectComma,
         };
-        return val;
+        val
     }
 
     fn parse_object_end(&mut self) -> JsonEvent {
@@ -1994,7 +1993,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
     }
 
     fn build_value(&mut self) -> Result<Json, BuilderError> {
-        return match self.token {
+        match self.token {
             Some(NullValue) => Ok(Json::Null),
             Some(I64Value(n)) => Ok(Json::I64(n)),
             Some(U64Value(n)) => Ok(Json::U64(n)),
@@ -2043,7 +2042,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
                 _ => {}
             }
             let key = match self.parser.stack().top() {
-                Some(StackElement::Key(k)) => { k.to_string() }
+                Some(StackElement::Key(k)) => { k.to_owned() }
                 _ => { panic!("invalid state"); }
             };
             match self.build_value() {
@@ -2052,7 +2051,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
             }
             self.bump();
         }
-        return self.parser.error(EOFWhileParsingObject);
+        self.parser.error(EOFWhileParsingObject)
     }
 }
 
@@ -2099,7 +2098,7 @@ macro_rules! expect {
     ($e:expr, Null) => ({
         match $e {
             Json::Null => Ok(()),
-            other => Err(ExpectedError("Null".to_string(),
+            other => Err(ExpectedError("Null".to_owned(),
                                        format!("{}", other)))
         }
     });
@@ -2107,7 +2106,7 @@ macro_rules! expect {
         match $e {
             Json::$t(v) => Ok(v),
             other => {
-                Err(ExpectedError(stringify!($t).to_string(),
+                Err(ExpectedError(stringify!($t).to_owned(),
                                   format!("{}", other)))
             }
         }
@@ -2120,14 +2119,14 @@ macro_rules! read_primitive {
             match self.pop() {
                 Json::I64(f) => Ok(f as $ty),
                 Json::U64(f) => Ok(f as $ty),
-                Json::F64(f) => Err(ExpectedError("Integer".to_string(), format!("{}", f))),
+                Json::F64(f) => Err(ExpectedError("Integer".to_owned(), format!("{}", f))),
                 // re: #12967.. a type w/ numeric keys (ie HashMap<usize, V> etc)
                 // is going to have a string here, as per JSON spec.
                 Json::String(s) => match s.parse().ok() {
                     Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_string(), s)),
+                    None => Err(ExpectedError("Number".to_owned(), s)),
                 },
-                value => Err(ExpectedError("Number".to_string(), format!("{}", value))),
+                value => Err(ExpectedError("Number".to_owned(), format!("{}", value))),
             }
         }
     }
@@ -2163,11 +2162,11 @@ impl ::Decoder for Decoder {
                 // is going to have a string here, as per JSON spec.
                 match s.parse().ok() {
                     Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_string(), s)),
+                    None => Err(ExpectedError("Number".to_owned(), s)),
                 }
             },
             Json::Null => Ok(f64::NAN),
-            value => Err(ExpectedError("Number".to_string(), format!("{}", value)))
+            value => Err(ExpectedError("Number".to_owned(), format!("{}", value)))
         }
     }
 
@@ -2185,7 +2184,7 @@ impl ::Decoder for Decoder {
                 _ => ()
             }
         }
-        Err(ExpectedError("single character string".to_string(), format!("{}", s)))
+        Err(ExpectedError("single character string".to_owned(), format!("{}", s)))
     }
 
     fn read_str(&mut self) -> DecodeResult<string::String> {
@@ -2205,13 +2204,13 @@ impl ::Decoder for Decoder {
         let name = match self.pop() {
             Json::String(s) => s,
             Json::Object(mut o) => {
-                let n = match o.remove(&"variant".to_string()) {
+                let n = match o.remove(&"variant".to_owned()) {
                     Some(Json::String(s)) => s,
                     Some(val) => {
-                        return Err(ExpectedError("String".to_string(), format!("{}", val)))
+                        return Err(ExpectedError("String".to_owned(), format!("{}", val)))
                     }
                     None => {
-                        return Err(MissingFieldError("variant".to_string()))
+                        return Err(MissingFieldError("variant".to_owned()))
                     }
                 };
                 match o.remove(&"fields".to_string()) {
@@ -2221,16 +2220,16 @@ impl ::Decoder for Decoder {
                         }
                     },
                     Some(val) => {
-                        return Err(ExpectedError("Array".to_string(), format!("{}", val)))
+                        return Err(ExpectedError("Array".to_owned(), format!("{}", val)))
                     }
                     None => {
-                        return Err(MissingFieldError("fields".to_string()))
+                        return Err(MissingFieldError("fields".to_owned()))
                     }
                 }
                 n
             }
             json => {
-                return Err(ExpectedError("String or Object".to_string(), format!("{}", json)))
+                return Err(ExpectedError("String or Object".to_owned(), format!("{}", json)))
             }
         };
         let idx = match names.iter().position(|n| *n == &name[..]) {

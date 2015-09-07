@@ -515,7 +515,7 @@ macro_rules! tuple {
                                                        |d| -> Result<$name,D::Error> {
                         Decodable::decode(d)
                     })),)*);
-                    return Ok(ret);
+                    Ok(ret)
                 })
             }
         }
