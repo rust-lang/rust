@@ -33,7 +33,7 @@ name                                                                            
 [match_ref_pats](https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats)                       | warn    | a match has all arms prefixed with `&`; the match expression can be dereferenced instead
 [min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                     | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
 [modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                               | warn    | taking a number modulo 1, which always returns 0
-[mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                     | warn    | usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, or shows a fundamental misunderstanding of references)
+[mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                     | allow   | usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, or shows a fundamental misunderstanding of references)
 [needless_bool](https://github.com/Manishearth/rust-clippy/wiki#needless_bool)                         | warn    | if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
 [needless_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#needless_lifetimes)               | warn    | using explicit lifetimes for references in function arguments when elision rules would allow omitting them
 [needless_range_loop](https://github.com/Manishearth/rust-clippy/wiki#needless_range_loop)             | warn    | for-looping over a range of indices where an iterator over items would do

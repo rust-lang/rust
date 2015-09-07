@@ -1,12 +1,19 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
+#![allow(unused)]
+
 //#![plugin(regex_macros)]
 //extern crate regex;
 
 #[deny(mut_mut)]
 fn fun(x : &mut &mut u32) -> bool { //~ERROR generally you want to avoid `&mut &mut
     **x > 0
+}
+
+#[deny(mut_mut)]
+fn less_fun(x : *mut *mut u32) {
+  let y = x;
 }
 
 macro_rules! mut_ptr {

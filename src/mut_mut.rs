@@ -4,7 +4,7 @@ use rustc::middle::ty::{TypeAndMut, TyRef};
 
 use utils::{in_external_macro, span_lint};
 
-declare_lint!(pub MUT_MUT, Warn,
+declare_lint!(pub MUT_MUT, Allow,
               "usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, \
                or shows a fundamental misunderstanding of references)");
 
@@ -53,7 +53,6 @@ fn check_expr_mut(cx: &Context, expr: &Expr) {
 
 fn unwrap_mut(ty : &Ty) -> Option<&Ty> {
     match ty.node {
-        TyPtr(MutTy{ ty: ref pty, mutbl: MutMutable }) => Option::Some(pty),
         TyRptr(_, MutTy{ ty: ref pty, mutbl: MutMutable }) => Option::Some(pty),
         _ => Option::None
     }
