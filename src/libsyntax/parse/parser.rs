@@ -4726,9 +4726,13 @@ impl<'a> Parser<'a> {
             let fields = try!(self.parse_record_struct_body(&class_name));
             (fields, None)
         // Tuple-style struct definition with optional where-clause.
-        } else {
+        } else if self.token == token::OpenDelim(token::Paren) {
             let fields = try!(self.parse_tuple_struct_body(&class_name, &mut generics));
             (fields, Some(ast::DUMMY_NODE_ID))
+        } else {
+            let token_str = self.this_token_to_string();
+            return Err(self.fatal(&format!("expected `where`, `{}`, `(`, or `;` after struct \
+                                            name, found `{}`", "{", token_str)))
         };
 
         Ok((class_name,
