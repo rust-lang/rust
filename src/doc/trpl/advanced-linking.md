@@ -34,8 +34,8 @@ formal `#[link(...)]` attribute on `extern` blocks instead.
 
 # Static linking
 
-Static linking refers to the process of creating output that contain all
-required libraries and so don't need libraries installed on every system where
+Static linking refers to the process of creating output that contains all
+required libraries and so doesn't need libraries installed on every system where
 you want to use your compiled project. Pure-Rust dependencies are statically
 linked by default so you can use created binaries and libraries without
 installing Rust everywhere. By contrast, native libraries
