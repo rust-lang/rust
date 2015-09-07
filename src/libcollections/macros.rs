@@ -32,6 +32,12 @@
 /// Note that unlike array expressions this syntax supports all elements
 /// which implement `Clone` and the number of elements doesn't have to be
 /// a constant.
+///
+/// This will use `clone()` to duplicate an expression, so one should be careful
+/// using this with types having a nonstandard `Clone` implementation. For
+/// example, `vec![Rc::new(1); 5]` will create a vector of five references
+/// to the same boxed integer value, not five references pointing to independently
+/// boxed integers.
 #[cfg(not(test))]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
