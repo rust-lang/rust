@@ -161,7 +161,7 @@ pub fn lookup_addr(addr: &IpAddr) -> io::Result<String> {
     };
 
     match from_utf8(data.to_bytes()) {
-        Ok(name) => Ok(name.to_string()),
+        Ok(name) => Ok(name.to_owned()),
         Err(_) => Err(io::Error::new(io::ErrorKind::Other,
                                      "failed to lookup address information"))
     }

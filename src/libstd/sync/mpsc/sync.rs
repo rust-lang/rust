@@ -254,7 +254,7 @@ impl<T> Packet<T> {
         assert!(guard.buf.size() > 0);
         let ret = guard.buf.dequeue();
         self.wakeup_senders(waited, guard);
-        return Ok(ret);
+        Ok(ret)
     }
 
     pub fn try_recv(&self) -> Result<T, Failure> {
@@ -267,8 +267,7 @@ impl<T> Packet<T> {
         // Be sure to wake up neighbors
         let ret = Ok(guard.buf.dequeue());
         self.wakeup_senders(false, guard);
-
-        return ret;
+        ret
     }
 
     // Wake up pending senders after some data has been received
@@ -356,12 +355,7 @@ impl<T> Packet<T> {
         };
         mem::drop(guard);
 
-        loop {
-            match queue.dequeue() {
-                Some(token) => { token.signal(); }
-                None => break,
-            }
-        }
+        while let Some(token) = queue.dequeue() { token.signal(); }
         waiter.map(|t| t.signal());
     }
 

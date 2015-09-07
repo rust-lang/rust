@@ -73,7 +73,7 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
         // created. Note that this isn't necessary in general for new threads,
         // but we just do this to name the main thread and to give it correct
         // info about the stack bounds.
-        let thread: Thread = NewThread::new(Some("<main>".to_string()));
+        let thread: Thread = NewThread::new(Some("<main>".to_owned()));
         thread_info::set(main_guard, thread);
 
         // By default, some platforms will send a *signal* when a EPIPE error
