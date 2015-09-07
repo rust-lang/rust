@@ -218,9 +218,14 @@ fn rewrite_segment(segment: &ast::PathSegment,
                                      ">",
                                      |param| param.get_span().lo,
                                      |param| param.get_span().hi,
-                                     // FIXME: need better params
+                                     // FIXME(#133): write_list should call
+                                     // rewrite itself, because it has a better
+                                     // context.
                                      |seg| {
-                                         seg.rewrite(context, 1000, offset + extra_offset).unwrap()
+                                         seg.rewrite(context,
+                                                     context.config.max_width,
+                                                     offset + extra_offset)
+                                            .unwrap()
                                      },
                                      list_lo,
                                      span_hi);
@@ -228,7 +233,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
             let fmt = ListFormatting::for_fn(list_width, offset + extra_offset);
             let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
-            // update pos
+            // Update position of last bracket.
             *span_lo = next_span_lo;
 
             format!("{}<{}>", separator, list_str)
@@ -255,9 +260,6 @@ fn rewrite_segment(segment: &ast::PathSegment,
             // 1 for (
             let fmt = ListFormatting::for_fn(budget, offset + 1);
             let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
-
-            // update pos
-            *span_lo = data.span.hi + BytePos(1);
 
             format!("({}){}", list_str, output)
         }

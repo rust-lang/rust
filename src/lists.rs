@@ -204,8 +204,8 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
             }
         }
 
-        // FIXME: no magic numbers!
-        let item_str = wrap_str(&item.item[..], 100, formatting.v_width, formatting.indent);
+        let max_width = formatting.indent + formatting.v_width;
+        let item_str = wrap_str(&item.item[..], max_width, formatting.v_width, formatting.indent);
         result.push_str(&&try_opt!(item_str));
 
         // Post-comments

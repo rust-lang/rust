@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cmp::Ordering;
+
 use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItem_};
 use syntax::codemap::{CodeMap, Span, BytePos};
 
@@ -164,36 +166,84 @@ macro_rules! try_opt {
     })
 }
 
+// Wraps string-like values in an Option. Returns Some when the string adheres
+// to the Rewrite constraints defined for the Rewrite trait and else otherwise.
 pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: usize) -> Option<S> {
-    let snippet = s.as_ref();
+    {
+        let snippet = s.as_ref();
 
-    if !snippet.contains('\n') && snippet.len() > width {
-        return None;
-    } else {
-        let mut lines = snippet.lines();
-
-        // The caller of this function has already placed `offset`
-        // characters on the first line.
-        let first_line_max_len = try_opt!(max_width.checked_sub(offset));
-        if lines.next().unwrap().len() > first_line_max_len {
+        if !snippet.contains('\n') && snippet.len() > width {
             return None;
-        }
+        } else {
+            let mut lines = snippet.lines();
 
-        // The other lines must fit within the maximum width.
-        if lines.find(|line| line.len() > max_width).is_some() {
-            return None;
-        }
+            // The caller of this function has already placed `offset`
+            // characters on the first line.
+            let first_line_max_len = try_opt!(max_width.checked_sub(offset));
+            if lines.next().unwrap().len() > first_line_max_len {
+                return None;
+            }
 
-        // `width` is the maximum length of the last line, excluding
-        // indentation.
-        // A special check for the last line, since the caller may
-        // place trailing characters on this line.
-        if snippet.lines().rev().next().unwrap().len() > offset + width {
-            return None;
+            // The other lines must fit within the maximum width.
+            if lines.find(|line| line.len() > max_width).is_some() {
+                return None;
+            }
+
+            // `width` is the maximum length of the last line, excluding
+            // indentation.
+            // A special check for the last line, since the caller may
+            // place trailing characters on this line.
+            if snippet.lines().rev().next().unwrap().len() > offset + width {
+                return None;
+            }
         }
     }
 
     Some(s)
+}
+
+// Binary search in integer range. Returns the first Ok value returned by the
+// callback.
+// The callback takes an integer and returns either an Ok, or an Err indicating
+// whether the `guess' was too high (Ordering::Less), or too low.
+// This function is guaranteed to try to the hi value first.
+pub fn binary_search<C, T>(mut lo: usize, mut hi: usize, callback: C) -> Option<T>
+    where C: Fn(usize) -> Result<T, Ordering>
+{
+    let mut middle = hi;
+
+    while lo <= hi {
+        match callback(middle) {
+            Ok(val) => return Some(val),
+            Err(Ordering::Less) => {
+                hi = middle - 1;
+            }
+            Err(..) => {
+                lo = middle + 1;
+            }
+        }
+        middle = (hi + lo) / 2;
+    }
+
+    None
+}
+
+#[test]
+fn bin_search_test() {
+    let closure = |i| {
+                      match i {
+                          4 => Ok(()),
+                          j if j > 4 => Err(Ordering::Less),
+                          j if j < 4 => Err(Ordering::Greater),
+                          _ => unreachable!(),
+                      }
+                  };
+
+    assert_eq!(Some(()), binary_search(1, 10, &closure));
+    assert_eq!(None, binary_search(1, 3, &closure));
+    assert_eq!(Some(()), binary_search(0, 44, &closure));
+    assert_eq!(Some(()), binary_search(4, 125, &closure));
+    assert_eq!(None, binary_search(6, 100, &closure));
 }
 
 #[test]

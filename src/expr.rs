@@ -14,7 +14,8 @@ use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
 use string::{StringFormat, rewrite_string};
 use StructLitStyle;
-use utils::{span_after, make_indent, extra_offset, first_line_width, last_line_width, wrap_str};
+use utils::{span_after, make_indent, extra_offset, first_line_width, last_line_width, wrap_str,
+            binary_search};
 use visitor::FmtVisitor;
 use config::BlockIndentStyle;
 use comment::{FindUncommented, rewrite_comment, contains_comment};
@@ -842,31 +843,19 @@ fn rewrite_call(context: &RewriteContext,
                 width: usize,
                 offset: usize)
                 -> Option<String> {
-    debug!("rewrite_call, width: {}, offset: {}", width, offset);
+    let callback = |callee_max_width| {
+                       rewrite_call_inner(context,
+                                          callee,
+                                          callee_max_width,
+                                          args,
+                                          span,
+                                          width,
+                                          offset)
+                   };
 
     // 2 is for parens
-    let mut hi = try_opt!(width.checked_sub(2)) * 2;
-    let mut lo = 0;
-    let mut tries = 0;
-
-    // Binary search for the best split between callee and arguments.
-    loop {
-        let middle = (lo + hi) / 2;
-
-        match rewrite_call_inner(context, callee, middle, args, span, width, offset) {
-            _ if tries > 10 => return None,
-            Ok(result) => return Some(result),
-            Err(Ordering::Less) => {
-                lo = middle;
-                tries += 1;
-            }
-            Err(Ordering::Greater) => {
-                hi = middle;
-                tries += 1;
-            }
-            _ => unreachable!(),
-        }
-    }
+    let max_width = try_opt!(width.checked_sub(2));
+    binary_search(1, max_width, callback)
 }
 
 fn rewrite_call_inner(context: &RewriteContext,
@@ -877,7 +866,8 @@ fn rewrite_call_inner(context: &RewriteContext,
                       width: usize,
                       offset: usize)
                       -> Result<String, Ordering> {
-    // FIXME using byte lens instead of char lens (and probably all over the place too)
+    // FIXME using byte lens instead of char lens (and probably all over the
+    // place too)
     let callee_str = match callee.rewrite(context, max_callee_width, offset) {
         Some(string) => {
             if !string.contains('\n') && string.len() > max_callee_width {
@@ -886,9 +876,8 @@ fn rewrite_call_inner(context: &RewriteContext,
                 string
             }
         }
-        None => return Err(Ordering::Less),
+        None => return Err(Ordering::Greater),
     };
-    debug!("rewrite_call, callee_str: `{}`", callee_str);
 
     let extra_offset = extra_offset(&callee_str, offset);
     // 2 is for parens.
@@ -916,7 +905,7 @@ fn rewrite_call_inner(context: &RewriteContext,
     let fmt = ListFormatting::for_fn(remaining_width, offset);
     let list_str = match write_list(&items.collect::<Vec<_>>(), &fmt) {
         Some(str) => str,
-        None => return Err(Ordering::Greater),
+        None => return Err(Ordering::Less),
     };
 
     Ok(format!("{}({})", callee_str, list_str))
