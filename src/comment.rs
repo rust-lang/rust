@@ -70,7 +70,11 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
             if line.len() > max_chars {
                 acc.push_str(&rewrite_string(line, &fmt));
             } else {
-                acc.push_str(line);
+                if line.len() == 0 {
+                    acc.pop(); // Remove space if this is an empty comment.
+                } else {
+                    acc.push_str(line);
+                }
             }
 
             (false, acc)
