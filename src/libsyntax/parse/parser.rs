@@ -2236,8 +2236,7 @@ impl<'a> Parser<'a> {
                                 self.span_err(last_span,
                                               "structure literal must either \
                                               have at least one field or use \
-                                              functional structure update \
-                                              syntax");
+                                              structure update syntax");
                             }
 
                             hi = self.span.hi;
