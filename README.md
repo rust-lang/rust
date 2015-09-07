@@ -4,65 +4,66 @@
 A collection of lints that give helpful tips to newbies and catch oversights.
 
 ##Lints
-There are 55 lints included in this crate:
+There are 56 lints included in this crate:
 
-name                                                                                                 | default | meaning
------------------------------------------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-[approx_constant](https://github.com/Manishearth/rust-clippy/wiki#approx_constant)                   | warn    | the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found; suggests to use the constant
-[bad_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#bad_bit_mask)                         | warn    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
-[box_vec](https://github.com/Manishearth/rust-clippy/wiki#box_vec)                                   | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
-[cast_possible_truncation](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_truncation) | allow   | casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`
-[cast_possible_wrap](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_wrap)             | allow   | casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`
-[cast_precision_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_precision_loss)           | allow   | casts that cause loss of precision, e.g `x as f32` where `x: u64`
-[cast_sign_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_sign_loss)                     | allow   | casts from signed types to unsigned types, e.g `x as u32` where `x: i32`
-[cmp_nan](https://github.com/Manishearth/rust-clippy/wiki#cmp_nan)                                   | deny    | comparisons to NAN (which will always return false, which is probably not intended)
-[cmp_owned](https://github.com/Manishearth/rust-clippy/wiki#cmp_owned)                               | warn    | creating owned instances for comparing with others, e.g. `x == "foo".to_string()`
-[collapsible_if](https://github.com/Manishearth/rust-clippy/wiki#collapsible_if)                     | warn    | two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` can be written as `if x && y { foo() }`
-[eq_op](https://github.com/Manishearth/rust-clippy/wiki#eq_op)                                       | warn    | equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)
-[explicit_iter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_iter_loop)             | warn    | for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do
-[float_cmp](https://github.com/Manishearth/rust-clippy/wiki#float_cmp)                               | warn    | using `==` or `!=` on float values (as floating-point operations usually involve rounding errors, it is always better to check for approximate equality within small bounds)
-[identity_op](https://github.com/Manishearth/rust-clippy/wiki#identity_op)                           | warn    | using identity operations, e.g. `x + 0` or `y / 1`
-[ineffective_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask)         | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
-[inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                       | warn    | `#[inline(always)]` is a bad idea in most cases
-[iter_next_loop](https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop)                     | warn    | for-looping over `_.next()` which is probably not intended
-[len_without_is_empty](https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty)         | warn    | traits and impls that have `.len()` but not `.is_empty()`
-[len_zero](https://github.com/Manishearth/rust-clippy/wiki#len_zero)                                 | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
-[let_and_return](https://github.com/Manishearth/rust-clippy/wiki#let_and_return)                     | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a function
-[let_unit_value](https://github.com/Manishearth/rust-clippy/wiki#let_unit_value)                     | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
-[linkedlist](https://github.com/Manishearth/rust-clippy/wiki#linkedlist)                             | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a RingBuf
-[match_ref_pats](https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats)                     | warn    | a match has all arms prefixed with `&`; the match expression can be dereferenced instead
-[min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                   | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
-[modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                             | warn    | taking a number modulo 1, which always returns 0
-[mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                   | warn    | usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, or shows a fundamental misunderstanding of references)
-[needless_bool](https://github.com/Manishearth/rust-clippy/wiki#needless_bool)                       | warn    | if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
-[needless_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#needless_lifetimes)             | warn    | using explicit lifetimes for references in function arguments when elision rules would allow omitting them
-[needless_range_loop](https://github.com/Manishearth/rust-clippy/wiki#needless_range_loop)           | warn    | for-looping over a range of indices where an iterator over items would do
-[needless_return](https://github.com/Manishearth/rust-clippy/wiki#needless_return)                   | warn    | using a return statement like `return expr;` where an expression would suffice
-[non_ascii_literal](https://github.com/Manishearth/rust-clippy/wiki#non_ascii_literal)               | allow   | using any literal non-ASCII chars in a string literal; suggests using the \\u escape instead
-[option_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#option_unwrap_used)             | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
-[precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                             | warn    | catches operations where precedence may be unclear. See the wiki for a list of cases caught
-[ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                   | allow   | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
-[range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)             | warn    | using Range::step_by(0), which produces an infinite iterator
-[redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)               | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
-[redundant_pattern](https://github.com/Manishearth/rust-clippy/wiki#redundant_pattern)               | warn    | using `name @ _` in a pattern
-[result_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#result_unwrap_used)             | allow   | using `Result.unwrap()`, which might be better handled
-[shadow_reuse](https://github.com/Manishearth/rust-clippy/wiki#shadow_reuse)                         | allow   | rebinding a name to an expression that re-uses the original value, e.g. `let x = x + 1`
-[shadow_same](https://github.com/Manishearth/rust-clippy/wiki#shadow_same)                           | allow   | rebinding a name to itself, e.g. `let mut x = &mut x`
-[shadow_unrelated](https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated)                 | warn    | The name is re-bound without even using the original value
-[should_implement_trait](https://github.com/Manishearth/rust-clippy/wiki#should_implement_trait)     | warn    | defining a method that should be implementing a std trait
-[single_match](https://github.com/Manishearth/rust-clippy/wiki#single_match)                         | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
-[str_to_string](https://github.com/Manishearth/rust-clippy/wiki#str_to_string)                       | warn    | using `to_string()` on a str, which should be `to_owned()`
-[string_add](https://github.com/Manishearth/rust-clippy/wiki#string_add)                             | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
-[string_add_assign](https://github.com/Manishearth/rust-clippy/wiki#string_add_assign)               | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
-[string_to_string](https://github.com/Manishearth/rust-clippy/wiki#string_to_string)                 | warn    | calling `String.to_string()` which is a no-op
-[toplevel_ref_arg](https://github.com/Manishearth/rust-clippy/wiki#toplevel_ref_arg)                 | warn    | a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`)
-[type_complexity](https://github.com/Manishearth/rust-clippy/wiki#type_complexity)                   | warn    | usage of very complex types; recommends factoring out parts into `type` definitions
-[unicode_not_nfc](https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc)                   | allow   | using a unicode literal not in NFC normal form (see http://www.unicode.org/reports/tr15/ for further information)
-[unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                 | warn    | comparing unit values (which is always `true` or `false`, respectively)
-[unused_collect](https://github.com/Manishearth/rust-clippy/wiki#unused_collect)                     | warn    | `collect()`ing an iterator without using the result; this is usually better written as a for loop
-[while_let_loop](https://github.com/Manishearth/rust-clippy/wiki#while_let_loop)                     | warn    | `loop { if let { ... } else break }` can be written as a `while let` loop
-[wrong_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_self_convention)       | warn    | defining a method named with an established prefix (like "into_") that takes `self` with the wrong convention
-[zero_width_space](https://github.com/Manishearth/rust-clippy/wiki#zero_width_space)                 | deny    | using a zero-width space in a string literal, which is confusing
+name                                                                                                   | default | meaning
+-------------------------------------------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+[approx_constant](https://github.com/Manishearth/rust-clippy/wiki#approx_constant)                     | warn    | the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found; suggests to use the constant
+[bad_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#bad_bit_mask)                           | warn    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
+[box_vec](https://github.com/Manishearth/rust-clippy/wiki#box_vec)                                     | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
+[cast_possible_truncation](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_truncation)   | allow   | casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`
+[cast_possible_wrap](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_wrap)               | allow   | casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`
+[cast_precision_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_precision_loss)             | allow   | casts that cause loss of precision, e.g `x as f32` where `x: u64`
+[cast_sign_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_sign_loss)                       | allow   | casts from signed types to unsigned types, e.g `x as u32` where `x: i32`
+[cmp_nan](https://github.com/Manishearth/rust-clippy/wiki#cmp_nan)                                     | deny    | comparisons to NAN (which will always return false, which is probably not intended)
+[cmp_owned](https://github.com/Manishearth/rust-clippy/wiki#cmp_owned)                                 | warn    | creating owned instances for comparing with others, e.g. `x == "foo".to_string()`
+[collapsible_if](https://github.com/Manishearth/rust-clippy/wiki#collapsible_if)                       | warn    | two nested `if`-expressions can be collapsed into one, e.g. `if x { if y { foo() } }` can be written as `if x && y { foo() }`
+[eq_op](https://github.com/Manishearth/rust-clippy/wiki#eq_op)                                         | warn    | equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)
+[explicit_iter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_iter_loop)               | warn    | for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do
+[float_cmp](https://github.com/Manishearth/rust-clippy/wiki#float_cmp)                                 | warn    | using `==` or `!=` on float values (as floating-point operations usually involve rounding errors, it is always better to check for approximate equality within small bounds)
+[identity_op](https://github.com/Manishearth/rust-clippy/wiki#identity_op)                             | warn    | using identity operations, e.g. `x + 0` or `y / 1`
+[ineffective_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask)           | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
+[inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                         | warn    | `#[inline(always)]` is a bad idea in most cases
+[iter_next_loop](https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop)                       | warn    | for-looping over `_.next()` which is probably not intended
+[len_without_is_empty](https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty)           | warn    | traits and impls that have `.len()` but not `.is_empty()`
+[len_zero](https://github.com/Manishearth/rust-clippy/wiki#len_zero)                                   | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
+[let_and_return](https://github.com/Manishearth/rust-clippy/wiki#let_and_return)                       | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a function
+[let_unit_value](https://github.com/Manishearth/rust-clippy/wiki#let_unit_value)                       | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
+[linkedlist](https://github.com/Manishearth/rust-clippy/wiki#linkedlist)                               | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a RingBuf
+[match_ref_pats](https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats)                       | warn    | a match has all arms prefixed with `&`; the match expression can be dereferenced instead
+[min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                     | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
+[modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                               | warn    | taking a number modulo 1, which always returns 0
+[mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                     | warn    | usage of double-mut refs, e.g. `&mut &mut ...` (either copy'n'paste error, or shows a fundamental misunderstanding of references)
+[needless_bool](https://github.com/Manishearth/rust-clippy/wiki#needless_bool)                         | warn    | if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
+[needless_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#needless_lifetimes)               | warn    | using explicit lifetimes for references in function arguments when elision rules would allow omitting them
+[needless_range_loop](https://github.com/Manishearth/rust-clippy/wiki#needless_range_loop)             | warn    | for-looping over a range of indices where an iterator over items would do
+[needless_return](https://github.com/Manishearth/rust-clippy/wiki#needless_return)                     | warn    | using a return statement like `return expr;` where an expression would suffice
+[non_ascii_literal](https://github.com/Manishearth/rust-clippy/wiki#non_ascii_literal)                 | allow   | using any literal non-ASCII chars in a string literal; suggests using the \\u escape instead
+[option_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#option_unwrap_used)               | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`
+[precedence](https://github.com/Manishearth/rust-clippy/wiki#precedence)                               | warn    | catches operations where precedence may be unclear. See the wiki for a list of cases caught
+[ptr_arg](https://github.com/Manishearth/rust-clippy/wiki#ptr_arg)                                     | allow   | fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively
+[range_step_by_zero](https://github.com/Manishearth/rust-clippy/wiki#range_step_by_zero)               | warn    | using Range::step_by(0), which produces an infinite iterator
+[redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)                 | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
+[redundant_pattern](https://github.com/Manishearth/rust-clippy/wiki#redundant_pattern)                 | warn    | using `name @ _` in a pattern
+[result_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#result_unwrap_used)               | allow   | using `Result.unwrap()`, which might be better handled
+[shadow_reuse](https://github.com/Manishearth/rust-clippy/wiki#shadow_reuse)                           | allow   | rebinding a name to an expression that re-uses the original value, e.g. `let x = x + 1`
+[shadow_same](https://github.com/Manishearth/rust-clippy/wiki#shadow_same)                             | allow   | rebinding a name to itself, e.g. `let mut x = &mut x`
+[shadow_unrelated](https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated)                   | warn    | The name is re-bound without even using the original value
+[should_implement_trait](https://github.com/Manishearth/rust-clippy/wiki#should_implement_trait)       | warn    | defining a method that should be implementing a std trait
+[single_match](https://github.com/Manishearth/rust-clippy/wiki#single_match)                           | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
+[str_to_string](https://github.com/Manishearth/rust-clippy/wiki#str_to_string)                         | warn    | using `to_string()` on a str, which should be `to_owned()`
+[string_add](https://github.com/Manishearth/rust-clippy/wiki#string_add)                               | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
+[string_add_assign](https://github.com/Manishearth/rust-clippy/wiki#string_add_assign)                 | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
+[string_to_string](https://github.com/Manishearth/rust-clippy/wiki#string_to_string)                   | warn    | calling `String.to_string()` which is a no-op
+[toplevel_ref_arg](https://github.com/Manishearth/rust-clippy/wiki#toplevel_ref_arg)                   | warn    | a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`)
+[type_complexity](https://github.com/Manishearth/rust-clippy/wiki#type_complexity)                     | warn    | usage of very complex types; recommends factoring out parts into `type` definitions
+[unicode_not_nfc](https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc)                     | allow   | using a unicode literal not in NFC normal form (see http://www.unicode.org/reports/tr15/ for further information)
+[unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                   | warn    | comparing unit values (which is always `true` or `false`, respectively)
+[unused_collect](https://github.com/Manishearth/rust-clippy/wiki#unused_collect)                       | warn    | `collect()`ing an iterator without using the result; this is usually better written as a for loop
+[while_let_loop](https://github.com/Manishearth/rust-clippy/wiki#while_let_loop)                       | warn    | `loop { if let { ... } else break }` can be written as a `while let` loop
+[wrong_pub_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_pub_self_convention) | allow   | defining a public method named with an established prefix (like "into_") that takes `self` with the wrong convention
+[wrong_self_convention](https://github.com/Manishearth/rust-clippy/wiki#wrong_self_convention)         | warn    | defining a method named with an established prefix (like "into_") that takes `self` with the wrong convention
+[zero_width_space](https://github.com/Manishearth/rust-clippy/wiki#zero_width_space)                   | deny    | using a zero-width space in a string literal, which is confusing
 
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!
 

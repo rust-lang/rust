@@ -27,6 +27,9 @@ declare_lint!(pub SHOULD_IMPLEMENT_TRAIT, Warn,
 declare_lint!(pub WRONG_SELF_CONVENTION, Warn,
               "defining a method named with an established prefix (like \"into_\") that takes \
                `self` with the wrong convention");
+declare_lint!(pub WRONG_PUB_SELF_CONVENTION, Allow,
+              "defining a public method named with an established prefix (like \"into_\") that takes \
+               `self` with the wrong convention");
 
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
@@ -93,7 +96,12 @@ impl LintPass for MethodsPass {
                     for &(prefix, self_kinds) in &CONVENTIONS {
                         if name.as_str().starts_with(prefix) &&
                                 !self_kinds.iter().any(|k| k.matches(&sig.explicit_self.node, is_copy)) {
-                            span_lint(cx, WRONG_SELF_CONVENTION, sig.explicit_self.span, &format!(
+                            let lint = if let Visibility::Public = item.vis {
+                                WRONG_PUB_SELF_CONVENTION
+                            } else {
+                                WRONG_SELF_CONVENTION
+                            };
+                            span_lint(cx, lint, sig.explicit_self.span, &format!(
                                 "methods called `{}*` usually take {}; consider choosing a less \
                                  ambiguous name", prefix,
                                 &self_kinds.iter().map(|k| k.description()).collect::<Vec<_>>().join(" or ")));
