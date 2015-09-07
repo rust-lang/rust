@@ -142,13 +142,15 @@ impl Def {
 
             DefLocal(id) |
             DefUpvar(id, _, _) |
-            DefLabel(id)  |
             DefSelfTy(_, Some((_, id))) => {
                 DefId::xxx_local(id) // TODO, clearly
             }
 
-            DefPrimTy(_) => panic!("attempted .def_id() on DefPrimTy"),
-            DefSelfTy(..) => panic!("attempted .def_id() on invalid DefSelfTy"),
+            DefLabel(..)  |
+            DefPrimTy(..) |
+            DefSelfTy(..) => {
+                panic!("attempted .def_id() on invalid def: {:?}", self)
+            }
         }
     }
 
