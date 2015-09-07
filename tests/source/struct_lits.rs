@@ -68,3 +68,18 @@ fn issue201() {
 fn issue201_2() {
     let s = S{a: S2{    .. c}, ..  b};
 }
+
+fn issue278() {
+    let s = S {
+        a: 0,
+        //       
+        b: 0,
+    };
+    let s1 = S {
+        a: 0,
+        // foo
+        //      
+        // bar
+        b: 0,
+    };
+}
