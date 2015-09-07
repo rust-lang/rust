@@ -816,7 +816,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             self.structs.insert(def_id, fields);
           }
           DefLocal(..) | DefPrimTy(..) | DefTyParam(..) |
-          DefUse(..) | DefUpvar(..) | DefRegion(..) |
+          DefUse(..) | DefUpvar(..) |
           DefLabel(..) | DefSelfTy(..) => {
             panic!("didn't expect `{:?}`", def);
           }
