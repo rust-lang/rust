@@ -798,6 +798,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
             if key == $name {
                 let f = declare::declare_cfn(ccx, $name, Type::func(&[], &$ret),
                                              ccx.tcx().mk_nil());
+                llvm::SetUnnamedAddr(f, false);
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
@@ -806,6 +807,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
             if key == $name {
                 let f = declare::declare_cfn(ccx, $name, Type::func(&[$($arg),*], &$ret),
                                              ccx.tcx().mk_nil());
+                llvm::SetUnnamedAddr(f, false);
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
