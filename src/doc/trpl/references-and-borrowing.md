@@ -298,8 +298,8 @@ We can’t modify `v` because it’s borrowed by the loop.
 
 ### use after free
 
-References must live as long as the resource they refer to. Rust will check the
-scopes of your references to ensure that this is true.
+References must not live longer than the resource they refer to. Rust will
+check the scopes of your references to ensure that this is true.
 
 If Rust didn’t check this property, we could accidentally use a reference
 which was invalid. For example:
