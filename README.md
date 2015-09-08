@@ -48,7 +48,7 @@ name                                                                            
 [result_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#result_unwrap_used)               | allow   | using `Result.unwrap()`, which might be better handled
 [shadow_reuse](https://github.com/Manishearth/rust-clippy/wiki#shadow_reuse)                           | allow   | rebinding a name to an expression that re-uses the original value, e.g. `let x = x + 1`
 [shadow_same](https://github.com/Manishearth/rust-clippy/wiki#shadow_same)                             | allow   | rebinding a name to itself, e.g. `let mut x = &mut x`
-[shadow_unrelated](https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated)                   | warn    | The name is re-bound without even using the original value
+[shadow_unrelated](https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated)                   | allow   | The name is re-bound without even using the original value
 [should_implement_trait](https://github.com/Manishearth/rust-clippy/wiki#should_implement_trait)       | warn    | defining a method that should be implementing a std trait
 [single_match](https://github.com/Manishearth/rust-clippy/wiki#single_match)                           | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
 [str_to_string](https://github.com/Manishearth/rust-clippy/wiki#str_to_string)                         | warn    | using `to_string()` on a str, which should be `to_owned()`
