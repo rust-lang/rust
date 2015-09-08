@@ -501,7 +501,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         let report_path_match = |did1: DefId, did2: DefId| {
             // Only external crates, if either is from a local
             // module we could have false positives
-            if !(did1.is_local() || did2.is_local()) {
+            if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
                 let exp_path = self.tcx.with_path(did1,
                                                   |p| p.map(|x| x.to_string())
                                                        .collect::<Vec<_>>());
@@ -535,7 +535,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 self.tcx.sess.note("errrr0");
                 report_path_match(exp_found.expected, exp_found.found);
             },
-            _ => () // FIXME(Manishearth) handle traits and stuff
+            _ => () // FIXME(#22750) handle traits and stuff
         }
     }
 
