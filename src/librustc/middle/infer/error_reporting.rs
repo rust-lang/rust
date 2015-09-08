@@ -226,6 +226,8 @@ pub trait ErrorReporting<'tcx> {
 
     fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &ty::TypeError<'tcx>);
 
+    fn check_and_note_conflicting_crates(&self, terr: &ty::TypeError<'tcx>, sp: Span);
+
     fn report_and_explain_type_error(&self,
                                      trace: TypeTrace<'tcx>,
                                      terr: &ty::TypeError<'tcx>);
@@ -484,10 +486,45 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                  expected_found_str,
                  terr);
 
+        self.check_and_note_conflicting_crates(terr, trace.origin.span());
+
         match trace.origin {
             infer::MatchExpressionArm(_, arm_span) =>
                 self.tcx.sess.span_note(arm_span, "match arm with an incompatible type"),
             _ => ()
+        }
+    }
+
+    /// Adds a note if the types come from similarly named crates
+    fn check_and_note_conflicting_crates(&self, terr: &ty::TypeError<'tcx>, sp: Span) {
+        match *terr {
+            ty::TypeError::Sorts(ref exp_found) => {
+                // if they are both "path types", there's a chance of ambiguity
+                // due to different versions of the same crate
+                match (&exp_found.expected.sty, &exp_found.found.sty) {
+                    (&ty::TyEnum(ref exp_adt, _), &ty::TyEnum(ref found_adt, _)) |
+                    (&ty::TyStruct(ref exp_adt, _), &ty::TyStruct(ref found_adt, _)) |
+                    (&ty::TyEnum(ref exp_adt, _), &ty::TyStruct(ref found_adt, _)) |
+                    (&ty::TyStruct(ref exp_adt, _), &ty::TyEnum(ref found_adt, _)) => {
+                        // Only external crates, if either is from a local
+                        // module we could have false positives
+                        if exp_adt.did.is_local() || found_adt.did.is_local() {
+                            return
+                        }
+                        let exp_path = self.tcx.with_path(exp_adt.did, 
+                                                          |p| p.collect::<Vec<_>>());
+                        let found_path = self.tcx.with_path(exp_adt.did, 
+                                                            |p| p.collect::<Vec<_>>());
+                        if exp_path == found_path {
+                            self.tcx.sess.span_note(sp, &format!("Perhaps two different versions \
+                                                                  of crate `{}` are being used?",
+                                                                  exp_path[0]));
+                        }
+                    },
+                    _ => ()
+                }
+            }
+            _ => () // FIXME(Manishearth) handle traits and stuff
         }
     }
 
