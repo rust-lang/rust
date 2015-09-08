@@ -25,9 +25,9 @@ fn main() {
         extern crate crate_a1 as a;
         a::try_foo(foo2); //~ ERROR mismatched types
                           //~^ HELP run
-                          //~^^ NOTE Perhaps two different versions of crate `main`
+                          //~^^ NOTE Perhaps two different versions of crate `crate_a1`
         a::try_bar(bar2); //~ ERROR mismatched types
                           //~^ HELP run
-                          //~^^ NOTE Perhaps two different versions of crate `main`
+                          //~^^ NOTE Perhaps two different versions of crate `crate_a1`
     }
 }
