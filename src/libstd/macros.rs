@@ -412,9 +412,9 @@ pub mod builtin {
     #[macro_export]
     macro_rules! include_str { ($file:expr) => ({ /* compiler built-in */ }) }
 
-    /// Includes a file as a byte slice.
+    /// Includes a file as a reference to a byte array.
     ///
-    /// This macro will yield an expression of type `&'static [u8]` which is
+    /// This macro will yield an expression of type `&'static [u8; N]` which is
     /// the contents of the filename specified. The file is located relative to
     /// the current file (similarly to how modules are found),
     ///
