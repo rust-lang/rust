@@ -4,7 +4,7 @@ use reexport::*;
 use syntax::codemap::Span;
 use rustc_front::visit::FnKind;
 
-use rustc::lint::{Context, LintArray, LintPass};
+use rustc::lint::{Context, Level, Lint, LintArray, LintPass};
 use rustc::middle::def::Def::{DefVariant, DefStruct};
 
 use utils::{in_external_macro, snippet, span_lint, span_note_and_lint};
@@ -14,7 +14,7 @@ declare_lint!(pub SHADOW_SAME, Allow,
 declare_lint!(pub SHADOW_REUSE, Allow,
     "rebinding a name to an expression that re-uses the original value, e.g. \
     `let x = x + 1`");
-declare_lint!(pub SHADOW_UNRELATED, Warn,
+declare_lint!(pub SHADOW_UNRELATED, Allow,
     "The name is re-bound without even using the original value");
 
 #[derive(Copy, Clone)]
@@ -36,13 +36,13 @@ fn check_fn(cx: &Context, decl: &FnDecl, block: &Block) {
     let mut bindings = Vec::new();
     for arg in &decl.inputs {
         if let PatIdent(_, ident, _) = arg.pat.node {
-            bindings.push(ident.node.name)
+            bindings.push((ident.node.name, ident.span))
         }
     }
     check_block(cx, block, &mut bindings);
 }
 
-fn check_block(cx: &Context, block: &Block, bindings: &mut Vec<Name>) {
+fn check_block(cx: &Context, block: &Block, bindings: &mut Vec<(Name, Span)>) {
     let len = bindings.len();
     for stmt in &block.stmts {
         match stmt.node {
@@ -55,7 +55,7 @@ fn check_block(cx: &Context, block: &Block, bindings: &mut Vec<Name>) {
     bindings.truncate(len);
 }
 
-fn check_decl(cx: &Context, decl: &Decl, bindings: &mut Vec<Name>) {
+fn check_decl(cx: &Context, decl: &Decl, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx, decl.span) { return; }
     if let DeclLocal(ref local) = decl.node {
         let Local{ ref pat, ref ty, ref init, id: _, span } = **local;
@@ -77,16 +77,23 @@ fn is_binding(cx: &Context, pat: &Pat) -> bool {
 }
 
 fn check_pat(cx: &Context, pat: &Pat, init: &Option<&Expr>, span: Span,
-        bindings: &mut Vec<Name>) {
+        bindings: &mut Vec<(Name, Span)>) {
     //TODO: match more stuff / destructuring
     match pat.node {
         PatIdent(_, ref ident, ref inner) => {
             let name = ident.node.name;
             if is_binding(cx, pat) {
-                if bindings.contains(&name) {
-                    lint_shadow(cx, name, span, pat.span, init);
-                } else {
-                    bindings.push(name);
+                let mut new_binding = true;
+                for tup in bindings.iter_mut() {
+                    if tup.0 == name {
+                        lint_shadow(cx, name, span, pat.span, init, tup.1);
+                        tup.1 = ident.span;
+                        new_binding = false;
+                        break;
+                    }
+                }
+                if new_binding {
+                    bindings.push((name, ident.span));
                 }
             }
             if let Some(ref p) = *inner { check_pat(cx, p, init, span, bindings); }
@@ -141,20 +148,25 @@ fn check_pat(cx: &Context, pat: &Pat, init: &Option<&Expr>, span: Span,
         },
         PatRegion(ref inner, _) =>
             check_pat(cx, inner, init, span, bindings),
-        //PatRange(P<Expr>, P<Expr>),
         //PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
         _ => (),
     }
 }
 
 fn lint_shadow<T>(cx: &Context, name: Name, span: Span, lspan: Span, init:
-        &Option<T>) where T: Deref<Target=Expr> {
+        &Option<T>, prev_span: Span) where T: Deref<Target=Expr> {
+    fn note_orig(cx: &Context, lint: &'static Lint, span: Span) {
+        if cx.current_level(lint) != Level::Allow {
+            cx.sess().span_note(span, "previous binding is here");
+        }
+    }
     if let Some(ref expr) = *init {
         if is_self_shadow(name, expr) {
             span_lint(cx, SHADOW_SAME, span, &format!(
                 "{} is shadowed by itself in {}",
                 snippet(cx, lspan, "_"),
                 snippet(cx, expr.span, "..")));
+                note_orig(cx, SHADOW_SAME, prev_span);
         } else {
             if contains_self(name, expr) {
                 span_note_and_lint(cx, SHADOW_REUSE, lspan, &format!(
@@ -162,21 +174,24 @@ fn lint_shadow<T>(cx: &Context, name: Name, span: Span, lspan: Span, init:
                     snippet(cx, lspan, "_"),
                     snippet(cx, expr.span, "..")),
                     expr.span, "initialization happens here");
+                note_orig(cx, SHADOW_REUSE, prev_span);
             } else {
                 span_note_and_lint(cx, SHADOW_UNRELATED, lspan, &format!(
                     "{} is shadowed by {}",
                     snippet(cx, lspan, "_"),
                     snippet(cx, expr.span, "..")),
                     expr.span, "initialization happens here");
+                note_orig(cx, SHADOW_UNRELATED, prev_span);
             }
         }
     } else {
         span_lint(cx, SHADOW_UNRELATED, span, &format!(
             "{} shadows a previous declaration", snippet(cx, lspan, "_")));
+        note_orig(cx, SHADOW_UNRELATED, prev_span);
     }
 }
 
-fn check_expr(cx: &Context, expr: &Expr, bindings: &mut Vec<Name>) {
+fn check_expr(cx: &Context, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
     if in_external_macro(cx, expr.span) { return; }
     match expr.node {
         ExprUnary(_, ref e) | ExprParen(ref e) | ExprField(ref e, _) |
@@ -205,20 +220,20 @@ fn check_expr(cx: &Context, expr: &Expr, bindings: &mut Vec<Name>) {
             for ref arm in arms {
                 for ref pat in &arm.pats {
                     check_pat(cx, &pat, &Some(&**init), pat.span, bindings);
-                    //TODO: This is ugly, but needed to get the right type
+                    //This is ugly, but needed to get the right type
+                    if let Some(ref guard) = arm.guard {
+                        check_expr(cx, guard, bindings);
+                    }
+                    check_expr(cx, &arm.body, bindings);
+                    bindings.truncate(len);
                 }
-                if let Some(ref guard) = arm.guard {
-                    check_expr(cx, guard, bindings);
-                }
-                check_expr(cx, &arm.body, bindings);
-                bindings.truncate(len);
             }
         },
         _ => ()
     }
 }
 
-fn check_ty(cx: &Context, ty: &Ty, bindings: &mut Vec<Name>) {
+fn check_ty(cx: &Context, ty: &Ty, bindings: &mut Vec<(Name, Span)>) {
     match ty.node {
         TyParen(ref sty) | TyObjectSum(ref sty, _) |
         TyVec(ref sty) => check_ty(cx, sty, bindings),

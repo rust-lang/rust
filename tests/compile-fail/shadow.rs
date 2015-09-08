@@ -27,4 +27,9 @@ fn main() {
         Some(p) => p, // no error, because the p above is in its own scope
         None => 0,
     };
+
+    match (x, o) {
+        (1, Some(a)) | (a, Some(1)) => (), // no error though `a` appears twice
+        _ => (),
+    }
 }
