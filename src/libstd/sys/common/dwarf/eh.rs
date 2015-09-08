@@ -22,7 +22,7 @@
 #![allow(unused)]
 
 use prelude::v1::*;
-use rt::dwarf::DwarfReader;
+use sys_common::dwarf::DwarfReader;
 use core::mem;
 
 pub const DW_EH_PE_omit     : u8 = 0xFF;

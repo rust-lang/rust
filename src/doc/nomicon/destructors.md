@@ -26,12 +26,15 @@ this is totally fine.
 For instance, a custom implementation of `Box` might write `Drop` like this:
 
 ```rust
-#![feature(heap_api, core_intrinsics, unique)]
+#![feature(alloc, heap_api, core_intrinsics, unique)]
 
-use std::rt::heap;
+extern crate alloc;
+
 use std::ptr::Unique;
 use std::intrinsics::drop_in_place;
 use std::mem;
+
+use alloc::heap;
 
 struct Box<T>{ ptr: Unique<T> }
 
@@ -45,6 +48,7 @@ impl<T> Drop for Box<T> {
         }
     }
 }
+# fn main() {}
 ```
 
 and this works fine because when Rust goes to drop the `ptr` field it just sees
@@ -54,12 +58,15 @@ use-after-free the `ptr` because when drop exits, it becomes inacessible.
 However this wouldn't work:
 
 ```rust
-#![feature(heap_api, core_intrinsics, unique)]
+#![feature(alloc, heap_api, core_intrinsics, unique)]
 
-use std::rt::heap;
+extern crate alloc;
+
 use std::ptr::Unique;
 use std::intrinsics::drop_in_place;
 use std::mem;
+
+use alloc::heap;
 
 struct Box<T>{ ptr: Unique<T> }
 
@@ -87,6 +94,7 @@ impl<T> Drop for SuperBox<T> {
         }
     }
 }
+# fn main() {}
 ```
 
 After we deallocate the `box`'s ptr in SuperBox's destructor, Rust will
@@ -129,12 +137,15 @@ The classic safe solution to overriding recursive drop and allowing moving out
 of Self during `drop` is to use an Option:
 
 ```rust
-#![feature(heap_api, core_intrinsics, unique)]
+#![feature(alloc, heap_api, core_intrinsics, unique)]
 
-use std::rt::heap;
+extern crate alloc;
+
 use std::ptr::Unique;
 use std::intrinsics::drop_in_place;
 use std::mem;
+
+use alloc::heap;
 
 struct Box<T>{ ptr: Unique<T> }
 
@@ -165,6 +176,7 @@ impl<T> Drop for SuperBox<T> {
         }
     }
 }
+# fn main() {}
 ```
 
 However this has fairly odd semantics: you're saying that a field that *should*

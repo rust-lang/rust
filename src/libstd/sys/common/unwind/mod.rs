@@ -184,7 +184,6 @@ pub fn panicking() -> bool {
 #[no_mangle]
 #[allow(private_no_mangle_fns)]
 fn rust_panic(cause: Box<Any + Send + 'static>) -> ! {
-    rtdebug!("begin_unwind()");
     unsafe {
         imp::panic(cause)
     }
@@ -288,7 +287,8 @@ fn begin_unwind_inner(msg: Box<Any + Send>,
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming
         // unwinding or otherwise exiting the thread cleanly.
-        rterrln!("thread panicked while panicking. aborting.");
+        super::util::dumb_print(format_args!("thread panicked while panicking. \
+                                              aborting."));
         unsafe { intrinsics::abort() }
     }
     PANICKING.with(|s| s.set(true));

@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::prelude::*;
-
 use env;
 use fmt;
 use intrinsics;
+use io::prelude::*;
 use sync::atomic::{self, Ordering};
 use sys::stdio::Stderr;
+use thread;
 
 pub fn min_stack() -> usize {
     static MIN: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
@@ -30,24 +30,17 @@ pub fn min_stack() -> usize {
     amt
 }
 
-// Indicates whether we should perform expensive sanity checks, including rtassert!
-//
-// FIXME: Once the runtime matures remove the `true` below to turn off rtassert,
-//        etc.
-pub const ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) ||
-                                  cfg!(rtassert);
-
 pub fn dumb_print(args: fmt::Arguments) {
     let _ = Stderr::new().map(|mut stderr| stderr.write_fmt(args));
 }
 
 pub fn abort(args: fmt::Arguments) -> ! {
-    rterrln!("fatal runtime error: {}", args);
+    dumb_print(format_args!("fatal runtime error: {}", args));
     unsafe { intrinsics::abort(); }
 }
 
+#[allow(dead_code)] // stack overflow detection not enabled on all platforms
 pub unsafe fn report_overflow() {
-    use thread;
-    rterrln!("\nthread '{}' has overflowed its stack",
-             thread::current().name().unwrap_or("<unknown>"));
+    dumb_print(format_args!("\nthread '{}' has overflowed its stack",
+                            thread::current().name().unwrap_or("<unknown>")));
 }

@@ -49,7 +49,8 @@ use std::marker;
 use std::mem;
 use std::ptr;
 use std::rc::Rc;
-use std::rt::heap::{allocate, deallocate};
+
+use alloc::heap::{allocate, deallocate};
 
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
