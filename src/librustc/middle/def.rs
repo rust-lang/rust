@@ -135,14 +135,12 @@ impl Def {
             DefFn(id, _) | DefMod(id) | DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(_, id) |
             DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
-            DefMethod(id) | DefConst(id) | DefAssociatedConst(id) |
-            DefSelfTy(Some(id), None)=> {
+            DefMethod(id) | DefConst(id) | DefAssociatedConst(id) => {
                 id
             }
 
             DefLocal(id) |
-            DefUpvar(id, _, _) |
-            DefSelfTy(_, Some((_, id))) => {
+            DefUpvar(id, _, _) => {
                 DefId::xxx_local(id) // TODO, clearly
             }
 

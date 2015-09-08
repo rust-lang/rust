@@ -637,7 +637,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
         let def = self.tcx.def_map.borrow().get(&ref_id).unwrap().full_def();
         match def {
-            def::DefPrimTy(_) => None,
+            def::DefPrimTy(_) | def::DefSelfTy(..) => None,
             _ => Some(def.def_id()),
         }
     }

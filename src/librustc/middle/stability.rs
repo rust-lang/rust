@@ -474,6 +474,7 @@ pub fn check_path(tcx: &ty::ctxt, path: &hir::Path, id: ast::NodeId,
                   cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
     match tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
         Some(def::DefPrimTy(..)) => {}
+        Some(def::DefSelfTy(..)) => {}
         Some(def) => {
             maybe_do_stability_check(tcx, def.def_id(), path.span, cb);
         }
