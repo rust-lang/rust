@@ -62,10 +62,10 @@ r##"<!DOCTYPE html>
 
     {before_content}
 
-    <section class="sidebar">
+    <nav class="sidebar">
         {logo}
         {sidebar}
-    </section>
+    </nav>
 
     <nav class="sub">
         <form class="search-form js-only">
@@ -83,10 +83,12 @@ r##"<!DOCTYPE html>
 
     <section class="footer"></section>
 
-    <div id="help" class="hidden">
+    <aside id="help" class="hidden">
         <div>
+            <h1 class="hidden">Help</h1>
+
             <div class="shortcuts">
-                <h1>Keyboard Shortcuts</h1>
+                <h2>Keyboard Shortcuts</h2>
 
                 <dl>
                     <dt>?</dt>
@@ -103,7 +105,7 @@ r##"<!DOCTYPE html>
             </div>
 
             <div class="infos">
-                <h1>Search Tricks</h1>
+                <h2>Search Tricks</h2>
 
                 <p>
                     Prefix searches with a type followed by a colon (e.g.
@@ -123,7 +125,7 @@ r##"<!DOCTYPE html>
                 </p>
             </div>
         </div>
-    </div>
+    </aside>
 
     {after_content}
 
