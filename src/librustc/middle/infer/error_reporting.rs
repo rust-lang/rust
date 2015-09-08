@@ -78,6 +78,7 @@ use rustc_front::hir;
 use rustc_front::print::pprust;
 
 use middle::def;
+use middle::def_id::DefId;
 use middle::infer;
 use middle::region;
 use middle::subst;
@@ -497,6 +498,25 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
     /// Adds a note if the types come from similarly named crates
     fn check_and_note_conflicting_crates(&self, terr: &ty::TypeError<'tcx>, sp: Span) {
+        let report_path_match = |did1: DefId, did2: DefId| {
+            // Only external crates, if either is from a local
+            // module we could have false positives
+            if !(did1.is_local() || did2.is_local()) {
+                let exp_path = self.tcx.with_path(did1,
+                                                  |p| p.map(|x| x.to_string())
+                                                       .collect::<Vec<_>>());
+                let found_path = self.tcx.with_path(did2,
+                                                    |p| p.map(|x| x.to_string())
+                                                         .collect::<Vec<_>>());
+                // We compare strings because PathMod and PathName can be different
+                // for imported and non-imported crates
+                if exp_path == found_path {
+                    self.tcx.sess.span_note(sp, &format!("Perhaps two different versions \
+                                                          of crate `{}` are being used?",
+                                                          exp_path[0]));
+                }
+            }
+        };
         match *terr {
             ty::TypeError::Sorts(ref exp_found) => {
                 // if they are both "path types", there's a chance of ambiguity
@@ -506,24 +526,15 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     (&ty::TyStruct(ref exp_adt, _), &ty::TyStruct(ref found_adt, _)) |
                     (&ty::TyEnum(ref exp_adt, _), &ty::TyStruct(ref found_adt, _)) |
                     (&ty::TyStruct(ref exp_adt, _), &ty::TyEnum(ref found_adt, _)) => {
-                        // Only external crates, if either is from a local
-                        // module we could have false positives
-                        if exp_adt.did.is_local() || found_adt.did.is_local() {
-                            return
-                        }
-                        let exp_path = self.tcx.with_path(exp_adt.did, 
-                                                          |p| p.collect::<Vec<_>>());
-                        let found_path = self.tcx.with_path(exp_adt.did, 
-                                                            |p| p.collect::<Vec<_>>());
-                        if exp_path == found_path {
-                            self.tcx.sess.span_note(sp, &format!("Perhaps two different versions \
-                                                                  of crate `{}` are being used?",
-                                                                  exp_path[0]));
-                        }
+                        report_path_match(exp_adt.did, found_adt.did);
                     },
                     _ => ()
                 }
-            }
+            },
+            ty::TypeError::Traits(ref exp_found) => {
+                self.tcx.sess.note("errrr0");
+                report_path_match(exp_found.expected, exp_found.found);
+            },
             _ => () // FIXME(Manishearth) handle traits and stuff
         }
     }
