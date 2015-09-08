@@ -26,6 +26,7 @@ use middle::def;
 use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::subst;
 use middle::subst::{Subst, Substs};
+use rustc::front::map as hir_map;
 use trans::adt;
 use trans::base;
 use trans::base::*;
@@ -50,7 +51,7 @@ use trans::type_::Type;
 use trans::type_of;
 use middle::ty::{self, Ty, HasTypeFlags, RegionEscape};
 use middle::ty::MethodCall;
-use rustc::ast_map;
+use rustc_front::hir;
 
 use syntax::abi as synabi;
 use syntax::ast;
@@ -83,14 +84,14 @@ pub struct Callee<'blk, 'tcx: 'blk> {
     pub ty: Ty<'tcx>
 }
 
-fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
+fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                      -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("trans_callee");
     debug!("callee::trans(expr={:?})", expr);
 
     // pick out special kinds of expressions that can be called:
     match expr.node {
-        ast::ExprPath(..) => {
+        hir::ExprPath(..) => {
             return trans_def(bcx, bcx.def(expr.id), expr);
         }
         _ => {}
@@ -99,7 +100,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
     // any other expressions are closures:
     return datum_callee(bcx, expr);
 
-    fn datum_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
+    fn datum_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &hir::Expr)
                                 -> Callee<'blk, 'tcx> {
         let DatumBlock { bcx, datum, .. } = expr::trans(bcx, expr);
         match datum.ty.sty {
@@ -130,7 +131,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
 
     fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              def: def::Def,
-                             ref_expr: &ast::Expr)
+                             ref_expr: &hir::Expr)
                              -> Callee<'blk, 'tcx> {
         debug!("trans_def(def={:?}, ref_expr={:?})", def, ref_expr);
         let expr_ty = common::node_id_type(bcx, ref_expr.id);
@@ -140,7 +141,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 let maybe_ast_node = maybe_def_id.and_then(|def_id| bcx.tcx().map
                                                                              .find(def_id.node));
                 match maybe_ast_node {
-                    Some(ast_map::NodeStructCtor(_)) => true,
+                    Some(hir_map::NodeStructCtor(_)) => true,
                     _ => false
                 }
             } => {
@@ -286,7 +287,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let (opt_def_id, sig) =
         match bare_fn_ty.sty {
             ty::TyBareFn(opt_def_id,
-                           &ty::BareFnTy { unsafety: ast::Unsafety::Normal,
+                           &ty::BareFnTy { unsafety: hir::Unsafety::Normal,
                                            abi: synabi::Rust,
                                            ref sig }) => {
                 (opt_def_id, sig)
@@ -301,7 +302,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let tuple_input_ty = tcx.mk_tup(sig.inputs.to_vec());
     let tuple_fn_ty = tcx.mk_fn(opt_def_id,
         tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: ast::Unsafety::Normal,
+            unsafety: hir::Unsafety::Normal,
             abi: synabi::RustCall,
             sig: ty::Binder(ty::FnSig {
                 inputs: vec![bare_fn_ty_maybe_ref,
@@ -471,11 +472,11 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
             || "local item should be in ast map".to_string());
 
         match map_node {
-            ast_map::NodeVariant(v) => match v.node.kind {
-                ast::TupleVariantKind(ref args) => !args.is_empty(),
+            hir_map::NodeVariant(v) => match v.node.kind {
+                hir::TupleVariantKind(ref args) => !args.is_empty(),
                 _ => false
             },
-            ast_map::NodeStructCtor(_) => true,
+            hir_map::NodeStructCtor(_) => true,
             _ => false
         }
     } else {
@@ -572,8 +573,8 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 // Translating calls
 
 pub fn trans_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                  call_expr: &ast::Expr,
-                                  f: &ast::Expr,
+                                  call_expr: &hir::Expr,
+                                  f: &hir::Expr,
                                   args: CallArgs<'a, 'tcx>,
                                   dest: expr::Dest)
                                   -> Block<'blk, 'tcx> {
@@ -586,8 +587,8 @@ pub fn trans_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                         call_expr: &ast::Expr,
-                                         rcvr: &ast::Expr,
+                                         call_expr: &hir::Expr,
+                                         rcvr: &hir::Expr,
                                          args: CallArgs<'a, 'tcx>,
                                          dest: expr::Dest)
                                          -> Block<'blk, 'tcx> {
@@ -853,7 +854,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 pub enum CallArgs<'a, 'tcx> {
     // Supply value of arguments as a list of expressions that must be
     // translated. This is used in the common case of `foo(bar, qux)`.
-    ArgExprs(&'a [P<ast::Expr>]),
+    ArgExprs(&'a [P<hir::Expr>]),
 
     // Supply value of arguments as a list of LLVM value refs; frequently
     // used with lang items and so forth, when the argument is an internal
@@ -868,12 +869,12 @@ pub enum CallArgs<'a, 'tcx> {
 
     // Supply value of arguments as a list of expressions that must be
     // translated, for overloaded call operators.
-    ArgOverloadedCall(Vec<&'a ast::Expr>),
+    ArgOverloadedCall(Vec<&'a hir::Expr>),
 }
 
 fn trans_args_under_call_abi<'blk, 'tcx>(
                              mut bcx: Block<'blk, 'tcx>,
-                             arg_exprs: &[P<ast::Expr>],
+                             arg_exprs: &[P<hir::Expr>],
                              fn_ty: Ty<'tcx>,
                              llargs: &mut Vec<ValueRef>,
                              arg_cleanup_scope: cleanup::ScopeId,
@@ -934,7 +935,7 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
 
 fn trans_overloaded_call_args<'blk, 'tcx>(
                               mut bcx: Block<'blk, 'tcx>,
-                              arg_exprs: Vec<&ast::Expr>,
+                              arg_exprs: Vec<&hir::Expr>,
                               fn_ty: Ty<'tcx>,
                               llargs: &mut Vec<ValueRef>,
                               arg_cleanup_scope: cleanup::ScopeId,

@@ -1180,16 +1180,27 @@ do
             # MSVC requires cmake because that's how we're going to build LLVM
             probe_need CFG_CMAKE cmake
 
+            # There are three builds of cmake on windows: MSVC, MinGW and Cygwin
+            # The Cygwin build does not have generators for Visual Studio, so
+            # detect that here and error.
+            if ! "$CFG_CMAKE" --help | sed -n '/^Generators/,$p' | grep 'Visual Studio' > /dev/null
+            then
+                err "cmake does not support Visual Studio generators.\n\n \
+                     This is likely due to it being an msys/cygwin build of cmake, \
+                     rather than the required windows version, built using MinGW \
+                     or Visual Studio."
+            fi
+
             # Use the REG program to figure out where VS is installed
             # We need to figure out where cl.exe and link.exe are, so we do some
             # munging and some probing here. We also look for the default
             # INCLUDE and LIB variables for MSVC so we can set those in the
             # build system as well.
-            install=$(reg QUERY \
+            install=$(cmd //c reg QUERY \
                        'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\14.0' \
                        -v InstallDir)
             if [ -z "$install" ]; then
-              install=$(reg QUERY \
+              install=$(cmd //c reg QUERY \
                          'HKLM\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\12.0' \
                          -v InstallDir)
             fi
@@ -1222,9 +1233,9 @@ do
             eval CFG_MSVC_LINK_$bits="\"$bindir/link.exe\""
 
             vcvarsall="${CFG_MSVC_ROOT}/VC/vcvarsall.bat"
-            include_path=$(cmd /c "\"$vcvarsall\" $msvc_part && cmd /c echo %INCLUDE%")
+            include_path=$(cmd //V:ON //c "$vcvarsall" $msvc_part \& echo !INCLUDE!)
             need_ok "failed to learn about MSVC's INCLUDE"
-            lib_path=$(cmd /c "\"$vcvarsall\" $msvc_part && cmd /c echo %LIB%")
+            lib_path=$(cmd //V:ON //c "$vcvarsall" $msvc_part \& echo !LIB!)
             need_ok "failed to learn about MSVC's LIB"
 
             eval CFG_MSVC_INCLUDE_PATH_${bits}="\"$include_path\""

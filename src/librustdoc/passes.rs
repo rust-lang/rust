@@ -14,6 +14,7 @@ use std::cmp;
 use std::string::String;
 use std::usize;
 use syntax::ast;
+use rustc_front::hir;
 
 use clean;
 use clean::Item;
@@ -135,7 +136,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                         return None;
                     }
                     // Traits are in exported_items even when they're totally private.
-                    if i.is_trait() && i.visibility != Some(ast::Public) {
+                    if i.is_trait() && i.visibility != Some(hir::Public) {
                         return None;
                     }
                 }
@@ -149,13 +150,13 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             }
 
             clean::ExternCrateItem(..) | clean::ImportItem(_) => {
-                if i.visibility != Some(ast::Public) {
+                if i.visibility != Some(hir::Public) {
                     return None
                 }
             }
 
             clean::StructFieldItem(..) => {
-                if i.visibility != Some(ast::Public) {
+                if i.visibility != Some(hir::Public) {
                     return Some(clean::Item {
                         inner: clean::StructFieldItem(clean::HiddenStructField),
                         ..i
@@ -307,7 +308,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
 }
 
 pub fn unindent(s: &str) -> String {
-    let lines = s.lines_any().collect::<Vec<&str> >();
+    let lines = s.lines().collect::<Vec<&str> >();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
     let min_indent = lines.iter().fold(usize::MAX, |min_indent, line| {

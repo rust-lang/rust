@@ -33,16 +33,16 @@ use middle::ty;
 use middle::free_region::FreeRegionMap;
 use CrateCtxt;
 use middle::infer::{self, InferCtxt, new_infer_ctxt};
-use rustc::ast_map::{self, NodeItem};
 use std::cell::RefCell;
 use std::rc::Rc;
-use syntax::ast::{Crate};
-use syntax::ast::{Item, ItemImpl};
-use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;
-use syntax::visit;
 use util::nodemap::{DefIdMap, FnvHashMap};
+use rustc::front::map as hir_map;
+use rustc::front::map::NodeItem;
+use rustc_front::visit;
+use rustc_front::hir::{Item, ItemImpl,Crate};
+use rustc_front::hir;
 
 mod orphan;
 mod overlap;
@@ -254,18 +254,14 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 let mut items: Vec<ImplOrTraitItemId> =
                         impl_items.iter().map(|impl_item| {
                     match impl_item.node {
-                        ast::ConstImplItem(..) => {
+                        hir::ConstImplItem(..) => {
                             ConstTraitItemId(DefId::local(impl_item.id))
                         }
-                        ast::MethodImplItem(..) => {
+                        hir::MethodImplItem(..) => {
                             MethodTraitItemId(DefId::local(impl_item.id))
                         }
-                        ast::TypeImplItem(_) => {
+                        hir::TypeImplItem(_) => {
                             TypeTraitItemId(DefId::local(impl_item.id))
-                        }
-                        ast::MacImplItem(_) => {
-                            self.crate_context.tcx.sess.span_bug(impl_item.span,
-                                                                 "unexpanded macro");
                         }
                     }
                 }).collect();
@@ -321,7 +317,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                     if impl_did.is_local() {
                         {
                             match tcx.map.find(impl_did.node) {
-                                Some(ast_map::NodeItem(item)) => {
+                                Some(hir_map::NodeItem(item)) => {
                                     span_err!(tcx.sess, item.span, E0120,
                                         "the Drop trait may only be implemented on structures");
                                 }
@@ -448,7 +444,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
             let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>, mt_b: ty::TypeAndMut<'tcx>,
                                mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
-                if (mt_a.mutbl, mt_b.mutbl) == (ast::MutImmutable, ast::MutMutable) {
+                if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
                     infcx.report_mismatched_types(span, mk_ptr(mt_b.ty),
                                                   target, &ty::TypeError::Mutability);
                 }

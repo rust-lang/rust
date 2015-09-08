@@ -72,7 +72,7 @@ impl Thread {
 
         extern fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
             unsafe { start_thread(main); }
-            0 as *mut _
+            ptr::null_mut()
         }
     }
 

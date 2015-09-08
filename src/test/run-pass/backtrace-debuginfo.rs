@@ -27,11 +27,12 @@ macro_rules! pos {
     () => ((file!(), line!()))
 }
 
-#[cfg(all(unix,
-          not(target_os = "macos"),
-          not(target_os = "ios"),
-          not(target_os = "android"),
-          not(all(target_os = "linux", target_arch = "arm"))))]
+#[cfg(any(all(unix,
+              not(target_os = "macos"),
+              not(target_os = "ios"),
+              not(target_os = "android"),
+              not(all(target_os = "linux", target_arch = "arm"))),
+          all(windows, not(target_arch = "x86"))))]
 macro_rules! dump_and_die {
     ($($pos:expr),*) => ({
         // FIXME(#18285): we cannot include the current position because
@@ -42,11 +43,12 @@ macro_rules! dump_and_die {
 }
 
 // this does not work on Windows, Android, OSX or iOS
-#[cfg(any(not(unix),
-          target_os = "macos",
-          target_os = "ios",
-          target_os = "android",
-          all(target_os = "linux", target_arch = "arm")))]
+#[cfg(not(any(all(unix,
+              not(target_os = "macos"),
+              not(target_os = "ios"),
+              not(target_os = "android"),
+              not(all(target_os = "linux", target_arch = "arm"))),
+          all(windows, not(target_arch = "x86")))))]
 macro_rules! dump_and_die {
     ($($pos:expr),*) => ({ let _ = [$($pos),*]; })
 }
@@ -67,7 +69,10 @@ type Pos = (&'static str, u32);
 // this goes to stdout and each line has to be occurred
 // in the following backtrace to stderr with a correct order.
 fn dump_filelines(filelines: &[Pos]) {
-    for &(file, line) in filelines.iter().rev() {
+    // Skip top frame for MSVC, because it sees the macro rather than
+    // the containing function.
+    let skip = if cfg!(target_env = "msvc") {1} else {0};
+    for &(file, line) in filelines.iter().rev().skip(skip) {
         // extract a basename
         let basename = file.split(&['/', '\\'][..]).last().unwrap();
         println!("{}:{}", basename, line);
@@ -86,12 +91,18 @@ fn inner(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
     });
 }
 
-#[inline(always)]
+// LLVM does not yet output the required debug info to support showing inlined
+// function calls in backtraces when targetting MSVC, so disable inlining in
+// this case.
+#[cfg_attr(not(target_env = "msvc"), inline(always))]
+#[cfg_attr(target_env = "msvc", inline(never))]
 fn inner_inlined(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
     check!(counter; main_pos, outer_pos);
     check!(counter; main_pos, outer_pos);
 
-    #[inline(always)]
+    // Again, disable inlining for MSVC.
+    #[cfg_attr(not(target_env = "msvc"), inline(always))]
+    #[cfg_attr(target_env = "msvc", inline(never))]
     fn inner_further_inlined(counter: &mut i32, main_pos: Pos, outer_pos: Pos, inner_pos: Pos) {
         check!(counter; main_pos, outer_pos, inner_pos);
     }
@@ -165,3 +176,4 @@ fn main() {
         run_test(&args[0]);
     }
 }
+

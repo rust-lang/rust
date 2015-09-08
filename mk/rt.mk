@@ -259,8 +259,10 @@ BACKTRACE_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),backtrace)
 BACKTRACE_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(BACKTRACE_NAME_$(1))
 BACKTRACE_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/libbacktrace
 
-# We don't use this on platforms that aren't linux-based, so just make the file
-# available, the compilation of libstd won't actually build it.
+# We don't use this on platforms that aren't linux-based (with the exception of
+# msys2/mingw builds on windows, which use it to read the dwarf debug
+# information) so just make the file available, the compilation of libstd won't
+# actually build it.
 ifeq ($$(findstring darwin,$$(OSTYPE_$(1))),darwin)
 # See comment above
 $$(BACKTRACE_LIB_$(1)):
@@ -273,7 +275,7 @@ $$(BACKTRACE_LIB_$(1)):
 	touch $$@
 else
 
-ifeq ($$(CFG_WINDOWSY_$(1)),1)
+ifeq ($$(findstring msvc,$(1)),msvc)
 # See comment above
 $$(BACKTRACE_LIB_$(1)):
 	touch $$@
@@ -296,16 +298,25 @@ endif
 # ./configure script. This is done to force libbacktrace to *not* use the
 # atomic/sync functionality because it pulls in unnecessary dependencies and we
 # never use it anyway.
+#
+# We also use `env PWD=` to clear the PWD environment variable, and then
+# execute the command in a new shell. This is necessary to workaround a
+# buildbot/msys2 bug: the shell is launched with PWD set to a windows-style path,
+# which results in all further uses of `pwd` also printing a windows-style path,
+# which breaks libbacktrace's configure script. Clearing PWD within the same
+# shell is not sufficient.
+
 $$(BACKTRACE_BUILD_DIR_$(1))/Makefile: $$(BACKTRACE_DEPS) $$(MKFILE_DEPS)
 	@$$(call E, configure: libbacktrace for $(1))
 	$$(Q)rm -rf $$(BACKTRACE_BUILD_DIR_$(1))
 	$$(Q)mkdir -p $$(BACKTRACE_BUILD_DIR_$(1))
-	$$(Q)(cd $$(BACKTRACE_BUILD_DIR_$(1)) && \
+	$$(Q)(cd $$(BACKTRACE_BUILD_DIR_$(1)) && env \
+	      PWD= \
 	      CC="$$(CC_$(1))" \
 	      AR="$$(AR_$(1))" \
 	      RANLIB="$$(AR_$(1)) s" \
 	      CFLAGS="$$(CFG_GCCISH_CFLAGS_$(1):-Werror=) -fno-stack-protector" \
-	      $(S)src/libbacktrace/configure --target=$(1) --host=$(CFG_BUILD))
+	      $(S)src/libbacktrace/configure --build=$(CFG_GNU_TRIPLE_$(CFG_BUILD)) --host=$(CFG_GNU_TRIPLE_$(1)))
 	$$(Q)echo '#undef HAVE_ATOMIC_FUNCTIONS' >> \
 	      $$(BACKTRACE_BUILD_DIR_$(1))/config.h
 	$$(Q)echo '#undef HAVE_SYNC_FUNCTIONS' >> \
@@ -317,7 +328,7 @@ $$(BACKTRACE_LIB_$(1)): $$(BACKTRACE_BUILD_DIR_$(1))/Makefile $$(MKFILE_DEPS)
 		INCDIR=$(S)src/libbacktrace
 	$$(Q)cp $$(BACKTRACE_BUILD_DIR_$(1))/.libs/libbacktrace.a $$@
 
-endif # endif for windowsy
+endif # endif for msvc
 endif # endif for ios
 endif # endif for darwin
 

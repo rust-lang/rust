@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::imp::*;
+pub use self::imp::print;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 #[path = "dladdr.rs"]
 mod imp;
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
-#[path = "libbacktrace.rs"]
+#[path = "gnu.rs"]
 mod imp;

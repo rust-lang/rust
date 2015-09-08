@@ -10,34 +10,30 @@
 
 // Searching for information from the cstore
 
-use ast_map;
-use metadata::common::*;
+use front::map as ast_map;
 use metadata::cstore;
 use metadata::decoder;
 use metadata::inline::InlinedItem;
 use middle::def_id::DefId;
 use middle::lang_items;
 use middle::ty;
+use util::nodemap::FnvHashMap;
 
-use rbml;
-use rbml::reader;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::attr;
-use syntax::diagnostic::expect;
-
-use std::collections::hash_map::HashMap;
+use rustc_front::attr;
+use rustc_front::hir;
 
 #[derive(Copy, Clone)]
 pub struct MethodInfo {
     pub name: ast::Name,
     pub def_id: DefId,
-    pub vis: ast::Visibility,
+    pub vis: hir::Visibility,
 }
 
 pub fn get_symbol(cstore: &cstore::CStore, def: DefId) -> String {
     let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_symbol(cdata.data(), def.node)
+    decoder::get_symbol(&cdata, def.node)
 }
 
 /// Iterates over all the language items in the given crate.
@@ -55,7 +51,7 @@ pub fn each_lang_item<F>(cstore: &cstore::CStore,
 pub fn each_child_of_item<F>(cstore: &cstore::CStore,
                              def_id: DefId,
                              callback: F) where
-    F: FnMut(decoder::DefLike, ast::Name, ast::Visibility),
+    F: FnMut(decoder::DefLike, ast::Name, hir::Visibility),
 {
     let crate_data = cstore.get_crate_data(def_id.krate);
     let get_crate_data = |cnum| {
@@ -72,7 +68,7 @@ pub fn each_child_of_item<F>(cstore: &cstore::CStore,
 pub fn each_top_level_item_of_crate<F>(cstore: &cstore::CStore,
                                        cnum: ast::CrateNum,
                                        callback: F) where
-    F: FnMut(decoder::DefLike, ast::Name, ast::Visibility),
+    F: FnMut(decoder::DefLike, ast::Name, hir::Visibility),
 {
     let crate_data = cstore.get_crate_data(cnum);
     let get_crate_data = |cnum| {
@@ -190,7 +186,7 @@ pub fn get_methods_if_impl(cstore: &cstore::CStore,
 
 pub fn get_item_attrs(cstore: &cstore::CStore,
                       def_id: DefId)
-                      -> Vec<ast::Attribute> {
+                      -> Vec<hir::Attribute> {
     let cdata = cstore.get_crate_data(def_id.krate);
     decoder::get_item_attrs(&*cdata, def_id.node)
 }
@@ -200,8 +196,8 @@ pub fn get_struct_field_names(cstore: &cstore::CStore, def: DefId) -> Vec<ast::N
     decoder::get_struct_field_names(&cstore.intr, &*cdata, def.node)
 }
 
-pub fn get_struct_field_attrs(cstore: &cstore::CStore, def: DefId) -> HashMap<ast::NodeId,
-        Vec<ast::Attribute>> {
+pub fn get_struct_field_attrs(cstore: &cstore::CStore, def: DefId) -> FnvHashMap<ast::NodeId,
+        Vec<hir::Attribute>> {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_struct_field_attrs(&*cdata)
 }
@@ -242,34 +238,9 @@ pub fn get_super_predicates<'tcx>(tcx: &ty::ctxt<'tcx>, def: DefId)
     decoder::get_super_predicates(&*cdata, def.node, tcx)
 }
 
-pub fn get_field_type<'tcx>(tcx: &ty::ctxt<'tcx>, class_id: DefId,
-                            def: DefId) -> ty::TypeScheme<'tcx> {
-    let cstore = &tcx.sess.cstore;
-    let cdata = cstore.get_crate_data(class_id.krate);
-    let all_items = reader::get_doc(rbml::Doc::new(cdata.data()), tag_items);
-    let class_doc = expect(tcx.sess.diagnostic(),
-                           decoder::maybe_find_item(class_id.node, all_items),
-                           || {
-        (format!("get_field_type: class ID {:?} not found",
-                 class_id)).to_string()
-    });
-    let the_field = expect(tcx.sess.diagnostic(),
-        decoder::maybe_find_item(def.node, class_doc),
-        || {
-            (format!("get_field_type: in class {:?}, field ID {:?} not found",
-                    class_id,
-                    def)).to_string()
-        });
-    let ty = decoder::item_type(def, the_field, tcx, &*cdata);
-    ty::TypeScheme {
-        generics: ty::Generics::empty(),
-        ty: ty,
-    }
-}
-
 pub fn get_impl_polarity<'tcx>(tcx: &ty::ctxt<'tcx>,
                                def: DefId)
-                               -> Option<ast::ImplPolarity>
+                               -> Option<hir::ImplPolarity>
 {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);

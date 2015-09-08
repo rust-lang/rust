@@ -604,14 +604,14 @@ impl str {
         UnicodeStr::split_whitespace(self)
     }
 
-    /// An iterator over the lines of a string, separated by `\n`.
+    /// An iterator over the lines of a string, separated by `\n` or `\r\n`.
     ///
-    /// This does not include the empty string after a trailing `\n`.
+    /// This does not include the empty string after a trailing newline or CRLF.
     ///
     /// # Examples
     ///
     /// ```
-    /// let four_lines = "foo\nbar\n\nbaz";
+    /// let four_lines = "foo\nbar\n\r\nbaz";
     /// let v: Vec<&str> = four_lines.lines().collect();
     ///
     /// assert_eq!(v, ["foo", "bar", "", "baz"]);
@@ -620,7 +620,7 @@ impl str {
     /// Leaving off the trailing character:
     ///
     /// ```
-    /// let four_lines = "foo\nbar\n\nbaz\n";
+    /// let four_lines = "foo\r\nbar\n\nbaz\n";
     /// let v: Vec<&str> = four_lines.lines().collect();
     ///
     /// assert_eq!(v, ["foo", "bar", "", "baz"]);
@@ -654,7 +654,9 @@ impl str {
     /// assert_eq!(v, ["foo", "bar", "", "baz"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[deprecated(since = "1.4.0", reason = "use lines() instead now")]
     #[inline]
+    #[allow(deprecated)]
     pub fn lines_any(&self) -> LinesAny {
         core_str::StrExt::lines_any(self)
     }

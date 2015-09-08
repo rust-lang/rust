@@ -12,12 +12,9 @@
 //!
 //! Documentation can be found on the `rt::at_exit` function.
 
-// FIXME: switch this to use atexit. Currently this
-// segfaults (the queue's memory is mysteriously gone), so
-// instead the cleanup is tied to the `std::rt` entry point.
-
 use alloc::boxed::FnBox;
 use boxed::Box;
+use ptr;
 use sys_common::mutex::Mutex;
 use vec::Vec;
 
@@ -28,7 +25,7 @@ type Queue = Vec<Box<FnBox()>>;
 // the thread infrastructure to be in place (useful on the borders of
 // initialization/destruction).
 static LOCK: Mutex = Mutex::new();
-static mut QUEUE: *mut Queue = 0 as *mut Queue;
+static mut QUEUE: *mut Queue = ptr::null_mut();
 
 // The maximum number of times the cleanup routines will be run. While running
 // the at_exit closures new ones may be registered, and this count is the number

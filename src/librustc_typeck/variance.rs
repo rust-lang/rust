@@ -271,12 +271,13 @@ use middle::resolve_lifetime as rl;
 use middle::subst;
 use middle::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace, VecPerParamSpace};
 use middle::ty::{self, Ty};
-use rustc::ast_map;
+use rustc::front::map as hir_map;
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::visit;
-use syntax::visit::Visitor;
+use rustc_front::hir;
+use rustc_front::visit;
+use rustc_front::visit::Visitor;
 use util::nodemap::NodeMap;
 
 pub fn infer_variance(tcx: &ty::ctxt) {
@@ -364,7 +365,7 @@ struct InferredInfo<'a> {
 
 fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
                                                  arena: &'a mut TypedArena<VarianceTerm<'a>>,
-                                                 krate: &ast::Crate)
+                                                 krate: &hir::Crate)
                                                  -> TermsContext<'a, 'tcx> {
     let mut terms_cx = TermsContext {
         tcx: tcx,
@@ -413,7 +414,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     fn add_inferreds_for_item(&mut self,
                               item_id: ast::NodeId,
                               has_self: bool,
-                              generics: &ast::Generics)
+                              generics: &hir::Generics)
     {
         /*!
          * Add "inferreds" for the generic parameters declared on this
@@ -516,15 +517,15 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
-    fn visit_item(&mut self, item: &ast::Item) {
+    fn visit_item(&mut self, item: &hir::Item) {
         debug!("add_inferreds for item {}", self.tcx.map.node_to_string(item.id));
 
         match item.node {
-            ast::ItemEnum(_, ref generics) |
-            ast::ItemStruct(_, ref generics) => {
+            hir::ItemEnum(_, ref generics) |
+            hir::ItemStruct(_, ref generics) => {
                 self.add_inferreds_for_item(item.id, false, generics);
             }
-            ast::ItemTrait(_, ref generics, _, _) => {
+            hir::ItemTrait(_, ref generics, _, _) => {
                 // Note: all inputs for traits are ultimately
                 // constrained to be invariant. See `visit_item` in
                 // the impl for `ConstraintContext` below.
@@ -532,17 +533,16 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
                 visit::walk_item(self, item);
             }
 
-            ast::ItemExternCrate(_) |
-            ast::ItemUse(_) |
-            ast::ItemDefaultImpl(..) |
-            ast::ItemImpl(..) |
-            ast::ItemStatic(..) |
-            ast::ItemConst(..) |
-            ast::ItemFn(..) |
-            ast::ItemMod(..) |
-            ast::ItemForeignMod(..) |
-            ast::ItemTy(..) |
-            ast::ItemMac(..) => {
+            hir::ItemExternCrate(_) |
+            hir::ItemUse(_) |
+            hir::ItemDefaultImpl(..) |
+            hir::ItemImpl(..) |
+            hir::ItemStatic(..) |
+            hir::ItemConst(..) |
+            hir::ItemFn(..) |
+            hir::ItemMod(..) |
+            hir::ItemForeignMod(..) |
+            hir::ItemTy(..) => {
                 visit::walk_item(self, item);
             }
         }
@@ -575,7 +575,7 @@ struct Constraint<'a> {
 }
 
 fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
-                                        krate: &ast::Crate)
+                                        krate: &hir::Crate)
                                         -> ConstraintContext<'a, 'tcx>
 {
     let covariant = terms_cx.arena.alloc(ConstantTerm(ty::Covariant));
@@ -595,14 +595,14 @@ fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
-    fn visit_item(&mut self, item: &ast::Item) {
+    fn visit_item(&mut self, item: &hir::Item) {
         let did = DefId::local(item.id);
         let tcx = self.terms_cx.tcx;
 
         debug!("visit_item item={}", tcx.map.node_to_string(item.id));
 
         match item.node {
-            ast::ItemEnum(..) | ast::ItemStruct(..) => {
+            hir::ItemEnum(..) | hir::ItemStruct(..) => {
                 let scheme = tcx.lookup_item_type(did);
 
                 // Not entirely obvious: constraints on structs/enums do not
@@ -617,24 +617,23 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
                                                  self.covariant);
                 }
             }
-            ast::ItemTrait(..) => {
+            hir::ItemTrait(..) => {
                 let trait_def = tcx.lookup_trait_def(did);
                 self.add_constraints_from_trait_ref(&trait_def.generics,
                                                     trait_def.trait_ref,
                                                     self.invariant);
             }
 
-            ast::ItemExternCrate(_) |
-            ast::ItemUse(_) |
-            ast::ItemStatic(..) |
-            ast::ItemConst(..) |
-            ast::ItemFn(..) |
-            ast::ItemMod(..) |
-            ast::ItemForeignMod(..) |
-            ast::ItemTy(..) |
-            ast::ItemImpl(..) |
-            ast::ItemDefaultImpl(..) |
-            ast::ItemMac(..) => {
+            hir::ItemExternCrate(_) |
+            hir::ItemUse(_) |
+            hir::ItemStatic(..) |
+            hir::ItemConst(..) |
+            hir::ItemFn(..) |
+            hir::ItemMod(..) |
+            hir::ItemForeignMod(..) |
+            hir::ItemTy(..) |
+            hir::ItemImpl(..) |
+            hir::ItemDefaultImpl(..) => {
             }
         }
 
@@ -643,9 +642,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
 }
 
 /// Is `param_id` a lifetime according to `map`?
-fn is_lifetime(map: &ast_map::Map, param_id: ast::NodeId) -> bool {
+fn is_lifetime(map: &hir_map::Map, param_id: ast::NodeId) -> bool {
     match map.find(param_id) {
-        Some(ast_map::NodeLifetime(..)) => true, _ => false
+        Some(hir_map::NodeLifetime(..)) => true, _ => false
     }
 }
 
@@ -706,18 +705,18 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             } } }
 
             match parent {
-                ast_map::NodeItem(p) => {
+                hir_map::NodeItem(p) => {
                     match p.node {
-                        ast::ItemTy(..) |
-                        ast::ItemEnum(..) |
-                        ast::ItemStruct(..) |
-                        ast::ItemTrait(..)   => is_inferred = true,
-                        ast::ItemFn(..)      => is_inferred = false,
+                        hir::ItemTy(..) |
+                        hir::ItemEnum(..) |
+                        hir::ItemStruct(..) |
+                        hir::ItemTrait(..)   => is_inferred = true,
+                        hir::ItemFn(..)      => is_inferred = false,
                         _                    => cannot_happen!(),
                     }
                 }
-                ast_map::NodeTraitItem(..)   => is_inferred = false,
-                ast_map::NodeImplItem(..)    => is_inferred = false,
+                hir_map::NodeTraitItem(..)   => is_inferred = false,
+                hir_map::NodeImplItem(..)    => is_inferred = false,
                 _                            => cannot_happen!(),
             }
 
@@ -1045,12 +1044,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                mt: &ty::TypeAndMut<'tcx>,
                                variance: VarianceTermPtr<'a>) {
         match mt.mutbl {
-            ast::MutMutable => {
+            hir::MutMutable => {
                 let invar = self.invariant(variance);
                 self.add_constraints_from_ty(generics, mt.ty, invar);
             }
 
-            ast::MutImmutable => {
+            hir::MutImmutable => {
                 self.add_constraints_from_ty(generics, mt.ty, variance);
             }
         }

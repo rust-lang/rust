@@ -120,8 +120,18 @@ impl<N:Debug,E:Debug> Graph<N,E> {
     }
 
     #[inline]
+    pub fn len_nodes(&self) -> usize {
+        self.nodes.len()
+    }
+
+    #[inline]
     pub fn all_edges<'a>(&'a self) -> &'a [Edge<E>] {
         &self.edges
+    }
+
+    #[inline]
+    pub fn len_edges(&self) -> usize {
+        self.edges.len()
     }
 
     ///////////////////////////////////////////////////////////////////////////

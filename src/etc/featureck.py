@@ -47,20 +47,24 @@ with open(feature_gate_source, 'r') as f:
                 is_feature_line = True
 
         if is_feature_line:
-            line = line.replace("(", "").replace("),", "").replace(")", "")
+            # turn `    ("foo", "1.0.0", Some(10), Active)` into
+            # `"foo", "1.0.0", Some(10), Active`
+            line = line.strip(' ,()')
             parts = line.split(",")
-            if len(parts) != 3:
+            if len(parts) != 4:
                 print("error: unexpected number of components in line: " + original_line)
                 sys.exit(1)
             feature_name = parts[0].strip().replace('"', "")
             since = parts[1].strip().replace('"', "")
-            status = parts[2].strip()
+            issue = parts[2].strip()
+            status = parts[3].strip()
             assert len(feature_name) > 0
             assert len(since) > 0
+            assert len(issue) > 0
             assert len(status) > 0
 
             language_feature_names += [feature_name]
-            language_features += [(feature_name, since, status)]
+            language_features += [(feature_name, since, issue, status)]
 
 assert len(language_features) > 0
 
@@ -158,7 +162,7 @@ for f in language_features:
     status = "unstable"
     stable_since = None
 
-    if f[2] == "Accepted":
+    if f[3] == "Accepted":
         status = "stable"
     if status == "stable":
         stable_since = f[1]

@@ -13,7 +13,6 @@ use back::{abi, link};
 use llvm::{ValueRef, CallConv, get_param};
 use llvm;
 use middle::weak_lang_items;
-use rustc::ast_map;
 use trans::attributes;
 use trans::base::{llvm_linkage_by_name, push_ctxt};
 use trans::base;
@@ -30,6 +29,7 @@ use trans::type_of::*;
 use trans::type_of;
 use middle::ty::{self, Ty};
 use middle::subst::Substs;
+use rustc::front::map as hir_map;
 
 use std::cmp;
 use libc::c_uint;
@@ -38,8 +38,10 @@ use syntax::abi::{PlatformIntrinsic, RustIntrinsic, Rust, RustCall, Stdcall, Fas
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::ast;
-use syntax::attr;
-use syntax::print::pprust;
+
+use rustc_front::print::pprust;
+use rustc_front::attr;
+use rustc_front::hir;
 
 ///////////////////////////////////////////////////////////////////////////
 // Type definitions
@@ -111,7 +113,7 @@ pub fn llvm_calling_convention(ccx: &CrateContext,
 }
 
 pub fn register_static(ccx: &CrateContext,
-                       foreign_item: &ast::ForeignItem) -> ValueRef {
+                       foreign_item: &hir::ForeignItem) -> ValueRef {
     let ty = ccx.tcx().node_id_to_type(foreign_item.id);
     let llty = type_of::type_of(ccx, ty);
 
@@ -449,9 +451,9 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 // feature gate SIMD types in FFI, since I (huonw) am not sure the
 // ABIs are handled at all correctly.
-fn gate_simd_ffi(tcx: &ty::ctxt, decl: &ast::FnDecl, ty: &ty::BareFnTy) {
+fn gate_simd_ffi(tcx: &ty::ctxt, decl: &hir::FnDecl, ty: &ty::BareFnTy) {
     if !tcx.sess.features.borrow().simd_ffi {
-        let check = |ast_ty: &ast::Ty, ty: ty::Ty| {
+        let check = |ast_ty: &hir::Ty, ty: ty::Ty| {
             if ty.is_simd() {
                 tcx.sess.span_err(ast_ty.span,
                               &format!("use of SIMD type `{}` in FFI is highly experimental and \
@@ -465,18 +467,18 @@ fn gate_simd_ffi(tcx: &ty::ctxt, decl: &ast::FnDecl, ty: &ty::BareFnTy) {
         for (input, ty) in decl.inputs.iter().zip(&sig.inputs) {
             check(&*input.ty, *ty)
         }
-        if let ast::Return(ref ty) = decl.output {
+        if let hir::Return(ref ty) = decl.output {
             check(&**ty, sig.output.unwrap())
         }
     }
 }
 
-pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
+pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &hir::ForeignMod) {
     let _icx = push_ctxt("foreign::trans_foreign_mod");
     for foreign_item in &foreign_mod.items {
         let lname = link_name(&**foreign_item);
 
-        if let ast::ForeignItemFn(ref decl, _) = foreign_item.node {
+        if let hir::ForeignItemFn(ref decl, _) = foreign_item.node {
             match foreign_mod.abi {
                 Rust | RustIntrinsic | PlatformIntrinsic => {}
                 abi => {
@@ -571,9 +573,9 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
 }
 
 pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                                decl: &ast::FnDecl,
-                                                body: &ast::Block,
-                                                attrs: &[ast::Attribute],
+                                                decl: &hir::FnDecl,
+                                                body: &hir::Block,
+                                                attrs: &[hir::Attribute],
                                                 llwrapfn: ValueRef,
                                                 param_substs: &'tcx Substs<'tcx>,
                                                 id: ast::NodeId,
@@ -593,10 +595,10 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     fn build_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               decl: &ast::FnDecl,
-                               body: &ast::Block,
+                               decl: &hir::FnDecl,
+                               body: &hir::Block,
                                param_substs: &'tcx Substs<'tcx>,
-                               attrs: &[ast::Attribute],
+                               attrs: &[hir::Attribute],
                                id: ast::NodeId,
                                hash: Option<&str>)
                                -> ValueRef
@@ -607,7 +609,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let t = monomorphize::apply_param_substs(tcx, param_substs, &t);
 
         let ps = ccx.tcx().map.with_path(id, |path| {
-            let abi = Some(ast_map::PathName(special_idents::clownshoe_abi.name));
+            let abi = Some(hir_map::PathName(special_idents::clownshoe_abi.name));
             link::mangle(path.chain(abi), hash)
         });
 
@@ -899,7 +901,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 // This code is kind of a confused mess and needs to be reworked given
 // the massive simplifications that have occurred.
 
-pub fn link_name(i: &ast::ForeignItem) -> InternedString {
+pub fn link_name(i: &hir::ForeignItem) -> InternedString {
     match attr::first_attr_value_str_by_name(&i.attrs, "link_name") {
         Some(ln) => ln.clone(),
         None => match weak_lang_items::link_name(&i.attrs) {

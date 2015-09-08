@@ -17,7 +17,7 @@ use middle::def_id::DefId;
 use middle::subst::{self, Substs};
 use middle::ty::{self, Ty};
 
-use syntax::ast;
+use rustc_front::hir;
 
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
@@ -43,18 +43,18 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyBool              => output.push_str("bool"),
         ty::TyChar              => output.push_str("char"),
         ty::TyStr               => output.push_str("str"),
-        ty::TyInt(ast::TyIs)     => output.push_str("isize"),
-        ty::TyInt(ast::TyI8)    => output.push_str("i8"),
-        ty::TyInt(ast::TyI16)   => output.push_str("i16"),
-        ty::TyInt(ast::TyI32)   => output.push_str("i32"),
-        ty::TyInt(ast::TyI64)   => output.push_str("i64"),
-        ty::TyUint(ast::TyUs)    => output.push_str("usize"),
-        ty::TyUint(ast::TyU8)   => output.push_str("u8"),
-        ty::TyUint(ast::TyU16)  => output.push_str("u16"),
-        ty::TyUint(ast::TyU32)  => output.push_str("u32"),
-        ty::TyUint(ast::TyU64)  => output.push_str("u64"),
-        ty::TyFloat(ast::TyF32) => output.push_str("f32"),
-        ty::TyFloat(ast::TyF64) => output.push_str("f64"),
+        ty::TyInt(hir::TyIs)    => output.push_str("isize"),
+        ty::TyInt(hir::TyI8)    => output.push_str("i8"),
+        ty::TyInt(hir::TyI16)   => output.push_str("i16"),
+        ty::TyInt(hir::TyI32)   => output.push_str("i32"),
+        ty::TyInt(hir::TyI64)   => output.push_str("i64"),
+        ty::TyUint(hir::TyUs)   => output.push_str("usize"),
+        ty::TyUint(hir::TyU8)   => output.push_str("u8"),
+        ty::TyUint(hir::TyU16)  => output.push_str("u16"),
+        ty::TyUint(hir::TyU32)  => output.push_str("u32"),
+        ty::TyUint(hir::TyU64)  => output.push_str("u64"),
+        ty::TyFloat(hir::TyF32) => output.push_str("f32"),
+        ty::TyFloat(hir::TyF64) => output.push_str("f64"),
         ty::TyStruct(def, substs) |
         ty::TyEnum(def, substs) => {
             push_item_name(cx, def.did, qualified, output);
@@ -80,15 +80,15 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
             output.push('*');
             match mutbl {
-                ast::MutImmutable => output.push_str("const "),
-                ast::MutMutable => output.push_str("mut "),
+                hir::MutImmutable => output.push_str("const "),
+                hir::MutMutable => output.push_str("mut "),
             }
 
             push_debuginfo_type_name(cx, inner_type, true, output);
         },
         ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
             output.push('&');
-            if mutbl == ast::MutMutable {
+            if mutbl == hir::MutMutable {
                 output.push_str("mut ");
             }
 
@@ -111,7 +111,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             push_type_params(cx, principal.substs, output);
         },
         ty::TyBareFn(_, &ty::BareFnTy{ unsafety, abi, ref sig } ) => {
-            if unsafety == ast::Unsafety::Unsafe {
+            if unsafety == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");
             }
 

@@ -18,8 +18,9 @@ use middle::ty::MethodCall;
 
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::visit;
-use syntax::visit::{FnKind, Visitor};
+use rustc_front::hir;
+use rustc_front::visit;
+use rustc_front::visit::{FnKind, Visitor};
 
 #[derive(Copy, Clone)]
 struct UnsafeContext {
@@ -42,7 +43,7 @@ enum RootUnsafeContext {
 
 fn type_is_unsafe_function(ty: Ty) -> bool {
     match ty.sty {
-        ty::TyBareFn(_, ref f) => f.unsafety == ast::Unsafety::Unsafe,
+        ty::TyBareFn(_, ref f) => f.unsafety == hir::Unsafety::Unsafe,
         _ => false,
     }
 }
@@ -75,14 +76,14 @@ impl<'a, 'tcx> EffectCheckVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
-    fn visit_fn(&mut self, fn_kind: FnKind<'v>, fn_decl: &'v ast::FnDecl,
-                block: &'v ast::Block, span: Span, _: ast::NodeId) {
+    fn visit_fn(&mut self, fn_kind: FnKind<'v>, fn_decl: &'v hir::FnDecl,
+                block: &'v hir::Block, span: Span, _: ast::NodeId) {
 
         let (is_item_fn, is_unsafe_fn) = match fn_kind {
             FnKind::ItemFn(_, _, unsafety, _, _, _) =>
-                (true, unsafety == ast::Unsafety::Unsafe),
+                (true, unsafety == hir::Unsafety::Unsafe),
             FnKind::Method(_, sig, _) =>
-                (true, sig.unsafety == ast::Unsafety::Unsafe),
+                (true, sig.unsafety == hir::Unsafety::Unsafe),
             _ => (false, false),
         };
 
@@ -98,11 +99,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
         self.unsafe_context = old_unsafe_context
     }
 
-    fn visit_block(&mut self, block: &ast::Block) {
+    fn visit_block(&mut self, block: &hir::Block) {
         let old_unsafe_context = self.unsafe_context;
         match block.rules {
-            ast::DefaultBlock => {}
-            ast::UnsafeBlock(source) => {
+            hir::DefaultBlock => {}
+            hir::UnsafeBlock(source) => {
                 // By default only the outermost `unsafe` block is
                 // "used" and so nested unsafe blocks are pointless
                 // (the inner ones are unnecessary and we actually
@@ -118,15 +119,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 // external blocks (e.g. `unsafe { println("") }`,
                 // expands to `unsafe { ... unsafe { ... } }` where
                 // the inner one is compiler generated).
-                if self.unsafe_context.root == SafeContext || source == ast::CompilerGenerated {
+                if self.unsafe_context.root == SafeContext || source == hir::CompilerGenerated {
                     self.unsafe_context.root = UnsafeBlock(block.id)
                 }
             }
-            ast::PushUnsafeBlock(..) => {
+            hir::PushUnsafeBlock(..) => {
                 self.unsafe_context.push_unsafe_count =
                     self.unsafe_context.push_unsafe_count.checked_add(1).unwrap();
             }
-            ast::PopUnsafeBlock(..) => {
+            hir::PopUnsafeBlock(..) => {
                 self.unsafe_context.push_unsafe_count =
                     self.unsafe_context.push_unsafe_count.checked_sub(1).unwrap();
             }
@@ -137,9 +138,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
         self.unsafe_context = old_unsafe_context
     }
 
-    fn visit_expr(&mut self, expr: &ast::Expr) {
+    fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
-            ast::ExprMethodCall(_, _, _) => {
+            hir::ExprMethodCall(_, _, _) => {
                 let method_call = MethodCall::expr(expr.id);
                 let base_type = self.tcx.tables.borrow().method_map[&method_call].ty;
                 debug!("effect: method call case, base type is {:?}",
@@ -149,7 +150,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                                         "invocation of unsafe method")
                 }
             }
-            ast::ExprCall(ref base, _) => {
+            hir::ExprCall(ref base, _) => {
                 let base_type = self.tcx.node_id_to_type(base.id);
                 debug!("effect: call case, base type is {:?}",
                         base_type);
@@ -157,7 +158,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                     self.require_unsafe(expr.span, "call to unsafe function")
                 }
             }
-            ast::ExprUnary(ast::UnDeref, ref base) => {
+            hir::ExprUnary(hir::UnDeref, ref base) => {
                 let base_type = self.tcx.node_id_to_type(base.id);
                 debug!("effect: unary case, base type is {:?}",
                         base_type);
@@ -165,10 +166,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                     self.require_unsafe(expr.span, "dereference of raw pointer")
                 }
             }
-            ast::ExprInlineAsm(..) => {
+            hir::ExprInlineAsm(..) => {
                 self.require_unsafe(expr.span, "use of inline assembly");
             }
-            ast::ExprPath(..) => {
+            hir::ExprPath(..) => {
                 if let def::DefStatic(_, true) = self.tcx.resolve_expr(expr) {
                     self.require_unsafe(expr.span, "use of mutable static");
                 }

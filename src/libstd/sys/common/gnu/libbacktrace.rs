@@ -11,13 +11,12 @@
 use io;
 use io::prelude::*;
 use libc;
+use sys_common::backtrace::{output, output_fileline};
 
-use sys::backtrace::{output, output_fileline};
 pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
              symaddr: *mut libc::c_void) -> io::Result<()> {
     use env;
     use ffi::CStr;
-    use os::unix::prelude::*;
     use ptr;
 
     ////////////////////////////////////////////////////////////////////////
@@ -123,20 +122,21 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
     // FIXME: We also call self_exe_name() on DragonFly BSD. I haven't
     //        tested if this is required or not.
     unsafe fn init_state() -> *mut backtrace_state {
-        static mut STATE: *mut backtrace_state = 0 as *mut backtrace_state;
+        static mut STATE: *mut backtrace_state = ptr::null_mut();
         static mut LAST_FILENAME: [libc::c_char; 256] = [0; 256];
         if !STATE.is_null() { return STATE }
         let selfname = if cfg!(target_os = "freebsd") ||
             cfg!(target_os = "dragonfly") ||
             cfg!(target_os = "bitrig") ||
-            cfg!(target_os = "openbsd") {
+            cfg!(target_os = "openbsd") ||
+            cfg!(target_os = "windows") {
                 env::current_exe().ok()
             } else {
                 None
             };
-        let filename = match selfname {
+        let filename = match selfname.as_ref().and_then(|s| s.as_os_str().to_bytes()) {
             Some(path) => {
-                let bytes = path.as_os_str().as_bytes();
+                let bytes = path;
                 if bytes.len() < LAST_FILENAME.len() {
                     let i = bytes.iter();
                     for (slot, val) in LAST_FILENAME.iter_mut().zip(i) {

@@ -26,8 +26,9 @@ use syntax::ast;
 use syntax::codemap::{Span};
 use syntax::parse::token::{special_idents};
 use syntax::ptr::P;
-use syntax::visit;
-use syntax::visit::Visitor;
+use rustc_front::visit;
+use rustc_front::visit::Visitor;
+use rustc_front::hir;
 
 pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
     ccx: &'ccx CrateCtxt<'ccx, 'tcx>,
@@ -59,7 +60,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     /// We do this check as a pre-pass before checking fn bodies because if these constraints are
     /// not included it frequently leads to confusing errors in fn bodies. So it's better to check
     /// the types first.
-    fn check_item_well_formed(&mut self, item: &ast::Item) {
+    fn check_item_well_formed(&mut self, item: &hir::Item) {
         let ccx = self.ccx;
         debug!("check_item_well_formed(it.id={}, it.ident={})",
                item.id,
@@ -83,11 +84,11 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             ///
             /// won't be allowed unless there's an *explicit* implementation of `Send`
             /// for `T`
-            ast::ItemImpl(_, ast::ImplPolarity::Positive, _,
+            hir::ItemImpl(_, hir::ImplPolarity::Positive, _,
                           ref trait_ref, ref self_ty, _) => {
                 self.check_impl(item, self_ty, trait_ref);
             }
-            ast::ItemImpl(_, ast::ImplPolarity::Negative, _, Some(_), _, _) => {
+            hir::ItemImpl(_, hir::ImplPolarity::Negative, _, Some(_), _, _) => {
                 // FIXME(#27579) what amount of WF checking do we need for neg impls?
 
                 let trait_ref = ccx.tcx.impl_trait_ref(DefId::local(item.id)).unwrap();
@@ -101,30 +102,30 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                     }
                 }
             }
-            ast::ItemFn(_, _, _, _, _, ref body) => {
+            hir::ItemFn(_, _, _, _, _, ref body) => {
                 self.check_item_fn(item, body);
             }
-            ast::ItemStatic(..) => {
+            hir::ItemStatic(..) => {
                 self.check_item_type(item);
             }
-            ast::ItemConst(..) => {
+            hir::ItemConst(..) => {
                 self.check_item_type(item);
             }
-            ast::ItemStruct(ref struct_def, ref ast_generics) => {
+            hir::ItemStruct(ref struct_def, ref ast_generics) => {
                 self.check_type_defn(item, |fcx| {
                     vec![struct_variant(fcx, &**struct_def)]
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
-            ast::ItemEnum(ref enum_def, ref ast_generics) => {
+            hir::ItemEnum(ref enum_def, ref ast_generics) => {
                 self.check_type_defn(item, |fcx| {
                     enum_variants(fcx, enum_def)
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
-            ast::ItemTrait(_, _, _, ref items) => {
+            hir::ItemTrait(_, _, _, ref items) => {
                 self.check_trait(item, items);
             }
             _ => {}
@@ -168,7 +169,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         })
     }
 
-    fn with_item_fcx<F>(&mut self, item: &ast::Item, f: F) where
+    fn with_item_fcx<F>(&mut self, item: &hir::Item, f: F) where
         F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx>,
                            &mut CheckTypeWellFormedVisitor<'ccx,'tcx>) -> Vec<Ty<'tcx>>,
     {
@@ -190,7 +191,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.
-    fn check_type_defn<F>(&mut self, item: &ast::Item, mut lookup_fields: F) where
+    fn check_type_defn<F>(&mut self, item: &hir::Item, mut lookup_fields: F) where
         F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx>) -> Vec<AdtVariant<'tcx>>,
     {
         self.with_item_fcx(item, |fcx, this| {
@@ -225,8 +226,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn check_trait(&mut self,
-                   item: &ast::Item,
-                   items: &[P<ast::TraitItem>])
+                   item: &hir::Item,
+                   items: &[P<hir::TraitItem>])
     {
         let trait_def_id = DefId::local(item.id);
 
@@ -246,8 +247,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn check_item_fn(&mut self,
-                     item: &ast::Item,
-                     body: &ast::Block)
+                     item: &hir::Item,
+                     body: &hir::Block)
     {
         self.with_item_fcx(item, |fcx, this| {
             let free_substs = &fcx.inh.infcx.parameter_environment.free_substs;
@@ -271,7 +272,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn check_item_type(&mut self,
-                       item: &ast::Item)
+                       item: &hir::Item)
     {
         debug!("check_item_type: {:?}", item);
 
@@ -291,9 +292,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn check_impl(&mut self,
-                  item: &ast::Item,
-                  ast_self_ty: &ast::Ty,
-                  ast_trait_ref: &Option<ast::TraitRef>)
+                  item: &hir::Item,
+                  ast_self_ty: &hir::Ty,
+                  ast_trait_ref: &Option<hir::TraitRef>)
     {
         debug!("check_impl: {:?}", item);
 
@@ -383,8 +384,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn check_variances_for_type_defn(&self,
-                                     item: &ast::Item,
-                                     ast_generics: &ast::Generics)
+                                     item: &hir::Item,
+                                     ast_generics: &hir::Generics)
     {
         let item_def_id = DefId::local(item.id);
         let ty_predicates = self.tcx().lookup_predicates(item_def_id);
@@ -425,7 +426,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn param_ty(&self,
-                ast_generics: &ast::Generics,
+                ast_generics: &hir::Generics,
                 space: ParamSpace,
                 index: usize)
                 -> ty::ParamTy
@@ -440,8 +441,8 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn ty_param_span(&self,
-                     ast_generics: &ast::Generics,
-                     item: &ast::Item,
+                     ast_generics: &hir::Generics,
+                     item: &hir::Item,
                      space: ParamSpace,
                      index: usize)
                      -> Span
@@ -489,19 +490,19 @@ fn reject_shadowing_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
-    fn visit_item(&mut self, i: &ast::Item) {
+    fn visit_item(&mut self, i: &hir::Item) {
         debug!("visit_item: {:?}", i);
         self.check_item_well_formed(i);
         visit::walk_item(self, i);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'v ast::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'v hir::TraitItem) {
         debug!("visit_trait_item: {:?}", trait_item);
         self.check_trait_or_impl_item(trait_item.id, trait_item.span);
         visit::walk_trait_item(self, trait_item)
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'v ast::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'v hir::ImplItem) {
         debug!("visit_impl_item: {:?}", impl_item);
         self.check_trait_or_impl_item(impl_item.id, impl_item.span);
         visit::walk_impl_item(self, impl_item)
@@ -521,7 +522,7 @@ struct AdtField<'tcx> {
 }
 
 fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                            struct_def: &ast::StructDef)
+                            struct_def: &hir::StructDef)
                             -> AdtVariant<'tcx> {
     let fields =
         struct_def.fields
@@ -541,12 +542,12 @@ fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 }
 
 fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                           enum_def: &ast::EnumDef)
+                           enum_def: &hir::EnumDef)
                            -> Vec<AdtVariant<'tcx>> {
     enum_def.variants.iter()
         .map(|variant| {
             match variant.node.kind {
-                ast::TupleVariantKind(ref args) if !args.is_empty() => {
+                hir::TupleVariantKind(ref args) if !args.is_empty() => {
                     let ctor_ty = fcx.tcx().node_id_to_type(variant.node.id);
 
                     // the regions in the argument types come from the
@@ -569,12 +570,12 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         }).collect()
                     }
                 }
-                ast::TupleVariantKind(_) => {
+                hir::TupleVariantKind(_) => {
                     AdtVariant {
                         fields: Vec::new()
                     }
                 }
-                ast::StructVariantKind(ref struct_def) => {
+                hir::StructVariantKind(ref struct_def) => {
                     struct_variant(fcx, &**struct_def)
                 }
             }

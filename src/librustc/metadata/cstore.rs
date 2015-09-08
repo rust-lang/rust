@@ -18,7 +18,7 @@ pub use self::LinkagePreference::*;
 pub use self::NativeLibraryKind::*;
 
 use back::svh::Svh;
-use metadata::{creader, decoder, loader};
+use metadata::{creader, decoder, index, loader};
 use session::search_paths::PathKind;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
@@ -27,12 +27,12 @@ use std::rc::Rc;
 use std::path::PathBuf;
 use flate::Bytes;
 use syntax::ast;
-use syntax::attr;
+use rustc_front::attr;
 use syntax::codemap;
 use syntax::parse::token;
 use syntax::parse::token::IdentInterner;
 use syntax::util::small_vector::SmallVector;
-use ast_map;
+use front::map as ast_map;
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -65,6 +65,7 @@ pub struct crate_metadata {
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
     pub span: codemap::Span,
     pub staged_api: bool,
+    pub index: index::Index,
 
     /// Flag if this crate is required by an rlib version of this crate, or in
     /// other words whether it was explicitly linked to. An example of a crate

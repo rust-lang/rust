@@ -51,7 +51,7 @@ pub use intrinsics::write_bytes;
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn null<T>() -> *const T { 0 as *const T }
+pub const fn null<T>() -> *const T { 0 as *const T }
 
 /// Creates a null mutable raw pointer.
 ///
@@ -65,7 +65,7 @@ pub fn null<T>() -> *const T { 0 as *const T }
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn null_mut<T>() -> *mut T { 0 as *mut T }
+pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 
 /// Swaps the values at two mutable locations of the same type, without
 /// deinitialising either. They may overlap, unlike `mem::swap` which is
@@ -163,7 +163,7 @@ impl<T: ?Sized> *const T {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_null(self) -> bool where T: Sized {
-        self == 0 as *const T
+        self == null()
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -212,7 +212,7 @@ impl<T: ?Sized> *mut T {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_null(self) -> bool where T: Sized {
-        self == 0 as *mut T
+        self == null_mut()
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -468,7 +468,7 @@ impl<T:?Sized> Deref for Unique<T> {
     type Target = *mut T;
 
     #[inline]
-    fn deref<'a>(&'a self) -> &'a *mut T {
+    fn deref(&self) -> &*mut T {
         unsafe { mem::transmute(&*self.pointer) }
     }
 }

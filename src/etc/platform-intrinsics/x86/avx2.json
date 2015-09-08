@@ -4,21 +4,21 @@
         {
             "intrinsic": "256_abs_{0.data_type}",
             "width": [256],
-            "llvm": "avx2.pabs.{0.data_type_short}",
+            "llvm": "pabs.{0.data_type_short}",
             "ret": "s(8-32)",
             "args": ["0"]
         },
         {
             "intrinsic": "256_adds_{0.data_type}",
             "width": [256],
-            "llvm": "avx2.padd{0.kind_short}s.{0.data_type_short}",
+            "llvm": "padd{0.kind_short}s.{0.data_type_short}",
             "ret": "i(8-16)",
             "args": ["0", "0"]
         },
         {
             "intrinsic": "256_avg_{0.data_type}",
             "width": [256],
-            "llvm": "avx2.pavg.{0.data_type_short}",
+            "llvm": "pavg.{0.data_type_short}",
             "ret": "u(8-16)",
             "args": ["0", "0"]
         },
@@ -63,6 +63,48 @@
             "llvm": "pmadd.ub.sw",
             "ret": "s16",
             "args": ["s8", "s8"]
+        },
+        {
+            "intrinsic": "{0.width_mm}_mask_i32gather_{0.data_type}",
+            "width": [128, 256],
+            "llvm": "gather.d.{0.data_type_short}{0.width_suffix}",
+            "ret": ["s32", "f32"],
+            "args": ["0", "0SPc/S8", "s32", "0s->0", "S32/8"]
+        },
+        {
+            "intrinsic": "{0.width_mm}_mask_i32gather_{0.data_type}",
+            "width": [128, 256],
+            "llvm": "gather.d.{0.data_type_short}{0.width_suffix}",
+            "ret": ["s64", "f64"],
+            "args": ["0", "0SPc/S8", "s32x128", "0s->0", "S32/8"]
+        },
+        {
+            "intrinsic": "{3.width_mm}_mask_i64gather_{0.data_type}",
+            "width": [128, 256],
+            "llvm": "gather.q.{0.data_type_short}{0.width_suffix}",
+            "ret": ["s32x128", "f32x128"],
+            "args": ["0", "0SPc/S8", "s64", "0s->0", "S32/8"]
+        },
+        {
+            "intrinsic": "{0.width_mm}_mask_i64gather_{0.data_type}",
+            "width": [128, 256],
+            "llvm": "gather.q.{0.data_type_short}{0.width_suffix}",
+            "ret": ["s64", "f64"],
+            "args": ["0", "0SPc/S8", "s64", "0s->0", "S32/8"]
+        },
+        {
+            "intrinsic": "{0.width_mm}_maskload_{0.data_type}",
+            "width": [128, 256],
+            "llvm": "maskload.{0.data_type_short}{0.width_suffix}",
+            "ret": ["s(32-64)"],
+            "args": ["0Pc/S8", "0"]
+        },
+        {
+            "intrinsic": "{2.width_mm}_maskstore_{2.data_type}",
+            "width": [128, 256],
+            "llvm": "maskstore.{2.data_type_short}{2.width_suffix}",
+            "ret": "V",
+            "args": ["S(32-64)Pm/S8", "1Dv", "2"]
         },
         {
             "intrinsic": "256_max_{0.data_type}",

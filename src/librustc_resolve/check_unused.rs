@@ -25,9 +25,11 @@ use Namespace::{TypeNS, ValueNS};
 use rustc::lint;
 use rustc::middle::privacy::{DependsOn, LastImport, Used, Unused};
 use syntax::ast;
-use syntax::ast::{ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::codemap::{Span, DUMMY_SP};
-use syntax::visit::{self, Visitor};
+
+use rustc_front::hir;
+use rustc_front::hir::{ViewPathGlob, ViewPathList, ViewPathSimple};
+use rustc_front::visit::{self, Visitor};
 
 struct UnusedImportCheckVisitor<'a, 'b:'a, 'tcx:'b> {
     resolver: &'a mut Resolver<'b, 'tcx>
@@ -110,18 +112,18 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
-    fn visit_item(&mut self, item: &ast::Item) {
+    fn visit_item(&mut self, item: &hir::Item) {
         // Ignore is_public import statements because there's no way to be sure
         // whether they're used or not. Also ignore imports with a dummy span
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
-        if item.vis == ast::Public || item.span == DUMMY_SP {
+        if item.vis == hir::Public || item.span == DUMMY_SP {
             visit::walk_item(self, item);
             return;
         }
 
         match item.node {
-            ast::ItemExternCrate(_) => {
+            hir::ItemExternCrate(_) => {
                 if let Some(crate_num) = self.session.cstore.find_extern_mod_stmt_cnum(item.id) {
                     if !self.used_crates.contains(&crate_num) {
                         self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATES,
@@ -131,7 +133,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                     }
                 }
             },
-            ast::ItemUse(ref p) => {
+            hir::ItemUse(ref p) => {
                 match p.node {
                     ViewPathSimple(_, _) => {
                         self.finalize_import(item.id, p.span)
@@ -161,7 +163,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     }
 }
 
-pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
+pub fn check_crate(resolver: &mut Resolver, krate: &hir::Crate) {
     let mut visitor = UnusedImportCheckVisitor { resolver: resolver };
     visit::walk_crate(&mut visitor, krate);
 }

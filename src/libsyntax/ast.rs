@@ -891,9 +891,9 @@ pub enum Expr_ {
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Option<Ident>),
+    ExprBreak(Option<SpannedIdent>),
     /// A `continue`, with an optional label
-    ExprAgain(Option<Ident>),
+    ExprAgain(Option<SpannedIdent>),
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
@@ -1190,7 +1190,7 @@ pub enum Lit_ {
     /// A string literal (`"foo"`)
     LitStr(InternedString, StrStyle),
     /// A byte string (`b"foo"`)
-    LitBinary(Rc<Vec<u8>>),
+    LitByteStr(Rc<Vec<u8>>),
     /// A byte char (`b'f'`)
     LitByte(u8),
     /// A character literal (`'a'`)

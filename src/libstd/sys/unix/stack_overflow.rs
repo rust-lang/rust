@@ -93,7 +93,7 @@ mod imp {
         // See comment above for why this function returns.
     }
 
-    static mut MAIN_ALTSTACK: *mut libc::c_void = 0 as *mut libc::c_void;
+    static mut MAIN_ALTSTACK: *mut libc::c_void = ptr::null_mut();
 
     pub unsafe fn init() {
         PAGE_SIZE = ::sys::os::page_size();
@@ -146,7 +146,7 @@ mod imp {
               target_os = "netbsd",
               target_os = "openbsd")))]
 mod imp {
-    use libc;
+    use ptr;
 
     pub unsafe fn init() {
     }
@@ -155,7 +155,7 @@ mod imp {
     }
 
     pub unsafe fn make_handler() -> super::Handler {
-        super::Handler { _data: 0 as *mut libc::c_void }
+        super::Handler { _data: ptr::null_mut() }
     }
 
     pub unsafe fn drop_handler(_handler: &mut super::Handler) {

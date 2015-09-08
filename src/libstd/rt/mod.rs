@@ -23,6 +23,7 @@
 #![allow(missing_docs)]
 
 use prelude::v1::*;
+use sync::Once;
 use sys;
 use thread;
 
@@ -118,22 +119,17 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
 /// Returns `Ok` if the handler was successfully registered, meaning that the
 /// closure will be run once the main thread exits. Returns `Err` to indicate
 /// that the closure could not be registered, meaning that it is not scheduled
-/// to be rune.
+/// to be run.
 pub fn at_exit<F: FnOnce() + Send + 'static>(f: F) -> Result<(), ()> {
     if at_exit_imp::push(Box::new(f)) {Ok(())} else {Err(())}
 }
 
 /// One-time runtime cleanup.
-///
-/// This function is unsafe because it performs no checks to ensure that the
-/// runtime has completely ceased running. It is the responsibility of the
-/// caller to ensure that the runtime is entirely shut down and nothing will be
-/// poking around at the internal components.
-///
-/// Invoking cleanup while portions of the runtime are still in use may cause
-/// undefined behavior.
-pub unsafe fn cleanup() {
-    args::cleanup();
-    sys::stack_overflow::cleanup();
-    at_exit_imp::cleanup();
+pub fn cleanup() {
+    static CLEANUP: Once = Once::new();
+    CLEANUP.call_once(|| unsafe {
+        args::cleanup();
+        sys::stack_overflow::cleanup();
+        at_exit_imp::cleanup();
+    });
 }

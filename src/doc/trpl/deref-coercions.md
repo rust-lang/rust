@@ -89,8 +89,8 @@ Vectors can `Deref` to a slice.
 
 ## Deref and method calls
 
-`Deref` will also kick in when calling a method. In other words, these are
-the same two things in Rust:
+`Deref` will also kick in when calling a method. Consider the following
+example.
 
 ```rust
 struct Foo;
@@ -99,13 +99,13 @@ impl Foo {
     fn foo(&self) { println!("Foo"); }
 }
 
-let f = Foo;
+let f = &&Foo;
 
 f.foo();
 ```
 
-Even though `f` isn’t a reference, and `foo` takes `&self`, this works.
-That’s because these things are the same:
+Even though `f` is a `&&Foo` and `foo` takes `&self`, this works. That’s
+because these things are the same:
 
 ```rust,ignore
 f.foo();

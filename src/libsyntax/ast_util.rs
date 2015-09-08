@@ -216,12 +216,6 @@ pub fn ident_to_pat(id: NodeId, s: Span, i: Ident) -> P<Pat> {
     })
 }
 
-pub fn name_to_dummy_lifetime(name: Name) -> Lifetime {
-    Lifetime { id: DUMMY_NODE_ID,
-               span: codemap::DUMMY_SP,
-               name: name }
-}
-
 /// Generate a "pretty" name for an `impl` from its type and trait.
 /// This is designed so that symbols of `impl`'d methods give some
 /// hint of where they came from, (previously they would all just be
@@ -498,7 +492,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
 }
 
 pub struct IdRangeComputingVisitor {
-    result: IdRange,
+    pub result: IdRange,
 }
 
 impl IdRangeComputingVisitor {
@@ -533,40 +527,6 @@ pub fn compute_id_range_for_fn_body(fk: FnKind,
     };
     id_visitor.visit_fn(fk, decl, body, sp, id);
     id_visitor.operation.result
-}
-
-pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool where F: FnMut(&Pat) -> bool {
-    // FIXME(#19596) this is a workaround, but there should be a better way
-    fn walk_pat_<G>(pat: &Pat, it: &mut G) -> bool where G: FnMut(&Pat) -> bool {
-        if !(*it)(pat) {
-            return false;
-        }
-
-        match pat.node {
-            PatIdent(_, _, Some(ref p)) => walk_pat_(&**p, it),
-            PatStruct(_, ref fields, _) => {
-                fields.iter().all(|field| walk_pat_(&*field.node.pat, it))
-            }
-            PatEnum(_, Some(ref s)) | PatTup(ref s) => {
-                s.iter().all(|p| walk_pat_(&**p, it))
-            }
-            PatBox(ref s) | PatRegion(ref s, _) => {
-                walk_pat_(&**s, it)
-            }
-            PatVec(ref before, ref slice, ref after) => {
-                before.iter().all(|p| walk_pat_(&**p, it)) &&
-                slice.iter().all(|p| walk_pat_(&**p, it)) &&
-                after.iter().all(|p| walk_pat_(&**p, it))
-            }
-            PatMac(_) => panic!("attempted to analyze unexpanded pattern"),
-            PatWild(_) | PatLit(_) | PatRange(_, _) | PatIdent(_, _, _) |
-            PatEnum(_, _) | PatQPath(_, _) => {
-                true
-            }
-        }
-    }
-
-    walk_pat_(pat, &mut it)
 }
 
 /// Returns true if the given struct def is tuple-like; i.e. that its fields

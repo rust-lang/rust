@@ -14,8 +14,8 @@ use middle::ty::{self, Ty};
 use middle::infer;
 
 use std::result::Result::{Err, Ok};
-use syntax::ast;
 use syntax::codemap::Span;
+use rustc_front::hir;
 
 // Requires that the two types unify, and prints an error message if
 // they don't.
@@ -56,7 +56,7 @@ pub fn eqtype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
 pub fn coerce<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         sp: Span,
                         expected: Ty<'tcx>,
-                        expr: &ast::Expr) {
+                        expr: &hir::Expr) {
     let expr_ty = fcx.expr_ty(expr);
     debug!("demand::coerce(expected = {:?}, expr_ty = {:?})",
            expected,

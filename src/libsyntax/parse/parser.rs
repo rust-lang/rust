@@ -34,7 +34,7 @@ use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
 use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemDefaultImpl};
 use ast::{ItemExternCrate, ItemUse};
 use ast::{LifetimeDef, Lit, Lit_};
-use ast::{LitBool, LitChar, LitByte, LitBinary};
+use ast::{LitBool, LitChar, LitByte, LitByteStr};
 use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchSource};
@@ -1543,11 +1543,11 @@ impl<'a> Parser<'a> {
                             token::intern_and_get_ident(&parse::raw_str_lit(&s.as_str())),
                             ast::RawStr(n)))
                     }
-                    token::Binary(i) =>
-                        (true, LitBinary(parse::binary_lit(&i.as_str()))),
-                    token::BinaryRaw(i, _) =>
+                    token::ByteStr(i) =>
+                        (true, LitByteStr(parse::byte_str_lit(&i.as_str()))),
+                    token::ByteStrRaw(i, _) =>
                         (true,
-                         LitBinary(Rc::new(i.to_string().into_bytes()))),
+                         LitByteStr(Rc::new(i.to_string().into_bytes()))),
                 };
 
                 if suffix_illegal {
@@ -2143,13 +2143,16 @@ impl<'a> Parser<'a> {
                 }
                 if try!(self.eat_keyword(keywords::Continue) ){
                     let ex = if self.token.is_lifetime() {
-                        let lifetime = self.get_lifetime();
+                        let ex = ExprAgain(Some(Spanned{
+                            node: self.get_lifetime(),
+                            span: self.span
+                        }));
                         try!(self.bump());
-                        ExprAgain(Some(lifetime))
+                        ex
                     } else {
                         ExprAgain(None)
                     };
-                    let hi = self.span.hi;
+                    let hi = self.last_span.hi;
                     return Ok(self.mk_expr(lo, hi, ex));
                 }
                 if try!(self.eat_keyword(keywords::Match) ){
@@ -2161,7 +2164,6 @@ impl<'a> Parser<'a> {
                         UnsafeBlock(ast::UserProvided));
                 }
                 if try!(self.eat_keyword(keywords::Return) ){
-                    // RETURN expression
                     if self.token.can_begin_expr() {
                         let e = try!(self.parse_expr_nopanic());
                         hi = e.span.hi;
@@ -2170,15 +2172,16 @@ impl<'a> Parser<'a> {
                         ex = ExprRet(None);
                     }
                 } else if try!(self.eat_keyword(keywords::Break) ){
-                    // BREAK expression
                     if self.token.is_lifetime() {
-                        let lifetime = self.get_lifetime();
+                        ex = ExprBreak(Some(Spanned {
+                            node: self.get_lifetime(),
+                            span: self.span
+                        }));
                         try!(self.bump());
-                        ex = ExprBreak(Some(lifetime));
                     } else {
                         ex = ExprBreak(None);
                     }
-                    hi = self.span.hi;
+                    hi = self.last_span.hi;
                 } else if self.check(&token::ModSep) ||
                         self.token.is_ident() &&
                         !self.check_keyword(keywords::True) &&
@@ -2233,8 +2236,7 @@ impl<'a> Parser<'a> {
                                 self.span_err(last_span,
                                               "structure literal must either \
                                               have at least one field or use \
-                                              functional structure update \
-                                              syntax");
+                                              structure update syntax");
                             }
 
                             hi = self.span.hi;
@@ -3962,7 +3964,7 @@ impl<'a> Parser<'a> {
                     p.span_warn(span, "whoops, no =?");
                 }
                 let ty = try!(p.parse_ty_nopanic());
-                let hi = p.span.hi;
+                let hi = ty.span.hi;
                 let span = mk_sp(lo, hi);
                 return Ok(P(TypeBinding{id: ast::DUMMY_NODE_ID,
                     ident: ident,
@@ -5826,7 +5828,7 @@ impl<'a> Parser<'a> {
         match try!(self.parse_optional_str()) {
             Some((s, style, suf)) => {
                 let sp = self.last_span;
-                self.expect_no_suffix(sp, "str literal", suf);
+                self.expect_no_suffix(sp, "string literal", suf);
                 Ok((s, style))
             }
             _ =>  Err(self.fatal("expected string literal"))

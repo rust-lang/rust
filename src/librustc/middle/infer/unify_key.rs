@@ -10,7 +10,7 @@
 
 use middle::ty::{self, IntVarValue, Ty};
 use rustc_data_structures::unify::UnifyKey;
-use syntax::ast;
+use rustc_front::hir as ast;
 
 pub trait ToType<'tcx> {
     fn to_type(&self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx>;

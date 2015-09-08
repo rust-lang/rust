@@ -52,9 +52,10 @@ use std::sync::Arc;
 use externalfiles::ExternalHtml;
 
 use serialize::json::{self, ToJson};
-use syntax::{abi, ast, attr};
+use syntax::{abi, ast};
 use rustc::middle::def_id::{DefId, LOCAL_CRATE};
 use rustc::util::nodemap::NodeSet;
+use rustc_front::{hir, attr};
 
 use clean::{self, SelfTy};
 use doctree;
@@ -858,7 +859,7 @@ impl DocFolder for Cache {
         let orig_privmod = match item.inner {
             clean::ModuleItem(..) => {
                 let prev = self.privmod;
-                self.privmod = prev || (self.remove_priv && item.visibility != Some(ast::Public));
+                self.privmod = prev || (self.remove_priv && item.visibility != Some(hir::Public));
                 prev
             }
             _ => self.privmod,
@@ -1327,10 +1328,10 @@ impl Context {
             clean::ModuleItem(ref m) => {
                 (m.items.is_empty() &&
                  it.doc_value().is_none() &&
-                 it.visibility != Some(ast::Public)) ||
-                (self.passes.contains("strip-private") && it.visibility != Some(ast::Public))
+                 it.visibility != Some(hir::Public)) ||
+                (self.passes.contains("strip-private") && it.visibility != Some(hir::Public))
             }
-            clean::PrimitiveItem(..) => it.visibility != Some(ast::Public),
+            clean::PrimitiveItem(..) => it.visibility != Some(hir::Public),
             _ => false,
         }
     }
@@ -1975,8 +1976,8 @@ fn render_assoc_item(w: &mut fmt::Formatter, meth: &clean::Item,
                      link: AssocItemLink) -> fmt::Result {
     fn method(w: &mut fmt::Formatter,
               it: &clean::Item,
-              unsafety: ast::Unsafety,
-              constness: ast::Constness,
+              unsafety: hir::Unsafety,
+              constness: hir::Constness,
               abi: abi::Abi,
               g: &clean::Generics,
               selfty: &clean::SelfTy,
@@ -2009,7 +2010,7 @@ fn render_assoc_item(w: &mut fmt::Formatter, meth: &clean::Item,
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
-            method(w, meth, m.unsafety, ast::Constness::NotConst,
+            method(w, meth, m.unsafety, hir::Constness::NotConst,
                    m.abi, &m.generics, &m.self_, &m.decl, link)
         }
         clean::MethodItem(ref m) => {

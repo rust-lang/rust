@@ -51,7 +51,6 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(scoped_tls)]
-#![feature(slice_bytes)]
 #![feature(slice_splits)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
@@ -73,6 +72,7 @@ extern crate graphviz;
 extern crate libc;
 extern crate rustc_llvm;
 extern crate rustc_back;
+extern crate rustc_front;
 extern crate rustc_data_structures;
 extern crate serialize;
 extern crate rbml;
@@ -101,7 +101,9 @@ pub mod back {
     pub use rustc_back::svh;
 }
 
-pub mod ast_map;
+pub mod front {
+    pub mod map;
+}
 
 pub mod middle {
     pub mod astconv_util;

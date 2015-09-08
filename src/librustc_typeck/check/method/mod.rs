@@ -23,6 +23,8 @@ use middle::infer;
 use syntax::ast;
 use syntax::codemap::Span;
 
+use rustc_front::hir;
+
 pub use self::MethodError::*;
 pub use self::CandidateSource::*;
 
@@ -110,8 +112,8 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         method_name: ast::Name,
                         self_ty: ty::Ty<'tcx>,
                         supplied_method_types: Vec<ty::Ty<'tcx>>,
-                        call_expr: &'tcx ast::Expr,
-                        self_expr: &'tcx ast::Expr)
+                        call_expr: &'tcx hir::Expr,
+                        self_expr: &'tcx hir::Expr)
                         -> Result<ty::MethodCallee<'tcx>, MethodError<'tcx>>
 {
     debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
@@ -128,7 +130,7 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 pub fn lookup_in_trait<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                  span: Span,
-                                 self_expr: Option<&ast::Expr>,
+                                 self_expr: Option<&hir::Expr>,
                                  m_name: ast::Name,
                                  trait_def_id: DefId,
                                  self_ty: ty::Ty<'tcx>,
@@ -150,7 +152,7 @@ pub fn lookup_in_trait<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 /// this method is basically the same as confirmation.
 pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                           span: Span,
-                                          self_expr: Option<&ast::Expr>,
+                                          self_expr: Option<&hir::Expr>,
                                           m_name: ast::Name,
                                           trait_def_id: DefId,
                                           autoderefs: usize,
@@ -335,7 +337,7 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let def_id = pick.item.def_id();
     let mut lp = LastMod(AllPublic);
     if let probe::InherentImplPick = pick.kind {
-        if pick.item.vis() != ast::Public {
+        if pick.item.vis() != hir::Public {
             lp = LastMod(DependsOn(def_id));
         }
     }

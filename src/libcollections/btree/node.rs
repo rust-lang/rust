@@ -296,7 +296,7 @@ impl<K, V> Drop for Node<K, V> {
             self.destroy();
         }
 
-        self.keys = unsafe { Unique::new(0 as *mut K) };
+        self.keys = unsafe { Unique::new(ptr::null_mut()) };
     }
 }
 

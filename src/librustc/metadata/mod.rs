@@ -16,6 +16,7 @@ pub mod decoder;
 pub mod creader;
 pub mod cstore;
 pub mod csearch;
+pub mod index;
 pub mod loader;
 pub mod filesearch;
 pub mod macro_import;

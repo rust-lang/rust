@@ -2299,6 +2299,21 @@ extern "rust-intrinsic" {
 ```
 "##,
 
+E0214: r##"
+A generic type was described using parentheses rather than angle brackets. For
+example:
+
+```
+fn main() {
+    let v: Vec(&str) = vec!["foo"];
+}
+```
+
+This is not currently supported: `v` should be defined as `Vec<&str>`.
+Parentheses are currently only used with generic types when defining parameters
+for `Fn`-family traits.
+"##,
+
 E0220: r##"
 You used an associated type which isn't defined in the trait.
 Erroneous code example:
@@ -2458,6 +2473,24 @@ struct Foo { x: bool }
 
 struct Bar<S, T> { x: Foo<S, T> }
 ```
+"##,
+
+//NB: not currently reachable
+E0247: r##"
+This error indicates an attempt to use a module name where a type is expected.
+For example:
+
+```
+mod MyMod {
+    mod MySubMod { }
+}
+
+fn do_something(x: MyMod::MySubMod) { }
+```
+
+In this example, we're attempting to take a parameter of type `MyMod::MySubMod`
+in the do_something function. This is not legal: `MyMod::MySubMod` is a module
+name, not a type.
 "##,
 
 E0248: r##"
@@ -2701,6 +2734,37 @@ fn main() {
         B::bb => {} // ok!
         _ => {}
     }
+}
+```
+"##,
+
+E0329: r##"
+An attempt was made to access an associated constant through either a generic
+type parameter or `Self`. This is not supported yet. An example causing this
+error is shown below:
+
+```
+trait Foo {
+    const BAR: f64;
+}
+
+struct MyStruct;
+
+impl Foo for MyStruct {
+    const BAR: f64 = 0f64;
+}
+
+fn get_bar_bad<F: Foo>(t: F) -> f64 {
+    F::BAR
+}
+```
+
+Currently, the value of `BAR` for a particular type can only be accessed through
+a concrete type, as shown below:
+
+```
+fn get_bar_good() -> f64 {
+    <MyStruct as Foo>::BAR
 }
 ```
 "##,
@@ -3219,7 +3283,6 @@ register_diagnostics! {
 //  E0209, // builtin traits can only be implemented on structs or enums
     E0212, // cannot extract an associated type from a higher-ranked trait bound
 //  E0213, // associated types are not accepted in this context
-    E0214, // parenthesized parameters may only be used with a trait
 //  E0215, // angle-bracket notation is not stable with `Fn`
 //  E0216, // parenthetical notation is only stable with `Fn`
 //  E0217, // ambiguous associated type, defined in multiple supertraits
@@ -3246,12 +3309,10 @@ register_diagnostics! {
     E0242, // internal error looking up a definition
     E0245, // not a trait
 //  E0246, // invalid recursive type
-    E0247, // found module name used as a type
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
     E0328, // cannot implement Unsize explicitly
-    E0329, // associated const depends on type parameter or Self.
     E0374, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with one field being coerced, none found
     E0375, // the trait `CoerceUnsized` may only be implemented for a coercion

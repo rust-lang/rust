@@ -38,6 +38,7 @@ use trans::machine::llsize_of;
 use trans::type_::Type;
 use middle::ty::{self, Ty, HasTypeFlags};
 use middle::subst::Substs;
+use rustc_front::hir;
 use syntax::abi::{self, RustIntrinsic};
 use syntax::ast;
 use syntax::ptr::P;
@@ -45,7 +46,7 @@ use syntax::parse::token;
 
 use std::cmp::Ordering;
 
-pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
+pub fn get_simple_intrinsic(ccx: &CrateContext, item: &hir::ForeignItem) -> Option<ValueRef> {
     let name = match &*item.ident.name.as_str() {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
@@ -935,6 +936,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                           any_changes_needed: &mut bool) -> Vec<Type> {
                 use intrinsics::Type::*;
                 match *t {
+                    Void => vec![Type::void(ccx)],
                     Integer(_signed, width, llvm_width) => {
                         *any_changes_needed |= width != llvm_width;
                         vec![Type::ix(ccx, llvm_width as u64)]
@@ -946,14 +948,29 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                             _ => unreachable!()
                         }
                     }
-                    Pointer(_) => unimplemented!(),
-                    Vector(ref t, length) => {
+                    Pointer(ref t, ref llvm_elem, _const) => {
+                        *any_changes_needed |= llvm_elem.is_some();
+
+                        let t = llvm_elem.as_ref().unwrap_or(t);
+                        let elem = one(ty_to_type(ccx, t,
+                                                  any_changes_needed));
+                        vec![elem.ptr_to()]
+                    }
+                    Vector(ref t, ref llvm_elem, length) => {
+                        *any_changes_needed |= llvm_elem.is_some();
+
+                        let t = llvm_elem.as_ref().unwrap_or(t);
                         let elem = one(ty_to_type(ccx, t,
                                                   any_changes_needed));
                         vec![Type::vector(&elem,
                                           length as u64)]
                     }
-                    Aggregate(false, _) => unimplemented!(),
+                    Aggregate(false, ref contents) => {
+                        let elems = contents.iter()
+                                            .map(|t| one(ty_to_type(ccx, t, any_changes_needed)))
+                                            .collect::<Vec<_>>();
+                        vec![Type::struct_(ccx, &elems, false)]
+                    }
                     Aggregate(true, ref contents) => {
                         *any_changes_needed = true;
                         contents.iter()
@@ -964,8 +981,9 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             }
 
             // This allows an argument list like `foo, (bar, baz),
-            // qux` to be converted into `foo, bar, baz, qux`, and
-            // integer arguments to be truncated as needed.
+            // qux` to be converted into `foo, bar, baz, qux`, integer
+            // arguments to be truncated as needed and pointers to be
+            // cast.
             fn modify_as_needed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                             t: &intrinsics::Type,
                                             arg_type: Ty<'tcx>,
@@ -989,6 +1007,16 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                 Load(bcx, adt::trans_field_ptr(bcx, repr_ptr, llarg, 0, i))
                             })
                             .collect()
+                    }
+                    intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
+                        let llvm_elem = one(ty_to_type(bcx.ccx(), llvm_elem, &mut false));
+                        vec![PointerCast(bcx, llarg,
+                                         llvm_elem.ptr_to())]
+                    }
+                    intrinsics::Type::Vector(_, Some(ref llvm_elem), length) => {
+                        let llvm_elem = one(ty_to_type(bcx.ccx(), llvm_elem, &mut false));
+                        vec![BitCast(bcx, llarg,
+                                     Type::vector(&llvm_elem, length as u64))]
                     }
                     intrinsics::Type::Integer(_, width, llvm_width) if width != llvm_width => {
                         // the LLVM intrinsic uses a smaller integer
@@ -1026,7 +1054,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             };
             assert_eq!(inputs.len(), llargs.len());
 
-            match intr.definition {
+            let val = match intr.definition {
                 intrinsics::IntrinsicDef::Named(name) => {
                     let f = declare::declare_cfn(ccx,
                                                  name,
@@ -1034,6 +1062,20 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                  tcx.mk_nil());
                     Call(bcx, f, &llargs, None, call_debug_location)
                 }
+            };
+
+            match intr.output {
+                intrinsics::Type::Aggregate(flatten, ref elems) => {
+                    // the output is a tuple so we need to munge it properly
+                    assert!(!flatten);
+
+                    for i in 0..elems.len() {
+                        let val = ExtractValue(bcx, val, i);
+                        Store(bcx, val, StructGEP(bcx, llresult, i));
+                    }
+                    C_nil(ccx)
+                }
+                _ => val,
             }
         }
     };
@@ -1373,7 +1415,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let tcx = ccx.tcx();
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
     let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: ast::Unsafety::Unsafe,
+        unsafety: hir::Unsafety::Unsafe,
         abi: abi::Rust,
         sig: ty::Binder(ty::FnSig {
             inputs: vec![i8p],
@@ -1384,7 +1426,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let fn_ty = tcx.mk_fn(None, fn_ty);
     let output = ty::FnOutput::FnConverging(i8p);
     let try_fn_ty  = tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: ast::Unsafety::Unsafe,
+        unsafety: hir::Unsafety::Unsafe,
         abi: abi::Rust,
         sig: ty::Binder(ty::FnSig {
             inputs: vec![fn_ty, i8p],
@@ -1402,7 +1444,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
      name: &str,
      substs: subst::Substs<'tcx>,
      callee_ty: Ty<'tcx>,
-     args: Option<&[P<ast::Expr>]>,
+     args: Option<&[P<hir::Expr>]>,
      llargs: &[ValueRef],
      ret_ty: Ty<'tcx>,
      llret_ty: Type,
@@ -1452,12 +1494,12 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
     let in_len = arg_tys[0].simd_size(tcx);
 
     let comparison = match name {
-        "simd_eq" => Some(ast::BiEq),
-        "simd_ne" => Some(ast::BiNe),
-        "simd_lt" => Some(ast::BiLt),
-        "simd_le" => Some(ast::BiLe),
-        "simd_gt" => Some(ast::BiGt),
-        "simd_ge" => Some(ast::BiGe),
+        "simd_eq" => Some(hir::BiEq),
+        "simd_ne" => Some(hir::BiNe),
+        "simd_lt" => Some(hir::BiLt),
+        "simd_le" => Some(hir::BiLe),
+        "simd_gt" => Some(hir::BiGt),
+        "simd_ge" => Some(hir::BiGe),
         _ => None
     };
 

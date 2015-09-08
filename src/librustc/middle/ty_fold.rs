@@ -42,7 +42,7 @@ use middle::traits;
 use std::fmt;
 use std::rc::Rc;
 use syntax::abi;
-use syntax::ast;
+use rustc_front::hir;
 use syntax::owned_slice::OwnedSlice;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
@@ -165,7 +165,7 @@ macro_rules! CopyImpls {
     }
 }
 
-CopyImpls! { (), ast::Unsafety, abi::Abi }
+CopyImpls! { (), hir::Unsafety, abi::Abi }
 
 impl<'tcx, T:TypeFoldable<'tcx>, U:TypeFoldable<'tcx>> TypeFoldable<'tcx> for (T, U) {
     fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> (T, U) {

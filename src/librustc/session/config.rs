@@ -26,9 +26,10 @@ use lint;
 use metadata::cstore;
 
 use syntax::ast;
-use syntax::ast::{IntTy, UintTy};
+use rustc_front::hir::{IntTy, UintTy};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
+use rustc_front::hir;
 use syntax::diagnostic::{ColorConfig, Auto, Always, Never, SpanHandler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
@@ -103,6 +104,7 @@ pub struct Options {
     pub parse_only: bool,
     pub no_trans: bool,
     pub treat_err_as_bug: bool,
+    pub always_build_mir: bool,
     pub no_analysis: bool,
     pub debugging_opts: DebuggingOptions,
     /// Whether to write dependency files. It's (enabled, optional filename).
@@ -215,6 +217,7 @@ pub fn basic_options() -> Options {
         parse_only: false,
         no_trans: false,
         treat_err_as_bug: false,
+        always_build_mir: false,
         no_analysis: false,
         debugging_opts: basic_debugging_options(),
         write_dependency_info: (false, None),
@@ -582,6 +585,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "Run all passes except translation; no output"),
     treat_err_as_bug: bool = (false, parse_bool,
           "Treat all errors that occur as bugs"),
+    always_build_mir: bool = (false, parse_bool,
+          "Always build MIR for all fns, even without a #[rustc_mir] annotation"),
     no_analysis: bool = (false, parse_bool,
           "Parse and expand the source, but run no analysis"),
     extra_plugins: Vec<String> = (Vec::new(), parse_list,
@@ -664,8 +669,8 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
     };
 
     let (int_type, uint_type) = match &target.target_pointer_width[..] {
-        "32" => (ast::TyI32, ast::TyU32),
-        "64" => (ast::TyI64, ast::TyU64),
+        "32" => (hir::TyI32, hir::TyU32),
+        "64" => (hir::TyI64, hir::TyU64),
         w    => sp.handler().fatal(&format!("target specification was invalid: unrecognized \
                                              target-pointer-width {}", w))
     };
@@ -824,15 +829,16 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
         opt::flagopt_u("", "pretty",
                    "Pretty-print the input instead of compiling;
                    valid types are: `normal` (un-annotated source),
-                   `expanded` (crates expanded),
-                   `typed` (crates expanded, with type annotations), or
+                   `expanded` (crates expanded), or
                    `expanded,identified` (fully parenthesized, AST nodes with IDs).",
                  "TYPE"),
         opt::flagopt_u("", "unpretty",
                      "Present the input source, unstable (and less-pretty) variants;
                       valid types are any of the types for `--pretty`, as well as:
-                      `flowgraph=<nodeid>` (graphviz formatted flowgraph for node), or
-                      `everybody_loops` (all function bodies replaced with `loop {}`).",
+                      `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
+                      `everybody_loops` (all function bodies replaced with `loop {}`),
+                      `hir` (the HIR), `hir,identified`, or
+                      `hir,typed` (HIR with types for each node).",
                      "TYPE"),
         opt::opt_u("", "show-span", "Show spans for compiler debugging", "expr|pat|ty"),
     ]);
@@ -892,6 +898,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let parse_only = debugging_opts.parse_only;
     let no_trans = debugging_opts.no_trans;
     let treat_err_as_bug = debugging_opts.treat_err_as_bug;
+    let always_build_mir = debugging_opts.always_build_mir;
     let no_analysis = debugging_opts.no_analysis;
 
     if debugging_opts.debug_llvm {
@@ -1047,6 +1054,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         parse_only: parse_only,
         no_trans: no_trans,
         treat_err_as_bug: treat_err_as_bug,
+        always_build_mir: always_build_mir,
         no_analysis: no_analysis,
         debugging_opts: debugging_opts,
         write_dependency_info: write_dependency_info,
