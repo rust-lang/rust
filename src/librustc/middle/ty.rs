@@ -5311,6 +5311,16 @@ impl<'tcx> TyS<'tcx> {
 impl<'tcx> fmt::Display for TypeError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::TypeError::*;
+        fn report_maybe_different(f: &mut fmt::Formatter,
+                                  expected: String, found: String) -> fmt::Result {
+            // A naive approach to making sure that we're not reporting silly errors such as:
+            // (expected closure, found closure).
+            if expected == found {
+                write!(f, "expected {}, found a different {}", expected, found)
+            } else {
+                write!(f, "expected {}, found {}", expected, found)
+            }
+        }
 
         match *self {
             CyclicTy => write!(f, "cyclic type of infinite size"),
@@ -5371,20 +5381,15 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                            found bound lifetime parameter {}", br)
             }
             Sorts(values) => tls::with(|tcx| {
-                // A naive approach to making sure that we're not reporting silly errors such as:
-                // (expected closure, found closure).
-                let expected_str = values.expected.sort_string(tcx);
-                let found_str = values.found.sort_string(tcx);
-                if expected_str == found_str {
-                    write!(f, "expected {}, found a different {}", expected_str, found_str)
-                } else {
-                    write!(f, "expected {}, found {}", expected_str, found_str)
-                }
+                report_maybe_different(f, values.expected.sort_string(tcx),
+                                       values.found.sort_string(tcx))
             }),
             Traits(values) => tls::with(|tcx| {
-                write!(f, "expected trait `{}`, found trait `{}`",
-                       tcx.item_path_str(values.expected),
-                       tcx.item_path_str(values.found))
+                report_maybe_different(f,
+                                       format!("trait `{}`",
+                                               tcx.item_path_str(values.expected)),
+                                       format!("trait `{}`",
+                                               tcx.item_path_str(values.found)))
             }),
             BuiltinBoundsMismatch(values) => {
                 if values.expected.is_empty() {
