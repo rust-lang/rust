@@ -3964,7 +3964,7 @@ impl<'a> Parser<'a> {
                     p.span_warn(span, "whoops, no =?");
                 }
                 let ty = try!(p.parse_ty_nopanic());
-                let hi = p.span.hi;
+                let hi = ty.span.hi;
                 let span = mk_sp(lo, hi);
                 return Ok(P(TypeBinding{id: ast::DUMMY_NODE_ID,
                     ident: ident,
