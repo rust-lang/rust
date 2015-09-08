@@ -35,7 +35,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 
     let detail = unsafe {
         str::from_utf8(CStr::from_ptr(c::gai_strerror(err)).to_bytes()).unwrap()
-            .to_string()
+            .to_owned()
     };
     Err(io::Error::new(io::ErrorKind::Other,
                        &format!("failed to lookup address information: {}",

@@ -310,7 +310,7 @@ pub mod guard {
             ret = Some(stackaddr as usize + guardsize as usize);
         }
         assert_eq!(pthread_attr_destroy(&mut attr), 0);
-        return ret
+        ret
     }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]

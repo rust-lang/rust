@@ -231,7 +231,7 @@ mod dl {
                 Ok(result)
             } else {
                 let s = CStr::from_ptr(last_error).to_bytes();
-                Err(str::from_utf8(s).unwrap().to_string())
+                Err(str::from_utf8(s).unwrap().to_owned())
             };
 
             ret

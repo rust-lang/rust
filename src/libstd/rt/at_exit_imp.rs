@@ -42,7 +42,7 @@ unsafe fn init() -> bool {
         return false
     }
 
-    return true
+    true
 }
 
 pub fn cleanup() {
@@ -78,5 +78,5 @@ pub fn push(f: Box<FnBox()>) -> bool {
         }
         LOCK.unlock();
     }
-    return ret
+    ret
 }
