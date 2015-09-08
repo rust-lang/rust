@@ -142,7 +142,7 @@ pub fn split_paths(unparsed: &OsStr) -> SplitPaths {
     let unparsed = unparsed.as_bytes();
     SplitPaths {
         iter: unparsed.split(is_colon as fn(&u8) -> bool)
-                      .map(bytes_to_path as fn(&'a [u8]) -> PathBuf)
+                      .map(bytes_to_path as fn(&[u8]) -> PathBuf)
     }
 }
 
