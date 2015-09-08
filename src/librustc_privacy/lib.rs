@@ -263,6 +263,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                     hir::TyPath(..) => {
                         match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
                             def::DefPrimTy(..) => true,
+                            def::DefSelfTy(..) => true,
                             def => {
                                 let did = def.def_id();
                                 if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
@@ -337,7 +338,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemTy(ref ty, _) if public_first => {
                 if let hir::TyPath(..) = ty.node {
                     match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
-                        def::DefPrimTy(..) | def::DefTyParam(..) => {},
+                        def::DefPrimTy(..) | def::DefSelfTy(..) | def::DefTyParam(..) => {},
                         def => {
                             let did = def.def_id();
                             if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
@@ -1148,7 +1149,7 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
     fn path_is_private_type(&self, path_id: ast::NodeId) -> bool {
         let did = match self.tcx.def_map.borrow().get(&path_id).map(|d| d.full_def()) {
             // `int` etc. (None doesn't seem to occur.)
-            None | Some(def::DefPrimTy(..)) => return false,
+            None | Some(def::DefPrimTy(..)) | Some(def::DefSelfTy(..)) => return false,
             Some(def) => def.def_id(),
         };
 

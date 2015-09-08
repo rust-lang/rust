@@ -99,6 +99,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                 }
                 _ if self.ignore_non_const_paths => (),
                 def::DefPrimTy(_) => (),
+                def::DefSelfTy(..) => (),
                 def::DefVariant(enum_id, variant_id, _) => {
                     self.check_def_id(enum_id);
                     if !self.ignore_variant_stack.contains(&variant_id) {

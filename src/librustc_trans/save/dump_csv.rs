@@ -235,7 +235,8 @@ impl <'l, 'tcx> DumpCsvVisitor<'l, 'tcx> {
         }
         let def = self.tcx.def_map.borrow().get(&ref_id).unwrap().full_def();
         match def {
-            def::DefPrimTy(_) => None,
+            def::DefPrimTy(..) => None,
+            def::DefSelfTy(..) => None,
             _ => Some(def.def_id()),
         }
     }
