@@ -8,13 +8,6 @@ fn main() {
                      // second
                      b: WithType, // argument
                      // ignored
-                     _| (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbb);
-
-    let commented = |// first
-                     a, // argument
-                     // second
-                     b: WithType, // argument
-                     // ignored
                      _| {
                         (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
                          bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)
@@ -46,6 +39,10 @@ fn main() {
 
     let empty = |arg| {};
 
+    let simple = |arg| { /* TODO(#27): comment formatting */
+                     foo(arg)
+                 };
+
     let test = || {
                    do_something();
                    do_something_else();
@@ -58,6 +55,16 @@ fn main() {
     let arg_test = |big_argument_name, test123| {
                        looooooooooooooooooong_function_naaaaaaaaaaaaaaaaame()
                    };
+
+    let simple_closure = move || -> () {};
+
+    let closure = |input: Ty| -> Option<String> { foo() };
+
+    let closure_with_return_type = |aaaaaaaaaaaaaaaaaaaaaaarg1,
+                                    aaaaaaaaaaaaaaaaaaaaaaarg2|
+                                    -> Strong {
+                                       "sup".to_owned()
+                                   };
 
     |arg1, arg2, _, _, arg3, arg4| {
         let temp = arg4 + arg3;

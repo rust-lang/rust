@@ -17,7 +17,7 @@ use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
 use expr::rewrite_assign_rhs;
 use comment::FindUncommented;
 use visitor::FmtVisitor;
-use rewrite::Rewrite;
+use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density};
 
 use syntax::{ast, abi};
@@ -207,7 +207,8 @@ impl<'a> FmtVisitor<'a> {
                                                           generics_span));
         result.push_str(&generics_str);
 
-        let ret_str = self.rewrite_return(&fd.output, indent);
+        let context = self.get_context();
+        let ret_str = fd.output.rewrite(&context, self.config.max_width - indent, indent).unwrap();
 
         // Args.
         let (one_line_budget, multi_line_budget, mut arg_indent) =
@@ -902,14 +903,22 @@ impl<'a> FmtVisitor<'a> {
             Some(format!(" where {}", preds_str))
         }
     }
+}
 
-    fn rewrite_return(&self, ret: &ast::FunctionRetTy, indent: usize) -> String {
-        match *ret {
-            ast::FunctionRetTy::DefaultReturn(_) => String::new(),
-            ast::FunctionRetTy::NoReturn(_) => "-> !".to_owned(),
+impl Rewrite for ast::FunctionRetTy {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+        match *self {
+            ast::FunctionRetTy::DefaultReturn(_) => Some(String::new()),
+            ast::FunctionRetTy::NoReturn(_) => {
+                if width >= 4 {
+                    Some("-> !".to_owned())
+                } else {
+                    None
+                }
+            }
             ast::FunctionRetTy::Return(ref ty) => {
-                let ctxt = &self.get_context();
-                format!("-> {}", ty.rewrite(ctxt, ctxt.config.max_width, indent).unwrap())
+                let inner_width = try_opt!(width.checked_sub(3));
+                ty.rewrite(context, inner_width, offset + 3).map(|r| format!("-> {}", r))
             }
         }
     }

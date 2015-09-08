@@ -163,9 +163,12 @@ fn rewrite_closure(capture: ast::CaptureClause,
 
     // 4 = "|| {".len(), which is overconservative when the closure consists of
     // a single expression.
-    let argument_budget = try_opt!(width.checked_sub(4 + mover.len()));
+    let budget = try_opt!(width.checked_sub(4 + mover.len()));
     // 1 = |
     let argument_offset = offset + 1;
+    let ret_str = try_opt!(fn_decl.output.rewrite(context, budget, argument_offset));
+    // 1 = space between arguments and return type.
+    let horizontal_budget = budget.checked_sub(ret_str.len() + 1).unwrap_or(0);
 
     let arg_items = itemize_list(context.codemap,
                                  fn_decl.inputs.iter(),
@@ -176,13 +179,37 @@ fn rewrite_closure(capture: ast::CaptureClause,
                                  span_after(span, "|", context.codemap),
                                  body.span.lo);
 
-    let fmt = ListFormatting::for_fn(argument_budget, argument_offset);
+    let fmt = ListFormatting {
+        tactic: ListTactic::HorizontalVertical,
+        separator: ",",
+        trailing_separator: SeparatorTactic::Never,
+        indent: argument_offset,
+        h_width: horizontal_budget,
+        v_width: budget,
+        ends_with_newline: false,
+    };
     let list_str = try_opt!(write_list(&arg_items.collect::<Vec<_>>(), &fmt));
-    let prefix = format!("{}|{}|", mover, list_str);
+    let mut prefix = format!("{}|{}|", mover, list_str);
+
+    if !ret_str.is_empty() {
+        if prefix.contains('\n') {
+            prefix.push('\n');
+            prefix.push_str(&make_indent(argument_offset));
+        } else {
+            prefix.push(' ');
+        }
+        prefix.push_str(&ret_str);
+    }
+
     let closure_indent = closure_indent(context, offset);
 
     // Try to format closure body as a single line expression without braces.
-    if body.stmts.is_empty() {
+    if is_simple_block(body, context.codemap) && !prefix.contains('\n') {
+        let (spacer, closer) = if ret_str.is_empty() {
+            (" ", "")
+        } else {
+            (" { ", " }")
+        };
         let expr = body.expr.as_ref().unwrap();
         // All closure bodies are blocks in the eyes of the AST, but we may not
         // want to unwrap them when they only contain a single expression.
@@ -192,28 +219,31 @@ fn rewrite_closure(capture: ast::CaptureClause,
             }
             _ => expr,
         };
-
-        // 1 = the separating space between arguments and the body.
-        let extra_offset = extra_offset(&prefix, offset) + 1;
-        let budget = try_opt!(width.checked_sub(extra_offset));
+        let extra_offset = extra_offset(&prefix, offset) + spacer.len();
+        let budget = try_opt!(width.checked_sub(extra_offset + closer.len()));
         let rewrite = inner_expr.rewrite(context, budget, offset + extra_offset);
 
         // Checks if rewrite succeeded and fits on a single line.
         let accept_rewrite = rewrite.as_ref().map(|result| !result.contains('\n')).unwrap_or(false);
 
         if accept_rewrite {
-            return Some(format!("{} {}", prefix, rewrite.unwrap()));
+            return Some(format!("{}{}{}{}", prefix, spacer, rewrite.unwrap(), closer));
         }
     }
 
     // We couldn't format the closure body as a single line expression; fall
     // back to block formatting.
     let inner_context = context.overflow_context(closure_indent - context.block_indent);
-    let body_rewrite = if let ast::Expr_::ExprBlock(ref inner) = body.expr.as_ref().unwrap().node {
-        inner.rewrite(&inner_context, 0, 0)
-    } else {
-        body.rewrite(&inner_context, 0, 0)
-    };
+    let body_rewrite = body.expr
+                           .as_ref()
+                           .and_then(|body_expr| {
+                               if let ast::Expr_::ExprBlock(ref inner) = body_expr.node {
+                                   Some(inner.rewrite(&inner_context, 2, 0))
+                               } else {
+                                   None
+                               }
+                           })
+                           .unwrap_or_else(|| body.rewrite(&inner_context, 2, 0));
 
     Some(format!("{} {}", prefix, try_opt!(body_rewrite)))
 }
