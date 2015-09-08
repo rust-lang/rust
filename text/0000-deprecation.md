@@ -5,7 +5,7 @@
 
 # Summary
 
-This RFC proposes to allow library authors to use a `#[deprecate]` attribute,
+This RFC proposes to allow library authors to use a `#[deprecated]` attribute,
 with `since="`(version)`"`, `reason="`(free text)`"` and 
 `surrogate="`(text or surrogate declaration)`"` fields. The compiler can then
 warn on deprecated items, while `rustdoc` can document their deprecation
@@ -26,18 +26,17 @@ interface to use while maximizing usefulness of the metadata introduced.
 
 Public API items (both plain `fn`s, methods, trait- and inherent 
 `impl`ementations as well as `const` definitions, type definitions, struct
-fields and enum variants) can be given a `#[deprecate]` attribute.
+fields and enum variants) can be given a `#[deprecated]` attribute.
 
-This attribute *must* have the `since` field, which contains at least the 
+This attribute *must* have the `since` field, which contains the exact
 version of the crate that deprecated the item, as defined by Cargo.toml 
 (thus following the semver scheme). It makes no sense to put a version number 
 higher than the current newest version here, and this is not checked (but 
 could be by external lints, e.g. 
 [rust-clippy](https://github.com/Manishearth/rust-clippy).
 
-Following semantic versioning would mean that the supplied value could
-actually be a version *range*, which could imply an end-of-life for the
-feature.
+It is required that the version be fully specified (e.g. no wildcards or
+ranges).
 
 Other optional fields are:
 
@@ -54,7 +53,7 @@ different crate) followed by `@` and either a crate name (so that
 a repository or other location where a surrogate can be obtained. Links must be 
 plain FTP, FTPS, HTTP or HTTPS links. The intention is to allow rustdoc (and
 possibly other tools in the future, e.g. IDEs) to act on the included 
-information.
+information. The `surrogate` field can have multiple values.
 
 On use of a *deprecated* item, `rustc` should `warn` of the deprecation. Note 
 that during Cargo builds, warnings on dependencies get silenced. Note that 
@@ -100,5 +99,7 @@ complexity here
 
 * What other restrictions should we introduce now to avoid being bound to a 
 possibly flawed design?
-* Can / Should the `std` library make use of the `#[deprecate]` extensions?
+* How should the multiple values in the `surrogate` field work? Just split by
+some delimiter?
+* Can / Should the `std` library make use of the `#[deprecated]` extensions?
 * Bikeshedding: Are the names good enough?
