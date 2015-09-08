@@ -141,7 +141,8 @@ pub fn split_paths(unparsed: &OsStr) -> SplitPaths {
     fn is_colon(b: &u8) -> bool { *b == b':' }
     let unparsed = unparsed.as_bytes();
     SplitPaths {
-        iter: unparsed.split(is_colon).map(bytes_to_path)
+        iter: unparsed.split(is_colon as fn(&u8) -> bool)
+                      .map(bytes_to_path as fn(&'a [u8]) -> PathBuf)
     }
 }
 
