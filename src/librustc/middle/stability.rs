@@ -22,7 +22,7 @@ use syntax::parse::token::InternedString;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::ast;
 use syntax::ast::NodeId;
-use syntax::feature_gate::emit_feature_err;
+use syntax::feature_gate::{GateIssue, emit_feature_err};
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
 use rustc_front::hir;
@@ -294,18 +294,14 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 self.used_features.insert(feature.clone(), attr::Unstable);
 
                 if !self.active_features.contains(feature) {
-                    let mut msg = match *reason {
+                    let msg = match *reason {
                         Some(ref r) => format!("use of unstable library feature '{}': {}",
                                                &feature, &r),
                         None => format!("use of unstable library feature '{}'", &feature)
                     };
-                    if let Some(n) = issue {
-                        use std::fmt::Write;
-                        write!(&mut msg, " (see issue #{})", n).unwrap();
-                    }
 
                     emit_feature_err(&self.tcx.sess.parse_sess.span_diagnostic,
-                                      &feature, span, &msg);
+                                      &feature, span, GateIssue::Library(issue), &msg);
                 }
             }
             Some(&Stability { level, ref feature, .. }) => {

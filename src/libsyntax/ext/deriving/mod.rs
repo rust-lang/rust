@@ -105,6 +105,7 @@ fn expand_derive(cx: &mut ExtCtxt,
                     feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
                                                    "custom_derive",
                                                    titem.span,
+                                                   feature_gate::GateIssue::Language,
                                                    feature_gate::EXPLAIN_CUSTOM_DERIVE);
                     continue;
                 }

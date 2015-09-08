@@ -23,6 +23,7 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]
         feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
                                        "concat_idents",
                                        sp,
+                                       feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_CONCAT_IDENTS);
         return base::DummyResult::expr(sp);
     }
