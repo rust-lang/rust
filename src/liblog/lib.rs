@@ -174,7 +174,6 @@
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(iter_cmp)]
-#![feature(rt)]
 #![feature(staged_api)]
 #![feature(static_mutex)]
 
@@ -185,7 +184,6 @@ use std::io::prelude::*;
 use std::mem;
 use std::env;
 use std::ptr;
-use std::rt;
 use std::slice;
 use std::sync::{Once, StaticMutex};
 
@@ -292,7 +290,6 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
         let _g = LOCK.lock();
         match FILTER as usize {
             0 => {}
-            1 => panic!("cannot log after main thread has exited"),
             n => {
                 let filter = mem::transmute::<_, &String>(n);
                 if !args.to_string().contains(filter) {
@@ -385,9 +382,6 @@ pub fn mod_enabled(level: u32, module: &str) -> bool {
     let _g = LOCK.lock();
     unsafe {
         assert!(DIRECTIVES as usize != 0);
-        assert!(DIRECTIVES as usize != 1,
-                "cannot log after the main thread has exited");
-
         enabled(level, module, (*DIRECTIVES).iter())
     }
 }
@@ -442,19 +436,6 @@ fn init() {
 
         assert!(DIRECTIVES.is_null());
         DIRECTIVES = Box::into_raw(box directives);
-
-        // Schedule the cleanup for the globals for when the runtime exits.
-        let _ = rt::at_exit(move || {
-            let _g = LOCK.lock();
-            assert!(!DIRECTIVES.is_null());
-            let _directives = Box::from_raw(DIRECTIVES);
-            DIRECTIVES = 1 as *mut _;
-
-            if !FILTER.is_null() {
-                let _filter = Box::from_raw(FILTER);
-                FILTER = 1 as *mut _;
-            }
-        });
     }
 }
 

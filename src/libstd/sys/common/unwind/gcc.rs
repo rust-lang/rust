@@ -13,7 +13,7 @@
 use prelude::v1::*;
 
 use any::Any;
-use rt::libunwind as uw;
+use sys_common::libunwind as uw;
 
 struct Exception {
     uwe: uw::_Unwind_Exception,
@@ -35,7 +35,6 @@ pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
 
     extern fn exception_cleanup(_unwind_code: uw::_Unwind_Reason_Code,
                                 exception: *mut uw::_Unwind_Exception) {
-        rtdebug!("exception_cleanup()");
         unsafe {
             let _: Box<Exception> = Box::from_raw(exception as *mut Exception);
         }
@@ -44,7 +43,6 @@ pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
 
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send + 'static> {
     let my_ep = ptr as *mut Exception;
-    rtdebug!("caught {}", (*my_ep).uwe.exception_class);
     let cause = (*my_ep).cause.take();
     uw::_Unwind_DeleteException(ptr as *mut _);
     cause.unwrap()
@@ -80,7 +78,7 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
           not(all(windows, target_arch = "x86_64")),
           not(test)))]
 pub mod eabi {
-    use rt::libunwind as uw;
+    use sys_common::libunwind as uw;
     use libc::c_int;
 
     extern {
@@ -136,7 +134,7 @@ pub mod eabi {
 
 #[cfg(all(target_os = "ios", target_arch = "arm", not(test)))]
 pub mod eabi {
-    use rt::libunwind as uw;
+    use sys_common::libunwind as uw;
     use libc::c_int;
 
     extern {
@@ -191,7 +189,7 @@ pub mod eabi {
 // but otherwise works the same.
 #[cfg(all(target_arch = "arm", not(target_os = "ios"), not(test)))]
 pub mod eabi {
-    use rt::libunwind as uw;
+    use sys_common::libunwind as uw;
     use libc::c_int;
 
     extern {

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use libc::{self, LONG};
-use rt::util::report_overflow;
+use sys_common::util::report_overflow;
 use sys::c;
 
 pub struct Handler;
