@@ -18,12 +18,12 @@ Divide global declarations into two categories:
 # Motivation
 
 We have been wrestling with the best way to represent globals for some
-times. There are number of interrelated issues:
+times. There are a number of interrelated issues:
 
 - *Significant addresses and inlining:* For optimization purposes, it
   is useful to be able to inline constant values directly into the
   program. It is even more useful if those constant values do not have
-  a known address, because that means the compiler is free to replicate
+  known addresses, because that means the compiler is free to replicate
   them as it wishes. Moreover, if a constant is inlined into downstream
   crates, then they must be recompiled whenever that constant changes.
 - *Read-only memory:* Whenever possible, we'd like to place large
@@ -32,18 +32,18 @@ times. There are number of interrelated issues:
 - *Global atomic counters and the like:* We'd like to make it possible
   for people to create global locks or atomic counters that can be
   used without resorting to unsafe code.
-- *Interfacing with C code:* some C libraries require the use of
+- *Interfacing with C code:* Some C libraries require the use of
   global, mutable data. Other times it's just convenient and threading
   is not a concern.
-- *Initializer constants:* there must be a way to have initializer
+- *Initializer constants:* There must be a way to have initializer
   constants for things like locks and atomic counters, so that people
   can write `static MY_COUNTER: AtomicUint = INIT_ZERO` or some
   such. It should not be possible to modify these initializer
   constants.
 
 The current design is that we have only one keyword, `static`, which
-declares a global variable. By default, global variables do not have a
-significant address and can be inlined into the program. You can make
+declares a global variable. By default, global variables do not have
+significant addresses and can be inlined into the program. You can make
 a global variable have a *significant* address by marking it
 `#[inline(never)]`. Furthermore, you can declare a mutable global
 using `static mut`: all accesses to `static mut` variables are
@@ -56,8 +56,8 @@ Some concrete problems with this design are:
 
 - There is no way to have a safe global counter or lock. Those must be
   placed in `static mut` variables, which means that access to them is
-  illegal. To resolve this, there is an alternative proposal which
-  makes access to `static mut` be considered safe if the type of the
+  illegal. To resolve this, there is an alternative proposal, according
+  to which, access to `static mut` is considered safe if the type of the
   static mut meets the `Sync` trait.
 - The significance (no pun intended) of the `#[inline(never)]` annotation
   is not intuitive.
@@ -68,14 +68,14 @@ Other less practical and more aesthetic concerns are:
 - Although `static` and `let` look and feel analogous, the two behave
   quite differently.  Generally speaking, `static` declarations do not
   declare variables but rather values, which can be inlined and which
-  do not have a fixed address. You cannot have interior mutability in
+  do not have fixed addresses. You cannot have interior mutability in
   a `static` variable, but you can in a `let`. So that `static`
   variables can appear in patterns, it is illegal to shadow a `static`
   variable -- but `let` variables cannot appear in patterns. Etc.
 - There are other constructs in the language, such as nullary enum
   variants and nullary structs, which look like global data but in
   fact act quite differently. They are actual values which do not have
-  a address. They are categorized as rvalues and so forth.
+  addresses. They are categorized as rvalues and so forth.
 
 # Detailed design
 
@@ -88,8 +88,8 @@ Reintroduce a `const` declaration which declares a *constant*:
 Constants may be declared in any scope. They cannot be shadowed.
 Constants are considered rvalues. Therefore, taking the address of a
 constant actually creates a spot on the local stack -- they by
-definition have no significant address. Constants are intended to
-behave exactly like a nullary enum variant.
+definition have no significant addresses. Constants are intended to
+behave exactly like nullary enum variants.
 
 ### Possible extension: Generic constants
 
@@ -122,7 +122,7 @@ among other things.
 ## Static variables
 
 Repurpose the `static` declaration to declare static variables
-only. Static variables always have a single address. `static`
+only. Static variables always have single addresses. `static`
 variables can optionally be declared as `mut`. The lifetime of a
 `static` variable is `'static`. It is not legal to move from a static.
 Accesses to a static variable generate actual reads and writes: the
@@ -162,7 +162,7 @@ compiler will reinterpret this as if it were written as:
 Here a `static` is introduced to be able to give the `const` a pointer which
 does indeed have the `'static` lifetime. Due to this rewriting, the compiler
 will disallow `SomeStruct` from containing an `UnsafeCell` (interior
-mutability). In general a constant A cannot reference the address of another
+mutability). In general, a constant A cannot reference the address of another
 constant B if B contains an `UnsafeCell` in its interior.
 
 ### const => static
