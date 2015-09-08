@@ -151,7 +151,7 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
                 cap = self.ti.strings.get("op");
             }
         }
-        let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_string()), |op| {
+        let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_owned()), |op| {
             expand(op, &[], &mut Variables::new())
         });
         if s.is_ok() {
@@ -211,9 +211,9 @@ impl<T: Write+Send+'static> TerminfoTerminal<T> {
                      inf.numbers.get("colors").map_or(0, |&n| n)
                  } else { 0 };
 
-        return Some(box TerminfoTerminal {out: out,
-                                          ti: inf,
-                                          num_colors: nc});
+        Some(box TerminfoTerminal {out: out,
+                                   ti: inf,
+                                   num_colors: nc})
     }
 
     fn dim_if_necessary(&self, color: color::Color) -> color::Color {

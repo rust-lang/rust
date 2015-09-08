@@ -277,11 +277,11 @@ impl Error {
 
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Repr::Os(ref code) =>
+        match *self {
+            Repr::Os(ref code) =>
                 fmt.debug_struct("Os").field("code", code)
                    .field("message", &sys::os::error_string(*code)).finish(),
-            &Repr::Custom(ref c) => fmt.debug_tuple("Custom").field(c).finish(),
+            Repr::Custom(ref c) => fmt.debug_tuple("Custom").field(c).finish(),
         }
     }
 }

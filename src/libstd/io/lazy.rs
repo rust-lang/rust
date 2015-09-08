@@ -62,6 +62,6 @@ impl<T: Send + Sync + 'static> Lazy<T> {
         if registered.is_ok() {
             self.ptr.set(Box::into_raw(Box::new(ret.clone())));
         }
-        return ret
+        ret
     }
 }

@@ -104,7 +104,7 @@ pub unsafe fn find_landing_pad(lsda: *const u8, context: &EHContext)
     // IP range not found: gcc's C++ personality calls terminate() here,
     // however the rest of the languages treat this the same as cs_lpad == 0.
     // We follow this suit.
-    return None;
+    None
 }
 
 #[inline]

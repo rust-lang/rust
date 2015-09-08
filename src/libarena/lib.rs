@@ -220,7 +220,7 @@ impl<'longer_than_self> Arena<'longer_than_self> {
         *self.copy_head.borrow_mut() =
             chunk((new_min_chunk_size + 1).next_power_of_two(), true);
 
-        return self.alloc_copy_inner(n_bytes, align);
+        self.alloc_copy_inner(n_bytes, align)
     }
 
     #[inline]
@@ -247,7 +247,7 @@ impl<'longer_than_self> Arena<'longer_than_self> {
                                             mem::align_of::<T>());
             let ptr = ptr as *mut T;
             ptr::write(&mut (*ptr), op());
-            return &mut *ptr;
+            &mut *ptr
         }
     }
 
@@ -261,7 +261,7 @@ impl<'longer_than_self> Arena<'longer_than_self> {
         *self.head.borrow_mut() =
             chunk((new_min_chunk_size + 1).next_power_of_two(), false);
 
-        return self.alloc_noncopy_inner(n_bytes, align);
+        self.alloc_noncopy_inner(n_bytes, align)
     }
 
     #[inline]
@@ -290,7 +290,7 @@ impl<'longer_than_self> Arena<'longer_than_self> {
 
         unsafe {
             let buf = head.as_ptr();
-            return (buf.offset(tydesc_start as isize), buf.offset(start as isize));
+            (buf.offset(tydesc_start as isize), buf.offset(start as isize))
         }
     }
 
@@ -312,7 +312,7 @@ impl<'longer_than_self> Arena<'longer_than_self> {
             // the object is there.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
 
-            return &mut *ptr;
+            &mut *ptr
         }
     }
 
@@ -486,14 +486,12 @@ impl<T> TypedArena<T> {
             self.grow()
         }
 
-        let ptr: &mut T = unsafe {
+        unsafe {
             let ptr: &mut T = &mut *(self.ptr.get() as *mut T);
             ptr::write(ptr, object);
             self.ptr.set(self.ptr.get().offset(1));
             ptr
-        };
-
-        ptr
+        }
     }
 
     /// Grows the arena.

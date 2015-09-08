@@ -1558,10 +1558,10 @@ impl StrExt for str {
             if w > 2 { val = utf8_acc_cont_byte(val, s.as_bytes()[i + 2]); }
             if w > 3 { val = utf8_acc_cont_byte(val, s.as_bytes()[i + 3]); }
 
-            return CharRange {ch: unsafe { char::from_u32_unchecked(val) }, next: i};
+            CharRange {ch: unsafe { char::from_u32_unchecked(val) }, next: i}
         }
 
-        return multibyte_char_range_at_reverse(self, prev);
+        multibyte_char_range_at_reverse(self, prev)
     }
 
     #[inline]
@@ -1683,7 +1683,7 @@ fn char_range_at_raw(bytes: &[u8], i: usize) -> (u32, usize) {
         if w > 2 { val = utf8_acc_cont_byte(val, bytes[i + 2]); }
         if w > 3 { val = utf8_acc_cont_byte(val, bytes[i + 3]); }
 
-        return (val, i + w as usize);
+        (val, i + w as usize)
     }
 
     multibyte_char_range_at(bytes, i)

@@ -151,7 +151,7 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
         };
         STATE = backtrace_create_state(filename, 0, error_cb,
                                        ptr::null_mut());
-        return STATE
+        STATE
     }
 
     ////////////////////////////////////////////////////////////////////////
