@@ -17,7 +17,7 @@ use StructLitStyle;
 use utils::{span_after, make_indent, extra_offset, first_line_width, last_line_width, wrap_str,
             binary_search};
 use visitor::FmtVisitor;
-use config::BlockIndentStyle;
+use config::{BlockIndentStyle, MultilineStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment};
 use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg, rewrite_fn_input};
@@ -1019,7 +1019,10 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              span.hi);
 
     let fmt = ListFormatting {
-        tactic: ListTactic::HorizontalVertical,
+        tactic: match (context.config.struct_lit_style, fields.len()) {
+            (StructLitStyle::Visual, 1) => ListTactic::HorizontalVertical,
+            _ => context.config.struct_lit_multiline_style.to_list_tactic(),
+        },
         separator: ",",
         trailing_separator: if base.is_some() {
             SeparatorTactic::Never
@@ -1033,12 +1036,16 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     };
     let fields_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
-    match context.config.struct_lit_style {
-        StructLitStyle::Block if fields_str.contains('\n') => {
-            let inner_indent = make_indent(context.block_indent + context.config.tab_spaces);
-            let outer_indent = make_indent(context.block_indent);
-            Some(format!("{} {{\n{}{}\n{}}}", path_str, inner_indent, fields_str, outer_indent))
-        }
+    let format_on_newline = || {
+                                let inner_indent = make_indent(context.block_indent +
+                                                               context.config.tab_spaces);
+                                let outer_indent = make_indent(context.block_indent);
+                                Some(format!("{} {{\n{}{}\n{}}}", path_str, inner_indent, fields_str, outer_indent))
+                            };
+
+    match (context.config.struct_lit_style, context.config.struct_lit_multiline_style) {
+        (StructLitStyle::Block, _) if fields_str.contains('\n') => format_on_newline(),
+        (StructLitStyle::Block, MultilineStyle::ForceMulti) => format_on_newline(),
         _ => Some(format!("{} {{ {} }}", path_str, fields_str)),
     }
 
