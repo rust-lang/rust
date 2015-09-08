@@ -1,4 +1,4 @@
-Version 1.2.0 (August 2015)
+Version 1.2.0 (2015-08-07)
 ===========================
 
 * ~1200 changes, numerous bugfixes
@@ -156,7 +156,7 @@ Misc
 [ad]: https://github.com/rust-lang/rust/pull/27382
 [win]: https://github.com/rust-lang/rust/pull/25350
 
-Version 1.1.0 (June 2015)
+Version 1.1.0 (2015-06-25)
 =========================
 
 * ~850 changes, numerous bugfixes
@@ -267,7 +267,7 @@ Misc
 [`split_off`]: https://doc.rust-lang.org/nightly/collections/linked_list/struct.LinkedList.html#method.split_off
 [drop]: https://github.com/rust-lang/rust/pull/24935
 
-Version 1.0.0 (May 2015)
+Version 1.0.0 (2015-05-15)
 ========================
 
 * ~1500 changes, numerous bugfixes
