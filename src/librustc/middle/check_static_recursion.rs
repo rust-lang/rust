@@ -18,7 +18,7 @@ use util::nodemap::NodeMap;
 
 use syntax::{ast};
 use syntax::codemap::Span;
-use syntax::feature_gate::emit_feature_err;
+use syntax::feature_gate::{GateIssue, emit_feature_err};
 use rustc_front::visit::Visitor;
 use rustc_front::visit;
 use rustc_front::hir;
@@ -143,7 +143,7 @@ impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
                 if !self.sess.features.borrow().static_recursion {
                     emit_feature_err(&self.sess.parse_sess.span_diagnostic,
                                      "static_recursion",
-                                     *self.root_span, "recursive static");
+                                     *self.root_span, GateIssue::Language, "recursive static");
                 }
             } else {
                 span_err!(self.sess, *self.root_span, E0265, "recursive constant");

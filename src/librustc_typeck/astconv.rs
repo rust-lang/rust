@@ -70,7 +70,7 @@ use util::nodemap::FnvHashSet;
 use std::slice;
 use syntax::{abi, ast};
 use syntax::codemap::{Span, Pos};
-use syntax::feature_gate::emit_feature_err;
+use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token;
 
 use rustc_front::print::pprust;
@@ -797,7 +797,7 @@ fn create_substs_for_ast_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
             // only with `Fn()` etc.
             if !this.tcx().sess.features.borrow().unboxed_closures && trait_def.paren_sugar {
                 emit_feature_err(&this.tcx().sess.parse_sess.span_diagnostic,
-                                 "unboxed_closures", span,
+                                 "unboxed_closures", span, GateIssue::Language,
                                  "\
                     the precise format of `Fn`-family traits' type parameters is \
                     subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead");
@@ -810,7 +810,7 @@ fn create_substs_for_ast_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
             // only with `Fn()` etc.
             if !this.tcx().sess.features.borrow().unboxed_closures && !trait_def.paren_sugar {
                 emit_feature_err(&this.tcx().sess.parse_sess.span_diagnostic,
-                                 "unboxed_closures", span,
+                                 "unboxed_closures", span, GateIssue::Language,
                                  "\
                     parenthetical notation is only stable when used with `Fn`-family traits");
             }

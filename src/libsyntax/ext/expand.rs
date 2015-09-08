@@ -778,6 +778,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                             &fld.cx.parse_sess.span_diagnostic,
                             "allow_internal_unstable",
                             it.span,
+                            feature_gate::GateIssue::Language,
                             feature_gate::EXPLAIN_ALLOW_INTERNAL_UNSTABLE)
                     }
 
@@ -1469,7 +1470,8 @@ pub fn expand_type(t: P<ast::Ty>, fld: &mut MacroExpander) -> P<ast::Ty> {
                     &fld.cx.parse_sess.span_diagnostic,
                     "type_macros",
                     t.span,
-                    "type macros are experimental (see issue: #27336)");
+                    feature_gate::GateIssue::Language,
+                    "type macros are experimental");
 
                 DummyResult::raw_ty(t.span)
             }
