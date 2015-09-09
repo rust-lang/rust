@@ -133,8 +133,8 @@ create_config! {
     fn_args_density: Density,
     fn_args_layout: StructLitStyle,
     fn_arg_indent: BlockIndentStyle,
-    where_density: Density, // Should we at least try to put the where clause on the same line as
-                            // the rest of the function decl?
+    where_density: Density, // Should we at least try to put the where clause on
+                            // the same line as the rest of the function decl?
     where_indent: BlockIndentStyle, // Visual will be treated like Tabbed
     where_layout: ListTactic,
     where_pred_indent: BlockIndentStyle,
@@ -147,14 +147,14 @@ create_config! {
     report_todo: ReportTactic,
     report_fixme: ReportTactic,
     reorder_imports: bool, // Alphabetically, case sensitive.
-    expr_indent_style: BlockIndentStyle,
-    closure_indent_style: BlockIndentStyle,
     single_line_if_else: bool,
     format_strings: bool,
+    chains_overflow_last: bool,
+    take_source_hints: bool, // Retain some formatting characteristics from
+                             // the source code.
 }
 
 impl Default for Config {
-
     fn default() -> Config {
         Config {
             max_width: 100,
@@ -181,11 +181,10 @@ impl Default for Config {
             report_todo: ReportTactic::Always,
             report_fixme: ReportTactic::Never,
             reorder_imports: false,
-            expr_indent_style: BlockIndentStyle::Tabbed,
-            closure_indent_style: BlockIndentStyle::Visual,
             single_line_if_else: false,
             format_strings: true,
+            chains_overflow_last: true,
+            take_source_hints: true,
         }
     }
-
 }

@@ -130,16 +130,16 @@ impl<'a> Rewrite for SegmentParam<'a> {
     // FIXME doesn't always use width, offset
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
         Some(match *self {
-                SegmentParam::LifeTime(ref lt) => {
-                    pprust::lifetime_to_string(lt)
-                }
-                SegmentParam::Type(ref ty) => {
-                    try_opt!(ty.rewrite(context, width, offset))
-                }
-                SegmentParam::Binding(ref binding) => {
-                    format!("{} = {}", binding.ident, try_opt!(binding.ty.rewrite(context, width, offset)))
-                }
-            })
+            SegmentParam::LifeTime(ref lt) => {
+                pprust::lifetime_to_string(lt)
+            }
+            SegmentParam::Type(ref ty) => {
+                try_opt!(ty.rewrite(context, width, offset))
+            }
+            SegmentParam::Binding(ref binding) => {
+                format!("{} = {}", binding.ident, try_opt!(binding.ty.rewrite(context, width, offset)))
+            }
+        })
     }
 }
 
@@ -368,8 +368,9 @@ impl Rewrite for ast::TyParamBound {
 
 impl Rewrite for ast::TyParamBounds {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
-        let strs: Vec<_> =
-            self.iter().map(|b| b.rewrite(context, width, offset).unwrap()).collect();
+        let strs: Vec<_> = self.iter()
+                               .map(|b| b.rewrite(context, width, offset).unwrap())
+                               .collect();
         Some(strs.join(" + "))
     }
 }

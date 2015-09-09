@@ -40,6 +40,12 @@ impl Rewrite for ast::Expr {
                 }
             }
             ast::Expr_::ExprCall(ref callee, ref args) => {
+                // FIXME using byte lens instead of char lens (and probably all over the place too)
+                // 2 is for parens
+                let max_callee_width = try_opt!(width.checked_sub(2));
+                let callee_str = try_opt!(callee.rewrite(context, max_callee_width, offset));
+                let span = mk_sp(callee.span.hi, self.span.hi);
+
                 rewrite_call(context, &**callee, args, self.span, width, offset)
             }
             ast::Expr_::ExprParen(ref subexpr) => {
@@ -284,8 +290,10 @@ impl Rewrite for ast::Block {
                 };
 
                 if is_simple_block(self, context.codemap) && prefix.len() < width {
-                    let body =
-                        self.expr.as_ref().unwrap().rewrite(context, width - prefix.len(), offset);
+                    let body = self.expr
+                                   .as_ref()
+                                   .unwrap()
+                                   .rewrite(context, width - prefix.len(), offset);
                     if let Some(ref expr_str) = body {
                         let result = format!("{}{{ {} }}", prefix, expr_str);
                         if result.len() <= width && !result.contains('\n') {
@@ -677,14 +685,12 @@ impl Rewrite for ast::Arm {
         total_width += (pat_strs.len() - 1) * 3;
 
         let mut vertical = total_width > pat_budget || pat_strs.iter().any(|p| p.contains('\n'));
-        if !vertical {
+        if !vertical && context.config.take_source_hints {
             // If the patterns were previously stacked, keep them stacked.
-            // FIXME should be an option.
             let pat_span = mk_sp(pats[0].span.lo, pats[pats.len() - 1].span.hi);
             let pat_str = context.snippet(pat_span);
             vertical = pat_str.find('\n').is_some();
         }
-
 
         let pats_width = if vertical {
             pat_strs[pat_strs.len() - 1].len()
@@ -1015,9 +1021,10 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                  match *item {
                                      StructLitField::Regular(ref field) => field.span.lo,
                                      StructLitField::Base(ref expr) => {
-                                         let last_field_hi = fields.last()
-                                                                   .map_or(span.lo,
-                                                                           |field| field.span.hi);
+                                         let last_field_hi = fields.last().map_or(span.lo,
+                                                                                  |field| {
+                                                                                      field.span.hi
+                                                                                  });
                                          let snippet = context.snippet(mk_sp(last_field_hi,
                                                                              expr.span.lo));
                                          let pos = snippet.find_uncommented("..").unwrap();

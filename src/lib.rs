@@ -10,6 +10,7 @@
 
 #![feature(rustc_private)]
 #![feature(custom_attribute)]
+#![feature(slice_splits)]
 #![allow(unused_attributes)]
 
 // TODO we're going to allocate a whole bunch of temp Strings, is it worth

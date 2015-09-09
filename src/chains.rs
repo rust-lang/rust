@@ -20,7 +20,7 @@
 // argument function argument strategy.
 
 use rewrite::{Rewrite, RewriteContext};
-use utils::make_indent;
+use utils::{first_line_width, make_indent};
 use expr::rewrite_call;
 
 use syntax::{ast, ptr};
@@ -51,19 +51,67 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
     let indent = offset + extra_indent;
 
     let max_width = try_opt!(width.checked_sub(extra_indent));
-    let rewrites = try_opt!(subexpr_list.into_iter()
-                                        .rev()
-                                        .map(|e| {
-                                            rewrite_chain_expr(e,
-                                                               total_span,
-                                                               context,
-                                                               max_width,
-                                                               indent)
-                                        })
-                                        .collect::<Option<Vec<_>>>());
+    let mut rewrites = try_opt!(subexpr_list.iter()
+                                            .rev()
+                                            .map(|e| {
+                                                rewrite_chain_expr(e,
+                                                                   total_span,
+                                                                   context,
+                                                                   max_width,
+                                                                   indent)
+                                            })
+                                            .collect::<Option<Vec<_>>>());
 
-    let total_width = rewrites.iter().fold(0, |a, b| a + b.len()) + parent_rewrite.len();
-    let fits_single_line = total_width <= width && rewrites.iter().all(|s| !s.contains('\n'));
+    // Total of all items excluding the last.
+    let almost_total = rewrites.split_last()
+                               .unwrap()
+                               .1
+                               .iter()
+                               .fold(0, |a, b| a + first_line_width(b)) +
+                       parent_rewrite.len();
+    let total_width = almost_total + first_line_width(rewrites.last().unwrap());
+    let veto_single_line = if context.config.take_source_hints && subexpr_list.len() > 1 {
+        // Look at the source code. Unless all chain elements start on the same
+        // line, we won't consider putting them on a single line either.
+        let first_line_no = context.codemap.lookup_char_pos(subexpr_list[0].span.lo).line;
+
+        subexpr_list[1..]
+            .iter()
+            .any(|ex| context.codemap.lookup_char_pos(ex.span.hi).line != first_line_no)
+    } else {
+        false
+    };
+
+    let fits_single_line = !veto_single_line &&
+                           match subexpr_list[0].node {
+        ast::Expr_::ExprMethodCall(ref method_name, ref types, ref expressions)
+            if context.config.chains_overflow_last => {
+            let (last, init) = rewrites.split_last_mut().unwrap();
+
+            if init.iter().all(|s| !s.contains('\n')) && total_width <= width {
+                let last_rewrite = width.checked_sub(almost_total)
+                                        .and_then(|inner_width| {
+                                            rewrite_method_call(method_name.node,
+                                                                types,
+                                                                expressions,
+                                                                total_span,
+                                                                context,
+                                                                inner_width,
+                                                                offset + almost_total)
+                                        });
+                match last_rewrite {
+                    Some(mut string) => {
+                        ::std::mem::swap(&mut string, last);
+                        true
+                    }
+                    None => false,
+                }
+            } else {
+                false
+            }
+        }
+        _ => total_width <= width && rewrites.iter().all(|s| !s.contains('\n')),
+    };
 
     let connector = if fits_single_line {
         String::new()
@@ -101,7 +149,11 @@ fn rewrite_chain_expr(expr: &ast::Expr,
                       -> Option<String> {
     match expr.node {
         ast::Expr_::ExprMethodCall(ref method_name, ref types, ref expressions) => {
-            rewrite_method_call(method_name.node, types, expressions, span, context, width, offset)
+            let inner = &RewriteContext {
+                block_indent: offset,
+                ..*context
+            };
+            rewrite_method_call(method_name.node, types, expressions, span, inner, width, offset)
         }
         ast::Expr_::ExprField(_, ref field) => {
             Some(format!(".{}", field.node))
@@ -137,10 +189,7 @@ fn rewrite_method_call(method_name: ast::Ident,
     };
 
     let callee_str = format!(".{}{}", method_name, type_str);
-    let inner_context = &RewriteContext {
-        block_indent: offset,
-        ..*context
-    };
+    let span = mk_sp(args[0].span.hi, span.hi);
 
-    rewrite_call(inner_context, &callee_str, args, span, width, offset)
+    rewrite_call(context, &callee_str, &args[1..], span, width, offset)
 }

@@ -512,8 +512,9 @@ impl<'a> FmtVisitor<'a> {
                                              |arg| arg.ty.span.hi,
                                              |arg| {
                                                  // FIXME silly width, indent
-                                                 arg.ty.rewrite(&self.get_context(), 1000, 0)
-                                                       .unwrap()
+                                                 arg.ty
+                                                    .rewrite(&self.get_context(), 1000, 0)
+                                                    .unwrap()
                                              },
                                              span_after(field.span, "(", self.codemap),
                                              next_span_start);
@@ -810,15 +811,14 @@ impl<'a> FmtVisitor<'a> {
                          .map(|ty_param| ty_param.rewrite(&context, h_budget, offset).unwrap());
 
         // Extract comments between generics.
-        let lt_spans = lifetimes.iter()
-                                .map(|l| {
-                                    let hi = if l.bounds.is_empty() {
-                                        l.lifetime.span.hi
-                                    } else {
-                                        l.bounds[l.bounds.len() - 1].span.hi
-                                    };
-                                    codemap::mk_sp(l.lifetime.span.lo, hi)
-                                });
+        let lt_spans = lifetimes.iter().map(|l| {
+            let hi = if l.bounds.is_empty() {
+                l.lifetime.span.hi
+            } else {
+                l.bounds[l.bounds.len() - 1].span.hi
+            };
+            codemap::mk_sp(l.lifetime.span.lo, hi)
+        });
         let ty_spans = tys.iter().map(span_for_ty_param);
 
         let items = itemize_list(self.codemap,
