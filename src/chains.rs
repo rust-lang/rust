@@ -34,8 +34,11 @@ pub fn rewrite_chain(orig_expr: &ast::Expr,
     }
 
     let parent_rewrite = try_opt!(expr.rewrite(context, width, offset));
+    let total_width = rewrites.iter().fold(0, |a, b| a + b.len()) + parent_rewrite.len();
+    let fits_single_line = total_width <= width && rewrites.iter().all(|s| !s.contains('\n'));
 
-    if rewrites.len() == 1 {
+    if rewrites.len() == 1 && !fits_single_line &&
+       (is_continuable(expr) || parent_rewrite.len() <= context.config.tab_spaces) {
         let extra_offset = extra_offset(&parent_rewrite, offset);
         let offset = offset + extra_offset;
         let max_width = try_opt!(width.checked_sub(extra_offset));
@@ -47,9 +50,7 @@ pub fn rewrite_chain(orig_expr: &ast::Expr,
         return Some(format!("{}{}", parent_rewrite, try_opt!(rerewrite)));
     }
 
-    let total_width = rewrites.iter().fold(0, |a, b| a + b.len()) + parent_rewrite.len();
-
-    let connector = if total_width <= width && rewrites.iter().all(|s| !s.contains('\n')) {
+    let connector = if fits_single_line {
         String::new()
     } else {
         format!("\n{}", make_indent(indent))

@@ -145,18 +145,6 @@ pub fn find_comment_end(s: &str) -> Option<usize> {
     }
 }
 
-#[test]
-fn comment_end() {
-    assert_eq!(Some(6), find_comment_end("// hi\n"));
-    assert_eq!(Some(9), find_comment_end("/* sup */ "));
-    assert_eq!(Some(9), find_comment_end("/*/**/ */ "));
-    assert_eq!(Some(6), find_comment_end("/*/ */ weird!"));
-    assert_eq!(None, find_comment_end("/* hi /* test */"));
-    assert_eq!(None, find_comment_end("// hi /* test */"));
-    assert_eq!(Some(9), find_comment_end("// hi /*\n."));
-}
-
-
 /// Returns true if text contains any comment.
 pub fn contains_comment(text: &str) -> bool {
     CharClasses::new(text.chars()).any(|(kind, _)| kind == CodeCharKind::Comment)
@@ -171,21 +159,6 @@ pub fn uncommented(text: &str) -> String {
             }
         })
         .collect()
-}
-
-#[test]
-fn test_uncommented() {
-    assert_eq!(&uncommented("abc/*...*/"), "abc");
-    assert_eq!(&uncommented("// .... /* \n../* /* *** / */ */a/* // */c\n"), "..ac\n");
-    assert_eq!(&uncommented("abc \" /* */\" qsdf"), "abc \" /* */\" qsdf");
-}
-
-#[test]
-fn test_contains_comment() {
-    assert_eq!(contains_comment("abc"), false);
-    assert_eq!(contains_comment("abc // qsdf"), true);
-    assert_eq!(contains_comment("abc /* kqsdf"), true);
-    assert_eq!(contains_comment("abc \" /* */\" qsdf"), false);
 }
 
 struct CharClasses<T>

@@ -121,7 +121,8 @@ pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, Vec<Mism
     // multithreaded rustfmt
     thread::catch_panic(move || {
         run(args, WriteMode::Return(HANDLE_RESULT), config);
-    }).map_err(|any| *any.downcast().ok().expect("Downcast failed."))
+    })
+        .map_err(|any| *any.downcast().ok().expect("Downcast failed."))
 }
 
 
