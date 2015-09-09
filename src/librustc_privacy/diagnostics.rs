@@ -103,4 +103,26 @@ pub enum Foo {
 ```
 "##,
 
+E0449: r##"
+A visibility qualifier was used when it was unnecessary. Erroneous code
+examples:
+
+```
+struct Bar;
+
+trait Foo {
+    fn foo();
+}
+
+pub impl Bar {} // error: unnecessary visibility qualifier
+
+pub impl Foo for Bar { // error: unnecessary visibility qualifier
+    pub fn foo() {} // error: unnecessary visibility qualifier
+}
+```
+
+To fix this error, please remove the visibility qualifier when it is not
+required.
+"##,
+
 }
