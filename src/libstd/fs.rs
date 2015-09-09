@@ -753,6 +753,18 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// guarantee that the file is immediately deleted (e.g. depending on
 /// platform, other open file descriptors may prevent immediate removal).
 ///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following functions:
+///
+/// ### Windows
+///
+/// `DeleteFileW`
+///
+/// ### Unix
+///
+/// `unlink`
+///
 /// # Errors
 ///
 /// This function will return an error if `path` points to a directory, if the
@@ -780,6 +792,24 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function will traverse symbolic links to query information about the
 /// destination file.
 ///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// `GetFileAttributesExW` with the `GetFileExInfoStandard` option.
+///
+/// ### Unix
+///
+/// `stat`
+///
+/// # Errors
+///
+/// This function will return an error if the user lacks the requisite
+/// permissions to perform a `metadata` call on the given `path` or if there
+/// is no entry in the filesystem at the provided path.
+///
 /// # Examples
 ///
 /// ```rust
@@ -791,18 +821,30 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Ok(())
 /// # }
 /// ```
-///
-/// # Errors
-///
-/// This function will return an error if the user lacks the requisite
-/// permissions to perform a `metadata` call on the given `path` or if there
-/// is no entry in the filesystem at the provided path.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::stat(path.as_ref()).map(Metadata)
 }
 
 /// Query the metadata about a file without following symlinks.
+///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// `GetFileAttributesExW` with the `GetFileExInfoStandard` option.
+///
+/// ### Unix
+///
+/// 'lstat'
+///
+/// # Errors
+///
+/// This function will return an error if the user lacks the requisite
+/// permissions to perform a `metadata` call on the given `path` or if there
+/// is no entry in the filesystem at the provided path.
 ///
 /// # Examples
 ///
@@ -823,6 +865,18 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// Rename a file or directory to a new name.
 ///
 /// This will not work if the new name is on a different mount point.
+///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// `MoveFileExW` with the `MOVEFILE_REPLACE_EXISTING` flag.
+///
+/// ### Unix
+///
+/// 'rename'
 ///
 /// # Errors
 ///
@@ -855,6 +909,27 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// will likely get truncated by this operation.
 ///
 /// On success, the total number of bytes copied is returned.
+///
+/// # Platform Notes
+///
+/// Depending on platform, this function will invoke the following syscalls:
+///
+/// ### Windows
+///
+/// 'CopyFileExW' with an `LPPROGRESS_ROUTINE` returning `PROGRESS_CONTINUE` until complete.
+///
+/// ### Unix
+///
+/// For `from`, 'open' is called with `O_RDONLY` followed by setting `O_CLOEXEC` on the returned
+/// file descriptor.
+///
+/// For `to`, `open` is called with `O_WRONLY`, `O_CREAT` and `O_TRUNC` followed by setting
+/// `O_CLOEXEC` on the returned file descriptor.
+///
+/// The copy operation is performed by calling `read` followed by `write` with a buffer
+/// size of `65536` until completed.
+///
+/// Permissions are then set with `chmod`.
 ///
 /// # Errors
 ///
