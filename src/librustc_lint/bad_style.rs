@@ -274,7 +274,7 @@ impl LateLintPass for NonSnakeCase {
     fn check_pat(&mut self, cx: &LateContext, p: &hir::Pat) {
         if let &hir::PatIdent(_, ref path1, _) = &p.node {
             let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
-            if let Some(def::DefLocal(_)) = def {
+            if let Some(def::DefLocal(..)) = def {
                 self.check_snake_case(cx, "variable", &path1.node.name.as_str(), Some(p.span));
             }
         }

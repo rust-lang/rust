@@ -1358,7 +1358,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_local_var");
 
     match def {
-        def::DefUpvar(nid, _, _) => {
+        def::DefUpvar(_, nid, _, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
             let lval = Lvalue::new_with_hint("expr::trans_local_var (upvar)",
@@ -1372,7 +1372,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
             }
         }
-        def::DefLocal(nid) => {
+        def::DefLocal(_, nid) => {
             let datum = match bcx.fcx.lllocals.borrow().get(&nid) {
                 Some(&v) => v,
                 None => {

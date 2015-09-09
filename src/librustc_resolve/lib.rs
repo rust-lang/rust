@@ -1982,7 +1982,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.session.span_bug(span,
                     &format!("unexpected {:?} in bindings", def))
             }
-            DefLocal(node_id) => {
+            DefLocal(_, node_id) => {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind => {
@@ -1990,11 +1990,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         ClosureRibKind(function_id) => {
                             let prev_def = def;
+                            let node_def_id = self.ast_map.local_def_id(node_id);
 
                             let mut seen = self.freevars_seen.borrow_mut();
                             let seen = seen.entry(function_id).or_insert_with(|| NodeMap());
                             if let Some(&index) = seen.get(&node_id) {
-                                def = DefUpvar(node_id, index, function_id);
+                                def = DefUpvar(node_def_id, node_id, index, function_id);
                                 continue;
                             }
                             let mut freevars = self.freevars.borrow_mut();
@@ -2003,7 +2004,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             let depth = vec.len();
                             vec.push(Freevar { def: prev_def, span: span });
 
-                            def = DefUpvar(node_id, depth, function_id);
+                            def = DefUpvar(node_def_id, node_id, depth, function_id);
                             seen.insert(node_id, depth);
                         }
                         ItemRibKind | MethodRibKind => {
@@ -2817,7 +2818,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             debug!("(resolving pattern) binding `{}`",
                                    renamed);
 
-                            let def = DefLocal(pattern.id);
+                            let def_id = self.ast_map.local_def_id(pattern.id);
+                            let def = DefLocal(def_id, pattern.id);
 
                             // Record the definition so that later passes
                             // will be able to distinguish variants from

@@ -783,7 +783,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprPath(..) => {
             let def = cx.tcx().def_map.borrow().get(&e.id).unwrap().full_def();
             match def {
-                def::DefLocal(id) => {
+                def::DefLocal(_, id) => {
                     if let Some(val) = fn_args.and_then(|args| args.get(&id).cloned()) {
                         val
                     } else {

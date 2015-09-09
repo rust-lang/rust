@@ -461,7 +461,11 @@ impl tr for def::Def {
           def::DefStatic(did, m) => { def::DefStatic(did.tr(dcx), m) }
           def::DefConst(did) => { def::DefConst(did.tr(dcx)) }
           def::DefAssociatedConst(did) => def::DefAssociatedConst(did.tr(dcx)),
-          def::DefLocal(nid) => { def::DefLocal(dcx.tr_id(nid)) }
+          def::DefLocal(_, nid) => {
+              let nid = dcx.tr_id(nid);
+              let did = dcx.tcx.map.local_def_id(nid);
+              def::DefLocal(did, nid)
+          }
           def::DefVariant(e_did, v_did, is_s) => {
             def::DefVariant(e_did.tr(dcx), v_did.tr(dcx), is_s)
           },
@@ -472,8 +476,11 @@ impl tr for def::Def {
           def::DefPrimTy(p) => def::DefPrimTy(p),
           def::DefTyParam(s, index, def_id, n) => def::DefTyParam(s, index, def_id.tr(dcx), n),
           def::DefUse(did) => def::DefUse(did.tr(dcx)),
-          def::DefUpvar(nid1, index, nid2) => {
-            def::DefUpvar(dcx.tr_id(nid1), index, dcx.tr_id(nid2))
+          def::DefUpvar(_, nid1, index, nid2) => {
+              let nid1 = dcx.tr_id(nid1);
+              let nid2 = dcx.tr_id(nid2);
+              let did1 = dcx.tcx.map.local_def_id(nid1);
+              def::DefUpvar(did1, nid1, index, nid2)
           }
           def::DefStruct(did) => def::DefStruct(did.tr(dcx)),
           def::DefLabel(nid) => def::DefLabel(dcx.tr_id(nid))
