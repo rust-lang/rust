@@ -10,8 +10,6 @@
 
 // Format string literals.
 
-
-
 use unicode_segmentation::UnicodeSegmentation;
 use regex::Regex;
 
@@ -74,10 +72,11 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> String {
             cur_end += 1;
         }
         let raw_line = graphemes[cur_start..cur_end].join("");
-        let line: &str = if fmt.trim_end {
-            &(raw_line.trim())
+        let line = if fmt.trim_end {
+            raw_line.trim()
         } else {
-            &raw_line
+            // TODO: use as_str once it's stable.
+            &*raw_line
         };
 
         result.push_str(line);
