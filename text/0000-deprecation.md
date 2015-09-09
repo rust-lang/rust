@@ -74,6 +74,9 @@ The language reference should be extended to describe this feature as outlined
 in this RFC. Authors shall be advised to leave their users enough time to react
 before *removing* a deprecated item.
 
+The internally used feature can either be subsumed by this or possibly renamed
+to avoid a name clash.
+
 # Drawbacks
 
 * The required checks for the `since` and `surrogate` fields are potentially
@@ -94,6 +97,8 @@ be `Allow` by default)
 * `reason` could include markdown formatting
 * The `surrogate` could simply be plain text, which would remove much of the
 complexity here
+* The `surrogate` field could be left out and added later. However, this would
+lead people to describe it in the `reason` field
 
 # Unresolved questions
 
