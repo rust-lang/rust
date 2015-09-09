@@ -251,7 +251,7 @@ match x {
 }
 ```
 
-This prints `Some("Steve")`: We’ve bound the inner `name` to `a`.
+This prints `Some("Steve")`: we’ve bound the inner `name` to `a`.
 
 If you use `@` with `|`, you need to make sure the name is bound in each part
 of the pattern:
