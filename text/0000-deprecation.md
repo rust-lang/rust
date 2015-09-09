@@ -6,8 +6,8 @@
 # Summary
 
 This RFC proposes to allow library authors to use a `#[deprecated]` attribute,
-with `since="`(version)`"`, `reason="`(free text)`"` and 
-`surrogate="`(text or surrogate declaration)`"` fields. The compiler can then
+with `since = "`*version*`"`, `reason = "`*free text*`"` and 
+`surrogate = "`*text or surrogate declaration*`"` fields. The compiler can then
 warn on deprecated items, while `rustdoc` can document their deprecation
 accordingly. 
 
