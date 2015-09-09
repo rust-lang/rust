@@ -35,4 +35,31 @@ pub trait Bar : Foo {} // ok!
 ```
 "##,
 
+E0446: r##"
+A private type was used in an exported type signature. Erroneous code example:
+
+```
+mod Foo {
+    struct Bar(u32);
+
+    pub fn bar() -> Bar { // error: private type in exported type signature
+        Bar(0)
+    }
+}
+```
+
+To solve this error, please ensure the type is accessible at the same level of
+the exported type signature. Example:
+
+```
+mod Foo {
+    pub struct Bar(u32); // we set the Bar type public
+
+    pub fn bar() -> Bar { // ok!
+        Bar(0)
+    }
+}
+```
+"##,
+
 }

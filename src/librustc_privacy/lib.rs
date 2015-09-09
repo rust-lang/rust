@@ -1435,7 +1435,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
         if let hir::TyPath(_, ref p) = t.node {
             if !self.tcx.sess.features.borrow().visible_private_types &&
                 self.path_is_private_type(t.id) {
-                self.tcx.sess.span_err(p.span, "private type in exported type signature");
+                span_err!(self.tcx.sess, p.span, E0446,
+                          "private type in exported type signature");
             }
         }
         visit::walk_ty(self, t)
