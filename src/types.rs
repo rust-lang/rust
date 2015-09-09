@@ -279,22 +279,24 @@ impl Rewrite for ast::WherePredicate {
                                                                            .. }) => {
                 if !bound_lifetimes.is_empty() {
                     let lifetime_str = bound_lifetimes.iter()
-                                           .map(|lt| lt.rewrite(context, width, offset).unwrap())
-                                           .collect::<Vec<_>>()
-                                           .join(", ");
+                                                      .map(|lt| {
+                                                          lt.rewrite(context, width, offset)
+                                                            .unwrap()
+                                                      })
+                                                      .collect::<Vec<_>>()
+                                                      .join(", ");
                     let type_str = pprust::ty_to_string(bounded_ty);
                     // 8 = "for<> : ".len()
                     let used_width = lifetime_str.len() + type_str.len() + 8;
                     let bounds_str = bounds.iter()
-                                         .map(|ty_bound| {
-                                             ty_bound
-                                                 .rewrite(context,
-                                                          width - used_width,
-                                                          offset + used_width)
-                                                 .unwrap()
-                                         })
-                                         .collect::<Vec<_>>()
-                                         .join(" + ");
+                                           .map(|ty_bound| {
+                                               ty_bound.rewrite(context,
+                                                                width - used_width,
+                                                                offset + used_width)
+                                                       .unwrap()
+                                           })
+                                           .collect::<Vec<_>>()
+                                           .join(" + ");
 
                     format!("for<{}> {}: {}", lifetime_str, type_str, bounds_str)
                 } else {
@@ -302,15 +304,14 @@ impl Rewrite for ast::WherePredicate {
                     // 2 = ": ".len()
                     let used_width = type_str.len() + 2;
                     let bounds_str = bounds.iter()
-                                         .map(|ty_bound| {
-                                             ty_bound
-                                                 .rewrite(context,
-                                                          width - used_width,
-                                                          offset + used_width)
-                                                 .unwrap()
-                                         })
-                                         .collect::<Vec<_>>()
-                                         .join(" + ");
+                                           .map(|ty_bound| {
+                                               ty_bound.rewrite(context,
+                                                                width - used_width,
+                                                                offset + used_width)
+                                                       .unwrap()
+                                           })
+                                           .collect::<Vec<_>>()
+                                           .join(" + ");
 
                     format!("{}: {}", type_str, bounds_str)
                 }

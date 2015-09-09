@@ -288,11 +288,10 @@ impl<'a> FmtVisitor<'a> {
         if utils::contains_skip(attrs) {
             true
         } else {
-            let rewrite = attrs
-                              .rewrite(&self.get_context(),
-                                       self.config.max_width - self.block_indent,
-                                       self.block_indent)
-                              .unwrap();
+            let rewrite = attrs.rewrite(&self.get_context(),
+                                        self.config.max_width - self.block_indent,
+                                        self.block_indent)
+                               .unwrap();
             self.buffer.push_str(&rewrite);
             let last = attrs.last().unwrap();
             self.last_pos = last.span.hi;

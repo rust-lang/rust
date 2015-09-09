@@ -20,46 +20,50 @@
 // argument function argument strategy.
 
 use rewrite::{Rewrite, RewriteContext};
-use utils::{make_indent, extra_offset};
+use utils::make_indent;
 use expr::rewrite_call;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{mk_sp, Span};
 use syntax::print::pprust;
 
-pub fn rewrite_chain(orig_expr: &ast::Expr,
+pub fn rewrite_chain(mut expr: &ast::Expr,
                      context: &RewriteContext,
                      width: usize,
                      offset: usize)
                      -> Option<String> {
-    let mut expr = orig_expr;
-    let mut rewrites = Vec::new();
-    let indent = offset + context.config.tab_spaces;
-    let max_width = try_opt!(context.config.max_width.checked_sub(indent));
+    let total_span = expr.span;
+    let mut subexpr_list = vec![expr];
 
-    while let Some(pair) = pop_expr_chain(expr, orig_expr.span, context, max_width, indent) {
-        let (rewrite, parent_expr) = pair;
-
-        rewrites.push(try_opt!(rewrite));
-        expr = parent_expr;
+    while let Some(subexpr) = pop_expr_chain(expr) {
+        subexpr_list.push(subexpr);
+        expr = subexpr;
     }
 
+    let parent = subexpr_list.pop().unwrap();
     let parent_rewrite = try_opt!(expr.rewrite(context, width, offset));
+    let (extra_indent, extend) = if !parent_rewrite.contains('\n') && is_continuable(parent) ||
+                                    parent_rewrite.len() <= context.config.tab_spaces {
+        (parent_rewrite.len(), true)
+    } else {
+        (context.config.tab_spaces, false)
+    };
+    let indent = offset + extra_indent;
+
+    let max_width = try_opt!(width.checked_sub(extra_indent));
+    let rewrites = try_opt!(subexpr_list.into_iter()
+                                        .rev()
+                                        .map(|e| {
+                                            rewrite_chain_expr(e,
+                                                               total_span,
+                                                               context,
+                                                               max_width,
+                                                               indent)
+                                        })
+                                        .collect::<Option<Vec<_>>>());
+
     let total_width = rewrites.iter().fold(0, |a, b| a + b.len()) + parent_rewrite.len();
     let fits_single_line = total_width <= width && rewrites.iter().all(|s| !s.contains('\n'));
-
-    if rewrites.len() == 1 && !fits_single_line &&
-       (is_continuable(expr) || parent_rewrite.len() <= context.config.tab_spaces) {
-        let extra_offset = extra_offset(&parent_rewrite, offset);
-        let offset = offset + extra_offset;
-        let max_width = try_opt!(width.checked_sub(extra_offset));
-
-        let rerewrite = pop_expr_chain(orig_expr, orig_expr.span, context, max_width, offset)
-                            .unwrap()
-                            .0;
-
-        return Some(format!("{}{}", parent_rewrite, try_opt!(rerewrite)));
-    }
 
     let connector = if fits_single_line {
         String::new()
@@ -67,14 +71,7 @@ pub fn rewrite_chain(orig_expr: &ast::Expr,
         format!("\n{}", make_indent(indent))
     };
 
-    // FIXME: don't do this. There's a more efficient way. VecDeque?
-    rewrites.reverse();
-
-    // Put the first link on the same line as parent, if it fits.
-    let first_connector = if parent_rewrite.len() + rewrites[0].len() <= width &&
-                             is_continuable(expr) &&
-                             !rewrites[0].contains('\n') ||
-                             parent_rewrite.len() <= context.config.tab_spaces {
+    let first_connector = if extend {
         ""
     } else {
         &connector[..]
@@ -83,32 +80,36 @@ pub fn rewrite_chain(orig_expr: &ast::Expr,
     Some(format!("{}{}{}", parent_rewrite, first_connector, rewrites.join(&connector)))
 }
 
-// Returns None when the expression is not a chainable. Otherwise, rewrites the
-// outermost chain element and returns the remaining chain.
-fn pop_expr_chain<'a>(expr: &'a ast::Expr,
+fn pop_expr_chain<'a>(expr: &'a ast::Expr) -> Option<&'a ast::Expr> {
+    match expr.node {
+        ast::Expr_::ExprMethodCall(_, _, ref expressions) => {
+            Some(&expressions[0])
+        }
+        ast::Expr_::ExprTupField(ref subexpr, _) |
+        ast::Expr_::ExprField(ref subexpr, _) => {
+            Some(subexpr)
+        }
+        _ => None,
+    }
+}
+
+fn rewrite_chain_expr(expr: &ast::Expr,
                       span: Span,
                       context: &RewriteContext,
                       width: usize,
                       offset: usize)
-                      -> Option<(Option<String>, &'a ast::Expr)> {
+                      -> Option<String> {
     match expr.node {
         ast::Expr_::ExprMethodCall(ref method_name, ref types, ref expressions) => {
-            Some((rewrite_method_call(method_name.node,
-                                      types,
-                                      expressions,
-                                      span,
-                                      context,
-                                      width,
-                                      offset),
-                  &expressions[0]))
+            rewrite_method_call(method_name.node, types, expressions, span, context, width, offset)
         }
-        ast::Expr_::ExprField(ref subexpr, ref field) => {
-            Some((Some(format!(".{}", field.node)), subexpr))
+        ast::Expr_::ExprField(_, ref field) => {
+            Some(format!(".{}", field.node))
         }
-        ast::Expr_::ExprTupField(ref subexpr, ref field) => {
-            Some((Some(format!(".{}", field.node)), subexpr))
+        ast::Expr_::ExprTupField(_, ref field) => {
+            Some(format!(".{}", field.node))
         }
-        _ => None,
+        _ => unreachable!(),
     }
 }
 

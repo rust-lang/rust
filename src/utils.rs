@@ -95,15 +95,15 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
 #[inline]
 pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
     typaram.bounds
-        .last()
-        .map(|bound| {
-            match *bound {
-                ast::RegionTyParamBound(ref lt) => lt.span,
-                ast::TraitTyParamBound(ref prt, _) => prt.span,
-            }
-        })
-        .unwrap_or(typaram.span)
-        .hi
+           .last()
+           .map(|bound| {
+               match *bound {
+                   ast::RegionTyParamBound(ref lt) => lt.span,
+                   ast::TraitTyParamBound(ref prt, _) => prt.span,
+               }
+           })
+           .unwrap_or(typaram.span)
+           .hi
 }
 
 #[inline]
