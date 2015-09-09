@@ -159,8 +159,8 @@ First, any borrow must last for a scope no greater than that of the owner.
 Second, you may have one or the other of these two kinds of borrows, but not
 both at the same time:
 
-* one or more references (`&T`) to a resource.
-* exactly one mutable reference (`&mut T`)
+* one or more references (`&T`) to a resource,
+* exactly one mutable reference (`&mut T`).
 
 
 You may notice that this is very similar, though not exactly the same as,
