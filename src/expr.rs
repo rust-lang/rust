@@ -846,7 +846,7 @@ fn rewrite_string_lit(context: &RewriteContext,
                       width: usize,
                       offset: usize)
                       -> Option<String> {
-    if context.config.format_strings == false {
+    if !context.config.format_strings {
         return Some(context.snippet(span));
     }
 
