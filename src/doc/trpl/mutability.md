@@ -62,7 +62,7 @@ fn foo(mut x: i32) {
 # Interior vs. Exterior Mutability
 
 However, when we say something is ‘immutable’ in Rust, that doesn’t mean that
-it’s not able to be changed: We mean something has ‘exterior mutability’. Consider,
+it’s not able to be changed: we mean something has ‘exterior mutability’. Consider,
 for example, [`Arc<T>`][arc]:
 
 ```rust
