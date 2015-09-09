@@ -78,6 +78,7 @@ use rustc_front::hir;
 use rustc_front::print::pprust;
 
 use middle::def;
+use middle::def_id::DefId;
 use middle::infer;
 use middle::region;
 use middle::subst;
@@ -225,6 +226,8 @@ pub trait ErrorReporting<'tcx> {
                       -> Vec<RegionResolutionError<'tcx>>;
 
     fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &ty::TypeError<'tcx>);
+
+    fn check_and_note_conflicting_crates(&self, terr: &ty::TypeError<'tcx>, sp: Span);
 
     fn report_and_explain_type_error(&self,
                                      trace: TypeTrace<'tcx>,
@@ -484,10 +487,57 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                  expected_found_str,
                  terr);
 
+        self.check_and_note_conflicting_crates(terr, trace.origin.span());
+
         match trace.origin {
             infer::MatchExpressionArm(_, arm_span) =>
                 self.tcx.sess.span_note(arm_span, "match arm with an incompatible type"),
             _ => ()
+        }
+    }
+
+    /// Adds a note if the types come from similarly named crates
+    fn check_and_note_conflicting_crates(&self, terr: &ty::TypeError<'tcx>, sp: Span) {
+        let report_path_match = |did1: DefId, did2: DefId| {
+            // Only external crates, if either is from a local
+            // module we could have false positives
+            if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
+                let exp_path = self.tcx.with_path(did1,
+                                                  |p| p.map(|x| x.to_string())
+                                                       .collect::<Vec<_>>());
+                let found_path = self.tcx.with_path(did2,
+                                                    |p| p.map(|x| x.to_string())
+                                                         .collect::<Vec<_>>());
+                // We compare strings because PathMod and PathName can be different
+                // for imported and non-imported crates
+                if exp_path == found_path {
+                    let crate_name = self.tcx.sess.cstore
+                                         .get_crate_data(did1.krate).name();
+                    self.tcx.sess.span_note(sp, &format!("Perhaps two different versions \
+                                                          of crate `{}` are being used?",
+                                                          crate_name));
+                }
+            }
+        };
+        match *terr {
+            ty::TypeError::Sorts(ref exp_found) => {
+                // if they are both "path types", there's a chance of ambiguity
+                // due to different versions of the same crate
+                match (&exp_found.expected.sty, &exp_found.found.sty) {
+                    (&ty::TyEnum(ref exp_adt, _), &ty::TyEnum(ref found_adt, _)) |
+                    (&ty::TyStruct(ref exp_adt, _), &ty::TyStruct(ref found_adt, _)) |
+                    (&ty::TyEnum(ref exp_adt, _), &ty::TyStruct(ref found_adt, _)) |
+                    (&ty::TyStruct(ref exp_adt, _), &ty::TyEnum(ref found_adt, _)) => {
+                        report_path_match(exp_adt.did, found_adt.did);
+                    },
+                    _ => ()
+                }
+            },
+            ty::TypeError::Traits(ref exp_found) => {
+                self.tcx.sess.note("errrr0");
+                report_path_match(exp_found.expected, exp_found.found);
+            },
+            _ => () // FIXME(#22750) handle traits and stuff
         }
     }
 
