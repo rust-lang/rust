@@ -191,10 +191,14 @@ impl Error {
     pub fn new<E>(kind: ErrorKind, error: E) -> Error
         where E: Into<Box<error::Error+Send+Sync>>
     {
+        Self::_new(kind, error.into())
+    }
+
+    fn _new(kind: ErrorKind, error: Box<error::Error+Send+Sync>) -> Error {
         Error {
             repr: Repr::Custom(Box::new(Custom {
                 kind: kind,
-                error: error.into(),
+                error: error,
             }))
         }
     }
