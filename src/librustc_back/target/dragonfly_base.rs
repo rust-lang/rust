@@ -19,8 +19,6 @@ pub fn opts() -> TargetOptions {
         linker_is_gnu: true,
         has_rpath: true,
         pre_link_args: vec!(
-            "-L/usr/local/lib".to_string(),
-            "-L/usr/lib/gcc47".to_string(),
             // GNU-style linkers will use this to omit linking to libraries
             // which don't actually fulfill any relocations, but only for
             // libraries which follow this flag.  Thus, use it before

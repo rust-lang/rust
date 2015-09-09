@@ -27,7 +27,7 @@ pub fn min_stack() -> usize {
     // 0 is our sentinel value, so ensure that we'll never see 0 after
     // initialization has run
     MIN.store(amt + 1, Ordering::SeqCst);
-    return amt;
+    amt
 }
 
 // Indicates whether we should perform expensive sanity checks, including rtassert!

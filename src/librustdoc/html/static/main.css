@@ -104,7 +104,7 @@ h3.impl, h3.method, h4.method, h3.type, h4.type {
 h3.impl, h3.method, h3.type {
     margin-top: 15px;
 }
-h1, h2, h3, h4, section.sidebar, a.source, .search-input, .content table :not(code)>a, .collapse-toggle {
+h1, h2, h3, h4, .sidebar, a.source, .search-input, .content table :not(code)>a, .collapse-toggle {
     font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -189,10 +189,15 @@ nav.sub {
     padding: 0 10px;
     margin-bottom: 14px;
 }
-.block h2 {
+.block h2, .block h3 {
     margin-top: 0;
     margin-bottom: 8px;
     text-align: center;
+}
+.block ul, .block li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
 .block a {
@@ -381,7 +386,7 @@ nav.main .separator {
 nav.sum { text-align: right; }
 nav.sub form { display: inline; }
 
-nav, .content {
+nav.sub, .content {
     margin-left: 230px;
 }
 
@@ -407,6 +412,7 @@ a {
 .content span.method, .content a.method, .block a.current.method { color: #8c6067; }
 .content span.tymethod, .content a.tymethod, .block a.current.tymethod { color: #8c6067; }
 .content .fnname { color: #8c6067; }
+.block a.current.crate { font-weight: 500; }
 
 .search-input {
     width: 100%;
@@ -489,7 +495,7 @@ body.blur > :not(#help) {
 }
 #help dd { margin: 5px 33px; }
 #help .infos { padding-left: 0; }
-#help h1 { margin-top: 0; }
+#help h1, #help h2 { margin-top: 0; }
 #help > div div {
     width: 50%;
     float: left;

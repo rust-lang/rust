@@ -18,7 +18,7 @@ pub type Key = pthread_key_t;
 pub unsafe fn create(dtor: Option<unsafe extern fn(*mut u8)>) -> Key {
     let mut key = 0;
     assert_eq!(pthread_key_create(&mut key, dtor), 0);
-    return key;
+    key
 }
 
 #[inline]

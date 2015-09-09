@@ -103,7 +103,7 @@ pub enum TestName {
     DynTestName(String)
 }
 impl TestName {
-    fn as_slice<'a>(&'a self) -> &'a str {
+    fn as_slice(&self) -> &str {
         match *self {
             StaticTestName(s) => s,
             DynTestName(ref s) => s
@@ -157,13 +157,13 @@ pub enum TestFn {
 
 impl TestFn {
     fn padding(&self) -> NamePadding {
-        match self {
-            &StaticTestFn(..)   => PadNone,
-            &StaticBenchFn(..)  => PadOnRight,
-            &StaticMetricFn(..) => PadOnRight,
-            &DynTestFn(..)      => PadNone,
-            &DynMetricFn(..)    => PadOnRight,
-            &DynBenchFn(..)     => PadOnRight,
+        match *self {
+            StaticTestFn(..)   => PadNone,
+            StaticBenchFn(..)  => PadOnRight,
+            StaticMetricFn(..) => PadOnRight,
+            DynTestFn(..)      => PadNone,
+            DynMetricFn(..)    => PadOnRight,
+            DynBenchFn(..)     => PadOnRight,
         }
     }
 }
@@ -564,9 +564,9 @@ impl<T: Write> ConsoleTestState<T> {
             None => Ok(()),
             Some(ref mut o) => {
                 let s = format!("{} {}\n", match *result {
-                        TrOk => "ok".to_string(),
-                        TrFailed => "failed".to_string(),
-                        TrIgnored => "ignored".to_string(),
+                        TrOk => "ok".to_owned(),
+                        TrFailed => "failed".to_owned(),
+                        TrIgnored => "ignored".to_owned(),
                         TrMetrics(ref mm) => mm.fmt_metrics(),
                         TrBench(ref bs) => fmt_bench_samples(bs)
                     }, test.name);
@@ -925,7 +925,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
                 None
             }
         };
-        filtered.into_iter().filter_map(|x| filter(x)).collect()
+        filtered.into_iter().filter_map(filter).collect()
     };
 
     // Sort the tests alphabetically
@@ -978,8 +978,8 @@ pub fn run_test(opts: &TestOpts,
             let data = Arc::new(Mutex::new(Vec::new()));
             let data2 = data.clone();
             let cfg = thread::Builder::new().name(match desc.name {
-                DynTestName(ref name) => name.clone().to_string(),
-                StaticTestName(name) => name.to_string(),
+                DynTestName(ref name) => name.clone(),
+                StaticTestName(name) => name.to_owned(),
             });
 
             let result_guard = cfg.spawn(move || {
@@ -1020,7 +1020,7 @@ pub fn run_test(opts: &TestOpts,
         }
         DynTestFn(f) => run_test_inner(desc, monitor_ch, opts.nocapture, f),
         StaticTestFn(f) => run_test_inner(desc, monitor_ch, opts.nocapture,
-                                          Box::new(move|| f()))
+                                          Box::new(f))
     }
 }
 
@@ -1063,7 +1063,7 @@ impl MetricMap {
             noise: noise
         };
         let MetricMap(ref mut map) = *self;
-        map.insert(name.to_string(), m);
+        map.insert(name.to_owned(), m);
     }
 
     pub fn fmt_metrics(&self) -> String {

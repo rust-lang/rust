@@ -88,7 +88,7 @@ pub fn error_string(errno: i32) -> String {
         }
 
         let p = p as *const _;
-        str::from_utf8(CStr::from_ptr(p).to_bytes()).unwrap().to_string()
+        str::from_utf8(CStr::from_ptr(p).to_bytes()).unwrap().to_owned()
     }
 }
 
@@ -134,7 +134,7 @@ pub struct SplitPaths<'a> {
                     fn(&'a [u8]) -> PathBuf>,
 }
 
-pub fn split_paths<'a>(unparsed: &'a OsStr) -> SplitPaths<'a> {
+pub fn split_paths(unparsed: &OsStr) -> SplitPaths {
     fn bytes_to_path(b: &[u8]) -> PathBuf {
         PathBuf::from(<OsStr as OsStrExt>::from_bytes(b))
     }
@@ -142,7 +142,7 @@ pub fn split_paths<'a>(unparsed: &'a OsStr) -> SplitPaths<'a> {
     let unparsed = unparsed.as_bytes();
     SplitPaths {
         iter: unparsed.split(is_colon as fn(&u8) -> bool)
-                      .map(bytes_to_path as fn(&'a [u8]) -> PathBuf)
+                      .map(bytes_to_path as fn(&[u8]) -> PathBuf)
     }
 }
 

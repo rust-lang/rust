@@ -205,28 +205,28 @@ pub fn parse(file: &mut Read, longnames: bool)
 
     if (bools_bytes as usize) > boolnames.len() {
         return Err("incompatible file: more booleans than \
-                    expected".to_string());
+                    expected".to_owned());
     }
 
     if (numbers_count as usize) > numnames.len() {
         return Err("incompatible file: more numbers than \
-                    expected".to_string());
+                    expected".to_owned());
     }
 
     if (string_offsets_count as usize) > stringnames.len() {
         return Err("incompatible file: more string offsets than \
-                    expected".to_string());
+                    expected".to_owned());
     }
 
     // don't read NUL
     let bytes = try!(read_exact(file, names_bytes as usize - 1));
     let names_str = match String::from_utf8(bytes) {
         Ok(s)  => s,
-        Err(_) => return Err("input not utf-8".to_string()),
+        Err(_) => return Err("input not utf-8".to_owned()),
     };
 
     let term_names: Vec<String> = names_str.split('|')
-                                           .map(|s| s.to_string())
+                                           .map(str::to_owned)
                                            .collect();
 
     try!(read_byte(file)); // consume NUL
@@ -236,7 +236,7 @@ pub fn parse(file: &mut Read, longnames: bool)
         for i in 0..bools_bytes {
             let b = try!(read_byte(file));
             if b == 1 {
-                bools_map.insert(bnames[i as usize].to_string(), true);
+                bools_map.insert(bnames[i as usize].to_owned(), true);
             }
         }
     }
@@ -250,7 +250,7 @@ pub fn parse(file: &mut Read, longnames: bool)
         for i in 0..numbers_count {
             let n = try!(read_le_u16(file));
             if n != 0xFFFF {
-                numbers_map.insert(nnames[i as usize].to_string(), n);
+                numbers_map.insert(nnames[i as usize].to_owned(), n);
             }
         }
     }
@@ -267,7 +267,7 @@ pub fn parse(file: &mut Read, longnames: bool)
 
         if string_table.len() != string_table_bytes as usize {
             return Err("error: hit EOF before end of string \
-                        table".to_string());
+                        table".to_owned());
         }
 
         for (i, v) in string_offsets.iter().enumerate() {
@@ -285,7 +285,7 @@ pub fn parse(file: &mut Read, longnames: bool)
             if offset == 0xFFFE {
                 // undocumented: FFFE indicates cap@, which means the capability is not present
                 // unsure if the handling for this is correct
-                string_map.insert(name.to_string(), Vec::new());
+                string_map.insert(name.to_owned(), Vec::new());
                 continue;
             }
 
@@ -301,7 +301,7 @@ pub fn parse(file: &mut Read, longnames: bool)
                 },
                 None => {
                     return Err("invalid file: missing NUL in \
-                                string_table".to_string());
+                                string_table".to_owned());
                 }
             };
         }
@@ -338,12 +338,12 @@ fn read_exact<R: Read + ?Sized>(r: &mut R, sz: usize) -> io::Result<Vec<u8>> {
 /// Create a dummy TermInfo struct for msys terminals
 pub fn msys_terminfo() -> Box<TermInfo> {
     let mut strings = HashMap::new();
-    strings.insert("sgr0".to_string(), b"\x1B[0m".to_vec());
-    strings.insert("bold".to_string(), b"\x1B[1m".to_vec());
-    strings.insert("setaf".to_string(), b"\x1B[3%p1%dm".to_vec());
-    strings.insert("setab".to_string(), b"\x1B[4%p1%dm".to_vec());
+    strings.insert("sgr0".to_owned(), b"\x1B[0m".to_vec());
+    strings.insert("bold".to_owned(), b"\x1B[1m".to_vec());
+    strings.insert("setaf".to_owned(), b"\x1B[3%p1%dm".to_vec());
+    strings.insert("setab".to_owned(), b"\x1B[4%p1%dm".to_vec());
     box TermInfo {
-        names: vec!("cygwin".to_string()), // msys is a fork of an older cygwin version
+        names: vec!("cygwin".to_owned()), // msys is a fork of an older cygwin version
         bools: HashMap::new(),
         numbers: HashMap::new(),
         strings: strings

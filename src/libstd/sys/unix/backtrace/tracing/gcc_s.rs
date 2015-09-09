@@ -99,7 +99,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
         }
 
         // keep going
-        return uw::_URC_NO_REASON
+        uw::_URC_NO_REASON
     }
 }
 
