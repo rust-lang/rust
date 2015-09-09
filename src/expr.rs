@@ -723,11 +723,8 @@ impl Rewrite for ast::Arm {
         // Let's try and get the arm body on the same line as the condition.
         // 4 = ` => `.len()
         if context.config.max_width > line_start + comma.len() + 4 {
-            let inner_offset = line_start + 4;
             let budget = context.config.max_width - line_start - comma.len() - 4;
-            if let Some(ref body_str) = body.rewrite(context,
-                                                     budget,
-                                                     line_start + 4) {
+            if let Some(ref body_str) = body.rewrite(context, budget, line_start + 4) {
                 if first_line_width(body_str) <= budget {
                     return Some(format!("{}{} => {}{}",
                                         attr_str.trim_left(),
@@ -928,8 +925,12 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         None => return Err(Ordering::Greater),
     };
     let offset = offset + extra_offset + 1;
-    let inner_indent = expr_indent(context, offset);
-    let inner_context = context.overflow_context(inner_indent - context.block_indent);
+    let block_indent = if args.len() == 1 {
+        context.block_indent
+    } else {
+        offset
+    };
+    let inner_context = &RewriteContext { block_indent: block_indent, ..*context };
 
     let items = itemize_list(context.codemap,
                              args.iter(),
@@ -952,21 +953,6 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
 
     Ok(format!("{}({})", callee_str, list_str))
 }
-
-macro_rules! block_indent_helper {
-    ($name:ident, $option:ident) => (
-        fn $name(context: &RewriteContext, offset: usize) -> usize {
-            match context.config.$option {
-                BlockIndentStyle::Inherit => context.block_indent,
-                BlockIndentStyle::Tabbed => context.block_indent + context.config.tab_spaces,
-                BlockIndentStyle::Visual => offset,
-            }
-        }
-    );
-}
-
-block_indent_helper!(expr_indent, expr_indent_style);
-block_indent_helper!(closure_indent, closure_indent_style);
 
 fn rewrite_paren(context: &RewriteContext,
                  subexpr: &ast::Expr,
