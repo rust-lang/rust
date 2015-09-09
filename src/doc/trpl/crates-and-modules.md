@@ -263,6 +263,10 @@ the `phrases` crate. We can then use `phrases`’ modules in this one. As we
 mentioned earlier, you can use double colons to refer to sub-modules and the
 functions inside of them.
 
+(Note: when importing a crate that has dashes in its name "like-this", which is
+not a valid Rust identifier, it will be converted by changing the dashes to
+underscores, so you would write `extern crate like_this;`.)
+
 Also, Cargo assumes that `src/main.rs` is the crate root of a binary crate,
 rather than a library crate. Our package now has two crates: `src/lib.rs` and
 `src/main.rs`. This pattern is quite common for executable crates: most
@@ -532,3 +536,51 @@ Goodbye in English: Goodbye.
 Hello in Japanese: こんにちは
 Goodbye in Japanese: さようなら
 ```
+
+## Complex imports
+
+Rust offers several advanced options that can add compactness and
+convenience to your `extern crate` and `use` statements. Here is an example:
+
+```rust,ignore
+extern crate phrases as sayings;
+
+use sayings::japanese::greetings as ja_greetings;
+use sayings::japanese::farewells::*;
+use sayings::english::{self, greetings as en_greetings, farewells as en_farewells};
+
+fn main() {
+    println!("Hello in English; {}", en_greetings::hello());
+    println!("And in Japanese: {}", ja_greetings::hello());
+    println!("Goodbye in English: {}", english::farewells::goodbye());
+    println!("Again: {}", en_farewells::goodbye());
+    println!("And in Japanese: {}", goodbye());
+}
+```
+
+What's going on here?
+
+First, both `extern crate` and `use` allow renaming the thing that is being
+imported. So the crate is still called "phrases", but here we will refer
+to it as "sayings". Similarly, the first `use` statement pulls in the
+`japanese::farewells` module from the crate, but makes it available as
+`jp_farewells` as opposed to simply `farewells`. This can help to avoid
+ambiguity when importing similarly-named items from different places.
+
+The second `use` statement uses a star glob to bring in _all_ symbols from the
+`sayings::japanese::farewells` module. As you can see we can later refer to
+the Japanese `goodbye` function with no module qualifiers. This kind of glob
+should be used sparingly.
+
+The third `use` statement bears more explanation. It's using "brace expansion"
+globbing to compress three `use` statements into one (this sort of syntax
+may be familiar if you've written Linux shell scripts before). The
+uncompressed form of this statement would be:
+```rust,ignore
+use sayings::english;
+use sayings::english::greetings as en_greetings;
+use sayings::english::farewells as en_farewells;
+```
+As you can see, the curly brackets compress `use` statements for several items
+under the same path, and in this context `self` just refers back to that path.
+Note: The curly brackets cannot be nested or mixed with star globbing.
