@@ -13,7 +13,8 @@
 register_long_diagnostics! {
 
 E0445: r##"
-A private trait was used on a "public" type. Erroneous code example:
+A private trait was used on a public type parameter bound. Erroneous code
+examples:
 
 ```
 trait Foo {
@@ -23,8 +24,9 @@ trait Foo {
 pub trait Bar : Foo {} // error: private trait in exported type parameter bound
 ```
 
-To solve this error, please ensure the trait is accessible at the same level of
-the type(s) on which it's implemented. Example:
+To solve this error, please ensure that the trait is also public and accessible
+at the same level of the public functions or types which are bound on it.
+Example:
 
 ```
 pub trait Foo { // we set the Foo trait public
@@ -48,8 +50,8 @@ mod Foo {
 }
 ```
 
-To solve this error, please ensure the type is accessible at the same level of
-the exported type signature. Example:
+To solve this error, please ensure that the type is also public and accessible
+at the same level of the public functions or types which use it. Example:
 
 ```
 mod Foo {
@@ -60,6 +62,20 @@ mod Foo {
     }
 }
 ```
+"##,
+
+E0447: r##"
+The `pub` keyword was used inside a function. Erroneous code example:
+
+```
+fn foo() {
+    pub struct Bar; // error: visibility has no effect inside functions
+}
+```
+
+Since we cannot access inside function's elements, the visibility of its
+elements does not impact outer code. So using the `pub` keyword in this context
+is invalid.
 "##,
 
 }
