@@ -248,7 +248,8 @@ impl LateLintPass for NonShorthandFieldPatterns {
                     return false;
                 }
                 let def = def_map.get(&fieldpat.node.pat.id).map(|d| d.full_def());
-                def == Some(def::DefLocal(fieldpat.node.pat.id))
+                let def_id = cx.tcx.map.local_def_id(fieldpat.node.pat.id);
+                def == Some(def::DefLocal(def_id, fieldpat.node.pat.id))
             });
             for fieldpat in field_pats {
                 if let hir::PatIdent(_, ident, None) = fieldpat.node.pat.node {

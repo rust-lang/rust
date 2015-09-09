@@ -569,13 +569,13 @@ fn convert_var<'a,'tcx:'a>(cx: &mut Cx<'a,'tcx>,
     let temp_lifetime = cx.tcx.region_maps.temporary_scope(expr.id);
 
     match def {
-        def::DefLocal(node_id) => {
+        def::DefLocal(_, node_id) => {
             ExprKind::VarRef {
                 id: node_id,
             }
         }
 
-        def::DefUpvar(id_var, index, closure_expr_id) => {
+        def::DefUpvar(_, id_var, index, closure_expr_id) => {
             debug!("convert_var(upvar({:?}, {:?}, {:?}))", id_var, index, closure_expr_id);
             let var_ty = cx.tcx.node_id_to_type(id_var);
 

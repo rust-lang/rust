@@ -29,7 +29,8 @@ pub enum Def {
     DefStatic(DefId, bool /* is_mutbl */),
     DefConst(DefId),
     DefAssociatedConst(DefId),
-    DefLocal(ast::NodeId),
+    DefLocal(DefId, // def id of variable
+             ast::NodeId), // node id of variable
     DefVariant(DefId /* enum */, DefId /* variant */, bool /* is_structure */),
     DefTy(DefId, bool /* is_enum */),
     DefAssociatedTy(DefId /* trait */, DefId),
@@ -37,7 +38,8 @@ pub enum Def {
     DefPrimTy(hir::PrimTy),
     DefTyParam(ParamSpace, u32, DefId, ast::Name),
     DefUse(DefId),
-    DefUpvar(ast::NodeId,  // id of closed over local
+    DefUpvar(DefId,        // def id of closed over local
+             ast::NodeId,  // node id of closed over local
              usize,        // index in the freevars list of the closure
              ast::NodeId), // expr node that creates the closure
 
@@ -115,8 +117,8 @@ pub struct Export {
 impl Def {
     pub fn var_id(&self) -> ast::NodeId {
         match *self {
-            DefLocal(id) |
-            DefUpvar(id, _, _) => {
+            DefLocal(_, id) |
+            DefUpvar(_, id, _, _) => {
                 id
             }
 
@@ -135,13 +137,9 @@ impl Def {
             DefFn(id, _) | DefMod(id) | DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(_, id) |
             DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
-            DefMethod(id) | DefConst(id) | DefAssociatedConst(id) => {
+            DefMethod(id) | DefConst(id) | DefAssociatedConst(id) |
+            DefLocal(id, _) | DefUpvar(id, _, _, _) => {
                 id
-            }
-
-            DefLocal(id) |
-            DefUpvar(id, _, _) => {
-                DefId::xxx_local(id) // TODO, clearly
             }
 
             DefLabel(..)  |

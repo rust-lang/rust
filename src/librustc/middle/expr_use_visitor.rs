@@ -280,11 +280,9 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                typer: &'t infer::InferCtxt<'a, 'tcx>)
                -> ExprUseVisitor<'d,'t,'a,'tcx> where 'tcx:'a
     {
-        ExprUseVisitor {
-            typer: typer,
-            mc: mc::MemCategorizationContext::new(typer),
-            delegate: delegate,
-        }
+        let mc: mc::MemCategorizationContext<'t, 'a, 'tcx> =
+            mc::MemCategorizationContext::new(typer);
+        ExprUseVisitor { typer: typer, mc: mc, delegate: delegate }
     }
 
     pub fn walk_fn(&mut self,
