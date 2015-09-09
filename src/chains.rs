@@ -23,8 +23,8 @@ pub fn rewrite_chain(orig_expr: &ast::Expr,
                      -> Option<String> {
     let mut expr = orig_expr;
     let mut rewrites = Vec::new();
-    let indent = context.block_indent + context.config.tab_spaces;
-    let max_width = context.config.max_width - context.config.tab_spaces;
+    let indent = offset + context.config.tab_spaces;
+    let max_width = try_opt!(context.config.max_width.checked_sub(indent));
 
     loop {
         match expr.node {
@@ -103,7 +103,8 @@ pub fn rewrite_chain(orig_expr: &ast::Expr,
 
     // Put the first link on the same line as parent, if it fits.
     let first_connector = if parent_rewrite.len() + rewrites[0].len() <= width &&
-                             !rewrites[0].contains('\n') {
+                             !rewrites[0].contains('\n') ||
+                             parent_rewrite.len() <= context.config.tab_spaces {
         ""
     } else {
         &connector[..]
@@ -128,6 +129,10 @@ fn rewrite_method_call(method_name: ast::Ident,
     };
 
     let callee_str = format!(".{}{}", method_name, type_str);
+    let inner_context = &RewriteContext {
+        block_indent: offset,
+        ..*context
+    };
 
-    rewrite_call(context, &callee_str, args, span, width, offset)
+    rewrite_call(inner_context, &callee_str, args, span, width, offset)
 }

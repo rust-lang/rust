@@ -89,13 +89,13 @@ fn bar() {
     }
 
     syntactically_correct(loop {
-            sup('?');
-        },
+                              sup('?');
+                          },
                           if cond {
-            0
-        } else {
-            1
-        });
+                              0
+                          } else {
+                              1
+                          });
 
     let third = ..10;
     let infi_range = ..;

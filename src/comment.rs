@@ -41,9 +41,9 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
     let line_breaks = s.chars().filter(|&c| c == '\n').count();
 
     let (_, mut s) = s.lines()
-        .enumerate()
-        .map(|(i, mut line)| {
-                 line = line.trim();
+                         .enumerate()
+                         .map(|(i, mut line)| {
+                             line = line.trim();
 
             // Drop old closer.
                  if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
@@ -166,11 +166,11 @@ pub fn contains_comment(text: &str) -> bool {
 pub fn uncommented(text: &str) -> String {
     CharClasses::new(text.chars())
         .filter_map(|(s, c)| {
-                        match s {
-                            CodeCharKind::Normal => Some(c),
-                            CodeCharKind::Comment => None,
-                        }
-                    })
+            match s {
+                CodeCharKind::Normal => Some(c),
+                CodeCharKind::Comment => None,
+            }
+        })
         .collect()
 }
 

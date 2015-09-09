@@ -4,6 +4,6 @@
 
 fn matcher() {
     Some(while true {
-             test();
-         })
+        test();
+    })
 }

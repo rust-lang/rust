@@ -38,10 +38,10 @@ impl Rewrite for ast::ViewPath {
                 let path_str = try_opt!(path.rewrite(context, width - ident_str.len() - 4, offset));
 
                 Some(if path.segments.last().unwrap().identifier == ident {
-                        path_str
-                    } else {
-                        format!("{} as {}", path_str, ident_str)
-                    })
+                    path_str
+                } else {
+                    format!("{} as {}", path_str, ident_str)
+                })
             }
         }
     }

@@ -289,8 +289,10 @@ impl<'a> FmtVisitor<'a> {
             true
         } else {
             let rewrite = attrs
-                .rewrite(&self.get_context(), self.config.max_width - self.block_indent, self.block_indent)
-                .unwrap();
+                              .rewrite(&self.get_context(),
+                                       self.config.max_width - self.block_indent,
+                                       self.block_indent)
+                              .unwrap();
             self.buffer.push_str(&rewrite);
             let last = attrs.last().unwrap();
             self.last_pos = last.span.hi;

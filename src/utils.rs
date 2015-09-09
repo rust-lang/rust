@@ -97,11 +97,11 @@ pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
     typaram.bounds
         .last()
         .map(|bound| {
-                 match *bound {
-                     ast::RegionTyParamBound(ref lt) => lt.span,
-                     ast::TraitTyParamBound(ref prt, _) => prt.span,
-                 }
-             })
+            match *bound {
+                ast::RegionTyParamBound(ref lt) => lt.span,
+                ast::TraitTyParamBound(ref prt, _) => prt.span,
+            }
+        })
         .unwrap_or(typaram.span)
         .hi
 }
