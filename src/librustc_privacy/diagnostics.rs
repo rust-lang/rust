@@ -125,4 +125,28 @@ To fix this error, please remove the visibility qualifier when it is not
 required.
 "##,
 
+E0450: r##"
+A tuple constructor was invoked while some of its fields are private. Erroneous
+code example:
+
+```
+mod Bar {
+    pub struct Foo(isize);
+}
+
+let f = Bar::Foo(0); // error: cannot invoke tuple struct constructor with
+                     //        private fields
+```
+
+To solve this issue, please ensure that all tuple's fields are public. Example:
+
+```
+mod Bar {
+    pub struct Foo(pub isize); // we set its field to public
+}
+
+let f = Bar::Foo(0); // ok!
+```
+"##,
+
 }
