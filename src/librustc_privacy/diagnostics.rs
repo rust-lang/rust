@@ -78,4 +78,29 @@ elements does not impact outer code. So using the `pub` keyword in this context
 is invalid.
 "##,
 
+E0448: r##"
+The `pub` keyword was used inside a public enum. Erroneous code example:
+
+```
+pub enum Foo {
+    pub Bar, // error: unnecessary `pub` visibility
+}
+```
+
+Since the enum is already public, adding `pub` on one its elements is
+unnecessary. Example:
+
+```
+enum Foo {
+    pub Bar, // ok!
+}
+
+// or:
+
+pub enum Foo {
+    Bar, // ok!
+}
+```
+"##,
+
 }
