@@ -1095,12 +1095,12 @@ typecheck:
 # fn my_err(s: &str) -> ! { panic!() }
 
 fn f(i: i32) -> i32 {
-   if i == 42 {
-     return 42;
-   }
-   else {
-     my_err("Bad number!");
-   }
+    if i == 42 {
+        return 42;
+    }
+    else {
+        my_err("Bad number!");
+    }
 }
 ```
 
@@ -1399,9 +1399,9 @@ functions](#generic-functions).
 
 ```
 trait Seq<T> {
-   fn len(&self) -> u32;
-   fn elt_at(&self, n: u32) -> T;
-   fn iter<F>(&self, F) where F: Fn(T);
+    fn len(&self) -> u32;
+    fn elt_at(&self, n: u32) -> T;
+    fn iter<F>(&self, F) where F: Fn(T);
 }
 ```
 
@@ -1579,8 +1579,12 @@ impl Shape for Circle {
     fn draw(&self, s: Surface) { do_draw_circle(s, *self); }
     fn bounding_box(&self) -> BoundingBox {
         let r = self.radius;
-        BoundingBox{x: self.center.x - r, y: self.center.y - r,
-         width: 2.0 * r, height: 2.0 * r}
+        BoundingBox {
+            x: self.center.x - r,
+            y: self.center.y - r,
+            width: 2.0 * r,
+            height: 2.0 * r,
+        }
     }
 }
 ```
@@ -1615,10 +1619,10 @@ are written after the `impl` keyword.
 ```
 # trait Seq<T> { fn dummy(&self, _: T) { } }
 impl<T> Seq<T> for Vec<T> {
-   /* ... */
+    /* ... */
 }
 impl Seq<bool> for u32 {
-   /* Treat the integer as a sequence of bits */
+    /* Treat the integer as a sequence of bits */
 }
 ```
 
@@ -1850,13 +1854,13 @@ An example of attributes:
 // A function marked as a unit test
 #[test]
 fn test_foo() {
-  /* ... */
+    /* ... */
 }
 
 // A conditionally-compiled module
 #[cfg(target_os="linux")]
 mod bar {
-  /* ... */
+    /* ... */
 }
 
 // A lint attribute used to suppress a warning/error
@@ -2899,9 +2903,9 @@ An example of an `as` expression:
 # fn len(values: &[f64]) -> i32 { 0 }
 
 fn average(values: &[f64]) -> f64 {
-  let sum: f64 = sum(values);
-  let size: f64 = len(values) as f64;
-  sum / size
+    let sum: f64 = sum(values);
+    let size: f64 = len(values) as f64;
+    sum / size
 }
 ```
 
@@ -3207,9 +3211,9 @@ may be specified with `...`. For example:
 # let x = 2;
 
 let message = match x {
-  0 | 1  => "not many",
-  2 ... 9 => "a few",
-  _      => "lots"
+    0 | 1  => "not many",
+    2 ... 9 => "a few",
+    _      => "lots"
 };
 ```
 
@@ -3228,9 +3232,9 @@ may refer to the variables bound within the pattern they follow.
 # fn process_other(i: i32) { }
 
 let message = match maybe_digit {
-  Some(x) if x < 10 => process_digit(x),
-  Some(x) => process_other(x),
-  None => panic!()
+    Some(x) if x < 10 => process_digit(x),
+    Some(x) => process_other(x),
+    None => panic!()
 };
 ```
 
@@ -3274,10 +3278,10 @@ An example of a `return` expression:
 
 ```
 fn max(a: i32, b: i32) -> i32 {
-   if a > b {
-      return a;
-   }
-   return b;
+    if a > b {
+        return a;
+    }
+    return b;
 }
 ```
 
@@ -3521,7 +3525,7 @@ An example of a `fn` type:
 
 ```
 fn add(x: i32, y: i32) -> i32 {
-  return x + y;
+    return x + y;
 }
 
 let mut x = add(5,7);
@@ -3601,19 +3605,19 @@ An example of a trait object:
 
 ```
 trait Printable {
-  fn stringify(&self) -> String;
+    fn stringify(&self) -> String;
 }
 
 impl Printable for i32 {
-  fn stringify(&self) -> String { self.to_string() }
+    fn stringify(&self) -> String { self.to_string() }
 }
 
 fn print(a: Box<Printable>) {
-   println!("{}", a.stringify());
+    println!("{}", a.stringify());
 }
 
 fn main() {
-   print(Box::new(10) as Box<Printable>);
+    print(Box::new(10) as Box<Printable>);
 }
 ```
 
@@ -3628,7 +3632,7 @@ its type parameters are types:
 ```ignore
 fn to_vec<A: Clone>(xs: &[A]) -> Vec<A> {
     if xs.is_empty() {
-       return vec![];
+        return vec![];
     }
     let first: A = xs[0].clone();
     let mut rest: Vec<A> = to_vec(&xs[1..]);
@@ -3648,7 +3652,7 @@ it is an alias for the implementing type. For example, in:
 
 ```
 trait Printable {
-  fn make_string(&self) -> String;
+    fn make_string(&self) -> String;
 }
 
 impl Printable for String {
@@ -3716,7 +3720,7 @@ sites are:
   fn bar(_: i8) { }
 
   fn main() {
-     bar(128);
+      bar(128);
   }
   ```
 
