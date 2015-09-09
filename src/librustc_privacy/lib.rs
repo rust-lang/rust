@@ -1193,8 +1193,8 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
             if !self.tcx.sess.features.borrow().visible_private_types &&
                 self.path_is_private_type(trait_ref.trait_ref.ref_id) {
                     let span = trait_ref.trait_ref.path.span;
-                    self.tcx.sess.span_err(span, "private trait in exported type \
-                                                  parameter bound");
+                    span_err!(self.tcx.sess, span, E0445,
+                              "private trait in exported type parameter bound");
             }
         }
     }
