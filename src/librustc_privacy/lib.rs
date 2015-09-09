@@ -1098,7 +1098,8 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
         let tcx = self.tcx;
         fn check_inherited(tcx: &ty::ctxt, sp: Span, vis: hir::Visibility) {
             if vis != hir::Inherited {
-                tcx.sess.span_err(sp, "visibility has no effect inside functions");
+                span_err!(tcx.sess, sp, E0447,
+                          "visibility has no effect inside functions");
             }
         }
         let check_struct = |def: &hir::StructDef| {
