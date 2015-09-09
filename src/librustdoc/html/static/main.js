@@ -773,7 +773,8 @@
         if (rootPath === '../') {
             var sidebar = $('.sidebar');
             var div = $('<div>').attr('class', 'block crate');
-            div.append($('<h2>').text('Crates'));
+            div.append($('<h3>').text('Crates'));
+            var ul = $('<ul>').appendTo(div);
 
             var crates = [];
             for (var crate in rawSearchIndex) {
@@ -788,9 +789,10 @@
                 }
                 if (rawSearchIndex[crates[i]].items[0]) {
                     var desc = rawSearchIndex[crates[i]].items[0][3];
-                    div.append($('<a>', {'href': '../' + crates[i] + '/index.html',
+                    var link = $('<a>', {'href': '../' + crates[i] + '/index.html',
                                          'title': plainSummaryLine(desc),
-                                         'class': klass}).text(crates[i]));
+                                         'class': klass}).text(crates[i]);
+                    ul.append($('<li>').append(link));
                 }
             }
             sidebar.append(div);
@@ -809,7 +811,8 @@
             if (!filtered) { return; }
 
             var div = $('<div>').attr('class', 'block ' + shortty);
-            div.append($('<h2>').text(longty));
+            div.append($('<h3>').text(longty));
+            var ul = $('<ul>').appendTo(div);
 
             for (var i = 0; i < filtered.length; ++i) {
                 var item = filtered[i];
@@ -826,9 +829,10 @@
                 } else {
                     path = shortty + '.' + name + '.html';
                 }
-                div.append($('<a>', {'href': current.relpath + path,
+                var link = $('<a>', {'href': current.relpath + path,
                                      'title': desc,
-                                     'class': klass}).text(name));
+                                     'class': klass}).text(name);
+                ul.append($('<li>').append(link));
             }
             sidebar.append(div);
         }
