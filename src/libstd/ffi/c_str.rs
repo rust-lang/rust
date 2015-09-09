@@ -181,7 +181,10 @@ impl CString {
     /// the position of the nul byte.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<T: Into<Vec<u8>>>(t: T) -> Result<CString, NulError> {
-        let bytes = t.into();
+        Self::_new(t.into())
+    }
+
+    fn _new(bytes: Vec<u8>) -> Result<CString, NulError> {
         match bytes.iter().position(|x| *x == 0) {
             Some(i) => Err(NulError(i, bytes)),
             None => Ok(unsafe { CString::from_vec_unchecked(bytes) }),
