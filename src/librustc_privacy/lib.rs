@@ -50,6 +50,8 @@ use rustc::front::map as ast_map;
 use syntax::ast;
 use syntax::codemap::Span;
 
+pub mod diagnostics;
+
 type Context<'a, 'tcx> = (&'a ty::MethodMap<'tcx>, &'a def::ExportMap);
 
 /// Result of a checking operation - None => no errors were found. Some => an
@@ -1076,8 +1078,8 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                     match v.node.vis {
                         hir::Public => {
                             if item.vis == hir::Public {
-                                tcx.sess.span_err(v.span, "unnecessary `pub` \
-                                                           visibility");
+                                span_err!(tcx.sess, v.span, E0448,
+                                          "unnecessary `pub` visibility");
                             }
                         }
                         hir::Inherited => {}
