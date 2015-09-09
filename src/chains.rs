@@ -8,6 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Formatting of chained expressions, i.e. expressions which are chained by
+// dots: struct and enum field access and method calls.
+//
+// Instead of walking these subexpressions one-by-one, as is our usual strategy
+// for expression formatting, we collect maximal sequences of these expressions
+// and handle them simultaneously.
+//
+// Whenever possible, the entire chain is put on a single line. If that fails,
+// we put each subexpression on a separate, much like the (default) function
+// argument function argument strategy.
+
 use rewrite::{Rewrite, RewriteContext};
 use utils::{make_indent, extra_offset};
 use expr::rewrite_call;

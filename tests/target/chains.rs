@@ -25,6 +25,14 @@ fn main() {
             }
         });
 
+    fffffffffffffffffffffffffffffffffff(a,
+                                        {
+                                            SCRIPT_TASK_ROOT.with(|root| {
+                                                                // Another case of write_list failing us.
+                                                                *root.borrow_mut() = Some(&script_task);
+                                                            });
+                                        });
+
     let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum = xxxxxxx.map(|x| x + 5)
                                                                        .map(|x| x / 2)
                                                                        .fold(0, |acc, x| acc + x);

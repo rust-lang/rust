@@ -150,17 +150,6 @@ pub fn contains_comment(text: &str) -> bool {
     CharClasses::new(text.chars()).any(|(kind, _)| kind == CodeCharKind::Comment)
 }
 
-pub fn uncommented(text: &str) -> String {
-    CharClasses::new(text.chars())
-        .filter_map(|(s, c)| {
-            match s {
-                CodeCharKind::Normal => Some(c),
-                CodeCharKind::Comment => None,
-            }
-        })
-        .collect()
-}
-
 struct CharClasses<T>
     where T: Iterator,
           T::Item: RichChar
@@ -321,10 +310,14 @@ mod test {
     // This is probably intended to be a non-test fn, but it is not used. I'm
     // keeping it around unless it helps us test stuff.
     fn uncommented(text: &str) -> String {
-        CharClasses::new(text.chars()).filter_map(|(s, c)| match s {
-            CodeCharKind::Normal => Some(c),
-            CodeCharKind::Comment => None
-        }).collect()
+        CharClasses::new(text.chars())
+            .filter_map(|(s, c)| {
+                match s {
+                    CodeCharKind::Normal => Some(c),
+                    CodeCharKind::Comment => None,
+                }
+            })
+            .collect()
     }
 
     #[test]
