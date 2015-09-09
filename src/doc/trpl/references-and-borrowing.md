@@ -159,8 +159,8 @@ First, any borrow must last for a scope no greater than that of the owner.
 Second, you may have one or the other of these two kinds of borrows, but not
 both at the same time:
 
-* one or more references (`&T`) to a resource.
-* exactly one mutable reference (`&mut T`)
+* one or more references (`&T`) to a resource,
+* exactly one mutable reference (`&mut T`).
 
 
 You may notice that this is very similar, though not exactly the same as,
@@ -298,8 +298,8 @@ We can’t modify `v` because it’s borrowed by the loop.
 
 ### use after free
 
-References must live as long as the resource they refer to. Rust will check the
-scopes of your references to ensure that this is true.
+References must not live longer than the resource they refer to. Rust will
+check the scopes of your references to ensure that this is true.
 
 If Rust didn’t check this property, we could accidentally use a reference
 which was invalid. For example:
