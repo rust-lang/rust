@@ -732,6 +732,7 @@ impl Rewrite for ast::Arm {
         // Let's try and get the arm body on the same line as the condition.
         // 4 = ` => `.len()
         if context.config.max_width > line_start + comma.len() + 4 {
+            let inner_offset = line_start + 4;
             let budget = context.config.max_width - line_start - comma.len() - 4;
             if let Some(ref body_str) = body.rewrite(context,
                                                      budget,
