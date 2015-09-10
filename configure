@@ -901,7 +901,10 @@ then
             CC="${CC:-egcc}"
             CXX="${CXX:-eg++}"
         fi
-    fi    
+    fi
+
+    step_msg "on OpenBSD, disabling jemalloc"
+    CFG_DISABLE_JEMALLOC=1
 fi
 
 # OS X 10.9, gcc is actually clang. This can cause some confusion in the build
