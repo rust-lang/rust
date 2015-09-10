@@ -8,27 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo(u32);
-struct Bar;
+// Empty struct defined with braces add names into type namespace
+// Empty struct defined without braces add names into both type and value namespaces
 
-enum Enum {
-    Foo(u32),
-    Bar
-}
+struct Empty1 {}
+struct Empty2;
 
 fn main() {
-    let x = Foo(1);
-    Foo { ..x }; //~ ERROR `Foo` does not name a structure
-    let Foo { .. } = x; //~ ERROR `Foo` does not name a struct
+    let e1: Empty1 = Empty1 {};
+    let e2: Empty2 = Empty2 {};
+    let e2: Empty2 = Empty2;
 
-    let x = Bar;
-    Bar { ..x };
-    let Bar { .. } = x;
-
-    match Enum::Bar {
-        Enum::Bar { .. } //~ ERROR `Enum::Bar` does not name a struct
-           => {}
-        Enum::Foo { .. } //~ ERROR `Enum::Foo` does not name a struct
-           => {}
+    match e1 {
+        Empty1 {} => ()
+    }
+    match e2 {
+        Empty2 {} => ()
+    }
+    match e2 {
+        Empty2 => ()
     }
 }

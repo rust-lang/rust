@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// Empty struct defined with braces shouldn't add names into value namespace
 
-struct Foo;
+struct Empty {}
 
-fn i5() {
-    let _end_of_block = { Foo { } };
-    //~^ ERROR: structure literal must either have at least one field
+fn main() {
+    let e = Empty; //~ ERROR `Empty` is the name of a struct or struct variant
 }
-
-fn main() {}
