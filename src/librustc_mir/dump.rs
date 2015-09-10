@@ -62,7 +62,7 @@ impl<'a, 'tcx> OuterDump<'a, 'tcx> {
             }
         }
 
-        let always_build_mir = self.tcx.sess.opts.always_build_mir;
+        let always_build_mir = true;
         if !built_mir && always_build_mir {
             let mut closure_dump = InnerDump { tcx: self.tcx, attr: None };
             walk_op(&mut closure_dump);
