@@ -956,7 +956,7 @@ then
     LLVM_VERSION=$($LLVM_CONFIG --version)
 
     case $LLVM_VERSION in
-        (3.[5-7]*)
+        (3.[5-8]*)
             msg "found ok version of LLVM: $LLVM_VERSION"
             ;;
         (*)
@@ -1030,7 +1030,7 @@ then
             esac
         else
             case $CFG_CLANG_VERSION in
-                (3.2* | 3.3* | 3.4* | 3.5* | 3.6* | 3.7*)
+                (3.2* | 3.3* | 3.4* | 3.5* | 3.6* | 3.7* | 3.8*)
                 step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
                 ;;
                 (*)
