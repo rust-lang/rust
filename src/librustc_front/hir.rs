@@ -703,9 +703,6 @@ pub enum Expr_ {
     /// For example, `[1u8; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
     ExprRepeat(P<Expr>, P<Expr>),
-
-    /// No-op: used solely so we can pretty-print faithfully
-    ExprParen(P<Expr>)
 }
 
 /// The explicit Self type in a "qualified path". The actual

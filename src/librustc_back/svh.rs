@@ -249,7 +249,6 @@ mod svh_visitor {
         SawExprInlineAsm(&'a hir::InlineAsm),
         SawExprStruct,
         SawExprRepeat,
-        SawExprParen,
     }
 
     fn saw_expr<'a>(node: &'a Expr_) -> SawExprComponent<'a> {
@@ -283,7 +282,6 @@ mod svh_visitor {
             ExprInlineAsm(ref asm)   => SawExprInlineAsm(asm),
             ExprStruct(..)           => SawExprStruct,
             ExprRepeat(..)           => SawExprRepeat,
-            ExprParen(..)            => SawExprParen,
         }
     }
 

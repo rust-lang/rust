@@ -810,7 +810,9 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                             fields.iter().map(|x| lower_field(x)).collect(),
                             maybe_expr.as_ref().map(|x| lower_expr(x)))
                 },
-                ExprParen(ref ex) => hir::ExprParen(lower_expr(ex)),
+                ExprParen(ref ex) => {
+                    return lower_expr(ex);
+                }
                 ExprIfLet(..) |
                 ExprWhileLet(..) |
                 ExprForLoop(..) |

@@ -703,7 +703,6 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let mut cur = sub;
             loop {
                 match cur.node {
-                    hir::ExprParen(ref sub) => cur = sub,
                     hir::ExprBlock(ref blk) => {
                         if let Some(ref sub) = blk.expr {
                             cur = sub;
@@ -830,7 +829,6 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let mut callee = &**callee;
             loop {
                 callee = match callee.node {
-                    hir::ExprParen(ref inner) => &**inner,
                     hir::ExprBlock(ref block) => match block.expr {
                         Some(ref tail) => &**tail,
                         None => break,
@@ -870,7 +868,6 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             const_fn_call(cx, MethodCallKey(method_call),
                           method_did, &arg_vals, param_substs)
         },
-        hir::ExprParen(ref e) => const_expr(cx, &**e, param_substs, fn_args).0,
         hir::ExprBlock(ref block) => {
             match block.expr {
                 Some(ref expr) => const_expr(cx, &**expr, param_substs, fn_args).0,

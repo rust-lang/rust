@@ -46,9 +46,6 @@ impl<H:Hair> Builder<H> {
                     this.as_rvalue(block, value)
                 })
             }
-            ExprKind::Paren { arg } => {
-                this.as_rvalue(block, arg)
-            }
             ExprKind::InlineAsm { asm } => {
                 block.and(Rvalue::InlineAsm(asm))
             }

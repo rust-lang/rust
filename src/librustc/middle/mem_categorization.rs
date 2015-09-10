@@ -519,10 +519,6 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
-          hir::ExprParen(ref e) => {
-            self.cat_expr(&**e)
-          }
-
           hir::ExprAddrOf(..) | hir::ExprCall(..) |
           hir::ExprAssign(..) | hir::ExprAssignOp(..) |
           hir::ExprClosure(..) | hir::ExprRet(..) |

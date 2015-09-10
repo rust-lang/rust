@@ -3444,13 +3444,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
         fcx.write_ty(id, fcx.infcx().next_diverging_ty_var());
       }
-      hir::ExprParen(ref a) => {
-        check_expr_with_expectation_and_lvalue_pref(fcx,
-                                                    &**a,
-                                                    expected,
-                                                    lvalue_pref);
-        fcx.write_ty(id, fcx.expr_ty(&**a));
-      }
       hir::ExprAssign(ref lhs, ref rhs) => {
         check_expr_with_lvalue_pref(fcx, &**lhs, PreferMutLvalue);
 

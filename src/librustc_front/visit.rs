@@ -814,9 +814,6 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprRet(ref optional_expression) => {
             walk_expr_opt(visitor, optional_expression)
         }
-        ExprParen(ref subexpression) => {
-            visitor.visit_expr(&**subexpression)
-        }
         ExprInlineAsm(ref ia) => {
             for input in &ia.inputs {
                 let (_, ref input) = *input;
