@@ -37,6 +37,7 @@ pub use self::Count::*;
 
 use std::str;
 use std::string;
+use std::iter;
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
@@ -141,7 +142,7 @@ pub enum Count<'a> {
 /// necessary there's probably lots of room for improvement performance-wise.
 pub struct Parser<'a> {
     input: &'a str,
-    cur: str::CharIndices<'a>,
+    cur: iter::Peekable<str::CharIndices<'a>>,
     /// Error messages accumulated during parsing
     pub errors: Vec<string::String>,
 }
@@ -150,8 +151,8 @@ impl<'a> Iterator for Parser<'a> {
     type Item = Piece<'a>;
 
     fn next(&mut self) -> Option<Piece<'a>> {
-        match self.cur.clone().next() {
-            Some((pos, '{')) => {
+        match self.cur.peek() {
+            Some(&(pos, '{')) => {
                 self.cur.next();
                 if self.consume('{') {
                     Some(String(self.string(pos + 1)))
@@ -161,7 +162,7 @@ impl<'a> Iterator for Parser<'a> {
                     ret
                 }
             }
-            Some((pos, '}')) => {
+            Some(&(pos, '}')) => {
                 self.cur.next();
                 if self.consume('}') {
                     Some(String(self.string(pos + 1)))
@@ -170,7 +171,7 @@ impl<'a> Iterator for Parser<'a> {
                     None
                 }
             }
-            Some((pos, _)) => { Some(String(self.string(pos))) }
+            Some(&(pos, _)) => { Some(String(self.string(pos))) }
             None => None
         }
     }
@@ -181,7 +182,7 @@ impl<'a> Parser<'a> {
     pub fn new(s: &'a str) -> Parser<'a> {
         Parser {
             input: s,
-            cur: s.char_indices(),
+            cur: s.char_indices().peekable(),
             errors: vec!(),
         }
     }
@@ -197,8 +198,8 @@ impl<'a> Parser<'a> {
     /// the current position, then the current iterator isn't moved and false is
     /// returned, otherwise the character is consumed and true is returned.
     fn consume(&mut self, c: char) -> bool {
-        match self.cur.clone().next() {
-            Some((_, maybe)) if c == maybe => {
+        match self.cur.peek() {
+            Some(&(_, maybe)) if c == maybe => {
                 self.cur.next();
                 true
             }
@@ -210,11 +211,11 @@ impl<'a> Parser<'a> {
     /// found, an error is emitted.
     fn must_consume(&mut self, c: char) {
         self.ws();
-        match self.cur.clone().next() {
-            Some((_, maybe)) if c == maybe => {
+        match self.cur.peek() {
+            Some(&(_, maybe)) if c == maybe => {
                 self.cur.next();
             }
-            Some((_, other)) => {
+            Some(&(_, other)) => {
                 self.err(&format!("expected `{:?}`, found `{:?}`", c,
                                   other));
             }
@@ -229,8 +230,8 @@ impl<'a> Parser<'a> {
     /// character
     fn ws(&mut self) {
         loop {
-            match self.cur.clone().next() {
-                Some((_, c)) if c.is_whitespace() => { self.cur.next(); }
+            match self.cur.peek() {
+                Some(&(_, c)) if c.is_whitespace() => { self.cur.next(); }
                 Some(..) | None => { return }
             }
         }
@@ -241,8 +242,8 @@ impl<'a> Parser<'a> {
     fn string(&mut self, start: usize) -> &'a str {
         loop {
             // we may not consume the character, so clone the iterator
-            match self.cur.clone().next() {
-                Some((pos, '}')) | Some((pos, '{')) => {
+            match self.cur.peek() {
+                Some(&(pos, '}')) | Some(&(pos, '{')) => {
                     return &self.input[start..pos];
                 }
                 Some(..) => { self.cur.next(); }
@@ -269,8 +270,8 @@ impl<'a> Parser<'a> {
         match self.integer() {
             Some(i) => { ArgumentIs(i) }
             None => {
-                match self.cur.clone().next() {
-                    Some((_, c)) if c.is_alphabetic() => {
+                match self.cur.peek() {
+                    Some(&(_, c)) if c.is_alphabetic() => {
                         ArgumentNamed(self.word())
                     }
                     _ => ArgumentNext
@@ -293,8 +294,8 @@ impl<'a> Parser<'a> {
         if !self.consume(':') { return spec }
 
         // fill character
-        match self.cur.clone().next() {
-            Some((_, c)) => {
+        match self.cur.peek() {
+            Some(&(_, c)) => {
                 match self.cur.clone().skip(1).next() {
                     Some((_, '>')) | Some((_, '<')) | Some((_, '^')) => {
                         spec.fill = Some(c);
@@ -392,8 +393,8 @@ impl<'a> Parser<'a> {
     /// be an alphabetic character followed by any number of alphanumeric
     /// characters.
     fn word(&mut self) -> &'a str {
-        let start = match self.cur.clone().next() {
-            Some((pos, c)) if c.is_xid_start() => {
+        let start = match self.cur.peek() {
+            Some(&(pos, c)) if c.is_xid_start() => {
                 self.cur.next();
                 pos
             }
@@ -401,11 +402,11 @@ impl<'a> Parser<'a> {
         };
         let end;
         loop {
-            match self.cur.clone().next() {
-                Some((_, c)) if c.is_xid_continue() => {
+            match self.cur.peek() {
+                Some(&(_, c)) if c.is_xid_continue() => {
                     self.cur.next();
                 }
-                Some((pos, _)) => { end = pos; break }
+                Some(&(pos, _)) => { end = pos; break }
                 None => { end = self.input.len(); break }
             }
         }
@@ -417,7 +418,7 @@ impl<'a> Parser<'a> {
     fn integer(&mut self) -> Option<usize> {
         let mut cur = 0;
         let mut found = false;
-        while let Some((_, c)) = self.cur.clone().next() {
+        while let Some(&(_, c)) = self.cur.peek() {
             if let Some(i) = c.to_digit(10) {
                 cur = cur * 10 + i as usize;
                 found = true;
