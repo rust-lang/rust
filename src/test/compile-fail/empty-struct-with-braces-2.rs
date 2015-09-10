@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// Empty struct defined with braces shouldn't add names into value namespace
 
-struct Foo;
+#![deny(warnings)]
 
-fn f2() {
-    let _end_stmt     = Foo { };
-    //~^ ERROR: structure literal must either have at least one field
+struct Empty {}
+
+fn main() {
+    let e = Empty {};
+
+    match e {
+        Empty => () //~ ERROR unused variable: `Empty`
+        //~^ ERROR variable `Empty` should have a snake case name such as `empty`
+    }
 }
-
-fn main() {}
