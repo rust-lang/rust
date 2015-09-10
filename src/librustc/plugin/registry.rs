@@ -89,7 +89,6 @@ impl<'a> Registry<'a> {
     /// Register a syntax extension of any kind.
     ///
     /// This is the most general hook into `libsyntax`'s expansion behavior.
-    #[allow(deprecated)]
     pub fn register_syntax_extension(&mut self, name: ast::Name, extension: SyntaxExtension) {
         self.syntax_exts.push((name, match extension {
             NormalTT(ext, _, allow_internal_unstable) => {

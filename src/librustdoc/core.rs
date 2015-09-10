@@ -141,7 +141,6 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
 
     driver::phase_3_run_analysis_passes(sess,
                                         hir_map,
-                                        &krate,
                                         &arenas,
                                         name,
                                         resolve::MakeGlobMap::No,
