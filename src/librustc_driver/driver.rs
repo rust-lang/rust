@@ -671,7 +671,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
              || resolve::resolve_crate(&sess, &ast_map, make_glob_map));
 
     // Discard MTWT tables that aren't required past resolution.
-    syntax::ext::mtwt::clear_tables();
+    if !sess.opts.debugging_opts.keep_mtwt_tables {
+        syntax::ext::mtwt::clear_tables();
+    }
 
     let named_region_map = time(time_passes, "lifetime resolution",
                                 || middle::resolve_lifetime::krate(&sess, krate, &def_map));
