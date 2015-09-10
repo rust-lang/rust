@@ -732,21 +732,17 @@ impl EmitterWriter {
             sp_opt = try!(cm.with_expn_info(sp.expn_id, |expn_info| -> io::Result<_> {
                 match expn_info {
                     Some(ei) => {
-                        let ss = ei.callee.span.map_or(String::new(),
-                                                       |span| cm.span_to_string(span));
                         let (pre, post) = match ei.callee.format {
                             codemap::MacroAttribute(..) => ("#[", "]"),
                             codemap::MacroBang(..) => ("", "!"),
                             codemap::CompilerExpansion(..) => ("", ""),
                         };
-                        try!(self.print_diagnostic(&ss, Note,
-                                                   &format!("in expansion of {}{}{}",
+                        try!(self.print_diagnostic(&cm.span_to_string(ei.call_site), Note,
+                                                   &format!("in this expansion of {}{}{}",
                                                             pre,
                                                             ei.callee.name(),
                                                             post),
                                                    None));
-                        let ss = cm.span_to_string(ei.call_site);
-                        try!(self.print_diagnostic(&ss, Note, "expansion site", None));
                         Ok(Some(ei.call_site))
                     }
                     None => Ok(None)
