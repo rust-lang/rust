@@ -25,8 +25,7 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
         ("// ", "", "// ")
     };
 
-    let max_chars = width.checked_sub(closer.len()).unwrap_or(1)
-                         .checked_sub(opener.len()).unwrap_or(1);
+    let max_chars = width.checked_sub(closer.len() + opener.len()).unwrap_or(1);
 
     let fmt = StringFormat {
         opener: "",
@@ -41,17 +40,18 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
     let indent_str = make_indent(offset);
     let line_breaks = s.chars().filter(|&c| c == '\n').count();
 
-    let (_, mut s) = s.lines().enumerate()
+    let (_, mut s) = s.lines()
+        .enumerate()
         .map(|(i, mut line)| {
-            line = line.trim();
+                 line = line.trim();
 
             // Drop old closer.
-            if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
-                line = &line[..(line.len() - 2)];
-            }
+                 if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
+                     line = &line[..(line.len() - 2)];
+                 }
 
-            line.trim_right()
-        })
+                 line.trim_right()
+             })
         .map(left_trim_comment_line)
         .map(|line| {
             if line_breaks == 0 {
@@ -160,9 +160,34 @@ fn comment_end() {
 
 /// Returns true if text contains any comment.
 pub fn contains_comment(text: &str) -> bool {
-    CharClasses::new(text.chars()).any(|(kind, _)| kind == CodeCharKind::Comment )
+    CharClasses::new(text.chars()).any(|(kind, _)| kind == CodeCharKind::Comment)
 }
 
+pub fn uncommented(text: &str) -> String {
+    CharClasses::new(text.chars())
+        .filter_map(|(s, c)| {
+                        match s {
+                            CodeCharKind::Normal => Some(c),
+                            CodeCharKind::Comment => None,
+                        }
+                    })
+        .collect()
+}
+
+#[test]
+fn test_uncommented() {
+    assert_eq!(&uncommented("abc/*...*/"), "abc");
+    assert_eq!(&uncommented("// .... /* \n../* /* *** / */ */a/* // */c\n"), "..ac\n");
+    assert_eq!(&uncommented("abc \" /* */\" qsdf"), "abc \" /* */\" qsdf");
+}
+
+#[test]
+fn test_contains_comment() {
+    assert_eq!(contains_comment("abc"), false);
+    assert_eq!(contains_comment("abc // qsdf"), true);
+    assert_eq!(contains_comment("abc /* kqsdf"), true);
+    assert_eq!(contains_comment("abc \" /* */\" qsdf"), false);
+}
 
 struct CharClasses<T>
     where T: Iterator,

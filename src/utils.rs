@@ -14,6 +14,7 @@ use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItem_};
 use syntax::codemap::{CodeMap, Span, BytePos};
 
 use comment::FindUncommented;
+use rewrite::{Rewrite, RewriteContext};
 
 use SKIP_ANNOTATION;
 
@@ -93,10 +94,16 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
 // Find the end of a TyParam
 #[inline]
 pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
-    typaram.bounds.last().map(|bound| match *bound {
-        ast::RegionTyParamBound(ref lt) => lt.span,
-        ast::TraitTyParamBound(ref prt, _) => prt.span,
-    }).unwrap_or(typaram.span).hi
+    typaram.bounds
+        .last()
+        .map(|bound| {
+                 match *bound {
+                     ast::RegionTyParamBound(ref lt) => lt.span,
+                     ast::TraitTyParamBound(ref prt, _) => prt.span,
+                 }
+             })
+        .unwrap_or(typaram.span)
+        .hi
 }
 
 #[inline]
@@ -200,6 +207,13 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: usi
     }
 
     Some(s)
+}
+
+impl Rewrite for String {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+        // FIXME: unnecessary clone
+        wrap_str(self.clone(), context.config.max_width, width, offset)
+    }
 }
 
 // Binary search in integer range. Returns the first Ok value returned by the

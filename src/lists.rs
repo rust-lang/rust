@@ -283,22 +283,22 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
             };
 
             // Post-comment
-            let next_start = match self.inner.peek() {
-                Some(ref next_item) => (self.get_lo)(next_item),
-                None => self.next_span_start
-            };
-            let post_snippet = self.codemap.span_to_snippet(codemap::mk_sp((self.get_hi)(&item),
-                                                                           next_start))
-                                           .unwrap();
+                     let next_start = match self.inner.peek() {
+                         Some(ref next_item) => (self.get_lo)(next_item),
+                         None => self.next_span_start,
+                     };
+                     let post_snippet = self.codemap
+                         .span_to_snippet(codemap::mk_sp((self.get_hi)(&item), next_start))
+                         .unwrap();
 
-            let comment_end = match self.inner.peek() {
-                Some(..) => {
-                    let block_open_index = post_snippet.find("/*");
-                    let newline_index = post_snippet.find('\n');
-                    let separator_index = post_snippet.find_uncommented(",").unwrap();
+                     let comment_end = match self.inner.peek() {
+                         Some(..) => {
+                             let block_open_index = post_snippet.find("/*");
+                             let newline_index = post_snippet.find('\n');
+                             let separator_index = post_snippet.find_uncommented(",").unwrap();
 
-                    match (block_open_index, newline_index) {
-                        // Separator before comment, with the next item on same line.
+                             match (block_open_index, newline_index) {
+                                 // Separator before comment, with the next item on same line.
                         // Comment belongs to next item.
                         (Some(i), None) if i > separator_index => {
                             separator_index + 1

@@ -211,8 +211,10 @@ impl<'a> FmtVisitor<'a> {
         let ret_str = fd.output.rewrite(&context, self.config.max_width - indent, indent).unwrap();
 
         // Args.
-        let (one_line_budget, multi_line_budget, mut arg_indent) =
-            self.compute_budgets_for_args(&result, indent, ret_str.len(), newline_brace);
+        let (one_line_budget, multi_line_budget, mut arg_indent) = self.compute_budgets_for_args(&result,
+                                                                                                 indent,
+                                                                                                 ret_str.len(),
+                                                                                                 newline_brace);
 
         debug!("rewrite_fn: one_line_budget: {}, multi_line_budget: {}, arg_indent: {}",
                one_line_budget, multi_line_budget, arg_indent);
@@ -237,10 +239,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         // A conservative estimation, to goal is to be over all parens in generics
-        let args_start = generics.ty_params
-                                 .last()
-                                 .map(|tp| end_typaram(tp))
-                                 .unwrap_or(span.lo);
+        let args_start = generics.ty_params.last().map(|tp| end_typaram(tp)).unwrap_or(span.lo);
         let args_span = codemap::mk_sp(span_after(codemap::mk_sp(args_start, span.hi),
                                                   "(",
                                                   self.codemap),
@@ -333,12 +332,13 @@ impl<'a> FmtVisitor<'a> {
         // Account for sugary self.
         // FIXME: the comment for the self argument is dropped. This is blocked
         // on rust issue #27522.
-        let min_args = explicit_self.and_then(|explicit_self| {
-                           rewrite_explicit_self(explicit_self, args)
-                       }).map(|self_str| {
-                           arg_item_strs[0] = self_str;
-                           2
-                       }).unwrap_or(1);
+        let min_args = explicit_self
+            .and_then(|explicit_self| rewrite_explicit_self(explicit_self, args))
+            .map(|self_str| {
+                     arg_item_strs[0] = self_str;
+                     2
+                 })
+            .unwrap_or(1);
 
         // Comments between args
         let mut arg_items = Vec::new();
@@ -760,11 +760,10 @@ impl<'a> FmtVisitor<'a> {
         let typ = field.node.ty.rewrite(&self.get_context(), 1000, 0).unwrap();
 
         let indent = self.block_indent + self.config.tab_spaces;
-        let mut attr_str = field.node.attrs
-                                     .rewrite(&self.get_context(),
-                                              self.config.max_width - indent,
-                                              indent)
-                                     .unwrap();
+        let mut attr_str = field.node
+            .attrs
+            .rewrite(&self.get_context(), self.config.max_width - indent, indent)
+            .unwrap();
         if !attr_str.is_empty() {
             attr_str.push('\n');
             attr_str.push_str(&make_indent(indent));
@@ -803,22 +802,20 @@ impl<'a> FmtVisitor<'a> {
         // Strings for the generics.
         let context = self.get_context();
         // FIXME: don't unwrap
-        let lt_strs = lifetimes.iter().map(|lt| {
-            lt.rewrite(&context, h_budget, offset).unwrap()
-        });
-        let ty_strs = tys.iter().map(|ty_param| {
-            ty_param.rewrite(&context, h_budget, offset).unwrap()
-        });
+        let lt_strs = lifetimes.iter().map(|lt| lt.rewrite(&context, h_budget, offset).unwrap());
+        let ty_strs = tys.iter()
+            .map(|ty_param| ty_param.rewrite(&context, h_budget, offset).unwrap());
 
         // Extract comments between generics.
-        let lt_spans = lifetimes.iter().map(|l| {
-            let hi = if l.bounds.is_empty() {
-                l.lifetime.span.hi
-            } else {
-                l.bounds[l.bounds.len() - 1].span.hi
-            };
-            codemap::mk_sp(l.lifetime.span.lo, hi)
-        });
+        let lt_spans = lifetimes.iter()
+            .map(|l| {
+                     let hi = if l.bounds.is_empty() {
+                         l.lifetime.span.hi
+                     } else {
+                         l.bounds[l.bounds.len() - 1].span.hi
+                     };
+                     codemap::mk_sp(l.lifetime.span.lo, hi)
+                 });
         let ty_spans = tys.iter().map(span_for_ty_param);
 
         let items = itemize_list(self.codemap,

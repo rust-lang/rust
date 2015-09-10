@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cmp::Ordering;
+use std::borrow::Borrow;
 
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
@@ -21,6 +22,7 @@ use config::{BlockIndentStyle, MultilineStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment};
 use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg, rewrite_fn_input};
+use chains::rewrite_chain;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{CodeMap, Span, BytePos, mk_sp};
@@ -38,7 +40,16 @@ impl Rewrite for ast::Expr {
                 }
             }
             ast::Expr_::ExprCall(ref callee, ref args) => {
-                rewrite_call(context, callee, args, self.span, width, offset)
+                // // FIXME using byte lens instead of char lens (and probably all over the place too)
+                // // 2 is for parens
+                // let max_callee_width = try_opt!(width.checked_sub(2));
+                // let callee_str = try_opt!(callee.rewrite(context, max_callee_width, offset));
+
+                // let new_span = mk_sp(callee.span.hi, self.span.hi);
+                // let lo = span_after(new_span, "(", context.codemap);
+                // let new_span = mk_sp(lo, self.span.hi);
+
+                rewrite_call(context, &**callee, args, self.span, width, offset)
             }
             ast::Expr_::ExprParen(ref subexpr) => {
                 rewrite_paren(context, subexpr, width, offset)
@@ -136,6 +147,11 @@ impl Rewrite for ast::Expr {
             }
             ast::Expr_::ExprClosure(capture, ref fn_decl, ref body) => {
                 rewrite_closure(capture, fn_decl, body, self.span, context, width, offset)
+            }
+            ast::Expr_::ExprField(..) |
+            ast::Expr_::ExprTupField(..) |
+            ast::Expr_::ExprMethodCall(..) => {
+                rewrite_chain(self, context, width, offset)
             }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
@@ -393,9 +409,9 @@ impl<'a> Rewrite for Loop<'a> {
         };
 
         // FIXME: this drops any comment between "loop" and the block.
-        self.block.rewrite(context, width, offset).map(|result| {
-            format!("{}{}{} {}", label_string, self.keyword, pat_expr_string, result)
-        })
+        self.block
+            .rewrite(context, width, offset)
+            .map(|result| format!("{}{}{} {}", label_string, self.keyword, pat_expr_string, result))
     }
 }
 
@@ -762,9 +778,7 @@ fn rewrite_guard(context: &RewriteContext,
         // 4 = ` if `, 5 = ` => {`
         let overhead = pattern_width + 4 + 5;
         if overhead < width {
-            let cond_str = guard.rewrite(context,
-                                         width - overhead,
-                                         offset + pattern_width + 4);
+            let cond_str = guard.rewrite(context, width - overhead, offset + pattern_width + 4);
             if let Some(cond_str) = cond_str {
                 return Some(format!(" if {}", cond_str));
             }
@@ -866,36 +880,39 @@ fn rewrite_string_lit(context: &RewriteContext,
     Some(rewrite_string(str_lit, &fmt))
 }
 
-fn rewrite_call(context: &RewriteContext,
-                callee: &ast::Expr,
-                args: &[ptr::P<ast::Expr>],
-                span: Span,
-                width: usize,
-                offset: usize)
-                -> Option<String> {
-    let callback = |callee_max_width| {
-                       rewrite_call_inner(context,
-                                          callee,
-                                          callee_max_width,
-                                          args,
-                                          span,
-                                          width,
-                                          offset)
-                   };
-
+pub fn rewrite_call<R>(context: &RewriteContext,
+                   callee: &R,
+                   args: &[ptr::P<ast::Expr>],
+                   span: Span,
+                   width: usize,
+                   offset: usize)
+                   -> Option<String>
+    where R: Rewrite
+{
     // 2 is for parens
     let max_width = try_opt!(width.checked_sub(2));
-    binary_search(1, max_width, callback)
+    binary_search(1, max_width, |callee_max_width| {
+        rewrite_call_inner(context,
+                           callee,
+                           callee_max_width,
+                           args,
+                           span,
+                           width,
+                           offset)
+    })
 }
 
-fn rewrite_call_inner(context: &RewriteContext,
-                      callee: &ast::Expr,
-                      max_callee_width: usize,
-                      args: &[ptr::P<ast::Expr>],
-                      span: Span,
-                      width: usize,
-                      offset: usize)
-                      -> Result<String, Ordering> {
+fn rewrite_call_inner<R>(context: &RewriteContext,
+                         callee: &R,
+                         max_callee_width: usize,
+                         args: &[ptr::P<ast::Expr>],
+                         span: Span,
+                         width: usize,
+                         offset: usize)
+                         -> Result<String, Ordering>
+    where R: Rewrite
+{
+    let callee = callee.borrow();
     // FIXME using byte lens instead of char lens (and probably all over the
     // place too)
     let callee_str = match callee.rewrite(context, max_callee_width, offset) {
@@ -929,7 +946,7 @@ fn rewrite_call_inner(context: &RewriteContext,
                                  item.rewrite(&inner_context, remaining_width, offset)
                                      .unwrap_or(context.snippet(item.span))
                              },
-                             callee.span.hi + BytePos(1),
+                             span.lo,
                              span.hi);
 
     let fmt = ListFormatting::for_fn(remaining_width, offset);
@@ -1004,8 +1021,9 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         }
     };
 
-    let field_iter = fields.into_iter().map(StructLitField::Regular)
-                           .chain(base.into_iter().map(StructLitField::Base));
+    let field_iter = fields.into_iter()
+        .map(StructLitField::Regular)
+        .chain(base.into_iter().map(StructLitField::Base));
 
     let inner_context = &RewriteContext { block_indent: indent, ..*context };
 
@@ -1016,10 +1034,10 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                  match *item {
                                      StructLitField::Regular(ref field) => field.span.lo,
                                      StructLitField::Base(ref expr) => {
-                                         let last_field_hi =
-                                             fields.last().map_or(span.lo, |field| field.span.hi);
-                                         let snippet =
-                                             context.snippet(mk_sp(last_field_hi, expr.span.lo));
+                                         let last_field_hi = fields.last()
+                                             .map_or(span.lo, |field| field.span.hi);
+                                         let snippet = context.snippet(mk_sp(last_field_hi,
+                                                                             expr.span.lo));
                                          let pos = snippet.find_uncommented("..").unwrap();
                                          last_field_hi + BytePos(pos as u32)
                                      }
@@ -1035,7 +1053,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                  match *item {
                                      StructLitField::Regular(ref field) => {
                                          rewrite_field(inner_context, &field, h_budget, indent)
-                                            .unwrap_or(context.snippet(field.span))
+                                             .unwrap_or(context.snippet(field.span))
                                      }
                                      StructLitField::Base(ref expr) => {
                                          // 2 = ..
@@ -1152,10 +1170,7 @@ fn rewrite_binary_op(context: &RewriteContext,
     // worth trying to put everything on one line.
     if rhs_result.len() + 2 + operator_str.len() < width && !rhs_result.contains('\n') {
         // 1 = space between lhs expr and operator
-        if let Some(mut result) = lhs.rewrite(context,
-                                              width - 1 - operator_str.len(),
-                                              offset) {
-
+        if let Some(mut result) = lhs.rewrite(context, width - 1 - operator_str.len(), offset) {
             result.push(' ');
             result.push_str(&operator_str);
             result.push(' ');
@@ -1167,9 +1182,7 @@ fn rewrite_binary_op(context: &RewriteContext,
                 return Some(result);
             }
 
-            if let Some(rhs_result) = rhs.rewrite(context,
-                                                  remaining_width,
-                                                  offset + result.len()) {
+            if let Some(rhs_result) = rhs.rewrite(context, remaining_width, offset + result.len()) {
                 if rhs_result.len() <= remaining_width {
                     result.push_str(&rhs_result);
                     return Some(result);

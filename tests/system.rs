@@ -120,10 +120,8 @@ pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, Vec<Mism
     // panic to return a result in case of failure. This has the advantage of smoothing the road to
     // multithreaded rustfmt
     thread::catch_panic(move || {
-        run(args, WriteMode::Return(HANDLE_RESULT), config);
-    }).map_err(|any|
-        *any.downcast().ok().expect("Downcast failed.")
-    )
+                                 run(args, WriteMode::Return(HANDLE_RESULT), config);
+                             }).map_err(|any| *any.downcast().ok().expect("Downcast failed."))
 }
 
 
@@ -154,19 +152,21 @@ fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
     let regex = regex::Regex::new(&pattern).ok().expect("Failed creating pattern 1.");
 
     // Matches lines containing significant comments or whitespace.
-    let line_regex = regex::Regex::new(r"(^\s*$)|(^\s*//\s*rustfmt-[^:]+:\s*\S+)")
-        .ok().expect("Failed creating pattern 2.");
+    let line_regex = regex::Regex::new(r"(^\s*$)|(^\s*//\s*rustfmt-[^:]+:\s*\S+)").ok()
+        .expect("Failed creating pattern 2.");
 
     reader.lines()
-          .map(|line| line.ok().expect("Failed getting line."))
-          .take_while(|line| line_regex.is_match(&line))
-          .filter_map(|line| {
-              regex.captures_iter(&line).next().map(|capture| {
-                  (capture.at(1).expect("Couldn't unwrap capture.").to_owned(),
-                   capture.at(2).expect("Couldn't unwrap capture.").to_owned())
-              })
-          })
-          .collect()
+        .map(|line| line.ok().expect("Failed getting line."))
+        .take_while(|line| line_regex.is_match(&line))
+        .filter_map(|line| {
+                        regex.captures_iter(&line)
+                            .next()
+                            .map(|capture| {
+                                     (capture.at(1).expect("Couldn't unwrap capture.").to_owned(),
+                                      capture.at(2).expect("Couldn't unwrap capture.").to_owned())
+                                 })
+                    })
+        .collect()
 }
 
 // Compare output to input.

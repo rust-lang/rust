@@ -196,13 +196,12 @@ fn rewrite_segment(segment: &ast::PathSegment,
         ast::PathParameters::AngleBracketedParameters(ref data) if !data.lifetimes.is_empty() ||
                                                                    !data.types.is_empty() ||
                                                                    !data.bindings.is_empty() => {
-            let param_list = data.lifetimes.iter()
-                                           .map(SegmentParam::LifeTime)
-                                           .chain(data.types.iter()
-                                                      .map(|x| SegmentParam::Type(&*x)))
-                                           .chain(data.bindings.iter()
-                                                      .map(|x| SegmentParam::Binding(&*x)))
-                                           .collect::<Vec<_>>();
+            let param_list = data.lifetimes
+                .iter()
+                .map(SegmentParam::LifeTime)
+                .chain(data.types.iter().map(|x| SegmentParam::Type(&*x)))
+                .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
+                .collect::<Vec<_>>();
 
             let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
             let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi), "<", context.codemap);
@@ -279,30 +278,27 @@ impl Rewrite for ast::WherePredicate {
                                                                           ref bounds,
                                                                           ..}) => {
                     if !bound_lifetimes.is_empty() {
-                        let lifetime_str = bound_lifetimes.iter().map(|lt| {
-                                           lt.rewrite(context, width, offset).unwrap()
-                                       }).collect::<Vec<_>>().join(", ");
+                        let lifetime_str = bound_lifetimes.iter()
+                            .map(|lt| lt.rewrite(context, width, offset).unwrap())
+                            .collect::<Vec<_>>()
+                            .join(", ");
                         let type_str = pprust::ty_to_string(bounded_ty);
                     // 8 = "for<> : ".len()
                         let used_width = lifetime_str.len() + type_str.len() + 8;
-                        let bounds_str = bounds.iter().map(|ty_bound| {
-                                         ty_bound.rewrite(context,
-                                                          width - used_width,
-                                                          offset + used_width)
-                                                 .unwrap()
-                                     }).collect::<Vec<_>>().join(" + ");
+                        let bounds_str = bounds.iter()
+                            .map(|ty_bound| ty_bound.rewrite(context, width - used_width, offset + used_width).unwrap())
+                            .collect::<Vec<_>>()
+                            .join(" + ");
 
                         format!("for<{}> {}: {}", lifetime_str, type_str, bounds_str)
                     } else {
                         let type_str = pprust::ty_to_string(bounded_ty);
                     // 2 = ": ".len()
                         let used_width = type_str.len() + 2;
-                        let bounds_str = bounds.iter().map(|ty_bound| {
-                                         ty_bound.rewrite(context,
-                                                          width - used_width,
-                                                          offset + used_width)
-                                                 .unwrap()
-                                     }).collect::<Vec<_>>().join(" + ");
+                        let bounds_str = bounds.iter()
+                            .map(|ty_bound| ty_bound.rewrite(context, width - used_width, offset + used_width).unwrap())
+                            .collect::<Vec<_>>()
+                            .join(" + ");
 
                         format!("{}: {}", type_str, bounds_str)
                     }
@@ -373,9 +369,11 @@ impl Rewrite for ast::TyParam {
         if !self.bounds.is_empty() {
             result.push_str(": ");
 
-            let bounds = self.bounds.iter().map(|ty_bound| {
-                ty_bound.rewrite(context, width, offset).unwrap()
-            }).collect::<Vec<_>>().join(" + ");
+            let bounds = self.bounds
+                .iter()
+                .map(|ty_bound| ty_bound.rewrite(context, width, offset).unwrap())
+                .collect::<Vec<_>>()
+                .join(" + ");
 
             result.push_str(&bounds);
         }
@@ -392,9 +390,11 @@ impl Rewrite for ast::TyParam {
 impl Rewrite for ast::PolyTraitRef {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
         if !self.bound_lifetimes.is_empty() {
-            let lifetime_str = self.bound_lifetimes.iter().map(|lt| {
-                lt.rewrite(context, width, offset).unwrap()
-            }).collect::<Vec<_>>().join(", ");
+            let lifetime_str = self.bound_lifetimes
+                .iter()
+                .map(|lt| lt.rewrite(context, width, offset).unwrap())
+                .collect::<Vec<_>>()
+                .join(", ");
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
             let max_path_width = try_opt!(width.checked_sub(extra_offset));
