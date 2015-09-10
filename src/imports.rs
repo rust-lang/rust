@@ -150,10 +150,10 @@ pub fn rewrite_use_list(width: usize,
     let list_str = try_opt!(write_list(&items[first_index..], &fmt));
 
     Some(if path_str.is_empty() {
-            format!("{{{}}}", list_str)
-        } else {
-            format!("{}::{{{}}}", path_str, list_str)
-        })
+        format!("{{{}}}", list_str)
+    } else {
+        format!("{}::{{{}}}", path_str, list_str)
+    })
 }
 
 // Returns true when self item was found.

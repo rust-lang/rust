@@ -21,9 +21,8 @@ fn main() {
                                         {
                                             SCRIPT_TASK_ROOT
                                             .with(|root| {
-                                                                // Another case of write_list failing us.
-                                                *root.borrow_mut()  =   Some(&script_task);
-                                            });
+                                                        *root.borrow_mut()  =   Some(&script_task);
+                                                    });
                                         });                                        
 
     let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum = xxxxxxx

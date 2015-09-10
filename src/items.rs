@@ -211,10 +211,8 @@ impl<'a> FmtVisitor<'a> {
         let ret_str = fd.output.rewrite(&context, self.config.max_width - indent, indent).unwrap();
 
         // Args.
-        let (one_line_budget, multi_line_budget, mut arg_indent) = self.compute_budgets_for_args(&result,
-                                                                                                 indent,
-                                                                                                 ret_str.len(),
-                                                                                                 newline_brace);
+        let (one_line_budget, multi_line_budget, mut arg_indent) =
+            self.compute_budgets_for_args(&result, indent, ret_str.len(), newline_brace);
 
         debug!("rewrite_fn: one_line_budget: {}, multi_line_budget: {}, arg_indent: {}",
                one_line_budget, multi_line_budget, arg_indent);
@@ -239,7 +237,10 @@ impl<'a> FmtVisitor<'a> {
         }
 
         // A conservative estimation, to goal is to be over all parens in generics
-        let args_start = generics.ty_params.last().map(|tp| end_typaram(tp)).unwrap_or(span.lo);
+        let args_start = generics.ty_params
+                                 .last()
+                                 .map(|tp| end_typaram(tp))
+                                 .unwrap_or(span.lo);
         let args_span = codemap::mk_sp(span_after(codemap::mk_sp(args_start, span.hi),
                                                   "(",
                                                   self.codemap),

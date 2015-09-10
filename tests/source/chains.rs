@@ -1,7 +1,7 @@
 // Test chain formatting.
 
 fn main() {
-    // Don't put chains on a single list if it wasn't so in source.
+    // Don't put chains on a single line if it wasn't so in source.
     let a = b .c
     .d.1
                 .foo(|x| x + 1);
@@ -11,6 +11,8 @@ fn main() {
 
     bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc.ddddddddddddddddddddddddddd.eeeeeeee();
 
+    // Test case where first chain element isn't a path, but is shorter than
+    // the size of a tab.
     x()
         .y(|| match cond() { true => (), false => () });
 

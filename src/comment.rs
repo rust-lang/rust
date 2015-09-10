@@ -41,43 +41,44 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
     let line_breaks = s.chars().filter(|&c| c == '\n').count();
 
     let (_, mut s) = s.lines()
-                         .enumerate()
-                         .map(|(i, mut line)| {
-                             line = line.trim();
-            // Drop old closer.
-                 if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
-                     line = &line[..(line.len() - 2)];
-                 }
+                      .enumerate()
+                      .map(|(i, mut line)| {
+                          line = line.trim();
+                          // Drop old closer.
+                          if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
+                              line = &line[..(line.len() - 2)];
+                          }
 
-                 line.trim_right()
-             })
-        .map(left_trim_comment_line)
-        .map(|line| {
-            if line_breaks == 0 {
-                line.trim_left()
-            } else {
-                line
-            }
-        })
-        .fold((true, opener.to_owned()), |(first, mut acc), line| {
-            if !first {
-                acc.push('\n');
-                acc.push_str(&indent_str);
-                acc.push_str(line_start);
-            }
+                          line.trim_right()
+                      })
+                      .map(left_trim_comment_line)
+                      .map(|line| {
+                          if line_breaks == 0 {
+                              line.trim_left()
+                          } else {
+                              line
+                          }
+                      })
+                      .fold((true, opener.to_owned()),
+                            |(first, mut acc), line| {
+                                if !first {
+                                    acc.push('\n');
+                                    acc.push_str(&indent_str);
+                                    acc.push_str(line_start);
+                                }
 
-            if line.len() > max_chars {
-                acc.push_str(&rewrite_string(line, &fmt));
-            } else {
-                if line.len() == 0 {
-                    acc.pop(); // Remove space if this is an empty comment.
-                } else {
-                    acc.push_str(line);
-                }
-            }
+                                if line.len() > max_chars {
+                                    acc.push_str(&rewrite_string(line, &fmt));
+                                } else {
+                                    if line.len() == 0 {
+                                        acc.pop(); // Remove space if this is an empty comment.
+                                    } else {
+                                        acc.push_str(line);
+                                    }
+                                }
 
-            (false, acc)
-        });
+                                (false, acc)
+                            });
 
     s.push_str(closer);
 

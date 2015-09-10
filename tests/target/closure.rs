@@ -39,8 +39,8 @@ fn main() {
     let empty = |arg| {};
 
     let simple = |arg| { /* TODO(#27): comment formatting */
-                     foo(arg)
-                 };
+        foo(arg)
+    };
 
     let test = || {
         do_something();
@@ -62,8 +62,8 @@ fn main() {
     let closure_with_return_type = |aaaaaaaaaaaaaaaaaaaaaaarg1,
                                     aaaaaaaaaaaaaaaaaaaaaaarg2|
                                     -> Strong {
-                                       "sup".to_owned()
-                                   };
+        "sup".to_owned()
+    };
 
     |arg1, arg2, _, _, arg3, arg4| {
         let temp = arg4 + arg3;

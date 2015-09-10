@@ -18,7 +18,7 @@ use StructLitStyle;
 use utils::{span_after, make_indent, extra_offset, first_line_width, last_line_width, wrap_str,
             binary_search};
 use visitor::FmtVisitor;
-use config::{BlockIndentStyle, MultilineStyle};
+use config::MultilineStyle;
 use comment::{FindUncommented, rewrite_comment, contains_comment};
 use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg, rewrite_fn_input};
@@ -40,12 +40,6 @@ impl Rewrite for ast::Expr {
                 }
             }
             ast::Expr_::ExprCall(ref callee, ref args) => {
-                // FIXME using byte lens instead of char lens (and probably all over the place too)
-                // 2 is for parens
-                let max_callee_width = try_opt!(width.checked_sub(2));
-                let callee_str = try_opt!(callee.rewrite(context, max_callee_width, offset));
-                let span = mk_sp(callee.span.hi, self.span.hi);
-
                 rewrite_call(context, &**callee, args, self.span, width, offset)
             }
             ast::Expr_::ExprParen(ref subexpr) => {
@@ -214,8 +208,6 @@ fn rewrite_closure(capture: ast::CaptureClause,
         prefix.push_str(&ret_str);
     }
 
-    let closure_indent = closure_indent(context, offset);
-
     // Try to format closure body as a single line expression without braces.
     if is_simple_block(body, context.codemap) && !prefix.contains('\n') {
         let (spacer, closer) = if ret_str.is_empty() {
@@ -246,17 +238,16 @@ fn rewrite_closure(capture: ast::CaptureClause,
 
     // We couldn't format the closure body as a single line expression; fall
     // back to block formatting.
-    let inner_context = context.overflow_context(closure_indent - context.block_indent);
     let body_rewrite = body.expr
                            .as_ref()
                            .and_then(|body_expr| {
                                if let ast::Expr_::ExprBlock(ref inner) = body_expr.node {
-                                   Some(inner.rewrite(&inner_context, 2, 0))
+                                   Some(inner.rewrite(&context, 2, 0))
                                } else {
                                    None
                                }
                            })
-                           .unwrap_or_else(|| body.rewrite(&inner_context, 2, 0));
+                           .unwrap_or_else(|| body.rewrite(&context, 2, 0));
 
     Some(format!("{} {}", prefix, try_opt!(body_rewrite)))
 }
@@ -876,25 +867,21 @@ fn rewrite_string_lit(context: &RewriteContext,
 }
 
 pub fn rewrite_call<R>(context: &RewriteContext,
-                   callee: &R,
-                   args: &[ptr::P<ast::Expr>],
-                   span: Span,
-                   width: usize,
-                   offset: usize)
-                   -> Option<String>
+                       callee: &R,
+                       args: &[ptr::P<ast::Expr>],
+                       span: Span,
+                       width: usize,
+                       offset: usize)
+                       -> Option<String>
     where R: Rewrite
 {
+    let closure = |callee_max_width| {
+        rewrite_call_inner(context, callee, callee_max_width, args, span, width, offset)
+    };
+
     // 2 is for parens
     let max_width = try_opt!(width.checked_sub(2));
-    binary_search(1, max_width, |callee_max_width| {
-        rewrite_call_inner(context,
-                           callee,
-                           callee_max_width,
-                           args,
-                           span,
-                           width,
-                           offset)
-    })
+    binary_search(1, max_width, closure)
 }
 
 fn rewrite_call_inner<R>(context: &RewriteContext,
@@ -1021,10 +1008,9 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                  match *item {
                                      StructLitField::Regular(ref field) => field.span.lo,
                                      StructLitField::Base(ref expr) => {
-                                         let last_field_hi = fields.last().map_or(span.lo,
-                                                                                  |field| {
-                                                                                      field.span.hi
-                                                                                  });
+                                         let last_field_hi = fields.last()
+                                                                   .map_or(span.lo,
+                                                                           |field| field.span.hi);
                                          let snippet = context.snippet(mk_sp(last_field_hi,
                                                                              expr.span.lo));
                                          let pos = snippet.find_uncommented("..").unwrap();
@@ -1074,11 +1060,10 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     let fields_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
     let format_on_newline = || {
-                                let inner_indent = make_indent(context.block_indent +
-                                                               context.config.tab_spaces);
-                                let outer_indent = make_indent(context.block_indent);
-                                Some(format!("{} {{\n{}{}\n{}}}", path_str, inner_indent, fields_str, outer_indent))
-                            };
+        let inner_indent = make_indent(context.block_indent + context.config.tab_spaces);
+        let outer_indent = make_indent(context.block_indent);
+        Some(format!("{} {{\n{}{}\n{}}}", path_str, inner_indent, fields_str, outer_indent))
+    };
 
     match (context.config.struct_lit_style, context.config.struct_lit_multiline_style) {
         (StructLitStyle::Block, _) if fields_str.contains('\n') => format_on_newline(),
