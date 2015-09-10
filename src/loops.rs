@@ -146,9 +146,9 @@ impl LintPass for LoopsPass {
                             if let Some(name) = visitor2.name {
                                 span_lint(cx, EXPLICIT_COUNTER_LOOP, expr.span,
                                           &format!("the variable `{0}` is used as a loop counter. Consider \
-                                                    using `for ({0}, item) in _.iter().enumerate()` \
-                                                    or similar iterators.",
-                                                   name));
+                                                    using `for ({0}, item) in {1}.enumerate()` \
+                                                    or similar iterators",
+                                                   name, snippet(cx, arg.span, "_")));
                             }
                         }
                     }
