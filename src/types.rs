@@ -50,12 +50,12 @@ pub struct LetPass;
 declare_lint!(pub LET_UNIT_VALUE, Warn,
               "creating a let binding to a value of unit type, which usually can't be used afterwards");
 
-
 fn check_let_unit(cx: &Context, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
         let bindtype = &cx.tcx.pat_ty(&local.pat).sty;
         if *bindtype == ty::TyTuple(vec![]) {
-            if in_external_macro(cx, decl.span) { return; }
+            if in_external_macro(cx, decl.span) ||
+                in_macro(cx, local.pat.span) { return; }
             span_lint(cx, LET_UNIT_VALUE, decl.span, &format!(
                 "this let-binding has unit value. Consider omitting `let {} =`",
                 snippet(cx, local.pat.span, "..")));
