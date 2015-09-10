@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// forbid-output: in expansion of
+// forbid-output: in this expansion of
 
 macro_rules! make_method {
     ($name:ident) => ( fn $name(&self) { } )
