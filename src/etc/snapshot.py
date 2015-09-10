@@ -53,6 +53,7 @@ snapshot_files = {
 
 winnt_runtime_deps_32 = ["libgcc_s_dw2-1.dll", "libstdc++-6.dll"]
 winnt_runtime_deps_64 = ["libgcc_s_seh-1.dll", "libstdc++-6.dll"]
+openbsd_runtime_deps  = ["libpthread.so", "libm.so", "libstdc++.so", "libc.so"]
 
 def parse_line(n, line):
     global snapshotfile
@@ -196,6 +197,23 @@ def get_winnt_runtime_deps(platform):
     return runtime_deps
 
 
+def get_openbsd_runtime_deps():
+    """Returns a list of paths of Rust's system runtime dependencies"""
+    runtime_deps = []
+    path_dirs = ["/usr/lib", "/usr/local/lib"]
+    for name in openbsd_runtime_deps:
+        for dir in path_dirs:
+            filepath = os.path.join(dir, name)
+            matches = glob.glob(filepath + ".*")
+            matches.sort()
+            if len(matches) > 0:
+                runtime_deps.append(matches[-1])
+                break
+        else:
+            raise Exception("Could not find runtime dependency: %s" % name)
+    return runtime_deps
+
+
 def make_snapshot(stage, triple):
     kernel = get_kernel(triple)
     platform = get_platform(triple)
@@ -230,6 +248,10 @@ def make_snapshot(stage, triple):
             tar.add(path, "rust-stage0/bin/" + os.path.basename(path))
         tar.add(os.path.join(os.path.dirname(__file__), "third-party"),
                 "rust-stage0/bin/third-party")
+
+    elif kernel == "openbsd":
+        for path in get_openbsd_runtime_deps():
+            tar.add(path, "rust-stage0/lib/" + os.path.basename(path))
 
     tar.close()
 
