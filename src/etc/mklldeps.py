@@ -16,7 +16,8 @@ f = open(sys.argv[1], 'wb')
 
 components = sys.argv[2].split() # splits on whitespace
 enable_static = sys.argv[3]
-llvm_config = sys.argv[4]
+llvm_root = sys.argv[4]
+llvm_config = sys.argv[5]
 
 f.write("""// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -63,7 +64,7 @@ for lib in out.strip().replace("\n", ' ').split(' '):
         lib = lib.strip()[1:]
     f.write("#[link(name = \"" + lib + "\"")
     # LLVM libraries are all static libraries
-    if 'LLVM' in lib:
+    if llvm_root == '' and 'LLVM' in lib:
         f.write(", kind = \"static\"")
     f.write(")]\n")
 
