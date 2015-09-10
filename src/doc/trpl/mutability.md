@@ -62,7 +62,7 @@ fn foo(mut x: i32) {
 # Interior vs. Exterior Mutability
 
 However, when we say something is ‘immutable’ in Rust, that doesn’t mean that
-it’s not able to be changed: We mean something has ‘exterior mutability’. Consider,
+it’s not able to be changed: we mean something has ‘exterior mutability’. Consider,
 for example, [`Arc<T>`][arc]:
 
 ```rust
@@ -85,8 +85,8 @@ philosophy, memory safety, and the mechanism by which Rust guarantees it, the
 > You may have one or the other of these two kinds of borrows, but not both at
 > the same time:
 > 
-> * one or more references (`&T`) to a resource.
-> * exactly one mutable reference (`&mut T`)
+> * one or more references (`&T`) to a resource,
+> * exactly one mutable reference (`&mut T`).
 
 [ownership]: ownership.html
 [borrowing]: references-and-borrowing.html#borrowing

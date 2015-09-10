@@ -17,7 +17,7 @@ enum Option<T> {
 ```
 
 The `<T>` part, which you’ve seen a few times before, indicates that this is
-a generic data type. Inside the declaration of our enum, wherever we see a `T`,
+a generic data type. Inside the declaration of our `enum`, wherever we see a `T`,
 we substitute that type for the same type used in the generic. Here’s an
 example of using `Option<T>`, with some extra type annotations:
 
@@ -115,10 +115,10 @@ let int_origin = Point { x: 0, y: 0 };
 let float_origin = Point { x: 0.0, y: 0.0 };
 ```
 
-Similarly to functions, the `<T>` is where we declare the generic parameters,
+Similar to functions, the `<T>` is where we declare the generic parameters,
 and we then use `x: T` in the type declaration, too.
 
-When you want to add an implementation for the generic struct, you just
+When you want to add an implementation for the generic `struct`, you just
 declare the type parameter after the `impl`:
 
 ```rust
