@@ -678,7 +678,6 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             let mut callee = &**callee;
             loop {
                 callee = match callee.node {
-                    hir::ExprParen(ref inner) => &**inner,
                     hir::ExprBlock(ref block) => match block.expr {
                         Some(ref tail) => &**tail,
                         None => break
@@ -763,7 +762,6 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         hir::ExprField(..) |
         hir::ExprTupField(..) |
         hir::ExprVec(_) |
-        hir::ExprParen(..) |
         hir::ExprTup(..) => {}
 
         // Conditional control flow (possible to implement).

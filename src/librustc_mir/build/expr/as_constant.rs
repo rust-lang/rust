@@ -33,9 +33,6 @@ impl<H:Hair> Builder<H> {
             ExprKind::Scope { extent: _, value } => {
                 return this.as_constant(value);
             }
-            ExprKind::Paren { arg } => {
-                return this.as_constant(arg);
-            }
             ExprKind::Literal { literal } => {
                 ConstantKind::Literal(literal)
             }

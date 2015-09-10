@@ -154,9 +154,6 @@ impl LintPass for TypeLimits {
                     self.negated_expr_id = expr.id;
                 }
             },
-            hir::ExprParen(ref expr) if self.negated_expr_id == e.id => {
-                self.negated_expr_id = expr.id;
-            },
             hir::ExprBinary(binop, ref l, ref r) => {
                 if is_comparison(binop) && !check_limits(cx.tcx, binop, &**l, &**r) {
                     cx.span_lint(UNUSED_COMPARISONS, e.span,

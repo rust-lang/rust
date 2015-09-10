@@ -1556,11 +1556,6 @@ impl<'a> State<'a> {
 
                 try!(self.pclose());
             }
-            hir::ExprParen(ref e) => {
-                try!(self.popen());
-                try!(self.print_expr(&**e));
-                try!(self.pclose());
-            }
         }
         try!(self.ann.post(self, NodeExpr(expr)));
         self.end()

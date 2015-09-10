@@ -43,9 +43,7 @@ pub enum RvalueFunc {
 impl Category {
     pub fn of<H:Hair>(ek: &ExprKind<H>) -> Option<Category> {
         match *ek {
-            ExprKind::Scope { .. } |
-            ExprKind::Paren { .. } =>
-                None,
+            ExprKind::Scope { .. } => None,
 
             ExprKind::Field { .. } |
             ExprKind::Deref { .. } |
