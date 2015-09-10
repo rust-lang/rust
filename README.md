@@ -122,5 +122,7 @@ in your code, you can use:
 cargo rustc -- -L /path/to/clippy_so -Z extra-plugins=clippy
 ```
 
+*[Note](https://github.com/Manishearth/rust-clippy/wiki#a-word-of-warning):* Be sure that clippy was compiled with the same version of rustc that cargo invokes here!
+
 ##License
 Licensed under [MPL](https://www.mozilla.org/MPL/2.0/). If you're having issues with the license, let me know and I'll try to change it to something more permissive.
