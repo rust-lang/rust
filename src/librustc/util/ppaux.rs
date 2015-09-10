@@ -27,7 +27,7 @@ use std::fmt;
 use syntax::abi;
 use syntax::ast;
 use syntax::parse::token;
-use syntax::ast::DUMMY_NODE_ID;
+use syntax::ast::{CRATE_NODE_ID};
 use rustc_front::hir;
 
 pub fn verbose() -> bool {
@@ -232,7 +232,7 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
             ty::BrEnv => {
                 let name = token::intern("'r");
                 let _ = write!(f, "{}", name);
-                ty::BrNamed(tcx.map.local_def_id(DUMMY_NODE_ID), name)
+                ty::BrNamed(tcx.map.local_def_id(CRATE_NODE_ID), name)
             }
         })
     }).0;

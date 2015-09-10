@@ -62,8 +62,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
-        self.cx.tcx_opt().and_then(
-            |tcx| stability::lookup(tcx, self.cx.map.local_def_id(id)).map(|x| x.clone()))
+        self.cx.tcx_opt().and_then(|tcx| {
+            self.cx.map.opt_local_def_id(id)
+                       .and_then(|def_id| stability::lookup(tcx, def_id))
+                       .cloned()
+        })
     }
 
     pub fn visit(&mut self, krate: &hir::Crate) {

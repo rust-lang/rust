@@ -957,12 +957,14 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    let lid = tcx.map.local_def_id(id);
-    if let Some(type_scheme) = tcx.tcache.borrow().get(&lid) {
-        rbml_w.tag(c::tag_table_tcache, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_type_scheme(ecx, type_scheme.clone());
-        })
+    let opt_def_id = tcx.map.opt_local_def_id(id);
+    if let Some(lid) = opt_def_id {
+        if let Some(type_scheme) = tcx.tcache.borrow().get(&lid) {
+            rbml_w.tag(c::tag_table_tcache, |rbml_w| {
+                rbml_w.id(id);
+                rbml_w.emit_type_scheme(ecx, type_scheme.clone());
+            })
+        }
     }
 
     if let Some(type_param_def) = tcx.ty_param_defs.borrow().get(&id) {
@@ -1003,18 +1005,22 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    if let Some(closure_type) = tcx.tables.borrow().closure_tys.get(&tcx.map.local_def_id(id)) {
-        rbml_w.tag(c::tag_table_closure_tys, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_closure_type(ecx, closure_type);
-        })
+    if let Some(def_id) = opt_def_id {
+        if let Some(closure_type) = tcx.tables.borrow().closure_tys.get(&def_id) {
+            rbml_w.tag(c::tag_table_closure_tys, |rbml_w| {
+                rbml_w.id(id);
+                rbml_w.emit_closure_type(ecx, closure_type);
+            })
+        }
     }
 
-    if let Some(closure_kind) = tcx.tables.borrow().closure_kinds.get(&tcx.map.local_def_id(id)) {
-        rbml_w.tag(c::tag_table_closure_kinds, |rbml_w| {
-            rbml_w.id(id);
-            encode_closure_kind(rbml_w, *closure_kind)
-        })
+    if let Some(def_id) = opt_def_id {
+        if let Some(closure_kind) = tcx.tables.borrow().closure_kinds.get(&def_id) {
+            rbml_w.tag(c::tag_table_closure_kinds, |rbml_w| {
+                rbml_w.id(id);
+                encode_closure_kind(rbml_w, *closure_kind)
+            })
+        }
     }
 
     if let Some(cast_kind) = tcx.cast_kinds.borrow().get(&id) {

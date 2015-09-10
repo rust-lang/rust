@@ -188,7 +188,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     attrs: child.attrs.clone(),
                     visibility: Some(hir::Public),
                     stability: None,
-                    def_id: cx.map.local_def_id(prim.to_node_id()),
+                    def_id: DefId::xxx_local(prim.to_node_id()),
                     inner: PrimitiveItem(prim),
                 });
             }
