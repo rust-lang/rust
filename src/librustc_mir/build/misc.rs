@@ -33,13 +33,14 @@ impl<H:Hair> Builder<H> {
         lvalue
     }
 
-    pub fn push_constant(&mut self,
-                         block: BasicBlock,
-                         span: H::Span,
-                         ty: H::Ty,
-                         constant: Constant<H>)
-                         -> Lvalue<H> {
-        let temp = self.temp(ty);
+    pub fn push_literal(&mut self,
+                        block: BasicBlock,
+                        span: H::Span,
+                        ty: H::Ty,
+                        literal: Literal<H>)
+                        -> Lvalue<H> {
+        let temp = self.temp(ty.clone());
+        let constant = Constant { span: span, ty: ty, literal: literal };
         self.cfg.push_assign_constant(block, span, &temp, constant);
         temp
     }
@@ -55,8 +56,8 @@ impl<H:Hair> Builder<H> {
             block, span, &temp,
             Constant {
                 span: span,
-                kind: ConstantKind::Literal(Literal::Uint { bits: IntegralBits::BSize,
-                                                            value: value as u64 }),
+                ty: self.hir.usize_ty(),
+                literal: self.hir.usize_literal(value),
             });
         temp
     }
@@ -66,13 +67,7 @@ impl<H:Hair> Builder<H> {
                          span: H::Span,
                          item_ref: ItemRef<H>)
                          -> Lvalue<H> {
-        let constant = Constant {
-            span: span,
-            kind: ConstantKind::Literal(Literal::Item {
-                def_id: item_ref.def_id,
-                substs: item_ref.substs
-            })
-        };
-        self.push_constant(block, span, item_ref.ty, constant)
+        let literal = Literal::Item { def_id: item_ref.def_id, substs: item_ref.substs };
+        self.push_literal(block, span, item_ref.ty, literal)
     }
 }

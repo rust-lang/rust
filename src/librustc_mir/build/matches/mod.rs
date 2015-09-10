@@ -221,10 +221,10 @@ enum TestKind<H:Hair> {
     Switch { adt_def: H::AdtDef },
 
     // test for equality
-    Eq { value: Constant<H>, ty: H::Ty },
+    Eq { value: Literal<H>, ty: H::Ty },
 
     // test whether the value falls within an inclusive range
-    Range { lo: Constant<H>, hi: Constant<H>, ty: H::Ty },
+    Range { lo: Literal<H>, hi: Literal<H>, ty: H::Ty },
 
     // test length of the slice is equal to len
     Len { len: usize, op: BinOp },
@@ -267,9 +267,12 @@ impl<H:Hair> Builder<H> {
             // If so, apply any bindings, test the guard (if any), and
             // branch to the arm.
             let candidate = candidates.pop().unwrap();
-            match self.bind_and_guard_matched_candidate(block, var_extent, candidate) {
-                None => { return; }
-                Some(b) => { block = b; }
+            if let Some(b) = self.bind_and_guard_matched_candidate(block, var_extent, candidate) {
+                block = b;
+            } else {
+                // if None is returned, then any remaining candidates
+                // are unreachable (at least not through this path).
+                return;
             }
         }
 

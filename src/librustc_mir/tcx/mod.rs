@@ -14,6 +14,7 @@ use std::fmt::{Debug, Formatter, Error};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
+use self::rustc::middle::const_eval::ConstVal;
 use self::rustc::middle::def_id::DefId;
 use self::rustc::middle::infer::InferCtxt;
 use self::rustc::middle::region::CodeExtent;
@@ -56,6 +57,7 @@ impl<'a,'tcx:'a> Hair for Cx<'a, 'tcx> {
     type Ty = Ty<'tcx>;
     type Region = ty::Region;
     type CodeExtent = CodeExtent;
+    type ConstVal = ConstVal;
     type Pattern = PatNode<'tcx>;
     type Expr = &'tcx hir::Expr;
     type Stmt = &'tcx hir::Stmt;
@@ -70,8 +72,20 @@ impl<'a,'tcx:'a> Hair for Cx<'a, 'tcx> {
         self.tcx.types.usize
     }
 
+    fn usize_literal(&mut self, value: usize) -> Literal<Self> {
+        Literal::Value { value: ConstVal::Uint(value as u64) }
+    }
+
     fn bool_ty(&mut self) -> Ty<'tcx> {
         self.tcx.types.bool
+    }
+
+    fn true_literal(&mut self) -> Literal<Self> {
+        Literal::Value { value: ConstVal::Bool(true) }
+    }
+
+    fn false_literal(&mut self) -> Literal<Self> {
+        Literal::Value { value: ConstVal::Bool(false) }
     }
 
     fn partial_eq(&mut self, ty: Ty<'tcx>) -> ItemRef<Self> {
