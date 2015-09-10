@@ -3,6 +3,8 @@
 
 A collection of lints that give helpful tips to newbies and catch oversights.
 
+[Jump to usage instructions](#usage)
+
 ##Lints
 There are 56 lints included in this crate:
 
@@ -77,6 +79,8 @@ Add in your `Cargo.toml`:
 clippy = "*"
 ```
 
+You may also use [`cargo clippy`](https://github.com/arcnmx/cargo-clippy), a custom cargo subcommand that runs clippy on a given project.
+
 Sample `main.rs`:
 ```rust
 #![feature(plugin)]
@@ -93,7 +97,7 @@ fn main(){
 }
 ```
 
-Produce this warning:
+Produces this warning:
 ```
 src/main.rs:8:5: 11:6 warning: you seem to be trying to use match for destructuring a single type. Consider using `if let`, #[warn(single_match)] on by default
 src/main.rs:8     match x {
