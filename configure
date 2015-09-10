@@ -885,6 +885,28 @@ then
     CFG_DISABLE_JEMALLOC=1
 fi
 
+# default gcc version under OpenBSD maybe too old, try using egcc, which is a
+# gcc version from ports
+if [ $CFG_OSTYPE = unknown-openbsd ]
+then
+    if [ $("$CFG_GCC" --version 2>&1 | grep -c ' 4\.[0-6]') -ne 0 ]; then
+        step_msg "older GCC found, try with egcc instead"
+
+        # probe again but using egcc
+        probe CFG_GCC egcc
+
+        # and use egcc/eg++ for CC/CXX too if it was found
+        # (but user setting has priority)
+        if [ -n "$CFG_GCC" ]; then
+            CC="${CC:-egcc}"
+            CXX="${CXX:-eg++}"
+        fi
+    fi
+
+    step_msg "on OpenBSD, disabling jemalloc"
+    CFG_DISABLE_JEMALLOC=1
+fi
+
 # OS X 10.9, gcc is actually clang. This can cause some confusion in the build
 # system, so if we find that gcc is clang, we should just use clang directly.
 if [ $CFG_OSTYPE = apple-darwin -a -z "$CFG_ENABLE_CLANG" ]
