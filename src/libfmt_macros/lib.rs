@@ -151,28 +151,31 @@ impl<'a> Iterator for Parser<'a> {
     type Item = Piece<'a>;
 
     fn next(&mut self) -> Option<Piece<'a>> {
-        match self.cur.peek() {
-            Some(&(pos, '{')) => {
-                self.cur.next();
-                if self.consume('{') {
-                    Some(String(self.string(pos + 1)))
-                } else {
-                    let ret = Some(NextArgument(self.argument()));
-                    self.must_consume('}');
-                    ret
+        if let Some(&(pos, c)) = self.cur.peek() {
+            match c {
+                '{' => {
+                    self.cur.next();
+                    if self.consume('{') {
+                        Some(String(self.string(pos + 1)))
+                    } else {
+                        let ret = Some(NextArgument(self.argument()));
+                        self.must_consume('}');
+                        ret
+                    }
                 }
-            }
-            Some(&(pos, '}')) => {
-                self.cur.next();
-                if self.consume('}') {
-                    Some(String(self.string(pos + 1)))
-                } else {
-                    self.err("unmatched `}` found");
-                    None
+                '}' => {
+                    self.cur.next();
+                    if self.consume('}') {
+                        Some(String(self.string(pos + 1)))
+                    } else {
+                        self.err("unmatched `}` found");
+                        None
+                    }
                 }
+                _ => Some(String(self.string(pos))),
             }
-            Some(&(pos, _)) => { Some(String(self.string(pos))) }
-            None => None
+        } else {
+            None
         }
     }
 }
@@ -198,12 +201,10 @@ impl<'a> Parser<'a> {
     /// the current position, then the current iterator isn't moved and false is
     /// returned, otherwise the character is consumed and true is returned.
     fn consume(&mut self, c: char) -> bool {
-        match self.cur.peek() {
-            Some(&(_, maybe)) if c == maybe => {
-                self.cur.next();
-                true
-            }
-            Some(..) | None => false,
+        if let Some(&(_, maybe)) = self.cur.peek() {
+            if c == maybe { self.cur.next(); true } else { false }
+        } else {
+            false
         }
     }
 
@@ -211,48 +212,36 @@ impl<'a> Parser<'a> {
     /// found, an error is emitted.
     fn must_consume(&mut self, c: char) {
         self.ws();
-        match self.cur.peek() {
-            Some(&(_, maybe)) if c == maybe => {
+        if let Some(&(_, maybe)) = self.cur.peek() {
+            if c == maybe {
                 self.cur.next();
+            } else {
+                self.err(&format!("expected `{:?}`, found `{:?}`", c, maybe));
             }
-            Some(&(_, other)) => {
-                self.err(&format!("expected `{:?}`, found `{:?}`", c,
-                                  other));
-            }
-            None => {
-                self.err(&format!("expected `{:?}` but string was terminated",
-                                  c));
-            }
+        } else {
+            self.err(&format!("expected `{:?}` but string was terminated", c));
         }
     }
 
     /// Consumes all whitespace characters until the first non-whitespace
     /// character
     fn ws(&mut self) {
-        loop {
-            match self.cur.peek() {
-                Some(&(_, c)) if c.is_whitespace() => { self.cur.next(); }
-                Some(..) | None => { return }
-            }
+        while let Some(&(_, c)) = self.cur.peek() {
+            if c.is_whitespace() { self.cur.next(); } else { break }
         }
     }
 
     /// Parses all of a string which is to be considered a "raw literal" in a
     /// format string. This is everything outside of the braces.
     fn string(&mut self, start: usize) -> &'a str {
-        loop {
-            // we may not consume the character, so clone the iterator
-            match self.cur.peek() {
-                Some(&(pos, '}')) | Some(&(pos, '{')) => {
-                    return &self.input[start..pos];
-                }
-                Some(..) => { self.cur.next(); }
-                None => {
-                    self.cur.next();
-                    return &self.input[start..self.input.len()];
-                }
+        // we may not consume the character, peek the iterator
+        while let Some(&(pos, c)) = self.cur.peek() {
+            match c {
+                '{' | '}' => { return &self.input[start..pos]; }
+                _ => { self.cur.next(); }
             }
         }
+        &self.input[start..self.input.len()]
     }
 
     /// Parses an Argument structure, or what's contained within braces inside
@@ -267,15 +256,14 @@ impl<'a> Parser<'a> {
     /// Parses a positional argument for a format. This could either be an
     /// integer index of an argument, a named argument, or a blank string.
     fn position(&mut self) -> Position<'a> {
-        match self.integer() {
-            Some(i) => { ArgumentIs(i) }
-            None => {
-                match self.cur.peek() {
-                    Some(&(_, c)) if c.is_alphabetic() => {
-                        ArgumentNamed(self.word())
-                    }
-                    _ => ArgumentNext
+        if let Some(i) = self.integer() {
+            ArgumentIs(i)
+        } else {
+            match self.cur.peek() {
+                Some(&(_, c)) if c.is_alphabetic() => {
+                    ArgumentNamed(self.word())
                 }
+                _ => ArgumentNext
             }
         }
     }
@@ -294,17 +282,14 @@ impl<'a> Parser<'a> {
         if !self.consume(':') { return spec }
 
         // fill character
-        match self.cur.peek() {
-            Some(&(_, c)) => {
-                match self.cur.clone().skip(1).next() {
-                    Some((_, '>')) | Some((_, '<')) | Some((_, '^')) => {
-                        spec.fill = Some(c);
-                        self.cur.next();
-                    }
-                    Some(..) | None => {}
+        if let Some(&(_, c)) = self.cur.peek() {
+            match self.cur.clone().skip(1).next() {
+                Some((_, '>')) | Some((_, '<')) | Some((_, '^')) => {
+                    spec.fill = Some(c);
+                    self.cur.next();
                 }
+                _ => {}
             }
-            None => {}
         }
         // Alignment
         if self.consume('<') {
@@ -361,29 +346,20 @@ impl<'a> Parser<'a> {
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
     fn count(&mut self) -> Count<'a> {
-        match self.integer() {
-            Some(i) => {
+        if let Some(i) = self.integer() {
+            if self.consume('$') { CountIsParam(i) } else { CountIs(i) }
+        } else {
+            let tmp = self.cur.clone();
+            let word = self.word();
+            if word.is_empty() {
+                self.cur = tmp;
+                CountImplied
+            } else {
                 if self.consume('$') {
-                    CountIsParam(i)
+                    CountIsName(word)
                 } else {
-                    CountIs(i)
-                }
-            }
-            None => {
-                let tmp = self.cur.clone();
-                match self.word() {
-                    word if !word.is_empty() => {
-                        if self.consume('$') {
-                            CountIsName(word)
-                        } else {
-                            self.cur = tmp;
-                            CountImplied
-                        }
-                    }
-                    _ => {
-                        self.cur = tmp;
-                        CountImplied
-                    }
+                    self.cur = tmp;
+                    CountImplied
                 }
             }
         }
@@ -394,23 +370,17 @@ impl<'a> Parser<'a> {
     /// characters.
     fn word(&mut self) -> &'a str {
         let start = match self.cur.peek() {
-            Some(&(pos, c)) if c.is_xid_start() => {
-                self.cur.next();
-                pos
-            }
-            Some(..) | None => { return &self.input[..0]; }
+            Some(&(pos, c)) if c.is_xid_start() => { self.cur.next(); pos }
+            _ => { return &self.input[..0]; }
         };
-        let end;
-        loop {
-            match self.cur.peek() {
-                Some(&(_, c)) if c.is_xid_continue() => {
-                    self.cur.next();
-                }
-                Some(&(pos, _)) => { end = pos; break }
-                None => { end = self.input.len(); break }
+        while let Some(&(pos, c)) = self.cur.peek() {
+            if c.is_xid_continue() {
+                self.cur.next();
+            } else {
+                return &self.input[start..pos];
             }
         }
-        &self.input[start..end]
+        &self.input[start..self.input.len()]
     }
 
     /// Optionally parses an integer at the current position. This doesn't deal
@@ -427,11 +397,7 @@ impl<'a> Parser<'a> {
                 break
             }
         }
-        if found {
-            Some(cur)
-        } else {
-            None
-        }
+        if found { Some(cur) } else { None }
     }
 }
 
