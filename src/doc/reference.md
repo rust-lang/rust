@@ -1489,14 +1489,14 @@ impl Num for f64 {
 let x: f64 = Num::from_i32(42);
 ```
 
-Traits may inherit from other traits. For example, in
+Traits may inherit from other traits. Consider the following example:
 
 ```
 trait Shape { fn area(&self) -> f64; }
 trait Circle : Shape { fn radius(&self) -> f64; }
 ```
 
-the syntax `Circle : Shape` means that types that implement `Circle` must also
+The syntax `Circle : Shape` means that types that implement `Circle` must also
 have an implementation for `Shape`. Multiple supertraits are separated by `+`,
 `trait Circle : Shape + PartialEq { }`. In an implementation of `Circle` for a
 given type `T`, methods can refer to `Shape` methods, since the typechecker
