@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rewrite::{Rewrite, RewriteContext};
-use utils::{span_after, make_indent, extra_offset};
+use utils::{make_indent, extra_offset};
 use expr::rewrite_call;
 
 use syntax::{ast, ptr};
@@ -26,66 +26,23 @@ pub fn rewrite_chain(orig_expr: &ast::Expr,
     let indent = offset + context.config.tab_spaces;
     let max_width = try_opt!(context.config.max_width.checked_sub(indent));
 
-    loop {
-        match expr.node {
-            ast::Expr_::ExprMethodCall(ref method_name, ref types, ref expressions) => {
-                // FIXME: a lot of duplication between this and the
-                // rewrite_method_call in expr.rs.
-                let new_span = mk_sp(expressions[0].span.hi, expr.span.hi);
-                let lo = span_after(new_span, "(", context.codemap);
-                let new_span = mk_sp(lo, expr.span.hi);
+    while let Some(pair) = pop_expr_chain(expr, orig_expr.span, context, max_width, indent) {
+        let (rewrite, parent_expr) = pair;
 
-                let rewrite = rewrite_method_call(method_name.node,
-                                                  types,
-                                                  &expressions[1..],
-                                                  new_span,
-                                                  context,
-                                                  max_width,
-                                                  indent);
-                rewrites.push(try_opt!(rewrite));
-                expr = &expressions[0];
-            }
-            ast::Expr_::ExprField(ref subexpr, ref field) => {
-                expr = subexpr;
-                rewrites.push(format!(".{}", field.node));
-            }
-            ast::Expr_::ExprTupField(ref subexpr, ref field) => {
-                expr = subexpr;
-                rewrites.push(format!(".{}", field.node));
-            }
-            _ => break,
-        }
+        rewrites.push(try_opt!(rewrite));
+        expr = parent_expr;
     }
 
     let parent_rewrite = try_opt!(expr.rewrite(context, width, offset));
 
-    // TODO: add exception for when rewrites.len() == 1
     if rewrites.len() == 1 {
         let extra_offset = extra_offset(&parent_rewrite, offset);
+        let offset = offset + extra_offset;
         let max_width = try_opt!(width.checked_sub(extra_offset));
-        // FIXME: massive duplication
-        let rerewrite = match orig_expr.node {
-            ast::Expr_::ExprMethodCall(ref method_name, ref types, ref expressions) => {
-                let new_span = mk_sp(expressions[0].span.hi, orig_expr.span.hi);
-                let lo = span_after(new_span, "(", context.codemap);
-                let new_span = mk_sp(lo, orig_expr.span.hi);
 
-                rewrite_method_call(method_name.node,
-                                    types,
-                                    &expressions[1..],
-                                    new_span,
-                                    context,
-                                    max_width,
-                                    offset + extra_offset)
-            }
-            ast::Expr_::ExprField(_, ref field) => {
-                Some(format!(".{}", field.node))
-            }
-            ast::Expr_::ExprTupField(_, ref field) => {
-                Some(format!(".{}", field.node))
-            }
-            _ => unreachable!(),
-        };
+        let rerewrite = pop_expr_chain(orig_expr, orig_expr.span, context, max_width, offset)
+                            .unwrap()
+                            .0;
 
         return Some(format!("{}{}", parent_rewrite, try_opt!(rerewrite)));
     }
@@ -103,6 +60,7 @@ pub fn rewrite_chain(orig_expr: &ast::Expr,
 
     // Put the first link on the same line as parent, if it fits.
     let first_connector = if parent_rewrite.len() + rewrites[0].len() <= width &&
+                             is_continuable(expr) &&
                              !rewrites[0].contains('\n') ||
                              parent_rewrite.len() <= context.config.tab_spaces {
         ""
@@ -111,6 +69,43 @@ pub fn rewrite_chain(orig_expr: &ast::Expr,
     };
 
     Some(format!("{}{}{}", parent_rewrite, first_connector, rewrites.join(&connector)))
+}
+
+// Returns None when the expression is not a chainable. Otherwise, rewrites the
+// outermost chain element and returns the remaining chain.
+fn pop_expr_chain<'a>(expr: &'a ast::Expr,
+                      span: Span,
+                      context: &RewriteContext,
+                      width: usize,
+                      offset: usize)
+                      -> Option<(Option<String>, &'a ast::Expr)> {
+    match expr.node {
+        ast::Expr_::ExprMethodCall(ref method_name, ref types, ref expressions) => {
+            Some((rewrite_method_call(method_name.node,
+                                      types,
+                                      expressions,
+                                      span,
+                                      context,
+                                      width,
+                                      offset),
+                  &expressions[0]))
+        }
+        ast::Expr_::ExprField(ref subexpr, ref field) => {
+            Some((Some(format!(".{}", field.node)), subexpr))
+        }
+        ast::Expr_::ExprTupField(ref subexpr, ref field) => {
+            Some((Some(format!(".{}", field.node)), subexpr))
+        }
+        _ => None,
+    }
+}
+
+// Determines we can continue formatting a given expression on the same line.
+fn is_continuable(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::Expr_::ExprPath(..) => true,
+        _ => false,
+    }
 }
 
 fn rewrite_method_call(method_name: ast::Ident,

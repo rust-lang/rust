@@ -282,7 +282,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                 None
             };
 
-            // Post-comment
+                // Post-comment
                 let next_start = match self.inner.peek() {
                     Some(ref next_item) => (self.get_lo)(next_item),
                     None => self.next_span_start,

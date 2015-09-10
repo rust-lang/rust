@@ -44,7 +44,6 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
                          .enumerate()
                          .map(|(i, mut line)| {
                              line = line.trim();
-
             // Drop old closer.
                  if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
                      line = &line[..(line.len() - 2)];

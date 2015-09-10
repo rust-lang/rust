@@ -152,7 +152,8 @@ fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
     let regex = regex::Regex::new(&pattern).ok().expect("Failed creating pattern 1.");
 
     // Matches lines containing significant comments or whitespace.
-    let line_regex = regex::Regex::new(r"(^\s*$)|(^\s*//\s*rustfmt-[^:]+:\s*\S+)").ok()
+    let line_regex = regex::Regex::new(r"(^\s*$)|(^\s*//\s*rustfmt-[^:]+:\s*\S+)")
+                         .ok()
                          .expect("Failed creating pattern 2.");
 
     reader.lines()

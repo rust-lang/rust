@@ -40,15 +40,6 @@ impl Rewrite for ast::Expr {
                 }
             }
             ast::Expr_::ExprCall(ref callee, ref args) => {
-                // // FIXME using byte lens instead of char lens (and probably all over the place too)
-                // // 2 is for parens
-                // let max_callee_width = try_opt!(width.checked_sub(2));
-                // let callee_str = try_opt!(callee.rewrite(context, max_callee_width, offset));
-
-                // let new_span = mk_sp(callee.span.hi, self.span.hi);
-                // let lo = span_after(new_span, "(", context.codemap);
-                // let new_span = mk_sp(lo, self.span.hi);
-
                 rewrite_call(context, &**callee, args, self.span, width, offset)
             }
             ast::Expr_::ExprParen(ref subexpr) => {
@@ -926,6 +917,9 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         }
         None => return Err(Ordering::Greater),
     };
+
+    let span_lo = span_after(span, "(", context.codemap);
+    let span = mk_sp(span_lo, span.hi);
 
     let extra_offset = extra_offset(&callee_str, offset);
     // 2 is for parens.
