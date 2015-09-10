@@ -99,14 +99,16 @@ impl<H:Hair> Builder<H> {
                     true_block, expr_span, destination,
                     Constant {
                         span: expr_span,
-                        kind: ConstantKind::Literal(Literal::Bool { value: true }),
+                        ty: this.hir.bool_ty(),
+                        literal: this.hir.true_literal(),
                     });
 
                 this.cfg.push_assign_constant(
                     false_block, expr_span, destination,
                     Constant {
                         span: expr_span,
-                        kind: ConstantKind::Literal(Literal::Bool { value: false }),
+                        ty: this.hir.bool_ty(),
+                        literal: this.hir.false_literal(),
                     });
 
                 this.cfg.terminate(true_block, Terminator::Goto { target: join_block });

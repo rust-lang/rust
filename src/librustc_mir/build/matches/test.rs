@@ -33,20 +33,20 @@ impl<H:Hair> Builder<H> {
                 }
             }
 
-            PatternKind::Constant { ref expr } => {
-                let expr = self.as_constant(expr.clone());
+            PatternKind::Constant { ref value } => {
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Eq { value: expr, ty: match_pair.pattern.ty.clone() },
+                    kind: TestKind::Eq { value: value.clone(),
+                                         ty: match_pair.pattern.ty.clone() },
                 }
             }
 
             PatternKind::Range { ref lo, ref hi } => {
-                let lo = self.as_constant(lo.clone());
-                let hi = self.as_constant(hi.clone());
                 Test {
                     span: match_pair.pattern.span,
-                    kind: TestKind::Range { lo: lo, hi: hi, ty: match_pair.pattern.ty.clone() },
+                    kind: TestKind::Range { lo: lo.clone(),
+                                            hi: hi.clone(),
+                                            ty: match_pair.pattern.ty.clone() },
                 }
             }
 
@@ -90,15 +90,15 @@ impl<H:Hair> Builder<H> {
 
             TestKind::Eq { value, ty } => {
                 // call PartialEq::eq(discrim, constant)
-                let constant = self.push_constant(block, test.span, ty.clone(), value);
+                let constant = self.push_literal(block, test.span, ty.clone(), value);
                 let item_ref = self.hir.partial_eq(ty);
                 self.call_comparison_fn(block, test.span, item_ref, lvalue.clone(), constant)
             }
 
             TestKind::Range { lo, hi, ty } => {
                 // Test `v` by computing `PartialOrd::le(lo, v) && PartialOrd::le(v, hi)`.
-                let lo = self.push_constant(block, test.span, ty.clone(), lo);
-                let hi = self.push_constant(block, test.span, ty.clone(), hi);
+                let lo = self.push_literal(block, test.span, ty.clone(), lo);
+                let hi = self.push_literal(block, test.span, ty.clone(), hi);
                 let item_ref = self.hir.partial_le(ty);
 
                 let lo_blocks =
