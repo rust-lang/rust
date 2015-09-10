@@ -11,32 +11,34 @@
 pub use self::Node::*;
 pub use self::PathElem::*;
 use self::MapEntry::*;
+use self::collector::NodeCollector;
 
 use metadata::cstore::LOCAL_CRATE;
 use metadata::inline::InlinedItem;
 use metadata::inline::InlinedItem as II;
 use middle::def_id::DefId;
+use util::nodemap::NodeSet;
 
 use syntax::abi;
-use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
+use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID};
 use syntax::codemap::{Span, Spanned};
 use syntax::parse::token;
 
 use rustc_front::hir::*;
 use rustc_front::fold::Folder;
-use rustc_front::visit::{self, Visitor};
-use rustc_front::util;
+use rustc_front::visit;
 use rustc_front::print::pprust;
 
 use arena::TypedArena;
 use std::cell::RefCell;
 use std::fmt;
 use std::io;
-use std::iter::{self, repeat};
+use std::iter;
 use std::mem;
 use std::slice;
 
 pub mod blocks;
+mod collector;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum PathElem {
@@ -131,7 +133,7 @@ pub enum Node<'ast> {
 /// Represents an entry and its parent NodeID.
 /// The odd layout is to bring down the total size.
 #[derive(Copy, Debug)]
-enum MapEntry<'ast> {
+pub enum MapEntry<'ast> {
     /// Placeholder for holes in the map.
     NotPresent,
 
@@ -264,20 +266,44 @@ pub struct Map<'ast> {
     ///
     /// Also, indexing is pretty quick when you've got a vector and
     /// plain old integers.
-    map: RefCell<Vec<MapEntry<'ast>>>
+    map: RefCell<Vec<MapEntry<'ast>>>,
+
+    definitions_map: RefCell<NodeSet>,
 }
 
 impl<'ast> Map<'ast> {
     pub fn local_def_id(&self, node: NodeId) -> DefId {
-        DefId::xxx_local(node)
+        self.opt_local_def_id(node).unwrap_or_else(|| {
+            panic!("local_def_id: no entry for `{}`, which has a map of `{:?}`",
+                   node, self.find_entry(node))
+        })
+    }
+
+    pub fn opt_local_def_id(&self, node: NodeId) -> Option<DefId> {
+        if self.definitions_map.borrow().contains(&node) {
+            Some(DefId::xxx_local(node))
+        } else {
+            None
+        }
     }
 
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
         if def_id.krate == LOCAL_CRATE {
+            assert!(self.definitions_map.borrow().contains(&def_id.xxx_node));
             Some(def_id.xxx_node)
         } else {
             None
         }
+    }
+
+    /// for default methods, we create a fake node-id; this method
+    /// adds that fake node-id to the def-id tables
+    pub fn synthesize_default_method_def_id(&self,
+                                            _impl_def_id: DefId,
+                                            new_method_id: NodeId)
+                                            -> DefId {
+        self.definitions_map.borrow_mut().insert(new_method_id);
+        DefId::xxx_local(new_method_id)
     }
 
     fn entry_count(&self) -> usize {
@@ -762,194 +788,10 @@ impl<F: FoldOps> Folder for IdAndSpanUpdater<F> {
     }
 }
 
-/// A Visitor that walks over an AST and collects Node's into an AST Map.
-struct NodeCollector<'ast> {
-    map: Vec<MapEntry<'ast>>,
-    parent_node: NodeId,
-}
-
-impl<'ast> NodeCollector<'ast> {
-    fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'ast>) {
-        debug!("ast_map: {:?} => {:?}", id, entry);
-        let len = self.map.len();
-        if id as usize >= len {
-            self.map.extend(repeat(NotPresent).take(id as usize - len + 1));
-        }
-        self.map[id as usize] = entry;
-    }
-
-    fn insert(&mut self, id: NodeId, node: Node<'ast>) {
-        let entry = MapEntry::from_node(self.parent_node, node);
-        self.insert_entry(id, entry);
-    }
-
-    fn visit_fn_decl(&mut self, decl: &'ast FnDecl) {
-        for a in &decl.inputs {
-            self.insert(a.id, NodeArg(&*a.pat));
-        }
-    }
-}
-
-impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
-    fn visit_item(&mut self, i: &'ast Item) {
-        self.insert(i.id, NodeItem(i));
-
-        let parent_node = self.parent_node;
-        self.parent_node = i.id;
-
-        match i.node {
-            ItemImpl(_, _, _, _, _, ref impl_items) => {
-                for ii in impl_items {
-                    self.insert(ii.id, NodeImplItem(ii));
-                }
-            }
-            ItemEnum(ref enum_definition, _) => {
-                for v in &enum_definition.variants {
-                    self.insert(v.node.id, NodeVariant(&**v));
-                }
-            }
-            ItemForeignMod(ref nm) => {
-                for nitem in &nm.items {
-                    self.insert(nitem.id, NodeForeignItem(&**nitem));
-                }
-            }
-            ItemStruct(ref struct_def, _) => {
-                // If this is a tuple-like struct, register the constructor.
-                match struct_def.ctor_id {
-                    Some(ctor_id) => {
-                        self.insert(ctor_id, NodeStructCtor(&**struct_def));
-                    }
-                    None => {}
-                }
-            }
-            ItemTrait(_, _, ref bounds, ref trait_items) => {
-                for b in bounds.iter() {
-                    if let TraitTyParamBound(ref t, TraitBoundModifier::None) = *b {
-                        self.insert(t.trait_ref.ref_id, NodeItem(i));
-                    }
-                }
-
-                for ti in trait_items {
-                    self.insert(ti.id, NodeTraitItem(ti));
-                }
-            }
-            ItemUse(ref view_path) => {
-                match view_path.node {
-                    ViewPathList(_, ref paths) => {
-                        for path in paths {
-                            self.insert(path.node.id(), NodeItem(i));
-                        }
-                    }
-                    _ => ()
-                }
-            }
-            _ => {}
-        }
-        visit::walk_item(self, i);
-        self.parent_node = parent_node;
-    }
-
-    fn visit_generics(&mut self, generics: &'ast Generics) {
-        for ty_param in generics.ty_params.iter() {
-            self.insert(ty_param.id, NodeTyParam(ty_param));
-        }
-
-        visit::walk_generics(self, generics);
-    }
-
-    fn visit_trait_item(&mut self, ti: &'ast TraitItem) {
-        let parent_node = self.parent_node;
-        self.parent_node = ti.id;
-        visit::walk_trait_item(self, ti);
-        self.parent_node = parent_node;
-    }
-
-    fn visit_impl_item(&mut self, ii: &'ast ImplItem) {
-        let parent_node = self.parent_node;
-        self.parent_node = ii.id;
-
-        visit::walk_impl_item(self, ii);
-
-        self.parent_node = parent_node;
-    }
-
-    fn visit_pat(&mut self, pat: &'ast Pat) {
-        self.insert(pat.id, match pat.node {
-            // Note: this is at least *potentially* a pattern...
-            PatIdent(..) => NodeLocal(pat),
-            _ => NodePat(pat)
-        });
-
-        let parent_node = self.parent_node;
-        self.parent_node = pat.id;
-        visit::walk_pat(self, pat);
-        self.parent_node = parent_node;
-    }
-
-    fn visit_expr(&mut self, expr: &'ast Expr) {
-        self.insert(expr.id, NodeExpr(expr));
-        let parent_node = self.parent_node;
-        self.parent_node = expr.id;
-        visit::walk_expr(self, expr);
-        self.parent_node = parent_node;
-    }
-
-    fn visit_stmt(&mut self, stmt: &'ast Stmt) {
-        let id = util::stmt_id(stmt);
-        self.insert(id, NodeStmt(stmt));
-        let parent_node = self.parent_node;
-        self.parent_node = id;
-        visit::walk_stmt(self, stmt);
-        self.parent_node = parent_node;
-    }
-
-    fn visit_fn(&mut self, fk: visit::FnKind<'ast>, fd: &'ast FnDecl,
-                b: &'ast Block, s: Span, id: NodeId) {
-        let parent_node = self.parent_node;
-        self.parent_node = id;
-        self.visit_fn_decl(fd);
-        visit::walk_fn(self, fk, fd, b, s);
-        self.parent_node = parent_node;
-    }
-
-    fn visit_ty(&mut self, ty: &'ast Ty) {
-        let parent_node = self.parent_node;
-        self.parent_node = ty.id;
-        match ty.node {
-            TyBareFn(ref fd) => {
-                self.visit_fn_decl(&*fd.decl);
-            }
-            _ => {}
-        }
-        visit::walk_ty(self, ty);
-        self.parent_node = parent_node;
-    }
-
-    fn visit_block(&mut self, block: &'ast Block) {
-        self.insert(block.id, NodeBlock(block));
-        let parent_node = self.parent_node;
-        self.parent_node = block.id;
-        visit::walk_block(self, block);
-        self.parent_node = parent_node;
-    }
-
-    fn visit_lifetime(&mut self, lifetime: &'ast Lifetime) {
-        self.insert(lifetime.id, NodeLifetime(lifetime));
-    }
-
-    fn visit_lifetime_def(&mut self, def: &'ast LifetimeDef) {
-        self.visit_lifetime(&def.lifetime);
-    }
-}
-
 pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
-    let mut collector = NodeCollector {
-        map: vec![],
-        parent_node: CRATE_NODE_ID,
-    };
-    collector.insert_entry(CRATE_NODE_ID, RootCrate);
+    let mut collector = NodeCollector::root();
     visit::walk_crate(&mut collector, &forest.krate);
-    let map = collector.map;
+    let NodeCollector { map, definitions_map, .. } = collector;
 
     if log_enabled!(::log::DEBUG) {
         // This only makes sense for ordered stores; note the
@@ -969,7 +811,8 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
 
     Map {
         forest: forest,
-        map: RefCell::new(map)
+        map: RefCell::new(map),
+        definitions_map: RefCell::new(definitions_map),
     }
 }
 
@@ -1001,29 +844,16 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
     });
 
     let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
-    let mut collector = NodeCollector {
-        map: mem::replace(&mut *map.map.borrow_mut(), vec![]),
-        parent_node: ii_parent_id,
-    };
-    collector.insert_entry(ii_parent_id, RootInlinedParent(ii_parent));
+    let mut collector =
+        NodeCollector::extend(ii_parent,
+                              ii_parent_id,
+                              mem::replace(&mut *map.map.borrow_mut(), vec![]),
+                              mem::replace(&mut *map.definitions_map.borrow_mut(), NodeSet()));
     ii_parent.ii.visit(&mut collector);
 
-    // Methods get added to the AST map when their impl is visited.  Since we
-    // don't decode and instantiate the impl, but just the method, we have to
-    // add it to the table now. Likewise with foreign items.
-    match ii_parent.ii {
-        II::Item(_) => {}
-        II::TraitItem(_, ref ti) => {
-            collector.insert(ti.id, NodeTraitItem(ti));
-        }
-        II::ImplItem(_, ref ii) => {
-            collector.insert(ii.id, NodeImplItem(ii));
-        }
-        II::Foreign(ref i) => {
-            collector.insert(i.id, NodeForeignItem(i));
-        }
-    }
     *map.map.borrow_mut() = collector.map;
+    *map.definitions_map.borrow_mut() = collector.definitions_map;
+
     &ii_parent.ii
 }
 
