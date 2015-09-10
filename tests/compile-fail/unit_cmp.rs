@@ -3,6 +3,9 @@
 
 #![deny(unit_cmp)]
 
+#[derive(PartialEq)]
+pub struct ContainsUnit(()); // should be fine
+
 fn main() {
     // this is fine
     if true == false {
