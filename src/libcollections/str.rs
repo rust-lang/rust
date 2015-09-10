@@ -515,16 +515,14 @@ impl str {
     /// assert_eq!(b, " 老虎 Léopard");
     /// ```
     #[inline]
-    #[unstable(feature = "str_split_at", reason = "recently added",
-               issue = "27792")]
+    #[stable(feature = "str_split_at", since = "1.4.0")]
     pub fn split_at(&self, mid: usize) -> (&str, &str) {
         core_str::StrExt::split_at(self, mid)
     }
 
     /// Divide one mutable string slice into two at an index.
     #[inline]
-    #[unstable(feature = "str_split_at", reason = "recently added",
-               issue = "27792")]
+    #[stable(feature = "str_split_at", since = "1.4.0")]
     pub fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
         core_str::StrExt::split_at_mut(self, mid)
     }
@@ -1505,9 +1503,7 @@ impl str {
     }
 
     /// Converts the `Box<str>` into a `String` without copying or allocating.
-    #[unstable(feature = "box_str",
-               reason = "recently added, matches RFC",
-               issue = "27785")]
+    #[stable(feature = "box_str", since = "1.4.0")]
     pub fn into_string(self: Box<str>) -> String {
         unsafe {
             let slice = mem::transmute::<Box<str>, Box<[u8]>>(self);

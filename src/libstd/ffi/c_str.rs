@@ -119,7 +119,7 @@ pub struct CString {
 /// Converting a foreign C string into a Rust `String`
 ///
 /// ```no_run
-/// # #![feature(libc,cstr_to_str)]
+/// # #![feature(libc)]
 /// extern crate libc;
 /// use std::ffi::CStr;
 ///
@@ -205,7 +205,7 @@ impl CString {
     /// The only appropriate argument is a pointer obtained by calling
     /// `into_ptr`. The length of the string will be recalculated
     /// using the pointer.
-    #[unstable(feature = "cstr_memory", reason = "recently added",
+    #[unstable(feature = "cstr_memory2", reason = "recently added",
                issue = "27769")]
     #[deprecated(since = "1.4.0", reason = "renamed to from_raw")]
     pub unsafe fn from_ptr(ptr: *const libc::c_char) -> CString {
@@ -217,8 +217,7 @@ impl CString {
     /// The only appropriate argument is a pointer obtained by calling
     /// `into_raw`. The length of the string will be recalculated
     /// using the pointer.
-    #[unstable(feature = "cstr_memory", reason = "recently added",
-               issue = "27769")]
+    #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut libc::c_char) -> CString {
         let len = libc::strlen(ptr) + 1; // Including the NUL byte
         let slice = slice::from_raw_parts(ptr, len as usize);
@@ -233,7 +232,7 @@ impl CString {
     /// this string.
     ///
     /// Failure to call `from_raw` will lead to a memory leak.
-    #[unstable(feature = "cstr_memory", reason = "recently added",
+    #[unstable(feature = "cstr_memory2", reason = "recently added",
                issue = "27769")]
     #[deprecated(since = "1.4.0", reason = "renamed to into_raw")]
     pub fn into_ptr(self) -> *const libc::c_char {
@@ -248,8 +247,7 @@ impl CString {
     /// this string.
     ///
     /// Failure to call `from_ptr` will lead to a memory leak.
-    #[unstable(feature = "cstr_memory", reason = "recently added",
-               issue = "27769")]
+    #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub fn into_raw(self) -> *mut libc::c_char {
         Box::into_raw(self.inner) as *mut libc::c_char
     }
@@ -429,8 +427,7 @@ impl CStr {
     /// > after a 0-cost cast, but it is planned to alter its definition in the
     /// > future to perform the length calculation in addition to the UTF-8
     /// > check whenever this method is called.
-    #[unstable(feature = "cstr_to_str", reason = "recently added",
-               issue = "27764")]
+    #[stable(feature = "cstr_to_str", since = "1.4.0")]
     pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
         // NB: When CStr is changed to perform the length check in .to_bytes()
         // instead of in from_ptr(), it may be worth considering if this should
@@ -450,8 +447,7 @@ impl CStr {
     /// > after a 0-cost cast, but it is planned to alter its definition in the
     /// > future to perform the length calculation in addition to the UTF-8
     /// > check whenever this method is called.
-    #[unstable(feature = "cstr_to_str", reason = "recently added",
-               issue = "27764")]
+    #[stable(feature = "cstr_to_str", since = "1.4.0")]
     pub fn to_string_lossy(&self) -> Cow<str> {
         String::from_utf8_lossy(self.to_bytes())
     }

@@ -1322,9 +1322,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(buf2.len(), 2);
     /// ```
     #[inline]
-    #[unstable(feature = "split_off",
-               reason = "new API, waiting for dust to settle",
-               issue = "27766")]
+    #[stable(feature = "split_off", since = "1.4.0")]
     pub fn split_off(&mut self, at: usize) -> Self {
         let len = self.len();
         assert!(at <= len, "`at` out of bounds");
@@ -1376,8 +1374,6 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(append)]
-    ///
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
@@ -1387,9 +1383,7 @@ impl<T> VecDeque<T> {
     /// assert_eq!(buf2.len(), 0);
     /// ```
     #[inline]
-    #[unstable(feature = "append",
-               reason = "new API, waiting for dust to settle",
-               issue = "27765")]
+    #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
         // naive impl
         self.extend(other.drain());
@@ -1415,9 +1409,7 @@ impl<T> VecDeque<T> {
     /// let v: Vec<_> = buf.into_iter().collect();
     /// assert_eq!(&v[..], &[2, 4]);
     /// ```
-    #[unstable(feature = "vec_deque_retain",
-               reason = "new API, waiting for dust to settle",
-               issue = "27767")]
+    #[stable(feature = "vec_deque_retain", since = "1.4.0")]
     pub fn retain<F>(&mut self, mut f: F) where F: FnMut(&T) -> bool {
         let len = self.len();
         let mut del = 0;

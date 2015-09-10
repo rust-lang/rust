@@ -722,9 +722,7 @@ impl String {
     /// Converts the string into `Box<str>`.
     ///
     /// Note that this will drop any excess capacity.
-    #[unstable(feature = "box_str",
-               reason = "recently added, matches RFC",
-               issue = "27785")]
+    #[stable(feature = "box_str", since = "1.4.0")]
     pub fn into_boxed_str(self) -> Box<str> {
         let slice = self.vec.into_boxed_slice();
         unsafe { mem::transmute::<Box<[u8]>, Box<str>>(slice) }
@@ -733,7 +731,7 @@ impl String {
     /// Converts the string into `Box<str>`.
     ///
     /// Note that this will drop any excess capacity.
-    #[unstable(feature = "box_str",
+    #[unstable(feature = "box_str2",
                reason = "recently added, matches RFC",
                issue = "27785")]
     #[deprecated(since = "1.4.0", reason = "renamed to `into_boxed_str`")]

@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 #![feature(static_mutex, static_rwlock, static_condvar)]
-#![feature(arc_weak, semaphore)]
+#![feature(semaphore)]
 
 use std::sync;
 

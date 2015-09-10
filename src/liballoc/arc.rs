@@ -137,7 +137,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 /// Weak pointers will not keep the data inside of the `Arc` alive, and can be
 /// used to break cycles between `Arc` pointers.
 #[unsafe_no_drop_flag]
-#[unstable(feature = "arc_weak", reason = "needs FCP", issue = "27718")]
+#[stable(feature = "arc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -201,7 +201,6 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_unique)]
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new(3);
@@ -212,7 +211,7 @@ impl<T> Arc<T> {
     /// assert_eq!(Arc::try_unwrap(x), Err(Arc::new(4)));
     /// ```
     #[inline]
-    #[unstable(feature = "arc_unique", reason = "needs FCP", issue = "27718")]
+    #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
         // See `drop` for why all these atomics are like this
         if this.inner().strong.compare_and_swap(1, 0, Release) != 1 { return Err(this) }
@@ -238,14 +237,13 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_weak)]
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
     ///
     /// let weak_five = Arc::downgrade(&five);
     /// ```
-    #[unstable(feature = "arc_weak", reason = "needs FCP", issue = "27718")]
+    #[stable(feature = "arc_weak", since = "1.4.0")]
     pub fn downgrade(this: &Self) -> Weak<T> {
         loop {
             // This Relaxed is OK because we're checking the value in the CAS
@@ -270,14 +268,16 @@ impl<T: ?Sized> Arc<T> {
 
     /// Get the number of weak references to this value.
     #[inline]
-    #[unstable(feature = "arc_counts", reason = "not clearly useful, and racy", issue = "27718")]
+    #[unstable(feature = "arc_counts", reason = "not clearly useful, and racy",
+               issue = "28356")]
     pub fn weak_count(this: &Self) -> usize {
         this.inner().weak.load(SeqCst) - 1
     }
 
     /// Get the number of strong references to this value.
     #[inline]
-    #[unstable(feature = "arc_counts", reason = "not clearly useful, and racy", issue = "27718")]
+    #[unstable(feature = "arc_counts", reason = "not clearly useful, and racy",
+               issue = "28356")]
     pub fn strong_count(this: &Self) -> usize {
         this.inner().strong.load(SeqCst)
     }
@@ -366,7 +366,8 @@ impl<T: ?Sized> Deref for Arc<T> {
 }
 
 impl<T: Clone> Arc<T> {
-    #[unstable(feature = "arc_unique", reason = "renamed to Arc::make_mut", issue = "27718")]
+    #[unstable(feature = "arc_make_unique", reason = "renamed to Arc::make_mut",
+               issue = "27718")]
     #[deprecated(since = "1.4.0", reason = "renamed to Arc::make_mut")]
     pub fn make_unique(this: &mut Self) -> &mut T {
         Arc::make_mut(this)
@@ -381,7 +382,6 @@ impl<T: Clone> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_unique)]
     /// use std::sync::Arc;
     ///
     /// let mut data = Arc::new(5);
@@ -398,7 +398,7 @@ impl<T: Clone> Arc<T> {
     ///
     /// ```
     #[inline]
-    #[unstable(feature = "arc_unique", reason = "needs FCP", issue = "27718")]
+    #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
         // Note that we hold both a strong reference and a weak reference.
         // Thus, releasing our strong reference only will not, by itself, cause
@@ -460,7 +460,6 @@ impl<T: ?Sized> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_unique)]
     /// use std::sync::Arc;
     ///
     /// let mut x = Arc::new(3);
@@ -471,7 +470,7 @@ impl<T: ?Sized> Arc<T> {
     /// assert!(Arc::get_mut(&mut x).is_none());
     /// ```
     #[inline]
-    #[unstable(feature = "arc_unique", reason = "needs FCP", issue = "27718")]
+    #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
         if this.is_unique() {
             // This unsafety is ok because we're guaranteed that the pointer
@@ -595,7 +594,6 @@ impl<T: ?Sized> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_weak)]
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -604,7 +602,7 @@ impl<T: ?Sized> Weak<T> {
     ///
     /// let strong_five: Option<Arc<_>> = weak_five.upgrade();
     /// ```
-    #[unstable(feature = "arc_weak", reason = "needs FCP", issue = "27718")]
+    #[stable(feature = "arc_weak", since = "1.4.0")]
     pub fn upgrade(&self) -> Option<Arc<T>> {
         // We use a CAS loop to increment the strong count instead of a
         // fetch_add because once the count hits 0 it must never be above 0.
@@ -630,7 +628,7 @@ impl<T: ?Sized> Weak<T> {
     }
 }
 
-#[unstable(feature = "arc_weak", reason = "needs FCP", issue = "27718")]
+#[stable(feature = "arc_weak", since = "1.4.0")]
 impl<T: ?Sized> Clone for Weak<T> {
     /// Makes a clone of the `Weak<T>`.
     ///
@@ -639,7 +637,6 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_weak)]
     /// use std::sync::Arc;
     ///
     /// let weak_five = Arc::downgrade(&Arc::new(5));
@@ -672,7 +669,6 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_weak)]
     /// use std::sync::Arc;
     ///
     /// {

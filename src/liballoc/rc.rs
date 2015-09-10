@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME(27718): rc_counts stuff is useful internally, but was previously public
 #![allow(deprecated)]
 
 //! Thread-local reference-counted boxes (the `Rc<T>` type).
@@ -94,8 +93,6 @@
 //! documentation for more details on interior mutability.
 //!
 //! ```rust
-//! #![feature(rc_weak)]
-//!
 //! use std::rc::Rc;
 //! use std::rc::Weak;
 //! use std::cell::RefCell;
@@ -242,7 +239,7 @@ impl<T> Rc<T> {
     /// assert_eq!(Rc::try_unwrap(x), Err(Rc::new(4)));
     /// ```
     #[inline]
-    #[unstable(feature = "rc_unique", reason=  "needs FCP", issue = "27718")]
+    #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
         if Rc::would_unwrap(&this) {
             unsafe {
@@ -263,8 +260,9 @@ impl<T> Rc<T> {
     }
 
     /// Checks if `Rc::try_unwrap` would return `Ok`.
-    #[unstable(feature = "rc_would_unwrap", reason = "just added for niche usecase",
-               issue = "27718")]
+    #[unstable(feature = "rc_would_unwrap",
+               reason = "just added for niche usecase",
+               issue = "28356")]
     pub fn would_unwrap(this: &Self) -> bool {
         Rc::strong_count(&this) == 1
     }
@@ -276,15 +274,13 @@ impl<T: ?Sized> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_weak)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
     ///
     /// let weak_five = Rc::downgrade(&five);
     /// ```
-    #[unstable(feature = "rc_weak", reason = "needs FCP", issue = "27718")]
+    #[stable(feature = "rc_weak", since = "1.4.0")]
     pub fn downgrade(this: &Self) -> Weak<T> {
         this.inc_weak();
         Weak { _ptr: this._ptr }
@@ -292,12 +288,14 @@ impl<T: ?Sized> Rc<T> {
 
     /// Get the number of weak references to this value.
     #[inline]
-    #[unstable(feature = "rc_counts", reason = "not clearly useful", issue = "27718")]
+    #[unstable(feature = "rc_counts", reason = "not clearly useful",
+               issue = "28356")]
     pub fn weak_count(this: &Self) -> usize { this.weak() - 1 }
 
     /// Get the number of strong references to this value.
     #[inline]
-    #[unstable(feature = "rc_counts", reason = "not clearly useful", issue = "27718")]
+    #[unstable(feature = "rc_counts", reason = "not clearly useful",
+               issue = "28356")]
     pub fn strong_count(this: &Self) -> usize { this.strong() }
 
     /// Returns true if there are no other `Rc` or `Weak<T>` values that share
@@ -315,7 +313,8 @@ impl<T: ?Sized> Rc<T> {
     /// assert!(Rc::is_unique(&five));
     /// ```
     #[inline]
-    #[unstable(feature = "rc_counts", reason = "uniqueness has unclear meaning", issue = "27718")]
+    #[unstable(feature = "rc_counts", reason = "uniqueness has unclear meaning",
+               issue = "28356")]
     pub fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
@@ -328,8 +327,6 @@ impl<T: ?Sized> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_unique)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let mut x = Rc::new(3);
@@ -340,7 +337,7 @@ impl<T: ?Sized> Rc<T> {
     /// assert!(Rc::get_mut(&mut x).is_none());
     /// ```
     #[inline]
-    #[unstable(feature = "rc_unique", reason = "needs FCP", issue = "27718")]
+    #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
         if Rc::is_unique(this) {
             let inner = unsafe { &mut **this._ptr };
@@ -353,7 +350,8 @@ impl<T: ?Sized> Rc<T> {
 
 impl<T: Clone> Rc<T> {
     #[inline]
-    #[unstable(feature = "rc_unique", reason = "renamed to Rc::make_mut", issue = "27718")]
+    #[unstable(feature = "rc_make_unique", reason = "renamed to Rc::make_mut",
+               issue = "27718")]
     #[deprecated(since = "1.4.0", reason = "renamed to Rc::make_mut")]
     pub fn make_unique(&mut self) -> &mut T {
         Rc::make_mut(self)
@@ -385,7 +383,7 @@ impl<T: Clone> Rc<T> {
     ///
     /// ```
     #[inline]
-    #[unstable(feature = "rc_unique", reason = "needs FCP", issue = "27718")]
+    #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
         if Rc::strong_count(this) != 1 {
             // Gotta clone the data, there are other Rcs
@@ -693,7 +691,7 @@ impl<T> fmt::Pointer for Rc<T> {
 ///
 /// See the [module level documentation](./index.html) for more.
 #[unsafe_no_drop_flag]
-#[unstable(feature = "rc_weak", reason = "needs FCP", issue = "27718")]
+#[stable(feature = "rc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
     // FIXME #12808: strange names to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -716,8 +714,6 @@ impl<T: ?Sized> Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_weak)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -726,7 +722,7 @@ impl<T: ?Sized> Weak<T> {
     ///
     /// let strong_five: Option<Rc<_>> = weak_five.upgrade();
     /// ```
-    #[unstable(feature = "rc_weak", reason = "needs FCP", issue = "27718")]
+    #[stable(feature = "rc_weak", since = "1.4.0")]
     pub fn upgrade(&self) -> Option<Rc<T>> {
         if self.strong() == 0 {
             None
@@ -746,8 +742,6 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_weak)]
-    ///
     /// use std::rc::Rc;
     ///
     /// {
@@ -783,7 +777,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     }
 }
 
-#[unstable(feature = "rc_weak", reason = "needs FCP", issue = "27718")]
+#[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized> Clone for Weak<T> {
 
     /// Makes a clone of the `Weak<T>`.
@@ -793,8 +787,6 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_weak)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let weak_five = Rc::downgrade(&Rc::new(5));
