@@ -15,12 +15,13 @@ extern crate diff;
 extern crate regex;
 extern crate term;
 
-use std::collections::{VecDeque, HashMap};
+use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read, BufRead, BufReader};
 use std::thread;
 use rustfmt::*;
 use rustfmt::config::Config;
+use rustfmt::rustfmt_diff::*;
 
 static DIFF_CONTEXT_SIZE: usize = 3;
 
@@ -94,27 +95,7 @@ fn print_mismatches(result: HashMap<String, Vec<Mismatch>>) {
     let mut t = term::stdout().unwrap();
 
     for (file_name, diff) in result {
-        for mismatch in diff {
-            t.fg(term::color::BRIGHT_WHITE).unwrap();
-            writeln!(t, "\nMismatch at {}:{}:", file_name, mismatch.line_number).unwrap();
-
-            for line in mismatch.lines {
-                match line {
-                    DiffLine::Context(ref str) => {
-                        t.fg(term::color::WHITE).unwrap();
-                        writeln!(t, " {}⏎", str).unwrap();
-                    }
-                    DiffLine::Expected(ref str) => {
-                        t.fg(term::color::GREEN).unwrap();
-                        writeln!(t, "+{}⏎", str).unwrap();
-                    }
-                    DiffLine::Resulting(ref str) => {
-                        t.fg(term::color::RED).unwrap();
-                        writeln!(t, "-{}⏎", str).unwrap();
-                    }
-                }
-            }
-        }
+        print_diff(diff, |line_num| format!("\nMismatch at {}:{}:", file_name, line_num));
     }
 
     assert!(t.reset().unwrap());
@@ -206,7 +187,7 @@ fn handle_result(result: HashMap<String, String>) {
         // TODO: speedup by running through bytes iterator
         f.read_to_string(&mut text).ok().expect("Failed reading target.");
         if fmt_text != text {
-            let diff = make_diff(&fmt_text, &text, DIFF_CONTEXT_SIZE);
+            let diff = make_diff(&text, &fmt_text, DIFF_CONTEXT_SIZE);
             failures.insert(file_name, diff);
         }
     }
@@ -225,81 +206,4 @@ fn get_target(file_name: &str, target: Option<&str>) -> String {
     } else {
         file_name.to_owned()
     }
-}
-
-pub enum DiffLine {
-    Context(String),
-    Expected(String),
-    Resulting(String),
-}
-
-pub struct Mismatch {
-    line_number: u32,
-    pub lines: Vec<DiffLine>,
-}
-
-impl Mismatch {
-    fn new(line_number: u32) -> Mismatch {
-        Mismatch { line_number: line_number, lines: Vec::new() }
-    }
-}
-
-// Produces a diff between the expected output and actual output of rustfmt.
-fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Mismatch> {
-    let mut line_number = 1;
-    let mut context_queue: VecDeque<&str> = VecDeque::with_capacity(context_size);
-    let mut lines_since_mismatch = context_size + 1;
-    let mut results = Vec::new();
-    let mut mismatch = Mismatch::new(0);
-
-    for result in diff::lines(expected, actual) {
-        match result {
-            diff::Result::Left(str) => {
-                if lines_since_mismatch >= context_size {
-                    results.push(mismatch);
-                    mismatch = Mismatch::new(line_number - context_queue.len() as u32);
-                }
-
-                while let Some(line) = context_queue.pop_front() {
-                    mismatch.lines.push(DiffLine::Context(line.to_owned()));
-                }
-
-                mismatch.lines.push(DiffLine::Resulting(str.to_owned()));
-                lines_since_mismatch = 0;
-            }
-            diff::Result::Right(str) => {
-                if lines_since_mismatch >= context_size {
-                    results.push(mismatch);
-                    mismatch = Mismatch::new(line_number - context_queue.len() as u32);
-                }
-
-                while let Some(line) = context_queue.pop_front() {
-                    mismatch.lines.push(DiffLine::Context(line.to_owned()));
-                }
-
-                mismatch.lines.push(DiffLine::Expected(str.to_owned()));
-                line_number += 1;
-                lines_since_mismatch = 0;
-            }
-            diff::Result::Both(str, _) => {
-                if context_queue.len() >= context_size {
-                    let _ = context_queue.pop_front();
-                }
-
-                if lines_since_mismatch < context_size {
-                    mismatch.lines.push(DiffLine::Context(str.to_owned()));
-                } else {
-                    context_queue.push_back(str);
-                }
-
-                line_number += 1;
-                lines_since_mismatch += 1;
-            }
-        }
-    }
-
-    results.push(mismatch);
-    results.remove(0);
-
-    results
 }

@@ -30,6 +30,8 @@ extern crate strings;
 
 extern crate unicode_segmentation;
 extern crate regex;
+extern crate diff;
+extern crate term;
 
 use rustc::session::Session;
 use rustc::session::config as rustc_config;
@@ -67,6 +69,7 @@ mod rewrite;
 mod string;
 mod comment;
 mod modules;
+pub mod rustfmt_diff;
 
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.
@@ -82,6 +85,8 @@ pub enum WriteMode {
     NewFile(&'static str),
     // Write the output to stdout.
     Display,
+    // Write the diff to stdout.
+    Diff,
     // Return the result as a mapping from filenames to Strings.
     Return(&'static Fn(HashMap<String, String>)),
 }
@@ -94,6 +99,7 @@ impl FromStr for WriteMode {
             "replace" => Ok(WriteMode::Replace),
             "display" => Ok(WriteMode::Display),
             "overwrite" => Ok(WriteMode::Overwrite),
+            "diff" => Ok(WriteMode::Diff),
             _ => Err(()),
         }
     }

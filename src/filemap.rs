@@ -14,10 +14,11 @@
 use strings::string_buffer::StringBuffer;
 use std::collections::HashMap;
 use std::fs::{self, File};
-use std::io::{self, Write, stdout};
+use std::io::{self, Write, Read, stdout};
 use WriteMode;
 use NewlineStyle;
 use config::Config;
+use rustfmt_diff::{make_diff, print_diff};
 
 // A map of the files of a crate, with their new content
 pub type FileMap = HashMap<String, StringBuffer>;
@@ -103,6 +104,17 @@ fn write_file(text: &StringBuffer,
             let stdout = stdout();
             let stdout_lock = stdout.lock();
             try!(write_system_newlines(stdout_lock, text, config));
+        }
+        WriteMode::Diff => {
+            println!("Diff of {}:\n", filename);
+            let mut f = try!(File::open(filename));
+            let mut ori_text = String::new();
+            try!(f.read_to_string(&mut ori_text));
+            let mut v = Vec::new();
+            try!(write_system_newlines(&mut v, text, config));
+            let fmt_text = String::from_utf8(v).unwrap();
+            let diff = make_diff(&ori_text, &fmt_text, 3);
+            print_diff(diff, |line_num| format!("\nDiff at line {}:", line_num));
         }
         WriteMode::Return(_) => {
             // io::Write is not implemented for String, working around with

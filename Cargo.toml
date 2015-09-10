@@ -17,7 +17,7 @@ toml = "0.1.20"
 rustc-serialize = "0.3.14"
 unicode-segmentation = "0.1.2"
 regex = "0.1.41"
+diff = "0.1.5"
+term = "0.2.11"
 
 [dev-dependencies]
-diff = "0.1.0"
-term = "0.2"
