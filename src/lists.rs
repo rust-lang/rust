@@ -272,9 +272,10 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
         self.inner.next().map(|item| {
             let mut new_lines = false;
             // Pre-comment
-            let pre_snippet = self.codemap.span_to_snippet(codemap::mk_sp(self.prev_span_end,
-                                                                          (self.get_lo)(&item)))
-                                          .unwrap();
+            let pre_snippet = self.codemap
+                                  .span_to_snippet(codemap::mk_sp(self.prev_span_end,
+                                                                  (self.get_lo)(&item)))
+                                  .unwrap();
             let trimmed_pre_snippet = pre_snippet.trim();
             let pre_comment = if !trimmed_pre_snippet.is_empty() {
                 Some(trimmed_pre_snippet.to_owned())
@@ -285,11 +286,12 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
             // Post-comment
             let next_start = match self.inner.peek() {
                 Some(ref next_item) => (self.get_lo)(next_item),
-                None => self.next_span_start
+                None => self.next_span_start,
             };
-            let post_snippet = self.codemap.span_to_snippet(codemap::mk_sp((self.get_hi)(&item),
-                                                                           next_start))
-                                           .unwrap();
+            let post_snippet = self.codemap
+                                   .span_to_snippet(codemap::mk_sp((self.get_hi)(&item),
+                                                                   next_start))
+                                   .unwrap();
 
             let comment_end = match self.inner.peek() {
                 Some(..) => {
@@ -315,12 +317,11 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                         }
                         // Potential *single* line comment.
                         (_, Some(j)) => j + 1,
-                        _ => post_snippet.len()
+                        _ => post_snippet.len(),
                     }
-                },
+                }
                 None => {
-                    post_snippet.find_uncommented(self.terminator)
-                                .unwrap_or(post_snippet.len())
+                    post_snippet.find_uncommented(self.terminator).unwrap_or(post_snippet.len())
                 }
             };
 

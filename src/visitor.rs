@@ -202,19 +202,11 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             }
             ast::Item_::ItemStruct(ref def, ref generics) => {
                 self.format_missing_with_indent(item.span.lo);
-                self.visit_struct(item.ident,
-                                  item.vis,
-                                  def,
-                                  generics,
-                                  item.span);
+                self.visit_struct(item.ident, item.vis, def, generics, item.span);
             }
             ast::Item_::ItemEnum(ref def, ref generics) => {
                 self.format_missing_with_indent(item.span.lo);
-                self.visit_enum(item.ident,
-                                item.vis,
-                                def,
-                                generics,
-                                item.span);
+                self.visit_enum(item.ident, item.vis, def, generics, item.span);
                 self.last_pos = item.span.hi;
             }
             ast::Item_::ItemMod(ref module) => {
@@ -236,10 +228,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             self.format_missing_with_indent(ti.span.lo);
 
             let indent = self.block_indent;
-            let new_fn = self.rewrite_required_fn(indent,
-                                                  ti.ident,
-                                                  sig,
-                                                  ti.span);
+            let new_fn = self.rewrite_required_fn(indent, ti.ident, sig, ti.span);
 
 
             if let Some(fn_str) = new_fn {

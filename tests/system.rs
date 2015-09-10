@@ -121,9 +121,8 @@ pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, Vec<Mism
     // multithreaded rustfmt
     thread::catch_panic(move || {
         run(args, WriteMode::Return(HANDLE_RESULT), config);
-    }).map_err(|any|
-        *any.downcast().ok().expect("Downcast failed.")
-    )
+    })
+        .map_err(|any| *any.downcast().ok().expect("Downcast failed."))
 }
 
 
@@ -138,7 +137,9 @@ fn get_config(config_file: Option<&str>) -> Box<Config> {
         }
     };
 
-    let mut def_config_file = fs::File::open(config_file_name).ok().expect("Couldn't open config.");
+    let mut def_config_file = fs::File::open(config_file_name)
+                                  .ok()
+                                  .expect("Couldn't open config.");
     let mut def_config = String::new();
     def_config_file.read_to_string(&mut def_config).ok().expect("Couldn't read config.");
 
@@ -148,14 +149,17 @@ fn get_config(config_file: Option<&str>) -> Box<Config> {
 // Reads significant comments of the form: // rustfmt-key: value
 // into a hash map.
 fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
-    let file = fs::File::open(file_name).ok().expect(&format!("Couldn't read file {}.", file_name));
+    let file = fs::File::open(file_name)
+                   .ok()
+                   .expect(&format!("Couldn't read file {}.", file_name));
     let reader = BufReader::new(file);
     let pattern = r"^\s*//\s*rustfmt-([^:]+):\s*(\S+)";
     let regex = regex::Regex::new(&pattern).ok().expect("Failed creating pattern 1.");
 
     // Matches lines containing significant comments or whitespace.
     let line_regex = regex::Regex::new(r"(^\s*$)|(^\s*//\s*rustfmt-[^:]+:\s*\S+)")
-        .ok().expect("Failed creating pattern 2.");
+                         .ok()
+                         .expect("Failed creating pattern 2.");
 
     reader.lines()
           .map(|line| line.ok().expect("Failed getting line."))

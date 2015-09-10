@@ -9,52 +9,51 @@ fn main() {
                      b: WithType, // argument
                      // ignored
                      _| {
-                        (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
-                         bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)
-                    };
+        (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)
+    };
 
     let block_body = move |xxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
                            ref yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy| {
-                              xxxxxxxxxxxxxxxxxxxxxxxxxxxxx + yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-                          };
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxx + yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+    };
 
     let loooooooooooooong_name = |field| {
              // TODO(#27): format comments.
-                                     if field.node.attrs.len() > 0 {
-                                         field.node.attrs[0].span.lo
-                                     } else {
-                                         field.span.lo
-                                     }
-                                 };
+        if field.node.attrs.len() > 0 {
+            field.node.attrs[0].span.lo
+        } else {
+            field.span.lo
+        }
+    };
 
     let block_me = |field| {
-                       if true_story() {
-                           1
-                       } else {
-                           2
-                       }
-                   };
+        if true_story() {
+            1
+        } else {
+            2
+        }
+    };
 
     let unblock_me = |trivial| closure();
 
     let empty = |arg| {};
 
     let simple = |arg| { /* TODO(#27): comment formatting */
-                     foo(arg)
-                 };
+        foo(arg)
+    };
 
     let test = || {
-                   do_something();
-                   do_something_else();
-               };
+        do_something();
+        do_something_else();
+    };
 
     let arg_test = |big_argument_name, test123| {
-                       looooooooooooooooooong_function_naaaaaaaaaaaaaaaaame()
-                   };
+        looooooooooooooooooong_function_naaaaaaaaaaaaaaaaame()
+    };
 
     let arg_test = |big_argument_name, test123| {
-                       looooooooooooooooooong_function_naaaaaaaaaaaaaaaaame()
-                   };
+        looooooooooooooooooong_function_naaaaaaaaaaaaaaaaame()
+    };
 
     let simple_closure = move || -> () {};
 
@@ -63,8 +62,8 @@ fn main() {
     let closure_with_return_type = |aaaaaaaaaaaaaaaaaaaaaaarg1,
                                     aaaaaaaaaaaaaaaaaaaaaaarg2|
                                     -> Strong {
-                                       "sup".to_owned()
-                                   };
+        "sup".to_owned()
+    };
 
     |arg1, arg2, _, _, arg3, arg4| {
         let temp = arg4 + arg3;

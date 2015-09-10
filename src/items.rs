@@ -334,11 +334,13 @@ impl<'a> FmtVisitor<'a> {
         // FIXME: the comment for the self argument is dropped. This is blocked
         // on rust issue #27522.
         let min_args = explicit_self.and_then(|explicit_self| {
-                           rewrite_explicit_self(explicit_self, args)
-                       }).map(|self_str| {
-                           arg_item_strs[0] = self_str;
-                           2
-                       }).unwrap_or(1);
+                                        rewrite_explicit_self(explicit_self, args)
+                                    })
+                                    .map(|self_str| {
+                                        arg_item_strs[0] = self_str;
+                                        2
+                                    })
+                                    .unwrap_or(1);
 
         // Comments between args
         let mut arg_items = Vec::new();
@@ -511,8 +513,9 @@ impl<'a> FmtVisitor<'a> {
                                              |arg| arg.ty.span.hi,
                                              |arg| {
                                                  // FIXME silly width, indent
-                                                 arg.ty.rewrite(&self.get_context(), 1000, 0)
-                                                       .unwrap()
+                                                 arg.ty
+                                                    .rewrite(&self.get_context(), 1000, 0)
+                                                    .unwrap()
                                              },
                                              span_after(field.span, "(", self.codemap),
                                              next_span_start);
@@ -760,11 +763,12 @@ impl<'a> FmtVisitor<'a> {
         let typ = field.node.ty.rewrite(&self.get_context(), 1000, 0).unwrap();
 
         let indent = self.block_indent + self.config.tab_spaces;
-        let mut attr_str = field.node.attrs
-                                     .rewrite(&self.get_context(),
-                                              self.config.max_width - indent,
-                                              indent)
-                                     .unwrap();
+        let mut attr_str = field.node
+                                .attrs
+                                .rewrite(&self.get_context(),
+                                         self.config.max_width - indent,
+                                         indent)
+                                .unwrap();
         if !attr_str.is_empty() {
             attr_str.push('\n');
             attr_str.push_str(&make_indent(indent));
@@ -803,12 +807,9 @@ impl<'a> FmtVisitor<'a> {
         // Strings for the generics.
         let context = self.get_context();
         // FIXME: don't unwrap
-        let lt_strs = lifetimes.iter().map(|lt| {
-            lt.rewrite(&context, h_budget, offset).unwrap()
-        });
-        let ty_strs = tys.iter().map(|ty_param| {
-            ty_param.rewrite(&context, h_budget, offset).unwrap()
-        });
+        let lt_strs = lifetimes.iter().map(|lt| lt.rewrite(&context, h_budget, offset).unwrap());
+        let ty_strs = tys.iter()
+                         .map(|ty_param| ty_param.rewrite(&context, h_budget, offset).unwrap());
 
         // Extract comments between generics.
         let lt_spans = lifetimes.iter().map(|l| {

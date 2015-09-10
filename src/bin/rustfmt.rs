@@ -82,7 +82,9 @@ fn main() {
 }
 
 fn print_usage<S: Into<String>>(reason: S) {
-    println!("{}\n\r usage: rustfmt [-h Help] [--write-mode=[replace|overwrite|display|diff]] <file_name>", reason.into());
+    println!("{}\n\r usage: rustfmt [-h Help] [--write-mode=[replace|overwrite|display|diff]] \
+              <file_name>",
+             reason.into());
 }
 
 fn determine_params<I>(args: I) -> Option<(Vec<String>, WriteMode)>
@@ -122,7 +124,6 @@ fn determine_params<I>(args: I) -> Option<(Vec<String>, WriteMode)>
         print_usage("Please provide a file to be formatted");
         return None;
     }
-
 
     Some((rustc_args, write_mode))
 }

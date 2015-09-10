@@ -38,10 +38,10 @@ impl Rewrite for ast::ViewPath {
                 let path_str = try_opt!(path.rewrite(context, width - ident_str.len() - 4, offset));
 
                 Some(if path.segments.last().unwrap().identifier == ident {
-                        path_str
-                    } else {
-                        format!("{} as {}", path_str, ident_str)
-                    })
+                    path_str
+                } else {
+                    format!("{} as {}", path_str, ident_str)
+                })
             }
         }
     }
@@ -150,10 +150,10 @@ pub fn rewrite_use_list(width: usize,
     let list_str = try_opt!(write_list(&items[first_index..], &fmt));
 
     Some(if path_str.is_empty() {
-            format!("{{{}}}", list_str)
-        } else {
-            format!("{}::{{{}}}", path_str, list_str)
-        })
+        format!("{{{}}}", list_str)
+    } else {
+        format!("{}::{{{}}}", path_str, list_str)
+    })
 }
 
 // Returns true when self item was found.

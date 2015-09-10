@@ -25,8 +25,7 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
         ("// ", "", "// ")
     };
 
-    let max_chars = width.checked_sub(closer.len()).unwrap_or(1)
-                         .checked_sub(opener.len()).unwrap_or(1);
+    let max_chars = width.checked_sub(closer.len() + opener.len()).unwrap_or(1);
 
     let fmt = StringFormat {
         opener: "",
@@ -41,44 +40,45 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
     let indent_str = make_indent(offset);
     let line_breaks = s.chars().filter(|&c| c == '\n').count();
 
-    let (_, mut s) = s.lines().enumerate()
-        .map(|(i, mut line)| {
-            line = line.trim();
+    let (_, mut s) = s.lines()
+                      .enumerate()
+                      .map(|(i, mut line)| {
+                          line = line.trim();
+                          // Drop old closer.
+                          if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
+                              line = &line[..(line.len() - 2)];
+                          }
 
-            // Drop old closer.
-            if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
-                line = &line[..(line.len() - 2)];
-            }
+                          line.trim_right()
+                      })
+                      .map(left_trim_comment_line)
+                      .map(|line| {
+                          if line_breaks == 0 {
+                              line.trim_left()
+                          } else {
+                              line
+                          }
+                      })
+                      .fold((true, opener.to_owned()),
+                            |(first, mut acc), line| {
+                                if !first {
+                                    acc.push('\n');
+                                    acc.push_str(&indent_str);
+                                    acc.push_str(line_start);
+                                }
 
-            line.trim_right()
-        })
-        .map(left_trim_comment_line)
-        .map(|line| {
-            if line_breaks == 0 {
-                line.trim_left()
-            } else {
-                line
-            }
-        })
-        .fold((true, opener.to_owned()), |(first, mut acc), line| {
-            if !first {
-                acc.push('\n');
-                acc.push_str(&indent_str);
-                acc.push_str(line_start);
-            }
+                                if line.len() > max_chars {
+                                    acc.push_str(&rewrite_string(line, &fmt));
+                                } else {
+                                    if line.len() == 0 {
+                                        acc.pop(); // Remove space if this is an empty comment.
+                                    } else {
+                                        acc.push_str(line);
+                                    }
+                                }
 
-            if line.len() > max_chars {
-                acc.push_str(&rewrite_string(line, &fmt));
-            } else {
-                if line.len() == 0 {
-                    acc.pop(); // Remove space if this is an empty comment.
-                } else {
-                    acc.push_str(line);
-                }
-            }
-
-            (false, acc)
-        });
+                                (false, acc)
+                            });
 
     s.push_str(closer);
 
@@ -146,23 +146,10 @@ pub fn find_comment_end(s: &str) -> Option<usize> {
     }
 }
 
-#[test]
-fn comment_end() {
-    assert_eq!(Some(6), find_comment_end("// hi\n"));
-    assert_eq!(Some(9), find_comment_end("/* sup */ "));
-    assert_eq!(Some(9), find_comment_end("/*/**/ */ "));
-    assert_eq!(Some(6), find_comment_end("/*/ */ weird!"));
-    assert_eq!(None, find_comment_end("/* hi /* test */"));
-    assert_eq!(None, find_comment_end("// hi /* test */"));
-    assert_eq!(Some(9), find_comment_end("// hi /*\n."));
-}
-
-
 /// Returns true if text contains any comment.
 pub fn contains_comment(text: &str) -> bool {
-    CharClasses::new(text.chars()).any(|(kind, _)| kind == CodeCharKind::Comment )
+    CharClasses::new(text.chars()).any(|(kind, _)| kind == CodeCharKind::Comment)
 }
-
 
 struct CharClasses<T>
     where T: Iterator,
@@ -324,10 +311,14 @@ mod test {
     // This is probably intended to be a non-test fn, but it is not used. I'm
     // keeping it around unless it helps us test stuff.
     fn uncommented(text: &str) -> String {
-        CharClasses::new(text.chars()).filter_map(|(s, c)| match s {
-            CodeCharKind::Normal => Some(c),
-            CodeCharKind::Comment => None
-        }).collect()
+        CharClasses::new(text.chars())
+            .filter_map(|(s, c)| {
+                match s {
+                    CodeCharKind::Normal => Some(c),
+                    CodeCharKind::Comment => None,
+                }
+            })
+            .collect()
     }
 
     #[test]

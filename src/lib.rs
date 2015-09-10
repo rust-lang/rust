@@ -10,6 +10,7 @@
 
 #![feature(rustc_private)]
 #![feature(custom_attribute)]
+#![feature(slice_splits)]
 #![allow(unused_attributes)]
 
 // TODO we're going to allocate a whole bunch of temp Strings, is it worth
@@ -70,6 +71,7 @@ mod string;
 mod comment;
 mod modules;
 pub mod rustfmt_diff;
+mod chains;
 
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.

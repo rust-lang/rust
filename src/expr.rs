@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cmp::Ordering;
+use std::borrow::Borrow;
 
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
@@ -17,10 +18,11 @@ use StructLitStyle;
 use utils::{span_after, make_indent, extra_offset, first_line_width, last_line_width, wrap_str,
             binary_search};
 use visitor::FmtVisitor;
-use config::{BlockIndentStyle, MultilineStyle};
+use config::MultilineStyle;
 use comment::{FindUncommented, rewrite_comment, contains_comment};
 use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg, rewrite_fn_input};
+use chains::rewrite_chain;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{CodeMap, Span, BytePos, mk_sp};
@@ -38,7 +40,7 @@ impl Rewrite for ast::Expr {
                 }
             }
             ast::Expr_::ExprCall(ref callee, ref args) => {
-                rewrite_call(context, callee, args, self.span, width, offset)
+                rewrite_call(context, &**callee, args, self.span, width, offset)
             }
             ast::Expr_::ExprParen(ref subexpr) => {
                 rewrite_paren(context, subexpr, width, offset)
@@ -137,6 +139,11 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprClosure(capture, ref fn_decl, ref body) => {
                 rewrite_closure(capture, fn_decl, body, self.span, context, width, offset)
             }
+            ast::Expr_::ExprField(..) |
+            ast::Expr_::ExprTupField(..) |
+            ast::Expr_::ExprMethodCall(..) => {
+                rewrite_chain(self, context, width, offset)
+            }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
             _ => wrap_str(context.snippet(self.span), context.config.max_width, width, offset),
@@ -201,8 +208,6 @@ fn rewrite_closure(capture: ast::CaptureClause,
         prefix.push_str(&ret_str);
     }
 
-    let closure_indent = closure_indent(context, offset);
-
     // Try to format closure body as a single line expression without braces.
     if is_simple_block(body, context.codemap) && !prefix.contains('\n') {
         let (spacer, closer) = if ret_str.is_empty() {
@@ -233,17 +238,16 @@ fn rewrite_closure(capture: ast::CaptureClause,
 
     // We couldn't format the closure body as a single line expression; fall
     // back to block formatting.
-    let inner_context = context.overflow_context(closure_indent - context.block_indent);
     let body_rewrite = body.expr
                            .as_ref()
                            .and_then(|body_expr| {
                                if let ast::Expr_::ExprBlock(ref inner) = body_expr.node {
-                                   Some(inner.rewrite(&inner_context, 2, 0))
+                                   Some(inner.rewrite(&context, 2, 0))
                                } else {
                                    None
                                }
                            })
-                           .unwrap_or_else(|| body.rewrite(&inner_context, 2, 0));
+                           .unwrap_or_else(|| body.rewrite(&context, 2, 0));
 
     Some(format!("{} {}", prefix, try_opt!(body_rewrite)))
 }
@@ -277,8 +281,10 @@ impl Rewrite for ast::Block {
                 };
 
                 if is_simple_block(self, context.codemap) && prefix.len() < width {
-                    let body =
-                        self.expr.as_ref().unwrap().rewrite(context, width - prefix.len(), offset);
+                    let body = self.expr
+                                   .as_ref()
+                                   .unwrap()
+                                   .rewrite(context, width - prefix.len(), offset);
                     if let Some(ref expr_str) = body {
                         let result = format!("{}{{ {} }}", prefix, expr_str);
                         if result.len() <= width && !result.contains('\n') {
@@ -393,9 +399,9 @@ impl<'a> Rewrite for Loop<'a> {
         };
 
         // FIXME: this drops any comment between "loop" and the block.
-        self.block.rewrite(context, width, offset).map(|result| {
-            format!("{}{}{} {}", label_string, self.keyword, pat_expr_string, result)
-        })
+        self.block
+            .rewrite(context, width, offset)
+            .map(|result| format!("{}{}{} {}", label_string, self.keyword, pat_expr_string, result))
     }
 }
 
@@ -670,14 +676,12 @@ impl Rewrite for ast::Arm {
         total_width += (pat_strs.len() - 1) * 3;
 
         let mut vertical = total_width > pat_budget || pat_strs.iter().any(|p| p.contains('\n'));
-        if !vertical {
+        if !vertical && context.config.take_source_hints {
             // If the patterns were previously stacked, keep them stacked.
-            // FIXME should be an option.
             let pat_span = mk_sp(pats[0].span.lo, pats[pats.len() - 1].span.hi);
             let pat_str = context.snippet(pat_span);
             vertical = pat_str.find('\n').is_some();
         }
-
 
         let pats_width = if vertical {
             pat_strs[pat_strs.len() - 1].len()
@@ -717,9 +721,7 @@ impl Rewrite for ast::Arm {
         // 4 = ` => `.len()
         if context.config.max_width > line_start + comma.len() + 4 {
             let budget = context.config.max_width - line_start - comma.len() - 4;
-            if let Some(ref body_str) = body.rewrite(context,
-                                                     budget,
-                                                     line_start + 4) {
+            if let Some(ref body_str) = body.rewrite(context, budget, line_start + 4) {
                 if first_line_width(body_str) <= budget {
                     return Some(format!("{}{} => {}{}",
                                         attr_str.trim_left(),
@@ -762,9 +764,7 @@ fn rewrite_guard(context: &RewriteContext,
         // 4 = ` if `, 5 = ` => {`
         let overhead = pattern_width + 4 + 5;
         if overhead < width {
-            let cond_str = guard.rewrite(context,
-                                         width - overhead,
-                                         offset + pattern_width + 4);
+            let cond_str = guard.rewrite(context, width - overhead, offset + pattern_width + 4);
             if let Some(cond_str) = cond_str {
                 return Some(format!(" if {}", cond_str));
             }
@@ -866,36 +866,35 @@ fn rewrite_string_lit(context: &RewriteContext,
     Some(rewrite_string(str_lit, &fmt))
 }
 
-fn rewrite_call(context: &RewriteContext,
-                callee: &ast::Expr,
-                args: &[ptr::P<ast::Expr>],
-                span: Span,
-                width: usize,
-                offset: usize)
-                -> Option<String> {
-    let callback = |callee_max_width| {
-                       rewrite_call_inner(context,
-                                          callee,
-                                          callee_max_width,
-                                          args,
-                                          span,
-                                          width,
-                                          offset)
-                   };
+pub fn rewrite_call<R>(context: &RewriteContext,
+                       callee: &R,
+                       args: &[ptr::P<ast::Expr>],
+                       span: Span,
+                       width: usize,
+                       offset: usize)
+                       -> Option<String>
+    where R: Rewrite
+{
+    let closure = |callee_max_width| {
+        rewrite_call_inner(context, callee, callee_max_width, args, span, width, offset)
+    };
 
     // 2 is for parens
     let max_width = try_opt!(width.checked_sub(2));
-    binary_search(1, max_width, callback)
+    binary_search(1, max_width, closure)
 }
 
-fn rewrite_call_inner(context: &RewriteContext,
-                      callee: &ast::Expr,
-                      max_callee_width: usize,
-                      args: &[ptr::P<ast::Expr>],
-                      span: Span,
-                      width: usize,
-                      offset: usize)
-                      -> Result<String, Ordering> {
+fn rewrite_call_inner<R>(context: &RewriteContext,
+                         callee: &R,
+                         max_callee_width: usize,
+                         args: &[ptr::P<ast::Expr>],
+                         span: Span,
+                         width: usize,
+                         offset: usize)
+                         -> Result<String, Ordering>
+    where R: Rewrite
+{
+    let callee = callee.borrow();
     // FIXME using byte lens instead of char lens (and probably all over the
     // place too)
     let callee_str = match callee.rewrite(context, max_callee_width, offset) {
@@ -909,6 +908,9 @@ fn rewrite_call_inner(context: &RewriteContext,
         None => return Err(Ordering::Greater),
     };
 
+    let span_lo = span_after(span, "(", context.codemap);
+    let span = mk_sp(span_lo, span.hi);
+
     let extra_offset = extra_offset(&callee_str, offset);
     // 2 is for parens.
     let remaining_width = match width.checked_sub(extra_offset + 2) {
@@ -916,8 +918,12 @@ fn rewrite_call_inner(context: &RewriteContext,
         None => return Err(Ordering::Greater),
     };
     let offset = offset + extra_offset + 1;
-    let inner_indent = expr_indent(context, offset);
-    let inner_context = context.overflow_context(inner_indent - context.block_indent);
+    let block_indent = if args.len() == 1 {
+        context.block_indent
+    } else {
+        offset
+    };
+    let inner_context = &RewriteContext { block_indent: block_indent, ..*context };
 
     let items = itemize_list(context.codemap,
                              args.iter(),
@@ -929,7 +935,7 @@ fn rewrite_call_inner(context: &RewriteContext,
                                  item.rewrite(&inner_context, remaining_width, offset)
                                      .unwrap_or(context.snippet(item.span))
                              },
-                             callee.span.hi + BytePos(1),
+                             span.lo,
                              span.hi);
 
     let fmt = ListFormatting::for_fn(remaining_width, offset);
@@ -940,21 +946,6 @@ fn rewrite_call_inner(context: &RewriteContext,
 
     Ok(format!("{}({})", callee_str, list_str))
 }
-
-macro_rules! block_indent_helper {
-    ($name:ident, $option:ident) => (
-        fn $name(context: &RewriteContext, offset: usize) -> usize {
-            match context.config.$option {
-                BlockIndentStyle::Inherit => context.block_indent,
-                BlockIndentStyle::Tabbed => context.block_indent + context.config.tab_spaces,
-                BlockIndentStyle::Visual => offset,
-            }
-        }
-    );
-}
-
-block_indent_helper!(expr_indent, expr_indent_style);
-block_indent_helper!(closure_indent, closure_indent_style);
 
 fn rewrite_paren(context: &RewriteContext,
                  subexpr: &ast::Expr,
@@ -1004,7 +995,8 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         }
     };
 
-    let field_iter = fields.into_iter().map(StructLitField::Regular)
+    let field_iter = fields.into_iter()
+                           .map(StructLitField::Regular)
                            .chain(base.into_iter().map(StructLitField::Base));
 
     let inner_context = &RewriteContext { block_indent: indent, ..*context };
@@ -1016,10 +1008,11 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                  match *item {
                                      StructLitField::Regular(ref field) => field.span.lo,
                                      StructLitField::Base(ref expr) => {
-                                         let last_field_hi =
-                                             fields.last().map_or(span.lo, |field| field.span.hi);
-                                         let snippet =
-                                             context.snippet(mk_sp(last_field_hi, expr.span.lo));
+                                         let last_field_hi = fields.last()
+                                                                   .map_or(span.lo,
+                                                                           |field| field.span.hi);
+                                         let snippet = context.snippet(mk_sp(last_field_hi,
+                                                                             expr.span.lo));
                                          let pos = snippet.find_uncommented("..").unwrap();
                                          last_field_hi + BytePos(pos as u32)
                                      }
@@ -1035,7 +1028,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                  match *item {
                                      StructLitField::Regular(ref field) => {
                                          rewrite_field(inner_context, &field, h_budget, indent)
-                                            .unwrap_or(context.snippet(field.span))
+                                             .unwrap_or(context.snippet(field.span))
                                      }
                                      StructLitField::Base(ref expr) => {
                                          // 2 = ..
@@ -1067,11 +1060,10 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     let fields_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
     let format_on_newline = || {
-                                let inner_indent = make_indent(context.block_indent +
-                                                               context.config.tab_spaces);
-                                let outer_indent = make_indent(context.block_indent);
-                                Some(format!("{} {{\n{}{}\n{}}}", path_str, inner_indent, fields_str, outer_indent))
-                            };
+        let inner_indent = make_indent(context.block_indent + context.config.tab_spaces);
+        let outer_indent = make_indent(context.block_indent);
+        Some(format!("{} {{\n{}{}\n{}}}", path_str, inner_indent, fields_str, outer_indent))
+    };
 
     match (context.config.struct_lit_style, context.config.struct_lit_multiline_style) {
         (StructLitStyle::Block, _) if fields_str.contains('\n') => format_on_newline(),
@@ -1090,8 +1082,8 @@ fn rewrite_field(context: &RewriteContext,
                  -> Option<String> {
     let name = &field.ident.node.to_string();
     let overhead = name.len() + 2;
-    let expr =
-        field.expr.rewrite(context, try_opt!(width.checked_sub(overhead)), offset + overhead);
+    let expr = field.expr
+                    .rewrite(context, try_opt!(width.checked_sub(overhead)), offset + overhead);
     expr.map(|s| format!("{}: {}", name, s))
 }
 
@@ -1152,10 +1144,7 @@ fn rewrite_binary_op(context: &RewriteContext,
     // worth trying to put everything on one line.
     if rhs_result.len() + 2 + operator_str.len() < width && !rhs_result.contains('\n') {
         // 1 = space between lhs expr and operator
-        if let Some(mut result) = lhs.rewrite(context,
-                                              width - 1 - operator_str.len(),
-                                              offset) {
-
+        if let Some(mut result) = lhs.rewrite(context, width - 1 - operator_str.len(), offset) {
             result.push(' ');
             result.push_str(&operator_str);
             result.push(' ');
@@ -1167,9 +1156,7 @@ fn rewrite_binary_op(context: &RewriteContext,
                 return Some(result);
             }
 
-            if let Some(rhs_result) = rhs.rewrite(context,
-                                                  remaining_width,
-                                                  offset + result.len()) {
+            if let Some(rhs_result) = rhs.rewrite(context, remaining_width, offset + result.len()) {
                 if rhs_result.len() <= remaining_width {
                     result.push_str(&rhs_result);
                     return Some(result);

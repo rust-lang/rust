@@ -44,8 +44,8 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> String {
     result.push_str(fmt.opener);
 
     let ender_length = fmt.line_end.len();
-    let max_chars = fmt.width.checked_sub(fmt.opener.len()).unwrap_or(0)
-                             .checked_sub(ender_length).unwrap_or(1);
+    let max_chars = fmt.width.checked_sub(fmt.opener.len() + ender_length).unwrap_or(1);
+
     loop {
         let mut cur_end = cur_start + max_chars;
 
