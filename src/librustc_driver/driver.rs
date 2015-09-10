@@ -132,7 +132,6 @@ pub fn compile_input(sess: Session,
 
         phase_3_run_analysis_passes(sess,
                                     ast_map,
-                                    &expanded_crate,
                                     &arenas,
                                     id,
                                     control.make_glob_map,
@@ -598,6 +597,10 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         sess.abort_if_errors();
     });
 
+    time(time_passes, "early lint checks", || {
+        lint::check_ast_crate(sess, &krate)
+    });
+
     Some(krate)
 }
 
@@ -641,7 +644,6 @@ pub fn make_map<'ast>(sess: &Session,
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
                                                ast_map: front::map::Map<'tcx>,
-                                               ast_crate: &ast::Crate,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: String,
                                                make_glob_map: resolve::MakeGlobMap,
@@ -765,7 +767,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
                 &tcx.sess, lib_features_used));
 
         time(time_passes, "lint checking", ||
-            lint::check_crate(tcx, &lower_crate(ast_crate), &exported_items));
+            lint::check_crate(tcx, krate, &exported_items));
 
         // The above three passes generate errors w/o aborting
         tcx.sess.abort_if_errors();
