@@ -4731,8 +4731,8 @@ impl<'a> Parser<'a> {
             (fields, Some(ast::DUMMY_NODE_ID))
         } else {
             let token_str = self.this_token_to_string();
-            return Err(self.fatal(&format!("expected `where`, `{}`, `(`, or `;` after struct \
-                                            name, found `{}`", "{", token_str)))
+            return Err(self.fatal(&format!("expected `where`, `{{`, `(`, or `;` after struct \
+                                            name, found `{}`", token_str)))
         };
 
         Ok((class_name,
@@ -4760,8 +4760,8 @@ impl<'a> Parser<'a> {
             try!(self.bump());
         } else {
             let token_str = self.this_token_to_string();
-            return Err(self.fatal(&format!("expected `where`, or `{}` after struct \
-                                name, found `{}`", "{",
+            return Err(self.fatal(&format!("expected `where`, or `{{` after struct \
+                                name, found `{}`",
                                 token_str)));
         }
 
