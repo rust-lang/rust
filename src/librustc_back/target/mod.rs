@@ -91,7 +91,7 @@ pub struct Target {
 #[derive(Clone, Debug)]
 pub struct TargetOptions {
     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
-    pub data_layout: String,
+    pub data_layout: Option<String>,
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,
     /// Archive utility to use when managing archives. Defaults to "ar".
@@ -186,7 +186,7 @@ impl Default for TargetOptions {
     /// incomplete, and if used for compilation, will certainly not work.
     fn default() -> TargetOptions {
         TargetOptions {
-            data_layout: String::new(),
+            data_layout: None,
             linker: option_env!("CFG_DEFAULT_LINKER").unwrap_or("cc").to_string(),
             ar: option_env!("CFG_DEFAULT_AR").unwrap_or("ar").to_string(),
             pre_link_args: Vec::new(),
@@ -287,6 +287,14 @@ impl Target {
                         )
                     );
             } );
+            ($key_name:ident, optional) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                if let Some(o) = obj.find(&name[..]) {
+                    base.options.$key_name = o
+                        .as_string()
+                        .map(|s| s.to_string() );
+                }
+            } );
         }
 
         key!(cpu);
@@ -300,7 +308,7 @@ impl Target {
         key!(staticlib_prefix);
         key!(staticlib_suffix);
         key!(features);
-        key!(data_layout);
+        key!(data_layout, optional);
         key!(dynamic_linking, bool);
         key!(executables, bool);
         key!(disable_redzone, bool);
