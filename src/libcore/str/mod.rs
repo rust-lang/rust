@@ -297,7 +297,7 @@ impl<'a> Chars<'a> {
     ///
     /// This has the same lifetime as the original slice, and so the
     /// iterator can continue to be used while this exists.
-    #[unstable(feature = "iter_to_slice", issue = "27775")]
+    #[stable(feature = "iter_to_slice", since = "1.4.0")]
     #[inline]
     pub fn as_str(&self) -> &'a str {
         unsafe { from_utf8_unchecked(self.iter.as_slice()) }
@@ -356,7 +356,7 @@ impl<'a> CharIndices<'a> {
     ///
     /// This has the same lifetime as the original slice, and so the
     /// iterator can continue to be used while this exists.
-    #[unstable(feature = "iter_to_slice", issue = "27775")]
+    #[stable(feature = "iter_to_slice", since = "1.4.0")]
     #[inline]
     pub fn as_str(&self) -> &'a str {
         self.iter.as_str()

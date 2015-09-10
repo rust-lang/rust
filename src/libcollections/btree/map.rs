@@ -149,6 +149,7 @@ pub struct OccupiedEntry<'a, K:'a, V:'a> {
 impl<K: Ord, V> BTreeMap<K, V> {
     /// Makes a new empty BTreeMap with a reasonable choice for B.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(deprecated)]
     pub fn new() -> BTreeMap<K, V> {
         //FIXME(Gankro): Tune this as a function of size_of<K/V>?
         BTreeMap::with_b(6)
@@ -160,6 +161,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[unstable(feature = "btree_b",
                reason = "probably want this to be on the type, eventually",
                issue = "27795")]
+    #[deprecated(since = "1.4.0", reason = "niche API")]
     pub fn with_b(b: usize) -> BTreeMap<K, V> {
         assert!(b > 1, "B must be greater than 1");
         BTreeMap {
@@ -183,6 +185,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert!(a.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(deprecated)]
     pub fn clear(&mut self) {
         let b = self.b;
         // avoid recursive destructors by manually traversing the tree

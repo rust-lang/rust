@@ -170,7 +170,6 @@
        html_playground_url = "https://play.rust-lang.org/")]
 #![deny(missing_docs)]
 
-#![feature(box_raw)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(iter_cmp)]

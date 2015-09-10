@@ -410,8 +410,7 @@ pub fn sleep_ms(ms: u32) {
 /// signal being received or a spurious wakeup. Platforms which do not support
 /// nanosecond precision for sleeping will have `dur` rounded up to the nearest
 /// granularity of time they can sleep for.
-#[unstable(feature = "thread_sleep", reason = "waiting on Duration",
-           issue = "27771")]
+#[stable(feature = "thread_sleep", since = "1.4.0")]
 pub fn sleep(dur: Duration) {
     imp::Thread::sleep(dur)
 }
@@ -481,8 +480,7 @@ pub fn park_timeout_ms(ms: u32) {
 ///
 /// Platforms which do not support nanosecond precision for sleeping will have
 /// `dur` rounded up to the nearest granularity of time they can sleep for.
-#[unstable(feature = "park_timeout", reason = "waiting on Duration",
-           issue = "27771")]
+#[stable(feature = "park_timeout", since = "1.4.0")]
 pub fn park_timeout(dur: Duration) {
     let thread = current();
     let mut guard = thread.inner.lock.lock().unwrap();

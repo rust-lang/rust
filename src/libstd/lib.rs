@@ -203,7 +203,6 @@
 #![feature(allow_internal_unstable)]
 #![feature(associated_consts)]
 #![feature(borrow_state)]
-#![feature(box_raw)]
 #![feature(box_syntax)]
 #![feature(char_from_unchecked)]
 #![feature(char_internals)]
