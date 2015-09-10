@@ -38,7 +38,7 @@ use middle::const_eval::{eval_const_expr_partial, ConstVal};
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::front::map as hir_map;
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeSet};
-use lint::{Level, LateContext, LintContext, LintPass, LintArray, Lint};
+use lint::{Level, LateContext, EarlyContext, LintContext, LintPass, LintArray, Lint};
 
 use std::collections::HashSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -1390,9 +1390,9 @@ declare_lint! {
 pub struct UnusedParens;
 
 impl UnusedParens {
-    fn check_unused_parens_core(&self, cx: &LateContext, value: &hir::Expr, msg: &str,
+    fn check_unused_parens_core(&self, cx: &EarlyContext, value: &ast::Expr, msg: &str,
                                 struct_lit_needs_parens: bool) {
-        if let hir::ExprParen(ref inner) = value.node {
+        if let ast::ExprParen(ref inner) = value.node {
             let necessary = struct_lit_needs_parens && contains_exterior_struct_lit(&**inner);
             if !necessary {
                 cx.span_lint(UNUSED_PARENS, value.span,
@@ -1405,27 +1405,27 @@ impl UnusedParens {
         /// delimiters, e.g. `X { y: 1 }`, `X { y: 1 }.method()`, `foo
         /// == X { y: 1 }` and `X { y: 1 } == foo` all do, but `(X {
         /// y: 1 }) == foo` does not.
-        fn contains_exterior_struct_lit(value: &hir::Expr) -> bool {
+        fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
             match value.node {
-                hir::ExprStruct(..) => true,
+                ast::ExprStruct(..) => true,
 
-                hir::ExprAssign(ref lhs, ref rhs) |
-                hir::ExprAssignOp(_, ref lhs, ref rhs) |
-                hir::ExprBinary(_, ref lhs, ref rhs) => {
+                ast::ExprAssign(ref lhs, ref rhs) |
+                ast::ExprAssignOp(_, ref lhs, ref rhs) |
+                ast::ExprBinary(_, ref lhs, ref rhs) => {
                     // X { y: 1 } + X { y: 2 }
                     contains_exterior_struct_lit(&**lhs) ||
                         contains_exterior_struct_lit(&**rhs)
                 }
-                hir::ExprUnary(_, ref x) |
-                hir::ExprCast(ref x, _) |
-                hir::ExprField(ref x, _) |
-                hir::ExprTupField(ref x, _) |
-                hir::ExprIndex(ref x, _) => {
+                ast::ExprUnary(_, ref x) |
+                ast::ExprCast(ref x, _) |
+                ast::ExprField(ref x, _) |
+                ast::ExprTupField(ref x, _) |
+                ast::ExprIndex(ref x, _) => {
                     // &X { y: 1 }, X { y: 1 }.y
                     contains_exterior_struct_lit(&**x)
                 }
 
-                hir::ExprMethodCall(_, _, ref exprs) => {
+                ast::ExprMethodCall(_, _, ref exprs) => {
                     // X { y: 1 }.bar(...)
                     contains_exterior_struct_lit(&*exprs[0])
                 }
@@ -1441,28 +1441,28 @@ impl LintPass for UnusedParens {
         lint_array!(UNUSED_PARENS)
     }
 
-    fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
+    fn check_ast_expr(&mut self, cx: &EarlyContext, e: &ast::Expr) {
         let (value, msg, struct_lit_needs_parens) = match e.node {
-            hir::ExprIf(ref cond, _, _) => (cond, "`if` condition", true),
-            hir::ExprWhile(ref cond, _, _) => (cond, "`while` condition", true),
-            hir::ExprMatch(ref head, _, source) => match source {
-                hir::MatchSource::Normal => (head, "`match` head expression", true),
-                hir::MatchSource::IfLetDesugar { .. } => (head, "`if let` head expression", true),
-                hir::MatchSource::WhileLetDesugar => (head, "`while let` head expression", true),
-                hir::MatchSource::ForLoopDesugar => (head, "`for` head expression", true),
+            ast::ExprIf(ref cond, _, _) => (cond, "`if` condition", true),
+            ast::ExprWhile(ref cond, _, _) => (cond, "`while` condition", true),
+            ast::ExprMatch(ref head, _, source) => match source {
+                ast::MatchSource::Normal => (head, "`match` head expression", true),
+                ast::MatchSource::IfLetDesugar { .. } => (head, "`if let` head expression", true),
+                ast::MatchSource::WhileLetDesugar => (head, "`while let` head expression", true),
+                ast::MatchSource::ForLoopDesugar => (head, "`for` head expression", true),
             },
-            hir::ExprRet(Some(ref value)) => (value, "`return` value", false),
-            hir::ExprAssign(_, ref value) => (value, "assigned value", false),
-            hir::ExprAssignOp(_, _, ref value) => (value, "assigned value", false),
+            ast::ExprRet(Some(ref value)) => (value, "`return` value", false),
+            ast::ExprAssign(_, ref value) => (value, "assigned value", false),
+            ast::ExprAssignOp(_, _, ref value) => (value, "assigned value", false),
             _ => return
         };
         self.check_unused_parens_core(cx, &**value, msg, struct_lit_needs_parens);
     }
 
-    fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
+    fn check_ast_stmt(&mut self, cx: &EarlyContext, s: &ast::Stmt) {
         let (value, msg) = match s.node {
-            hir::StmtDecl(ref decl, _) => match decl.node {
-                hir::DeclLocal(ref local) => match local.init {
+            ast::StmtDecl(ref decl, _) => match decl.node {
+                ast::DeclLocal(ref local) => match local.init {
                     Some(ref value) => (value, "assigned value"),
                     None => return
                 },
