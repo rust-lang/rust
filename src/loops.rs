@@ -351,6 +351,7 @@ impl<'v, 't> Visitor<'v> for IncrementVisitor<'v, 't> {
                             }
                         },
                     ExprAssign(ref lhs, _) if lhs.id == expr.id => *state = VarState::DontWarn,
+                    ExprAddrOf(mutability,_) if mutability == MutMutable => *state = VarState::DontWarn,
                     _ => ()
                 }
             }
@@ -430,6 +431,7 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
                         } else {
                             VarState::DontWarn
                         }},
+                    ExprAddrOf(mutability,_) if mutability == MutMutable => self.state = VarState::DontWarn,
                     _ => ()
                 }
             }
