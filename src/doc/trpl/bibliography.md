@@ -1,8 +1,8 @@
-% Academic Research
+% Bibliography
 
-An incomplete list of papers that have had some influence in Rust.
-
-Recommended for inspiration and a better understanding of Rust's background.
+This is a reading list of material relevant to Rust. It includes prior
+research that has - at one time or another - influenced the design of
+Rust, as well as publications about Rust.
 
 ### Type system
 
@@ -33,6 +33,7 @@ Recommended for inspiration and a better understanding of Rust's background.
 * [Non-blocking steal-half work queues](http://www.cs.bgu.ac.il/%7Ehendlerd/papers/p280-hendler.pdf)
 * [Reagents: expressing and composing fine-grained concurrency](http://www.mpi-sws.org/~turon/reagents.pdf)
 * [Algorithms for scalable synchronization of shared-memory multiprocessors](https://www.cs.rochester.edu/u/scott/papers/1991_TOCS_synch.pdf)
+* [Epoc-based reclamation](https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-579.pdf).
 
 ### Others
 
@@ -71,3 +72,9 @@ Language](http://www.cs.indiana.edu/~eholk/papers/hips2013.pdf). Early GPU work 
 * [Code Refinement of Stencil
   Codes](http://compilers.cs.uni-saarland.de/papers/ppl14_web.pdf). Another
   paper using Impala.
+* [Parallelization in Rust with fork-join and
+  friends](http://publications.lib.chalmers.se/records/fulltext/219016/219016.pdf). Linus
+  Farnstrand's master's thesis.
+* [Session Types for
+  Rust](http://munksgaard.me/papers/laumann-munksgaard-larsen.pdf). Philip
+  Munksgaard's master's thesis. Research for Servo.

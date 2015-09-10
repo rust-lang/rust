@@ -69,4 +69,4 @@
     * [Slice Patterns](slice-patterns.md)
     * [Associated Constants](associated-constants.md)
 * [Glossary](glossary.md)
-* [Academic Research](academic-research.md)
+* [Bibliography](bibliography.md)
