@@ -15,7 +15,7 @@
 pub use self::DefLike::*;
 use self::Family::*;
 
-use front::map as ast_map;
+use front::map as hir_map;
 use rustc_front::hir;
 
 use back::svh::Svh;
@@ -241,15 +241,15 @@ fn item_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
     doc_trait_ref(tp, tcx, cdata)
 }
 
-fn item_path(item_doc: rbml::Doc) -> Vec<ast_map::PathElem> {
+fn item_path(item_doc: rbml::Doc) -> Vec<hir_map::PathElem> {
     let path_doc = reader::get_doc(item_doc, tag_path);
     reader::docs(path_doc).filter_map(|(tag, elt_doc)| {
         if tag == tag_path_elem_mod {
             let s = elt_doc.as_str_slice();
-            Some(ast_map::PathMod(token::intern(s)))
+            Some(hir_map::PathMod(token::intern(s)))
         } else if tag == tag_path_elem_name {
             let s = elt_doc.as_str_slice();
-            Some(ast_map::PathName(token::intern(s)))
+            Some(hir_map::PathName(token::intern(s)))
         } else {
             // ignore tag_path_len element
             None
@@ -745,7 +745,7 @@ pub fn each_top_level_item_of_crate<F, G>(intr: Rc<IdentInterner>,
                                 callback)
 }
 
-pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> Vec<ast_map::PathElem> {
+pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> Vec<hir_map::PathElem> {
     item_path(cdata.lookup_item(id))
 }
 
@@ -756,9 +756,9 @@ pub fn get_item_name(intr: &IdentInterner, cdata: Cmd, id: ast::NodeId) -> ast::
 pub type DecodeInlinedItem<'a> =
     Box<for<'tcx> FnMut(Cmd,
                         &ty::ctxt<'tcx>,
-                        Vec<ast_map::PathElem>,
+                        Vec<hir_map::PathElem>,
                         rbml::Doc)
-                        -> Result<&'tcx InlinedItem, Vec<ast_map::PathElem>> + 'a>;
+                        -> Result<&'tcx InlinedItem, Vec<hir_map::PathElem>> + 'a>;
 
 pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeId,
                                 mut decode_inlined_item: DecodeInlinedItem)
