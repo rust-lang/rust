@@ -121,3 +121,11 @@ fn issue227() {
         let handler = box DocumentProgressHandler::new(addr, DocumentProgressTask::DOMContentLoaded);
     }
 }
+
+fn issue184(source: &str) {
+    for c in source.chars() {
+        if index < 'a' {
+            continue;
+        }
+    }
+}
