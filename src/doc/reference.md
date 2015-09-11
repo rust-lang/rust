@@ -2367,9 +2367,6 @@ The currently implemented features of the reference compiler are:
             into a Rust program. This capability, especially the signature for the
             annotated function, is subject to change.
 
-* `struct_inherit` - Allows using struct inheritance, which is barely
-                     implemented and will probably be removed. Don't use this.
-
 * `struct_variant` - Structural enum variants (those with named fields). It is
                      currently unknown whether this style of enum variant is as
                      fully supported as the tuple-forms, and it's not certain
