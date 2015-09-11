@@ -2059,31 +2059,31 @@ arbitrarily complex configurations through nesting.
 
 The following configurations must be defined by the implementation:
 
-* `debug_assertions`. Enabled by default when compiling without optimizations.
+* `debug_assertions` - Enabled by default when compiling without optimizations.
   This can be used to enable extra debugging code in development but not in
   production.  For example, it controls the behavior of the standard library's
   `debug_assert!` macro.
-* `target_arch = "..."`. Target CPU architecture, such as `"x86"`, `"x86_64"`
+* `target_arch = "..."` - Target CPU architecture, such as `"x86"`, `"x86_64"`
   `"mips"`, `"powerpc"`, `"arm"`, or `"aarch64"`.
-* `target_endian = "..."`. Endianness of the target CPU, either `"little"` or
+* `target_endian = "..."` - Endianness of the target CPU, either `"little"` or
   `"big"`.
-* `target_env = ".."` - an option provided by the compiler by default
+* `target_env = ".."` - An option provided by the compiler by default
   describing the runtime environment of the target platform. Some examples of
   this are `musl` for builds targeting the MUSL libc implementation, `msvc` for
   Windows builds targeting MSVC, and `gnu` frequently the rest of the time. This
   option may also be blank on some platforms.
-* `target_family = "..."`. Operating system family of the target, e. g.
+* `target_family = "..."` - Operating system family of the target, e. g.
   `"unix"` or `"windows"`. The value of this configuration option is defined
   as a configuration itself, like `unix` or `windows`.
-* `target_os = "..."`. Operating system of the target, examples include
+* `target_os = "..."` - Operating system of the target, examples include
   `"windows"`, `"macos"`, `"ios"`, `"linux"`, `"android"`, `"freebsd"`, `"dragonfly"`,
   `"bitrig"` , `"openbsd"` or `"netbsd"`.
-* `target_pointer_width = "..."`. Target pointer width in bits. This is set
+* `target_pointer_width = "..."` - Target pointer width in bits. This is set
   to `"32"` for targets with 32-bit pointers, and likewise set to `"64"` for
   64-bit pointers.
-* `test`. Enabled when compiling the test harness (using the `--test` flag).
-* `unix`. See `target_family`.
-* `windows`. See `target_family`.
+* `test` - Enabled when compiling the test harness (using the `--test` flag).
+* `unix` - See `target_family`.
+* `windows` - See `target_family`.
 
 You can also set another attribute based on a `cfg` variable with `cfg_attr`:
 

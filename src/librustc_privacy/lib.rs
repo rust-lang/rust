@@ -50,6 +50,8 @@ use rustc::front::map as ast_map;
 use syntax::ast;
 use syntax::codemap::Span;
 
+pub mod diagnostics;
+
 type Context<'a, 'tcx> = (&'a ty::MethodMap<'tcx>, &'a def::ExportMap);
 
 /// Result of a checking operation - None => no errors were found. Some => an
@@ -715,7 +717,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             UnnamedField(idx) => format!("field #{} of {} is private",
                                          idx + 1, struct_desc),
         };
-        self.tcx.sess.span_err(span, &msg[..]);
+        span_err!(self.tcx.sess, span, E0451,
+                  "{}", &msg[..]);
     }
 
     // Given the ID of a method, checks to ensure it's in scope.
@@ -929,9 +932,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                         });
 
                     if any_priv {
-                        self.tcx.sess.span_err(expr.span,
-                                               "cannot invoke tuple struct constructor \
-                                                with private fields");
+                        span_err!(self.tcx.sess, expr.span, E0450,
+                                  "cannot invoke tuple struct constructor with private \
+                                   fields");
                     }
                 }
             }
@@ -1043,7 +1046,8 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
         let tcx = self.tcx;
         let check_inherited = |sp: Span, vis: hir::Visibility, note: &str| {
             if vis != hir::Inherited {
-                tcx.sess.span_err(sp, "unnecessary visibility qualifier");
+                span_err!(tcx.sess, sp, E0449,
+                          "unnecessary visibility qualifier");
                 if !note.is_empty() {
                     tcx.sess.span_note(sp, note);
                 }
@@ -1076,8 +1080,8 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                     match v.node.vis {
                         hir::Public => {
                             if item.vis == hir::Public {
-                                tcx.sess.span_err(v.span, "unnecessary `pub` \
-                                                           visibility");
+                                span_err!(tcx.sess, v.span, E0448,
+                                          "unnecessary `pub` visibility");
                             }
                         }
                         hir::Inherited => {}
@@ -1098,7 +1102,8 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
         let tcx = self.tcx;
         fn check_inherited(tcx: &ty::ctxt, sp: Span, vis: hir::Visibility) {
             if vis != hir::Inherited {
-                tcx.sess.span_err(sp, "visibility has no effect inside functions");
+                span_err!(tcx.sess, sp, E0447,
+                          "visibility has no effect inside functions");
             }
         }
         let check_struct = |def: &hir::StructDef| {
@@ -1193,8 +1198,8 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
             if !self.tcx.sess.features.borrow().visible_private_types &&
                 self.path_is_private_type(trait_ref.trait_ref.ref_id) {
                     let span = trait_ref.trait_ref.path.span;
-                    self.tcx.sess.span_err(span, "private trait in exported type \
-                                                  parameter bound");
+                    span_err!(self.tcx.sess, span, E0445,
+                              "private trait in exported type parameter bound");
             }
         }
     }
@@ -1435,7 +1440,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
         if let hir::TyPath(_, ref p) = t.node {
             if !self.tcx.sess.features.borrow().visible_private_types &&
                 self.path_is_private_type(t.id) {
-                self.tcx.sess.span_err(p.span, "private type in exported type signature");
+                span_err!(self.tcx.sess, p.span, E0446,
+                          "private type in exported type signature");
             }
         }
         visit::walk_ty(self, t)
