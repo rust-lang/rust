@@ -2862,13 +2862,26 @@ impl <T: Foo> Drop for MyStructWrapper<T> {
 
 E0368: r##"
 This error indicates that a binary assignment operator like `+=` or `^=` was
-applied to the wrong types. For example:
+applied to a type that doesn't support it. For example:
 
 ```
-let mut x: u16 = 5;
-x ^= true; // error, `^=` cannot be applied to types `u16` and `bool`
-x += ();   // error, `+=` cannot be applied to types `u16` and `()`
+let mut x = 12f32; // error: binary operation `<<` cannot be applied to
+               //        type `f32`
+
+x <<= 2;
 ```
+
+To fix this error, please check that this type implements this binary
+operation. Example:
+
+```
+let x = 12u32; // the `u32` type does implement the `ShlAssign` trait
+
+x <<= 2; // ok!
+```
+
+It is also possible to overload most operators for your own type by
+implementing the `[OP]Assign` traits from `std::ops`.
 
 Another problem you might be facing is this: suppose you've overloaded the `+`
 operator for some type `Foo` by implementing the `std::ops::Add` trait for
@@ -2889,15 +2902,12 @@ impl Add for Foo {
 
 fn main() {
     let mut x: Foo = Foo(5);
-    x += Foo(7); // error, `+= cannot be applied to types `Foo` and `Foo`
+    x += Foo(7); // error, `+= cannot be applied to the type `Foo`
 }
 ```
 
-This is because the binary assignment operators currently do not work off of
-traits, so it is not possible to overload them. See [RFC 953] for a proposal
-to change this.
-
-[RFC 953]: https://github.com/rust-lang/rfcs/pull/953
+This is because `AddAssign` is not automatically implemented, so you need to
+manually implement it for your type.
 "##,
 
 E0369: r##"

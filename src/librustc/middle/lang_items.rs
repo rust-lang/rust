@@ -286,6 +286,16 @@ lets_do_this! {
     BitOrTraitLangItem,              "bitor",                   bitor_trait;
     ShlTraitLangItem,                "shl",                     shl_trait;
     ShrTraitLangItem,                "shr",                     shr_trait;
+    AddAssignTraitLangItem,          "add_assign",              add_assign_trait;
+    SubAssignTraitLangItem,          "sub_assign",              sub_assign_trait;
+    MulAssignTraitLangItem,          "mul_assign",              mul_assign_trait;
+    DivAssignTraitLangItem,          "div_assign",              div_assign_trait;
+    RemAssignTraitLangItem,          "rem_assign",              rem_assign_trait;
+    BitXorAssignTraitLangItem,       "bitxor_assign",           bitxor_assign_trait;
+    BitAndAssignTraitLangItem,       "bitand_assign",           bitand_assign_trait;
+    BitOrAssignTraitLangItem,        "bitor_assign",            bitor_assign_trait;
+    ShlAssignTraitLangItem,          "shl_assign",              shl_assign_trait;
+    ShrAssignTraitLangItem,          "shr_assign",              shr_assign_trait;
     IndexTraitLangItem,              "index",                   index_trait;
     IndexMutTraitLangItem,           "index_mut",               index_mut_trait;
     RangeStructLangItem,             "range",                   range_struct;

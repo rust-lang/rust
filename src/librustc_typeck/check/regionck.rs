@@ -695,7 +695,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
         hir::ExprAssignOp(_, ref lhs, ref rhs) => {
             if has_method_map {
                 constrain_call(rcx, expr, Some(&**lhs),
-                               Some(&**rhs).into_iter(), true);
+                               Some(&**rhs).into_iter(), false);
             }
 
             visit::walk_expr(rcx, expr);

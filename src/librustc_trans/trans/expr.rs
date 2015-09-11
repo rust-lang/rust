@@ -1018,7 +1018,20 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         hir::ExprAssignOp(op, ref dst, ref src) => {
-            trans_assign_op(bcx, expr, op, &**dst, &**src)
+            let has_method_map = bcx.tcx()
+                                    .tables
+                                    .borrow()
+                                    .method_map
+                                    .contains_key(&MethodCall::expr(expr.id));
+
+            if has_method_map {
+                let dst = unpack_datum!(bcx, trans(bcx, &**dst));
+                let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
+                trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), dst,
+                                    Some((src_datum, src.id)), None, false).bcx
+            } else {
+                trans_assign_op(bcx, expr, op, &**dst, &**src)
+            }
         }
         hir::ExprInlineAsm(ref a) => {
             asm::trans_inline_asm(bcx, a)
@@ -1207,8 +1220,11 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Trait casts used to come this way, now they should be coercions.
             bcx.tcx().sess.span_bug(expr.span, "DPS expr_cast (residual trait cast?)")
         }
-        hir::ExprAssignOp(op, ref dst, ref src) => {
-            trans_assign_op(bcx, expr, op, &**dst, &**src)
+        hir::ExprAssignOp(op, _, _) => {
+            bcx.tcx().sess.span_bug(
+                expr.span,
+                &format!("augmented assignment `{}=` should always be a rvalue_stmt",
+                         rustc_front::util::binop_to_string(op.node)))
         }
         _ => {
             bcx.tcx().sess.span_bug(
