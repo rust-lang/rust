@@ -11,12 +11,11 @@
 // compile-flags: -Z parse-only
 
 // Test diagnostics for the removed struct inheritance feature.
-#![feature(struct_inherit)]
 
-virtual struct SuperStruct { //~ ERROR `virtual` structs have been removed from the language
+virtual struct SuperStruct { //~ ERROR expected item, found `virtual`
     f1: isize,
 }
 
-struct Struct : SuperStruct; //~ ERROR `virtual` structs have been removed from the language
+struct Struct : SuperStruct;
 
 pub fn main() {}
