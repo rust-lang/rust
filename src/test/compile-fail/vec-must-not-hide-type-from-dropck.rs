@@ -29,7 +29,6 @@ use std::cell::Cell;
 use id::Id;
 
 mod s {
-    #![allow(unstable)]
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     static S_COUNT: AtomicUsize = AtomicUsize::new(0);

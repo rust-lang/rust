@@ -129,6 +129,9 @@ pub fn compile_input(sess: Session,
                                                                      &ast_map.krate(),
                                                                      &id[..]));
 
+        time(sess.time_passes(), "early lint checks", || {
+            lint::check_ast_crate(&sess, &expanded_crate)
+        });
 
         phase_3_run_analysis_passes(sess,
                                     ast_map,
@@ -595,10 +598,6 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                               sess.opts.unstable_features);
         *sess.features.borrow_mut() = features;
         sess.abort_if_errors();
-    });
-
-    time(time_passes, "early lint checks", || {
-        lint::check_ast_crate(sess, &krate)
     });
 
     Some(krate)

@@ -18,5 +18,5 @@ fn forever() -> ! {
 }
 
 fn main() {
-  if (1 == 2) { forever(); }
+  if 1 == 2 { forever(); }
 }

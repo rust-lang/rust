@@ -13,15 +13,15 @@
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
 
-extern crate rustc_front;
+extern crate syntax;
 
 // Load rustc as a plugin to get macros
 #[macro_use]
 extern crate rustc;
 
-use rustc::lint::{Context, LintPass, LintPassObject, LintArray};
+use rustc::lint::{EarlyContext, LintContext, LintPass, LintPassObject, LintArray};
 use rustc::plugin::Registry;
-use rustc_front::hir;
+use syntax::ast;
 declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");
 
 struct Pass;
@@ -31,7 +31,7 @@ impl LintPass for Pass {
         lint_array!(TEST_LINT)
     }
 
-    fn check_item(&mut self, cx: &Context, it: &hir::Item) {
+    fn check_ast_item(&mut self, cx: &EarlyContext, it: &ast::Item) {
         if it.ident.name == "lintme" {
             cx.span_lint(TEST_LINT, it.span, "item is named 'lintme'");
         }
