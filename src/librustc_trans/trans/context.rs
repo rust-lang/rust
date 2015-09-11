@@ -838,7 +838,6 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
 
     ifn!("llvm.trap", fn() -> void);
     ifn!("llvm.debugtrap", fn() -> void);
-    ifn!("llvm.frameaddress", fn(t_i32) -> i8p);
 
     ifn!("llvm.powi.f32", fn(t_f32, t_i32) -> t_f32);
     ifn!("llvm.powi.f64", fn(t_f64, t_i32) -> t_f64);
