@@ -4692,11 +4692,6 @@ impl<'a> Parser<'a> {
         let class_name = try!(self.parse_ident());
         let mut generics = try!(self.parse_generics());
 
-        if try!(self.eat(&token::Colon) ){
-            let ty = try!(self.parse_ty_sum());
-            self.span_err(ty.span, "`virtual` structs have been removed from the language");
-        }
-
         // There is a special case worth noting here, as reported in issue #17904.
         // If we are parsing a tuple struct it is the case that the where clause
         // should follow the field list. Like so:
@@ -5381,11 +5376,6 @@ impl<'a> Parser<'a> {
             }
 
             try!(self.expect_one_of(&[], &[]));
-        }
-
-        if try!(self.eat_keyword_noexpect(keywords::Virtual) ){
-            let span = self.span;
-            self.span_err(span, "`virtual` structs have been removed from the language");
         }
 
         if try!(self.eat_keyword(keywords::Static) ){
