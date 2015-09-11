@@ -1,8 +1,9 @@
 use rustc::lint::*;
+use rustc::metadata::cstore::crate_metadata;
 use rustc_front::hir::*;
 use syntax::codemap::Span;
+use std::borrow::Borrow;
 use std::f64::consts as f64;
-
 use utils::span_lint;
 
 declare_lint! {
@@ -31,6 +32,13 @@ impl LintPass for ApproxConstant {
 
     fn check_expr(&mut self, cx: &Context, e: &Expr) {
         if let &ExprLit(ref lit) = &e.node {
+            if let Some(res) = cx.tcx.def_map.borrow().get(&e.id) {
+                let krate = res.def_id().krate;
+                let cdata = &cx.sess().cstore.get_crate_data(krate);
+                let crate_data : &crate_metadata = cdata.borrow();
+                let name = &crate_data.name;
+                if name == "f32" || name == "f64" { return; }
+            }
             check_lit(cx, lit, e.span);
         }
     }

@@ -93,7 +93,7 @@ impl LintPass for FloatCmp {
                     return;
                 }
                 if let Some(name) = get_item_name(cx, expr) {
-                    if name == "eq" || name == "ne" ||
+                    if name == "eq" || name == "ne" || name == "is_nan" ||
                             name.as_str().starts_with("eq_") ||
                             name.as_str().ends_with("_eq") {
                         return;
