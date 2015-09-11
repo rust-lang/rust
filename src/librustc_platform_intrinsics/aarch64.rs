@@ -17,6 +17,7 @@ use {Intrinsic, i, i_, u, u_, f, v, v_, agg, p, void};
 use IntrinsicDef::Named;
 use rustc::middle::ty;
 
+#[inline(never)]
 pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
     if !name.starts_with("aarch64_v") { return None }
     Some(match &name["aarch64_v".len()..] {
