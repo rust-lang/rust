@@ -21,7 +21,7 @@ use visitor::FmtVisitor;
 use config::MultilineStyle;
 use comment::{FindUncommented, rewrite_comment, contains_comment};
 use types::rewrite_path;
-use items::{span_lo_for_arg, span_hi_for_arg, rewrite_fn_input};
+use items::{span_lo_for_arg, span_hi_for_arg};
 use chains::rewrite_chain;
 
 use syntax::{ast, ptr};
@@ -182,7 +182,15 @@ fn rewrite_closure(capture: ast::CaptureClause,
                                  "|",
                                  |arg| span_lo_for_arg(arg),
                                  |arg| span_hi_for_arg(arg),
-                                 |arg| rewrite_fn_input(arg),
+                                 |arg| {
+                                     // FIXME: we should just escalate failure
+                                     // here, but itemize_list doesn't allow it.
+                                     arg.rewrite(context, budget, argument_offset)
+                                        .unwrap_or_else(|| {
+                                            context.snippet(mk_sp(span_lo_for_arg(arg),
+                                                                  span_hi_for_arg(arg)))
+                                        })
+                                 },
                                  span_after(span, "|", context.codemap),
                                  body.span.lo);
 

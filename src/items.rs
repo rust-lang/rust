@@ -12,7 +12,7 @@
 
 use {ReturnIndent, BraceStyle, StructLitStyle};
 use utils::{format_mutability, format_visibility, make_indent, contains_skip, span_after,
-            end_typaram};
+            end_typaram, wrap_str};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
 use expr::rewrite_assign_rhs;
 use comment::FindUncommented;
@@ -329,7 +329,13 @@ impl<'a> FmtVisitor<'a> {
                     arg_indent: usize,
                     span: Span)
                     -> Option<String> {
-        let mut arg_item_strs: Vec<_> = args.iter().map(rewrite_fn_input).collect();
+        let context = self.get_context();
+        let mut arg_item_strs = try_opt!(args.iter()
+                                             .map(|arg| {
+                                                 arg.rewrite(&context, multi_line_budget, indent)
+                                             })
+                                             .collect::<Option<Vec<_>>>());
+
         // Account for sugary self.
         // FIXME: the comment for the self argument is dropped. This is blocked
         // on rust issue #27522.
@@ -342,7 +348,7 @@ impl<'a> FmtVisitor<'a> {
                                     })
                                     .unwrap_or(1);
 
-        // Comments between args
+        // Comments between args.
         let mut arg_items = Vec::new();
         if min_args == 2 {
             arg_items.push(ListItem::from_str(""));
@@ -925,19 +931,22 @@ impl Rewrite for ast::FunctionRetTy {
     }
 }
 
-// TODO we farm this out, but this could spill over the column limit, so we
-// ought to handle it properly.
-pub fn rewrite_fn_input(arg: &ast::Arg) -> String {
-    if is_named_arg(arg) {
-        if let ast::Ty_::TyInfer = arg.ty.node {
-            pprust::pat_to_string(&arg.pat)
+impl Rewrite for ast::Arg {
+    fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
+        if is_named_arg(self) {
+            if let ast::Ty_::TyInfer = self.ty.node {
+                wrap_str(pprust::pat_to_string(&self.pat), context.config.max_width, width, offset)
+            } else {
+                let mut result = pprust::pat_to_string(&self.pat);
+                result.push_str(": ");
+                let max_width = try_opt!(width.checked_sub(result.len()));
+                let ty_str = try_opt!(self.ty.rewrite(context, max_width, offset + result.len()));
+                result.push_str(&ty_str);
+                Some(result)
+            }
         } else {
-            format!("{}: {}",
-                pprust::pat_to_string(&arg.pat),
-                pprust::ty_to_string(&arg.ty))
+            self.ty.rewrite(context, width, offset)
         }
-    } else {
-        pprust::ty_to_string(&arg.ty)
     }
 }
 
