@@ -150,6 +150,8 @@ pub struct TargetOptions {
     /// Whether the target toolchain is like Android's. Only useful for compiling against Android.
     /// Defaults to false.
     pub is_like_android: bool,
+    /// Is the target like PNaCls? Defaults to false.
+    pub is_like_pnacl: bool,
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
     /// Whether the linker support rpaths or not. Defaults to false.
@@ -209,6 +211,7 @@ impl Default for TargetOptions {
             is_like_windows: false,
             is_like_android: false,
             is_like_msvc: false,
+            is_like_pnacl: false,
             linker_is_gnu: false,
             has_rpath: false,
             no_compiler_rt: false,
@@ -412,7 +415,9 @@ impl Target {
             i686_pc_windows_gnu,
 
             x86_64_pc_windows_msvc,
-            i686_pc_windows_msvc
+            i686_pc_windows_msvc,
+
+            le32_unknown_nacl
         );
 
 
