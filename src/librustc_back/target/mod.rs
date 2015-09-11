@@ -426,7 +426,9 @@ impl Target {
             i686_pc_windows_gnu,
 
             x86_64_pc_windows_msvc,
-            i686_pc_windows_msvc
+            i686_pc_windows_msvc,
+
+            le32_unknown_nacl
         );
 
 
