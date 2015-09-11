@@ -158,3 +158,11 @@ fn issue227() {
                                                        DocumentProgressTask::DOMContentLoaded);
     }
 }
+
+fn issue184(source: &str) {
+    for c in source.chars() {
+        if index < 'a' {
+            continue;
+        }
+    }
+}
