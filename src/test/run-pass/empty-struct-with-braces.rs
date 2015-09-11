@@ -13,11 +13,15 @@
 
 struct Empty1 {}
 struct Empty2;
+struct Empty3 {}
+const Empty3: Empty3 = Empty3 {};
 
 fn main() {
     let e1: Empty1 = Empty1 {};
     let e2: Empty2 = Empty2 {};
     let e2: Empty2 = Empty2;
+    let e3: Empty3 = Empty3 {};
+    let e3: Empty3 = Empty3;
 
     match e1 {
         Empty1 {} => ()
@@ -28,4 +32,23 @@ fn main() {
     match e2 {
         Empty2 => ()
     }
+    match e3 {
+        Empty3 {} => ()
+    }
+    match e3 {
+        Empty3 => ()
+    }
+    match e1 {
+        Empty1 { .. } => ()
+    }
+    match e2 {
+        Empty2 { .. } => ()
+    }
+    match e3 {
+        Empty3 { .. } => ()
+    }
+
+    let e11 = Empty1 { ..e1 };
+    let e22 = Empty2 { ..e2 };
+    let e33 = Empty3 { ..e3 };
 }
