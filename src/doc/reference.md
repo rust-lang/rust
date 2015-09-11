@@ -1178,11 +1178,20 @@ let px: i32 = match p { Point(x, _) => x };
 ```
 
 A _unit-like struct_ is a structure without any fields, defined by leaving off
-the list of fields entirely. Such types will have a single value. For example:
+the list of fields entirely. Such structure implicitly defines a constant of
+its type with the same name. For example:
 
 ```
 struct Cookie;
-let c = [Cookie, Cookie, Cookie, Cookie];
+let c = [Cookie, Cookie {}, Cookie, Cookie {}];
+```
+
+is equivalent to
+
+```
+struct Cookie {}
+const Cookie: Cookie = Cookie {};
+let c = [Cookie, Cookie {}, Cookie, Cookie {}];
 ```
 
 The precise memory layout of a structure is not specified. One can specify a
