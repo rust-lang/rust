@@ -11,6 +11,8 @@
 // Test that the parser does not attempt to parse struct literals
 // within assignments in if expressions.
 
+#![allow(unused_parens)]
+
 struct Foo {
     foo: usize
 }

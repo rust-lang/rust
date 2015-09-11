@@ -20,7 +20,7 @@ extern crate rustc_front;
 extern crate rustc;
 
 use rustc_front::hir;
-use rustc::lint::{Context, LintPass, LintPassObject, LintArray};
+use rustc::lint::{Context, LintContext, LintPass, LintPassObject, LintArray};
 use rustc::plugin::Registry;
 
 declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(visible_private_types)]
 #![allow(dead_code)]
 #![crate_type="lib"]
 

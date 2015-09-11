@@ -505,10 +505,10 @@ pub trait LintContext: Sized {
 impl<'a> EarlyContext<'a> {
     fn new(sess: &'a Session,
            krate: &'a ast::Crate) -> EarlyContext<'a> {
-        // We want to own the lint store, so move it out of the session.
+        // We want to own the lint store, so move it out of the session. Remember
+        // to put it back later...
         let lint_store = mem::replace(&mut *sess.lint_store.borrow_mut(),
                                       LintStore::new());
-
         EarlyContext {
             sess: sess,
             krate: krate,

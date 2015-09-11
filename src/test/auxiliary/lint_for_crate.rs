@@ -17,7 +17,7 @@
 extern crate rustc_front;
 extern crate syntax;
 
-use rustc::lint::{Context, LintPass, LintPassObject, LintArray};
+use rustc::lint::{Context, LintContext, LintPass, LintPassObject, LintArray};
 use rustc::plugin::Registry;
 use rustc_front::hir;
 use syntax::attr;
