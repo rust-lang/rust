@@ -896,14 +896,18 @@ Section: Comparing strings
 #[lang = "str_eq"]
 #[inline]
 fn eq_slice(a: &str, b: &str) -> bool {
+    a.len() == b.len() && unsafe { cmp_slice(a, b, a.len()) == 0 }
+}
+
+/// Bytewise slice comparison.
+/// NOTE: This uses the system's memcmp, which is currently dramatically
+/// faster than comparing each byte in a loop.
+#[inline]
+unsafe fn cmp_slice(a: &str, b: &str, len: usize) -> i32 {
     // NOTE: In theory n should be libc::size_t and not usize, but libc is not available here
     #[allow(improper_ctypes)]
     extern { fn memcmp(s1: *const i8, s2: *const i8, n: usize) -> i32; }
-    a.len() == b.len() && unsafe {
-        memcmp(a.as_ptr() as *const i8,
-               b.as_ptr() as *const i8,
-               a.len()) == 0
-    }
+    memcmp(a.as_ptr() as *const i8, b.as_ptr() as *const i8, len)
 }
 
 /*
@@ -1039,8 +1043,8 @@ Section: Trait implementations
 */
 
 mod traits {
-    use cmp::{Ordering, Ord, PartialEq, PartialOrd, Eq};
-    use cmp::Ordering::{Less, Equal, Greater};
+    use cmp::{self, Ordering, Ord, PartialEq, PartialOrd, Eq};
+    use cmp::Ordering::{Less, Greater};
     use iter::Iterator;
     use option::Option;
     use option::Option::Some;
@@ -1051,15 +1055,16 @@ mod traits {
     impl Ord for str {
         #[inline]
         fn cmp(&self, other: &str) -> Ordering {
-            for (s_b, o_b) in self.bytes().zip(other.bytes()) {
-                match s_b.cmp(&o_b) {
-                    Greater => return Greater,
-                    Less => return Less,
-                    Equal => ()
-                }
+            let cmp = unsafe {
+                super::cmp_slice(self, other, cmp::min(self.len(), other.len()))
+            };
+            if cmp == 0 {
+                self.len().cmp(&other.len())
+            } else if cmp < 0 {
+                Less
+            } else {
+                Greater
             }
-
-            self.len().cmp(&other.len())
         }
     }
 
