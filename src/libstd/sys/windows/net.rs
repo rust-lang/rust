@@ -16,11 +16,10 @@ use net::SocketAddr;
 use num::One;
 use ops::Neg;
 use ptr;
-use rt;
 use sync::Once;
 use sys;
 use sys::c;
-use sys_common::{AsInner, FromInner, IntoInner};
+use sys_common::{self, AsInner, FromInner, IntoInner};
 use sys_common::net::{setsockopt, getsockopt};
 use time::Duration;
 
@@ -39,7 +38,7 @@ pub fn init() {
                                 &mut data);
         assert_eq!(ret, 0);
 
-        let _ = rt::at_exit(|| { c::WSACleanup(); });
+        let _ = sys_common::at_exit(|| { c::WSACleanup(); });
     });
 }
 

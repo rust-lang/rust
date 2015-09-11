@@ -54,7 +54,7 @@ pub fn cleanup() {
             LOCK.unlock();
 
             // make sure we're not recursively cleaning up
-            rtassert!(queue as usize != 1);
+            assert!(queue as usize != 1);
 
             // If we never called init, not need to cleanup!
             if queue as usize != 0 {

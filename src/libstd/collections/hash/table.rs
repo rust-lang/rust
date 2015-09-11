@@ -8,22 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use self::BucketState::*;
+use alloc::heap::{allocate, deallocate, EMPTY};
 
-use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
-use iter::{Iterator, ExactSizeIterator};
-use marker::{Copy, Send, Sync, Sized, self};
+use marker;
 use mem::{align_of, size_of};
 use mem;
 use num::wrapping::OverflowingOps;
-use ops::{Deref, DerefMut, Drop};
-use option::Option;
-use option::Option::{Some, None};
+use ops::{Deref, DerefMut};
 use ptr::{self, Unique};
-use rt::heap::{allocate, deallocate, EMPTY};
 use collections::hash_state::HashState;
+
+use self::BucketState::*;
 
 const EMPTY_BUCKET: u64 = 0;
 

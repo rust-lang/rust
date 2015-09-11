@@ -582,7 +582,7 @@ impl Child {
 /// to run.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn exit(code: i32) -> ! {
-    ::rt::cleanup();
+    ::sys_common::cleanup();
     ::sys::os::exit(code)
 }
 

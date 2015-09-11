@@ -2,17 +2,16 @@
 
 ```rust
 #![feature(unique)]
-#![feature(heap_api)]
+#![feature(alloc, heap_api)]
+
+extern crate alloc;
 
 use std::ptr::{Unique, self};
-use std::rt::heap;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 use std::marker::PhantomData;
 
-
-
-
+use alloc::heap;
 
 struct RawVec<T> {
     ptr: Unique<T>,

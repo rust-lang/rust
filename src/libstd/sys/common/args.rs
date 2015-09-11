@@ -19,6 +19,8 @@
 //!
 //! FIXME #7756: Would be nice for this to not exist.
 
+#![allow(dead_code)] // different code on OSX/linux/etc
+
 use vec::Vec;
 
 /// One-time global initialization.
@@ -26,14 +28,6 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) { imp::init(argc, argv) 
 
 /// One-time global cleanup.
 pub unsafe fn cleanup() { imp::cleanup() }
-
-/// Take the global arguments from global storage.
-pub fn take() -> Option<Vec<Vec<u8>>> { imp::take() }
-
-/// Give the global arguments to global storage.
-///
-/// It is an error if the arguments already exist.
-pub fn put(args: Vec<Vec<u8>>) { imp::put(args) }
 
 /// Make a clone of the global arguments.
 pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
@@ -48,7 +42,7 @@ pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
 mod imp {
     use prelude::v1::*;
 
-    use libc;
+    use libc::c_char;
     use mem;
     use ffi::CStr;
 
@@ -58,37 +52,26 @@ mod imp {
     static LOCK: StaticMutex = StaticMutex::new();
 
     pub unsafe fn init(argc: isize, argv: *const *const u8) {
-        let args = load_argc_and_argv(argc, argv);
-        put(args);
+        let args = (0..argc).map(|i| {
+            CStr::from_ptr(*argv.offset(i) as *const c_char).to_bytes().to_vec()
+        }).collect();
+
+        let _guard = LOCK.lock();
+        let ptr = get_global_ptr();
+        assert!((*ptr).is_none());
+        (*ptr) = Some(box args);
     }
 
     pub unsafe fn cleanup() {
-        take();
-    }
-
-    pub fn take() -> Option<Vec<Vec<u8>>> {
         let _guard = LOCK.lock();
-        unsafe {
-            let ptr = get_global_ptr();
-            let val = mem::replace(&mut *ptr, None);
-            val.as_ref().map(|s: &Box<Vec<Vec<u8>>>| (**s).clone())
-        }
-    }
-
-    pub fn put(args: Vec<Vec<u8>>) {
-        let _guard = LOCK.lock();
-        unsafe {
-            let ptr = get_global_ptr();
-            rtassert!((*ptr).is_none());
-            (*ptr) = Some(box args.clone());
-        }
+        *get_global_ptr() = None;
     }
 
     pub fn clone() -> Option<Vec<Vec<u8>>> {
         let _guard = LOCK.lock();
         unsafe {
             let ptr = get_global_ptr();
-            (*ptr).as_ref().map(|s: &Box<Vec<Vec<u8>>>| (**s).clone())
+            (*ptr).as_ref().map(|s| (**s).clone())
         }
     }
 
@@ -96,42 +79,6 @@ mod imp {
         unsafe { mem::transmute(&GLOBAL_ARGS_PTR) }
     }
 
-    unsafe fn load_argc_and_argv(argc: isize,
-                                 argv: *const *const u8) -> Vec<Vec<u8>> {
-        let argv = argv as *const *const libc::c_char;
-        (0..argc).map(|i| {
-            CStr::from_ptr(*argv.offset(i)).to_bytes().to_vec()
-        }).collect()
-    }
-
-    #[cfg(test)]
-    mod tests {
-        use prelude::v1::*;
-
-        use super::*;
-
-        #[test]
-        fn smoke_test() {
-            // Preserve the actual global state.
-            let saved_value = take();
-
-            let expected = vec![
-                b"happy".to_vec(),
-                b"today?".to_vec(),
-            ];
-
-            put(expected.clone());
-            assert!(clone() == Some(expected.clone()));
-            assert!(take() == Some(expected.clone()));
-            assert!(take() == None);
-
-            // Restore the actual global state.
-            match saved_value {
-                Some(ref args) => put(args.clone()),
-                None => ()
-            }
-        }
-    }
 }
 
 #[cfg(any(target_os = "macos",
@@ -144,14 +91,6 @@ mod imp {
     }
 
     pub fn cleanup() {
-    }
-
-    pub fn take() -> Option<Vec<Vec<u8>>> {
-        panic!()
-    }
-
-    pub fn put(_args: Vec<Vec<u8>>) {
-        panic!()
     }
 
     pub fn clone() -> Option<Vec<Vec<u8>>> {
