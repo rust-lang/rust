@@ -727,7 +727,9 @@ impl EmitterWriter {
                              cm: &codemap::CodeMap,
                              sp: Span)
                              -> io::Result<()> {
+        let mut last_span = codemap::DUMMY_SP;
         let mut sp_opt = Some(sp);
+
         while let Some(sp) = sp_opt {
             sp_opt = try!(cm.with_expn_info(sp.expn_id, |expn_info| -> io::Result<_> {
                 match expn_info {
@@ -737,12 +739,16 @@ impl EmitterWriter {
                             codemap::MacroBang(..) => ("", "!"),
                             codemap::CompilerExpansion(..) => ("", ""),
                         };
-                        try!(self.print_diagnostic(&cm.span_to_string(ei.call_site), Note,
-                                                   &format!("in this expansion of {}{}{}",
-                                                            pre,
-                                                            ei.callee.name(),
-                                                            post),
-                                                   None));
+                        // Don't print recursive invocations
+                        if ei.call_site != last_span {
+                            last_span = ei.call_site;
+                            try!(self.print_diagnostic(&cm.span_to_string(ei.call_site), Note,
+                                                       &format!("in this expansion of {}{}{}",
+                                                                pre,
+                                                                ei.callee.name(),
+                                                                post),
+                                                       None));
+                        }
                         Ok(Some(ei.call_site))
                     }
                     None => Ok(None)
