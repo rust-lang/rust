@@ -1,8 +1,6 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
-use syntax::codemap::Span;
 use std::f64::consts as f64;
-
 use utils::span_lint;
 
 declare_lint! {
@@ -31,29 +29,28 @@ impl LintPass for ApproxConstant {
 
     fn check_expr(&mut self, cx: &Context, e: &Expr) {
         if let &ExprLit(ref lit) = &e.node {
-            check_lit(cx, lit, e.span);
+            check_lit(cx, lit, e);
         }
     }
 }
 
-fn check_lit(cx: &Context, lit: &Lit, span: Span) {
+fn check_lit(cx: &Context, lit: &Lit, e: &Expr) {
     match lit.node {
-        LitFloat(ref str, TyF32) => check_known_consts(cx, span, str, "f32"),
-        LitFloat(ref str, TyF64) => check_known_consts(cx, span, str, "f64"),
+        LitFloat(ref str, TyF32) => check_known_consts(cx, e, str, "f32"),
+        LitFloat(ref str, TyF64) => check_known_consts(cx, e, str, "f64"),
         LitFloatUnsuffixed(ref str) =>
-            check_known_consts(cx, span, str, "f{32, 64}"),
+            check_known_consts(cx, e, str, "f{32, 64}"),
         _ => ()
     }
 }
 
-fn check_known_consts(cx: &Context, span: Span, str: &str, module: &str) {
+fn check_known_consts(cx: &Context, e: &Expr, str: &str, module: &str) {
     if let Ok(value) = str.parse::<f64>() {
         for &(constant, name) in KNOWN_CONSTS {
-            if within_epsilon(constant, value) {
-                span_lint(cx, APPROX_CONSTANT, span, &format!(
-                    "approximate value of `{}::{}` found. \
-                    Consider using it directly", module, &name));
-            }
+            if !within_epsilon(constant, value) { continue; }
+            span_lint(cx, APPROX_CONSTANT, e.span, &format!(
+                "approximate value of `{}::{}` found. \
+                Consider using it directly", module, &name));
         }
     }
 }
