@@ -11,12 +11,16 @@
 // no-prefer-dynamic
 // aux-build:allocator-dummy.rs
 
+#![feature(test)]
+
 extern crate allocator_dummy;
+extern crate test;
 
 fn main() {
     unsafe {
         let before = allocator_dummy::HITS;
-        let b = Box::new(3);
+        let mut b = Box::new(3);
+        test::black_box(&mut b); // Make sure the allocation is not optimized away
         assert_eq!(allocator_dummy::HITS - before, 1);
         drop(b);
         assert_eq!(allocator_dummy::HITS - before, 2);
