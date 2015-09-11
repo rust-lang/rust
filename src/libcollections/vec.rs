@@ -65,7 +65,7 @@ use alloc::heap::EMPTY;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
-use core::intrinsics::{arith_offset, assume, drop_in_place};
+use core::intrinsics::{arith_offset, assume};
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::{Index, IndexMut, Deref};
@@ -1329,7 +1329,7 @@ impl<T> Drop for Vec<T> {
         // don't need unsafe_no_drop_flag shenanigans anymore.
         if self.buf.unsafe_no_drop_flag_needs_drop() {
             for x in self.iter_mut() {
-                unsafe { drop_in_place(x); }
+                unsafe { ptr::drop_in_place(x); }
             }
         }
         // RawVec handles deallocation

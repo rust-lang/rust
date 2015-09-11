@@ -58,6 +58,8 @@
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(decode_utf16)]
 #![feature(utf8_error)]
+#![feature(drop_in_place)]
+
 #![cfg_attr(test, feature(rand, test))]
 
 #![feature(no_std)]

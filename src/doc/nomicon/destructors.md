@@ -26,11 +26,10 @@ this is totally fine.
 For instance, a custom implementation of `Box` might write `Drop` like this:
 
 ```rust
-#![feature(heap_api, core_intrinsics, unique)]
+#![feature(heap_api, drop_in_place, unique)]
 
 use std::rt::heap;
-use std::ptr::Unique;
-use std::intrinsics::drop_in_place;
+use std::ptr::{drop_in_place, Unique};
 use std::mem;
 
 struct Box<T>{ ptr: Unique<T> }
@@ -54,11 +53,10 @@ use-after-free the `ptr` because when drop exits, it becomes inacessible.
 However this wouldn't work:
 
 ```rust
-#![feature(heap_api, core_intrinsics, unique)]
+#![feature(heap_api, drop_in_place, unique)]
 
 use std::rt::heap;
-use std::ptr::Unique;
-use std::intrinsics::drop_in_place;
+use std::ptr::{drop_in_place, Unique};
 use std::mem;
 
 struct Box<T>{ ptr: Unique<T> }
@@ -129,11 +127,10 @@ The classic safe solution to overriding recursive drop and allowing moving out
 of Self during `drop` is to use an Option:
 
 ```rust
-#![feature(heap_api, core_intrinsics, unique)]
+#![feature(heap_api, drop_in_place, unique)]
 
 use std::rt::heap;
-use std::ptr::Unique;
-use std::intrinsics::drop_in_place;
+use std::ptr::{drop_in_place, Unique};
 use std::mem;
 
 struct Box<T>{ ptr: Unique<T> }
