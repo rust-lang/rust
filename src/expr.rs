@@ -31,12 +31,20 @@ use syntax::visit::Visitor;
 impl Rewrite for ast::Expr {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
         match self.node {
+            ast::Expr_::ExprVec(ref expr_vec) => {
+                rewrite_array(expr_vec.iter().map(|e| &**e), self.span, context, width, offset)
+            }
             ast::Expr_::ExprLit(ref l) => {
                 match l.node {
                     ast::Lit_::LitStr(_, ast::StrStyle::CookedStr) => {
                         rewrite_string_lit(context, l.span, width, offset)
                     }
-                    _ => Some(context.snippet(self.span)),
+                    _ => {
+                        wrap_str(context.snippet(self.span),
+                                 context.config.max_width,
+                                 width,
+                                 offset)
+                    }
                 }
             }
             ast::Expr_::ExprCall(ref callee, ref args) => {
@@ -149,6 +157,53 @@ impl Rewrite for ast::Expr {
             _ => wrap_str(context.snippet(self.span), context.config.max_width, width, offset),
         }
     }
+}
+
+fn rewrite_array<'a, I>(expr_iter: I,
+                        span: Span,
+                        context: &RewriteContext,
+                        width: usize,
+                        offset: usize)
+                        -> Option<String>
+    where I: Iterator<Item = &'a ast::Expr> + ExactSizeIterator
+{
+    // 2 for brackets;
+    let max_item_width = try_opt!(width.checked_sub(2));
+    let items = itemize_list(context.codemap,
+                             expr_iter,
+                             "]",
+                             |item| item.span.lo,
+                             |item| item.span.hi,
+                             // 1 = [
+                             // FIXME(#133): itemize_list doesn't support
+                             // rewrite failure. This may not be its
+                             // responsibility, but that of write_list.
+                             |item| {
+                                 item.rewrite(context, max_item_width, offset + 1)
+                                     .unwrap_or_else(|| context.snippet(item.span))
+                             },
+                             span_after(span, "[", context.codemap),
+                             span.hi)
+                    .collect::<Vec<_>>();
+
+    let tactic = if items.iter().any(|li| li.item.len() > 10 || li.is_multiline()) {
+        ListTactic::HorizontalVertical
+    } else {
+        ListTactic::Mixed
+    };
+
+    let fmt = ListFormatting {
+        tactic: tactic,
+        separator: ",",
+        trailing_separator: SeparatorTactic::Never,
+        indent: offset + 1,
+        h_width: max_item_width,
+        v_width: max_item_width,
+        ends_with_newline: false,
+    };
+    let list_str = try_opt!(write_list(&items, &fmt));
+
+    Some(format!("[{}]", list_str))
 }
 
 // This functions is pretty messy because of the wrapping and unwrapping of
