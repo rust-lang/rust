@@ -13,9 +13,10 @@ use io::prelude::*;
 
 use any::Any;
 use cell::RefCell;
-use rt::{backtrace, unwind};
 use sys::stdio::Stderr;
+use sys_common::backtrace;
 use sys_common::thread_info;
+use sys_common::unwind;
 
 thread_local! {
     pub static LOCAL_STDERR: RefCell<Option<Box<Write + Send>>> = {

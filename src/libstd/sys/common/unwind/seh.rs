@@ -135,10 +135,11 @@ fn rust_eh_personality() {
 // This function just takes a look at the current EXCEPTION_RECORD being thrown
 // to ensure that it's code is RUST_PANIC, which was set by the call to
 // `RaiseException` above in the `panic` function.
-#[no_mangle]
 #[lang = "msvc_try_filter"]
-pub extern fn __rust_try_filter(eh_ptrs: *mut EXCEPTION_POINTERS,
-                                _rbp: *mut u8) -> i32 {
+#[linkage = "external"]
+#[allow(private_no_mangle_fns)]
+extern fn __rust_try_filter(eh_ptrs: *mut EXCEPTION_POINTERS,
+                            _rbp: *mut u8) -> i32 {
     unsafe {
         ((*(*eh_ptrs).ExceptionRecord).ExceptionCode == RUST_PANIC) as i32
     }
