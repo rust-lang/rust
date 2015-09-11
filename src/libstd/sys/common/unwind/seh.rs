@@ -62,6 +62,7 @@ static PANIC_DATA: StaticKey = StaticKey::new(None);
 
 // This function is provided by kernel32.dll
 extern "system" {
+    #[unwind]
     fn RaiseException(dwExceptionCode: DWORD,
                       dwExceptionFlags: DWORD,
                       nNumberOfArguments: DWORD,
