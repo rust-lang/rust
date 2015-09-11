@@ -17,6 +17,7 @@ use {Intrinsic, i, i_, u, u_, f, v, agg, p};
 use IntrinsicDef::Named;
 use rustc::middle::ty;
 
+#[inline(never)]
 pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
     if !name.starts_with("arm_v") { return None }
     Some(match &name["arm_v".len()..] {
