@@ -26,7 +26,7 @@ still consumes a byte of space.
 * DSTs, tuples, and tagged unions are not a concept in C and as such are never
 FFI safe.
 
-* **If the type would have any [drop flags][], they will still be added**
+* **If the type would have any [drop flags], they will still be added**
 
 * This is equivalent to one of `repr(u*)` (see the next section) for enums. The
 chosen size is the default enum size for the target platform's C ABI. Note that

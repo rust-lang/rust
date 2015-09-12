@@ -10,7 +10,7 @@ captures this through the `Send` and `Sync` traits.
 
 Send and Sync are fundamental to Rust's concurrency story. As such, a
 substantial amount of special tooling exists to make them work right. First and
-foremost, they're [unsafe traits][]. This means that they are unsafe to
+foremost, they're [unsafe traits]. This means that they are unsafe to
 implement, and other unsafe code can assume that they are correctly
 implemented. Since they're *marker traits* (they have no associated items like
 methods), correctly implemented simply means that they have the intrinsic

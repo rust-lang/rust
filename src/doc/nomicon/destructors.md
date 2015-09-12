@@ -52,7 +52,7 @@ impl<T> Drop for Box<T> {
 ```
 
 and this works fine because when Rust goes to drop the `ptr` field it just sees
-a [Unique][] that has no actual `Drop` implementation. Similarly nothing can
+a [Unique] that has no actual `Drop` implementation. Similarly nothing can
 use-after-free the `ptr` because when drop exits, it becomes inacessible.
 
 However this wouldn't work:
