@@ -60,8 +60,8 @@ Unlike C, Undefined Behaviour is pretty limited in scope in Rust. All the core
 language cares about is preventing the following things:
 
 * Dereferencing null or dangling pointers
-* Reading [uninitialized memory][]
-* Breaking the [pointer aliasing rules][]
+* Reading [uninitialized memory]
+* Breaking the [pointer aliasing rules]
 * Producing invalid primitive values:
     * dangling/null references
     * a `bool` that isn't 0 or 1
