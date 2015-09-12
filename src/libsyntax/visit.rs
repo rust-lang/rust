@@ -127,6 +127,9 @@ pub trait Visitor<'v> : Sized {
     fn visit_path(&mut self, path: &'v Path, _id: ast::NodeId) {
         walk_path(self, path)
     }
+    fn visit_path_list_item(&mut self, prefix: &'v Path, item: &'v PathListItem) {
+        walk_path_list_item(self, prefix, item)
+    }
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v PathSegment) {
         walk_path_segment(self, path_span, path_segment)
     }
@@ -209,33 +212,21 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         ItemExternCrate(..) => {}
         ItemUse(ref vp) => {
             match vp.node {
-                ViewPathSimple(ident, ref path) => {
-                    visitor.visit_ident(vp.span, ident);
+                ViewPathSimple(_ident, ref path) => {
                     visitor.visit_path(path, item.id);
                 }
                 ViewPathGlob(ref path) => {
                     visitor.visit_path(path, item.id);
                 }
                 ViewPathList(ref prefix, ref list) => {
-                    for id in list {
-                        match id.node {
-                            PathListIdent { name, rename, .. } => {
-                                visitor.visit_ident(id.span, name);
-                                if let Some(ident) = rename {
-                                    visitor.visit_ident(id.span, ident);
-                                }
-                            }
-                            PathListMod { rename, .. } => {
-                                if let Some(ident) = rename {
-                                    visitor.visit_ident(id.span, ident);
-                                }
-                            }
+                    if !list.is_empty() {
+                        for item in list {
+                            visitor.visit_path_list_item(prefix, item)
                         }
+                    } else {
+                        // FIXME: uncomment this and fix the resulting ICE
+                        // visitor.visit_path(prefix, item.id);
                     }
-
-                    // Note that the `prefix` here is not a complete
-                    // path, so we don't use `visit_path`.
-                    walk_path(visitor, prefix);
                 }
             }
         }
@@ -414,6 +405,17 @@ pub fn walk_lifetime_decls_helper<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path) {
     for segment in &path.segments {
         visitor.visit_path_segment(path.span, segment);
+    }
+}
+
+pub fn walk_path_list_item<'v, V: Visitor<'v>>(visitor: &mut V, prefix: &'v Path,
+                                               item: &'v PathListItem) {
+    for segment in &prefix.segments {
+        visitor.visit_path_segment(prefix.span, segment);
+    }
+
+    if let PathListIdent { name, .. } = item.node {
+        visitor.visit_ident(item.span, name);
     }
 }
 

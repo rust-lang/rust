@@ -2173,6 +2173,13 @@ impl LateLintPass for Stability {
                                           &stab.map(|s| hir_to_ast_stability(s)).as_ref()));
     }
 
+    fn check_path_list_item(&mut self, cx: &LateContext, item: &hir::PathListItem) {
+        stability::check_path_list_item(cx.tcx, item,
+                                         &mut |id, sp, stab|
+                                           self.lint(cx, id, sp,
+                                                &stab.map(|s| hir_to_ast_stability(s)).as_ref()));
+    }
+
     fn check_pat(&mut self, cx: &LateContext, pat: &hir::Pat) {
         stability::check_pat(cx.tcx, pat,
                              &mut |id, sp, stab|
