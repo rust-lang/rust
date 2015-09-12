@@ -35,7 +35,7 @@ unchecked contracts:
 
 There is also `#[unsafe_no_drop_flag]`, which is a special case that exists for
 historical reasons and is in the process of being phased out. See the section on
-[drop flags][] for details.
+[drop flags] for details.
 
 Some examples of unsafe functions:
 
@@ -44,7 +44,7 @@ Some examples of unsafe functions:
 * `ptr::offset` is an intrinsic that invokes Undefined Behaviour if it is
   not "in bounds" as defined by LLVM.
 * `mem::transmute` reinterprets some value as having the given type,
-  bypassing type safety in arbitrary ways. (see [conversions][] for details)
+  bypassing type safety in arbitrary ways. (see [conversions] for details)
 * All FFI functions are `unsafe` because they can do arbitrary things.
   C being an obvious culprit, but generally any language can do something
   that Rust isn't happy about.
