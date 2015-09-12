@@ -10,6 +10,7 @@ links to the major sections:
 * [Writing Documentation](#writing-documentation)
 * [Issue Triage](#issue-triage)
 * [Out-of-tree Contributions](#out-of-tree-contributions)
+* [Helpful Links and Information](#helpful-links-and-information)
 
 If you have questions, please make a post on [internals.rust-lang.org][internals] or
 hop on [#rust-internals][pound-rust-internals].
@@ -210,3 +211,26 @@ valuable!
 [users]: https://users.rust-lang.org/
 [so]: http://stackoverflow.com/questions/tagged/rust
 [community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library
+
+## Helpful Links and Information
+
+For people new to Rust, and just starting to contribute, or even for
+more seasoned developers, some useful places to look for information
+are:
+
+* The [Rust Internals forum][rif], a place to ask questions and
+  discuss Rust's internals
+* The [generated documentation for rust's compiler][gdfrustc]
+* The [rust referance][rr], even though it doesn't specifically talk about Rust's internals, its a great reasource nontheless
+* Although out of date, [Tom Lee's great blog article][tlgba] is very helpful
+* [rustaceans.org][ro] is helpful, but mostly dedicated to IRC
+* The [Rust Compiler Testing Docs][rctd]
+* **Google**!
+* Don't be afraid to ask! The Rust community is friendly and helpful.
+
+[gdfrustc]: http://manishearth.github.io/rust-internals-docs/rustc/
+[rif]: http://internals.rust-lang.org
+[rr]: https://doc.rust-lang.org/book/README.html
+[tlgba]: http://tomlee.co/2014/04/03/a-more-detailed-tour-of-the-rust-compiler/
+[ro]: http://www.rustaceans.org/
+[rctd]: ./COMPILER_TESTS.md
