@@ -737,6 +737,8 @@ use {{Intrinsic, i, i_, u, u_, f, v, v_, agg, p, void}};
 use IntrinsicDef::Named;
 use rustc::middle::ty;
 
+// The default inlining settings trigger a pathological behaviour in
+// LLVM, which causes makes compilation very slow. See #28273.
 #[inline(never)]
 pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {{
     if !name.starts_with("{0}") {{ return None }}
