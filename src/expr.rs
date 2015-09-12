@@ -40,7 +40,8 @@ impl Rewrite for ast::Expr {
                 }
             }
             ast::Expr_::ExprCall(ref callee, ref args) => {
-                rewrite_call(context, &**callee, args, self.span, width, offset)
+                let inner_span = mk_sp(callee.span.hi, self.span.hi);
+                rewrite_call(context, &**callee, args, inner_span, width, offset)
             }
             ast::Expr_::ExprParen(ref subexpr) => {
                 rewrite_paren(context, subexpr, width, offset)

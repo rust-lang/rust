@@ -70,3 +70,9 @@ fn main() {
         arg2 * arg1 - temp
     }
 }
+
+fn issue311() {
+    let func = |x| println!("{}", x);
+
+    (func)(0.0);
+}
