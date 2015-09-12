@@ -201,6 +201,7 @@
 
 #![feature(alloc)]
 #![feature(allow_internal_unstable)]
+#![feature(arc_weak)]
 #![feature(associated_consts)]
 #![feature(borrow_state)]
 #![feature(box_syntax)]
