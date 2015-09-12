@@ -224,6 +224,7 @@ are:
 * The [rust referance][rr], even though it doesn't specifically talk about Rust's internals, its a great reasource nontheless
 * Although out of date, [Tom Lee's great blog article][tlgba] is very helpful
 * [rustaceans.org][ro] is helpful, but mostly dedicated to IRC
+* The [Rust Compiler Testing Docs][rctd]
 * **Google**!
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
@@ -232,3 +233,4 @@ are:
 [rr]: https://doc.rust-lang.org/book/README.html
 [tlgba]: http://tomlee.co/2014/04/03/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: http://www.rustaceans.org/
+[rctd]: ./COMPILER_TESTS.md
