@@ -413,9 +413,20 @@ fn create_substs_for_ast_path<'tcx>(
     let mut type_substs = if param_mode == PathParamMode::Optional &&
                              types_provided.is_empty() {
         let mut substs = region_substs.clone();
+
         ty_param_defs
             .iter()
-            .map(|p| this.ty_infer(Some(p.clone()), Some(&mut substs), Some(TypeSpace), span))
+            .map(|p| {
+                if let Some(ref default) = p.default {
+                    if self_ty.is_none() && default.has_self_ty() {
+                        // There is no suitable inference default for a type parameter
+                        // that references Self with no self-type provided.
+                        return this.ty_infer(None, Some(&mut substs), Some(TypeSpace), span);
+                    }
+                }
+
+                this.ty_infer(Some(p.clone()), Some(&mut substs), Some(TypeSpace), span)
+            })
             .collect()
     } else {
         types_provided
