@@ -2019,7 +2019,7 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
     rscope: &RegionScope,
     span: Span,
     principal_trait_ref: ty::PolyTraitRef<'tcx>,
-    mut projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>, // Empty for boxed closures
+    projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>, // Empty for boxed closures
     partitioned_bounds: PartitionedBounds)
     -> ty::ExistentialBounds<'tcx>
 {
@@ -2058,13 +2058,7 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
 
     debug!("region_bound: {:?}", region_bound);
 
-    ty::sort_bounds_list(&mut projection_bounds);
-
-    ty::ExistentialBounds {
-        region_bound: region_bound,
-        builtin_bounds: builtin_bounds,
-        projection_bounds: projection_bounds,
-    }
+    ty::ExistentialBounds::new(region_bound, builtin_bounds, projection_bounds)
 }
 
 /// Given the bounds on an object, determines what single region bound

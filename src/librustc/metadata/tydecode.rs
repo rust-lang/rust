@@ -680,9 +680,8 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
         }
 
-        return ty::ExistentialBounds { region_bound: region_bound,
-                                       builtin_bounds: builtin_bounds,
-                                       projection_bounds: projection_bounds };
+        ty::ExistentialBounds::new(
+            region_bound, builtin_bounds, projection_bounds)
     }
 
     fn parse_builtin_bounds(&mut self) -> ty::BuiltinBounds {
