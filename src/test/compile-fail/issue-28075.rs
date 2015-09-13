@@ -12,11 +12,10 @@
 
 #![allow(unused_imports)]
 
-use std::thread::{catch_panic, sleep}; //~ ERROR use of unstable library feature 'catch_panic'
-//~^ ERROR use of unstable library feature 'thread_sleep'
+use std::thread::{catch_panic, ScopedKey}; //~ ERROR use of unstable library feature 'catch_panic'
+//~^ ERROR use of unstable library feature 'scoped_tls'
 
 use std::rt::{self}; //~ ERROR use of unstable library feature 'rt'
-use std::rt::{};
 
 fn main() {
 }

@@ -980,15 +980,19 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_path(&mut self, path: &hir::Path, id: ast::NodeId) {
-        self.check_path(path.span, id, path.segments.last().unwrap().identifier.name);
-        visit::walk_path(self, path);
+        if !path.segments.is_empty() {
+            self.check_path(path.span, id, path.segments.last().unwrap().identifier.name);
+            visit::walk_path(self, path);
+        }
     }
 
     fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
         let name = if let hir::PathListIdent { name, .. } = item.node {
             name.name
-        } else {
+        } else if !prefix.segments.is_empty() {
             prefix.segments.last().unwrap().identifier.name
+        } else {
+            self.tcx.sess.bug("`self` import in an import list with empty prefix");
         };
         self.check_path(item.span, item.node.id(), name);
         visit::walk_path_list_item(self, prefix, item);
