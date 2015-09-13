@@ -80,33 +80,30 @@ $ mkdir musldist
 $ PREFIX=$(pwd)/musldist
 $
 $ # Build musl
-$ wget http://www.musl-libc.org/releases/musl-1.1.10.tar.gz
-[...]
+$ curl -O http://www.musl-libc.org/releases/musl-1.1.10.tar.gz
 $ tar xf musl-1.1.10.tar.gz
 $ cd musl-1.1.10/
 musl-1.1.10 $ ./configure --disable-shared --prefix=$PREFIX
-[...]
 musl-1.1.10 $ make
-[...]
 musl-1.1.10 $ make install
-[...]
 musl-1.1.10 $ cd ..
 $ du -h musldist/lib/libc.a
 2.2M    musldist/lib/libc.a
 $
 $ # Build libunwind.a
-$ wget http://llvm.org/releases/3.6.1/llvm-3.6.1.src.tar.xz
-$ tar xf llvm-3.6.1.src.tar.xz
-$ cd llvm-3.6.1.src/projects/
-llvm-3.6.1.src/projects $ svn co http://llvm.org/svn/llvm-project/libcxxabi/trunk/ libcxxabi
-llvm-3.6.1.src/projects $ svn co http://llvm.org/svn/llvm-project/libunwind/trunk/ libunwind
-llvm-3.6.1.src/projects $ sed -i 's#^\(include_directories\).*$#\0\n\1(../libcxxabi/include)#' libunwind/CMakeLists.txt
-llvm-3.6.1.src/projects $ mkdir libunwind/build
-llvm-3.6.1.src/projects $ cd libunwind/build
-llvm-3.6.1.src/projects/libunwind/build $ cmake -DLLVM_PATH=../../.. -DLIBUNWIND_ENABLE_SHARED=0 ..
-llvm-3.6.1.src/projects/libunwind/build $ make
-llvm-3.6.1.src/projects/libunwind/build $ cp lib/libunwind.a $PREFIX/lib/
-llvm-3.6.1.src/projects/libunwind/build $ cd cd ../../../../
+$ curl -O http://llvm.org/releases/3.7.0/llvm-3.7.0.src.tar.xz
+$ tar xf llvm-3.7.0.src.tar.xz
+$ cd llvm-3.7.0.src/projects/
+llvm-3.7.0.src/projects $ curl http://llvm.org/releases/3.7.0/libcxxabi-3.7.0.src.tar.xz | tar xJf -
+llvm-3.7.0.src/projects $ mv libcxxabi-3.7.0.src libcxxabi
+llvm-3.7.0.src/projects $ curl http://llvm.org/releases/3.7.0/libunwind-3.7.0.src.tar.xz | tar xJf -
+llvm-3.7.0.src/projects $ mv libunwind-3.7.0.src libunwind
+llvm-3.7.0.src/projects $ mkdir libunwind/build
+llvm-3.7.0.src/projects $ cd libunwind/build
+llvm-3.7.0.src/projects/libunwind/build $ cmake -DLLVM_PATH=../../.. -DLIBUNWIND_ENABLE_SHARED=0 ..
+llvm-3.7.0.src/projects/libunwind/build $ make
+llvm-3.7.0.src/projects/libunwind/build $ cp lib/libunwind.a $PREFIX/lib/
+llvm-3.7.0.src/projects/libunwind/build $ cd ../../../../
 $ du -h musldist/lib/libunwind.a
 164K    musldist/lib/libunwind.a
 $
