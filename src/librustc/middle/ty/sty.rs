@@ -899,6 +899,14 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn is_phantom_data(&self) -> bool {
+        if let TyStruct(def, _) = self.sty {
+            def.is_phantom_data()
+        } else {
+            false
+        }
+    }
+
     pub fn is_bool(&self) -> bool { self.sty == TyBool }
 
     pub fn is_param(&self, space: subst::ParamSpace, index: u32) -> bool {
