@@ -4723,9 +4723,13 @@ impl<'a> Parser<'a> {
             let fields = try!(self.parse_record_struct_body(&class_name));
             (fields, None)
         // Tuple-style struct definition with optional where-clause.
-        } else {
+        } else if self.token == token::OpenDelim(token::Paren) {
             let fields = try!(self.parse_tuple_struct_body(&class_name, &mut generics));
             (fields, Some(ast::DUMMY_NODE_ID))
+        } else {
+            let token_str = self.this_token_to_string();
+            return Err(self.fatal(&format!("expected `where`, `{{`, `(`, or `;` after struct \
+                                            name, found `{}`", token_str)))
         };
 
         Ok((class_name,
@@ -4753,8 +4757,8 @@ impl<'a> Parser<'a> {
             try!(self.bump());
         } else {
             let token_str = self.this_token_to_string();
-            return Err(self.fatal(&format!("expected `where`, or `{}` after struct \
-                                name, found `{}`", "{",
+            return Err(self.fatal(&format!("expected `where`, or `{{` after struct \
+                                name, found `{}`",
                                 token_str)));
         }
 
@@ -4766,43 +4770,32 @@ impl<'a> Parser<'a> {
                                    generics: &mut ast::Generics)
                                    -> PResult<Vec<StructField>> {
         // This is the case where we find `struct Foo<T>(T) where T: Copy;`
-        if self.check(&token::OpenDelim(token::Paren)) {
-            let fields = try!(self.parse_unspanned_seq(
-                &token::OpenDelim(token::Paren),
-                &token::CloseDelim(token::Paren),
-                seq_sep_trailing_allowed(token::Comma),
-                |p| {
-                    let attrs = p.parse_outer_attributes();
-                    let lo = p.span.lo;
-                    let struct_field_ = ast::StructField_ {
-                        kind: UnnamedField(try!(p.parse_visibility())),
-                        id: ast::DUMMY_NODE_ID,
-                        ty: try!(p.parse_ty_sum()),
-                        attrs: attrs,
-                    };
-                    Ok(spanned(lo, p.span.hi, struct_field_))
-                }));
+        // Unit like structs are handled in parse_item_struct function
+        let fields = try!(self.parse_unspanned_seq(
+            &token::OpenDelim(token::Paren),
+            &token::CloseDelim(token::Paren),
+            seq_sep_trailing_allowed(token::Comma),
+            |p| {
+                let attrs = p.parse_outer_attributes();
+                let lo = p.span.lo;
+                let struct_field_ = ast::StructField_ {
+                    kind: UnnamedField(try!(p.parse_visibility())),
+                    id: ast::DUMMY_NODE_ID,
+                    ty: try!(p.parse_ty_sum()),
+                    attrs: attrs,
+                };
+                Ok(spanned(lo, p.span.hi, struct_field_))
+            }));
 
-            if fields.is_empty() {
-                return Err(self.fatal(&format!("unit-like struct definition should be \
-                    written as `struct {};`",
-                    class_name)));
-            }
-
-            generics.where_clause = try!(self.parse_where_clause());
-            try!(self.expect(&token::Semi));
-            Ok(fields)
-        // This is the case where we just see struct Foo<T> where T: Copy;
-        } else if self.token.is_keyword(keywords::Where) {
-            generics.where_clause = try!(self.parse_where_clause());
-            try!(self.expect(&token::Semi));
-            Ok(Vec::new())
-        // This case is where we see: `struct Foo<T>;`
-        } else {
-            let token_str = self.this_token_to_string();
-            Err(self.fatal(&format!("expected `where`, `{}`, `(`, or `;` after struct \
-                name, found `{}`", "{", token_str)))
+        if fields.is_empty() {
+            return Err(self.fatal(&format!("unit-like struct definition should be \
+                                            written as `struct {};`",
+                                           class_name)));
         }
+
+        generics.where_clause = try!(self.parse_where_clause());
+        try!(self.expect(&token::Semi));
+        Ok(fields)
     }
 
     /// Parse a structure field declaration
