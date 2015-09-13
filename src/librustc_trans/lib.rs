@@ -42,7 +42,6 @@
 #![feature(unicode)]
 #![feature(unicode)]
 #![feature(vec_push_all)]
-#![feature(rc_weak)]
 
 #![allow(trivial_casts)]
 

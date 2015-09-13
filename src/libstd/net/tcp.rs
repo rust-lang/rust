@@ -130,8 +130,13 @@ impl TcpStream {
     /// If the value specified is `None`, then `read` calls will block
     /// indefinitely. It is an error to pass the zero `Duration` to this
     /// method.
-    #[unstable(feature = "socket_timeout", reason = "RFC 1047 - recently added",
-               issue = "27773")]
+    ///
+    /// # Note
+    ///
+    /// Platforms may return a different error code whenever a read times out as
+    /// a result of setting this option. For example Unix typically returns an
+    /// error of the kind `WouldBlock`, but Windows may return `TimedOut`.
+    #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.0.set_read_timeout(dur)
     }
@@ -141,8 +146,13 @@ impl TcpStream {
     /// If the value specified is `None`, then `write` calls will block
     /// indefinitely. It is an error to pass the zero `Duration` to this
     /// method.
-    #[unstable(feature = "socket_timeout", reason = "RFC 1047 - recently added",
-               issue = "27773")]
+    ///
+    /// # Note
+    ///
+    /// Platforms may return a different error code whenever a write times out
+    /// as a result of setting this option. For example Unix typically returns
+    /// an error of the kind `WouldBlock`, but Windows may return `TimedOut`.
+    #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.0.set_write_timeout(dur)
     }
@@ -154,8 +164,7 @@ impl TcpStream {
     /// # Note
     ///
     /// Some platforms do not provide access to the current timeout.
-    #[unstable(feature = "socket_timeout", reason = "RFC 1047 - recently added",
-               issue = "27773")]
+    #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.read_timeout()
     }
@@ -167,8 +176,7 @@ impl TcpStream {
     /// # Note
     ///
     /// Some platforms do not provide access to the current timeout.
-    #[unstable(feature = "socket_timeout", reason = "RFC 1047 - recently added",
-               issue = "27773")]
+    #[stable(feature = "socket_timeout", since = "1.4.0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.write_timeout()
     }

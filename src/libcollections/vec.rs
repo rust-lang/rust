@@ -614,8 +614,6 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(append)]
-    ///
     /// let mut vec = vec![1, 2, 3];
     /// let mut vec2 = vec![4, 5, 6];
     /// vec.append(&mut vec2);
@@ -623,9 +621,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec2, []);
     /// ```
     #[inline]
-    #[unstable(feature = "append",
-               reason = "new API, waiting for dust to settle",
-               issue = "27765")]
+    #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
         self.reserve(other.len());
         let len = self.len();
@@ -765,9 +761,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec2, [2, 3]);
     /// ```
     #[inline]
-    #[unstable(feature = "split_off",
-               reason = "new API, waiting for dust to settle",
-               issue = "27766")]
+    #[stable(feature = "split_off", since = "1.4.0")]
     pub fn split_off(&mut self, at: usize) -> Self {
         assert!(at <= self.len(), "`at` out of bounds");
 

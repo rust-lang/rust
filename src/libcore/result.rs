@@ -405,8 +405,9 @@ impl<T, E> Result<T, E> {
 
     /// Converts from `Result<T, E>` to `&[T]` (without copying)
     #[inline]
-    #[unstable(feature = "as_slice", since = "unsure of the utility here",
+    #[unstable(feature = "as_slice", reason = "unsure of the utility here",
                issue = "27776")]
+    #[deprecated(since = "1.4.0", reason = "niche API, unclear of usefulness")]
     pub fn as_slice(&self) -> &[T] {
         match *self {
             Ok(ref x) => slice::ref_slice(x),
@@ -439,6 +440,7 @@ impl<T, E> Result<T, E> {
     #[unstable(feature = "as_slice",
                reason = "waiting for mut conventions",
                issue = "27776")]
+    #[deprecated(since = "1.4.0", reason = "niche API, unclear of usefulness")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         match *self {
             Ok(ref mut x) => slice::mut_ref_slice(x),
@@ -742,12 +744,11 @@ impl<T, E: fmt::Debug> Result<T, E> {
     ///
     /// # Examples
     /// ```{.should_panic}
-    /// #![feature(result_expect)]
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
     /// ```
     #[inline]
-    #[unstable(feature = "result_expect", reason = "newly introduced", issue = "27277")]
+    #[stable(feature = "result_expect", since = "1.4.0")]
     pub fn expect(self, msg: &str) -> T {
         match self {
             Ok(t) => t,

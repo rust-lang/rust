@@ -61,14 +61,14 @@ pub trait FromRawFd {
 
 /// A trait to express the ability to consume an object and acquire ownership of
 /// its raw file descriptor.
-#[unstable(feature = "into_raw_os", reason = "recently added API",
-           issue = "27797")]
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 pub trait IntoRawFd {
     /// Consumes this object, returning the raw underlying file descriptor.
     ///
     /// This function **transfers ownership** of the underlying file descriptor
     /// to the caller. Callers are then the unique owners of the file descriptor
     /// and must close the descriptor once it's no longer needed.
+    #[stable(feature = "into_raw_os", since = "1.4.0")]
     fn into_raw_fd(self) -> RawFd;
 }
 
@@ -84,6 +84,7 @@ impl FromRawFd for fs::File {
         fs::File::from_inner(sys::fs::File::from_inner(fd))
     }
 }
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawFd for fs::File {
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_fd().into_raw()
@@ -125,16 +126,19 @@ impl FromRawFd for net::UdpSocket {
     }
 }
 
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawFd for net::TcpStream {
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_socket().into_inner()
     }
 }
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawFd for net::TcpListener {
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_socket().into_inner()
     }
 }
+#[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawFd for net::UdpSocket {
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_socket().into_inner()

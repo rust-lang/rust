@@ -25,7 +25,6 @@
 #![feature(rustc_private)]
 #![feature(slice_splits)]
 #![feature(staged_api)]
-#![feature(rc_weak)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
