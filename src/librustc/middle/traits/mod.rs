@@ -29,7 +29,6 @@ pub use self::error_reporting::report_fulfillment_errors;
 pub use self::error_reporting::report_overflow_error;
 pub use self::error_reporting::report_selection_error;
 pub use self::error_reporting::report_object_safety_error;
-pub use self::error_reporting::suggest_new_overflow_limit;
 pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
