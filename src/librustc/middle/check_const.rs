@@ -378,8 +378,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                             "lower range bound must be less than or equal to upper");
                     }
                     None => {
-                        self.tcx.sess.span_bug(
-                            start.span, "literals of different types in range pat");
+                        self.tcx.sess.delay_span_bug(start.span,
+                                                     "non-constant path in constant expr");
                     }
                 }
             }
