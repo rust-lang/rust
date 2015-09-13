@@ -100,13 +100,17 @@
 use self::Name::*;
 use self::HasArg::*;
 use self::Occur::*;
+use self::Special::*;
 use self::Fail::*;
 use self::Optval::*;
 use self::SplitWithinState::*;
 use self::Whitespace::*;
 use self::LengthLimit::*;
 
+use std::error;
 use std::fmt;
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
 use std::iter::repeat;
 use std::result;
 
@@ -143,6 +147,16 @@ pub enum Occur {
     Multi,
 }
 
+/// Identifies options which require special handling.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum Special {
+    /// A normal option, no special handling required.
+    Normal,
+    /// Read further options, separated by the given byte, from the file given
+    /// as the option's argument. If the argument is `-`, read stdin.
+    Include(u8),
+}
+
 /// A description of a possible option.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Opt {
@@ -152,6 +166,8 @@ pub struct Opt {
     pub hasarg: HasArg,
     /// How often it can occur
     pub occur: Occur,
+    /// Whether this option requires special handling
+    pub special: Special,
     /// Which options it aliases
     pub aliases: Vec<Opt>,
 }
@@ -171,7 +187,9 @@ pub struct OptGroup {
     /// Whether option has an argument
     pub hasarg: HasArg,
     /// How often it can occur
-    pub occur: Occur
+    pub occur: Occur,
+    /// Whether this option requires special handling
+    pub special: Special,
 }
 
 /// Describes whether an option is given at all or has a value.
@@ -196,7 +214,7 @@ pub struct Matches {
 /// The type returned when the command line does not conform to the
 /// expected format. Use the `Debug` implementation to output detailed
 /// information.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Debug)]
 pub enum Fail {
     /// The option requires an argument but none was passed.
     ArgumentMissing(String),
@@ -208,6 +226,11 @@ pub enum Fail {
     OptionDuplicated(String),
     /// There's an argument being passed to a non-argument option.
     UnexpectedArgument(String),
+    /// An include was encountered while processing another include. This is
+    /// currently not allowed to prevent infinite recursion.
+    NestedIncludeNotAllowed,
+    /// A generic Error, currenly only used while reading included files.
+    GenericError(Box<error::Error>),
 }
 
 /// The type of failure that occurred.
@@ -241,6 +264,17 @@ impl Name {
     }
 }
 
+impl Special {
+    /// `assert!()` that this Special may be used in conjunction with the given
+    /// settings.
+    fn assert_valid(&self, hasarg: HasArg, _occur: Occur) {
+        match *self {
+            Include(_) => assert!(hasarg == Yes),
+            _ => (),
+        }
+    }
+}
+
 impl OptGroup {
     /// Translate OptGroup into Opt.
     /// (Both short and long names correspond to different Opts).
@@ -250,8 +284,13 @@ impl OptGroup {
             long_name,
             hasarg,
             occur,
+            special,
             ..
         } = (*self).clone();
+
+        // Do the validation here because `long_to_short` is called for every
+        // `OptGroup`.
+        special.assert_valid(hasarg, occur);
 
         match (short_name.len(), long_name.len()) {
             (0,0) => panic!("this long-format option was given no name"),
@@ -259,23 +298,27 @@ impl OptGroup {
                 name: Long((long_name)),
                 hasarg: hasarg,
                 occur: occur,
+                special: special,
                 aliases: Vec::new()
             },
             (1,0) => Opt {
                 name: Short(short_name.char_at(0)),
                 hasarg: hasarg,
                 occur: occur,
+                special: special,
                 aliases: Vec::new()
             },
             (1,_) => Opt {
                 name: Long((long_name)),
                 hasarg: hasarg,
                 occur: occur,
+                special: special.clone(),
                 aliases: vec!(
                     Opt {
                         name: Short(short_name.char_at(0)),
                         hasarg: hasarg,
                         occur:  occur,
+                        special: special,
                         aliases: Vec::new()
                     }
                 )
@@ -419,7 +462,8 @@ pub fn reqopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptG
         hint: hint.to_owned(),
         desc: desc.to_owned(),
         hasarg: Yes,
-        occur: Req
+        occur: Req,
+        special: Normal,
     }
 }
 
@@ -439,7 +483,8 @@ pub fn optopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> OptG
         hint: hint.to_owned(),
         desc: desc.to_owned(),
         hasarg: Yes,
-        occur: Optional
+        occur: Optional,
+        special: Normal,
     }
 }
 
@@ -457,7 +502,8 @@ pub fn optflag(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
         hint: "".to_owned(),
         desc: desc.to_owned(),
         hasarg: No,
-        occur: Optional
+        occur: Optional,
+        special: Normal,
     }
 }
 
@@ -476,7 +522,8 @@ pub fn optflagmulti(short_name: &str, long_name: &str, desc: &str) -> OptGroup {
         hint: "".to_owned(),
         desc: desc.to_owned(),
         hasarg: No,
-        occur: Multi
+        occur: Multi,
+        special: Normal,
     }
 }
 
@@ -496,7 +543,8 @@ pub fn optflagopt(short_name: &str, long_name: &str, desc: &str, hint: &str) -> 
         hint: hint.to_owned(),
         desc: desc.to_owned(),
         hasarg: Maybe,
-        occur: Optional
+        occur: Optional,
+        special: Normal,
     }
 }
 
@@ -517,7 +565,31 @@ pub fn optmulti(short_name: &str, long_name: &str, desc: &str, hint: &str) -> Op
         hint: hint.to_owned(),
         desc: desc.to_owned(),
         hasarg: Yes,
-        occur: Multi
+        occur: Multi,
+        special: Normal,
+    }
+}
+
+/// Create a special option, which will cause getopts to read additional
+/// arguments from the file given as this options argument.
+///
+/// * `short_name` - e.g. `"h"` for a `-h` option, or `""` for none
+/// * `long_name` - e.g. `"help"` for a `--help` option, or `""` for none
+/// * `desc` - Description for usage help
+/// * `hint` - Hint that is used in place of the argument in the usage help,
+///   e.g. `"FILE"` for a `-o FILE` option
+/// * `sep` - used as the separator when splitting the included file
+pub fn optinclude(short_name: &str, long_name: &str, desc: &str, hint: &str, sep: u8) -> OptGroup {
+    let len = short_name.len();
+    assert!(len == 1 || len == 0);
+    OptGroup {
+        short_name: short_name.to_owned(),
+        long_name: long_name.to_owned(),
+        hint: hint.to_owned(),
+        desc: desc.to_owned(),
+        hasarg: Yes,
+        occur: Multi,
+        special: Include(sep),
     }
 }
 
@@ -527,7 +599,8 @@ pub fn opt(short_name: &str,
            desc: &str,
            hint: &str,
            hasarg: HasArg,
-           occur: Occur) -> OptGroup {
+           occur: Occur,
+           special: Special) -> OptGroup {
     let len = short_name.len();
     assert!(len == 1 || len == 0);
     OptGroup {
@@ -536,7 +609,8 @@ pub fn opt(short_name: &str,
         hint: hint.to_owned(),
         desc: desc.to_owned(),
         hasarg: hasarg,
-        occur: occur
+        occur: occur,
+        special: special,
     }
 }
 
@@ -558,7 +632,22 @@ impl fmt::Display for Fail {
             UnexpectedArgument(ref nm) => {
                 write!(f, "Option '{}' does not take an argument.", *nm)
             }
+            NestedIncludeNotAllowed => {
+                write!(f, "An include was encountered while processing another \
+                    include. This is currently not allowed to prevent infinite \
+                    recursion.")
+            }
+            GenericError(ref err) => {
+                write!(f, "An error occured, most likely while trying to read \
+                           an included file: {}", err)
+            }
         }
+    }
+}
+
+impl<E: error::Error + 'static> From<E> for Fail {
+    fn from(err: E) -> Fail {
+        GenericError(Box::new(err))
     }
 }
 
@@ -578,6 +667,34 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
 
     let mut vals: Vec<_> = (0..n_opts).map(f).collect();
     let mut free: Vec<String> = Vec::new();
+
+    try!(_getopts(args, &opts, &mut vals, &mut free, true));
+
+    for i in 0..n_opts {
+        let n = vals[i].len();
+        let occ = opts[i].occur;
+        if occ == Req && n == 0 {
+            return Err(OptionMissing(opts[i].name.to_string()));
+        }
+        if occ != Multi && n > 1 {
+            return Err(OptionDuplicated(opts[i].name.to_string()));
+        }
+    }
+
+    Ok(Matches {
+        opts: opts,
+        vals: vals,
+        free: free,
+    })
+}
+
+// The 'real' `getopts()`, which will also be called by `process_include`
+fn _getopts(args: &[String],
+            opts: &[Opt],
+            vals: &mut[Vec<Optval>],
+            free: &mut Vec<String>,
+            allow_includes: bool)
+            -> result::Result<(), Fail> {
     let l = args.len();
     let mut i = 0;
     while i < l {
@@ -644,61 +761,79 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                   Some(id) => id,
                   None => return Err(UnrecognizedOption(nm.to_string()))
                 };
-                match opts[optid].hasarg {
+                let val = match opts[optid].hasarg {
                   No => {
                     if name_pos == names.len() && !i_arg.is_none() {
                         return Err(UnexpectedArgument(nm.to_string()));
                     }
-                    let v = &mut vals[optid];
-                    v.push(Given);
+                    Given
                   }
                   Maybe => {
                     if !i_arg.is_none() {
-                        let v = &mut vals[optid];
-                        v.push(Val((i_arg.clone())
-                            .unwrap()));
+                        Val((i_arg.clone()).unwrap())
                     } else if name_pos < names.len() || i + 1 == l ||
                             is_arg(&args[i + 1][..]) {
-                        let v = &mut vals[optid];
-                        v.push(Given);
+                        Given
                     } else {
                         i += 1;
-                        let v = &mut vals[optid];
-                        v.push(Val(args[i].clone()));
+                        Val(args[i].clone())
                     }
                   }
                   Yes => {
                     if !i_arg.is_none() {
-                        let v = &mut vals[optid];
-                        v.push(Val(i_arg.clone().unwrap()));
+                        Val(i_arg.clone().unwrap())
                     } else if i + 1 == l {
                         return Err(ArgumentMissing(nm.to_string()));
                     } else {
                         i += 1;
-                        let v = &mut vals[optid];
-                        v.push(Val(args[i].clone()));
+                        Val(args[i].clone())
                     }
                   }
+                };
+
+                if let Include(sep) = opts[optid].special {
+                    if !allow_includes {
+                        return Err(NestedIncludeNotAllowed);
+                    }
+
+                    let file = match val {
+                        Val(ref file) => file,
+                        _ => panic!("Include should always have hasarg: Yes"),
+                    };
+
+                    try!(process_include(file, sep, opts, vals, free));
                 }
+
+                vals[optid].push(val);
             }
         }
         i += 1;
     }
-    for i in 0..n_opts {
-        let n = vals[i].len();
-        let occ = opts[i].occur;
-        if occ == Req && n == 0 {
-            return Err(OptionMissing(opts[i].name.to_string()));
-        }
-        if occ != Multi && n > 1 {
-            return Err(OptionDuplicated(opts[i].name.to_string()));
-        }
+
+    Ok(())
+}
+
+fn process_include(file: &str,
+                   sep: u8,
+                   opts: &[Opt],
+                   vals: &mut[Vec<Optval>],
+                   free: &mut Vec<String>)
+                   -> result::Result<(), Fail> {
+    let stdin = io::stdin();
+
+    let input: Box<BufRead> = if file == "-" {
+        Box::new(stdin.lock())
+    } else {
+        Box::new(BufReader::new(try!(File::open(file))))
+    };
+
+    let mut args = Vec::new();
+
+    for arg in input.split(sep) {
+        args.push(try!(String::from_utf8(try!(arg))));
     }
-    Ok(Matches {
-        opts: opts,
-        vals: vals,
-        free: free
-    })
+
+    _getopts(&args, opts, vals, free, false)
 }
 
 /// Derive a usage message from a set of long options.
@@ -1478,11 +1613,13 @@ mod tests {
             name: Name::Long("banana".to_string()),
             hasarg: HasArg::Yes,
             occur: Occur::Req,
+            special: Special::Normal,
             aliases: Vec::new(),
         };
         short.aliases = vec!(Opt { name: Name::Short('b'),
                                 hasarg: HasArg::Yes,
                                 occur: Occur::Req,
+                                special: Special::Normal,
                                 aliases: Vec::new() });
         let verbose = reqopt("b", "banana", "some bananas", "VAL");
 

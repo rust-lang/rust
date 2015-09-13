@@ -758,6 +758,9 @@ mod opt {
     pub fn    flag_u(a: S, b: S, c: S)       -> R { unstable(getopts::optflag(a, b, c)) }
     pub fn flagopt_u(a: S, b: S, c: S, d: S) -> R { unstable(getopts::optflagopt(a, b, c, d)) }
     pub fn flagmulti_u(a: S, b: S, c: S)     -> R { unstable(getopts::optflagmulti(a, b, c)) }
+    pub fn include_u(a: S, b: S, c: S, d: S, e: u8) -> R {
+        unstable(getopts::optinclude(a, b, c, d, e))
+    }
 }
 
 /// Returns the "short" subset of the rustc command line options,
@@ -841,6 +844,10 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                       `hir,typed` (HIR with types for each node).",
                      "TYPE"),
         opt::opt_u("", "show-span", "Show spans for compiler debugging", "expr|pat|ty"),
+        opt::include_u("", "include-arguments-from",
+                       "Read additional arguments from the given FILE or the \
+                        standard input if FILE is `-`. Arguments must be \
+                        separated by \\0.", "FILE", b'\0'),
     ]);
     opts
 }
