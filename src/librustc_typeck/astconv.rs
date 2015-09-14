@@ -412,21 +412,26 @@ fn create_substs_for_ast_path<'tcx>(
     // they were optional (e.g. paths inside expressions).
     let mut type_substs = if param_mode == PathParamMode::Optional &&
                              types_provided.is_empty() {
+        fn default_type_parameter<'tcx>(p: &ty::TypeParameterDef<'tcx>, self_ty: Option<Ty<'tcx>>)
+                                        -> Option<ty::TypeParameterDef<'tcx>>
+        {
+            if let Some(ref default) = p.default {
+                if self_ty.is_none() && default.has_self_ty() {
+                    // There is no suitable inference default for a type parameter
+                    // that references self with no self-type provided.
+                    return None;
+                }
+            }
+
+            Some(p.clone())
+        }
+
         let mut substs = region_substs.clone();
 
         ty_param_defs
             .iter()
-            .map(|p| {
-                if let Some(ref default) = p.default {
-                    if self_ty.is_none() && default.has_self_ty() {
-                        // There is no suitable inference default for a type parameter
-                        // that references Self with no self-type provided.
-                        return this.ty_infer(None, Some(&mut substs), Some(TypeSpace), span);
-                    }
-                }
-
-                this.ty_infer(Some(p.clone()), Some(&mut substs), Some(TypeSpace), span)
-            })
+            .map(|p| this.ty_infer(default_type_parameter(p, self_ty), Some(&mut substs),
+                                   Some(TypeSpace), span))
             .collect()
     } else {
         types_provided
