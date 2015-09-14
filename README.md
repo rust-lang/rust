@@ -7,7 +7,7 @@ A tool for formatting Rust code according to style guidelines.
 ```rust
  #[rustfmt_skip]
  ```
-* When you run rustfmt use a file called rustfmt.toml to override the settings in default.toml
+* When you run rustfmt use a file called rustfmt.toml to override the default settings of rustfmt.
 * We create a functioning executable called rustfmt in the target directory
 
 ## How to build and test
