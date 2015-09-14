@@ -45,6 +45,12 @@ impl<'tcx> RegionEscape for ty::ExistentialBounds<'tcx> {
     }
 }
 
+impl<'tcx> RegionEscape for ty::InstantiatedPredicates<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.predicates.has_regions_escaping_depth(depth)
+    }
+}
+
 impl<'tcx> RegionEscape for subst::Substs<'tcx> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.types.has_regions_escaping_depth(depth) ||
