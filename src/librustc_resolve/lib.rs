@@ -2212,13 +2212,27 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ItemUse(ref view_path) => {
                 // check for imports shadowing primitive types
-                if let hir::ViewPathSimple(ident, _) = view_path.node {
-                    match self.def_map.borrow().get(&item.id).map(|d| d.full_def()) {
+                let check_rename = |id, ident: Ident| {
+                    match self.def_map.borrow().get(&id).map(|d| d.full_def()) {
                         Some(DefTy(..)) | Some(DefStruct(..)) | Some(DefTrait(..)) | None => {
                             self.check_if_primitive_type_name(ident.name, item.span);
                         }
                         _ => {}
                     }
+                };
+
+                match view_path.node {
+                    hir::ViewPathSimple(ident, _) => {
+                        check_rename(item.id, ident);
+                    }
+                    hir::ViewPathList(_, ref items) => {
+                        for item in items {
+                            if let Some(ident) = item.node.rename() {
+                                check_rename(item.node.id(), ident);
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
 
