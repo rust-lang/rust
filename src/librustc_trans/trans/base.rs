@@ -677,11 +677,8 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     ccx.sess().bug("unexpected intrinsic in trans_external_path")
                 }
                 _ => {
-                    let llfn = foreign::register_foreign_item_fn(ccx, fn_ty.abi,
-                                                                 t, &name);
                     let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
-                    attributes::from_fn_attrs(ccx, &attrs, llfn);
-                    llfn
+                    foreign::register_foreign_item_fn(ccx, fn_ty.abi, t, &name, &attrs)
                 }
             }
         }
@@ -2418,9 +2415,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     let abi = ccx.tcx().map.get_foreign_abi(id);
                     let ty = ccx.tcx().node_id_to_type(ni.id);
                     let name = foreign::link_name(&*ni);
-                    let llfn = foreign::register_foreign_item_fn(ccx, abi, ty, &name);
-                    attributes::from_fn_attrs(ccx, &ni.attrs, llfn);
-                    llfn
+                    foreign::register_foreign_item_fn(ccx, abi, ty, &name, &ni.attrs)
                 }
                 hir::ForeignItemStatic(..) => {
                     foreign::register_static(ccx, &*ni)
