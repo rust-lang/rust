@@ -1587,6 +1587,52 @@ This will fail because the compiler does not know which instance of `Foo` to
 call `bar` on. Change `Foo::bar()` to `Foo::<T>::bar()` to resolve the error.
 "##,
 
+E0283: r##"
+This error raises when compiler hasn't enough information about type to
+choose implementation.
+
+For example:
+
+```
+struct Inner {
+    out: bool
+}
+impl Inner {
+    fn new() -> Inner {
+        Inner {out:false}
+    }
+}
+trait Outer {
+    fn new() -> Inner;
+}
+impl Outer for Inner {
+    fn new() -> Inner {
+        Inner {out:true}
+    }
+}
+fn main() {
+    let ext: Inner = Outer::new(); // error, Inner expected in any way
+}
+```
+
+To resolve you can use generic type:
+
+```
+trait Outer {
+    fn new() -> Self;
+}
+```
+
+Or add type annotation:
+
+```
+fn main() {
+    let ext = <Inner as Outer>::new();
+}
+```
+"##,
+
+
 E0296: r##"
 This error indicates that the given recursion limit could not be parsed. Ensure
 that the value provided is a positive integer between quotes, like so:
