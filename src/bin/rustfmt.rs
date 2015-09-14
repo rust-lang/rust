@@ -17,8 +17,7 @@ extern crate rustfmt;
 extern crate toml;
 
 use rustfmt::{WriteMode, run};
-use rustfmt::config::Config;
-use rustfmt::config::ConfigHelpVariantTypes;
+use rustfmt::config::{Config, ConfigHelpVariantTypes};
 
 use std::env;
 use std::fs::{File, PathExt};
