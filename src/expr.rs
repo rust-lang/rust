@@ -128,9 +128,6 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprAssignOp(ref op, ref lhs, ref rhs) => {
                 rewrite_assignment(context, lhs, rhs, Some(op), width, offset)
             }
-            // FIXME #184 Note that this formatting is broken due to a bad span
-            // from the parser.
-            // `continue`
             ast::Expr_::ExprAgain(ref opt_ident) => {
                 let id_str = match *opt_ident {
                     Some(ident) => format!(" {}", ident.node),
