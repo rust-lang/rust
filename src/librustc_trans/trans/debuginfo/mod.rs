@@ -27,6 +27,7 @@ use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
                       DIDescriptor, FlagPrototyped};
 use middle::def_id::DefId;
+use middle::infer::normalize_associated_type;
 use middle::subst::{self, Substs};
 use rustc_front;
 use rustc_front::hir;
@@ -463,7 +464,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                          -> DIArray
     {
         let self_type = param_substs.self_ty();
-        let self_type = monomorphize::normalize_associated_type(cx.tcx(), &self_type);
+        let self_type = normalize_associated_type(cx.tcx(), &self_type);
 
         // Only true for static default methods:
         let has_self_type = self_type.is_some();
