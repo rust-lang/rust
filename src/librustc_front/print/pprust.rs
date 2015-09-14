@@ -18,18 +18,16 @@ use syntax::diagnostic;
 use syntax::parse::token::{self, BinOpToken};
 use syntax::parse::lexer::comments;
 use syntax::parse;
-use syntax::print::pp::{self, break_offset, word, space, zerobreak, hardbreak};
+use syntax::print::pp::{self, break_offset, word, space, hardbreak};
 use syntax::print::pp::{Breaks, eof};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
+use syntax::print::pprust::{self as ast_pp, PrintState};
 use syntax::ptr::P;
 
 use hir;
 use hir::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use attr::{AttrMetaMethods, AttributeMethods};
 
-use std::ascii;
 use std::io::{self, Write, Read};
-use std::iter;
 
 pub enum AnnNode<'a> {
     NodeIdent(&'a ast::Ident),
@@ -51,20 +49,37 @@ pub struct NoAnn;
 
 impl PpAnn for NoAnn {}
 
-#[derive(Copy, Clone)]
-pub struct CurrentCommentAndLiteral {
-    cur_cmnt: usize,
-    cur_lit: usize,
-}
 
 pub struct State<'a> {
     pub s: pp::Printer<'a>,
     cm: Option<&'a CodeMap>,
-    comments: Option<Vec<comments::Comment> >,
-    literals: Option<Vec<comments::Literal> >,
-    cur_cmnt_and_lit: CurrentCommentAndLiteral,
+    comments: Option<Vec<comments::Comment>>,
+    literals: Option<Vec<comments::Literal>>,
+    cur_cmnt_and_lit: ast_pp::CurrentCommentAndLiteral,
     boxes: Vec<pp::Breaks>,
     ann: &'a (PpAnn+'a),
+}
+
+impl<'a> PrintState<'a> for State<'a> {
+    fn writer(&mut self) -> &mut pp::Printer<'a> {
+        &mut self.s
+    }
+
+    fn boxes(&mut self) -> &mut Vec<pp::Breaks> {
+        &mut self.boxes
+    }
+
+    fn comments(&mut self) -> &mut Option<Vec<comments::Comment>> {
+        &mut self.comments
+    }
+
+    fn cur_cmnt_and_lit(&mut self) -> &mut ast_pp::CurrentCommentAndLiteral {
+        &mut self.cur_cmnt_and_lit
+    }
+
+    fn literals(&self) -> &Option<Vec<comments::Literal>> {
+        &self.literals
+    }
 }
 
 pub fn rust_printer<'a>(writer: Box<Write+'a>) -> State<'a> {
@@ -79,7 +94,7 @@ pub fn rust_printer_annotated<'a>(writer: Box<Write+'a>,
         cm: None,
         comments: None,
         literals: None,
-        cur_cmnt_and_lit: CurrentCommentAndLiteral {
+        cur_cmnt_and_lit: ast_pp::CurrentCommentAndLiteral {
             cur_cmnt: 0,
             cur_lit: 0
         },
@@ -154,9 +169,9 @@ impl<'a> State<'a> {
         State {
             s: pp::mk_printer(out, default_columns),
             cm: Some(cm),
-            comments: comments,
-            literals: literals,
-            cur_cmnt_and_lit: CurrentCommentAndLiteral {
+            comments: comments.clone(),
+            literals: literals.clone(),
+            cur_cmnt_and_lit: ast_pp::CurrentCommentAndLiteral {
                 cur_cmnt: 0,
                 cur_lit: 0
             },
@@ -221,10 +236,6 @@ pub fn stmt_to_string(stmt: &hir::Stmt) -> String {
     to_string(|s| s.print_stmt(stmt))
 }
 
-pub fn attr_to_string(attr: &hir::Attribute) -> String {
-    to_string(|s| s.print_attribute(attr))
-}
-
 pub fn item_to_string(i: &hir::Item) -> String {
     to_string(|s| s.print_item(i))
 }
@@ -283,18 +294,6 @@ pub fn block_to_string(blk: &hir::Block) -> String {
     })
 }
 
-pub fn meta_item_to_string(mi: &hir::MetaItem) -> String {
-    to_string(|s| s.print_meta_item(mi))
-}
-
-pub fn attribute_to_string(attr: &hir::Attribute) -> String {
-    to_string(|s| s.print_attribute(attr))
-}
-
-pub fn lit_to_string(l: &hir::Lit) -> String {
-    to_string(|s| s.print_literal(l))
-}
-
 pub fn explicit_self_to_string(explicit_self: &hir::ExplicitSelf_) -> String {
     to_string(|s| s.print_explicit_self(explicit_self, hir::MutImmutable).map(|_| {}))
 }
@@ -324,25 +323,9 @@ fn needs_parentheses(expr: &hir::Expr) -> bool {
 }
 
 impl<'a> State<'a> {
-    pub fn ibox(&mut self, u: usize) -> io::Result<()> {
-        self.boxes.push(pp::Breaks::Inconsistent);
-        pp::ibox(&mut self.s, u)
-    }
-
-    pub fn end(&mut self) -> io::Result<()> {
-        self.boxes.pop().unwrap();
-        pp::end(&mut self.s)
-    }
-
     pub fn cbox(&mut self, u: usize) -> io::Result<()> {
         self.boxes.push(pp::Breaks::Consistent);
         pp::cbox(&mut self.s, u)
-    }
-
-    // "raw box"
-    pub fn rbox(&mut self, u: usize, b: pp::Breaks) -> io::Result<()> {
-        self.boxes.push(b);
-        pp::rbox(&mut self.s, u, b)
     }
 
     pub fn nbsp(&mut self) -> io::Result<()> { word(&mut self.s, " ") }
@@ -351,15 +334,6 @@ impl<'a> State<'a> {
         try!(word(&mut self.s, w));
         self.nbsp()
     }
-
-    pub fn word_space(&mut self, w: &str) -> io::Result<()> {
-        try!(word(&mut self.s, w));
-        space(&mut self.s)
-    }
-
-    pub fn popen(&mut self) -> io::Result<()> { word(&mut self.s, "(") }
-
-    pub fn pclose(&mut self) -> io::Result<()> { word(&mut self.s, ")") }
 
     pub fn head(&mut self, w: &str) -> io::Result<()> {
         // outer-box is consistent
@@ -396,37 +370,11 @@ impl<'a> State<'a> {
         self.bclose_(span, indent_unit)
     }
 
-    pub fn is_begin(&mut self) -> bool {
-        match self.s.last_token() {
-            pp::Token::Begin(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_end(&mut self) -> bool {
-        match self.s.last_token() {
-            pp::Token::End => true,
-            _ => false,
-        }
-    }
-
-    // is this the beginning of a line?
-    pub fn is_bol(&mut self) -> bool {
-        self.s.last_token().is_eof() || self.s.last_token().is_hardbreak_tok()
-    }
-
     pub fn in_cbox(&self) -> bool {
         match self.boxes.last() {
             Some(&last_box) => last_box == pp::Breaks::Consistent,
             None => false
         }
-    }
-
-    pub fn hardbreak_if_not_bol(&mut self) -> io::Result<()> {
-        if !self.is_bol() {
-            try!(hardbreak(&mut self.s))
-        }
-        Ok(())
     }
     pub fn space_if_not_bol(&mut self) -> io::Result<()> {
         if !self.is_bol() { try!(space(&mut self.s)); }
@@ -455,18 +403,6 @@ impl<'a> State<'a> {
         try!(word(&mut self.s, &text[..]));
         try!(space(&mut self.s));
         word(&mut self.s, "*/")
-    }
-
-    pub fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F) -> io::Result<()> where
-        F: FnMut(&mut State, &T) -> io::Result<()>,
-    {
-        try!(self.rbox(0, b));
-        let mut first = true;
-        for elt in elts {
-            if first { first = false; } else { try!(self.word_space(",")); }
-            try!(op(self, elt));
-        }
-        self.end()
     }
 
 
@@ -501,7 +437,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_mod(&mut self, _mod: &hir::Mod,
-                     attrs: &[hir::Attribute]) -> io::Result<()> {
+                     attrs: &[ast::Attribute]) -> io::Result<()> {
         try!(self.print_inner_attributes(attrs));
         for item in &_mod.items {
             try!(self.print_item(&**item));
@@ -510,7 +446,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_foreign_mod(&mut self, nmod: &hir::ForeignMod,
-                             attrs: &[hir::Attribute]) -> io::Result<()> {
+                             attrs: &[ast::Attribute]) -> io::Result<()> {
         try!(self.print_inner_attributes(attrs));
         for item in &nmod.items {
             try!(self.print_foreign_item(&**item));
@@ -694,7 +630,7 @@ impl<'a> State<'a> {
                 if let Some(p) = *optional_path {
                     let val = p.as_str();
                     if val.contains("-") {
-                        try!(self.print_string(&val, hir::CookedStr));
+                        try!(self.print_string(&val, ast::CookedStr));
                     } else {
                         try!(self.print_name(p));
                     }
@@ -1105,58 +1041,6 @@ impl<'a> State<'a> {
         self.ann.post(self, NodeSubItem(ii.id))
     }
 
-    pub fn print_outer_attributes(&mut self,
-                                  attrs: &[hir::Attribute]) -> io::Result<()> {
-        let mut count = 0;
-        for attr in attrs {
-            match attr.node.style {
-                hir::AttrOuter => {
-                    try!(self.print_attribute(attr));
-                    count += 1;
-                }
-                _ => {/* fallthrough */ }
-            }
-        }
-        if count > 0 {
-            try!(self.hardbreak_if_not_bol());
-        }
-        Ok(())
-    }
-
-    pub fn print_inner_attributes(&mut self,
-                                  attrs: &[hir::Attribute]) -> io::Result<()> {
-        let mut count = 0;
-        for attr in attrs {
-            match attr.node.style {
-                hir::AttrInner => {
-                    try!(self.print_attribute(attr));
-                    count += 1;
-                }
-                _ => {/* fallthrough */ }
-            }
-        }
-        if count > 0 {
-            try!(self.hardbreak_if_not_bol());
-        }
-        Ok(())
-    }
-
-    pub fn print_attribute(&mut self, attr: &hir::Attribute) -> io::Result<()> {
-        try!(self.hardbreak_if_not_bol());
-        try!(self.maybe_print_comment(attr.span.lo));
-        if attr.node.is_sugared_doc {
-            word(&mut self.s, &attr.value_str().unwrap())
-        } else {
-            match attr.node.style {
-                hir::AttrInner => try!(word(&mut self.s, "#![")),
-                hir::AttrOuter => try!(word(&mut self.s, "#[")),
-            }
-            try!(self.print_meta_item(&*attr.meta()));
-            word(&mut self.s, "]")
-        }
-    }
-
-
     pub fn print_stmt(&mut self, st: &hir::Stmt) -> io::Result<()> {
         try!(self.maybe_print_comment(st.span.lo));
         match st.node {
@@ -1194,14 +1078,14 @@ impl<'a> State<'a> {
 
     pub fn print_block_with_attrs(&mut self,
                                   blk: &hir::Block,
-                                  attrs: &[hir::Attribute]) -> io::Result<()> {
+                                  attrs: &[ast::Attribute]) -> io::Result<()> {
         self.print_block_maybe_unclosed(blk, indent_unit, attrs, true)
     }
 
     pub fn print_block_maybe_unclosed(&mut self,
                                       blk: &hir::Block,
                                       indented: usize,
-                                      attrs: &[hir::Attribute],
+                                      attrs: &[ast::Attribute],
                                       close_box: bool) -> io::Result<()> {
         match blk.rules {
             hir::UnsafeBlock(..) | hir::PushUnsafeBlock(..) => try!(self.word_space("unsafe")),
@@ -1620,9 +1504,9 @@ impl<'a> State<'a> {
                     match co.slice_shift_char() {
                         Some(('=', operand)) if is_rw => {
                             try!(s.print_string(&format!("+{}", operand),
-                                                hir::CookedStr))
+                                                ast::CookedStr))
                         }
-                        _ => try!(s.print_string(&co, hir::CookedStr))
+                        _ => try!(s.print_string(&co, ast::CookedStr))
                     }
                     try!(s.popen());
                     try!(s.print_expr(&**o));
@@ -1634,7 +1518,7 @@ impl<'a> State<'a> {
 
                 try!(self.commasep(Inconsistent, &a.inputs,
                                    |s, &(ref co, ref o)| {
-                    try!(s.print_string(&co, hir::CookedStr));
+                    try!(s.print_string(&co, ast::CookedStr));
                     try!(s.popen());
                     try!(s.print_expr(&**o));
                     try!(s.pclose());
@@ -1645,7 +1529,7 @@ impl<'a> State<'a> {
 
                 try!(self.commasep(Inconsistent, &a.clobbers,
                                    |s, co| {
-                    try!(s.print_string(&co, hir::CookedStr));
+                    try!(s.print_string(&co, ast::CookedStr));
                     Ok(())
                 }));
 
@@ -1665,7 +1549,7 @@ impl<'a> State<'a> {
                     try!(self.word_space(":"));
                     try!(self.commasep(Inconsistent, &*options,
                                        |s, &co| {
-                        try!(s.print_string(co, hir::CookedStr));
+                        try!(s.print_string(co, ast::CookedStr));
                         Ok(())
                     }));
                 }
@@ -2294,29 +2178,6 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_meta_item(&mut self, item: &hir::MetaItem) -> io::Result<()> {
-        try!(self.ibox(indent_unit));
-        match item.node {
-            hir::MetaWord(ref name) => {
-                try!(word(&mut self.s, &name));
-            }
-            hir::MetaNameValue(ref name, ref value) => {
-                try!(self.word_space(&name[..]));
-                try!(self.word_space("="));
-                try!(self.print_literal(value));
-            }
-            hir::MetaList(ref name, ref items) => {
-                try!(word(&mut self.s, &name));
-                try!(self.popen());
-                try!(self.commasep(Consistent,
-                                   &items[..],
-                                   |s, i| s.print_meta_item(&**i)));
-                try!(self.pclose());
-            }
-        }
-        self.end()
-    }
-
     pub fn print_view_path(&mut self, vp: &hir::ViewPath) -> io::Result<()> {
         match vp.node {
             hir::ViewPathSimple(ident, ref path) => {
@@ -2494,181 +2355,6 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_literal(&mut self, lit: &hir::Lit) -> io::Result<()> {
-        try!(self.maybe_print_comment(lit.span.lo));
-        match self.next_lit(lit.span.lo) {
-            Some(ref ltrl) => {
-                return word(&mut self.s, &(*ltrl).lit);
-            }
-            _ => ()
-        }
-        match lit.node {
-            hir::LitStr(ref st, style) => self.print_string(&st, style),
-            hir::LitByte(byte) => {
-                let mut res = String::from("b'");
-                res.extend(ascii::escape_default(byte).map(|c| c as char));
-                res.push('\'');
-                word(&mut self.s, &res[..])
-            }
-            hir::LitChar(ch) => {
-                let mut res = String::from("'");
-                res.extend(ch.escape_default());
-                res.push('\'');
-                word(&mut self.s, &res[..])
-            }
-            hir::LitInt(i, t) => {
-                match t {
-                    hir::SignedIntLit(st, hir::Plus) => {
-                        word(&mut self.s,
-                             &::util::int_ty_to_string(st, Some(i as i64)))
-                    }
-                    hir::SignedIntLit(st, hir::Minus) => {
-                        let istr = ::util::int_ty_to_string(st, Some(-(i as i64)));
-                        word(&mut self.s,
-                             &format!("-{}", istr))
-                    }
-                    hir::UnsignedIntLit(ut) => {
-                        word(&mut self.s, &::util::uint_ty_to_string(ut, Some(i)))
-                    }
-                    hir::UnsuffixedIntLit(hir::Plus) => {
-                        word(&mut self.s, &format!("{}", i))
-                    }
-                    hir::UnsuffixedIntLit(hir::Minus) => {
-                        word(&mut self.s, &format!("-{}", i))
-                    }
-                }
-            }
-            hir::LitFloat(ref f, t) => {
-                word(&mut self.s,
-                     &format!(
-                         "{}{}",
-                         &f,
-                         &::util::float_ty_to_string(t)))
-            }
-            hir::LitFloatUnsuffixed(ref f) => word(&mut self.s, &f[..]),
-            hir::LitBool(val) => {
-                if val { word(&mut self.s, "true") } else { word(&mut self.s, "false") }
-            }
-            hir::LitByteStr(ref v) => {
-                let mut escaped: String = String::new();
-                for &ch in v.iter() {
-                    escaped.extend(ascii::escape_default(ch)
-                                         .map(|c| c as char));
-                }
-                word(&mut self.s, &format!("b\"{}\"", escaped))
-            }
-        }
-    }
-
-    pub fn next_lit(&mut self, pos: BytePos) -> Option<comments::Literal> {
-        match self.literals {
-            Some(ref lits) => {
-                while self.cur_cmnt_and_lit.cur_lit < lits.len() {
-                    let ltrl = (*lits)[self.cur_cmnt_and_lit.cur_lit].clone();
-                    if ltrl.pos > pos { return None; }
-                    self.cur_cmnt_and_lit.cur_lit += 1;
-                    if ltrl.pos == pos { return Some(ltrl); }
-                }
-                None
-            }
-            _ => None
-        }
-    }
-
-    pub fn maybe_print_comment(&mut self, pos: BytePos) -> io::Result<()> {
-        loop {
-            match self.next_comment() {
-                Some(ref cmnt) => {
-                    if (*cmnt).pos < pos {
-                        try!(self.print_comment(cmnt));
-                        self.cur_cmnt_and_lit.cur_cmnt += 1;
-                    } else { break; }
-                }
-                _ => break
-            }
-        }
-        Ok(())
-    }
-
-    pub fn print_comment(&mut self,
-                         cmnt: &comments::Comment) -> io::Result<()> {
-        match cmnt.style {
-            comments::Mixed => {
-                assert_eq!(cmnt.lines.len(), 1);
-                try!(zerobreak(&mut self.s));
-                try!(word(&mut self.s, &cmnt.lines[0]));
-                zerobreak(&mut self.s)
-            }
-            comments::Isolated => {
-                try!(self.hardbreak_if_not_bol());
-                for line in &cmnt.lines {
-                    // Don't print empty lines because they will end up as trailing
-                    // whitespace
-                    if !line.is_empty() {
-                        try!(word(&mut self.s, &line[..]));
-                    }
-                    try!(hardbreak(&mut self.s));
-                }
-                Ok(())
-            }
-            comments::Trailing => {
-                try!(word(&mut self.s, " "));
-                if cmnt.lines.len() == 1 {
-                    try!(word(&mut self.s, &cmnt.lines[0]));
-                    hardbreak(&mut self.s)
-                } else {
-                    try!(self.ibox(0));
-                    for line in &cmnt.lines {
-                        if !line.is_empty() {
-                            try!(word(&mut self.s, &line[..]));
-                        }
-                        try!(hardbreak(&mut self.s));
-                    }
-                    self.end()
-                }
-            }
-            comments::BlankLine => {
-                // We need to do at least one, possibly two hardbreaks.
-                let is_semi = match self.s.last_token() {
-                    pp::Token::String(s, _) => ";" == s,
-                    _ => false
-                };
-                if is_semi || self.is_begin() || self.is_end() {
-                    try!(hardbreak(&mut self.s));
-                }
-                hardbreak(&mut self.s)
-            }
-        }
-    }
-
-    pub fn print_string(&mut self, st: &str,
-                        style: hir::StrStyle) -> io::Result<()> {
-        let st = match style {
-            hir::CookedStr => {
-                (format!("\"{}\"", st.escape_default()))
-            }
-            hir::RawStr(n) => {
-                (format!("r{delim}\"{string}\"{delim}",
-                         delim=repeat("#", n),
-                         string=st))
-            }
-        };
-        word(&mut self.s, &st[..])
-    }
-
-    pub fn next_comment(&mut self) -> Option<comments::Comment> {
-        match self.comments {
-            Some(ref cmnts) => {
-                if self.cur_cmnt_and_lit.cur_cmnt < cmnts.len() {
-                    Some(cmnts[self.cur_cmnt_and_lit.cur_cmnt].clone())
-                } else {
-                    None
-                }
-            }
-            _ => None
-        }
-    }
-
     pub fn print_opt_abi_and_extern_if_nondefault(&mut self,
                                                   opt_abi: Option<abi::Abi>)
         -> io::Result<()> {
@@ -2721,8 +2407,6 @@ impl<'a> State<'a> {
         }
     }
 }
-
-fn repeat(s: &str, n: usize) -> String { iter::repeat(s).take(n).collect() }
 
 // Dup'ed from parse::classify, but adapted for the HIR.
 /// Does this expression require a semicolon to be treated

@@ -11,12 +11,12 @@
 //! Used by `rustc` when compiling a plugin crate.
 
 use syntax::ast;
+use syntax::attr;
 use syntax::codemap::Span;
 use syntax::diagnostic;
 use rustc_front::visit;
 use rustc_front::visit::Visitor;
 use rustc_front::hir;
-use rustc_front::attr;
 
 struct RegistrarFinder {
     registrars: Vec<(ast::NodeId, Span)> ,

@@ -466,35 +466,35 @@ pub enum IntTy { I8, I16, I32, I64 }
 pub enum UintTy { U8, U16, U32, U64 }
 
 impl IntTy {
-    pub fn from(tcx: &ty::ctxt, t: hir::IntTy) -> IntTy {
-        let t = if let hir::TyIs = t {
+    pub fn from(tcx: &ty::ctxt, t: ast::IntTy) -> IntTy {
+        let t = if let ast::TyIs = t {
             tcx.sess.target.int_type
         } else {
             t
         };
         match t {
-            hir::TyIs => unreachable!(),
-            hir::TyI8  => IntTy::I8,
-            hir::TyI16 => IntTy::I16,
-            hir::TyI32 => IntTy::I32,
-            hir::TyI64 => IntTy::I64,
+            ast::TyIs => unreachable!(),
+            ast::TyI8  => IntTy::I8,
+            ast::TyI16 => IntTy::I16,
+            ast::TyI32 => IntTy::I32,
+            ast::TyI64 => IntTy::I64,
         }
     }
 }
 
 impl UintTy {
-    pub fn from(tcx: &ty::ctxt, t: hir::UintTy) -> UintTy {
-        let t = if let hir::TyUs = t {
+    pub fn from(tcx: &ty::ctxt, t: ast::UintTy) -> UintTy {
+        let t = if let ast::TyUs = t {
             tcx.sess.target.uint_type
         } else {
             t
         };
         match t {
-            hir::TyUs => unreachable!(),
-            hir::TyU8  => UintTy::U8,
-            hir::TyU16 => UintTy::U16,
-            hir::TyU32 => UintTy::U32,
-            hir::TyU64 => UintTy::U64,
+            ast::TyUs => unreachable!(),
+            ast::TyU8  => UintTy::U8,
+            ast::TyU16 => UintTy::U16,
+            ast::TyU32 => UintTy::U32,
+            ast::TyU64 => UintTy::U64,
         }
     }
 }
@@ -1141,60 +1141,60 @@ fn cast_const<'tcx>(tcx: &ty::ctxt<'tcx>, val: ConstVal, ty: Ty) -> CastResult {
 
     // Issue #23890: If isize/usize, then dispatch to appropriate target representation type
     match (&ty.sty, tcx.sess.target.int_type, tcx.sess.target.uint_type) {
-        (&ty::TyInt(hir::TyIs), hir::TyI32, _) => return convert_val!(i32, Int, i64),
-        (&ty::TyInt(hir::TyIs), hir::TyI64, _) => return convert_val!(i64, Int, i64),
-        (&ty::TyInt(hir::TyIs), _, _) => panic!("unexpected target.int_type"),
+        (&ty::TyInt(ast::TyIs), ast::TyI32, _) => return convert_val!(i32, Int, i64),
+        (&ty::TyInt(ast::TyIs), ast::TyI64, _) => return convert_val!(i64, Int, i64),
+        (&ty::TyInt(ast::TyIs), _, _) => panic!("unexpected target.int_type"),
 
-        (&ty::TyUint(hir::TyUs), _, hir::TyU32) => return convert_val!(u32, Uint, u64),
-        (&ty::TyUint(hir::TyUs), _, hir::TyU64) => return convert_val!(u64, Uint, u64),
-        (&ty::TyUint(hir::TyUs), _, _) => panic!("unexpected target.uint_type"),
+        (&ty::TyUint(ast::TyUs), _, ast::TyU32) => return convert_val!(u32, Uint, u64),
+        (&ty::TyUint(ast::TyUs), _, ast::TyU64) => return convert_val!(u64, Uint, u64),
+        (&ty::TyUint(ast::TyUs), _, _) => panic!("unexpected target.uint_type"),
 
         _ => {}
     }
 
     match ty.sty {
-        ty::TyInt(hir::TyIs) => unreachable!(),
-        ty::TyUint(hir::TyUs) => unreachable!(),
+        ty::TyInt(ast::TyIs) => unreachable!(),
+        ty::TyUint(ast::TyUs) => unreachable!(),
 
-        ty::TyInt(hir::TyI8) => convert_val!(i8, Int, i64),
-        ty::TyInt(hir::TyI16) => convert_val!(i16, Int, i64),
-        ty::TyInt(hir::TyI32) => convert_val!(i32, Int, i64),
-        ty::TyInt(hir::TyI64) => convert_val!(i64, Int, i64),
+        ty::TyInt(ast::TyI8) => convert_val!(i8, Int, i64),
+        ty::TyInt(ast::TyI16) => convert_val!(i16, Int, i64),
+        ty::TyInt(ast::TyI32) => convert_val!(i32, Int, i64),
+        ty::TyInt(ast::TyI64) => convert_val!(i64, Int, i64),
 
-        ty::TyUint(hir::TyU8) => convert_val!(u8, Uint, u64),
-        ty::TyUint(hir::TyU16) => convert_val!(u16, Uint, u64),
-        ty::TyUint(hir::TyU32) => convert_val!(u32, Uint, u64),
-        ty::TyUint(hir::TyU64) => convert_val!(u64, Uint, u64),
+        ty::TyUint(ast::TyU8) => convert_val!(u8, Uint, u64),
+        ty::TyUint(ast::TyU16) => convert_val!(u16, Uint, u64),
+        ty::TyUint(ast::TyU32) => convert_val!(u32, Uint, u64),
+        ty::TyUint(ast::TyU64) => convert_val!(u64, Uint, u64),
 
-        ty::TyFloat(hir::TyF32) => convert_val!(f32, Float, f64),
-        ty::TyFloat(hir::TyF64) => convert_val!(f64, Float, f64),
+        ty::TyFloat(ast::TyF32) => convert_val!(f32, Float, f64),
+        ty::TyFloat(ast::TyF64) => convert_val!(f64, Float, f64),
         _ => Err(ErrKind::CannotCast),
     }
 }
 
-fn lit_to_const(lit: &hir::Lit, ty_hint: Option<Ty>) -> ConstVal {
+fn lit_to_const(lit: &ast::Lit, ty_hint: Option<Ty>) -> ConstVal {
     match lit.node {
-        hir::LitStr(ref s, _) => Str((*s).clone()),
-        hir::LitByteStr(ref data) => {
+        ast::LitStr(ref s, _) => Str((*s).clone()),
+        ast::LitByteStr(ref data) => {
             ByteStr(data.clone())
         }
-        hir::LitByte(n) => Uint(n as u64),
-        hir::LitChar(n) => Uint(n as u64),
-        hir::LitInt(n, hir::SignedIntLit(_, hir::Plus)) => Int(n as i64),
-        hir::LitInt(n, hir::UnsuffixedIntLit(hir::Plus)) => {
+        ast::LitByte(n) => Uint(n as u64),
+        ast::LitChar(n) => Uint(n as u64),
+        ast::LitInt(n, ast::SignedIntLit(_, ast::Plus)) => Int(n as i64),
+        ast::LitInt(n, ast::UnsuffixedIntLit(ast::Plus)) => {
             match ty_hint.map(|ty| &ty.sty) {
                 Some(&ty::TyUint(_)) => Uint(n),
                 _ => Int(n as i64)
             }
         }
-        hir::LitInt(n, hir::SignedIntLit(_, hir::Minus)) |
-        hir::LitInt(n, hir::UnsuffixedIntLit(hir::Minus)) => Int(-(n as i64)),
-        hir::LitInt(n, hir::UnsignedIntLit(_)) => Uint(n),
-        hir::LitFloat(ref n, _) |
-        hir::LitFloatUnsuffixed(ref n) => {
+        ast::LitInt(n, ast::SignedIntLit(_, ast::Minus)) |
+        ast::LitInt(n, ast::UnsuffixedIntLit(ast::Minus)) => Int(-(n as i64)),
+        ast::LitInt(n, ast::UnsignedIntLit(_)) => Uint(n),
+        ast::LitFloat(ref n, _) |
+        ast::LitFloatUnsuffixed(ref n) => {
             Float(n.parse::<f64>().unwrap() as f64)
         }
-        hir::LitBool(b) => Bool(b)
+        ast::LitBool(b) => Bool(b)
     }
 }
 

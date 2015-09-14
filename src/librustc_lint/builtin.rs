@@ -46,18 +46,14 @@ use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
 use syntax::{abi, ast};
-use syntax::attr as syntax_attr;
+use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
-use rustc_front::hir::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
+use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ptr::P;
 
 use rustc_front::hir;
-
-use rustc_front::attr::{self, AttrMetaMethods};
 use rustc_front::visit::{self, FnKind, Visitor};
-use rustc_front::lowering::unlower_attribute;
-
 use rustc_front::util::is_shift_binop;
 
 // hardwired lints from librustc
@@ -80,7 +76,7 @@ impl LintPass for WhileTrue {
     fn check_expr(&mut self, cx: &Context, e: &hir::Expr) {
         if let hir::ExprWhile(ref cond, _, _) = e.node {
             if let hir::ExprLit(ref lit) = cond.node {
-                if let hir::LitBool(true) = lit.node {
+                if let ast::LitBool(true) = lit.node {
                     cx.span_lint(WHILE_TRUE, e.span,
                                  "denote infinite loops with loop { ... }");
                 }
@@ -132,10 +128,10 @@ impl LintPass for TypeLimits {
                 match expr.node  {
                     hir::ExprLit(ref lit) => {
                         match lit.node {
-                            hir::LitInt(_, hir::UnsignedIntLit(_)) => {
+                            ast::LitInt(_, ast::UnsignedIntLit(_)) => {
                                 check_unsigned_negation_feature(cx, e.span);
                             },
-                            hir::LitInt(_, hir::UnsuffixedIntLit(_)) => {
+                            ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
                                 if let ty::TyUint(_) = cx.tcx.node_id_to_type(e.id).sty {
                                     check_unsigned_negation_feature(cx, e.span);
                                 }
@@ -176,7 +172,7 @@ impl LintPass for TypeLimits {
 
                     if let Some(bits) = opt_ty_bits {
                         let exceeding = if let hir::ExprLit(ref lit) = r.node {
-                            if let hir::LitInt(shift, _) = lit.node { shift >= bits }
+                            if let ast::LitInt(shift, _) = lit.node { shift >= bits }
                             else { false }
                         } else {
                             match eval_const_expr_partial(cx.tcx, &r, ExprTypeChecked) {
@@ -196,9 +192,9 @@ impl LintPass for TypeLimits {
                 match cx.tcx.node_id_to_type(e.id).sty {
                     ty::TyInt(t) => {
                         match lit.node {
-                            hir::LitInt(v, hir::SignedIntLit(_, hir::Plus)) |
-                            hir::LitInt(v, hir::UnsuffixedIntLit(hir::Plus)) => {
-                                let int_type = if let hir::TyIs = t {
+                            ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
+                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
+                                let int_type = if let ast::TyIs = t {
                                     cx.sess().target.int_type
                                 } else {
                                     t
@@ -219,15 +215,15 @@ impl LintPass for TypeLimits {
                         };
                     },
                     ty::TyUint(t) => {
-                        let uint_type = if let hir::TyUs = t {
+                        let uint_type = if let ast::TyUs = t {
                             cx.sess().target.uint_type
                         } else {
                             t
                         };
                         let (min, max) = uint_ty_range(uint_type);
                         let lit_val: u64 = match lit.node {
-                            hir::LitByte(_v) => return,  // _v is u8, within range by definition
-                            hir::LitInt(v, _) => v,
+                            ast::LitByte(_v) => return,  // _v is u8, within range by definition
+                            ast::LitInt(v, _) => v,
                             _ => panic!()
                         };
                         if lit_val < min || lit_val > max {
@@ -238,8 +234,8 @@ impl LintPass for TypeLimits {
                     ty::TyFloat(t) => {
                         let (min, max) = float_ty_range(t);
                         let lit_val: f64 = match lit.node {
-                            hir::LitFloat(ref v, _) |
-                            hir::LitFloatUnsuffixed(ref v) => {
+                            ast::LitFloat(ref v, _) |
+                            ast::LitFloatUnsuffixed(ref v) => {
                                 match v.parse() {
                                     Ok(f) => f,
                                     Err(_) => return
@@ -282,50 +278,50 @@ impl LintPass for TypeLimits {
 
         // for isize & usize, be conservative with the warnings, so that the
         // warnings are consistent between 32- and 64-bit platforms
-        fn int_ty_range(int_ty: hir::IntTy) -> (i64, i64) {
+        fn int_ty_range(int_ty: ast::IntTy) -> (i64, i64) {
             match int_ty {
-                hir::TyIs => (i64::MIN,        i64::MAX),
-                hir::TyI8 =>    (i8::MIN  as i64, i8::MAX  as i64),
-                hir::TyI16 =>   (i16::MIN as i64, i16::MAX as i64),
-                hir::TyI32 =>   (i32::MIN as i64, i32::MAX as i64),
-                hir::TyI64 =>   (i64::MIN,        i64::MAX)
+                ast::TyIs => (i64::MIN,        i64::MAX),
+                ast::TyI8 =>    (i8::MIN  as i64, i8::MAX  as i64),
+                ast::TyI16 =>   (i16::MIN as i64, i16::MAX as i64),
+                ast::TyI32 =>   (i32::MIN as i64, i32::MAX as i64),
+                ast::TyI64 =>   (i64::MIN,        i64::MAX)
             }
         }
 
-        fn uint_ty_range(uint_ty: hir::UintTy) -> (u64, u64) {
+        fn uint_ty_range(uint_ty: ast::UintTy) -> (u64, u64) {
             match uint_ty {
-                hir::TyUs => (u64::MIN,         u64::MAX),
-                hir::TyU8 =>    (u8::MIN   as u64, u8::MAX   as u64),
-                hir::TyU16 =>   (u16::MIN  as u64, u16::MAX  as u64),
-                hir::TyU32 =>   (u32::MIN  as u64, u32::MAX  as u64),
-                hir::TyU64 =>   (u64::MIN,         u64::MAX)
+                ast::TyUs => (u64::MIN,         u64::MAX),
+                ast::TyU8 =>    (u8::MIN   as u64, u8::MAX   as u64),
+                ast::TyU16 =>   (u16::MIN  as u64, u16::MAX  as u64),
+                ast::TyU32 =>   (u32::MIN  as u64, u32::MAX  as u64),
+                ast::TyU64 =>   (u64::MIN,         u64::MAX)
             }
         }
 
-        fn float_ty_range(float_ty: hir::FloatTy) -> (f64, f64) {
+        fn float_ty_range(float_ty: ast::FloatTy) -> (f64, f64) {
             match float_ty {
-                hir::TyF32 => (f32::MIN as f64, f32::MAX as f64),
-                hir::TyF64 => (f64::MIN,        f64::MAX)
+                ast::TyF32 => (f32::MIN as f64, f32::MAX as f64),
+                ast::TyF64 => (f64::MIN,        f64::MAX)
             }
         }
 
-        fn int_ty_bits(int_ty: hir::IntTy, target_int_ty: hir::IntTy) -> u64 {
+        fn int_ty_bits(int_ty: ast::IntTy, target_int_ty: ast::IntTy) -> u64 {
             match int_ty {
-                hir::TyIs => int_ty_bits(target_int_ty, target_int_ty),
-                hir::TyI8 =>    i8::BITS  as u64,
-                hir::TyI16 =>   i16::BITS as u64,
-                hir::TyI32 =>   i32::BITS as u64,
-                hir::TyI64 =>   i64::BITS as u64
+                ast::TyIs => int_ty_bits(target_int_ty, target_int_ty),
+                ast::TyI8 =>    i8::BITS  as u64,
+                ast::TyI16 =>   i16::BITS as u64,
+                ast::TyI32 =>   i32::BITS as u64,
+                ast::TyI64 =>   i64::BITS as u64
             }
         }
 
-        fn uint_ty_bits(uint_ty: hir::UintTy, target_uint_ty: hir::UintTy) -> u64 {
+        fn uint_ty_bits(uint_ty: ast::UintTy, target_uint_ty: ast::UintTy) -> u64 {
             match uint_ty {
-                hir::TyUs => uint_ty_bits(target_uint_ty, target_uint_ty),
-                hir::TyU8 =>    u8::BITS  as u64,
-                hir::TyU16 =>   u16::BITS as u64,
-                hir::TyU32 =>   u32::BITS as u64,
-                hir::TyU64 =>   u64::BITS as u64
+                ast::TyUs => uint_ty_bits(target_uint_ty, target_uint_ty),
+                ast::TyU8 =>    u8::BITS  as u64,
+                ast::TyU16 =>   u16::BITS as u64,
+                ast::TyU32 =>   u32::BITS as u64,
+                ast::TyU64 =>   u64::BITS as u64
             }
         }
 
@@ -348,10 +344,10 @@ impl LintPass for TypeLimits {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i64 = match lit.node {
                         hir::ExprLit(ref li) => match li.node {
-                            hir::LitInt(v, hir::SignedIntLit(_, hir::Plus)) |
-                            hir::LitInt(v, hir::UnsuffixedIntLit(hir::Plus)) => v as i64,
-                            hir::LitInt(v, hir::SignedIntLit(_, hir::Minus)) |
-                            hir::LitInt(v, hir::UnsuffixedIntLit(hir::Minus)) => -(v as i64),
+                            ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
+                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => v as i64,
+                            ast::LitInt(v, ast::SignedIntLit(_, ast::Minus)) |
+                            ast::LitInt(v, ast::UnsuffixedIntLit(ast::Minus)) => -(v as i64),
                             _ => return true
                         },
                         _ => panic!()
@@ -362,7 +358,7 @@ impl LintPass for TypeLimits {
                     let (min, max): (u64, u64) = uint_ty_range(uint_ty);
                     let lit_val: u64 = match lit.node {
                         hir::ExprLit(ref li) => match li.node {
-                            hir::LitInt(v, _) => v,
+                            ast::LitInt(v, _) => v,
                             _ => return true
                         },
                         _ => panic!()
@@ -557,11 +553,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 FfiSafe
             }
 
-            ty::TyInt(hir::TyIs) => {
+            ty::TyInt(ast::TyIs) => {
                 FfiUnsafe("found Rust type `isize` in foreign module, while \
                           `libc::c_int` or `libc::c_long` should be used")
             }
-            ty::TyUint(hir::TyUs) => {
+            ty::TyUint(ast::TyUs) => {
                 FfiUnsafe("found Rust type `usize` in foreign module, while \
                           `libc::c_uint` or `libc::c_ulong` should be used")
             }
@@ -892,7 +888,7 @@ impl LintPass for UnusedAttributes {
         lint_array!(UNUSED_ATTRIBUTES)
     }
 
-    fn check_attribute(&mut self, cx: &Context, attr: &hir::Attribute) {
+    fn check_attribute(&mut self, cx: &Context, attr: &ast::Attribute) {
         // Note that check_name() marks the attribute as used if it matches.
         for &(ref name, ty, _) in KNOWN_ATTRIBUTES {
             match ty {
@@ -910,7 +906,7 @@ impl LintPass for UnusedAttributes {
             }
         }
 
-        if !syntax_attr::is_used(&unlower_attribute(attr)) {
+        if !attr::is_used(attr) {
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
             let known_crate = KNOWN_ATTRIBUTES.iter().find(|&&(name, ty, _)| {
@@ -927,9 +923,9 @@ impl LintPass for UnusedAttributes {
                                                     }).is_some();
             if  known_crate || plugin_crate {
                 let msg = match attr.node.style {
-                    hir::AttrOuter => "crate-level attribute should be an inner \
+                    ast::AttrOuter => "crate-level attribute should be an inner \
                                        attribute: add an exclamation mark: #![foo]",
-                    hir::AttrInner => "crate-level attribute should be in the \
+                    ast::AttrInner => "crate-level attribute should be in the \
                                        root module",
                 };
                 cx.span_lint(UNUSED_ATTRIBUTES, attr.span, msg);
@@ -1019,7 +1015,7 @@ impl LintPass for UnusedResults {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
-        fn check_must_use(cx: &Context, attrs: &[hir::Attribute], sp: Span) -> bool {
+        fn check_must_use(cx: &Context, attrs: &[ast::Attribute], sp: Span) -> bool {
             for attr in attrs {
                 if attr.check_name("must_use") {
                     let mut msg = "unused result which must be used".to_string();
@@ -1780,7 +1776,7 @@ impl MissingDoc {
     fn check_missing_docs_attrs(&self,
                                cx: &Context,
                                id: Option<ast::NodeId>,
-                               attrs: &[hir::Attribute],
+                               attrs: &[ast::Attribute],
                                sp: Span,
                                desc: &'static str) {
         // If we're building a test harness, then warning about
@@ -1805,7 +1801,7 @@ impl MissingDoc {
 
         let has_doc = attrs.iter().any(|a| {
             match a.node.value.node {
-                hir::MetaNameValue(ref name, _) if *name == "doc" => true,
+                ast::MetaNameValue(ref name, _) if *name == "doc" => true,
                 _ => false
             }
         });
@@ -1821,7 +1817,7 @@ impl LintPass for MissingDoc {
         lint_array!(MISSING_DOCS)
     }
 
-    fn enter_lint_attrs(&mut self, _: &Context, attrs: &[hir::Attribute]) {
+    fn enter_lint_attrs(&mut self, _: &Context, attrs: &[ast::Attribute]) {
         let doc_hidden = self.doc_hidden() || attrs.iter().any(|attr| {
             attr.check_name("doc") && match attr.meta_item_list() {
                 None => false,
@@ -1831,7 +1827,7 @@ impl LintPass for MissingDoc {
         self.doc_hidden_stack.push(doc_hidden);
     }
 
-    fn exit_lint_attrs(&mut self, _: &Context, _: &[hir::Attribute]) {
+    fn exit_lint_attrs(&mut self, _: &Context, _: &[ast::Attribute]) {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 
@@ -2573,7 +2569,7 @@ impl LintPass for UnstableFeatures {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNSTABLE_FEATURES)
     }
-    fn check_attribute(&mut self, ctx: &Context, attr: &hir::Attribute) {
+    fn check_attribute(&mut self, ctx: &Context, attr: &ast::Attribute) {
         if attr::contains_name(&[attr.node.value.clone()], "feature") {
             if let Some(items) = attr.node.value.meta_item_list() {
                 for item in items {

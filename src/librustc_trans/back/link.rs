@@ -46,7 +46,6 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::attr::AttrMetaMethods;
-use rustc_front::attr::AttrMetaMethods as FrontAttrMetaMethods;
 
 use rustc_front::hir;
 

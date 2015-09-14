@@ -16,14 +16,14 @@ use std::mem;
 
 use syntax::abi;
 use syntax::ast;
+use syntax::attr;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
 use rustc::front::map as hir_map;
 use rustc::middle::def_id::DefId;
 use rustc::middle::stability;
 
-use rustc_front::attr;
-use rustc_front::attr::AttrMetaMethods;
 use rustc_front::hir;
 
 use core;
@@ -39,7 +39,7 @@ use doctree::*;
 
 pub struct RustdocVisitor<'a, 'tcx: 'a> {
     pub module: Module,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub cx: &'a core::DocContext<'a, 'tcx>,
     pub analysis: Option<&'a core::CrateAnalysis>,
     view_item_stack: HashSet<ast::NodeId>,
@@ -146,7 +146,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
     }
 
-    pub fn visit_mod_contents(&mut self, span: Span, attrs: Vec<hir::Attribute> ,
+    pub fn visit_mod_contents(&mut self, span: Span, attrs: Vec<ast::Attribute> ,
                               vis: hir::Visibility, id: ast::NodeId,
                               m: &hir::Mod,
                               name: Option<ast::Ident>) -> Module {

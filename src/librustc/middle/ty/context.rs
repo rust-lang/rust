@@ -41,11 +41,11 @@ use std::cell::{Cell, RefCell, Ref};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use syntax::abi;
-use syntax::ast::{Name, NodeId};
+use syntax::ast::{self, Name, NodeId};
+use syntax::attr;
 use syntax::parse::token::special_idents;
 
 use rustc_front::hir;
-use rustc_front::attr;
 
 /// Internal storage
 pub struct CtxtArenas<'tcx> {
@@ -146,18 +146,18 @@ impl<'tcx> CommonTypes<'tcx> {
             bool: mk(TyBool),
             char: mk(TyChar),
             err: mk(TyError),
-            isize: mk(TyInt(hir::TyIs)),
-            i8: mk(TyInt(hir::TyI8)),
-            i16: mk(TyInt(hir::TyI16)),
-            i32: mk(TyInt(hir::TyI32)),
-            i64: mk(TyInt(hir::TyI64)),
-            usize: mk(TyUint(hir::TyUs)),
-            u8: mk(TyUint(hir::TyU8)),
-            u16: mk(TyUint(hir::TyU16)),
-            u32: mk(TyUint(hir::TyU32)),
-            u64: mk(TyUint(hir::TyU64)),
-            f32: mk(TyFloat(hir::TyF32)),
-            f64: mk(TyFloat(hir::TyF64)),
+            isize: mk(TyInt(ast::TyIs)),
+            i8: mk(TyInt(ast::TyI8)),
+            i16: mk(TyInt(ast::TyI16)),
+            i32: mk(TyInt(ast::TyI32)),
+            i64: mk(TyInt(ast::TyI64)),
+            usize: mk(TyUint(ast::TyUs)),
+            u8: mk(TyUint(ast::TyU8)),
+            u16: mk(TyUint(ast::TyU16)),
+            u32: mk(TyUint(ast::TyU32)),
+            u64: mk(TyUint(ast::TyU64)),
+            f32: mk(TyFloat(ast::TyF32)),
+            f64: mk(TyFloat(ast::TyF64)),
         }
     }
 }
@@ -771,30 +771,30 @@ impl<'tcx> ctxt<'tcx> {
         ctxt::intern_ty(&self.arenas.type_, &self.interner, st)
     }
 
-    pub fn mk_mach_int(&self, tm: hir::IntTy) -> Ty<'tcx> {
+    pub fn mk_mach_int(&self, tm: ast::IntTy) -> Ty<'tcx> {
         match tm {
-            hir::TyIs   => self.types.isize,
-            hir::TyI8   => self.types.i8,
-            hir::TyI16  => self.types.i16,
-            hir::TyI32  => self.types.i32,
-            hir::TyI64  => self.types.i64,
+            ast::TyIs   => self.types.isize,
+            ast::TyI8   => self.types.i8,
+            ast::TyI16  => self.types.i16,
+            ast::TyI32  => self.types.i32,
+            ast::TyI64  => self.types.i64,
         }
     }
 
-    pub fn mk_mach_uint(&self, tm: hir::UintTy) -> Ty<'tcx> {
+    pub fn mk_mach_uint(&self, tm: ast::UintTy) -> Ty<'tcx> {
         match tm {
-            hir::TyUs   => self.types.usize,
-            hir::TyU8   => self.types.u8,
-            hir::TyU16  => self.types.u16,
-            hir::TyU32  => self.types.u32,
-            hir::TyU64  => self.types.u64,
+            ast::TyUs   => self.types.usize,
+            ast::TyU8   => self.types.u8,
+            ast::TyU16  => self.types.u16,
+            ast::TyU32  => self.types.u32,
+            ast::TyU64  => self.types.u64,
         }
     }
 
-    pub fn mk_mach_float(&self, tm: hir::FloatTy) -> Ty<'tcx> {
+    pub fn mk_mach_float(&self, tm: ast::FloatTy) -> Ty<'tcx> {
         match tm {
-            hir::TyF32  => self.types.f32,
-            hir::TyF64  => self.types.f64,
+            ast::TyF32  => self.types.f32,
+            ast::TyF64  => self.types.f64,
         }
     }
 

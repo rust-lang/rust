@@ -15,8 +15,9 @@ use middle::ty;
 use middle::infer;
 use session::config::NoDebugInfo;
 use syntax::abi;
+pub use syntax::attr::InlineAttr;
+use syntax::ast;
 use rustc_front::hir;
-pub use rustc_front::attr::InlineAttr;
 use trans::base;
 use trans::common;
 use trans::context::CrateContext;
@@ -90,8 +91,8 @@ pub fn set_optimize_for_size(val: ValueRef, optimize: bool) {
 
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
-pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[hir::Attribute], llfn: ValueRef) {
-    use rustc_front::attr::*;
+pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
+    use syntax::attr::*;
     inline(llfn, find_inline_attr(Some(ccx.sess().diagnostic()), attrs));
 
     // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a

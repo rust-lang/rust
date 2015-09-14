@@ -27,7 +27,7 @@ use std::rc::Rc;
 use std::path::PathBuf;
 use flate::Bytes;
 use syntax::ast;
-use rustc_front::attr;
+use syntax::attr;
 use syntax::codemap;
 use syntax::parse::token;
 use syntax::parse::token::IdentInterner;

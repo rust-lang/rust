@@ -44,13 +44,13 @@ use std::slice;
 use std::vec::IntoIter;
 use std::collections::{HashMap, HashSet};
 use syntax::ast::{self, CrateNum, Name, NodeId};
+use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
 
 use rustc_front::hir;
 use rustc_front::hir::{ItemImpl, ItemTrait};
 use rustc_front::hir::{MutImmutable, MutMutable, Visibility};
-use rustc_front::attr::{self, AttrMetaMethods};
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{BuiltinBound, BuiltinBounds, ExistentialBounds};
@@ -563,8 +563,8 @@ pub struct ClosureUpvar<'tcx> {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum IntVarValue {
-    IntType(hir::IntTy),
-    UintType(hir::UintTy),
+    IntType(ast::IntTy),
+    UintType(ast::UintTy),
 }
 
 /// Default region to use for the bound of objects that are
@@ -2337,7 +2337,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     /// Get the attributes of a definition.
-    pub fn get_attrs(&self, did: DefId) -> Cow<'tcx, [hir::Attribute]> {
+    pub fn get_attrs(&self, did: DefId) -> Cow<'tcx, [ast::Attribute]> {
         if did.is_local() {
             Cow::Borrowed(self.map.attrs(did.node))
         } else {

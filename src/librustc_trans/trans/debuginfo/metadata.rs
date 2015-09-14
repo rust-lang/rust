@@ -27,7 +27,6 @@ use middle::def_id::DefId;
 use middle::pat_util;
 use middle::subst::{self, Substs};
 use rustc::front::map as hir_map;
-use rustc_front;
 use rustc_front::hir;
 use trans::{type_of, adt, machine, monomorphize};
 use trans::common::{self, CrateContext, FunctionContext, Block};
@@ -43,6 +42,7 @@ use std::ffi::CString;
 use std::path::Path;
 use std::ptr;
 use std::rc::Rc;
+use syntax;
 use syntax::util::interner::Interner;
 use syntax::codemap::Span;
 use syntax::{ast, codemap};
@@ -934,22 +934,22 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyBool => ("bool".to_string(), DW_ATE_boolean),
         ty::TyChar => ("char".to_string(), DW_ATE_unsigned_char),
         ty::TyInt(int_ty) => match int_ty {
-            hir::TyIs => ("isize".to_string(), DW_ATE_signed),
-            hir::TyI8 => ("i8".to_string(), DW_ATE_signed),
-            hir::TyI16 => ("i16".to_string(), DW_ATE_signed),
-            hir::TyI32 => ("i32".to_string(), DW_ATE_signed),
-            hir::TyI64 => ("i64".to_string(), DW_ATE_signed)
+            ast::TyIs => ("isize".to_string(), DW_ATE_signed),
+            ast::TyI8 => ("i8".to_string(), DW_ATE_signed),
+            ast::TyI16 => ("i16".to_string(), DW_ATE_signed),
+            ast::TyI32 => ("i32".to_string(), DW_ATE_signed),
+            ast::TyI64 => ("i64".to_string(), DW_ATE_signed)
         },
         ty::TyUint(uint_ty) => match uint_ty {
-            hir::TyUs => ("usize".to_string(), DW_ATE_unsigned),
-            hir::TyU8 => ("u8".to_string(), DW_ATE_unsigned),
-            hir::TyU16 => ("u16".to_string(), DW_ATE_unsigned),
-            hir::TyU32 => ("u32".to_string(), DW_ATE_unsigned),
-            hir::TyU64 => ("u64".to_string(), DW_ATE_unsigned)
+            ast::TyUs => ("usize".to_string(), DW_ATE_unsigned),
+            ast::TyU8 => ("u8".to_string(), DW_ATE_unsigned),
+            ast::TyU16 => ("u16".to_string(), DW_ATE_unsigned),
+            ast::TyU32 => ("u32".to_string(), DW_ATE_unsigned),
+            ast::TyU64 => ("u64".to_string(), DW_ATE_unsigned)
         },
         ty::TyFloat(float_ty) => match float_ty {
-            hir::TyF32 => ("f32".to_string(), DW_ATE_float),
-            hir::TyF64 => ("f64".to_string(), DW_ATE_float),
+            ast::TyF32 => ("f32".to_string(), DW_ATE_float),
+            ast::TyF64 => ("f64".to_string(), DW_ATE_float),
         },
         _ => cx.sess().bug("debuginfo::basic_type_metadata - t is invalid type")
     };
@@ -1608,7 +1608,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         })
         .collect();
 
-    let discriminant_type_metadata = |inttype: rustc_front::attr::IntType| {
+    let discriminant_type_metadata = |inttype: syntax::attr::IntType| {
         let disr_type_key = (enum_def_id, inttype);
         let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
                                                                  .borrow()

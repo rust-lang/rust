@@ -37,6 +37,7 @@ use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
 
 use syntax::ast::{Name, NodeId};
+use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::special_idents;
 use syntax::codemap::{Span, DUMMY_SP};
 
@@ -53,7 +54,6 @@ use rustc_front::hir::TupleVariantKind;
 use rustc_front::hir::UnnamedField;
 use rustc_front::hir::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use rustc_front::hir::Visibility;
-use rustc_front::attr::AttrMetaMethods;
 use rustc_front::visit::{self, Visitor};
 
 use std::mem::replace;

@@ -15,10 +15,12 @@
 
 #[macro_use] extern crate rustc;
 extern crate rustc_front;
+extern crate syntax;
 
 use rustc::lint::{Context, LintPass, LintPassObject, LintArray};
 use rustc::plugin::Registry;
-use rustc_front::{hir, attr};
+use rustc_front::hir;
+use syntax::attr;
 
 declare_lint!(CRATE_NOT_OKAY, Warn, "crate not marked with #![crate_okay]");
 
