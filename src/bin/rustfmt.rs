@@ -17,7 +17,7 @@ extern crate rustfmt;
 extern crate toml;
 
 use rustfmt::{WriteMode, run};
-use rustfmt::config::{Config, ConfigHelpVariantTypes};
+use rustfmt::config::Config;
 
 use std::env;
 use std::fs::{File, PathExt};
@@ -87,13 +87,7 @@ fn print_usage<S: Into<String>>(reason: S) {
              reason.into());
 
     for option in Config::get_docs() {
-        let variants = option.variant_names();
-        let variant_names: String = match *variants {
-            ConfigHelpVariantTypes::UsizeConfig => "<unsigned integer>".into(),
-            ConfigHelpVariantTypes::BoolConfig => "<boolean>".into(),
-            ConfigHelpVariantTypes::EnumConfig(ref variants) => variants.join(", "),
-        };
-        println!("{}, {}, Possible values: {}", option.option_name(), option.doc_string(), variant_names);
+        println!("{}, {}, Possible values: {}", option.option_name(), option.doc_string(), option.variant_names());
     }
 }
 

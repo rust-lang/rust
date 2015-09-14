@@ -82,34 +82,28 @@ macro_rules! create_config {
             $(pub $i: Option<$ty>),+
         }
 
-        // This trait and the following impl blocks are there only so that we
-        // can use UCFS inside the get_docs() function on builtin types for configs.
-        trait IsConfigType {
-            fn get_variant_names() -> Vec<&'static str>;
+        // This trait and the following impl blocks are there so that we an use
+        // UCFS inside the get_docs() function on types for configs.
+        pub trait ConfigType {
+            fn get_variant_names() -> String;
         }
 
-        impl IsConfigType for bool {
-            fn get_variant_names() -> Vec<&'static str> {
-                unreachable!()
+        impl ConfigType for bool {
+            fn get_variant_names() -> String {
+                String::from("<boolean>")
             }
         }
 
-        impl IsConfigType for usize {
-            fn get_variant_names() -> Vec<&'static str> {
-                unreachable!()
+        impl ConfigType for usize {
+            fn get_variant_names() -> String {
+                String::from("<unsigned integer>")
             }
         }
 
         pub struct ConfigHelpItem {
             option_name: &'static str,
             doc_string : &'static str,
-            variant_names: ConfigHelpVariantTypes,
-        }
-
-        pub enum ConfigHelpVariantTypes {
-            UsizeConfig,
-            BoolConfig,
-            EnumConfig(Vec<&'static str>),
+            variant_names: String,
         }
 
         impl ConfigHelpItem {
@@ -121,7 +115,7 @@ macro_rules! create_config {
                 self.doc_string
             }
 
-            pub fn variant_names(&self) -> &ConfigHelpVariantTypes {
+            pub fn variant_names(&self) -> &String {
                 &self.variant_names
             }
         }
@@ -165,15 +159,10 @@ macro_rules! create_config {
             pub fn get_docs() -> Vec<ConfigHelpItem> {
                 let mut options: Vec<ConfigHelpItem> = Vec::new();
                 $(
-                    let config_variant_type = match stringify!($ty) {
-                        "bool" => ConfigHelpVariantTypes::BoolConfig,
-                        "usize" => ConfigHelpVariantTypes::UsizeConfig,
-                        _ => ConfigHelpVariantTypes::EnumConfig(<$ty>::get_variant_names()),
-                    };
                     options.push(ConfigHelpItem {
                         option_name: stringify!($i),
                         doc_string: stringify!($dstring),
-                        variant_names: config_variant_type,
+                        variant_names: <$ty>::get_variant_names(),
                     });
                 )+
                 options
