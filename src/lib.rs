@@ -237,8 +237,6 @@ fn fmt_ast(krate: &ast::Crate, codemap: &CodeMap, config: &Config) -> FileMap {
 // Formatting done on a char by char or line by line basis.
 // TODO warn on bad license
 // TODO other stuff for parity with make tidy
-// FIXME skipping due to `continue`, #184.
-#[rustfmt_skip]
 fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     let mut truncate_todo = Vec::new();
     let mut report = FormatReport { file_error_map: HashMap::new() };
@@ -260,10 +258,7 @@ fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
 
             // Add warnings for bad todos/ fixmes
             if let Some(issue) = issue_seeker.inspect(c) {
-                errors.push(FormattingError {
-                    line: cur_line,
-                    kind: ErrorKind::BadIssue(issue)
-                });
+                errors.push(FormattingError { line: cur_line, kind: ErrorKind::BadIssue(issue) });
             }
 
             if c == '\n' {
@@ -274,10 +269,7 @@ fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
                 }
                 // Check for any line width errors we couldn't correct.
                 if line_len > config.max_width {
-                    errors.push(FormattingError {
-                        line: cur_line,
-                        kind: ErrorKind::LineOverflow
-                    });
+                    errors.push(FormattingError { line: cur_line, kind: ErrorKind::LineOverflow });
                 }
                 line_len = 0;
                 cur_line += 1;
@@ -302,10 +294,7 @@ fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
         }
 
         for &(l, _, _) in &trims {
-            errors.push(FormattingError {
-                line: l,
-                kind: ErrorKind::TrailingWhitespace
-            });
+            errors.push(FormattingError { line: l, kind: ErrorKind::TrailingWhitespace });
         }
 
         report.file_error_map.insert(f.to_owned(), errors);

@@ -149,8 +149,6 @@ impl<'a> Rewrite for SegmentParam<'a> {
 // We'd really rather not do this, but there doesn't seem to be an alternative
 // at this point.
 // FIXME: fails with spans containing comments with the characters < or :
-// FIXME #184 skip due to continue.
-#[rustfmt_skip]
 fn get_path_separator(codemap: &CodeMap,
                       path_start: BytePos,
                       segment_start: BytePos)
