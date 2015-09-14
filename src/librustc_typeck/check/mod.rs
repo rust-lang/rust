@@ -83,7 +83,7 @@ use self::TupleArgumentsFlag::*;
 use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv, PathParamMode};
 use check::_match::pat_ctxt;
 use fmt_macros::{Parser, Piece, Position};
-use middle::astconv_util::{check_path_args, NO_TPS, NO_REGIONS};
+use middle::astconv_util::prohibit_type_params;
 use middle::def;
 use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::infer;
@@ -4535,8 +4535,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     for (opt_space, segment) in segment_spaces.iter().zip(segments) {
         match *opt_space {
             None => {
-                check_path_args(fcx.tcx(), slice::ref_slice(segment),
-                                NO_TPS | NO_REGIONS);
+                prohibit_type_params(fcx.tcx(), slice::ref_slice(segment));
             }
 
             Some(space) => {

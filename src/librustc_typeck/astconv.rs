@@ -48,7 +48,7 @@
 //! case but `&a` in the second.  Basically, defaults that appear inside
 //! an rptr (`&r.T`) use the region `r` that appears in the rptr.
 
-use middle::astconv_util::{prim_ty_to_ty, check_path_args, NO_TPS, NO_REGIONS};
+use middle::astconv_util::{prim_ty_to_ty, prohibit_type_params, prohibit_projection};
 use middle::const_eval::{self, ConstVal};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def;
@@ -1210,7 +1210,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
 
     debug!("associated_path_def_to_ty: {:?}::{}", ty, assoc_name);
 
-    check_path_args(tcx, slice::ref_slice(item_segment), NO_TPS | NO_REGIONS);
+    prohibit_type_params(tcx, slice::ref_slice(item_segment));
 
     // Find the type of the associated item, and the trait where the associated
     // item is declared.
@@ -1312,7 +1312,7 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
 {
     let tcx = this.tcx();
 
-    check_path_args(tcx, slice::ref_slice(item_segment), NO_TPS | NO_REGIONS);
+    prohibit_type_params(tcx, slice::ref_slice(item_segment));
 
     let self_ty = if let Some(ty) = opt_self_ty {
         ty
@@ -1401,7 +1401,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                                           base_segments.last().unwrap(),
                                                           &mut projection_bounds);
 
-            check_path_args(tcx, base_segments.split_last().unwrap().1, NO_TPS | NO_REGIONS);
+            prohibit_type_params(tcx, base_segments.split_last().unwrap().1);
             trait_ref_to_object_type(this,
                                      rscope,
                                      span,
@@ -1410,7 +1410,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                      &[])
         }
         def::DefTy(did, _) | def::DefStruct(did) => {
-            check_path_args(tcx, base_segments.split_last().unwrap().1, NO_TPS | NO_REGIONS);
+            prohibit_type_params(tcx, base_segments.split_last().unwrap().1);
             ast_path_to_ty(this,
                            rscope,
                            span,
@@ -1419,12 +1419,12 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                            base_segments.last().unwrap())
         }
         def::DefTyParam(space, index, _, name) => {
-            check_path_args(tcx, base_segments, NO_TPS | NO_REGIONS);
+            prohibit_type_params(tcx, base_segments);
             tcx.mk_param(space, index, name)
         }
         def::DefSelfTy(_, Some((_, self_ty_id))) => {
             // Self in impl (we know the concrete type).
-            check_path_args(tcx, base_segments, NO_TPS | NO_REGIONS);
+            prohibit_type_params(tcx, base_segments);
             if let Some(&ty) = tcx.ast_ty_to_ty_cache.borrow().get(&self_ty_id) {
                 if let Some(free_substs) = this.get_free_substs() {
                     ty.subst(tcx, free_substs)
@@ -1437,11 +1437,11 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         def::DefSelfTy(Some(_), None) => {
             // Self in trait.
-            check_path_args(tcx, base_segments, NO_TPS | NO_REGIONS);
+            prohibit_type_params(tcx, base_segments);
             tcx.mk_self_type()
         }
         def::DefAssociatedTy(trait_did, _) => {
-            check_path_args(tcx, &base_segments[..base_segments.len()-2], NO_TPS | NO_REGIONS);
+            prohibit_type_params(tcx, &base_segments[..base_segments.len()-2]);
             qpath_to_ty(this,
                         rscope,
                         span,
@@ -2185,8 +2185,7 @@ fn prohibit_projections<'tcx>(tcx: &ty::ctxt<'tcx>,
                               bindings: &[ConvertedBinding<'tcx>])
 {
     for binding in bindings.iter().take(1) {
-        span_err!(tcx.sess, binding.span, E0229,
-            "associated type bindings are not allowed here");
+        prohibit_projection(tcx, binding.span);
     }
 }
 
