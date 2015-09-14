@@ -75,6 +75,10 @@ impl Foo {
     }
 }
 
+fn homura<T: Deref<Target = i32>>(_: T) {
+
+}
+
 fn main() {
     let _ = function(move || 5);
     let _ = move || 42;
