@@ -73,18 +73,18 @@ impl OsString {
     /// convert; non UTF-8 data will produce `None`.
     #[unstable(feature = "convert", reason = "recently added", issue = "27704")]
     pub fn from_bytes<B>(bytes: B) -> Option<OsString> where B: Into<Vec<u8>> {
-        #[cfg(unix)]
-        fn from_bytes_inner(vec: Vec<u8>) -> Option<OsString> {
-            use os::unix::ffi::OsStringExt;
-            Some(OsString::from_vec(vec))
-        }
+        Self::_from_bytes(bytes.into())
+    }
 
-        #[cfg(windows)]
-        fn from_bytes_inner(vec: Vec<u8>) -> Option<OsString> {
-            String::from_utf8(vec).ok().map(OsString::from)
-        }
+    #[cfg(unix)]
+    fn _from_bytes(vec: Vec<u8>) -> Option<OsString> {
+        use os::unix::ffi::OsStringExt;
+        Some(OsString::from_vec(vec))
+    }
 
-        from_bytes_inner(bytes.into())
+    #[cfg(windows)]
+    fn _from_bytes(vec: Vec<u8>) -> Option<OsString> {
+        String::from_utf8(vec).ok().map(OsString::from)
     }
 
     /// Converts to an `OsStr` slice.
