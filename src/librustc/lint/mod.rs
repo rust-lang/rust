@@ -39,7 +39,7 @@ use syntax::visit as ast_visit;
 use syntax::ast;
 use rustc_front::hir;
 
-pub use lint::context::{LateContext, EarlyContext, Context, LintContext, LintStore,
+pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         raw_emit_lint, check_crate, check_ast_crate, gather_attrs,
                         GatherNodeLevels};
 
@@ -111,14 +111,6 @@ macro_rules! lint_array { ($( $lint:expr ),*) => (
 
 pub type LintArray = &'static [&'static &'static Lint];
 
-/// Trait for types providing lint checks.
-///
-/// Each `check` method checks a single syntax node, and should not
-/// invoke methods recursively (unlike `Visitor`). By default they
-/// do nothing.
-//
-// FIXME: eliminate the duplication with `Visitor`. But this also
-// contains a few lint-specific methods with no equivalent in `Visitor`.
 pub trait LintPass {
     /// Get descriptions of the lints this `LintPass` object can emit.
     ///
@@ -127,7 +119,18 @@ pub trait LintPass {
     /// parts of the compiler. If you want enforced access restrictions for your
     /// `Lint`, make it a private `static` item in its own module.
     fn get_lints(&self) -> LintArray;
+}
 
+
+/// Trait for types providing lint checks.
+///
+/// Each `check` method checks a single syntax node, and should not
+/// invoke methods recursively (unlike `Visitor`). By default they
+/// do nothing.
+//
+// FIXME: eliminate the duplication with `Visitor`. But this also
+// contains a few lint-specific methods with no equivalent in `Visitor`.
+pub trait LateLintPass: LintPass {
     fn check_ident(&mut self, _: &LateContext, _: Span, _: ast::Ident) { }
     fn check_crate(&mut self, _: &LateContext, _: &hir::Crate) { }
     fn check_mod(&mut self, _: &LateContext, _: &hir::Mod, _: Span, _: ast::NodeId) { }
@@ -164,60 +167,63 @@ pub trait LintPass {
     fn check_path(&mut self, _: &LateContext, _: &hir::Path, _: ast::NodeId) { }
     fn check_attribute(&mut self, _: &LateContext, _: &ast::Attribute) { }
 
-    fn check_ast_ident(&mut self, _: &EarlyContext, _: Span, _: ast::Ident) { }
-    fn check_ast_crate(&mut self, _: &EarlyContext, _: &ast::Crate) { }
-    fn check_ast_mod(&mut self, _: &EarlyContext, _: &ast::Mod, _: Span, _: ast::NodeId) { }
-    fn check_ast_foreign_item(&mut self, _: &EarlyContext, _: &ast::ForeignItem) { }
-    fn check_ast_item(&mut self, _: &EarlyContext, _: &ast::Item) { }
-    fn check_ast_local(&mut self, _: &EarlyContext, _: &ast::Local) { }
-    fn check_ast_block(&mut self, _: &EarlyContext, _: &ast::Block) { }
-    fn check_ast_stmt(&mut self, _: &EarlyContext, _: &ast::Stmt) { }
-    fn check_ast_arm(&mut self, _: &EarlyContext, _: &ast::Arm) { }
-    fn check_ast_pat(&mut self, _: &EarlyContext, _: &ast::Pat) { }
-    fn check_ast_decl(&mut self, _: &EarlyContext, _: &ast::Decl) { }
-    fn check_ast_expr(&mut self, _: &EarlyContext, _: &ast::Expr) { }
-    fn check_ast_expr_post(&mut self, _: &EarlyContext, _: &ast::Expr) { }
-    fn check_ast_ty(&mut self, _: &EarlyContext, _: &ast::Ty) { }
-    fn check_ast_generics(&mut self, _: &EarlyContext, _: &ast::Generics) { }
-    fn check_ast_fn(&mut self, _: &EarlyContext,
-        _: ast_visit::FnKind, _: &ast::FnDecl, _: &ast::Block, _: Span, _: ast::NodeId) { }
-    fn check_ast_trait_item(&mut self, _: &EarlyContext, _: &ast::TraitItem) { }
-    fn check_ast_impl_item(&mut self, _: &EarlyContext, _: &ast::ImplItem) { }
-    fn check_ast_struct_def(&mut self, _: &EarlyContext,
-        _: &ast::StructDef, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
-    fn check_ast_struct_def_post(&mut self, _: &EarlyContext,
-        _: &ast::StructDef, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
-    fn check_ast_struct_field(&mut self, _: &EarlyContext, _: &ast::StructField) { }
-    fn check_ast_variant(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
-    fn check_ast_variant_post(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
-    fn check_ast_opt_lifetime_ref(&mut self,
-                                  _: &EarlyContext,
-                                  _: Span,
-                                  _: &Option<ast::Lifetime>) { }
-    fn check_ast_lifetime_ref(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
-    fn check_ast_lifetime_def(&mut self, _: &EarlyContext, _: &ast::LifetimeDef) { }
-    fn check_ast_explicit_self(&mut self, _: &EarlyContext, _: &ast::ExplicitSelf) { }
-    fn check_ast_mac(&mut self, _: &EarlyContext, _: &ast::Mac) { }
-    fn check_ast_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }
-    fn check_ast_attribute(&mut self, _: &EarlyContext, _: &ast::Attribute) { }
-
     /// Called when entering a syntax node that can have lint attributes such
     /// as `#[allow(...)]`. Called with *all* the attributes of that node.
     fn enter_lint_attrs(&mut self, _: &LateContext, _: &[ast::Attribute]) { }
 
     /// Counterpart to `enter_lint_attrs`.
     fn exit_lint_attrs(&mut self, _: &LateContext, _: &[ast::Attribute]) { }
+}
+
+pub trait EarlyLintPass: LintPass {
+    fn check_ident(&mut self, _: &EarlyContext, _: Span, _: ast::Ident) { }
+    fn check_crate(&mut self, _: &EarlyContext, _: &ast::Crate) { }
+    fn check_mod(&mut self, _: &EarlyContext, _: &ast::Mod, _: Span, _: ast::NodeId) { }
+    fn check_foreign_item(&mut self, _: &EarlyContext, _: &ast::ForeignItem) { }
+    fn check_item(&mut self, _: &EarlyContext, _: &ast::Item) { }
+    fn check_local(&mut self, _: &EarlyContext, _: &ast::Local) { }
+    fn check_block(&mut self, _: &EarlyContext, _: &ast::Block) { }
+    fn check_stmt(&mut self, _: &EarlyContext, _: &ast::Stmt) { }
+    fn check_arm(&mut self, _: &EarlyContext, _: &ast::Arm) { }
+    fn check_pat(&mut self, _: &EarlyContext, _: &ast::Pat) { }
+    fn check_decl(&mut self, _: &EarlyContext, _: &ast::Decl) { }
+    fn check_expr(&mut self, _: &EarlyContext, _: &ast::Expr) { }
+    fn check_expr_post(&mut self, _: &EarlyContext, _: &ast::Expr) { }
+    fn check_ty(&mut self, _: &EarlyContext, _: &ast::Ty) { }
+    fn check_generics(&mut self, _: &EarlyContext, _: &ast::Generics) { }
+    fn check_fn(&mut self, _: &EarlyContext,
+        _: ast_visit::FnKind, _: &ast::FnDecl, _: &ast::Block, _: Span, _: ast::NodeId) { }
+    fn check_trait_item(&mut self, _: &EarlyContext, _: &ast::TraitItem) { }
+    fn check_impl_item(&mut self, _: &EarlyContext, _: &ast::ImplItem) { }
+    fn check_struct_def(&mut self, _: &EarlyContext,
+        _: &ast::StructDef, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
+    fn check_struct_def_post(&mut self, _: &EarlyContext,
+        _: &ast::StructDef, _: ast::Ident, _: &ast::Generics, _: ast::NodeId) { }
+    fn check_struct_field(&mut self, _: &EarlyContext, _: &ast::StructField) { }
+    fn check_variant(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
+    fn check_variant_post(&mut self, _: &EarlyContext, _: &ast::Variant, _: &ast::Generics) { }
+    fn check_opt_lifetime_ref(&mut self,
+                              _: &EarlyContext,
+                              _: Span,
+                              _: &Option<ast::Lifetime>) { }
+    fn check_lifetime_ref(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
+    fn check_lifetime_def(&mut self, _: &EarlyContext, _: &ast::LifetimeDef) { }
+    fn check_explicit_self(&mut self, _: &EarlyContext, _: &ast::ExplicitSelf) { }
+    fn check_mac(&mut self, _: &EarlyContext, _: &ast::Mac) { }
+    fn check_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }
+    fn check_attribute(&mut self, _: &EarlyContext, _: &ast::Attribute) { }
 
     /// Called when entering a syntax node that can have lint attributes such
     /// as `#[allow(...)]`. Called with *all* the attributes of that node.
-    fn ast_enter_lint_attrs(&mut self, _: &EarlyContext, _: &[ast::Attribute]) { }
+    fn enter_lint_attrs(&mut self, _: &EarlyContext, _: &[ast::Attribute]) { }
 
-    /// Counterpart to `ast_enter_lint_attrs`.
-    fn ast_exit_lint_attrs(&mut self, _: &EarlyContext, _: &[ast::Attribute]) { }
+    /// Counterpart to `enter_lint_attrs`.
+    fn exit_lint_attrs(&mut self, _: &EarlyContext, _: &[ast::Attribute]) { }
 }
 
 /// A lint pass boxed up as a trait object.
-pub type LintPassObject = Box<LintPass + 'static>;
+pub type EarlyLintPassObject = Box<EarlyLintPass + 'static>;
+pub type LateLintPassObject = Box<LateLintPass + 'static>;
 
 /// Identifies a lint known to the compiler.
 #[derive(Clone, Copy)]

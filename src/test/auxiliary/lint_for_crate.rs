@@ -17,7 +17,7 @@
 extern crate rustc_front;
 extern crate syntax;
 
-use rustc::lint::{Context, LintContext, LintPass, LintPassObject, LintArray};
+use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass, LateLintPassObject, LintArray};
 use rustc::plugin::Registry;
 use rustc_front::hir;
 use syntax::attr;
@@ -30,8 +30,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(CRATE_NOT_OKAY)
     }
+}
 
-    fn check_crate(&mut self, cx: &Context, krate: &hir::Crate) {
+impl LateLintPass for Pass {
+    fn check_crate(&mut self, cx: &LateContext, krate: &hir::Crate) {
         if !attr::contains_name(&krate.attrs, "crate_okay") {
             cx.span_lint(CRATE_NOT_OKAY, krate.span,
                          "crate is not marked with #![crate_okay]");
@@ -41,5 +43,5 @@ impl LintPass for Pass {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_lint_pass(box Pass as LintPassObject);
+    reg.register_late_lint_pass(box Pass as LateLintPassObject);
 }

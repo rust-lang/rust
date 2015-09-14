@@ -482,13 +482,16 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
     });
 
-    let Registry { syntax_exts, lint_passes, lint_groups,
+    let Registry { syntax_exts, early_lint_passes, late_lint_passes, lint_groups,
                    llvm_passes, attributes, .. } = registry;
 
     {
         let mut ls = sess.lint_store.borrow_mut();
-        for pass in lint_passes {
-            ls.register_pass(Some(sess), true, pass);
+        for pass in early_lint_passes {
+            ls.register_early_pass(Some(sess), true, pass);
+        }
+        for pass in late_lint_passes {
+            ls.register_late_pass(Some(sess), true, pass);
         }
 
         for (name, to) in lint_groups {
