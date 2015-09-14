@@ -13,7 +13,7 @@ use prelude::v1::*;
 use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 
 use ptr;
-use rt;
+use sys_common;
 use sys_common::mutex::Mutex;
 
 pub type Key = DWORD;
@@ -133,7 +133,7 @@ unsafe fn init_dtors() {
 
     let dtors = box Vec::<(Key, Dtor)>::new();
 
-    let res = rt::at_exit(move|| {
+    let res = sys_common::at_exit(move|| {
         DTOR_LOCK.lock();
         let dtors = DTORS;
         DTORS = 1 as *mut _;

@@ -18,7 +18,7 @@ use prelude::v1::*;
 
 use any::Any;
 use self::EXCEPTION_DISPOSITION::*;
-use rt::dwarf::eh;
+use sys_common::dwarf::eh;
 use core::mem;
 use core::ptr;
 use libc::{c_void, c_ulonglong, DWORD, LPVOID};
@@ -93,6 +93,7 @@ pub enum EXCEPTION_DISPOSITION {
 
 // From kernel32.dll
 extern "system" {
+    #[unwind]
     fn RaiseException(dwExceptionCode: DWORD,
                       dwExceptionFlags: DWORD,
                       nNumberOfArguments: DWORD,
@@ -114,7 +115,6 @@ struct PanicData {
 pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
     let panic_ctx = Box::new(PanicData { data: data });
     let params = [Box::into_raw(panic_ctx) as ULONG_PTR];
-    rtdebug!("panic: ctx={:X}", params[0]);
     RaiseException(RUST_PANIC,
                    EXCEPTION_NONCONTINUABLE,
                    params.len() as DWORD,
@@ -123,7 +123,6 @@ pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
 }
 
 pub unsafe fn cleanup(ptr: *mut u8) -> Box<Any + Send + 'static> {
-    rtdebug!("cleanup: ctx={:X}", ptr as usize);
     let panic_ctx = Box::from_raw(ptr as *mut PanicData);
     return panic_ctx.data;
 }
@@ -174,15 +173,10 @@ unsafe extern fn rust_eh_personality(
 {
     let er = &*exceptionRecord;
     let dc = &*dispatcherContext;
-    rtdebug!("rust_eh_personality: code={:X}, flags={:X}, frame={:X}, ip={:X}",
-        er.ExceptionCode, er.ExceptionFlags,
-        establisherFrame as usize, dc.ControlPc as usize);
 
     if er.ExceptionFlags & EXCEPTION_UNWIND == 0 { // we are in the dispatch phase
         if er.ExceptionCode == RUST_PANIC {
             if let Some(lpad) = find_landing_pad(dc) {
-                rtdebug!("unwinding to landing pad {:X}", lpad);
-
                 RtlUnwindEx(establisherFrame,
                             lpad as LPVOID,
                             exceptionRecord,
@@ -205,8 +199,8 @@ unsafe extern fn rust_eh_personality(
 
 #[lang = "eh_unwind_resume"]
 #[cfg(not(test))]
+#[unwind]
 unsafe extern fn rust_eh_unwind_resume(panic_ctx: LPVOID) {
-    rtdebug!("rust_eh_unwind_resume: ctx={:X}", panic_ctx as usize);
     let params = [panic_ctx as ULONG_PTR];
     RaiseException(RUST_PANIC,
                    EXCEPTION_NONCONTINUABLE,

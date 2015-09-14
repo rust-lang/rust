@@ -575,13 +575,13 @@ declare_special_idents_and_keywords! {
         (36,                         Type,       "type");
         (37,                         Unsafe,     "unsafe");
         (38,                         Use,        "use");
-        (39,                         Virtual,    "virtual");
-        (40,                         While,      "while");
-        (41,                         Continue,   "continue");
-        (42,                         Box,        "box");
-        (43,                         Const,      "const");
-        (44,                         Where,      "where");
+        (39,                         While,      "while");
+        (40,                         Continue,   "continue");
+        (41,                         Box,        "box");
+        (42,                         Const,      "const");
+        (43,                         Where,      "where");
         'reserved:
+        (44,                         Virtual,    "virtual");
         (45,                         Proc,       "proc");
         (46,                         Alignof,    "alignof");
         (47,                         Become,     "become");

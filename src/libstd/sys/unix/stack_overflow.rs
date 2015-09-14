@@ -38,7 +38,7 @@ impl Drop for Handler {
           target_os = "openbsd"))]
 mod imp {
     use super::Handler;
-    use rt::util::report_overflow;
+    use sys_common::util::report_overflow;
     use mem;
     use ptr;
     use sys::c::{siginfo, sigaction, SIGBUS, SIG_DFL,

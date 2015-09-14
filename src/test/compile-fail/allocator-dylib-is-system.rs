@@ -11,6 +11,7 @@
 // ignore-msvc everything is the system allocator on msvc
 // ignore-musl no dylibs on musl yet
 // ignore-bitrig no jemalloc on bitrig
+// ignore-openbsd no jemalloc on openbsd
 // aux-build:allocator-dylib.rs
 // no-prefer-dynamic
 // error-pattern: cannot link together two allocators

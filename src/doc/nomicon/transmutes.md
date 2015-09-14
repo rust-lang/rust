@@ -21,7 +21,7 @@ same size. The ways to cause Undefined Behaviour with this are mind boggling.
     * No you can't do it
     * No you're not special
 * Transmuting to a reference without an explicitly provided lifetime
-  produces an [unbounded lifetime][]
+  produces an [unbounded lifetime]
 
 `mem::transmute_copy<T, U>` somehow manages to be *even more* wildly unsafe than
 this. It copies `size_of<U>` bytes out of an `&T` and interprets them as a `U`.

@@ -226,11 +226,8 @@ impl<T : ?Sized> Box<T> {
     /// Function is unsafe, because improper use of this function may
     /// lead to memory problems like double-free, for example if the
     /// function is called twice on the same raw pointer.
-    #[unstable(feature = "box_raw",
-               reason = "may be renamed or moved out of Box scope",
-               issue = "27768")]
+    #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
-    // NB: may want to be called from_ptr, see comments on CStr::from_ptr
     pub unsafe fn from_raw(raw: *mut T) -> Self {
         mem::transmute(raw)
     }
@@ -244,17 +241,14 @@ impl<T : ?Sized> Box<T> {
     /// `Box` does not specify, how memory is allocated.
     ///
     /// # Examples
-    /// ```
-    /// #![feature(box_raw)]
     ///
+    /// ```
     /// let seventeen = Box::new(17u32);
     /// let raw = Box::into_raw(seventeen);
     /// let boxed_again = unsafe { Box::from_raw(raw) };
     /// ```
-    #[unstable(feature = "box_raw", reason = "may be renamed",
-               issue = "27768")]
+    #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
-    // NB: may want to be called into_ptr, see comments on CStr::from_ptr
     pub fn into_raw(b: Box<T>) -> *mut T {
         unsafe { mem::transmute(b) }
     }
@@ -289,8 +283,6 @@ impl<T: Clone> Clone for Box<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(box_raw)]
-    ///
     /// let x = Box::new(5);
     /// let mut y = Box::new(10);
     ///

@@ -167,10 +167,11 @@ use any::Any;
 use cell::UnsafeCell;
 use fmt;
 use io;
-use rt::{self, unwind};
 use sync::{Mutex, Condvar, Arc};
 use sys::thread as imp;
 use sys_common::thread_info;
+use sys_common::unwind;
+use sys_common::util;
 use time::Duration;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +261,7 @@ impl Builder {
                                        -> io::Result<JoinInner<T>> {
         let Builder { name, stack_size } = self;
 
-        let stack_size = stack_size.unwrap_or(rt::min_stack());
+        let stack_size = stack_size.unwrap_or(util::min_stack());
 
         let my_thread = Thread::new(name);
         let their_thread = my_thread.clone();
@@ -383,7 +384,7 @@ pub fn catch_panic<F, R>(f: F) -> Result<R>
     let mut result = None;
     unsafe {
         let result = &mut result;
-        try!(::rt::unwind::try(move || *result = Some(f())))
+        try!(unwind::try(move || *result = Some(f())))
     }
     Ok(result.unwrap())
 }
@@ -410,8 +411,7 @@ pub fn sleep_ms(ms: u32) {
 /// signal being received or a spurious wakeup. Platforms which do not support
 /// nanosecond precision for sleeping will have `dur` rounded up to the nearest
 /// granularity of time they can sleep for.
-#[unstable(feature = "thread_sleep", reason = "waiting on Duration",
-           issue = "27771")]
+#[stable(feature = "thread_sleep", since = "1.4.0")]
 pub fn sleep(dur: Duration) {
     imp::Thread::sleep(dur)
 }
@@ -481,8 +481,7 @@ pub fn park_timeout_ms(ms: u32) {
 ///
 /// Platforms which do not support nanosecond precision for sleeping will have
 /// `dur` rounded up to the nearest granularity of time they can sleep for.
-#[unstable(feature = "park_timeout", reason = "waiting on Duration",
-           issue = "27771")]
+#[stable(feature = "park_timeout", since = "1.4.0")]
 pub fn park_timeout(dur: Duration) {
     let thread = current();
     let mut guard = thread.inner.lock.lock().unwrap();

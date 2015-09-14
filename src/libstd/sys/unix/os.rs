@@ -358,8 +358,8 @@ pub fn args() -> Args {
           target_os = "netbsd",
           target_os = "openbsd"))]
 pub fn args() -> Args {
-    use rt;
-    let bytes = rt::args::clone().unwrap_or(Vec::new());
+    use sys_common;
+    let bytes = sys_common::args::clone().unwrap_or(Vec::new());
     let v: Vec<OsString> = bytes.into_iter().map(|v| {
         OsStringExt::from_vec(v)
     }).collect();

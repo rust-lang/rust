@@ -43,6 +43,8 @@ pub mod thread_local;
 pub mod time;
 pub mod stdio;
 
+pub fn init() {}
+
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno as libc::c_int {
         libc::ERROR_ACCESS_DENIED => ErrorKind::PermissionDenied,
