@@ -188,6 +188,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // allow `extern "platform-intrinsic" { ... }`
     ("platform_intrinsics", "1.4.0", Some(27731), Active),
+
+    // allow `#[unwind]`
+    ("unwind_attributes", "1.4.0", None, Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -316,6 +319,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("unsafe_no_drop_flag", Whitelisted, Gated("unsafe_no_drop_flag",
                                                "unsafe_no_drop_flag has unstable semantics \
                                                 and may be removed in the future")),
+    ("unwind", Whitelisted, Gated("unwind_attributes", "#[unwind] is experimental")),
 
     // used in resolve
     ("prelude_import", Whitelisted, Gated("prelude_import",

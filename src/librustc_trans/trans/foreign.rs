@@ -187,7 +187,8 @@ pub fn get_extern_fn(ccx: &CrateContext,
 /// Registers a foreign function found in a library. Just adds a LLVM global.
 pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           abi: Abi, fty: Ty<'tcx>,
-                                          name: &str) -> ValueRef {
+                                          name: &str,
+                                          attrs: &[hir::Attribute])-> ValueRef {
     debug!("register_foreign_item_fn(abi={:?}, \
             ty={:?}, \
             name={})",
@@ -210,7 +211,9 @@ pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
 
     let llfn = get_extern_fn(ccx, &mut *ccx.externs().borrow_mut(), name, cc, llfn_ty, fty);
+    attributes::unwind(llfn, false);
     add_argument_attributes(&tys, llfn);
+    attributes::from_fn_attrs(ccx, attrs, llfn);
     llfn
 }
 
@@ -489,8 +492,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &hir::ForeignMod) {
                                                      "foreign fn's sty isn't a bare_fn_ty?")
                     }
 
-                    let llfn = register_foreign_item_fn(ccx, abi, ty, &lname);
-                    attributes::from_fn_attrs(ccx, &foreign_item.attrs, llfn);
+                    register_foreign_item_fn(ccx, abi, ty, &lname, &foreign_item.attrs);
                     // Unlike for other items, we shouldn't call
                     // `base::update_linkage` here.  Foreign items have
                     // special linkage requirements, which are handled

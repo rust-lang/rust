@@ -93,6 +93,7 @@ pub enum EXCEPTION_DISPOSITION {
 
 // From kernel32.dll
 extern "system" {
+    #[unwind]
     fn RaiseException(dwExceptionCode: DWORD,
                       dwExceptionFlags: DWORD,
                       nNumberOfArguments: DWORD,
@@ -198,6 +199,7 @@ unsafe extern fn rust_eh_personality(
 
 #[lang = "eh_unwind_resume"]
 #[cfg(not(test))]
+#[unwind]
 unsafe extern fn rust_eh_unwind_resume(panic_ctx: LPVOID) {
     let params = [panic_ctx as ULONG_PTR];
     RaiseException(RUST_PANIC,

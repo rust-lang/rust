@@ -59,7 +59,6 @@ pub fn emit_uwtable(val: ValueRef, emit: bool) {
 
 /// Tell LLVM whether the function can or cannot unwind.
 #[inline]
-#[allow(dead_code)] // possibly useful function
 pub fn unwind(val: ValueRef, can_unwind: bool) {
     if can_unwind {
         unsafe {
@@ -118,6 +117,8 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[hir::Attribute], llfn: ValueRe
             }
         } else if attr.check_name("allocator") {
             llvm::Attribute::NoAlias.apply_llfn(llvm::ReturnIndex as c_uint, llfn);
+        } else if attr.check_name("unwind") {
+            unwind(llfn, true);
         }
     }
 }
