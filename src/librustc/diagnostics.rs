@@ -1895,6 +1895,7 @@ register_diagnostics! {
     // E0006 // merged with E0005
 //  E0134,
 //  E0135,
+    E0229, // associated type bindings are not allowed here
     E0264, // unknown external lang item
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied

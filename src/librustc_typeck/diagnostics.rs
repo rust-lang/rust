@@ -3294,7 +3294,6 @@ register_diagnostics! {
     E0226, // only a single explicit lifetime bound is permitted
     E0227, // ambiguous lifetime bound, explicit lifetime bound required
     E0228, // explicit lifetime bound required
-    E0229, // associated type bindings are not allowed here
     E0230, // there is no type parameter on trait
     E0231, // only named substitution parameters are allowed
 //  E0233,
