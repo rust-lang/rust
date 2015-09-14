@@ -38,7 +38,8 @@ use middle::const_eval::{eval_const_expr_partial, ConstVal};
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::front::map as hir_map;
 use util::nodemap::{FnvHashMap, FnvHashSet, NodeSet};
-use lint::{Level, LateContext, EarlyContext, LintContext, LintPass, LintArray, Lint};
+use lint::{Level, LateContext, EarlyContext, LintContext, LintArray, Lint};
+use lint::{LintPass, EarlyLintPass, LateLintPass};
 
 use std::collections::HashSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
@@ -72,7 +73,9 @@ impl LintPass for WhileTrue {
     fn get_lints(&self) -> LintArray {
         lint_array!(WHILE_TRUE)
     }
+}
 
+impl LateLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprWhile(ref cond, _, _) = e.node {
             if let hir::ExprLit(ref lit) = cond.node {
@@ -121,7 +124,9 @@ impl LintPass for TypeLimits {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_COMPARISONS, OVERFLOWING_LITERALS, EXCEEDING_BITSHIFTS)
     }
+}
 
+impl LateLintPass for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
             hir::ExprUnary(hir::UnNeg, ref expr) => {
@@ -699,7 +704,9 @@ impl LintPass for ImproperCTypes {
     fn get_lints(&self) -> LintArray {
         lint_array!(IMPROPER_CTYPES)
     }
+}
 
+impl LateLintPass for ImproperCTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         fn check_ty(cx: &LateContext, ty: &hir::Ty) {
             let mut vis = ImproperCTypesVisitor { cx: cx };
@@ -759,7 +766,9 @@ impl LintPass for BoxPointers {
     fn get_lints(&self) -> LintArray {
         lint_array!(BOX_POINTERS)
     }
+}
 
+impl LateLintPass for BoxPointers {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemFn(..) |
@@ -828,7 +837,9 @@ impl LintPass for RawPointerDerive {
     fn get_lints(&self) -> LintArray {
         lint_array!(RAW_POINTER_DERIVE)
     }
+}
 
+impl LateLintPass for RawPointerDerive {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         if !attr::contains_name(&item.attrs, "automatically_derived") {
             return;
@@ -884,7 +895,9 @@ impl LintPass for UnusedAttributes {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_ATTRIBUTES)
     }
+}
 
+impl LateLintPass for UnusedAttributes {
     fn check_attribute(&mut self, cx: &LateContext, attr: &ast::Attribute) {
         // Note that check_name() marks the attribute as used if it matches.
         for &(ref name, ty, _) in KNOWN_ATTRIBUTES {
@@ -944,7 +957,9 @@ impl LintPass for PathStatements {
     fn get_lints(&self) -> LintArray {
         lint_array!(PATH_STATEMENTS)
     }
+}
 
+impl LateLintPass for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         match s.node {
             hir::StmtSemi(ref expr, _) => {
@@ -978,7 +993,9 @@ impl LintPass for UnusedResults {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_MUST_USE, UNUSED_RESULTS)
     }
+}
 
+impl LateLintPass for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext, s: &hir::Stmt) {
         let expr = match s.node {
             hir::StmtSemi(ref expr, _) => &**expr,
@@ -1084,7 +1101,9 @@ impl LintPass for NonCamelCaseTypes {
     fn get_lints(&self) -> LintArray {
         lint_array!(NON_CAMEL_CASE_TYPES)
     }
+}
 
+impl LateLintPass for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         let extern_repr_count = it.attrs.iter().filter(|attr| {
             attr::find_repr_attrs(cx.tcx.sess.diagnostic(), attr).iter()
@@ -1230,7 +1249,9 @@ impl LintPass for NonSnakeCase {
     fn get_lints(&self) -> LintArray {
         lint_array!(NON_SNAKE_CASE)
     }
+}
 
+impl LateLintPass for NonSnakeCase {
     fn check_crate(&mut self, cx: &LateContext, cr: &hir::Crate) {
         let attr_crate_name = cr.attrs.iter().find(|at| at.check_name("crate_name"))
                                       .and_then(|at| at.value_str().map(|s| (at, s)));
@@ -1331,7 +1352,9 @@ impl LintPass for NonUpperCaseGlobals {
     fn get_lints(&self) -> LintArray {
         lint_array!(NON_UPPER_CASE_GLOBALS)
     }
+}
 
+impl LateLintPass for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             // only check static constants
@@ -1437,8 +1460,10 @@ impl LintPass for UnusedParens {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_PARENS)
     }
+}
 
-    fn check_ast_expr(&mut self, cx: &EarlyContext, e: &ast::Expr) {
+impl EarlyLintPass for UnusedParens {
+    fn check_expr(&mut self, cx: &EarlyContext, e: &ast::Expr) {
         let (value, msg, struct_lit_needs_parens) = match e.node {
             ast::ExprIf(ref cond, _, _) => (cond, "`if` condition", true),
             ast::ExprWhile(ref cond, _, _) => (cond, "`while` condition", true),
@@ -1456,7 +1481,7 @@ impl LintPass for UnusedParens {
         self.check_unused_parens_core(cx, &**value, msg, struct_lit_needs_parens);
     }
 
-    fn check_ast_stmt(&mut self, cx: &EarlyContext, s: &ast::Stmt) {
+    fn check_stmt(&mut self, cx: &EarlyContext, s: &ast::Stmt) {
         let (value, msg) = match s.node {
             ast::StmtDecl(ref decl, _) => match decl.node {
                 ast::DeclLocal(ref local) => match local.init {
@@ -1484,7 +1509,9 @@ impl LintPass for UnusedImportBraces {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_IMPORT_BRACES)
     }
+}
 
+impl LateLintPass for UnusedImportBraces {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         if let hir::ItemUse(ref view_path) = item.node {
             if let hir::ViewPathList(_, ref items) = view_path.node {
@@ -1514,7 +1541,9 @@ impl LintPass for NonShorthandFieldPatterns {
     fn get_lints(&self) -> LintArray {
         lint_array!(NON_SHORTHAND_FIELD_PATTERNS)
     }
+}
 
+impl LateLintPass for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext, pat: &hir::Pat) {
         let def_map = cx.tcx.def_map.borrow();
         if let hir::PatStruct(_, ref v, _) = pat.node {
@@ -1553,7 +1582,9 @@ impl LintPass for UnusedUnsafe {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_UNSAFE)
     }
+}
 
+impl LateLintPass for UnusedUnsafe {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
@@ -1578,7 +1609,9 @@ impl LintPass for UnsafeCode {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNSAFE_CODE)
     }
+}
 
+impl LateLintPass for UnsafeCode {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
@@ -1669,7 +1702,9 @@ impl LintPass for UnusedMut {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_MUT)
     }
+}
 
+impl LateLintPass for UnusedMut {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprMatch(_, ref arms, _) = e.node {
             for a in arms {
@@ -1708,7 +1743,9 @@ impl LintPass for UnusedAllocation {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNUSED_ALLOCATION)
     }
+}
 
+impl LateLintPass for UnusedAllocation {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
             hir::ExprUnary(hir::UnUniq, _) => (),
@@ -1813,7 +1850,9 @@ impl LintPass for MissingDoc {
     fn get_lints(&self) -> LintArray {
         lint_array!(MISSING_DOCS)
     }
+}
 
+impl LateLintPass for MissingDoc {
     fn enter_lint_attrs(&mut self, _: &LateContext, attrs: &[ast::Attribute]) {
         let doc_hidden = self.doc_hidden() || attrs.iter().any(|attr| {
             attr.check_name("doc") && match attr.meta_item_list() {
@@ -1950,7 +1989,9 @@ impl LintPass for MissingCopyImplementations {
     fn get_lints(&self) -> LintArray {
         lint_array!(MISSING_COPY_IMPLEMENTATIONS)
     }
+}
 
+impl LateLintPass for MissingCopyImplementations {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         if !cx.exported_items.contains(&item.id) {
             return;
@@ -2012,7 +2053,9 @@ impl LintPass for MissingDebugImplementations {
     fn get_lints(&self) -> LintArray {
         lint_array!(MISSING_DEBUG_IMPLEMENTATIONS)
     }
+}
 
+impl LateLintPass for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         if !cx.exported_items.contains(&item.id) {
             return;
@@ -2106,7 +2149,9 @@ impl LintPass for Stability {
     fn get_lints(&self) -> LintArray {
         lint_array!(DEPRECATED)
     }
+}
 
+impl LateLintPass for Stability {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
         stability::check_item(cx.tcx, item, false,
                               &mut |id, sp, stab|
@@ -2150,7 +2195,9 @@ impl LintPass for UnconditionalRecursion {
     fn get_lints(&self) -> LintArray {
         lint_array![UNCONDITIONAL_RECURSION]
     }
+}
 
+impl LateLintPass for UnconditionalRecursion {
     fn check_fn(&mut self, cx: &LateContext, fn_kind: FnKind, _: &hir::FnDecl,
                 blk: &hir::Block, sp: Span, id: ast::NodeId) {
         type F = for<'tcx> fn(&ty::ctxt<'tcx>,
@@ -2397,7 +2444,9 @@ impl LintPass for PluginAsLibrary {
     fn get_lints(&self) -> LintArray {
         lint_array![PLUGIN_AS_LIBRARY]
     }
+}
 
+impl LateLintPass for PluginAsLibrary {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         if cx.sess().plugin_registrar_fn.get().is_some() {
             // We're compiling a plugin; it's fine to link other plugins.
@@ -2453,7 +2502,9 @@ impl LintPass for InvalidNoMangleItems {
                     PRIVATE_NO_MANGLE_STATICS,
                     NO_MANGLE_CONST_ITEMS)
     }
+}
 
+impl LateLintPass for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemFn(..) => {
@@ -2499,7 +2550,9 @@ impl LintPass for MutableTransmutes {
     fn get_lints(&self) -> LintArray {
         lint_array!(MUTABLE_TRANSMUTES)
     }
+}
 
+impl LateLintPass for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext, expr: &hir::Expr) {
         use syntax::abi::RustIntrinsic;
 
@@ -2566,7 +2619,9 @@ impl LintPass for UnstableFeatures {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNSTABLE_FEATURES)
     }
+}
 
+impl LateLintPass for UnstableFeatures {
     fn check_attribute(&mut self, ctx: &LateContext, attr: &ast::Attribute) {
         if attr::contains_name(&[attr.node.value.clone()], "feature") {
             if let Some(items) = attr.node.value.meta_item_list() {
@@ -2593,6 +2648,9 @@ impl LintPass for DropWithReprExtern {
     fn get_lints(&self) -> LintArray {
         lint_array!(DROP_WITH_REPR_EXTERN)
     }
+}
+
+impl LateLintPass for DropWithReprExtern {
     fn check_crate(&mut self, ctx: &LateContext, _: &hir::Crate) {
         for dtor_did in ctx.tcx.destructors.borrow().iter() {
             let (drop_impl_did, dtor_self_type) =

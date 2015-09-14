@@ -19,7 +19,8 @@ extern crate syntax;
 #[macro_use]
 extern crate rustc;
 
-use rustc::lint::{EarlyContext, LintContext, LintPass, LintPassObject, LintArray};
+use rustc::lint::{EarlyContext, LintContext, LintPass, EarlyLintPass,
+                  EarlyLintPassObject, LintArray};
 use rustc::plugin::Registry;
 use syntax::ast;
 declare_lint!(TEST_LINT, Warn, "Warn about items named 'lintme'");
@@ -30,8 +31,10 @@ impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(TEST_LINT)
     }
+}
 
-    fn check_ast_item(&mut self, cx: &EarlyContext, it: &ast::Item) {
+impl EarlyLintPass for Pass {
+    fn check_item(&mut self, cx: &EarlyContext, it: &ast::Item) {
         if it.ident.name == "lintme" {
             cx.span_lint(TEST_LINT, it.span, "item is named 'lintme'");
         }
@@ -40,5 +43,5 @@ impl LintPass for Pass {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_lint_pass(box Pass as LintPassObject);
+    reg.register_early_lint_pass(box Pass as EarlyLintPassObject);
 }
