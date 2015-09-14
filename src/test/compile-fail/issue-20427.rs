@@ -47,6 +47,8 @@ mod char {
         //~^ ERROR user-defined types or type parameters cannot shadow the primitive types
         use super::bool_ as bool;
         //~^ ERROR user-defined types or type parameters cannot shadow the primitive types
+        use super::{bool_ as str};
+        //~^ ERROR user-defined types or type parameters cannot shadow the primitive types
         use super::char_ as char;
     }
 }
