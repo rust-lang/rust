@@ -11,6 +11,7 @@
 #![feature(rustc_private)]
 #![feature(custom_attribute)]
 #![feature(slice_splits)]
+#![feature(catch_panic)]
 #![allow(unused_attributes)]
 
 // TODO we're going to allocate a whole bunch of temp Strings, is it worth
@@ -72,6 +73,7 @@ mod comment;
 mod modules;
 pub mod rustfmt_diff;
 mod chains;
+mod macros;
 
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.
@@ -323,8 +325,6 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
         panic!("No input supplied to RustFmt");
     }
 
-    #[rustfmt_skip]
-    // FIXME(#195): closure is formatted poorly.
     fn build_controller(&mut self, _: &Session) -> driver::CompileController<'a> {
         let write_mode = self.write_mode;
 
@@ -338,8 +338,8 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
             let krate = state.krate.unwrap();
             let codemap = state.session.codemap();
             let mut file_map = fmt_ast(krate, codemap, &*config);
-            // For some reason, the codemap does not include terminating newlines
-            // so we must add one on for each file. This is sad.
+            // For some reason, the codemap does not include terminating
+            // newlines so we must add one on for each file. This is sad.
             filemap::append_newlines(&mut file_map);
             println!("{}", fmt_lines(&mut file_map, &*config));
 
