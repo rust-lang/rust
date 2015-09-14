@@ -79,6 +79,7 @@
 #![feature(optin_builtin_traits)]
 #![feature(reflect)]
 #![feature(rustc_attrs)]
+#![feature(unwind_attributes)]
 #![cfg_attr(stage0, feature(simd))]
 #![cfg_attr(not(stage0), feature(repr_simd, platform_intrinsics))]
 #![feature(staged_api)]

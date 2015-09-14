@@ -2143,6 +2143,21 @@ pub struct ExistentialBounds<'tcx> {
     pub projection_bounds: Vec<PolyProjectionPredicate<'tcx>>,
 }
 
+impl<'tcx> ExistentialBounds<'tcx> {
+    pub fn new(region_bound: ty::Region,
+               builtin_bounds: BuiltinBounds,
+               projection_bounds: Vec<PolyProjectionPredicate<'tcx>>)
+               -> Self {
+        let mut projection_bounds = projection_bounds;
+        ty::sort_bounds_list(&mut projection_bounds);
+        ExistentialBounds {
+            region_bound: region_bound,
+            builtin_bounds: builtin_bounds,
+            projection_bounds: projection_bounds
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct BuiltinBounds(EnumSet<BuiltinBound>);
 
