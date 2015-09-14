@@ -379,7 +379,6 @@ mod tests {
             assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
         });
         assert!(wait > Duration::from_millis(400));
-        assert!(wait < Duration::from_millis(1600));
     }
 
     #[test]
@@ -400,6 +399,5 @@ mod tests {
             assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
         });
         assert!(wait > Duration::from_millis(400));
-        assert!(wait < Duration::from_millis(1600));
     }
 }
