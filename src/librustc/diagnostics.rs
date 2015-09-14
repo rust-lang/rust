@@ -1933,6 +1933,71 @@ you want. Example:
 ```
 "##,
 
+E0493: r##"
+A type with a destructor was assigned to an invalid type of variable. Erroneous
+code example:
+
+```
+struct Foo {
+    a: u32
+}
+
+impl Drop for Foo {
+    fn drop(&mut self) {}
+}
+
+const F : Foo = Foo { a : 0 };
+// error: constants are not allowed to have destructors
+static S : Foo = Foo { a : 0 };
+// error: statics are not allowed to have destructors
+```
+
+To solve this issue, please use a type which does allow the usage of type with
+destructors.
+"##,
+
+E0494: r##"
+A reference of an interior static was assigned to another const/static.
+Erroneous code example:
+
+```
+struct Foo {
+    a: u32
+}
+
+static S : Foo = Foo { a : 0 };
+static A : &'static u32 = &S.a;
+// error: cannot refer to the interior of another static, use a
+//        constant instead
+```
+
+The "base" variable has to be a const if you want another static/const variable
+to refer to one of its fields. Example:
+
+```
+struct Foo {
+    a: u32
+}
+
+const S : Foo = Foo { a : 0 };
+static A : &'static u32 = &S.a; // ok!
+```
+"##,
+
+E0497: r##"
+A stability attribute was used outside of the standard library. Erroneous code
+example:
+
+```
+#[stable] // error: stability attributes may not be used outside of the
+          //        standard library
+fn foo() {}
+```
+
+It is not possible to use stability attributes outside of the standard library.
+Also, for now, it is not possible to write deprecation messages either.
+"##,
+
 }
 
 
@@ -1996,4 +2061,8 @@ register_diagnostics! {
     E0489, // type/lifetime parameter not in scope here
     E0490, // a value of type `..` is borrowed for too long
     E0491, // in type `..`, reference has a longer lifetime than the data it...
+    E0492, // cannot borrow a constant which contains interior mutability
+    E0495, // cannot infer an appropriate lifetime due to conflicting requirements
+    E0496, // .. name `..` shadows a .. name that is already in scope
+    E0498, // malformed plugin attribute
 }
