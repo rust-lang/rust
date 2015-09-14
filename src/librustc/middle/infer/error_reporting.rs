@@ -1626,11 +1626,10 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        self.tcx.sess.span_err(
-            var_origin.span(),
-            &format!("cannot infer an appropriate lifetime{} \
-                    due to conflicting requirements",
-                    var_description));
+        span_err!(self.tcx.sess, var_origin.span(), E0495,
+                  "cannot infer an appropriate lifetime{} \
+                   due to conflicting requirements",
+                  var_description);
     }
 
     fn note_region_origin(&self, origin: &SubregionOrigin<'tcx>) {
