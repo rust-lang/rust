@@ -66,7 +66,7 @@ impl MultilineStyle {
 }
 
 macro_rules! create_config {
-    ($($i:ident: $ty:ty),+ $(,)*) => (
+    ($($i:ident: $ty:ty, $dstring: tt),+ $(,)*) => (
         #[derive(RustcDecodable, Clone)]
         pub struct Config {
             $(pub $i: $ty),+
@@ -80,6 +80,50 @@ macro_rules! create_config {
         #[derive(RustcDecodable, Clone)]
         pub struct ParsedConfig {
             $(pub $i: Option<$ty>),+
+        }
+
+        // This trait and the following impl blocks are there only so that we
+        // can use UCFS inside the get_docs() function on builtin types for configs.
+        trait IsConfigType {
+            fn get_variant_names() -> Vec<&'static str>;
+        }
+
+        impl IsConfigType for bool {
+            fn get_variant_names() -> Vec<&'static str> {
+                unreachable!()
+            }
+        }
+
+        impl IsConfigType for usize {
+            fn get_variant_names() -> Vec<&'static str> {
+                unreachable!()
+            }
+        }
+
+        pub struct ConfigHelpItem {
+            option_name: &'static str,
+            doc_string : &'static str,
+            variant_names: ConfigHelpVariantTypes,
+        }
+
+        pub enum ConfigHelpVariantTypes {
+            UsizeConfig,
+            BoolConfig,
+            EnumConfig(Vec<&'static str>),
+        }
+
+        impl ConfigHelpItem {
+            pub fn option_name(&self) -> &'static str {
+                self.option_name
+            }
+
+            pub fn doc_string(&self) -> &'static str {
+                self.doc_string
+            }
+
+            pub fn variant_names(&self) -> &ConfigHelpVariantTypes {
+                &self.variant_names
+            }
         }
 
         impl Config {
@@ -117,41 +161,57 @@ macro_rules! create_config {
                     _ => panic!("Bad config key!")
                 }
             }
+
+            pub fn get_docs() -> Vec<ConfigHelpItem> {
+                let mut options: Vec<ConfigHelpItem> = Vec::new();
+                $(
+                    let config_variant_type = match stringify!($ty) {
+                        "bool" => ConfigHelpVariantTypes::BoolConfig,
+                        "usize" => ConfigHelpVariantTypes::UsizeConfig,
+                        _ => ConfigHelpVariantTypes::EnumConfig(<$ty>::get_variant_names()),
+                    };
+                    options.push(ConfigHelpItem {
+                        option_name: stringify!($i),
+                        doc_string: stringify!($dstring),
+                        variant_names: config_variant_type,
+                    });
+                )+
+                options
+            }
         }
     )
 }
 
 create_config! {
-    max_width: usize,
-    ideal_width: usize,
-    leeway: usize,
-    tab_spaces: usize,
-    newline_style: NewlineStyle,
-    fn_brace_style: BraceStyle,
-    fn_return_indent: ReturnIndent,
-    fn_args_paren_newline: bool,
-    fn_args_density: Density,
-    fn_args_layout: StructLitStyle,
-    fn_arg_indent: BlockIndentStyle,
-    where_density: Density, // Should we at least try to put the where clause on
-                            // the same line as the rest of the function decl?
-    where_indent: BlockIndentStyle, // Visual will be treated like Tabbed
-    where_layout: ListTactic,
-    where_pred_indent: BlockIndentStyle,
-    generics_indent: BlockIndentStyle,
-    struct_trailing_comma: SeparatorTactic,
-    struct_lit_trailing_comma: SeparatorTactic,
-    struct_lit_style: StructLitStyle,
-    struct_lit_multiline_style: MultilineStyle,
-    enum_trailing_comma: bool,
-    report_todo: ReportTactic,
-    report_fixme: ReportTactic,
-    reorder_imports: bool, // Alphabetically, case sensitive.
-    single_line_if_else: bool,
-    format_strings: bool,
-    chains_overflow_last: bool,
-    take_source_hints: bool, // Retain some formatting characteristics from
-                             // the source code.
+    max_width: usize, "Maximum width of each line",
+    ideal_width: usize, "Ideal width of each line",
+    leeway: usize, "Leeway of line width",
+    tab_spaces: usize, "Number of spaces per tab",
+    newline_style: NewlineStyle, "Unix or Windows line endings",
+    fn_brace_style: BraceStyle, "Brace style for functions",
+    fn_return_indent: ReturnIndent, "Location of return type in function declaration",
+    fn_args_paren_newline: bool, "If function argument parenthases goes on a newline",
+    fn_args_density: Density, "Argument density in functions",
+    fn_args_layout: StructLitStyle, "Layout of function arguments",
+    fn_arg_indent: BlockIndentStyle, "Indent on function arguments",
+    where_density: Density, "Density of a where clause", // Should we at least try to put the where clause on the same line as
+                                                         // the rest of the function decl?
+    where_indent: BlockIndentStyle, "Indentation of a where clause", // Visual will be treated like Tabbed
+    where_layout: ListTactic, "Element layout inside a where clause",
+    where_pred_indent: BlockIndentStyle, "Indentation style of a where predicate",
+    generics_indent: BlockIndentStyle, "Indentation of generics",
+    struct_trailing_comma: SeparatorTactic, "If there is a trailing comma on structs",
+    struct_lit_trailing_comma: SeparatorTactic, "If there is a trailing comma on literal structs",
+    struct_lit_style: StructLitStyle, "Style of struct definition",
+    struct_lit_multiline_style: MultilineStyle, "Multilline style on literal structs",
+    enum_trailing_comma: bool, "Put a trailing comma on enum declarations",
+    report_todo: ReportTactic, "Report all occurences of TODO in source file comments",
+    report_fixme: ReportTactic, "Report all occurences of FIXME in source file comments",
+    reorder_imports: bool, "Reorder import statements alphabetically", // Alphabetically, case sensitive.
+    single_line_if_else: bool, "Put else on same line as closing brace for if statements",
+    format_strings: bool, "Format string literals, or leave as is",
+    chains_overflow_last: bool, "chains overflow last",
+    take_source_hints: bool, "Retain some formatting characteristics from the source code",
 }
 
 impl Default for Config {
