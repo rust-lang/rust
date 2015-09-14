@@ -184,7 +184,7 @@ impl File {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn open<P: AsRef<Path>>(path: P) -> io::Result<File> {
-        OpenOptions::new().read(true).open(path)
+        OpenOptions::new().read(true).open(path.as_ref())
     }
 
     /// Opens a file in write-only mode.
@@ -206,7 +206,7 @@ impl File {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn create<P: AsRef<Path>>(path: P) -> io::Result<File> {
-        OpenOptions::new().write(true).create(true).truncate(true).open(path)
+        OpenOptions::new().write(true).create(true).truncate(true).open(path.as_ref())
     }
 
     /// Attempts to sync all OS-internal metadata to disk.
@@ -494,7 +494,10 @@ impl OpenOptions {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
-        let path = path.as_ref();
+        self._open(path.as_ref())
+    }
+
+    fn _open(&self, path: &Path) -> io::Result<File> {
         let inner = try!(fs_imp::File::open(path, &self.0));
         Ok(File { inner: inner })
     }
@@ -1048,7 +1051,10 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
-    let path = path.as_ref();
+    _remove_dir_all(path.as_ref())
+}
+
+fn _remove_dir_all(path: &Path) -> io::Result<()> {
     for child in try!(read_dir(path)) {
         let child = try!(child).path();
         let stat = try!(symlink_metadata(&*child));
@@ -1113,6 +1119,10 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
                      as symlinks differently",
            issue = "27707")]
 pub fn walk_dir<P: AsRef<Path>>(path: P) -> io::Result<WalkDir> {
+    _walk_dir(path.as_ref())
+}
+
+fn _walk_dir(path: &Path) -> io::Result<WalkDir> {
     let start = try!(read_dir(path));
     Ok(WalkDir { cur: Some(start), stack: Vec::new() })
 }
@@ -1272,7 +1282,10 @@ impl DirBuilder {
     /// Create the specified directory with the options configured in this
     /// builder.
     pub fn create<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        let path = path.as_ref();
+        self._create(path.as_ref())
+    }
+
+    fn _create(&self, path: &Path) -> io::Result<()> {
         if self.recursive {
             self.create_dir_all(path)
         } else {

@@ -174,6 +174,10 @@ impl Iterator for VarsOs {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError> {
+    _var(key.as_ref())
+}
+
+fn _var(key: &OsStr) -> Result<String, VarError> {
     match var_os(key) {
         Some(s) => s.into_string().map_err(VarError::NotUnicode),
         None => Err(VarError::NotPresent)
@@ -196,8 +200,12 @@ pub fn var<K: AsRef<OsStr>>(key: K) -> Result<String, VarError> {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn var_os<K: AsRef<OsStr>>(key: K) -> Option<OsString> {
+    _var_os(key.as_ref())
+}
+
+fn _var_os(key: &OsStr) -> Option<OsString> {
     let _g = ENV_LOCK.lock();
-    os_imp::getenv(key.as_ref())
+    os_imp::getenv(key)
 }
 
 /// Possible errors from the `env::var` method.
@@ -263,8 +271,12 @@ impl Error for VarError {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(k: K, v: V) {
+    _set_var(k.as_ref(), v.as_ref())
+}
+
+fn _set_var(k: &OsStr, v: &OsStr) {
     let _g = ENV_LOCK.lock();
-    os_imp::setenv(k.as_ref(), v.as_ref())
+    os_imp::setenv(k, v)
 }
 
 /// Removes an environment variable from the environment of the currently running process.
@@ -294,8 +306,12 @@ pub fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(k: K, v: V) {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn remove_var<K: AsRef<OsStr>>(k: K) {
+    _remove_var(k.as_ref())
+}
+
+fn _remove_var(k: &OsStr) {
     let _g = ENV_LOCK.lock();
-    os_imp::unsetenv(k.as_ref())
+    os_imp::unsetenv(k)
 }
 
 /// An iterator over `Path` instances for parsing an environment variable
