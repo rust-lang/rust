@@ -408,34 +408,13 @@ fn create_substs_for_ast_path<'tcx>(
                                                .take_while(|x| x.default.is_none())
                                                .count();
 
-    // Fill with `ty_infer` if no params were specified, as long as
-    // they were optional (e.g. paths inside expressions).
-    let mut type_substs = if param_mode == PathParamMode::Optional &&
-                             types_provided.is_empty() {
-        fn default_type_parameter<'tcx>(p: &ty::TypeParameterDef<'tcx>, self_ty: Option<Ty<'tcx>>)
-                                        -> Option<ty::TypeParameterDef<'tcx>>
-        {
-            if let Some(ref default) = p.default {
-                if self_ty.is_none() && default.has_self_ty() {
-                    // There is no suitable inference default for a type parameter
-                    // that references self with no self-type provided.
-                    return None;
-                }
-            }
-
-            Some(p.clone())
-        }
-
-        let mut substs = region_substs.clone();
-
-        ty_param_defs
-            .iter()
-            .map(|p| this.ty_infer(default_type_parameter(p, self_ty), Some(&mut substs),
-                                   Some(TypeSpace), span))
-            .collect()
-    } else {
-        types_provided
-    };
+    let mut type_substs = get_type_substs_for_defs(this,
+                                                   span,
+                                                   types_provided,
+                                                   param_mode,
+                                                   ty_param_defs,
+                                                   region_substs.clone(),
+                                                   self_ty);
 
     let supplied_ty_param_count = type_substs.len();
     check_type_argument_count(this.tcx(), span, supplied_ty_param_count,
@@ -497,6 +476,42 @@ fn create_substs_for_ast_path<'tcx>(
     }
 
     substs
+}
+
+/// Returns types_provided if it is not empty, otherwise populating the
+/// type parameters with inference variables as appropriate.
+fn get_type_substs_for_defs<'tcx>(this: &AstConv<'tcx>,
+                                  span: Span,
+                                  types_provided: Vec<Ty<'tcx>>,
+                                  param_mode: PathParamMode,
+                                  ty_param_defs: &[ty::TypeParameterDef<'tcx>],
+                                  mut substs: Substs<'tcx>,
+                                  self_ty: Option<Ty<'tcx>>)
+                                  -> Vec<Ty<'tcx>>
+{
+    fn default_type_parameter<'tcx>(p: &ty::TypeParameterDef<'tcx>, self_ty: Option<Ty<'tcx>>)
+                                    -> Option<ty::TypeParameterDef<'tcx>>
+    {
+        if let Some(ref default) = p.default {
+            if self_ty.is_none() && default.has_self_ty() {
+                // There is no suitable inference default for a type parameter
+                // that references self with no self-type provided.
+                return None;
+            }
+        }
+
+        Some(p.clone())
+    }
+
+    if param_mode == PathParamMode::Optional && types_provided.is_empty() {
+        ty_param_defs
+            .iter()
+            .map(|p| this.ty_infer(default_type_parameter(p, self_ty), Some(&mut substs),
+                                   Some(TypeSpace), span))
+            .collect()
+    } else {
+        types_provided
+    }
 }
 
 struct ConvertedBinding<'tcx> {
