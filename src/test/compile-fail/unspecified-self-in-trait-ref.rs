@@ -25,4 +25,6 @@ fn main() {
     //~^ ERROR no associated item named
     let d = Bar::<usize, _>::lol();
     //~^ ERROR no associated item named
+    let e = Bar::<usize>::lol();
+    //~^ ERROR must be explicitly specified
 }
