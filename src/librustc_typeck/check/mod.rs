@@ -97,8 +97,10 @@ use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::{MethodCall, MethodCallee};
+use middle::ty::adjustment;
 use middle::ty::error::TypeError;
 use middle::ty::fold::{TypeFolder, TypeFoldable};
+use middle::ty::util::Representability;
 use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};
 use session::Session;
@@ -1337,7 +1339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                       derefs: usize) {
         self.write_adjustment(
             node_id,
-            ty::AdjustDerefRef(ty::AutoDerefRef {
+            adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
                 autoderefs: derefs,
                 autoref: None,
                 unsize: None
@@ -1347,7 +1349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_adjustment(&self,
                             node_id: ast::NodeId,
-                            adj: ty::AutoAdjustment<'tcx>) {
+                            adj: adjustment::AutoAdjustment<'tcx>) {
         debug!("write_adjustment(node_id={}, adj={:?})", node_id, adj);
 
         if adj.is_identity() {
@@ -1576,7 +1578,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Apply `adjustment` to the type of `expr`
     pub fn adjust_expr_ty(&self,
                           expr: &hir::Expr,
-                          adjustment: Option<&ty::AutoAdjustment<'tcx>>)
+                          adjustment: Option<&adjustment::AutoAdjustment<'tcx>>)
                           -> Ty<'tcx>
     {
         let raw_ty = self.expr_ty(expr);
@@ -4170,12 +4172,13 @@ pub fn check_representable(tcx: &ty::ctxt,
     // contain themselves. For case 2, there must be an inner type that will be
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
-      ty::SelfRecursive => {
-        span_err!(tcx.sess, sp, E0072, "invalid recursive {} type", designation);
-        tcx.sess.fileline_help(sp, "wrap the inner value in a box to make it representable");
-        return false
-      }
-      ty::Representable | ty::ContainsRecursive => (),
+        Representability::SelfRecursive => {
+            span_err!(tcx.sess, sp, E0072, "invalid recursive {} type", designation);
+            tcx.sess.fileline_help(
+                sp, "wrap the inner value in a box to make it representable");
+            return false
+        }
+        Representability::Representable | Representability::ContainsRecursive => (),
     }
     return true
 }

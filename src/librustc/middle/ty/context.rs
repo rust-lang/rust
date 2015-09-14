@@ -106,7 +106,7 @@ pub struct Tables<'tcx> {
     /// other items.
     pub item_substs: NodeMap<ty::ItemSubsts<'tcx>>,
 
-    pub adjustments: NodeMap<ty::AutoAdjustment<'tcx>>,
+    pub adjustments: NodeMap<ty::adjustment::AutoAdjustment<'tcx>>,
 
     pub method_map: ty::MethodMap<'tcx>,
 
@@ -308,7 +308,7 @@ pub struct ctxt<'tcx> {
     pub const_qualif_map: RefCell<NodeMap<middle::check_const::ConstQualif>>,
 
     /// Caches CoerceUnsized kinds for impls on custom types.
-    pub custom_coerce_unsized_kinds: RefCell<DefIdMap<ty::CustomCoerceUnsized>>,
+    pub custom_coerce_unsized_kinds: RefCell<DefIdMap<ty::adjustment::CustomCoerceUnsized>>,
 
     /// Maps a cast expression to its kind. This is keyed on the
     /// *from* expression of the cast, not the cast itself.

@@ -24,6 +24,7 @@ use std::ops;
 use std::mem;
 use syntax::abi;
 use syntax::ast::{Name, NodeId};
+use syntax::parse::token::special_idents;
 
 use rustc_front::hir;
 
@@ -504,6 +505,31 @@ pub struct ParamTy {
     pub name: Name,
 }
 
+impl ParamTy {
+    pub fn new(space: subst::ParamSpace,
+               index: u32,
+               name: Name)
+               -> ParamTy {
+        ParamTy { space: space, idx: index, name: name }
+    }
+
+    pub fn for_self() -> ParamTy {
+        ParamTy::new(subst::SelfSpace, 0, special_idents::type_self.name)
+    }
+
+    pub fn for_def(def: &ty::TypeParameterDef) -> ParamTy {
+        ParamTy::new(def.space, def.index, def.name)
+    }
+
+    pub fn to_ty<'tcx>(self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+        tcx.mk_param(self.space, self.idx, self.name)
+    }
+
+    pub fn is_self(&self) -> bool {
+        self.space == subst::SelfSpace && self.idx == 0
+    }
+}
+
 /// A [De Bruijn index][dbi] is a standard means of representing
 /// regions (and perhaps later types) in a higher-ranked setting. In
 /// particular, imagine a type like this:
@@ -844,6 +870,13 @@ impl Region {
 
 // Type utilities
 impl<'tcx> TyS<'tcx> {
+    pub fn as_opt_param_ty(&self) -> Option<ty::ParamTy> {
+        match self.sty {
+            ty::TyParam(ref d) => Some(d.clone()),
+            _ => None,
+        }
+    }
+
     pub fn is_nil(&self) -> bool {
         match self.sty {
             TyTuple(ref tys) => tys.is_empty(),
@@ -867,6 +900,13 @@ impl<'tcx> TyS<'tcx> {
     }
 
     pub fn is_bool(&self) -> bool { self.sty == TyBool }
+
+    pub fn is_param(&self, space: subst::ParamSpace, index: u32) -> bool {
+        match self.sty {
+            ty::TyParam(ref data) => data.space == space && data.idx == index,
+            _ => false,
+        }
+    }
 
     pub fn is_self(&self) -> bool {
         match self.sty {
@@ -1124,6 +1164,49 @@ impl<'tcx> TyS<'tcx> {
         match self.sty {
             TyStruct(adt, _) | TyEnum(adt, _) => Some(adt),
             _ => None
+        }
+    }
+
+    /// Returns the regions directly referenced from this type (but
+    /// not types reachable from this type via `walk_tys`). This
+    /// ignores late-bound regions binders.
+    pub fn regions(&self) -> Vec<ty::Region> {
+        match self.sty {
+            TyRef(region, _) => {
+                vec![*region]
+            }
+            TyTrait(ref obj) => {
+                let mut v = vec![obj.bounds.region_bound];
+                v.push_all(obj.principal.skip_binder().substs.regions().as_slice());
+                v
+            }
+            TyEnum(_, substs) |
+            TyStruct(_, substs) => {
+                substs.regions().as_slice().to_vec()
+            }
+            TyClosure(_, ref substs) => {
+                substs.func_substs.regions().as_slice().to_vec()
+            }
+            TyProjection(ref data) => {
+                data.trait_ref.substs.regions().as_slice().to_vec()
+            }
+            TyBareFn(..) |
+            TyBool |
+            TyChar |
+            TyInt(_) |
+            TyUint(_) |
+            TyFloat(_) |
+            TyBox(_) |
+            TyStr |
+            TyArray(_, _) |
+            TySlice(_) |
+            TyRawPtr(_) |
+            TyTuple(_) |
+            TyParam(_) |
+            TyInfer(_) |
+            TyError => {
+                vec![]
+            }
         }
     }
 }

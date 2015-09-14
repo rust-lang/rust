@@ -34,6 +34,8 @@ use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 use middle::subst::Substs;
+use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
+use middle::ty::adjustment::AdjustUnsafeFnPointer;
 use middle::ty::{self, Ty};
 use middle::ty::cast::{CastTy,IntTy};
 use util::nodemap::NodeMap;
@@ -289,14 +291,14 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                             &cx.tcx().expr_ty_adjusted(e));
     let opt_adj = cx.tcx().tables.borrow().adjustments.get(&e.id).cloned();
     match opt_adj {
-        Some(ty::AdjustReifyFnPointer) => {
+        Some(AdjustReifyFnPointer) => {
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
         }
-        Some(ty::AdjustUnsafeFnPointer) => {
+        Some(AdjustUnsafeFnPointer) => {
             // purely a type-level thing
         }
-        Some(ty::AdjustDerefRef(adj)) => {
+        Some(AdjustDerefRef(adj)) => {
             let mut ty = ety;
             // Save the last autoderef in case we can avoid it.
             if adj.autoderefs > 0 {

@@ -641,8 +641,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ItemSubsts<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::AutoRef<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::AutoRef<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::AutoRef<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::adjustment::AutoRef<'tcx> {
         folder.fold_autoref(self)
     }
 }

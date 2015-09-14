@@ -33,6 +33,7 @@ use middle::{cfg, def, infer, pat_util, stability, traits};
 use middle::def_id::DefId;
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
+use middle::ty::adjustment;
 use middle::const_eval::{eval_const_expr_partial, ConstVal};
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::front::map as hir_map;
@@ -1722,13 +1723,15 @@ impl LintPass for UnusedAllocation {
         }
 
         if let Some(adjustment) = cx.tcx.tables.borrow().adjustments.get(&e.id) {
-            if let ty::AdjustDerefRef(ty::AutoDerefRef { ref autoref, .. }) = *adjustment {
+            if let adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
+                ref autoref, ..
+            }) = *adjustment {
                 match autoref {
-                    &Some(ty::AutoPtr(_, hir::MutImmutable)) => {
+                    &Some(adjustment::AutoPtr(_, hir::MutImmutable)) => {
                         cx.span_lint(UNUSED_ALLOCATION, e.span,
                                      "unnecessary allocation, use & instead");
                     }
-                    &Some(ty::AutoPtr(_, hir::MutMutable)) => {
+                    &Some(adjustment::AutoPtr(_, hir::MutMutable)) => {
                         cx.span_lint(UNUSED_ALLOCATION, e.span,
                                      "unnecessary allocation, use &mut instead");
                     }
@@ -2297,7 +2300,7 @@ impl LintPass for UnconditionalRecursion {
             }
 
             // Check for overloaded autoderef method calls.
-            if let Some(&ty::AdjustDerefRef(ref adj)) = tables.adjustments.get(&id) {
+            if let Some(&adjustment::AdjustDerefRef(ref adj)) = tables.adjustments.get(&id) {
                 for i in 0..adj.autoderefs {
                     let method_call = ty::MethodCall::autoderef(id, i as u32);
                     if let Some(m) = tables.method_map.get(&method_call) {
