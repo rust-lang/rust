@@ -16,6 +16,7 @@ use middle::def_id::DefId;
 use middle::subst::{self};
 use middle::traits;
 use middle::ty::{self, NoPreference, PreferMutLvalue, Ty};
+use middle::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
 use middle::ty::fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
@@ -136,7 +137,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     {
         let (autoref, unsize) = if let Some(mutbl) = pick.autoref {
             let region = self.infcx().next_region_var(infer::Autoref(self.span));
-            let autoref = ty::AutoPtr(self.tcx().mk_region(region), mutbl);
+            let autoref = AutoPtr(self.tcx().mk_region(region), mutbl);
             (Some(autoref), pick.unsize.map(|target| {
                 target.adjust_for_autoref(self.tcx(), Some(autoref))
             }))
@@ -169,7 +170,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // Write out the final adjustment.
         self.fcx.write_adjustment(self.self_expr.id,
-                                  ty::AdjustDerefRef(ty::AutoDerefRef {
+                                  AdjustDerefRef(AutoDerefRef {
             autoderefs: pick.autoderefs,
             autoref: autoref,
             unsize: unsize
@@ -488,7 +489,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                             .borrow()
                                             .adjustments
                                             .get(&expr.id) {
-                Some(&ty::AdjustDerefRef(ref adj)) => adj.autoderefs,
+                Some(&AdjustDerefRef(ref adj)) => adj.autoderefs,
                 Some(_) | None => 0,
             };
 
@@ -527,12 +528,12 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         let adj = self.fcx.inh.tables.borrow().adjustments.get(&base_expr.id)
                                                                           .cloned();
                         let (autoderefs, unsize) = match adj {
-                            Some(ty::AdjustDerefRef(adr)) => match adr.autoref {
+                            Some(AdjustDerefRef(adr)) => match adr.autoref {
                                 None => {
                                     assert!(adr.unsize.is_none());
                                     (adr.autoderefs, None)
                                 }
-                                Some(ty::AutoPtr(_, _)) => {
+                                Some(AutoPtr(_, _)) => {
                                     (adr.autoderefs, adr.unsize.map(|target| {
                                         target.builtin_deref(false, NoPreference)
                                               .expect("fixup: AutoPtr is not &T").ty
@@ -557,7 +558,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                             (target, true)
                         } else {
                             (self.fcx.adjust_expr_ty(base_expr,
-                                Some(&ty::AdjustDerefRef(ty::AutoDerefRef {
+                                Some(&AdjustDerefRef(AutoDerefRef {
                                     autoderefs: autoderefs,
                                     autoref: None,
                                     unsize: None

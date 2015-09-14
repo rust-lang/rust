@@ -36,6 +36,7 @@
 
 use middle::region;
 use middle::subst;
+use middle::ty::adjustment;
 use middle::ty::{self, Binder, Ty, HasTypeFlags, RegionEscape};
 
 use std::fmt;
@@ -128,7 +129,8 @@ pub trait TypeFolder<'tcx> : Sized {
         super_fold_existential_bounds(self, s)
     }
 
-    fn fold_autoref(&mut self, ar: &ty::AutoRef<'tcx>) -> ty::AutoRef<'tcx> {
+    fn fold_autoref(&mut self, ar: &adjustment::AutoRef<'tcx>)
+                    -> adjustment::AutoRef<'tcx> {
         super_fold_autoref(self, ar)
     }
 
@@ -296,15 +298,15 @@ pub fn super_fold_existential_bounds<'tcx, T: TypeFolder<'tcx>>(
 }
 
 pub fn super_fold_autoref<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
-                                                     autoref: &ty::AutoRef<'tcx>)
-                                                     -> ty::AutoRef<'tcx>
+                                                     autoref: &adjustment::AutoRef<'tcx>)
+                                                     -> adjustment::AutoRef<'tcx>
 {
     match *autoref {
-        ty::AutoPtr(r, m) => {
+        adjustment::AutoPtr(r, m) => {
             let r = r.fold_with(this);
-            ty::AutoPtr(this.tcx().mk_region(r), m)
+            adjustment::AutoPtr(this.tcx().mk_region(r), m)
         }
-        ty::AutoUnsafe(m) => ty::AutoUnsafe(m)
+        adjustment::AutoUnsafe(m) => adjustment::AutoUnsafe(m)
     }
 }
 

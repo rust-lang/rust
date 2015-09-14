@@ -18,6 +18,7 @@ use check::FnCtxt;
 use middle::def_id::DefId;
 use middle::pat_util;
 use middle::ty::{self, Ty, MethodCall, MethodCallee};
+use middle::ty::adjustment;
 use middle::ty::fold::{TypeFolder,TypeFoldable};
 use middle::infer;
 use write_substs_to_tcx;
@@ -268,19 +269,21 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
             Some(adjustment) => {
                 let resolved_adjustment = match adjustment {
-                    ty::AdjustReifyFnPointer => ty::AdjustReifyFnPointer,
-
-                    ty::AdjustUnsafeFnPointer => {
-                        ty::AdjustUnsafeFnPointer
+                    adjustment::AdjustReifyFnPointer => {
+                        adjustment::AdjustReifyFnPointer
                     }
 
-                    ty::AdjustDerefRef(adj) => {
+                    adjustment::AdjustUnsafeFnPointer => {
+                        adjustment::AdjustUnsafeFnPointer
+                    }
+
+                    adjustment::AdjustDerefRef(adj) => {
                         for autoderef in 0..adj.autoderefs {
                             let method_call = MethodCall::autoderef(id, autoderef as u32);
                             self.visit_method_map_entry(reason, method_call);
                         }
 
-                        ty::AdjustDerefRef(ty::AutoDerefRef {
+                        adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
                             autoderefs: adj.autoderefs,
                             autoref: self.resolve(&adj.autoref, reason),
                             unsize: self.resolve(&adj.unsize, reason),

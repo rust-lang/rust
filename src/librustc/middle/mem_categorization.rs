@@ -77,6 +77,7 @@ use front::map as ast_map;
 use middle::infer;
 use middle::check_const;
 use middle::def;
+use middle::ty::adjustment;
 use middle::ty::{self, Ty};
 
 use rustc_front::hir::{MutImmutable, MutMutable};
@@ -421,16 +422,16 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
 
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AdjustDerefRef(
-                        ty::AutoDerefRef {
+                    adjustment::AdjustDerefRef(
+                        adjustment::AutoDerefRef {
                             autoref: None, unsize: None, autoderefs, ..}) => {
                         // Equivalent to *expr or something similar.
                         self.cat_expr_autoderefd(expr, autoderefs)
                     }
 
-                    ty::AdjustReifyFnPointer |
-                    ty::AdjustUnsafeFnPointer |
-                    ty::AdjustDerefRef(_) => {
+                    adjustment::AdjustReifyFnPointer |
+                    adjustment::AdjustUnsafeFnPointer |
+                    adjustment::AdjustDerefRef(_) => {
                         debug!("cat_expr({:?}): {:?}",
                                adjustment,
                                expr);

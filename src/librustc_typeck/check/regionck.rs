@@ -94,6 +94,7 @@ use middle::traits;
 use middle::ty::{self, RegionEscape, ReScope, Ty, MethodCall, HasTypeFlags};
 use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, VerifyBound};
 use middle::pat_util;
+use middle::ty::adjustment;
 use middle::ty::wf::ImpliedBound;
 
 use std::mem;
@@ -598,7 +599,9 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
     if let Some(adjustment) = adjustment {
         debug!("adjustment={:?}", adjustment);
         match adjustment {
-            ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, ref autoref, ..}) => {
+            adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
+                autoderefs, ref autoref, ..
+            }) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
                 constrain_autoderefs(rcx, expr, autoderefs, expr_ty);
                 if let Some(ref autoref) = *autoref {
@@ -614,7 +617,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
                 }
             }
             /*
-            ty::AutoObject(_, ref bounds, _, _) => {
+            adjustment::AutoObject(_, ref bounds, _, _) => {
                 // Determine if we are casting `expr` to a trait
                 // instance. If so, we have to be sure that the type
                 // of the source obeys the new region bound.
@@ -1221,7 +1224,7 @@ fn link_pattern<'t, 'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 fn link_autoref(rcx: &Rcx,
                 expr: &hir::Expr,
                 autoderefs: usize,
-                autoref: &ty::AutoRef)
+                autoref: &adjustment::AutoRef)
 {
     debug!("link_autoref(autoref={:?})", autoref);
     let mc = mc::MemCategorizationContext::new(rcx.fcx.infcx());
@@ -1229,12 +1232,12 @@ fn link_autoref(rcx: &Rcx,
     debug!("expr_cmt={:?}", expr_cmt);
 
     match *autoref {
-        ty::AutoPtr(r, m) => {
+        adjustment::AutoPtr(r, m) => {
             link_region(rcx, expr.span, r,
                 ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
 
-        ty::AutoUnsafe(m) => {
+        adjustment::AutoUnsafe(m) => {
             let r = ty::ReScope(rcx.tcx().region_maps.node_extent(expr.id));
             link_region(rcx, expr.span, &r, ty::BorrowKind::from_mutbl(m), expr_cmt);
         }

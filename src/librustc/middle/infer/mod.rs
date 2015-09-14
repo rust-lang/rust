@@ -30,6 +30,7 @@ use middle::subst::Substs;
 use middle::subst::Subst;
 use middle::traits::{self, FulfillmentContext, Normalized,
                      SelectionContext, ObligationCause};
+use middle::ty::adjustment;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
 use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
@@ -1151,7 +1152,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Apply `adjustment` to the type of `expr`
     pub fn adjust_expr_ty(&self,
                           expr: &hir::Expr,
-                          adjustment: Option<&ty::AutoAdjustment<'tcx>>)
+                          adjustment: Option<&adjustment::AutoAdjustment<'tcx>>)
                           -> Ty<'tcx>
     {
         let raw_ty = self.expr_ty(expr);
@@ -1485,9 +1486,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .map(|method| method.def_id)
     }
 
-    pub fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
+    pub fn adjustments(&self) -> Ref<NodeMap<adjustment::AutoAdjustment<'tcx>>> {
         fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
-                                        -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
+                                        -> &'a NodeMap<adjustment::AutoAdjustment<'tcx>> {
             &tables.adjustments
         }
 

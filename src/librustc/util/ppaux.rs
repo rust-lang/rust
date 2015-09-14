@@ -388,23 +388,23 @@ impl<'tcx, 'container> fmt::Debug for ty::AdtDefData<'tcx, 'container> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::AutoAdjustment<'tcx> {
+impl<'tcx> fmt::Debug for ty::adjustment::AutoAdjustment<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            ty::AdjustReifyFnPointer => {
+            ty::adjustment::AdjustReifyFnPointer => {
                 write!(f, "AdjustReifyFnPointer")
             }
-            ty::AdjustUnsafeFnPointer => {
+            ty::adjustment::AdjustUnsafeFnPointer => {
                 write!(f, "AdjustUnsafeFnPointer")
             }
-            ty::AdjustDerefRef(ref data) => {
+            ty::adjustment::AdjustDerefRef(ref data) => {
                 write!(f, "{:?}", data)
             }
         }
     }
 }
 
-impl<'tcx> fmt::Debug for ty::AutoDerefRef<'tcx> {
+impl<'tcx> fmt::Debug for ty::adjustment::AutoDerefRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "AutoDerefRef({}, unsize={:?}, {:?})",
                self.autoderefs, self.unsize, self.autoref)

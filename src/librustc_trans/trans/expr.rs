@@ -71,7 +71,8 @@ use trans::machine;
 use trans::meth;
 use trans::tvec;
 use trans::type_of;
-use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustUnsafeFnPointer};
+use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
+use middle::ty::adjustment::{AdjustUnsafeFnPointer, CustomCoerceUnsized};
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use middle::ty::cast::{CastKind, CastTy};
@@ -514,7 +515,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
 
             let coerce_index = match kind {
-                ty::CustomCoerceUnsized::Struct(i) => i
+                CustomCoerceUnsized::Struct(i) => i
             };
             assert!(coerce_index < src_fields.len() && src_fields.len() == target_fields.len());
 

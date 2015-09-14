@@ -320,7 +320,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
         // Now apply adjustments, if any.
         match cx.tcx.tables.borrow().adjustments.get(&self.id) {
             None => { }
-            Some(&ty::AdjustReifyFnPointer) => {
+            Some(&ty::adjustment::AdjustReifyFnPointer) => {
                 let adjusted_ty = cx.tcx.expr_ty_adjusted(self);
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
@@ -329,7 +329,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                     kind: ExprKind::ReifyFnPointer { source: expr.to_ref() },
                 };
             }
-            Some(&ty::AdjustUnsafeFnPointer) => {
+            Some(&ty::adjustment::AdjustUnsafeFnPointer) => {
                 let adjusted_ty = cx.tcx.expr_ty_adjusted(self);
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
@@ -338,7 +338,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                     kind: ExprKind::UnsafeFnPointer { source: expr.to_ref() },
                 };
             }
-            Some(&ty::AdjustDerefRef(ref adj)) => {
+            Some(&ty::adjustment::AdjustDerefRef(ref adj)) => {
                 for i in 0..adj.autoderefs {
                     let i = i as u32;
                     let adjusted_ty =
@@ -372,7 +372,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                 } else if let Some(autoref) = adj.autoref {
                     let adjusted_ty = expr.ty.adjust_for_autoref(cx.tcx, Some(autoref));
                     match autoref {
-                        ty::AutoPtr(r, m) => {
+                        ty::adjustment::AutoPtr(r, m) => {
                             expr = Expr {
                                 temp_lifetime: temp_lifetime,
                                 ty: adjusted_ty,
@@ -382,7 +382,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                                                          arg: expr.to_ref() }
                             };
                         }
-                        ty::AutoUnsafe(m) => {
+                        ty::adjustment::AutoUnsafe(m) => {
                             // Convert this to a suitable `&foo` and
                             // then an unsafe coercion. Limit the region to be just this
                             // expression.
