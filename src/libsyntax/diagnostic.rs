@@ -742,11 +742,20 @@ impl EmitterWriter {
                         // Don't print recursive invocations
                         if ei.call_site != last_span {
                             last_span = ei.call_site;
-                            try!(self.print_diagnostic(&cm.span_to_string(ei.call_site), Note,
-                                                       &format!("in this expansion of {}{}{}",
-                                                                pre,
-                                                                ei.callee.name(),
-                                                                post),
+
+                            let mut diag_string = format!("in this expansion of {}{}{}",
+                                                          pre,
+                                                          ei.callee.name(),
+                                                          post);
+
+                            if let Some(def_site_span) = ei.callee.span {
+                                diag_string.push_str(&format!(" (defined in {})",
+                                                              cm.span_to_filename(def_site_span)));
+                            }
+
+                            try!(self.print_diagnostic(&cm.span_to_string(ei.call_site),
+                                                       Note,
+                                                       &diag_string,
                                                        None));
                         }
                         Ok(Some(ei.call_site))
