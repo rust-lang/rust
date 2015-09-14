@@ -116,12 +116,6 @@ impl<'tcx> RegionEscape for ty::Predicate<'tcx> {
     }
 }
 
-impl<'tcx,P:RegionEscape> RegionEscape for traits::Obligation<'tcx,P> {
-    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
-        self.predicate.has_regions_escaping_depth(depth)
-    }
-}
-
 impl<'tcx> RegionEscape for TraitRef<'tcx> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.substs.types.iter().any(|t| t.has_regions_escaping_depth(depth)) ||
@@ -766,82 +760,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::InstantiatedPredicates<'tcx> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::InstantiatedPredicates<'tcx> {
         ty::InstantiatedPredicates {
             predicates: self.predicates.fold_with(folder),
-        }
-    }
-}
-
-impl<'tcx,O> TypeFoldable<'tcx> for traits::Obligation<'tcx,O>
-    where O : TypeFoldable<'tcx>
-{
-    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::Obligation<'tcx, O> {
-        traits::Obligation {
-            cause: self.cause.clone(),
-            recursion_depth: self.recursion_depth,
-            predicate: self.predicate.fold_with(folder),
-        }
-    }
-}
-
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableImplData<'tcx, N> {
-    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableImplData<'tcx, N> {
-        traits::VtableImplData {
-            impl_def_id: self.impl_def_id,
-            substs: self.substs.fold_with(folder),
-            nested: self.nested.fold_with(folder),
-        }
-    }
-}
-
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableClosureData<'tcx, N> {
-    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableClosureData<'tcx, N> {
-        traits::VtableClosureData {
-            closure_def_id: self.closure_def_id,
-            substs: self.substs.fold_with(folder),
-            nested: self.nested.fold_with(folder),
-        }
-    }
-}
-
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableDefaultImplData<N> {
-    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableDefaultImplData<N> {
-        traits::VtableDefaultImplData {
-            trait_def_id: self.trait_def_id,
-            nested: self.nested.fold_with(folder),
-        }
-    }
-}
-
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableBuiltinData<N> {
-    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableBuiltinData<N> {
-        traits::VtableBuiltinData {
-            nested: self.nested.fold_with(folder),
-        }
-    }
-}
-
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N> {
-    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::Vtable<'tcx, N> {
-        match *self {
-            traits::VtableImpl(ref v) => traits::VtableImpl(v.fold_with(folder)),
-            traits::VtableDefaultImpl(ref t) => traits::VtableDefaultImpl(t.fold_with(folder)),
-            traits::VtableClosure(ref d) => {
-                traits::VtableClosure(d.fold_with(folder))
-            }
-            traits::VtableFnPointer(ref d) => {
-                traits::VtableFnPointer(d.fold_with(folder))
-            }
-            traits::VtableParam(ref n) => traits::VtableParam(n.fold_with(folder)),
-            traits::VtableBuiltin(ref d) => traits::VtableBuiltin(d.fold_with(folder)),
-            traits::VtableObject(ref d) => traits::VtableObject(d.fold_with(folder)),
-        }
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx> {
-    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableObjectData<'tcx> {
-        traits::VtableObjectData {
-            upcast_trait_ref: self.upcast_trait_ref.fold_with(folder),
-            vtable_base: self.vtable_base
         }
     }
 }
