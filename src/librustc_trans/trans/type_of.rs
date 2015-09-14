@@ -325,7 +325,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
     // Rust types are defined as the same LLVM types.  If we don't do
     // this then, e.g. `Option<{myfield: bool}>` would be a different
     // type than `Option<myrec>`.
-    let t_norm = erase_regions(cx.tcx(), &t);
+    let t_norm = cx.tcx().erase_regions(&t);
 
     if t != t_norm {
         let llty = in_memory_type_of(cx, t_norm);
