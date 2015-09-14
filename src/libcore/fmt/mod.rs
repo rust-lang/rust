@@ -121,6 +121,21 @@ pub trait Write {
     }
 }
 
+#[stable(feature = "fmt_write_blanket_impl", since = "1.4.0")]
+impl<'a, W: Write + ?Sized> Write for &'a mut W {
+    fn write_str(&mut self, s: &str) -> Result {
+        (**self).write_str(s)
+    }
+
+    fn write_char(&mut self, c: char) -> Result {
+        (**self).write_char(c)
+    }
+
+    fn write_fmt(&mut self, args: Arguments) -> Result {
+        (**self).write_fmt(args)
+    }
+}
+
 /// A struct to represent both where to emit formatting strings to and how they
 /// should be formatted. A mutable version of this is passed to all formatting
 /// traits.
