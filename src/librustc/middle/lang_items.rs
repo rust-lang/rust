@@ -28,7 +28,8 @@ use middle::ty;
 use middle::weak_lang_items;
 use util::nodemap::FnvHashMap;
 
-use rustc_front::attr::AttrMetaMethods;
+use syntax::ast;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 use rustc_front::visit::Visitor;
@@ -216,7 +217,7 @@ impl<'a> LanguageItemCollector<'a> {
     }
 }
 
-pub fn extract(attrs: &[hir::Attribute]) -> Option<InternedString> {
+pub fn extract(attrs: &[ast::Attribute]) -> Option<InternedString> {
     for attribute in attrs {
         match attribute.value_str() {
             Some(ref value) if attribute.check_name("lang") => {

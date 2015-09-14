@@ -26,8 +26,8 @@ use util::nodemap::NodeSet;
 use std::collections::HashSet;
 use syntax::abi;
 use syntax::ast;
+use syntax::attr;
 use rustc_front::hir;
-use rustc_front::attr;
 use rustc_front::visit::Visitor;
 use rustc_front::visit;
 

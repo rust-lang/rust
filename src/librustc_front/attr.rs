@@ -15,8 +15,6 @@ pub use self::ReprAttr::*;
 pub use self::IntType::*;
 
 use hir;
-use hir::{AttrId, Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
-use lowering::{lower_attr_style, unlower_attribute};
 use syntax::codemap::{Span, Spanned, spanned, dummy_spanned};
 use syntax::codemap::BytePos;
 use syntax::diagnostic::SpanHandler;

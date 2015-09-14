@@ -48,8 +48,8 @@ use middle::ty::error::TypeError;
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 
+use syntax::ast;
 use syntax::codemap::Span;
-use rustc_front::hir;
 
 #[derive(Clone)]
 pub struct CombineFields<'a, 'tcx: 'a> {
@@ -138,7 +138,7 @@ fn unify_integral_variable<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
 fn unify_float_variable<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                  vid_is_expected: bool,
                                  vid: ty::FloatVid,
-                                 val: hir::FloatTy)
+                                 val: ast::FloatTy)
                                  -> RelateResult<'tcx, Ty<'tcx>>
 {
     try!(infcx
@@ -388,7 +388,7 @@ fn int_unification_error<'tcx>(a_is_expected: bool, v: (ty::IntVarValue, ty::Int
 }
 
 fn float_unification_error<'tcx>(a_is_expected: bool,
-                                 v: (hir::FloatTy, hir::FloatTy))
+                                 v: (ast::FloatTy, ast::FloatTy))
                                  -> TypeError<'tcx>
 {
     let (a, b) = v;

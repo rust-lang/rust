@@ -18,13 +18,13 @@ use syntax::codemap::Span;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast::{Ident, NodeId};
+use syntax::attr;
 use syntax::ptr::P;
 use rustc_front::hir;
-use rustc_front::attr;
 
 pub struct Module {
     pub name: Option<Ident>,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub where_outer: Span,
     pub where_inner: Span,
     pub extern_crates: Vec<ExternCrate>,
@@ -100,7 +100,7 @@ pub struct Struct {
     pub struct_type: StructType,
     pub name: Ident,
     pub generics: hir::Generics,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub fields: Vec<hir::StructField>,
     pub whence: Span,
 }
@@ -110,7 +110,7 @@ pub struct Enum {
     pub stab: Option<attr::Stability>,
     pub variants: Vec<Variant>,
     pub generics: hir::Generics,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub id: NodeId,
     pub whence: Span,
     pub name: Ident,
@@ -118,7 +118,7 @@ pub struct Enum {
 
 pub struct Variant {
     pub name: Ident,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub kind: hir::VariantKind,
     pub id: ast::NodeId,
     pub vis: hir::Visibility,
@@ -128,7 +128,7 @@ pub struct Variant {
 
 pub struct Function {
     pub decl: hir::FnDecl,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub id: NodeId,
     pub name: Ident,
     pub vis: hir::Visibility,
@@ -145,7 +145,7 @@ pub struct Typedef {
     pub gen: hir::Generics,
     pub name: Ident,
     pub id: ast::NodeId,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub whence: Span,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
@@ -157,7 +157,7 @@ pub struct Static {
     pub mutability: hir::Mutability,
     pub expr: P<hir::Expr>,
     pub name: Ident,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
     pub id: ast::NodeId,
@@ -168,7 +168,7 @@ pub struct Constant {
     pub type_: P<hir::Ty>,
     pub expr: P<hir::Expr>,
     pub name: Ident,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
     pub id: ast::NodeId,
@@ -181,7 +181,7 @@ pub struct Trait {
     pub items: Vec<P<hir::TraitItem>>, //should be TraitItem
     pub generics: hir::Generics,
     pub bounds: Vec<hir::TyParamBound>,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub id: ast::NodeId,
     pub whence: Span,
     pub vis: hir::Visibility,
@@ -195,7 +195,7 @@ pub struct Impl {
     pub trait_: Option<hir::TraitRef>,
     pub for_: P<hir::Ty>,
     pub items: Vec<P<hir::ImplItem>>,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub whence: Span,
     pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
@@ -206,14 +206,14 @@ pub struct DefaultImpl {
     pub unsafety: hir::Unsafety,
     pub trait_: hir::TraitRef,
     pub id: ast::NodeId,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub whence: Span,
 }
 
 pub struct Macro {
     pub name: Ident,
     pub id: ast::NodeId,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub whence: Span,
     pub stab: Option<attr::Stability>,
     pub imported_from: Option<Ident>,
@@ -223,14 +223,14 @@ pub struct ExternCrate {
     pub name: Ident,
     pub path: Option<String>,
     pub vis: hir::Visibility,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub whence: Span,
 }
 
 pub struct Import {
     pub id: NodeId,
     pub vis: hir::Visibility,
-    pub attrs: Vec<hir::Attribute>,
+    pub attrs: Vec<ast::Attribute>,
     pub node: hir::ViewPath_,
     pub whence: Span,
 }

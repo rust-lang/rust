@@ -25,9 +25,10 @@ use middle::ty::fold::TypeFoldable;
 
 use std::fmt;
 use syntax::abi;
+use syntax::ast;
 use syntax::parse::token;
 use syntax::ast::DUMMY_NODE_ID;
-use rustc_front::hir as ast;
+use rustc_front::hir;
 
 pub fn verbose() -> bool {
     ty::tls::with(|tcx| tcx.sess.verbose())
@@ -334,7 +335,7 @@ impl<'tcx> fmt::Debug for ty::TyS<'tcx> {
 impl<'tcx> fmt::Display for ty::TypeAndMut<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}{}",
-               if self.mutbl == ast::MutMutable { "mut " } else { "" },
+               if self.mutbl == hir::MutMutable { "mut " } else { "" },
                self.ty)
     }
 }
@@ -825,8 +826,8 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyBox(typ) => write!(f, "Box<{}>",  typ),
             TyRawPtr(ref tm) => {
                 write!(f, "*{} {}", match tm.mutbl {
-                    ast::MutMutable => "mut",
-                    ast::MutImmutable => "const",
+                    hir::MutMutable => "mut",
+                    hir::MutImmutable => "const",
                 },  tm.ty)
             }
             TyRef(r, ref tm) => {
@@ -853,7 +854,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 write!(f, ")")
             }
             TyBareFn(opt_def_id, ref bare_fn) => {
-                if bare_fn.unsafety == ast::Unsafety::Unsafe {
+                if bare_fn.unsafety == hir::Unsafety::Unsafe {
                     try!(write!(f, "unsafe "));
                 }
 
@@ -966,10 +967,10 @@ impl fmt::Display for ty::ExplicitSelfCategory {
         f.write_str(match *self {
             ty::StaticExplicitSelfCategory => "static",
             ty::ByValueExplicitSelfCategory => "self",
-            ty::ByReferenceExplicitSelfCategory(_, ast::MutMutable) => {
+            ty::ByReferenceExplicitSelfCategory(_, hir::MutMutable) => {
                 "&mut self"
             }
-            ty::ByReferenceExplicitSelfCategory(_, ast::MutImmutable) => "&self",
+            ty::ByReferenceExplicitSelfCategory(_, hir::MutImmutable) => "&self",
             ty::ByBoxExplicitSelfCategory => "Box<self>",
         })
     }

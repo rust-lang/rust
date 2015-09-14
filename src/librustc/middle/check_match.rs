@@ -404,7 +404,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir:
 
 fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
     let node = match value {
-        &ConstVal::Bool(b) => hir::LitBool(b),
+        &ConstVal::Bool(b) => ast::LitBool(b),
         _ => unreachable!()
     };
     P(hir::Expr {

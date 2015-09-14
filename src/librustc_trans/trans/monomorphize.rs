@@ -28,10 +28,10 @@ use middle::ty::{self, HasTypeFlags, Ty};
 use rustc::front::map as hir_map;
 
 use rustc_front::hir;
-use rustc_front::attr;
 
 use syntax::abi;
 use syntax::ast;
+use syntax::attr;
 use std::hash::{Hasher, Hash, SipHasher};
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -146,7 +146,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ccx.monomorphized().borrow_mut().insert(hash_id.take().unwrap(), lldecl);
         lldecl
     };
-    let setup_lldecl = |lldecl, attrs: &[hir::Attribute]| {
+    let setup_lldecl = |lldecl, attrs: &[ast::Attribute]| {
         base::update_linkage(ccx, lldecl, None, base::OriginalTranslation);
         attributes::from_fn_attrs(ccx, attrs, lldecl);
 

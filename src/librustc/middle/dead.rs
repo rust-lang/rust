@@ -15,7 +15,6 @@
 use front::map as ast_map;
 use rustc_front::hir;
 use rustc_front::visit::{self, Visitor};
-use rustc_front::attr::{self, AttrMetaMethods};
 
 use middle::{def, pat_util, privacy, ty};
 use middle::def_id::{DefId};
@@ -24,6 +23,7 @@ use util::nodemap::NodeSet;
 
 use std::collections::HashSet;
 use syntax::{ast, codemap};
+use syntax::attr::{self, AttrMetaMethods};
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live NodeItem that is a
@@ -285,13 +285,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
     }
 }
 
-fn has_allow_dead_code_or_lang_attr(attrs: &[hir::Attribute]) -> bool {
+fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
     if attr::contains_name(attrs, "lang") {
         return true;
     }
 
     let dead_code = lint::builtin::DEAD_CODE.name_lower();
-    for attr in lint::gather_attrs_from_hir(attrs) {
+    for attr in lint::gather_attrs(attrs) {
         match attr {
             Ok((ref name, lint::Allow, _))
                 if &name[..] == dead_code => return true,

@@ -13,7 +13,7 @@
 use std::collections::HashSet;
 
 use syntax::ast;
-use rustc_front::attr::AttrMetaMethods;
+use syntax::attr::AttrMetaMethods;
 use rustc_front::hir;
 
 use rustc::metadata::csearch;

@@ -49,7 +49,8 @@ use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty::cast::{CastKind, CastTy};
 use syntax::codemap::Span;
 use rustc_front::hir;
-use rustc_front::hir::UintTy::TyU8;
+use syntax::ast;
+use syntax::ast::UintTy::TyU8;
 
 
 /// Reifies a cast check to be checked once we have full type information for
@@ -245,7 +246,7 @@ impl<'tcx> CastCheck<'tcx> {
             (_, Int(Bool)) => Err(CastError::CastToBool),
 
             // * -> Char
-            (Int(U(hir::TyU8)), Int(Char)) => Ok(CastKind::U8CharCast), // u8-char-cast
+            (Int(U(ast::TyU8)), Int(Char)) => Ok(CastKind::U8CharCast), // u8-char-cast
             (_, Int(Char)) => Err(CastError::CastToChar),
 
             // prim -> float,ptr

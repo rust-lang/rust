@@ -35,12 +35,12 @@ use std::cmp;
 use libc::c_uint;
 use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
 use syntax::abi::{PlatformIntrinsic, RustIntrinsic, Rust, RustCall, Stdcall, Fastcall, System};
+use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::ast;
 
 use rustc_front::print::pprust;
-use rustc_front::attr;
 use rustc_front::hir;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -188,7 +188,7 @@ pub fn get_extern_fn(ccx: &CrateContext,
 pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           abi: Abi, fty: Ty<'tcx>,
                                           name: &str,
-                                          attrs: &[hir::Attribute])-> ValueRef {
+                                          attrs: &[ast::Attribute])-> ValueRef {
     debug!("register_foreign_item_fn(abi={:?}, \
             ty={:?}, \
             name={})",
@@ -577,7 +577,7 @@ pub fn register_rust_fn_with_foreign_abi(ccx: &CrateContext,
 pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                 decl: &hir::FnDecl,
                                                 body: &hir::Block,
-                                                attrs: &[hir::Attribute],
+                                                attrs: &[ast::Attribute],
                                                 llwrapfn: ValueRef,
                                                 param_substs: &'tcx Substs<'tcx>,
                                                 id: ast::NodeId,
@@ -600,7 +600,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                decl: &hir::FnDecl,
                                body: &hir::Block,
                                param_substs: &'tcx Substs<'tcx>,
-                               attrs: &[hir::Attribute],
+                               attrs: &[ast::Attribute],
                                id: ast::NodeId,
                                hash: Option<&str>)
                                -> ValueRef
