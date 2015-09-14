@@ -11,7 +11,6 @@
 use middle::infer::InferCtxt;
 use middle::ty::{self, RegionEscape, Ty, HasTypeFlags};
 
-use std::fmt;
 use syntax::ast;
 use util::common::ErrorReported;
 use util::nodemap::{FnvHashSet, NodeMap};
@@ -506,14 +505,6 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                 }
             }
         }
-    }
-}
-
-impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RegionObligation(sub_region={:?}, sup_type={:?})",
-               self.sub_region,
-               self.sup_type)
     }
 }
 
