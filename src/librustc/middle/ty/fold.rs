@@ -37,7 +37,7 @@
 use middle::region;
 use middle::subst;
 use middle::ty::adjustment;
-use middle::ty::{self, Binder, Ty, HasTypeFlags, RegionEscape};
+use middle::ty::{self, Binder, Ty, RegionEscape};
 
 use std::fmt;
 use util::nodemap::{FnvHashMap, FnvHashSet};
@@ -588,39 +588,63 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx>
 
 ///////////////////////////////////////////////////////////////////////////
 // Region eraser
-//
-// Replaces all free regions with 'static. Useful in contexts, such as
-// method probing, where precise region relationships are not
-// important. Note that in trans you should use
-// `common::erase_regions` instead.
 
-pub struct RegionEraser<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
-}
+impl<'tcx> ty::ctxt<'tcx> {
+    /// Returns an equivalent value with all free regions removed (note
+    /// that late-bound regions remain, because they are important for
+    /// subtyping, but they are anonymized and normalized as well)..
+    pub fn erase_regions<T>(&self, value: &T) -> T
+        where T : TypeFoldable<'tcx>
+    {
+        let value1 = value.fold_with(&mut RegionEraser(self));
+        debug!("erase_regions({:?}) = {:?}",
+               value, value1);
+        return value1;
 
-pub fn erase_regions<'tcx, T: TypeFoldable<'tcx>>(tcx: &ty::ctxt<'tcx>, t: T) -> T {
-    let mut eraser = RegionEraser { tcx: tcx };
-    t.fold_with(&mut eraser)
-}
+        struct RegionEraser<'a, 'tcx: 'a>(&'a ty::ctxt<'tcx>);
 
-impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> { self.tcx }
+        impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
+            fn tcx(&self) -> &ty::ctxt<'tcx> { self.0 }
 
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.has_erasable_regions() {
-            return t;
-        }
+            fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+                match self.tcx().normalized_cache.borrow().get(&ty).cloned() {
+                    None => {}
+                    Some(u) => return u
+                }
 
-        super_fold_ty(self, t)
-    }
+                let t_norm = ty::fold::super_fold_ty(self, ty);
+                self.tcx().normalized_cache.borrow_mut().insert(ty, t_norm);
+                return t_norm;
+            }
 
-    fn fold_region(&mut self, r: ty::Region) -> ty::Region {
-        // because whether or not a region is bound affects subtyping,
-        // we can't erase the bound/free distinction, but we can
-        // replace all free regions with 'static
-        match r {
-            ty::ReLateBound(..) | ty::ReEarlyBound(..) => r,
-            _ => ty::ReStatic
+            fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
+                where T : TypeFoldable<'tcx>
+            {
+                let u = self.tcx().anonymize_late_bound_regions(t);
+                ty::fold::super_fold_binder(self, &u)
+            }
+
+            fn fold_region(&mut self, r: ty::Region) -> ty::Region {
+                // because late-bound regions affect subtyping, we can't
+                // erase the bound/free distinction, but we can replace
+                // all free regions with 'static.
+                //
+                // Note that we *CAN* replace early-bound regions -- the
+                // type system never "sees" those, they get substituted
+                // away. In trans, they will always be erased to 'static
+                // whenever a substitution occurs.
+                match r {
+                    ty::ReLateBound(..) => r,
+                    _ => ty::ReStatic
+                }
+            }
+
+            fn fold_substs(&mut self,
+                           substs: &subst::Substs<'tcx>)
+                           -> subst::Substs<'tcx> {
+                subst::Substs { regions: subst::ErasedRegions,
+                                types: substs.types.fold_with(self) }
+            }
         }
     }
 }

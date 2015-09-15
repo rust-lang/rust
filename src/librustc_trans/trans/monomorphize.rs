@@ -13,10 +13,9 @@ use session;
 use llvm::ValueRef;
 use llvm;
 use middle::def_id::DefId;
-use middle::infer;
+use middle::infer::normalize_associated_type;
 use middle::subst;
 use middle::subst::{Subst, Substs};
-use middle::traits;
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use trans::attributes;
 use trans::base::{trans_enum_variant, push_ctxt, get_item_val};
@@ -33,7 +32,6 @@ use rustc_front::attr;
 
 use syntax::abi;
 use syntax::ast;
-use syntax::codemap::DUMMY_SP;
 use std::hash::{Hasher, Hash, SipHasher};
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -299,40 +297,4 @@ pub fn field_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
                       -> Ty<'tcx>
 {
     normalize_associated_type(tcx, &f.ty(tcx, param_substs))
-}
-
-/// Removes associated types, if any. Since this during
-/// monomorphization, we know that only concrete types are involved,
-/// and hence we can be sure that all associated types will be
-/// completely normalized away.
-pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
-    where T : TypeFoldable<'tcx> + HasTypeFlags
-{
-    debug!("normalize_associated_type(t={:?})", value);
-
-    let value = erase_regions(tcx, value);
-
-    if !value.has_projection_types() {
-        return value;
-    }
-
-    // FIXME(#20304) -- cache
-    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
-    let mut selcx = traits::SelectionContext::new(&infcx);
-    let cause = traits::ObligationCause::dummy();
-    let traits::Normalized { value: result, obligations } =
-        traits::normalize(&mut selcx, cause, &value);
-
-    debug!("normalize_associated_type: result={:?} obligations={:?}",
-           result,
-           obligations);
-
-    let mut fulfill_cx = infcx.fulfillment_cx.borrow_mut();
-
-    for obligation in obligations {
-        fulfill_cx.register_predicate_obligation(&infcx, obligation);
-    }
-    let result = drain_fulfillment_cx_or_panic(DUMMY_SP, &infcx, &mut fulfill_cx, &result);
-
-    result
 }

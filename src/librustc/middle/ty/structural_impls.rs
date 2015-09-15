@@ -45,6 +45,12 @@ impl<'tcx> RegionEscape for ty::ExistentialBounds<'tcx> {
     }
 }
 
+impl<'tcx> RegionEscape for ty::InstantiatedPredicates<'tcx> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.predicates.has_regions_escaping_depth(depth)
+    }
+}
+
 impl<'tcx> RegionEscape for subst::Substs<'tcx> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.types.has_regions_escaping_depth(depth) ||
@@ -179,6 +185,13 @@ impl<'tcx> RegionEscape for ty::ProjectionTy<'tcx> {
         self.trait_ref.has_regions_escaping_depth(depth)
     }
 }
+
+impl HasTypeFlags for () {
+    fn has_type_flags(&self, _flags: TypeFlags) -> bool {
+        false
+    }
+}
+
 impl<'tcx,T:HasTypeFlags> HasTypeFlags for Vec<T> {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self[..].has_type_flags(flags)

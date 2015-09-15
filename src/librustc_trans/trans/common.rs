@@ -47,7 +47,6 @@ use arena::TypedArena;
 use libc::{c_uint, c_char};
 use std::ffi::CString;
 use std::cell::{Cell, RefCell};
-use std::result::Result as StdResult;
 use std::vec::Vec;
 use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
@@ -55,65 +54,6 @@ use syntax::parse::token::InternedString;
 use syntax::parse::token;
 
 pub use trans::context::CrateContext;
-
-/// Returns an equivalent value with all free regions removed (note
-/// that late-bound regions remain, because they are important for
-/// subtyping, but they are anonymized and normalized as well). This
-/// is a stronger, caching version of `ty::fold::erase_regions`.
-pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
-    where T : TypeFoldable<'tcx>
-{
-    let value1 = value.fold_with(&mut RegionEraser(cx));
-    debug!("erase_regions({:?}) = {:?}",
-           value, value1);
-    return value1;
-
-    struct RegionEraser<'a, 'tcx: 'a>(&'a ty::ctxt<'tcx>);
-
-    impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
-        fn tcx(&self) -> &ty::ctxt<'tcx> { self.0 }
-
-        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-            match self.tcx().normalized_cache.borrow().get(&ty).cloned() {
-                None => {}
-                Some(u) => return u
-            }
-
-            let t_norm = ty::fold::super_fold_ty(self, ty);
-            self.tcx().normalized_cache.borrow_mut().insert(ty, t_norm);
-            return t_norm;
-        }
-
-        fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
-            where T : TypeFoldable<'tcx>
-        {
-            let u = self.tcx().anonymize_late_bound_regions(t);
-            ty::fold::super_fold_binder(self, &u)
-        }
-
-        fn fold_region(&mut self, r: ty::Region) -> ty::Region {
-            // because late-bound regions affect subtyping, we can't
-            // erase the bound/free distinction, but we can replace
-            // all free regions with 'static.
-            //
-            // Note that we *CAN* replace early-bound regions -- the
-            // type system never "sees" those, they get substituted
-            // away. In trans, they will always be erased to 'static
-            // whenever a substitution occurs.
-            match r {
-                ty::ReLateBound(..) => r,
-                _ => ty::ReStatic
-            }
-        }
-
-        fn fold_substs(&mut self,
-                       substs: &subst::Substs<'tcx>)
-                       -> subst::Substs<'tcx> {
-            subst::Substs { regions: subst::ErasedRegions,
-                            types: substs.types.fold_with(self) }
-        }
-    }
-}
 
 /// Is the type's representation size known at compile time?
 pub fn type_is_sized<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -1043,7 +983,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let tcx = ccx.tcx();
 
     // Remove any references to regions; this helps improve caching.
-    let trait_ref = erase_regions(tcx, &trait_ref);
+    let trait_ref = tcx.erase_regions(&trait_ref);
 
     // First check the cache.
     match ccx.trait_cache().borrow().get(&trait_ref) {
@@ -1098,8 +1038,8 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let vtable = selection.map(|predicate| {
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
     });
-    let vtable = erase_regions(tcx,
-        &drain_fulfillment_cx_or_panic(span, &infcx, &mut fulfill_cx, &vtable)
+    let vtable = infer::drain_fulfillment_cx_or_panic(
+        span, &infcx, &mut fulfill_cx, &vtable
     );
 
     info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
@@ -1134,59 +1074,8 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let obligation = traits::Obligation::new(cause.clone(), predicate);
         fulfill_cx.register_predicate_obligation(&infcx, obligation);
     }
-    drain_fulfillment_cx(&infcx, &mut fulfill_cx, &()).is_ok()
-}
 
-pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
-                                                infcx: &infer::InferCtxt<'a,'tcx>,
-                                                fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
-                                                result: &T)
-                                                -> T
-    where T : TypeFoldable<'tcx>
-{
-    match drain_fulfillment_cx(infcx, fulfill_cx, result) {
-        Ok(v) => v,
-        Err(errors) => {
-            infcx.tcx.sess.span_bug(
-                span,
-                &format!("Encountered errors `{:?}` fulfilling during trans",
-                         errors));
-        }
-    }
-}
-
-/// Finishes processes any obligations that remain in the fulfillment
-/// context, and then "freshens" and returns `result`. This is
-/// primarily used during normalization and other cases where
-/// processing the obligations in `fulfill_cx` may cause type
-/// inference variables that appear in `result` to be unified, and
-/// hence we need to process those obligations to get the complete
-/// picture of the type.
-pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &infer::InferCtxt<'a,'tcx>,
-                                       fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
-                                       result: &T)
-                                       -> StdResult<T,Vec<traits::FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx>
-{
-    debug!("drain_fulfillment_cx(result={:?})",
-           result);
-
-    // In principle, we only need to do this so long as `result`
-    // contains unbound type parameters. It could be a slight
-    // optimization to stop iterating early.
-    match fulfill_cx.select_all_or_error(infcx) {
-        Ok(()) => { }
-        Err(errors) => {
-            return Err(errors);
-        }
-    }
-
-    // Use freshen to simultaneously replace all type variables with
-    // their bindings and replace all regions with 'static.  This is
-    // sort of overkill because we do not expect there to be any
-    // unbound type variables, hence no `TyFresh` types should ever be
-    // inserted.
-    Ok(result.fold_with(&mut infcx.freshener()))
+    infer::drain_fulfillment_cx(&infcx, &mut fulfill_cx, &()).is_ok()
 }
 
 // Key used to lookup values supplied for type parameters in an expr.
