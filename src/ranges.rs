@@ -1,7 +1,7 @@
 use rustc::lint::{Context, LintArray, LintPass};
 use rustc_front::hir::*;
 use syntax::codemap::Spanned;
-use utils::match_type;
+use utils::{match_type, is_integer_literal};
 
 declare_lint! {
     pub RANGE_STEP_BY_ZERO, Warn,
@@ -21,7 +21,7 @@ impl LintPass for StepByZero {
                               ref args) = expr.node {
             // Only warn on literal ranges.
             if ident.name == "step_by" && args.len() == 2 &&
-                is_range(cx, &args[0]) && is_lit_zero(&args[1]) {
+                is_range(cx, &args[0]) && is_integer_literal(&args[1], 0) {
                 cx.span_lint(RANGE_STEP_BY_ZERO, expr.span,
                              "Range::step_by(0) produces an infinite iterator. \
                               Consider using `std::iter::repeat()` instead")
@@ -36,14 +36,4 @@ fn is_range(cx: &Context, expr: &Expr) -> bool {
     let ty = cx.tcx.expr_ty(expr);
     // Note: RangeTo and RangeFull don't have step_by
     match_type(cx, ty, &["core", "ops", "Range"]) || match_type(cx, ty, &["core", "ops", "RangeFrom"])
-}
-
-fn is_lit_zero(expr: &Expr) -> bool {
-    // FIXME: use constant folding
-    if let ExprLit(ref spanned) = expr.node {
-        if let LitInt(0, _) = spanned.node {
-            return true;
-        }
-    }
-    false
 }
