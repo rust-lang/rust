@@ -1533,6 +1533,26 @@ For information on the design of the orphan rules, see [RFC 1023].
 [RFC 1023]: https://github.com/rust-lang/rfcs/pull/1023
 "##,
 
+E0118: r##"
+Rust can't find a base type for an implementation you are providing, or the type
+cannot have an implementation. For example, only a named type or a trait can
+have an implementation:
+
+```
+type NineString = [char, ..9] // This isn't a named type (struct, enum or trait)
+impl NineString {
+    // Some code here
+}
+```
+
+In the other, simpler case, Rust just can't find the type you are providing an
+impelementation for:
+
+```
+impl SomeTypeThatDoesntExist {  }
+```
+"##,
+
 E0119: r##"
 There are conflicting trait implementations for the same type.
 Example of erroneous code:
@@ -3258,7 +3278,6 @@ register_diagnostics! {
     E0090,
     E0103, // @GuillaumeGomez: I was unable to get this error, try your best!
     E0104,
-    E0118,
 //  E0123,
 //  E0127,
 //  E0129,
