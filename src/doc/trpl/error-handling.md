@@ -24,7 +24,7 @@ systems may want to jump around.
 * [The Basics](#the-basics)
     * [Unwrapping explained](#unwrapping-explained)
     * [The `Option` type](#the-option-type)
-        * [Composing `Option<T>` values](#composing-optiont-values)
+        * [Composing `Option<T>` values](#composing-option<t>-values)
     * [The `Result` type](#the-result-type)
         * [Parsing integers](#parsing-integers)
         * [The `Result` type alias idiom](#the-result-type-alias-idiom)
@@ -33,19 +33,19 @@ systems may want to jump around.
     * [Composing `Option` and `Result`](#composing-option-and-result)
     * [The limits of combinators](#the-limits-of-combinators)
     * [Early returns](#early-returns)
-    * [The `try!` macro](#the-try-macro)
+    * [The `try!` macro](#the-try!-macro)
     * [Defining your own error type](#defining-your-own-error-type)
 * [Standard library traits used for error handling](#standard-library-traits-used-for-error-handling)
     * [The `Error` trait](#the-error-trait)
     * [The `From` trait](#the-from-trait)
-    * [The real `try!` macro](#the-real-try-macro)
+    * [The real `try!` macro](#the-real-try!-macro)
     * [Composing custom error types](#composing-custom-error-types)
     * [Advice for library writers](#advice-for-library-writers)
 * [Case study: A program to read population data](#case-study-a-program-to-read-population-data)
     * [Initial setup](#initial-setup)
     * [Argument parsing](#argument-parsing)
     * [Writing the logic](#writing-the-logic)
-    * [Error handling with `Box<Error>`](#error-handling-with-boxerror)
+    * [Error handling with `Box<Error>`](#error-handling-with-box<error>)
     * [Reading from stdin](#reading-from-stdin)
     * [Error handling with a custom type](#error-handling-with-a-custom-type)
     * [Adding functionality](#adding-functionality)
@@ -122,8 +122,7 @@ types. Both of these types have a method called `unwrap` defined on them.
 
 ## The `Option` type
 
-The `Option` type is
-[defined in the standard library][1]: 
+The `Option` type is [defined in the standard library][5]:
 
 ```rust
 enum Option<T> {
