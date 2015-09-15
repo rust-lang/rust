@@ -107,6 +107,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                a,
                b);
 
+        if a == b {
+            return Ok(None);
+        }
+
         // Consider coercing the subtype to a DST
         let unsize = self.unpack_actual_value(a, |a| {
             self.coerce_unsized(a, b)
