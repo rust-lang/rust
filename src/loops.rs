@@ -25,13 +25,16 @@ declare_lint!{ pub UNUSED_COLLECT, Warn,
                "`collect()`ing an iterator without using the result; this is usually better \
                 written as a for loop" }
 
+declare_lint!{ pub REVERSE_RANGE_LOOP, Warn,
+               "Iterating over an empty range, such as `10..0` or `5..5`" }
+
 #[derive(Copy, Clone)]
 pub struct LoopsPass;
 
 impl LintPass for LoopsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_RANGE_LOOP, EXPLICIT_ITER_LOOP, ITER_NEXT_LOOP,
-                    WHILE_LET_LOOP, UNUSED_COLLECT)
+                    WHILE_LET_LOOP, UNUSED_COLLECT, REVERSE_RANGE_LOOP)
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
@@ -62,6 +65,37 @@ impl LintPass for LoopsPass {
                                         "the loop variable `{}` is only used to index `{}`. \
                                          Consider using `for item in &{}` or similar iterators",
                                         ident.node.name, indexed, indexed));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // if this for-loop is iterating over a two-sided range...
+            if let ExprRange(Some(ref start_expr), Some(ref stop_expr)) = arg.node {
+                // and both sides are literals...
+                if let ExprLit(ref start_lit) = start_expr.node {
+                    if let ExprLit(ref stop_lit) = stop_expr.node {
+                        // and they are both integers...
+                        if let LitInt(start_idx, _) = start_lit.node {
+                            if let LitInt(stop_idx, _) = stop_lit.node {
+                                // and the start index is greater than the stop index,
+                                // this loop will never run. This is often confusing for developers
+                                // who think that this will iterate from the larger value to the
+                                // smaller value.
+                                if start_idx > stop_idx {
+                                    span_lint(cx, REVERSE_RANGE_LOOP, expr.span, &format!(
+                                        "this range is empty and this for loop will never run. \
+                                         Consider using `({}..{}).rev()` if you are attempting to \
+                                         iterate over this range in reverse", stop_idx, start_idx));
+                                }
+
+                                // if they are equal, it's also problematic - this loop
+                                // will never run.
+                                if start_idx == stop_idx {
+                                    span_lint(cx, REVERSE_RANGE_LOOP, expr.span,
+                                        "this range is empty and this for loop will never run");
                                 }
                             }
                         }
@@ -126,7 +160,7 @@ impl LintPass for LoopsPass {
     fn check_stmt(&mut self, cx: &Context, stmt: &Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
-                if args.len() == 1 && method.node.name == "collect" && 
+                if args.len() == 1 && method.node.name == "collect" &&
                         match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
                     span_lint(cx, UNUSED_COLLECT, expr.span, &format!(
                         "you are collect()ing an iterator and throwing away the result. \

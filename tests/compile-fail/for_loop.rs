@@ -14,7 +14,7 @@ impl Unrelated {
     }
 }
 
-#[deny(needless_range_loop, explicit_iter_loop, iter_next_loop)]
+#[deny(needless_range_loop, explicit_iter_loop, iter_next_loop, reverse_range_loop)]
 #[deny(unused_collect)]
 #[allow(linkedlist)]
 fn main() {
@@ -32,6 +32,18 @@ fn main() {
 
     for i in 5..vec.len() {      // not an error, not starting with 0
         println!("{}", vec[i]);
+    }
+
+    for i in 10..0 { //~ERROR this range is empty and this for loop will never run. Consider using `(0..10).rev()`
+        println!("{}", i);
+    }
+
+    for i in 5..5 { //~ERROR this range is empty and this for loop will never run
+        println!("{}", i);
+    }
+
+    for i in 0..10 { // not an error, the start index is less than the end index
+        println!("{}", i);
     }
 
     for _v in vec.iter() { } //~ERROR it is more idiomatic to loop over `&vec`
