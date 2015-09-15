@@ -280,7 +280,9 @@ fn rewrite_closure(capture: ast::CaptureClause,
         // All closure bodies are blocks in the eyes of the AST, but we may not
         // want to unwrap them when they only contain a single expression.
         let inner_expr = match expr.node {
-            ast::Expr_::ExprBlock(ref inner) if inner.stmts.is_empty() && inner.expr.is_some() => {
+            ast::Expr_::ExprBlock(ref inner) if inner.stmts.is_empty() && inner.expr.is_some() &&
+                                                inner.rules ==
+                                                ast::BlockCheckMode::DefaultBlock => {
                 inner.expr.as_ref().unwrap()
             }
             _ => expr,
