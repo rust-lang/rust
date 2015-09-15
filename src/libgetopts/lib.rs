@@ -110,7 +110,7 @@ use self::LengthLimit::*;
 use std::error;
 use std::fmt;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{BufRead, BufReader};
 use std::iter::repeat;
 use std::result;
 
@@ -153,7 +153,7 @@ pub enum Special {
     /// A normal option, no special handling required.
     Normal,
     /// Read further options, separated by the given byte, from the file given
-    /// as the option's argument. If the argument is `-`, read stdin.
+    /// as the option's argument.
     Include(u8),
 }
 
@@ -819,13 +819,7 @@ fn process_include(file: &str,
                    vals: &mut[Vec<Optval>],
                    free: &mut Vec<String>)
                    -> result::Result<(), Fail> {
-    let stdin = io::stdin();
-
-    let input: Box<BufRead> = if file == "-" {
-        Box::new(stdin.lock())
-    } else {
-        Box::new(BufReader::new(try!(File::open(file))))
-    };
+    let input = BufReader::new(try!(File::open(file)));
 
     let mut args = Vec::new();
 

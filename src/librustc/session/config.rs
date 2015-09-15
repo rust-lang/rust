@@ -845,9 +845,8 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                      "TYPE"),
         opt::opt_u("", "show-span", "Show spans for compiler debugging", "expr|pat|ty"),
         opt::include_u("", "include-arguments-from",
-                       "Read additional arguments from the given FILE or the \
-                        standard input if FILE is `-`. Arguments must be \
-                        separated by \\0.", "FILE", b'\0'),
+                       "Read additional \\0 separated arguments from the given FILE.",
+                       "FILE", b'\0'),
     ]);
     opts
 }
