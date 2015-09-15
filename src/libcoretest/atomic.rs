@@ -10,6 +10,7 @@
 
 use core::sync::atomic::*;
 use core::sync::atomic::Ordering::SeqCst;
+use core::marker::{Send, Sync};
 
 #[test]
 fn bool_() {
@@ -81,4 +82,14 @@ fn static_init() {
     assert!(S_TRUE.load(SeqCst));
     assert!(S_INT.load(SeqCst) == 0);
     assert!(S_UINT.load(SeqCst) == 0);
+}
+
+#[test]
+fn static_sync_and_send() {
+    fn ensure_sync_and_send<T:Sync+Send>() { }
+
+    ensure_sync_and_send::<AtomicBool>();
+    ensure_sync_and_send::<AtomicUsize>();
+    ensure_sync_and_send::<AtomicIsize>();
+    ensure_sync_and_send::<AtomicPtr>();
 }
