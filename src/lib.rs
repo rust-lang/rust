@@ -122,6 +122,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         loops::EXPLICIT_ITER_LOOP,
         loops::ITER_NEXT_LOOP,
         loops::NEEDLESS_RANGE_LOOP,
+        loops::REVERSE_RANGE_LOOP,
         loops::UNUSED_COLLECT,
         loops::WHILE_LET_LOOP,
         matches::MATCH_REF_PATS,

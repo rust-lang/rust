@@ -6,7 +6,7 @@ A collection of lints that give helpful tips to newbies and catch oversights.
 [Jump to usage instructions](#usage)
 
 ##Lints
-There are 56 lints included in this crate:
+There are 57 lints included in this crate:
 
 name                                                                                                   | default | meaning
 -------------------------------------------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -48,6 +48,7 @@ name                                                                            
 [redundant_closure](https://github.com/Manishearth/rust-clippy/wiki#redundant_closure)                 | warn    | using redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)
 [redundant_pattern](https://github.com/Manishearth/rust-clippy/wiki#redundant_pattern)                 | warn    | using `name @ _` in a pattern
 [result_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#result_unwrap_used)               | allow   | using `Result.unwrap()`, which might be better handled
+[reverse_range_loop](https://github.com/Manishearth/rust-clippy/wiki#reverse_range_loop)               | warn    | Iterating over an empty range, such as `10..0` or `5..5`
 [shadow_reuse](https://github.com/Manishearth/rust-clippy/wiki#shadow_reuse)                           | allow   | rebinding a name to an expression that re-uses the original value, e.g. `let x = x + 1`
 [shadow_same](https://github.com/Manishearth/rust-clippy/wiki#shadow_same)                             | allow   | rebinding a name to itself, e.g. `let mut x = &mut x`
 [shadow_unrelated](https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated)                   | allow   | The name is re-bound without even using the original value
