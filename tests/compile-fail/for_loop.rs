@@ -34,17 +34,52 @@ fn main() {
         println!("{}", vec[i]);
     }
 
-    for i in 10..0 { //~ERROR this range is empty and this for loop will never run. Consider using `(0..10).rev()`
+    for i in 10..0 { //~ERROR this range is empty so this for loop will never run
         println!("{}", i);
     }
 
-    for i in 5..5 { //~ERROR this range is empty and this for loop will never run
+    for i in 5..5 { //~ERROR this range is empty so this for loop will never run
         println!("{}", i);
     }
 
     for i in 0..10 { // not an error, the start index is less than the end index
         println!("{}", i);
     }
+
+    for i in (10..0).rev() { // not an error, this is an established idiom for looping backwards on a range
+        println!("{}", i);
+    }
+
+    for i in (10..0).map(|x| x * 2) { // not an error, it can't be known what arbitrary methods do to a range
+        println!("{}", i);
+    }
+
+    // testing that the empty range lint folds constants
+    for i in 10..5+4 { //~ERROR this range is empty so this for loop will never run
+        println!("{}", i);
+    }
+
+    for i in (5+2)..(3-1) { //~ERROR this range is empty so this for loop will never run
+        println!("{}", i);
+    }
+
+    for i in (5+2)..(8-1) { //~ERROR this range is empty so this for loop will never run
+        println!("{}", i);
+    }
+
+    for i in (2*2)..(2*3) { // no error, 4..6 is fine
+        println!("{}", i);
+    }
+
+    let x = 42;
+    for i in x..10 { // no error, not constant-foldable
+        println!("{}", i);
+    }
+
+    /*
+    for i in (10..0).map(|x| x * 2) {
+        println!("{}", i);
+    }*/
 
     for _v in vec.iter() { } //~ERROR it is more idiomatic to loop over `&vec`
     for _v in vec.iter_mut() { } //~ERROR it is more idiomatic to loop over `&mut vec`

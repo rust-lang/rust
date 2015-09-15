@@ -3,6 +3,7 @@ use rustc_front::hir::*;
 use reexport::*;
 use rustc_front::visit::{Visitor, walk_expr};
 use rustc::middle::ty;
+use consts::{constant_simple, Constant};
 use std::collections::HashSet;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type,
@@ -72,32 +73,25 @@ impl LintPass for LoopsPass {
                 }
             }
 
-            // if this for-loop is iterating over a two-sided range...
+            // if this for loop is iterating over a two-sided range...
             if let ExprRange(Some(ref start_expr), Some(ref stop_expr)) = arg.node {
-                // and both sides are literals...
-                if let ExprLit(ref start_lit) = start_expr.node {
-                    if let ExprLit(ref stop_lit) = stop_expr.node {
-                        // and they are both integers...
-                        if let LitInt(start_idx, _) = start_lit.node {
-                            if let LitInt(stop_idx, _) = stop_lit.node {
-                                // and the start index is greater than the stop index,
-                                // this loop will never run. This is often confusing for developers
-                                // who think that this will iterate from the larger value to the
-                                // smaller value.
-                                if start_idx > stop_idx {
-                                    span_lint(cx, REVERSE_RANGE_LOOP, expr.span, &format!(
-                                        "this range is empty and this for loop will never run. \
-                                         Consider using `({}..{}).rev()` if you are attempting to \
-                                         iterate over this range in reverse", stop_idx, start_idx));
-                                }
-
-                                // if they are equal, it's also problematic - this loop
-                                // will never run.
-                                if start_idx == stop_idx {
-                                    span_lint(cx, REVERSE_RANGE_LOOP, expr.span,
-                                        "this range is empty and this for loop will never run");
-                                }
-                            }
+                // ...and both sides are compile-time constant integers...
+                if let Some(Constant::ConstantInt(start_idx, _)) = constant_simple(start_expr) {
+                    if let Some(Constant::ConstantInt(stop_idx, _)) = constant_simple(stop_expr) {
+                        // ...and the start index is greater than the stop index,
+                        // this loop will never run. This is often confusing for developers
+                        // who think that this will iterate from the larger value to the
+                        // smaller value.
+                        if start_idx > stop_idx {
+                            span_help_and_lint(cx, REVERSE_RANGE_LOOP, expr.span,
+                                "this range is empty so this for loop will never run",
+                                &format!("Consider using `({}..{}).rev()` if you are attempting to \
+                                iterate over this range in reverse", stop_idx, start_idx));
+                        } else if start_idx == stop_idx {
+                            // if they are equal, it's also problematic - this loop
+                            // will never run.
+                            span_lint(cx, REVERSE_RANGE_LOOP, expr.span,
+                                "this range is empty so this for loop will never run");
                         }
                     }
                 }
