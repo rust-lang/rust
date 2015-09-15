@@ -87,7 +87,9 @@ thread '<main>' panicked at 'Invalid number: 11', src/bin/panic-simple.rs:5
 Here's another example that is slightly less contrived. A program that accepts
 an integer as an argument, doubles it and prints it.
 
+<a name="code-unwrap-double"/>
 ```rust,should_panic
+
 use std::env;
 
 fn main() {
@@ -137,6 +139,7 @@ system is an important concept because it will cause the compiler to force the
 programmer to handle that absence. Let's take a look at an example that tries
 to find a character in a string:
 
+<a name="code-option-ex-string-find"/>
 ```rust
 // Searches `haystack` for the Unicode character `needle`. If one is found, the
 // byte offset of the character is returned. Otherwise, `None` is returned.
