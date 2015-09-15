@@ -224,8 +224,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                             visitor.visit_path_list_item(prefix, item)
                         }
                     } else {
-                        // FIXME(#28388) visit_path should be used instead of walk_path
-                        walk_path(visitor, prefix);
+                        visitor.visit_path(prefix, item.id);
                     }
                 }
             }
