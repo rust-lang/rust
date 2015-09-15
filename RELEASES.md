@@ -1,5 +1,211 @@
+Version 1.3.0 (September 2015)
+==============================
+
+* ~900 changes, numerous bugfixes
+
+Highlights
+----------
+
+* The [new object lifetime defaults][nold] have been [turned
+  on][nold2] after a cycle of warnings about the change. Now types
+  like `&'a Box<Trait>` (or `&'a Rc<Trait>`, etc) will change from
+  being interpreted as `&'a Box<Trait+'a>` to `&'a
+  Box<Trait+'static>`.
+* [The Rustonomicon][nom] is a new book in the official documentation
+  that dives into writing unsafe Rust.
+* The [`Duration`] API, [has been stabilized][ds]. This basic unit of
+  timekeeping is employed by other std APIs, as well as out-of-tree
+  time crates.
+
+Breaking Changes
+----------------
+
+* The [new object lifetime defaults][nold] have been [turned
+  on][nold2] after a cycle of warnings about the change.
+* There is a known [regression][lr] in how object lifetime elision is
+  interpreted, the proper solution for which is undetermined.
+* The `#[prelude_import]` attribute, an internal implementation
+  detail, was accidentally stabilized previously. [It has been put
+  behind the `prelude_import` feature gate][pi]. This change is
+  believed to break no existing code.
+* The behavior of [`size_of_val`][dst1] and [`align_of_val`][dst2] is
+  [more sane for dynamically sized types][dst3]. Code that relied on
+  the previous behavior is thought to be broken.
+* The `dropck` rules, which checks that destructors can't access
+  destroyed values, [have been updated][dropck] to match the
+  [RFC][dropckrfc]. This fixes some soundness holes, and as such will
+  cause some previously-compiling code to no longer build.
+
+Language
+--------
+
+* The [new object lifetime defaults][nold] have been [turned
+  on][nold2] after a cycle of warnings about the change.
+* Semicolons may [now follow types and paths in
+  macros](https://github.com/rust-lang/rust/pull/27000).
+* The behavior of [`size_of_val`][dst1] and [`align_of_val`][dst2] is
+  [more sane for dynamically sized types][dst3]. Code that relied on
+  the previous behavior is not known to exist, and suspected to be
+  broken.
+* `'static` variables [may now be recursive][st].
+* `ref` bindings choose between [`Deref`] and [`DerefMut`]
+  implementations correctly.
+* The `dropck` rules, which checks that destructors can't access
+  destroyed values, [have been updated][dropck] to match the
+  [RFC][dropckrfc].
+
+Libraries
+---------
+
+* The [`Duration`] API, [has been stabilized][ds], as well as the
+  `std::time` module, which presently contains only `Duration`.
+* `Box<str>` and `Box<[T]>` both implement `Clone`.
+* The owned C string, [`CString`], implements [`Borrow`] and the
+  borrowed C string, [`CStr`], implements [`ToOwned`]. The two of
+  these allow C strings to be borrowed and cloned in generic code.
+* [`CStr`] implements [`Debug`].
+* [`AtomicPtr`] implements [`Debug`].
+* [`Error`] trait objects [can be downcast to their concrete types][e]
+  in many common configurations, using the [`is`], [`downcast`],
+  [`downcast_ref`] and [`downcast_mut`] methods, similarly to the
+  [`Any`] trait.
+* Searching for substrings now [employs the two-way algorithm][search]
+  instead of doing a naive search. This gives major speedups to a
+  number of methods, including [`contains`][sc], [`find`][sf],
+  [`rfind`][srf], [`split`][ss]. [`starts_with`][ssw] and
+  [`ends_with`][sew] are also faster.
+* The performance of `PartialEq` for slices is [much faster][ps].
+* The [`Hash`] trait offers the default method, [`hash_slice`], which
+  is overridden and optimized by the implementations for scalars.
+* The [`Hasher`] trait now has a number of specialized `write_*`
+  methods for primitive types, for efficiency.
+* The I/O-specific error type, [`std::io::Error`][ie], gained a set of
+  methods for accessing the 'inner error', if any: [`get_ref`][iegr],
+  [`get_mut`][iegm], [`into_inner`][ieii]. As well, the implementation
+  of [`std::error::Error::cause`][iec] also delegates to the inner
+  error.
+* [`process::Child`][pc] gained the [`id`] method, which returns a
+  `u32` representing the platform-specific process identifier.
+* The [`connect`] method on slices is deprecated, replaced by the new
+  [`join`] method (note that both of these are on the *unstable*
+  [`SliceConcatExt`] trait, but through the magic of the prelude are
+  available to stable code anyway).
+* The [`Div`] operator is implemented for [`Wrapping`] types.
+* [`DerefMut` is implemented for `String`][dms].
+* Performance of SipHash (the default hasher for `HashMap`) is
+  [better for long data][sh].
+* [`AtomicPtr`] implements [`Send`].
+* The [`read_to_end`] implementations for [`Stdin`] and [`File`]
+  are now [specialized to use uninitalized buffers for increased
+  performance][rte].
+* Lifetime parameters of foreign functions [are now resolved
+  properly][f].
+
+Misc
+----
+
+* Rust can now, with some coercion, [produce programs that run on
+  Windows XP][xp], though XP is not considered a supported platform.
+* Porting Rust on Windows from the GNU toolchain to MSVC continues
+  ([1][win1], [2][win2], [3][win3], [4][win4]). It is still not
+  recommended for use in 1.3, though should be fully-functional
+  in the [64-bit 1.4 beta][b14].
+* On Fedora-based systems installation will [properly configure the
+  dynamic linker][fl].
+* The compiler gained many new extended error descriptions, which can
+  be accessed with the `--explain` flag.
+* The `dropck` pass, which checks that destructors can't access
+  destroyed values, [has been rewritten][dropck]. This fixes some
+  soundness holes, and as such will cause some previously-compiling
+  code to no longer build.
+* `rustc` now uses [LLVM to write archive files where possible][ar].
+  Eventually this will eliminate the compiler's dependency on the ar
+  utility.
+* Rust has [preliminary support for i686 FreeBSD][fb] (it has long
+  supported FreeBSD on x86_64).
+* The [`unused_mut`][lum], [`unconditional_recursion`][lur],
+  [`improper_ctypes`][lic], and [`negate_unsigned`][lnu] lints are
+  more strict.
+* If landing pads are disabled (with `-Z no-landing-pads`), [`panic!`
+  will kill the process instead of leaking][nlp].
+
+[`Any`]: http://doc.rust-lang.org/nightly/std/any/trait.Any.html
+[`AtomicPtr`]: http://doc.rust-lang.org/nightly/std/sync/atomic/struct.AtomicPtr.html
+[`Borrow`]: http://doc.rust-lang.org/nightly/std/borrow/trait.Borrow.html
+[`CStr`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CStr.html
+[`CString`]: http://doc.rust-lang.org/nightly/std/ffi/struct.CString.html
+[`Debug`]: http://doc.rust-lang.org/nightly/std/fmt/trait.Debug.html
+[`DerefMut`]: http://doc.rust-lang.org/nightly/std/ops/trait.DerefMut.html
+[`Deref`]: http://doc.rust-lang.org/nightly/std/ops/trait.Deref.html
+[`Div`]: http://doc.rust-lang.org/nightly/std/ops/trait.Div.html
+[`Duration`]: http://doc.rust-lang.org/nightly/std/time/struct.Duration.html
+[`Error`]: http://doc.rust-lang.org/nightly/std/error/trait.Error.html
+[`File`]: http://doc.rust-lang.org/nightly/std/fs/struct.File.html
+[`Hash`]: http://doc.rust-lang.org/nightly/std/hash/trait.Hash.html
+[`Hasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.Hash.html
+[`Send`]: http://doc.rust-lang.org/nightly/std/marker/trait.Send.html
+[`SliceConcatExt`]: http://doc.rust-lang.org/nightly/std/slice/trait.SliceConcatExt.html
+[`Stdin`]: http://doc.rust-lang.org/nightly/std/io/struct.Stdin.html
+[`ToOwned`]: http://doc.rust-lang.org/nightly/std/borrow/trait.ToOwned.html
+[`Wrapping`]: http://doc.rust-lang.org/nightly/std/num/struct.Wrapping.html
+[`connect`]: http://doc.rust-lang.org/nightly/std/slice/trait.SliceConcatExt.html#method.connect
+[`downcast_mut`]: http://doc.rust-lang.org/nightly/std/error/trait.Error.html#method.downcast_mut
+[`downcast_ref`]: http://doc.rust-lang.org/nightly/std/error/trait.Error.html#method.downcast_ref
+[`downcast`]: http://doc.rust-lang.org/nightly/std/error/trait.Error.html#method.downcast
+[`hash_slice`]: http://doc.rust-lang.org/nightly/std/hash/trait.Hash.html#method.hash_slice
+[`id`]: http://doc.rust-lang.org/nightly/std/process/struct.Child.html#method.id
+[`is`]: http://doc.rust-lang.org/nightly/std/error/trait.Error.html#method.is
+[`join`]: http://doc.rust-lang.org/nightly/std/slice/trait.SliceConcatExt.html#method.join
+[`read_to_end`]: http://doc.rust-lang.org/nightly/std/io/trait.Read.html#method.read_to_end
+[ar]: https://github.com/rust-lang/rust/pull/26926
+[b14]: https://static.rust-lang.org/dist/rust-beta-x86_64-pc-windows-msvc.msi
+[dms]: https://github.com/rust-lang/rust/pull/26241
+[dropck]: https://github.com/rust-lang/rust/pull/27261
+[dropckrfc]: https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md
+[ds]: https://github.com/rust-lang/rust/pull/26818
+[dst1]: http://doc.rust-lang.org/nightly/std/mem/fn.size_of_val.html
+[dst2]: http://doc.rust-lang.org/nightly/std/mem/fn.align_of_val.html
+[dst3]: https://github.com/rust-lang/rust/pull/27351
+[e]: https://github.com/rust-lang/rust/pull/24793
+[f]: https://github.com/rust-lang/rust/pull/26588
+[fb]: https://github.com/rust-lang/rust/pull/26959
+[fl]: https://github.com/rust-lang/rust-installer/pull/41
+[hs]: http://doc.rust-lang.org/nightly/std/hash/trait.Hash.html#method.hash_slice
+[ie]: http://doc.rust-lang.org/nightly/std/io/struct.Error.html
+[iec]: http://doc.rust-lang.org/nightly/std/io/struct.Error.html#method.cause
+[iegm]: http://doc.rust-lang.org/nightly/std/io/struct.Error.html#method.get_mut
+[iegr]: http://doc.rust-lang.org/nightly/std/io/struct.Error.html#method.get_ref
+[ieii]: http://doc.rust-lang.org/nightly/std/io/struct.Error.html#method.into_inner
+[lic]: https://github.com/rust-lang/rust/pull/26583
+[lnu]: https://github.com/rust-lang/rust/pull/27026
+[lr]: https://github.com/rust-lang/rust/issues/27248
+[lum]: https://github.com/rust-lang/rust/pull/26378
+[lur]: https://github.com/rust-lang/rust/pull/26783
+[nlp]: https://github.com/rust-lang/rust/pull/27176
+[nold2]: https://github.com/rust-lang/rust/pull/27045
+[nold]: https://github.com/rust-lang/rfcs/blob/master/text/1156-adjust-default-object-bounds.md
+[nom]: http://doc.rust-lang.org/nightly/nomicon/
+[pc]: http://doc.rust-lang.org/nightly/std/process/struct.Child.html
+[pi]: https://github.com/rust-lang/rust/pull/26699
+[ps]: https://github.com/rust-lang/rust/pull/26884
+[rte]: https://github.com/rust-lang/rust/pull/26950
+[sc]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.contains
+[search]: https://github.com/rust-lang/rust/pull/26327
+[sew]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.ends_with
+[sf]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.find
+[sh]: https://github.com/rust-lang/rust/pull/27280
+[srf]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.rfind
+[ss]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.split
+[ssw]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.starts_with
+[st]: https://github.com/rust-lang/rust/pull/26630
+[win1]: https://github.com/rust-lang/rust/pull/26569
+[win2]: https://github.com/rust-lang/rust/pull/26741
+[win3]: https://github.com/rust-lang/rust/pull/26741
+[win4]: https://github.com/rust-lang/rust/pull/27210
+[xp]: https://github.com/rust-lang/rust/pull/26569
+
 Version 1.2.0 (2015-08-07)
-===========================
+==========================
 
 * ~1200 changes, numerous bugfixes
 
@@ -427,7 +633,7 @@ Misc
 [path-normalize]: https://github.com/rust-lang/rust/pull/23229
 
 
-Version 1.0.0-alpha.2 (February 2015)
+Version 1.0.0-alpha.2 (2015-02-20)
 =====================================
 
 * ~1300 changes, numerous bugfixes
@@ -526,7 +732,7 @@ Version 1.0.0-alpha.2 (February 2015)
 [un]: https://github.com/rust-lang/rust/pull/22256
 
 
-Version 1.0.0-alpha (January 2015)
+Version 1.0.0-alpha (2015-01-09)
 ==================================
 
   * ~2400 changes, numerous bugfixes
@@ -713,7 +919,7 @@ Version 1.0.0-alpha (January 2015)
 [rbe]: http://rustbyexample.com/
 
 
-Version 0.12.0 (October 2014)
+Version 0.12.0 (2014-10-09)
 =============================
 
   * ~1900 changes, numerous bugfixes
@@ -836,7 +1042,7 @@ Version 0.12.0 (October 2014)
       kernels and distributions, built on CentOS 5.10.
 
 
-Version 0.11.0 (July 2014)
+Version 0.11.0 (2014-07-02)
 ==========================
 
   * ~1700 changes, numerous bugfixes
@@ -969,7 +1175,7 @@ Version 0.11.0 (July 2014)
       greatly improved.
 
 
-Version 0.10 (April 2014)
+Version 0.10 (2014-04-03)
 =========================
 
   * ~1500 changes, numerous bugfixes
@@ -1136,7 +1342,7 @@ Version 0.10 (April 2014)
         directory.
 
 
-Version 0.9 (January 2014)
+Version 0.9 (2014-01-09)
 ==========================
 
    * ~1800 changes, numerous bugfixes
@@ -1302,7 +1508,7 @@ Version 0.9 (January 2014)
         build tools.
 
 
-Version 0.8 (September 2013)
+Version 0.8 (2013-09-26)
 ============================
 
    * ~2200 changes, numerous bugfixes
@@ -1458,7 +1664,7 @@ Version 0.8 (September 2013)
         still invoked through the normal `rustdoc` command.
 
 
-Version 0.7 (July 2013)
+Version 0.7 (2013-07-03)
 =======================
 
    * ~2000 changes, numerous bugfixes
@@ -1575,7 +1781,7 @@ Version 0.7 (July 2013)
       * Improvements to rustpkg (see the detailed release notes).
 
 
-Version 0.6 (April 2013)
+Version 0.6 (2013-04-03)
 ========================
 
    * ~2100 changes, numerous bugfixes
@@ -1678,7 +1884,7 @@ Version 0.6 (April 2013)
       * Inline assembler supported by new asm!() syntax extension.
 
 
-Version 0.5 (December 2012)
+Version 0.5 (2012-12-21)
 ===========================
 
    * ~900 changes, numerous bugfixes
@@ -1735,7 +1941,7 @@ Version 0.5 (December 2012)
       * License changed from MIT to dual MIT/APL2
 
 
-Version 0.4 (October 2012)
+Version 0.4 (2012-10-15)
 ==========================
 
    * ~2000 changes, numerous bugfixes
@@ -1791,7 +1997,7 @@ Version 0.4 (October 2012)
       * All hash functions and tables converted to secure, randomized SipHash
 
 
-Version 0.3  (July 2012)
+Version 0.3  (2012-07-12)
 ========================
 
    * ~1900 changes, numerous bugfixes
@@ -1850,7 +2056,7 @@ Version 0.3  (July 2012)
       * Cargo automatically resolves dependencies
 
 
-Version 0.2  (March 2012)
+Version 0.2  (2012-03-29)
 =========================
 
    * >1500 changes, numerous bugfixes
@@ -1891,7 +2097,7 @@ Version 0.2  (March 2012)
       * Extensive cleanup, regularization in libstd, libcore
 
 
-Version 0.1  (January 20, 2012)
+Version 0.1  (2012-01-20)
 ===============================
 
    * Most language features work, including:
