@@ -727,30 +727,45 @@ impl EmitterWriter {
                              cm: &codemap::CodeMap,
                              sp: Span)
                              -> io::Result<()> {
-        let cs = try!(cm.with_expn_info(sp.expn_id, |expn_info| -> io::Result<_> {
-            match expn_info {
-                Some(ei) => {
-                    let ss = ei.callee.span.map_or(String::new(),
-                                                   |span| cm.span_to_string(span));
-                    let (pre, post) = match ei.callee.format {
-                        codemap::MacroAttribute(..) => ("#[", "]"),
-                        codemap::MacroBang(..) => ("", "!"),
-                        codemap::CompilerExpansion(..) => ("", ""),
-                    };
-                    try!(self.print_diagnostic(&ss, Note,
-                                               &format!("in expansion of {}{}{}",
-                                                        pre,
-                                                        ei.callee.name(),
-                                                        post),
-                                               None));
-                    let ss = cm.span_to_string(ei.call_site);
-                    try!(self.print_diagnostic(&ss, Note, "expansion site", None));
-                    Ok(Some(ei.call_site))
+        let mut last_span = codemap::DUMMY_SP;
+        let mut sp_opt = Some(sp);
+
+        while let Some(sp) = sp_opt {
+            sp_opt = try!(cm.with_expn_info(sp.expn_id, |expn_info| -> io::Result<_> {
+                match expn_info {
+                    Some(ei) => {
+                        let (pre, post) = match ei.callee.format {
+                            codemap::MacroAttribute(..) => ("#[", "]"),
+                            codemap::MacroBang(..) => ("", "!"),
+                            codemap::CompilerExpansion(..) => ("", ""),
+                        };
+                        // Don't print recursive invocations
+                        if ei.call_site != last_span {
+                            last_span = ei.call_site;
+
+                            let mut diag_string = format!("in this expansion of {}{}{}",
+                                                          pre,
+                                                          ei.callee.name(),
+                                                          post);
+
+                            if let Some(def_site_span) = ei.callee.span {
+                                diag_string.push_str(&format!(" (defined in {})",
+                                                              cm.span_to_filename(def_site_span)));
+                            }
+
+                            try!(self.print_diagnostic(&cm.span_to_string(ei.call_site),
+                                                       Note,
+                                                       &diag_string,
+                                                       None));
+                        }
+                        Ok(Some(ei.call_site))
+                    }
+                    None => Ok(None)
                 }
-                None => Ok(None)
+            }));
         }
-        }));
-        cs.map_or(Ok(()), |call_site| self.print_macro_backtrace(cm, call_site))
+
+        Ok(())
     }
 }
 
