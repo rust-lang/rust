@@ -150,6 +150,52 @@ impl<'tcx, T: HasTypeFlags> HasTypeFlags for Normalized<'tcx, T> {
     }
 }
 
+impl<'tcx, N: HasTypeFlags> HasTypeFlags for traits::VtableImplData<'tcx, N> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.substs.has_type_flags(flags) ||
+            self.nested.has_type_flags(flags)
+    }
+}
+
+impl<'tcx, N: HasTypeFlags> HasTypeFlags for traits::VtableClosureData<'tcx, N> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.substs.has_type_flags(flags) ||
+            self.nested.has_type_flags(flags)
+    }
+}
+
+impl<'tcx, N: HasTypeFlags> HasTypeFlags for traits::VtableDefaultImplData<N> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.nested.has_type_flags(flags)
+    }
+}
+
+impl<'tcx, N: HasTypeFlags> HasTypeFlags for traits::VtableBuiltinData<N> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.nested.has_type_flags(flags)
+    }
+}
+
+impl<'tcx> HasTypeFlags for traits::VtableObjectData<'tcx> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.upcast_trait_ref.has_type_flags(flags)
+    }
+}
+
+impl<'tcx, N: HasTypeFlags> HasTypeFlags for traits::Vtable<'tcx, N> {
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        match *self {
+            traits::VtableImpl(ref v) => v.has_type_flags(flags),
+            traits::VtableDefaultImpl(ref t) => t.has_type_flags(flags),
+            traits::VtableClosure(ref d) => d.has_type_flags(flags),
+            traits::VtableFnPointer(ref d) => d.has_type_flags(flags),
+            traits::VtableParam(ref n) => n.has_type_flags(flags),
+            traits::VtableBuiltin(ref d) => d.has_type_flags(flags),
+            traits::VtableObject(ref d) => d.has_type_flags(flags)
+        }
+    }
+}
+
 impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx, O>
 {
     fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::Obligation<'tcx, O> {
@@ -198,6 +244,15 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableBuiltinDa
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx> {
+    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableObjectData<'tcx> {
+        traits::VtableObjectData {
+            upcast_trait_ref: self.upcast_trait_ref.fold_with(folder),
+            vtable_base: self.vtable_base
+        }
+    }
+}
+
 impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N> {
     fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::Vtable<'tcx, N> {
         match *self {
@@ -212,15 +267,6 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
             traits::VtableParam(ref n) => traits::VtableParam(n.fold_with(folder)),
             traits::VtableBuiltin(ref d) => traits::VtableBuiltin(d.fold_with(folder)),
             traits::VtableObject(ref d) => traits::VtableObject(d.fold_with(folder)),
-        }
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx> {
-    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::VtableObjectData<'tcx> {
-        traits::VtableObjectData {
-            upcast_trait_ref: self.upcast_trait_ref.fold_with(folder),
-            vtable_base: self.vtable_base
         }
     }
 }

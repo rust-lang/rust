@@ -979,18 +979,6 @@ impl<'tcx> Predicate<'tcx> {
         vec.into_iter()
     }
 
-    pub fn has_escaping_regions(&self) -> bool {
-        match *self {
-            Predicate::Trait(ref trait_ref) => trait_ref.has_escaping_regions(),
-            Predicate::Equate(ref p) => p.has_escaping_regions(),
-            Predicate::RegionOutlives(ref p) => p.has_escaping_regions(),
-            Predicate::TypeOutlives(ref p) => p.has_escaping_regions(),
-            Predicate::Projection(ref p) => p.has_escaping_regions(),
-            Predicate::WellFormed(p) => p.has_escaping_regions(),
-            Predicate::ObjectSafe(_trait_def_id) => false,
-        }
-    }
-
     pub fn to_opt_poly_trait_ref(&self) -> Option<PolyTraitRef<'tcx>> {
         match *self {
             Predicate::Trait(ref t) => {
@@ -1035,10 +1023,6 @@ pub struct InstantiatedPredicates<'tcx> {
 impl<'tcx> InstantiatedPredicates<'tcx> {
     pub fn empty() -> InstantiatedPredicates<'tcx> {
         InstantiatedPredicates { predicates: VecPerParamSpace::empty() }
-    }
-
-    pub fn has_escaping_regions(&self) -> bool {
-        self.predicates.any(|p| p.has_escaping_regions())
     }
 
     pub fn is_empty(&self) -> bool {

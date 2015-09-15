@@ -26,7 +26,6 @@ use syntax::abi;
 use trans::attributes;
 use trans::base;
 use trans::context::CrateContext;
-use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
 
@@ -104,7 +103,7 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                                  fn_type: ty::Ty<'tcx>) -> ValueRef {
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name,
            fn_type);
-    let fn_type = monomorphize::normalize_associated_type(ccx.tcx(), &fn_type);
+    let fn_type = infer::normalize_associated_type(ccx.tcx(), &fn_type);
     debug!("declare_rust_fn (after normalised associated types) fn_type={:?}",
            fn_type);
 
