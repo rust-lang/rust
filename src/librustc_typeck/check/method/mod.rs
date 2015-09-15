@@ -18,6 +18,7 @@ use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
 use middle::traits;
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef};
+use middle::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
 use middle::infer;
 
 use syntax::ast;
@@ -282,9 +283,9 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     match transformed_self_ty.sty {
                         ty::TyRef(region, ty::TypeAndMut { mutbl, ty: _ }) => {
                             fcx.write_adjustment(self_expr.id,
-                                ty::AdjustDerefRef(ty::AutoDerefRef {
+                                AdjustDerefRef(AutoDerefRef {
                                     autoderefs: autoderefs,
-                                    autoref: Some(ty::AutoPtr(region, mutbl)),
+                                    autoref: Some(AutoPtr(region, mutbl)),
                                     unsize: if unsize {
                                         Some(transformed_self_ty)
                                     } else {

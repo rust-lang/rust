@@ -27,7 +27,7 @@ use fmt_macros::{Parser, Piece, Position};
 use middle::def_id::DefId;
 use middle::infer::InferCtxt;
 use middle::ty::{self, ToPredicate, HasTypeFlags, ToPolyTraitRef, TraitRef, Ty};
-use middle::ty_fold::TypeFoldable;
+use middle::ty::fold::TypeFoldable;
 use std::collections::HashMap;
 use std::fmt;
 use syntax::codemap::Span;

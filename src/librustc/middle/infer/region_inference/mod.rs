@@ -23,11 +23,12 @@ use super::{RegionVariableOrigin, SubregionOrigin, TypeTrace, MiscVariable};
 use rustc_data_structures::graph::{self, Direction, NodeIndex};
 use middle::free_region::FreeRegionMap;
 use middle::region;
-use middle::ty::{self, Ty, TypeError};
+use middle::ty::{self, Ty};
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReFree, ReEarlyBound};
 use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
-use middle::ty_relate::RelateResult;
+use middle::ty::error::TypeError;
+use middle::ty::relate::RelateResult;
 use util::common::indenter;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
@@ -157,7 +158,7 @@ pub enum RegionResolutionError<'tcx> {
     /// should put a lifetime. In those cases we process and put those errors
     /// into `ProcessedErrors` before we do any reporting.
     ProcessedErrors(Vec<RegionVariableOrigin>,
-                    Vec<(TypeTrace<'tcx>, ty::TypeError<'tcx>)>,
+                    Vec<(TypeTrace<'tcx>, TypeError<'tcx>)>,
                     Vec<SameRegions>),
 }
 

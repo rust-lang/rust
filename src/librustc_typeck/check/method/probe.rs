@@ -16,13 +16,12 @@ use super::suggest;
 use check;
 use check::{FnCtxt, UnresolvedTypeAction};
 use middle::def_id::DefId;
-use middle::fast_reject;
 use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
 use middle::ty::{self, NoPreference, RegionEscape, Ty, ToPolyTraitRef, TraitRef};
 use middle::ty::HasTypeFlags;
-use middle::ty_fold::TypeFoldable;
+use middle::ty::fold::TypeFoldable;
 use middle::infer;
 use middle::infer::InferCtxt;
 use syntax::ast;
@@ -41,7 +40,7 @@ struct ProbeContext<'a, 'tcx:'a> {
     mode: Mode,
     item_name: ast::Name,
     steps: Rc<Vec<CandidateStep<'tcx>>>,
-    opt_simplified_steps: Option<Vec<fast_reject::SimplifiedType>>,
+    opt_simplified_steps: Option<Vec<ty::fast_reject::SimplifiedType>>,
     inherent_candidates: Vec<Candidate<'tcx>>,
     extension_candidates: Vec<Candidate<'tcx>>,
     impl_dups: HashSet<DefId>,
@@ -163,7 +162,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Create a list of simplified self types, if we can.
     let mut simplified_steps = Vec::new();
     for step in &steps {
-        match fast_reject::simplify_type(fcx.tcx(), step.self_ty, true) {
+        match ty::fast_reject::simplify_type(fcx.tcx(), step.self_ty, true) {
             None => { break; }
             Some(simplified_type) => { simplified_steps.push(simplified_type); }
         }
@@ -236,7 +235,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
            mode: Mode,
            item_name: ast::Name,
            steps: Vec<CandidateStep<'tcx>>,
-           opt_simplified_steps: Option<Vec<fast_reject::SimplifiedType>>)
+           opt_simplified_steps: Option<Vec<ty::fast_reject::SimplifiedType>>)
            -> ProbeContext<'a,'tcx>
     {
         ProbeContext {
@@ -684,7 +683,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         let impl_type = self.tcx().lookup_item_type(impl_def_id);
         let impl_simplified_type =
-            match fast_reject::simplify_type(self.tcx(), impl_type.ty, false) {
+            match ty::fast_reject::simplify_type(self.tcx(), impl_type.ty, false) {
                 Some(simplified_type) => simplified_type,
                 None => { return true; }
             };

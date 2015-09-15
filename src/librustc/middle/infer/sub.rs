@@ -15,7 +15,7 @@ use super::type_variable::{SubtypeOf, SupertypeOf};
 
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
-use middle::ty_relate::{Cause, Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use std::mem;
 
 /// "Greatest lower bound" (common subtype)

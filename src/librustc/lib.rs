@@ -107,7 +107,6 @@ pub mod front {
 pub mod middle {
     pub mod astconv_util;
     pub mod astencode;
-    pub mod cast;
     pub mod cfg;
     pub mod check_const;
     pub mod check_static_recursion;
@@ -124,7 +123,6 @@ pub mod middle {
     pub mod effect;
     pub mod entry;
     pub mod expr_use_visitor;
-    pub mod fast_reject;
     pub mod free_region;
     pub mod intrinsicck;
     pub mod infer;
@@ -132,7 +130,6 @@ pub mod middle {
     pub mod lang_items;
     pub mod liveness;
     pub mod mem_categorization;
-    pub mod outlives;
     pub mod pat_util;
     pub mod privacy;
     pub mod reachable;
@@ -143,11 +140,6 @@ pub mod middle {
     pub mod subst;
     pub mod traits;
     pub mod ty;
-    pub mod ty_fold;
-    pub mod ty_match;
-    pub mod ty_relate;
-    pub mod ty_walk;
-    pub mod wf;
     pub mod weak_lang_items;
 }
 

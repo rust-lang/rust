@@ -10,9 +10,7 @@
 
 use middle::infer::InferCtxt;
 use middle::ty::{self, RegionEscape, Ty, HasTypeFlags};
-use middle::wf;
 
-use std::fmt;
 use syntax::ast;
 use util::common::ErrorReported;
 use util::nodemap::{FnvHashSet, NodeMap};
@@ -496,8 +494,8 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                 ObligationCauseCode::RFC1214(_) => true,
                 _ => false,
             };
-            match wf::obligations(selcx.infcx(), obligation.cause.body_id,
-                                  ty, obligation.cause.span, rfc1214) {
+            match ty::wf::obligations(selcx.infcx(), obligation.cause.body_id,
+                                      ty, obligation.cause.span, rfc1214) {
                 Some(obligations) => {
                     new_obligations.extend(obligations);
                     true
@@ -507,14 +505,6 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                 }
             }
         }
-    }
-}
-
-impl<'tcx> fmt::Debug for RegionObligation<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RegionObligation(sub_region={:?}, sup_type={:?})",
-               self.sub_region,
-               self.sup_type)
     }
 }
 

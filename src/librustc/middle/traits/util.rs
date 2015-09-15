@@ -11,14 +11,12 @@
 use middle::def_id::DefId;
 use middle::infer::InferCtxt;
 use middle::subst::Substs;
-use middle::ty::{self, HasTypeFlags, Ty, ToPredicate, ToPolyTraitRef};
-use std::fmt;
+use middle::ty::{self, Ty, ToPredicate, ToPolyTraitRef};
 use syntax::codemap::Span;
 use util::common::ErrorReported;
 use util::nodemap::FnvHashSet;
 
-use super::{Obligation, ObligationCause, PredicateObligation,
-            VtableImpl, VtableParam, VtableImplData, VtableDefaultImplData};
+use super::{Obligation, ObligationCause, PredicateObligation};
 
 struct PredicateSet<'a,'tcx:'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -476,109 +474,4 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
         substs: tcx.mk_substs(trait_substs),
     };
     ty::Binder((trait_ref, sig.0.output.unwrap_or(tcx.mk_nil())))
-}
-
-impl<'tcx,O:fmt::Debug> fmt::Debug for super::Obligation<'tcx, O> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Obligation(predicate={:?},depth={})",
-               self.predicate,
-               self.recursion_depth)
-    }
-}
-
-impl<'tcx, N:fmt::Debug> fmt::Debug for super::Vtable<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            super::VtableImpl(ref v) =>
-                write!(f, "{:?}", v),
-
-            super::VtableDefaultImpl(ref t) =>
-                write!(f, "{:?}", t),
-
-            super::VtableClosure(ref d) =>
-                write!(f, "{:?}", d),
-
-            super::VtableFnPointer(ref d) =>
-                write!(f, "VtableFnPointer({:?})", d),
-
-            super::VtableObject(ref d) =>
-                write!(f, "{:?}", d),
-
-            super::VtableParam(ref n) =>
-                write!(f, "VtableParam({:?})", n),
-
-            super::VtableBuiltin(ref d) =>
-                write!(f, "{:?}", d)
-        }
-    }
-}
-
-impl<'tcx, N:fmt::Debug> fmt::Debug for super::VtableImplData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableImpl(impl_def_id={:?}, substs={:?}, nested={:?})",
-               self.impl_def_id,
-               self.substs,
-               self.nested)
-    }
-}
-
-impl<'tcx, N:fmt::Debug> fmt::Debug for super::VtableClosureData<'tcx, N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableClosure(closure_def_id={:?}, substs={:?}, nested={:?})",
-               self.closure_def_id,
-               self.substs,
-               self.nested)
-    }
-}
-
-impl<'tcx, N:fmt::Debug> fmt::Debug for super::VtableBuiltinData<N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableBuiltin(nested={:?})", self.nested)
-    }
-}
-
-impl<'tcx, N:fmt::Debug> fmt::Debug for super::VtableDefaultImplData<N> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableDefaultImplData(trait_def_id={:?}, nested={:?})",
-               self.trait_def_id,
-               self.nested)
-    }
-}
-
-impl<'tcx> fmt::Debug for super::VtableObjectData<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableObject(upcast={:?}, vtable_base={})",
-               self.upcast_trait_ref,
-               self.vtable_base)
-    }
-}
-
-impl<'tcx> fmt::Debug for super::FulfillmentError<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "FulfillmentError({:?},{:?})",
-               self.obligation,
-               self.code)
-    }
-}
-
-impl<'tcx> fmt::Debug for super::FulfillmentErrorCode<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            super::CodeSelectionError(ref e) => write!(f, "{:?}", e),
-            super::CodeProjectionError(ref e) => write!(f, "{:?}", e),
-            super::CodeAmbiguity => write!(f, "Ambiguity")
-        }
-    }
-}
-
-impl<'tcx> fmt::Debug for super::MismatchedProjectionTypes<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "MismatchedProjectionTypes({:?})", self.err)
-    }
-}
-
-impl<'tcx, T: HasTypeFlags> HasTypeFlags for Obligation<'tcx, T> {
-    fn has_type_flags(&self, flags: ty::TypeFlags) -> bool {
-        self.predicate.has_type_flags(flags)
-    }
 }

@@ -82,8 +82,9 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::region;
 use middle::subst;
-use middle::ty::{self, Ty, TypeError, HasTypeFlags};
+use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty::{Region, ReFree};
+use middle::ty::error::TypeError;
 
 use std::cell::{Cell, RefCell};
 use std::char::from_u32;
@@ -225,19 +226,19 @@ pub trait ErrorReporting<'tcx> {
     fn process_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>)
                       -> Vec<RegionResolutionError<'tcx>>;
 
-    fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &ty::TypeError<'tcx>);
+    fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &TypeError<'tcx>);
 
-    fn check_and_note_conflicting_crates(&self, terr: &ty::TypeError<'tcx>, sp: Span);
+    fn check_and_note_conflicting_crates(&self, terr: &TypeError<'tcx>, sp: Span);
 
     fn report_and_explain_type_error(&self,
                                      trace: TypeTrace<'tcx>,
-                                     terr: &ty::TypeError<'tcx>);
+                                     terr: &TypeError<'tcx>);
 
     fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<String>;
 
     fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + HasTypeFlags>(
         &self,
-        exp_found: &ty::ExpectedFound<T>)
+        exp_found: &ty::error::ExpectedFound<T>)
         -> Option<String>;
 
     fn report_concrete_failure(&self,
@@ -266,7 +267,7 @@ pub trait ErrorReporting<'tcx> {
 
     fn report_processed_errors(&self,
                                var_origin: &[RegionVariableOrigin],
-                               trace_origin: &[(TypeTrace<'tcx>, ty::TypeError<'tcx>)],
+                               trace_origin: &[(TypeTrace<'tcx>, TypeError<'tcx>)],
                                same_regions: &[SameRegions]);
 
     fn give_suggestion(&self, same_regions: &[SameRegions]);
@@ -473,7 +474,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &ty::TypeError<'tcx>) {
+    fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &TypeError<'tcx>) {
         let expected_found_str = match self.values_str(&trace.values) {
             Some(v) => v,
             None => {
@@ -497,7 +498,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
     }
 
     /// Adds a note if the types come from similarly named crates
-    fn check_and_note_conflicting_crates(&self, terr: &ty::TypeError<'tcx>, sp: Span) {
+    fn check_and_note_conflicting_crates(&self, terr: &TypeError<'tcx>, sp: Span) {
         let report_path_match = |did1: DefId, did2: DefId| {
             // Only external crates, if either is from a local
             // module we could have false positives
@@ -520,7 +521,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
         match *terr {
-            ty::TypeError::Sorts(ref exp_found) => {
+            TypeError::Sorts(ref exp_found) => {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
                 match (&exp_found.expected.sty, &exp_found.found.sty) {
@@ -533,7 +534,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     _ => ()
                 }
             },
-            ty::TypeError::Traits(ref exp_found) => {
+            TypeError::Traits(ref exp_found) => {
                 self.tcx.sess.note("errrr0");
                 report_path_match(exp_found.expected, exp_found.found);
             },
@@ -543,7 +544,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn report_and_explain_type_error(&self,
                                      trace: TypeTrace<'tcx>,
-                                     terr: &ty::TypeError<'tcx>) {
+                                     terr: &TypeError<'tcx>) {
         let span = trace.origin.span();
         self.report_type_error(trace, terr);
         self.tcx.note_and_explain_type_err(terr, span);
@@ -561,7 +562,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + HasTypeFlags>(
         &self,
-        exp_found: &ty::ExpectedFound<T>)
+        exp_found: &ty::error::ExpectedFound<T>)
         -> Option<String>
     {
         let expected = exp_found.expected.resolve(self);
@@ -975,7 +976,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn report_processed_errors(&self,
                                var_origins: &[RegionVariableOrigin],
-                               trace_origins: &[(TypeTrace<'tcx>, ty::TypeError<'tcx>)],
+                               trace_origins: &[(TypeTrace<'tcx>, TypeError<'tcx>)],
                                same_regions: &[SameRegions]) {
         for vo in var_origins {
             self.report_inference_failure(vo.clone());

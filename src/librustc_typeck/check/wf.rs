@@ -17,7 +17,7 @@ use middle::region;
 use middle::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
 use middle::traits;
 use middle::ty::{self, Ty};
-use middle::ty_fold::{TypeFolder, TypeFoldable, super_fold_ty};
+use middle::ty::fold::{TypeFolder, TypeFoldable, super_fold_ty};
 
 use std::cell::RefCell;
 use std::collections::HashSet;
