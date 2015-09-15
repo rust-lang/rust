@@ -120,7 +120,7 @@ It would be better if we just showed the code for unwrapping because it is so
 simple, but to do that, we will first need to explore the `Option` and `Result`
 types. Both of these types have a method called `unwrap` defined on them.
 
-### The `Option` type
+## The `Option` type
 
 The `Option` type is [defined in the standard library][5]:
 
