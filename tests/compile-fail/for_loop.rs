@@ -1,4 +1,4 @@
-#![feature(plugin)]
+#![feature(plugin, step_by)]
 #![plugin(clippy)]
 
 use std::collections::*;
@@ -68,6 +68,10 @@ fn main() {
     }
 
     for i in (2*2)..(2*3) { // no error, 4..6 is fine
+        println!("{}", i);
+    }
+
+    for i in (10..8).step_by(-1) {
         println!("{}", i);
     }
 
