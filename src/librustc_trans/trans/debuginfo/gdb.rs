@@ -13,7 +13,7 @@
 use llvm;
 use llvm::ValueRef;
 
-use trans::common::{C_bytes, CrateContext};
+use trans::common::{C_bytes, CrateContext, C_i32};
 use trans::declare;
 use trans::type_::Type;
 use session::config::NoDebugInfo;
@@ -31,11 +31,21 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext) 
         let gdb_debug_scripts_section_global =
             get_or_insert_gdb_debug_scripts_section_global(ccx);
         unsafe {
+            // Load just the first byte as that's all that's necessary to force
+            // LLVM to keep around the reference to the global.
+            let indices = [C_i32(ccx, 0), C_i32(ccx, 0)];
+            let element =
+                llvm::LLVMBuildInBoundsGEP(ccx.raw_builder(),
+                                           gdb_debug_scripts_section_global,
+                                           indices.as_ptr(),
+                                           indices.len() as ::libc::c_uint,
+                                           empty.as_ptr());
             let volative_load_instruction =
                 llvm::LLVMBuildLoad(ccx.raw_builder(),
-                                    gdb_debug_scripts_section_global,
+                                    element,
                                     empty.as_ptr());
             llvm::LLVMSetVolatile(volative_load_instruction, llvm::True);
+            llvm::LLVMSetAlignment(volative_load_instruction, 1);
         }
     }
 }

@@ -8,22 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -C no-prepopulate-passes
+// ignore-tidy-linelength
+// ignore-windows
+// ignore-macos
 
-#![crate_type = "lib"]
+// compile-flags: -g -C no-prepopulate-passes
 
-static X: i32 = 5;
+#![feature(start)]
 
-// CHECK-LABEL: @raw_ptr_to_raw_ptr_noop
-// CHECK-NOT: alloca
-#[no_mangle]
-pub fn raw_ptr_to_raw_ptr_noop() -> *const i32{
-    &X as *const i32
-}
+// CHECK-LABEL: @main
+// CHECK: load volatile i8, i8* getelementptr inbounds ([[B:\[[0-9]* x i8\]]], [[B]]* @__rustc_debug_gdb_scripts_section__, i32 0, i32 0), align 1
 
-// CHECK-LABEL: @reference_to_raw_ptr_noop
-// CHECK-NOT: alloca
-#[no_mangle]
-pub fn reference_to_raw_ptr_noop() -> *const i32 {
-    &X
+#[start]
+fn start(_: isize, _: *const *const u8) -> isize {
+    return 0;
 }

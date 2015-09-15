@@ -10,6 +10,7 @@
 
 // compile-flags: -C no-prepopulate-passes
 
+#![crate_type = "lib"]
 #![feature(unwind_attributes)]
 
 extern {
