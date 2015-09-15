@@ -10,7 +10,7 @@
 
 use super::{InferCtxt, FixupError, FixupResult};
 use middle::ty::{self, Ty, HasTypeFlags};
-use middle::ty_fold::{self, TypeFoldable};
+use middle::ty::fold::{TypeFoldable};
 
 ///////////////////////////////////////////////////////////////////////////
 // OPPORTUNISTIC TYPE RESOLVER
@@ -30,7 +30,7 @@ impl<'a, 'tcx> OpportunisticTypeResolver<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for OpportunisticTypeResolver<'a, 'tcx> {
+impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for OpportunisticTypeResolver<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.infcx.tcx
     }
@@ -40,7 +40,7 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for OpportunisticTypeResolver<'a, 'tcx>
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t0 = self.infcx.shallow_resolve(t);
-            ty_fold::super_fold_ty(self, t0)
+            ty::fold::super_fold_ty(self, t0)
         }
     }
 }
@@ -69,7 +69,7 @@ struct FullTypeResolver<'a, 'tcx:'a> {
     err: Option<FixupError>,
 }
 
-impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
+impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> {
         self.infcx.tcx
     }
@@ -98,7 +98,7 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
                                 t));
                 }
                 _ => {
-                    ty_fold::super_fold_ty(self, t)
+                    ty::fold::super_fold_ty(self, t)
                 }
             }
         }

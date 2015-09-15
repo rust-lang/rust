@@ -15,7 +15,7 @@ use super::lattice::{self, LatticeDir};
 use super::Subtype;
 
 use middle::ty::{self, Ty};
-use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'a, 'tcx: 'a> {

@@ -15,13 +15,14 @@
 
 use middle::def_id::DefId;
 use middle::subst::{ErasedRegions, NonerasedRegions, ParamSpace, Substs};
-use middle::ty::{self, HasTypeFlags, Ty, TypeError};
-use middle::ty_fold::TypeFoldable;
+use middle::ty::{self, HasTypeFlags, Ty};
+use middle::ty::error::{ExpectedFound, TypeError};
+use middle::ty::fold::TypeFoldable;
 use std::rc::Rc;
 use syntax::abi;
 use rustc_front::hir as ast;
 
-pub type RelateResult<'tcx, T> = Result<T, ty::TypeError<'tcx>>;
+pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 
 #[derive(Clone, Debug)]
 pub enum Cause {
@@ -662,7 +663,7 @@ impl<'a,'tcx:'a,T> Relate<'a,'tcx> for Box<T>
 pub fn expected_found<'a,'tcx:'a,R,T>(relation: &mut R,
                                       a: &T,
                                       b: &T)
-                                      -> ty::ExpectedFound<T>
+                                      -> ExpectedFound<T>
     where R: TypeRelation<'a,'tcx>, T: Clone
 {
     expected_found_bool(relation.a_is_expected(), a, b)
@@ -671,14 +672,14 @@ pub fn expected_found<'a,'tcx:'a,R,T>(relation: &mut R,
 pub fn expected_found_bool<T>(a_is_expected: bool,
                               a: &T,
                               b: &T)
-                              -> ty::ExpectedFound<T>
+                              -> ExpectedFound<T>
     where T: Clone
 {
     let a = a.clone();
     let b = b.clone();
     if a_is_expected {
-        ty::ExpectedFound {expected: a, found: b}
+        ExpectedFound {expected: a, found: b}
     } else {
-        ty::ExpectedFound {expected: b, found: a}
+        ExpectedFound {expected: b, found: a}
     }
 }

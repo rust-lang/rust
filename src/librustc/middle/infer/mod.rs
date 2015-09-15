@@ -30,10 +30,12 @@ use middle::subst::Substs;
 use middle::subst::Subst;
 use middle::traits::{self, FulfillmentContext, Normalized,
                      SelectionContext, ObligationCause};
-use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
-use middle::ty::{self, Ty, TypeError, HasTypeFlags};
-use middle::ty_fold::{self, TypeFolder, TypeFoldable};
-use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::adjustment;
+use middle::ty::{TyVid, IntVid, FloatVid, RegionVid};
+use middle::ty::{self, Ty, HasTypeFlags};
+use middle::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
+use middle::ty::fold::{TypeFolder, TypeFoldable};
+use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{RefCell, Ref};
 use std::fmt;
@@ -171,9 +173,9 @@ impl fmt::Display for TypeOrigin {
 /// See `error_reporting.rs` for more details
 #[derive(Clone, Debug)]
 pub enum ValuePairs<'tcx> {
-    Types(ty::ExpectedFound<Ty<'tcx>>),
-    TraitRefs(ty::ExpectedFound<ty::TraitRef<'tcx>>),
-    PolyTraitRefs(ty::ExpectedFound<ty::PolyTraitRef<'tcx>>),
+    Types(ExpectedFound<Ty<'tcx>>),
+    TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
+    PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
 }
 
 /// The trace designates the path through inference that we took to
@@ -479,12 +481,12 @@ pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 fn expected_found<T>(a_is_expected: bool,
                      a: T,
                      b: T)
-                     -> ty::ExpectedFound<T>
+                     -> ExpectedFound<T>
 {
     if a_is_expected {
-        ty::ExpectedFound {expected: a, found: b}
+        ExpectedFound {expected: a, found: b}
     } else {
-        ty::ExpectedFound {expected: b, found: a}
+        ExpectedFound {expected: b, found: a}
     }
 }
 
@@ -583,7 +585,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
 /// Returns an equivalent value with all free regions removed (note
 /// that late-bound regions remain, because they are important for
 /// subtyping, but they are anonymized and normalized as well). This
-/// is a stronger, caching version of `ty_fold::erase_regions`.
+/// is a stronger, caching version of `ty::fold::erase_regions`.
 pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
     where T : TypeFoldable<'tcx>
 {
@@ -603,7 +605,7 @@ pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
                 Some(u) => return u
             }
 
-            let t_norm = ty_fold::super_fold_ty(self, ty);
+            let t_norm = ty::fold::super_fold_ty(self, ty);
             self.tcx().normalized_cache.borrow_mut().insert(ty, t_norm);
             return t_norm;
         }
@@ -612,7 +614,7 @@ pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
             where T : TypeFoldable<'tcx>
         {
             let u = self.tcx().anonymize_late_bound_regions(t);
-            ty_fold::super_fold_binder(self, &u)
+            ty::fold::super_fold_binder(self, &u)
         }
 
         fn fold_region(&mut self, r: ty::Region) -> ty::Region {
@@ -656,7 +658,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn type_is_unconstrained_numeric(&'a self, ty: Ty) -> UnconstrainedNumeric {
-        use middle::ty::UnconstrainedNumeric::{Neither, UnconstrainedInt, UnconstrainedFloat};
+        use middle::ty::error::UnconstrainedNumeric::Neither;
+        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
         match ty.sty {
             ty::TyInfer(ty::IntVar(vid)) => {
                 if self.int_unification_table.borrow_mut().has_value(vid) {
@@ -1149,7 +1152,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// Apply `adjustment` to the type of `expr`
     pub fn adjust_expr_ty(&self,
                           expr: &hir::Expr,
-                          adjustment: Option<&ty::AutoAdjustment<'tcx>>)
+                          adjustment: Option<&adjustment::AutoAdjustment<'tcx>>)
                           -> Ty<'tcx>
     {
         let raw_ty = self.expr_ty(expr);
@@ -1312,7 +1315,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                      sp: Span,
                                      mk_msg: M,
                                      actual_ty: String,
-                                     err: Option<&ty::TypeError<'tcx>>) where
+                                     err: Option<&TypeError<'tcx>>) where
         M: FnOnce(Option<String>, String) -> String,
     {
         self.type_error_message_str_with_expected(sp, mk_msg, None, actual_ty, err)
@@ -1323,7 +1326,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                                    mk_msg: M,
                                                    expected_ty: Option<Ty<'tcx>>,
                                                    actual_ty: String,
-                                                   err: Option<&ty::TypeError<'tcx>>) where
+                                                   err: Option<&TypeError<'tcx>>) where
         M: FnOnce(Option<String>, String) -> String,
     {
         debug!("hi! expected_ty = {:?}, actual_ty = {}", expected_ty, actual_ty);
@@ -1349,7 +1352,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                  sp: Span,
                                  mk_msg: M,
                                  actual_ty: Ty<'tcx>,
-                                 err: Option<&ty::TypeError<'tcx>>) where
+                                 err: Option<&TypeError<'tcx>>) where
         M: FnOnce(String) -> String,
     {
         let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
@@ -1368,10 +1371,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                    span: Span,
                                    expected: Ty<'tcx>,
                                    actual: Ty<'tcx>,
-                                   err: &ty::TypeError<'tcx>) {
+                                   err: &TypeError<'tcx>) {
         let trace = TypeTrace {
             origin: Misc(span),
-            values: Types(ty::ExpectedFound {
+            values: Types(ExpectedFound {
                 expected: expected,
                 found: actual
             })
@@ -1385,14 +1388,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                             actual: type_variable::Default<'tcx>) {
         let trace = TypeTrace {
             origin: Misc(span),
-            values: Types(ty::ExpectedFound {
+            values: Types(ExpectedFound {
                 expected: expected.ty,
                 found: actual.ty
             })
         };
 
         self.report_and_explain_type_error(trace,
-            &TypeError::TyParamDefaultMismatch(ty::ExpectedFound {
+            &TypeError::TyParamDefaultMismatch(ExpectedFound {
                 expected: expected,
                 found: actual
         }));
@@ -1406,8 +1409,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         -> (T, FnvHashMap<ty::BoundRegion,ty::Region>)
         where T : TypeFoldable<'tcx>
     {
-        ty_fold::replace_late_bound_regions(
-            self.tcx,
+        self.tcx.replace_late_bound_regions(
             value,
             |br| self.next_region_var(LateBoundRegion(span, br, lbrct)))
     }
@@ -1484,9 +1486,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .map(|method| method.def_id)
     }
 
-    pub fn adjustments(&self) -> Ref<NodeMap<ty::AutoAdjustment<'tcx>>> {
+    pub fn adjustments(&self) -> Ref<NodeMap<adjustment::AutoAdjustment<'tcx>>> {
         fn project_adjustments<'a, 'tcx>(tables: &'a ty::Tables<'tcx>)
-                                        -> &'a NodeMap<ty::AutoAdjustment<'tcx>> {
+                                        -> &'a NodeMap<adjustment::AutoAdjustment<'tcx>> {
             &tables.adjustments
         }
 
@@ -1555,7 +1557,7 @@ impl<'tcx> TypeTrace<'tcx> {
     pub fn dummy(tcx: &ty::ctxt<'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             origin: Misc(codemap::DUMMY_SP),
-            values: Types(ty::ExpectedFound {
+            values: Types(ExpectedFound {
                 expected: tcx.types.err,
                 found: tcx.types.err,
             })

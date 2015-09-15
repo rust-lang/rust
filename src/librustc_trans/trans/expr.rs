@@ -71,10 +71,11 @@ use trans::machine;
 use trans::meth;
 use trans::tvec;
 use trans::type_of;
-use middle::cast::{CastKind, CastTy};
-use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustUnsafeFnPointer};
+use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
+use middle::ty::adjustment::{AdjustUnsafeFnPointer, CustomCoerceUnsized};
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
+use middle::ty::cast::{CastKind, CastTy};
 use util::common::indenter;
 use trans::machine::{llsize_of, llsize_of_alloc};
 use trans::type_::Type;
@@ -514,7 +515,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
 
             let coerce_index = match kind {
-                ty::CustomCoerceUnsized::Struct(i) => i
+                CustomCoerceUnsized::Struct(i) => i
             };
             assert!(coerce_index < src_fields.len() && src_fields.len() == target_fields.len());
 
@@ -2045,8 +2046,8 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               id: ast::NodeId)
                               -> DatumBlock<'blk, 'tcx, Expr>
 {
-    use middle::cast::CastTy::*;
-    use middle::cast::IntTy::*;
+    use middle::ty::cast::CastTy::*;
+    use middle::ty::cast::IntTy::*;
 
     fn int_cast(bcx: Block,
                 lldsttype: Type,

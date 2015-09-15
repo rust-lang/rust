@@ -88,14 +88,14 @@ use check::FnCtxt;
 use middle::free_region::FreeRegionMap;
 use middle::implicator::{self, Implication};
 use middle::mem_categorization as mc;
-use middle::outlives;
 use middle::region::CodeExtent;
 use middle::subst::Substs;
 use middle::traits;
 use middle::ty::{self, RegionEscape, ReScope, Ty, MethodCall, HasTypeFlags};
 use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, VerifyBound};
 use middle::pat_util;
-use middle::wf::{self, ImpliedBound};
+use middle::ty::adjustment;
+use middle::ty::wf::ImpliedBound;
 
 use std::mem;
 use std::rc::Rc;
@@ -420,7 +420,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         for &ty in fn_sig_tys {
             let ty = self.resolve_type(ty);
             debug!("relate_free_regions(t={:?})", ty);
-            let implied_bounds = wf::implied_bounds(self.fcx.infcx(), body_id, ty, span);
+            let implied_bounds = ty::wf::implied_bounds(self.fcx.infcx(), body_id, ty, span);
 
             // Record any relations between free regions that we observe into the free-region-map.
             self.free_region_map.relate_free_regions_from_implied_bounds(&implied_bounds);
@@ -599,7 +599,9 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
     if let Some(adjustment) = adjustment {
         debug!("adjustment={:?}", adjustment);
         match adjustment {
-            ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, ref autoref, ..}) => {
+            adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
+                autoderefs, ref autoref, ..
+            }) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
                 constrain_autoderefs(rcx, expr, autoderefs, expr_ty);
                 if let Some(ref autoref) = *autoref {
@@ -615,7 +617,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
                 }
             }
             /*
-            ty::AutoObject(_, ref bounds, _, _) => {
+            adjustment::AutoObject(_, ref bounds, _, _) => {
                 // Determine if we are casting `expr` to a trait
                 // instance. If so, we have to be sure that the type
                 // of the source obeys the new region bound.
@@ -1222,7 +1224,7 @@ fn link_pattern<'t, 'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 fn link_autoref(rcx: &Rcx,
                 expr: &hir::Expr,
                 autoderefs: usize,
-                autoref: &ty::AutoRef)
+                autoref: &adjustment::AutoRef)
 {
     debug!("link_autoref(autoref={:?})", autoref);
     let mc = mc::MemCategorizationContext::new(rcx.fcx.infcx());
@@ -1230,12 +1232,12 @@ fn link_autoref(rcx: &Rcx,
     debug!("expr_cmt={:?}", expr_cmt);
 
     match *autoref {
-        ty::AutoPtr(r, m) => {
+        adjustment::AutoPtr(r, m) => {
             link_region(rcx, expr.span, r,
                 ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
 
-        ty::AutoUnsafe(m) => {
+        adjustment::AutoUnsafe(m) => {
             let r = ty::ReScope(rcx.tcx().region_maps.node_extent(expr.id));
             link_region(rcx, expr.span, &r, ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
@@ -1527,31 +1529,31 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 
     assert!(!ty.has_escaping_regions());
 
-    let components = outlives::components(rcx.infcx(), ty);
+    let components = ty::outlives::components(rcx.infcx(), ty);
     components_must_outlive(rcx, origin, components, region);
 }
 
 fn components_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                      origin: infer::SubregionOrigin<'tcx>,
-                                     components: Vec<outlives::Component<'tcx>>,
+                                     components: Vec<ty::outlives::Component<'tcx>>,
                                      region: ty::Region)
 {
     for component in components {
         let origin = origin.clone();
         match component {
-            outlives::Component::Region(region1) => {
+            ty::outlives::Component::Region(region1) => {
                 rcx.fcx.mk_subr(origin, region, region1);
             }
-            outlives::Component::Param(param_ty) => {
+            ty::outlives::Component::Param(param_ty) => {
                 param_ty_must_outlive(rcx, origin, region, param_ty);
             }
-            outlives::Component::Projection(projection_ty) => {
+            ty::outlives::Component::Projection(projection_ty) => {
                 projection_must_outlive(rcx, origin, region, projection_ty);
             }
-            outlives::Component::EscapingProjection(subcomponents) => {
+            ty::outlives::Component::EscapingProjection(subcomponents) => {
                 components_must_outlive(rcx, origin, subcomponents, region);
             }
-            outlives::Component::UnresolvedInferenceVariable(v) => {
+            ty::outlives::Component::UnresolvedInferenceVariable(v) => {
                 // ignore this, we presume it will yield an error
                 // later, since if a type variable is not resolved by
                 // this point it never will be
@@ -1559,7 +1561,7 @@ fn components_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                     origin.span(),
                     &format!("unresolved inference variable in outlives: {:?}", v));
             }
-            outlives::Component::RFC1214(subcomponents) => {
+            ty::outlives::Component::RFC1214(subcomponents) => {
                 let suborigin = infer::RFC1214Subregion(Rc::new(origin));
                 components_must_outlive(rcx, suborigin, subcomponents, region);
             }

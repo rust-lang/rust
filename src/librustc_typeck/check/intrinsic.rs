@@ -17,7 +17,7 @@ use middle::def_id::DefId;
 use middle::subst;
 use middle::ty::FnSig;
 use middle::ty::{self, Ty};
-use middle::ty_fold::TypeFolder;
+use middle::ty::fold::TypeFolder;
 use {CrateCtxt, require_same_types};
 
 use std::collections::{HashMap};

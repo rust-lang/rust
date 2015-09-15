@@ -38,8 +38,7 @@ use trans::type_::Type;
 use trans::type_of;
 use middle::traits;
 use middle::ty::{self, HasTypeFlags, Ty};
-use middle::ty_fold;
-use middle::ty_fold::{TypeFolder, TypeFoldable};
+use middle::ty::fold::{TypeFolder, TypeFoldable};
 use rustc::front::map::{PathElem, PathName};
 use rustc_front::hir;
 use util::nodemap::{FnvHashMap, NodeMap};
@@ -60,7 +59,7 @@ pub use trans::context::CrateContext;
 /// Returns an equivalent value with all free regions removed (note
 /// that late-bound regions remain, because they are important for
 /// subtyping, but they are anonymized and normalized as well). This
-/// is a stronger, caching version of `ty_fold::erase_regions`.
+/// is a stronger, caching version of `ty::fold::erase_regions`.
 pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
     where T : TypeFoldable<'tcx>
 {
@@ -80,7 +79,7 @@ pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
                 Some(u) => return u
             }
 
-            let t_norm = ty_fold::super_fold_ty(self, ty);
+            let t_norm = ty::fold::super_fold_ty(self, ty);
             self.tcx().normalized_cache.borrow_mut().insert(ty, t_norm);
             return t_norm;
         }
@@ -89,7 +88,7 @@ pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
             where T : TypeFoldable<'tcx>
         {
             let u = self.tcx().anonymize_late_bound_regions(t);
-            ty_fold::super_fold_binder(self, &u)
+            ty::fold::super_fold_binder(self, &u)
         }
 
         fn fold_region(&mut self, r: ty::Region) -> ty::Region {

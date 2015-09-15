@@ -16,8 +16,7 @@ use middle::def_id::DefId;
 use middle::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
 use middle::traits;
 use middle::ty::{self, Ty};
-use middle::ty_fold::{TypeFolder};
-use middle::wf;
+use middle::ty::fold::{TypeFolder};
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -309,11 +308,11 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                         fcx.instantiate_type_scheme(
                             ast_trait_ref.path.span, free_substs, &trait_ref);
                     let obligations =
-                        wf::trait_obligations(fcx.infcx(),
-                                              fcx.body_id,
-                                              &trait_ref,
-                                              ast_trait_ref.path.span,
-                                              true);
+                        ty::wf::trait_obligations(fcx.infcx(),
+                                                  fcx.body_id,
+                                                  &trait_ref,
+                                                  ast_trait_ref.path.span,
+                                                  true);
                     for obligation in obligations {
                         fcx.register_predicate(obligation);
                     }
@@ -341,11 +340,11 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         let obligations =
             predicates.predicates
                       .iter()
-                      .flat_map(|p| wf::predicate_obligations(fcx.infcx(),
-                                                              fcx.body_id,
-                                                              p,
-                                                              span,
-                                                              true));
+                      .flat_map(|p| ty::wf::predicate_obligations(fcx.infcx(),
+                                                                  fcx.body_id,
+                                                                  p,
+                                                                  span,
+                                                                  true));
 
         for obligation in obligations {
             fcx.register_predicate(obligation);

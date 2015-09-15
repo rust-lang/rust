@@ -247,9 +247,11 @@ pub fn get_impl_polarity<'tcx>(tcx: &ty::ctxt<'tcx>,
     decoder::get_impl_polarity(&*cdata, def.node)
 }
 
-pub fn get_custom_coerce_unsized_kind<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                            def: DefId)
-                                            -> Option<ty::CustomCoerceUnsized> {
+pub fn get_custom_coerce_unsized_kind<'tcx>(
+    tcx: &ty::ctxt<'tcx>,
+    def: DefId)
+    -> Option<ty::adjustment::CustomCoerceUnsized>
+{
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_custom_coerce_unsized_kind(&*cdata, def.node)

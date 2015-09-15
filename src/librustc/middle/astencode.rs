@@ -27,7 +27,8 @@ use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId};
 use metadata::tydecode::{RegionParameter, ClosureSource};
 use metadata::tyencode;
-use middle::cast;
+use middle::ty::adjustment;
+use middle::ty::cast;
 use middle::check_const::ConstQualif;
 use middle::def;
 use middle::def_id::{DefId, LOCAL_CRATE};
@@ -646,11 +647,11 @@ trait rbml_writer_helpers<'tcx> {
     fn emit_builtin_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::BuiltinBounds);
     fn emit_upvar_capture(&mut self, ecx: &e::EncodeContext, capture: &ty::UpvarCapture);
     fn emit_auto_adjustment<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                                adj: &ty::AutoAdjustment<'tcx>);
+                                adj: &adjustment::AutoAdjustment<'tcx>);
     fn emit_autoref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                        autoref: &ty::AutoRef<'tcx>);
+                        autoref: &adjustment::AutoRef<'tcx>);
     fn emit_auto_deref_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                               auto_deref_ref: &ty::AutoDerefRef<'tcx>);
+                               auto_deref_ref: &adjustment::AutoDerefRef<'tcx>);
 }
 
 impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
@@ -771,22 +772,22 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     }
 
     fn emit_auto_adjustment<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                                adj: &ty::AutoAdjustment<'tcx>) {
+                                adj: &adjustment::AutoAdjustment<'tcx>) {
         use serialize::Encoder;
 
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
-                ty::AdjustReifyFnPointer=> {
+                adjustment::AdjustReifyFnPointer=> {
                     this.emit_enum_variant("AdjustReifyFnPointer", 1, 0, |_| Ok(()))
                 }
 
-                ty::AdjustUnsafeFnPointer => {
+                adjustment::AdjustUnsafeFnPointer => {
                     this.emit_enum_variant("AdjustUnsafeFnPointer", 2, 0, |_| {
                         Ok(())
                     })
                 }
 
-                ty::AdjustDerefRef(ref auto_deref_ref) => {
+                adjustment::AdjustDerefRef(ref auto_deref_ref) => {
                     this.emit_enum_variant("AdjustDerefRef", 3, 2, |this| {
                         this.emit_enum_variant_arg(0,
                             |this| Ok(this.emit_auto_deref_ref(ecx, auto_deref_ref)))
@@ -797,19 +798,19 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     }
 
     fn emit_autoref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                        autoref: &ty::AutoRef<'tcx>) {
+                        autoref: &adjustment::AutoRef<'tcx>) {
         use serialize::Encoder;
 
         self.emit_enum("AutoRef", |this| {
             match autoref {
-                &ty::AutoPtr(r, m) => {
+                &adjustment::AutoPtr(r, m) => {
                     this.emit_enum_variant("AutoPtr", 0, 2, |this| {
                         this.emit_enum_variant_arg(0,
                             |this| Ok(this.emit_region(ecx, *r)));
                         this.emit_enum_variant_arg(1, |this| m.encode(this))
                     })
                 }
-                &ty::AutoUnsafe(m) => {
+                &adjustment::AutoUnsafe(m) => {
                     this.emit_enum_variant("AutoUnsafe", 1, 1, |this| {
                         this.emit_enum_variant_arg(0, |this| m.encode(this))
                     })
@@ -819,7 +820,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     }
 
     fn emit_auto_deref_ref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                               auto_deref_ref: &ty::AutoDerefRef<'tcx>) {
+                               auto_deref_ref: &adjustment::AutoDerefRef<'tcx>) {
         use serialize::Encoder;
 
         self.emit_struct("AutoDerefRef", 2, |this| {
@@ -974,7 +975,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     if let Some(adjustment) = tcx.tables.borrow().adjustments.get(&id) {
         match *adjustment {
-            ty::AdjustDerefRef(ref adj) => {
+            adjustment::AdjustDerefRef(ref adj) => {
                 for autoderef in 0..adj.autoderefs {
                     let method_call = ty::MethodCall::autoderef(id, autoderef as u32);
                     if let Some(method) = tcx.tables.borrow().method_map.get(&method_call) {
@@ -1063,7 +1064,7 @@ trait rbml_decoder_decoder_helpers<'tcx> {
     fn read_upvar_capture(&mut self, dcx: &DecodeContext)
                           -> ty::UpvarCapture;
     fn read_auto_adjustment<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                    -> ty::AutoAdjustment<'tcx>;
+                                    -> adjustment::AutoAdjustment<'tcx>;
     fn read_cast_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                  -> cast::CastKind;
     fn read_closure_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1071,9 +1072,9 @@ trait rbml_decoder_decoder_helpers<'tcx> {
     fn read_closure_ty<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                -> ty::ClosureTy<'tcx>;
     fn read_auto_deref_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                   -> ty::AutoDerefRef<'tcx>;
+                                   -> adjustment::AutoDerefRef<'tcx>;
     fn read_autoref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                            -> ty::AutoRef<'tcx>;
+                            -> adjustment::AutoRef<'tcx>;
     fn convert_def_id(&mut self,
                       dcx: &DecodeContext,
                       source: DefIdSource,
@@ -1246,30 +1247,30 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
     fn read_auto_adjustment<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                    -> ty::AutoAdjustment<'tcx> {
+                                    -> adjustment::AutoAdjustment<'tcx> {
         self.read_enum("AutoAdjustment", |this| {
             let variants = ["AdjustReifyFnPointer", "AdjustUnsafeFnPointer", "AdjustDerefRef"];
             this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
-                    1 => ty::AdjustReifyFnPointer,
-                    2 => ty::AdjustUnsafeFnPointer,
+                    1 => adjustment::AdjustReifyFnPointer,
+                    2 => adjustment::AdjustUnsafeFnPointer,
                     3 => {
-                        let auto_deref_ref: ty::AutoDerefRef =
+                        let auto_deref_ref: adjustment::AutoDerefRef =
                             this.read_enum_variant_arg(0,
                                 |this| Ok(this.read_auto_deref_ref(dcx))).unwrap();
 
-                        ty::AdjustDerefRef(auto_deref_ref)
+                        adjustment::AdjustDerefRef(auto_deref_ref)
                     }
-                    _ => panic!("bad enum variant for ty::AutoAdjustment")
+                    _ => panic!("bad enum variant for adjustment::AutoAdjustment")
                 })
             })
         }).unwrap()
     }
 
     fn read_auto_deref_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                   -> ty::AutoDerefRef<'tcx> {
+                                   -> adjustment::AutoDerefRef<'tcx> {
         self.read_struct("AutoDerefRef", 2, |this| {
-            Ok(ty::AutoDerefRef {
+            Ok(adjustment::AutoDerefRef {
                 autoderefs: this.read_struct_field("autoderefs", 0, |this| {
                     Decodable::decode(this)
                 }).unwrap(),
@@ -1296,7 +1297,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     }
 
     fn read_autoref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                            -> ty::AutoRef<'tcx> {
+                            -> adjustment::AutoRef<'tcx> {
         self.read_enum("AutoRef", |this| {
             let variants = ["AutoPtr", "AutoUnsafe"];
             this.read_enum_variant(&variants, |this, i| {
@@ -1311,15 +1312,15 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                 Decodable::decode(this)
                             }).unwrap();
 
-                        ty::AutoPtr(dcx.tcx.mk_region(r), m)
+                        adjustment::AutoPtr(dcx.tcx.mk_region(r), m)
                     }
                     1 => {
                         let m: hir::Mutability =
                             this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
 
-                        ty::AutoUnsafe(m)
+                        adjustment::AutoUnsafe(m)
                     }
-                    _ => panic!("bad enum variant for ty::AutoRef")
+                    _ => panic!("bad enum variant for adjustment::AutoRef")
                 })
             })
         }).unwrap()
@@ -1467,7 +1468,8 @@ fn decode_side_tables(dcx: &DecodeContext,
                         dcx.tcx.tables.borrow_mut().method_map.insert(method_call, method);
                     }
                     c::tag_table_adjustments => {
-                        let adj: ty::AutoAdjustment = val_dsr.read_auto_adjustment(dcx);
+                        let adj =
+                            val_dsr.read_auto_adjustment(dcx);
                         dcx.tcx.tables.borrow_mut().adjustments.insert(id, adj);
                     }
                     c::tag_table_closure_tys => {

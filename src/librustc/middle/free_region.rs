@@ -16,7 +16,7 @@
 //! region outlives another and so forth.
 
 use middle::ty::{self, FreeRegion, Region};
-use middle::wf::ImpliedBound;
+use middle::ty::wf::ImpliedBound;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 #[derive(Clone)]

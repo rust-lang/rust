@@ -20,6 +20,7 @@ use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::lang_items::UnsizeTraitLangItem;
 use middle::subst::{self, Subst};
 use middle::traits;
+use middle::ty;
 use middle::ty::RegionEscape;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, ConstTraitItemId};
 use middle::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
@@ -29,7 +30,7 @@ use middle::ty::{TyRef, TyStruct, TyTrait, TyTuple};
 use middle::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
 use middle::ty::{TyUint, TyClosure, TyBox, TyBareFn};
 use middle::ty::TyProjection;
-use middle::ty;
+use middle::ty::util::CopyImplementationError;
 use middle::free_region::FreeRegionMap;
 use CrateCtxt;
 use middle::infer::{self, InferCtxt, new_infer_ctxt};
@@ -370,27 +371,27 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
             match param_env.can_type_implement_copy(self_type, span) {
                 Ok(()) => {}
-                Err(ty::FieldDoesNotImplementCopy(name)) => {
+                Err(CopyImplementationError::InfrigingField(name)) => {
                        span_err!(tcx.sess, span, E0204,
                                  "the trait `Copy` may not be \
                                           implemented for this type; field \
                                           `{}` does not implement `Copy`",
                                          name)
                 }
-                Err(ty::VariantDoesNotImplementCopy(name)) => {
+                Err(CopyImplementationError::InfrigingVariant(name)) => {
                        span_err!(tcx.sess, span, E0205,
                                  "the trait `Copy` may not be \
                                           implemented for this type; variant \
                                           `{}` does not implement `Copy`",
                                          name)
                 }
-                Err(ty::TypeIsStructural) => {
+                Err(CopyImplementationError::NotAnAdt) => {
                        span_err!(tcx.sess, span, E0206,
                                  "the trait `Copy` may not be implemented \
                                   for this type; type is not a structure or \
                                   enumeration")
                 }
-                Err(ty::TypeHasDestructor) => {
+                Err(CopyImplementationError::HasDestructor) => {
                     span_err!(tcx.sess, span, E0184,
                               "the trait `Copy` may not be implemented for this type; \
                                the type has a destructor");
@@ -446,7 +447,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
                 if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
                     infcx.report_mismatched_types(span, mk_ptr(mt_b.ty),
-                                                  target, &ty::TypeError::Mutability);
+                                                  target, &ty::error::TypeError::Mutability);
                 }
                 (mt_a.ty, mt_b.ty, unsize_trait, None)
             };
@@ -510,7 +511,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                     }
 
                     let (i, a, b) = diff_fields[0];
-                    let kind = ty::CustomCoerceUnsized::Struct(i);
+                    let kind = ty::adjustment::CustomCoerceUnsized::Struct(i);
                     (a, b, coerce_unsized_trait, Some(kind))
                 }
 

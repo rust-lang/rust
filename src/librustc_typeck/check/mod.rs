@@ -97,7 +97,10 @@ use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::{MethodCall, MethodCallee};
-use middle::ty_fold::{TypeFolder, TypeFoldable};
+use middle::ty::adjustment;
+use middle::ty::error::TypeError;
+use middle::ty::fold::{TypeFolder, TypeFoldable};
+use middle::ty::util::Representability;
 use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};
 use session::Session;
@@ -1336,7 +1339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                       derefs: usize) {
         self.write_adjustment(
             node_id,
-            ty::AdjustDerefRef(ty::AutoDerefRef {
+            adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
                 autoderefs: derefs,
                 autoref: None,
                 unsize: None
@@ -1346,7 +1349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_adjustment(&self,
                             node_id: ast::NodeId,
-                            adj: ty::AutoAdjustment<'tcx>) {
+                            adj: adjustment::AutoAdjustment<'tcx>) {
         debug!("write_adjustment(node_id={}, adj={:?})", node_id, adj);
 
         if adj.is_identity() {
@@ -1575,7 +1578,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Apply `adjustment` to the type of `expr`
     pub fn adjust_expr_ty(&self,
                           expr: &hir::Expr,
-                          adjustment: Option<&ty::AutoAdjustment<'tcx>>)
+                          adjustment: Option<&adjustment::AutoAdjustment<'tcx>>)
                           -> Ty<'tcx>
     {
         let raw_ty = self.expr_ty(expr);
@@ -1627,7 +1630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     origin: infer::TypeOrigin,
                     sub: Ty<'tcx>,
                     sup: Ty<'tcx>)
-                    -> Result<(), ty::TypeError<'tcx>> {
+                    -> Result<(), TypeError<'tcx>> {
         infer::mk_subty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
@@ -1636,7 +1639,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                    origin: infer::TypeOrigin,
                    sub: Ty<'tcx>,
                    sup: Ty<'tcx>)
-                   -> Result<(), ty::TypeError<'tcx>> {
+                   -> Result<(), TypeError<'tcx>> {
         infer::mk_eqty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
@@ -1651,7 +1654,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  sp: Span,
                                  mk_msg: M,
                                  actual_ty: Ty<'tcx>,
-                                 err: Option<&ty::TypeError<'tcx>>) where
+                                 err: Option<&TypeError<'tcx>>) where
         M: FnOnce(String) -> String,
     {
         self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
@@ -1661,7 +1664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                    sp: Span,
                                    e: Ty<'tcx>,
                                    a: Ty<'tcx>,
-                                   err: &ty::TypeError<'tcx>) {
+                                   err: &TypeError<'tcx>) {
         self.infcx().report_mismatched_types(sp, e, a, err)
     }
 
@@ -1766,7 +1769,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Apply "fallbacks" to some types
     /// ! gets replaced with (), unconstrained ints with i32, and unconstrained floats with f64.
     fn default_type_parameters(&self) {
-        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
+        use middle::ty::error::UnconstrainedNumeric::Neither;
+        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
         for ty in &self.infcx().unsolved_variables() {
             let resolved = self.infcx().resolve_type_vars_if_possible(ty);
             if self.infcx().type_var_diverges(resolved) {
@@ -1801,9 +1805,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn new_select_all_obligations_and_apply_defaults(&self) {
-        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
+        use middle::ty::error::UnconstrainedNumeric::Neither;
+        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
-            // For the time being this errs on the side of being memory wasteful but provides better
+        // For the time being this errs on the side of being memory wasteful but provides better
         // error reporting.
         // let type_variables = self.infcx().type_variables.clone();
 
@@ -1973,7 +1978,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 default_map: &FnvHashMap<&Ty<'tcx>, type_variable::Default<'tcx>>,
                                 conflict: Ty<'tcx>)
                                 -> Option<type_variable::Default<'tcx>> {
-        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
+        use middle::ty::error::UnconstrainedNumeric::Neither;
+        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
         // Ensure that we apply the conflicting default first
         let mut unbound_tyvars = Vec::with_capacity(unbound_vars.len() + 1);
@@ -4166,12 +4172,13 @@ pub fn check_representable(tcx: &ty::ctxt,
     // contain themselves. For case 2, there must be an inner type that will be
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
-      ty::SelfRecursive => {
-        span_err!(tcx.sess, sp, E0072, "invalid recursive {} type", designation);
-        tcx.sess.fileline_help(sp, "wrap the inner value in a box to make it representable");
-        return false
-      }
-      ty::Representable | ty::ContainsRecursive => (),
+        Representability::SelfRecursive => {
+            span_err!(tcx.sess, sp, E0072, "invalid recursive {} type", designation);
+            tcx.sess.fileline_help(
+                sp, "wrap the inner value in a box to make it representable");
+            return false
+        }
+        Representability::Representable | Representability::ContainsRecursive => (),
     }
     return true
 }

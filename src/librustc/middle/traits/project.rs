@@ -24,11 +24,9 @@ use super::util;
 use middle::infer;
 use middle::subst::Subst;
 use middle::ty::{self, ToPredicate, RegionEscape, HasTypeFlags, ToPolyTraitRef, Ty};
-use middle::ty_fold::{self, TypeFoldable, TypeFolder};
+use middle::ty::fold::{TypeFoldable, TypeFolder};
 use syntax::parse::token;
 use util::common::FN_OUTPUT_NAME;
-
-use std::fmt;
 
 pub type PolyProjectionObligation<'tcx> =
     Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
@@ -51,7 +49,7 @@ pub enum ProjectionTyError<'tcx> {
 
 #[derive(Clone)]
 pub struct MismatchedProjectionTypes<'tcx> {
-    pub err: ty::TypeError<'tcx>
+    pub err: ty::error::TypeError<'tcx>
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -265,7 +263,7 @@ impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
         // normalize it when we instantiate those bound regions (which
         // should occur eventually).
 
-        let ty = ty_fold::super_fold_ty(self, ty);
+        let ty = ty::fold::super_fold_ty(self, ty);
         match ty.sty {
             ty::TyProjection(ref data) if !data.has_escaping_regions() => { // (*)
 
@@ -916,28 +914,4 @@ fn confirm_impl_candidate<'cx,'tcx>(
     selcx.tcx().sess.span_bug(obligation.cause.span,
                               &format!("No associated type for {:?}",
                                        trait_ref));
-}
-
-impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Normalized<'tcx, T> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Normalized<'tcx, T> {
-        Normalized {
-            value: self.value.fold_with(folder),
-            obligations: self.obligations.fold_with(folder),
-        }
-    }
-}
-
-impl<'tcx, T: HasTypeFlags> HasTypeFlags for Normalized<'tcx, T> {
-    fn has_type_flags(&self, flags: ty::TypeFlags) -> bool {
-        self.value.has_type_flags(flags) ||
-            self.obligations.has_type_flags(flags)
-    }
-}
-
-impl<'tcx, T:fmt::Debug> fmt::Debug for Normalized<'tcx, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Normalized({:?},{:?})",
-               self.value,
-               self.obligations)
-    }
 }

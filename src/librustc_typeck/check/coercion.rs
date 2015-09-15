@@ -65,9 +65,12 @@ use check::{autoderef, FnCtxt, UnresolvedTypeAction};
 use middle::infer::{self, Coercion};
 use middle::traits::{self, ObligationCause};
 use middle::traits::{predicate_for_trait_def, report_selection_error};
-use middle::ty::{AutoDerefRef, AdjustDerefRef};
-use middle::ty::{self, LvaluePreference, TypeAndMut, Ty, TypeError};
-use middle::ty_relate::RelateResult;
+use middle::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
+use middle::ty::adjustment::{AutoPtr, AutoUnsafe, AdjustReifyFnPointer};
+use middle::ty::adjustment::{AdjustUnsafeFnPointer};
+use middle::ty::{self, LvaluePreference, TypeAndMut, Ty};
+use middle::ty::error::TypeError;
+use middle::ty::relate::RelateResult;
 use util::common::indent;
 
 use std::cell::RefCell;
@@ -80,7 +83,7 @@ struct Coerce<'a, 'tcx: 'a> {
     unsizing_obligations: RefCell<Vec<traits::PredicateObligation<'tcx>>>,
 }
 
-type CoerceResult<'tcx> = RelateResult<'tcx, Option<ty::AutoAdjustment<'tcx>>>;
+type CoerceResult<'tcx> = RelateResult<'tcx, Option<AutoAdjustment<'tcx>>>;
 
 impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> {
@@ -185,7 +188,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let coercion = Coercion(self.origin.span());
         let r_borrow = self.fcx.infcx().next_region_var(coercion);
         let r_borrow = self.tcx().mk_region(r_borrow);
-        let autoref = Some(ty::AutoPtr(r_borrow, mutbl_b));
+        let autoref = Some(AutoPtr(r_borrow, mutbl_b));
 
         let lvalue_pref = LvaluePreference::from_mutbl(mutbl_b);
         let mut first_error = None;
@@ -263,11 +266,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let coercion = Coercion(self.origin.span());
                 let r_borrow = self.fcx.infcx().next_region_var(coercion);
                 let region = self.tcx().mk_region(r_borrow);
-                (mt_a.ty, Some(ty::AutoPtr(region, mt_b.mutbl)))
+                (mt_a.ty, Some(AutoPtr(region, mt_b.mutbl)))
             }
             (&ty::TyRef(_, mt_a), &ty::TyRawPtr(mt_b)) => {
                 try!(coerce_mutbls(mt_a.mutbl, mt_b.mutbl));
-                (mt_a.ty, Some(ty::AutoUnsafe(mt_b.mutbl)))
+                (mt_a.ty, Some(AutoUnsafe(mt_b.mutbl)))
             }
             _ => (source, None)
         };
@@ -359,7 +362,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     (hir::Unsafety::Normal, hir::Unsafety::Unsafe) => {
                         let unsafe_a = self.tcx().safe_to_unsafe_fn_ty(fn_ty_a);
                         try!(self.subtype(unsafe_a, b));
-                        return Ok(Some(ty::AdjustUnsafeFnPointer));
+                        return Ok(Some(AdjustUnsafeFnPointer));
                     }
                     _ => {}
                 }
@@ -386,7 +389,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 ty::TyBareFn(None, _) => {
                     let a_fn_pointer = self.tcx().mk_fn(None, fn_ty_a);
                     try!(self.subtype(a_fn_pointer, b));
-                    Ok(Some(ty::AdjustReifyFnPointer))
+                    Ok(Some(AdjustReifyFnPointer))
                 }
                 _ => self.subtype(a, b)
             }
@@ -421,7 +424,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         if is_ref {
             Ok(Some(AdjustDerefRef(AutoDerefRef {
                 autoderefs: 1,
-                autoref: Some(ty::AutoUnsafe(mutbl_b)),
+                autoref: Some(AutoUnsafe(mutbl_b)),
                 unsize: None
             })))
         } else {
