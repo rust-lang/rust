@@ -207,7 +207,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             let custom_note = report_on_unimplemented(infcx, &trait_ref.0,
                                                                       obligation.cause.span);
                             if let Some(s) = custom_note {
-                                infcx.tcx.sess.span_note(obligation.cause.span, &s);
+                                infcx.tcx.sess.fileline_note(obligation.cause.span, &s);
                             }
                             note_obligation_cause(infcx, obligation);
                         }
@@ -305,13 +305,13 @@ pub fn report_object_safety_error<'tcx>(tcx: &ty::ctxt<'tcx>,
     for violation in object_safety_violations(tcx, trait_def_id) {
         match violation {
             ObjectSafetyViolation::SizedSelf => {
-                tcx.sess.span_note(
+                tcx.sess.fileline_note(
                     span,
                     "the trait cannot require that `Self : Sized`");
             }
 
             ObjectSafetyViolation::SupertraitSelf => {
-                tcx.sess.span_note(
+                tcx.sess.fileline_note(
                     span,
                     "the trait cannot use `Self` as a type parameter \
                      in the supertrait listing");
@@ -319,7 +319,7 @@ pub fn report_object_safety_error<'tcx>(tcx: &ty::ctxt<'tcx>,
 
             ObjectSafetyViolation::Method(method,
                                           MethodViolationCode::StaticMethod) => {
-                tcx.sess.span_note(
+                tcx.sess.fileline_note(
                     span,
                     &format!("method `{}` has no receiver",
                              method.name));
@@ -327,7 +327,7 @@ pub fn report_object_safety_error<'tcx>(tcx: &ty::ctxt<'tcx>,
 
             ObjectSafetyViolation::Method(method,
                                           MethodViolationCode::ReferencesSelf) => {
-                tcx.sess.span_note(
+                tcx.sess.fileline_note(
                     span,
                     &format!("method `{}` references the `Self` type \
                               in its arguments or return type",
@@ -336,7 +336,7 @@ pub fn report_object_safety_error<'tcx>(tcx: &ty::ctxt<'tcx>,
 
             ObjectSafetyViolation::Method(method,
                                           MethodViolationCode::Generic) => {
-                tcx.sess.span_note(
+                tcx.sess.fileline_note(
                     span,
                     &format!("method `{}` has generic type parameters",
                              method.name));
@@ -458,111 +458,117 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
             note_obligation_cause_code(infcx, predicate, cause_span, subcode);
         }
         ObligationCauseCode::SliceOrArrayElem => {
-            tcx.sess.span_note(
+            tcx.sess.fileline_note(
                 cause_span,
                 &format!("slice and array elements must have `Sized` type"));
         }
         ObligationCauseCode::ProjectionWf(data) => {
-            tcx.sess.span_note(
+            tcx.sess.fileline_note(
                 cause_span,
                 &format!("required so that the projection `{}` is well-formed",
                          data));
         }
         ObligationCauseCode::ReferenceOutlivesReferent(ref_ty) => {
-            tcx.sess.span_note(
+            tcx.sess.fileline_note(
                 cause_span,
                 &format!("required so that reference `{}` does not outlive its referent",
                          ref_ty));
         }
         ObligationCauseCode::ItemObligation(item_def_id) => {
             let item_name = tcx.item_path_str(item_def_id);
-            tcx.sess.span_note(
+            tcx.sess.fileline_note(
                 cause_span,
                 &format!("required by `{}`", item_name));
         }
         ObligationCauseCode::ObjectCastObligation(object_ty) => {
-            tcx.sess.span_note(
+            tcx.sess.fileline_note(
                 cause_span,
                 &format!(
                     "required for the cast to the object type `{}`",
                     infcx.ty_to_string(object_ty)));
         }
         ObligationCauseCode::RepeatVec => {
-            tcx.sess.span_note(
+            tcx.sess.fileline_note(
                 cause_span,
                 "the `Copy` trait is required because the \
                  repeated element will be copied");
         }
         ObligationCauseCode::VariableType(_) => {
-            tcx.sess.span_note(
+            tcx.sess.fileline_note(
                 cause_span,
                 "all local variables must have a statically known size");
         }
         ObligationCauseCode::ReturnType => {
-            tcx.sess.span_note(
+            tcx.sess.fileline_note(
                 cause_span,
                 "the return type of a function must have a \
                  statically known size");
         }
         ObligationCauseCode::AssignmentLhsSized => {
-            tcx.sess.span_note(
+            tcx.sess.fileline_note(
                 cause_span,
                 "the left-hand-side of an assignment must have a statically known size");
         }
         ObligationCauseCode::StructInitializerSized => {
-            tcx.sess.span_note(
+            tcx.sess.fileline_note(
                 cause_span,
                 "structs must have a statically known size to be initialized");
         }
-        ObligationCauseCode::ClosureCapture(var_id, closure_span, builtin_bound) => {
+        ObligationCauseCode::ClosureCapture(var_id, _, builtin_bound) => {
             let def_id = tcx.lang_items.from_builtin_kind(builtin_bound).unwrap();
             let trait_name = tcx.item_path_str(def_id);
             let name = tcx.local_var_name_str(var_id);
-            span_note!(tcx.sess, closure_span,
-                       "the closure that captures `{}` requires that all captured variables \
-                       implement the trait `{}`",
-                       name,
-                       trait_name);
+            tcx.sess.fileline_note(
+                cause_span,
+                &format!("the closure that captures `{}` requires that all captured variables \
+                          implement the trait `{}`",
+                         name,
+                         trait_name));
         }
         ObligationCauseCode::FieldSized => {
-            span_note!(tcx.sess, cause_span,
-                       "only the last field of a struct or enum variant \
-                       may have a dynamically sized type")
+            tcx.sess.fileline_note(
+                cause_span,
+                "only the last field of a struct or enum variant \
+                 may have a dynamically sized type");
         }
         ObligationCauseCode::SharedStatic => {
-            span_note!(tcx.sess, cause_span,
-                       "shared static variables must have a type that implements `Sync`");
+            tcx.sess.fileline_note(
+                cause_span,
+                "shared static variables must have a type that implements `Sync`");
         }
         ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
             let parent_trait_ref = infcx.resolve_type_vars_if_possible(&data.parent_trait_ref);
-            span_note!(tcx.sess, cause_span,
-                       "required because it appears within the type `{}`",
-                       parent_trait_ref.0.self_ty());
+            tcx.sess.fileline_note(
+                cause_span,
+                &format!("required because it appears within the type `{}`",
+                         parent_trait_ref.0.self_ty()));
             let parent_predicate = parent_trait_ref.to_predicate();
             note_obligation_cause_code(infcx, &parent_predicate, cause_span, &*data.parent_code);
         }
         ObligationCauseCode::ImplDerivedObligation(ref data) => {
             let parent_trait_ref = infcx.resolve_type_vars_if_possible(&data.parent_trait_ref);
-            span_note!(tcx.sess, cause_span,
-                       "required because of the requirements on the impl of `{}` for `{}`",
-                       parent_trait_ref,
-                       parent_trait_ref.0.self_ty());
+            tcx.sess.fileline_note(
+                cause_span,
+                &format!("required because of the requirements on the impl of `{}` for `{}`",
+                         parent_trait_ref,
+                         parent_trait_ref.0.self_ty()));
             let parent_predicate = parent_trait_ref.to_predicate();
             note_obligation_cause_code(infcx, &parent_predicate, cause_span, &*data.parent_code);
         }
         ObligationCauseCode::CompareImplMethodObligation => {
-            span_note!(tcx.sess, cause_span,
-                      "the requirement `{}` appears on the impl method \
-                      but not on the corresponding trait method",
-                      predicate);
+            tcx.sess.fileline_note(
+                cause_span,
+                &format!("the requirement `{}` appears on the impl method \
+                          but not on the corresponding trait method",
+                         predicate));
         }
     }
 }
 
-pub fn suggest_new_overflow_limit(tcx: &ty::ctxt, span: Span) {
+fn suggest_new_overflow_limit(tcx: &ty::ctxt, span: Span) {
     let current_limit = tcx.sess.recursion_limit.get();
     let suggested_limit = current_limit * 2;
-    tcx.sess.span_note(
+    tcx.sess.fileline_note(
         span,
         &format!(
             "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
