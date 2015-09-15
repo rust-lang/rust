@@ -20,6 +20,7 @@ use clone::Clone;
 use intrinsics;
 use ops::Deref;
 use fmt;
+use hash;
 use option::Option::{self, Some, None};
 use marker::{PhantomData, Send, Sized, Sync};
 use mem;
@@ -308,39 +309,82 @@ impl<T: ?Sized> Clone for *mut T {
     }
 }
 
-// Equality for extern "C" fn pointers
-mod externfnpointers {
-    use cmp::PartialEq;
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<_R> PartialEq for extern "C" fn() -> _R {
-        #[inline]
-        fn eq(&self, other: &extern "C" fn() -> _R) -> bool {
-            let self_ = *self as usize;
-            let other_ = *other as usize;
-            self_ == other_
+// Impls for function pointers
+macro_rules! fnptr_impls_safety_abi {
+    ($FnTy: ty, $($Arg: ident),*) => {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl<Ret, $($Arg),*> Clone for $FnTy {
+            #[inline]
+            fn clone(&self) -> Self {
+                *self
+            }
         }
-    }
-    macro_rules! fnptreq {
-        ($($p:ident),*) => {
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<_R,$($p),*> PartialEq for extern "C" fn($($p),*) -> _R {
-                #[inline]
-                fn eq(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
-                    let self_ = *self as usize;
 
-                    let other_ = *other as usize;
-                    self_ == other_
-                }
+        #[stable(feature = "fnptr_impls", since = "1.4.0")]
+        impl<Ret, $($Arg),*> PartialEq for $FnTy {
+            #[inline]
+            fn eq(&self, other: &Self) -> bool {
+                *self as usize == *other as usize
+            }
+        }
+
+        #[stable(feature = "fnptr_impls", since = "1.4.0")]
+        impl<Ret, $($Arg),*> Eq for $FnTy {}
+
+        #[stable(feature = "fnptr_impls", since = "1.4.0")]
+        impl<Ret, $($Arg),*> PartialOrd for $FnTy {
+            #[inline]
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                (*self as usize).partial_cmp(&(*other as usize))
+            }
+        }
+
+        #[stable(feature = "fnptr_impls", since = "1.4.0")]
+        impl<Ret, $($Arg),*> Ord for $FnTy {
+            #[inline]
+            fn cmp(&self, other: &Self) -> Ordering {
+                (*self as usize).cmp(&(*other as usize))
+            }
+        }
+
+        #[stable(feature = "fnptr_impls", since = "1.4.0")]
+        impl<Ret, $($Arg),*> hash::Hash for $FnTy {
+            fn hash<HH: hash::Hasher>(&self, state: &mut HH) {
+                state.write_usize(*self as usize)
+            }
+        }
+
+        #[stable(feature = "fnptr_impls", since = "1.4.0")]
+        impl<Ret, $($Arg),*> fmt::Pointer for $FnTy {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Pointer::fmt(&(*self as *const ()), f)
+            }
+        }
+
+        #[stable(feature = "fnptr_impls", since = "1.4.0")]
+        impl<Ret, $($Arg),*> fmt::Debug for $FnTy {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Pointer::fmt(&(*self as *const ()), f)
             }
         }
     }
-    fnptreq! { A }
-    fnptreq! { A,B }
-    fnptreq! { A,B,C }
-    fnptreq! { A,B,C,D }
-    fnptreq! { A,B,C,D,E }
 }
+
+macro_rules! fnptr_impls_args {
+    ($($Arg: ident),*) => {
+        fnptr_impls_safety_abi! { extern "Rust" fn($($Arg),*) -> Ret, $($Arg),* }
+        fnptr_impls_safety_abi! { extern "C" fn($($Arg),*) -> Ret, $($Arg),* }
+        fnptr_impls_safety_abi! { unsafe extern "Rust" fn($($Arg),*) -> Ret, $($Arg),* }
+        fnptr_impls_safety_abi! { unsafe extern "C" fn($($Arg),*) -> Ret, $($Arg),* }
+    }
+}
+
+fnptr_impls_args! { }
+fnptr_impls_args! { A }
+fnptr_impls_args! { A, B }
+fnptr_impls_args! { A, B, C }
+fnptr_impls_args! { A, B, C, D }
+fnptr_impls_args! { A, B, C, D, E }
 
 // Comparison for pointers
 #[stable(feature = "rust1", since = "1.0.0")]
