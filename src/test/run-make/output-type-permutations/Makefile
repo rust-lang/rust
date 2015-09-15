@@ -5,6 +5,7 @@ all:
 	$(call REMOVE_RLIBS,bar)
 	$(call REMOVE_DYLIBS,bar)
 	rm $(TMPDIR)/$(call STATICLIB_GLOB,bar)
+	rm -f $(TMPDIR)/bar.{exp,lib}
 	# Check that $(TMPDIR) is empty.
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
@@ -36,7 +37,7 @@ all:
 	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
-	$(RUSTC) foo.rs --emit=link -o $(TMPDIR)/foo
+	$(RUSTC) foo.rs --emit=link -o $(TMPDIR)/$(call BIN,foo)
 	rm $(TMPDIR)/$(call BIN,foo)
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
@@ -44,15 +45,16 @@ all:
 	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
-	$(RUSTC) foo.rs --crate-type=dylib -o $(TMPDIR)/foo
-	rm $(TMPDIR)/$(call BIN,foo)  # FIXME 13794
+	$(RUSTC) foo.rs --crate-type=dylib -o $(TMPDIR)/$(call BIN,foo)
+	rm $(TMPDIR)/$(call BIN,foo)
+	rm -f $(TMPDIR)/foo.{exp,lib}
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
 	$(RUSTC) foo.rs --crate-type=staticlib -o $(TMPDIR)/foo
 	rm $(TMPDIR)/foo
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
-	$(RUSTC) foo.rs --crate-type=bin -o $(TMPDIR)/foo
+	$(RUSTC) foo.rs --crate-type=bin -o $(TMPDIR)/$(call BIN,foo)
 	rm $(TMPDIR)/$(call BIN,foo)
 	[ "$$(ls -1 $(TMPDIR) | wc -l)" -eq "0" ]
 
