@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use syntax::ast;
 use middle::ty::{self, IntVarValue, Ty};
 use rustc_data_structures::unify::UnifyKey;
-use rustc_front::hir as ast;
 
 pub trait ToType<'tcx> {
     fn to_type(&self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx>;

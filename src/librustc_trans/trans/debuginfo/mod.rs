@@ -31,7 +31,6 @@ use middle::infer::normalize_associated_type;
 use middle::subst::{self, Substs};
 use rustc_front;
 use rustc_front::hir;
-use rustc_front::attr::IntType;
 
 use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
 use trans;
@@ -49,6 +48,7 @@ use std::rc::Rc;
 
 use syntax::codemap::{Span, Pos};
 use syntax::{abi, ast, codemap};
+use syntax::attr::IntType;
 use syntax::parse::token::{self, special_idents};
 
 pub mod gdb;

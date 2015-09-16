@@ -37,13 +37,13 @@ use std::cell::RefCell;
 use std::cmp;
 use std::mem;
 use syntax::ast_util::IdVisitingOperation;
-use rustc_front::attr::{self, AttrMetaMethods};
-use rustc_front::util;
+use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::ast;
 use rustc_front::hir;
 use rustc_front::visit::{self, Visitor, FnKind};
+use rustc_front::util;
 use syntax::visit::Visitor as SyntaxVisitor;
 use syntax::diagnostic;
 
@@ -286,7 +286,7 @@ macro_rules! run_lints { ($cx:expr, $f:ident, $($args:expr),*) => ({
 /// Parse the lint attributes into a vector, with `Err`s for malformed lint
 /// attributes. Writing this as an iterator is an enormous mess.
 // See also the hir version just below.
-pub fn gather_attrs(attrs: &[hir::Attribute])
+pub fn gather_attrs(attrs: &[ast::Attribute])
                     -> Vec<Result<(InternedString, Level, Span), Span>> {
     let mut out = vec!();
     for attr in attrs {
@@ -299,7 +299,7 @@ pub fn gather_attrs(attrs: &[hir::Attribute])
 
         let meta = &attr.node.value;
         let metas = match meta.node {
-            hir::MetaList(_, ref metas) => metas,
+            ast::MetaList(_, ref metas) => metas,
             _ => {
                 out.push(Err(meta.span));
                 continue;
@@ -308,41 +308,7 @@ pub fn gather_attrs(attrs: &[hir::Attribute])
 
         for meta in metas {
             out.push(match meta.node {
-                hir::MetaWord(ref lint_name) => Ok((lint_name.clone(), level, meta.span)),
-                _ => Err(meta.span),
-            });
-        }
-    }
-    out
-}
-// Copy-pasted from the above function :-(
-pub fn gather_attrs_from_hir(attrs: &[::rustc_front::hir::Attribute])
-                             -> Vec<Result<(InternedString, Level, Span), Span>> {
-    use ::rustc_front::attr::AttrMetaMethods;
-
-    let mut out = vec!();
-    for attr in attrs {
-        let level = match Level::from_str(&attr.name()) {
-            None => continue,
-            Some(lvl) => lvl,
-        };
-
-        ::rustc_front::attr::mark_used(attr);
-
-        let meta = &attr.node.value;
-        let metas = match meta.node {
-            ::rustc_front::hir::MetaList(_, ref metas) => metas,
-            _ => {
-                out.push(Err(meta.span));
-                continue;
-            }
-        };
-
-        for meta in metas {
-            out.push(match meta.node {
-                ::rustc_front::hir::MetaWord(ref lint_name) => {
-                    Ok((lint_name.clone(), level, meta.span))
-                }
+                ast::MetaWord(ref lint_name) => Ok((lint_name.clone(), level, meta.span)),
                 _ => Err(meta.span),
             });
         }
@@ -454,7 +420,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
     /// current lint context, call the provided function, then reset the
     /// lints in effect to their previous state.
     fn with_lint_attrs<F>(&mut self,
-                          attrs: &[hir::Attribute],
+                          attrs: &[ast::Attribute],
                           f: F) where
         F: FnOnce(&mut Context),
     {
@@ -675,7 +641,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
         visit::walk_path(self, p);
     }
 
-    fn visit_attribute(&mut self, attr: &hir::Attribute) {
+    fn visit_attribute(&mut self, attr: &ast::Attribute) {
         run_lints!(self, check_attribute, attr);
     }
 }

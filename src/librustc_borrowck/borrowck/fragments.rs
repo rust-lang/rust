@@ -28,7 +28,7 @@ use std::mem;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
-use rustc_front::attr::AttrMetaMethods;
+use syntax::attr::AttrMetaMethods;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 enum Fragment {

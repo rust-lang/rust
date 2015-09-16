@@ -21,7 +21,6 @@ use syntax::attr;
 use syntax::visit;
 use syntax::visit::Visitor;
 use syntax::attr::AttrMetaMethods;
-use rustc_front::attr::AttrMetaMethods as FrontAttrMetaMethods;
 
 struct MacroLoader<'a> {
     sess: &'a Session,

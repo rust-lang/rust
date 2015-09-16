@@ -33,13 +33,11 @@ use syntax::abi;
 use syntax::codemap::{self, Span, mk_sp, Pos};
 use syntax::parse;
 use syntax::attr;
+use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::InternedString;
 use syntax::util::small_vector::SmallVector;
 use rustc_front::visit;
 use rustc_front::hir;
-use rustc_front::attr as attr_front;
-use rustc_front::attr::AttrMetaMethods;
-use rustc_front::lowering::unlower_attribute;
 use log;
 
 pub struct LocalCrateReader<'a, 'b:'a> {
@@ -79,10 +77,9 @@ fn dump_crates(cstore: &CStore) {
 fn should_link(i: &ast::Item) -> bool {
     !attr::contains_name(&i.attrs, "no_link")
 }
-
 // Dup for the hir
 fn should_link_hir(i: &hir::Item) -> bool {
-    !attr_front::contains_name(&i.attrs, "no_link")
+    !attr::contains_name(&i.attrs, "no_link")
 }
 
 struct CrateInfo {
@@ -329,7 +326,7 @@ impl<'a> CrateReader<'a> {
         let attrs = decoder::get_crate_attributes(data);
         for attr in &attrs {
             if &attr.name()[..] == "staged_api" {
-                match attr.node.value.node { hir::MetaWord(_) => return true, _ => (/*pass*/) }
+                match attr.node.value.node { ast::MetaWord(_) => return true, _ => (/*pass*/) }
             }
         }
 
@@ -483,7 +480,7 @@ impl<'a> CrateReader<'a> {
                 p.abort_if_errors();
                 macros.push(ast::MacroDef {
                     ident: name.ident(),
-                    attrs: attrs.iter().map(|a| unlower_attribute(a)).collect(),
+                    attrs: attrs,
                     id: ast::DUMMY_NODE_ID,
                     span: span,
                     imported_from: Some(item.ident),

@@ -65,7 +65,8 @@ use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 use rustc::util::lev_distance::lev_distance;
 
 use syntax::ast;
-use syntax::ast::{Ident, Name, NodeId, CrateNum};
+use syntax::ast::{Ident, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
+use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
 use syntax::parse::token::{self, special_names, special_idents};
@@ -86,10 +87,8 @@ use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use rustc_front::hir::{Local, MethodImplItem};
 use rustc_front::hir::{Pat, PatEnum, PatIdent, PatLit, PatQPath};
 use rustc_front::hir::{PatRange, PatStruct, Path, PrimTy};
-use rustc_front::hir::{TraitRef, Ty, TyBool, TyChar, TyF32};
-use rustc_front::hir::{TyF64, TyFloat, TyIs, TyI8, TyI16, TyI32, TyI64, TyInt};
-use rustc_front::hir::{TyPath, TyPtr};
-use rustc_front::hir::{TyRptr, TyStr, TyUs, TyU8, TyU16, TyU32, TyU64, TyUint};
+use rustc_front::hir::{TraitRef, Ty, TyBool, TyChar, TyFloat, TyInt};
+use rustc_front::hir::{TyRptr, TyStr, TyUint, TyPath, TyPtr};
 use rustc_front::hir::TypeImplItem;
 use rustc_front::util::walk_pat;
 

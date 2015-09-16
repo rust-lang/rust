@@ -15,7 +15,7 @@ use middle::ty::{self, BoundRegion, Region, Ty};
 
 use std::fmt;
 use syntax::abi;
-use syntax::ast::Name;
+use syntax::ast::{self, Name};
 use syntax::codemap::Span;
 
 use rustc_front::hir;
@@ -49,7 +49,7 @@ pub enum TypeError<'tcx> {
     Sorts(ExpectedFound<Ty<'tcx>>),
     IntegerAsChar,
     IntMismatch(ExpectedFound<ty::IntVarValue>),
-    FloatMismatch(ExpectedFound<hir::FloatTy>),
+    FloatMismatch(ExpectedFound<ast::FloatTy>),
     Traits(ExpectedFound<DefId>),
     BuiltinBoundsMismatch(ExpectedFound<ty::BuiltinBounds>),
     VariadicMismatch(ExpectedFound<bool>),

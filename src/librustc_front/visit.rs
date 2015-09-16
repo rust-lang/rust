@@ -24,7 +24,7 @@
 //! those that are created by the expansion of a macro.
 
 use syntax::abi::Abi;
-use syntax::ast::{Ident, NodeId, CRATE_NODE_ID, Name};
+use syntax::ast::{Ident, NodeId, CRATE_NODE_ID, Name, Attribute};
 use hir::*;
 use hir;
 use syntax::codemap::Span;

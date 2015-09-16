@@ -12,7 +12,8 @@
 //! and returns a piece of the same type.
 
 use hir::*;
-use syntax::ast::{Ident, NodeId, DUMMY_NODE_ID};
+use syntax::ast::{Ident, NodeId, DUMMY_NODE_ID, Attribute, Attribute_, MetaItem};
+use syntax::ast::{MetaWord, MetaList, MetaNameValue};
 use hir;
 use syntax::codemap::{respan, Span, Spanned};
 use syntax::owned_slice::OwnedSlice;

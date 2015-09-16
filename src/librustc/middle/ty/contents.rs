@@ -16,7 +16,7 @@ use util::nodemap::FnvHashMap;
 use std::fmt;
 use std::ops;
 
-use rustc_front::hir;
+use syntax::ast;
 
 /// Type contents is how the type checker reasons about kinds.
 /// They track what kinds of things are found within a type.  You can
@@ -182,7 +182,7 @@ impl<'tcx> ty::TyS<'tcx> {
 
             let result = match ty.sty {
                 // usize and isize are ffi-unsafe
-                ty::TyUint(hir::TyUs) | ty::TyInt(hir::TyIs) => {
+                ty::TyUint(ast::TyUs) | ty::TyInt(ast::TyIs) => {
                     TC::None
                 }
 

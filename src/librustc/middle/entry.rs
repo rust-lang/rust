@@ -12,10 +12,10 @@
 use front::map as ast_map;
 use session::{config, Session};
 use syntax::ast::NodeId;
-use rustc_front::hir::{Item, ItemFn};
-use rustc_front::attr;
+use syntax::attr;
 use syntax::codemap::Span;
 use syntax::entry::EntryPointType;
+use rustc_front::hir::{Item, ItemFn};
 use rustc_front::visit;
 use rustc_front::visit::Visitor;
 

@@ -83,7 +83,7 @@ use trans::type_::Type;
 use rustc_front;
 use rustc_front::hir;
 
-use syntax::{ast, codemap};
+use syntax::{ast, ast_util, codemap};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::parse::token;
@@ -1140,7 +1140,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         hir::ExprLit(ref lit) => {
             match lit.node {
-                hir::LitStr(ref s, _) => {
+                ast::LitStr(ref s, _) => {
                     tvec::trans_lit_str(bcx, expr, (*s).clone(), dest)
                 }
                 _ => {
@@ -1549,7 +1549,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
 fn trans_immediate_lit<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    expr: &hir::Expr,
-                                   lit: &hir::Lit)
+                                   lit: &ast::Lit)
                                    -> DatumBlock<'blk, 'tcx, Expr> {
     // must not be a string constant, that is a RvalueDpsExpr
     let _icx = push_ctxt("trans_immediate_lit");
@@ -2381,8 +2381,8 @@ impl OverflowOpViaIntrinsic {
         bcx.ccx().get_intrinsic(&name)
     }
     fn to_intrinsic_name(&self, tcx: &ty::ctxt, ty: Ty) -> &'static str {
-        use rustc_front::hir::IntTy::*;
-        use rustc_front::hir::UintTy::*;
+        use syntax::ast::IntTy::*;
+        use syntax::ast::UintTy::*;
         use middle::ty::{TyInt, TyUint};
 
         let new_sty = match ty.sty {
@@ -2714,7 +2714,7 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
             ExprKind::RvalueDps
         }
 
-        hir::ExprLit(ref lit) if rustc_front::util::lit_is_str(&**lit) => {
+        hir::ExprLit(ref lit) if ast_util::lit_is_str(&**lit) => {
             ExprKind::RvalueDps
         }
 
