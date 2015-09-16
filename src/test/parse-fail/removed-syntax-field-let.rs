@@ -13,5 +13,4 @@
 struct s {
     let foo: (),
     //~^  ERROR expected identifier, found keyword `let`
-    //~^^ ERROR expected `:`, found `foo`
 }

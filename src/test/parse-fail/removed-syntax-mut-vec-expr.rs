@@ -13,5 +13,4 @@
 fn f() {
     let v = [mut 1, 2, 3, 4];
     //~^  ERROR expected identifier, found keyword `mut`
-    //~^^ ERROR expected one of `!`, `,`, `.`, `::`, `;`, `]`, `{`, or an operator, found `1`
 }
