@@ -541,7 +541,7 @@ impl<T> Option<T> {
     /// ```
     /// let mut x = Some(4);
     /// match x.iter_mut().next() {
-    ///     Some(&mut ref mut v) => *v = 42,
+    ///     Some(v) => *v = 42,
     ///     None => {},
     /// }
     /// assert_eq!(x, Some(42));
