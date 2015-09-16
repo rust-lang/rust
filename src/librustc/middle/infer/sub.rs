@@ -18,7 +18,7 @@ use middle::ty::TyVar;
 use middle::ty_relate::{Cause, Relate, RelateResult, TypeRelation};
 use std::mem;
 
-/// "Greatest lower bound" (common subtype)
+/// Ensures `a` is made a subtype of `b`. Returns `a` on success.
 pub struct Sub<'a, 'tcx: 'a> {
     fields: CombineFields<'a, 'tcx>,
 }
