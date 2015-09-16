@@ -471,9 +471,7 @@ mod impls {
             impl PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
-                    if *self == *other { Some(Equal) }
-                    else if *self < *other { Some(Less) }
-                    else { Some(Greater) }
+                    Some(self.cmp(other))
                 }
                 #[inline]
                 fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
