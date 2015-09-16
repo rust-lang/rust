@@ -357,10 +357,10 @@ fn signal_shadowing_problem(
     sess: &Session, name: ast::Name, orig: Original, shadower: Shadower) {
     if let (ShadowKind::Lifetime, ShadowKind::Lifetime) = (orig.kind, shadower.kind) {
         // lifetime/lifetime shadowing is an error
-        sess.span_err(shadower.span,
-                      &format!("{} name `{}` shadows a \
-                                {} name that is already in scope",
-                               shadower.kind.desc(), name, orig.kind.desc()));
+        span_err!(sess, shadower.span, E0496,
+                  "{} name `{}` shadows a \
+                   {} name that is already in scope",
+                  shadower.kind.desc(), name, orig.kind.desc());
     } else {
         // shadowing involving a label is only a warning, due to issues with
         // labels and lifetimes not being macro-hygienic.
