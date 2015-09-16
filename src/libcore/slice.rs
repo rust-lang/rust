@@ -1558,7 +1558,6 @@ impl<T: Eq> Eq for [T] {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for [T] {
-    #[inline]
     fn cmp(&self, other: &[T]) -> Ordering {
         let l = cmp::min(self.len(), other.len());
         let lhs = &self[..l];
@@ -1577,7 +1576,6 @@ impl<T: Ord> Ord for [T] {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for [T] {
-    #[inline]
     fn partial_cmp(&self, other: &[T]) -> Option<Ordering> {
         let l = cmp::min(self.len(), other.len());
         let lhs = &self[..l];
