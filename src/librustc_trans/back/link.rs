@@ -543,7 +543,11 @@ fn link_binary_output(sess: &Session,
         }
     }
 
-    let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
+    let tmpdir = match TempDir::new("rustc") {
+        Ok(tmpdir) => tmpdir,
+        Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
+    };
+
     match crate_type {
         config::CrateTypeRlib => {
             link_rlib(sess, Some(trans), &objects, &out_filename,
