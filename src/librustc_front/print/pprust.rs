@@ -944,7 +944,6 @@ impl<'a> State<'a> {
     }
 
     pub fn print_variant(&mut self, v: &hir::Variant) -> io::Result<()> {
-        try!(self.print_visibility(v.node.vis));
         match v.node.kind {
             hir::TupleVariantKind(ref args) => {
                 try!(self.print_ident(v.node.name));

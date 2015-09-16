@@ -1075,20 +1075,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                                  instead");
             }
 
-            hir::ItemEnum(ref def, _) => {
-                for v in &def.variants {
-                    match v.node.vis {
-                        hir::Public => {
-                            if item.vis == hir::Public {
-                                span_err!(tcx.sess, v.span, E0448,
-                                          "unnecessary `pub` visibility");
-                            }
-                        }
-                        hir::Inherited => {}
-                    }
-                }
-            }
-
+            hir::ItemEnum(..) |
             hir::ItemTrait(..) | hir::ItemDefaultImpl(..) |
             hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemStruct(..) |
             hir::ItemFn(..) | hir::ItemMod(..) | hir::ItemTy(..) |
@@ -1131,14 +1118,10 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                     check_inherited(tcx, i.span, i.vis);
                 }
             }
-            hir::ItemEnum(ref def, _) => {
-                for v in &def.variants {
-                    check_inherited(tcx, v.span, v.node.vis);
-                }
-            }
 
             hir::ItemStruct(ref def, _) => check_struct(&**def),
 
+            hir::ItemEnum(..) |
             hir::ItemExternCrate(_) | hir::ItemUse(_) |
             hir::ItemTrait(..) | hir::ItemDefaultImpl(..) |
             hir::ItemStatic(..) | hir::ItemConst(..) |
