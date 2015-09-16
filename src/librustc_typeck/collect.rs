@@ -93,12 +93,12 @@ use std::rc::Rc;
 
 use syntax::abi;
 use syntax::ast;
+use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use syntax::ptr::P;
 use rustc_front::hir;
 use rustc_front::visit;
-use rustc_front::attr;
 use rustc_front::print::pprust;
 
 ///////////////////////////////////////////////////////////////////////////

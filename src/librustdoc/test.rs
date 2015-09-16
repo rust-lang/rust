@@ -124,8 +124,8 @@ pub fn run(input: &str,
 
 // Look for #![doc(test(no_crate_inject))], used by crates in the std facade
 fn scrape_test_config(krate: &::rustc_front::hir::Crate) -> TestOptions {
-    use rustc_front::attr::AttrMetaMethods;
-    use rustc_front::print::pprust;
+    use syntax::attr::AttrMetaMethods;
+    use syntax::print::pprust;
 
     let mut opts = TestOptions {
         no_crate_inject: false,

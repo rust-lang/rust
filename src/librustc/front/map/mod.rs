@@ -17,7 +17,7 @@ use metadata::inline::InlinedItem as II;
 use middle::def_id::DefId;
 
 use syntax::abi;
-use syntax::ast::{Name, NodeId, Ident, CRATE_NODE_ID, DUMMY_NODE_ID};
+use syntax::ast::{self, Name, NodeId, Ident, CRATE_NODE_ID, DUMMY_NODE_ID};
 use syntax::codemap::{Span, Spanned};
 use syntax::parse::token;
 
@@ -538,7 +538,7 @@ impl<'ast> Map<'ast> {
 
     /// Given a node ID, get a list of of attributes associated with the AST
     /// corresponding to the Node ID
-    pub fn attrs(&self, id: NodeId) -> &'ast [Attribute] {
+    pub fn attrs(&self, id: NodeId) -> &'ast [ast::Attribute] {
         let attrs = match self.find(id) {
             Some(NodeItem(i)) => Some(&i.attrs[..]),
             Some(NodeForeignItem(fi)) => Some(&fi.attrs[..]),

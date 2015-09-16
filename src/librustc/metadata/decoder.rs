@@ -16,7 +16,6 @@ pub use self::DefLike::*;
 use self::Family::*;
 
 use front::map as ast_map;
-use rustc_front::print::pprust;
 use rustc_front::hir;
 
 use back::svh::Svh;
@@ -46,12 +45,13 @@ use std::str;
 use rbml::reader;
 use rbml;
 use serialize::Decodable;
-use rustc_front::attr;
+use syntax::attr;
 use syntax::parse::token::{IdentInterner, special_idents};
 use syntax::parse::token;
 use syntax::ast;
 use syntax::abi;
 use syntax::codemap;
+use syntax::print::pprust;
 use syntax::ptr::P;
 
 
@@ -1041,7 +1041,7 @@ pub fn get_tuple_struct_definition_if_ctor(cdata: Cmd,
 
 pub fn get_item_attrs(cdata: Cmd,
                       orig_node_id: ast::NodeId)
-                      -> Vec<hir::Attribute> {
+                      -> Vec<ast::Attribute> {
     // The attributes for a tuple struct are attached to the definition, not the ctor;
     // we assume that someone passing in a tuple struct ctor is actually wanting to
     // look at the definition
@@ -1051,7 +1051,7 @@ pub fn get_item_attrs(cdata: Cmd,
     get_attributes(item)
 }
 
-pub fn get_struct_field_attrs(cdata: Cmd) -> FnvHashMap<ast::NodeId, Vec<hir::Attribute>> {
+pub fn get_struct_field_attrs(cdata: Cmd) -> FnvHashMap<ast::NodeId, Vec<ast::Attribute>> {
     let data = rbml::Doc::new(cdata.data());
     let fields = reader::get_doc(data, tag_struct_fields);
     reader::tagged_docs(fields, tag_struct_field).map(|field| {
@@ -1079,7 +1079,7 @@ pub fn get_struct_field_names(intr: &IdentInterner, cdata: Cmd, id: ast::NodeId)
     })).collect()
 }
 
-fn get_meta_items(md: rbml::Doc) -> Vec<P<hir::MetaItem>> {
+fn get_meta_items(md: rbml::Doc) -> Vec<P<ast::MetaItem>> {
     reader::tagged_docs(md, tag_meta_item_word).map(|meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let n = token::intern_and_get_ident(nd.as_str_slice());
@@ -1100,7 +1100,7 @@ fn get_meta_items(md: rbml::Doc) -> Vec<P<hir::MetaItem>> {
     })).collect()
 }
 
-fn get_attributes(md: rbml::Doc) -> Vec<hir::Attribute> {
+fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
     match reader::maybe_get_doc(md, tag_attributes) {
         Some(attrs_d) => {
             reader::tagged_docs(attrs_d, tag_attribute).map(|attr_doc| {
@@ -1113,9 +1113,9 @@ fn get_attributes(md: rbml::Doc) -> Vec<hir::Attribute> {
                 assert_eq!(meta_items.len(), 1);
                 let meta_item = meta_items.into_iter().nth(0).unwrap();
                 codemap::Spanned {
-                    node: hir::Attribute_ {
+                    node: ast::Attribute_ {
                         id: attr::mk_attr_id(),
-                        style: hir::AttrOuter,
+                        style: ast::AttrOuter,
                         value: meta_item,
                         is_sugared_doc: is_sugared_doc,
                     },
@@ -1139,7 +1139,7 @@ fn list_crate_attributes(md: rbml::Doc, hash: &Svh,
     write!(out, "\n\n")
 }
 
-pub fn get_crate_attributes(data: &[u8]) -> Vec<hir::Attribute> {
+pub fn get_crate_attributes(data: &[u8]) -> Vec<ast::Attribute> {
     get_attributes(rbml::Doc::new(data))
 }
 
@@ -1337,7 +1337,7 @@ pub fn get_plugin_registrar_fn(data: &[u8]) -> Option<ast::NodeId> {
 }
 
 pub fn each_exported_macro<F>(data: &[u8], intr: &IdentInterner, mut f: F) where
-    F: FnMut(ast::Name, Vec<hir::Attribute>, String) -> bool,
+    F: FnMut(ast::Name, Vec<ast::Attribute>, String) -> bool,
 {
     let macros = reader::get_doc(rbml::Doc::new(data), tag_macro_defs);
     for macro_doc in reader::tagged_docs(macros, tag_macro_def) {

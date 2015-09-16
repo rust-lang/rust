@@ -32,6 +32,7 @@ use syntax::ast;
 use syntax::codemap;
 use syntax::fold::{self, Folder};
 use syntax::print::{pp, pprust};
+use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
 use syntax::util::small_vector::SmallVector;
 

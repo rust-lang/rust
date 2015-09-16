@@ -39,7 +39,7 @@ use syntax::ast;
 use rustc_front::hir;
 
 pub use lint::context::{Context, LintStore, raw_emit_lint, check_crate, gather_attrs,
-                        gather_attrs_from_hir, GatherNodeLevels};
+                        GatherNodeLevels};
 
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]
@@ -158,14 +158,14 @@ pub trait LintPass {
     fn check_explicit_self(&mut self, _: &Context, _: &hir::ExplicitSelf) { }
     fn check_mac(&mut self, _: &Context, _: &ast::Mac) { }
     fn check_path(&mut self, _: &Context, _: &hir::Path, _: ast::NodeId) { }
-    fn check_attribute(&mut self, _: &Context, _: &hir::Attribute) { }
+    fn check_attribute(&mut self, _: &Context, _: &ast::Attribute) { }
 
     /// Called when entering a syntax node that can have lint attributes such
     /// as `#[allow(...)]`. Called with *all* the attributes of that node.
-    fn enter_lint_attrs(&mut self, _: &Context, _: &[hir::Attribute]) { }
+    fn enter_lint_attrs(&mut self, _: &Context, _: &[ast::Attribute]) { }
 
     /// Counterpart to `enter_lint_attrs`.
-    fn exit_lint_attrs(&mut self, _: &Context, _: &[hir::Attribute]) { }
+    fn exit_lint_attrs(&mut self, _: &Context, _: &[ast::Attribute]) { }
 }
 
 /// A lint pass boxed up as a trait object.

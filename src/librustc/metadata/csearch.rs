@@ -21,7 +21,7 @@ use util::nodemap::FnvHashMap;
 
 use std::rc::Rc;
 use syntax::ast;
-use rustc_front::attr;
+use syntax::attr;
 use rustc_front::hir;
 
 #[derive(Copy, Clone)]
@@ -186,7 +186,7 @@ pub fn get_methods_if_impl(cstore: &cstore::CStore,
 
 pub fn get_item_attrs(cstore: &cstore::CStore,
                       def_id: DefId)
-                      -> Vec<hir::Attribute> {
+                      -> Vec<ast::Attribute> {
     let cdata = cstore.get_crate_data(def_id.krate);
     decoder::get_item_attrs(&*cdata, def_id.node)
 }
@@ -197,7 +197,7 @@ pub fn get_struct_field_names(cstore: &cstore::CStore, def: DefId) -> Vec<ast::N
 }
 
 pub fn get_struct_field_attrs(cstore: &cstore::CStore, def: DefId) -> FnvHashMap<ast::NodeId,
-        Vec<hir::Attribute>> {
+        Vec<ast::Attribute>> {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_struct_field_attrs(&*cdata)
 }

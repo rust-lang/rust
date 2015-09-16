@@ -26,11 +26,11 @@ use util::num::ToPrimitive;
 
 use std::cmp;
 use std::hash::{Hash, SipHasher, Hasher};
-use syntax::ast::Name;
+use syntax::ast::{self, Name};
+use syntax::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
 use syntax::codemap::Span;
 
 use rustc_front::hir;
-use rustc_front::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
 
 pub trait IntTypeExt {
     fn to_ty<'tcx>(&self, cx: &ty::ctxt<'tcx>) -> Ty<'tcx>;
@@ -44,48 +44,48 @@ pub trait IntTypeExt {
 impl IntTypeExt for attr::IntType {
     fn to_ty<'tcx>(&self, cx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
         match *self {
-            SignedInt(hir::TyI8)      => cx.types.i8,
-            SignedInt(hir::TyI16)     => cx.types.i16,
-            SignedInt(hir::TyI32)     => cx.types.i32,
-            SignedInt(hir::TyI64)     => cx.types.i64,
-            SignedInt(hir::TyIs)   => cx.types.isize,
-            UnsignedInt(hir::TyU8)    => cx.types.u8,
-            UnsignedInt(hir::TyU16)   => cx.types.u16,
-            UnsignedInt(hir::TyU32)   => cx.types.u32,
-            UnsignedInt(hir::TyU64)   => cx.types.u64,
-            UnsignedInt(hir::TyUs) => cx.types.usize,
+            SignedInt(ast::TyI8)      => cx.types.i8,
+            SignedInt(ast::TyI16)     => cx.types.i16,
+            SignedInt(ast::TyI32)     => cx.types.i32,
+            SignedInt(ast::TyI64)     => cx.types.i64,
+            SignedInt(ast::TyIs)   => cx.types.isize,
+            UnsignedInt(ast::TyU8)    => cx.types.u8,
+            UnsignedInt(ast::TyU16)   => cx.types.u16,
+            UnsignedInt(ast::TyU32)   => cx.types.u32,
+            UnsignedInt(ast::TyU64)   => cx.types.u64,
+            UnsignedInt(ast::TyUs) => cx.types.usize,
         }
     }
 
     fn i64_to_disr(&self, val: i64) -> Option<Disr> {
         match *self {
-            SignedInt(hir::TyI8)    => val.to_i8()  .map(|v| v as Disr),
-            SignedInt(hir::TyI16)   => val.to_i16() .map(|v| v as Disr),
-            SignedInt(hir::TyI32)   => val.to_i32() .map(|v| v as Disr),
-            SignedInt(hir::TyI64)   => val.to_i64() .map(|v| v as Disr),
-            UnsignedInt(hir::TyU8)  => val.to_u8()  .map(|v| v as Disr),
-            UnsignedInt(hir::TyU16) => val.to_u16() .map(|v| v as Disr),
-            UnsignedInt(hir::TyU32) => val.to_u32() .map(|v| v as Disr),
-            UnsignedInt(hir::TyU64) => val.to_u64() .map(|v| v as Disr),
+            SignedInt(ast::TyI8)    => val.to_i8()  .map(|v| v as Disr),
+            SignedInt(ast::TyI16)   => val.to_i16() .map(|v| v as Disr),
+            SignedInt(ast::TyI32)   => val.to_i32() .map(|v| v as Disr),
+            SignedInt(ast::TyI64)   => val.to_i64() .map(|v| v as Disr),
+            UnsignedInt(ast::TyU8)  => val.to_u8()  .map(|v| v as Disr),
+            UnsignedInt(ast::TyU16) => val.to_u16() .map(|v| v as Disr),
+            UnsignedInt(ast::TyU32) => val.to_u32() .map(|v| v as Disr),
+            UnsignedInt(ast::TyU64) => val.to_u64() .map(|v| v as Disr),
 
-            UnsignedInt(hir::TyUs) |
-            SignedInt(hir::TyIs) => unreachable!(),
+            UnsignedInt(ast::TyUs) |
+            SignedInt(ast::TyIs) => unreachable!(),
         }
     }
 
     fn u64_to_disr(&self, val: u64) -> Option<Disr> {
         match *self {
-            SignedInt(hir::TyI8)    => val.to_i8()  .map(|v| v as Disr),
-            SignedInt(hir::TyI16)   => val.to_i16() .map(|v| v as Disr),
-            SignedInt(hir::TyI32)   => val.to_i32() .map(|v| v as Disr),
-            SignedInt(hir::TyI64)   => val.to_i64() .map(|v| v as Disr),
-            UnsignedInt(hir::TyU8)  => val.to_u8()  .map(|v| v as Disr),
-            UnsignedInt(hir::TyU16) => val.to_u16() .map(|v| v as Disr),
-            UnsignedInt(hir::TyU32) => val.to_u32() .map(|v| v as Disr),
-            UnsignedInt(hir::TyU64) => val.to_u64() .map(|v| v as Disr),
+            SignedInt(ast::TyI8)    => val.to_i8()  .map(|v| v as Disr),
+            SignedInt(ast::TyI16)   => val.to_i16() .map(|v| v as Disr),
+            SignedInt(ast::TyI32)   => val.to_i32() .map(|v| v as Disr),
+            SignedInt(ast::TyI64)   => val.to_i64() .map(|v| v as Disr),
+            UnsignedInt(ast::TyU8)  => val.to_u8()  .map(|v| v as Disr),
+            UnsignedInt(ast::TyU16) => val.to_u16() .map(|v| v as Disr),
+            UnsignedInt(ast::TyU32) => val.to_u32() .map(|v| v as Disr),
+            UnsignedInt(ast::TyU64) => val.to_u64() .map(|v| v as Disr),
 
-            UnsignedInt(hir::TyUs) |
-            SignedInt(hir::TyIs) => unreachable!(),
+            UnsignedInt(ast::TyUs) |
+            SignedInt(ast::TyIs) => unreachable!(),
         }
     }
 
@@ -97,18 +97,18 @@ impl IntTypeExt for attr::IntType {
             // SignedInt repr means we *want* to reinterpret the bits
             // treating the highest bit of Disr as a sign-bit, so
             // cast to i64 before range-checking.
-            SignedInt(hir::TyI8)    => add1!((val as i64).to_i8()),
-            SignedInt(hir::TyI16)   => add1!((val as i64).to_i16()),
-            SignedInt(hir::TyI32)   => add1!((val as i64).to_i32()),
-            SignedInt(hir::TyI64)   => add1!(Some(val as i64)),
+            SignedInt(ast::TyI8)    => add1!((val as i64).to_i8()),
+            SignedInt(ast::TyI16)   => add1!((val as i64).to_i16()),
+            SignedInt(ast::TyI32)   => add1!((val as i64).to_i32()),
+            SignedInt(ast::TyI64)   => add1!(Some(val as i64)),
 
-            UnsignedInt(hir::TyU8)  => add1!(val.to_u8()),
-            UnsignedInt(hir::TyU16) => add1!(val.to_u16()),
-            UnsignedInt(hir::TyU32) => add1!(val.to_u32()),
-            UnsignedInt(hir::TyU64) => add1!(Some(val)),
+            UnsignedInt(ast::TyU8)  => add1!(val.to_u8()),
+            UnsignedInt(ast::TyU16) => add1!(val.to_u16()),
+            UnsignedInt(ast::TyU32) => add1!(val.to_u32()),
+            UnsignedInt(ast::TyU64) => add1!(Some(val)),
 
-            UnsignedInt(hir::TyUs) |
-            SignedInt(hir::TyIs) => unreachable!(),
+            UnsignedInt(ast::TyUs) |
+            SignedInt(ast::TyIs) => unreachable!(),
         }
     }
 
@@ -117,17 +117,17 @@ impl IntTypeExt for attr::IntType {
     // full range from `i64::MIN` through `u64::MAX`.
     fn disr_string(&self, val: Disr) -> String {
         match *self {
-            SignedInt(hir::TyI8)    => format!("{}", val as i8 ),
-            SignedInt(hir::TyI16)   => format!("{}", val as i16),
-            SignedInt(hir::TyI32)   => format!("{}", val as i32),
-            SignedInt(hir::TyI64)   => format!("{}", val as i64),
-            UnsignedInt(hir::TyU8)  => format!("{}", val as u8 ),
-            UnsignedInt(hir::TyU16) => format!("{}", val as u16),
-            UnsignedInt(hir::TyU32) => format!("{}", val as u32),
-            UnsignedInt(hir::TyU64) => format!("{}", val as u64),
+            SignedInt(ast::TyI8)    => format!("{}", val as i8 ),
+            SignedInt(ast::TyI16)   => format!("{}", val as i16),
+            SignedInt(ast::TyI32)   => format!("{}", val as i32),
+            SignedInt(ast::TyI64)   => format!("{}", val as i64),
+            UnsignedInt(ast::TyU8)  => format!("{}", val as u8 ),
+            UnsignedInt(ast::TyU16) => format!("{}", val as u16),
+            UnsignedInt(ast::TyU32) => format!("{}", val as u32),
+            UnsignedInt(ast::TyU64) => format!("{}", val as u64),
 
-            UnsignedInt(hir::TyUs) |
-            SignedInt(hir::TyIs) => unreachable!(),
+            UnsignedInt(ast::TyUs) |
+            SignedInt(ast::TyIs) => unreachable!(),
         }
     }
 
@@ -137,17 +137,17 @@ impl IntTypeExt for attr::IntType {
         }
         let val = val.unwrap_or(ty::INITIAL_DISCRIMINANT_VALUE);
         match *self {
-            SignedInt(hir::TyI8)    => add1!(val as i8 ),
-            SignedInt(hir::TyI16)   => add1!(val as i16),
-            SignedInt(hir::TyI32)   => add1!(val as i32),
-            SignedInt(hir::TyI64)   => add1!(val as i64),
-            UnsignedInt(hir::TyU8)  => add1!(val as u8 ),
-            UnsignedInt(hir::TyU16) => add1!(val as u16),
-            UnsignedInt(hir::TyU32) => add1!(val as u32),
-            UnsignedInt(hir::TyU64) => add1!(val as u64),
+            SignedInt(ast::TyI8)    => add1!(val as i8 ),
+            SignedInt(ast::TyI16)   => add1!(val as i16),
+            SignedInt(ast::TyI32)   => add1!(val as i32),
+            SignedInt(ast::TyI64)   => add1!(val as i64),
+            UnsignedInt(ast::TyU8)  => add1!(val as u8 ),
+            UnsignedInt(ast::TyU16) => add1!(val as u16),
+            UnsignedInt(ast::TyU32) => add1!(val as u32),
+            UnsignedInt(ast::TyU64) => add1!(val as u64),
 
-            UnsignedInt(hir::TyUs) |
-            SignedInt(hir::TyIs) => unreachable!(),
+            UnsignedInt(ast::TyUs) |
+            SignedInt(ast::TyIs) => unreachable!(),
         }
     }
 }
@@ -279,14 +279,14 @@ impl<'tcx> ty::ctxt<'tcx> {
             //
             // NB. Historically `fn enum_variants` generate i64 here, while
             // rustc_typeck::check would generate isize.
-            _ => SignedInt(hir::TyIs),
+            _ => SignedInt(ast::TyIs),
         };
 
         let repr_type_ty = repr_type.to_ty(self);
         let repr_type = match repr_type {
-            SignedInt(hir::TyIs) =>
+            SignedInt(ast::TyIs) =>
                 SignedInt(self.sess.target.int_type),
-            UnsignedInt(hir::TyUs) =>
+            UnsignedInt(ast::TyUs) =>
                 UnsignedInt(self.sess.target.uint_type),
             other => other
         };

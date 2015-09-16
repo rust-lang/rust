@@ -11,7 +11,6 @@
 // The Rust HIR.
 
 pub use self::AsmDialect::*;
-pub use self::AttrStyle::*;
 pub use self::BindingMode::*;
 pub use self::BinOp_::*;
 pub use self::BlockCheckMode::*;
@@ -19,28 +18,20 @@ pub use self::CaptureClause::*;
 pub use self::Decl_::*;
 pub use self::ExplicitSelf_::*;
 pub use self::Expr_::*;
-pub use self::FloatTy::*;
 pub use self::FunctionRetTy::*;
 pub use self::ForeignItem_::*;
 pub use self::ImplItem_::*;
-pub use self::IntTy::*;
 pub use self::Item_::*;
-pub use self::Lit_::*;
-pub use self::LitIntType::*;
-pub use self::MetaItem_::*;
 pub use self::Mutability::*;
 pub use self::Pat_::*;
 pub use self::PathListItem_::*;
 pub use self::PatWildKind::*;
 pub use self::PrimTy::*;
-pub use self::Sign::*;
 pub use self::Stmt_::*;
-pub use self::StrStyle::*;
 pub use self::StructFieldKind::*;
 pub use self::TraitItem_::*;
 pub use self::Ty_::*;
 pub use self::TyParamBound::*;
-pub use self::UintTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 pub use self::VariantKind::*;
@@ -51,6 +42,7 @@ pub use self::PathParameters::*;
 use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, Ident, NodeId, DUMMY_NODE_ID, TokenTree};
+use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, CrateConfig};
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
@@ -59,7 +51,6 @@ use print::pprust;
 use util;
 
 use std::fmt;
-use std::rc::Rc;
 use serialize::{Encodable, Encoder, Decoder};
 
 
@@ -333,10 +324,6 @@ pub struct WhereEqPredicate {
     pub ty: P<Ty>,
 }
 
-/// The set of MetaItems that define the compilation environment of the crate,
-/// used to drive conditional compilation
-pub type CrateConfig = Vec<P<MetaItem>> ;
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Crate {
     pub module: Mod,
@@ -360,40 +347,6 @@ pub struct MacroDef {
     pub use_locally: bool,
     pub allow_internal_unstable: bool,
     pub body: Vec<TokenTree>,
-}
-
-pub type MetaItem = Spanned<MetaItem_>;
-
-#[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum MetaItem_ {
-    MetaWord(InternedString),
-    MetaList(InternedString, Vec<P<MetaItem>>),
-    MetaNameValue(InternedString, Lit),
-}
-
-// can't be derived because the MetaList requires an unordered comparison
-impl PartialEq for MetaItem_ {
-    fn eq(&self, other: &MetaItem_) -> bool {
-        match *self {
-            MetaWord(ref ns) => match *other {
-                MetaWord(ref no) => (*ns) == (*no),
-                _ => false
-            },
-            MetaNameValue(ref ns, ref vs) => match *other {
-                MetaNameValue(ref no, ref vo) => {
-                    (*ns) == (*no) && vs.node == vo.node
-                }
-                _ => false
-            },
-            MetaList(ref ns, ref miss) => match *other {
-                MetaList(ref no, ref miso) => {
-                    ns == no &&
-                        miss.iter().all(|mi| miso.iter().any(|x| x.node == mi.node))
-                }
-                _ => false
-            }
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -787,72 +740,6 @@ pub enum CaptureClause {
     CaptureByRef,
 }
 
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum StrStyle {
-    /// A regular string, like `"foo"`
-    CookedStr,
-    /// A raw string, like `r##"foo"##`
-    ///
-    /// The uint is the number of `#` symbols used
-    RawStr(usize)
-}
-
-/// A literal
-pub type Lit = Spanned<Lit_>;
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum Sign {
-    Minus,
-    Plus
-}
-
-impl Sign {
-    pub fn new<T: IntSign>(n: T) -> Sign {
-        n.sign()
-    }
-}
-
-pub trait IntSign {
-    fn sign(&self) -> Sign;
-}
-macro_rules! doit {
-    ($($t:ident)*) => ($(impl IntSign for $t {
-        #[allow(unused_comparisons)]
-        fn sign(&self) -> Sign {
-            if *self < 0 {Minus} else {Plus}
-        }
-    })*)
-}
-doit! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum LitIntType {
-    SignedIntLit(IntTy, Sign),
-    UnsignedIntLit(UintTy),
-    UnsuffixedIntLit(Sign)
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Lit_ {
-    /// A string literal (`"foo"`)
-    LitStr(InternedString, StrStyle),
-    /// A byte string (`b"foo"`)
-    LitByteStr(Rc<Vec<u8>>),
-    /// A byte char (`b'f'`)
-    LitByte(u8),
-    /// A character literal (`'a'`)
-    LitChar(char),
-    /// An integer literal (`1u8`)
-    LitInt(u64, LitIntType),
-    /// A float literal (`1f64` or `1E10f64`)
-    LitFloat(InternedString, FloatTy),
-    /// A float literal without a suffix (`1.0 or 1.0E10`)
-    LitFloatUnsuffixed(InternedString),
-    /// A boolean literal
-    LitBool(bool),
-}
-
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -915,99 +802,6 @@ pub enum ImplItem_ {
     ConstImplItem(P<Ty>, P<Expr>),
     MethodImplItem(MethodSig, P<Block>),
     TypeImplItem(P<Ty>),
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
-pub enum IntTy {
-    TyIs,
-    TyI8,
-    TyI16,
-    TyI32,
-    TyI64,
-}
-
-impl fmt::Debug for IntTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for IntTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", util::int_ty_to_string(*self, None))
-    }
-}
-
-impl IntTy {
-    pub fn bit_width(&self) -> Option<usize> {
-        Some(match *self {
-            TyIs => return None,
-            TyI8 => 8,
-            TyI16 => 16,
-            TyI32 => 32,
-            TyI64 => 64,
-        })
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
-pub enum UintTy {
-    TyUs,
-    TyU8,
-    TyU16,
-    TyU32,
-    TyU64,
-}
-
-impl UintTy {
-    pub fn bit_width(&self) -> Option<usize> {
-        Some(match *self {
-            TyUs => return None,
-            TyU8 => 8,
-            TyU16 => 16,
-            TyU32 => 32,
-            TyU64 => 64,
-        })
-    }
-}
-
-impl fmt::Debug for UintTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for UintTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", util::uint_ty_to_string(*self, None))
-    }
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
-pub enum FloatTy {
-    TyF32,
-    TyF64,
-}
-
-impl fmt::Debug for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, f)
-    }
-}
-
-impl fmt::Display for FloatTy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", util::float_ty_to_string(*self))
-    }
-}
-
-impl FloatTy {
-    pub fn bit_width(&self) -> usize {
-        match *self {
-            TyF32 => 32,
-            TyF64 => 64,
-        }
-    }
 }
 
 // Bind a type to an associated type: `A=Foo`.
@@ -1314,30 +1108,6 @@ pub enum ViewPath_ {
 
     /// `foo::bar::{a,b,c}`
     ViewPathList(Path, Vec<PathListItem>)
-}
-
-/// Meta-data associated with an item
-pub type Attribute = Spanned<Attribute_>;
-
-/// Distinguishes between Attributes that decorate items and Attributes that
-/// are contained as statements within items. These two cases need to be
-/// distinguished for pretty-printing.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum AttrStyle {
-    AttrOuter,
-    AttrInner,
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub struct AttrId(pub usize);
-
-/// Doc-comments are promoted to attributes that have is_sugared_doc = true
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct Attribute_ {
-    pub id: AttrId,
-    pub style: AttrStyle,
-    pub value: P<MetaItem>,
-    pub is_sugared_doc: bool,
 }
 
 /// TraitRef's appear in impls.

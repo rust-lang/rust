@@ -36,7 +36,6 @@
 #![feature(staged_api)]
 #![feature(str_char)]
 #![feature(filling_drop)]
-#![feature(str_escape)]
 #![cfg_attr(test, feature(test))]
 
 extern crate serialize;
@@ -50,7 +49,6 @@ pub mod hir;
 pub mod lowering;
 pub mod fold;
 pub mod visit;
-pub mod attr;
 pub mod util;
 
 pub mod print {
