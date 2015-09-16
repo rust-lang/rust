@@ -1767,17 +1767,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Apply "fallbacks" to some types
-    /// ! gets replaced with (), unconstrained ints with i32, and unconstrained floats with f64.
     fn default_type_parameters(&self) {
-        use middle::ty::error::UnconstrainedNumeric::Neither;
-        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
-        for ty in &self.infcx().unsolved_variables() {
+        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
+        let unsolved_variables = self.infcx().candidates_for_defaulting();
+        for &(ref ty, _) in &unsolved_variables {
             let resolved = self.infcx().resolve_type_vars_if_possible(ty);
-            if self.infcx().type_var_diverges(resolved) {
+            let diverges = self.infcx().type_var_diverges(resolved);
+            if diverges {
                 demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
             } else {
-                match self.infcx().type_is_unconstrained_numeric(resolved) {
+                let unconstrained =
+                    self.infcx().type_is_unconstrained_numeric(resolved);
+                match unconstrained {
                     UnconstrainedInt => {
                         demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
                     },
@@ -1808,10 +1809,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn new_select_all_obligations_and_apply_defaults(&self) {
         use middle::ty::error::UnconstrainedNumeric::Neither;
         use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
-
-        // For the time being this errs on the side of being memory wasteful but provides better
-        // error reporting.
-        // let type_variables = self.infcx().type_variables.clone();
 
         // It is a possible that this algorithm will have to run an arbitrary number of times
         // to terminate so we bound it by the compiler's recursion limit.
@@ -2064,21 +2061,6 @@ impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
         Ok((0..count).map(|_| {
             self.infcx().next_region_var(infer::MiscVariable(span))
         }).collect())
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum LvaluePreference {
-    PreferMutLvalue,
-    NoPreference
-}
-
-impl LvaluePreference {
-    pub fn from_mutbl(m: ast::Mutability) -> Self {
-        match m {
-            ast::MutMutable => PreferMutLvalue,
-            ast::MutImmutable => NoPreference,
-        }
     }
 }
 
