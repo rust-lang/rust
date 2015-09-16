@@ -49,6 +49,8 @@ use std::collections::HashMap;
 use std::fmt;
 use std::mem::swap;
 use std::str::FromStr;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 use issues::{BadIssueSeeker, Issue};
 use filemap::FileMap;
@@ -310,8 +312,9 @@ fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
 }
 
 struct RustFmtCalls {
-    write_mode: WriteMode,
     config: Option<Box<config::Config>>,
+    // FIXME: there's likely a better type for the job.
+    result: Rc<RefCell<Option<FileMap>>>,
 }
 
 impl<'a> CompilerCalls<'a> for RustFmtCalls {
@@ -326,11 +329,10 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
     }
 
     fn build_controller(&mut self, _: &Session) -> driver::CompileController<'a> {
-        let write_mode = self.write_mode;
-
         let mut config_option = None;
         swap(&mut self.config, &mut config_option);
         let config = config_option.unwrap();
+        let result = self.result.clone();
 
         let mut control = driver::CompileController::basic();
         control.after_parse.stop = Compilation::Stop;
@@ -341,22 +343,23 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
             // For some reason, the codemap does not include terminating
             // newlines so we must add one on for each file. This is sad.
             filemap::append_newlines(&mut file_map);
-            println!("{}", fmt_lines(&mut file_map, &*config));
 
-            let result = filemap::write_all_files(&file_map, write_mode, &*config);
-
-            match result {
-                Err(msg) => println!("Error writing files: {}", msg),
-                Ok(result) => {
-                    if let WriteMode::Return(callback) = write_mode {
-                        callback(result);
-                    }
-                }
-            }
+            *result.borrow_mut() = Some(file_map);
         });
 
         control
     }
+}
+
+pub fn format(args: Vec<String>, config: Box<Config>) -> FileMap {
+    let result = Rc::new(RefCell::new(None));
+    {
+        let mut call_ctxt = RustFmtCalls { config: Some(config), result: result.clone() };
+        rustc_driver::run_compiler(&args, &mut call_ctxt);
+    }
+
+    // Peel the union.
+    Rc::try_unwrap(result).ok().unwrap().into_inner().unwrap()
 }
 
 // args are the arguments passed on the command line, generally passed through
@@ -364,6 +367,20 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
 // write_mode determines what happens to the result of running rustfmt, see
 // WriteMode.
 pub fn run(args: Vec<String>, write_mode: WriteMode, config: Box<Config>) {
-    let mut call_ctxt = RustFmtCalls { write_mode: write_mode, config: Some(config) };
-    rustc_driver::run_compiler(&args, &mut call_ctxt);
+    // FIXME: we probs don't need a full clone
+    let config_clone = (&config).clone();
+    let mut result = format(args, config);
+
+    println!("{}", fmt_lines(&mut result, &config_clone));
+
+    let write_result = filemap::write_all_files(&result, write_mode, &config_clone);
+
+    match write_result {
+        Err(msg) => println!("Error writing files: {}", msg),
+        Ok(result) => {
+            if let WriteMode::Return(callback) = write_mode {
+                callback(result);
+            }
+        }
+    }
 }
