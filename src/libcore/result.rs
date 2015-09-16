@@ -538,7 +538,7 @@ impl<T, E> Result<T, E> {
     /// ```
     /// let mut x: Result<u32, &str> = Ok(7);
     /// match x.iter_mut().next() {
-    ///     Some(&mut ref mut x) => *x = 40,
+    ///     Some(v) => *v = 40,
     ///     None => {},
     /// }
     /// assert_eq!(x, Ok(40));
