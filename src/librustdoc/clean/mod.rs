@@ -1850,7 +1850,7 @@ impl Clean<Item> for doctree::Variant {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            visibility: self.vis.clean(cx),
+            visibility: None,
             stability: self.stab.clean(cx),
             def_id: DefId::local(self.id),
             inner: VariantItem(Variant {

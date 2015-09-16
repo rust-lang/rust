@@ -147,7 +147,6 @@ pub fn lower_variant(v: &Variant) -> P<hir::Variant> {
                 }
             },
             disr_expr: v.node.disr_expr.as_ref().map(|e| lower_expr(e)),
-            vis: lower_visibility(v.node.vis),
         },
         span: v.span,
     })
