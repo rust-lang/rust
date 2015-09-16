@@ -1560,6 +1560,9 @@ impl<T: Eq> Eq for [T] {}
 impl<T: Ord> Ord for [T] {
     fn cmp(&self, other: &[T]) -> Ordering {
         let l = cmp::min(self.len(), other.len());
+
+        // Slice to the loop iteration range to enable bound check
+        // elimination in the compiler
         let lhs = &self[..l];
         let rhs = &other[..l];
 
@@ -1578,6 +1581,9 @@ impl<T: Ord> Ord for [T] {
 impl<T: PartialOrd> PartialOrd for [T] {
     fn partial_cmp(&self, other: &[T]) -> Option<Ordering> {
         let l = cmp::min(self.len(), other.len());
+
+        // Slice to the loop iteration range to enable bound check
+        // elimination in the compiler
         let lhs = &self[..l];
         let rhs = &other[..l];
 
