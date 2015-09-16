@@ -17,6 +17,7 @@ use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
 
+/// Ensures `a` is made equal to `b`. Returns `a` on success.
 pub struct Equate<'a, 'tcx: 'a> {
     fields: CombineFields<'a, 'tcx>
 }
