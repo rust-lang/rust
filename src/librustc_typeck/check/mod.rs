@@ -2150,37 +2150,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Apply "fallbacks" to some types
-    /// unconstrained types get replaced with ! or  () (depending on whether
-    /// feature(never_type) is enabled), unconstrained ints with i32, and
-    /// unconstrained floats with f64.
     fn default_type_parameters(&self) {
-        use rustc::ty::error::UnconstrainedNumeric::Neither;
-        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
-
-        // Defaulting inference variables becomes very dubious if we have
-        // encountered type-checking errors. Therefore, if we think we saw
-        // some errors in this function, just resolve all uninstanted type
-        // varibles to TyError.
-        if self.is_tainted_by_errors() {
-            for ty in &self.unsolved_variables() {
-                if let ty::TyInfer(_) = self.shallow_resolve(ty).sty {
-                    debug!("default_type_parameters: defaulting `{:?}` to error", ty);
-                    self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx().types.err);
-                }
-            }
-            return;
-        }
-
-        for ty in &self.unsolved_variables() {
-            let resolved = self.resolve_type_vars_if_possible(ty);
-            if self.type_var_diverges(resolved) {
-                debug!("default_type_parameters: defaulting `{:?}` to `!` because it diverges",
-                       resolved);
-                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty,
-                                   self.tcx.mk_diverging_default());
+        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
+        let unsolved_variables = self.infcx().candidates_for_defaulting();
+        for &(ref ty, _) in &unsolved_variables {
+            let resolved = self.infcx().resolve_type_vars_if_possible(ty);
+            let diverges = self.infcx().type_var_diverges(resolved);
+            if diverges {
+                demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
             } else {
-                match self.type_is_unconstrained_numeric(resolved) {
+                let unconstrained =
+                    self.infcx().type_is_unconstrained_numeric(resolved);
+                match unconstrained {
                     UnconstrainedInt => {
                         debug!("default_type_parameters: defaulting `{:?}` to `i32`",
                                resolved);
@@ -2207,10 +2188,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn new_select_all_obligations_and_apply_defaults(&self) {
         use middle::ty::error::UnconstrainedNumeric::Neither;
         use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
-
-        // For the time being this errs on the side of being memory wasteful but provides better
-        // error reporting.
-        // let type_variables = self.infcx().type_variables.clone();
 
         // It is a possible that this algorithm will have to run an arbitrary number of times
         // to terminate so we bound it by the compiler's recursion limit.
