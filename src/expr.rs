@@ -23,6 +23,7 @@ use comment::{FindUncommented, rewrite_comment, contains_comment};
 use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg};
 use chains::rewrite_chain;
+use macros::rewrite_macro;
 
 use syntax::{ast, ptr};
 use syntax::codemap::{CodeMap, Span, BytePos, mk_sp};
@@ -150,6 +151,9 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprMethodCall(..) => {
                 rewrite_chain(self, context, width, offset)
             }
+            ast::Expr_::ExprMac(ref mac) => {
+                rewrite_macro(mac, context, width, offset)
+            }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
             _ => wrap_str(context.snippet(self.span), context.config.max_width, width, offset),
@@ -157,13 +161,13 @@ impl Rewrite for ast::Expr {
     }
 }
 
-fn rewrite_array<'a, I>(expr_iter: I,
-                        span: Span,
-                        context: &RewriteContext,
-                        width: usize,
-                        offset: usize)
-                        -> Option<String>
-    where I: Iterator<Item = &'a ast::Expr> + ExactSizeIterator
+pub fn rewrite_array<'a, I>(expr_iter: I,
+                            span: Span,
+                            context: &RewriteContext,
+                            width: usize,
+                            offset: usize)
+                            -> Option<String>
+    where I: Iterator<Item = &'a ast::Expr>
 {
     // 2 for brackets;
     let max_item_width = try_opt!(width.checked_sub(2));
@@ -727,12 +731,13 @@ impl Rewrite for ast::Arm {
         // Patterns
         // 5 = ` => {`
         let pat_budget = try_opt!(width.checked_sub(5));
-        let pat_strs = try_opt!(pats.iter().map(|p| {
-                                               p.rewrite(context,
-                                                         pat_budget,
-                                                         offset + context.config.tab_spaces)
-                                           })
-                                           .collect::<Option<Vec<_>>>());
+        let pat_strs = try_opt!(pats.iter()
+                                    .map(|p| {
+                                        p.rewrite(context,
+                                                  pat_budget,
+                                                  offset + context.config.tab_spaces)
+                                    })
+                                    .collect::<Option<Vec<_>>>());
 
         let mut total_width = pat_strs.iter().fold(0, |a, p| a + p.len());
         // Add ` | `.len().
@@ -802,9 +807,7 @@ impl Rewrite for ast::Arm {
         }
 
         let body_budget = try_opt!(width.checked_sub(context.config.tab_spaces));
-        let body_str = try_opt!(body.rewrite(context,
-                                             body_budget,
-                                             context.block_indent));
+        let body_str = try_opt!(body.rewrite(context, body_budget, context.block_indent));
         Some(format!("{}{} =>\n{}{},",
                      attr_str.trim_left(),
                      pats_str,

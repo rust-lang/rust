@@ -116,7 +116,9 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
     // Check if we need to fallback from horizontal listing, if possible.
     if tactic == ListTactic::HorizontalVertical {
         debug!("write_list: total_width: {}, total_sep_len: {}, h_width: {}",
-               total_width, total_sep_len, formatting.h_width);
+               total_width,
+               total_sep_len,
+               formatting.h_width);
         tactic = if fits_single && !items.iter().any(ListItem::is_multiline) {
             ListTactic::Horizontal
         } else {

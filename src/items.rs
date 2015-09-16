@@ -215,7 +215,9 @@ impl<'a> FmtVisitor<'a> {
             self.compute_budgets_for_args(&result, indent, ret_str.len(), newline_brace);
 
         debug!("rewrite_fn: one_line_budget: {}, multi_line_budget: {}, arg_indent: {}",
-               one_line_budget, multi_line_budget, arg_indent);
+               one_line_budget,
+               multi_line_budget,
+               arg_indent);
 
         // Check if vertical layout was forced by compute_budget_for_args.
         if one_line_budget <= 0 {
@@ -426,7 +428,8 @@ impl<'a> FmtVisitor<'a> {
             let used_space = indent + result.len() + 2;
             let max_space = self.config.ideal_width + self.config.leeway;
             debug!("compute_budgets_for_args: used_space: {}, max_space: {}",
-                   used_space, max_space);
+                   used_space,
+                   max_space);
             if used_space < max_space {
                 budgets = Some((one_line_budget,
                                 max_space - used_space,
@@ -563,9 +566,9 @@ impl<'a> FmtVisitor<'a> {
 
                     // Make sure we do not exceed column limit
                     // 4 = " = ,"
-                    assert!(
-                        self.config.max_width >= vis.len() + name.len() + expr_snippet.len() + 4,
-                        "Enum variant exceeded column limit");
+                    assert!(self.config.max_width >=
+                            vis.len() + name.len() + expr_snippet.len() + 4,
+                            "Enum variant exceeded column limit");
                 }
 
                 result
@@ -903,9 +906,7 @@ impl<'a> FmtVisitor<'a> {
         // 9 = " where ".len() + " {".len()
         if density == Density::Tall || preds_str.contains('\n') ||
            indent + 9 + preds_str.len() > self.config.max_width {
-            Some(format!("\n{}where {}",
-                         make_indent(indent + extra_indent),
-                         preds_str))
+            Some(format!("\n{}where {}", make_indent(indent + extra_indent), preds_str))
         } else {
             Some(format!(" where {}", preds_str))
         }

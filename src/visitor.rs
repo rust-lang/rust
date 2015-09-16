@@ -18,6 +18,7 @@ use utils;
 use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
+use macros::rewrite_macro;
 
 pub struct FmtVisitor<'a> {
     pub codemap: &'a CodeMap,
@@ -73,7 +74,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                     self.last_pos = stmt.span.hi;
                 }
             }
-            ast::Stmt_::StmtMac(..) => {
+            ast::Stmt_::StmtMac(ref _mac, _macro_style) => {
                 self.format_missing_with_indent(stmt.span.lo);
                 visit::walk_stmt(self, stmt);
             }
@@ -213,6 +214,12 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 self.format_missing_with_indent(item.span.lo);
                 self.format_mod(module, item.span, item.ident);
             }
+            ast::Item_::ItemMac(..) => {
+                self.format_missing_with_indent(item.span.lo);
+                // TODO: we cannot format these yet, because of a bad span.
+                // See rust lang issue #28424.
+                // visit::walk_item(self, item);
+            }
             _ => {
                 visit::walk_item(self, item);
             }
@@ -249,7 +256,14 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     }
 
     fn visit_mac(&mut self, mac: &'v ast::Mac) {
-        visit::walk_mac(self, mac)
+        // 1 = ;
+        let width = self.config.max_width - self.block_indent - 1;
+        let rewrite = rewrite_macro(mac, &self.get_context(), width, self.block_indent);
+
+        if let Some(res) = rewrite {
+            self.buffer.push_str(&res);
+            self.last_pos = mac.span.hi;
+        }
     }
 }
 

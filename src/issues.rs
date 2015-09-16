@@ -256,17 +256,11 @@ fn find_issue() {
                          ReportTactic::Always,
                          ReportTactic::Never));
 
-    assert!(! is_bad_issue("TODO: no number\n",
-                           ReportTactic::Never,
-                           ReportTactic::Always));
+    assert!(!is_bad_issue("TODO: no number\n", ReportTactic::Never, ReportTactic::Always));
 
-    assert!(is_bad_issue("This is a FIXME(#1)\n",
-                         ReportTactic::Never,
-                         ReportTactic::Always));
+    assert!(is_bad_issue("This is a FIXME(#1)\n", ReportTactic::Never, ReportTactic::Always));
 
-    assert!(! is_bad_issue("bad FIXME\n",
-                           ReportTactic::Always,
-                           ReportTactic::Never));
+    assert!(!is_bad_issue("bad FIXME\n", ReportTactic::Always, ReportTactic::Never));
 }
 
 #[test]
@@ -275,17 +269,19 @@ fn issue_type() {
     let expected = Some(Issue { issue_type: IssueType::Todo, missing_number: false });
 
     assert_eq!(expected,
-               "TODO(#100): more awesomeness".chars()
-                                       .map(|c| seeker.inspect(c))
-                                       .find(Option::is_some)
-                                       .unwrap());
+               "TODO(#100): more awesomeness"
+                   .chars()
+                   .map(|c| seeker.inspect(c))
+                   .find(Option::is_some)
+                   .unwrap());
 
     let mut seeker = BadIssueSeeker::new(ReportTactic::Never, ReportTactic::Unnumbered);
     let expected = Some(Issue { issue_type: IssueType::Fixme, missing_number: true });
 
     assert_eq!(expected,
-               "Test. FIXME: bad, bad, not good".chars()
-                                                .map(|c| seeker.inspect(c))
-                                                .find(Option::is_some)
-                                                .unwrap());
+               "Test. FIXME: bad, bad, not good"
+                   .chars()
+                   .map(|c| seeker.inspect(c))
+                   .find(Option::is_some)
+                   .unwrap());
 }

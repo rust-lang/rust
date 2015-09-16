@@ -288,6 +288,7 @@ impl<T> Iterator for CharClasses<T> where T: Iterator, T::Item: RichChar {
 mod test {
     use super::{CharClasses, CodeCharKind, contains_comment, rewrite_comment, FindUncommented};
 
+    // TODO(#217): prevent string literal from going over the limit.
     #[test]
     fn format_comments() {
         assert_eq!("/* test */", rewrite_comment(" //test", true, 100, 100));

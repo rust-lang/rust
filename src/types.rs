@@ -137,7 +137,9 @@ impl<'a> Rewrite for SegmentParam<'a> {
                 try_opt!(ty.rewrite(context, width, offset))
             }
             SegmentParam::Binding(ref binding) => {
-                format!("{} = {}", binding.ident, try_opt!(binding.ty.rewrite(context, width, offset)))
+                format!("{} = {}",
+                        binding.ident,
+                        try_opt!(binding.ty.rewrite(context, width, offset)))
             }
         })
     }
@@ -319,8 +321,10 @@ impl Rewrite for ast::WherePredicate {
                                                                              .. }) => {
                 format!("{}: {}",
                         pprust::lifetime_to_string(lifetime),
-                        bounds.iter().map(pprust::lifetime_to_string)
-                              .collect::<Vec<_>>().join(" + "))
+                        bounds.iter()
+                              .map(pprust::lifetime_to_string)
+                              .collect::<Vec<_>>()
+                              .join(" + "))
             }
             ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { ref path, ref ty, .. }) => {
                 let ty_str = pprust::ty_to_string(ty);
@@ -342,8 +346,11 @@ impl Rewrite for ast::LifetimeDef {
         } else {
             Some(format!("{}: {}",
                          pprust::lifetime_to_string(&self.lifetime),
-                         self.bounds.iter().map(pprust::lifetime_to_string)
-                                    .collect::<Vec<_>>().join(" + ")))
+                         self.bounds
+                             .iter()
+                             .map(pprust::lifetime_to_string)
+                             .collect::<Vec<_>>()
+                             .join(" + ")))
         }
     }
 }
@@ -410,9 +417,9 @@ impl Rewrite for ast::PolyTraitRef {
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
             let max_path_width = try_opt!(width.checked_sub(extra_offset));
-            let path_str = try_opt!(self.trait_ref.path.rewrite(context,
-                                                                max_path_width,
-                                                                offset + extra_offset));
+            let path_str = try_opt!(self.trait_ref
+                                        .path
+                                        .rewrite(context, max_path_width, offset + extra_offset));
 
             Some(format!("for<{}> {}", lifetime_str, path_str))
         } else {
