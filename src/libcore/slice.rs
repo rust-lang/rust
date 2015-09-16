@@ -1561,9 +1561,11 @@ impl<T: Ord> Ord for [T] {
     #[inline]
     fn cmp(&self, other: &[T]) -> Ordering {
         let l = cmp::min(self.len(), other.len());
+        let lhs = &self[..l];
+        let rhs = &other[..l];
 
         for i in 0..l {
-            match self[i].cmp(&other[i]) {
+            match lhs[i].cmp(&rhs[i]) {
                 Ordering::Equal => (),
                 non_eq => return non_eq,
             }
@@ -1578,9 +1580,11 @@ impl<T: PartialOrd> PartialOrd for [T] {
     #[inline]
     fn partial_cmp(&self, other: &[T]) -> Option<Ordering> {
         let l = cmp::min(self.len(), other.len());
+        let lhs = &self[..l];
+        let rhs = &other[..l];
 
         for i in 0..l {
-            match self[i].partial_cmp(&other[i]) {
+            match lhs[i].partial_cmp(&rhs[i]) {
                 Some(Ordering::Equal) => (),
                 non_eq => return non_eq,
             }
