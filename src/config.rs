@@ -199,7 +199,7 @@ create_config! {
     reorder_imports: bool, "Reorder import statements alphabetically", // Alphabetically, case sensitive.
     single_line_if_else: bool, "Put else on same line as closing brace for if statements",
     format_strings: bool, "Format string literals, or leave as is",
-    chains_overflow_last: bool, "chains overflow last",
+    chains_overflow_last: bool, "Allow last call in method chain to break the line",
     take_source_hints: bool, "Retain some formatting characteristics from the source code",
 }
 
