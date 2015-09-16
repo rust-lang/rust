@@ -499,9 +499,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 if self.qualif.intersects(ConstQualif::MUTABLE_MEM) && tc.interior_unsafe() {
                     outer = outer | ConstQualif::NOT_CONST;
                     if self.mode != Mode::Var {
-                        self.tcx.sess.span_err(ex.span,
-                            "cannot borrow a constant which contains \
-                             interior mutability, create a static instead");
+                        span_err!(self.tcx.sess, ex.span, E0492,
+                                  "cannot borrow a constant which contains \
+                                   interior mutability, create a static instead");
                     }
                 }
                 // If the reference has to be 'static, avoid in-place initialization
@@ -548,9 +548,9 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         ty::TyEnum(def, _) if def.has_dtor() => {
             v.add_qualif(ConstQualif::NEEDS_DROP);
             if v.mode != Mode::Var {
-                v.tcx.sess.span_err(e.span,
-                                    &format!("{}s are not allowed to have destructors",
-                                             v.msg()));
+                span_err!(v.tcx.sess, e.span, E0493,
+                          "{}s are not allowed to have destructors",
+                          v.msg());
             }
         }
         _ => {}
@@ -909,9 +909,9 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'tcx> {
                         // Borrowed statics can specifically *only* have their address taken,
                         // not any number of other borrows such as borrowing fields, reading
                         // elements of an array, etc.
-                        self.tcx.sess.span_err(borrow_span,
-                            "cannot refer to the interior of another \
-                             static, use a constant instead");
+                        span_err!(self.tcx.sess, borrow_span, E0494,
+                                  "cannot refer to the interior of another \
+                                   static, use a constant instead");
                     }
                     break;
                 }

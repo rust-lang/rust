@@ -433,7 +433,8 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
         for result in gather_attrs(attrs) {
             let v = match result {
                 Err(span) => {
-                    self.tcx.sess.span_err(span, "malformed lint attribute");
+                    span_err!(self.tcx.sess, span, E0452,
+                              "malformed lint attribute");
                     continue;
                 }
                 Ok((lint_name, level, span)) => {
@@ -462,10 +463,10 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                 let now = self.lints.get_level_source(lint_id).0;
                 if now == Forbid && level != Forbid {
                     let lint_name = lint_id.as_str();
-                    self.tcx.sess.span_err(span,
-                                           &format!("{}({}) overruled by outer forbid({})",
-                                                   level.as_str(), lint_name,
-                                                   lint_name));
+                    span_err!(self.tcx.sess, span, E0453,
+                              "{}({}) overruled by outer forbid({})",
+                              level.as_str(), lint_name,
+                              lint_name);
                 } else if now != level {
                     let src = self.lints.get_level_source(lint_id).1;
                     self.level_stack.push((lint_id, (now, src)));

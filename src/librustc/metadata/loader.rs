@@ -308,23 +308,28 @@ impl<'a> Context<'a> {
     }
 
     pub fn report_load_errs(&mut self) {
-        let message = if !self.rejected_via_hash.is_empty() {
-            format!("found possibly newer version of crate `{}`",
-                    self.ident)
+        let add = match self.root {
+            &None => String::new(),
+            &Some(ref r) => format!(" which `{}` depends on",
+                                    r.ident)
+        };
+        if !self.rejected_via_hash.is_empty() {
+            span_err!(self.sess, self.span, E0460,
+                      "found possibly newer version of crate `{}`{}",
+                      self.ident, add);
         } else if !self.rejected_via_triple.is_empty() {
-            format!("couldn't find crate `{}` with expected target triple {}",
-                    self.ident, self.triple)
+            span_err!(self.sess, self.span, E0461,
+                      "couldn't find crate `{}` with expected target triple {}{}",
+                      self.ident, self.triple, add);
         } else if !self.rejected_via_kind.is_empty() {
-            format!("found staticlib `{}` instead of rlib or dylib", self.ident)
+            span_err!(self.sess, self.span, E0462,
+                      "found staticlib `{}` instead of rlib or dylib{}",
+                      self.ident, add);
         } else {
-            format!("can't find crate for `{}`", self.ident)
-        };
-        let message = match self.root {
-            &None => message,
-            &Some(ref r) => format!("{} which `{}` depends on",
-                                    message, r.ident)
-        };
-        self.sess.span_err(self.span, &message[..]);
+            span_err!(self.sess, self.span, E0463,
+                      "can't find crate for `{}`{}",
+                      self.ident, add);
+        }
 
         if !self.rejected_via_triple.is_empty() {
             let mismatches = self.rejected_via_triple.iter();
@@ -473,9 +478,9 @@ impl<'a> Context<'a> {
             0 => None,
             1 => Some(libraries.into_iter().next().unwrap()),
             _ => {
-                self.sess.span_err(self.span,
-                    &format!("multiple matching crates for `{}`",
-                            self.crate_name));
+                span_err!(self.sess, self.span, E0464,
+                          "multiple matching crates for `{}`",
+                          self.crate_name);
                 self.sess.note("candidates:");
                 for lib in &libraries {
                     match lib.dylib {
@@ -543,11 +548,9 @@ impl<'a> Context<'a> {
                 }
             };
             if ret.is_some() {
-                self.sess.span_err(self.span,
-                                   &format!("multiple {} candidates for `{}` \
-                                            found",
-                                           flavor,
-                                           self.crate_name));
+                span_err!(self.sess, self.span, E0465,
+                          "multiple {} candidates for `{}` found",
+                          flavor, self.crate_name);
                 self.sess.span_note(self.span,
                                     &format!(r"candidate #1: {}",
                                             ret.as_ref().unwrap().0
