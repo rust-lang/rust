@@ -82,6 +82,11 @@ pub fn crate_rustc_version(data: &[u8]) -> Option<String> {
     reader::maybe_get_doc(doc, tag_rustc_version).map(|s| s.as_str())
 }
 
+pub fn load_xrefs(data: &[u8]) -> index::DenseIndex {
+    let index = reader::get_doc(rbml::Doc::new(data), tag_xref_index);
+    index::DenseIndex::from_buf(index.data, index.start, index.end)
+}
+
 #[derive(Debug, PartialEq)]
 enum Family {
     ImmStatic,             // c

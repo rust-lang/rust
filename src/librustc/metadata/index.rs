@@ -33,8 +33,8 @@ impl IndexArrayEntry {
 
     fn decode_from(b: &[u32]) -> Self {
         IndexArrayEntry {
-            bits: b[0].to_be(),
-            first_pos: b[1].to_be()
+            bits: u32::from_be(b[0]),
+            first_pos: u32::from_be(b[1])
         }
     }
 }
@@ -106,7 +106,7 @@ impl Index {
     }
 
     fn item_from_pos(&self, positions: &[u32], pos: u32) -> u32 {
-        positions[pos as usize].to_be()
+        u32::from_be(positions[pos as usize])
     }
 
     #[inline(never)]
@@ -147,6 +147,37 @@ impl Index {
             index_end: end
         }
     }
+}
+
+/// A dense index with integer keys
+pub struct DenseIndex {
+    start: usize,
+    end: usize
+}
+
+impl DenseIndex {
+    pub fn lookup(&self, buf: &[u8], ix: u32) -> Option<u32> {
+        let data = bytes_to_words(&buf[self.start..self.end]);
+        data.get(ix as usize).map(|d| u32::from_be(*d))
+    }
+    pub fn from_buf(buf: &[u8], start: usize, end: usize) -> Self {
+        assert!((end-start)%4 == 0 && start <= end && end <= buf.len());
+        DenseIndex {
+            start: start,
+            end: end
+        }
+    }
+}
+
+pub fn write_dense_index(entries: Vec<u32>, buf: &mut Cursor<Vec<u8>>) {
+    let elen = entries.len();
+    assert!(elen < u32::MAX as usize);
+
+    for entry in entries {
+        write_be_u32(buf, entry);
+    }
+
+    info!("write_dense_index: {} entries", elen);
 }
 
 fn write_be_u32<W: Write>(w: &mut W, u: u32) {

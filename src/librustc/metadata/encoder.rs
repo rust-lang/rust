@@ -74,6 +74,24 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     pub reachable: &'a NodeSet,
 }
 
+/// "interned" entries referenced by id
+#[derive(PartialEq, Eq, Hash)]
+pub enum XRef<'tcx> { Unused(&'tcx ()) }
+
+struct CrateIndex<'tcx> {
+    items: Vec<IndexEntry>,
+    xrefs: FnvHashMap<XRef<'tcx>, u32>, // sequentially-assigned
+}
+
+impl<'tcx> CrateIndex<'tcx> {
+    fn index_item(&mut self, rbml_w: &mut Encoder, id: NodeId) {
+        self.items.push(IndexEntry {
+            node: id,
+            pos: rbml_w.mark_stable_position(),
+        });
+    }
+}
+
 fn encode_name(rbml_w: &mut Encoder, name: Name) {
     rbml_w.wr_tagged_str(tag_paths_data_name, &name.as_str());
 }
@@ -263,11 +281,11 @@ fn encode_struct_fields(rbml_w: &mut Encoder,
     }
 }
 
-fn encode_enum_variant_info(ecx: &EncodeContext,
-                            rbml_w: &mut Encoder,
-                            id: NodeId,
-                            vis: hir::Visibility,
-                            index: &mut Vec<IndexEntry>) {
+fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                                      rbml_w: &mut Encoder,
+                                      id: NodeId,
+                                      vis: hir::Visibility,
+                                      index: &mut CrateIndex<'tcx>) {
     debug!("encode_enum_variant_info(id={})", id);
 
     let mut disr_val = 0;
@@ -284,10 +302,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
             }
         }
 
-        index.push(IndexEntry {
-            node: vid.node,
-            pos: rbml_w.mark_stable_position(),
-        });
+        index.index_item(rbml_w, vid.node);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, vid);
         encode_family(rbml_w, match variant.kind() {
@@ -593,15 +608,11 @@ fn encode_item_sort(rbml_w: &mut Encoder, sort: char) {
 fn encode_field<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                           rbml_w: &mut Encoder,
                           field: ty::FieldDef<'tcx>,
-                          global_index: &mut Vec<IndexEntry>) {
+                          index: &mut CrateIndex<'tcx>) {
     let nm = field.name;
     let id = field.did.node;
 
-    let pos = rbml_w.mark_stable_position();
-    global_index.push(IndexEntry {
-        node: id,
-        pos: pos,
-    });
+    index.index_item(rbml_w, id);
     rbml_w.start_tag(tag_items_data_item);
     debug!("encode_field: encoding {} {}", nm, id);
     encode_struct_field_family(rbml_w, field.vis);
@@ -615,17 +626,13 @@ fn encode_field<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     rbml_w.end_tag();
 }
 
-fn encode_info_for_struct_ctor(ecx: &EncodeContext,
-                               rbml_w: &mut Encoder,
-                               name: Name,
-                               ctor_id: NodeId,
-                               index: &mut Vec<IndexEntry>,
-                               struct_id: NodeId) {
-    index.push(IndexEntry {
-        node: ctor_id,
-        pos: rbml_w.mark_stable_position(),
-    });
-
+fn encode_info_for_struct_ctor<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                                         rbml_w: &mut Encoder,
+                                         name: Name,
+                                         ctor_id: NodeId,
+                                         index: &mut CrateIndex<'tcx>,
+                                         struct_id: NodeId) {
+    index.index_item(rbml_w, ctor_id);
     rbml_w.start_tag(tag_items_data_item);
     encode_def_id(rbml_w, DefId::local(ctor_id));
     encode_family(rbml_w, 'o');
@@ -952,21 +959,24 @@ fn encode_stability(rbml_w: &mut Encoder, stab_opt: Option<&attr::Stability>) {
     });
 }
 
-fn encode_info_for_item(ecx: &EncodeContext,
-                        rbml_w: &mut Encoder,
-                        item: &hir::Item,
-                        index: &mut Vec<IndexEntry>,
-                        path: PathElems,
-                        vis: hir::Visibility) {
-    let tcx = ecx.tcx;
+fn encode_xrefs<'a, 'tcx>(_ecx: &EncodeContext<'a, 'tcx>,
+                          rbml_w: &mut Encoder,
+                          _xrefs: FnvHashMap<XRef<'tcx>, u32>)
+{
+    rbml_w.start_tag(tag_xref_data);
+    rbml_w.end_tag();
 
-    fn add_to_index(item: &hir::Item, rbml_w: &mut Encoder,
-                    index: &mut Vec<IndexEntry>) {
-        index.push(IndexEntry {
-            node: item.id,
-            pos: rbml_w.mark_stable_position(),
-        });
-    }
+    rbml_w.start_tag(tag_xref_index);
+    rbml_w.end_tag();
+}
+
+fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                                  rbml_w: &mut Encoder,
+                                  item: &hir::Item,
+                                  index: &mut CrateIndex<'tcx>,
+                                  path: PathElems,
+                                  vis: hir::Visibility) {
+    let tcx = ecx.tcx;
 
     debug!("encoding info for item at {}",
            tcx.sess.codemap().span_to_string(item.span));
@@ -976,7 +986,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
     match item.node {
       hir::ItemStatic(_, m, _) => {
-        add_to_index(item, rbml_w, index);
+        index.index_item(rbml_w, item.id);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         if m == hir::MutMutable {
@@ -994,7 +1004,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         rbml_w.end_tag();
       }
       hir::ItemConst(_, _) => {
-        add_to_index(item, rbml_w, index);
+        index.index_item(rbml_w, item.id);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'C');
@@ -1008,7 +1018,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         rbml_w.end_tag();
       }
       hir::ItemFn(ref decl, _, constness, _, ref generics, _) => {
-        add_to_index(item, rbml_w, index);
+        index.index_item(rbml_w, item.id);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, FN_FAMILY);
@@ -1031,7 +1041,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         rbml_w.end_tag();
       }
       hir::ItemMod(ref m) => {
-        add_to_index(item, rbml_w, index);
+        index.index_item(rbml_w, item.id);
         encode_info_for_mod(ecx,
                             rbml_w,
                             m,
@@ -1042,7 +1052,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                             item.vis);
       }
       hir::ItemForeignMod(ref fm) => {
-        add_to_index(item, rbml_w, index);
+        index.index_item(rbml_w, item.id);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'n');
@@ -1059,7 +1069,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         rbml_w.end_tag();
       }
       hir::ItemTy(..) => {
-        add_to_index(item, rbml_w, index);
+        index.index_item(rbml_w, item.id);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'y');
@@ -1071,7 +1081,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         rbml_w.end_tag();
       }
       hir::ItemEnum(ref enum_definition, _) => {
-        add_to_index(item, rbml_w, index);
+        index.index_item(rbml_w, item.id);
 
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
@@ -1104,12 +1114,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         let def = ecx.tcx.lookup_adt_def(def_id);
         let variant = def.struct_variant();
 
-        for field in &variant.fields {
-            encode_field(ecx, rbml_w, field, index);
-        }
-
         /* Index the class*/
-        add_to_index(item, rbml_w, index);
+        index.index_item(rbml_w, item.id);
 
         /* Now, make an item for the class itself */
         rbml_w.start_tag(tag_items_data_item);
@@ -1137,6 +1143,10 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
         rbml_w.end_tag();
 
+        for field in &variant.fields {
+            encode_field(ecx, rbml_w, field, index);
+        }
+
         // If this is a tuple-like struct, encode the type of the constructor.
         match struct_def.ctor_id {
             Some(ctor_id) => {
@@ -1147,7 +1157,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         }
       }
       hir::ItemDefaultImpl(unsafety, _) => {
-          add_to_index(item, rbml_w, index);
+          index.index_item(rbml_w, item.id);
           rbml_w.start_tag(tag_items_data_item);
           encode_def_id(rbml_w, def_id);
           encode_family(rbml_w, 'd');
@@ -1164,7 +1174,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         let impl_items = tcx.impl_items.borrow();
         let items = impl_items.get(&def_id).unwrap();
 
-        add_to_index(item, rbml_w, index);
+        index.index_item(rbml_w, item.id);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'i');
@@ -1220,11 +1230,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 None
             };
 
-            index.push(IndexEntry {
-                node: trait_item_def_id.def_id().node,
-                pos: rbml_w.mark_stable_position(),
-            });
-
+            index.index_item(rbml_w, trait_item_def_id.def_id().node);
             match tcx.impl_or_trait_item(trait_item_def_id.def_id()) {
                 ty::ConstTraitItem(ref associated_const) => {
                     encode_info_for_associated_const(ecx,
@@ -1255,7 +1261,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         }
       }
       hir::ItemTrait(_, _, _, ref ms) => {
-        add_to_index(item, rbml_w, index);
+        index.index_item(rbml_w, item.id);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'I');
@@ -1311,11 +1317,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         for (i, &item_def_id) in r.iter().enumerate() {
             assert_eq!(item_def_id.def_id().krate, LOCAL_CRATE);
 
-            index.push(IndexEntry {
-                node: item_def_id.def_id().node,
-                pos: rbml_w.mark_stable_position(),
-            });
-
+            index.index_item(rbml_w, item_def_id.def_id().node);
             rbml_w.start_tag(tag_items_data_item);
 
             encode_parent_item(rbml_w, def_id);
@@ -1431,17 +1433,13 @@ fn encode_info_for_item(ecx: &EncodeContext,
     }
 }
 
-fn encode_info_for_foreign_item(ecx: &EncodeContext,
-                                rbml_w: &mut Encoder,
-                                nitem: &hir::ForeignItem,
-                                index: &mut Vec<IndexEntry>,
-                                path: PathElems,
-                                abi: abi::Abi) {
-    index.push(IndexEntry {
-        node: nitem.id,
-        pos: rbml_w.mark_stable_position(),
-    });
-
+fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                                          rbml_w: &mut Encoder,
+                                          nitem: &hir::ForeignItem,
+                                          index: &mut CrateIndex<'tcx>,
+                                          path: PathElems,
+                                          abi: abi::Abi) {
+    index.index_item(rbml_w, nitem.id);
     rbml_w.start_tag(tag_items_data_item);
     encode_def_id(rbml_w, DefId::local(nitem.id));
     encode_visibility(rbml_w, nitem.vis);
@@ -1479,19 +1477,19 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
 
 fn my_visit_expr(_e: &hir::Expr) { }
 
-fn my_visit_item(i: &hir::Item,
-                 rbml_w: &mut Encoder,
-                 ecx: &EncodeContext,
-                 index: &mut Vec<IndexEntry>) {
+fn my_visit_item<'a, 'tcx>(i: &hir::Item,
+                           rbml_w: &mut Encoder,
+                           ecx: &EncodeContext<'a, 'tcx>,
+                           index: &mut CrateIndex<'tcx>) {
     ecx.tcx.map.with_path(i.id, |path| {
         encode_info_for_item(ecx, rbml_w, i, index, path, i.vis);
     });
 }
 
-fn my_visit_foreign_item(ni: &hir::ForeignItem,
-                         rbml_w: &mut Encoder,
-                         ecx: &EncodeContext,
-                         index: &mut Vec<IndexEntry>) {
+fn my_visit_foreign_item<'a, 'tcx>(ni: &hir::ForeignItem,
+                                   rbml_w: &mut Encoder,
+                                   ecx: &EncodeContext<'a, 'tcx>,
+                                   index: &mut CrateIndex<'tcx>) {
     debug!("writing foreign item {}::{}",
             ecx.tcx.map.path_to_string(ni.id),
             ni.name);
@@ -1507,7 +1505,7 @@ fn my_visit_foreign_item(ni: &hir::ForeignItem,
 struct EncodeVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
     rbml_w_for_visit_item: &'a mut Encoder<'b>,
     ecx: &'a EncodeContext<'c,'tcx>,
-    index: &'a mut Vec<IndexEntry>,
+    index: &'a mut CrateIndex<'tcx>,
 }
 
 impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for EncodeVisitor<'a, 'b, 'c, 'tcx> {
@@ -1531,16 +1529,17 @@ impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for EncodeVisitor<'a, 'b, 'c, 'tcx> {
     }
 }
 
-fn encode_info_for_items(ecx: &EncodeContext,
-                         rbml_w: &mut Encoder,
-                         krate: &hir::Crate)
-                         -> Vec<IndexEntry> {
-    let mut index = Vec::new();
+fn encode_info_for_items<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                                   rbml_w: &mut Encoder,
+                                   krate: &hir::Crate)
+                                   -> CrateIndex<'tcx> {
+    let mut index = CrateIndex {
+        items: Vec::new(),
+        xrefs: FnvHashMap()
+    };
     rbml_w.start_tag(tag_items_data);
-    index.push(IndexEntry {
-        node: CRATE_NODE_ID,
-        pos: rbml_w.mark_stable_position(),
-    });
+
+    index.index_item(rbml_w, CRATE_NODE_ID);
     encode_info_for_mod(ecx,
                         rbml_w,
                         &krate.module,
@@ -1560,10 +1559,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
     index
 }
 
-
-
-
-fn encode_index(rbml_w: &mut Encoder, index: Vec<IndexEntry>)
+fn encode_item_index(rbml_w: &mut Encoder, index: Vec<IndexEntry>)
 {
     rbml_w.start_tag(tag_index);
     index::write_index(index, rbml_w.writer);
@@ -1978,6 +1974,7 @@ fn encode_metadata_inner(wr: &mut Cursor<Vec<u8>>,
         misc_bytes: u64,
         item_bytes: u64,
         index_bytes: u64,
+        xref_bytes: u64,
         zero_bytes: u64,
         total_bytes: u64,
     }
@@ -1993,6 +1990,7 @@ fn encode_metadata_inner(wr: &mut Cursor<Vec<u8>>,
         misc_bytes: 0,
         item_bytes: 0,
         index_bytes: 0,
+        xref_bytes: 0,
         zero_bytes: 0,
         total_bytes: 0,
     };
@@ -2074,13 +2072,17 @@ fn encode_metadata_inner(wr: &mut Cursor<Vec<u8>>,
     // Encode and index the items.
     rbml_w.start_tag(tag_items);
     i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
-    let items_index = encode_info_for_items(&ecx, &mut rbml_w, krate);
+    let index = encode_info_for_items(&ecx, &mut rbml_w, krate);
     stats.item_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
     rbml_w.end_tag();
 
     i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
-    encode_index(&mut rbml_w, items_index);
+    encode_item_index(&mut rbml_w, index.items);
     stats.index_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
+
+    i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
+    encode_xrefs(&ecx, &mut rbml_w, index.xrefs);
+    stats.xref_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     encode_struct_field_attrs(&mut rbml_w, krate);
 
@@ -2105,6 +2107,7 @@ fn encode_metadata_inner(wr: &mut Cursor<Vec<u8>>,
         println!("            misc bytes: {}", stats.misc_bytes);
         println!("            item bytes: {}", stats.item_bytes);
         println!("           index bytes: {}", stats.index_bytes);
+        println!("            xref bytes: {}", stats.xref_bytes);
         println!("            zero bytes: {}", stats.zero_bytes);
         println!("           total bytes: {}", stats.total_bytes);
     }

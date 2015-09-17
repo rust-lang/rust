@@ -43,9 +43,11 @@ pub const tag_items_data_parent_item: usize = 0x28;
 
 pub const tag_items_data_item_is_tuple_struct_ctor: usize = 0x29;
 
-pub const tag_index: usize = 0x2a;
+pub const tag_index: usize = 0x110; // top-level only
+pub const tag_xref_index: usize = 0x111; // top-level only
+pub const tag_xref_data: usize = 0x112; // top-level only
 
-// GAP 0x2b, 0x2c, 0x2d, 0x2e
+// GAP 0x2a, 0x2b, 0x2c, 0x2d, 0x2e
 
 pub const tag_meta_item_name_value: usize = 0x2f;
 
