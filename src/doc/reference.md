@@ -2762,7 +2762,7 @@ The following expressions are equivalent.
 let x = std::ops::Range {start: 0, end: 10};
 let y = 0..10;
 
-assert_eq!(x,y);
+assert_eq!(x, y);
 ```
 
 ### Unary operator expressions
@@ -3035,10 +3035,10 @@ A `loop` expression may optionally have a _label_. The label is written as
 a lifetime preceding the loop expression, as in `'foo: loop{ }`. If a
 label is present, then labeled `break` and `continue` expressions nested
 within this loop may exit out of this loop or return control to its head.
-See [Break expressions](#break-expressions) and [Continue
+See [break expressions](#break-expressions) and [continue
 expressions](#continue-expressions).
 
-### Break expressions
+### `break` expressions
 
 A `break` expression has an optional _label_. If the label is absent, then
 executing a `break` expression immediately terminates the innermost loop
@@ -3046,7 +3046,7 @@ enclosing it. It is only permitted in the body of a loop. If the label is
 present, then `break 'foo` terminates the loop with label `'foo`, which need not
 be the innermost label enclosing the `break` expression, but must enclose it.
 
-### Continue expressions
+### `continue` expressions
 
 A `continue` expression has an optional _label_. If the label is absent, then
 executing a `continue` expression immediately terminates the current iteration
@@ -3059,7 +3059,7 @@ innermost label enclosing the `break` expression, but must enclose it.
 
 A `continue` expression is only permitted in the body of a loop.
 
-### While loops
+### `while` loops
 
 A `while` loop begins by evaluating the boolean loop conditional expression.
 If the loop conditional expression evaluates to `true`, the loop body block
@@ -3082,12 +3082,12 @@ Like `loop` expressions, `while` loops can be controlled with `break` or
 loops](#infinite-loops), [break expressions](#break-expressions), and
 [continue expressions](#continue-expressions) for more information.
 
-### For expressions
+### `for` expressions
 
 A `for` expression is a syntactic construct for looping over elements provided
 by an implementation of `std::iter::IntoIterator`.
 
-An example of a for loop over the contents of an array:
+An example of a `for` loop over the contents of an array:
 
 ```
 # type Foo = i32;
@@ -3117,7 +3117,7 @@ Like `loop` expressions, `for` loops can be controlled with `break` or
 loops](#infinite-loops), [break expressions](#break-expressions), and
 [continue expressions](#continue-expressions) for more information.
 
-### If expressions
+### `if` expressions
 
 An `if` expression is a conditional branch in program control. The form of an
 `if` expression is a condition expression, followed by a consequent block, any
@@ -3129,7 +3129,7 @@ evaluates to `false`, the consequent block is skipped and any subsequent `else
 if` condition is evaluated. If all `if` and `else if` conditions evaluate to
 `false` then any `else` block is executed.
 
-### Match expressions
+### `match` expressions
 
 A `match` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
@@ -3235,7 +3235,7 @@ let message = match maybe_digit {
 };
 ```
 
-### If let expressions
+### `if let` expressions
 
 An `if let` expression is semantically identical to an `if` expression but in place
 of a condition expression it expects a refutable let statement. If the value of the
@@ -3256,7 +3256,7 @@ if let ("Ham", b) = dish {
 }
 ```
 
-### While let loops
+### `while let` loops
 
 A `while let` loop is semantically identical to a `while` loop but in place of a
 condition expression it expects a refutable let statement. If the value of the
@@ -3264,7 +3264,7 @@ expression on the right hand side of the let statement matches the pattern, the
 loop body block executes and control returns to the pattern matching statement.
 Otherwise, the while expression completes.
 
-### Return expressions
+### `return` expressions
 
 Return expressions are denoted with the keyword `return`. Evaluating a `return`
 expression moves its argument into the designated output location for the
