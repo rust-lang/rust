@@ -73,8 +73,8 @@ frame. But before we can show what happens when `foo()` is called, we need to
 visualize what’s going on with memory. Your operating system presents a view of
 memory to your program that’s pretty simple: a huge list of addresses, from 0
 to a large number, representing how much RAM your computer has. For example, if
-you have a gigabyte of RAM, your addresses go from `0` to `1,073,741,823`. That
-number comes from 2<sup>30</sup>, the number of bytes in a gigabyte.
+you have a gibibyte of RAM, your addresses go from `0` to `1,073,741,823`. That
+number comes from 2^30^, the number of bytes in a gibibyte.
 
 This memory is kind of like a giant array: addresses start at zero and go
 up to the final number. So here’s a diagram of our first stack frame:
@@ -219,16 +219,16 @@ like this:
 
 | Address         | Name | Value            |
 |-----------------|------|------------------|
-| 2<sup>30</sup>  |      | 5                |
+| (2^30^) - 1     |      | 5                |
 | ...             | ...  | ...              |
 | 1               | y    | 42               |
-| 0               | x    | → 2<sup>30</sup> |
+| 0               | x    | → (2^30^) - 1    |
 
-We have 2<sup>30</sup> in our hypothetical computer with 1GB of RAM. And since
+We have (2^30^) - 1 in our hypothetical computer with 1\ GiB of RAM. And since
 our stack grows from zero, the easiest place to allocate memory is from the
 other end. So our first value is at the highest place in memory. And the value
 of the struct at `x` has a [raw pointer][rawpointer] to the place we’ve
-allocated on the heap, so the value of `x` is 2<sup>30</sup>, the memory
+allocated on the heap, so the value of `x` is (2^30^) - 1, the memory
 location we’ve asked for.
 
 [rawpointer]: raw-pointers.html
@@ -244,18 +244,18 @@ layout of a program which has been running for a while now:
 
 | Address              | Name | Value                  |
 |----------------------|------|------------------------|
-| 2<sup>30</sup>       |      | 5                      |
-| (2<sup>30</sup>) - 1 |      |                        |
-| (2<sup>30</sup>) - 2 |      |                        |
-| (2<sup>30</sup>) - 3 |      | 42                     |
+| (2^30^) - 1          |      | 5                      |
+| (2^30^) - 2          |      |                        |
+| (2^30^) - 3          |      |                        |
+| (2^30^) - 4          |      | 42                     |
 | ...                  | ...  | ...                    |
-| 3                    | y    | → (2<sup>30</sup>) - 3 |
+| 3                    | y    | → (2^30^) - 4          |
 | 2                    | y    | 42                     |
 | 1                    | y    | 42                     |
-| 0                    | x    | → 2<sup>30</sup>       |
+| 0                    | x    | → (2^30^) - 1          |
 
 In this case, we’ve allocated four things on the heap, but deallocated two of
-them. There’s a gap between 2<sup>30</sup> and (2<sup>30</sup>) - 3 which isn’t
+them. There’s a gap between (2^30^) - 1 and (2^30^) - 4 which isn’t
 currently being used. The specific details of how and why this happens depends
 on what kind of strategy you use to manage the heap. Different programs can use
 different ‘memory allocators’, which are libraries that manage this for you.
@@ -368,10 +368,10 @@ First, we call `main()`:
 
 | Address         | Name | Value            |
 |-----------------|------|------------------|
-| 2<sup>30</sup>  |      | 20               |
+| (2^30^) - 1     |      | 20               |
 | ...             | ...  | ...              |
 | 2               | j    | → 0              |
-| 1               | i    | → 2<sup>30</sup> |
+| 1               | i    | → (2^30^) - 1    |
 | 0               | h    | 3                |
 
 We allocate memory for `j`, `i`, and `h`. `i` is on the heap, and so has a
@@ -381,13 +381,13 @@ Next, at the end of `main()`, `foo()` gets called:
 
 | Address         | Name | Value           |
 |-----------------|------|-----------------|
-| 2<sup>30</sup>  |      | 20              |
+| (2^30^) - 1     |      | 20              |
 | ...             | ...  | ...             |
 | 5               | z    | → 4             |
 | 4               | y    | 10              |
 | 3               | x    | → 0             |
 | 2               | j    | → 0             |
-| 1               | i    | → 2<sup>30</sup>|
+| 1               | i    | → (2^30^) - 1   |
 | 0               | h    | 3               |
 
 Space gets allocated for `x`, `y`, and `z`. The argument `x` has the same value
@@ -398,7 +398,7 @@ Next, `foo()` calls `baz()`, passing `z`:
 
 | Address         | Name | Value            |
 |-----------------|------|------------------|
-| 2<sup>30</sup>  |      | 20               |
+| (2^30^) - 1     |      | 20               |
 | ...             | ...  | ...              |
 | 7               | g    | 100              |
 | 6               | f    | → 4              |
@@ -406,7 +406,7 @@ Next, `foo()` calls `baz()`, passing `z`:
 | 4               | y    | 10               |
 | 3               | x    | → 0              |
 | 2               | j    | → 0              |
-| 1               | i    | → 2<sup>30</sup> |
+| 1               | i    | → (2^30^) - 1    |
 | 0               | h    | 3                |
 
 We’ve allocated memory for `f` and `g`. `baz()` is very short, so when it’s
@@ -414,24 +414,24 @@ over, we get rid of its stack frame:
 
 | Address         | Name | Value            |
 |-----------------|------|------------------|
-| 2<sup>30</sup>  |      | 20               |
+| (2^30^) - 1     |      | 20               |
 | ...             | ...  | ...              |
 | 5               | z    | → 4              |
 | 4               | y    | 10               |
 | 3               | x    | → 0              |
 | 2               | j    | → 0              |
-| 1               | i    | → 2<sup>30</sup> |
+| 1               | i    | → (2^30^) - 1    |
 | 0               | h    | 3                |
 
 Next, `foo()` calls `bar()` with `x` and `z`:
 
 | Address              | Name | Value                  |
 |----------------------|------|------------------------|
-|  2<sup>30</sup>      |      | 20                     |
-| (2<sup>30</sup>) - 1 |      | 5                      |
+| (2^30^) - 1          |      | 20                     |
+| (2^30^) - 2          |      | 5                      |
 | ...                  | ...  | ...                    |
 | 10                   | e    | → 9                    |
-| 9                    | d    | → (2<sup>30</sup>) - 1 |
+| 9                    | d    | → (2^30^) - 2          |
 | 8                    | c    | 5                      |
 | 7                    | b    | → 4                    |
 | 6                    | a    | → 0                    |
@@ -439,24 +439,24 @@ Next, `foo()` calls `bar()` with `x` and `z`:
 | 4                    | y    | 10                     |
 | 3                    | x    | → 0                    |
 | 2                    | j    | → 0                    |
-| 1                    | i    | → 2<sup>30</sup>       |
+| 1                    | i    | → (2^30^) - 1          |
 | 0                    | h    | 3                      |
 
 We end up allocating another value on the heap, and so we have to subtract one
-from 2<sup>30</sup>. It’s easier to just write that than `1,073,741,823`. In any
+from (2^30^) - 1. It’s easier to just write that than `1,073,741,822`. In any
 case, we set up the variables as usual.
 
 At the end of `bar()`, it calls `baz()`:
 
 | Address              | Name | Value                  |
 |----------------------|------|------------------------|
-|  2<sup>30</sup>      |      | 20                     |
-| (2<sup>30</sup>) - 1 |      | 5                      |
+| (2^30^) - 1          |      | 20                     |
+| (2^30^) - 2          |      | 5                      |
 | ...                  | ...  | ...                    |
 | 12                   | g    | 100                    |
 | 11                   | f    | → 9                    |
 | 10                   | e    | → 9                    |
-| 9                    | d    | → (2<sup>30</sup>) - 1 |
+| 9                    | d    | → (2^30^) - 2          |
 | 8                    | c    | 5                      |
 | 7                    | b    | → 4                    |
 | 6                    | a    | → 0                    |
@@ -464,7 +464,7 @@ At the end of `bar()`, it calls `baz()`:
 | 4                    | y    | 10                     |
 | 3                    | x    | → 0                    |
 | 2                    | j    | → 0                    |
-| 1                    | i    | → 2<sup>30</sup>       |
+| 1                    | i    | → (2^30^) - 1          |
 | 0                    | h    | 3                      |
 
 With this, we’re at our deepest point! Whew! Congrats for following along this
@@ -474,11 +474,11 @@ After `baz()` is over, we get rid of `f` and `g`:
 
 | Address              | Name | Value                  |
 |----------------------|------|------------------------|
-|  2<sup>30</sup>      |      | 20                     |
-| (2<sup>30</sup>) - 1 |      | 5                      |
+| (2^30^) - 1          |      | 20                     |
+| (2^30^) - 2          |      | 5                      |
 | ...                  | ...  | ...                    |
 | 10                   | e    | → 9                    |
-| 9                    | d    | → (2<sup>30</sup>) - 1 |
+| 9                    | d    | → (2^30^) - 2          |
 | 8                    | c    | 5                      |
 | 7                    | b    | → 4                    |
 | 6                    | a    | → 0                    |
@@ -486,31 +486,31 @@ After `baz()` is over, we get rid of `f` and `g`:
 | 4                    | y    | 10                     |
 | 3                    | x    | → 0                    |
 | 2                    | j    | → 0                    |
-| 1                    | i    | → 2<sup>30</sup>       |
+| 1                    | i    | → (2^30^) - 1          |
 | 0                    | h    | 3                      |
 
 Next, we return from `bar()`. `d` in this case is a `Box<T>`, so it also frees
-what it points to: (2<sup>30</sup>) - 1.
+what it points to: (2^30^) - 2.
 
 | Address         | Name | Value            |
 |-----------------|------|------------------|
-|  2<sup>30</sup> |      | 20               |
+| (2^30^) - 1     |      | 20               |
 | ...             | ...  | ...              |
 | 5               | z    | → 4              |
 | 4               | y    | 10               |
 | 3               | x    | → 0              |
 | 2               | j    | → 0              |
-| 1               | i    | → 2<sup>30</sup> |
+| 1               | i    | → (2^30^) - 1    |
 | 0               | h    | 3                |
 
 And after that, `foo()` returns:
 
 | Address         | Name | Value            |
 |-----------------|------|------------------|
-|  2<sup>30</sup> |      | 20               |
+| (2^30^) - 1     |      | 20               |
 | ...             | ...  | ...              |
 | 2               | j    | → 0              |
-| 1               | i    | → 2<sup>30</sup> |
+| 1               | i    | → (2^30^) - 1    |
 | 0               | h    | 3                |
 
 And then, finally, `main()`, which cleans the rest up. When `i` is `Drop`ped,
