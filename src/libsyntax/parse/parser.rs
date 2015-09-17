@@ -5200,13 +5200,10 @@ impl<'a> Parser<'a> {
             let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
 
-            let vis = try!(self.parse_visibility());
-
-            let ident;
             let kind;
             let mut args = Vec::new();
             let mut disr_expr = None;
-            ident = try!(self.parse_ident());
+            let ident = try!(self.parse_ident());
             if try!(self.eat(&token::OpenDelim(token::Brace)) ){
                 // Parse a struct variant.
                 all_nullary = false;
@@ -5248,7 +5245,7 @@ impl<'a> Parser<'a> {
                 kind: kind,
                 id: ast::DUMMY_NODE_ID,
                 disr_expr: disr_expr,
-                vis: vis,
+                vis: Inherited,
             };
             variants.push(P(spanned(vlo, self.last_span.hi, vr)));
 
