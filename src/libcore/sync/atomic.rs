@@ -92,6 +92,7 @@ impl Default for AtomicBool {
     }
 }
 
+// Send is implicitly implemented for AtomicBool.
 unsafe impl Sync for AtomicBool {}
 
 /// A signed integer type which can be safely shared between threads.
@@ -106,6 +107,7 @@ impl Default for AtomicIsize {
     }
 }
 
+// Send is implicitly implemented for AtomicIsize.
 unsafe impl Sync for AtomicIsize {}
 
 /// An unsigned integer type which can be safely shared between threads.
@@ -120,6 +122,7 @@ impl Default for AtomicUsize {
     }
 }
 
+// Send is implicitly implemented for AtomicUsize.
 unsafe impl Sync for AtomicUsize {}
 
 /// A raw pointer type which can be safely shared between threads.
