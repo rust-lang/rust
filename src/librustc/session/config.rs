@@ -601,6 +601,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "For every macro invocation, print its name and arguments"),
     enable_nonzeroing_move_hints: bool = (false, parse_bool,
           "Force nonzeroing move optimization on"),
+    keep_mtwt_tables: bool = (false, parse_bool,
+          "Don't clear the resolution tables after analysis"),
 }
 
 pub fn default_lib_output() -> CrateType {
