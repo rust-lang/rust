@@ -61,6 +61,11 @@ fn ref_pats() {
         &Some(v) => println!("{:?}", v),
         &None => println!("none"),
     }
+    // false positive: only wildcard pattern
+    let w = Some(0);
+    match w {
+        _ => println!("none"),
+    }
 }
 
 fn main() {

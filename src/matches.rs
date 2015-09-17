@@ -46,6 +46,7 @@ impl LintPass for MatchPass {
 
             // check preconditions for MATCH_REF_PATS
             if has_only_ref_pats(arms) {
+                if in_external_macro(cx, expr.span) { return; }
                 if let ExprAddrOf(Mutability::MutImmutable, ref inner) = ex.node {
                     span_lint(cx, MATCH_REF_PATS, expr.span, &format!(
                         "you don't need to add `&` to both the expression to match \
@@ -69,9 +70,11 @@ fn is_unit_expr(expr: &Expr) -> bool {
 }
 
 fn has_only_ref_pats(arms: &[Arm]) -> bool {
-    arms.iter().flat_map(|a| &a.pats).all(|p| match p.node {
-        PatRegion(..) => true,  // &-patterns
-        PatWild(..) => true,    // an "anything" wildcard is also fine
-        _ => false,
-    })
+    let mapped = arms.iter().flat_map(|a| &a.pats).map(|p| match p.node {
+        PatRegion(..) => Some(true),  // &-patterns
+        PatWild(..) => Some(false),   // an "anything" wildcard is also fine
+        _ => None,                    // any other pattern is not fine
+    }).collect::<Option<Vec<bool>>>();
+    // look for Some(v) where there's at least one true element
+    mapped.map_or(false, |v| v.iter().any(|el| *el))
 }
