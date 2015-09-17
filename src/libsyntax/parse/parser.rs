@@ -1263,7 +1263,7 @@ impl<'a> Parser<'a> {
     pub fn parse_ret_ty(&mut self) -> PResult<FunctionRetTy> {
         if try!(self.eat(&token::RArrow) ){
             if try!(self.eat(&token::Not) ){
-                Ok(NoReturn(self.span))
+                Ok(NoReturn(self.last_span))
             } else {
                 Ok(Return(try!(self.parse_ty_nopanic())))
             }
