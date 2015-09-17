@@ -594,3 +594,13 @@ impl<T: ?Sized> borrow::BorrowMut<T> for Box<T> {
         &mut **self
     }
 }
+
+#[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
+impl<T: ?Sized> AsRef<T> for Box<T> {
+    fn as_ref(&self) -> &T { &**self }
+}
+
+#[stable(since = "1.5.0", feature = "smart_ptr_as_ref")]
+impl<T: ?Sized> AsMut<T> for Box<T> {
+    fn as_mut(&mut self) -> &mut T { &mut **self }
+}
