@@ -14,6 +14,7 @@
 #![allow(non_camel_case_types)]
 
 use std::cell::RefCell;
+use std::str;
 use std::io::prelude::*;
 
 use middle::def_id::DefId;
@@ -173,12 +174,18 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
         return len;
     }
     let abbrev_len = 3 + estimate_sz(pos) + estimate_sz(len);
-    if abbrev_len < len {
-        // I.e. it's actually an abbreviation.
-        cx.abbrevs.borrow_mut().insert(t, ty_abbrev {
-            s: format!("#{:x}:{:x}#", pos, len)
-        });
-    }
+    cx.abbrevs.borrow_mut().insert(t, ty_abbrev {
+        s: if abbrev_len < len {
+            format!("#{:x}:{:x}#", pos, len)
+        } else {
+            // if the abbreviation is longer than the real type,
+            // don't use #-notation. However, insert it here so
+            // other won't have to `mark_stable_position`
+            str::from_utf8(
+                &w.writer.get_ref()[pos as usize..end as usize]
+            ).unwrap().to_owned()
+        }
+    });
 }
 
 fn enc_mutability(w: &mut Encoder, mt: hir::Mutability) {
