@@ -10,7 +10,6 @@
 
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
-use {ReturnIndent, BraceStyle, StructLitStyle};
 use utils::{format_mutability, format_visibility, make_indent, contains_skip, span_after,
             end_typaram, wrap_str};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
@@ -18,7 +17,7 @@ use expr::rewrite_assign_rhs;
 use comment::FindUncommented;
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
-use config::{Config, BlockIndentStyle, Density};
+use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
 
 use syntax::{ast, abi};
 use syntax::codemap::{self, Span, BytePos};
@@ -35,7 +34,7 @@ impl<'a> FmtVisitor<'a> {
 
             if let Some(ref ty) = local.ty {
                 infix.push_str(": ");
-                // FIXME silly width, indent
+                // FIXME: silly width, indent
                 infix.push_str(&ty.rewrite(&self.get_context(), 1000, 0).unwrap());
             }
 
@@ -271,9 +270,9 @@ impl<'a> FmtVisitor<'a> {
                self.config.fn_args_layout != StructLitStyle::Block {
                 let indent = match self.config.fn_return_indent {
                     ReturnIndent::WithWhereClause => indent + 4,
-                    // TODO we might want to check that using the arg indent doesn't
-                    // blow our budget, and if it does, then fallback to the where
-                    // clause indent.
+                    // TODO: we might want to check that using the arg indent
+                    // doesn't blow our budget, and if it does, then fallback to
+                    // the where clause indent.
                     _ => arg_indent,
                 };
 
@@ -356,9 +355,10 @@ impl<'a> FmtVisitor<'a> {
             arg_items.push(ListItem::from_str(""));
         }
 
-        // TODO if there are no args, there might still be a comment, but without
-        // spans for the comment or parens, there is no chance of getting it right.
-        // You also don't get to put a comment on self, unless it is explicit.
+        // TODO(#21): if there are no args, there might still be a comment, but
+        // without spans for the comment or parens, there is no chance of
+        // getting it right. You also don't get to put a comment on self, unless
+        // it is explicit.
         if args.len() >= min_args {
             let comment_span_start = if min_args == 2 {
                 span_after(span, ",", self.codemap)
@@ -444,7 +444,7 @@ impl<'a> FmtVisitor<'a> {
             let max_space = self.config.ideal_width + self.config.leeway;
             if used_space > max_space {
                 // Whoops! bankrupt.
-                // TODO take evasive action, perhaps kill the indent or something.
+                // TODO: take evasive action, perhaps kill the indent or something.
             } else {
                 budgets = Some((0, max_space - used_space, new_indent));
             }
@@ -574,7 +574,7 @@ impl<'a> FmtVisitor<'a> {
                 result
             }
             ast::VariantKind::StructVariantKind(ref struct_def) => {
-                // TODO Should limit the width, as we have a trailing comma
+                // TODO: Should limit the width, as we have a trailing comma
                 let struct_rewrite = self.format_struct("",
                                                         field.node.name,
                                                         field.node.vis,
@@ -795,7 +795,7 @@ impl<'a> FmtVisitor<'a> {
                         generics_offset: usize,
                         span: Span)
                         -> Option<String> {
-        // FIXME convert bounds to where clauses where they get too big or if
+        // FIXME: convert bounds to where clauses where they get too big or if
         // there is a where clause at all.
         let lifetimes: &[_] = &generics.lifetimes;
         let tys: &[_] = &generics.ty_params;
@@ -811,7 +811,7 @@ impl<'a> FmtVisitor<'a> {
         };
 
         let h_budget = self.config.max_width - generics_offset - 2;
-        // TODO might need to insert a newline if the generics are really long
+        // TODO: might need to insert a newline if the generics are really long.
 
         // Strings for the generics.
         let context = self.get_context();

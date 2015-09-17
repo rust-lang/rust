@@ -288,8 +288,9 @@ impl<T> Iterator for CharClasses<T> where T: Iterator, T::Item: RichChar {
 mod test {
     use super::{CharClasses, CodeCharKind, contains_comment, rewrite_comment, FindUncommented};
 
-    // TODO(#217): prevent string literal from going over the limit.
+    // FIXME(#217): prevent string literal from going over the limit.
     #[test]
+    #[rustfmt_skip]
     fn format_comments() {
         assert_eq!("/* test */", rewrite_comment(" //test", true, 100, 100));
         assert_eq!("// comment\n// on a", rewrite_comment("// comment on a", false, 10, 0));
@@ -301,9 +302,10 @@ mod test {
                                    12));
 
         let input = "// comment";
-        let expected = "/* com\n                                                                      \
-                        * men\n                                                                      \
-                        * t */";
+        let expected =
+            "/* com\n                                                                      \
+             * men\n                                                                      \
+             * t */";
         assert_eq!(expected, rewrite_comment(input, true, 9, 69));
 
         assert_eq!("/* trimmed */", rewrite_comment("/*   trimmed    */", true, 100, 100));

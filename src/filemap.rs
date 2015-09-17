@@ -9,15 +9,16 @@
 // except according to those terms.
 
 
-// TODO tests
+// TODO: add tests
 
 use strings::string_buffer::StringBuffer;
+
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{self, Write, Read, stdout};
+
 use WriteMode;
-use NewlineStyle;
-use config::Config;
+use config::{NewlineStyle, Config};
 use rustfmt_diff::{make_diff, print_diff};
 
 // A map of the files of a crate, with their new content
@@ -116,7 +117,7 @@ fn write_file(text: &StringBuffer,
             let diff = make_diff(&ori_text, &fmt_text, 3);
             print_diff(diff, |line_num| format!("\nDiff at line {}:", line_num));
         }
-        WriteMode::Return(_) => {
+        WriteMode::Return => {
             // io::Write is not implemented for String, working around with
             // Vec<u8>
             let mut v = Vec::new();

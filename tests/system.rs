@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(catch_panic)]
-
 extern crate rustfmt;
 extern crate diff;
 extern crate regex;
@@ -18,9 +16,9 @@ extern crate term;
 use std::collections::HashMap;
 use std::fs;
 use std::io::{self, Read, BufRead, BufReader};
-use std::thread;
+
 use rustfmt::*;
-use rustfmt::config::Config;
+use rustfmt::config::{Config, ReportTactic};
 use rustfmt::rustfmt_diff::*;
 
 static DIFF_CONTEXT_SIZE: usize = 3;
@@ -39,14 +37,14 @@ fn get_path_string(dir_entry: io::Result<fs::DirEntry>) -> String {
 // least report.
 #[test]
 fn system_tests() {
-    // Get all files in the tests/source directory
+    // Get all files in the tests/source directory.
     let files = fs::read_dir("tests/source").ok().expect("Couldn't read source dir.");
-    // turn a DirEntry into a String that represents the relative path to the file
+    // Turn a DirEntry into a String that represents the relative path to the
+    // file.
     let files = files.map(get_path_string);
+    let (_reports, count, fails) = check_files(files);
 
-    let (count, fails) = check_files(files);
-
-    // Display results
+    // Display results.
     println!("Ran {} system tests.", count);
     assert!(fails == 0, "{} system tests failed", fails);
 }
@@ -55,40 +53,69 @@ fn system_tests() {
 // rustfmt.
 #[test]
 fn idempotence_tests() {
-    // Get all files in the tests/target directory
-    let files = fs::read_dir("tests/target").ok().expect("Couldn't read target dir.");
-    let files = files.chain(fs::read_dir("tests").ok().expect("Couldn't read tests dir."));
-    let files = files.chain(fs::read_dir("src/bin").ok().expect("Couldn't read src dir."));
-    // turn a DirEntry into a String that represents the relative path to the file
-    let files = files.map(get_path_string);
-    // hack because there's no `IntoIterator` impl for `[T; N]`
-    let files = files.chain(Some("src/lib.rs".to_owned()).into_iter());
+    // Get all files in the tests/target directory.
+    let files = fs::read_dir("tests/target")
+                    .ok()
+                    .expect("Couldn't read target dir.")
+                    .map(get_path_string);
+    let (_reports, count, fails) = check_files(files);
 
-    let (count, fails) = check_files(files);
-
-    // Display results
+    // Display results.
     println!("Ran {} idempotent tests.", count);
     assert!(fails == 0, "{} idempotent tests failed", fails);
 }
 
+// Run rustfmt on itself. This operation must be idempotent. We also check that
+// no warnings are emitted.
+#[test]
+fn self_tests() {
+    let files = fs::read_dir("src/bin")
+                    .ok()
+                    .expect("Couldn't read src dir.")
+                    .chain(fs::read_dir("tests").ok().expect("Couldn't read tests dir."))
+                    .map(get_path_string);
+    // Hack because there's no `IntoIterator` impl for `[T; N]`.
+    let files = files.chain(Some("src/lib.rs".to_owned()).into_iter());
+
+    let (reports, count, fails) = check_files(files);
+    let mut warnings = 0;
+
+    // Display results.
+    println!("Ran {} self tests.", count);
+    assert!(fails == 0, "{} self tests failed", fails);
+
+    for format_report in reports {
+        println!("{}", format_report);
+        warnings += format_report.warning_count();
+    }
+
+    assert!(warnings == 0, "Rustfmt's code generated {} warnings", warnings);
+}
+
 // For each file, run rustfmt and collect the output.
 // Returns the number of files checked and the number of failures.
-fn check_files<I>(files: I) -> (u32, u32)
+fn check_files<I>(files: I) -> (Vec<FormatReport>, u32, u32)
     where I: Iterator<Item = String>
 {
     let mut count = 0;
     let mut fails = 0;
+    let mut reports = vec![];
 
     for file_name in files.filter(|f| f.ends_with(".rs")) {
         println!("Testing '{}'...", file_name);
-        if let Err(msg) = idempotent_check(file_name) {
-            print_mismatches(msg);
-            fails += 1;
+
+        match idempotent_check(file_name) {
+            Ok(report) => reports.push(report),
+            Err(msg) => {
+                print_mismatches(msg);
+                fails += 1;
+            }
         }
+
         count += 1;
     }
 
-    (count, fails)
+    (reports, count, fails)
 }
 
 fn print_mismatches(result: HashMap<String, Vec<Mismatch>>) {
@@ -101,35 +128,34 @@ fn print_mismatches(result: HashMap<String, Vec<Mismatch>>) {
     assert!(t.reset().unwrap());
 }
 
-// Ick, just needed to get a &'static to handle_result.
-static HANDLE_RESULT: &'static Fn(HashMap<String, String>) = &handle_result;
-
-pub fn idempotent_check(filename: String) -> Result<(), HashMap<String, Vec<Mismatch>>> {
+pub fn idempotent_check(filename: String) -> Result<FormatReport, HashMap<String, Vec<Mismatch>>> {
     let sig_comments = read_significant_comments(&filename);
     let mut config = get_config(sig_comments.get("config").map(|x| &(*x)[..]));
     let args = vec!["rustfmt".to_owned(), filename];
 
-    for (key, val) in sig_comments {
+    for (key, val) in &sig_comments {
         if key != "target" && key != "config" {
-            config.override_value(&key, &val);
+            config.override_value(key, val);
         }
     }
 
-    // this thread is not used for concurrency, but rather to workaround the issue that the passed
-    // function handle needs to have static lifetime. Instead of using a global RefCell, we use
-    // panic to return a result in case of failure. This has the advantage of smoothing the road to
-    // multithreaded rustfmt
-    thread::catch_panic(move || {
-        run(args, WriteMode::Return(HANDLE_RESULT), config);
-    })
-        .map_err(|any| *any.downcast().ok().expect("Downcast failed."))
+    // Don't generate warnings for to-do items.
+    config.report_todo = ReportTactic::Never;
+
+    let mut file_map = format(args, &config);
+    let format_report = fmt_lines(&mut file_map, &config);
+
+    // Won't panic, as we're not doing any IO.
+    let write_result = filemap::write_all_files(&file_map, WriteMode::Return, &config).unwrap();
+    let target = sig_comments.get("target").map(|x| &(*x)[..]);
+
+    handle_result(write_result, target).map(|_| format_report)
 }
 
-
 // Reads test config file from comments and reads its contents.
-fn get_config(config_file: Option<&str>) -> Box<Config> {
+fn get_config(config_file: Option<&str>) -> Config {
     let config_file_name = match config_file {
-        None => return Box::new(Default::default()),
+        None => return Default::default(),
         Some(file_name) => {
             let mut full_path = "tests/config/".to_owned();
             full_path.push_str(&file_name);
@@ -143,7 +169,7 @@ fn get_config(config_file: Option<&str>) -> Box<Config> {
     let mut def_config = String::new();
     def_config_file.read_to_string(&mut def_config).ok().expect("Couldn't read config.");
 
-    Box::new(Config::from_toml(&def_config))
+    Config::from_toml(&def_config)
 }
 
 // Reads significant comments of the form: // rustfmt-key: value
@@ -175,29 +201,29 @@ fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
 
 // Compare output to input.
 // TODO: needs a better name, more explanation.
-fn handle_result(result: HashMap<String, String>) {
+fn handle_result(result: HashMap<String, String>,
+                 target: Option<&str>)
+                 -> Result<(), HashMap<String, Vec<Mismatch>>> {
     let mut failures = HashMap::new();
 
     for (file_name, fmt_text) in result {
-        // FIXME: reading significant comments again. Is there a way we can just
-        // pass the target to this function?
-        let sig_comments = read_significant_comments(&file_name);
-
         // If file is in tests/source, compare to file with same name in tests/target.
-        let target = get_target(&file_name, sig_comments.get("target").map(|x| &(*x)[..]));
+        let target = get_target(&file_name, target);
         let mut f = fs::File::open(&target).ok().expect("Couldn't open target.");
 
         let mut text = String::new();
-        // TODO: speedup by running through bytes iterator
         f.read_to_string(&mut text).ok().expect("Failed reading target.");
+
         if fmt_text != text {
             let diff = make_diff(&text, &fmt_text, DIFF_CONTEXT_SIZE);
             failures.insert(file_name, diff);
         }
     }
 
-    if !failures.is_empty() {
-        panic!(failures);
+    if failures.is_empty() {
+        Ok(())
+    } else {
+        Err(failures)
     }
 }
 

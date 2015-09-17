@@ -47,7 +47,6 @@ use syntax::diagnostics;
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::fmt;
-use std::mem::swap;
 use std::str::FromStr;
 use std::rc::Rc;
 use std::cell::RefCell;
@@ -60,7 +59,7 @@ use config::Config;
 #[macro_use]
 mod utils;
 pub mod config;
-mod filemap;
+pub mod filemap;
 mod visitor;
 mod items;
 mod missed_spans;
@@ -94,7 +93,7 @@ pub enum WriteMode {
     // Write the diff to stdout.
     Diff,
     // Return the result as a mapping from filenames to Strings.
-    Return(&'static Fn(HashMap<String, String>)),
+    Return,
 }
 
 impl FromStr for WriteMode {
@@ -111,50 +110,7 @@ impl FromStr for WriteMode {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum NewlineStyle {
-    Windows, // \r\n
-    Unix, // \n
-}
-
-impl_enum_decodable!(NewlineStyle, Windows, Unix);
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum BraceStyle {
-    AlwaysNextLine,
-    PreferSameLine,
-    // Prefer same line except where there is a where clause, in which case force
-    // the brace to the next line.
-    SameLineWhere,
-}
-
-impl_enum_decodable!(BraceStyle, AlwaysNextLine, PreferSameLine, SameLineWhere);
-
-// How to indent a function's return type.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum ReturnIndent {
-    // Aligned with the arguments
-    WithArgs,
-    // Aligned with the where clause
-    WithWhereClause,
-}
-
-impl_enum_decodable!(ReturnIndent, WithArgs, WithWhereClause);
-
-// How to stle a struct literal.
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum StructLitStyle {
-    // First line on the same line as the opening brace, all lines aligned with
-    // the first line.
-    Visual,
-    // First line is on a new line and all lines align with block indent.
-    Block,
-    // FIXME Maybe we should also have an option to align types.
-}
-
-impl_enum_decodable!(StructLitStyle, Visual, Block);
-
-enum ErrorKind {
+pub enum ErrorKind {
     // Line has exceeded character limit
     LineOverflow,
     // Line ends in whitespace
@@ -179,8 +135,8 @@ impl fmt::Display for ErrorKind {
     }
 }
 
-// Formatting errors that are identified *after* rustfmt has run
-struct FormattingError {
+// Formatting errors that are identified *after* rustfmt has run.
+pub struct FormattingError {
     line: u32,
     kind: ErrorKind,
 }
@@ -203,9 +159,15 @@ impl FormattingError {
     }
 }
 
-struct FormatReport {
-    // Maps stringified file paths to their associated formatting errors
+pub struct FormatReport {
+    // Maps stringified file paths to their associated formatting errors.
     file_error_map: HashMap<String, Vec<FormattingError>>,
+}
+
+impl FormatReport {
+    pub fn warning_count(&self) -> usize {
+        self.file_error_map.iter().map(|(_, ref errors)| errors.len()).fold(0, |acc, x| acc + x)
+    }
 }
 
 impl fmt::Display for FormatReport {
@@ -239,9 +201,9 @@ fn fmt_ast(krate: &ast::Crate, codemap: &CodeMap, config: &Config) -> FileMap {
 }
 
 // Formatting done on a char by char or line by line basis.
-// TODO warn on bad license
-// TODO other stuff for parity with make tidy
-fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
+// TODO(#209) warn on bad license
+// TODO(#20) other stuff for parity with make tidy
+pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     let mut truncate_todo = Vec::new();
     let mut report = FormatReport { file_error_map: HashMap::new() };
 
@@ -312,8 +274,7 @@ fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
 }
 
 struct RustFmtCalls {
-    config: Option<Box<config::Config>>,
-    // FIXME: there's likely a better type for the job.
+    config: Rc<Config>,
     result: Rc<RefCell<Option<FileMap>>>,
 }
 
@@ -329,10 +290,8 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
     }
 
     fn build_controller(&mut self, _: &Session) -> driver::CompileController<'a> {
-        let mut config_option = None;
-        swap(&mut self.config, &mut config_option);
-        let config = config_option.unwrap();
         let result = self.result.clone();
+        let config = self.config.clone();
 
         let mut control = driver::CompileController::basic();
         control.after_parse.stop = Compilation::Stop;
@@ -351,10 +310,12 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
     }
 }
 
-pub fn format(args: Vec<String>, config: Box<Config>) -> FileMap {
+pub fn format(args: Vec<String>, config: &Config) -> FileMap {
     let result = Rc::new(RefCell::new(None));
+
     {
-        let mut call_ctxt = RustFmtCalls { config: Some(config), result: result.clone() };
+        let config = Rc::new(config.clone());
+        let mut call_ctxt = RustFmtCalls { config: config, result: result.clone() };
         rustc_driver::run_compiler(&args, &mut call_ctxt);
     }
 
@@ -366,21 +327,14 @@ pub fn format(args: Vec<String>, config: Box<Config>) -> FileMap {
 // to the compiler.
 // write_mode determines what happens to the result of running rustfmt, see
 // WriteMode.
-pub fn run(args: Vec<String>, write_mode: WriteMode, config: Box<Config>) {
-    // FIXME: we probs don't need a full clone
-    let config_clone = (&config).clone();
+pub fn run(args: Vec<String>, write_mode: WriteMode, config: &Config) {
     let mut result = format(args, config);
 
-    println!("{}", fmt_lines(&mut result, &config_clone));
+    println!("{}", fmt_lines(&mut result, config));
 
-    let write_result = filemap::write_all_files(&result, write_mode, &config_clone);
+    let write_result = filemap::write_all_files(&result, write_mode, config);
 
-    match write_result {
-        Err(msg) => println!("Error writing files: {}", msg),
-        Ok(result) => {
-            if let WriteMode::Return(callback) = write_mode {
-                callback(result);
-            }
-        }
+    if let Err(msg) = write_result {
+        println!("Error writing files: {}", msg);
     }
 }
