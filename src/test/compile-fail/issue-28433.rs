@@ -9,7 +9,9 @@
 // except according to those terms.
 
 enum bird {
-    pub duck, //~ ERROR: expected identifier, found keyword `pub`
+    pub duck,
+    //~^ ERROR: expected identifier, found keyword `pub`
+    //~^^ ERROR: expected
     goose
 }
 
