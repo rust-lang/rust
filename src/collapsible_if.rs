@@ -34,9 +34,9 @@ impl LintPass for CollapsibleIf {
     }
 
     fn check_expr(&mut self, cx: &Context, expr: &Expr) {
-		if !in_macro(cx, expr.span) {
-			check_if(cx, expr)
-		}
+        if !in_macro(cx, expr.span) {
+            check_if(cx, expr)
+        }
     }
 }
 
