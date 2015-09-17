@@ -142,7 +142,7 @@ Misc
 [`Error`]: http://doc.rust-lang.org/nightly/std/error/trait.Error.html
 [`File`]: http://doc.rust-lang.org/nightly/std/fs/struct.File.html
 [`Hash`]: http://doc.rust-lang.org/nightly/std/hash/trait.Hash.html
-[`Hasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.Hash.html
+[`Hasher`]: http://doc.rust-lang.org/nightly/std/hash/trait.Hasher.html
 [`Send`]: http://doc.rust-lang.org/nightly/std/marker/trait.Send.html
 [`SliceConcatExt`]: http://doc.rust-lang.org/nightly/std/slice/trait.SliceConcatExt.html
 [`Stdin`]: http://doc.rust-lang.org/nightly/std/io/struct.Stdin.html
