@@ -480,9 +480,16 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                     let fields = &def_a.struct_variant().fields;
                     let diff_fields = fields.iter().enumerate().filter_map(|(i, f)| {
                         let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
-                        if infcx.sub_types(false, origin, b, a).is_ok() {
+
+                        if f.unsubst_ty().is_phantom_data() {
+                            // Ignore PhantomData fields
+                            None
+                        } else if infcx.sub_types(false, origin, b, a).is_ok() {
+                            // Ignore fields that aren't significantly changed
                             None
                         } else {
+                            // Collect up all fields that were significantly changed
+                            // i.e. those that contain T in coerce_unsized T -> U
                             Some((i, a, b))
                         }
                     }).collect::<Vec<_>>();
