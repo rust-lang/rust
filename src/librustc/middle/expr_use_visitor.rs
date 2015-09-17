@@ -362,9 +362,6 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         let cmt = return_if_err!(self.mc.cat_expr(expr));
         self.delegate.borrow(expr.id, expr.span, cmt, r, bk, cause);
 
-        // Note: Unlike consume, we can ignore ExprParen. cat_expr
-        // already skips over them, and walk will uncover any
-        // attachments or whatever.
         self.walk_expr(expr)
     }
 
@@ -378,10 +375,6 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         self.walk_adjustment(expr);
 
         match expr.node {
-            hir::ExprParen(ref subexpr) => {
-                self.walk_expr(&**subexpr)
-            }
-
             hir::ExprPath(..) => { }
 
             hir::ExprUnary(hir::UnDeref, ref base) => {      // *base

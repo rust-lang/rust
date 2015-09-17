@@ -267,8 +267,6 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
 
             // Now comes the rote stuff:
 
-            hir::ExprParen(ref p) =>
-                ExprKind::Paren { arg: p.to_ref() },
             hir::ExprRepeat(ref v, ref c) =>
                 ExprKind::Repeat { value: v.to_ref(), count: c.to_ref() },
             hir::ExprRet(ref v) =>

@@ -24,7 +24,7 @@ pub fn let_<'var, VAR, F: for<'v: 'var> Fn(Expr<'v, VAR>) -> Expr<'v, VAR>>
 }
 
 fn main() {
-    let ex =  (|x| {
+    let ex = |x| {
         let_(add(x,x), |y| { //~ ERROR unable to infer enough type information about `_`
-            let_(add(x, x), |x|x)})});
+            let_(add(x, x), |x|x)})};
 }

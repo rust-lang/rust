@@ -630,9 +630,6 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_datum_unadjusted");
 
     match expr.node {
-        hir::ExprParen(ref e) => {
-            trans(bcx, &**e)
-        }
         hir::ExprPath(..) => {
             trans_def(bcx, expr, bcx.def(expr.id))
         }
@@ -934,9 +931,6 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
     match expr.node {
-        hir::ExprParen(ref e) => {
-            trans_into(bcx, &**e, Ignore)
-        }
         hir::ExprBreak(label_opt) => {
             controlflow::trans_break(bcx, expr, label_opt.map(|l| l.node))
         }
@@ -1050,9 +1044,6 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
     match expr.node {
-        hir::ExprParen(ref e) => {
-            trans_into(bcx, &**e, dest)
-        }
         hir::ExprPath(..) => {
             trans_def_dps_unadjusted(bcx, expr, bcx.def(expr.id), dest)
         }
@@ -2750,7 +2741,5 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
                 ExprKind::RvalueDps
             }
         }
-
-        hir::ExprParen(ref e) => expr_kind(tcx, &**e),
     }
 }

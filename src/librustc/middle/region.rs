@@ -997,8 +997,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
             hir::ExprUnary(hir::UnUniq, ref subexpr) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &**subexpr, blk_id);
             }
-            hir::ExprCast(ref subexpr, _) |
-            hir::ExprParen(ref subexpr) => {
+            hir::ExprCast(ref subexpr, _) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &**subexpr, blk_id)
             }
             hir::ExprBlock(ref block) => {
@@ -1047,8 +1046,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &hir::Local) {
                 hir::ExprUnary(hir::UnDeref, ref subexpr) |
                 hir::ExprField(ref subexpr, _) |
                 hir::ExprTupField(ref subexpr, _) |
-                hir::ExprIndex(ref subexpr, _) |
-                hir::ExprParen(ref subexpr) => {
+                hir::ExprIndex(ref subexpr, _) => {
                     expr = &**subexpr;
                 }
                 _ => {

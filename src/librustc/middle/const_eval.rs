@@ -996,7 +996,6 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
       hir::ExprLit(ref lit) => {
           lit_to_const(&**lit, ety)
       }
-      hir::ExprParen(ref e) => try!(eval_const_expr_partial(tcx, &**e, ty_hint)),
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => try!(eval_const_expr_partial(tcx, &**expr, ty_hint)),

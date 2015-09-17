@@ -2089,8 +2089,6 @@ impl<'tcx> ctxt<'tcx> {
             hir::ExprCast(..) => {
                 false
             }
-
-            hir::ExprParen(ref e) => self.expr_is_lval(e),
         }
     }
 
