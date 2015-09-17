@@ -1587,6 +1587,46 @@ This will fail because the compiler does not know which instance of `Foo` to
 call `bar` on. Change `Foo::bar()` to `Foo::<T>::bar()` to resolve the error.
 "##,
 
+E0283: r##"
+This error occurs when the compiler doesn't have enough information
+to unambiguously choose an implementation.
+
+For example:
+
+```
+trait Generator {
+    fn create() -> u32;
+}
+
+struct Impl;
+impl Generator for Impl {
+    fn create() -> u32 { 1 }
+}
+
+struct AnotherImpl;
+impl Generator for AnotherImpl {
+    fn create() -> u32 { 2 }
+}
+
+fn main() {
+    let cont: u32 = Generator::create();
+    // error, impossible to choose one of Generator trait implementation
+    // Impl or AnotherImpl? Maybe anything else?
+}
+```
+
+To resolve this error use the concrete type:
+
+```
+fn main() {
+    let gen1 = AnotherImpl::create();
+
+    // if there are multiple methods with same name (different traits)
+    let gen2 = <AnotherImpl as Generator>::create();
+}
+```
+"##,
+
 E0296: r##"
 This error indicates that the given recursion limit could not be parsed. Ensure
 that the value provided is a positive integer between quotes, like so:
@@ -1900,7 +1940,6 @@ register_diagnostics! {
     E0278, // requirement is not satisfied
     E0279, // requirement is not satisfied
     E0280, // requirement is not satisfied
-    E0283, // cannot resolve type
     E0284, // cannot resolve type
     E0285, // overflow evaluation builtin bounds
     E0298, // mismatched types between arms
