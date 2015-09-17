@@ -767,6 +767,11 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
         hir_visit::walk_path(self, p);
     }
 
+    fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
+        run_lints!(self, check_path_list_item, late_passes, item);
+        hir_visit::walk_path_list_item(self, prefix, item);
+    }
+
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
         run_lints!(self, check_attribute, late_passes, attr);
     }
@@ -915,9 +920,9 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
         ast_visit::walk_path(self, p);
     }
 
-    fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
-        run_lints!(self, check_path_list_item, item);
-        visit::walk_path_list_item(self, prefix, item);
+    fn visit_path_list_item(&mut self, prefix: &ast::Path, item: &ast::PathListItem) {
+        run_lints!(self, check_path_list_item, early_passes, item);
+        ast_visit::walk_path_list_item(self, prefix, item);
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
