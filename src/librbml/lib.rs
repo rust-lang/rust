@@ -914,7 +914,7 @@ pub mod writer {
         }
     }
 
-    fn write_vuint<W: Write>(w: &mut W, n: usize) -> EncodeResult {
+    pub fn write_vuint<W: Write>(w: &mut W, n: usize) -> EncodeResult {
         if n < 0x7f { return write_sized_vuint(w, n, 1); }
         if n < 0x4000 { return write_sized_vuint(w, n, 2); }
         if n < 0x200000 { return write_sized_vuint(w, n, 3); }

@@ -366,7 +366,6 @@ pub type MethodMap<'tcx> = FnvHashMap<MethodCall, MethodCallee<'tcx>>;
 pub struct CReaderCacheKey {
     pub cnum: CrateNum,
     pub pos: usize,
-    pub len: usize
 }
 
 /// A restriction that certain types must be the same size. The use of
