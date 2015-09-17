@@ -979,18 +979,6 @@ pub fn get_associated_consts<'tcx>(intr: Rc<IdentInterner>,
     }).collect()
 }
 
-pub fn get_type_name_if_impl(cdata: Cmd,
-                             node_id: ast::NodeId) -> Option<ast::Name> {
-    let item = cdata.lookup_item(node_id);
-    if item_family(item) != Impl {
-        return None;
-    }
-
-    reader::tagged_docs(item, tag_item_impl_type_basename).nth(0).map(|doc| {
-        token::intern(doc.as_str_slice())
-    })
-}
-
 pub fn get_methods_if_impl(intr: Rc<IdentInterner>,
                                   cdata: Cmd,
                                   node_id: ast::NodeId)

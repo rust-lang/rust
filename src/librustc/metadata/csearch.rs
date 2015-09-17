@@ -171,12 +171,6 @@ pub fn get_associated_consts<'tcx>(tcx: &ty::ctxt<'tcx>, def: DefId)
     decoder::get_associated_consts(cstore.intr.clone(), &*cdata, def.node, tcx)
 }
 
-pub fn get_type_name_if_impl(cstore: &cstore::CStore, def: DefId)
-                          -> Option<ast::Name> {
-    let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_type_name_if_impl(&*cdata, def.node)
-}
-
 pub fn get_methods_if_impl(cstore: &cstore::CStore,
                                   def: DefId)
                                -> Option<Vec<MethodInfo> > {

@@ -78,10 +78,6 @@ fn encode_name(rbml_w: &mut Encoder, name: Name) {
     rbml_w.wr_tagged_str(tag_paths_data_name, &name.as_str());
 }
 
-fn encode_impl_type_basename(rbml_w: &mut Encoder, name: Name) {
-    rbml_w.wr_tagged_str(tag_item_impl_type_basename, &name.as_str());
-}
-
 fn encode_def_id(rbml_w: &mut Encoder, id: DefId) {
     rbml_w.wr_tagged_u64(tag_def_id, def_to_u64(id));
 }
@@ -253,8 +249,7 @@ fn encode_parent_item(rbml_w: &mut Encoder, id: DefId) {
 }
 
 fn encode_struct_fields(rbml_w: &mut Encoder,
-                        variant: ty::VariantDef,
-                        origin: DefId) {
+                        variant: ty::VariantDef) {
     for f in &variant.fields {
         if f.name == special_idents::unnamed_field.name {
             rbml_w.start_tag(tag_item_unnamed_field);
@@ -264,7 +259,6 @@ fn encode_struct_fields(rbml_w: &mut Encoder,
         }
         encode_struct_field_family(rbml_w, f.vis);
         encode_def_id(rbml_w, f.did);
-        rbml_w.wr_tagged_u64(tag_item_field_origin, def_to_u64(origin));
         rbml_w.end_tag();
     }
 }
@@ -311,7 +305,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         let stab = stability::lookup(ecx.tcx, vid);
         encode_stability(rbml_w, stab);
 
-        encode_struct_fields(rbml_w, variant, vid);
+        encode_struct_fields(rbml_w, variant);
 
         let specified_disr_val = variant.disr_val;
         if specified_disr_val != disr_val {
@@ -518,15 +512,6 @@ fn encode_info_for_mod(ecx: &EncodeContext,
                                  def_to_u64(DefId::local(auxiliary_node_id)));
             true
         });
-
-        if let hir::ItemImpl(..) = item.node {
-            let (name, did) = (item.name, item.id);
-            debug!("(encoding info for module) ... encoding impl {} ({}/{})",
-                   name,
-                   did, ecx.tcx.map.node_to_string(did));
-
-            rbml_w.wr_tagged_u64(tag_mod_impl, def_to_u64(DefId::local(did)));
-        }
     }
 
     encode_path(rbml_w, path.clone());
@@ -603,10 +588,6 @@ fn encode_explicit_self(rbml_w: &mut Encoder,
 
 fn encode_item_sort(rbml_w: &mut Encoder, sort: char) {
     rbml_w.wr_tagged_u8(tag_item_trait_item_sort, sort as u8);
-}
-
-fn encode_parent_sort(rbml_w: &mut Encoder, sort: char) {
-    rbml_w.wr_tagged_u8(tag_item_trait_parent_sort, sort as u8);
 }
 
 fn encode_field<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
@@ -1147,7 +1128,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_trait_method
         needs to know*/
-        encode_struct_fields(rbml_w, variant, def_id);
+        encode_struct_fields(rbml_w, variant);
 
         encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
 
@@ -1177,7 +1158,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
           encode_trait_ref(rbml_w, ecx, trait_ref, tag_item_trait_ref);
           rbml_w.end_tag();
       }
-      hir::ItemImpl(unsafety, polarity, _, _, ref ty, ref ast_items) => {
+      hir::ItemImpl(unsafety, polarity, _, _, _, ref ast_items) => {
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
         let impl_items = tcx.impl_items.borrow();
@@ -1202,13 +1183,6 @@ fn encode_info_for_item(ecx: &EncodeContext,
             None => {}
         }
 
-        match ty.node {
-            hir::TyPath(None, ref path) if path.segments.len() == 1 => {
-                let name = path.segments.last().unwrap().identifier.name;
-                encode_impl_type_basename(rbml_w, name);
-            }
-            _ => {}
-        }
         for &item_def_id in items {
             rbml_w.start_tag(tag_item_impl_item);
             match item_def_id {
@@ -1411,8 +1385,6 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     is_nonstatic_method = false;
                 }
             }
-
-            encode_parent_sort(rbml_w, 't');
 
             let trait_item = &*ms[i];
             encode_attributes(rbml_w, &trait_item.attrs);
