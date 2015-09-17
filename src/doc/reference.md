@@ -3087,7 +3087,7 @@ loops](#infinite-loops), [break expressions](#break-expressions), and
 A `for` expression is a syntactic construct for looping over elements provided
 by an implementation of `std::iter::IntoIterator`.
 
-An example of a for loop over the contents of an array:
+An example of a `for` loop over the contents of an array:
 
 ```
 # type Foo = i32;
