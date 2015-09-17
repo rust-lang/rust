@@ -93,48 +93,50 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn fix_scalar_binary_expr(&mut self, e: &hir::Expr) {
         match e.node {
             hir::ExprBinary(ref op, ref lhs, ref rhs) |
-                hir::ExprAssignOp(ref op, ref lhs, ref rhs) => {
-                    let lhs_ty = self.fcx.node_ty(lhs.id);
-                    let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
+            hir::ExprAssignOp(ref op, ref lhs, ref rhs) => {
+                let lhs_ty = self.fcx.node_ty(lhs.id);
+                let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
 
-                    let rhs_ty = self.fcx.node_ty(rhs.id);
-                    let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
+                let rhs_ty = self.fcx.node_ty(rhs.id);
+                let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
 
-                    if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
-                        self.fcx.inh.tables.borrow_mut().method_map.remove(&MethodCall::expr(e.id));
+                if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
+                    self.fcx.inh.tables.borrow_mut().method_map.remove(&MethodCall::expr(e.id));
 
-                        // weird but true: the by-ref binops put an
-                        // adjustment on the lhs but not the rhs; the
-                        // adjustment for rhs is kind of baked into the
-                        // system.
-                        match e.node {
-                            hir::ExprBinary(..) => {
-                                if !hir_util::is_by_value_binop(op.node) {
-                                    self.fcx.inh.tables.borrow_mut().adjustments.remove(&lhs.id);
-                                }
-                            },
-                            hir::ExprAssignOp(..) => {
+                    // weird but true: the by-ref binops put an
+                    // adjustment on the lhs but not the rhs; the
+                    // adjustment for rhs is kind of baked into the
+                    // system.
+                    match e.node {
+                        hir::ExprBinary(..) => {
+                            if !hir_util::is_by_value_binop(op.node) {
                                 self.fcx.inh.tables.borrow_mut().adjustments.remove(&lhs.id);
-                            },
-                            _ => {},
-                        }
-                    } else {
-                        let tcx = self.tcx();
-
-                        if let hir::ExprAssignOp(..) = e.node {
-                            if !tcx.sess.features.borrow().augmented_assignments &&
-                                !self.fcx.expr_ty(e).references_error() {
-                                tcx.sess.span_err(
-                                    e.span,
-                                    "overloaded augmented assignments are not stable");
-                                fileline_help!(
-                                    tcx.sess, e.span,
-                                    "add #![feature(augmented_assignments)] to the crate features \
-                                     to enable");
                             }
+                        },
+                        hir::ExprAssignOp(..) => {
+                            self.fcx.inh.tables.borrow_mut().adjustments.remove(&lhs.id);
+                        },
+                        _ => {},
+                    }
+                } else {
+                    let tcx = self.tcx();
+
+                    if let hir::ExprAssignOp(..) = e.node {
+                        if
+                            !tcx.sess.features.borrow().augmented_assignments &&
+                            !self.fcx.expr_ty(e).references_error()
+                        {
+                            tcx.sess.span_err(
+                                e.span,
+                                "overloaded augmented assignments are not stable");
+                            fileline_help!(
+                                tcx.sess, e.span,
+                                "add #![feature(augmented_assignments)] to the crate features \
+                                 to enable");
                         }
                     }
                 }
+            }
             _ => {},
         }
     }
