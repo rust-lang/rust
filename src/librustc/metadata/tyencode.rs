@@ -27,6 +27,7 @@ use util::nodemap::FnvHashMap;
 use rustc_front::hir;
 
 use syntax::abi::Abi;
+use syntax::ast;
 use syntax::diagnostic::SpanHandler;
 
 use rbml::writer::Encoder;
@@ -65,26 +66,26 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Encoder, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx>) {
         ty::TyChar => mywrite!(w, "c"),
         ty::TyInt(t) => {
             match t {
-                hir::TyIs => mywrite!(w, "is"),
-                hir::TyI8 => mywrite!(w, "MB"),
-                hir::TyI16 => mywrite!(w, "MW"),
-                hir::TyI32 => mywrite!(w, "ML"),
-                hir::TyI64 => mywrite!(w, "MD")
+                ast::TyIs => mywrite!(w, "is"),
+                ast::TyI8 => mywrite!(w, "MB"),
+                ast::TyI16 => mywrite!(w, "MW"),
+                ast::TyI32 => mywrite!(w, "ML"),
+                ast::TyI64 => mywrite!(w, "MD")
             }
         }
         ty::TyUint(t) => {
             match t {
-                hir::TyUs => mywrite!(w, "us"),
-                hir::TyU8 => mywrite!(w, "Mb"),
-                hir::TyU16 => mywrite!(w, "Mw"),
-                hir::TyU32 => mywrite!(w, "Ml"),
-                hir::TyU64 => mywrite!(w, "Md")
+                ast::TyUs => mywrite!(w, "us"),
+                ast::TyU8 => mywrite!(w, "Mb"),
+                ast::TyU16 => mywrite!(w, "Mw"),
+                ast::TyU32 => mywrite!(w, "Ml"),
+                ast::TyU64 => mywrite!(w, "Md")
             }
         }
         ty::TyFloat(t) => {
             match t {
-                hir::TyF32 => mywrite!(w, "Mf"),
-                hir::TyF64 => mywrite!(w, "MF"),
+                ast::TyF32 => mywrite!(w, "Mf"),
+                ast::TyF64 => mywrite!(w, "MF"),
             }
         }
         ty::TyEnum(def, substs) => {

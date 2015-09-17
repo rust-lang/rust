@@ -32,9 +32,9 @@ use self::rustc::middle::region::CodeExtentData;
 use self::rustc::middle::ty::{self, Ty};
 use self::rustc::util::common::ErrorReported;
 use self::rustc_front::hir;
-use self::rustc_front::attr::{AttrMetaMethods};
 use self::rustc_front::visit;
 use self::syntax::ast;
+use self::syntax::attr::AttrMetaMethods;
 use self::syntax::codemap::Span;
 
 pub fn dump_crate(tcx: &ty::ctxt) {
@@ -50,7 +50,7 @@ struct OuterDump<'a,'tcx:'a> {
 }
 
 impl<'a, 'tcx> OuterDump<'a, 'tcx> {
-    fn visit_mir<OP>(&self, attributes: &'tcx [hir::Attribute], mut walk_op: OP)
+    fn visit_mir<OP>(&self, attributes: &'tcx [ast::Attribute], mut walk_op: OP)
         where OP: FnMut(&mut InnerDump<'a,'tcx>)
     {
         let mut built_mir = false;
@@ -94,7 +94,7 @@ impl<'a, 'tcx> visit::Visitor<'tcx> for OuterDump<'a, 'tcx> {
 
 struct InnerDump<'a,'tcx:'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    attr: Option<&'a hir::Attribute>,
+    attr: Option<&'a ast::Attribute>,
 }
 
 impl<'a, 'tcx> visit::Visitor<'tcx> for InnerDump<'a,'tcx> {

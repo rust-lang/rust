@@ -24,7 +24,7 @@
 //! those that are created by the expansion of a macro.
 
 use syntax::abi::Abi;
-use syntax::ast::{Ident, NodeId, CRATE_NODE_ID, Name};
+use syntax::ast::{Ident, NodeId, CRATE_NODE_ID, Name, Attribute};
 use hir::*;
 use hir;
 use syntax::codemap::Span;
@@ -813,9 +813,6 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprBreak(_) | ExprAgain(_) => {}
         ExprRet(ref optional_expression) => {
             walk_expr_opt(visitor, optional_expression)
-        }
-        ExprParen(ref subexpression) => {
-            visitor.visit_expr(&**subexpression)
         }
         ExprInlineAsm(ref ia) => {
             for input in &ia.inputs {

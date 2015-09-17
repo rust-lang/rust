@@ -27,6 +27,8 @@ pub use self::FunctionRetTy::*;
 use syntax;
 use syntax::abi;
 use syntax::ast;
+use syntax::attr;
+use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap;
 use syntax::codemap::{DUMMY_SP, Pos, Spanned};
 use syntax::parse::token::{self, InternedString, special_idents};
@@ -43,9 +45,6 @@ use rustc::middle::ty;
 use rustc::middle::stability;
 
 use rustc_front::hir;
-use rustc_front::attr;
-use rustc_front::attr::{AttributeMethods, AttrMetaMethods};
-use rustc_front::lowering::unlower_attribute;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -143,8 +142,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         // Figure out the name of this crate
         let input = &cx.input;
-        let attrs: Vec<_> = self.attrs.iter().map(|a| unlower_attribute(a)).collect();
-        let name = link::find_crate_name(None, &attrs, input);
+        let name = link::find_crate_name(None, &self.attrs, input);
 
         // Clean the crate, translating the entire libsyntax AST to one that is
         // understood by rustdoc.
@@ -437,21 +435,21 @@ pub enum Attribute {
     NameValue(String, String)
 }
 
-impl Clean<Attribute> for hir::MetaItem {
+impl Clean<Attribute> for ast::MetaItem {
     fn clean(&self, cx: &DocContext) -> Attribute {
         match self.node {
-            hir::MetaWord(ref s) => Word(s.to_string()),
-            hir::MetaList(ref s, ref l) => {
+            ast::MetaWord(ref s) => Word(s.to_string()),
+            ast::MetaList(ref s, ref l) => {
                 List(s.to_string(), l.clean(cx))
             }
-            hir::MetaNameValue(ref s, ref v) => {
+            ast::MetaNameValue(ref s, ref v) => {
                 NameValue(s.to_string(), lit_to_string(v))
             }
         }
     }
 }
 
-impl Clean<Attribute> for hir::Attribute {
+impl Clean<Attribute> for ast::Attribute {
     fn clean(&self, cx: &DocContext) -> Attribute {
         self.with_desugared_doc(|a| a.node.value.clean(cx))
     }
@@ -475,13 +473,13 @@ impl attr::AttrMetaMethods for Attribute {
             _ => None,
         }
     }
-    fn meta_item_list<'a>(&'a self) -> Option<&'a [P<hir::MetaItem>]> { None }
+    fn meta_item_list<'a>(&'a self) -> Option<&'a [P<ast::MetaItem>]> { None }
     fn span(&self) -> codemap::Span { unimplemented!() }
 }
 impl<'a> attr::AttrMetaMethods for &'a Attribute {
     fn name(&self) -> InternedString { (**self).name() }
     fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
-    fn meta_item_list(&self) -> Option<&[P<hir::MetaItem>]> { None }
+    fn meta_item_list(&self) -> Option<&[P<ast::MetaItem>]> { None }
     fn span(&self) -> codemap::Span { unimplemented!() }
 }
 
@@ -1626,18 +1624,18 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
         match self.sty {
             ty::TyBool => Primitive(Bool),
             ty::TyChar => Primitive(Char),
-            ty::TyInt(hir::TyIs) => Primitive(Isize),
-            ty::TyInt(hir::TyI8) => Primitive(I8),
-            ty::TyInt(hir::TyI16) => Primitive(I16),
-            ty::TyInt(hir::TyI32) => Primitive(I32),
-            ty::TyInt(hir::TyI64) => Primitive(I64),
-            ty::TyUint(hir::TyUs) => Primitive(Usize),
-            ty::TyUint(hir::TyU8) => Primitive(U8),
-            ty::TyUint(hir::TyU16) => Primitive(U16),
-            ty::TyUint(hir::TyU32) => Primitive(U32),
-            ty::TyUint(hir::TyU64) => Primitive(U64),
-            ty::TyFloat(hir::TyF32) => Primitive(F32),
-            ty::TyFloat(hir::TyF64) => Primitive(F64),
+            ty::TyInt(ast::TyIs) => Primitive(Isize),
+            ty::TyInt(ast::TyI8) => Primitive(I8),
+            ty::TyInt(ast::TyI16) => Primitive(I16),
+            ty::TyInt(ast::TyI32) => Primitive(I32),
+            ty::TyInt(ast::TyI64) => Primitive(I64),
+            ty::TyUint(ast::TyUs) => Primitive(Usize),
+            ty::TyUint(ast::TyU8) => Primitive(U8),
+            ty::TyUint(ast::TyU16) => Primitive(U16),
+            ty::TyUint(ast::TyU32) => Primitive(U32),
+            ty::TyUint(ast::TyU64) => Primitive(U64),
+            ty::TyFloat(ast::TyF32) => Primitive(F32),
+            ty::TyFloat(ast::TyF64) => Primitive(F64),
             ty::TyStr => Primitive(Str),
             ty::TyBox(t) => {
                 let box_did = cx.tcx_opt().and_then(|tcx| {
@@ -2515,11 +2513,11 @@ impl ToSource for syntax::codemap::Span {
     }
 }
 
-fn lit_to_string(lit: &hir::Lit) -> String {
+fn lit_to_string(lit: &ast::Lit) -> String {
     match lit.node {
-        hir::LitStr(ref st, _) => st.to_string(),
-        hir::LitByteStr(ref data) => format!("{:?}", data),
-        hir::LitByte(b) => {
+        ast::LitStr(ref st, _) => st.to_string(),
+        ast::LitByteStr(ref data) => format!("{:?}", data),
+        ast::LitByte(b) => {
             let mut res = String::from("b'");
             for c in (b as char).escape_default() {
                 res.push(c);
@@ -2527,11 +2525,11 @@ fn lit_to_string(lit: &hir::Lit) -> String {
             res.push('\'');
             res
         },
-        hir::LitChar(c) => format!("'{}'", c),
-        hir::LitInt(i, _t) => i.to_string(),
-        hir::LitFloat(ref f, _t) => f.to_string(),
-        hir::LitFloatUnsuffixed(ref f) => f.to_string(),
-        hir::LitBool(b) => b.to_string(),
+        ast::LitChar(c) => format!("'{}'", c),
+        ast::LitInt(i, _t) => i.to_string(),
+        ast::LitFloat(ref f, _t) => f.to_string(),
+        ast::LitFloatUnsuffixed(ref f) => f.to_string(),
+        ast::LitBool(b) => b.to_string(),
     }
 }
 
@@ -2594,18 +2592,18 @@ fn resolve_type(cx: &DocContext,
             hir::TyStr => return Primitive(Str),
             hir::TyBool => return Primitive(Bool),
             hir::TyChar => return Primitive(Char),
-            hir::TyInt(hir::TyIs) => return Primitive(Isize),
-            hir::TyInt(hir::TyI8) => return Primitive(I8),
-            hir::TyInt(hir::TyI16) => return Primitive(I16),
-            hir::TyInt(hir::TyI32) => return Primitive(I32),
-            hir::TyInt(hir::TyI64) => return Primitive(I64),
-            hir::TyUint(hir::TyUs) => return Primitive(Usize),
-            hir::TyUint(hir::TyU8) => return Primitive(U8),
-            hir::TyUint(hir::TyU16) => return Primitive(U16),
-            hir::TyUint(hir::TyU32) => return Primitive(U32),
-            hir::TyUint(hir::TyU64) => return Primitive(U64),
-            hir::TyFloat(hir::TyF32) => return Primitive(F32),
-            hir::TyFloat(hir::TyF64) => return Primitive(F64),
+            hir::TyInt(ast::TyIs) => return Primitive(Isize),
+            hir::TyInt(ast::TyI8) => return Primitive(I8),
+            hir::TyInt(ast::TyI16) => return Primitive(I16),
+            hir::TyInt(ast::TyI32) => return Primitive(I32),
+            hir::TyInt(ast::TyI64) => return Primitive(I64),
+            hir::TyUint(ast::TyUs) => return Primitive(Usize),
+            hir::TyUint(ast::TyU8) => return Primitive(U8),
+            hir::TyUint(ast::TyU16) => return Primitive(U16),
+            hir::TyUint(ast::TyU32) => return Primitive(U32),
+            hir::TyUint(ast::TyU64) => return Primitive(U64),
+            hir::TyFloat(ast::TyF32) => return Primitive(F32),
+            hir::TyFloat(ast::TyF64) => return Primitive(F64),
         },
         def::DefSelfTy(..) if path.segments.len() == 1 => {
             return Generic(special_idents::type_self.name.to_string());

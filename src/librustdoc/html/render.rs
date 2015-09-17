@@ -52,10 +52,10 @@ use std::sync::Arc;
 use externalfiles::ExternalHtml;
 
 use serialize::json::{self, ToJson};
-use syntax::{abi, ast};
+use syntax::{abi, ast, attr};
 use rustc::middle::def_id::{DefId, LOCAL_CRATE};
 use rustc::util::nodemap::NodeSet;
-use rustc_front::{hir, attr};
+use rustc_front::hir;
 
 use clean::{self, SelfTy};
 use doctree;

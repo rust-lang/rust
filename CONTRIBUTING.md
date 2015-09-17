@@ -225,7 +225,7 @@ are:
 * Although out of date, [Tom Lee's great blog article][tlgba] is very helpful
 * [rustaceans.org][ro] is helpful, but mostly dedicated to IRC
 * The [Rust Compiler Testing Docs][rctd]
-* For @bors, [this cheetsheat][cheetsheat] is helpful (Remember to replace `@homu` with `@bors` in the commands that you use.)
+* For @bors, [this cheat sheet][cheatsheet] is helpful (Remember to replace `@homu` with `@bors` in the commands that you use.)
 * **Google**!
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
@@ -235,4 +235,4 @@ are:
 [tlgba]: http://tomlee.co/2014/04/03/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: http://www.rustaceans.org/
 [rctd]: ./COMPILER_TESTS.md
-[cheetsheat]: http://buildbot.rust-lang.org/homu/
+[cheatsheet]: http://buildbot.rust-lang.org/homu/

@@ -95,9 +95,9 @@ use std::{i8, i16, i32, i64};
 use syntax::abi::{Rust, RustCall, RustIntrinsic, PlatformIntrinsic, Abi};
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
+use syntax::attr::AttrMetaMethods;
+use syntax::attr;
 use rustc_front;
-use rustc_front::attr::AttrMetaMethods;
-use rustc_front::attr;
 use rustc_front::visit::Visitor;
 use rustc_front::visit;
 use rustc_front::hir;
@@ -581,12 +581,12 @@ pub fn llty_and_min_for_signed_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         ty::TyInt(t) => {
             let llty = Type::int_from_ty(cx.ccx(), t);
             let min = match t {
-                hir::TyIs if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
-                hir::TyIs => i64::MIN as u64,
-                hir::TyI8 => i8::MIN as u64,
-                hir::TyI16 => i16::MIN as u64,
-                hir::TyI32 => i32::MIN as u64,
-                hir::TyI64 => i64::MIN as u64,
+                ast::TyIs if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
+                ast::TyIs => i64::MIN as u64,
+                ast::TyI8 => i8::MIN as u64,
+                ast::TyI16 => i16::MIN as u64,
+                ast::TyI32 => i32::MIN as u64,
+                ast::TyI64 => i64::MIN as u64,
             };
             (llty, min)
         }
@@ -1563,7 +1563,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                    llfndecl: ValueRef,
                                    param_substs: &'tcx Substs<'tcx>,
                                    fn_ast_id: ast::NodeId,
-                                   _attributes: &[hir::Attribute],
+                                   _attributes: &[ast::Attribute],
                                    output_type: ty::FnOutput<'tcx>,
                                    abi: Abi,
                                    closure_env: closure::ClosureEnv<'b>) {
@@ -1682,7 +1682,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                           llfndecl: ValueRef,
                           param_substs: &'tcx Substs<'tcx>,
                           id: ast::NodeId,
-                          attrs: &[hir::Attribute]) {
+                          attrs: &[ast::Attribute]) {
     let _s = StatRecorder::new(ccx, ccx.tcx().map.path_to_string(id).to_string());
     debug!("trans_fn(param_substs={:?})", param_substs);
     let _icx = push_ctxt("trans_fn");
@@ -2294,7 +2294,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
 }
 
 fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, id: ast::NodeId,
-                           ty: Ty<'tcx>, attrs: &[hir::Attribute]) -> String {
+                           ty: Ty<'tcx>, attrs: &[ast::Attribute]) -> String {
     match ccx.external_srcs().borrow().get(&id) {
         Some(&did) => {
             let sym = csearch::get_symbol(&ccx.sess().cstore, did);
@@ -2492,7 +2492,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 }
 
 fn register_method(ccx: &CrateContext, id: ast::NodeId,
-                   attrs: &[hir::Attribute], span: Span) -> ValueRef {
+                   attrs: &[ast::Attribute], span: Span) -> ValueRef {
     let mty = ccx.tcx().node_id_to_type(id);
 
     let sym = exported_name(ccx, id, mty, &attrs);

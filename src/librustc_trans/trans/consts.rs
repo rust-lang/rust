@@ -33,36 +33,38 @@ use trans::declare;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
-use middle::cast::{CastTy,IntTy};
 use middle::subst::Substs;
+use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
+use middle::ty::adjustment::AdjustUnsafeFnPointer;
 use middle::ty::{self, Ty};
+use middle::ty::cast::{CastTy,IntTy};
 use util::nodemap::NodeMap;
 
 use rustc_front::hir;
-use rustc_front::attr;
 
 use std::ffi::{CStr, CString};
 use libc::c_uint;
 use syntax::ast;
+use syntax::attr;
 use syntax::parse::token;
 use syntax::ptr::P;
 
 pub type FnArgMap<'a> = Option<&'a NodeMap<ValueRef>>;
 
-pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &hir::Lit)
+pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ast::Lit)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
     debug!("const_lit: {:?}", lit);
     match lit.node {
-        hir::LitByte(b) => C_integral(Type::uint_from_ty(cx, hir::TyU8), b as u64, false),
-        hir::LitChar(i) => C_integral(Type::char(cx), i as u64, false),
-        hir::LitInt(i, hir::SignedIntLit(t, _)) => {
+        ast::LitByte(b) => C_integral(Type::uint_from_ty(cx, ast::TyU8), b as u64, false),
+        ast::LitChar(i) => C_integral(Type::char(cx), i as u64, false),
+        ast::LitInt(i, ast::SignedIntLit(t, _)) => {
             C_integral(Type::int_from_ty(cx, t), i, true)
         }
-        hir::LitInt(u, hir::UnsignedIntLit(t)) => {
+        ast::LitInt(u, ast::UnsignedIntLit(t)) => {
             C_integral(Type::uint_from_ty(cx, t), u, false)
         }
-        hir::LitInt(i, hir::UnsuffixedIntLit(_)) => {
+        ast::LitInt(i, ast::UnsuffixedIntLit(_)) => {
             let lit_int_ty = cx.tcx().node_id_to_type(e.id);
             match lit_int_ty.sty {
                 ty::TyInt(t) => {
@@ -77,10 +79,10 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &hir::Lit)
                                 lit_int_ty))
             }
         }
-        hir::LitFloat(ref fs, t) => {
+        ast::LitFloat(ref fs, t) => {
             C_floating(&fs, Type::float_from_ty(cx, t))
         }
-        hir::LitFloatUnsuffixed(ref fs) => {
+        ast::LitFloatUnsuffixed(ref fs) => {
             let lit_float_ty = cx.tcx().node_id_to_type(e.id);
             match lit_float_ty.sty {
                 ty::TyFloat(t) => {
@@ -92,9 +94,9 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &hir::Lit)
                 }
             }
         }
-        hir::LitBool(b) => C_bool(cx, b),
-        hir::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
-        hir::LitByteStr(ref data) => {
+        ast::LitBool(b) => C_bool(cx, b),
+        ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
+        ast::LitByteStr(ref data) => {
             addr_of(cx, C_bytes(cx, &data[..]), "byte_str")
         }
     }
@@ -289,14 +291,14 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                             &cx.tcx().expr_ty_adjusted(e));
     let opt_adj = cx.tcx().tables.borrow().adjustments.get(&e.id).cloned();
     match opt_adj {
-        Some(ty::AdjustReifyFnPointer) => {
+        Some(AdjustReifyFnPointer) => {
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
         }
-        Some(ty::AdjustUnsafeFnPointer) => {
+        Some(AdjustUnsafeFnPointer) => {
             // purely a type-level thing
         }
-        Some(ty::AdjustDerefRef(adj)) => {
+        Some(AdjustDerefRef(adj)) => {
             let mut ty = ety;
             // Save the last autoderef in case we can avoid it.
             if adj.autoderefs > 0 {
@@ -701,7 +703,6 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let mut cur = sub;
             loop {
                 match cur.node {
-                    hir::ExprParen(ref sub) => cur = sub,
                     hir::ExprBlock(ref blk) => {
                         if let Some(ref sub) = blk.expr {
                             cur = sub;
@@ -828,7 +829,6 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let mut callee = &**callee;
             loop {
                 callee = match callee.node {
-                    hir::ExprParen(ref inner) => &**inner,
                     hir::ExprBlock(ref block) => match block.expr {
                         Some(ref tail) => &**tail,
                         None => break,
@@ -868,7 +868,6 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             const_fn_call(cx, MethodCallKey(method_call),
                           method_did, &arg_vals, param_substs)
         },
-        hir::ExprParen(ref e) => const_expr(cx, &**e, param_substs, fn_args).0,
         hir::ExprBlock(ref block) => {
             match block.expr {
                 Some(ref expr) => const_expr(cx, &**expr, param_substs, fn_args).0,
@@ -896,7 +895,7 @@ pub fn trans_static(ccx: &CrateContext,
                     m: hir::Mutability,
                     expr: &hir::Expr,
                     id: ast::NodeId,
-                    attrs: &Vec<hir::Attribute>)
+                    attrs: &Vec<ast::Attribute>)
                     -> ValueRef {
     unsafe {
         let _icx = push_ctxt("trans_static");

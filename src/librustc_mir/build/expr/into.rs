@@ -40,9 +40,6 @@ impl<H:Hair> Builder<H> {
                     this.into(destination, block, value)
                 })
             }
-            ExprKind::Paren { arg } => {
-                this.into(destination, block, arg)
-            }
             ExprKind::Block { body: ast_block } => {
                 this.ast_block(destination, block, ast_block)
             }

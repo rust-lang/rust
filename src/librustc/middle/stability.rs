@@ -21,13 +21,13 @@ use metadata::csearch;
 use syntax::parse::token::InternedString;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::ast;
-use syntax::ast::NodeId;
+use syntax::ast::{NodeId, Attribute};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
+use syntax::attr::{self, Stability, AttrMetaMethods};
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
 use rustc_front::hir;
-use rustc_front::hir::{FnDecl, Attribute, Block, Crate, Item, Generics, StructField, Variant};
-use rustc_front::attr::{self, Stability, AttrMetaMethods};
+use rustc_front::hir::{FnDecl, Block, Crate, Item, Generics, StructField, Variant};
 use rustc_front::visit::{self, FnKind, Visitor};
 
 use std::mem::replace;
@@ -237,7 +237,7 @@ impl<'tcx> Index<'tcx> {
         for attr in &krate.attrs {
             if &attr.name()[..] == "staged_api" {
                 match attr.node.value.node {
-                    hir::MetaWord(_) => {
+                    ast::MetaWord(_) => {
                         attr::mark_used(attr);
                         is_staged_api = true;
                     }

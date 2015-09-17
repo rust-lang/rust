@@ -53,13 +53,12 @@ use middle::const_eval::{self, ConstVal};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def;
 use middle::def_id::{DefId, LOCAL_CRATE};
-use middle::wf::object_region_bounds;
 use middle::resolve_lifetime as rl;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
 use middle::traits;
 use middle::ty::{self, RegionEscape, Ty, ToPredicate, HasTypeFlags};
-use middle::ty_fold;
+use middle::ty::wf::object_region_bounds;
 use require_c_abi_if_variadic;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope,
@@ -408,18 +407,13 @@ fn create_substs_for_ast_path<'tcx>(
                                                .take_while(|x| x.default.is_none())
                                                .count();
 
-    // Fill with `ty_infer` if no params were specified, as long as
-    // they were optional (e.g. paths inside expressions).
-    let mut type_substs = if param_mode == PathParamMode::Optional &&
-                             types_provided.is_empty() {
-        let mut substs = region_substs.clone();
-        ty_param_defs
-            .iter()
-            .map(|p| this.ty_infer(Some(p.clone()), Some(&mut substs), Some(TypeSpace), span))
-            .collect()
-    } else {
-        types_provided
-    };
+    let mut type_substs = get_type_substs_for_defs(this,
+                                                   span,
+                                                   types_provided,
+                                                   param_mode,
+                                                   ty_param_defs,
+                                                   region_substs.clone(),
+                                                   self_ty);
 
     let supplied_ty_param_count = type_substs.len();
     check_type_argument_count(this.tcx(), span, supplied_ty_param_count,
@@ -483,6 +477,42 @@ fn create_substs_for_ast_path<'tcx>(
     substs
 }
 
+/// Returns types_provided if it is not empty, otherwise populating the
+/// type parameters with inference variables as appropriate.
+fn get_type_substs_for_defs<'tcx>(this: &AstConv<'tcx>,
+                                  span: Span,
+                                  types_provided: Vec<Ty<'tcx>>,
+                                  param_mode: PathParamMode,
+                                  ty_param_defs: &[ty::TypeParameterDef<'tcx>],
+                                  mut substs: Substs<'tcx>,
+                                  self_ty: Option<Ty<'tcx>>)
+                                  -> Vec<Ty<'tcx>>
+{
+    fn default_type_parameter<'tcx>(p: &ty::TypeParameterDef<'tcx>, self_ty: Option<Ty<'tcx>>)
+                                    -> Option<ty::TypeParameterDef<'tcx>>
+    {
+        if let Some(ref default) = p.default {
+            if self_ty.is_none() && default.has_self_ty() {
+                // There is no suitable inference default for a type parameter
+                // that references self with no self-type provided.
+                return None;
+            }
+        }
+
+        Some(p.clone())
+    }
+
+    if param_mode == PathParamMode::Optional && types_provided.is_empty() {
+        ty_param_defs
+            .iter()
+            .map(|p| this.ty_infer(default_type_parameter(p, self_ty), Some(&mut substs),
+                                   Some(TypeSpace), span))
+            .collect()
+    } else {
+        types_provided
+    }
+}
+
 struct ConvertedBinding<'tcx> {
     item_name: ast::Name,
     ty: Ty<'tcx>,
@@ -535,9 +565,7 @@ fn find_implied_output_region<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     for (input_type, input_pat) in input_tys.iter().zip(input_pats) {
         let mut regions = FnvHashSet();
-        let have_bound_regions = ty_fold::collect_regions(tcx,
-                                                          input_type,
-                                                          &mut regions);
+        let have_bound_regions = tcx.collect_regions(input_type, &mut regions);
 
         debug!("find_implied_output_regions: collected {:?} from {:?} \
                 have_bound_regions={:?}", &regions, input_type, have_bound_regions);
@@ -2248,7 +2276,7 @@ impl<'tcx> Bounds<'tcx> {
         for &region_bound in &self.region_bounds {
             // account for the binder being introduced below; no need to shift `param_ty`
             // because, at present at least, it can only refer to early-bound regions
-            let region_bound = ty_fold::shift_region(region_bound, 1);
+            let region_bound = ty::fold::shift_region(region_bound, 1);
             vec.push(ty::Binder(ty::OutlivesPredicate(param_ty, region_bound)).to_predicate());
         }
 

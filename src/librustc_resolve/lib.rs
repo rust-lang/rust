@@ -65,7 +65,8 @@ use rustc::util::nodemap::{NodeMap, DefIdSet, FnvHashMap};
 use rustc::util::lev_distance::lev_distance;
 
 use syntax::ast;
-use syntax::ast::{Ident, Name, NodeId, CrateNum};
+use syntax::ast::{Ident, Name, NodeId, CrateNum, TyIs, TyI8, TyI16, TyI32, TyI64};
+use syntax::ast::{TyUs, TyU8, TyU16, TyU32, TyU64, TyF64, TyF32};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
 use syntax::parse::token::{self, special_names, special_idents};
@@ -86,10 +87,8 @@ use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use rustc_front::hir::{Local, MethodImplItem};
 use rustc_front::hir::{Pat, PatEnum, PatIdent, PatLit, PatQPath};
 use rustc_front::hir::{PatRange, PatStruct, Path, PrimTy};
-use rustc_front::hir::{TraitRef, Ty, TyBool, TyChar, TyF32};
-use rustc_front::hir::{TyF64, TyFloat, TyIs, TyI8, TyI16, TyI32, TyI64, TyInt};
-use rustc_front::hir::{TyPath, TyPtr};
-use rustc_front::hir::{TyRptr, TyStr, TyUs, TyU8, TyU16, TyU32, TyU64, TyUint};
+use rustc_front::hir::{TraitRef, Ty, TyBool, TyChar, TyFloat, TyInt};
+use rustc_front::hir::{TyRptr, TyStr, TyUint, TyPath, TyPtr};
 use rustc_front::hir::TypeImplItem;
 use rustc_front::util::walk_pat;
 
@@ -2211,13 +2210,27 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ItemUse(ref view_path) => {
                 // check for imports shadowing primitive types
-                if let hir::ViewPathSimple(ident, _) = view_path.node {
-                    match self.def_map.borrow().get(&item.id).map(|d| d.full_def()) {
+                let check_rename = |id, ident: Ident| {
+                    match self.def_map.borrow().get(&id).map(|d| d.full_def()) {
                         Some(DefTy(..)) | Some(DefStruct(..)) | Some(DefTrait(..)) | None => {
                             self.check_if_primitive_type_name(ident.name, item.span);
                         }
                         _ => {}
                     }
+                };
+
+                match view_path.node {
+                    hir::ViewPathSimple(ident, _) => {
+                        check_rename(item.id, ident);
+                    }
+                    hir::ViewPathList(_, ref items) => {
+                        for item in items {
+                            if let Some(ident) = item.node.rename() {
+                                check_rename(item.node.id(), ident);
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
 

@@ -338,63 +338,9 @@ pub fn compute_id_range_for_fn_body(fk: FnKind,
     id_visitor.operation.result
 }
 
-/// Returns true if this literal is a string and false otherwise.
-pub fn lit_is_str(lit: &Lit) -> bool {
-    match lit.node {
-        LitStr(..) => true,
-        _ => false,
-    }
-}
-
 pub fn is_path(e: P<Expr>) -> bool {
     match e.node { ExprPath(..) => true, _ => false }
 }
-
-/// Get a string representation of a signed int type, with its value.
-/// We want to avoid "45int" and "-3int" in favor of "45" and "-3"
-pub fn int_ty_to_string(t: IntTy, val: Option<i64>) -> String {
-    let s = match t {
-        TyIs => "isize",
-        TyI8 => "i8",
-        TyI16 => "i16",
-        TyI32 => "i32",
-        TyI64 => "i64"
-    };
-
-    match val {
-        // cast to a u64 so we can correctly print INT64_MIN. All integral types
-        // are parsed as u64, so we wouldn't want to print an extra negative
-        // sign.
-        Some(n) => format!("{}{}", n as u64, s),
-        None => s.to_string()
-    }
-}
-
-
-/// Get a string representation of an unsigned int type, with its value.
-/// We want to avoid "42u" in favor of "42us". "42uint" is right out.
-pub fn uint_ty_to_string(t: UintTy, val: Option<u64>) -> String {
-    let s = match t {
-        TyUs => "usize",
-        TyU8 => "u8",
-        TyU16 => "u16",
-        TyU32 => "u32",
-        TyU64 => "u64"
-    };
-
-    match val {
-        Some(n) => format!("{}{}", n, s),
-        None => s.to_string()
-    }
-}
-
-pub fn float_ty_to_string(t: FloatTy) -> String {
-    match t {
-        TyF32 => "f32".to_string(),
-        TyF64 => "f64".to_string(),
-    }
-}
-
 
 pub fn empty_generics() -> Generics {
     Generics {

@@ -97,7 +97,10 @@ use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use middle::ty::{self, HasTypeFlags, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::{MethodCall, MethodCallee};
-use middle::ty_fold::{TypeFolder, TypeFoldable};
+use middle::ty::adjustment;
+use middle::ty::error::TypeError;
+use middle::ty::fold::{TypeFolder, TypeFoldable};
+use middle::ty::util::Representability;
 use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};
 use session::Session;
@@ -114,6 +117,8 @@ use std::mem::replace;
 use std::slice;
 use syntax::abi;
 use syntax::ast;
+use syntax::attr;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span};
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::{self, InternedString};
@@ -122,8 +127,6 @@ use syntax::ptr::P;
 use rustc_front::visit::{self, Visitor};
 use rustc_front::hir;
 use rustc_front::hir::Visibility;
-use rustc_front::attr;
-use rustc_front::attr::AttrMetaMethods;
 use rustc_front::hir::{Item, ItemImpl};
 use rustc_front::print::pprust;
 
@@ -1336,7 +1339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                       derefs: usize) {
         self.write_adjustment(
             node_id,
-            ty::AdjustDerefRef(ty::AutoDerefRef {
+            adjustment::AdjustDerefRef(adjustment::AutoDerefRef {
                 autoderefs: derefs,
                 autoref: None,
                 unsize: None
@@ -1346,7 +1349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_adjustment(&self,
                             node_id: ast::NodeId,
-                            adj: ty::AutoAdjustment<'tcx>) {
+                            adj: adjustment::AutoAdjustment<'tcx>) {
         debug!("write_adjustment(node_id={}, adj={:?})", node_id, adj);
 
         if adj.is_identity() {
@@ -1575,7 +1578,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Apply `adjustment` to the type of `expr`
     pub fn adjust_expr_ty(&self,
                           expr: &hir::Expr,
-                          adjustment: Option<&ty::AutoAdjustment<'tcx>>)
+                          adjustment: Option<&adjustment::AutoAdjustment<'tcx>>)
                           -> Ty<'tcx>
     {
         let raw_ty = self.expr_ty(expr);
@@ -1627,7 +1630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     origin: infer::TypeOrigin,
                     sub: Ty<'tcx>,
                     sup: Ty<'tcx>)
-                    -> Result<(), ty::TypeError<'tcx>> {
+                    -> Result<(), TypeError<'tcx>> {
         infer::mk_subty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
@@ -1636,7 +1639,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                    origin: infer::TypeOrigin,
                    sub: Ty<'tcx>,
                    sup: Ty<'tcx>)
-                   -> Result<(), ty::TypeError<'tcx>> {
+                   -> Result<(), TypeError<'tcx>> {
         infer::mk_eqty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
@@ -1651,7 +1654,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                  sp: Span,
                                  mk_msg: M,
                                  actual_ty: Ty<'tcx>,
-                                 err: Option<&ty::TypeError<'tcx>>) where
+                                 err: Option<&TypeError<'tcx>>) where
         M: FnOnce(String) -> String,
     {
         self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
@@ -1661,7 +1664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                    sp: Span,
                                    e: Ty<'tcx>,
                                    a: Ty<'tcx>,
-                                   err: &ty::TypeError<'tcx>) {
+                                   err: &TypeError<'tcx>) {
         self.infcx().report_mismatched_types(sp, e, a, err)
     }
 
@@ -1766,7 +1769,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Apply "fallbacks" to some types
     /// ! gets replaced with (), unconstrained ints with i32, and unconstrained floats with f64.
     fn default_type_parameters(&self) {
-        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
+        use middle::ty::error::UnconstrainedNumeric::Neither;
+        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
         for ty in &self.infcx().unsolved_variables() {
             let resolved = self.infcx().resolve_type_vars_if_possible(ty);
             if self.infcx().type_var_diverges(resolved) {
@@ -1801,9 +1805,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn new_select_all_obligations_and_apply_defaults(&self) {
-        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
+        use middle::ty::error::UnconstrainedNumeric::Neither;
+        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
-            // For the time being this errs on the side of being memory wasteful but provides better
+        // For the time being this errs on the side of being memory wasteful but provides better
         // error reporting.
         // let type_variables = self.infcx().type_variables.clone();
 
@@ -1973,7 +1978,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 default_map: &FnvHashMap<&Ty<'tcx>, type_variable::Default<'tcx>>,
                                 conflict: Ty<'tcx>)
                                 -> Option<type_variable::Default<'tcx>> {
-        use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
+        use middle::ty::error::UnconstrainedNumeric::Neither;
+        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
         // Ensure that we apply the conflicting default first
         let mut unbound_tyvars = Vec::with_capacity(unbound_vars.len() + 1);
@@ -2303,7 +2309,7 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // First, try built-in indexing.
     match (adjusted_ty.builtin_index(), &index_ty.sty) {
-        (Some(ty), &ty::TyUint(hir::TyUs)) | (Some(ty), &ty::TyInfer(ty::IntVar(_))) => {
+        (Some(ty), &ty::TyUint(ast::TyUs)) | (Some(ty), &ty::TyInfer(ty::IntVar(_))) => {
             debug!("try_index_step: success, using built-in indexing");
             // If we had `[T; N]`, we should've caught it before unsizing to `[T]`.
             assert!(!unsize);
@@ -2567,21 +2573,21 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let arg_ty = structurally_resolved_type(fcx, arg.span,
                                                     fcx.expr_ty(&**arg));
             match arg_ty.sty {
-                ty::TyFloat(hir::TyF32) => {
+                ty::TyFloat(ast::TyF32) => {
                     fcx.type_error_message(arg.span,
                                            |t| {
                         format!("can't pass an {} to variadic \
                                  function, cast to c_double", t)
                     }, arg_ty, None);
                 }
-                ty::TyInt(hir::TyI8) | ty::TyInt(hir::TyI16) | ty::TyBool => {
+                ty::TyInt(ast::TyI8) | ty::TyInt(ast::TyI16) | ty::TyBool => {
                     fcx.type_error_message(arg.span, |t| {
                         format!("can't pass {} to variadic \
                                  function, cast to c_int",
                                        t)
                     }, arg_ty, None);
                 }
-                ty::TyUint(hir::TyU8) | ty::TyUint(hir::TyU16) => {
+                ty::TyUint(ast::TyU8) | ty::TyUint(ast::TyU16) => {
                     fcx.type_error_message(arg.span, |t| {
                         format!("can't pass {} to variadic \
                                  function, cast to c_uint",
@@ -2610,23 +2616,23 @@ fn write_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 // AST fragment checking
 fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                       lit: &hir::Lit,
+                       lit: &ast::Lit,
                        expected: Expectation<'tcx>)
                        -> Ty<'tcx>
 {
     let tcx = fcx.ccx.tcx;
 
     match lit.node {
-        hir::LitStr(..) => tcx.mk_static_str(),
-        hir::LitByteStr(ref v) => {
+        ast::LitStr(..) => tcx.mk_static_str(),
+        ast::LitByteStr(ref v) => {
             tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic),
                             tcx.mk_array(tcx.types.u8, v.len()))
         }
-        hir::LitByte(_) => tcx.types.u8,
-        hir::LitChar(_) => tcx.types.char,
-        hir::LitInt(_, hir::SignedIntLit(t, _)) => tcx.mk_mach_int(t),
-        hir::LitInt(_, hir::UnsignedIntLit(t)) => tcx.mk_mach_uint(t),
-        hir::LitInt(_, hir::UnsuffixedIntLit(_)) => {
+        ast::LitByte(_) => tcx.types.u8,
+        ast::LitChar(_) => tcx.types.char,
+        ast::LitInt(_, ast::SignedIntLit(t, _)) => tcx.mk_mach_int(t),
+        ast::LitInt(_, ast::UnsignedIntLit(t)) => tcx.mk_mach_uint(t),
+        ast::LitInt(_, ast::UnsuffixedIntLit(_)) => {
             let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
                     ty::TyInt(_) | ty::TyUint(_) => Some(ty),
@@ -2639,8 +2645,8 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             opt_ty.unwrap_or_else(
                 || tcx.mk_int_var(fcx.infcx().next_int_var_id()))
         }
-        hir::LitFloat(_, t) => tcx.mk_mach_float(t),
-        hir::LitFloatUnsuffixed(_) => {
+        ast::LitFloat(_, t) => tcx.mk_mach_float(t),
+        ast::LitFloatUnsuffixed(_) => {
             let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
                     ty::TyFloat(_) => Some(ty),
@@ -2650,7 +2656,7 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             opt_ty.unwrap_or_else(
                 || tcx.mk_float_var(fcx.infcx().next_float_var_id()))
         }
-        hir::LitBool(_) => tcx.types.bool
+        ast::LitBool(_) => tcx.types.bool
     }
 }
 
@@ -3438,13 +3444,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
         fcx.write_ty(id, fcx.infcx().next_diverging_ty_var());
       }
-      hir::ExprParen(ref a) => {
-        check_expr_with_expectation_and_lvalue_pref(fcx,
-                                                    &**a,
-                                                    expected,
-                                                    lvalue_pref);
-        fcx.write_ty(id, fcx.expr_ty(&**a));
-      }
       hir::ExprAssign(ref lhs, ref rhs) => {
         check_expr_with_lvalue_pref(fcx, &**lhs, PreferMutLvalue);
 
@@ -4166,12 +4165,13 @@ pub fn check_representable(tcx: &ty::ctxt,
     // contain themselves. For case 2, there must be an inner type that will be
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
-      ty::SelfRecursive => {
-        span_err!(tcx.sess, sp, E0072, "invalid recursive {} type", designation);
-        tcx.sess.fileline_help(sp, "wrap the inner value in a box to make it representable");
-        return false
-      }
-      ty::Representable | ty::ContainsRecursive => (),
+        Representability::SelfRecursive => {
+            span_err!(tcx.sess, sp, E0072, "invalid recursive {} type", designation);
+            tcx.sess.fileline_help(
+                sp, "wrap the inner value in a box to make it representable");
+            return false
+        }
+        Representability::Representable | Representability::ContainsRecursive => (),
     }
     return true
 }
@@ -4212,22 +4212,22 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     fn disr_in_range(ccx: &CrateCtxt,
                      ty: attr::IntType,
                      disr: ty::Disr) -> bool {
-        fn uint_in_range(ccx: &CrateCtxt, ty: hir::UintTy, disr: ty::Disr) -> bool {
+        fn uint_in_range(ccx: &CrateCtxt, ty: ast::UintTy, disr: ty::Disr) -> bool {
             match ty {
-                hir::TyU8 => disr as u8 as Disr == disr,
-                hir::TyU16 => disr as u16 as Disr == disr,
-                hir::TyU32 => disr as u32 as Disr == disr,
-                hir::TyU64 => disr as u64 as Disr == disr,
-                hir::TyUs => uint_in_range(ccx, ccx.tcx.sess.target.uint_type, disr)
+                ast::TyU8 => disr as u8 as Disr == disr,
+                ast::TyU16 => disr as u16 as Disr == disr,
+                ast::TyU32 => disr as u32 as Disr == disr,
+                ast::TyU64 => disr as u64 as Disr == disr,
+                ast::TyUs => uint_in_range(ccx, ccx.tcx.sess.target.uint_type, disr)
             }
         }
-        fn int_in_range(ccx: &CrateCtxt, ty: hir::IntTy, disr: ty::Disr) -> bool {
+        fn int_in_range(ccx: &CrateCtxt, ty: ast::IntTy, disr: ty::Disr) -> bool {
             match ty {
-                hir::TyI8 => disr as i8 as Disr == disr,
-                hir::TyI16 => disr as i16 as Disr == disr,
-                hir::TyI32 => disr as i32 as Disr == disr,
-                hir::TyI64 => disr as i64 as Disr == disr,
-                hir::TyIs => int_in_range(ccx, ccx.tcx.sess.target.int_type, disr)
+                ast::TyI8 => disr as i8 as Disr == disr,
+                ast::TyI16 => disr as i16 as Disr == disr,
+                ast::TyI32 => disr as i32 as Disr == disr,
+                ast::TyI64 => disr as i64 as Disr == disr,
+                ast::TyIs => int_in_range(ccx, ccx.tcx.sess.target.int_type, disr)
             }
         }
         match ty {

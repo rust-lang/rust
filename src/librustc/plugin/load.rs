@@ -39,6 +39,10 @@ struct PluginLoader<'a> {
     plugins: Vec<PluginRegistrar>,
 }
 
+fn call_malformed_plugin_attribute(a: &Session, b: Span) {
+    span_err!(a, b, E0498, "malformed plugin attribute");
+}
+
 /// Read plugin metadata and dynamically load registrar functions.
 pub fn load_plugins(sess: &Session, krate: &ast::Crate,
                     addl_plugins: Option<Vec<String>>) -> Vec<PluginRegistrar> {
@@ -52,14 +56,14 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
         let plugins = match attr.meta_item_list() {
             Some(xs) => xs,
             None => {
-                sess.span_err(attr.span, "malformed plugin attribute");
+                call_malformed_plugin_attribute(sess, attr.span);
                 continue;
             }
         };
 
         for plugin in plugins {
             if plugin.value_str().is_some() {
-                sess.span_err(attr.span, "malformed plugin attribute");
+                call_malformed_plugin_attribute(sess, attr.span);
                 continue;
             }
 

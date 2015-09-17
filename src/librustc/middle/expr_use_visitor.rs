@@ -25,6 +25,7 @@ use middle::def_id::{DefId};
 use middle::infer;
 use middle::mem_categorization as mc;
 use middle::ty;
+use middle::ty::adjustment;
 
 use rustc_front::hir;
 
@@ -361,9 +362,6 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         let cmt = return_if_err!(self.mc.cat_expr(expr));
         self.delegate.borrow(expr.id, expr.span, cmt, r, bk, cause);
 
-        // Note: Unlike consume, we can ignore ExprParen. cat_expr
-        // already skips over them, and walk will uncover any
-        // attachments or whatever.
         self.walk_expr(expr)
     }
 
@@ -377,10 +375,6 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         self.walk_adjustment(expr);
 
         match expr.node {
-            hir::ExprParen(ref subexpr) => {
-                self.walk_expr(&**subexpr)
-            }
-
             hir::ExprPath(..) => { }
 
             hir::ExprUnary(hir::UnDeref, ref base) => {      // *base
@@ -726,8 +720,8 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         let adj = typer.adjustments().get(&expr.id).map(|x| x.clone());
         if let Some(adjustment) = adj {
             match adjustment {
-                ty::AdjustReifyFnPointer |
-                ty::AdjustUnsafeFnPointer => {
+                adjustment::AdjustReifyFnPointer |
+                adjustment::AdjustUnsafeFnPointer => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
                     debug!("walk_adjustment(AdjustReifyFnPointer|AdjustUnsafeFnPointer)");
@@ -735,7 +729,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                         return_if_err!(self.mc.cat_expr_unadjusted(expr));
                     self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
                 }
-                ty::AdjustDerefRef(ref adj) => {
+                adjustment::AdjustDerefRef(ref adj) => {
                     self.walk_autoderefref(expr, adj);
                 }
             }
@@ -778,7 +772,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
 
     fn walk_autoderefref(&mut self,
                          expr: &hir::Expr,
-                         adj: &ty::AutoDerefRef<'tcx>) {
+                         adj: &adjustment::AutoDerefRef<'tcx>) {
         debug!("walk_autoderefref expr={:?} adj={:?}",
                expr,
                adj);
@@ -809,7 +803,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
     fn walk_autoref(&mut self,
                     expr: &hir::Expr,
                     cmt_base: mc::cmt<'tcx>,
-                    opt_autoref: Option<ty::AutoRef<'tcx>>)
+                    opt_autoref: Option<adjustment::AutoRef<'tcx>>)
                     -> mc::cmt<'tcx>
     {
         debug!("walk_autoref(expr.id={} cmt_derefd={:?} opt_autoref={:?})",
@@ -828,7 +822,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         };
 
         match *autoref {
-            ty::AutoPtr(r, m) => {
+            adjustment::AutoPtr(r, m) => {
                 self.delegate.borrow(expr.id,
                                      expr.span,
                                      cmt_base,
@@ -837,7 +831,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                                      AutoRef);
             }
 
-            ty::AutoUnsafe(m) => {
+            adjustment::AutoUnsafe(m) => {
                 debug!("walk_autoref: expr.id={} cmt_base={:?}",
                        expr.id,
                        cmt_base);

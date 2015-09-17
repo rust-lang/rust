@@ -10,7 +10,7 @@
 
 //! Used by plugin crates to tell `rustc` about the plugins they provide.
 
-use lint::{LintPassObject, LintId, Lint};
+use lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
 use session::Session;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
@@ -48,7 +48,10 @@ pub struct Registry<'a> {
     pub syntax_exts: Vec<NamedSyntaxExtension>,
 
     #[doc(hidden)]
-    pub lint_passes: Vec<LintPassObject>,
+    pub early_lint_passes: Vec<EarlyLintPassObject>,
+
+    #[doc(hidden)]
+    pub late_lint_passes: Vec<LateLintPassObject>,
 
     #[doc(hidden)]
     pub lint_groups: HashMap<&'static str, Vec<LintId>>,
@@ -68,7 +71,8 @@ impl<'a> Registry<'a> {
             args_hidden: None,
             krate_span: krate.span,
             syntax_exts: vec!(),
-            lint_passes: vec!(),
+            early_lint_passes: vec!(),
+            late_lint_passes: vec!(),
             lint_groups: HashMap::new(),
             llvm_passes: vec!(),
             attributes: vec!(),
@@ -89,7 +93,6 @@ impl<'a> Registry<'a> {
     /// Register a syntax extension of any kind.
     ///
     /// This is the most general hook into `libsyntax`'s expansion behavior.
-    #[allow(deprecated)]
     pub fn register_syntax_extension(&mut self, name: ast::Name, extension: SyntaxExtension) {
         self.syntax_exts.push((name, match extension {
             NormalTT(ext, _, allow_internal_unstable) => {
@@ -118,10 +121,14 @@ impl<'a> Registry<'a> {
     }
 
     /// Register a compiler lint pass.
-    pub fn register_lint_pass(&mut self, lint_pass: LintPassObject) {
-        self.lint_passes.push(lint_pass);
+    pub fn register_early_lint_pass(&mut self, lint_pass: EarlyLintPassObject) {
+        self.early_lint_passes.push(lint_pass);
     }
 
+    /// Register a compiler lint pass.
+    pub fn register_late_lint_pass(&mut self, lint_pass: LateLintPassObject) {
+        self.late_lint_passes.push(lint_pass);
+    }
     /// Register a lint group.
     pub fn register_lint_group(&mut self, name: &'static str, to: Vec<&'static Lint>) {
         self.lint_groups.insert(name, to.into_iter().map(|x| LintId::of(x)).collect());

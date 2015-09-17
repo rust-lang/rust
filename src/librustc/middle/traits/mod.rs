@@ -19,7 +19,7 @@ use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use middle::subst;
 use middle::ty::{self, HasTypeFlags, Ty};
-use middle::ty_fold::TypeFoldable;
+use middle::ty::fold::TypeFoldable;
 use middle::infer::{self, fixup_err_to_string, InferCtxt};
 use std::rc::Rc;
 use syntax::ast;
@@ -29,7 +29,6 @@ pub use self::error_reporting::report_fulfillment_errors;
 pub use self::error_reporting::report_overflow_error;
 pub use self::error_reporting::report_selection_error;
 pub use self::error_reporting::report_object_safety_error;
-pub use self::error_reporting::suggest_new_overflow_limit;
 pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
@@ -63,6 +62,7 @@ mod fulfill;
 mod project;
 mod object_safety;
 mod select;
+mod structural_impls;
 mod util;
 
 /// An `Obligation` represents some trait reference (e.g. `int:Eq`) for
@@ -168,7 +168,7 @@ pub enum SelectionError<'tcx> {
     Unimplemented,
     OutputTypeParameterMismatch(ty::PolyTraitRef<'tcx>,
                                 ty::PolyTraitRef<'tcx>,
-                                ty::TypeError<'tcx>),
+                                ty::error::TypeError<'tcx>),
     TraitNotObjectSafe(DefId),
 }
 

@@ -328,7 +328,6 @@ int rust_get_argv_zero(void* p, size_t* sz)
     return -1;
   }
 
-  memset(p, 0, len);
   memcpy(p, argv[0], len);
   free(argv);
   return 0;

@@ -463,17 +463,33 @@ mod impls {
         }
     }
 
-    partial_ord_impl! { char usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+    partial_ord_impl! { f32 f64 }
 
     macro_rules! ord_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
+            impl PartialOrd for $t {
+                #[inline]
+                fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
+                    Some(self.cmp(other))
+                }
+                #[inline]
+                fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
+                #[inline]
+                fn le(&self, other: &$t) -> bool { (*self) <= (*other) }
+                #[inline]
+                fn ge(&self, other: &$t) -> bool { (*self) >= (*other) }
+                #[inline]
+                fn gt(&self, other: &$t) -> bool { (*self) > (*other) }
+            }
+
+            #[stable(feature = "rust1", since = "1.0.0")]
             impl Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &$t) -> Ordering {
-                    if *self < *other { Less }
-                    else if *self > *other { Greater }
-                    else { Equal }
+                    if *self == *other { Equal }
+                    else if *self < *other { Less }
+                    else { Greater }
                 }
             }
         )*)

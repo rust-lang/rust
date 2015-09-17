@@ -82,8 +82,9 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::region;
 use middle::subst;
-use middle::ty::{self, Ty, TypeError, HasTypeFlags};
+use middle::ty::{self, Ty, HasTypeFlags};
 use middle::ty::{Region, ReFree};
+use middle::ty::error::TypeError;
 
 use std::cell::{Cell, RefCell};
 use std::char::from_u32;
@@ -225,19 +226,19 @@ pub trait ErrorReporting<'tcx> {
     fn process_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>)
                       -> Vec<RegionResolutionError<'tcx>>;
 
-    fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &ty::TypeError<'tcx>);
+    fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &TypeError<'tcx>);
 
-    fn check_and_note_conflicting_crates(&self, terr: &ty::TypeError<'tcx>, sp: Span);
+    fn check_and_note_conflicting_crates(&self, terr: &TypeError<'tcx>, sp: Span);
 
     fn report_and_explain_type_error(&self,
                                      trace: TypeTrace<'tcx>,
-                                     terr: &ty::TypeError<'tcx>);
+                                     terr: &TypeError<'tcx>);
 
     fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<String>;
 
     fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + HasTypeFlags>(
         &self,
-        exp_found: &ty::ExpectedFound<T>)
+        exp_found: &ty::error::ExpectedFound<T>)
         -> Option<String>;
 
     fn report_concrete_failure(&self,
@@ -266,7 +267,7 @@ pub trait ErrorReporting<'tcx> {
 
     fn report_processed_errors(&self,
                                var_origin: &[RegionVariableOrigin],
-                               trace_origin: &[(TypeTrace<'tcx>, ty::TypeError<'tcx>)],
+                               trace_origin: &[(TypeTrace<'tcx>, TypeError<'tcx>)],
                                same_regions: &[SameRegions]);
 
     fn give_suggestion(&self, same_regions: &[SameRegions]);
@@ -473,7 +474,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &ty::TypeError<'tcx>) {
+    fn report_type_error(&self, trace: TypeTrace<'tcx>, terr: &TypeError<'tcx>) {
         let expected_found_str = match self.values_str(&trace.values) {
             Some(v) => v,
             None => {
@@ -497,7 +498,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
     }
 
     /// Adds a note if the types come from similarly named crates
-    fn check_and_note_conflicting_crates(&self, terr: &ty::TypeError<'tcx>, sp: Span) {
+    fn check_and_note_conflicting_crates(&self, terr: &TypeError<'tcx>, sp: Span) {
         let report_path_match = |did1: DefId, did2: DefId| {
             // Only external crates, if either is from a local
             // module we could have false positives
@@ -520,7 +521,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
         match *terr {
-            ty::TypeError::Sorts(ref exp_found) => {
+            TypeError::Sorts(ref exp_found) => {
                 // if they are both "path types", there's a chance of ambiguity
                 // due to different versions of the same crate
                 match (&exp_found.expected.sty, &exp_found.found.sty) {
@@ -533,7 +534,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     _ => ()
                 }
             },
-            ty::TypeError::Traits(ref exp_found) => {
+            TypeError::Traits(ref exp_found) => {
                 self.tcx.sess.note("errrr0");
                 report_path_match(exp_found.expected, exp_found.found);
             },
@@ -543,7 +544,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn report_and_explain_type_error(&self,
                                      trace: TypeTrace<'tcx>,
-                                     terr: &ty::TypeError<'tcx>) {
+                                     terr: &TypeError<'tcx>) {
         let span = trace.origin.span();
         self.report_type_error(trace, terr);
         self.tcx.note_and_explain_type_err(terr, span);
@@ -561,7 +562,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + HasTypeFlags>(
         &self,
-        exp_found: &ty::ExpectedFound<T>)
+        exp_found: &ty::error::ExpectedFound<T>)
         -> Option<String>
     {
         let expected = exp_found.expected.resolve(self);
@@ -717,20 +718,17 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "");
             }
             infer::DerefPointer(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    "dereference of reference outside its lifetime");
+                span_err!(self.tcx.sess, span, E0473,
+                          "dereference of reference outside its lifetime");
                 self.tcx.note_and_explain_region(
                     "the reference is only valid for ",
                     sup,
                     "");
             }
             infer::FreeVariable(span, id) => {
-                self.tcx.sess.span_err(
-                    span,
-                    &format!("captured variable `{}` does not \
-                              outlive the enclosing closure",
-                             self.tcx.local_var_name_str(id)));
+                span_err!(self.tcx.sess, span, E0474,
+                          "captured variable `{}` does not outlive the enclosing closure",
+                          self.tcx.local_var_name_str(id));
                 self.tcx.note_and_explain_region(
                     "captured variable is valid for ",
                     sup,
@@ -741,18 +739,17 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "");
             }
             infer::IndexSlice(span) => {
-                self.tcx.sess.span_err(span,
-                                       "index of slice outside its lifetime");
+                span_err!(self.tcx.sess, span, E0475,
+                          "index of slice outside its lifetime");
                 self.tcx.note_and_explain_region(
                     "the slice is only valid for ",
                     sup,
                     "");
             }
             infer::RelateObjectBound(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    "lifetime of the source pointer does not outlive \
-                     lifetime bound of the object type");
+                span_err!(self.tcx.sess, span, E0476,
+                          "lifetime of the source pointer does not outlive \
+                           lifetime bound of the object type");
                 self.tcx.note_and_explain_region(
                     "object type is valid for ",
                     sub,
@@ -763,20 +760,17 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "");
             }
             infer::RelateParamBound(span, ty) => {
-                self.tcx.sess.span_err(
-                    span,
-                    &format!("the type `{}` does not fulfill the \
-                             required lifetime",
-                            self.ty_to_string(ty)));
+                span_err!(self.tcx.sess, span, E0477,
+                          "the type `{}` does not fulfill the required lifetime",
+                          self.ty_to_string(ty));
                 self.tcx.note_and_explain_region(
                                         "type must outlive ",
                                         sub,
                                         "");
             }
             infer::RelateRegionParamBound(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    "lifetime bound not satisfied");
+                span_err!(self.tcx.sess, span, E0478,
+                          "lifetime bound not satisfied");
                 self.tcx.note_and_explain_region(
                     "lifetime parameter instantiated with ",
                     sup,
@@ -787,92 +781,82 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "");
             }
             infer::RelateDefaultParamBound(span, ty) => {
-                self.tcx.sess.span_err(
-                    span,
-                    &format!("the type `{}` (provided as the value of \
-                             a type parameter) is not valid at this point",
-                            self.ty_to_string(ty)));
+                span_err!(self.tcx.sess, span, E0479,
+                          "the type `{}` (provided as the value of \
+                           a type parameter) is not valid at this point",
+                          self.ty_to_string(ty));
                 self.tcx.note_and_explain_region(
                                         "type must outlive ",
                                         sub,
                                         "");
             }
             infer::CallRcvr(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    "lifetime of method receiver does not outlive \
-                     the method call");
+                span_err!(self.tcx.sess, span, E0480,
+                          "lifetime of method receiver does not outlive \
+                           the method call");
                 self.tcx.note_and_explain_region(
                     "the receiver is only valid for ",
                     sup,
                     "");
             }
             infer::CallArg(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    "lifetime of function argument does not outlive \
-                     the function call");
+                span_err!(self.tcx.sess, span, E0481,
+                          "lifetime of function argument does not outlive \
+                           the function call");
                 self.tcx.note_and_explain_region(
                     "the function argument is only valid for ",
                     sup,
                     "");
             }
             infer::CallReturn(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    "lifetime of return value does not outlive \
-                     the function call");
+                span_err!(self.tcx.sess, span, E0482,
+                          "lifetime of return value does not outlive \
+                           the function call");
                 self.tcx.note_and_explain_region(
                     "the return value is only valid for ",
                     sup,
                     "");
             }
             infer::Operand(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    "lifetime of operand does not outlive \
-                     the operation");
+                span_err!(self.tcx.sess, span, E0483,
+                          "lifetime of operand does not outlive \
+                           the operation");
                 self.tcx.note_and_explain_region(
                     "the operand is only valid for ",
                     sup,
                     "");
             }
             infer::AddrOf(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    "reference is not valid \
-                     at the time of borrow");
+                span_err!(self.tcx.sess, span, E0484,
+                          "reference is not valid at the time of borrow");
                 self.tcx.note_and_explain_region(
                     "the borrow is only valid for ",
                     sup,
                     "");
             }
             infer::AutoBorrow(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    "automatically reference is not valid \
-                     at the time of borrow");
+                span_err!(self.tcx.sess, span, E0485,
+                          "automatically reference is not valid \
+                           at the time of borrow");
                 self.tcx.note_and_explain_region(
                     "the automatic borrow is only valid for ",
                     sup,
                     "");
             }
             infer::ExprTypeIsNotInScope(t, span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    &format!("type of expression contains references \
-                             that are not valid during the expression: `{}`",
-                            self.ty_to_string(t)));
+                span_err!(self.tcx.sess, span, E0486,
+                          "type of expression contains references \
+                           that are not valid during the expression: `{}`",
+                          self.ty_to_string(t));
                 self.tcx.note_and_explain_region(
                     "type is only valid for ",
                     sup,
                     "");
             }
             infer::SafeDestructor(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    "unsafe use of destructor: destructor might be called \
-                     while references are dead");
+                span_err!(self.tcx.sess, span, E0487,
+                          "unsafe use of destructor: destructor might be called \
+                           while references are dead");
                 // FIXME (22171): terms "super/subregion" are suboptimal
                 self.tcx.note_and_explain_region(
                     "superregion: ",
@@ -884,37 +868,33 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "");
             }
             infer::BindingTypeIsNotValidAtDecl(span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    "lifetime of variable does not enclose its declaration");
+                span_err!(self.tcx.sess, span, E0488,
+                          "lifetime of variable does not enclose its declaration");
                 self.tcx.note_and_explain_region(
                     "the variable is only valid for ",
                     sup,
                     "");
             }
             infer::ParameterInScope(_, span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    &format!("type/lifetime parameter not in scope here"));
+                span_err!(self.tcx.sess, span, E0489,
+                          "type/lifetime parameter not in scope here");
                 self.tcx.note_and_explain_region(
                     "the parameter is only valid for ",
                     sub,
                     "");
             }
             infer::DataBorrowed(ty, span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    &format!("a value of type `{}` is borrowed for too long",
-                             self.ty_to_string(ty)));
+                span_err!(self.tcx.sess, span, E0490,
+                          "a value of type `{}` is borrowed for too long",
+                          self.ty_to_string(ty));
                 self.tcx.note_and_explain_region("the type is valid for ", sub, "");
                 self.tcx.note_and_explain_region("but the borrow lasts for ", sup, "");
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
-                self.tcx.sess.span_err(
-                    span,
-                    &format!("in type `{}`, reference has a longer lifetime \
-                             than the data it references",
-                            self.ty_to_string(ty)));
+                span_err!(self.tcx.sess, span, E0491,
+                          "in type `{}`, reference has a longer lifetime \
+                           than the data it references",
+                          self.ty_to_string(ty));
                 self.tcx.note_and_explain_region(
                     "the pointer is valid for ",
                     sub,
@@ -975,7 +955,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn report_processed_errors(&self,
                                var_origins: &[RegionVariableOrigin],
-                               trace_origins: &[(TypeTrace<'tcx>, ty::TypeError<'tcx>)],
+                               trace_origins: &[(TypeTrace<'tcx>, TypeError<'tcx>)],
                                same_regions: &[SameRegions]) {
         for vo in var_origins {
             self.report_inference_failure(vo.clone());
@@ -1647,11 +1627,10 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        self.tcx.sess.span_err(
-            var_origin.span(),
-            &format!("cannot infer an appropriate lifetime{} \
-                    due to conflicting requirements",
-                    var_description));
+        span_err!(self.tcx.sess, var_origin.span(), E0495,
+                  "cannot infer an appropriate lifetime{} \
+                   due to conflicting requirements",
+                  var_description);
     }
 
     fn note_region_origin(&self, origin: &SubregionOrigin<'tcx>) {
@@ -1778,7 +1757,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                     "...so that return value is valid for the call");
             }
             infer::Operand(span) => {
-                self.tcx.sess.span_err(
+                self.tcx.sess.span_note(
                     span,
                     "...so that operand is valid for operation");
             }

@@ -71,10 +71,11 @@ use trans::machine;
 use trans::meth;
 use trans::tvec;
 use trans::type_of;
-use middle::cast::{CastKind, CastTy};
-use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustUnsafeFnPointer};
+use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
+use middle::ty::adjustment::{AdjustUnsafeFnPointer, CustomCoerceUnsized};
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
+use middle::ty::cast::{CastKind, CastTy};
 use util::common::indenter;
 use trans::machine::{llsize_of, llsize_of_alloc};
 use trans::type_::Type;
@@ -82,7 +83,7 @@ use trans::type_::Type;
 use rustc_front;
 use rustc_front::hir;
 
-use syntax::{ast, codemap};
+use syntax::{ast, ast_util, codemap};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::parse::token;
@@ -514,7 +515,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
 
             let coerce_index = match kind {
-                ty::CustomCoerceUnsized::Struct(i) => i
+                CustomCoerceUnsized::Struct(i) => i
             };
             assert!(coerce_index < src_fields.len() && src_fields.len() == target_fields.len());
 
@@ -629,9 +630,6 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_datum_unadjusted");
 
     match expr.node {
-        hir::ExprParen(ref e) => {
-            trans(bcx, &**e)
-        }
         hir::ExprPath(..) => {
             trans_def(bcx, expr, bcx.def(expr.id))
         }
@@ -933,9 +931,6 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
     match expr.node {
-        hir::ExprParen(ref e) => {
-            trans_into(bcx, &**e, Ignore)
-        }
         hir::ExprBreak(label_opt) => {
             controlflow::trans_break(bcx, expr, label_opt.map(|l| l.node))
         }
@@ -1049,9 +1044,6 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
     match expr.node {
-        hir::ExprParen(ref e) => {
-            trans_into(bcx, &**e, dest)
-        }
         hir::ExprPath(..) => {
             trans_def_dps_unadjusted(bcx, expr, bcx.def(expr.id), dest)
         }
@@ -1139,7 +1131,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         hir::ExprLit(ref lit) => {
             match lit.node {
-                hir::LitStr(ref s, _) => {
+                ast::LitStr(ref s, _) => {
                     tvec::trans_lit_str(bcx, expr, (*s).clone(), dest)
                 }
                 _ => {
@@ -1548,7 +1540,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
 fn trans_immediate_lit<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    expr: &hir::Expr,
-                                   lit: &hir::Lit)
+                                   lit: &ast::Lit)
                                    -> DatumBlock<'blk, 'tcx, Expr> {
     // must not be a string constant, that is a RvalueDpsExpr
     let _icx = push_ctxt("trans_immediate_lit");
@@ -2045,8 +2037,8 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               id: ast::NodeId)
                               -> DatumBlock<'blk, 'tcx, Expr>
 {
-    use middle::cast::CastTy::*;
-    use middle::cast::IntTy::*;
+    use middle::ty::cast::CastTy::*;
+    use middle::ty::cast::IntTy::*;
 
     fn int_cast(bcx: Block,
                 lldsttype: Type,
@@ -2380,8 +2372,8 @@ impl OverflowOpViaIntrinsic {
         bcx.ccx().get_intrinsic(&name)
     }
     fn to_intrinsic_name(&self, tcx: &ty::ctxt, ty: Ty) -> &'static str {
-        use rustc_front::hir::IntTy::*;
-        use rustc_front::hir::UintTy::*;
+        use syntax::ast::IntTy::*;
+        use syntax::ast::UintTy::*;
         use middle::ty::{TyInt, TyUint};
 
         let new_sty = match ty.sty {
@@ -2713,7 +2705,7 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
             ExprKind::RvalueDps
         }
 
-        hir::ExprLit(ref lit) if rustc_front::util::lit_is_str(&**lit) => {
+        hir::ExprLit(ref lit) if ast_util::lit_is_str(&**lit) => {
             ExprKind::RvalueDps
         }
 
@@ -2749,7 +2741,5 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
                 ExprKind::RvalueDps
             }
         }
-
-        hir::ExprParen(ref e) => expr_kind(tcx, &**e),
     }
 }

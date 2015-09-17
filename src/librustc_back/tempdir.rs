@@ -38,8 +38,12 @@ impl TempDir {
     #[allow(deprecated)] // rand usage
     pub fn new_in<P: AsRef<Path>>(tmpdir: P, prefix: &str)
                                   -> io::Result<TempDir> {
+        Self::_new_in(tmpdir.as_ref(), prefix)
+    }
+
+    fn _new_in(tmpdir: &Path, prefix: &str) -> io::Result<TempDir> {
         let storage;
-        let mut tmpdir = tmpdir.as_ref();
+        let mut tmpdir = tmpdir;
         if !tmpdir.is_absolute() {
             let cur_dir = try!(env::current_dir());
             storage = cur_dir.join(tmpdir);

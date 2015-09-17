@@ -25,11 +25,9 @@ use rustc_back::target::Target;
 use lint;
 use metadata::cstore;
 
-use syntax::ast;
-use rustc_front::hir::{IntTy, UintTy};
+use syntax::ast::{self, IntTy, UintTy};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use rustc_front::hir;
 use syntax::diagnostic::{ColorConfig, Auto, Always, Never, SpanHandler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
@@ -603,6 +601,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "For every macro invocation, print its name and arguments"),
     enable_nonzeroing_move_hints: bool = (false, parse_bool,
           "Force nonzeroing move optimization on"),
+    keep_mtwt_tables: bool = (false, parse_bool,
+          "Don't clear the resolution tables after analysis"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -669,8 +669,8 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
     };
 
     let (int_type, uint_type) = match &target.target_pointer_width[..] {
-        "32" => (hir::TyI32, hir::TyU32),
-        "64" => (hir::TyI64, hir::TyU64),
+        "32" => (ast::TyI32, ast::TyU32),
+        "64" => (ast::TyI64, ast::TyU64),
         w    => sp.handler().fatal(&format!("target specification was invalid: unrecognized \
                                              target-pointer-width {}", w))
     };

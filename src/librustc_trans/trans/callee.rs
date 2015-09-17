@@ -24,6 +24,7 @@ use session;
 use llvm::{self, ValueRef, get_params};
 use middle::def;
 use middle::def_id::{DefId, LOCAL_CRATE};
+use middle::infer::normalize_associated_type;
 use middle::subst;
 use middle::subst::{Subst, Substs};
 use rustc::front::map as hir_map;
@@ -260,7 +261,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let tcx = ccx.tcx();
 
     // Normalize the type for better caching.
-    let bare_fn_ty = common::erase_regions(tcx, &bare_fn_ty);
+    let bare_fn_ty = tcx.erase_regions(&bare_fn_ty);
 
     // If this is an impl of `Fn` or `FnMut` trait, the receiver is `&self`.
     let is_by_ref = match closure_kind {
@@ -521,7 +522,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
     // Type scheme of the function item (may have type params)
     let fn_type_scheme = tcx.lookup_item_type(def_id);
-    let fn_type = monomorphize::normalize_associated_type(tcx, &fn_type_scheme.ty);
+    let fn_type = normalize_associated_type(tcx, &fn_type_scheme.ty);
 
     // Find the actual function pointer.
     let mut val = {

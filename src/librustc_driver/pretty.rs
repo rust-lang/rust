@@ -32,6 +32,7 @@ use syntax::ast;
 use syntax::codemap;
 use syntax::fold::{self, Folder};
 use syntax::print::{pp, pprust};
+use syntax::print::pprust::PrintState;
 use syntax::ptr::P;
 use syntax::util::small_vector::SmallVector;
 
@@ -156,7 +157,6 @@ impl PpSourceMode {
     fn call_with_pp_support_hir<'tcx, A, B, F>(&self,
                                                sess: Session,
                                                ast_map: &hir_map::Map<'tcx>,
-                                               ast_crate: &ast::Crate,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                id: String,
                                                payload: B,
@@ -179,7 +179,6 @@ impl PpSourceMode {
             PpmTyped => {
                 driver::phase_3_run_analysis_passes(sess,
                                                     ast_map.clone(),
-                                                    ast_crate,
                                                     arenas,
                                                     id,
                                                     resolve::MakeGlobMap::No,
@@ -714,7 +713,7 @@ pub fn pretty_print_input(sess: Session,
         (PpmHir(s), None) => {
             let out: &mut Write = &mut out;
             s.call_with_pp_support_hir(
-                sess, &ast_map.unwrap(), &krate, &arenas, id, box out, |annotation, out, krate| {
+                sess, &ast_map.unwrap(), &arenas, id, box out, |annotation, out, krate| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust_hir::print_crate(sess.codemap(),
@@ -732,7 +731,6 @@ pub fn pretty_print_input(sess: Session,
             let out: &mut Write = &mut out;
             s.call_with_pp_support_hir(sess,
                                        &ast_map.unwrap(),
-                                       &krate,
                                        &arenas,
                                        id,
                                        (out,uii),
@@ -781,7 +779,6 @@ pub fn pretty_print_input(sess: Session,
                     let variants = gather_flowgraph_variants(&sess);
                     driver::phase_3_run_analysis_passes(sess,
                                                         ast_map,
-                                                        &krate,
                                                         &arenas,
                                                         id,
                                                         resolve::MakeGlobMap::No,

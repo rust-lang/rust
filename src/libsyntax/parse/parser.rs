@@ -2365,7 +2365,7 @@ impl<'a> Parser<'a> {
                         self.fileline_help(last_span,
                             &format!("try parenthesizing the first index; e.g., `(foo.{}){}`",
                                     float.trunc() as usize,
-                                    &float.fract().to_string()[1..]));
+                                    format!(".{}", fstr.splitn(2, ".").last().unwrap())));
                     }
                     self.abort_if_errors();
 

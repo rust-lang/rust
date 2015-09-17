@@ -15,7 +15,7 @@ use super::lattice::{self, LatticeDir};
 use super::Subtype;
 
 use middle::ty::{self, Ty};
-use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 
 /// "Least upper bound" (common supertype)
 pub struct Lub<'a, 'tcx: 'a> {
@@ -83,4 +83,3 @@ impl<'a, 'tcx> LatticeDir<'a,'tcx> for Lub<'a, 'tcx> {
         Ok(())
     }
 }
-

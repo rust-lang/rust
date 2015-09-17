@@ -30,6 +30,7 @@ use middle::ty::{self, Ty};
 
 use rustc_front::hir;
 
+use syntax::ast;
 use syntax::parse::token::InternedString;
 
 #[derive(Copy, Clone)]
@@ -91,7 +92,7 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Handle the "..." case (returns a slice since strings are always unsized):
     if let hir::ExprLit(ref lit) = content_expr.node {
-        if let hir::LitStr(ref s, _) = lit.node {
+        if let ast::LitStr(ref s, _) = lit.node {
             let scratch = rvalue_scratch_datum(bcx, vec_ty, "");
             bcx = trans_lit_str(bcx,
                                 content_expr,
@@ -172,7 +173,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     match content_expr.node {
         hir::ExprLit(ref lit) => {
             match lit.node {
-                hir::LitStr(ref s, _) => {
+                ast::LitStr(ref s, _) => {
                     match dest {
                         Ignore => return bcx,
                         SaveIn(lldest) => {
@@ -268,7 +269,7 @@ fn elements_required(bcx: Block, content_expr: &hir::Expr) -> usize {
     match content_expr.node {
         hir::ExprLit(ref lit) => {
             match lit.node {
-                hir::LitStr(ref s, _) => s.len(),
+                ast::LitStr(ref s, _) => s.len(),
                 _ => {
                     bcx.tcx().sess.span_bug(content_expr.span,
                                             "unexpected evec content")

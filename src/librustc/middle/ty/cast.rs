@@ -13,7 +13,7 @@
 
 use middle::ty::{self, Ty};
 
-use rustc_front::hir as ast;
+use syntax::ast;
 
 /// Types that are represented as ints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

@@ -282,9 +282,9 @@ fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
 
                 Err(err) => {
                     let subspan = p.span.lo <= err.span.lo && err.span.hi <= p.span.hi;
-                    cx.tcx.sess.span_err(err.span,
-                                         &format!("constant evaluation error: {}",
-                                                  err.description()));
+                    span_err!(cx.tcx.sess, err.span, E0471,
+                              "constant evaluation error: {}",
+                              err.description());
                     if !subspan {
                         cx.tcx.sess.span_note(p.span,
                                               "in pattern here")
@@ -404,7 +404,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir:
 
 fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
     let node = match value {
-        &ConstVal::Bool(b) => hir::LitBool(b),
+        &ConstVal::Bool(b) => ast::LitBool(b),
         _ => unreachable!()
     };
     P(hir::Expr {

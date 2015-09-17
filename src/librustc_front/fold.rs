@@ -12,7 +12,8 @@
 //! and returns a piece of the same type.
 
 use hir::*;
-use syntax::ast::{Ident, NodeId, DUMMY_NODE_ID};
+use syntax::ast::{Ident, NodeId, DUMMY_NODE_ID, Attribute, Attribute_, MetaItem};
+use syntax::ast::{MetaWord, MetaList, MetaNameValue};
 use hir;
 use syntax::codemap::{respan, Span, Spanned};
 use syntax::owned_slice::OwnedSlice;
@@ -1163,7 +1164,6 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                         fields.move_map(|x| folder.fold_field(x)),
                         maybe_expr.map(|x| folder.fold_expr(x)))
             },
-            ExprParen(ex) => ExprParen(folder.fold_expr(ex))
         },
         span: folder.new_span(span)
     }
