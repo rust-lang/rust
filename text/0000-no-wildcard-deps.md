@@ -11,7 +11,7 @@ constraints range from accepting exactly one version (`=1.2.3`), to
 accepting a range of versions (`^1.2.3`, `~1.2.3`, `>= 1.2.3, < 3.0.0`), to
 accepting any version at all (`*`). This RFC proposes to update crates.io to
 reject publishes of crates that have compile or build dependencies with
-version constraints that have no upper bound.
+a wildcard version constraint.
 
 # Motivation
 
@@ -40,10 +40,13 @@ guarantees have on consumers of libraries.
 As an example, consider the [openssl](https://crates.io/crates/openssl) crate.
 It is one of the most popular libraries on crates.io, with several hundred
 downloads every day. 50% of the [libraries that depend on it](https://crates.io/crates/openssl/reverse_dependencies)
-have a wildcard constraint on the version. Almost all of them them will fail
-to compile against version 0.7 of openssl when it is released. When that
-happens, users of those libraries will be forced to manually override Cargo's
-version selection every time it is recalculated. This is not a fun time.
+have a wildcard constraint on the version. None of them can build against every
+version that has ever been released. Indeed, no libraries can since many of
+those releases can before Rust 1.0 released. In addition, almost all of them
+them will fail to compile against version 0.7 of openssl when it is released.
+When that happens, users of those libraries will be forced to manually override
+Cargo's version selection every time it is recalculated. This is not a fun
+time.
 
 Bad version restrictions are also "viral". Even if a developer is careful to
 pick dependencies that have reasonable version restrictions, there could be a
@@ -77,37 +80,52 @@ build dependencies, but not to dev dependencies. Dev dependencies are only used
 when testing a crate, so it doesn't matter to downstream consumers if they
 break.
 
+This RFC is not trying to prohibit *all* constraints that would run into the
+issues described above. For example, the constraint `>= 0.0.0` is exactly
+equivalent to `*`. This is for a couple of reasons:
+
+* It's not totally clear how to precisely define "reasonable" constraints. For
+example, one might want to forbid constraints that allow unreleased major
+versions. However, some crates provide strong guarantees that any breaks will
+be followed by one full major version of deprecation. If a library author is
+sure that their crate doesn't use any deprecated functionality of that kind of
+dependency, it's completely safe and reasonable to explicitly extend the
+version constraint to include the next unreleased version.
+* Cargo and crates.io are missing tools to deal with overly-restrictive
+constraints. For example, it's not currently possible to force Cargo to allow
+dependency resolution that violates version constraints. Without this kind of
+support, it is somewhat risky to push too hard towards tight version
+constraints.
+* Wildcard constraints are popular, at least in part, because they are the
+path of least resistance when writing a crate. Without wildcard constraints,
+crate authors will be forced to figure out what kind of constraints make the
+most sense in their use cases, which may very well be good enough.
+
 # Detailed design
 
-Alter crates.io's pre-publish behavior to check the version constraints of all
-compile and build dependencies, and reject those that have no upper bound. For
-example, these would be rejected:
+The prohibition on wildcard constraints will be rolled out in stages to make
+sure that crate authors have lead time to figure out their versioning stories.
 
- * `*`
- * `> 0.3`
- * `>= 0.3`
-
-While these would not:
-
- * `>= 0.3, < 0.5`
- * `^0.3`
- * `~0.3`
- * `=0.3.1`
+In the next stable Rust release (1.4), Cargo will issue warnings for all
+wildcard constraints on build and compile dependencies when publishing, but
+publishes those constraints will still succeed. Along side the next stable
+release after that (1.5 on December 11th, 2015), crates.io be updated to reject
+publishes of crates with those kinds of dependency constraints. Note that the
+check will happen on the crates.io side rather than on the Cargo side since
+Cargo can publish to locations other than crates.io which may not worry about
+these restrictions.
 
 # Drawbacks
 
 The barrier to entry when publishing a crate will be mildly higher.
 
-In theory, there could be contexts where an unbounded version constraint is
-actually appropriate?
+Tightening constraints has the potential to cause resolution breakage when no
+breakage would occur otherwise.
 
 # Alternatives
 
 We could continue allowing these kinds of constraints, but complain in a
 "sufficiently annoying" manner during publishes to discourage their use.
 
-# Unresolved questions
-
-Should crates.io also forbid constraints that reference versions of
-dependencies that don't yet exist? For example, a constraint of `>= 0.3, < 0.5`
-where the dependency has no published versions in the `0.4` range.
+This RFC originally proposed forbidding all constraints that had no upper
+version bound but has since been pulled back to just `*` constraints.
