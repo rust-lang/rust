@@ -1473,6 +1473,19 @@ fn doc_generics<'tcx>(base_doc: rbml::Doc,
     ty::Generics { types: types, regions: regions }
 }
 
+fn doc_predicate<'tcx>(cdata: Cmd,
+                       doc: rbml::Doc,
+                       tcx: &ty::ctxt<'tcx>)
+                       -> ty::Predicate<'tcx>
+{
+    let predicate_pos = cdata.xref_index.lookup(
+        cdata.data(), reader::doc_as_u32(doc)).unwrap() as usize;
+    TyDecoder::new(
+        cdata.data(), cdata.cnum, predicate_pos, tcx,
+        &mut |_, did| translate_def_id(cdata, did)
+    ).parse_predicate()
+}
+
 fn doc_predicates<'tcx>(base_doc: rbml::Doc,
                         tcx: &ty::ctxt<'tcx>,
                         cdata: Cmd,
@@ -1482,17 +1495,17 @@ fn doc_predicates<'tcx>(base_doc: rbml::Doc,
     let doc = reader::get_doc(base_doc, tag);
 
     let mut predicates = subst::VecPerParamSpace::empty();
-    for predicate_doc in reader::tagged_docs(doc, tag_predicate) {
-        let space_doc = reader::get_doc(predicate_doc, tag_predicate_space);
-        let space = subst::ParamSpace::from_uint(reader::doc_as_u8(space_doc) as usize);
-
-        let data_doc = reader::get_doc(predicate_doc, tag_predicate_data);
-        let data =
-            TyDecoder::with_doc(tcx, cdata.cnum, data_doc,
-                                &mut |_, did| translate_def_id(cdata, did))
-            .parse_predicate();
-
-        predicates.push(space, data);
+    for predicate_doc in reader::tagged_docs(doc, tag_type_predicate) {
+        predicates.push(subst::TypeSpace,
+                        doc_predicate(cdata, predicate_doc, tcx));
+    }
+    for predicate_doc in reader::tagged_docs(doc, tag_self_predicate) {
+        predicates.push(subst::SelfSpace,
+                        doc_predicate(cdata, predicate_doc, tcx));
+    }
+    for predicate_doc in reader::tagged_docs(doc, tag_fn_predicate) {
+        predicates.push(subst::FnSpace,
+                        doc_predicate(cdata, predicate_doc, tcx));
     }
 
     ty::GenericPredicates { predicates: predicates }

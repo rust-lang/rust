@@ -222,9 +222,9 @@ pub const tag_type_param_def: usize = 0x94;
 pub const tag_item_generics: usize = 0x95;
 pub const tag_method_ty_generics: usize = 0x96;
 
-pub const tag_predicate: usize = 0x97;
-pub const tag_predicate_space: usize = 0x98;
-pub const tag_predicate_data: usize = 0x99;
+pub const tag_type_predicate: usize = 0x97;
+pub const tag_self_predicate: usize = 0x98;
+pub const tag_fn_predicate: usize = 0x99;
 
 pub const tag_unsafety: usize = 0x9a;
 
