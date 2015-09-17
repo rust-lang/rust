@@ -545,7 +545,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_ident(&mut self) -> PResult<ast::Ident> {
-        self.check_strict_keywords();
+        try!(self.check_strict_keywords());
         try!(self.check_reserved_keywords());
         match self.token {
             token::Ident(i, _) => {
@@ -640,13 +640,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Signal an error if the given string is a strict keyword
-    pub fn check_strict_keywords(&mut self) {
+    pub fn check_strict_keywords(&mut self) -> PResult<()> {
         if self.token.is_strict_keyword() {
             let token_str = self.this_token_to_string();
-            let span = self.span;
-            self.span_err(span,
-                          &format!("expected identifier, found keyword `{}`",
-                                  token_str));
+            Err(self.fatal(&format!("expected identifier, found keyword `{}`",
+                                    token_str)))
+        } else {
+            Ok(())
         }
     }
 

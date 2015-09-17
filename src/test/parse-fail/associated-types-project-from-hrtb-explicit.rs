@@ -21,7 +21,6 @@ pub trait Foo<T> {
 
 fn foo2<I>(x: <I as for<'x> Foo<&'x isize>>::A)
     //~^ ERROR expected identifier, found keyword `for`
-    //~| ERROR expected one of `::` or `>`
 {
 }
 
