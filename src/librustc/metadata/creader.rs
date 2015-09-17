@@ -325,6 +325,7 @@ impl<'a> CrateReader<'a> {
         let cmeta = Rc::new(cstore::crate_metadata {
             name: name.to_string(),
             local_path: RefCell::new(SmallVector::zero()),
+            local_def_path: RefCell::new(vec![]),
             index: decoder::load_index(metadata.as_slice()),
             data: metadata,
             cnum_map: RefCell::new(cnum_map),
@@ -548,7 +549,8 @@ impl<'a> CrateReader<'a> {
             self.sess.abort_if_errors();
         }
 
-        let registrar = decoder::get_plugin_registrar_fn(ekrate.metadata.as_slice())
+        let registrar =
+            decoder::get_plugin_registrar_fn(ekrate.metadata.as_slice())
             .map(|id| decoder::get_symbol_from_buf(ekrate.metadata.as_slice(), id));
 
         match (ekrate.dylib.as_ref(), registrar) {
@@ -751,6 +753,9 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
                                                               i.span,
                                                               PathKind::Crate,
                                                               true);
+                        let def_id = self.ast_map.local_def_id(i.id);
+                        let def_path = self.ast_map.def_path(def_id);
+                        cmeta.update_local_def_path(def_path);
                         self.ast_map.with_path(i.id, |path| {
                             cmeta.update_local_path(path)
                         });

@@ -39,7 +39,7 @@ use rustc::metadata::cstore;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder;
 use rustc::middle::def;
-use rustc::middle::def_id::DefId;
+use rustc::middle::def_id::{DefId, DefIndex};
 use rustc::middle::subst::{self, ParamSpace, VecPerParamSpace};
 use rustc::middle::ty;
 use rustc::middle::stability;
@@ -188,7 +188,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     attrs: child.attrs.clone(),
                     visibility: Some(hir::Public),
                     stability: None,
-                    def_id: DefId::xxx_local(prim.to_node_id()),
+                    def_id: DefId::local(prim.to_def_index()),
                     inner: PrimitiveItem(prim),
                 });
             }
@@ -1559,8 +1559,9 @@ impl PrimitiveType {
     /// Creates a rustdoc-specific node id for primitive types.
     ///
     /// These node ids are generally never used by the AST itself.
-    pub fn to_node_id(&self) -> ast::NodeId {
-        u32::MAX - 1 - (*self as u32)
+    pub fn to_def_index(&self) -> DefIndex {
+        let x = u32::MAX - 1 - (*self as u32);
+        DefIndex::new(x as usize)
     }
 }
 
@@ -1744,7 +1745,7 @@ impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
         let (name, attrs) = if self.name == unnamed_field.name {
             (None, None)
         } else {
-            (Some(self.name), Some(attr_map.get(&self.did.xxx_node).unwrap()))
+            (Some(self.name), Some(attr_map.get(&self.did).unwrap()))
         };
 
         Item {

@@ -1576,7 +1576,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            param_substs);
 
     let has_env = match closure_env {
-        closure::ClosureEnv::Closure(_) => true,
+        closure::ClosureEnv::Closure(..) => true,
         closure::ClosureEnv::NotClosure => false,
     };
 
@@ -2309,10 +2309,11 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, id: ast::NodeId,
     match attr::find_export_name_attr(ccx.sess().diagnostic(), attrs) {
         // Use provided name
         Some(name) => name.to_string(),
-        _ => ccx.tcx().map.with_path(id, |path| {
+        _ => {
+            let path = ccx.tcx().map.def_path_from_id(id);
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
-                path.last().unwrap().to_string()
+                path.last().unwrap().data.to_string()
             } else {
                 match weak_lang_items::link_name(attrs) {
                     Some(name) => name.to_string(),
@@ -2322,7 +2323,7 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, id: ast::NodeId,
                     }
                 }
             }
-        })
+        }
     }
 }
 

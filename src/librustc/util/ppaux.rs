@@ -27,7 +27,7 @@ use std::fmt;
 use syntax::abi;
 use syntax::ast;
 use syntax::parse::token;
-use syntax::ast::{CRATE_NODE_ID};
+use syntax::ast::CRATE_NODE_ID;
 use rustc_front::hir;
 
 pub fn verbose() -> bool {

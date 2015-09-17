@@ -346,7 +346,7 @@ impl<'tcx> TypeMap<'tcx> {
 
             output.push_str(crate_hash.as_str());
             output.push_str("/");
-            output.push_str(&format!("{:x}", def_id.xxx_node));
+            output.push_str(&format!("{:x}", def_id.index.as_usize()));
 
             // Maybe check that there is no self type here.
 

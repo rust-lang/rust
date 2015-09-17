@@ -12,12 +12,11 @@ pub use self::Node::*;
 pub use self::PathElem::*;
 use self::MapEntry::*;
 use self::collector::NodeCollector;
+pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData, DisambiguatedDefPathData};
 
-use metadata::cstore::LOCAL_CRATE;
 use metadata::inline::InlinedItem;
 use metadata::inline::InlinedItem as II;
 use middle::def_id::DefId;
-use util::nodemap::NodeSet;
 
 use syntax::abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID};
@@ -39,6 +38,7 @@ use std::slice;
 
 pub mod blocks;
 mod collector;
+pub mod definitions;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum PathElem {
@@ -268,10 +268,28 @@ pub struct Map<'ast> {
     /// plain old integers.
     map: RefCell<Vec<MapEntry<'ast>>>,
 
-    definitions_map: RefCell<NodeSet>,
+    definitions: RefCell<Definitions>,
 }
 
 impl<'ast> Map<'ast> {
+    pub fn num_local_def_ids(&self) -> usize {
+        self.definitions.borrow().len()
+    }
+
+    pub fn def_key(&self, def_id: DefId) -> DefKey {
+        assert!(def_id.is_local());
+        self.definitions.borrow().def_key(def_id.index)
+    }
+
+    pub fn def_path_from_id(&self, id: NodeId) -> DefPath {
+        self.def_path(self.local_def_id(id))
+    }
+
+    pub fn def_path(&self, def_id: DefId) -> DefPath {
+        assert!(def_id.is_local());
+        self.definitions.borrow().def_path(def_id.index)
+    }
+
     pub fn local_def_id(&self, node: NodeId) -> DefId {
         self.opt_local_def_id(node).unwrap_or_else(|| {
             panic!("local_def_id: no entry for `{}`, which has a map of `{:?}`",
@@ -280,30 +298,27 @@ impl<'ast> Map<'ast> {
     }
 
     pub fn opt_local_def_id(&self, node: NodeId) -> Option<DefId> {
-        if self.definitions_map.borrow().contains(&node) {
-            Some(DefId::xxx_local(node))
-        } else {
-            None
-        }
+        self.definitions.borrow().opt_local_def_id(node)
     }
 
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<NodeId> {
-        if def_id.krate == LOCAL_CRATE {
-            assert!(self.definitions_map.borrow().contains(&def_id.xxx_node));
-            Some(def_id.xxx_node)
-        } else {
-            None
-        }
+        self.definitions.borrow().as_local_node_id(def_id)
     }
 
     /// for default methods, we create a fake node-id; this method
     /// adds that fake node-id to the def-id tables
     pub fn synthesize_default_method_def_id(&self,
-                                            _impl_def_id: DefId,
-                                            new_method_id: NodeId)
+                                            impl_def_id: DefId,
+                                            new_method_id: NodeId,
+                                            method_name: Name)
                                             -> DefId {
-        self.definitions_map.borrow_mut().insert(new_method_id);
-        DefId::xxx_local(new_method_id)
+        assert!(impl_def_id.is_local());
+        let index =
+            self.definitions.borrow_mut()
+                            .create_def_with_parent(Some(impl_def_id.index),
+                                                    new_method_id,
+                                                    DefPathData::Value(method_name));
+        DefId::local(index)
     }
 
     fn entry_count(&self) -> usize {
@@ -791,7 +806,7 @@ impl<F: FoldOps> Folder for IdAndSpanUpdater<F> {
 pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
     let mut collector = NodeCollector::root();
     visit::walk_crate(&mut collector, &forest.krate);
-    let NodeCollector { map, definitions_map, .. } = collector;
+    let NodeCollector { map, definitions, .. } = collector;
 
     if log_enabled!(::log::DEBUG) {
         // This only makes sense for ordered stores; note the
@@ -812,7 +827,7 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
     Map {
         forest: forest,
         map: RefCell::new(map),
-        definitions_map: RefCell::new(definitions_map),
+        definitions: RefCell::new(definitions),
     }
 }
 
@@ -821,6 +836,7 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
 /// the item itself.
 pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
                                           path: Vec<PathElem>,
+                                          def_path: DefPath,
                                           ii: InlinedItem,
                                           fold_ops: F)
                                           -> &'ast InlinedItem {
@@ -845,14 +861,16 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
 
     let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
     let mut collector =
-        NodeCollector::extend(ii_parent,
-                              ii_parent_id,
-                              mem::replace(&mut *map.map.borrow_mut(), vec![]),
-                              mem::replace(&mut *map.definitions_map.borrow_mut(), NodeSet()));
+        NodeCollector::extend(
+            ii_parent,
+            ii_parent_id,
+            def_path,
+            mem::replace(&mut *map.map.borrow_mut(), vec![]),
+            mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new()));
     ii_parent.ii.visit(&mut collector);
 
     *map.map.borrow_mut() = collector.map;
-    *map.definitions_map.borrow_mut() = collector.definitions_map;
+    *map.definitions.borrow_mut() = collector.definitions;
 
     &ii_parent.ii
 }

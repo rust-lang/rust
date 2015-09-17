@@ -34,7 +34,7 @@ use self::NamespaceError::*;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use rustc::middle::def::*;
-use rustc::middle::def_id::DefId;
+use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
 
 use syntax::ast::{Name, NodeId};
 use syntax::attr::AttrMetaMethods;
@@ -387,7 +387,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             ItemExternCrate(_) => {
                 // n.b. we don't need to look at the path option here, because cstore already did
                 if let Some(crate_id) = self.session.cstore.find_extern_mod_stmt_cnum(item.id) {
-                    let def_id = DefId { krate: crate_id, xxx_node: 0 };
+                    let def_id = DefId { krate: crate_id, index: CRATE_DEF_INDEX };
                     self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(Rc::downgrade(parent), name);
                     let external_module = Rc::new(Module::new(parent_link,

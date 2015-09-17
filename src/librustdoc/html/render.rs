@@ -54,7 +54,7 @@ use externalfiles::ExternalHtml;
 use serialize::json::{self, ToJson};
 use syntax::{abi, ast, attr};
 use rustc::metadata::cstore::LOCAL_CRATE;
-use rustc::middle::def_id::DefId;
+use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::util::nodemap::DefIdSet;
 use rustc_front::hir;
 
@@ -413,7 +413,7 @@ pub fn run(mut krate: clean::Crate,
     for &(n, ref e) in &krate.externs {
         cache.extern_locations.insert(n, (e.name.clone(),
                                           extern_location(e, &cx.dst)));
-        let did = DefId { krate: n, xxx_node: ast::CRATE_NODE_ID };
+        let did = DefId { krate: n, index: CRATE_DEF_INDEX };
         cache.paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
     }
 
@@ -1034,7 +1034,7 @@ impl DocFolder for Cache {
                     ref t => {
                         match t.primitive_type() {
                             Some(prim) => {
-                                let did = DefId::xxx_local(prim.to_node_id()); // TODO
+                                let did = DefId::local(prim.to_def_index());
                                 self.parent_stack.push(did);
                                 true
                             }
@@ -1079,8 +1079,8 @@ impl DocFolder for Cache {
                             ref t => {
                                 t.primitive_type().and_then(|t| {
                                     self.primitive_locations.get(&t).map(|n| {
-                                        let id = t.to_node_id();
-                                        DefId { krate: *n, xxx_node: id }
+                                        let id = t.to_def_index();
+                                        DefId { krate: *n, index: id }
                                     })
                                 })
                             }
@@ -1421,7 +1421,7 @@ impl<'a> Item<'a> {
                          root = root,
                          path = path[..path.len() - 1].join("/"),
                          file = item_path(self.item),
-                         goto = self.item.def_id.xxx_node))
+                         goto = self.item.def_id.index.as_usize()))
         }
     }
 }
@@ -1481,7 +1481,7 @@ impl<'a> fmt::Display for Item<'a> {
                 Some(l) => {
                     try!(write!(fmt, "<a id='src-{}' class='srclink' \
                                        href='{}' title='{}'>[src]</a>",
-                                self.item.def_id.xxx_node, l, "goto source code"));
+                                self.item.def_id.index.as_usize(), l, "goto source code"));
                 }
                 None => {}
             }
@@ -2337,7 +2337,7 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl) -> f
         _ => {
             if let Some(prim) = target.primitive_type() {
                 if let Some(c) = cache().primitive_locations.get(&prim) {
-                    let did = DefId { krate: *c, xxx_node: prim.to_node_id() };
+                    let did = DefId { krate: *c, index: prim.to_def_index() };
                     try!(render_assoc_items(w, cx, did, what));
                 }
             }

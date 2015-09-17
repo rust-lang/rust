@@ -208,8 +208,8 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     pub fn collect_external_language_items(&mut self) {
         let crate_store = &self.session.cstore;
         crate_store.iter_crate_data(|crate_number, _crate_metadata| {
-            each_lang_item(crate_store, crate_number, |node_id, item_index| {
-                let def_id = DefId { krate: crate_number, xxx_node: node_id };
+            each_lang_item(crate_store, crate_number, |index, item_index| {
+                let def_id = DefId { krate: crate_number, index: index };
                 self.collect_item(item_index, def_id, DUMMY_SP);
                 true
             });

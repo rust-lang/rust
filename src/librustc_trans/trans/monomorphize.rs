@@ -110,6 +110,8 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             Some(&d) => d, None => 0
         };
 
+        debug!("monomorphic_fn: depth for fn_id={:?} is {:?}", fn_id, depth+1);
+
         // Random cut-off -- code that needs to instantiate the same function
         // recursively more than thirty times can probably safely be assumed
         // to be causing an infinite expansion.
@@ -128,9 +130,8 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         mono_ty.hash(&mut state);
 
         hash = format!("h{}", state.finish());
-        ccx.tcx().map.with_path(fn_node_id, |path| {
-            exported_name(path, &hash[..])
-        })
+        let path = ccx.tcx().map.def_path_from_id(fn_node_id);
+        exported_name(path, &hash[..])
     };
 
     debug!("monomorphize_fn mangled to {}", s);
