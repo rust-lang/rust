@@ -25,7 +25,7 @@ before_script:
   - ./configure
 
 script:
-  - make tidy && make check -j4
+  - make tidy && make check -j8
 
 # env:
 #   - CXX=/usr/bin/g++-4.7
