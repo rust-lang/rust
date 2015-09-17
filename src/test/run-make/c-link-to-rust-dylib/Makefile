@@ -1,10 +1,17 @@
 -include ../tools.mk
 
-HOST_LIB_DIR=$(TMPDIR)/../../../stage$(RUST_BUILD_STAGE)/lib
-
-all:
-	$(RUSTC) foo.rs
-	$(CC) bar.c -lfoo -o $(call RUN_BINFILE,bar) $(call RPATH_LINK_SEARCH,$(HOST_LIB_DIR)) -Wl,-rpath,$(TMPDIR) $(EXTRACFLAGS)
+all: $(TMPDIR)/$(call BIN,bar)
 	$(call RUN,bar)
 	$(call REMOVE_DYLIBS,foo)
 	$(call FAIL,bar)
+
+ifdef IS_MSVC
+$(TMPDIR)/$(call BIN,bar): $(call DYLIB,foo)
+	$(CC) bar.c $(TMPDIR)/foo.lib $(call OUT_EXE,bar)
+else
+$(TMPDIR)/$(call BIN,bar): $(call DYLIB,foo)
+	$(CC) bar.c -lfoo -o $(call RUN_BINFILE,bar) -L $(TMPDIR)
+endif
+
+$(call DYLIB,foo): foo.rs
+	$(RUSTC) foo.rs

@@ -6,10 +6,12 @@
 CORRECT_DIR=$(TMPDIR)/correct
 WRONG_DIR=$(TMPDIR)/wrong
 
-all: $(TMPDIR)/libcorrect.a $(TMPDIR)/libwrong.a
+F := $(call NATIVE_STATICLIB_FILE,foo)
+
+all: $(call NATIVE_STATICLIB,correct) $(call NATIVE_STATICLIB,wrong)
 	mkdir -p $(CORRECT_DIR) $(WRONG_DIR)
-	mv $(TMPDIR)/libcorrect.a $(CORRECT_DIR)/libfoo.a
-	mv $(TMPDIR)/libwrong.a $(WRONG_DIR)/libfoo.a
+	mv $(call NATIVE_STATICLIB,correct) $(CORRECT_DIR)/$(F)
+	mv $(call NATIVE_STATICLIB,wrong) $(WRONG_DIR)/$(F)
 	$(RUSTC) main.rs -o $(TMPDIR)/should_succeed -L $(CORRECT_DIR) -L $(WRONG_DIR)
 	$(call RUN,should_succeed)
 	$(RUSTC) main.rs -o $(TMPDIR)/should_fail -L $(WRONG_DIR) -L $(CORRECT_DIR)

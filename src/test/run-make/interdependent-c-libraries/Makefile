@@ -8,7 +8,7 @@
 # correct to complete the linkage. If passed as "-lfoo -lbar", then the 'foo'
 # library will be stripped out, and the linkage will fail.
 
-all: $(call STATICLIB,foo) $(call STATICLIB,bar)
+all: $(call NATIVE_STATICLIB,foo) $(call NATIVE_STATICLIB,bar)
 	$(RUSTC) foo.rs
 	$(RUSTC) bar.rs
 	$(RUSTC) main.rs -Z print-link-args
