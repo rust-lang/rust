@@ -161,6 +161,17 @@ macro_rules! impl_enum_decodable {
                 }
             }
         }
+
+        impl ::config::ConfigType for $e {
+            fn get_variant_names() -> String {
+                let mut variants = Vec::new();
+                $(
+                    variants.push(stringify!($x));
+                )*
+
+                variants.join(", ")
+            }
+        }
     };
 }
 
