@@ -326,6 +326,7 @@ impl<'a> CrateReader<'a> {
             name: name.to_string(),
             local_path: RefCell::new(SmallVector::zero()),
             index: decoder::load_index(metadata.as_slice()),
+            xref_index: decoder::load_xrefs(metadata.as_slice()),
             data: metadata,
             cnum_map: RefCell::new(cnum_map),
             cnum: cnum,

@@ -65,7 +65,9 @@ pub struct crate_metadata {
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
     pub span: codemap::Span,
     pub staged_api: bool,
+
     pub index: index::Index,
+    pub xref_index: index::DenseIndex,
 
     /// Flag if this crate is required by an rlib version of this crate, or in
     /// other words whether it was explicitly linked to. An example of a crate
