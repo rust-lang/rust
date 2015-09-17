@@ -2150,7 +2150,7 @@ fn encode_metadata_inner(wr: &mut Cursor<Vec<u8>>,
 }
 
 // Get the encoded string for a type
-pub fn encoded_ty<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> String {
+pub fn encoded_ty<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> Vec<u8> {
     let mut wr = Cursor::new(Vec::new());
     tyencode::enc_ty(&mut Encoder::new(&mut wr), &tyencode::ctxt {
         diag: tcx.sess.diagnostic(),
@@ -2158,5 +2158,5 @@ pub fn encoded_ty<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> String {
         tcx: tcx,
         abbrevs: &RefCell::new(FnvHashMap())
     }, t);
-    String::from_utf8(wr.into_inner()).unwrap()
+    wr.into_inner()
 }

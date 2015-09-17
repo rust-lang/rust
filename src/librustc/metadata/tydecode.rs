@@ -125,6 +125,12 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         return &self.data[start_pos..end_pos];
     }
 
+    fn parse_vuint(&mut self) -> usize {
+        let res = rbml::reader::vuint_at(self.data, self.pos).unwrap();
+        self.pos = res.next;
+        res.val
+    }
+
     fn parse_name(&mut self, last: char) -> ast::Name {
         fn is_last(b: char, c: char) -> bool { return c == b; }
         let bytes = self.scan(|a| is_last(last, a));
@@ -405,11 +411,8 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 // we return it (modulo closure types, see below). But if not, then we
                 // jump to offset 123 and read the type from there.
 
-                let pos = self.parse_hex();
-                assert_eq!(self.next(), ':');
-                let len = self.parse_hex();
-                assert_eq!(self.next(), '#');
-                let key = ty::CReaderCacheKey {cnum: self.krate, pos: pos, len: len };
+                let pos = self.parse_vuint();
+                let key = ty::CReaderCacheKey { cnum: self.krate, pos: pos };
                 match tcx.rcache.borrow().get(&key).cloned() {
                     Some(tt) => {
                         // If there is a closure buried in the type some where, then we
@@ -506,19 +509,6 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
 
     fn parse_param_space(&mut self) -> subst::ParamSpace {
         subst::ParamSpace::from_uint(self.parse_uint())
-    }
-
-    fn parse_hex(&mut self) -> usize {
-        let mut n = 0;
-        loop {
-            let cur = self.peek();
-            if (cur < '0' || cur > '9') && (cur < 'a' || cur > 'f') { return n; }
-            self.pos = self.pos + 1;
-            n *= 16;
-            if '0' <= cur && cur <= '9' {
-                n += (cur as usize) - ('0' as usize);
-            } else { n += 10 + (cur as usize) - ('a' as usize); }
-        };
     }
 
     fn parse_abi_set(&mut self) -> abi::Abi {
