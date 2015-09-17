@@ -13,7 +13,8 @@ pub use self::Row::*;
 use super::escape;
 use super::span_utils::SpanUtils;
 
-use middle::def_id::DefId;
+use metadata::cstore::LOCAL_CRATE;
+use middle::def_id::{CRATE_DEF_INDEX, DefId};
 
 use std::io::Write;
 
@@ -21,7 +22,7 @@ use syntax::ast;
 use syntax::ast::NodeId;
 use syntax::codemap::*;
 
-const ZERO_DEF_ID: DefId = DefId { xxx_node: 0, krate: 0 };
+const CRATE_ROOT_DEF_ID: DefId = DefId { krate: LOCAL_CRATE, index: CRATE_DEF_INDEX };
 
 pub struct Recorder {
     // output file
@@ -381,7 +382,7 @@ impl<'a> FmtStrs<'a> {
                       decl_id: Option<DefId>,
                       scope_id: NodeId) {
         let values = match decl_id {
-            Some(decl_id) => svec!(id, name, decl_id.xxx_node, decl_id.krate, scope_id),
+            Some(decl_id) => svec!(id, name, decl_id.index.as_usize(), decl_id.krate, scope_id),
             None => svec!(id, name, "", "", scope_id),
         };
         self.check_and_record(Function,
@@ -436,15 +437,15 @@ impl<'a> FmtStrs<'a> {
                     ref_id: Option<DefId>,
                     trait_id: Option<DefId>,
                     scope_id: NodeId) {
-        let ref_id = ref_id.unwrap_or(ZERO_DEF_ID);
-        let trait_id = trait_id.unwrap_or(ZERO_DEF_ID);
+        let ref_id = ref_id.unwrap_or(CRATE_ROOT_DEF_ID);
+        let trait_id = trait_id.unwrap_or(CRATE_ROOT_DEF_ID);
         self.check_and_record(Impl,
                               span,
                               sub_span,
                               svec!(id,
-                                    ref_id.xxx_node,
+                                    ref_id.index.as_usize(),
                                     ref_id.krate,
-                                    trait_id.xxx_node,
+                                    trait_id.index.as_usize(),
                                     trait_id.krate,
                                     scope_id));
     }
@@ -469,14 +470,11 @@ impl<'a> FmtStrs<'a> {
                          mod_id: Option<DefId>,
                          name: &str,
                          parent: NodeId) {
-        let (mod_node, mod_crate) = match mod_id {
-            Some(mod_id) => (mod_id.xxx_node, mod_id.krate),
-            None => (0, 0),
-        };
+        let mod_id = mod_id.unwrap_or(CRATE_ROOT_DEF_ID);
         self.check_and_record(UseAlias,
                               span,
                               sub_span,
-                              svec!(id, mod_node, mod_crate, name, parent));
+                              svec!(id, mod_id.index.as_usize(), mod_id.krate, name, parent));
     }
 
     pub fn use_glob_str(&mut self,
@@ -513,7 +511,7 @@ impl<'a> FmtStrs<'a> {
         self.check_and_record(Inheritance,
                               span,
                               sub_span,
-                              svec!(base_id.xxx_node,
+                              svec!(base_id.index.as_usize(),
                                     base_id.krate,
                                     deriv_id,
                                     0));
@@ -527,7 +525,7 @@ impl<'a> FmtStrs<'a> {
         self.check_and_record(FnCall,
                               span,
                               sub_span,
-                              svec!(id.xxx_node, id.krate, "", scope_id));
+                              svec!(id.index.as_usize(), id.krate, "", scope_id));
     }
 
     pub fn meth_call_str(&mut self,
@@ -536,18 +534,15 @@ impl<'a> FmtStrs<'a> {
                          defid: Option<DefId>,
                          declid: Option<DefId>,
                          scope_id: NodeId) {
-        let (dfn, dfk) = match defid {
-            Some(defid) => (defid.xxx_node, defid.krate),
-            None => (0, 0),
-        };
+        let defid = defid.unwrap_or(CRATE_ROOT_DEF_ID);
         let (dcn, dck) = match declid {
-            Some(declid) => (s!(declid.xxx_node), s!(declid.krate)),
+            Some(declid) => (s!(declid.index.as_usize()), s!(declid.krate)),
             None => ("".to_string(), "".to_string()),
         };
         self.check_and_record(MethodCall,
                               span,
                               sub_span,
-                              svec!(dfn, dfk, dcn, dck, scope_id));
+                              svec!(defid.index.as_usize(), defid.krate, dcn, dck, scope_id));
     }
 
     pub fn sub_mod_ref_str(&mut self, span: Span, sub_span: Span, qualname: &str, parent: NodeId) {
@@ -600,6 +595,6 @@ impl<'a> FmtStrs<'a> {
         self.check_and_record(kind,
                               span,
                               sub_span,
-                              svec!(id.xxx_node, id.krate, "", scope_id));
+                              svec!(id.index.as_usize(), id.krate, "", scope_id));
     }
 }

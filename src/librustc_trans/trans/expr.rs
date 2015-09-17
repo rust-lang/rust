@@ -1195,14 +1195,23 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 SaveIn(lldest) => closure::Dest::SaveIn(bcx, lldest),
                 Ignore => closure::Dest::Ignore(bcx.ccx())
             };
-            let substs = match expr_ty(bcx, expr).sty {
-                ty::TyClosure(_, ref substs) => substs,
+
+            // NB. To get the id of the closure, we don't use
+            // `local_def_id(id)`, but rather we extract the closure
+            // def-id from the expr's type. This is because this may
+            // be an inlined expression from another crate, and we
+            // want to get the ORIGINAL closure def-id, since that is
+            // the key we need to find the closure-kind and
+            // closure-type etc.
+            let (def_id, substs) = match expr_ty(bcx, expr).sty {
+                ty::TyClosure(def_id, ref substs) => (def_id, substs),
                 ref t =>
                     bcx.tcx().sess.span_bug(
                         expr.span,
                         &format!("closure expr without closure type: {:?}", t)),
             };
-            closure::trans_closure_expr(dest, decl, body, expr.id, substs).unwrap_or(bcx)
+
+            closure::trans_closure_expr(dest, decl, body, expr.id, def_id, substs).unwrap_or(bcx)
         }
         hir::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {

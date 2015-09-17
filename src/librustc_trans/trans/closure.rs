@@ -36,6 +36,7 @@ use rustc_front::hir;
 
 
 fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                        closure_def_id: DefId,
                                         arg_scope_id: ScopeId,
                                         freevars: &[ty::Freevar])
                                         -> Block<'blk, 'tcx>
@@ -43,9 +44,9 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("closure::load_closure_environment");
 
     // Special case for small by-value selfs.
-    let closure_id = bcx.tcx().map.local_def_id(bcx.fcx.id);
-    let self_type = self_type_for_closure(bcx.ccx(), closure_id, node_id_type(bcx, bcx.fcx.id));
-    let kind = kind_for_closure(bcx.ccx(), closure_id);
+    let closure_ty = node_id_type(bcx, bcx.fcx.id);
+    let self_type = self_type_for_closure(bcx.ccx(), closure_def_id, closure_ty);
+    let kind = kind_for_closure(bcx.ccx(), closure_def_id);
     let llenv = if kind == ty::FnOnceClosureKind &&
             !arg_is_indirect(bcx.ccx(), self_type) {
         let datum = rvalue_scratch_datum(bcx,
@@ -106,7 +107,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub enum ClosureEnv<'a> {
     NotClosure,
-    Closure(&'a [ty::Freevar]),
+    Closure(DefId, &'a [ty::Freevar]),
 }
 
 impl<'a> ClosureEnv<'a> {
@@ -115,11 +116,11 @@ impl<'a> ClosureEnv<'a> {
     {
         match self {
             ClosureEnv::NotClosure => bcx,
-            ClosureEnv::Closure(freevars) => {
+            ClosureEnv::Closure(def_id, freevars) => {
                 if freevars.is_empty() {
                     bcx
                 } else {
-                    load_closure_environment(bcx, arg_scope, freevars)
+                    load_closure_environment(bcx, def_id, arg_scope, freevars)
                 }
             }
         }
@@ -132,8 +133,6 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                    closure_id: DefId,
                                                    substs: &ty::ClosureSubsts<'tcx>)
                                                    -> ValueRef {
-    let closure_node_id = ccx.tcx().map.as_local_node_id(closure_id).unwrap();
-
     // Normalize type so differences in regions and typedefs don't cause
     // duplicate declarations
     let substs = ccx.tcx().erase_regions(substs);
@@ -148,9 +147,8 @@ pub fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         return llfn;
     }
 
-    let symbol = ccx.tcx().map.with_path(closure_node_id, |path| {
-        mangle_internal_name_by_path_and_seq(path, "closure")
-    });
+    let path = ccx.tcx().def_path(closure_id);
+    let symbol = mangle_internal_name_by_path_and_seq(path, "closure");
 
     let function_type = ccx.tcx().mk_closure_from_closure_substs(closure_id, Box::new(substs));
     let llfn = declare::define_internal_rust_fn(ccx, &symbol[..], function_type);
@@ -177,9 +175,14 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                                     decl: &hir::FnDecl,
                                     body: &hir::Block,
                                     id: ast::NodeId,
+                                    closure_def_id: DefId, // (*)
                                     closure_substs: &'tcx ty::ClosureSubsts<'tcx>)
                                     -> Option<Block<'a, 'tcx>>
 {
+    // (*) Note that in the case of inlined functions, the `closure_def_id` will be the
+    // defid of the closure in its original crate, whereas `id` will be the id of the local
+    // inlined copy.
+
     let param_substs = closure_substs.func_substs;
 
     let ccx = match dest {
@@ -189,10 +192,10 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     let tcx = ccx.tcx();
     let _icx = push_ctxt("closure::trans_closure_expr");
 
-    debug!("trans_closure_expr()");
+    debug!("trans_closure_expr(id={:?}, closure_def_id={:?}, closure_substs={:?})",
+           id, closure_def_id, closure_substs);
 
-    let closure_id = tcx.map.local_def_id(id);
-    let llfn = get_or_create_closure_declaration(ccx, closure_id, closure_substs);
+    let llfn = get_or_create_closure_declaration(ccx, closure_def_id, closure_substs);
 
     // Get the type of this closure. Use the current `param_substs` as
     // the closure substitutions. This makes sense because the closure
@@ -201,7 +204,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     // of the closure expression.
 
     let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
-    let function_type = infcx.closure_type(closure_id, closure_substs);
+    let function_type = infcx.closure_type(closure_def_id, closure_substs);
 
     let freevars: Vec<ty::Freevar> =
         tcx.with_freevars(id, |fv| fv.iter().cloned().collect());
@@ -217,7 +220,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                   &[],
                   sig.output,
                   function_type.abi,
-                  ClosureEnv::Closure(&freevars));
+                  ClosureEnv::Closure(closure_def_id, &freevars));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size closure (in which case dest will be `Ignore`) and

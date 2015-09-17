@@ -15,7 +15,7 @@ use session::Session;
 use lint;
 use metadata::cstore::LOCAL_CRATE;
 use middle::def;
-use middle::def_id::DefId;
+use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::ty;
 use middle::privacy::PublicItems;
 use metadata::csearch;
@@ -383,7 +383,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &hir::Item, warn_about_defns: bool,
                 Some(cnum) => cnum,
                 None => return,
             };
-            let id = DefId { krate: cnum, xxx_node: ast::CRATE_NODE_ID };
+            let id = DefId { krate: cnum, index: CRATE_DEF_INDEX };
             maybe_do_stability_check(tcx, id, item.span, cb);
         }
 

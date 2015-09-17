@@ -16,6 +16,7 @@
 use front::map as ast_map;
 use session::Session;
 use lint;
+use metadata::csearch;
 use middle;
 use middle::def::DefMap;
 use middle::def_id::DefId;
@@ -133,6 +134,40 @@ impl<'tcx> Tables<'tcx> {
             closure_tys: DefIdMap(),
             closure_kinds: DefIdMap(),
         }
+    }
+
+    pub fn closure_kind(this: &RefCell<Self>,
+                        tcx: &ty::ctxt<'tcx>,
+                        def_id: DefId)
+                        -> ty::ClosureKind {
+        // If this is a local def-id, it should be inserted into the
+        // tables by typeck; else, it will be retreived from
+        // the external crate metadata.
+        if let Some(&kind) = this.borrow().closure_kinds.get(&def_id) {
+            return kind;
+        }
+
+        let kind = csearch::closure_kind(tcx, def_id);
+        this.borrow_mut().closure_kinds.insert(def_id, kind);
+        kind
+    }
+
+    pub fn closure_type(this: &RefCell<Self>,
+                        tcx: &ty::ctxt<'tcx>,
+                        def_id: DefId,
+                        substs: &ClosureSubsts<'tcx>)
+                        -> ty::ClosureTy<'tcx>
+    {
+        // If this is a local def-id, it should be inserted into the
+        // tables by typeck; else, it will be retreived from
+        // the external crate metadata.
+        if let Some(ty) = this.borrow().closure_tys.get(&def_id) {
+            return ty.subst(tcx, &substs.func_substs);
+        }
+
+        let ty = csearch::closure_ty(tcx, def_id);
+        this.borrow_mut().closure_tys.insert(def_id, ty.clone());
+        ty.subst(tcx, &substs.func_substs)
     }
 }
 
@@ -336,19 +371,8 @@ pub struct ctxt<'tcx> {
     /// constitute it.
     pub fragment_infos: RefCell<DefIdMap<Vec<ty::FragmentInfo>>>,
 }
+
 impl<'tcx> ctxt<'tcx> {
-    pub fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind {
-        *self.tables.borrow().closure_kinds.get(&def_id).unwrap()
-    }
-
-    pub fn closure_type(&self,
-                        def_id: DefId,
-                        substs: &ClosureSubsts<'tcx>)
-                        -> ty::ClosureTy<'tcx>
-    {
-        self.tables.borrow().closure_tys.get(&def_id).unwrap().subst(self, &substs.func_substs)
-    }
-
     pub fn type_parameter_def(&self,
                               node_id: NodeId)
                               -> ty::TypeParameterDef<'tcx>

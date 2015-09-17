@@ -2263,6 +2263,14 @@ impl<'tcx> ctxt<'tcx> {
         self.with_path(id, |path| ast_map::path_to_string(path))
     }
 
+    pub fn def_path(&self, id: DefId) -> ast_map::DefPath {
+        if id.is_local() {
+            self.map.def_path(id)
+        } else {
+            csearch::def_path(self, id)
+        }
+    }
+
     pub fn with_path<T, F>(&self, id: DefId, f: F) -> T where
         F: FnOnce(ast_map::PathElems) -> T,
     {
@@ -2478,6 +2486,18 @@ impl<'tcx> ctxt<'tcx> {
         });
 
         def.flags.set(def.flags.get() | TraitFlags::IMPLS_VALID);
+    }
+
+    pub fn closure_kind(&self, def_id: DefId) -> ty::ClosureKind {
+        Tables::closure_kind(&self.tables, self, def_id)
+    }
+
+    pub fn closure_type(&self,
+                        def_id: DefId,
+                        substs: &ClosureSubsts<'tcx>)
+                        -> ty::ClosureTy<'tcx>
+    {
+        Tables::closure_type(&self.tables, self, def_id, substs)
     }
 
     /// Given the def_id of an impl, return the def_id of the trait it implements.
@@ -2800,3 +2820,4 @@ pub trait HasTypeFlags {
         !self.has_type_flags(TypeFlags::HAS_LOCAL_NAMES)
     }
 }
+

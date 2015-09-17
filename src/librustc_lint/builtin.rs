@@ -901,20 +901,22 @@ impl LateLintPass for UnconditionalRecursion {
         fn expr_refers_to_this_method(tcx: &ty::ctxt,
                                       method: &ty::Method,
                                       id: ast::NodeId) -> bool {
-            let tables = tcx.tables.borrow();
-
             // Check for method calls and overloaded operators.
-            if let Some(m) = tables.method_map.get(&ty::MethodCall::expr(id)) {
+            let opt_m = tcx.tables.borrow().method_map.get(&ty::MethodCall::expr(id)).cloned();
+            if let Some(m) = opt_m {
                 if method_call_refers_to_method(tcx, method, m.def_id, m.substs, id) {
                     return true;
                 }
             }
 
             // Check for overloaded autoderef method calls.
-            if let Some(&adjustment::AdjustDerefRef(ref adj)) = tables.adjustments.get(&id) {
+            let opt_adj = tcx.tables.borrow().adjustments.get(&id).cloned();
+            if let Some(adjustment::AdjustDerefRef(adj)) = opt_adj {
                 for i in 0..adj.autoderefs {
                     let method_call = ty::MethodCall::autoderef(id, i as u32);
-                    if let Some(m) = tables.method_map.get(&method_call) {
+                    if let Some(m) = tcx.tables.borrow().method_map
+                                                        .get(&method_call)
+                                                        .cloned() {
                         if method_call_refers_to_method(tcx, method, m.def_id, m.substs, id) {
                             return true;
                         }
@@ -927,9 +929,13 @@ impl LateLintPass for UnconditionalRecursion {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     match tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def()) {
                         Some(def::DefMethod(def_id)) => {
-                            let no_substs = &ty::ItemSubsts::empty();
-                            let ts = tables.item_substs.get(&callee.id).unwrap_or(no_substs);
-                            method_call_refers_to_method(tcx, method, def_id, &ts.substs, id)
+                            let item_substs =
+                                tcx.tables.borrow().item_substs
+                                                   .get(&callee.id)
+                                                   .cloned()
+                                                   .unwrap_or_else(|| ty::ItemSubsts::empty());
+                            method_call_refers_to_method(
+                                tcx, method, def_id, &item_substs.substs, id)
                         }
                         _ => false
                     }
