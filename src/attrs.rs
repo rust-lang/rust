@@ -4,7 +4,8 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use reexport::*;
 use syntax::codemap::Span;
-
+use syntax::attr::*;
+use syntax::ast::{Attribute, MetaList, MetaWord};
 use utils::{in_macro, match_path, span_lint};
 
 declare_lint! { pub INLINE_ALWAYS, Warn,

@@ -11,6 +11,12 @@ use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::codemap::{Spanned, COMMAND_LINE_SP};
 
+use syntax::ast::Lit_::*;
+use syntax::ast::Lit_;
+use syntax::ast::LitIntType::*;
+use syntax::ast::StrStyle::*;
+use syntax::ast::Sign::*;
+
 use clippy::consts::{constant_simple, Constant};
 use clippy::consts::Constant::*;
 

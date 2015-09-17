@@ -2,6 +2,9 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use std::f64::consts as f64;
 use utils::span_lint;
+use syntax::ast::Lit_::*;
+use syntax::ast::Lit;
+use syntax::ast::FloatTy::*;
 
 declare_lint! {
     pub APPROX_CONSTANT,

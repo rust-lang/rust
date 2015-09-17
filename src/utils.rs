@@ -6,6 +6,7 @@ use rustc::front::map::Node::*;
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty;
 use std::borrow::Cow;
+use syntax::ast::Lit_::*;
 
 // module DefPaths for certain structs/enums we check for
 pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];

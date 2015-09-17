@@ -5,6 +5,8 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 
+use syntax::ast::Lit_::*;
+
 use utils::{span_lint, snippet};
 
 declare_lint! {

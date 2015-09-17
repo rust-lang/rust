@@ -5,6 +5,9 @@ use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::Span;
 use rustc_front::visit::{FnKind, Visitor, walk_ty};
 use rustc::middle::ty;
+use syntax::ast::IntTy::*;
+use syntax::ast::UintTy::*;
+use syntax::ast::FloatTy::*;
 
 use utils::{match_type, snippet, span_lint, span_help_and_lint, in_macro, in_external_macro};
 use utils::{LL_PATH, VEC_PATH};

@@ -2,6 +2,8 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Span;
 
+use syntax::ast::Lit_::*;
+
 use unicode_normalization::UnicodeNormalization;
 
 use utils::{snippet, span_help_and_lint};

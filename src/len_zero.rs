@@ -5,6 +5,9 @@ use syntax::codemap::{Span, Spanned};
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
 
+use syntax::ast::Lit_::*;
+use syntax::ast::Lit;
+
 use utils::{get_item_name, snippet, span_lint, walk_ptrs_ty};
 
 declare_lint!(pub LEN_ZERO, Warn,

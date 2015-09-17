@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Spanned;
-
+use syntax::ast::Lit_::*;
 use utils::span_lint;
 
 declare_lint!(pub PRECEDENCE, Warn,

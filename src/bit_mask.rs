@@ -4,6 +4,7 @@ use rustc::middle::def::*;
 use rustc_front::hir::*;
 use rustc_front::util::is_comparison_binop;
 use syntax::codemap::Span;
+use syntax::ast::Lit_::*;
 
 use utils::span_lint;
 

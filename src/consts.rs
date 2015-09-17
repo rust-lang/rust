@@ -13,6 +13,16 @@ use std::ops::Deref;
 use self::Constant::*;
 use self::FloatWidth::*;
 
+use syntax::ast::Lit_::*;
+use syntax::ast::Lit_;
+use syntax::ast::LitIntType::*;
+use syntax::ast::LitIntType;
+use syntax::ast::{UintTy, FloatTy, StrStyle};
+use syntax::ast::UintTy::*;
+use syntax::ast::FloatTy::*;
+use syntax::ast::Sign::{self, Plus, Minus};
+
+
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum FloatWidth {
     Fw32,

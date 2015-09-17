@@ -7,6 +7,7 @@ use rustc::middle::def::DefLocal;
 use consts::{constant_simple, Constant};
 use rustc::front::map::Node::{NodeBlock};
 use std::collections::{HashSet,HashMap};
+use syntax::ast::Lit_::*;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type,
             in_external_macro, expr_block, span_help_and_lint, is_integer_literal};
