@@ -129,10 +129,12 @@ pub fn compile_input(sess: Session,
                                                                      &ast_map.krate(),
                                                                      &id[..]));
 
+        time(sess.time_passes(), "early lint checks", || {
+            lint::check_ast_crate(&sess, &expanded_crate)
+        });
 
         phase_3_run_analysis_passes(sess,
                                     ast_map,
-                                    &expanded_crate,
                                     &arenas,
                                     id,
                                     control.make_glob_map,
@@ -480,13 +482,16 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
     });
 
-    let Registry { syntax_exts, lint_passes, lint_groups,
+    let Registry { syntax_exts, early_lint_passes, late_lint_passes, lint_groups,
                    llvm_passes, attributes, .. } = registry;
 
     {
         let mut ls = sess.lint_store.borrow_mut();
-        for pass in lint_passes {
-            ls.register_pass(Some(sess), true, pass);
+        for pass in early_lint_passes {
+            ls.register_early_pass(Some(sess), true, pass);
+        }
+        for pass in late_lint_passes {
+            ls.register_late_pass(Some(sess), true, pass);
         }
 
         for (name, to) in lint_groups {
@@ -641,7 +646,6 @@ pub fn make_map<'ast>(sess: &Session,
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
                                                ast_map: front::map::Map<'tcx>,
-                                               ast_crate: &ast::Crate,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: String,
                                                make_glob_map: resolve::MakeGlobMap,
@@ -765,7 +769,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: Session,
                 &tcx.sess, lib_features_used));
 
         time(time_passes, "lint checking", ||
-            lint::check_crate(tcx, &lower_crate(ast_crate), &exported_items));
+            lint::check_crate(tcx, krate, &exported_items));
 
         // The above three passes generate errors w/o aborting
         tcx.sess.abort_if_errors();

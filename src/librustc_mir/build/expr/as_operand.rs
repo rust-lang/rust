@@ -39,16 +39,10 @@ impl<H:Hair> Builder<H> {
                block, expr);
         let this = self;
 
-        match expr.kind {
-            ExprKind::Scope { extent, value } => {
-                return this.in_scope(extent, block, |this| {
-                    this.as_operand(block, value)
-                });
-            }
-            ExprKind::Paren { arg } => {
-                return this.as_operand(block, arg);
-            }
-            _ => { }
+        if let ExprKind::Scope { extent, value } = expr.kind {
+            return this.in_scope(extent, block, |this| {
+                this.as_operand(block, value)
+            });
         }
 
         let category = Category::of(&expr.kind).unwrap();

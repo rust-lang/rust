@@ -43,9 +43,6 @@ impl<H:Hair> Builder<H> {
                     this.as_lvalue(block, value)
                 })
             }
-            ExprKind::Paren { arg } => {
-                this.as_lvalue(block, arg)
-            }
             ExprKind::Field { lhs, name } => {
                 let lvalue = unpack!(block = this.as_lvalue(block, lhs));
                 let lvalue = lvalue.field(name);
