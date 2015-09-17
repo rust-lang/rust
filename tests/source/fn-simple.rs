@@ -18,6 +18,8 @@ fn generic<T>(arg: T) -> &SomeType
     arg(a, b, c, d, e)    
 }
 
+fn foo()  ->  !  {}
+
 pub fn http_fetch_async(listener:Box< AsyncCORSResponseListener+Send >,  script_chan:  Box<ScriptChan+Send>) {
 }
 
