@@ -94,7 +94,7 @@ use fmt;
 #[lang = "drop"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Drop {
-    /// The `drop` method, called when the value goes out of scope.
+    /// A method called when the value goes out of scope.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn drop(&mut self);
 }
