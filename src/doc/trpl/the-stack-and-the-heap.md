@@ -73,7 +73,7 @@ frame. But before we can show what happens when `foo()` is called, we need to
 visualize what’s going on with memory. Your operating system presents a view of
 memory to your program that’s pretty simple: a huge list of addresses, from 0
 to a large number, representing how much RAM your computer has. For example, if
-you have a gigabyte of RAM, your addresses go from `0` to `1,073,741,823`. That
+you have a gibibyte of RAM, your addresses go from `0` to `1,073,741,823`. That
 number comes from 2<sup>30</sup>, the number of bytes in a gigabyte.
 
 This memory is kind of like a giant array: addresses start at zero and go
