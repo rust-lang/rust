@@ -7,7 +7,7 @@ TARGET_RPATH_ENV = \
 
 BARE_RUSTC := $(HOST_RPATH_ENV) $(RUSTC)
 RUSTC := $(BARE_RUSTC) --out-dir $(TMPDIR) -L $(TMPDIR)
-CC := $(CC) -L $(TMPDIR)
+#CC := $(CC) -L $(TMPDIR)
 HTMLDOCCK := $(PYTHON) $(S)/src/etc/htmldocck.py
 
 # This is the name of the binary we will generate and run; use this
@@ -19,8 +19,6 @@ RUN_BINFILE = $(TMPDIR)/$(1)
 # variable before running the binary.
 
 RLIB_GLOB = lib$(1)*.rlib
-STATICLIB = $(TMPDIR)/lib$(1).a
-STATICLIB_GLOB = lib$(1)*.a
 BIN = $(1)
 
 UNAME = $(shell uname)
@@ -33,27 +31,48 @@ RUN = $(TARGET_RPATH_ENV) $(RUN_BINFILE)
 FAIL = $(TARGET_RPATH_ENV) $(RUN_BINFILE) && exit 1 || exit 0
 DYLIB_GLOB = lib$(1)*.dylib
 DYLIB = $(TMPDIR)/lib$(1).dylib
-RPATH_LINK_SEARCH =
+STATICLIB = $(TMPDIR)/lib$(1).a
+STATICLIB_GLOB = lib$(1)*.a
 else
 ifdef IS_WINDOWS
 RUN = PATH="$(PATH):$(TARGET_RPATH_DIR)" $(RUN_BINFILE)
 FAIL = PATH="$(PATH):$(TARGET_RPATH_DIR)" $(RUN_BINFILE) && exit 1 || exit 0
 DYLIB_GLOB = $(1)*.dll
 DYLIB = $(TMPDIR)/$(1).dll
+STATICLIB = $(TMPDIR)/$(1).lib
+STATICLIB_GLOB = $(1)*.lib
 BIN = $(1).exe
-RPATH_LINK_SEARCH =
 else
 RUN = $(TARGET_RPATH_ENV) $(RUN_BINFILE)
 FAIL = $(TARGET_RPATH_ENV) $(RUN_BINFILE) && exit 1 || exit 0
 DYLIB_GLOB = lib$(1)*.so
 DYLIB = $(TMPDIR)/lib$(1).so
-RPATH_LINK_SEARCH = -Wl,-rpath-link=$(1)
+STATICLIB = $(TMPDIR)/lib$(1).a
+STATICLIB_GLOB = lib$(1)*.a
 endif
 endif
 
+ifdef IS_MSVC
+COMPILE_OBJ = $(CC) -c -Fo:`cygpath -w $(1)` $(2)
+NATIVE_STATICLIB_FILE = $(1).lib
+NATIVE_STATICLIB = $(TMPDIR)/$(call NATIVE_STATICLIB_FILE,$(1))
+OUT_EXE=-Fe:`cygpath -w $(TMPDIR)/$(call BIN,$(1))` \
+	-Fo:`cygpath -w $(TMPDIR)/$(1).obj`
+else
+COMPILE_OBJ = $(CC) -c -o $(1) $(2)
+NATIVE_STATICLIB_FILE = lib$(1).a
+NATIVE_STATICLIB = $(call STATICLIB,$(1))
+OUT_EXE=-o $(TMPDIR)/$(1)
+endif
+
+
 # Extra flags needed to compile a working executable with the standard library
 ifdef IS_WINDOWS
+ifdef IS_MSVC
+	EXTRACFLAGS := ws2_32.lib userenv.lib shell32.lib advapi32.lib
+else
 	EXTRACFLAGS := -lws2_32 -luserenv
+endif
 else
 ifeq ($(UNAME),Darwin)
 else
@@ -80,12 +99,20 @@ REMOVE_RLIBS      = rm $(TMPDIR)/$(call RLIB_GLOB,$(1))
 
 %.a: %.o
 	ar crus $@ $<
+%.lib: lib%.o
+	ar crus $@ $<
 %.dylib: %.o
 	$(CC) -dynamiclib -Wl,-dylib -o $@ $<
 %.so: %.o
 	$(CC) -o $@ $< -shared
+
+ifdef IS_MSVC
+%.dll: lib%.o
+	$(CC) $< -link -dll -out:`cygpath -w $@`
+else
 %.dll: lib%.o
 	$(CC) -o $@ $< -shared
+endif
 
 $(TMPDIR)/lib%.o: %.c
-	$(CC) -c -o $@ $<
+	$(call COMPILE_OBJ,$@,$<)
