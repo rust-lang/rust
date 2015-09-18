@@ -207,9 +207,7 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
 ///
 /// Any leading or trailing whitespace will be trimmed.
 fn collapse_whitespace(s: &str) -> String {
-    s.split(|c: char| c.is_whitespace()).filter(|s| {
-        !s.is_empty()
-    }).collect::<Vec<_>>().join(" ")
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 thread_local!(static USED_HEADER_MAP: RefCell<HashMap<String, usize>> = {
@@ -277,10 +275,10 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         // Extract the text provided
         let s = if text.is_null() {
-            "".to_string()
+            "".to_owned()
         } else {
             let s = unsafe { (*text).as_bytes() };
-            str::from_utf8(s).unwrap().to_string()
+            str::from_utf8(&s).unwrap().to_owned()
         };
 
         // Discard '<em>', '<code>' tags and some escaped characters,
@@ -322,22 +320,15 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             id
         });
 
-        let sec = match opaque.toc_builder {
-            Some(ref mut builder) => {
-                builder.push(level as u32, s.clone(), id.clone())
-            }
-            None => {""}
-        };
+
+        let sec = opaque.toc_builder.as_mut().map_or("".to_owned(), |builder| {
+            format!("{} ", builder.push(level as u32, s.clone(), id.clone()))
+        });
 
         // Render the HTML
         let text = format!(r##"<h{lvl} id="{id}" class='section-header'><a
                            href="#{id}">{sec}{}</a></h{lvl}>"##,
-                           s, lvl = level, id = id,
-                           sec = if sec.is_empty() {
-                               sec.to_string()
-                           } else {
-                               format!("{} ", sec)
-                           });
+                           s, lvl = level, id = id, sec = sec);
 
         let text = CString::new(text).unwrap();
         unsafe { hoedown_buffer_puts(ob, text.as_ptr()) }
@@ -351,7 +342,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         _: *const hoedown_renderer_data,
     ) -> libc::c_int {
         let content = if text.is_null() {
-            "".to_string()
+            "".to_owned()
         } else {
             let bytes = unsafe { (*text).as_bytes() };
             let s = str::from_utf8(bytes).unwrap();
@@ -385,10 +376,9 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
         hoedown_html_renderer_free(renderer);
 
-        let mut ret = match opaque.toc_builder {
-            Some(b) => write!(w, "<nav id=\"TOC\">{}</nav>", b.into_toc()),
-            None => Ok(())
-        };
+        let mut ret = opaque.toc_builder.map_or(Ok(()), |builder| {
+            write!(w, "<nav id=\"TOC\">{}</nav>", builder.into_toc())
+        });
 
         if ret.is_ok() {
             let buf = (*ob).as_bytes();
@@ -422,7 +412,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
                 stripped_filtered_line(l).unwrap_or(l)
             });
             let text = lines.collect::<Vec<&str>>().join("\n");
-            tests.add_test(text.to_string(),
+            tests.add_test(text.to_owned(),
                            block_info.should_panic, block_info.no_run,
                            block_info.ignore, block_info.test_harness);
         }
@@ -578,10 +568,7 @@ pub fn plain_summary_line(md: &str) -> String {
                                 md.len() as libc::size_t);
         hoedown_document_free(document);
         let plain_slice = (*ob).as_bytes();
-        let plain = match str::from_utf8(plain_slice) {
-            Ok(s) => s.to_string(),
-            Err(_) => "".to_string(),
-        };
+        let plain = str::from_utf8(plain_slice).unwrap_or("").to_owned();
         hoedown_buffer_free(ob);
         plain
     }
