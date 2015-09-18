@@ -283,19 +283,37 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
             str::from_utf8(s).unwrap().to_string()
         };
 
-        // Transform the contents of the header into a hyphenated string
-        let id = s.split_whitespace().map(|s| s.to_ascii_lowercase())
-            .collect::<Vec<String>>().join("-");
-
+        // Discard '<em>', '<code>' tags and some escaped characters,
+        // transform the contents of the header into a hyphenated string
+        // without non-alphanumeric characters other than '-' and '_'.
+        //
         // This is a terrible hack working around how hoedown gives us rendered
         // html for text rather than the raw text.
+        let mut id = s.clone();
+        let repl_sub = vec!["<em>", "</em>", "<code>", "</code>",
+                            "&lt;", "&gt;", "&amp;", "&#39;", "&quot;"];
+        for sub in repl_sub {
+            id = id.replace(sub, "");
+        }
+        let id = id.chars().filter_map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                if c.is_ascii() {
+                    Some(c.to_ascii_lowercase())
+                } else {
+                    Some(c)
+                }
+            } else if c.is_whitespace() && c.is_ascii() {
+                Some('-')
+            } else {
+                None
+            }
+        }).collect::<String>();
 
         let opaque = unsafe { (*data).opaque as *mut hoedown_html_renderer_state };
         let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
 
         // Make sure our hyphenated ID is unique for this page
         let id = USED_HEADER_MAP.with(|map| {
-            let id = id.replace("<code>", "").replace("</code>", "").to_string();
             let id = match map.borrow_mut().get_mut(&id) {
                 None => id,
                 Some(a) => { *a += 1; format!("{}-{}", id, *a - 1) }
