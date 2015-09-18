@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 
 use rustc_front;
 use rustc::front::map::NodeItem;
-use rustc_front::hir;
+use rustc_front::{hir, lowering};
 
 use syntax::attr;
 use syntax::ast::{self, NodeId};
@@ -442,7 +442,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
         match expr.node {
             ast::ExprField(ref sub_ex, ident) => {
-                let hir_node = self.tcx.map.expect_expr(sub_ex.id);
+                let hir_node = lowering::lower_expr(sub_ex);
                 let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
                 match *ty {
                     ty::TyStruct(def, _) => {
@@ -462,8 +462,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprStruct(ref path, _, _) => {
-                let hir_node = self.tcx.map.expect_expr(expr.id);
-                let ty = &self.tcx.expr_ty_adjusted(hir_node).sty;
+                let hir_node = lowering::lower_expr(expr);
+                let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
                 match *ty {
                     ty::TyStruct(def, _) => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
