@@ -275,17 +275,21 @@ let mut a = &mut i;
 // error: cannot borrow `i` as mutable more than once at a time
 ```
 
-Please note that in rust, you can have as many reference on a variable as you
-want, but only one can be mutable. Example:
+Please note that in rust, you can either have many immutable references, or one
+mutable reference. Take a look at
+https://doc.rust-lang.org/stable/book/references-and-borrowing.html for more
+information. Example:
 
 
 ```
 let mut i = 0;
-let mut x = &mut i;
-let mut a = &i;
-let mut b = &i;
-let mut c = &i;
-// ...
+let mut x = &mut i; // ok!
+
+// or:
+let mut i = 0;
+let a = &i; // ok!
+let b = &i; // still ok!
+let c = &i; // super still ok!
 ```
 "##,
 
