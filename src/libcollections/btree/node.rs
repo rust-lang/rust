@@ -164,7 +164,12 @@ fn calculate_allocation_generic<K, V>(capacity: usize, is_leaf: bool) -> (usize,
     let (keys_size, keys_align) = (capacity * mem::size_of::<K>(), mem::align_of::<K>());
     let (vals_size, vals_align) = (capacity * mem::size_of::<V>(), mem::align_of::<V>());
     let (edges_size, edges_align) = if is_leaf {
-        (0, 1)
+        // allocate one edge to ensure that we don't pass size 0 to `heap::allocate`
+        if mem::size_of::<K>() == 0 && mem::size_of::<V>() == 0 {
+            (1, mem::align_of::<Node<K, V>>())
+        } else {
+            (0, 1)
+        }
     } else {
         ((capacity + 1) * mem::size_of::<Node<K, V>>(), mem::align_of::<Node<K, V>>())
     };
