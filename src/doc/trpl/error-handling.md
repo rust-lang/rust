@@ -210,7 +210,7 @@ that makes `unwrap` ergonomic to use. Unfortunately, that `panic!` means that
 
 ### Composing `Option<T>` values
 
-In [`option-ex-string-find`](#code-option-ex-string-find-2)
+In [`option-ex-string-find`](#code-option-ex-string-find)
 we saw how to use `find` to discover the extension in a file name. Of course,
 not all file names have a `.` in them, so it's possible that the file name has
 no extension. This *possibility of absence* is encoded into the types using
