@@ -577,7 +577,7 @@ pub fn plain_summary_line(md: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{LangString, Markdown};
-    use super::{collapse_whitespace, plain_summary_line};
+    use super::plain_summary_line;
 
     #[test]
     fn test_lang_string_parse() {
@@ -624,19 +624,5 @@ mod tests {
         t("type `Type<'static>` ...", "type `Type<'static>` ...");
         t("# top header", "top header");
         t("## header", "header");
-    }
-
-    #[test]
-    fn test_collapse_whitespace() {
-        fn t(input: &str, expected: &str) {
-            let actual = collapse_whitespace(input);
-            assert_eq!(actual, expected);
-        }
-
-        t("foo", "foo");
-        t("foo bar baz", "foo bar baz");
-        t(" foo   bar", "foo bar");
-        t("\tfoo   bar\nbaz", "foo bar baz");
-        t("foo   bar \n   baz\t\tqux\n", "foo bar baz qux");
     }
 }
