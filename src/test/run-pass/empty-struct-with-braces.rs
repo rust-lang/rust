@@ -11,6 +11,8 @@
 // Empty struct defined with braces add names into type namespace
 // Empty struct defined without braces add names into both type and value namespaces
 
+#![feature(braced_empty_structs)]
+
 struct Empty1 {}
 struct Empty2;
 struct Empty3 {}
