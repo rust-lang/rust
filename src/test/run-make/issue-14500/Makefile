@@ -13,5 +13,5 @@ endif
 all:
 	$(RUSTC) foo.rs --crate-type=rlib
 	$(RUSTC) bar.rs --crate-type=staticlib -C lto -L. -o $(TMPDIR)/libbar.a
-	$(CC) foo.c -lbar -o $(call RUN_BINFILE,foo) $(EXTRACFLAGS)
+	$(CC) foo.c $(TMPDIR)/libbar.a $(EXTRACFLAGS) $(call OUT_EXE,foo)
 	$(call RUN,foo)

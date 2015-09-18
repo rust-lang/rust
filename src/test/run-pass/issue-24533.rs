@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(linkage)]
+use std::slice::Iter;
+use std::io::{Error, ErrorKind, Result};
+use std::vec::*;
 
-#[no_mangle]
-#[linkage = "external"]
-static BAZ: i32 = 21;
+fn foo(it: &mut Iter<u8>) -> Result<u8> {
+    Ok(*it.next().unwrap())
+}
 
-#[link(name = "foo", kind = "static")]
-extern {
-    fn what() -> i32;
+fn bar() -> Result<u8> {
+    let data: Vec<u8> = Vec::new();
+
+    if true {
+        return Err(Error::new(ErrorKind::NotFound, "msg"));
+    }
+
+    let mut it = data.iter();
+    foo(&mut it)
 }
 
 fn main() {
-    unsafe {
-        assert_eq!(what(), BAZ);
-    }
+    bar();
 }

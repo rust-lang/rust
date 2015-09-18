@@ -65,7 +65,7 @@ Oh, we should also mention the officially supported platforms:
 
 * Windows (7 or later, Server 2008 R2)
 * Linux (2.6.18 or later, various distributions), x86 and x86-64
-* OSX 10.7 (Lion) or greater, x86 and x86-64
+* OSX 10.7 (Lion) or later, x86 and x86-64
 
 We extensively test Rust on these platforms, and a few others, too, like
 Android. But these are the ones most likely to work, as they have the most

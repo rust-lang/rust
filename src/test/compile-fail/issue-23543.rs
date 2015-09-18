@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(linkage)]
+pub trait A: Copy {}
 
-#[no_mangle]
-#[linkage = "external"]
-static BAZ: i32 = 21;
+struct Foo;
 
-#[link(name = "foo", kind = "static")]
-extern {
-    fn what() -> i32;
+pub trait D {
+    fn f<T>(self)
+        where T<Bogus = Foo>: A;
+        //~^ ERROR associated type bindings are not allowed here [E0229]
 }
 
-fn main() {
-    unsafe {
-        assert_eq!(what(), BAZ);
-    }
-}
+fn main() {}
