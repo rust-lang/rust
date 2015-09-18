@@ -5037,9 +5037,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a function declaration from a foreign module
-    fn parse_item_foreign_fn(&mut self, vis: ast::Visibility,
+    fn parse_item_foreign_fn(&mut self, vis: ast::Visibility, lo: BytePos,
                              attrs: Vec<Attribute>) -> PResult<P<ForeignItem>> {
-        let lo = self.span.lo;
         try!(self.expect_keyword(keywords::Fn));
 
         let (ident, mut generics) = try!(self.parse_fn_header());
@@ -5058,10 +5057,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a static item from a foreign module
-    fn parse_item_foreign_static(&mut self, vis: ast::Visibility,
+    fn parse_item_foreign_static(&mut self, vis: ast::Visibility, lo: BytePos,
                                  attrs: Vec<Attribute>) -> PResult<P<ForeignItem>> {
-        let lo = self.span.lo;
-
         try!(self.expect_keyword(keywords::Static));
         let mutbl = try!(self.eat_keyword(keywords::Mut));
 
@@ -5554,11 +5551,11 @@ impl<'a> Parser<'a> {
 
         if self.check_keyword(keywords::Static) {
             // FOREIGN STATIC ITEM
-            return Ok(Some(try!(self.parse_item_foreign_static(visibility, attrs))));
+            return Ok(Some(try!(self.parse_item_foreign_static(visibility, lo, attrs))));
         }
         if self.check_keyword(keywords::Fn) || self.check_keyword(keywords::Unsafe) {
             // FOREIGN FUNCTION ITEM
-            return Ok(Some(try!(self.parse_item_foreign_fn(visibility, attrs))));
+            return Ok(Some(try!(self.parse_item_foreign_fn(visibility, lo, attrs))));
         }
 
         // FIXME #5668: this will occur for a macro invocation:
