@@ -1178,11 +1178,22 @@ let px: i32 = match p { Point(x, _) => x };
 ```
 
 A _unit-like struct_ is a structure without any fields, defined by leaving off
-the list of fields entirely. Such types will have a single value. For example:
+the list of fields entirely. Such a structure implicitly defines a constant of
+its type with the same name. For example:
 
 ```
+# #![feature(braced_empty_structs)]
 struct Cookie;
-let c = [Cookie, Cookie, Cookie, Cookie];
+let c = [Cookie, Cookie {}, Cookie, Cookie {}];
+```
+
+is equivalent to
+
+```
+# #![feature(braced_empty_structs)]
+struct Cookie {}
+const Cookie: Cookie = Cookie {};
+let c = [Cookie, Cookie {}, Cookie, Cookie {}];
 ```
 
 The precise memory layout of a structure is not specified. One can specify a
@@ -2411,6 +2422,7 @@ The currently implemented features of the reference compiler are:
                               terms of encapsulation).
 * - `default_type_parameter_fallback` - Allows type parameter defaults to
                                         influence type inference.
+* - `braced_empty_structs` - Allows use of empty structs with braces.
 
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about `#![feature]` directives which enabled
