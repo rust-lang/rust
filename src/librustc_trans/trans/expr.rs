@@ -119,7 +119,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
-    if bcx.tcx().tables.borrow().adjustments.contains_key(&expr.id) {
+    if adjustment_required(bcx, expr) {
         // use trans, which may be less efficient but
         // which will perform the adjustments:
         let datum = unpack_datum!(bcx, trans(bcx, expr));
@@ -331,6 +331,37 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
         _ => ccx.sess().bug(&format!("unsized_info: invalid unsizing {:?} -> {:?}",
                                      source,
                                      target))
+    }
+}
+
+fn adjustment_required<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                   expr: &hir::Expr) -> bool {
+    let adjustment = match bcx.tcx().tables.borrow().adjustments.get(&expr.id).cloned() {
+        None => { return false; }
+        Some(adj) => adj
+    };
+
+    // Don't skip a conversion from Box<T> to &T, etc.
+    if bcx.tcx().is_overloaded_autoderef(expr.id, 0) {
+        return true;
+    }
+
+    match adjustment {
+        AdjustReifyFnPointer => {
+            // FIXME(#19925) once fn item types are
+            // zero-sized, we'll need to return true here
+            false
+        }
+        AdjustUnsafeFnPointer => {
+            // purely a type-level thing
+            false
+        }
+        AdjustDerefRef(ref adj) => {
+            // We are a bit paranoid about adjustments and thus might have a re-
+            // borrow here which merely derefs and then refs again (it might have
+            // a different region or mutability, but we don't care here).
+            !(adj.autoderefs == 1 && adj.autoref.is_some() && adj.unsize.is_none())
+        }
     }
 }
 
