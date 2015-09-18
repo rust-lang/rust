@@ -18,7 +18,7 @@
 //! language primitives](#primitives), [standard macros](#macros),
 //! [I/O](io/index.html) and [multithreading](thread/index.html), among
 //! [many other
-//! things](#what-is-in-the-standard-library-documentation?).
+//! things](#what-is-in-the-standard-library-documentation).
 //!
 //! `std` is available to all Rust crates by default, just as if each
 //! one contained an `extern crate std` import at the [crate
