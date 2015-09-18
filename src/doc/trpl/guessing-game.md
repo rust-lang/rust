@@ -147,7 +147,7 @@ a few tricks up their sleeves.
 
 For example, they’re [immutable][immutable] by default. That’s why our example
 uses `mut`: it makes a binding mutable, rather than immutable. `let` doesn’t
-take a name on the left hand side, it actually accepts a
+take a name on the left hand side of the assignment, it actually accepts a
 ‘[pattern][patterns]’. We’ll use patterns later. It’s easy enough
 to use for now:
 
