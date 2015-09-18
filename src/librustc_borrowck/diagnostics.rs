@@ -289,7 +289,7 @@ let mut x = &mut i; // ok!
 let mut i = 0;
 let a = &i; // ok!
 let b = &i; // still ok!
-let c = &i; // super still ok!
+let c = &i; // still ok!
 ```
 "##,
 
