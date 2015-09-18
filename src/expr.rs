@@ -14,11 +14,10 @@ use std::borrow::Borrow;
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic};
 use string::{StringFormat, rewrite_string};
-use StructLitStyle;
 use utils::{span_after, make_indent, extra_offset, first_line_width, last_line_width, wrap_str,
             binary_search};
 use visitor::FmtVisitor;
-use config::MultilineStyle;
+use config::{StructLitStyle, MultilineStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment};
 use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg};

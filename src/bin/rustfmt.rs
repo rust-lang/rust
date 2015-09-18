@@ -65,7 +65,7 @@ fn execute() -> i32 {
         Err(_) => Default::default(),
     };
 
-    run(args, write_mode, Box::new(config));
+    run(args, write_mode, &config);
     0
 }
 
@@ -87,7 +87,10 @@ fn print_usage<S: Into<String>>(reason: S) {
              reason.into());
 
     for option in Config::get_docs() {
-        println!("{}, {}, Possible values: {}", option.option_name(), option.doc_string(), option.variant_names());
+        println!("{}, {}, Possible values: {}",
+                 option.option_name(),
+                 option.doc_string(),
+                 option.variant_names());
     }
 }
 

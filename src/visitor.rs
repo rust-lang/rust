@@ -24,7 +24,7 @@ pub struct FmtVisitor<'a> {
     pub codemap: &'a CodeMap,
     pub buffer: StringBuffer,
     pub last_pos: BytePos,
-    // TODO RAII util for indenting
+    // TODO: RAII util for indenting
     pub block_indent: usize,
     pub config: &'a Config,
 }
@@ -112,7 +112,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         }
 
         self.block_indent -= self.config.tab_spaces;
-        // TODO we should compress any newlines here to just one
+        // TODO: we should compress any newlines here to just one.
         self.format_missing_with_indent(b.span.hi - brace_compensation);
         self.buffer.push_str("}");
         self.last_pos = b.span.hi;
@@ -237,13 +237,12 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             let indent = self.block_indent;
             let new_fn = self.rewrite_required_fn(indent, ti.ident, sig, ti.span);
 
-
             if let Some(fn_str) = new_fn {
                 self.buffer.push_str(&fn_str);
                 self.last_pos = ti.span.hi;
             }
         }
-        // TODO format trait types
+        // TODO: format trait types.
 
         visit::walk_trait_item(self, ti)
     }
@@ -320,7 +319,7 @@ impl<'a> FmtVisitor<'a> {
         let local_file_name = self.codemap.span_to_filename(s);
         let is_internal = local_file_name == self.codemap.span_to_filename(m.inner);
 
-        // TODO Should rewrite properly `mod X;`
+        // TODO: Should rewrite properly `mod X;`
 
         if is_internal {
             debug!("FmtVisitor::format_mod: internal mod");

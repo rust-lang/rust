@@ -10,9 +10,51 @@
 
 extern crate toml;
 
-use {NewlineStyle, BraceStyle, ReturnIndent, StructLitStyle};
 use lists::{SeparatorTactic, ListTactic};
-use issues::ReportTactic;
+pub use issues::ReportTactic;
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum NewlineStyle {
+    Windows, // \r\n
+    Unix, // \n
+}
+
+impl_enum_decodable!(NewlineStyle, Windows, Unix);
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum BraceStyle {
+    AlwaysNextLine,
+    PreferSameLine,
+    // Prefer same line except where there is a where clause, in which case force
+    // the brace to the next line.
+    SameLineWhere,
+}
+
+impl_enum_decodable!(BraceStyle, AlwaysNextLine, PreferSameLine, SameLineWhere);
+
+// How to indent a function's return type.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum ReturnIndent {
+    // Aligned with the arguments
+    WithArgs,
+    // Aligned with the where clause
+    WithWhereClause,
+}
+
+impl_enum_decodable!(ReturnIndent, WithArgs, WithWhereClause);
+
+// How to stle a struct literal.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum StructLitStyle {
+    // First line on the same line as the opening brace, all lines aligned with
+    // the first line.
+    Visual,
+    // First line is on a new line and all lines align with block indent.
+    Block,
+    // FIXME Maybe we should also have an option to align types.
+}
+
+impl_enum_decodable!(StructLitStyle, Visual, Block);
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum BlockIndentStyle {
@@ -183,9 +225,11 @@ create_config! {
     fn_args_density: Density, "Argument density in functions",
     fn_args_layout: StructLitStyle, "Layout of function arguments",
     fn_arg_indent: BlockIndentStyle, "Indent on function arguments",
-    where_density: Density, "Density of a where clause", // Should we at least try to put the where clause on the same line as
-                                                         // the rest of the function decl?
-    where_indent: BlockIndentStyle, "Indentation of a where clause", // Visual will be treated like Tabbed
+    // Should we at least try to put the where clause on the same line as the rest of the
+    // function decl?
+    where_density: Density, "Density of a where clause",
+    // Visual will be treated like Tabbed
+    where_indent: BlockIndentStyle, "Indentation of a where clause",
     where_layout: ListTactic, "Element layout inside a where clause",
     where_pred_indent: BlockIndentStyle, "Indentation style of a where predicate",
     generics_indent: BlockIndentStyle, "Indentation of generics",
@@ -196,7 +240,8 @@ create_config! {
     enum_trailing_comma: bool, "Put a trailing comma on enum declarations",
     report_todo: ReportTactic, "Report all occurences of TODO in source file comments",
     report_fixme: ReportTactic, "Report all occurences of FIXME in source file comments",
-    reorder_imports: bool, "Reorder import statements alphabetically", // Alphabetically, case sensitive.
+    // Alphabetically, case sensitive.
+    reorder_imports: bool, "Reorder import statements alphabetically",
     single_line_if_else: bool, "Put else on same line as closing brace for if statements",
     format_strings: bool, "Format string literals, or leave as is",
     chains_overflow_last: bool, "Allow last call in method chain to break the line",

@@ -127,7 +127,7 @@ impl<'a> SegmentParam<'a> {
 }
 
 impl<'a> Rewrite for SegmentParam<'a> {
-    // FIXME doesn't always use width, offset
+    // FIXME: doesn't always use width, offset.
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
         Some(match *self {
             SegmentParam::LifeTime(ref lt) => {
@@ -270,8 +270,8 @@ fn rewrite_segment(segment: &ast::PathSegment,
 
 impl Rewrite for ast::WherePredicate {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: usize) -> Option<String> {
-        // TODO dead spans?
-        // TODO assumes we'll always fit on one line...
+        // TODO: dead spans?
+        // TODO: don't assume we'll always fit on one line...
         Some(match *self {
             ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate { ref bound_lifetimes,
                                                                            ref bounded_ty,
