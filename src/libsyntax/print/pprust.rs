@@ -1507,7 +1507,6 @@ impl<'a> State<'a> {
     }
 
     pub fn print_variant(&mut self, v: &ast::Variant) -> io::Result<()> {
-        try!(self.print_visibility(v.node.vis));
         match v.node.kind {
             ast::TupleVariantKind(ref args) => {
                 try!(self.print_ident(v.node.name));
@@ -3139,11 +3138,10 @@ mod tests {
             kind: ast::TupleVariantKind(Vec::new()),
             id: 0,
             disr_expr: None,
-            vis: ast::Public,
         });
 
         let varstr = variant_to_string(&var);
-        assert_eq!(varstr, "pub principal_skinner");
+        assert_eq!(varstr, "principal_skinner");
     }
 
     #[test]

@@ -1013,7 +1013,6 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                    kind: ast::TupleVariantKind(args),
                    id: ast::DUMMY_NODE_ID,
                    disr_expr: None,
-                   vis: ast::Public
                })
     }
 

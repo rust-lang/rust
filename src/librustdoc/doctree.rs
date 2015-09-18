@@ -121,7 +121,6 @@ pub struct Variant {
     pub attrs: Vec<ast::Attribute>,
     pub kind: hir::VariantKind,
     pub id: ast::NodeId,
-    pub vis: hir::Visibility,
     pub stab: Option<attr::Stability>,
     pub whence: Span,
 }
