@@ -2,6 +2,11 @@
 - RFC PR: [rust-lang/rfcs#769](https://github.com/rust-lang/rfcs/pull/769)
 - Rust Issue: [rust-lang/rust#8861](https://github.com/rust-lang/rust/issues/8861)
 
+# History
+
+2015.09.18 -- This RFC was partially superceded by RFC 1238, which
+removed the parametricity-based reasoning in favor of an attribute.
+
 # Summary
 
 Remove `#[unsafe_destructor]` from the Rust language.  Make it safe
