@@ -22,8 +22,8 @@ fn main() {
     let Foo { .. } = x; //~ ERROR `Foo` does not name a struct
 
     let x = Bar;
-    Bar { ..x }; //~ ERROR `Bar` does not name a structure
-    let Bar { .. } = x; //~ ERROR `Bar` does not name a struct
+    Bar { ..x };
+    let Bar { .. } = x;
 
     match Enum::Bar {
         Enum::Bar { .. } //~ ERROR `Enum::Bar` does not name a struct

@@ -1855,34 +1855,34 @@ impl<'a> State<'a> {
                          fields: &[ast::Field],
                          wth: &Option<P<ast::Expr>>) -> io::Result<()> {
         try!(self.print_path(path, true, 0));
-        if !(fields.is_empty() && wth.is_none()) {
-            try!(word(&mut self.s, "{"));
-            try!(self.commasep_cmnt(
-                Consistent,
-                &fields[..],
-                |s, field| {
-                    try!(s.ibox(indent_unit));
-                    try!(s.print_ident(field.ident.node));
-                    try!(s.word_space(":"));
-                    try!(s.print_expr(&*field.expr));
-                    s.end()
-                },
-                |f| f.span));
-            match *wth {
-                Some(ref expr) => {
-                    try!(self.ibox(indent_unit));
-                    if !fields.is_empty() {
-                        try!(word(&mut self.s, ","));
-                        try!(space(&mut self.s));
-                    }
-                    try!(word(&mut self.s, ".."));
-                    try!(self.print_expr(&**expr));
-                    try!(self.end());
+        try!(word(&mut self.s, "{"));
+        try!(self.commasep_cmnt(
+            Consistent,
+            &fields[..],
+            |s, field| {
+                try!(s.ibox(indent_unit));
+                try!(s.print_ident(field.ident.node));
+                try!(s.word_space(":"));
+                try!(s.print_expr(&*field.expr));
+                s.end()
+            },
+            |f| f.span));
+        match *wth {
+            Some(ref expr) => {
+                try!(self.ibox(indent_unit));
+                if !fields.is_empty() {
+                    try!(word(&mut self.s, ","));
+                    try!(space(&mut self.s));
                 }
-                _ => try!(word(&mut self.s, ",")),
+                try!(word(&mut self.s, ".."));
+                try!(self.print_expr(&**expr));
+                try!(self.end());
             }
-            try!(word(&mut self.s, "}"));
+            _ => if !fields.is_empty() {
+                try!(word(&mut self.s, ","))
+            }
         }
+        try!(word(&mut self.s, "}"));
         Ok(())
     }
 
