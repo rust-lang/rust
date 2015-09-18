@@ -73,7 +73,7 @@ $$(LLVM_STAMP_$(1)): $(S)src/rustllvm/llvm-auto-clean-trigger
 
 ifeq ($$(CFG_ENABLE_LLVM_STATIC_STDCPP),1)
 LLVM_STDCPP_RUSTFLAGS_$(1) = -L "$$(dir $$(shell $$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
-					-print-file-name=libstdc++.a))"
+					-print-file-name=lib$(CFG_STDCPP_NAME).a))"
 else
 LLVM_STDCPP_RUSTFLAGS_$(1) =
 endif
@@ -83,7 +83,7 @@ endif
 LLVM_LINKAGE_PATH_$(1):=$$(abspath $$(RT_OUTPUT_DIR_$(1))/llvmdeps.rs)
 $$(LLVM_LINKAGE_PATH_$(1)): $(S)src/etc/mklldeps.py $$(LLVM_CONFIG_$(1))
 	$(Q)$(CFG_PYTHON) "$$<" "$$@" "$$(LLVM_COMPONENTS)" "$$(CFG_ENABLE_LLVM_STATIC_STDCPP)" \
-		$$(LLVM_CONFIG_$(1))
+		$$(LLVM_CONFIG_$(1)) "$(CFG_STDCPP_NAME)"
 endef
 
 $(foreach host,$(CFG_HOST), \
