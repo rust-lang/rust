@@ -191,6 +191,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // allow `#[unwind]`
     ("unwind_attributes", "1.4.0", None, Active),
+
+    // allow empty structs/enum variants with braces
+    ("braced_empty_structs", "1.5.0", None, Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -775,7 +778,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemStruct(..) => {
+            ast::ItemStruct(ref def, _) => {
                 if attr::contains_name(&i.attrs[..], "simd") {
                     self.gate_feature("simd", i.span,
                                       "SIMD types are experimental and possibly buggy");
@@ -793,6 +796,10 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                             }
                         }
                     }
+                }
+                if def.fields.is_empty() && def.ctor_id.is_none() {
+                    self.gate_feature("braced_empty_structs", i.span,
+                                      "empty structs with braces are unstable");
                 }
             }
 
@@ -843,6 +850,12 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   "box expression syntax is experimental; \
                                    you can call `Box::new` instead.");
             }
+            ast::ExprStruct(_, ref fields, ref expr) => {
+                if fields.is_empty() && expr.is_none() {
+                    self.gate_feature("braced_empty_structs", e.span,
+                                      "empty structs with braces are unstable");
+                }
+            }
             _ => {}
         }
         visit::walk_expr(self, e);
@@ -866,6 +879,12 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.gate_feature("box_patterns",
                                   pattern.span,
                                   "box pattern syntax is experimental");
+            }
+            ast::PatStruct(_, ref fields, dotdot) => {
+                if fields.is_empty() && !dotdot {
+                    self.gate_feature("braced_empty_structs", pattern.span,
+                                      "empty structs with braces are unstable");
+                }
             }
             _ => {}
         }

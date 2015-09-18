@@ -10,6 +10,8 @@
 
 // Empty struct defined with braces shouldn't add names into value namespace
 
+#![feature(braced_empty_structs)]
+
 struct Empty {}
 
 fn main() {

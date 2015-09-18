@@ -10,6 +10,8 @@
 
 //`#[cfg]` on struct field permits empty unusable struct
 
+#![feature(braced_empty_structs)]
+
 struct S {
     #[cfg(untrue)]
     a: int,

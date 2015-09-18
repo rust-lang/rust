@@ -8,18 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Empty struct defined with braces shouldn't add names into value namespace
+// Feature gate test for empty struct with braces
 
-#![feature(braced_empty_structs)]
-#![deny(warnings)]
-
-struct Empty {}
+struct Empty {} //~ ERROR empty structs with braces are unstable
 
 fn main() {
-    let e = Empty {};
+    let e = Empty {}; //~ ERROR empty structs with braces are unstable
 
     match e {
-        Empty => () //~ ERROR unused variable: `Empty`
-        //~^ ERROR variable `Empty` should have a snake case name such as `empty`
+        Empty {} => {} //~ ERROR empty structs with braces are unstable
     }
 }
