@@ -89,7 +89,6 @@ an integer as an argument, doubles it and prints it.
 
 <div id="code-unwrap-double">
 ```rust,should_panic
-
 use std::env;
 
 fn main() {
