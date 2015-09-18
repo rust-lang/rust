@@ -125,10 +125,15 @@ The error conditions that can arise, and their defined results, are as
 follows. The intention is that the defined results are the same as the
 defined results today. The only change is that now a panic may result.
 
-- The operations `+`, `-`, `*`, `/`, `%` can underflow and
-  overflow.
-- Shift operations (`<<`, `>>`) can shift a value of width `N` by more
-  than `N` bits.
+- The operations `+`, `-`, `*`, can underflow and overflow. When checking is
+  enabled this will panic. When checking is disabled this will two's complement
+  wrap.
+- The operations `/`, `%` for the arguments `INT_MIN` and `-1`
+  will unconditionally panic. This is unconditional for legacy reasons.
+- Shift operations (`<<`, `>>`) on a value of with `N` can be passed a shift value
+  >= `N`. It is unclear what behaviour should result from this, so the shift value 
+  is unconditionally masked to be modulo `N` to ensure that the argument is always 
+  in range.
 
 ## Enabling overflow checking
 
@@ -145,7 +150,7 @@ potential overflow (and, in particular, for code where overflow is
 expected and normal, they will be immediately guided to use the
 wrapping methods introduced below). However, because these checks will
 be compiled out whenever an optimized build is produced, final code
-wilil not pay a performance penalty.
+will not pay a performance penalty.
 
 In the future, we may add additional means to control when overflow is
 checked, such as scoped attributes or a global, independent
@@ -451,17 +456,7 @@ were:
 
 # Unresolved questions
 
-The C semantics of wrapping operations in some cases are undefined:
-
-- `INT_MIN / -1`, `INT_MIN % -1`
-- Shifts by an excessive number of bits
-
-This RFC takes no position on the correct semantics of these
-operations, simply preserving the existing semantics. However, it may
-be worth trying to define the wrapping semantics of these operations
-in a portable way, even if that implies some runtime cost. Since these
-are all error conditions, this is an orthogonal topic to the matter of
-overflow.
+None today (see Updates section below).
 
 # Future work
 
@@ -491,6 +486,10 @@ Since it was accepted, the RFC has been updated as follows:
 2. `as` was changed to restore the behavior before the RFC (that is,
    it truncates to the target bitwidth and reinterprets the highest
    order bit, a.k.a. sign-bit, as necessary, as a C cast would).
+3. Shifts were specified to mask off the bits of over-long shifts.
+4. Overflow was specified to be two's complement wrapping (this was mostly
+   a clarification).
+5. `INT_MIN / -1` and `INT_MIN % -1` panics.
 
 # Acknowledgements and further reading
 
