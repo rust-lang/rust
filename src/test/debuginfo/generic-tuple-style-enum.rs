@@ -47,6 +47,7 @@
 // lldb-command:print univariant
 // lldb-check:[...]$3 = TheOnlyCase(-1)
 
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 use self::Regular::{Case1, Case2, Case3};
