@@ -9,6 +9,8 @@
  * option. This file may not be copied, modified, or distributed
  * except according to those terms.
  */
+
+/* See FiraSans-LICENSE.txt for the Fira Sans license. */
 @font-face {
     font-family: 'Fira Sans';
     font-style: normal;
@@ -21,6 +23,9 @@
     font-weight: 500;
     src: local('Fira Sans Medium'), url("FiraSans-Medium.woff") format('woff');
 }
+
+/* See SourceSerifPro-LICENSE.txt for the Source Serif Pro license and
+ * Heuristica-LICENSE.txt for the Heuristica license. */
 @font-face {
     font-family: 'Source Serif Pro';
     font-style: normal;
@@ -39,6 +44,8 @@
     font-weight: 700;
     src: local('Source Serif Pro Bold'), url("SourceSerifPro-Bold.woff") format('woff');
 }
+
+/* See SourceCodePro-LICENSE.txt for the Source Code Pro license. */
 @font-face {
     font-family: 'Source Code Pro';
     font-style: normal;
