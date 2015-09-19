@@ -525,11 +525,14 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 self.consume_expr(&**base);
             }
 
-            hir::ExprAssignOp(_, ref lhs, ref rhs) => {
-                // This will have to change if/when we support
-                // overloaded operators for `+=` and so forth.
-                self.mutate_expr(expr, &**lhs, WriteAndRead);
-                self.consume_expr(&**rhs);
+            hir::ExprAssignOp(op, ref lhs, ref rhs) => {
+                // NB All our assignment operations take the RHS by value
+                assert!(::rustc_front::util::is_by_value_binop(op.node));
+
+                if !self.walk_overloaded_operator(expr, lhs, vec![rhs], PassArgs::ByValue) {
+                    self.mutate_expr(expr, &**lhs, WriteAndRead);
+                    self.consume_expr(&**rhs);
+                }
             }
 
             hir::ExprRepeat(ref base, ref count) => {

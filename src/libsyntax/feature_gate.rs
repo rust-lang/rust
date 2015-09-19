@@ -194,6 +194,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // allow empty structs/enum variants with braces
     ("braced_empty_structs", "1.5.0", None, Active),
+
+    // allow overloading augmented assignment operations like `a += b`
+    ("augmented_assignments", "1.5.0", None, Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -457,6 +460,7 @@ pub struct Features {
     pub default_type_parameter_fallback: bool,
     pub type_macros: bool,
     pub cfg_target_feature: bool,
+    pub augmented_assignments: bool,
 }
 
 impl Features {
@@ -485,6 +489,7 @@ impl Features {
             default_type_parameter_fallback: false,
             type_macros: false,
             cfg_target_feature: false,
+            augmented_assignments: false,
         }
     }
 }
@@ -1053,6 +1058,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         default_type_parameter_fallback: cx.has_feature("default_type_parameter_fallback"),
         type_macros: cx.has_feature("type_macros"),
         cfg_target_feature: cx.has_feature("cfg_target_feature"),
+        augmented_assignments: cx.has_feature("augmented_assignments"),
     }
 }
 
