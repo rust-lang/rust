@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
+#![feature(augmented_assignments)]
+#![feature(op_assign_traits)]
 
-fn main() {
-  let mut a = Foo;
-  let ref b = Foo;
-  a += *b; //~ Error: binary assignment operation `+=` cannot be applied to type `Foo`
+use std::ops::AddAssign;
+
+pub struct Int(i32);
+
+impl AddAssign<i32> for Int {
+    fn add_assign(&mut self, _: i32) {
+        unimplemented!();
+    }
 }
