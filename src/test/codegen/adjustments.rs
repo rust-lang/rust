@@ -26,3 +26,12 @@ pub fn no_op_slice_adjustment(x: &[u8]) -> &[u8] {
 // CHECK: call void @llvm.memcpy.{{.*}}(i8* [[DST]], i8* [[SRC]],
     { x }
 }
+
+// CHECK-LABEL: @no_op_slice_adjustment2
+#[no_mangle]
+pub fn no_op_slice_adjustment2(x: &[u8]) -> &[u8] {
+    // We used to generate an extra alloca and memcpy for the function's return value, so check
+    // that there's no memcpy (the slice is written to sret_slot element-wise)
+// CHECK-NOT: call void @llvm.memcpy.
+    no_op_slice_adjustment(x)
+}
