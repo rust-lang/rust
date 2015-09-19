@@ -298,10 +298,18 @@ const FOO: i32 = { 0 }; // but brackets are useless here
 ```
 "##,
 
+// FIXME(#24111) Change the language here when const fn stabilizes
 E0015: r##"
 The only functions that can be called in static or constant expressions are
-`const` functions. Rust currently does not support more general compile-time
-function execution.
+`const` functions, and struct/enum constructors. `const` functions are only
+available on a nightly compiler. Rust currently does not support more general
+compile-time function execution.
+
+```
+const FOO: Option<u8> = Some(1); // enum constructor
+struct Bar {x: u8}
+const BAR: Bar = Bar {x: 1}; // struct constructor
+```
 
 See [RFC 911] for more details on the design of `const fn`s.
 
