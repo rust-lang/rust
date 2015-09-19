@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use config::Config;
 use visitor::FmtVisitor;
 
 use syntax::codemap::{self, BytePos};
@@ -20,7 +19,8 @@ impl<'a> FmtVisitor<'a> {
         self.format_missing_inner(end, |this, last_snippet, _| this.buffer.push_str(last_snippet))
     }
 
-    pub fn format_missing_with_indent(&mut self, end: BytePos, config: &Config) {
+    pub fn format_missing_with_indent(&mut self, end: BytePos) {
+        let config = self.config;
         self.format_missing_inner(end,
                                   |this, last_snippet, snippet| {
                                       this.buffer.push_str(last_snippet.trim_right());

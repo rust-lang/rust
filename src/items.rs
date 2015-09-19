@@ -26,7 +26,7 @@ use syntax::parse::token;
 
 impl<'a> FmtVisitor<'a> {
     pub fn visit_let(&mut self, local: &ast::Local, span: Span) {
-        self.format_missing_with_indent(span.lo, self.config);
+        self.format_missing_with_indent(span.lo);
 
         // String that is placed within the assignment pattern and expression.
         let infix = {
@@ -497,8 +497,7 @@ impl<'a> FmtVisitor<'a> {
         }
         self.block_indent = self.block_indent.block_unindent(self.config);
 
-        self.format_missing_with_indent(span.lo + BytePos(enum_snippet.rfind('}').unwrap() as u32),
-                                        self.config);
+        self.format_missing_with_indent(span.lo + BytePos(enum_snippet.rfind('}').unwrap() as u32));
         self.buffer.push_str("}");
     }
 
@@ -508,7 +507,7 @@ impl<'a> FmtVisitor<'a> {
             return;
         }
 
-        self.format_missing_with_indent(field.span.lo, self.config);
+        self.format_missing_with_indent(field.span.lo);
 
         let result = match field.node.kind {
             ast::VariantKind::TupleVariantKind(ref types) => {

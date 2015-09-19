@@ -58,7 +58,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 }
             }
             ast::Stmt_::StmtExpr(ref ex, _) | ast::Stmt_::StmtSemi(ref ex, _) => {
-                self.format_missing_with_indent(stmt.span.lo, self.config);
+                self.format_missing_with_indent(stmt.span.lo);
                 let suffix = if let ast::Stmt_::StmtExpr(..) = stmt.node {
                     ""
                 } else {
@@ -78,7 +78,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 }
             }
             ast::Stmt_::StmtMac(ref _mac, _macro_style) => {
-                self.format_missing_with_indent(stmt.span.lo, self.config);
+                self.format_missing_with_indent(stmt.span.lo);
                 visit::walk_stmt(self, stmt);
             }
         }
@@ -108,7 +108,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         match b.expr {
             Some(ref e) => {
-                self.format_missing_with_indent(e.span.lo, self.config);
+                self.format_missing_with_indent(e.span.lo);
                 self.visit_expr(e);
             }
             None => {}
@@ -116,7 +116,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         self.block_indent = self.block_indent.block_unindent(self.config);
         // TODO: we should compress any newlines here to just one
-        self.format_missing_with_indent(b.span.hi - brace_compensation, self.config);
+        self.format_missing_with_indent(b.span.hi - brace_compensation);
         self.buffer.push_str("}");
         self.last_pos = b.span.hi;
     }
@@ -165,7 +165,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         };
 
         if let Some(fn_str) = rewrite {
-            self.format_missing_with_indent(s.lo, self.config);
+            self.format_missing_with_indent(s.lo);
             self.buffer.push_str(&fn_str);
         } else {
             self.format_missing(b.span.lo);
@@ -200,26 +200,26 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 self.block_indent = self.block_indent.block_unindent(self.config);
             }
             ast::Item_::ItemExternCrate(_) => {
-                self.format_missing_with_indent(item.span.lo, self.config);
+                self.format_missing_with_indent(item.span.lo);
                 let new_str = self.snippet(item.span);
                 self.buffer.push_str(&new_str);
                 self.last_pos = item.span.hi;
             }
             ast::Item_::ItemStruct(ref def, ref generics) => {
-                self.format_missing_with_indent(item.span.lo, self.config);
+                self.format_missing_with_indent(item.span.lo);
                 self.visit_struct(item.ident, item.vis, def, generics, item.span);
             }
             ast::Item_::ItemEnum(ref def, ref generics) => {
-                self.format_missing_with_indent(item.span.lo, self.config);
+                self.format_missing_with_indent(item.span.lo);
                 self.visit_enum(item.ident, item.vis, def, generics, item.span);
                 self.last_pos = item.span.hi;
             }
             ast::Item_::ItemMod(ref module) => {
-                self.format_missing_with_indent(item.span.lo, self.config);
+                self.format_missing_with_indent(item.span.lo);
                 self.format_mod(module, item.span, item.ident);
             }
             ast::Item_::ItemMac(..) => {
-                self.format_missing_with_indent(item.span.lo, self.config);
+                self.format_missing_with_indent(item.span.lo);
                 // TODO: we cannot format these yet, because of a bad span.
                 // See rust lang issue #28424.
                 // visit::walk_item(self, item);
@@ -236,7 +236,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         }
 
         if let ast::TraitItem_::MethodTraitItem(ref sig, None) = ti.node {
-            self.format_missing_with_indent(ti.span.lo, self.config);
+            self.format_missing_with_indent(ti.span.lo);
 
             let indent = self.block_indent;
             let new_fn = self.rewrite_required_fn(indent, ti.ident, sig, ti.span);
@@ -300,7 +300,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let first = &attrs[0];
-        self.format_missing_with_indent(first.span.lo, self.config);
+        self.format_missing_with_indent(first.span.lo);
 
         if utils::contains_skip(attrs) {
             true
@@ -366,12 +366,12 @@ impl<'a> FmtVisitor<'a> {
             }
             Some(ref s) => {
                 let s = format!("{}use {};", vis, s);
-                self.format_missing_with_indent(span.lo, self.config);
+                self.format_missing_with_indent(span.lo);
                 self.buffer.push_str(&s);
                 self.last_pos = span.hi;
             }
             None => {
-                self.format_missing_with_indent(span.lo, self.config);
+                self.format_missing_with_indent(span.lo);
                 self.format_missing(span.hi);
             }
         }
