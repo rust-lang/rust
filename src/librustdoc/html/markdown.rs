@@ -289,6 +289,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         // html for text rather than the raw text.
         let mut id = s.clone();
         let repl_sub = vec!["<em>", "</em>", "<code>", "</code>",
+                            "<strong>", "</strong>",
                             "&lt;", "&gt;", "&amp;", "&#39;", "&quot;"];
         for sub in repl_sub {
             id = id.replace(sub, "");
@@ -326,8 +327,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         });
 
         // Render the HTML
-        let text = format!(r##"<h{lvl} id="{id}" class='section-header'><a
-                           href="#{id}">{sec}{}</a></h{lvl}>"##,
+        let text = format!("<h{lvl} id='{id}' class='section-header'>\
+                           <a href='#{id}'>{sec}{}</a></h{lvl}>",
                            s, lvl = level, id = id, sec = sec);
 
         let text = CString::new(text).unwrap();
@@ -610,6 +611,27 @@ mod tests {
     fn issue_17736() {
         let markdown = "# title";
         format!("{}", Markdown(markdown));
+    }
+
+    #[test]
+    fn test_header() {
+        fn t(input: &str, expect: &str) {
+            let output = format!("{}", Markdown(input));
+            assert_eq!(output, expect);
+        }
+
+        t("# Foo bar", "\n<h1 id='foo-bar' class='section-header'>\
+          <a href='#foo-bar'>Foo bar</a></h1>");
+        t("## Foo-bar_baz qux", "\n<h2 id='foo-bar_baz-qux' class=\'section-\
+          header'><a href='#foo-bar_baz-qux'>Foo-bar_baz qux</a></h2>");
+        t("### **Foo** *bar* baz!?!& -_qux_-%",
+          "\n<h3 id='foo-bar-baz--_qux_-' class='section-header'>\
+          <a href='#foo-bar-baz--_qux_-'><strong>Foo</strong> \
+          <em>bar</em> baz!?!&amp; -_qux_-%</a></h3>");
+        t("####**Foo?** & \\*bar?!*  _`baz`_ ❤ #qux",
+          "\n<h4 id='foo--bar--baz--qux' class='section-header'>\
+          <a href='#foo--bar--baz--qux'><strong>Foo?</strong> &amp; *bar?!*  \
+          <em><code>baz</code></em> ❤ #qux</a></h4>");
     }
 
     #[test]
