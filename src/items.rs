@@ -507,8 +507,6 @@ impl<'a> FmtVisitor<'a> {
 
         let result = match field.node.kind {
             ast::VariantKind::TupleVariantKind(ref types) => {
-                let vis = format_visibility(field.node.vis);
-                self.buffer.push_str(vis);
                 let name = field.node.name.to_string();
                 self.buffer.push_str(&name);
 
@@ -531,8 +529,7 @@ impl<'a> FmtVisitor<'a> {
 
                     result.push('(');
 
-                    let indent = self.block_indent + vis.len() + field.node.name.to_string().len() +
-                                 1; // Open paren
+                    let indent = self.block_indent + field.node.name.to_string().len() + "(".len();
 
                     let comma_cost = if self.config.enum_trailing_comma {
                         1
@@ -565,9 +562,8 @@ impl<'a> FmtVisitor<'a> {
                     result.push_str(&expr_snippet);
 
                     // Make sure we do not exceed column limit
-                    // 4 = " = ,"
                     assert!(self.config.max_width >=
-                            vis.len() + name.len() + expr_snippet.len() + 4,
+                            name.len() + expr_snippet.len() + " = ,".len(),
                             "Enum variant exceeded column limit");
                 }
 
@@ -577,7 +573,7 @@ impl<'a> FmtVisitor<'a> {
                 // TODO: Should limit the width, as we have a trailing comma
                 let struct_rewrite = self.format_struct("",
                                                         field.node.name,
-                                                        field.node.vis,
+                                                        ast::Visibility::Inherited,
                                                         struct_def,
                                                         None,
                                                         field.span,
