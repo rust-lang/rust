@@ -26,7 +26,7 @@
 #
 #   * check - Run the complete test suite
 #
-#   * clean - Clean the build repertory. It is advised to run this
+#   * clean - Clean the build repository. It is advised to run this
 #             command if you want to build Rust again, after an update
 #             of the git repository.
 #
