@@ -85,14 +85,13 @@ fn invert_cmp(cmp : BinOp_) -> BinOp_ {
 
 
 fn check_compare(cx: &LateContext, bit_op: &Expr, cmp_op: BinOp_, cmp_value: u64, span: &Span) {
-    match bit_op.node {
-        ExprBinary(ref op, ref left, ref right) => {
-            if op.node != BiBitAnd && op.node != BiBitOr { return; }
-            fetch_int_literal(cx, right).or_else(|| fetch_int_literal(
-                cx, left)).map_or((), |mask| check_bit_mask(cx, op.node,
-                                                            cmp_op, mask, cmp_value, span))
-        },
-        _ => ()
+    if let ExprBinary(ref op, ref left, ref right) = bit_op.node {
+        if op.node != BiBitAnd && op.node != BiBitOr {
+            return;
+        }
+        fetch_int_literal(cx, right).or_else(|| fetch_int_literal(
+            cx, left)).map_or((), |mask| check_bit_mask(cx, op.node,
+                                                        cmp_op, mask, cmp_value, span))
     }
 }
 
