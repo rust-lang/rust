@@ -10,12 +10,16 @@
 
 // Unstable entities should be caught in import lists
 
+// aux-build:lint_stability.rs
+
 #![allow(unused_imports)]
 
-use std::thread::{catch_panic, ScopedKey}; //~ ERROR use of unstable library feature 'catch_panic'
-//~^ ERROR use of unstable library feature 'scoped_tls'
+extern crate lint_stability;
 
-use std::rt::{self}; //~ ERROR use of unstable library feature 'rt'
+use lint_stability::{unstable, deprecated}; //~ ERROR use of unstable library feature 'test_feature'
+//~^ WARNING use of deprecated item
+
+use lint_stability::unstable::{self as u}; //~ ERROR use of unstable library feature 'test_feature'
 
 fn main() {
 }
