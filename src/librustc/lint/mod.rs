@@ -161,9 +161,6 @@ pub trait LateLintPass: LintPass {
     fn check_lifetime_ref(&mut self, _: &LateContext, _: &hir::Lifetime) { }
     fn check_lifetime_def(&mut self, _: &LateContext, _: &hir::LifetimeDef) { }
     fn check_explicit_self(&mut self, _: &LateContext, _: &hir::ExplicitSelf) { }
-    // Note that you shouldn't implement both check_mac and check_ast_mac,
-    // because then your lint will be called twice. Prefer check_ast_mac.
-    fn check_mac(&mut self, _: &LateContext, _: &ast::Mac) { }
     fn check_path(&mut self, _: &LateContext, _: &hir::Path, _: ast::NodeId) { }
     fn check_attribute(&mut self, _: &LateContext, _: &ast::Attribute) { }
 
@@ -209,7 +206,6 @@ pub trait EarlyLintPass: LintPass {
     fn check_lifetime_ref(&mut self, _: &EarlyContext, _: &ast::Lifetime) { }
     fn check_lifetime_def(&mut self, _: &EarlyContext, _: &ast::LifetimeDef) { }
     fn check_explicit_self(&mut self, _: &EarlyContext, _: &ast::ExplicitSelf) { }
-    fn check_mac(&mut self, _: &EarlyContext, _: &ast::Mac) { }
     fn check_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }
     fn check_attribute(&mut self, _: &EarlyContext, _: &ast::Attribute) { }
 
