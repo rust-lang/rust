@@ -192,7 +192,7 @@ fn write_line(init_i: f64, vec_init_r: &[f64], res: &mut Vec<u8>) {
             i += 2;
         }
 
-        res.push(cur_byte^-1);
+        res.push(cur_byte^!0);
     }
 }
 

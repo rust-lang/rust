@@ -18,21 +18,21 @@ impl std::ops::Neg for S {
 }
 
 const _MAX: usize = -1;
-//~^ WARN unary negation of unsigned integers will be feature gated in the future
+//~^ ERROR unary negation of unsigned integers may be removed in the future
 
 fn main() {
     let a = -1;
-    //~^ WARN unary negation of unsigned integers will be feature gated in the future
+    //~^ ERROR unary negation of unsigned integers may be removed in the future
     let _b : u8 = a; // for infering variable a to u8.
 
     -a;
-    //~^ WARN unary negation of unsigned integers will be feature gated in the future
+    //~^ ERROR unary negation of unsigned integers may be removed in the future
 
     let _d = -1u8;
-    //~^ WARN unary negation of unsigned integers will be feature gated in the future
+    //~^ ERROR unary negation of unsigned integers may be removed in the future
 
     for _ in -10..10u8 {}
-    //~^ WARN unary negation of unsigned integers will be feature gated in the future
+    //~^ ERROR unary negation of unsigned integers may be removed in the future
 
     -S; // should not trigger the gate; issue 26840
 }

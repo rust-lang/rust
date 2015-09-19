@@ -49,7 +49,7 @@ use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::{abi, ast};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
-use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
+use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType, emit_feature_err, GateIssue};
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ptr::P;
 
@@ -381,13 +381,12 @@ impl LateLintPass for TypeLimits {
 
         fn check_unsigned_negation_feature(cx: &LateContext, span: Span) {
             if !cx.sess().features.borrow().negate_unsigned {
-                // FIXME(#27141): change this to syntax::feature_gate::emit_feature_err…
-                cx.sess().span_warn(span,
-                    "unary negation of unsigned integers will be feature gated in the future");
-                // …and remove following two expressions.
-                if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some() { return; }
-                cx.sess().fileline_help(span, "add #![feature(negate_unsigned)] to the \
-                                               crate attributes to enable the gate in advance");
+                emit_feature_err(
+                    &cx.sess().parse_sess.span_diagnostic,
+                    "negate_unsigned",
+                    span,
+                    GateIssue::Language,
+                    "unary negation of unsigned integers may be removed in the future");
             }
         }
     }
