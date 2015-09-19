@@ -1247,7 +1247,7 @@ macro_rules! try {
 }
 ```
 
-This is not it's real definition. It's real definition is
+This is not its real definition. Its real definition is
 [in the standard library](../std/macro.try!.html):
 
 <div id="code-try-def">
