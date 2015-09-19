@@ -119,18 +119,18 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         mc::cat_deref(_, _, mc::Implicit(..)) |
         mc::cat_deref(_, _, mc::UnsafePtr(..)) |
         mc::cat_static_item => {
-            bccx.span_err(move_from.span,
-                          &format!("cannot move out of {}",
-                                  move_from.descriptive_string(bccx.tcx)));
+            span_err!(bccx, move_from.span, E0507,
+                      "cannot move out of {}",
+                      move_from.descriptive_string(bccx.tcx));
         }
 
         mc::cat_interior(ref b, mc::InteriorElement(Kind::Index, _)) => {
             let expr = bccx.tcx.map.expect_expr(move_from.id);
             if let hir::ExprIndex(..) = expr.node {
-                bccx.span_err(move_from.span,
-                              &format!("cannot move out of type `{}`, \
-                                        a non-copy fixed-size array",
-                                       b.ty));
+                span_err!(bccx, move_from.span, E0508,
+                          "cannot move out of type `{}`, \
+                           a non-copy fixed-size array",
+                          b.ty);
             }
         }
 
@@ -139,11 +139,10 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             match b.ty.sty {
                 ty::TyStruct(def, _) |
                 ty::TyEnum(def, _) if def.has_dtor() => {
-                    bccx.span_err(
-                        move_from.span,
-                        &format!("cannot move out of type `{}`, \
-                                 which defines the `Drop` trait",
-                                b.ty));
+                    span_err!(bccx, move_from.span, E0509,
+                              "cannot move out of type `{}`, \
+                               which defines the `Drop` trait",
+                              b.ty);
                 },
                 _ => {
                     bccx.span_bug(move_from.span, "this path should not cause illegal move")

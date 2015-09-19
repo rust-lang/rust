@@ -68,6 +68,10 @@ macro_rules! panic {
 /// necessary to use `io::stdout().flush()` to ensure the output is emitted
 /// immediately.
 ///
+/// # Panics
+///
+/// Panics if writing to `io::stdout()` fails.
+///
 /// # Examples
 ///
 /// ```
@@ -98,6 +102,10 @@ macro_rules! print {
 ///
 /// Use the `format!` syntax to write data to the standard output.
 /// See `std::fmt` for more information.
+///
+/// # Panics
+///
+/// Panics if writing to `io::stdout()` fails.
 ///
 /// # Examples
 ///
