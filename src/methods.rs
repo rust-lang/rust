@@ -124,7 +124,7 @@ const CONVENTIONS: [(&'static str, &'static [SelfKind]); 5] = [
 ];
 
 const TRAIT_METHODS: [(&'static str, usize, SelfKind, OutType, &'static str); 30] = [
-    ("add",        2, ValueSelf,  AnyType,  "std::ops::Add`"),
+    ("add",        2, ValueSelf,  AnyType,  "std::ops::Add"),
     ("sub",        2, ValueSelf,  AnyType,  "std::ops::Sub"),
     ("mul",        2, ValueSelf,  AnyType,  "std::ops::Mul"),
     ("div",        2, ValueSelf,  AnyType,  "std::ops::Div"),
