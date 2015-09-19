@@ -15,7 +15,6 @@ use std::iter;
 use Indent;
 use config::Config;
 use string::{StringFormat, rewrite_string};
-use utils::make_indent;
 
 pub fn rewrite_comment(orig: &str,
                        block_style: bool,
@@ -45,7 +44,7 @@ pub fn rewrite_comment(orig: &str,
         config: config,
     };
 
-    let indent_str = make_indent(offset, config);
+    let indent_str = offset.to_string(config);
     let line_breaks = s.chars().filter(|&c| c == '\n').count();
 
     let (_, mut s) = s.lines()
@@ -304,7 +303,7 @@ mod test {
         assert_eq!("/* test */", rewrite_comment(" //test", true, 100, Indent::new(0, 100),
                                                  &config));
         assert_eq!("// comment\n// on a", rewrite_comment("// comment on a", false, 10,
-                                                          Indent::new(0, 0), &config));
+                                                          Indent::empty(), &config));
 
         assert_eq!("//  A multi line comment\n            // between args.",
                    rewrite_comment("//  A multi line comment\n             // between args.",

@@ -11,8 +11,7 @@
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use Indent;
-use utils::{format_mutability, format_visibility, make_indent, contains_skip, span_after,
-            end_typaram, wrap_str};
+use utils::{format_mutability, format_visibility, contains_skip, span_after, end_typaram, wrap_str};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, ListTactic};
 use expr::rewrite_assign_rhs;
 use comment::FindUncommented;
@@ -35,7 +34,7 @@ impl<'a> FmtVisitor<'a> {
 
             if let Some(ref ty) = local.ty {
                 infix.push_str(": ");
-                infix.push_str(&ty.rewrite(&self.get_context(), 1000, Indent::new(0, 0)).unwrap());
+                infix.push_str(&ty.rewrite(&self.get_context(), 1000, Indent::empty()).unwrap());
             }
 
             if local.init.is_some() {
@@ -126,7 +125,7 @@ impl<'a> FmtVisitor<'a> {
         // this.
         if newline_brace {
             result.push('\n');
-            result.push_str(&make_indent(indent, self.config));
+            result.push_str(&indent.to_string(self.config));
         } else {
             result.push(' ');
         }
@@ -226,17 +225,17 @@ impl<'a> FmtVisitor<'a> {
         if one_line_budget <= 0 {
             if self.config.fn_args_paren_newline {
                 result.push('\n');
-                result.push_str(&make_indent(arg_indent, self.config));
+                result.push_str(&arg_indent.to_string(self.config));
                 arg_indent = arg_indent + 1; // extra space for `(`
                 result.push('(');
             } else {
                 result.push_str("(\n");
-                result.push_str(&make_indent(arg_indent, self.config));
+                result.push_str(&arg_indent.to_string(self.config));
             }
         } else if self.config.fn_args_layout == StructLitStyle::Block {
-            arg_indent = indent.block_indent(self.config.tab_spaces);
+            arg_indent = indent.block_indent(self.config);
             result.push_str("(\n");
-            result.push_str(&make_indent(arg_indent, self.config));
+            result.push_str(&arg_indent.to_string(self.config));
         } else {
             result.push('(');
         }
@@ -281,7 +280,7 @@ impl<'a> FmtVisitor<'a> {
                 };
 
                 result.push('\n');
-                result.push_str(&make_indent(indent, self.config));
+                result.push_str(&indent.to_string(self.config));
             } else {
                 result.push(' ');
             }
@@ -390,7 +389,7 @@ impl<'a> FmtVisitor<'a> {
 
         let indent = match self.config.fn_arg_indent {
             BlockIndentStyle::Inherit => indent,
-            BlockIndentStyle::Tabbed => indent.block_indent(self.config.tab_spaces),
+            BlockIndentStyle::Tabbed => indent.block_indent(self.config),
             BlockIndentStyle::Visual => arg_indent,
         };
 
@@ -444,7 +443,7 @@ impl<'a> FmtVisitor<'a> {
 
         // Didn't work. we must force vertical layout and put args on a newline.
         if let None = budgets {
-            let new_indent = indent.block_indent(self.config.tab_spaces);
+            let new_indent = indent.block_indent(self.config);
             let used_space = new_indent.width() + 2; // account for `(` and `)`
             let max_space = self.config.ideal_width + self.config.leeway;
             if used_space > max_space {
@@ -480,14 +479,13 @@ impl<'a> FmtVisitor<'a> {
         let generics_str = self.format_generics(generics,
                                                 " {",
                                                 self.block_indent,
-                                                self.block_indent
-                                                    .block_indent(self.config.tab_spaces),
+                                                self.block_indent.block_indent(self.config),
                                                 codemap::mk_sp(span.lo, body_start))
                                .unwrap();
         self.buffer.push_str(&generics_str);
 
         self.last_pos = body_start;
-        self.block_indent = self.block_indent.block_indent(self.config.tab_spaces);
+        self.block_indent = self.block_indent.block_indent(self.config);
         for (i, f) in enum_def.variants.iter().enumerate() {
             let next_span_start: BytePos = if i == enum_def.variants.len() - 1 {
                 span.hi
@@ -497,7 +495,7 @@ impl<'a> FmtVisitor<'a> {
 
             self.visit_variant(f, i == enum_def.variants.len() - 1, next_span_start);
         }
-        self.block_indent = self.block_indent.block_unindent(self.config.tab_spaces);
+        self.block_indent = self.block_indent.block_unindent(self.config);
 
         self.format_missing_with_indent(span.lo + BytePos(enum_snippet.rfind('}').unwrap() as u32),
                                         self.config);
@@ -530,7 +528,7 @@ impl<'a> FmtVisitor<'a> {
                                                  arg.ty
                                                     .rewrite(&self.get_context(),
                                                              1000,
-                                                             Indent::new(0, 0))
+                                                             Indent::empty())
                                                     .unwrap()
                                              },
                                              span_after(field.span, "(", self.codemap),
@@ -672,7 +670,7 @@ impl<'a> FmtVisitor<'a> {
                          single_line_cost as usize + used_budget > self.config.max_width;
 
         let tactic = if break_line {
-            let indentation = make_indent(offset.block_indent(self.config.tab_spaces), self.config);
+            let indentation = offset.block_indent(self.config).to_string(self.config);
             result.push('\n');
             result.push_str(&indentation);
 
@@ -687,7 +685,7 @@ impl<'a> FmtVisitor<'a> {
             tactic: tactic,
             separator: ",",
             trailing_separator: self.config.struct_trailing_comma,
-            indent: offset.block_indent(self.config.tab_spaces),
+            indent: offset.block_indent(self.config),
             h_width: self.config.max_width,
             v_width: budget,
             ends_with_newline: true,
@@ -699,7 +697,7 @@ impl<'a> FmtVisitor<'a> {
 
         if break_line {
             result.push('\n');
-            result.push_str(&make_indent(offset, self.config));
+            result.push_str(&offset.to_string(self.config));
         }
 
         result.push_str(terminator);
@@ -751,7 +749,7 @@ impl<'a> FmtVisitor<'a> {
                                                                       Density::Tall,
                                                                       span.hi));
             result.push_str(&where_clause_str);
-            result.push_str(&make_indent(self.block_indent, self.config));
+            result.push_str(&self.block_indent.to_string(self.config));
             result.push('\n');
             result.push_str(opener.trim());
         } else {
@@ -776,9 +774,9 @@ impl<'a> FmtVisitor<'a> {
             ast::StructFieldKind::UnnamedField(vis) => format_visibility(vis),
         };
         // FIXME silly width, indent
-        let typ = field.node.ty.rewrite(&self.get_context(), 1000, Indent::new(0, 0)).unwrap();
+        let typ = field.node.ty.rewrite(&self.get_context(), 1000, Indent::empty()).unwrap();
 
-        let indent = self.block_indent + self.config.tab_spaces;
+        let indent = self.block_indent.block_indent(self.config);
         let mut attr_str = field.node
                                 .attrs
                                 .rewrite(&self.get_context(),
@@ -787,7 +785,7 @@ impl<'a> FmtVisitor<'a> {
                                 .unwrap();
         if !attr_str.is_empty() {
             attr_str.push('\n');
-            attr_str.push_str(&make_indent(indent, self.config));
+            attr_str.push_str(&indent.to_string(self.config));
         }
 
         match name {
@@ -812,7 +810,7 @@ impl<'a> FmtVisitor<'a> {
 
         let offset = match self.config.generics_indent {
             BlockIndentStyle::Inherit => offset,
-            BlockIndentStyle::Tabbed => offset.block_indent(self.config.tab_spaces),
+            BlockIndentStyle::Tabbed => offset.block_indent(self.config),
             // 1 = <
             BlockIndentStyle::Visual => generics_offset + 1,
         };
@@ -870,7 +868,7 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let extra_indent = match self.config.where_indent {
-            BlockIndentStyle::Inherit => Indent::new(0, 0),
+            BlockIndentStyle::Inherit => Indent::empty(),
             BlockIndentStyle::Tabbed | BlockIndentStyle::Visual => Indent::new(config.tab_spaces,
                                                                                0),
         };
@@ -879,7 +877,7 @@ impl<'a> FmtVisitor<'a> {
 
         let offset = match self.config.where_pred_indent {
             BlockIndentStyle::Inherit => indent + extra_indent,
-            BlockIndentStyle::Tabbed => indent + extra_indent.block_indent(config.tab_spaces),
+            BlockIndentStyle::Tabbed => indent + extra_indent.block_indent(config),
             // 6 = "where ".len()
             BlockIndentStyle::Visual => indent + extra_indent + 6,
         };
@@ -915,9 +913,7 @@ impl<'a> FmtVisitor<'a> {
         // 9 = " where ".len() + " {".len()
         if density == Density::Tall || preds_str.contains('\n') ||
            indent.width() + 9 + preds_str.len() > self.config.max_width {
-            Some(format!("\n{}where {}",
-                         make_indent(indent + extra_indent, self.config),
-                         preds_str))
+            Some(format!("\n{}where {}", (indent + extra_indent).to_string(self.config), preds_str))
         } else {
             Some(format!(" where {}", preds_str))
         }

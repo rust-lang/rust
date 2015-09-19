@@ -14,7 +14,7 @@ use std::iter::Peekable;
 use syntax::codemap::{self, CodeMap, BytePos};
 
 use Indent;
-use utils::{round_up_to_power_of_two, make_indent, wrap_str};
+use utils::{round_up_to_power_of_two, wrap_str};
 use comment::{FindUncommented, rewrite_comment, find_comment_end};
 use config::Config;
 
@@ -155,7 +155,7 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
     let mut result = String::with_capacity(round_up_to_power_of_two(alloc_width));
 
     let mut line_len = 0;
-    let indent_str = &make_indent(formatting.indent, formatting.config);
+    let indent_str = &formatting.indent.to_string(formatting.config);
     for (i, item) in items.iter().enumerate() {
         let first = i == 0;
         let last = i == items.len() - 1;
@@ -221,7 +221,7 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
             let formatted_comment = rewrite_comment(comment,
                                                     true,
                                                     formatting.v_width,
-                                                    Indent::new(0, 0),
+                                                    Indent::empty(),
                                                     formatting.config);
 
             result.push(' ');

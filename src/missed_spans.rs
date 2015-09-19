@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use config::Config;
-use utils::make_indent;
 use visitor::FmtVisitor;
 
 use syntax::codemap::{self, BytePos};
@@ -29,7 +28,7 @@ impl<'a> FmtVisitor<'a> {
                                           // No new lines in the snippet.
                                           this.buffer.push_str("\n");
                                       }
-                                      let indent = make_indent(this.block_indent, config);
+                                      let indent = this.block_indent.to_string(config);
                                       this.buffer.push_str(&indent);
                                   })
     }

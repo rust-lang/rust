@@ -15,7 +15,6 @@ use syntax::codemap::{CodeMap, Span, BytePos};
 
 use Indent;
 use comment::FindUncommented;
-use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 
 use SKIP_ANNOTATION;
@@ -35,11 +34,6 @@ pub fn span_after(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
     let snippet = codemap.span_to_snippet(original).unwrap();
 
     original.lo + BytePos(snippet.find_uncommented(needle).unwrap() as u32 + 1)
-}
-
-#[inline]
-pub fn make_indent(indent: Indent, config: &Config) -> String {
-    indent.to_string(config)
 }
 
 #[inline]

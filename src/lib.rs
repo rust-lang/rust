@@ -83,7 +83,10 @@ const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
 
 #[derive(Copy, Clone, Debug)]
 pub struct Indent {
+    // Width of the block indent, in characters. Must be a multiple of
+    // Config::tab_spaces.
     block_indent: usize,
+    // Alignment in characters.
     alignment: usize,
 }
 
@@ -92,13 +95,17 @@ impl Indent {
         Indent { block_indent: block_indent, alignment: alignment }
     }
 
-    pub fn block_indent(mut self, block_indent: usize) -> Indent {
-        self.block_indent += block_indent;
+    pub fn empty() -> Indent {
+        Indent::new(0, 0)
+    }
+
+    pub fn block_indent(mut self, config: &Config) -> Indent {
+        self.block_indent += config.tab_spaces;
         self
     }
 
-    pub fn block_unindent(mut self, block_indent: usize) -> Indent {
-        self.block_indent -= block_indent;
+    pub fn block_unindent(mut self, config: &Config) -> Indent {
+        self.block_indent -= config.tab_spaces;
         self
     }
 
@@ -139,10 +146,7 @@ impl Sub for Indent {
     type Output = Indent;
 
     fn sub(self, rhs: Indent) -> Indent {
-        Indent {
-            block_indent: self.block_indent - rhs.block_indent,
-            alignment: self.alignment - rhs.alignment,
-        }
+        Indent::new(self.block_indent - rhs.block_indent, self.alignment - rhs.alignment)
     }
 }
 
@@ -150,7 +154,7 @@ impl Add<usize> for Indent {
     type Output = Indent;
 
     fn add(self, rhs: usize) -> Indent {
-        Indent { block_indent: self.block_indent, alignment: self.alignment + rhs }
+        Indent::new(self.block_indent, self.alignment + rhs)
     }
 }
 

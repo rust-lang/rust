@@ -44,7 +44,7 @@ impl<'a> RewriteContext<'a> {
         RewriteContext {
             codemap: self.codemap,
             config: self.config,
-            block_indent: self.block_indent.block_indent(self.config.tab_spaces),
+            block_indent: self.block_indent.block_indent(self.config),
             overflow_indent: self.overflow_indent,
         }
     }

@@ -102,7 +102,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         };
 
         self.last_pos = self.last_pos + brace_compensation;
-        self.block_indent = self.block_indent.block_indent(self.config.tab_spaces);
+        self.block_indent = self.block_indent.block_indent(self.config);
         self.buffer.push_str("{");
 
         for stmt in &b.stmts {
@@ -117,7 +117,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             None => {}
         }
 
-        self.block_indent = self.block_indent.block_unindent(self.config.tab_spaces);
+        self.block_indent = self.block_indent.block_unindent(self.config);
         // TODO: we should compress any newlines here to just one
         self.format_missing_with_indent(b.span.hi - brace_compensation, self.config);
         self.buffer.push_str("}");
@@ -198,9 +198,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             }
             ast::Item_::ItemImpl(..) |
             ast::Item_::ItemTrait(..) => {
-                self.block_indent = self.block_indent.block_indent(self.config.tab_spaces);
+                self.block_indent = self.block_indent.block_indent(self.config);
                 visit::walk_item(self, item);
-                self.block_indent = self.block_indent.block_unindent(self.config.tab_spaces);
+                self.block_indent = self.block_indent.block_unindent(self.config);
             }
             ast::Item_::ItemExternCrate(_) => {
                 self.format_missing_with_indent(item.span.lo, self.config);
@@ -330,17 +330,17 @@ impl<'a> FmtVisitor<'a> {
 
         if is_internal {
             debug!("FmtVisitor::format_mod: internal mod");
-            self.block_indent = self.block_indent.block_indent(self.config.tab_spaces);
+            self.block_indent = self.block_indent.block_indent(self.config);
             visit::walk_mod(self, m);
             debug!("... last_pos after: {:?}", self.last_pos);
-            self.block_indent = self.block_indent.block_unindent(self.config.tab_spaces);
+            self.block_indent = self.block_indent.block_unindent(self.config);
         }
     }
 
     pub fn format_separate_mod(&mut self, m: &ast::Mod, filename: &str) {
         let filemap = self.codemap.get_filemap(filename);
         self.last_pos = filemap.start_pos;
-        self.block_indent = Indent::new(0, 0);
+        self.block_indent = Indent::empty();
         visit::walk_mod(self, m);
         self.format_missing(filemap.end_pos);
     }
@@ -353,7 +353,7 @@ impl<'a> FmtVisitor<'a> {
             codemap: self.codemap,
             config: self.config,
             block_indent: self.block_indent,
-            overflow_indent: Indent::new(0, 0),
+            overflow_indent: Indent::empty(),
         };
         // 1 = ";"
         match vp.rewrite(&context, self.config.max_width - offset.width() - 1, offset) {
@@ -385,7 +385,7 @@ impl<'a> FmtVisitor<'a> {
             codemap: self.codemap,
             config: self.config,
             block_indent: self.block_indent,
-            overflow_indent: Indent::new(0, 0),
+            overflow_indent: Indent::empty(),
         }
     }
 }
@@ -396,7 +396,7 @@ impl<'a> Rewrite for [ast::Attribute] {
         if self.is_empty() {
             return Some(result);
         }
-        let indent = utils::make_indent(offset, context.config);
+        let indent = offset.to_string(context.config);
 
         for (i, a) in self.iter().enumerate() {
             let a_str = context.snippet(a.span);

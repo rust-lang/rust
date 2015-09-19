@@ -15,7 +15,7 @@ use regex::Regex;
 
 use Indent;
 use config::Config;
-use utils::{make_indent, round_up_to_power_of_two};
+use utils::round_up_to_power_of_two;
 
 use MIN_STRING;
 
@@ -39,7 +39,7 @@ pub fn rewrite_string<'a>(s: &str, fmt: &StringFormat<'a>) -> String {
 
     let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false).collect::<Vec<&str>>();
 
-    let indent = make_indent(fmt.offset, fmt.config);
+    let indent = fmt.offset.to_string(fmt.config);
     let indent = &indent;
 
     let mut cur_start = 0;

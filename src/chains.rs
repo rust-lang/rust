@@ -21,7 +21,7 @@
 
 use Indent;
 use rewrite::{Rewrite, RewriteContext};
-use utils::{first_line_width, make_indent};
+use utils::first_line_width;
 use expr::rewrite_call;
 
 use syntax::{ast, ptr};
@@ -117,7 +117,7 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
     let connector = if fits_single_line {
         String::new()
     } else {
-        format!("\n{}", make_indent(indent, context.config))
+        format!("\n{}", indent.to_string(context.config))
     };
 
     let first_connector = if extend {
