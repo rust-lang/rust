@@ -1,6 +1,6 @@
 # Compiler Test Documentation
 
-In the Rust project, we use a special set of comands imbedded in
+In the Rust project, we use a special set of comands embedded in
 comments to test the Rust compiler. There are two groups of commands:
 
 1. Header commands
@@ -29,11 +29,11 @@ The error levels that you can have are:
 3. `NOTE`
 4. `HELP` and `SUGGESTION`*
 
-\* **Note**: `SUGGESTION` must follow emediatly after `HELP`.
+\* **Note**: `SUGGESTION` must follow immediately after `HELP`.
 
 ## Summary of Header Commands
 
-Header commands specify something about the entire test file, as a
+Header commands specify something about the entire test file as a
 whole, instead of just a few lines inside the test.
 
 * `ignore-X` where `X` is an architecture, OS or stage will ignore the test accordingly
