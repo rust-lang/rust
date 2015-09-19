@@ -18,7 +18,6 @@ extern crate collections;
 extern crate unicode_normalization;
 
 use rustc::plugin::Registry;
-use rustc::lint::LintPassObject;
 
 #[macro_use]
 pub mod utils;
@@ -54,39 +53,39 @@ mod reexport {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_lint_pass(box types::TypePass as LintPassObject);
-    reg.register_lint_pass(box misc::TopLevelRefPass as LintPassObject);
-    reg.register_lint_pass(box misc::CmpNan as LintPassObject);
-    reg.register_lint_pass(box eq_op::EqOp as LintPassObject);
-    reg.register_lint_pass(box bit_mask::BitMask as LintPassObject);
-    reg.register_lint_pass(box ptr_arg::PtrArg as LintPassObject);
-    reg.register_lint_pass(box needless_bool::NeedlessBool as LintPassObject);
-    reg.register_lint_pass(box approx_const::ApproxConstant as LintPassObject);
-    reg.register_lint_pass(box misc::FloatCmp as LintPassObject);
-    reg.register_lint_pass(box precedence::Precedence as LintPassObject);
-    reg.register_lint_pass(box eta_reduction::EtaPass as LintPassObject);
-    reg.register_lint_pass(box identity_op::IdentityOp as LintPassObject);
-    reg.register_lint_pass(box mut_mut::MutMut as LintPassObject);
-    reg.register_lint_pass(box len_zero::LenZero as LintPassObject);
-    reg.register_lint_pass(box misc::CmpOwned as LintPassObject);
-    reg.register_lint_pass(box attrs::AttrPass as LintPassObject);
-    reg.register_lint_pass(box collapsible_if::CollapsibleIf as LintPassObject);
-    reg.register_lint_pass(box misc::ModuloOne as LintPassObject);
-    reg.register_lint_pass(box unicode::Unicode as LintPassObject);
-    reg.register_lint_pass(box strings::StringAdd as LintPassObject);
-    reg.register_lint_pass(box returns::ReturnPass as LintPassObject);
-    reg.register_lint_pass(box methods::MethodsPass as LintPassObject);
-    reg.register_lint_pass(box shadow::ShadowPass as LintPassObject);
-    reg.register_lint_pass(box types::LetPass as LintPassObject);
-    reg.register_lint_pass(box types::UnitCmp as LintPassObject);
-    reg.register_lint_pass(box loops::LoopsPass as LintPassObject);
-    reg.register_lint_pass(box lifetimes::LifetimePass as LintPassObject);
-    reg.register_lint_pass(box ranges::StepByZero as LintPassObject);
-    reg.register_lint_pass(box types::CastPass as LintPassObject);
-    reg.register_lint_pass(box types::TypeComplexityPass as LintPassObject);
-    reg.register_lint_pass(box matches::MatchPass as LintPassObject);
-    reg.register_lint_pass(box misc::PatternPass as LintPassObject);
-    reg.register_lint_pass(box minmax::MinMaxPass as LintPassObject);
+    reg.register_late_lint_pass(box types::TypePass);
+    reg.register_late_lint_pass(box misc::TopLevelRefPass);
+    reg.register_late_lint_pass(box misc::CmpNan);
+    reg.register_late_lint_pass(box eq_op::EqOp);
+    reg.register_late_lint_pass(box bit_mask::BitMask);
+    reg.register_late_lint_pass(box ptr_arg::PtrArg);
+    reg.register_late_lint_pass(box needless_bool::NeedlessBool);
+    reg.register_late_lint_pass(box approx_const::ApproxConstant);
+    reg.register_late_lint_pass(box misc::FloatCmp);
+    reg.register_early_lint_pass(box precedence::Precedence);
+    reg.register_late_lint_pass(box eta_reduction::EtaPass);
+    reg.register_late_lint_pass(box identity_op::IdentityOp);
+    reg.register_late_lint_pass(box mut_mut::MutMut);
+    reg.register_late_lint_pass(box len_zero::LenZero);
+    reg.register_late_lint_pass(box misc::CmpOwned);
+    reg.register_late_lint_pass(box attrs::AttrPass);
+    reg.register_late_lint_pass(box collapsible_if::CollapsibleIf);
+    reg.register_late_lint_pass(box misc::ModuloOne);
+    reg.register_late_lint_pass(box unicode::Unicode);
+    reg.register_late_lint_pass(box strings::StringAdd);
+    reg.register_late_lint_pass(box returns::ReturnPass);
+    reg.register_late_lint_pass(box methods::MethodsPass);
+    reg.register_late_lint_pass(box shadow::ShadowPass);
+    reg.register_late_lint_pass(box types::LetPass);
+    reg.register_late_lint_pass(box types::UnitCmp);
+    reg.register_late_lint_pass(box loops::LoopsPass);
+    reg.register_late_lint_pass(box lifetimes::LifetimePass);
+    reg.register_late_lint_pass(box ranges::StepByZero);
+    reg.register_late_lint_pass(box types::CastPass);
+    reg.register_late_lint_pass(box types::TypeComplexityPass);
+    reg.register_late_lint_pass(box matches::MatchPass);
+    reg.register_late_lint_pass(box misc::PatternPass);
+    reg.register_late_lint_pass(box minmax::MinMaxPass);
 
     reg.register_lint_group("clippy_pedantic", vec![
         methods::OPTION_UNWRAP_USED,

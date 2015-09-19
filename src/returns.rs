@@ -17,7 +17,7 @@ pub struct ReturnPass;
 
 impl ReturnPass {
     // Check the final stmt or expr in a block for unnecessary return.
-    fn check_block_return(&mut self, cx: &Context, block: &Block) {
+    fn check_block_return(&mut self, cx: &LateContext, block: &Block) {
         if let Some(ref expr) = block.expr {
             self.check_final_expr(cx, expr);
         } else if let Some(stmt) = block.stmts.last() {
@@ -30,7 +30,7 @@ impl ReturnPass {
     }
 
     // Check a the final expression in a block if it's a return.
-    fn check_final_expr(&mut self, cx: &Context, expr: &Expr) {
+    fn check_final_expr(&mut self, cx: &LateContext, expr: &Expr) {
         match expr.node {
             // simple return is always "bad"
             ExprRet(Some(ref inner)) => {
@@ -57,7 +57,7 @@ impl ReturnPass {
         }
     }
 
-    fn emit_return_lint(&mut self, cx: &Context, spans: (Span, Span)) {
+    fn emit_return_lint(&mut self, cx: &LateContext, spans: (Span, Span)) {
         if in_external_macro(cx, spans.1) {return;}
         span_lint(cx, NEEDLESS_RETURN, spans.0, &format!(
             "unneeded return statement. Consider using `{}` \
@@ -66,7 +66,7 @@ impl ReturnPass {
     }
 
     // Check for "let x = EXPR; x"
-    fn check_let_return(&mut self, cx: &Context, block: &Block) {
+    fn check_let_return(&mut self, cx: &LateContext, block: &Block) {
         // we need both a let-binding stmt and an expr
         if_let_chain! {
             [
@@ -84,7 +84,7 @@ impl ReturnPass {
         }
     }
 
-    fn emit_let_lint(&mut self, cx: &Context, lint_span: Span, note_span: Span) {
+    fn emit_let_lint(&mut self, cx: &LateContext, lint_span: Span, note_span: Span) {
         if in_external_macro(cx, note_span) {return;}
         span_lint(cx, LET_AND_RETURN, lint_span,
                   "returning the result of a let binding. \
@@ -100,8 +100,10 @@ impl LintPass for ReturnPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_RETURN, LET_AND_RETURN)
     }
+}
 
-    fn check_fn(&mut self, cx: &Context, _: FnKind, _: &FnDecl,
+impl LateLintPass for ReturnPass {
+    fn check_fn(&mut self, cx: &LateContext, _: FnKind, _: &FnDecl,
                 block: &Block, _: Span, _: NodeId) {
         self.check_block_return(cx, block);
         self.check_let_return(cx, block);

@@ -15,18 +15,20 @@ impl LintPass for MutMut {
     fn get_lints(&self) -> LintArray {
         lint_array!(MUT_MUT)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+impl LateLintPass for MutMut {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
        check_expr_mut(cx, expr)
     }
 
-    fn check_ty(&mut self, cx: &Context, ty: &Ty) {
+    fn check_ty(&mut self, cx: &LateContext, ty: &Ty) {
         unwrap_mut(ty).and_then(unwrap_mut).map_or((), |_| span_lint(cx, MUT_MUT,
             ty.span, "generally you want to avoid `&mut &mut _` if possible"))
     }
 }
 
-fn check_expr_mut(cx: &Context, expr: &Expr) {
+fn check_expr_mut(cx: &LateContext, expr: &Expr) {
     if in_external_macro(cx, expr.span) { return; }
 
     fn unwrap_addr(expr : &Expr) -> Option<&Expr> {

@@ -36,8 +36,10 @@ impl LintPass for MethodsPass {
         lint_array!(OPTION_UNWRAP_USED, RESULT_UNWRAP_USED, STR_TO_STRING, STRING_TO_STRING,
                     SHOULD_IMPLEMENT_TRAIT, WRONG_SELF_CONVENTION)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+impl LateLintPass for MethodsPass {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprMethodCall(ref ident, _, ref args) = expr.node {
             let (obj_ty, ptr_depth) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&args[0]));
             if ident.node.name == "unwrap" {
@@ -71,7 +73,7 @@ impl LintPass for MethodsPass {
         }
     }
 
-    fn check_item(&mut self, cx: &Context, item: &Item) {
+    fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemImpl(_, _, _, None, ref ty, ref items) = item.node {
             for implitem in items {
                 let name = implitem.ident.name;
@@ -229,7 +231,7 @@ fn is_bool(ty: &Ty) -> bool {
     false
 }
 
-fn is_copy(cx: &Context, ast_ty: &Ty, item: &Item) -> bool {
+fn is_copy(cx: &LateContext, ast_ty: &Ty, item: &Item) -> bool {
     match cx.tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
         None => false,
         Some(ty) => {

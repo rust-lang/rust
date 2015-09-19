@@ -29,15 +29,17 @@ impl LintPass for ApproxConstant {
     fn get_lints(&self) -> LintArray {
         lint_array!(APPROX_CONSTANT)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, e: &Expr) {
+impl LateLintPass for ApproxConstant {
+    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let &ExprLit(ref lit) = &e.node {
             check_lit(cx, lit, e);
         }
     }
 }
 
-fn check_lit(cx: &Context, lit: &Lit, e: &Expr) {
+fn check_lit(cx: &LateContext, lit: &Lit, e: &Expr) {
     match lit.node {
         LitFloat(ref str, TyF32) => check_known_consts(cx, e, str, "f32"),
         LitFloat(ref str, TyF64) => check_known_consts(cx, e, str, "f64"),
@@ -47,7 +49,7 @@ fn check_lit(cx: &Context, lit: &Lit, e: &Expr) {
     }
 }
 
-fn check_known_consts(cx: &Context, e: &Expr, str: &str, module: &str) {
+fn check_known_consts(cx: &LateContext, e: &Expr, str: &str, module: &str) {
     if let Ok(value) = str.parse::<f64>() {
         for &(constant, name) in KNOWN_CONSTS {
             if !within_epsilon(constant, value) { continue; }

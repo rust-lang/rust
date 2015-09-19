@@ -23,27 +23,29 @@ impl LintPass for PtrArg {
     fn get_lints(&self) -> LintArray {
         lint_array!(PTR_ARG)
     }
+}
 
-    fn check_item(&mut self, cx: &Context, item: &Item) {
+impl LateLintPass for PtrArg {
+    fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let &ItemFn(ref decl, _, _, _, _, _) = &item.node {
             check_fn(cx, decl);
         }
     }
 
-    fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
         if let &MethodImplItem(ref sig, _) = &item.node {
             check_fn(cx, &sig.decl);
         }
     }
 
-    fn check_trait_item(&mut self, cx: &Context, item: &TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         if let &MethodTraitItem(ref sig, _) = &item.node {
             check_fn(cx, &sig.decl);
         }
     }
 }
 
-fn check_fn(cx: &Context, decl: &FnDecl) {
+fn check_fn(cx: &LateContext, decl: &FnDecl) {
     for arg in &decl.inputs {
         if let Some(pat_ty) = cx.tcx.pat_ty_opt(&arg.pat) {
             if let ty::TyRef(_, ty::TypeAndMut { ty, mutbl: MutImmutable }) = pat_ty.sty {

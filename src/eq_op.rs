@@ -19,8 +19,10 @@ impl LintPass for EqOp {
     fn get_lints(&self) -> LintArray {
         lint_array!(EQ_OP)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, e: &Expr) {
+impl LateLintPass for EqOp {
+    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let ExprBinary(ref op, ref left, ref right) = e.node {
             if is_cmp_or_bit(op) && is_exp_equal(cx, left, right) {
                 span_lint(cx, EQ_OP, e.span, &format!(
@@ -31,7 +33,7 @@ impl LintPass for EqOp {
     }
 }
 
-pub fn is_exp_equal(cx: &Context, left : &Expr, right : &Expr) -> bool {
+pub fn is_exp_equal(cx: &LateContext, left : &Expr, right : &Expr) -> bool {
     if let (Some(l), Some(r)) = (constant(cx, left), constant(cx, right)) {
         if l == r {
             return true;
@@ -42,8 +44,6 @@ pub fn is_exp_equal(cx: &Context, left : &Expr, right : &Expr) -> bool {
                 &ExprField(ref rfexp, ref rfident)) =>
             lfident.node == rfident.node && is_exp_equal(cx, lfexp, rfexp),
         (&ExprLit(ref l), &ExprLit(ref r)) => l.node == r.node,
-        (&ExprParen(ref lparen), _) => is_exp_equal(cx, lparen, right),
-        (_, &ExprParen(ref rparen)) => is_exp_equal(cx, left, rparen),
         (&ExprPath(ref lqself, ref lsubpath),
                 &ExprPath(ref rqself, ref rsubpath)) =>
             both(lqself, rqself, is_qself_equal) &&
@@ -57,7 +57,7 @@ pub fn is_exp_equal(cx: &Context, left : &Expr, right : &Expr) -> bool {
     }
 }
 
-fn is_exps_equal(cx: &Context, left : &[P<Expr>], right : &[P<Expr>]) -> bool {
+fn is_exps_equal(cx: &LateContext, left : &[P<Expr>], right : &[P<Expr>]) -> bool {
     over(left, right, |l, r| is_exp_equal(cx, l, r))
 }
 

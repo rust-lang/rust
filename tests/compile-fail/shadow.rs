@@ -12,7 +12,7 @@ fn main() {
     let mut x = 1;
     let x = &mut x; //~ERROR: x is shadowed by itself in &mut x
     let x = { x }; //~ERROR: x is shadowed by itself in { x }
-    let x = (&*x); //~ERROR: x is shadowed by itself in (&*x)
+    let x = (&*x); //~ERROR: x is shadowed by itself in &*x
     let x = { *x + 1 }; //~ERROR: x is shadowed by { *x + 1 } which reuses
     let x = id(x); //~ERROR: x is shadowed by id(x) which reuses
     let x = (1, x); //~ERROR: x is shadowed by (1, x) which reuses

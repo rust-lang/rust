@@ -54,8 +54,10 @@ impl LintPass for BitMask {
     fn get_lints(&self) -> LintArray {
         lint_array!(BAD_BIT_MASK, INEFFECTIVE_BIT_MASK)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, e: &Expr) {
+impl LateLintPass for BitMask {
+    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = e.node {
             if is_comparison_binop(cmp.node) {
                 fetch_int_literal(cx, right).map_or_else(||
@@ -82,9 +84,8 @@ fn invert_cmp(cmp : BinOp_) -> BinOp_ {
 }
 
 
-fn check_compare(cx: &Context, bit_op: &Expr, cmp_op: BinOp_, cmp_value: u64, span: &Span) {
+fn check_compare(cx: &LateContext, bit_op: &Expr, cmp_op: BinOp_, cmp_value: u64, span: &Span) {
     match bit_op.node {
-        ExprParen(ref subexp) => check_compare(cx, subexp, cmp_op, cmp_value, span),
         ExprBinary(ref op, ref left, ref right) => {
             if op.node != BiBitAnd && op.node != BiBitOr { return; }
             fetch_int_literal(cx, right).or_else(|| fetch_int_literal(
@@ -95,7 +96,7 @@ fn check_compare(cx: &Context, bit_op: &Expr, cmp_op: BinOp_, cmp_value: u64, sp
     }
 }
 
-fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_,
+fn check_bit_mask(cx: &LateContext, bit_op: BinOp_, cmp_op: BinOp_,
                   mask_value: u64, cmp_value: u64, span: &Span) {
     match cmp_op {
         BiEq | BiNe => match bit_op {
@@ -163,7 +164,7 @@ fn check_bit_mask(cx: &Context, bit_op: BinOp_, cmp_op: BinOp_,
     }
 }
 
-fn check_ineffective_lt(cx: &Context, span: Span, m: u64, c: u64, op: &str) {
+fn check_ineffective_lt(cx: &LateContext, span: Span, m: u64, c: u64, op: &str) {
     if c.is_power_of_two() && m < c {
         span_lint(cx, INEFFECTIVE_BIT_MASK, span, &format!(
             "ineffective bit mask: `x {} {}` compared to `{}`, is the same as x compared directly",
@@ -171,7 +172,7 @@ fn check_ineffective_lt(cx: &Context, span: Span, m: u64, c: u64, op: &str) {
     }
 }
 
-fn check_ineffective_gt(cx: &Context, span: Span, m: u64, c: u64, op: &str) {
+fn check_ineffective_gt(cx: &LateContext, span: Span, m: u64, c: u64, op: &str) {
     if (c + 1).is_power_of_two() && m <= c {
         span_lint(cx, INEFFECTIVE_BIT_MASK, span, &format!(
             "ineffective bit mask: `x {} {}` compared to `{}`, is the same as x compared directly",
@@ -179,7 +180,7 @@ fn check_ineffective_gt(cx: &Context, span: Span, m: u64, c: u64, op: &str) {
     }
 }
 
-fn fetch_int_literal(cx: &Context, lit : &Expr) -> Option<u64> {
+fn fetch_int_literal(cx: &LateContext, lit : &Expr) -> Option<u64> {
     match lit.node {
         ExprLit(ref lit_ptr) => {
             if let &LitInt(value, _) = &lit_ptr.node {

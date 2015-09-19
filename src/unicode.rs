@@ -25,8 +25,10 @@ impl LintPass for Unicode {
     fn get_lints(&self) -> LintArray {
         lint_array!(ZERO_WIDTH_SPACE, NON_ASCII_LITERAL, UNICODE_NOT_NFC)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+impl LateLintPass for Unicode {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprLit(ref lit) = expr.node {
             if let LitStr(_, _) = lit.node {
                 check_str(cx, lit.span)
@@ -47,7 +49,7 @@ fn escape<T: Iterator<Item=char>>(s: T) -> String {
     result
 }
 
-fn check_str(cx: &Context, span: Span) {
+fn check_str(cx: &LateContext, span: Span) {
     let string = snippet(cx, span, "");
     if string.contains('\u{200B}') {
         span_help_and_lint(cx, ZERO_WIDTH_SPACE, span,

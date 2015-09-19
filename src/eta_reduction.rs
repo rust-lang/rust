@@ -16,8 +16,10 @@ impl LintPass for EtaPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(REDUNDANT_CLOSURE)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+impl LateLintPass for EtaPass {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         match expr.node {
             ExprCall(_, ref args) |
             ExprMethodCall(_, _, ref args) => {
@@ -30,11 +32,11 @@ impl LintPass for EtaPass {
     }
 }
 
-fn is_adjusted(cx: &Context, e: &Expr) -> bool {
+fn is_adjusted(cx: &LateContext, e: &Expr) -> bool {
     cx.tcx.tables.borrow().adjustments.get(&e.id).is_some()
 }
 
-fn check_closure(cx: &Context, expr: &Expr) {
+fn check_closure(cx: &LateContext, expr: &Expr) {
     if let ExprClosure(_, ref decl, ref blk) = expr.node {
         if !blk.stmts.is_empty() {
             // || {foo(); bar()}; can't be reduced here

@@ -30,8 +30,10 @@ impl LintPass for StringAdd {
     fn get_lints(&self) -> LintArray {
         lint_array!(STRING_ADD, STRING_ADD_ASSIGN)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, e: &Expr) {
+impl LateLintPass for StringAdd {
+    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let &ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) = &e.node {
             if is_string(cx, left) {
                 if let Allow = cx.current_level(STRING_ADD_ASSIGN) {
@@ -59,18 +61,17 @@ impl LintPass for StringAdd {
     }
 }
 
-fn is_string(cx: &Context, e: &Expr) -> bool {
+fn is_string(cx: &LateContext, e: &Expr) -> bool {
     match_type(cx, walk_ptrs_ty(cx.tcx.expr_ty(e)), &STRING_PATH)
 }
 
-fn is_add(cx: &Context, src: &Expr, target: &Expr) -> bool {
+fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
     match src.node {
         ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) =>
             is_exp_equal(cx, target, left),
         ExprBlock(ref block) => block.stmts.is_empty() &&
             block.expr.as_ref().map_or(false,
                 |expr| is_add(cx, expr, target)),
-        ExprParen(ref expr) => is_add(cx, expr, target),
         _ => false
     }
 }

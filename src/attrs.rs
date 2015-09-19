@@ -19,20 +19,22 @@ impl LintPass for AttrPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(INLINE_ALWAYS)
     }
+}
 
-    fn check_item(&mut self, cx: &Context, item: &Item) {
+impl LateLintPass for AttrPass {
+    fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if is_relevant_item(item) {
             check_attrs(cx, item.span, &item.ident, &item.attrs)
         }
     }
 
-    fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
         if is_relevant_impl(item) {
             check_attrs(cx, item.span, &item.ident, &item.attrs)
         }
     }
 
-    fn check_trait_item(&mut self, cx: &Context, item: &TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         if is_relevant_trait(item) {
             check_attrs(cx, item.span, &item.ident, &item.attrs)
         }
@@ -75,8 +77,7 @@ fn is_relevant_block(block: &Block) -> bool {
 fn is_relevant_expr(expr: &Expr) -> bool {
     match expr.node {
         ExprBlock(ref block) => is_relevant_block(block),
-        ExprRet(Some(ref e)) | ExprParen(ref e) =>
-            is_relevant_expr(e),
+        ExprRet(Some(ref e)) => is_relevant_expr(e),
         ExprRet(None) | ExprBreak(_) => false,
         ExprCall(ref path_expr, _) => {
             if let ExprPath(_, ref path) = path_expr.node {
@@ -87,7 +88,7 @@ fn is_relevant_expr(expr: &Expr) -> bool {
     }
 }
 
-fn check_attrs(cx: &Context, span: Span, ident: &Ident,
+fn check_attrs(cx: &LateContext, span: Span, ident: &Ident,
         attrs: &[Attribute]) {
     if in_macro(cx, span) { return; }
 

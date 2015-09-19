@@ -1,7 +1,6 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
 use syntax::codemap::Spanned;
-use syntax::ast::Lit_::*;
+use syntax::ast::*;
 use utils::span_lint;
 
 declare_lint!(pub PRECEDENCE, Warn,
@@ -15,8 +14,10 @@ impl LintPass for Precedence {
     fn get_lints(&self) -> LintArray {
         lint_array!(PRECEDENCE)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+impl EarlyLintPass for Precedence {
+    fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
         if let ExprBinary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
             if is_bit_op(op) && (is_arith_expr(left) || is_arith_expr(right)) {
                 span_lint(cx, PRECEDENCE, expr.span,

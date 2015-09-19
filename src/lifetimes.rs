@@ -18,21 +18,23 @@ impl LintPass for LifetimePass {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_LIFETIMES)
     }
+}
 
-    fn check_item(&mut self, cx: &Context, item: &Item) {
+impl LateLintPass for LifetimePass {
+    fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemFn(ref decl, _, _, _, ref generics, _) = item.node {
             check_fn_inner(cx, decl, None, &generics, item.span);
         }
     }
 
-    fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
         if let MethodImplItem(ref sig, _) = item.node {
             check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self),
                            &sig.generics, item.span);
         }
     }
 
-    fn check_trait_item(&mut self, cx: &Context, item: &TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         if let MethodTraitItem(ref sig, _) = item.node {
             check_fn_inner(cx, &sig.decl, Some(&sig.explicit_self),
                            &sig.generics, item.span);
@@ -49,7 +51,7 @@ enum RefLt {
 }
 use self::RefLt::*;
 
-fn check_fn_inner(cx: &Context, decl: &FnDecl, slf: Option<&ExplicitSelf>,
+fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>,
                   generics: &Generics, span: Span) {
     if in_external_macro(cx, span) || has_where_lifetimes(&generics.where_clause) {
         return;

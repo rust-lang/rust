@@ -16,7 +16,7 @@ pub const VEC_PATH:    [&'static str; 3] = ["collections", "vec", "Vec"];
 pub const LL_PATH:     [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
 
 /// returns true this expn_info was expanded by any macro
-pub fn in_macro(cx: &Context, span: Span) -> bool {
+pub fn in_macro(cx: &LateContext, span: Span) -> bool {
     cx.sess().codemap().with_expn_info(span.expn_id,
             |info| info.map_or(false, |i| {
         match i.callee.format {
@@ -28,10 +28,10 @@ pub fn in_macro(cx: &Context, span: Span) -> bool {
 
 /// returns true if the macro that expanded the crate was outside of
 /// the current crate or was a compiler plugin
-pub fn in_external_macro(cx: &Context, span: Span) -> bool {
+pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
     /// invokes in_macro with the expansion info of the given span
     /// slightly heavy, try to use this after other checks have already happened
-    fn in_macro_ext(cx: &Context, opt_info: Option<&ExpnInfo>) -> bool {
+    fn in_macro_ext<T: LintContext>(cx: &T, opt_info: Option<&ExpnInfo>) -> bool {
         // no ExpnInfo = no macro
         opt_info.map_or(false, |info| {
             match info.callee.format {
@@ -65,12 +65,12 @@ pub fn in_external_macro(cx: &Context, span: Span) -> bool {
 /// check if a DefId's path matches the given absolute type path
 /// usage e.g. with
 /// `match_def_path(cx, id, &["core", "option", "Option"])`
-pub fn match_def_path(cx: &Context, def_id: DefId, path: &[&str]) -> bool {
+pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
     cx.tcx.with_path(def_id, |iter| iter.zip(path).all(|(nm, p)| nm.name() == p))
 }
 
 /// check if type is struct or enum type with given def path
-pub fn match_type(cx: &Context, ty: ty::Ty, path: &[&str]) -> bool {
+pub fn match_type(cx: &LateContext, ty: ty::Ty, path: &[&str]) -> bool {
     match ty.sty {
         ty::TyEnum(ref adt, _) | ty::TyStruct(ref adt, _) => {
             match_def_path(cx, adt.did, path)
@@ -82,7 +82,7 @@ pub fn match_type(cx: &Context, ty: ty::Ty, path: &[&str]) -> bool {
 }
 
 /// check if method call given in "expr" belongs to given trait
-pub fn match_trait_method(cx: &Context, expr: &Expr, path: &[&str]) -> bool {
+pub fn match_trait_method(cx: &LateContext, expr: &Expr, path: &[&str]) -> bool {
     let method_call = ty::MethodCall::expr(expr.id);
     let trt_id = cx.tcx.tables
                        .borrow().method_map.get(&method_call)
@@ -102,7 +102,7 @@ pub fn match_path(path: &Path, segments: &[&str]) -> bool {
 }
 
 /// get the name of the item the expression is in, if available
-pub fn get_item_name(cx: &Context, expr: &Expr) -> Option<Name> {
+pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.map.get_parent(expr.id);
     match cx.tcx.map.find(parent_id) {
         Some(NodeItem(&Item{ ref ident, .. })) |
@@ -116,7 +116,7 @@ pub fn get_item_name(cx: &Context, expr: &Expr) -> Option<Name> {
 
 /// convert a span to a code snippet if available, otherwise use default, e.g.
 /// `snippet(cx, expr.span, "..")`
-pub fn snippet<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, str> {
+pub fn snippet<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     cx.sess().codemap().span_to_snippet(span).map(From::from).unwrap_or(Cow::Borrowed(default))
 }
 
@@ -124,13 +124,13 @@ pub fn snippet<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, str> {
 /// `snippet(cx, expr.span, "..")`
 /// This trims the code of indentation, except for the first line
 /// Use it for blocks or block-like things which need to be printed as such
-pub fn snippet_block<'a>(cx: &Context, span: Span, default: &'a str) -> Cow<'a, str> {
+pub fn snippet_block<'a, T: LintContext>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     let snip = snippet(cx, span, default);
     trim_multiline(snip, true)
 }
 
 /// Like snippet_block, but add braces if the expr is not an ExprBlock
-pub fn expr_block<'a>(cx: &Context, expr: &Expr, default: &'a str) -> Cow<'a, str> {
+pub fn expr_block<'a, T: LintContext>(cx: &T, expr: &Expr, default: &'a str) -> Cow<'a, str> {
     let code = snippet_block(cx, expr.span, default);
     if let ExprBlock(_) = expr.node {
         code
@@ -169,7 +169,7 @@ fn trim_multiline_inner(s: Cow<str>, ignore_first: bool, ch: char) -> Cow<str> {
 }
 
 /// get a parent expr if any – this is useful to constrain a lint
-pub fn get_parent_expr<'c>(cx: &'c Context, e: &Expr) -> Option<&'c Expr> {
+pub fn get_parent_expr<'c>(cx: &'c LateContext, e: &Expr) -> Option<&'c Expr> {
     let map = &cx.tcx.map;
     let node_id : NodeId = e.id;
     let parent_id : NodeId = map.get_parent_node(node_id);
@@ -179,7 +179,7 @@ pub fn get_parent_expr<'c>(cx: &'c Context, e: &Expr) -> Option<&'c Expr> {
 }
 
 #[cfg(not(feature="structured_logging"))]
-pub fn span_lint(cx: &Context, lint: &'static Lint, sp: Span, msg: &str) {
+pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
     cx.span_lint(lint, sp, msg);
     if cx.current_level(lint) != Level::Allow {
         cx.sess().fileline_help(sp, &format!("for further information visit \
@@ -189,7 +189,7 @@ pub fn span_lint(cx: &Context, lint: &'static Lint, sp: Span, msg: &str) {
 }
 
 #[cfg(feature="structured_logging")]
-pub fn span_lint(cx: &Context, lint: &'static Lint, sp: Span, msg: &str) {
+pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
     // lint.name / lint.desc is can give details of the lint
     // cx.sess().codemap() has all these nice functions for line/column/snippet details
     // http://doc.rust-lang.org/syntax/codemap/struct.CodeMap.html#method.span_to_string
@@ -201,7 +201,7 @@ pub fn span_lint(cx: &Context, lint: &'static Lint, sp: Span, msg: &str) {
     }
 }
 
-pub fn span_help_and_lint(cx: &Context, lint: &'static Lint, span: Span,
+pub fn span_help_and_lint<T: LintContext>(cx: &T, lint: &'static Lint, span: Span,
         msg: &str, help: &str) {
     cx.span_lint(lint, span, msg);
     if cx.current_level(lint) != Level::Allow {
@@ -211,7 +211,7 @@ pub fn span_help_and_lint(cx: &Context, lint: &'static Lint, span: Span,
     }
 }
 
-pub fn span_note_and_lint(cx: &Context, lint: &'static Lint, span: Span,
+pub fn span_note_and_lint<T: LintContext>(cx: &T, lint: &'static Lint, span: Span,
         msg: &str, note_span: Span, note: &str) {
     cx.span_lint(lint, span, msg);
     if cx.current_level(lint) != Level::Allow {

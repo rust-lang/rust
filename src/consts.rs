@@ -1,6 +1,6 @@
 #![allow(cast_possible_truncation)]
 
-use rustc::lint::Context;
+use rustc::lint::LateContext;
 use rustc::middle::const_eval::lookup_const_by_id;
 use rustc::middle::def::PathResolution;
 use rustc::middle::def::Def::*;
@@ -287,27 +287,26 @@ fn sub_int(l: u64, lty: LitIntType, r: u64, rty: LitIntType, neg: bool) ->
 }
 
 
-pub fn constant(lcx: &Context, e: &Expr) -> Option<(Constant, bool)> {
-    let mut cx = ConstEvalContext { lcx: Some(lcx), needed_resolution: false };
+pub fn constant(lcx: &LateContext, e: &Expr) -> Option<(Constant, bool)> {
+    let mut cx = ConstEvalLateContext { lcx: Some(lcx), needed_resolution: false };
     cx.expr(e).map(|cst| (cst, cx.needed_resolution))
 }
 
 pub fn constant_simple(e: &Expr) -> Option<Constant> {
-    let mut cx = ConstEvalContext { lcx: None, needed_resolution: false };
+    let mut cx = ConstEvalLateContext { lcx: None, needed_resolution: false };
     cx.expr(e)
 }
 
-struct ConstEvalContext<'c, 'cc: 'c> {
-    lcx: Option<&'c Context<'c, 'cc>>,
+struct ConstEvalLateContext<'c, 'cc: 'c> {
+    lcx: Option<&'c LateContext<'c, 'cc>>,
     needed_resolution: bool
 }
 
-impl<'c, 'cc> ConstEvalContext<'c, 'cc> {
+impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 
     /// simple constant folding: Insert an expression, get a constant or none.
     fn expr(&mut self, e: &Expr) -> Option<Constant> {
         match e.node {
-            ExprParen(ref inner) => self.expr(inner),
             ExprPath(_, _) => self.fetch_path(e),
             ExprBlock(ref block) => self.block(block),
             ExprIf(ref cond, ref then, ref otherwise) =>

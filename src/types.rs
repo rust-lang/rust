@@ -26,8 +26,10 @@ impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
         lint_array!(BOX_VEC, LINKEDLIST)
     }
+}
 
-    fn check_ty(&mut self, cx: &Context, ast_ty: &Ty) {
+impl LateLintPass for TypePass {
+    fn check_ty(&mut self, cx: &LateContext, ast_ty: &Ty) {
         if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
             if let ty::TyBox(ref inner) = ty.sty {
                 if match_type(cx, inner, &VEC_PATH) {
@@ -53,7 +55,7 @@ pub struct LetPass;
 declare_lint!(pub LET_UNIT_VALUE, Warn,
               "creating a let binding to a value of unit type, which usually can't be used afterwards");
 
-fn check_let_unit(cx: &Context, decl: &Decl) {
+fn check_let_unit(cx: &LateContext, decl: &Decl) {
     if let DeclLocal(ref local) = decl.node {
         let bindtype = &cx.tcx.pat_ty(&local.pat).sty;
         if *bindtype == ty::TyTuple(vec![]) {
@@ -70,8 +72,10 @@ impl LintPass for LetPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(LET_UNIT_VALUE)
     }
+}
 
-    fn check_decl(&mut self, cx: &Context, decl: &Decl) {
+impl LateLintPass for LetPass {
+    fn check_decl(&mut self, cx: &LateContext, decl: &Decl) {
         check_let_unit(cx, decl)
     }
 }
@@ -86,8 +90,10 @@ impl LintPass for UnitCmp {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNIT_CMP)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+impl LateLintPass for UnitCmp {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if in_macro(cx, expr.span) { return; }
         if let ExprBinary(ref cmp, ref left, _) = expr.node {
             let op = cmp.node;
@@ -135,7 +141,7 @@ fn is_isize_or_usize(typ: &ty::TyS) -> bool {
     }
 }
 
-fn span_precision_loss_lint(cx: &Context, expr: &Expr, cast_from: &ty::TyS, cast_to_f64: bool) {
+fn span_precision_loss_lint(cx: &LateContext, expr: &Expr, cast_from: &ty::TyS, cast_to_f64: bool) {
     let mantissa_nbits = if cast_to_f64 {52} else {23};
     let arch_dependent = is_isize_or_usize(cast_from) && cast_to_f64;
     let arch_dependent_str = "on targets with 64-bit wide pointers ";
@@ -154,7 +160,7 @@ enum ArchSuffix {
     _32, _64, None
 }
 
-fn check_truncation_and_wrapping(cx: &Context, expr: &Expr, cast_from: &ty::TyS, cast_to: &ty::TyS) {
+fn check_truncation_and_wrapping(cx: &LateContext, expr: &Expr, cast_from: &ty::TyS, cast_to: &ty::TyS) {
     let arch_64_suffix = " on targets with 64-bit wide pointers";
     let arch_32_suffix = " on targets with 32-bit wide pointers";
     let cast_unsigned_to_signed = !cast_from.is_signed() && cast_to.is_signed();
@@ -207,8 +213,10 @@ impl LintPass for CastPass {
                     CAST_POSSIBLE_TRUNCATION,
                     CAST_POSSIBLE_WRAP)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+impl LateLintPass for CastPass {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprCast(ref ex, _) = expr.node {
             let (cast_from, cast_to) = (cx.tcx.expr_ty(ex), cx.tcx.expr_ty(expr));
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
@@ -262,16 +270,18 @@ impl LintPass for TypeComplexityPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(TYPE_COMPLEXITY)
     }
+}
 
-    fn check_fn(&mut self, cx: &Context, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
+impl LateLintPass for TypeComplexityPass {
+    fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
         check_fndecl(cx, decl);
     }
 
-    fn check_struct_field(&mut self, cx: &Context, field: &StructField) {
+    fn check_struct_field(&mut self, cx: &LateContext, field: &StructField) {
         check_type(cx, &field.node.ty);
     }
 
-    fn check_variant(&mut self, cx: &Context, var: &Variant, _: &Generics) {
+    fn check_variant(&mut self, cx: &LateContext, var: &Variant, _: &Generics) {
         // StructVariant is covered by check_struct_field
         if let TupleVariantKind(ref args) = var.node.kind {
             for arg in args {
@@ -280,7 +290,7 @@ impl LintPass for TypeComplexityPass {
         }
     }
 
-    fn check_item(&mut self, cx: &Context, item: &Item) {
+    fn check_item(&mut self, cx: &LateContext, item: &Item) {
         match item.node {
             ItemStatic(ref ty, _, _) |
             ItemConst(ref ty, _) => check_type(cx, ty),
@@ -289,7 +299,7 @@ impl LintPass for TypeComplexityPass {
         }
     }
 
-    fn check_trait_item(&mut self, cx: &Context, item: &TraitItem) {
+    fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         match item.node {
             ConstTraitItem(ref ty, _) |
             TypeTraitItem(_, Some(ref ty)) => check_type(cx, ty),
@@ -299,7 +309,7 @@ impl LintPass for TypeComplexityPass {
         }
     }
 
-    fn check_impl_item(&mut self, cx: &Context, item: &ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
         match item.node {
             ConstImplItem(ref ty, _) |
             TypeImplItem(ref ty) => check_type(cx, ty),
@@ -308,14 +318,14 @@ impl LintPass for TypeComplexityPass {
         }
     }
 
-    fn check_local(&mut self, cx: &Context, local: &Local) {
+    fn check_local(&mut self, cx: &LateContext, local: &Local) {
         if let Some(ref ty) = local.ty {
             check_type(cx, ty);
         }
     }
 }
 
-fn check_fndecl(cx: &Context, decl: &FnDecl) {
+fn check_fndecl(cx: &LateContext, decl: &FnDecl) {
     for arg in &decl.inputs {
         check_type(cx, &arg.ty);
     }
@@ -324,7 +334,7 @@ fn check_fndecl(cx: &Context, decl: &FnDecl) {
     }
 }
 
-fn check_type(cx: &Context, ty: &Ty) {
+fn check_type(cx: &LateContext, ty: &Ty) {
     if in_macro(cx, ty.span) { return; }
     let score = {
         let mut visitor = TypeComplexityVisitor { score: 0, nest: 1 };

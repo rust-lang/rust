@@ -16,8 +16,10 @@ impl LintPass for IdentityOp {
     fn get_lints(&self) -> LintArray {
         lint_array!(IDENTITY_OP)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, e: &Expr) {
+impl LateLintPass for IdentityOp {
+    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if in_macro(cx, e.span) { return; }
         if let ExprBinary(ref cmp, ref left, ref right) = e.node {
             match cmp.node {
@@ -44,7 +46,7 @@ impl LintPass for IdentityOp {
 }
 
 
-fn check(cx: &Context, e: &Expr, m: i8, span: Span, arg: Span) {
+fn check(cx: &LateContext, e: &Expr, m: i8, span: Span, arg: Span) {
     if let Some(ConstantInt(v, ty)) = constant_simple(e) {
         if match m {
             0 => v == 0,

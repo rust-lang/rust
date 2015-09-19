@@ -1,4 +1,4 @@
-use rustc::lint::{Context, LintPass, LintArray};
+use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::ptr::P;
 use std::cmp::PartialOrd;
@@ -19,8 +19,10 @@ impl LintPass for MinMaxPass {
     fn get_lints(&self) -> LintArray {
        lint_array!(MIN_MAX)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+impl LateLintPass for MinMaxPass {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let Some((outer_max, outer_c, oe)) = min_max(expr) {
             if let Some((inner_max, inner_c, _)) = min_max(oe) {
                 if outer_max == inner_max { return; }

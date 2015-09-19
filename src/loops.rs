@@ -43,8 +43,10 @@ impl LintPass for LoopsPass {
         lint_array!(NEEDLESS_RANGE_LOOP, EXPLICIT_ITER_LOOP, ITER_NEXT_LOOP,
                     WHILE_LET_LOOP, UNUSED_COLLECT, REVERSE_RANGE_LOOP, EXPLICIT_COUNTER_LOOP)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+impl LateLintPass for LoopsPass {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let Some((pat, arg, body)) = recover_for_loop(expr) {
             // check for looping over a range and then indexing a sequence with it
             // -> the iteratee must be a range literal
@@ -186,7 +188,7 @@ impl LintPass for LoopsPass {
         }
     }
 
-    fn check_stmt(&mut self, cx: &Context, stmt: &Stmt) {
+    fn check_stmt(&mut self, cx: &LateContext, stmt: &Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
                 if args.len() == 1 && method.node.name == "collect" &&
@@ -225,7 +227,7 @@ fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
 }
 
 struct VarVisitor<'v, 't: 'v> {
-    cx: &'v Context<'v, 't>, // context reference
+    cx: &'v LateContext<'v, 't>, // context reference
     var: Name,               // var name to look for as index
     indexed: HashSet<Name>,  // indexed variables
     nonindex: bool,          // has the var been used otherwise?
@@ -258,7 +260,7 @@ impl<'v, 't> Visitor<'v> for VarVisitor<'v, 't> {
 
 /// Return true if the type of expr is one that provides IntoIterator impls
 /// for &T and &mut T, such as Vec.
-fn is_ref_iterable_type(cx: &Context, e: &Expr) -> bool {
+fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     // no walk_ptrs_ty: calling iter() on a reference can make sense because it
     // will allow further borrows afterwards
     let ty = cx.tcx.expr_ty(e);
@@ -320,7 +322,7 @@ enum VarState {
 
 // Scan a for loop for variables that are incremented exactly once.
 struct IncrementVisitor<'v, 't: 'v> {
-    cx: &'v Context<'v, 't>,      // context reference
+    cx: &'v LateContext<'v, 't>,      // context reference
     states: HashMap<NodeId, VarState>,  // incremented variables
     depth: u32,                         // depth of conditional expressions
     done: bool
@@ -376,7 +378,7 @@ impl<'v, 't> Visitor<'v> for IncrementVisitor<'v, 't> {
 
 // Check whether a variable is initialized to zero at the start of a loop.
 struct InitializeVisitor<'v, 't: 'v> {
-    cx: &'v Context<'v, 't>, // context reference
+    cx: &'v LateContext<'v, 't>, // context reference
     end_expr: &'v Expr,      // the for loop. Stop scanning here.
     var_id: NodeId,
     state: VarState,
@@ -454,7 +456,7 @@ impl<'v, 't> Visitor<'v> for InitializeVisitor<'v, 't> {
     }
 }
 
-fn var_def_id(cx: &Context, expr: &Expr) -> Option<NodeId> {
+fn var_def_id(cx: &LateContext, expr: &Expr) -> Option<NodeId> {
     if let Some(path_res) = cx.tcx.def_map.borrow().get(&expr.id) {
         if let DefLocal(node_id) = path_res.base_def {
             return Some(node_id)

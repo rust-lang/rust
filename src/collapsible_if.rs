@@ -32,15 +32,17 @@ impl LintPass for CollapsibleIf {
     fn get_lints(&self) -> LintArray {
         lint_array!(COLLAPSIBLE_IF)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+impl LateLintPass for CollapsibleIf {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if !in_macro(cx, expr.span) {
             check_if(cx, expr)
         }
     }
 }
 
-fn check_if(cx: &Context, e: &Expr) {
+fn check_if(cx: &LateContext, e: &Expr) {
     if let ExprIf(ref check, ref then, None) = e.node {
         if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), span: sp, ..}) =
             single_stmt_of_block(then) {
@@ -63,7 +65,7 @@ fn requires_brackets(e: &Expr) -> bool {
     }
 }
 
-fn check_to_string(cx: &Context, e: &Expr) -> String {
+fn check_to_string(cx: &LateContext, e: &Expr) -> String {
     if requires_brackets(e) {
         format!("({})", snippet(cx, e.span, ".."))
     } else {

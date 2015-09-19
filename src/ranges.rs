@@ -1,4 +1,4 @@
-use rustc::lint::{Context, LintArray, LintPass};
+use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Spanned;
 use utils::{match_type, is_integer_literal};
@@ -15,8 +15,10 @@ impl LintPass for StepByZero {
     fn get_lints(&self) -> LintArray {
         lint_array!(RANGE_STEP_BY_ZERO)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, expr: &Expr) {
+impl LateLintPass for StepByZero {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprMethodCall(Spanned { node: ref ident, .. }, _,
                               ref args) = expr.node {
             // Only warn on literal ranges.
@@ -30,7 +32,7 @@ impl LintPass for StepByZero {
     }
 }
 
-fn is_range(cx: &Context, expr: &Expr) -> bool {
+fn is_range(cx: &LateContext, expr: &Expr) -> bool {
     // No need for walk_ptrs_ty here because step_by moves self, so it
     // can't be called on a borrowed range.
     let ty = cx.tcx.expr_ty(expr);

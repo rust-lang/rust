@@ -23,8 +23,10 @@ impl LintPass for NeedlessBool {
     fn get_lints(&self) -> LintArray {
         lint_array!(NEEDLESS_BOOL)
     }
+}
 
-    fn check_expr(&mut self, cx: &Context, e: &Expr) {
+impl LateLintPass for NeedlessBool {
+    fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let ExprIf(ref pred, ref then_block, Some(ref else_expr)) = e.node {
             match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
                 (Some(true), Some(true)) => {
