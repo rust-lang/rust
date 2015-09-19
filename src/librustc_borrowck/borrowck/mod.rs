@@ -803,6 +803,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx.sess.span_err(s, m);
     }
 
+    pub fn span_err_with_code(&self, s: Span, msg: &str, code: &str) {
+        self.tcx.sess.span_err_with_code(s, msg, code);
+    }
+
     pub fn span_bug(&self, s: Span, m: &str) {
         self.tcx.sess.span_bug(s, m);
     }
