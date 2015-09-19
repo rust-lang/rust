@@ -87,7 +87,8 @@ thread '<main>' panicked at 'Invalid number: 11', src/bin/panic-simple.rs:5
 Here's another example that is slightly less contrived. A program that accepts
 an integer as an argument, doubles it and prints it.
 
-<div id="code-unwrap-double">
+<a name="code-unwrap-double"></a>
+
 ```rust,should_panic
 use std::env;
 
@@ -98,7 +99,6 @@ fn main() {
     println!("{}", 2 * n);
 }
 ```
-</div>
 
 If you give this program zero arguments (error 1) or if the first argument
 isn't an integer (error 2), the program will panic just like in the first
@@ -139,7 +139,8 @@ system is an important concept because it will cause the compiler to force the
 programmer to handle that absence. Let's take a look at an example that tries
 to find a character in a string:
 
-<div id="code-option-ex-string-find">
+<a name="code-option-ex-string-find"></a>
+
 ```rust
 // Searches `haystack` for the Unicode character `needle`. If one is found, the
 // byte offset of the character is returned. Otherwise, `None` is returned.
@@ -152,7 +153,6 @@ fn find(haystack: &str, needle: char) -> Option<usize> {
     None
 }
 ```
-</div>
 
 Notice that when this function finds a matching character, it doen't just
 return the `offset`. Instead, it returns `Some(offset)`. `Some` is a variant or
@@ -186,7 +186,8 @@ But wait, what about `unwrap` used in [`unwrap-double`](#code-unwrap-double)?
 There was no case analysis there! Instead, the case analysis was put inside the
 `unwrap` method for you. You could define it yourself if you want:
 
-<div id="code-option-def-unwrap">
+<a name="code-option-def-unwrap"></a>
+
 ```rust
 enum Option<T> {
     None,
@@ -203,7 +204,6 @@ impl<T> Option<T> {
     }
 }
 ```
-</div>
 
 The `unwrap` method *abstracts away the case analysis*. This is precisely the thing
 that makes `unwrap` ergonomic to use. Unfortunately, that `panic!` means that
@@ -253,7 +253,8 @@ option is `None`, in which case, just return `None`.
 Rust has parametric polymorphism, so it is very easy to define a combinator
 that abstracts this pattern:
 
-<div id="code-option-map">
+<a name="code-option-map"></a>
+
 ```rust
 fn map<F, T, A>(option: Option<T>, f: F) -> Option<A> where F: FnOnce(T) -> A {
     match option {
@@ -262,7 +263,6 @@ fn map<F, T, A>(option: Option<T>, f: F) -> Option<A> where F: FnOnce(T) -> A {
     }
 }
 ```
-</div>
 
 Indeed, `map` is [defined as a method][2] on `Option<T>` in the standard library.
 
@@ -394,14 +394,14 @@ remove choices because they will panic if `Option<T>` is `None`.
 The `Result` type is also
 [defined in the standard library][6]:
 
-<div id="code-result-def-1">
+<a name="code-result-def-1"></a>
+
 ```rust
 enum Result<T, E> {
     Ok(T),
     Err(E),
 }
 ```
-</div>
 
 The `Result` type is a richer version of `Option`. Instead of expressing the
 possibility of *absence* like `Option` does, `Result` expresses the possibility
@@ -672,7 +672,8 @@ with both an `Option` and a `Result`, the solution is *usually* to convert the
 (from `env::args()`) means the user didn't invoke the program correctly. We
 could just use a `String` to describe the error. Let's try:
 
-<div id="code-error-double-string">
+<a name="code-error-double-string"></a>
+
 ```rust
 use std::env;
 
@@ -689,7 +690,6 @@ fn main() {
     }
 }
 ```
-</div>
 
 There are a couple new things in this example. The first is the use of the
 [`Option::ok_or`](../std/option/enum.Option.html#method.ok_or)
@@ -906,7 +906,8 @@ seen above.
 
 Here is a simplified definition of a `try!` macro:
 
-<div id="code-try-def-simple">
+<a nama name="code-try-def-simple"></a>
+
 ```rust
 macro_rules! try {
     ($e:expr) => (match $e {
@@ -915,7 +916,6 @@ macro_rules! try {
     });
 }
 ```
-</div>
 
 (The [real definition](../std/macro.try!.html) is a bit more
 sophisticated. We will address that later.)
@@ -1168,13 +1168,13 @@ The `std::convert::From` trait is
 [defined in the standard
 library](../std/convert/trait.From.html):
 
-<div id="code-from-def">
+<a name="code-from-def"></a>
+
 ```rust
 trait From<T> {
     fn from(T) -> Self;
 }
 ```
-</div>
 
 Deliciously simple, yes? `From` is very useful because it gives us a generic
 way to talk about conversion *from* a particular type `T` to some other type
@@ -1250,7 +1250,8 @@ macro_rules! try {
 This is not its real definition. Its real definition is
 [in the standard library](../std/macro.try!.html):
 
-<div id="code-try-def">
+<a name="code-try-def"></a>
+
 ```rust
 macro_rules! try {
     ($e:expr) => (match $e {
@@ -1259,7 +1260,6 @@ macro_rules! try {
     });
 }
 ```
-</div>
 
 There's one tiny but powerful change: the error value is passed through
 `From::from`. This makes the `try!` macro a lot more powerful because it gives
