@@ -125,7 +125,7 @@ enum_from_u32! {
         tag_table_node_type = 0x57,
         tag_table_item_subst = 0x58,
         tag_table_freevars = 0x59,
-        tag_table_tcache = 0x5a,
+        // GAP 0x5a
         tag_table_param_defs = 0x5b,
         // GAP 0x5c, 0x5d, 0x5e
         tag_table_method_map = 0x5f,
