@@ -1721,5 +1721,5 @@ Options:
         assert_eq!(generated_usage, expected);
     }
 
-    // Tests for Special::Include are located in run-pass/getopts-include.rs.
+    // Tests for Special::Include are located in run-pass-fulldeps/getopts-include.rs.
 }
