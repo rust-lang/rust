@@ -35,7 +35,6 @@ use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::privacy::{AllPublic, LastMod};
 use middle::region;
 use middle::subst;
-use middle::subst::VecPerParamSpace;
 use middle::ty::{self, Ty};
 
 use syntax::{ast, ast_util, codemap};
@@ -167,6 +166,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
                name);
         region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
         decode_side_tables(dcx, ast_doc);
+        copy_item_types(dcx, ii);
         match *ii {
           InlinedItem::Item(ref i) => {
             debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
@@ -203,6 +203,17 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
         // Use wrapping arithmetic because otherwise it introduces control flow.
         // Maybe we should just have the control flow? -- aatch
         (id.wrapping_sub(self.from_id_range.min).wrapping_add(self.to_id_range.min))
+    }
+
+    /// Gets the original crate's DefId from a translated internal
+    /// def-id.
+    pub fn reverse_tr_id(&self, id: ast::NodeId) -> DefId {
+        // from_id_range should be non-empty
+        assert!(!self.from_id_range.empty());
+        // Use wrapping arithmetic because otherwise it introduces control flow.
+        // Maybe we should just have the control flow? -- aatch
+        let node = id.wrapping_sub(self.to_id_range.min).wrapping_add(self.from_id_range.min);
+        DefId { krate: self.cdata.cnum, node: node }
     }
 
     /// Translates an EXTERNAL def-id, converting the crate number from the one used in the encoded
@@ -576,36 +587,6 @@ pub fn encode_cast_kind(ebml_w: &mut Encoder, kind: cast::CastKind) {
     kind.encode(ebml_w).unwrap();
 }
 
-pub trait vtable_decoder_helpers<'tcx> {
-    fn read_vec_per_param_space<T, F>(&mut self, f: F) -> VecPerParamSpace<T> where
-        F: FnMut(&mut Self) -> T;
-}
-
-impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
-    fn read_vec_per_param_space<T, F>(&mut self, mut f: F) -> VecPerParamSpace<T> where
-        F: FnMut(&mut reader::Decoder<'a>) -> T,
-    {
-        let types = self.read_to_vec(|this| Ok(f(this))).unwrap();
-        let selfs = self.read_to_vec(|this| Ok(f(this))).unwrap();
-        let fns = self.read_to_vec(|this| Ok(f(this))).unwrap();
-        VecPerParamSpace::new(types, selfs, fns)
-    }
-}
-
-// ___________________________________________________________________________
-//
-
-fn encode_vec_per_param_space<T, F>(rbml_w: &mut Encoder,
-                                    v: &subst::VecPerParamSpace<T>,
-                                    mut f: F) where
-    F: FnMut(&mut Encoder, &T),
-{
-    for &space in &subst::ParamSpace::all() {
-        rbml_w.emit_from_vec(v.get_slice(space),
-                             |rbml_w, n| Ok(f(rbml_w, n))).unwrap();
-    }
-}
-
 // ______________________________________________________________________
 // Encoding and decoding the side tables
 
@@ -632,14 +613,10 @@ trait rbml_writer_helpers<'tcx> {
     fn emit_tys<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>, tys: &[Ty<'tcx>]);
     fn emit_type_param_def<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                                type_param_def: &ty::TypeParameterDef<'tcx>);
-    fn emit_region_param_def(&mut self, ecx: &e::EncodeContext,
-                             region_param_def: &ty::RegionParameterDef);
     fn emit_predicate<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                           predicate: &ty::Predicate<'tcx>);
     fn emit_trait_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                           ty: &ty::TraitRef<'tcx>);
-    fn emit_type_scheme<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                            type_scheme: ty::TypeScheme<'tcx>);
     fn emit_substs<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                        substs: &subst::Substs<'tcx>);
     fn emit_existential_bounds<'b>(&mut self, ecx: &e::EncodeContext<'b,'tcx>,
@@ -688,46 +665,13 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                                          type_param_def))
         });
     }
-    fn emit_region_param_def(&mut self, ecx: &e::EncodeContext,
-                             region_param_def: &ty::RegionParameterDef) {
-        self.emit_opaque(|this| {
-            Ok(tyencode::enc_region_param_def(this,
-                                              &ecx.ty_str_ctxt(),
-                                              region_param_def))
-        });
-    }
+
     fn emit_predicate<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                           predicate: &ty::Predicate<'tcx>) {
         self.emit_opaque(|this| {
             Ok(tyencode::enc_predicate(this,
                                        &ecx.ty_str_ctxt(),
                                        predicate))
-        });
-    }
-
-    fn emit_type_scheme<'b>(&mut self,
-                            ecx: &e::EncodeContext<'b, 'tcx>,
-                            type_scheme: ty::TypeScheme<'tcx>) {
-        use serialize::Encoder;
-
-        self.emit_struct("TypeScheme", 2, |this| {
-            this.emit_struct_field("generics", 0, |this| {
-                this.emit_struct("Generics", 2, |this| {
-                    this.emit_struct_field("types", 0, |this| {
-                        Ok(encode_vec_per_param_space(
-                            this, &type_scheme.generics.types,
-                            |this, def| this.emit_type_param_def(ecx, def)))
-                    });
-                    this.emit_struct_field("regions", 1, |this| {
-                        Ok(encode_vec_per_param_space(
-                            this, &type_scheme.generics.regions,
-                            |this, def| this.emit_region_param_def(ecx, def)))
-                    })
-                })
-            });
-            this.emit_struct_field("ty", 1, |this| {
-                Ok(this.emit_ty(ecx, type_scheme.ty))
-            })
         });
     }
 
@@ -950,14 +894,6 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         }
     }
 
-    let lid = DefId { krate: LOCAL_CRATE, node: id };
-    if let Some(type_scheme) = tcx.tcache.borrow().get(&lid) {
-        rbml_w.tag(c::tag_table_tcache, |rbml_w| {
-            rbml_w.id(id);
-            rbml_w.emit_type_scheme(ecx, type_scheme.clone());
-        })
-    }
-
     if let Some(type_param_def) = tcx.ty_param_defs.borrow().get(&id) {
         rbml_w.tag(c::tag_table_param_defs, |rbml_w| {
             rbml_w.id(id);
@@ -1051,12 +987,8 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                                    -> ty::PolyTraitRef<'tcx>;
     fn read_type_param_def<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> ty::TypeParameterDef<'tcx>;
-    fn read_region_param_def(&mut self, dcx: &DecodeContext)
-                             -> ty::RegionParameterDef;
     fn read_predicate<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                               -> ty::Predicate<'tcx>;
-    fn read_type_scheme<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                -> ty::TypeScheme<'tcx>;
     fn read_existential_bounds<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                        -> ty::ExistentialBounds<'tcx>;
     fn read_substs<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1177,42 +1109,11 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                    -> ty::TypeParameterDef<'tcx> {
         self.read_ty_encoded(dcx, |decoder| decoder.parse_type_param_def())
     }
-    fn read_region_param_def(&mut self, dcx: &DecodeContext)
-                             -> ty::RegionParameterDef {
-        self.read_ty_encoded(dcx, |decoder| decoder.parse_region_param_def())
-    }
+
     fn read_predicate<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                               -> ty::Predicate<'tcx>
     {
         self.read_ty_encoded(dcx, |decoder| decoder.parse_predicate())
-    }
-
-    fn read_type_scheme<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                -> ty::TypeScheme<'tcx> {
-        self.read_struct("TypeScheme", 3, |this| {
-            Ok(ty::TypeScheme {
-                generics: this.read_struct_field("generics", 0, |this| {
-                    this.read_struct("Generics", 2, |this| {
-                        Ok(ty::Generics {
-                            types:
-                            this.read_struct_field("types", 0, |this| {
-                                Ok(this.read_vec_per_param_space(
-                                    |this| this.read_type_param_def(dcx)))
-                            }).unwrap(),
-
-                            regions:
-                            this.read_struct_field("regions", 1, |this| {
-                                Ok(this.read_vec_per_param_space(
-                                    |this| this.read_region_param_def(dcx)))
-                            }).unwrap(),
-                        })
-                    })
-                }).unwrap(),
-                ty: this.read_struct_field("ty", 1, |this| {
-                    Ok(this.read_ty(dcx))
-                }).unwrap()
-            })
-        }).unwrap()
     }
 
     fn read_existential_bounds<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
@@ -1450,11 +1351,6 @@ fn decode_side_tables(dcx: &DecodeContext,
                         let ub = val_dsr.read_upvar_capture(dcx);
                         dcx.tcx.tables.borrow_mut().upvar_capture_map.insert(upvar_id, ub);
                     }
-                    c::tag_table_tcache => {
-                        let type_scheme = val_dsr.read_type_scheme(dcx);
-                        let lid = DefId { krate: LOCAL_CRATE, node: id };
-                        dcx.tcx.register_item_type(lid, type_scheme);
-                    }
                     c::tag_table_param_defs => {
                         let bounds = val_dsr.read_type_param_def(dcx);
                         dcx.tcx.ty_param_defs.borrow_mut().insert(id, bounds);
@@ -1503,6 +1399,43 @@ fn decode_side_tables(dcx: &DecodeContext,
         }
 
         debug!(">< Side table doc loaded");
+    }
+}
+
+// copy the tcache entries from the original item to the new
+// inlined item
+fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem) {
+    fn copy_item_type(dcx: &DecodeContext, inlined_node: ast::NodeId) {
+        let inlined_did = DefId::local(inlined_node);
+        let remote_did = dcx.reverse_tr_id(inlined_node);
+        dcx.tcx.register_item_type(inlined_did,
+                                   dcx.tcx.lookup_item_type(remote_did));
+
+    }
+    // copy the entry for the item itself
+    let item_node_id = match ii {
+        &InlinedItem::Item(ref i) => i.id,
+        &InlinedItem::TraitItem(_, ref ti) => ti.id,
+        &InlinedItem::ImplItem(_, ref ii) => ii.id,
+        &InlinedItem::Foreign(ref fi) => fi.id
+    };
+    copy_item_type(dcx, item_node_id);
+
+    // copy the entries of inner items
+    if let &InlinedItem::Item(ref item) = ii {
+        match item.node {
+            hir::ItemEnum(ref def, _) => {
+                for variant in &def.variants {
+                    copy_item_type(dcx, variant.node.id);
+                }
+            }
+            hir::ItemStruct(ref def, _) => {
+                if let Some(ctor_id) = def.ctor_id {
+                    copy_item_type(dcx, ctor_id);
+                }
+            }
+            _ => {}
+        }
     }
 }
 
