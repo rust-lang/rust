@@ -1,7 +1,7 @@
 #rust-clippy
 [![Build Status](https://travis-ci.org/Manishearth/rust-clippy.svg?branch=master)](https://travis-ci.org/Manishearth/rust-clippy)
 
-A collection of lints that give helpful tips to newbies and catch oversights.
+A collection of lints to catch common mistakes and improve your Rust code.
 
 [Jump to usage instructions](#usage)
 
