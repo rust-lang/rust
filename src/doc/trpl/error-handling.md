@@ -28,7 +28,7 @@ systems may want to jump around.
     * [The `Result` type](#the-result-type)
         * [Parsing integers](#parsing-integers)
         * [The `Result` type alias idiom](#the-result-type-alias-idiom)
-    * [A brief interlude: unwrapping isn't evil](#a-brief-interlude-unwrapping-isnt-evil)
+    * [A brief interlude: unwrapping isn't evil](#a-brief-interlude:-unwrapping-isn't-evil)
 * [Working with multiple error types](#working-with-multiple-error-types)
     * [Composing `Option` and `Result`](#composing-option-and-result)
     * [The limits of combinators](#the-limits-of-combinators)
@@ -41,11 +41,11 @@ systems may want to jump around.
     * [The real `try!` macro](#the-real-try!-macro)
     * [Composing custom error types](#composing-custom-error-types)
     * [Advice for library writers](#advice-for-library-writers)
-* [Case study: A program to read population data](#case-study-a-program-to-read-population-data)
+* [Case study: A program to read population data](#case-study:-a-program-to-read-population-data)
     * [Initial setup](#initial-setup)
     * [Argument parsing](#argument-parsing)
     * [Writing the logic](#writing-the-logic)
-    * [Error handling with `Box<Error>`](#error-handling-with-box<error>)
+    * [Error handling with `Box<Error>`](#error-handling-with-box%3Cerror%3E)
     * [Reading from stdin](#reading-from-stdin)
     * [Error handling with a custom type](#error-handling-with-a-custom-type)
     * [Adding functionality](#adding-functionality)
@@ -87,9 +87,9 @@ thread '<main>' panicked at 'Invalid number: 11', src/bin/panic-simple.rs:5
 Here's another example that is slightly less contrived. A program that accepts
 an integer as an argument, doubles it and prints it.
 
-<div id="code-unwrap-double">
-```rust,should_panic
+<a name="code-unwrap-double"></a>
 
+```rust,should_panic
 use std::env;
 
 fn main() {
@@ -99,7 +99,6 @@ fn main() {
     println!("{}", 2 * n);
 }
 ```
-</div>
 
 If you give this program zero arguments (error 1) or if the first argument
 isn't an integer (error 2), the program will panic just like in the first
@@ -140,7 +139,8 @@ system is an important concept because it will cause the compiler to force the
 programmer to handle that absence. Let's take a look at an example that tries
 to find a character in a string:
 
-<div id="code-option-ex-string-find">
+<a name="code-option-ex-string-find"></a>
+
 ```rust
 // Searches `haystack` for the Unicode character `needle`. If one is found, the
 // byte offset of the character is returned. Otherwise, `None` is returned.
@@ -153,7 +153,6 @@ fn find(haystack: &str, needle: char) -> Option<usize> {
     None
 }
 ```
-</div>
 
 Notice that when this function finds a matching character, it doen't just
 return the `offset`. Instead, it returns `Some(offset)`. `Some` is a variant or
@@ -187,6 +186,8 @@ But wait, what about `unwrap` used in [`unwrap-double`](#code-unwrap-double)?
 There was no case analysis there! Instead, the case analysis was put inside the
 `unwrap` method for you. You could define it yourself if you want:
 
+<a name="code-option-def-unwrap"></a>
+
 ```rust
 enum Option<T> {
     None,
@@ -210,7 +211,7 @@ that makes `unwrap` ergonomic to use. Unfortunately, that `panic!` means that
 
 ### Composing `Option<T>` values
 
-In [`option-ex-string-find`](#code-option-ex-string-find-2)
+In [`option-ex-string-find`](#code-option-ex-string-find)
 we saw how to use `find` to discover the extension in a file name. Of course,
 not all file names have a `.` in them, so it's possible that the file name has
 no extension. This *possibility of absence* is encoded into the types using
@@ -251,6 +252,8 @@ option is `None`, in which case, just return `None`.
 
 Rust has parametric polymorphism, so it is very easy to define a combinator
 that abstracts this pattern:
+
+<a name="code-option-map"></a>
 
 ```rust
 fn map<F, T, A>(option: Option<T>, f: F) -> Option<A> where F: FnOnce(T) -> A {
@@ -390,6 +393,8 @@ remove choices because they will panic if `Option<T>` is `None`.
 
 The `Result` type is also
 [defined in the standard library][6]:
+
+<a name="code-result-def-1"></a>
 
 ```rust
 enum Result<T, E> {
@@ -667,6 +672,8 @@ with both an `Option` and a `Result`, the solution is *usually* to convert the
 (from `env::args()`) means the user didn't invoke the program correctly. We
 could just use a `String` to describe the error. Let's try:
 
+<a name="code-error-double-string"></a>
+
 ```rust
 use std::env;
 
@@ -898,6 +905,8 @@ abstracts *control flow*. Namely, it can abstract the *early return* pattern
 seen above.
 
 Here is a simplified definition of a `try!` macro:
+
+<a nama name="code-try-def-simple"></a>
 
 ```rust
 macro_rules! try {
@@ -1159,6 +1168,8 @@ The `std::convert::From` trait is
 [defined in the standard
 library](../std/convert/trait.From.html):
 
+<a name="code-from-def"></a>
+
 ```rust
 trait From<T> {
     fn from(T) -> Self;
@@ -1236,8 +1247,10 @@ macro_rules! try {
 }
 ```
 
-This is not it's real definition. It's real definition is
+This is not its real definition. Its real definition is
 [in the standard library](../std/macro.try!.html):
+
+<a name="code-try-def"></a>
 
 ```rust
 macro_rules! try {
@@ -1457,7 +1470,7 @@ representation. But certainly, this will vary depending on use cases.
 At a minimum, you should probably implement the
 [`Error`](../std/error/trait.Error.html)
 trait. This will give users of your library some minimum flexibility for
-[composing errors](#the-real-try-macro). Implementing the `Error` trait also
+[composing errors](#the-real-try!-macro). Implementing the `Error` trait also
 means that users are guaranteed the ability to obtain a string representation
 of an error (because it requires impls for both `fmt::Debug` and
 `fmt::Display`).
