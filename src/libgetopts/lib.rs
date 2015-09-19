@@ -233,17 +233,6 @@ pub enum Fail {
     GenericError(Box<error::Error>),
 }
 
-/// The type of failure that occurred.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-#[allow(missing_docs)]
-pub enum FailType {
-    ArgumentMissing_,
-    UnrecognizedOption_,
-    OptionMissing_,
-    OptionDuplicated_,
-    UnexpectedArgument_,
-}
-
 /// The result of parsing a command line with a set of options.
 pub type Result = result::Result<Matches, Fail>;
 
