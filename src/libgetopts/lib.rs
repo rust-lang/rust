@@ -1720,4 +1720,6 @@ Options:
         debug!("generated: <<{}>>", generated_usage);
         assert_eq!(generated_usage, expected);
     }
+
+    // Tests for Special::Include are located in run-pass/getopts-include.rs.
 }
