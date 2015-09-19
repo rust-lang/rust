@@ -39,12 +39,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                self.codemap.lookup_char_pos(ex.span.hi));
         self.format_missing(ex.span.lo);
 
-        let offset = self.buffer.cur_offset();
-        // FIXME: We put the entire offset into the block_indent, which might not be correct in all
-        // situations.
         let rewrite = ex.rewrite(&self.get_context(),
-                                 self.config.max_width - offset,
-                                 Indent::new(offset, 0));
+                                 self.config.max_width - self.block_indent.width(),
+                                 self.block_indent);
 
         if let Some(new_str) = rewrite {
             self.buffer.push_str(&new_str);
