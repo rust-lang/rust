@@ -80,6 +80,8 @@ pub mod back {
     pub mod msvc;
 }
 
+pub mod diagnostics;
+
 pub mod trans;
 pub mod save;
 
