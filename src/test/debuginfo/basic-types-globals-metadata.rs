@@ -44,6 +44,7 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 // N.B. These are `mut` only so they don't constant fold away.

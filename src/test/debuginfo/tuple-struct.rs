@@ -62,6 +62,7 @@
 // structs.
 
 
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 struct NoPadding16(u16, i16);
