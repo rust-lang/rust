@@ -10,7 +10,11 @@
 
 // Prefix in imports with empty braces should be resolved and checked privacy, stability, etc.
 
-use std::rt::{}; //~ ERROR use of unstable library feature 'rt'
-use std::{}; // OK
+// aux-build:lint_stability.rs
+
+extern crate lint_stability;
+
+use lint_stability::UnstableStruct::{}; //~ ERROR use of unstable library feature 'test_feature'
+use lint_stability::StableStruct::{}; // OK
 
 fn main() {}
