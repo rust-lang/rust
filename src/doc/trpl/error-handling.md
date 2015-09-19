@@ -45,7 +45,7 @@ systems may want to jump around.
     * [Initial setup](#initial-setup)
     * [Argument parsing](#argument-parsing)
     * [Writing the logic](#writing-the-logic)
-    * [Error handling with `Box<Error>`](#error-handling-with-box<error>)
+    * [Error handling with `Box<Error>`](#error-handling-with-box%3Cerror%3E)
     * [Reading from stdin](#reading-from-stdin)
     * [Error handling with a custom type](#error-handling-with-a-custom-type)
     * [Adding functionality](#adding-functionality)
