@@ -1095,6 +1095,12 @@ envopt CPP
 envopt CFLAGS
 envopt CXXFLAGS
 
+# stdc++ name in use
+# used to manage non-standard name (on OpenBSD for example)
+program_transform_name=$($CFG_CC -v 2>&1 | sed -n "s/.*--program-transform-name='\([^']*\)'.*/\1/p")
+CFG_STDCPP_NAME=$(echo "stdc++" | sed "${program_transform_name}")
+putvar CFG_STDCPP_NAME
+
 # a little post-processing of various config values
 CFG_PREFIX=${CFG_PREFIX%/}
 CFG_MANDIR=${CFG_MANDIR%/}
