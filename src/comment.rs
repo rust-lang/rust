@@ -12,10 +12,16 @@
 
 use std::iter;
 
+use Indent;
+use config::Config;
 use string::{StringFormat, rewrite_string};
-use utils::make_indent;
 
-pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usize) -> String {
+pub fn rewrite_comment(orig: &str,
+                       block_style: bool,
+                       width: usize,
+                       offset: Indent,
+                       config: &Config)
+                       -> String {
     let s = orig.trim();
 
     // Edge case: block comments. Let's not trim their lines (for now).
@@ -33,11 +39,12 @@ pub fn rewrite_comment(orig: &str, block_style: bool, width: usize, offset: usiz
         line_start: line_start,
         line_end: "",
         width: max_chars,
-        offset: offset + opener.len() - line_start.len(),
+        offset: offset + (opener.len() - line_start.len()),
         trim_end: true,
+        config: config,
     };
 
-    let indent_str = make_indent(offset);
+    let indent_str = offset.to_string(config);
     let line_breaks = s.chars().filter(|&c| c == '\n').count();
 
     let (_, mut s) = s.lines()
@@ -288,27 +295,32 @@ impl<T> Iterator for CharClasses<T> where T: Iterator, T::Item: RichChar {
 mod test {
     use super::{CharClasses, CodeCharKind, contains_comment, rewrite_comment, FindUncommented};
 
-    // FIXME(#217): prevent string literal from going over the limit.
+    use Indent;
     #[test]
     #[rustfmt_skip]
     fn format_comments() {
-        assert_eq!("/* test */", rewrite_comment(" //test", true, 100, 100));
-        assert_eq!("// comment\n// on a", rewrite_comment("// comment on a", false, 10, 0));
+        let config = Default::default();
+        assert_eq!("/* test */", rewrite_comment(" //test", true, 100, Indent::new(0, 100),
+                                                 &config));
+        assert_eq!("// comment\n// on a", rewrite_comment("// comment on a", false, 10,
+                                                          Indent::empty(), &config));
 
         assert_eq!("//  A multi line comment\n            // between args.",
                    rewrite_comment("//  A multi line comment\n             // between args.",
                                    false,
                                    60,
-                                   12));
+                                   Indent::new(0, 12),
+                                   &config));
 
         let input = "// comment";
         let expected =
             "/* com\n                                                                      \
              * men\n                                                                      \
              * t */";
-        assert_eq!(expected, rewrite_comment(input, true, 9, 69));
+        assert_eq!(expected, rewrite_comment(input, true, 9, Indent::new(0, 69), &config));
 
-        assert_eq!("/* trimmed */", rewrite_comment("/*   trimmed    */", true, 100, 100));
+        assert_eq!("/* trimmed */", rewrite_comment("/*   trimmed    */", true, 100,
+                                                    Indent::new(0, 100), &config));
     }
 
     // This is probably intended to be a non-test fn, but it is not used. I'm

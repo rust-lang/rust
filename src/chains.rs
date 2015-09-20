@@ -19,8 +19,9 @@
 // we put each subexpression on a separate, much like the (default) function
 // argument function argument strategy.
 
+use Indent;
 use rewrite::{Rewrite, RewriteContext};
-use utils::{first_line_width, make_indent};
+use utils::first_line_width;
 use expr::rewrite_call;
 
 use syntax::{ast, ptr};
@@ -30,7 +31,7 @@ use syntax::print::pprust;
 pub fn rewrite_chain(mut expr: &ast::Expr,
                      context: &RewriteContext,
                      width: usize,
-                     offset: usize)
+                     offset: Indent)
                      -> Option<String> {
     let total_span = expr.span;
     let mut subexpr_list = vec![expr];
@@ -116,7 +117,7 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
     let connector = if fits_single_line {
         String::new()
     } else {
-        format!("\n{}", make_indent(indent))
+        format!("\n{}", indent.to_string(context.config))
     };
 
     let first_connector = if extend {
@@ -145,7 +146,7 @@ fn rewrite_chain_expr(expr: &ast::Expr,
                       span: Span,
                       context: &RewriteContext,
                       width: usize,
-                      offset: usize)
+                      offset: Indent)
                       -> Option<String> {
     match expr.node {
         ast::Expr_::ExprMethodCall(ref method_name, ref types, ref expressions) => {
@@ -179,7 +180,7 @@ fn rewrite_method_call(method_name: ast::Ident,
                        span: Span,
                        context: &RewriteContext,
                        width: usize,
-                       offset: usize)
+                       offset: Indent)
                        -> Option<String> {
     let type_str = if types.is_empty() {
         String::new()

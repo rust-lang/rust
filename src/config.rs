@@ -246,6 +246,7 @@ create_config! {
     format_strings: bool, "Format string literals, or leave as is",
     chains_overflow_last: bool, "Allow last call in method chain to break the line",
     take_source_hints: bool, "Retain some formatting characteristics from the source code",
+    hard_tabs: bool, "Use tab characters for indentation, spaces for alignment",
 }
 
 impl Default for Config {
@@ -279,6 +280,7 @@ impl Default for Config {
             format_strings: true,
             chains_overflow_last: true,
             take_source_hints: true,
+            hard_tabs: false,
         }
     }
 }

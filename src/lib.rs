@@ -44,6 +44,7 @@ use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::diagnostics;
 
+use std::ops::{Add, Sub};
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::fmt;
@@ -79,6 +80,83 @@ mod macros;
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.
 const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
+
+#[derive(Copy, Clone, Debug)]
+pub struct Indent {
+    // Width of the block indent, in characters. Must be a multiple of
+    // Config::tab_spaces.
+    block_indent: usize,
+    // Alignment in characters.
+    alignment: usize,
+}
+
+impl Indent {
+    pub fn new(block_indent: usize, alignment: usize) -> Indent {
+        Indent { block_indent: block_indent, alignment: alignment }
+    }
+
+    pub fn empty() -> Indent {
+        Indent::new(0, 0)
+    }
+
+    pub fn block_indent(mut self, config: &Config) -> Indent {
+        self.block_indent += config.tab_spaces;
+        self
+    }
+
+    pub fn block_unindent(mut self, config: &Config) -> Indent {
+        self.block_indent -= config.tab_spaces;
+        self
+    }
+
+    pub fn width(&self) -> usize {
+        self.block_indent + self.alignment
+    }
+
+    pub fn to_string(&self, config: &Config) -> String {
+        let (num_tabs, num_spaces) = if config.hard_tabs {
+            (self.block_indent / config.tab_spaces, self.alignment)
+        } else {
+            (0, self.block_indent + self.alignment)
+        };
+        let num_chars = num_tabs + num_spaces;
+        let mut indent = String::with_capacity(num_chars);
+        for _ in 0..num_tabs {
+            indent.push('\t')
+        }
+        for _ in 0..num_spaces {
+            indent.push(' ')
+        }
+        indent
+    }
+}
+
+impl Add for Indent {
+    type Output = Indent;
+
+    fn add(self, rhs: Indent) -> Indent {
+        Indent {
+            block_indent: self.block_indent + rhs.block_indent,
+            alignment: self.alignment + rhs.alignment,
+        }
+    }
+}
+
+impl Sub for Indent {
+    type Output = Indent;
+
+    fn sub(self, rhs: Indent) -> Indent {
+        Indent::new(self.block_indent - rhs.block_indent, self.alignment - rhs.alignment)
+    }
+}
+
+impl Add<usize> for Indent {
+    type Output = Indent;
+
+    fn add(self, rhs: usize) -> Indent {
+        Indent::new(self.block_indent, self.alignment + rhs)
+    }
+}
 
 #[derive(Copy, Clone)]
 pub enum WriteMode {
