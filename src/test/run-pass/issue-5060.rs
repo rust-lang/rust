@@ -16,8 +16,7 @@ macro_rules! print_hd_tl {
             print!("{}", stringify!($field_tl));
             print!(", ");
         )+
-        // FIXME: #9970
-        print!("{}", "]\n");
+        print!("]\n");
     })
 }
 
