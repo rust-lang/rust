@@ -24,28 +24,28 @@ systems may want to jump around.
 * [The Basics](#the-basics)
     * [Unwrapping explained](#unwrapping-explained)
     * [The `Option` type](#the-option-type)
-        * [Composing `Option<T>` values](#composing-option<t>-values)
+        * [Composing `Option<T>` values](#composing-optiont-values)
     * [The `Result` type](#the-result-type)
         * [Parsing integers](#parsing-integers)
         * [The `Result` type alias idiom](#the-result-type-alias-idiom)
-    * [A brief interlude: unwrapping isn't evil](#a-brief-interlude:-unwrapping-isn't-evil)
+    * [A brief interlude: unwrapping isn't evil](#a-brief-interlude-unwrapping-isn't-evil)
 * [Working with multiple error types](#working-with-multiple-error-types)
     * [Composing `Option` and `Result`](#composing-option-and-result)
     * [The limits of combinators](#the-limits-of-combinators)
     * [Early returns](#early-returns)
-    * [The `try!` macro](#the-try!-macro)
+    * [The `try!` macro](#the-try-macro)
     * [Defining your own error type](#defining-your-own-error-type)
 * [Standard library traits used for error handling](#standard-library-traits-used-for-error-handling)
     * [The `Error` trait](#the-error-trait)
     * [The `From` trait](#the-from-trait)
-    * [The real `try!` macro](#the-real-try!-macro)
+    * [The real `try!` macro](#the-real-try-macro)
     * [Composing custom error types](#composing-custom-error-types)
     * [Advice for library writers](#advice-for-library-writers)
-* [Case study: A program to read population data](#case-study:-a-program-to-read-population-data)
+* [Case study: A program to read population data](#case-study-a-program-to-read-population-data)
     * [Initial setup](#initial-setup)
     * [Argument parsing](#argument-parsing)
     * [Writing the logic](#writing-the-logic)
-    * [Error handling with `Box<Error>`](#error-handling-with-box%3Cerror%3E)
+    * [Error handling with `Box<Error>`](#error-handling-with-boxerror)
     * [Reading from stdin](#reading-from-stdin)
     * [Error handling with a custom type](#error-handling-with-a-custom-type)
     * [Adding functionality](#adding-functionality)
@@ -87,7 +87,7 @@ thread '<main>' panicked at 'Invalid number: 11', src/bin/panic-simple.rs:5
 Here's another example that is slightly less contrived. A program that accepts
 an integer as an argument, doubles it and prints it.
 
-<a name="code-unwrap-double"></a>
+<span id="code-unwrap-double"></span>
 
 ```rust,should_panic
 use std::env;
@@ -139,7 +139,7 @@ system is an important concept because it will cause the compiler to force the
 programmer to handle that absence. Let's take a look at an example that tries
 to find a character in a string:
 
-<a name="code-option-ex-string-find"></a>
+<span id="code-option-ex-string-find"></span>
 
 ```rust
 // Searches `haystack` for the Unicode character `needle`. If one is found, the
@@ -186,7 +186,7 @@ But wait, what about `unwrap` used in [`unwrap-double`](#code-unwrap-double)?
 There was no case analysis there! Instead, the case analysis was put inside the
 `unwrap` method for you. You could define it yourself if you want:
 
-<a name="code-option-def-unwrap"></a>
+<span id="code-option-def-unwrap"></span>
 
 ```rust
 enum Option<T> {
@@ -253,7 +253,7 @@ option is `None`, in which case, just return `None`.
 Rust has parametric polymorphism, so it is very easy to define a combinator
 that abstracts this pattern:
 
-<a name="code-option-map"></a>
+<span id="code-option-map"></span>
 
 ```rust
 fn map<F, T, A>(option: Option<T>, f: F) -> Option<A> where F: FnOnce(T) -> A {
@@ -394,7 +394,7 @@ remove choices because they will panic if `Option<T>` is `None`.
 The `Result` type is also
 [defined in the standard library][6]:
 
-<a name="code-result-def-1"></a>
+<span id="code-result-def"></span>
 
 ```rust
 enum Result<T, E> {
@@ -562,7 +562,7 @@ combinators that affect only the error type, such as
 ### The `Result` type alias idiom
 
 In the standard library, you may frequently see types like
-`Result<i32>`. But wait, [we defined `Result`](#code-result-def-1) to
+`Result<i32>`. But wait, [we defined `Result`](#code-result-def) to
 have two type parameters. How can we get away with only specifying
 one? The key is to define a `Result` type alias that *fixes* one of
 the type parameters to a particular type. Usually the fixed type is
@@ -672,7 +672,7 @@ with both an `Option` and a `Result`, the solution is *usually* to convert the
 (from `env::args()`) means the user didn't invoke the program correctly. We
 could just use a `String` to describe the error. Let's try:
 
-<a name="code-error-double-string"></a>
+<span id="code-error-double-string"></span>
 
 ```rust
 use std::env;
@@ -906,7 +906,7 @@ seen above.
 
 Here is a simplified definition of a `try!` macro:
 
-<a nama name="code-try-def-simple"></a>
+<span id="code-try-def-simple"></span>
 
 ```rust
 macro_rules! try {
@@ -1168,7 +1168,7 @@ The `std::convert::From` trait is
 [defined in the standard
 library](../std/convert/trait.From.html):
 
-<a name="code-from-def"></a>
+<span id="code-from-def"></span>
 
 ```rust
 trait From<T> {
@@ -1250,7 +1250,7 @@ macro_rules! try {
 This is not its real definition. Its real definition is
 [in the standard library](../std/macro.try!.html):
 
-<a name="code-try-def"></a>
+<span id="code-try-def"></span>
 
 ```rust
 macro_rules! try {
@@ -1515,7 +1515,7 @@ and [`rustc-serialize`](https://crates.io/crates/rustc-serialize) crates.
 
 We're not going to spend a lot of time on setting up a project with
 Cargo because it is already covered well in [the Cargo
-chapter](../book/hello-cargo) and [Cargo's documentation][14].
+chapter](../book/hello-cargo.html) and [Cargo's documentation][14].
 
 To get started from scratch, run `cargo new --bin city-pop` and make sure your
 `Cargo.toml` looks something like this:
@@ -1573,7 +1573,7 @@ fn main() {
 
     let mut opts = Options::new();
     opts.optflag("h", "help", "Show this usage message.");
-    
+
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m }
 	Err(e) => { panic!(e.to_string()) }
@@ -1584,7 +1584,7 @@ fn main() {
     }
     let data_path = args[1].clone();
     let city = args[2].clone();
-	
+
 	// Do stuff with information
 }
 ```
@@ -1647,27 +1647,27 @@ fn main() {
 
     let mut opts = Options::new();
     opts.optflag("h", "help", "Show this usage message.");
-    
+
     let matches = match opts.parse(&args[1..]) {
         Ok(m)  => { m }
 		Err(e) => { panic!(e.to_string()) }
     };
-	
+
     if matches.opt_present("h") {
         print_usage(&program, opts);
 		return;
 	}
-		
+
 	let data_file = args[1].clone();
 	let data_path = Path::new(&data_file);
 	let city = args[2].clone();
-	
+
 	let file = fs::File::open(data_path).unwrap();
 	let mut rdr = csv::Reader::from_reader(file);
-	
+
 	for row in rdr.decode::<Row>() {
 		let row = row.unwrap();
-	
+
 		if row.city == city {
 			println!("{}, {}: {:?}",
 				row.city, row.country,
@@ -1773,7 +1773,7 @@ fn main() {
 		print_usage(&program, opts);
 		return;
 	}
-		
+
 	let data_file = args[1].clone();
 	let data_path = Path::new(&data_file);
 	let city = args[2].clone();
@@ -1882,7 +1882,7 @@ opts.optflag("h", "help", "Show this usage message.");
 ...
 let file = matches.opt_str("f");
 let data_file = file.as_ref().map(Path::new);
-	
+
 let city = if !matches.free.is_empty() {
 	matches.free[0].clone()
 } else {
