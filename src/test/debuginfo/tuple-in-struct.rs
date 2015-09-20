@@ -42,6 +42,7 @@
 // gdb-check:$10 = {x = {__0 = {__0 = 40, __1 = 41, __2 = 42}, __1 = {__0 = 43, __1 = 44}}, y = {__0 = 45, __1 = 46, __2 = 47, __3 = 48}}
 
 #![allow(unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 struct NoPadding1 {

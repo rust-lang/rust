@@ -197,6 +197,12 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // allow overloading augmented assignment operations like `a += b`
     ("augmented_assignments", "1.5.0", None, Active),
+
+    // allow `#[no_debug]`
+    ("no_debug", "1.5.0", None, Active),
+
+    // allow `#[omit_gdb_pretty_printer_section]`
+    ("omit_gdb_pretty_printer_section", "1.5.0", None, Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -320,8 +326,13 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("link_section", Whitelisted, Ungated),
     ("no_builtins", Whitelisted, Ungated),
     ("no_mangle", Whitelisted, Ungated),
-    ("no_debug", Whitelisted, Ungated),
-    ("omit_gdb_pretty_printer_section", Whitelisted, Ungated),
+    ("no_debug", Whitelisted, Gated("no_debug",
+                                    "the `#[no_debug]` attribute \
+                                     is an experimental feature")),
+    ("omit_gdb_pretty_printer_section", Whitelisted, Gated("omit_gdb_pretty_printer_section",
+                                                       "the `#[omit_gdb_pretty_printer_section]` \
+                                                        attribute is just used for the Rust test \
+                                                        suite")),
     ("unsafe_no_drop_flag", Whitelisted, Gated("unsafe_no_drop_flag",
                                                "unsafe_no_drop_flag has unstable semantics \
                                                 and may be removed in the future")),

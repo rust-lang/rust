@@ -247,6 +247,7 @@
 // lldb-command:continue
 
 #![allow(dead_code, unused_assignments, unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 #[no_stack_check]

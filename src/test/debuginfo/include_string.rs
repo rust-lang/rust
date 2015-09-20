@@ -35,6 +35,7 @@
 // lldb-command:continue
 
 #![allow(unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 // This test case makes sure that debug info does not ICE when include_str is
