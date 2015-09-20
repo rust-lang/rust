@@ -118,6 +118,13 @@ pub trait Hasher {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write(&mut self, bytes: &[u8]);
 
+    /// Emit a delimiter for data of length `len`
+    #[inline]
+    #[unstable(feature = "hash_delimit", since = "1.4.0", issue="0")]
+    fn delimit(&mut self, len: usize) {
+        self.write_usize(len);
+    }
+
     /// Write a single `u8` into this hasher
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
@@ -230,8 +237,9 @@ mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Hash for str {
         fn hash<H: Hasher>(&self, state: &mut H) {
+            // See `[T]` impl for why we write the u8
+            state.delimit(self.len());
             state.write(self.as_bytes());
-            state.write_u8(0xff)
         }
     }
 
@@ -272,7 +280,7 @@ mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: Hash> Hash for [T] {
         fn hash<H: Hasher>(&self, state: &mut H) {
-            self.len().hash(state);
+            state.delimit(self.len());
             Hash::hash_slice(self, state)
         }
     }

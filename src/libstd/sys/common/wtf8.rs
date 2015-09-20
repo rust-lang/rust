@@ -123,7 +123,7 @@ impl CodePoint {
 ///
 /// Similar to `String`, but can additionally contain surrogate code points
 /// if they’re not in a surrogate pair.
-#[derive(Eq, PartialEq, Ord, PartialOrd, Clone)]
+#[derive(Eq, PartialEq, Ord, PartialOrd, Clone, Hash)]
 pub struct Wtf8Buf {
     bytes: Vec<u8>
 }
@@ -375,6 +375,7 @@ impl Extend<CodePoint> for Wtf8Buf {
 ///
 /// Similar to `&str`, but can additionally contain surrogate code points
 /// if they’re not in a surrogate pair.
+#[derive(Hash)]
 pub struct Wtf8 {
     bytes: [u8]
 }
@@ -786,22 +787,6 @@ impl Hash for CodePoint {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.value.hash(state)
-    }
-}
-
-impl Hash for Wtf8Buf {
-    #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        state.write(&self.bytes);
-        0xfeu8.hash(state)
-    }
-}
-
-impl Hash for Wtf8 {
-    #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        state.write(&self.bytes);
-        0xfeu8.hash(state)
     }
 }
 

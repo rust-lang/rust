@@ -188,6 +188,14 @@ impl Hasher for SipHasher {
     }
 
     #[inline]
+    fn delimit(&mut self, len: usize) {
+        // skip the first delimiter
+        if self.length > 0 {
+            self.write_usize(len);
+        }
+    }
+
+    #[inline]
     fn finish(&self) -> u64 {
         let mut v0 = self.v0;
         let mut v1 = self.v1;
