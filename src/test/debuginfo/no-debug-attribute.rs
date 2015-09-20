@@ -23,6 +23,8 @@
 // gdb-command:continue
 
 #![allow(unused_variables)]
+#![feature(no_debug)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 fn function_with_debuginfo() {

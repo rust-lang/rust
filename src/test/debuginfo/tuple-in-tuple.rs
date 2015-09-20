@@ -56,6 +56,7 @@
 // lldb-check:[...]$6 = ((21, 22), 23)
 
 #![allow(unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 fn main() {

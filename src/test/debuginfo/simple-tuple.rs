@@ -91,6 +91,7 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 static mut NO_PADDING_8: (i8, u8) = (-50, 50);

@@ -154,6 +154,7 @@
 #![allow(unused_variables)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 struct Struct {

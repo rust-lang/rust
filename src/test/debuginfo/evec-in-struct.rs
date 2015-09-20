@@ -50,6 +50,7 @@
 // lldb-check:[...]$4 = StructPaddedAtEnd { x: [22, 23], y: [24, 25] }
 
 #![allow(unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 struct NoPadding1 {
