@@ -33,10 +33,10 @@ use cmp::Ordering::{Less, Equal, Greater};
 use ops::{Mul, Div, Neg};
 use fmt::{Debug, LowerExp};
 use mem::transmute;
-use num::flt2dec::strategy::grisu::Fp;
+use num::diy_float::Fp;
 use num::FpCategory::{Infinite, Zero, Subnormal, Normal, Nan};
 use num::Float;
-use super::num::{self, Big};
+use num::dec2flt::num::{self, Big};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Unpacked {
