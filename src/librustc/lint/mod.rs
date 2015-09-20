@@ -89,7 +89,6 @@ macro_rules! lint_initializer {
 /// Declare a static item of type `&'static Lint`.
 #[macro_export]
 macro_rules! declare_lint {
-    // FIXME(#14660): deduplicate
     (pub $name:ident, $level:ident, $desc:expr) => (
         pub static $name: &'static ::rustc::lint::Lint
             = &lint_initializer!($name, $level, $desc);

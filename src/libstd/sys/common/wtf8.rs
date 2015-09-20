@@ -31,7 +31,6 @@ use core::str::next_code_point;
 use ascii::*;
 use borrow::Cow;
 use char;
-use cmp;
 use fmt;
 use hash::{Hash, Hasher};
 use iter::FromIterator;
@@ -375,42 +374,13 @@ impl Extend<CodePoint> for Wtf8Buf {
 ///
 /// Similar to `&str`, but can additionally contain surrogate code points
 /// if they’re not in a surrogate pair.
+#[derive(Eq, Ord, PartialEq, PartialOrd)]
 pub struct Wtf8 {
     bytes: [u8]
 }
 
 impl AsInner<[u8]> for Wtf8 {
     fn as_inner(&self) -> &[u8] { &self.bytes }
-}
-
-// FIXME: https://github.com/rust-lang/rust/issues/18805
-impl PartialEq for Wtf8 {
-    fn eq(&self, other: &Wtf8) -> bool { self.bytes.eq(&other.bytes) }
-}
-
-// FIXME: https://github.com/rust-lang/rust/issues/18805
-impl Eq for Wtf8 {}
-
-// FIXME: https://github.com/rust-lang/rust/issues/18738
-impl PartialOrd for Wtf8 {
-    #[inline]
-    fn partial_cmp(&self, other: &Wtf8) -> Option<cmp::Ordering> {
-        self.bytes.partial_cmp(&other.bytes)
-    }
-    #[inline]
-    fn lt(&self, other: &Wtf8) -> bool { self.bytes.lt(&other.bytes) }
-    #[inline]
-    fn le(&self, other: &Wtf8) -> bool { self.bytes.le(&other.bytes) }
-    #[inline]
-    fn gt(&self, other: &Wtf8) -> bool { self.bytes.gt(&other.bytes) }
-    #[inline]
-    fn ge(&self, other: &Wtf8) -> bool { self.bytes.ge(&other.bytes) }
-}
-
-// FIXME: https://github.com/rust-lang/rust/issues/18738
-impl Ord for Wtf8 {
-    #[inline]
-    fn cmp(&self, other: &Wtf8) -> cmp::Ordering { self.bytes.cmp(&other.bytes) }
 }
 
 /// Format the slice with double quotes,

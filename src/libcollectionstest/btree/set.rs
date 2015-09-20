@@ -148,15 +148,9 @@ fn test_zip() {
     let y = y;
     let mut z = x.iter().zip(&y);
 
-    // FIXME: #5801: this needs a type hint to compile...
-    let result: Option<(&usize, & &'static str)> = z.next();
-    assert_eq!(result.unwrap(), (&5, &("bar")));
-
-    let result: Option<(&usize, & &'static str)> = z.next();
-    assert_eq!(result.unwrap(), (&11, &("foo")));
-
-    let result: Option<(&usize, & &'static str)> = z.next();
-    assert!(result.is_none());
+    assert_eq!(z.next().unwrap(), (&5, &("bar")));
+    assert_eq!(z.next().unwrap(), (&11, &("foo")));
+    assert!(z.next().is_none());
 }
 
 #[test]

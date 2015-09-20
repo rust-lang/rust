@@ -111,12 +111,9 @@ fn assign_field4<'a>(x: &'a mut Own<Point>) {
     x.y = 3; //~ ERROR cannot borrow
 }
 
-// FIXME(eddyb) #12825 This shouldn't attempt to call deref_mut.
-/*
 fn deref_imm_method(x: Own<Point>) {
     let __isize = x.get();
 }
-*/
 
 fn deref_mut_method1(x: Own<Point>) {
     x.set(0, 0); //~ ERROR cannot borrow
