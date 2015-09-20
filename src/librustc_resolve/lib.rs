@@ -509,7 +509,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
             }
             hir::StructVariantKind(ref struct_definition) => {
                 self.visit_struct_def(&**struct_definition,
-                                      variant.node.name.name,
+                                      variant.node.name,
                                       generics,
                                       variant.node.id);
             }
@@ -2264,7 +2264,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let mut function_type_rib = Rib::new(rib_kind);
                 let mut seen_bindings = HashSet::new();
                 for (index, type_parameter) in generics.ty_params.iter().enumerate() {
-                    let name = type_parameter.ident.name;
+                    let name = type_parameter.name;
                     debug!("with_type_parameter_rib: {}", type_parameter.id);
 
                     if seen_bindings.contains(&name) {
@@ -2390,7 +2390,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_generics(&mut self, generics: &Generics) {
         for type_parameter in generics.ty_params.iter() {
-            self.check_if_primitive_type_name(type_parameter.ident.name, type_parameter.span);
+            self.check_if_primitive_type_name(type_parameter.name, type_parameter.span);
         }
         for predicate in &generics.where_clause.predicates {
             match predicate {

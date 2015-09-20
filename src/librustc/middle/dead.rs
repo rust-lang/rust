@@ -137,7 +137,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             if let hir::PatWild(hir::PatWildSingle) = pat.node.pat.node {
                 continue;
             }
-            self.live_symbols.insert(variant.field_named(pat.node.ident.name).did.node);
+            self.live_symbols.insert(variant.field_named(pat.node.name).did.node);
         }
     }
 
@@ -443,7 +443,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_field(&mut self, node: &hir::StructField_) -> bool {
-        let is_named = node.ident().is_some();
+        let is_named = node.name().is_some();
         let field_type = self.tcx.node_id_to_type(node.id);
         let is_marker_field = match field_type.ty_to_def_id() {
             Some(def_id) => self.tcx.lang_items.items().any(|(_, item)| *item == Some(def_id)),
@@ -529,7 +529,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
                     for variant in &enum_def.variants {
                         if self.should_warn_about_variant(&variant.node) {
                             self.warn_dead_code(variant.node.id, variant.span,
-                                                variant.node.name.name, "variant");
+                                                variant.node.name, "variant");
                         }
                     }
                 },
@@ -549,7 +549,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     fn visit_struct_field(&mut self, field: &hir::StructField) {
         if self.should_warn_about_field(&field.node) {
             self.warn_dead_code(field.node.id, field.span,
-                                field.node.ident().unwrap().name, "struct field");
+                                field.node.name().unwrap(), "struct field");
         }
 
         visit::walk_struct_field(self, field);

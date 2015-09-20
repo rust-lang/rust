@@ -508,7 +508,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 // Record the def ID and fields of this struct.
                 let named_fields = struct_def.fields.iter().filter_map(|f| {
                     match f.node.kind {
-                        NamedField(ident, _) => Some(ident.name),
+                        NamedField(name, _) => Some(name),
                         UnnamedField(_) => None
                     }
                 }).collect();
@@ -578,7 +578,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                        variant: &Variant,
                                        item_id: DefId,
                                        parent: &Rc<Module>) {
-        let name = variant.node.name.name;
+        let name = variant.node.name;
         let is_exported = match variant.node.kind {
             TupleVariantKind(_) => false,
             StructVariantKind(_) => {

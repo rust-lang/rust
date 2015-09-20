@@ -494,7 +494,7 @@ pub struct TyParam {
 impl Clean<TyParam> for hir::TyParam {
     fn clean(&self, cx: &DocContext) -> TyParam {
         TyParam {
-            name: self.ident.clean(cx),
+            name: self.name.clean(cx),
             did: DefId { krate: LOCAL_CRATE, node: self.id },
             bounds: self.bounds.clean(cx),
             default: self.default.clean(cx),
@@ -2547,7 +2547,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
         PatStruct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", path_to_string(name),
                 fields.iter().map(|&Spanned { node: ref fp, .. }|
-                                  format!("{}: {}", fp.ident, name_from_pat(&*fp.pat)))
+                                  format!("{}: {}", fp.name, name_from_pat(&*fp.pat)))
                              .collect::<Vec<String>>().join(", "),
                 if etc { ", ..." } else { "" }
             )
@@ -2840,7 +2840,7 @@ pub struct TypeBinding {
 impl Clean<TypeBinding> for hir::TypeBinding {
     fn clean(&self, cx: &DocContext) -> TypeBinding {
         TypeBinding {
-            name: self.ident.clean(cx),
+            name: self.name.clean(cx),
             ty: self.ty.clean(cx)
         }
     }

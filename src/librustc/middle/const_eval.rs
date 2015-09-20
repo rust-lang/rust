@@ -314,7 +314,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
             let field_pats = fields.iter().map(|field| codemap::Spanned {
                 span: codemap::DUMMY_SP,
                 node: hir::FieldPat {
-                    ident: ast::Ident::new(field.name.node),
+                    name: field.name.node,
                     pat: const_expr_to_pat(tcx, &*field.expr, span),
                     is_shorthand: false,
                 },

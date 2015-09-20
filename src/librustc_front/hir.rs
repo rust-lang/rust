@@ -244,7 +244,7 @@ pub type TyParamBounds = OwnedSlice<TyParamBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TyParam {
-    pub ident: Ident,
+    pub name: Name,
     pub id: NodeId,
     pub bounds: TyParamBounds,
     pub default: Option<P<Ty>>,
@@ -378,7 +378,7 @@ impl fmt::Debug for Pat {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FieldPat {
     /// The identifier for the field
-    pub ident: Ident,
+    pub name: Name,
     /// The pattern the field is destructured to
     pub pat: P<Pat>,
     pub is_shorthand: bool,
@@ -791,7 +791,7 @@ pub enum ImplItem_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TypeBinding {
     pub id: NodeId,
-    pub ident: Ident,
+    pub name: Name,
     pub ty: P<Ty>,
     pub span: Span,
 }
@@ -981,11 +981,11 @@ pub enum ExplicitSelf_ {
     /// No self
     SelfStatic,
     /// `self`
-    SelfValue(Ident),
+    SelfValue(Name),
     /// `&'lt self`, `&'lt mut self`
-    SelfRegion(Option<Lifetime>, Mutability, Ident),
+    SelfRegion(Option<Lifetime>, Mutability, Name),
     /// `self: TYPE`
-    SelfExplicit(P<Ty>, Ident),
+    SelfExplicit(P<Ty>, Name),
 }
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
@@ -1026,7 +1026,7 @@ pub struct EnumDef {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Variant_ {
-    pub name: Ident,
+    pub name: Name,
     pub attrs: Vec<Attribute>,
     pub kind: VariantKind,
     pub id: NodeId,
@@ -1133,9 +1133,9 @@ pub struct StructField_ {
 }
 
 impl StructField_ {
-    pub fn ident(&self) -> Option<Ident> {
+    pub fn name(&self) -> Option<Name> {
         match self.kind {
-            NamedField(ref ident, _) => Some(ident.clone()),
+            NamedField(name, _) => Some(name),
             UnnamedField(_) => None
         }
     }
@@ -1145,7 +1145,7 @@ pub type StructField = Spanned<StructField_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum StructFieldKind {
-    NamedField(Ident, Visibility),
+    NamedField(Name, Visibility),
     /// Element of a tuple-like struct
     UnnamedField(Visibility),
 }

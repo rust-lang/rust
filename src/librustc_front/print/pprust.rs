@@ -926,12 +926,12 @@ impl<'a> State<'a> {
             for field in &struct_def.fields {
                 match field.node.kind {
                     hir::UnnamedField(..) => panic!("unexpected unnamed field"),
-                    hir::NamedField(ident, visibility) => {
+                    hir::NamedField(name, visibility) => {
                         try!(self.hardbreak_if_not_bol());
                         try!(self.maybe_print_comment(field.span.lo));
                         try!(self.print_outer_attributes(&field.node.attrs));
                         try!(self.print_visibility(visibility));
-                        try!(self.print_ident(ident));
+                        try!(self.print_name(name));
                         try!(self.word_nbsp(":"));
                         try!(self.print_type(&*field.node.ty));
                         try!(word(&mut self.s, ","));
@@ -946,7 +946,7 @@ impl<'a> State<'a> {
     pub fn print_variant(&mut self, v: &hir::Variant) -> io::Result<()> {
         match v.node.kind {
             hir::TupleVariantKind(ref args) => {
-                try!(self.print_ident(v.node.name));
+                try!(self.print_name(v.node.name));
                 if !args.is_empty() {
                     try!(self.popen());
                     try!(self.commasep(Consistent,
@@ -958,7 +958,7 @@ impl<'a> State<'a> {
             hir::StructVariantKind(ref struct_def) => {
                 try!(self.head(""));
                 let generics = ::util::empty_generics();
-                try!(self.print_struct(&**struct_def, &generics, v.node.name.name, v.span));
+                try!(self.print_struct(&**struct_def, &generics, v.node.name, v.span));
             }
         }
         match v.node.disr_expr {
@@ -1699,7 +1699,7 @@ impl<'a> State<'a> {
                     if comma {
                         try!(self.word_space(","))
                     }
-                    try!(self.print_ident(binding.ident));
+                    try!(self.print_name(binding.name));
                     try!(space(&mut self.s));
                     try!(self.word_space("="));
                     try!(self.print_type(&*binding.ty));
@@ -1785,7 +1785,7 @@ impl<'a> State<'a> {
                     |s, f| {
                         try!(s.cbox(indent_unit));
                         if !f.node.is_shorthand {
-                            try!(s.print_ident(f.node.ident));
+                            try!(s.print_name(f.node.name));
                             try!(s.word_nbsp(":"));
                         }
                         try!(s.print_pat(&*f.node.pat));
@@ -2111,7 +2111,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ty_param(&mut self, param: &hir::TyParam) -> io::Result<()> {
-        try!(self.print_ident(param.ident));
+        try!(self.print_name(param.name));
         try!(self.print_bounds(":", &param.bounds));
         match param.default {
             Some(ref default) => {

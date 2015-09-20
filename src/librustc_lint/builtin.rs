@@ -909,7 +909,7 @@ impl LateLintPass for NonShorthandFieldPatterns {
             });
             for fieldpat in field_pats {
                 if let hir::PatIdent(_, ident, None) = fieldpat.node.pat.node {
-                    if ident.node.name == fieldpat.node.ident.name {
+                    if ident.node.name == fieldpat.node.name {
                         // FIXME: should this comparison really be done on the name?
                         // doing it on the ident will fail during compilation of libcore
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
