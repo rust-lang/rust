@@ -71,6 +71,7 @@
 
 #![feature(unboxed_closures, box_syntax)]
 #![allow(unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 struct Struct {

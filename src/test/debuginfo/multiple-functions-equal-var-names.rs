@@ -44,6 +44,7 @@
 // lldb-check:[...]$2 = 30303
 
 #![allow(unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 fn function_one() {

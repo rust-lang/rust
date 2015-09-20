@@ -62,6 +62,7 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 // This test case makes sure that we get correct type descriptions for the enum

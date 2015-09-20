@@ -53,6 +53,7 @@
 // lldb-check:[...]$4 = 5
 // lldb-command:continue
 
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 struct Struct {

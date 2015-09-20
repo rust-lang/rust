@@ -41,6 +41,7 @@
 // gdb-command:continue
 
 #![allow(unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 #![feature(core_simd)]
 

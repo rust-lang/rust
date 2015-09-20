@@ -40,6 +40,7 @@
 // lldb-check:[...]$2 = TheC
 
 #![allow(unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 enum ABC { TheA, TheB, TheC }
