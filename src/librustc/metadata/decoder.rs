@@ -219,14 +219,6 @@ fn maybe_doc_type<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd) -> Opt
     })
 }
 
-fn doc_method_fty<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>,
-                        cdata: Cmd) -> ty::BareFnTy<'tcx> {
-    let tp = reader::get_doc(doc, tag_item_method_fty);
-    TyDecoder::with_doc(tcx, cdata.cnum, tp,
-                        &mut |_, did| translate_def_id(cdata, did))
-        .parse_bare_fn_ty()
-}
-
 pub fn item_type<'tcx>(_item_id: DefId, item: rbml::Doc,
                        tcx: &ty::ctxt<'tcx>, cdata: Cmd) -> Ty<'tcx> {
     doc_type(item, tcx, cdata)
@@ -880,7 +872,13 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
         Some('r') | Some('p') => {
             let generics = doc_generics(item_doc, tcx, cdata, tag_method_ty_generics);
             let predicates = doc_predicates(item_doc, tcx, cdata, tag_method_ty_generics);
-            let fty = doc_method_fty(item_doc, tcx, cdata);
+            let ity = tcx.lookup_item_type(def_id).ty;
+            let fty = match ity.sty {
+                ty::TyBareFn(_, fty) => fty.clone(),
+                _ => tcx.sess.bug(&format!(
+                    "the type {:?} of the method {:?} is not a function?",
+                    ity, name))
+            };
             let explicit_self = get_explicit_self(item_doc);
 
             ty::MethodTraitItem(Rc::new(ty::Method::new(name,

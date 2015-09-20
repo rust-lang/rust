@@ -163,8 +163,7 @@ pub const tag_lang_items_missing: usize = 0x76;
 pub const tag_item_unnamed_field: usize = 0x77;
 pub const tag_items_data_item_visibility: usize = 0x78;
 
-// GAP 0x79
-pub const tag_item_method_fty: usize = 0x7a;
+// GAP 0x79, 0x7a
 
 pub const tag_mod_child: usize = 0x7b;
 pub const tag_misc_info: usize = 0x108; // top-level only

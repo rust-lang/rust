@@ -235,22 +235,6 @@ fn encode_region(ecx: &EncodeContext,
     rbml_w.end_tag();
 }
 
-fn encode_method_fty<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
-                               rbml_w: &mut Encoder,
-                               typ: &ty::BareFnTy<'tcx>) {
-    rbml_w.start_tag(tag_item_method_fty);
-
-    let ty_str_ctxt = &tyencode::ctxt {
-        diag: ecx.diag,
-        ds: def_to_string,
-        tcx: ecx.tcx,
-        abbrevs: &ecx.type_abbrevs
-    };
-    tyencode::enc_bare_fn_ty(rbml_w, ty_str_ctxt, typ);
-
-    rbml_w.end_tag();
-}
-
 fn encode_symbol(ecx: &EncodeContext,
                  rbml_w: &mut Encoder,
                  id: NodeId) {
@@ -755,7 +739,6 @@ fn encode_method_ty_fields<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_generics(rbml_w, ecx, index,
                     &method_ty.generics, &method_ty.predicates,
                     tag_method_ty_generics);
-    encode_method_fty(ecx, rbml_w, &method_ty.fty);
     encode_visibility(rbml_w, method_ty.vis);
     encode_explicit_self(rbml_w, &method_ty.explicit_self);
     match method_ty.explicit_self {
@@ -826,7 +809,6 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     let stab = stability::lookup(ecx.tcx, m.def_id);
     encode_stability(rbml_w, stab);
 
-    // The type for methods gets encoded twice, which is unfortunate.
     encode_bounds_and_type_for_item(rbml_w, ecx, index, m.def_id.local_id());
 
     let elem = ast_map::PathName(m.name);
