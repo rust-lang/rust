@@ -1257,7 +1257,7 @@ impl Clean<Item> for hir::TraitItem {
             }
         };
         Item {
-            name: Some(self.ident.clean(cx)),
+            name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
             def_id: DefId::local(self.id),
@@ -1290,7 +1290,7 @@ impl Clean<Item> for hir::ImplItem {
             }, true),
         };
         Item {
-            name: Some(self.ident.clean(cx)),
+            name: Some(self.name.clean(cx)),
             source: self.span.clean(cx),
             attrs: self.attrs.clean(cx),
             def_id: DefId::local(self.id),
@@ -2484,7 +2484,7 @@ impl Clean<Item> for hir::ForeignItem {
             }
         };
         Item {
-            name: Some(self.ident.clean(cx)),
+            name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
             def_id: DefId::local(self.id),

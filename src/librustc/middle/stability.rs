@@ -336,7 +336,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         // When compiling with --test we don't enforce stability on the
         // compiler-generated test module, demarcated with `DUMMY_SP` plus the
         // name `__test`
-        if item.span == DUMMY_SP && item.ident.name == "__test" { return }
+        if item.span == DUMMY_SP && item.name == "__test" { return }
 
         check_item(self.tcx, item, true,
                    &mut |id, sp, stab| self.check(id, sp, stab));
@@ -393,7 +393,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &hir::Item, warn_about_defns: bool,
 
             for impl_item in impl_items {
                 let item = trait_items.iter().find(|item| {
-                    item.name() == impl_item.ident.name
+                    item.name() == impl_item.name
                 }).unwrap();
                 if warn_about_defns {
                     maybe_do_stability_check(tcx, item.def_id(), impl_item.span, cb);

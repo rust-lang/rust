@@ -284,7 +284,7 @@ trait ErrorReportingHelpers<'tcx> {
                                 decl: &hir::FnDecl,
                                 unsafety: hir::Unsafety,
                                 constness: hir::Constness,
-                                ident: ast::Ident,
+                                name: ast::Name,
                                 opt_explicit_self: Option<&hir::ExplicitSelf_>,
                                 generics: &hir::Generics,
                                 span: Span);
@@ -978,7 +978,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     match item.node {
                         hir::ItemFn(ref fn_decl, unsafety, constness, _, ref gen, _) => {
                             Some((fn_decl, gen, unsafety, constness,
-                                  item.ident, None, item.span))
+                                  item.name, None, item.span))
                         },
                         _ => None
                     }
@@ -990,7 +990,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                   &sig.generics,
                                   sig.unsafety,
                                   sig.constness,
-                                  item.ident,
+                                  item.name,
                                   Some(&sig.explicit_self.node),
                                   item.span))
                         }
@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                   &sig.generics,
                                   sig.unsafety,
                                   sig.constness,
-                                  item.ident,
+                                  item.name,
                                   Some(&sig.explicit_self.node),
                                   item.span))
                         }
@@ -1576,11 +1576,11 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                                 decl: &hir::FnDecl,
                                 unsafety: hir::Unsafety,
                                 constness: hir::Constness,
-                                ident: ast::Ident,
+                                name: ast::Name,
                                 opt_explicit_self: Option<&hir::ExplicitSelf_>,
                                 generics: &hir::Generics,
                                 span: Span) {
-        let suggested_fn = pprust::fun_to_string(decl, unsafety, constness, ident,
+        let suggested_fn = pprust::fun_to_string(decl, unsafety, constness, name,
                                                  opt_explicit_self, generics);
         let msg = format!("consider using an explicit lifetime \
                            parameter as shown: {}", suggested_fn);

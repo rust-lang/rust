@@ -1858,8 +1858,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let (name, span) = match var_item {
         hir_map::NodeItem(item) => {
             match item.node {
-                hir::ItemStatic(..) => (item.ident.name, item.span),
-                hir::ItemConst(..) => (item.ident.name, item.span),
+                hir::ItemStatic(..) => (item.name, item.span),
+                hir::ItemConst(..) => (item.name, item.span),
                 _ => {
                     cx.sess()
                       .span_bug(item.span,

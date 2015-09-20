@@ -770,7 +770,7 @@ pub struct MethodSig {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TraitItem {
     pub id: NodeId,
-    pub ident: Ident,
+    pub name: Name,
     pub attrs: Vec<Attribute>,
     pub node: TraitItem_,
     pub span: Span,
@@ -786,7 +786,7 @@ pub enum TraitItem_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ImplItem {
     pub id: NodeId,
-    pub ident: Ident,
+    pub name: Name,
     pub vis: Visibility,
     pub attrs: Vec<Attribute>,
     pub node: ImplItem_,
@@ -1190,7 +1190,7 @@ pub struct StructDef {
 /// The name might be a dummy name in case of anonymous items
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Item {
-    pub ident: Ident,
+    pub name: Name,
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub node: Item_,
@@ -1264,7 +1264,7 @@ impl Item_ {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ForeignItem {
-    pub ident: Ident,
+    pub name: Name,
     pub attrs: Vec<Attribute>,
     pub node: ForeignItem_,
     pub id: NodeId,

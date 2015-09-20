@@ -242,7 +242,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             match item.node {
                 hir::ItemFn(ref fn_decl, _, _, _, ref generics, ref top_level_block) => {
-                    (item.ident.name, fn_decl, generics, top_level_block, item.span, true)
+                    (item.name, fn_decl, generics, top_level_block, item.span, true)
                 }
                 _ => {
                     cx.sess().span_bug(item.span,
@@ -257,7 +257,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
-                    (impl_item.ident.name,
+                    (impl_item.name,
                      &sig.decl,
                      &sig.generics,
                      body,
@@ -296,7 +296,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
-                    (trait_item.ident.name,
+                    (trait_item.name,
                      &sig.decl,
                      &sig.generics,
                      body,

@@ -1313,7 +1313,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         match tcx.map.expect_item(trait_did.node).node {
             hir::ItemTrait(_, _, _, ref trait_items) => {
                 let item = trait_items.iter()
-                                      .find(|i| i.ident.name == assoc_name)
+                                      .find(|i| i.name == assoc_name)
                                       .expect("missing associated type");
                 DefId::local(item.id)
             }

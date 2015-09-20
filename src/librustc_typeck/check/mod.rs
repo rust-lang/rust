@@ -698,7 +698,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       }
       hir::ItemFn(..) => {} // entirely within check_item_body
       hir::ItemImpl(_, _, _, _, _, ref impl_items) => {
-          debug!("ItemImpl {} with id {}", it.ident, it.id);
+          debug!("ItemImpl {} with id {}", it.name, it.id);
           match ccx.tcx.impl_trait_ref(DefId::local(it.id)) {
               Some(impl_trait_ref) => {
                 check_impl_items_against_trait(ccx,
@@ -761,7 +761,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         check_bare_fn(ccx, &**decl, &**body, it.id, it.span, fn_pty.ty, param_env);
       }
       hir::ItemImpl(_, _, _, _, _, ref impl_items) => {
-        debug!("ItemImpl {} with id {}", it.ident, it.id);
+        debug!("ItemImpl {} with id {}", it.name, it.id);
 
         let impl_pty = ccx.tcx.lookup_item_type(DefId::local(it.id));
 
@@ -845,7 +845,7 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 span_err!(ccx.tcx.sess, attr.span, E0230,
                                                  "there is no type parameter \
                                                           {} on trait {}",
-                                                           s, item.ident);
+                                                           s, item.name);
                             }
                         },
                         // `{:1}` and `{}` are not to be used
@@ -988,7 +988,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let is_implemented = impl_items.iter().any(|ii| {
                     match ii.node {
                         hir::ConstImplItem(..) => {
-                            ii.ident.name == associated_const.name
+                            ii.name == associated_const.name
                         }
                         _ => false,
                     }
@@ -1009,7 +1009,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     impl_items.iter().any(|ii| {
                         match ii.node {
                             hir::MethodImplItem(..) => {
-                                ii.ident.name == trait_method.name
+                                ii.name == trait_method.name
                             }
                             _ => false,
                         }
@@ -1028,7 +1028,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let is_implemented = impl_items.iter().any(|ii| {
                     match ii.node {
                         hir::TypeImplItem(_) => {
-                            ii.ident.name == associated_type.name
+                            ii.name == associated_type.name
                         }
                         _ => false,
                     }
@@ -1058,7 +1058,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         span_err!(tcx.sess, invalidator.span, E0399,
                   "the following trait items need to be reimplemented \
                    as `{}` was overridden: `{}`",
-                  invalidator.ident,
+                  invalidator.name,
                   invalidated_items.iter()
                                    .map(|name| name.to_string())
                                    .collect::<Vec<_>>().join("`, `"))

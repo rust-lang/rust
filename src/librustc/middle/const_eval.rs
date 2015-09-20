@@ -1109,7 +1109,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
     match selection {
         traits::VtableImpl(ref impl_data) => {
             match tcx.associated_consts(impl_data.impl_def_id)
-                     .iter().find(|ic| ic.name == ti.ident.name) {
+                     .iter().find(|ic| ic.name == ti.name) {
                 Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
                 None => match ti.node {
                     hir::ConstTraitItem(_, Some(ref expr)) => Some(&*expr),
