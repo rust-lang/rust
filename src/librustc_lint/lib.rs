@@ -58,7 +58,13 @@ pub use rustc::util as util;
 use session::Session;
 use lint::LintId;
 
+mod bad_style;
 mod builtin;
+mod unused;
+
+use bad_style::*;
+use builtin::*;
+use unused::*;
 
 /// Tell the `LintStore` about all the built-in lints (the ones
 /// defined in this crate and the ones defined in
@@ -67,7 +73,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     macro_rules! add_builtin {
         ($sess:ident, $($name:ident),*,) => (
             {$(
-                store.register_late_pass($sess, false, box builtin::$name);
+                store.register_late_pass($sess, false, box $name);
                 )*}
             )
     }
@@ -75,7 +81,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     macro_rules! add_early_builtin {
         ($sess:ident, $($name:ident),*,) => (
             {$(
-                store.register_early_pass($sess, false, box builtin::$name);
+                store.register_early_pass($sess, false, box $name);
                 )*}
             )
     }
@@ -83,14 +89,14 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     macro_rules! add_builtin_with_new {
         ($sess:ident, $($name:ident),*,) => (
             {$(
-                store.register_late_pass($sess, false, box builtin::$name::new());
+                store.register_late_pass($sess, false, box $name::new());
                 )*}
             )
     }
 
     macro_rules! add_lint_group {
         ($sess:ident, $name:expr, $($lint:ident),*) => (
-            store.register_group($sess, false, $name, vec![$(LintId::of(builtin::$lint)),*]);
+            store.register_group($sess, false, $name, vec![$(LintId::of($lint)),*]);
             )
     }
 
