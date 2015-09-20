@@ -17,6 +17,7 @@
 // is taken from issue #11083.
 
 #![allow(unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 pub struct Window<'a> {

@@ -44,6 +44,7 @@
 // lldb-check:[...]$3 = NestedOuter { a: NestedInner { a: WithDestructor { x: 7890, y: 9870 } } }
 
 #![allow(unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 struct NoDestructor {
