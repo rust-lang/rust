@@ -13,7 +13,7 @@ pub use self::AnnNode::*;
 use syntax::abi;
 use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
-use syntax::codemap::{self, CodeMap, BytePos};
+use syntax::codemap::{self, CodeMap, BytePos, Spanned};
 use syntax::diagnostic;
 use syntax::parse::token::{self, BinOpToken};
 use syntax::parse::lexer::comments;
@@ -1223,7 +1223,7 @@ impl<'a> State<'a> {
             &fields[..],
             |s, field| {
                 try!(s.ibox(indent_unit));
-                try!(s.print_ident(field.ident.node));
+                try!(s.print_name(field.name.node));
                 try!(s.word_space(":"));
                 try!(s.print_expr(&*field.expr));
                 s.end()
@@ -1265,13 +1265,13 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_method_call(&mut self,
-                              ident: hir::SpannedIdent,
+                              name: Spanned<ast::Name>,
                               tys: &[P<hir::Ty>],
                               args: &[P<hir::Expr>]) -> io::Result<()> {
         let base_args = &args[1..];
         try!(self.print_expr(&*args[0]));
         try!(word(&mut self.s, "."));
-        try!(self.print_ident(ident.node));
+        try!(self.print_name(name.node));
         if !tys.is_empty() {
             try!(word(&mut self.s, "::<"));
             try!(self.commasep(Inconsistent, tys,
@@ -1329,8 +1329,8 @@ impl<'a> State<'a> {
             hir::ExprCall(ref func, ref args) => {
                 try!(self.print_expr_call(&**func, &args[..]));
             }
-            hir::ExprMethodCall(ident, ref tys, ref args) => {
-                try!(self.print_expr_method_call(ident, &tys[..], &args[..]));
+            hir::ExprMethodCall(name, ref tys, ref args) => {
+                try!(self.print_expr_method_call(name, &tys[..], &args[..]));
             }
             hir::ExprBinary(op, ref lhs, ref rhs) => {
                 try!(self.print_expr_binary(op, &**lhs, &**rhs));
@@ -1435,10 +1435,10 @@ impl<'a> State<'a> {
                 try!(self.word_space("="));
                 try!(self.print_expr(&**rhs));
             }
-            hir::ExprField(ref expr, id) => {
+            hir::ExprField(ref expr, name) => {
                 try!(self.print_expr(&**expr));
                 try!(word(&mut self.s, "."));
-                try!(self.print_ident(id.node));
+                try!(self.print_name(name.node));
             }
             hir::ExprTupField(ref expr, id) => {
                 try!(self.print_expr(&**expr));

@@ -474,7 +474,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                    expr.id,
                    expr,
                    base_cmt);
-            Ok(self.cat_field(expr, base_cmt, f_name.node.name, expr_ty))
+            Ok(self.cat_field(expr, base_cmt, f_name.node, expr_ty))
           }
 
           hir::ExprTupField(ref base, idx) => {

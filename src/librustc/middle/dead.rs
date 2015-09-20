@@ -227,8 +227,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
             hir::ExprMethodCall(..) => {
                 self.lookup_and_handle_method(expr.id);
             }
-            hir::ExprField(ref lhs, ref ident) => {
-                self.handle_field_access(&**lhs, ident.node.name);
+            hir::ExprField(ref lhs, ref name) => {
+                self.handle_field_access(&**lhs, name.node);
             }
             hir::ExprTupField(ref lhs, idx) => {
                 self.handle_tup_field_access(&**lhs, idx.node);

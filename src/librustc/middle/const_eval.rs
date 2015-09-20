@@ -314,7 +314,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
             let field_pats = fields.iter().map(|field| codemap::Spanned {
                 span: codemap::DUMMY_SP,
                 node: hir::FieldPat {
-                    ident: field.ident.node,
+                    ident: ast::Ident::new(field.name.node),
                     pat: const_expr_to_pat(tcx, &*field.expr, span),
                     is_shorthand: false,
                 },
@@ -1040,8 +1040,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                 if let hir::ExprStruct(_, ref fields, _) = tcx.map.expect_expr(struct_id).node {
                     // Check that the given field exists and evaluate it
                     // if the idents are compared run-pass/issue-19244 fails
-                    if let Some(f) = fields.iter().find(|f| f.ident.node.name
-                                                         == field_name.node.name) {
+                    if let Some(f) = fields.iter().find(|f| f.name.node
+                                                         == field_name.node) {
                         return eval_const_expr_partial(tcx, &*f.expr, base_hint)
                     } else {
                         signal!(e, MissingStructField);

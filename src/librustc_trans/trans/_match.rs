@@ -1436,7 +1436,7 @@ fn is_discr_reassigned(bcx: Block, discr: &hir::Expr, body: &hir::Expr) -> bool 
                 Some(def::DefLocal(vid)) | Some(def::DefUpvar(vid, _, _)) => vid,
                 _ => return false
             };
-            (vid, Some(mc::NamedField(field.node.name)))
+            (vid, Some(mc::NamedField(field.node)))
         },
         hir::ExprTupField(ref base, field) => {
             let vid = match bcx.tcx().def_map.borrow().get(&base.id).map(|d| d.full_def()) {

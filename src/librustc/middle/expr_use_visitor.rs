@@ -710,7 +710,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                                 -> bool
         {
             fields.iter().any(
-                |f| f.ident.node.name == field.name)
+                |f| f.name.node == field.name)
         }
     }
 

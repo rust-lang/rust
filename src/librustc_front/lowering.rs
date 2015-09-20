@@ -14,7 +14,7 @@ use hir;
 
 use syntax::ast::*;
 use syntax::ptr::P;
-use syntax::codemap::Spanned;
+use syntax::codemap::{respan, Spanned};
 use syntax::owned_slice::OwnedSlice;
 
 
@@ -370,7 +370,10 @@ pub fn lower_struct_field(f: &StructField) -> hir::StructField {
 }
 
 pub fn lower_field(f: &Field) -> hir::Field {
-    hir::Field { ident: f.ident, expr: lower_expr(&f.expr), span: f.span }
+    hir::Field {
+        name: respan(f.ident.span, f.ident.node.name),
+        expr: lower_expr(&f.expr), span: f.span
+    }
 }
 
 pub fn lower_mt(mt: &MutTy) -> hir::MutTy {
@@ -704,7 +707,7 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                 }
                 ExprMethodCall(i, ref tps, ref args) => {
                     hir::ExprMethodCall(
-                        i,
+                        respan(i.span, i.node.name),
                         tps.iter().map(|x| lower_ty(x)).collect(),
                         args.iter().map(|x| lower_expr(x)).collect())
                 }
@@ -755,7 +758,7 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                                 lower_expr(er))
                 }
                 ExprField(ref el, ident) => {
-                    hir::ExprField(lower_expr(el), ident)
+                    hir::ExprField(lower_expr(el), respan(ident.span, ident.node.name))
                 }
                 ExprTupField(ref el, ident) => {
                     hir::ExprTupField(lower_expr(el), ident)
