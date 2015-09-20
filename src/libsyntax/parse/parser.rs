@@ -37,7 +37,7 @@ use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitByteStr};
 use ast::{LitStr, LitInt, Local};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
-use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchSource};
+use ast::{MutImmutable, MutMutable, Mac_, MatchSource};
 use ast::{MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
 use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
@@ -1381,7 +1381,7 @@ impl<'a> Parser<'a> {
                                                      seq_sep_none(),
                                                      |p| p.parse_token_tree()));
                 let hi = self.span.hi;
-                TyMac(spanned(lo, hi, MacInvocTT(path, tts, EMPTY_CTXT)))
+                TyMac(spanned(lo, hi, Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT }))
             } else {
                 // NAMED TYPE
                 TyPath(None, path)
@@ -2203,9 +2203,7 @@ impl<'a> Parser<'a> {
 
                         return Ok(self.mk_mac_expr(lo,
                                                    hi,
-                                                   MacInvocTT(pth,
-                                                              tts,
-                                                              EMPTY_CTXT)));
+                                                   Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT }));
                     }
                     if self.check(&token::OpenDelim(token::Brace)) {
                         // This is a struct literal, unless we're prohibited
@@ -3289,7 +3287,7 @@ impl<'a> Parser<'a> {
                         let delim = try!(self.expect_open_delim());
                         let tts = try!(self.parse_seq_to_end(&token::CloseDelim(delim),
                                 seq_sep_none(), |p| p.parse_token_tree()));
-                        let mac = MacInvocTT(path, tts, EMPTY_CTXT);
+                        let mac = Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT };
                         pat = PatMac(codemap::Spanned {node: mac, span: self.span});
                     } else {
                         // Parse ident @ pat
@@ -3557,7 +3555,7 @@ impl<'a> Parser<'a> {
                 spanned(lo, hi,
                         StmtMac(P(spanned(lo,
                                           hi,
-                                          MacInvocTT(pth, tts, EMPTY_CTXT))),
+                                          Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
                                   style))
             } else {
                 // if it has a special ident, it's definitely an item
@@ -3576,7 +3574,8 @@ impl<'a> Parser<'a> {
                     P(spanned(lo, hi, DeclItem(
                         self.mk_item(
                             lo, hi, id /*id is good here*/,
-                            ItemMac(spanned(lo, hi, MacInvocTT(pth, tts, EMPTY_CTXT))),
+                            ItemMac(spanned(lo, hi,
+                                            Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT })),
                             Inherited, Vec::new(/*no attrs*/))))),
                     ast::DUMMY_NODE_ID))
             }
@@ -4524,7 +4523,7 @@ impl<'a> Parser<'a> {
             let tts = try!(self.parse_seq_to_end(&token::CloseDelim(delim),
                                             seq_sep_none(),
                                             |p| p.parse_token_tree()));
-            let m_ = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
+            let m_ = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m_,
                                                 span: mk_sp(self.span.lo,
                                                             self.span.hi) };
@@ -5606,7 +5605,7 @@ impl<'a> Parser<'a> {
                                             seq_sep_none(),
                                             |p| p.parse_token_tree()));
             // single-variant-enum... :
-            let m = ast::MacInvocTT(pth, tts, EMPTY_CTXT);
+            let m = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m,
                                              span: mk_sp(self.span.lo,
                                                          self.span.hi) };

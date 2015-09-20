@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{Block, Crate, DeclLocal, ExprMac, PatMac};
-use ast::{Local, Ident, MacInvocTT};
+use ast::{Local, Ident, Mac_};
 use ast::{ItemMac, MacStmtWithSemicolon, Mrk, Stmt, StmtDecl, StmtMac};
 use ast::{StmtExpr, StmtSemi};
 use ast::TokenTree;
@@ -509,78 +509,75 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac,
     F: for<'a> FnOnce(Box<MacResult+'a>) -> Option<T>,
     G: FnOnce(T, Mrk) -> T,
 {
-    match mac.node {
-        // it would almost certainly be cleaner to pass the whole
-        // macro invocation in, rather than pulling it apart and
-        // marking the tts and the ctxt separately. This also goes
-        // for the other three macro invocation chunks of code
-        // in this file.
-        // Token-tree macros:
-        MacInvocTT(pth, tts, _) => {
-            if pth.segments.len() > 1 {
-                fld.cx.span_err(pth.span,
-                                "expected macro name without module \
-                                separators");
-                // let compilation continue
-                return None;
-            }
-            let extname = pth.segments[0].identifier.name;
-            match fld.cx.syntax_env.find(&extname) {
-                None => {
-                    fld.cx.span_err(
-                        pth.span,
-                        &format!("macro undefined: '{}!'",
-                                &extname));
+    // it would almost certainly be cleaner to pass the whole
+    // macro invocation in, rather than pulling it apart and
+    // marking the tts and the ctxt separately. This also goes
+    // for the other three macro invocation chunks of code
+    // in this file.
 
-                    // let compilation continue
-                    None
-                }
-                Some(rc) => match *rc {
-                    NormalTT(ref expandfun, exp_span, allow_internal_unstable) => {
-                        fld.cx.bt_push(ExpnInfo {
-                                call_site: span,
-                                callee: NameAndSpan {
-                                    format: MacroBang(extname),
-                                    span: exp_span,
-                                    allow_internal_unstable: allow_internal_unstable,
-                                },
-                            });
-                        let fm = fresh_mark();
-                        let marked_before = mark_tts(&tts[..], fm);
+    let Mac_ { path: pth, tts, .. } = mac.node;
+    if pth.segments.len() > 1 {
+        fld.cx.span_err(pth.span,
+                        "expected macro name without module \
+                        separators");
+        // let compilation continue
+        return None;
+    }
+    let extname = pth.segments[0].identifier.name;
+    match fld.cx.syntax_env.find(&extname) {
+        None => {
+            fld.cx.span_err(
+                pth.span,
+                &format!("macro undefined: '{}!'",
+                        &extname));
 
-                        // The span that we pass to the expanders we want to
-                        // be the root of the call stack. That's the most
-                        // relevant span and it's the actual invocation of
-                        // the macro.
-                        let mac_span = fld.cx.original_span();
+            // let compilation continue
+            None
+        }
+        Some(rc) => match *rc {
+            NormalTT(ref expandfun, exp_span, allow_internal_unstable) => {
+                fld.cx.bt_push(ExpnInfo {
+                        call_site: span,
+                        callee: NameAndSpan {
+                            format: MacroBang(extname),
+                            span: exp_span,
+                            allow_internal_unstable: allow_internal_unstable,
+                        },
+                    });
+                let fm = fresh_mark();
+                let marked_before = mark_tts(&tts[..], fm);
 
-                        let opt_parsed = {
-                            let expanded = expandfun.expand(fld.cx,
-                                                            mac_span,
-                                                            &marked_before[..]);
-                            parse_thunk(expanded)
-                        };
-                        let parsed = match opt_parsed {
-                            Some(e) => e,
-                            None => {
-                                fld.cx.span_err(
-                                    pth.span,
-                                    &format!("non-expression macro in expression position: {}",
-                                            extname
-                                            ));
-                                return None;
-                            }
-                        };
-                        Some(mark_thunk(parsed,fm))
-                    }
-                    _ => {
+                // The span that we pass to the expanders we want to
+                // be the root of the call stack. That's the most
+                // relevant span and it's the actual invocation of
+                // the macro.
+                let mac_span = fld.cx.original_span();
+
+                let opt_parsed = {
+                    let expanded = expandfun.expand(fld.cx,
+                                                    mac_span,
+                                                    &marked_before[..]);
+                    parse_thunk(expanded)
+                };
+                let parsed = match opt_parsed {
+                    Some(e) => e,
+                    None => {
                         fld.cx.span_err(
                             pth.span,
-                            &format!("'{}' is not a tt-style macro",
-                                    extname));
-                        None
+                            &format!("non-expression macro in expression position: {}",
+                                    extname
+                                    ));
+                        return None;
                     }
-                }
+                };
+                Some(mark_thunk(parsed,fm))
+            }
+            _ => {
+                fld.cx.span_err(
+                    pth.span,
+                    &format!("'{}' is not a tt-style macro",
+                            extname));
+                None
             }
         }
     }
@@ -684,15 +681,11 @@ fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool
 // logic as for expression-position macro invocations.
 pub fn expand_item_mac(it: P<ast::Item>,
                        fld: &mut MacroExpander) -> SmallVector<P<ast::Item>> {
-    let (extname, path_span, tts, span, attrs, ident) = it.and_then(|it| { match it.node {
-        ItemMac(codemap::Spanned {
-            node: MacInvocTT(pth, tts, _),
-            ..
-        }) => {
-            (pth.segments[0].identifier.name, pth.span, tts, it.span, it.attrs, it.ident)
-        }
+    let (extname, path_span, tts, span, attrs, ident) = it.and_then(|it| match it.node {
+        ItemMac(codemap::Spanned { node: Mac_ { path, tts, .. }, .. }) =>
+            (path.segments[0].identifier.name, path.span, tts, it.span, it.attrs, it.ident),
         _ => fld.cx.span_bug(it.span, "invalid item macro invocation")
-    }});
+    });
 
     let fm = fresh_mark();
     let items = {
@@ -1060,11 +1053,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
     }
     p.map(|ast::Pat {node, span, ..}| {
         let (pth, tts) = match node {
-            PatMac(mac) => match mac.node {
-                MacInvocTT(pth, tts, _) => {
-                    (pth, tts)
-                }
-            },
+            PatMac(mac) => (mac.node.path, mac.node.tts),
             _ => unreachable!()
         };
         if pth.segments.len() > 1 {
@@ -1646,12 +1635,10 @@ impl Folder for Marker {
     }
     fn fold_mac(&mut self, Spanned {node, span}: ast::Mac) -> ast::Mac {
         Spanned {
-            node: match node {
-                MacInvocTT(path, tts, ctxt) => {
-                    MacInvocTT(self.fold_path(path),
-                               self.fold_tts(&tts[..]),
-                               mtwt::apply_mark(self.mark, ctxt))
-                }
+            node: Mac_ {
+                path: self.fold_path(node.path),
+                tts: self.fold_tts(&node.tts),
+                ctxt: mtwt::apply_mark(self.mark, node.ctxt),
             },
             span: span,
         }
