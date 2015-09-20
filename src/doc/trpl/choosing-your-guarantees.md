@@ -321,7 +321,7 @@ there's a lot of concurrent access happening.
 
 # Composition
 
-A common gripe when reading Rust code is with types like `Rc<RefCell<Vec<T>>>` (or even more more
+A common gripe when reading Rust code is with types like `Rc<RefCell<Vec<T>>>` (or even more
 complicated compositions of such types). It's not always clear what the composition does, or why the
 author chose one like this (and when one should be using such a composition in one's own code)
 
