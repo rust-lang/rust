@@ -86,9 +86,6 @@
 //! "such that the exponent +/- the number of decimal digits fits into a 64 bit integer".
 //! Larger exponents are accepted, but we don't do arithmetic with them, they are immediately
 //! turned into {positive,negative} {zero,infinity}.
-//!
-//! FIXME: this uses several things from core::num::flt2dec, which is nonsense. Those things
-//! should be moved into core::num::<something else>.
 
 #![doc(hidden)]
 #![unstable(feature = "dec2flt",
