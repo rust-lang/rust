@@ -1198,7 +1198,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                                       lifetime,
                                                       region_names);
             hir::TyParam {
-                ident: ty_param.ident,
+                name: ty_param.name,
                 id: ty_param.id,
                 bounds: bounds,
                 default: ty_param.default.clone(),
@@ -1541,7 +1541,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 let new_bindings = data.bindings.map(|b| {
                     P(hir::TypeBinding {
                         id: b.id,
-                        ident: b.ident,
+                        name: b.name,
                         ty: self.rebuild_arg_ty_or_output(&*b.ty,
                                                           lifetime,
                                                           anon_nums,

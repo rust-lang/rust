@@ -194,7 +194,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         hir_map::NodeVariant(v) => {
             let variant = inlined_variant_def(ccx, fn_id.node);
-            assert_eq!(v.node.name.name, variant.name);
+            assert_eq!(v.node.name, variant.name);
             let d = mk_lldecl(abi::Rust);
             attributes::inline(d, attributes::InlineAttr::Hint);
             trans_enum_variant(ccx, fn_id.node, variant.disr_val, psubsts, d);

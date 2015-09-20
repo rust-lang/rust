@@ -483,7 +483,7 @@ impl<'ast> Map<'ast> {
             NodeForeignItem(i) => PathName(i.name),
             NodeImplItem(ii) => PathName(ii.name),
             NodeTraitItem(ti) => PathName(ti.name),
-            NodeVariant(v) => PathName(v.node.name.name),
+            NodeVariant(v) => PathName(v.node.name),
             NodeLifetime(lt) => PathName(lt.name),
             _ => panic!("no path elem for {:?}", node)
         }
@@ -710,7 +710,7 @@ impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() }
 
 impl Named for Item { fn name(&self) -> Name { self.name } }
 impl Named for ForeignItem { fn name(&self) -> Name { self.name } }
-impl Named for Variant_ { fn name(&self) -> Name { self.name.name } }
+impl Named for Variant_ { fn name(&self) -> Name { self.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.name } }
 

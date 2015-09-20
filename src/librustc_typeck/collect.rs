@@ -1099,18 +1099,18 @@ fn convert_struct_variant<'tcx>(tcx: &ty::ctxt<'tcx>,
     let fields = def.fields.iter().map(|f| {
         let fid = DefId::local(f.node.id);
         match f.node.kind {
-            hir::NamedField(ident, vis) => {
-                let dup_span = seen_fields.get(&ident.name).cloned();
+            hir::NamedField(name, vis) => {
+                let dup_span = seen_fields.get(&name).cloned();
                 if let Some(prev_span) = dup_span {
                     span_err!(tcx.sess, f.span, E0124,
                               "field `{}` is already declared",
-                              ident.name);
+                              name);
                     span_note!(tcx.sess, prev_span, "previously declared here");
                 } else {
-                    seen_fields.insert(ident.name, f.span);
+                    seen_fields.insert(name, f.span);
                 }
 
-                ty::FieldDefData::new(fid, ident.name, vis)
+                ty::FieldDefData::new(fid, name, vis)
             },
             hir::UnnamedField(vis) => {
                 ty::FieldDefData::new(fid, special_idents::unnamed_field.name, vis)
@@ -1195,7 +1195,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
         if let Some(prev_disr_val) = prev_disr_val {
             let result = repr_type.disr_incr(prev_disr_val);
             if let None = result {
-                report_discrim_overflow(tcx, v.span, &v.node.name.name.as_str(),
+                report_discrim_overflow(tcx, v.span, &v.node.name.as_str(),
                                              repr_type, prev_disr_val);
             }
             result
@@ -1209,7 +1209,7 @@ fn convert_enum_def<'tcx>(tcx: &ty::ctxt<'tcx>,
                                   -> ty::VariantDefData<'tcx, 'tcx>
     {
         let did = DefId::local(v.node.id);
-        let name = v.node.name.name;
+        let name = v.node.name;
         match v.node.kind {
             hir::TupleVariantKind(ref va) => {
                 ty::VariantDefData {
@@ -1417,7 +1417,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     .iter()
                     .enumerate()
                     .map(|(i, def)| tcx.mk_param(TypeSpace,
-                                                 i as u32, def.ident.name))
+                                                 i as u32, def.name))
                     .collect();
 
         // ...and also create the `Self` parameter.
@@ -1862,7 +1862,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     // type parameter (e.g., `<T:Foo>`).
     for (index, param) in ast_generics.ty_params.iter().enumerate() {
         let index = index as u32;
-        let param_ty = ty::ParamTy::new(space, index, param.ident.name).to_ty(ccx.tcx);
+        let param_ty = ty::ParamTy::new(space, index, param.name).to_ty(ccx.tcx);
         let bounds = compute_bounds(&ccx.icx(&(base_predicates, ast_generics)),
                                     param_ty,
                                     &param.bounds,
@@ -2033,7 +2033,7 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let def = ty::TypeParameterDef {
         space: space,
         index: index,
-        name: param.ident.name,
+        name: param.name,
         def_id: DefId::local(param.id),
         default_def_id: DefId::local(parent),
         default: default,
@@ -2415,7 +2415,7 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
     for (index, ty_param) in ast_generics.ty_params.iter().enumerate() {
         let param_ty = ty::ParamTy { space: TypeSpace,
                                      idx: index as u32,
-                                     name: ty_param.ident.name };
+                                     name: ty_param.name };
         if !input_parameters.contains(&ctp::Parameter::Type(param_ty)) {
             report_unused_parameter(tcx, ty_param.span, "type", &param_ty.to_string());
         }

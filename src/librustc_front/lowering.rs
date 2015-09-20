@@ -76,7 +76,7 @@ pub fn lower_decl(d: &Decl) -> P<hir::Decl> {
 }
 
 pub fn lower_ty_binding(b: &TypeBinding) -> P<hir::TypeBinding> {
-    P(hir::TypeBinding { id: b.id, ident: b.ident, ty: lower_ty(&b.ty), span: b.span })
+    P(hir::TypeBinding { id: b.id, name: b.ident.name, ty: lower_ty(&b.ty), span: b.span })
 }
 
 pub fn lower_ty(t: &Ty) -> P<hir::Ty> {
@@ -138,7 +138,7 @@ pub fn lower_variant(v: &Variant) -> P<hir::Variant> {
     P(Spanned {
         node: hir::Variant_ {
             id: v.node.id,
-            name: v.node.name,
+            name: v.node.name.name,
             attrs: v.node.attrs.clone(),
             kind: match v.node.kind {
                 TupleVariantKind(ref variant_args) => {
@@ -209,12 +209,12 @@ pub fn lower_local(l: &Local) -> P<hir::Local> {
 pub fn lower_explicit_self_underscore(es: &ExplicitSelf_) -> hir::ExplicitSelf_ {
     match *es {
         SelfStatic => hir::SelfStatic,
-        SelfValue(v) => hir::SelfValue(v),
+        SelfValue(v) => hir::SelfValue(v.name),
         SelfRegion(ref lifetime, m, ident) => {
-            hir::SelfRegion(lower_opt_lifetime(lifetime), lower_mutability(m), ident)
+            hir::SelfRegion(lower_opt_lifetime(lifetime), lower_mutability(m), ident.name)
         }
         SelfExplicit(ref typ, ident) => {
-            hir::SelfExplicit(lower_ty(typ), ident)
+            hir::SelfExplicit(lower_ty(typ), ident.name)
         }
     }
 }
@@ -258,7 +258,7 @@ pub fn lower_ty_param_bound(tpb: &TyParamBound) -> hir::TyParamBound {
 pub fn lower_ty_param(tp: &TyParam) -> hir::TyParam {
     hir::TyParam {
         id: tp.id,
-        ident: tp.ident,
+        name: tp.ident.name,
         bounds: lower_bounds(&tp.bounds),
         default: tp.default.as_ref().map(|x| lower_ty(x)),
         span: tp.span,
@@ -665,7 +665,7 @@ pub fn lower_pat(p: &Pat) -> P<hir::Pat> {
                 let fs = fields.iter().map(|f| {
                     Spanned { span: f.span,
                               node: hir::FieldPat {
-                                  ident: f.node.ident,
+                                  name: f.node.ident.name,
                                   pat: lower_pat(&f.node.pat),
                                   is_shorthand: f.node.is_shorthand,
                               }}
@@ -901,7 +901,7 @@ pub fn lower_binding_mode(b: &BindingMode) -> hir::BindingMode {
 
 pub fn lower_struct_field_kind(s: &StructFieldKind) -> hir::StructFieldKind {
     match *s {
-        NamedField(ident, vis) => hir::NamedField(ident, lower_visibility(vis)),
+        NamedField(ident, vis) => hir::NamedField(ident.name, lower_visibility(vis)),
         UnnamedField(vis) => hir::UnnamedField(lower_visibility(vis)),
     }
 }

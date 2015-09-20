@@ -545,7 +545,7 @@ fn convert_angle_bracketed_parameters<'tcx>(this: &AstConv<'tcx>,
 
     let assoc_bindings: Vec<_> =
         data.bindings.iter()
-                     .map(|b| ConvertedBinding { item_name: b.ident.name,
+                     .map(|b| ConvertedBinding { item_name: b.name,
                                                  ty: ast_ty_to_ty(this, rscope, &*b.ty),
                                                  span: b.span })
                      .collect();

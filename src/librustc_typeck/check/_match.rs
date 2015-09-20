@@ -706,25 +706,25 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
     // Typecheck each field.
     for &Spanned { node: ref field, span } in fields {
-        let field_ty = match used_fields.entry(field.ident.name) {
+        let field_ty = match used_fields.entry(field.name) {
             Occupied(occupied) => {
                 span_err!(tcx.sess, span, E0025,
                     "field `{}` bound multiple times in the pattern",
-                    field.ident);
+                    field.name);
                 span_note!(tcx.sess, *occupied.get(),
                     "field `{}` previously bound here",
-                    field.ident);
+                    field.name);
                 tcx.types.err
             }
             Vacant(vacant) => {
                 vacant.insert(span);
-                field_map.get(&field.ident.name)
+                field_map.get(&field.name)
                     .map(|f| pcx.fcx.field_ty(span, f, substs))
                     .unwrap_or_else(|| {
                         span_err!(tcx.sess, span, E0026,
                             "struct `{}` does not have a field named `{}`",
                             tcx.item_path_str(variant.did),
-                            field.ident);
+                            field.name);
                         tcx.types.err
                     })
             }

@@ -299,7 +299,7 @@ pub fn walk_enum_def<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
                                         variant: &'v Variant,
                                         generics: &'v Generics) {
-    visitor.visit_name(variant.span, variant.node.name.name);
+    visitor.visit_name(variant.span, variant.node.name);
 
     match variant.node.kind {
         TupleVariantKind(ref variant_arguments) => {
@@ -309,7 +309,7 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
         }
         StructVariantKind(ref struct_definition) => {
             visitor.visit_struct_def(&**struct_definition,
-                                     variant.node.name.name,
+                                     variant.node.name,
                                      generics,
                                      variant.node.id)
         }
@@ -441,7 +441,7 @@ pub fn walk_path_parameters<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V,
                                                    type_binding: &'v TypeBinding) {
-    visitor.visit_name(type_binding.span, type_binding.ident.name);
+    visitor.visit_name(type_binding.span, type_binding.name);
     visitor.visit_ty(&*type_binding.ty);
 }
 
@@ -539,7 +539,7 @@ pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics) {
     for param in generics.ty_params.iter() {
-        visitor.visit_name(param.span, param.ident.name);
+        visitor.visit_name(param.span, param.name);
         walk_ty_param_bounds_helper(visitor, &param.bounds);
         walk_ty_opt(visitor, &param.default);
     }
@@ -668,7 +668,7 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V,
 pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V,
                                              struct_field: &'v StructField) {
     if let NamedField(name, _) = struct_field.node.kind {
-        visitor.visit_name(struct_field.span, name.name);
+        visitor.visit_name(struct_field.span, name);
     }
 
     visitor.visit_ty(&*struct_field.node.ty);

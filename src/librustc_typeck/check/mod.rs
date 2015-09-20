@@ -838,7 +838,7 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         Position::ArgumentNamed(s) if s == "Self" => (),
                         // So is `{A}` if A is a type parameter
                         Position::ArgumentNamed(s) => match types.iter().find(|t| {
-                            t.ident.name == s
+                            t.name == s
                         }) {
                             Some(_) => (),
                             None => {
@@ -4938,7 +4938,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         if !*b {
             span_err!(ccx.tcx.sess, span, E0091,
                 "type parameter `{}` is unused",
-                tps[i].ident);
+                tps[i].name);
         }
     }
 }

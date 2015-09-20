@@ -941,7 +941,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 let variant = adt.variant_of_def(def);
                 for field in fields {
                     self.check_field(pattern.span, adt, variant,
-                                     NamedField(field.node.ident.name));
+                                     NamedField(field.node.name));
                 }
             }
 

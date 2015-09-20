@@ -17,7 +17,7 @@ use syntax;
 use syntax::codemap::Span;
 use syntax::abi;
 use syntax::ast;
-use syntax::ast::{Ident, Name, NodeId};
+use syntax::ast::{Name, NodeId};
 use syntax::attr;
 use syntax::ptr::P;
 use rustc_front::hir;
@@ -117,7 +117,7 @@ pub struct Enum {
 }
 
 pub struct Variant {
-    pub name: Ident,
+    pub name: Name,
     pub attrs: Vec<ast::Attribute>,
     pub kind: hir::VariantKind,
     pub id: ast::NodeId,

@@ -513,7 +513,7 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &hir::Pat,
         // Foo { a, b, c }
         hir::PatStruct(_, ref pat_fields, _) => {
             for field in pat_fields {
-                let did = v.field_named(field.node.ident.name).did;
+                let did = v.field_named(field.node.name).did;
                 maybe_do_stability_check(tcx, did, field.span, cb);
             }
         }

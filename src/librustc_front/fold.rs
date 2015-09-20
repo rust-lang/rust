@@ -355,9 +355,9 @@ pub fn noop_fold_decl<T: Folder>(d: P<Decl>, fld: &mut T) -> SmallVector<P<Decl>
 }
 
 pub fn noop_fold_ty_binding<T: Folder>(b: P<TypeBinding>, fld: &mut T) -> P<TypeBinding> {
-    b.map(|TypeBinding { id, ident, ty, span }| TypeBinding {
+    b.map(|TypeBinding { id, name, ty, span }| TypeBinding {
         id: fld.new_id(id),
-        ident: ident,
+        name: name,
         ty: fld.fold_ty(ty),
         span: fld.new_span(span),
     })
@@ -576,10 +576,10 @@ pub fn noop_fold_ty_param_bound<T>(tpb: TyParamBound, fld: &mut T)
 }
 
 pub fn noop_fold_ty_param<T: Folder>(tp: TyParam, fld: &mut T) -> TyParam {
-    let TyParam {id, ident, bounds, default, span} = tp;
+    let TyParam {id, name, bounds, default, span} = tp;
     TyParam {
         id: fld.new_id(id),
-        ident: ident,
+        name: name,
         bounds: fld.fold_bounds(bounds),
         default: default.map(|x| fld.fold_ty(x)),
         span: span
@@ -1009,7 +1009,7 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
                 let fs = fields.move_map(|f| {
                     Spanned { span: folder.new_span(f.span),
                               node: hir::FieldPat {
-                                  ident: f.node.ident,
+                                  name: f.node.name,
                                   pat: folder.fold_pat(f.node.pat),
                                   is_shorthand: f.node.is_shorthand,
                               }}
