@@ -1323,6 +1323,8 @@ impl<T> Drop for Vec<T> {
         // don't need unsafe_no_drop_flag shenanigans anymore.
         if self.buf.unsafe_no_drop_flag_needs_drop() {
             unsafe {
+                // The branch on needs_drop() is an -O1 performance optimization.
+                // Without the branch, dropping Vec<u8> takes linear time.
                 if needs_drop::<T>() {
                     for x in self.iter_mut() {
                         drop_in_place(x);
