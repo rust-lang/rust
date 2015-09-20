@@ -418,7 +418,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &hir::Expr,
         hir::ExprField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
-                ty::TyStruct(def, _) => def.struct_variant().field_named(field.node.name).did,
+                ty::TyStruct(def, _) => def.struct_variant().field_named(field.node).did,
                 _ => tcx.sess.span_bug(e.span,
                                        "stability::check_expr: named field access on non-struct")
             }
@@ -441,7 +441,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &hir::Expr,
                     // in the construction expression.
                     for field in expr_fields {
                         let did = def.struct_variant()
-                            .field_named(field.ident.node.name)
+                            .field_named(field.name.node)
                             .did;
                         maybe_do_stability_check(tcx, did, field.span, cb);
                     }

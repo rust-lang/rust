@@ -52,10 +52,6 @@ use util;
 use std::fmt;
 use serialize::{Encodable, Encoder, Decoder};
 
-
-/// Function name (not all functions have names)
-pub type FnIdent = Option<Ident>;
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
     pub id: NodeId,
@@ -416,7 +412,7 @@ pub enum Pat_ {
     /// which it is. The resolver determines this, and
     /// records this pattern's NodeId in an auxiliary
     /// set (of "PatIdents that refer to nullary enums")
-    PatIdent(BindingMode, SpannedIdent, Option<P<Pat>>),
+    PatIdent(BindingMode, Spanned<Ident>, Option<P<Pat>>),
 
     /// "None" means a * pattern where we don't bind the fields to names.
     PatEnum(Path, Option<Vec<P<Pat>>>),
@@ -564,12 +560,10 @@ pub struct Arm {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Field {
-    pub ident: SpannedIdent,
+    pub name: Spanned<Name>,
     pub expr: P<Expr>,
     pub span: Span,
 }
-
-pub type SpannedIdent = Spanned<Ident>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BlockCheckMode {
@@ -612,7 +606,7 @@ pub enum Expr_ {
     ExprCall(P<Expr>, Vec<P<Expr>>),
     /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
     ///
-    /// The `SpannedIdent` is the identifier for the method name.
+    /// The `Spanned<Name>` is the identifier for the method name.
     /// The vector of `Ty`s are the ascripted type parameters for the method
     /// (within the angle brackets).
     ///
@@ -622,7 +616,7 @@ pub enum Expr_ {
     ///
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprMethodCall(foo, [Bar, Baz], [x, a, b, c, d])`.
-    ExprMethodCall(SpannedIdent, Vec<P<Ty>>, Vec<P<Expr>>),
+    ExprMethodCall(Spanned<Name>, Vec<P<Ty>>, Vec<P<Expr>>),
     /// A tuple (`(a, b, c ,d)`)
     ExprTup(Vec<P<Expr>>),
     /// A binary operation (For example: `a + b`, `a * b`)
@@ -662,7 +656,7 @@ pub enum Expr_ {
     /// For example, `a += 1`.
     ExprAssignOp(BinOp, P<Expr>, P<Expr>),
     /// Access of a named struct field (`obj.foo`)
-    ExprField(P<Expr>, SpannedIdent),
+    ExprField(P<Expr>, Spanned<Name>),
     /// Access of an unnamed field of a struct or tuple-struct
     ///
     /// For example, `foo.0`.
@@ -682,9 +676,9 @@ pub enum Expr_ {
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Option<SpannedIdent>),
+    ExprBreak(Option<Spanned<Ident>>),
     /// A `continue`, with an optional label
-    ExprAgain(Option<SpannedIdent>),
+    ExprAgain(Option<Spanned<Ident>>),
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
@@ -742,13 +736,6 @@ pub enum CaptureClause {
 pub struct MutTy {
     pub ty: P<Ty>,
     pub mutbl: Mutability,
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct TypeField {
-    pub ident: Ident,
-    pub mt: MutTy,
-    pub span: Span,
 }
 
 /// Represents a method's signature in a trait declaration,

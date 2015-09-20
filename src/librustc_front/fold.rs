@@ -721,9 +721,9 @@ pub fn noop_fold_struct_field<T: Folder>(f: StructField, fld: &mut T) -> StructF
     }
 }
 
-pub fn noop_fold_field<T: Folder>(Field {ident, expr, span}: Field, folder: &mut T) -> Field {
+pub fn noop_fold_field<T: Folder>(Field {name, expr, span}: Field, folder: &mut T) -> Field {
     Field {
-        ident: respan(ident.span, fold_ident(folder, ident.node)),
+        name: respan(folder.new_span(name.span), folder.fold_name(name.node)),
         expr: folder.fold_expr(expr),
         span: folder.new_span(span)
     }
@@ -1050,9 +1050,9 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                 ExprCall(folder.fold_expr(f),
                          args.move_map(|x| folder.fold_expr(x)))
             }
-            ExprMethodCall(i, tps, args) => {
+            ExprMethodCall(name, tps, args) => {
                 ExprMethodCall(
-                    respan(folder.new_span(i.span), fold_ident(folder, i.node)),
+                    respan(folder.new_span(name.span), folder.fold_name(name.node)),
                     tps.move_map(|x| folder.fold_ty(x)),
                     args.move_map(|x| folder.fold_expr(x)))
             }
@@ -1102,10 +1102,10 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                             folder.fold_expr(el),
                             folder.fold_expr(er))
             }
-            ExprField(el, ident) => {
+            ExprField(el, name) => {
                 ExprField(folder.fold_expr(el),
-                          respan(folder.new_span(ident.span),
-                                 fold_ident(folder, ident.node)))
+                          respan(folder.new_span(name.span),
+                                 folder.fold_name(name.node)))
             }
             ExprTupField(el, ident) => {
                 ExprTupField(folder.fold_expr(el),

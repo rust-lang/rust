@@ -3817,19 +3817,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &Expr) {
         match expr.node {
-            ExprField(_, ident) => {
+            ExprField(_, name) => {
                 // FIXME(#6890): Even though you can't treat a method like a
                 // field, we need to add any trait methods we find that match
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
-                let traits = self.get_traits_containing_item(ident.node.name);
+                let traits = self.get_traits_containing_item(name.node);
                 self.trait_map.insert(expr.id, traits);
             }
-            ExprMethodCall(ident, _, _) => {
+            ExprMethodCall(name, _, _) => {
                 debug!("(recording candidate traits for expr) recording \
                         traits for {}",
                        expr.id);
-                let traits = self.get_traits_containing_item(ident.node.name);
+                let traits = self.get_traits_containing_item(name.node);
                 self.trait_map.insert(expr.id, traits);
             }
             _ => {
