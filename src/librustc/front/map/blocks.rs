@@ -189,13 +189,13 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn kind(self) -> FnKind<'a> {
         let item = |p: ItemFnParts<'a>| -> FnKind<'a> {
-            FnKind::ItemFn(p.ident, p.generics, p.unsafety, p.constness, p.abi, p.vis)
+            FnKind::ItemFn(p.ident.name, p.generics, p.unsafety, p.constness, p.abi, p.vis)
         };
         let closure = |_: ClosureParts| {
             FnKind::Closure
         };
-        let method = |_, ident, sig: &'a ast::MethodSig, vis, _, _| {
-            FnKind::Method(ident, sig, vis)
+        let method = |_, ident: Ident, sig: &'a ast::MethodSig, vis, _, _| {
+            FnKind::Method(ident.name, sig, vis)
         };
         self.handle(item, method, closure)
     }

@@ -1081,12 +1081,12 @@ impl LateLintPass for MissingDoc {
     }
 
     fn check_struct_def(&mut self, _: &LateContext, _: &hir::StructDef,
-                        _: ast::Ident, _: &hir::Generics, id: ast::NodeId) {
+                        _: ast::Name, _: &hir::Generics, id: ast::NodeId) {
         self.struct_def_stack.push(id);
     }
 
     fn check_struct_def_post(&mut self, _: &LateContext, _: &hir::StructDef,
-                             _: ast::Ident, _: &hir::Generics, id: ast::NodeId) {
+                             _: ast::Name, _: &hir::Generics, id: ast::NodeId) {
         let popped = self.struct_def_stack.pop().expect("empty struct_def_stack");
         assert!(popped == id);
     }

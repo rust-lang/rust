@@ -128,7 +128,7 @@ impl<'v> Visitor<'v> for ParentVisitor {
         visit::walk_impl_item(self, ii);
     }
 
-    fn visit_struct_def(&mut self, s: &hir::StructDef, _: ast::Ident,
+    fn visit_struct_def(&mut self, s: &hir::StructDef, _: ast::Name,
                         _: &'v hir::Generics, n: ast::NodeId) {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.

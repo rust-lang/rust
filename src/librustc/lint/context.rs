@@ -663,12 +663,12 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
 
     fn visit_struct_def(&mut self,
                         s: &hir::StructDef,
-                        ident: ast::Ident,
+                        name: ast::Name,
                         g: &hir::Generics,
                         id: ast::NodeId) {
-        run_lints!(self, check_struct_def, late_passes, s, ident, g, id);
+        run_lints!(self, check_struct_def, late_passes, s, name, g, id);
         hir_visit::walk_struct_def(self, s);
-        run_lints!(self, check_struct_def_post, late_passes, s, ident, g, id);
+        run_lints!(self, check_struct_def_post, late_passes, s, name, g, id);
     }
 
     fn visit_struct_field(&mut self, s: &hir::StructField) {
@@ -691,8 +691,8 @@ impl<'a, 'tcx, 'v> hir_visit::Visitor<'v> for LateContext<'a, 'tcx> {
         hir_visit::walk_ty(self, t);
     }
 
-    fn visit_ident(&mut self, sp: Span, id: ast::Ident) {
-        run_lints!(self, check_ident, late_passes, sp, id);
+    fn visit_name(&mut self, sp: Span, name: ast::Name) {
+        run_lints!(self, check_name, late_passes, sp, name);
     }
 
     fn visit_mod(&mut self, m: &hir::Mod, s: Span, n: ast::NodeId) {

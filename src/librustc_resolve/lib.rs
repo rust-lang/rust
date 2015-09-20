@@ -509,7 +509,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
             }
             hir::StructVariantKind(ref struct_definition) => {
                 self.visit_struct_def(&**struct_definition,
-                                      variant.node.name,
+                                      variant.node.name.name,
                                       generics,
                                       variant.node.id);
             }
