@@ -4843,7 +4843,7 @@ impl<'a> Parser<'a> {
         let hi = if self.span == codemap::DUMMY_SP {
             inner_lo
         } else {
-            self.span.lo
+            self.last_span.hi
         };
 
         Ok(ast::Mod {
