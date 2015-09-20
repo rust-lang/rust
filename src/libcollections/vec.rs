@@ -1322,9 +1322,11 @@ impl<T> Drop for Vec<T> {
         // OK because exactly when this stops being a valid assumption, we
         // don't need unsafe_no_drop_flag shenanigans anymore.
         if self.buf.unsafe_no_drop_flag_needs_drop() {
-            if unsafe { needs_drop::<T>() } {
-                for x in self.iter_mut() {
-                    unsafe { drop_in_place(x); }
+            unsafe {
+                if needs_drop::<T>() {
+                    for x in self.iter_mut() {
+                        drop_in_place(x);
+                    }
                 }
             }
         }
