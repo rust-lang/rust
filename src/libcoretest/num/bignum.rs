@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::prelude::v1::*;
-use core::num::flt2dec::bignum::tests::Big8x3 as Big;
+use core::num::bignum::tests::Big8x3 as Big;
 
 #[test]
 #[should_panic]

@@ -10,13 +10,13 @@
 
 //! The various algorithms from the paper.
 
-use num::flt2dec::strategy::grisu::Fp;
 use prelude::v1::*;
 use cmp::min;
 use cmp::Ordering::{Less, Equal, Greater};
-use super::table;
-use super::rawfp::{self, Unpacked, RawFloat, fp_to_float, next_float, prev_float};
-use super::num::{self, Big};
+use num::diy_float::Fp;
+use num::dec2flt::table;
+use num::dec2flt::rawfp::{self, Unpacked, RawFloat, fp_to_float, next_float, prev_float};
+use num::dec2flt::num::{self, Big};
 
 /// Number of significand bits in Fp
 const P: u32 = 64;
