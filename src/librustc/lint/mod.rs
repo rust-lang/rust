@@ -130,7 +130,7 @@ pub trait LintPass {
 // FIXME: eliminate the duplication with `Visitor`. But this also
 // contains a few lint-specific methods with no equivalent in `Visitor`.
 pub trait LateLintPass: LintPass {
-    fn check_ident(&mut self, _: &LateContext, _: Span, _: ast::Ident) { }
+    fn check_name(&mut self, _: &LateContext, _: Span, _: ast::Name) { }
     fn check_crate(&mut self, _: &LateContext, _: &hir::Crate) { }
     fn check_mod(&mut self, _: &LateContext, _: &hir::Mod, _: Span, _: ast::NodeId) { }
     fn check_foreign_item(&mut self, _: &LateContext, _: &hir::ForeignItem) { }
@@ -150,9 +150,9 @@ pub trait LateLintPass: LintPass {
     fn check_trait_item(&mut self, _: &LateContext, _: &hir::TraitItem) { }
     fn check_impl_item(&mut self, _: &LateContext, _: &hir::ImplItem) { }
     fn check_struct_def(&mut self, _: &LateContext,
-        _: &hir::StructDef, _: ast::Ident, _: &hir::Generics, _: ast::NodeId) { }
+        _: &hir::StructDef, _: ast::Name, _: &hir::Generics, _: ast::NodeId) { }
     fn check_struct_def_post(&mut self, _: &LateContext,
-        _: &hir::StructDef, _: ast::Ident, _: &hir::Generics, _: ast::NodeId) { }
+        _: &hir::StructDef, _: ast::Name, _: &hir::Generics, _: ast::NodeId) { }
     fn check_struct_field(&mut self, _: &LateContext, _: &hir::StructField) { }
     fn check_variant(&mut self, _: &LateContext, _: &hir::Variant, _: &hir::Generics) { }
     fn check_variant_post(&mut self, _: &LateContext, _: &hir::Variant, _: &hir::Generics) { }
