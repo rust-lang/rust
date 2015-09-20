@@ -1108,9 +1108,14 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                      }
                                      StructLitField::Base(ref expr) => {
                                          // 2 = ..
-                                         expr.rewrite(inner_context, h_budget - 2, indent + 2)
-                                             .map(|s| format!("..{}", s))
-                                             .unwrap_or(context.snippet(expr.span))
+                                         format!("..{}",
+                                                 h_budget.checked_sub(2)
+                                                         .and_then(|h_budget| {
+                                                             expr.rewrite(inner_context,
+                                                                          h_budget,
+                                                                          indent + 2)
+                                                         })
+                                                         .unwrap_or(context.snippet(expr.span)))
                                      }
                                  }
                              },
