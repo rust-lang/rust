@@ -1,5 +1,6 @@
 #![feature(plugin)]
 #![plugin(clippy)]
+#![allow(unused)]
 
 #![deny(let_and_return)]
 
@@ -7,6 +8,15 @@ fn test() -> i32 {
     let _y = 0; // no warning
     let x = 5;   //~NOTE
     x            //~ERROR returning the result of a let binding
+}
+
+fn test_inner() -> i32 {
+    if true {
+        let x = 5;
+        x            //~ERROR returning the result of a let binding
+    } else {
+        0
+    }
 }
 
 fn test_nowarn_1() -> i32 {
@@ -27,8 +37,4 @@ fn test_nowarn_3() -> (i32, i32) {
 }
 
 fn main() {
-    test();
-    test_nowarn_1();
-    test_nowarn_2();
-    test_nowarn_3();
 }

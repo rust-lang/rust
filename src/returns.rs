@@ -10,7 +10,7 @@ declare_lint!(pub NEEDLESS_RETURN, Warn,
               "using a return statement like `return expr;` where an expression would suffice");
 declare_lint!(pub LET_AND_RETURN, Warn,
               "creating a let-binding and then immediately returning it like `let x = expr; x` at \
-               the end of a function");
+               the end of a block");
 
 #[derive(Copy, Clone)]
 pub struct ReturnPass;
@@ -71,11 +71,11 @@ impl ReturnPass {
         if_let_chain! {
             [
                 let Some(stmt) = block.stmts.last(),
+                let Some(ref retexpr) = block.expr,
                 let StmtDecl(ref decl, _) = stmt.node,
                 let DeclLocal(ref local) = decl.node,
                 let Some(ref initexpr) = local.init,
                 let PatIdent(_, Spanned { node: id, .. }, _) = local.pat.node,
-                let Some(ref retexpr) = block.expr,
                 let ExprPath(_, ref path) = retexpr.node,
                 match_path(path, &[&id.name.as_str()])
             ], {
@@ -87,7 +87,7 @@ impl ReturnPass {
     fn emit_let_lint(&mut self, cx: &LateContext, lint_span: Span, note_span: Span) {
         if in_external_macro(cx, note_span) {return;}
         span_lint(cx, LET_AND_RETURN, lint_span,
-                  "returning the result of a let binding. \
+                  "returning the result of a let binding from a block. \
                    Consider returning the expression directly.");
         if cx.current_level(LET_AND_RETURN) != Level::Allow {
             cx.sess().span_note(note_span,
@@ -106,6 +106,9 @@ impl LateLintPass for ReturnPass {
     fn check_fn(&mut self, cx: &LateContext, _: FnKind, _: &FnDecl,
                 block: &Block, _: Span, _: NodeId) {
         self.check_block_return(cx, block);
+    }
+
+    fn check_block(&mut self, cx: &LateContext, block: &Block) {
         self.check_let_return(cx, block);
     }
 }
