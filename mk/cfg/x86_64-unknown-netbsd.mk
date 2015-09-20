@@ -1,4 +1,5 @@
 # x86_64-unknown-netbsd configuration
+CROSS_PREFIX_x86_64-unknown-netbsd=x86_64-unknown-netbsd-
 CC_x86_64-unknown-netbsd=$(CC)
 CXX_x86_64-unknown-netbsd=$(CXX)
 CPP_x86_64-unknown-netbsd=$(CPP)
