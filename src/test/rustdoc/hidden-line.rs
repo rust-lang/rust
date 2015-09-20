@@ -12,8 +12,6 @@
 /// retained.
 ///
 /// ```rust
-/// mod to_make_deriving_work { // FIXME #4913
-///
 /// # #[derive(PartialEq)] // invisible
 /// # struct Foo; // invisible
 ///
@@ -23,8 +21,6 @@
 /// fn test() {
 ///     let x = Bar(Foo);
 ///     assert_eq!(x, x); // check that the derivings worked
-/// }
-///
 /// }
 /// ```
 pub fn foo() {}
