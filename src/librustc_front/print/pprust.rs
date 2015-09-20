@@ -2174,15 +2174,14 @@ impl<'a> State<'a> {
 
     pub fn print_view_path(&mut self, vp: &hir::ViewPath) -> io::Result<()> {
         match vp.node {
-            hir::ViewPathSimple(ident, ref path) => {
+            hir::ViewPathSimple(name, ref path) => {
                 try!(self.print_path(path, false, 0));
 
                 // FIXME(#6993) can't compare identifiers directly here
-                if path.segments.last().unwrap().identifier.name !=
-                        ident.name {
+                if path.segments.last().unwrap().identifier.name != name {
                     try!(space(&mut self.s));
                     try!(self.word_space("as"));
-                    try!(self.print_ident(ident));
+                    try!(self.print_name(name));
                 }
 
                 Ok(())
@@ -2203,7 +2202,7 @@ impl<'a> State<'a> {
                 try!(self.commasep(Inconsistent, &idents[..], |s, w| {
                     match w.node {
                         hir::PathListIdent { name, .. } => {
-                            s.print_ident(name)
+                            s.print_name(name)
                         },
                         hir::PathListMod { .. } => {
                             word(&mut s.s, "self")

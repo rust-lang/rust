@@ -199,7 +199,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     }
 
-    fn resolve_id(&mut self, id: ast::NodeId, renamed: Option<ast::Ident>,
+    fn resolve_id(&mut self, id: ast::NodeId, renamed: Option<ast::Name>,
                   glob: bool, om: &mut Module, please_inline: bool) -> bool {
         let tcx = match self.cx.tcx_opt() {
             Some(tcx) => tcx,
@@ -241,9 +241,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     pub fn visit_item(&mut self, item: &hir::Item,
-                      renamed: Option<ast::Ident>, om: &mut Module) {
+                      renamed: Option<ast::Name>, om: &mut Module) {
         debug!("Visiting item {:?}", item);
-        let name = renamed.map_or(item.name, |x| x.name);
+        let name = renamed.unwrap_or(item.name);
         match item.node {
             hir::ItemExternCrate(ref p) => {
                 let path = match *p {
@@ -398,7 +398,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         Macro {
             id: def.id,
             attrs: def.attrs.clone(),
-            name: def.ident,
+            name: def.name,
             whence: def.span,
             stab: self.stability(def.id),
             imported_from: def.imported_from,

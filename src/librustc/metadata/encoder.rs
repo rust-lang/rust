@@ -1787,7 +1787,7 @@ fn encode_macro_defs(rbml_w: &mut Encoder,
     for def in &krate.exported_macros {
         rbml_w.start_tag(tag_macro_def);
 
-        encode_name(rbml_w, def.ident.name);
+        encode_name(rbml_w, def.name);
         encode_attributes(rbml_w, &def.attrs);
 
         rbml_w.wr_tagged_str(tag_macro_def_body,

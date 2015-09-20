@@ -22,7 +22,7 @@ pub fn lower_view_path(view_path: &ViewPath) -> P<hir::ViewPath> {
     P(Spanned {
         node: match view_path.node {
             ViewPathSimple(ident, ref path) => {
-                hir::ViewPathSimple(ident, lower_path(path))
+                hir::ViewPathSimple(ident.name, lower_path(path))
             }
             ViewPathGlob(ref path) => {
                 hir::ViewPathGlob(lower_path(path))
@@ -35,11 +35,14 @@ pub fn lower_view_path(view_path: &ViewPath) -> P<hir::ViewPath> {
                                         PathListIdent { id, name, rename } =>
                                             hir::PathListIdent {
                                                 id: id,
-                                                name: name,
-                                                rename: rename.clone(),
+                                                name: name.name,
+                                                rename: rename.map(|x| x.name),
                                             },
                                         PathListMod { id, rename } =>
-                                            hir::PathListMod { id: id, rename: rename.clone() }
+                                            hir::PathListMod {
+                                                id: id,
+                                                rename: rename.map(|x| x.name)
+                                            }
                                     },
                                     span: path_list_ident.span
                                 }
@@ -526,11 +529,11 @@ pub fn lower_crate(c: &Crate) -> hir::Crate {
 
 pub fn lower_macro_def(m: &MacroDef) -> hir::MacroDef {
     hir::MacroDef {
-        ident: m.ident,
+        name: m.ident.name,
         attrs: m.attrs.clone(),
         id: m.id,
         span: m.span,
-        imported_from: m.imported_from,
+        imported_from: m.imported_from.map(|x| x.name),
         export: m.export,
         use_locally: m.use_locally,
         allow_internal_unstable: m.allow_internal_unstable,
