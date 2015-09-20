@@ -151,8 +151,7 @@ pub const ILLEGAL_CTXT : SyntaxContext = 1;
 
 /// A name is a part of an identifier, representing a string or gensym. It's
 /// the result of interning.
-#[derive(Eq, Ord, PartialEq, PartialOrd, Hash,
-           RustcEncodable, RustcDecodable, Clone, Copy)]
+#[derive(Eq, Ord, PartialEq, PartialOrd, Hash, Clone, Copy)]
 pub struct Name(pub u32);
 
 impl<T: AsRef<str>> PartialEq<T> for Name {
@@ -178,6 +177,18 @@ impl Name {
 
 /// A mark represents a unique id associated with a macro expansion
 pub type Mrk = u32;
+
+impl Encodable for Name {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_str(&self.as_str())
+    }
+}
+
+impl Decodable for Name {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Name, D::Error> {
+        Ok(token::intern(&try!(d.read_str())[..]))
+    }
+}
 
 impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
