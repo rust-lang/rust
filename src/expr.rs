@@ -1057,7 +1057,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     let path_str = try_opt!(path.rewrite(context, path_budget, offset));
 
     // Foo { a: Foo } - indent is +3, width is -5.
-    let h_budget = try_opt!(width.checked_sub(path_str.len() + 5));
+    let h_budget = width.checked_sub(path_str.len() + 5).unwrap_or(0);
     let (indent, v_budget) = match context.config.struct_lit_style {
         StructLitStyle::Visual => {
             (offset + path_str.len() + 3, h_budget)
@@ -1103,16 +1103,16 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              |item| {
                                  match *item {
                                      StructLitField::Regular(ref field) => {
-                                         rewrite_field(inner_context, &field, h_budget, indent)
+                                         rewrite_field(inner_context, &field, v_budget, indent)
                                              .unwrap_or(context.snippet(field.span))
                                      }
                                      StructLitField::Base(ref expr) => {
                                          // 2 = ..
                                          format!("..{}",
-                                                 h_budget.checked_sub(2)
-                                                         .and_then(|h_budget| {
+                                                 v_budget.checked_sub(2)
+                                                         .and_then(|v_budget| {
                                                              expr.rewrite(inner_context,
-                                                                          h_budget,
+                                                                          v_budget,
                                                                           indent + 2)
                                                          })
                                                          .unwrap_or(context.snippet(expr.span)))
@@ -1122,11 +1122,13 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              span_after(span, "{", context.codemap),
                              span.hi);
 
+    let tactic = match (context.config.struct_lit_style, fields.len()) {
+        (StructLitStyle::Visual, 1) => ListTactic::HorizontalVertical,
+        _ => context.config.struct_lit_multiline_style.to_list_tactic(),
+    };
+
     let fmt = ListFormatting {
-        tactic: match (context.config.struct_lit_style, fields.len()) {
-            (StructLitStyle::Visual, 1) => ListTactic::HorizontalVertical,
-            _ => context.config.struct_lit_multiline_style.to_list_tactic(),
-        },
+        tactic: tactic,
         separator: ",",
         trailing_separator: if base.is_some() {
             SeparatorTactic::Never
@@ -1150,7 +1152,8 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     };
 
     match (context.config.struct_lit_style, context.config.struct_lit_multiline_style) {
-        (StructLitStyle::Block, _) if fields_str.contains('\n') => format_on_newline(),
+        (StructLitStyle::Block, _) if fields_str.contains('\n') || fields_str.len() > h_budget =>
+            format_on_newline(),
         (StructLitStyle::Block, MultilineStyle::ForceMulti) => format_on_newline(),
         _ => Some(format!("{} {{ {} }}", path_str, fields_str)),
     }

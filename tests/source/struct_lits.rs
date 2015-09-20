@@ -83,3 +83,11 @@ fn issue278() {
         b: 0,
     };
 }
+
+fn struct_exprs() {
+    Foo
+    { a :  1, b:f( 2)};
+    Foo{a:1,b:f(2),..g(3)};
+    LoooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooongStruct { ..base };
+    IntrinsicISizesContribution { content_intrinsic_sizes: IntrinsicISizes { minimum_inline_size: 0, }, };
+}
