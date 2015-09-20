@@ -53,7 +53,7 @@ const VTABLE_OFFSET: usize = 3;
 /// be generated once they are invoked with specific type parameters,
 /// see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 pub fn trans_impl(ccx: &CrateContext,
-                  name: ast::Ident,
+                  name: ast::Name,
                   impl_items: &[P<hir::ImplItem>],
                   generics: &hir::Generics,
                   id: ast::NodeId) {

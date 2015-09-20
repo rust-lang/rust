@@ -1731,7 +1731,7 @@ impl LateLintPass for InvalidNoMangleItems {
                 if attr::contains_name(&it.attrs, "no_mangle") &&
                        !cx.exported_items.contains(&it.id) {
                     let msg = format!("function {} is marked #[no_mangle], but not exported",
-                                      it.ident);
+                                      it.name);
                     cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, &msg);
                 }
             },
@@ -1739,7 +1739,7 @@ impl LateLintPass for InvalidNoMangleItems {
                 if attr::contains_name(&it.attrs, "no_mangle") &&
                        !cx.exported_items.contains(&it.id) {
                     let msg = format!("static {} is marked #[no_mangle], but not exported",
-                                      it.ident);
+                                      it.name);
                     cx.span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, &msg);
                 }
             },

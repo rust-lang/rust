@@ -466,7 +466,7 @@ pub fn lower_item_underscore(i: &Item_) -> hir::Item_ {
 pub fn lower_trait_item(i: &TraitItem) -> P<hir::TraitItem> {
     P(hir::TraitItem {
             id: i.id,
-            ident: i.ident,
+            name: i.ident.name,
             attrs: i.attrs.clone(),
             node: match i.node {
             ConstTraitItem(ref ty, ref default) => {
@@ -489,7 +489,7 @@ pub fn lower_trait_item(i: &TraitItem) -> P<hir::TraitItem> {
 pub fn lower_impl_item(i: &ImplItem) -> P<hir::ImplItem> {
     P(hir::ImplItem {
             id: i.id,
-            ident: i.ident,
+            name: i.ident.name,
             attrs: i.attrs.clone(),
             vis: lower_visibility(i.vis),
             node: match i.node  {
@@ -546,7 +546,7 @@ pub fn lower_item_simple(i: &Item) -> hir::Item {
 
     hir::Item {
         id: i.id,
-        ident: i.ident,
+        name: i.ident.name,
         attrs: i.attrs.clone(),
         node: node,
         vis: lower_visibility(i.vis),
@@ -557,7 +557,7 @@ pub fn lower_item_simple(i: &Item) -> hir::Item {
 pub fn lower_foreign_item(i: &ForeignItem) -> P<hir::ForeignItem> {
     P(hir::ForeignItem {
             id: i.id,
-            ident: i.ident,
+            name: i.ident.name,
             attrs: i.attrs.clone(),
             node: match i.node {
             ForeignItemFn(ref fdec, ref generics) => {

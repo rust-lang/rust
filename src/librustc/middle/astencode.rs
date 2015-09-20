@@ -155,16 +155,16 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
         let raw_ii = decode_ast(ast_doc);
         let ii = ast_map::map_decoded_item(&dcx.tcx.map, path, raw_ii, dcx);
 
-        let ident = match *ii {
-            InlinedItem::Item(ref i) => i.ident,
-            InlinedItem::Foreign(ref i) => i.ident,
-            InlinedItem::TraitItem(_, ref ti) => ti.ident,
-            InlinedItem::ImplItem(_, ref ii) => ii.ident
+        let name = match *ii {
+            InlinedItem::Item(ref i) => i.name,
+            InlinedItem::Foreign(ref i) => i.name,
+            InlinedItem::TraitItem(_, ref ti) => ti.name,
+            InlinedItem::ImplItem(_, ref ii) => ii.name
         };
-        debug!("Fn named: {}", ident);
+        debug!("Fn named: {}", name);
         debug!("< Decoded inlined fn: {}::{}",
                path_as_str.unwrap(),
-               ident);
+               name);
         region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
         decode_side_tables(dcx, ast_doc);
         match *ii {

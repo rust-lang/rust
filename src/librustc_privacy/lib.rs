@@ -683,7 +683,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             hir::ItemEnum(..) => "enum",
             _ => return Some((err_span, err_msg, None))
         };
-        let msg = format!("{} `{}` is private", desc, item.ident);
+        let msg = format!("{} `{}` is private", desc, item.name);
         Some((err_span, err_msg, Some((span, msg))))
     }
 

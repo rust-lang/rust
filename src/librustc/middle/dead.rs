@@ -520,7 +520,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
             self.warn_dead_code(
                 item.id,
                 item.span,
-                item.ident.name,
+                item.name,
                 item.node.descriptive_variant()
             );
         } else {
@@ -541,7 +541,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &hir::ForeignItem) {
         if !self.symbol_is_live(fi.id, None) {
-            self.warn_dead_code(fi.id, fi.span, fi.ident.name, fi.node.descriptive_variant());
+            self.warn_dead_code(fi.id, fi.span, fi.name, fi.node.descriptive_variant());
         }
         visit::walk_foreign_item(self, fi);
     }
@@ -560,14 +560,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
             hir::ConstImplItem(_, ref expr) => {
                 if !self.symbol_is_live(impl_item.id, None) {
                     self.warn_dead_code(impl_item.id, impl_item.span,
-                                        impl_item.ident.name, "associated const");
+                                        impl_item.name, "associated const");
                 }
                 visit::walk_expr(self, expr)
             }
             hir::MethodImplItem(_, ref body) => {
                 if !self.symbol_is_live(impl_item.id, None) {
                     self.warn_dead_code(impl_item.id, impl_item.span,
-                                        impl_item.ident.name, "method");
+                                        impl_item.name, "method");
                 }
                 visit::walk_block(self, body)
             }

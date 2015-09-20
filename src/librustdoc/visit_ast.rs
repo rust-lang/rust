@@ -83,7 +83,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     pub fn visit_struct_def(&mut self, item: &hir::Item,
-                            name: ast::Ident, sd: &hir::StructDef,
+                            name: ast::Name, sd: &hir::StructDef,
                             generics: &hir::Generics) -> Struct {
         debug!("Visiting struct");
         let struct_type = struct_type_from_def(&*sd);
@@ -101,7 +101,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     pub fn visit_enum_def(&mut self, it: &hir::Item,
-                          name: ast::Ident, def: &hir::EnumDef,
+                          name: ast::Name, def: &hir::EnumDef,
                           params: &hir::Generics) -> Enum {
         debug!("Visiting enum");
         Enum {
@@ -124,7 +124,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     pub fn visit_fn(&mut self, item: &hir::Item,
-                    name: ast::Ident, fd: &hir::FnDecl,
+                    name: ast::Name, fd: &hir::FnDecl,
                     unsafety: &hir::Unsafety,
                     constness: hir::Constness,
                     abi: &abi::Abi,
@@ -148,7 +148,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn visit_mod_contents(&mut self, span: Span, attrs: Vec<ast::Attribute> ,
                               vis: hir::Visibility, id: ast::NodeId,
                               m: &hir::Mod,
-                              name: Option<ast::Ident>) -> Module {
+                              name: Option<ast::Name>) -> Module {
         let mut om = Module::new(name);
         om.where_outer = span;
         om.where_inner = m.inner;
@@ -243,7 +243,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     pub fn visit_item(&mut self, item: &hir::Item,
                       renamed: Option<ast::Ident>, om: &mut Module) {
         debug!("Visiting item {:?}", item);
-        let name = renamed.unwrap_or(item.ident);
+        let name = renamed.map_or(item.name, |x| x.name);
         match item.node {
             hir::ItemExternCrate(ref p) => {
                 let path = match *p {

@@ -837,9 +837,9 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
 
 pub fn noop_fold_trait_item<T: Folder>(i: P<TraitItem>, folder: &mut T)
                                        -> SmallVector<P<TraitItem>> {
-    SmallVector::one(i.map(|TraitItem {id, ident, attrs, node, span}| TraitItem {
+    SmallVector::one(i.map(|TraitItem {id, name, attrs, node, span}| TraitItem {
         id: folder.new_id(id),
-        ident: fold_ident(folder, ident),
+        name: folder.fold_name(name),
         attrs: fold_attrs(attrs, folder),
         node: match node {
             ConstTraitItem(ty, default) => {
@@ -861,9 +861,9 @@ pub fn noop_fold_trait_item<T: Folder>(i: P<TraitItem>, folder: &mut T)
 
 pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T)
                                       -> SmallVector<P<ImplItem>> {
-    SmallVector::one(i.map(|ImplItem {id, ident, attrs, node, vis, span}| ImplItem {
+    SmallVector::one(i.map(|ImplItem {id, name, attrs, node, vis, span}| ImplItem {
         id: folder.new_id(id),
-        ident: fold_ident(folder, ident),
+        name: folder.fold_name(name),
         attrs: fold_attrs(attrs, folder),
         vis: vis,
         node: match node  {
@@ -892,7 +892,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, span, exported_m
     let config = folder.fold_meta_items(config);
 
     let mut items = folder.fold_item(P(hir::Item {
-        ident: token::special_idents::invalid,
+        name: token::special_idents::invalid.name,
         attrs: attrs,
         id: DUMMY_NODE_ID,
         vis: hir::Public,
@@ -932,7 +932,7 @@ pub fn noop_fold_item<T: Folder>(i: P<Item>, folder: &mut T) -> SmallVector<P<It
 }
 
 // fold one item into exactly one item
-pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}: Item,
+pub fn noop_fold_item_simple<T: Folder>(Item {id, name, attrs, node, vis, span}: Item,
                                         folder: &mut T) -> Item {
     let id = folder.new_id(id);
     let node = folder.fold_item_underscore(node);
@@ -947,7 +947,7 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}
 
     Item {
         id: id,
-        ident: fold_ident(folder, ident),
+        name: folder.fold_name(name),
         attrs: fold_attrs(attrs, folder),
         node: node,
         vis: vis,
@@ -956,9 +956,9 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}
 }
 
 pub fn noop_fold_foreign_item<T: Folder>(ni: P<ForeignItem>, folder: &mut T) -> P<ForeignItem> {
-    ni.map(|ForeignItem {id, ident, attrs, node, span, vis}| ForeignItem {
+    ni.map(|ForeignItem {id, name, attrs, node, span, vis}| ForeignItem {
         id: folder.new_id(id),
-        ident: fold_ident(folder, ident),
+        name: folder.fold_name(name),
         attrs: fold_attrs(attrs, folder),
         node: match node {
             ForeignItemFn(fdec, generics) => {

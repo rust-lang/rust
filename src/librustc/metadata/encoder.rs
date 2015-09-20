@@ -426,16 +426,16 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
         // encoded metadata for static methods relative to Bar,
         // but not yet for Foo.
         //
-        if path_differs || item.ident.name != exp.name {
+        if path_differs || item.name != exp.name {
             if !encode_reexported_static_base_methods(ecx, rbml_w, exp) {
                 if encode_reexported_static_trait_methods(ecx, rbml_w, exp) {
                     debug!("(encode reexported static methods) {} [trait]",
-                           item.ident.name);
+                           item.name);
                 }
             }
             else {
                 debug!("(encode reexported static methods) {} [base]",
-                       item.ident.name);
+                       item.name);
             }
         }
     }
@@ -520,7 +520,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
         });
 
         if let hir::ItemImpl(..) = item.node {
-            let (ident, did) = (item.ident, item.id);
+            let (ident, did) = (item.name, item.id);
             debug!("(encoding info for module) ... encoding impl {} ({}/{})",
                    ident,
                    did, ecx.tcx.map.node_to_string(did));
@@ -1014,7 +1014,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         }
         encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
         encode_symbol(ecx, rbml_w, item.id);
-        encode_name(rbml_w, item.ident.name);
+        encode_name(rbml_w, item.name);
         encode_path(rbml_w, path);
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
@@ -1027,7 +1027,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'C');
         encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
-        encode_name(rbml_w, item.ident.name);
+        encode_name(rbml_w, item.name);
         encode_path(rbml_w, path);
         encode_attributes(rbml_w, &item.attrs);
         encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
@@ -1042,7 +1042,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_family(rbml_w, FN_FAMILY);
         let tps_len = generics.ty_params.len();
         encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
-        encode_name(rbml_w, item.ident.name);
+        encode_name(rbml_w, item.name);
         encode_path(rbml_w, path);
         encode_attributes(rbml_w, &item.attrs);
         let needs_inline = tps_len > 0 || attr::requests_inline(&item.attrs);
@@ -1066,7 +1066,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                             &item.attrs,
                             item.id,
                             path,
-                            item.ident.name,
+                            item.name,
                             item.vis);
       }
       hir::ItemForeignMod(ref fm) => {
@@ -1074,7 +1074,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'n');
-        encode_name(rbml_w, item.ident.name);
+        encode_name(rbml_w, item.name);
         encode_path(rbml_w, path);
 
         // Encode all the items in this module.
@@ -1092,7 +1092,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'y');
         encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
-        encode_name(rbml_w, item.ident.name);
+        encode_name(rbml_w, item.name);
         encode_path(rbml_w, path);
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
@@ -1106,7 +1106,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_family(rbml_w, 't');
         encode_item_variances(rbml_w, ecx, item.id);
         encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
-        encode_name(rbml_w, item.ident.name);
+        encode_name(rbml_w, item.name);
         encode_attributes(rbml_w, &item.attrs);
         encode_repr_attrs(rbml_w, ecx, &item.attrs);
         for v in &enum_definition.variants {
@@ -1146,7 +1146,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
 
         encode_item_variances(rbml_w, ecx, item.id);
-        encode_name(rbml_w, item.ident.name);
+        encode_name(rbml_w, item.name);
         encode_attributes(rbml_w, &item.attrs);
         encode_path(rbml_w, path.clone());
         encode_stability(rbml_w, stab);
@@ -1168,7 +1168,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // If this is a tuple-like struct, encode the type of the constructor.
         match struct_def.ctor_id {
             Some(ctor_id) => {
-                encode_info_for_struct_ctor(ecx, rbml_w, item.ident.name,
+                encode_info_for_struct_ctor(ecx, rbml_w, item.name,
                                             ctor_id, index, def_id.node);
             }
             None => {}
@@ -1179,7 +1179,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
           rbml_w.start_tag(tag_items_data_item);
           encode_def_id(rbml_w, def_id);
           encode_family(rbml_w, 'd');
-          encode_name(rbml_w, item.ident.name);
+          encode_name(rbml_w, item.name);
           encode_unsafety(rbml_w, unsafety);
 
           let trait_ref = tcx.impl_trait_ref(DefId::local(item.id)).unwrap();
@@ -1197,7 +1197,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'i');
         encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
-        encode_name(rbml_w, item.ident.name);
+        encode_name(rbml_w, item.name);
         encode_attributes(rbml_w, &item.attrs);
         encode_unsafety(rbml_w, unsafety);
         encode_polarity(rbml_w, polarity);
@@ -1306,7 +1306,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_predicates(rbml_w, ecx, &tcx.lookup_super_predicates(def_id),
                           tag_item_super_predicates);
         encode_trait_ref(rbml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
-        encode_name(rbml_w, item.ident.name);
+        encode_name(rbml_w, item.name);
         encode_attributes(rbml_w, &item.attrs);
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
@@ -1483,7 +1483,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
       hir::ForeignItemFn(ref fndecl, _) => {
         encode_family(rbml_w, FN_FAMILY);
         encode_bounds_and_type_for_item(rbml_w, ecx, nitem.id);
-        encode_name(rbml_w, nitem.ident.name);
+        encode_name(rbml_w, nitem.name);
         if abi == abi::RustIntrinsic || abi == abi::PlatformIntrinsic {
             encode_inlined_item(ecx, rbml_w, InlinedItemRef::Foreign(nitem));
         }
@@ -1504,7 +1504,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         let stab = stability::lookup(ecx.tcx, DefId::local(nitem.id));
         encode_stability(rbml_w, stab);
         encode_symbol(ecx, rbml_w, nitem.id);
-        encode_name(rbml_w, nitem.ident.name);
+        encode_name(rbml_w, nitem.name);
       }
     }
     encode_path(rbml_w, path);
@@ -1528,7 +1528,7 @@ fn my_visit_foreign_item(ni: &hir::ForeignItem,
                          index: &mut Vec<IndexEntry>) {
     debug!("writing foreign item {}::{}",
             ecx.tcx.map.path_to_string(ni.id),
-            ni.ident);
+            ni.name);
 
     let abi = ecx.tcx.map.get_foreign_abi(ni.id);
     ecx.tcx.map.with_path(ni.id, |path| {

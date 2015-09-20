@@ -577,7 +577,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             container: ImplOrTraitItemContainer,
                             sig: &hir::MethodSig,
                             id: ast::NodeId,
-                            ident: ast::Ident,
+                            name: ast::Name,
                             vis: hir::Visibility,
                             untransformed_rcvr_ty: Ty<'tcx>,
                             rcvr_ty_generics: &ty::Generics<'tcx>,
@@ -592,7 +592,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                               sig, untransformed_rcvr_ty);
 
     let def_id = DefId::local(id);
-    let ty_method = ty::Method::new(ident.name,
+    let ty_method = ty::Method::new(name,
                                     ty_generics,
                                     ty_generic_predicates,
                                     fty,
@@ -605,7 +605,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let fty = ccx.tcx.mk_fn(Some(def_id),
                             ccx.tcx.mk_bare_fn(ty_method.fty.clone()));
     debug!("method {} (id {}) has type {:?}",
-            ident, id, fty);
+            name, id, fty);
     ccx.tcx.register_item_type(def_id, TypeScheme {
         generics: ty_method.generics.clone(),
         ty: fty
@@ -643,7 +643,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                       container: ImplOrTraitItemContainer,
-                                      ident: ast::Ident,
+                                      name: ast::Name,
                                       id: ast::NodeId,
                                       vis: hir::Visibility,
                                       ty: ty::Ty<'tcx>,
@@ -656,7 +656,7 @@ fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let default_id = default.map(|expr| DefId::local(expr.id));
 
     let associated_const = Rc::new(ty::AssociatedConst {
-        name: ident.name,
+        name: name,
         vis: vis,
         def_id: DefId::local(id),
         container: container,
@@ -669,13 +669,13 @@ fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                      container: ImplOrTraitItemContainer,
-                                     ident: ast::Ident,
+                                     name: ast::Name,
                                      id: ast::NodeId,
                                      vis: hir::Visibility,
                                      ty: Option<Ty<'tcx>>)
 {
     let associated_type = Rc::new(ty::AssociatedType {
-        name: ident.name,
+        name: name,
         vis: vis,
         ty: ty,
         def_id: DefId::local(id),
@@ -691,7 +691,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
                                  untransformed_rcvr_ty: Ty<'tcx>,
                                  rcvr_ty_generics: &ty::Generics<'tcx>,
                                  rcvr_ty_predicates: &ty::GenericPredicates<'tcx>)
-    where I: Iterator<Item=(&'i hir::MethodSig, ast::NodeId, ast::Ident, hir::Visibility, Span)>
+    where I: Iterator<Item=(&'i hir::MethodSig, ast::NodeId, ast::Name, hir::Visibility, Span)>
 {
     debug!("convert_methods(untransformed_rcvr_ty={:?}, rcvr_ty_generics={:?}, \
                             rcvr_ty_predicates={:?})",
@@ -743,7 +743,7 @@ fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
 
 fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
     let tcx = ccx.tcx;
-    debug!("convert: item {} with id {}", it.ident, it.id);
+    debug!("convert: item {} with id {}", it.name, it.id);
     match it.node {
         // These don't define types.
         hir::ItemExternCrate(_) | hir::ItemUse(_) |
@@ -823,7 +823,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                     hir::TypeImplItem(_) => &mut seen_type_items,
                     _                    => &mut seen_value_items,
                 };
-                if !seen_items.insert(impl_item.ident.name) {
+                if !seen_items.insert(impl_item.name) {
                     let desc = match impl_item.node {
                         hir::ConstImplItem(_, _) => "associated constant",
                         hir::TypeImplItem(_) => "associated type",
@@ -846,7 +846,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                                ty: ty,
                                            });
                     convert_associated_const(ccx, ImplContainer(DefId::local(it.id)),
-                                             impl_item.ident, impl_item.id,
+                                             impl_item.name, impl_item.id,
                                              impl_item.vis.inherit_from(parent_visibility),
                                              ty, Some(&*expr));
                 }
@@ -863,7 +863,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                     let typ = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, ty);
 
                     convert_associated_type(ccx, ImplContainer(DefId::local(it.id)),
-                                            impl_item.ident, impl_item.id, impl_item.vis,
+                                            impl_item.name, impl_item.id, impl_item.vis,
                                             Some(typ));
                 }
             }
@@ -875,7 +875,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                     // { fn foo(); }` is public, but private in `impl { fn
                     // foo(); }`).
                     let method_vis = ii.vis.inherit_from(parent_visibility);
-                    Some((sig, ii.id, ii.ident, method_vis, ii.span))
+                    Some((sig, ii.id, ii.name, method_vis, ii.span))
                 } else {
                     None
                 }
@@ -925,7 +925,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                                    ty: ty,
                                                });
                         convert_associated_const(ccx, TraitContainer(DefId::local(it.id)),
-                                                 trait_item.ident, trait_item.id,
+                                                 trait_item.name, trait_item.id,
                                                  hir::Public, ty, default.as_ref().map(|d| &**d));
                     }
                     _ => {}
@@ -941,7 +941,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                         });
 
                         convert_associated_type(ccx, TraitContainer(DefId::local(it.id)),
-                                                trait_item.ident, trait_item.id, hir::Public,
+                                                trait_item.name, trait_item.id, hir::Public,
                                                 typ);
                     }
                     _ => {}
@@ -953,7 +953,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                     hir::MethodTraitItem(ref sig, _) => sig,
                     _ => return None,
                 };
-                Some((sig, ti.id, ti.ident, hir::Inherited, ti.span))
+                Some((sig, ti.id, ti.name, hir::Inherited, ti.span))
             });
 
             // Run convert_methods on the trait methods.
@@ -1135,7 +1135,7 @@ fn convert_struct_def<'tcx>(tcx: &ty::ctxt<'tcx>,
     tcx.intern_adt_def(
         did,
         ty::AdtKind::Struct,
-        vec![convert_struct_variant(tcx, did, it.ident.name, 0, def)]
+        vec![convert_struct_variant(tcx, did, it.name, 0, def)]
     )
 }
 
@@ -1369,7 +1369,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let associated_type_names: Vec<_> = items.iter().filter_map(|trait_item| {
         match trait_item.node {
-            hir::TypeTraitItem(..) => Some(trait_item.ident.name),
+            hir::TypeTraitItem(..) => Some(trait_item.name),
             _ => None,
         }
     }).collect();
@@ -1444,7 +1444,7 @@ fn trait_defines_associated_type_named(ccx: &CrateCtxt,
 
     trait_items.iter().any(|trait_item| {
         match trait_item.node {
-            hir::TypeTraitItem(..) => trait_item.ident.name == assoc_name,
+            hir::TypeTraitItem(..) => trait_item.name == assoc_name,
             _ => false,
         }
     })
@@ -1511,7 +1511,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
             };
 
             let assoc_ty = ccx.tcx.mk_projection(self_trait_ref,
-                                                 trait_item.ident.name);
+                                                 trait_item.name);
 
             let bounds = compute_bounds(&ccx.icx(&(ast_generics, trait_predicates)),
                                         assoc_ty,

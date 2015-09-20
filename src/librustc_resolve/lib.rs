@@ -1258,7 +1258,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn get_trait_name(&self, did: DefId) -> Name {
         if did.is_local() {
-            self.ast_map.expect_item(did.node).ident.name
+            self.ast_map.expect_item(did.node).name
         } else {
             csearch::get_trait_name(&self.session.cstore, did)
         }
@@ -2109,7 +2109,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn resolve_item(&mut self, item: &Item) {
-        let name = item.ident.name;
+        let name = item.name;
 
         debug!("(resolving item) resolving {}",
                name);
@@ -2184,7 +2184,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     });
                                 }
                                 hir::TypeTraitItem(..) => {
-                                    this.check_if_primitive_type_name(trait_item.ident.name,
+                                    this.check_if_primitive_type_name(trait_item.name,
                                                                       trait_item.span);
                                     this.with_type_parameter_rib(NoTypeParameters, |this| {
                                         visit::walk_trait_item(this, trait_item)
@@ -2486,7 +2486,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 ConstImplItem(..) => {
                                     // If this is a trait impl, ensure the const
                                     // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
+                                    this.check_trait_item(impl_item.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::ConstNotMemberOfTrait(n, s));
                                     this.with_constant_rib(|this| {
@@ -2496,7 +2496,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 MethodImplItem(ref sig, _) => {
                                     // If this is a trait impl, ensure the method
                                     // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
+                                    this.check_trait_item(impl_item.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::MethodNotMemberOfTrait(n, s));
 
@@ -2513,7 +2513,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 TypeImplItem(ref ty) => {
                                     // If this is a trait impl, ensure the type
                                     // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
+                                    this.check_trait_item(impl_item.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::TypeNotMemberOfTrait(n, s));
 

@@ -198,7 +198,7 @@ pub fn walk_trait_ref<'v,V>(visitor: &mut V,
 }
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
-    visitor.visit_name(item.span, item.ident.name);
+    visitor.visit_name(item.span, item.name);
     match item.node {
         ItemExternCrate(..) => {}
         ItemUse(ref vp) => {
@@ -227,7 +227,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_expr(&**expr);
         }
         ItemFn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
-            visitor.visit_fn(FnKind::ItemFn(item.ident.name, generics, unsafety,
+            visitor.visit_fn(FnKind::ItemFn(item.name, generics, unsafety,
                                             constness, abi, item.vis),
                              &**declaration,
                              &**body,
@@ -271,7 +271,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         ItemStruct(ref struct_definition, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_struct_def(&**struct_definition,
-                                     item.ident.name,
+                                     item.name,
                                      generics,
                                      item.id)
         }
@@ -503,7 +503,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
 
 pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V,
                                              foreign_item: &'v ForeignItem) {
-    visitor.visit_name(foreign_item.span, foreign_item.ident.name);
+    visitor.visit_name(foreign_item.span, foreign_item.name);
 
     match foreign_item.node {
         ForeignItemFn(ref function_declaration, ref generics) => {
@@ -611,7 +611,7 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
 }
 
 pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem) {
-    visitor.visit_name(trait_item.span, trait_item.ident.name);
+    visitor.visit_name(trait_item.span, trait_item.name);
     for attr in &trait_item.attrs {
         visitor.visit_attribute(attr);
     }
@@ -628,7 +628,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             walk_fn_decl(visitor, &sig.decl);
         }
         MethodTraitItem(ref sig, Some(ref body)) => {
-            visitor.visit_fn(FnKind::Method(trait_item.ident.name, sig, None), &sig.decl,
+            visitor.visit_fn(FnKind::Method(trait_item.name, sig, None), &sig.decl,
                              body, trait_item.span, trait_item.id);
         }
         TypeTraitItem(ref bounds, ref default) => {
@@ -639,7 +639,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
 }
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem) {
-    visitor.visit_name(impl_item.span, impl_item.ident.name);
+    visitor.visit_name(impl_item.span, impl_item.name);
     for attr in &impl_item.attrs {
         visitor.visit_attribute(attr);
     }
@@ -649,8 +649,8 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_expr(expr);
         }
         MethodImplItem(ref sig, ref body) => {
-            visitor.visit_fn(FnKind::Method(impl_item.ident.name, sig, Some(impl_item.vis)),
-                             &sig.decl, body, impl_item.span, impl_item.id);
+            visitor.visit_fn(FnKind::Method(impl_item.name, sig, Some(impl_item.vis)), &sig.decl,
+                             body, impl_item.span, impl_item.id);
         }
         TypeImplItem(ref ty) => {
             visitor.visit_ty(ty);

@@ -271,7 +271,7 @@ pub fn ident_to_string(id: &ast::Ident) -> String {
 pub fn fun_to_string(decl: &hir::FnDecl,
                      unsafety: hir::Unsafety,
                      constness: hir::Constness,
-                     name: ast::Ident,
+                     name: ast::Name,
                      opt_explicit_self: Option<&hir::ExplicitSelf_>,
                      generics: &hir::Generics)
                      -> String {
@@ -557,7 +557,7 @@ impl<'a> State<'a> {
                 try!(self.head(""));
                 try!(self.print_fn(decl, hir::Unsafety::Normal,
                                    hir::Constness::NotConst,
-                                   abi::Rust, Some(item.ident),
+                                   abi::Rust, Some(item.name),
                                    generics, None, item.vis));
                 try!(self.end()); // end head-ibox
                 try!(word(&mut self.s, ";"));
@@ -569,7 +569,7 @@ impl<'a> State<'a> {
                 if m {
                     try!(self.word_space("mut"));
                 }
-                try!(self.print_ident(item.ident));
+                try!(self.print_name(item.name));
                 try!(self.word_space(":"));
                 try!(self.print_type(&**t));
                 try!(word(&mut self.s, ";"));
@@ -580,7 +580,7 @@ impl<'a> State<'a> {
     }
 
     fn print_associated_const(&mut self,
-                              ident: ast::Ident,
+                              name: ast::Name,
                               ty: &hir::Ty,
                               default: Option<&hir::Expr>,
                               vis: hir::Visibility)
@@ -588,7 +588,7 @@ impl<'a> State<'a> {
     {
         try!(word(&mut self.s, &visibility_qualified(vis, "")));
         try!(self.word_space("const"));
-        try!(self.print_ident(ident));
+        try!(self.print_name(name));
         try!(self.word_space(":"));
         try!(self.print_type(ty));
         if let Some(expr) = default {
@@ -600,12 +600,12 @@ impl<'a> State<'a> {
     }
 
     fn print_associated_type(&mut self,
-                             ident: ast::Ident,
+                             name: ast::Name,
                              bounds: Option<&hir::TyParamBounds>,
                              ty: Option<&hir::Ty>)
                              -> io::Result<()> {
         try!(self.word_space("type"));
-        try!(self.print_ident(ident));
+        try!(self.print_name(name));
         if let Some(bounds) = bounds {
             try!(self.print_bounds(":", bounds));
         }
@@ -638,7 +638,7 @@ impl<'a> State<'a> {
                     try!(word(&mut self.s, "as"));
                     try!(space(&mut self.s));
                 }
-                try!(self.print_ident(item.ident));
+                try!(self.print_name(item.name));
                 try!(word(&mut self.s, ";"));
                 try!(self.end()); // end inner head-block
                 try!(self.end()); // end outer head-block
@@ -657,7 +657,7 @@ impl<'a> State<'a> {
                 if m == hir::MutMutable {
                     try!(self.word_space("mut"));
                 }
-                try!(self.print_ident(item.ident));
+                try!(self.print_name(item.name));
                 try!(self.word_space(":"));
                 try!(self.print_type(&**ty));
                 try!(space(&mut self.s));
@@ -671,7 +671,7 @@ impl<'a> State<'a> {
             hir::ItemConst(ref ty, ref expr) => {
                 try!(self.head(&visibility_qualified(item.vis,
                                                     "const")));
-                try!(self.print_ident(item.ident));
+                try!(self.print_name(item.name));
                 try!(self.word_space(":"));
                 try!(self.print_type(&**ty));
                 try!(space(&mut self.s));
@@ -689,7 +689,7 @@ impl<'a> State<'a> {
                     unsafety,
                     constness,
                     abi,
-                    Some(item.ident),
+                    Some(item.name),
                     typarams,
                     None,
                     item.vis
@@ -700,7 +700,7 @@ impl<'a> State<'a> {
             hir::ItemMod(ref _mod) => {
                 try!(self.head(&visibility_qualified(item.vis,
                                                     "mod")));
-                try!(self.print_ident(item.ident));
+                try!(self.print_name(item.name));
                 try!(self.nbsp());
                 try!(self.bopen());
                 try!(self.print_mod(_mod, &item.attrs));
@@ -717,7 +717,7 @@ impl<'a> State<'a> {
                 try!(self.ibox(indent_unit));
                 try!(self.ibox(0));
                 try!(self.word_nbsp(&visibility_qualified(item.vis, "type")));
-                try!(self.print_ident(item.ident));
+                try!(self.print_name(item.name));
                 try!(self.print_generics(params));
                 try!(self.end()); // end the inner ibox
 
@@ -732,14 +732,14 @@ impl<'a> State<'a> {
                 try!(self.print_enum_def(
                     enum_definition,
                     params,
-                    item.ident,
+                    item.name,
                     item.span,
                     item.vis
                 ));
             }
             hir::ItemStruct(ref struct_def, ref generics) => {
                 try!(self.head(&visibility_qualified(item.vis,"struct")));
-                try!(self.print_struct(&**struct_def, generics, item.ident, item.span));
+                try!(self.print_struct(&**struct_def, generics, item.name, item.span));
             }
 
             hir::ItemDefaultImpl(unsafety, ref trait_ref) => {
@@ -802,7 +802,7 @@ impl<'a> State<'a> {
                 try!(self.print_visibility(item.vis));
                 try!(self.print_unsafety(unsafety));
                 try!(self.word_nbsp("trait"));
-                try!(self.print_ident(item.ident));
+                try!(self.print_name(item.name));
                 try!(self.print_generics(generics));
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 for b in bounds.iter() {
@@ -853,11 +853,11 @@ impl<'a> State<'a> {
     }
 
     pub fn print_enum_def(&mut self, enum_definition: &hir::EnumDef,
-                          generics: &hir::Generics, ident: ast::Ident,
+                          generics: &hir::Generics, name: ast::Name,
                           span: codemap::Span,
                           visibility: hir::Visibility) -> io::Result<()> {
         try!(self.head(&visibility_qualified(visibility, "enum")));
-        try!(self.print_ident(ident));
+        try!(self.print_name(name));
         try!(self.print_generics(generics));
         try!(self.print_where_clause(&generics.where_clause));
         try!(space(&mut self.s));
@@ -891,9 +891,9 @@ impl<'a> State<'a> {
     pub fn print_struct(&mut self,
                         struct_def: &hir::StructDef,
                         generics: &hir::Generics,
-                        ident: ast::Ident,
+                        name: ast::Name,
                         span: codemap::Span) -> io::Result<()> {
-        try!(self.print_ident(ident));
+        try!(self.print_name(name));
         try!(self.print_generics(generics));
         if ::util::struct_def_is_tuple_like(struct_def) {
             if !struct_def.fields.is_empty() {
@@ -958,7 +958,7 @@ impl<'a> State<'a> {
             hir::StructVariantKind(ref struct_def) => {
                 try!(self.head(""));
                 let generics = ::util::empty_generics();
-                try!(self.print_struct(&**struct_def, &generics, v.node.name, v.span));
+                try!(self.print_struct(&**struct_def, &generics, v.node.name.name, v.span));
             }
         }
         match v.node.disr_expr {
@@ -972,7 +972,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_method_sig(&mut self,
-                            ident: ast::Ident,
+                            name: ast::Name,
                             m: &hir::MethodSig,
                             vis: hir::Visibility)
                             -> io::Result<()> {
@@ -980,7 +980,7 @@ impl<'a> State<'a> {
                       m.unsafety,
                       m.constness,
                       m.abi,
-                      Some(ident),
+                      Some(name),
                       &m.generics,
                       Some(&m.explicit_self.node),
                       vis)
@@ -994,7 +994,7 @@ impl<'a> State<'a> {
         try!(self.print_outer_attributes(&ti.attrs));
         match ti.node {
             hir::ConstTraitItem(ref ty, ref default) => {
-                try!(self.print_associated_const(ti.ident, &ty,
+                try!(self.print_associated_const(ti.name, &ty,
                                                  default.as_ref().map(|expr| &**expr),
                                                  hir::Inherited));
             }
@@ -1002,7 +1002,7 @@ impl<'a> State<'a> {
                 if body.is_some() {
                     try!(self.head(""));
                 }
-                try!(self.print_method_sig(ti.ident, sig, hir::Inherited));
+                try!(self.print_method_sig(ti.name, sig, hir::Inherited));
                 if let Some(ref body) = *body {
                     try!(self.nbsp());
                     try!(self.print_block_with_attrs(body, &ti.attrs));
@@ -1011,7 +1011,7 @@ impl<'a> State<'a> {
                 }
             }
             hir::TypeTraitItem(ref bounds, ref default) => {
-                try!(self.print_associated_type(ti.ident, Some(bounds),
+                try!(self.print_associated_type(ti.name, Some(bounds),
                                                 default.as_ref().map(|ty| &**ty)));
             }
         }
@@ -1025,16 +1025,16 @@ impl<'a> State<'a> {
         try!(self.print_outer_attributes(&ii.attrs));
         match ii.node {
             hir::ConstImplItem(ref ty, ref expr) => {
-                try!(self.print_associated_const(ii.ident, &ty, Some(&expr), ii.vis));
+                try!(self.print_associated_const(ii.name, &ty, Some(&expr), ii.vis));
             }
             hir::MethodImplItem(ref sig, ref body) => {
                 try!(self.head(""));
-                try!(self.print_method_sig(ii.ident, sig, ii.vis));
+                try!(self.print_method_sig(ii.name, sig, ii.vis));
                 try!(self.nbsp());
                 try!(self.print_block_with_attrs(body, &ii.attrs));
             }
             hir::TypeImplItem(ref ty) => {
-                try!(self.print_associated_type(ii.ident, None, Some(ty)));
+                try!(self.print_associated_type(ii.name, None, Some(ty)));
             }
         }
         self.ann.post(self, NodeSubItem(ii.id))
@@ -1928,7 +1928,7 @@ impl<'a> State<'a> {
                     unsafety: hir::Unsafety,
                     constness: hir::Constness,
                     abi: abi::Abi,
-                    name: Option<ast::Ident>,
+                    name: Option<ast::Name>,
                     generics: &hir::Generics,
                     opt_explicit_self: Option<&hir::ExplicitSelf_>,
                     vis: hir::Visibility) -> io::Result<()> {
@@ -1936,7 +1936,7 @@ impl<'a> State<'a> {
 
         if let Some(name) = name {
             try!(self.nbsp());
-            try!(self.print_ident(name));
+            try!(self.print_name(name));
         }
         try!(self.print_generics(generics));
         try!(self.print_fn_args_and_ret(decl, opt_explicit_self));
@@ -2299,7 +2299,7 @@ impl<'a> State<'a> {
                            unsafety,
                            hir::Constness::NotConst,
                            abi,
-                           name,
+                           name.map(|x| x.name),
                            &generics,
                            opt_explicit_self,
                            hir::Inherited));
