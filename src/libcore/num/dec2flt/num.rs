@@ -14,9 +14,8 @@
 
 use prelude::v1::*;
 use cmp::Ordering::{self, Less, Equal, Greater};
-use num::flt2dec::bignum::Big32x40;
 
-pub type Big = Big32x40;
+pub use num::bignum::Big32x40 as Big;
 
 /// Test whether truncating all bits less significant than `ones_place` introduces
 /// a relative error less, equal, or greater than 0.5 ULP.

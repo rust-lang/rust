@@ -23,7 +23,6 @@ use core::num::flt2dec::{to_shortest_str, to_shortest_exp_str,
 pub use test::Bencher;
 
 mod estimator;
-mod bignum;
 mod strategy {
     mod dragon;
     mod grisu;

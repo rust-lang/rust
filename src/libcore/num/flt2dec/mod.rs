@@ -136,7 +136,6 @@ use slice::bytes;
 pub use self::decoder::{decode, DecodableFloat, FullDecoded, Decoded};
 
 pub mod estimator;
-pub mod bignum;
 pub mod decoder;
 
 /// Digit-generation algorithms.

@@ -31,6 +31,7 @@ mod u64;
 
 mod flt2dec;
 mod dec2flt;
+mod bignum;
 
 /// Helper function for testing numeric operations
 pub fn test_num<T>(ten: T, two: T) where
