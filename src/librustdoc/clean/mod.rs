@@ -2386,14 +2386,14 @@ impl Clean<Vec<Item>> for doctree::Import {
                 (ret, ImportList(resolve_use_source(cx, p.clean(cx), self.id),
                                  remaining))
             }
-            hir::ViewPathSimple(i, ref p) => {
+            hir::ViewPathSimple(name, ref p) => {
                 if !denied {
-                    match inline::try_inline(cx, self.id, Some(i)) {
+                    match inline::try_inline(cx, self.id, Some(name)) {
                         Some(items) => return items,
                         None => {}
                     }
                 }
-                (vec![], SimpleImport(i.clean(cx),
+                (vec![], SimpleImport(name.clean(cx),
                                       resolve_use_source(cx, p.clean(cx), self.id)))
             }
         };

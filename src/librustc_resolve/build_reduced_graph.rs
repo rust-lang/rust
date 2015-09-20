@@ -312,8 +312,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                           ResolutionError::SelfImportsOnlyAllowedWithin);
                         }
 
-                        let subclass = SingleImport(binding.name,
-                                                    source_name);
+                        let subclass = SingleImport(binding, source_name);
                         self.build_import_directive(&**parent,
                                                     module_path,
                                                     subclass,
@@ -343,7 +342,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         for source_item in source_items {
                             let (module_path, name, rename) = match source_item.node {
                                 PathListIdent { name, rename, .. } =>
-                                    (module_path.clone(), name.name, rename.unwrap_or(name).name),
+                                    (module_path.clone(), name, rename.unwrap_or(name)),
                                 PathListMod { rename, .. } => {
                                     let name = match module_path.last() {
                                         Some(name) => *name,
@@ -358,7 +357,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                         }
                                     };
                                     let module_path = module_path.split_last().unwrap().1;
-                                    let rename = rename.map(|n| n.name).unwrap_or(name);
+                                    let rename = rename.unwrap_or(name);
                                     (module_path.to_vec(), name, rename)
                                 }
                             };

@@ -333,11 +333,11 @@ pub struct Crate {
 /// Not parsed directly, but created on macro import or `macro_rules!` expansion.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MacroDef {
-    pub ident: Ident,
+    pub name: Name,
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
-    pub imported_from: Option<Ident>,
+    pub imported_from: Option<Name>,
     pub export: bool,
     pub use_locally: bool,
     pub allow_internal_unstable: bool,
@@ -1039,14 +1039,14 @@ pub type Variant = Spanned<Variant_>;
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum PathListItem_ {
     PathListIdent {
-        name: Ident,
+        name: Name,
         /// renamed in list, eg `use foo::{bar as baz};`
-        rename: Option<Ident>,
+        rename: Option<Name>,
         id: NodeId
     },
     PathListMod {
         /// renamed in list, eg `use foo::{self as baz};`
-        rename: Option<Ident>,
+        rename: Option<Name>,
         id: NodeId
     }
 }
@@ -1058,7 +1058,7 @@ impl PathListItem_ {
         }
     }
 
-    pub fn rename(&self) -> Option<Ident> {
+    pub fn rename(&self) -> Option<Name> {
         match *self {
             PathListIdent { rename, .. } | PathListMod { rename, .. } => rename
         }
@@ -1077,7 +1077,7 @@ pub enum ViewPath_ {
     /// or just
     ///
     /// `foo::bar::baz` (with `as baz` implicitly on the right)
-    ViewPathSimple(Ident, Path),
+    ViewPathSimple(Name, Path),
 
     /// `foo::bar::*`
     ViewPathGlob(Path),

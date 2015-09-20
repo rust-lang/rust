@@ -210,12 +210,12 @@ pub struct DefaultImpl {
 }
 
 pub struct Macro {
-    pub name: Ident,
+    pub name: Name,
     pub id: ast::NodeId,
     pub attrs: Vec<ast::Attribute>,
     pub whence: Span,
     pub stab: Option<attr::Stability>,
-    pub imported_from: Option<Ident>,
+    pub imported_from: Option<Name>,
 }
 
 pub struct ExternCrate {
