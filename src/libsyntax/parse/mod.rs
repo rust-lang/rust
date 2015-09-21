@@ -1090,10 +1090,7 @@ mod tests {
             "foo!( fn main() { body } )".to_string(), vec![], &sess);
 
         let tts = match expr.node {
-            ast::ExprMac(ref mac) => {
-                let ast::MacInvocTT(_, ref tts, _) = mac.node;
-                tts.clone()
-            }
+            ast::ExprMac(ref mac) => mac.node.tts.clone(),
             _ => panic!("not a macro"),
         };
 

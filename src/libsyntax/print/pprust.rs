@@ -1307,16 +1307,14 @@ impl<'a> State<'a> {
                 }
                 try!(self.bclose(item.span));
             }
-            // I think it's reasonable to hide the context here:
-            ast::ItemMac(codemap::Spanned { node: ast::MacInvocTT(ref pth, ref tts, _),
-                                            ..}) => {
+            ast::ItemMac(codemap::Spanned { ref node, .. }) => {
                 try!(self.print_visibility(item.vis));
-                try!(self.print_path(pth, false, 0));
+                try!(self.print_path(&node.path, false, 0));
                 try!(word(&mut self.s, "! "));
                 try!(self.print_ident(item.ident));
                 try!(self.cbox(indent_unit));
                 try!(self.popen());
-                try!(self.print_tts(&tts[..]));
+                try!(self.print_tts(&node.tts[..]));
                 try!(self.pclose());
                 try!(word(&mut self.s, ";"));
                 try!(self.end());
@@ -1599,14 +1597,13 @@ impl<'a> State<'a> {
             ast::TypeImplItem(ref ty) => {
                 try!(self.print_associated_type(ii.ident, None, Some(ty)));
             }
-            ast::MacImplItem(codemap::Spanned { node: ast::MacInvocTT(ref pth, ref tts, _),
-                                                ..}) => {
+            ast::MacImplItem(codemap::Spanned { ref node, .. }) => {
                 // code copied from ItemMac:
-                try!(self.print_path(pth, false, 0));
+                try!(self.print_path(&node.path, false, 0));
                 try!(word(&mut self.s, "! "));
                 try!(self.cbox(indent_unit));
                 try!(self.popen());
-                try!(self.print_tts(&tts[..]));
+                try!(self.print_tts(&node.tts[..]));
                 try!(self.pclose());
                 try!(word(&mut self.s, ";"));
                 try!(self.end())
@@ -1765,23 +1762,18 @@ impl<'a> State<'a> {
 
     pub fn print_mac(&mut self, m: &ast::Mac, delim: token::DelimToken)
                      -> io::Result<()> {
-        match m.node {
-            // I think it's reasonable to hide the ctxt here:
-            ast::MacInvocTT(ref pth, ref tts, _) => {
-                try!(self.print_path(pth, false, 0));
-                try!(word(&mut self.s, "!"));
-                match delim {
-                    token::Paren => try!(self.popen()),
-                    token::Bracket => try!(word(&mut self.s, "[")),
-                    token::Brace => try!(self.bopen()),
-                }
-                try!(self.print_tts(tts));
-                match delim {
-                    token::Paren => self.pclose(),
-                    token::Bracket => word(&mut self.s, "]"),
-                    token::Brace => self.bclose(m.span),
-                }
-            }
+        try!(self.print_path(&m.node.path, false, 0));
+        try!(word(&mut self.s, "!"));
+        match delim {
+            token::Paren => try!(self.popen()),
+            token::Bracket => try!(word(&mut self.s, "[")),
+            token::Brace => try!(self.bopen()),
+        }
+        try!(self.print_tts(&m.node.tts));
+        match delim {
+            token::Paren => self.pclose(),
+            token::Bracket => word(&mut self.s, "]"),
+            token::Brace => self.bclose(m.span),
         }
     }
 
