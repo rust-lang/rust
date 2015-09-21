@@ -65,6 +65,7 @@ use ptr::P;
 
 use std::fmt;
 use std::rc::Rc;
+use std::borrow::Cow;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 // FIXME #6993: in librustc, uses of "ident" should be replaced
@@ -685,7 +686,8 @@ pub type Stmt = Spanned<Stmt_>;
 impl fmt::Debug for Stmt {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "stmt({}: {})",
-               ast_util::stmt_id(self),
+               ast_util::stmt_id(self)
+                   .map_or(Cow::Borrowed("<macro>"),|id|Cow::Owned(id.to_string())),
                pprust::stmt_to_string(self))
     }
 }
