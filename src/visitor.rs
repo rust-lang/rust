@@ -326,11 +326,13 @@ impl<'a> FmtVisitor<'a> {
         // TODO: Should rewrite properly `mod X;`
 
         if is_internal {
-            debug!("FmtVisitor::format_mod: internal mod");
             self.block_indent = self.block_indent.block_indent(self.config);
             visit::walk_mod(self, m);
-            debug!("... last_pos after: {:?}", self.last_pos);
             self.block_indent = self.block_indent.block_unindent(self.config);
+
+            self.format_missing_with_indent(m.inner.hi - BytePos(1));
+            self.buffer.push_str("}");
+            self.last_pos = m.inner.hi;
         }
     }
 
