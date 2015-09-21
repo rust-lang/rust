@@ -39,6 +39,7 @@ use util::nodemap::NodeMap;
 use rustc_front::hir;
 use syntax::ast;
 use syntax::codemap::Span;
+use syntax::feature_gate::UnstableFeatures;
 use rustc_front::visit::{self, FnKind, Visitor};
 
 use std::collections::hash_map::Entry;
@@ -709,10 +710,21 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             if !is_const {
                 v.add_qualif(ConstQualif::NOT_CONST);
                 if v.mode != Mode::Var {
-                    span_err!(v.tcx.sess, e.span, E0015,
-                              "function calls in {}s are limited to \
-                               constant functions, \
-                               struct and enum constructors", v.msg());
+                    // FIXME(#24111) Remove this check when const fn stabilizes
+                    if let UnstableFeatures::Disallow = v.tcx.sess.opts.unstable_features {
+                        span_err!(v.tcx.sess, e.span, E0015,
+                                  "function calls in {}s are limited to \
+                                   struct and enum constructors", v.msg());
+                        v.tcx.sess.span_note(e.span,
+                                             "a limited form of compile-time function \
+                                              evaluation is available on a nightly \
+                                              compiler via `const fn`");
+                    } else {
+                        span_err!(v.tcx.sess, e.span, E0015,
+                                  "function calls in {}s are limited to \
+                                   constant functions, \
+                                   struct and enum constructors", v.msg());
+                    }
                 }
             }
         }

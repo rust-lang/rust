@@ -44,6 +44,9 @@ use syntax::ast;
 use syntax::ptr::P;
 use syntax::parse::token;
 
+use rustc::session::Session;
+use syntax::codemap::Span;
+
 use std::cmp::Ordering;
 
 pub fn get_simple_intrinsic(ccx: &CrateContext, item: &hir::ForeignItem) -> Option<ValueRef> {
@@ -99,6 +102,10 @@ pub fn get_simple_intrinsic(ccx: &CrateContext, item: &hir::ForeignItem) -> Opti
     Some(ccx.get_intrinsic(&name))
 }
 
+pub fn span_transmute_size_error(a: &Session, b: Span, msg: &str) {
+    span_err!(a, b, E0512, "{}", msg);
+}
+
 /// Performs late verification that intrinsics are used correctly. At present,
 /// the only intrinsic that needs such verification is `transmute`.
 pub fn check_intrinsics(ccx: &CrateContext) {
@@ -127,8 +134,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
             last_failing_id = Some(transmute_restriction.id);
 
             if transmute_restriction.original_from != transmute_restriction.substituted_from {
-                ccx.sess().span_err(
-                    transmute_restriction.span,
+                span_transmute_size_error(ccx.sess(), transmute_restriction.span,
                     &format!("transmute called on types with potentially different sizes: \
                               {} (could be {} bit{}) to {} (could be {} bit{})",
                              transmute_restriction.original_from,
@@ -138,8 +144,7 @@ pub fn check_intrinsics(ccx: &CrateContext) {
                              to_type_size as usize,
                              if to_type_size == 1 {""} else {"s"}));
             } else {
-                ccx.sess().span_err(
-                    transmute_restriction.span,
+                span_transmute_size_error(ccx.sess(), transmute_restriction.span,
                     &format!("transmute called on types with different sizes: \
                               {} ({} bit{}) to {} ({} bit{})",
                              transmute_restriction.original_from,
@@ -798,9 +803,9 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
         (_, "return_address") => {
             if !fcx.caller_expects_out_pointer {
-                tcx.sess.span_err(call_info.span,
-                                  "invalid use of `return_address` intrinsic: function \
-                                   does not use out pointer");
+                span_err!(tcx.sess, call_info.span, E0510,
+                          "invalid use of `return_address` intrinsic: function \
+                           does not use out pointer");
                 C_null(Type::i8p(ccx))
             } else {
                 PointerCast(bcx, llvm::get_param(fcx.llfn, 0), Type::i8p(ccx))
@@ -1439,6 +1444,10 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     return rust_try
 }
 
+fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
+    span_err!(a, b, E0511, "{}", c);
+}
+
 fn generic_simd_intrinsic<'blk, 'tcx, 'a>
     (bcx: Block<'blk, 'tcx>,
      name: &str,
@@ -1457,10 +1466,11 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
             emit_error!($msg, )
         };
         ($msg: tt, $($fmt: tt)*) => {
-            bcx.sess().span_err(call_info.span,
-                                &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
-                                                 $msg),
-                                         name, $($fmt)*));
+            span_invalid_monomorphization_error(
+                bcx.sess(), call_info.span,
+                &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
+                                 $msg),
+                         name, $($fmt)*));
         }
     }
     macro_rules! require {

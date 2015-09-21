@@ -70,6 +70,7 @@
 // lldb-check:[...]$6 = Case1 { x: 0, y: 8970181431921507452 }
 // lldb-command:continue
 
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 #[derive(Clone)]

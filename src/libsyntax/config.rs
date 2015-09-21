@@ -141,7 +141,7 @@ fn fold_item_underscore<F>(cx: &mut Context<F>, item: ast::Item_) -> ast::Item_ 
                     None
                 } else {
                     Some(v.map(|Spanned {node: ast::Variant_ {id, name, attrs, kind,
-                                                              disr_expr, vis}, span}| {
+                                                              disr_expr}, span}| {
                         Spanned {
                             node: ast::Variant_ {
                                 id: id,
@@ -154,7 +154,6 @@ fn fold_item_underscore<F>(cx: &mut Context<F>, item: ast::Item_) -> ast::Item_ 
                                     }
                                 },
                                 disr_expr: disr_expr,
-                                vis: vis
                             },
                             span: span
                         }

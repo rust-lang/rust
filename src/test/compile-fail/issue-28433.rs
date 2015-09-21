@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
-
-struct Foo;
-
-fn i5() {
-    let _end_of_block = { Foo { } };
-    //~^ ERROR: structure literal must either have at least one field
+enum bird {
+    pub duck,
+    //~^ ERROR: expected identifier, found keyword `pub`
+    //~^^ ERROR: expected
+    goose
 }
 
-fn main() {}
+
+fn main() {
+    let y = bird::goose;
+}

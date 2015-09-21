@@ -1,4 +1,4 @@
-Version 1.3.0 (September 2015)
+Version 1.3.0 (2015-09-17)
 ==============================
 
 * ~900 changes, numerous bugfixes

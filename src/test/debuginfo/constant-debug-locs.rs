@@ -13,6 +13,7 @@
 // compile-flags:-g
 
 #![allow(dead_code, unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 #![feature(const_fn)]
 #![feature(static_mutex)]

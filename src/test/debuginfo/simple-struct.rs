@@ -96,6 +96,7 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 struct NoPadding16 {

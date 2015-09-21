@@ -415,7 +415,7 @@ pub fn noop_fold_foreign_mod<T: Folder>(ForeignMod {abi, items}: ForeignMod,
 }
 
 pub fn noop_fold_variant<T: Folder>(v: P<Variant>, fld: &mut T) -> P<Variant> {
-    v.map(|Spanned {node: Variant_ {id, name, attrs, kind, disr_expr, vis}, span}| Spanned {
+    v.map(|Spanned {node: Variant_ {id, name, attrs, kind, disr_expr}, span}| Spanned {
         node: Variant_ {
             id: fld.new_id(id),
             name: name,
@@ -430,7 +430,6 @@ pub fn noop_fold_variant<T: Folder>(v: P<Variant>, fld: &mut T) -> P<Variant> {
                 }
             },
             disr_expr: disr_expr.map(|e| fld.fold_expr(e)),
-            vis: vis,
         },
         span: fld.new_span(span),
     })

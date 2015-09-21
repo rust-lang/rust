@@ -1097,7 +1097,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DumpCsvVisitor<'l, 'tcx> {
 
                 self.visit_expr(&**sub_ex);
 
-                let hir_node = self.tcx.map.expect_expr(sub_ex.id);
+                let hir_node = lower_expr(sub_ex);
                 let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
                 match *ty {
                     ty::TyStruct(def, _) => {

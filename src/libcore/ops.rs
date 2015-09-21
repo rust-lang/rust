@@ -927,6 +927,534 @@ macro_rules! shr_impl_all {
 
 shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 
+/// The `AddAssign` trait is used to specify the functionality of `+=`.
+///
+/// # Examples
+///
+/// A trivial implementation of `AddAssign`. When `Foo += Foo` happens, it ends up
+/// calling `add_assign`, and therefore, `main` prints `Adding!`.
+///
+/// ```
+/// #![feature(augmented_assignments)]
+/// #![feature(op_assign_traits)]
+///
+/// use std::ops::AddAssign;
+///
+/// #[derive(Copy, Clone)]
+/// struct Foo;
+///
+/// impl AddAssign for Foo {
+///     fn add_assign(&mut self, _rhs: Foo) {
+///         println!("Adding!");
+///     }
+/// }
+///
+/// fn main() {
+///     let mut foo = Foo;
+///     foo += Foo;
+/// }
+/// ```
+#[cfg(not(stage0))]
+#[lang = "add_assign"]
+#[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+pub trait AddAssign<Rhs=Self> {
+    /// The method for the `+=` operator
+    fn add_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! add_assign_impl {
+    ($($t:ty)+) => ($(
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl AddAssign for $t {
+            #[inline]
+            fn add_assign(&mut self, other: $t) { *self += other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+add_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+
+/// The `SubAssign` trait is used to specify the functionality of `-=`.
+///
+/// # Examples
+///
+/// A trivial implementation of `SubAssign`. When `Foo -= Foo` happens, it ends up
+/// calling `sub_assign`, and therefore, `main` prints `Subtracting!`.
+///
+/// ```
+/// #![feature(augmented_assignments)]
+/// #![feature(op_assign_traits)]
+///
+/// use std::ops::SubAssign;
+///
+/// #[derive(Copy, Clone)]
+/// struct Foo;
+///
+/// impl SubAssign for Foo {
+///     fn sub_assign(&mut self, _rhs: Foo) {
+///         println!("Subtracting!");
+///     }
+/// }
+///
+/// fn main() {
+///     let mut foo = Foo;
+///     foo -= Foo;
+/// }
+/// ```
+#[cfg(not(stage0))]
+#[lang = "sub_assign"]
+#[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+pub trait SubAssign<Rhs=Self> {
+    /// The method for the `-=` operator
+    fn sub_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! sub_assign_impl {
+    ($($t:ty)+) => ($(
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl SubAssign for $t {
+            #[inline]
+            fn sub_assign(&mut self, other: $t) { *self -= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+sub_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+
+/// The `MulAssign` trait is used to specify the functionality of `*=`.
+///
+/// # Examples
+///
+/// A trivial implementation of `MulAssign`. When `Foo *= Foo` happens, it ends up
+/// calling `mul_assign`, and therefore, `main` prints `Multiplying!`.
+///
+/// ```
+/// #![feature(augmented_assignments)]
+/// #![feature(op_assign_traits)]
+///
+/// use std::ops::MulAssign;
+///
+/// #[derive(Copy, Clone)]
+/// struct Foo;
+///
+/// impl MulAssign for Foo {
+///     fn mul_assign(&mut self, _rhs: Foo) {
+///         println!("Multiplying!");
+///     }
+/// }
+///
+/// fn main() {
+///     let mut foo = Foo;
+///     foo *= Foo;
+/// }
+/// ```
+#[cfg(not(stage0))]
+#[lang = "mul_assign"]
+#[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+pub trait MulAssign<Rhs=Self> {
+    /// The method for the `*=` operator
+    fn mul_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! mul_assign_impl {
+    ($($t:ty)+) => ($(
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl MulAssign for $t {
+            #[inline]
+            fn mul_assign(&mut self, other: $t) { *self *= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+mul_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+
+/// The `DivAssign` trait is used to specify the functionality of `/=`.
+///
+/// # Examples
+///
+/// A trivial implementation of `DivAssign`. When `Foo /= Foo` happens, it ends up
+/// calling `div_assign`, and therefore, `main` prints `Dividing!`.
+///
+/// ```
+/// #![feature(augmented_assignments)]
+/// #![feature(op_assign_traits)]
+///
+/// use std::ops::DivAssign;
+///
+/// #[derive(Copy, Clone)]
+/// struct Foo;
+///
+/// impl DivAssign for Foo {
+///     fn div_assign(&mut self, _rhs: Foo) {
+///         println!("Dividing!");
+///     }
+/// }
+///
+/// fn main() {
+///     let mut foo = Foo;
+///     foo /= Foo;
+/// }
+/// ```
+#[cfg(not(stage0))]
+#[lang = "div_assign"]
+#[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+pub trait DivAssign<Rhs=Self> {
+    /// The method for the `/=` operator
+    fn div_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! div_assign_impl {
+    ($($t:ty)+) => ($(
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl DivAssign for $t {
+            #[inline]
+            fn div_assign(&mut self, other: $t) { *self /= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+div_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+
+/// The `RemAssign` trait is used to specify the functionality of `%=`.
+///
+/// # Examples
+///
+/// A trivial implementation of `RemAssign`. When `Foo %= Foo` happens, it ends up
+/// calling `rem_assign`, and therefore, `main` prints `Remainder-ing!`.
+///
+/// ```
+/// #![feature(augmented_assignments)]
+/// #![feature(op_assign_traits)]
+///
+/// use std::ops::RemAssign;
+///
+/// #[derive(Copy, Clone)]
+/// struct Foo;
+///
+/// impl RemAssign for Foo {
+///     fn rem_assign(&mut self, _rhs: Foo) {
+///         println!("Remainder-ing!");
+///     }
+/// }
+///
+/// fn main() {
+///     let mut foo = Foo;
+///     foo %= Foo;
+/// }
+/// ```
+#[cfg(not(stage0))]
+#[lang = "rem_assign"]
+#[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+pub trait RemAssign<Rhs=Self> {
+    /// The method for the `%=` operator
+    fn rem_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! rem_assign_impl {
+    ($($t:ty)+) => ($(
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl RemAssign for $t {
+            #[inline]
+            fn rem_assign(&mut self, other: $t) { *self %= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+rem_assign_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+
+/// The `BitAndAssign` trait is used to specify the functionality of `&=`.
+///
+/// # Examples
+///
+/// A trivial implementation of `BitAndAssign`. When `Foo &= Foo` happens, it ends up
+/// calling `bitand_assign`, and therefore, `main` prints `Bitwise And-ing!`.
+///
+/// ```
+/// #![feature(augmented_assignments)]
+/// #![feature(op_assign_traits)]
+///
+/// use std::ops::BitAndAssign;
+///
+/// #[derive(Copy, Clone)]
+/// struct Foo;
+///
+/// impl BitAndAssign for Foo {
+///     fn bitand_assign(&mut self, _rhs: Foo) {
+///         println!("Bitwise And-ing!");
+///     }
+/// }
+///
+/// fn main() {
+///     let mut foo = Foo;
+///     foo &= Foo;
+/// }
+/// ```
+#[cfg(not(stage0))]
+#[lang = "bitand_assign"]
+#[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+pub trait BitAndAssign<Rhs=Self> {
+    /// The method for the `&` operator
+    fn bitand_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! bitand_assign_impl {
+    ($($t:ty)+) => ($(
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl BitAndAssign for $t {
+            #[inline]
+            fn bitand_assign(&mut self, other: $t) { *self &= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+bitand_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+
+/// The `BitOrAssign` trait is used to specify the functionality of `|=`.
+///
+/// # Examples
+///
+/// A trivial implementation of `BitOrAssign`. When `Foo |= Foo` happens, it ends up
+/// calling `bitor_assign`, and therefore, `main` prints `Bitwise Or-ing!`.
+///
+/// ```
+/// #![feature(augmented_assignments)]
+/// #![feature(op_assign_traits)]
+///
+/// use std::ops::BitOrAssign;
+///
+/// #[derive(Copy, Clone)]
+/// struct Foo;
+///
+/// impl BitOrAssign for Foo {
+///     fn bitor_assign(&mut self, _rhs: Foo) {
+///         println!("Bitwise Or-ing!");
+///     }
+/// }
+///
+/// fn main() {
+///     let mut foo = Foo;
+///     foo |= Foo;
+/// }
+/// ```
+#[cfg(not(stage0))]
+#[lang = "bitor_assign"]
+#[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+pub trait BitOrAssign<Rhs=Self> {
+    /// The method for the `|=` operator
+    fn bitor_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! bitor_assign_impl {
+    ($($t:ty)+) => ($(
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl BitOrAssign for $t {
+            #[inline]
+            fn bitor_assign(&mut self, other: $t) { *self |= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+bitor_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+
+/// The `BitXorAssign` trait is used to specify the functionality of `^=`.
+///
+/// # Examples
+///
+/// A trivial implementation of `BitXorAssign`. When `Foo ^= Foo` happens, it ends up
+/// calling `bitxor_assign`, and therefore, `main` prints `Bitwise Xor-ing!`.
+///
+/// ```
+/// #![feature(augmented_assignments)]
+/// #![feature(op_assign_traits)]
+///
+/// use std::ops::BitXorAssign;
+///
+/// #[derive(Copy, Clone)]
+/// struct Foo;
+///
+/// impl BitXorAssign for Foo {
+///     fn bitxor_assign(&mut self, _rhs: Foo) {
+///         println!("Bitwise Xor-ing!");
+///     }
+/// }
+///
+/// fn main() {
+///     let mut foo = Foo;
+///     foo ^= Foo;
+/// }
+/// ```
+#[cfg(not(stage0))]
+#[lang = "bitxor_assign"]
+#[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+pub trait BitXorAssign<Rhs=Self> {
+    /// The method for the `^=` operator
+    fn bitxor_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! bitxor_assign_impl {
+    ($($t:ty)+) => ($(
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl BitXorAssign for $t {
+            #[inline]
+            fn bitxor_assign(&mut self, other: $t) { *self ^= other }
+        }
+    )+)
+}
+
+#[cfg(not(stage0))]
+bitxor_assign_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+
+/// The `ShlAssign` trait is used to specify the functionality of `<<=`.
+///
+/// # Examples
+///
+/// A trivial implementation of `ShlAssign`. When `Foo <<= Foo` happens, it ends up
+/// calling `shl_assign`, and therefore, `main` prints `Shifting left!`.
+///
+/// ```
+/// #![feature(augmented_assignments)]
+/// #![feature(op_assign_traits)]
+///
+/// use std::ops::ShlAssign;
+///
+/// #[derive(Copy, Clone)]
+/// struct Foo;
+///
+/// impl ShlAssign<Foo> for Foo {
+///     fn shl_assign(&mut self, _rhs: Foo) {
+///         println!("Shifting left!");
+///     }
+/// }
+///
+/// fn main() {
+///     let mut foo = Foo;
+///     foo <<= Foo;
+/// }
+/// ```
+#[cfg(not(stage0))]
+#[lang = "shl_assign"]
+#[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+pub trait ShlAssign<Rhs> {
+    /// The method for the `<<=` operator
+    fn shl_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! shl_assign_impl {
+    ($t:ty, $f:ty) => (
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl ShlAssign<$f> for $t {
+            #[inline]
+            fn shl_assign(&mut self, other: $f) {
+                *self <<= other
+            }
+        }
+    )
+}
+
+#[cfg(not(stage0))]
+macro_rules! shl_assign_impl_all {
+    ($($t:ty)*) => ($(
+        shl_assign_impl! { $t, u8 }
+        shl_assign_impl! { $t, u16 }
+        shl_assign_impl! { $t, u32 }
+        shl_assign_impl! { $t, u64 }
+        shl_assign_impl! { $t, usize }
+
+        shl_assign_impl! { $t, i8 }
+        shl_assign_impl! { $t, i16 }
+        shl_assign_impl! { $t, i32 }
+        shl_assign_impl! { $t, i64 }
+        shl_assign_impl! { $t, isize }
+    )*)
+}
+
+#[cfg(not(stage0))]
+shl_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
+
+/// The `ShrAssign` trait is used to specify the functionality of `>>=`.
+///
+/// # Examples
+///
+/// A trivial implementation of `ShrAssign`. When `Foo >>= Foo` happens, it ends up
+/// calling `shr_assign`, and therefore, `main` prints `Shifting right!`.
+///
+/// ```
+/// #![feature(augmented_assignments)]
+/// #![feature(op_assign_traits)]
+///
+/// use std::ops::ShrAssign;
+///
+/// #[derive(Copy, Clone)]
+/// struct Foo;
+///
+/// impl ShrAssign<Foo> for Foo {
+///     fn shr_assign(&mut self, _rhs: Foo) {
+///         println!("Shifting right!");
+///     }
+/// }
+///
+/// fn main() {
+///     let mut foo = Foo;
+///     foo >>= Foo;
+/// }
+/// ```
+#[cfg(not(stage0))]
+#[lang = "shr_assign"]
+#[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+pub trait ShrAssign<Rhs=Self> {
+    /// The method for the `>>=` operator
+    fn shr_assign(&mut self, Rhs);
+}
+
+#[cfg(not(stage0))]
+macro_rules! shr_assign_impl {
+    ($t:ty, $f:ty) => (
+        #[unstable(feature = "op_assign_traits", reason = "recently added", issue = "28235")]
+        impl ShrAssign<$f> for $t {
+            #[inline]
+            fn shr_assign(&mut self, other: $f) {
+                *self >>= other
+            }
+        }
+    )
+}
+
+#[cfg(not(stage0))]
+macro_rules! shr_assign_impl_all {
+    ($($t:ty)*) => ($(
+        shr_assign_impl! { $t, u8 }
+        shr_assign_impl! { $t, u16 }
+        shr_assign_impl! { $t, u32 }
+        shr_assign_impl! { $t, u64 }
+        shr_assign_impl! { $t, usize }
+
+        shr_assign_impl! { $t, i8 }
+        shr_assign_impl! { $t, i16 }
+        shr_assign_impl! { $t, i32 }
+        shr_assign_impl! { $t, i64 }
+        shr_assign_impl! { $t, isize }
+    )*)
+}
+
+#[cfg(not(stage0))]
+shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
+
 /// The `Index` trait is used to specify the functionality of indexing operations
 /// like `arr[idx]` when used in an immutable context.
 ///

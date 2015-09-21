@@ -9,14 +9,14 @@
 // except according to those terms.
 
 use std::f64;
-use core::num::flt2dec::strategy::grisu::Fp;
+use core::num::diy_float::Fp;
 use core::num::dec2flt::rawfp::{fp_to_float, prev_float, next_float, round_normal};
 
 #[test]
 fn fp_to_float_half_to_even() {
     fn is_normalized(sig: u64) -> bool {
-            // intentionally written without {min,max}_sig() as a sanity check
-            sig >> 52 == 1 && sig >> 53 == 0
+        // intentionally written without {min,max}_sig() as a sanity check
+        sig >> 52 == 1 && sig >> 53 == 0
     }
 
     fn conv(sig: u64) -> u64 {

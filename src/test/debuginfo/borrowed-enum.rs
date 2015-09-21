@@ -39,6 +39,7 @@
 // lldb-check:[...]$2 = TheOnlyCase(4820353753753434)
 
 #![allow(unused_variables)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 // The first element is to ensure proper alignment, irrespective of the machines word size. Since

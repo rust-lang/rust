@@ -263,12 +263,50 @@ fn mutable() {
 You can read more about cell types in the API documentation:
 
 https://doc.rust-lang.org/std/cell/
-"##
+"##,
+
+E0499: r##"
+A variable was borrowed as mutable more than once. Erroneous code example:
+
+```
+let mut i = 0;
+let mut x = &mut i;
+let mut a = &mut i;
+// error: cannot borrow `i` as mutable more than once at a time
+```
+
+Please note that in rust, you can either have many immutable references, or one
+mutable reference. Take a look at
+https://doc.rust-lang.org/stable/book/references-and-borrowing.html for more
+information. Example:
+
+
+```
+let mut i = 0;
+let mut x = &mut i; // ok!
+
+// or:
+let mut i = 0;
+let a = &i; // ok!
+let b = &i; // still ok!
+let c = &i; // still ok!
+```
+"##,
 
 }
 
 register_diagnostics! {
     E0385, // {} in an aliasable location
     E0388, // {} in a static location
-    E0389  // {} in a `&` reference
+    E0389, // {} in a `&` reference
+    E0500, // closure requires unique access to `..` but .. is already borrowed
+    E0501, // cannot borrow `..`.. as .. because previous closure requires unique access
+    E0502, // cannot borrow `..`.. as .. because .. is also borrowed as ...
+    E0503, // cannot use `..` because it was mutably borrowed
+    E0504, // cannot move `..` into closure because it is borrowed
+    E0505, // cannot move out of `..` because it is borrowed
+    E0506, // cannot assign to `..` because it is borrowed
+    E0507, // cannot move out of ..
+    E0508, // cannot move out of type `..`, a non-copy fixed-size array
+    E0509, // cannot move out of type `..`, which defines the `Drop` trait
 }

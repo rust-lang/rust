@@ -1052,7 +1052,6 @@ pub struct Variant_ {
     pub id: NodeId,
     /// Explicit discriminant, eg `Foo = 1`
     pub disr_expr: Option<P<Expr>>,
-    pub vis: Visibility,
 }
 
 pub type Variant = Spanned<Variant_>;

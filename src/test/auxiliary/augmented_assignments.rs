@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+#![feature(augmented_assignments)]
+#![feature(op_assign_traits)]
 
-struct Foo {}
-//~^ ERROR: unit-like struct definition should be written as `struct Foo;`
+use std::ops::AddAssign;
 
-fn main() {}
+pub struct Int(i32);
+
+impl AddAssign<i32> for Int {
+    fn add_assign(&mut self, _: i32) {
+        unimplemented!();
+    }
+}

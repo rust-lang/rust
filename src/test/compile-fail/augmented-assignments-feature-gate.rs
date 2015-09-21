@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+use std::ops::AddAssign;
 
-struct Foo;
+struct Int(i32);
 
-fn h4() {
-    let _end_of_tuple = (3, Foo { });
-    //~^ ERROR: structure literal must either have at least one field
+impl AddAssign<i32> for Int {
+    fn add_assign(&mut self, _: i32) {
+        unimplemented!()
+    }
 }
 
-fn main() {}
+fn main() {
+    let mut x = Int(0);
+    x += 1;
+    //~^ error: overloaded augmented assignments are not stable
+    // | help: add #![feature(augmented_assignments)] to the crate features to enable
+}

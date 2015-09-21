@@ -19,6 +19,12 @@
 //! inputs, but we don't do so to avoid the code bloat. Each bignum is still
 //! tracked for the actual usages, so it normally doesn't matter.
 
+// This module is only for dec2flt and flt2dec, and only public because of libcoretest.
+// It is not intended to ever be stabilized.
+#![doc(hidden)]
+#![unstable(feature = "core_private_bignum",
+            reason = "internal routines only exposed for testing",
+            issue = "0")]
 #![macro_use]
 
 use prelude::v1::*;
@@ -194,7 +200,7 @@ macro_rules! define_bignum {
             /// Adds `other` to itself and returns its own mutable reference.
             pub fn add<'a>(&'a mut self, other: &$name) -> &'a mut $name {
                 use cmp;
-                use num::flt2dec::bignum::FullOps;
+                use num::bignum::FullOps;
 
                 let mut sz = cmp::max(self.size, other.size);
                 let mut carry = false;
@@ -212,7 +218,7 @@ macro_rules! define_bignum {
             }
 
             pub fn add_small(&mut self, other: $ty) -> &mut $name {
-                use num::flt2dec::bignum::FullOps;
+                use num::bignum::FullOps;
 
                 let (mut carry, v) = self.base[0].full_add(other, false);
                 self.base[0] = v;
@@ -232,7 +238,7 @@ macro_rules! define_bignum {
             /// Subtracts `other` from itself and returns its own mutable reference.
             pub fn sub<'a>(&'a mut self, other: &$name) -> &'a mut $name {
                 use cmp;
-                use num::flt2dec::bignum::FullOps;
+                use num::bignum::FullOps;
 
                 let sz = cmp::max(self.size, other.size);
                 let mut noborrow = true;
@@ -249,7 +255,7 @@ macro_rules! define_bignum {
             /// Multiplies itself by a digit-sized `other` and returns its own
             /// mutable reference.
             pub fn mul_small(&mut self, other: $ty) -> &mut $name {
-                use num::flt2dec::bignum::FullOps;
+                use num::bignum::FullOps;
 
                 let mut sz = self.size;
                 let mut carry = 0;
@@ -310,7 +316,7 @@ macro_rules! define_bignum {
             /// Multiplies itself by `5^e` and returns its own mutable reference.
             pub fn mul_pow5(&mut self, mut e: usize) -> &mut $name {
                 use mem;
-                use num::flt2dec::bignum::SMALL_POW5;
+                use num::bignum::SMALL_POW5;
 
                 // There are exactly n trailing zeros on 2^n, and the only relevant digit sizes
                 // are consecutive powers of two, so this is well suited index for the table.
@@ -341,7 +347,7 @@ macro_rules! define_bignum {
             pub fn mul_digits<'a>(&'a mut self, other: &[$ty]) -> &'a mut $name {
                 // the internal routine. works best when aa.len() <= bb.len().
                 fn mul_inner(ret: &mut [$ty; $n], aa: &[$ty], bb: &[$ty]) -> usize {
-                    use num::flt2dec::bignum::FullOps;
+                    use num::bignum::FullOps;
 
                     let mut retsz = 0;
                     for (i, &a) in aa.iter().enumerate() {
@@ -378,7 +384,7 @@ macro_rules! define_bignum {
             /// Divides itself by a digit-sized `other` and returns its own
             /// mutable reference *and* the remainder.
             pub fn div_rem_small(&mut self, other: $ty) -> (&mut $name, $ty) {
-                use num::flt2dec::bignum::FullOps;
+                use num::bignum::FullOps;
 
                 assert!(other > 0);
 

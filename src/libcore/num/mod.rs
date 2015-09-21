@@ -43,8 +43,12 @@ use slice::SliceExt;
 pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
 pub mod wrapping;
+
+// All these modules are technically private and only exposed for libcoretest:
 pub mod flt2dec;
 pub mod dec2flt;
+pub mod bignum;
+pub mod diy_float;
 
 /// Types that have a "zero" value.
 ///

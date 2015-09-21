@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,14 +7,5 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-// compile-flags: -Z parse-only
-
-struct Foo;
-
-fn g3() {
-    let _mid_tuple    = (Foo { }, 2);
-    //~^ ERROR: structure literal must either have at least one field
-}
 
 fn main() {}

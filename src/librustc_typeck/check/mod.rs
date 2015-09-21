@@ -1308,9 +1308,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match self.inh.locals.borrow().get(&nid) {
             Some(&t) => t,
             None => {
-                self.tcx().sess.span_err(
-                    span,
-                    &format!("no type for local variable {}", nid));
+                span_err!(self.tcx().sess, span, E0513,
+                          "no type for local variable {}",
+                          nid);
                 self.tcx().types.err
             }
         }
@@ -1473,13 +1473,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return None
         };
 
-        if let ty::VariantKind::Dict = variant.kind() {
+        let var_kind = variant.kind();
+        if var_kind == ty::VariantKind::Dict || var_kind == ty::VariantKind::Unit {
             Some((adt, variant))
         } else {
             None
         }
     }
-
 
     pub fn write_nil(&self, node_id: ast::NodeId) {
         self.write_ty(node_id, self.tcx().mk_nil());

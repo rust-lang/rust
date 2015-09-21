@@ -119,7 +119,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
-    if bcx.tcx().tables.borrow().adjustments.contains_key(&expr.id) {
+    if adjustment_required(bcx, expr) {
         // use trans, which may be less efficient but
         // which will perform the adjustments:
         let datum = unpack_datum!(bcx, trans(bcx, expr));
@@ -331,6 +331,37 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
         _ => ccx.sess().bug(&format!("unsized_info: invalid unsizing {:?} -> {:?}",
                                      source,
                                      target))
+    }
+}
+
+fn adjustment_required<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                   expr: &hir::Expr) -> bool {
+    let adjustment = match bcx.tcx().tables.borrow().adjustments.get(&expr.id).cloned() {
+        None => { return false; }
+        Some(adj) => adj
+    };
+
+    // Don't skip a conversion from Box<T> to &T, etc.
+    if bcx.tcx().is_overloaded_autoderef(expr.id, 0) {
+        return true;
+    }
+
+    match adjustment {
+        AdjustReifyFnPointer => {
+            // FIXME(#19925) once fn item types are
+            // zero-sized, we'll need to return true here
+            false
+        }
+        AdjustUnsafeFnPointer => {
+            // purely a type-level thing
+            false
+        }
+        AdjustDerefRef(ref adj) => {
+            // We are a bit paranoid about adjustments and thus might have a re-
+            // borrow here which merely derefs and then refs again (it might have
+            // a different region or mutability, but we don't care here).
+            !(adj.autoderefs == 1 && adj.autoref.is_some() && adj.unsize.is_none())
+        }
     }
 }
 
@@ -1018,7 +1049,20 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         hir::ExprAssignOp(op, ref dst, ref src) => {
-            trans_assign_op(bcx, expr, op, &**dst, &**src)
+            let has_method_map = bcx.tcx()
+                                    .tables
+                                    .borrow()
+                                    .method_map
+                                    .contains_key(&MethodCall::expr(expr.id));
+
+            if has_method_map {
+                let dst = unpack_datum!(bcx, trans(bcx, &**dst));
+                let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
+                trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), dst,
+                                    Some((src_datum, src.id)), None, false).bcx
+            } else {
+                trans_assign_op(bcx, expr, op, &**dst, &**src)
+            }
         }
         hir::ExprInlineAsm(ref a) => {
             asm::trans_inline_asm(bcx, a)
@@ -1207,8 +1251,11 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // Trait casts used to come this way, now they should be coercions.
             bcx.tcx().sess.span_bug(expr.span, "DPS expr_cast (residual trait cast?)")
         }
-        hir::ExprAssignOp(op, ref dst, ref src) => {
-            trans_assign_op(bcx, expr, op, &**dst, &**src)
+        hir::ExprAssignOp(op, _, _) => {
+            bcx.tcx().sess.span_bug(
+                expr.span,
+                &format!("augmented assignment `{}=` should always be a rvalue_stmt",
+                         rustc_front::util::binop_to_string(op.node)))
         }
         _ => {
             bcx.tcx().sess.span_bug(
