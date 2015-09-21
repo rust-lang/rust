@@ -591,6 +591,8 @@ fn write_shared(cx: &Context,
                include_bytes!("static/LICENSE-MIT.txt")));
     try!(write(cx.dst.join("LICENSE-APACHE.txt"),
                include_bytes!("static/LICENSE-APACHE.txt")));
+    try!(write(cx.dst.join("COPYRIGHT.txt"),
+               include_bytes!("static/COPYRIGHT.txt")));
 
     fn collect(path: &Path, krate: &str,
                key: &str) -> io::Result<Vec<String>> {
