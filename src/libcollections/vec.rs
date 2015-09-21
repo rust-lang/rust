@@ -65,7 +65,7 @@ use alloc::heap::EMPTY;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
-use core::intrinsics::{arith_offset, assume, drop_in_place};
+use core::intrinsics::{arith_offset, assume, drop_in_place, needs_drop};
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::{Index, IndexMut, Deref};
@@ -1321,7 +1321,7 @@ impl<T> Drop for Vec<T> {
         // Or rather, that impl'ing Drop makes them not zero-sized. This is
         // OK because exactly when this stops being a valid assumption, we
         // don't need unsafe_no_drop_flag shenanigans anymore.
-        if self.buf.unsafe_no_drop_flag_needs_drop() {
+        if unsafe { needs_drop::<T>() } && self.buf.unsafe_no_drop_flag_needs_drop() {
             for x in self.iter_mut() {
                 unsafe { drop_in_place(x); }
             }
