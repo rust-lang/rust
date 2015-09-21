@@ -567,10 +567,10 @@ pub fn noop_fold_explicit_self<T: Folder>(Spanned {span, node}: ExplicitSelf, fl
 
 pub fn noop_fold_mac<T: Folder>(Spanned {node, span}: Mac, fld: &mut T) -> Mac {
     Spanned {
-        node: match node {
-            MacInvocTT(p, tts, ctxt) => {
-                MacInvocTT(fld.fold_path(p), fld.fold_tts(&tts), ctxt)
-            }
+        node: Mac_ {
+            path: fld.fold_path(node.path),
+            tts: fld.fold_tts(&node.tts),
+            ctxt: node.ctxt,
         },
         span: fld.new_span(span)
     }

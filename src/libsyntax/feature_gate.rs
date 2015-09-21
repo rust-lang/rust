@@ -666,7 +666,7 @@ struct MacroVisitor<'a> {
 
 impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
     fn visit_mac(&mut self, mac: &ast::Mac) {
-        let ast::MacInvocTT(ref path, _, _) = mac.node;
+        let path = &mac.node.path;
         let id = path.segments.last().unwrap().identifier;
 
         // Issue 22234: If you add a new case here, make sure to also
