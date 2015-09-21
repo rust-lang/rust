@@ -22,7 +22,7 @@ Existing languages at this level of abstraction and efficiency are unsatisfactor
 
 # Is any part of this thing production-ready?
 
-No. Feel free to play around, but don't expect completeness or stability yet. Expect incompleteness and breakage.
+Yes!
 
 # Is this a completely Mozilla-planned and orchestrated thing?
 
