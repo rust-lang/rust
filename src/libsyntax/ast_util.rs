@@ -28,12 +28,12 @@ pub fn path_name_i(idents: &[Ident]) -> String {
     idents.iter().map(|i| i.to_string()).collect::<Vec<String>>().join("::")
 }
 
-pub fn stmt_id(s: &Stmt) -> NodeId {
+pub fn stmt_id(s: &Stmt) -> Option<NodeId> {
     match s.node {
-      StmtDecl(_, id) => id,
-      StmtExpr(_, id) => id,
-      StmtSemi(_, id) => id,
-      StmtMac(..) => panic!("attempted to analyze unexpanded stmt")
+      StmtDecl(_, id) => Some(id),
+      StmtExpr(_, id) => Some(id),
+      StmtSemi(_, id) => Some(id),
+      StmtMac(..) => None,
     }
 }
 
@@ -385,7 +385,8 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
     }
 
     fn visit_stmt(&mut self, statement: &Stmt) {
-        self.operation.visit_id(ast_util::stmt_id(statement));
+        self.operation
+            .visit_id(ast_util::stmt_id(statement).expect("attempted to visit unexpanded stmt"));
         visit::walk_stmt(self, statement)
     }
 
