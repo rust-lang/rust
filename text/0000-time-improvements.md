@@ -98,7 +98,8 @@ relaxed over time with additional types or through further RFCs:
 
 It provides convenience methods for constructing Durations from larger units
 of time (minutes, hours, days), but gives them names like
-`Duration.from_standard_hour`. A standard hour is 3600 seconds, regardless of
+`Duration.from_standard_hour`. A standard hour is always 3600 seconds,
+regardless of leap seconds.
 
 It provides APIs that are expected to produce positive `Duration`s, and expects
 that APIs like timeouts will accept positive `Durations` (which is currently
@@ -153,9 +154,9 @@ operations have none of the usual time-related caveats.
 * subtract a `ProcessTime` from a later `ProcessTime`, producing a `Duration`
 * ask for an amount of time elapsed since a `ProcessTime`, producing a `Duration`
 
-Asking for an amount of time elapsed from a given `SystemTime` is a very common
+Asking for an amount of time elapsed from a given `ProcessTime` is a very common
 operation that is guaranteed to produce a positive `Duration`. Asking for the
-difference between an earlier and a later `SystemTime` also produces a positive
+difference between an earlier and a later `ProcessTime` also produces a positive
 `Duration` when used correctly.
 
 This design does not assume that negative `Duration`s are never useful, but
@@ -165,29 +166,29 @@ to produce an `Err` (or `panic!`) when receiving a negative value, this design
 optimizes for the broadly useful positive `Duration`.
 
 ```rs
-impl SystemTime {
+impl ProcessTime {
   /// Panics if `earlier` is later than &self.
-  /// Because SystemTime is monotonic, the only ime that `earlier` should be
+  /// Because ProcessTime is monotonic, the only time that `earlier` should be
   /// a later time is a bug in your code.
-  pub fn duration_from_earlier(&self, earlier: SystemTime) -> SystemTime;
+  pub fn duration_from_earlier(&self, earlier: ProcessTime) -> ProcessTime;
 
-  /// Panics if self is later than the current time (can happen if a SystemTime
+  /// Panics if self is later than the current time (can happen if a ProcessTime
   /// is produced synthetically)
   pub fn elapsed(&self) -> Duration;
 }
 
-impl Add<Duration> for SystemTime {
+impl Add<Duration> for ProcessTime {
   type Output = SystemTime;
 }
 
-impl Sub<Duration> for SystemTime {
-  type Output = SystemTime;
+impl Sub<Duration> for ProcessTime {
+  type Output = ProcessTime;
 }
 
-impl PartialEq for SystemTime;
-impl Eq for SystemTime;
-impl PartialOrd for SystemTime;
-impl Ord for SystemTime;
+impl PartialEq for ProcessTime;
+impl Eq for ProcessTime;
+impl PartialOrd for ProcessTime;
+impl Ord for ProcessTime;
 ```
 
 For convenience, several new constructors are added to `Duration`. Because any
@@ -241,10 +242,10 @@ propagates.
 ```rs
 impl SystemTime {
   /// Returns an `Err` if `earlier` is later
-  pub fn duration_from_earlier(&self, earlier: SystemTime) -> Result<Duration, ()>;
+  pub fn duration_from_earlier(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError>;
 
   /// Returns an `Err` if &self is later than the current system time.
-  pub fn elapsed(&self) -> Result<Duration, ()>;
+  pub fn elapsed(&self) -> Result<Duration, SystemTimeError>;
 }
 
 impl Add<Duration> for SystemTime {
@@ -322,6 +323,8 @@ possible to compare two arbitrary times to each other first, and then
 use `duration_from_earlier` reliably to get a positive `Duration`.
 
 # Unresolved Questions
+
+What should `SystemTimeError` look like?
 
 This RFC leaves types related to human representations of dates and times
 to a future proposal.
