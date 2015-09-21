@@ -496,7 +496,8 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         match cgcx.lto_ctxt {
             Some((sess, reachable)) if sess.lto() =>  {
                 time(sess.time_passes(), "all lto passes", ||
-                     lto::run(sess, llmod, tm, reachable, &config));
+                     lto::run(sess, llmod, tm, reachable, &config,
+                              &name_extra, &output_names));
 
                 if config.emit_lto_bc {
                     let name = format!("{}.lto.bc", name_extra);
