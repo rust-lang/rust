@@ -132,12 +132,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         let indent = self.block_indent;
         let rewrite = match fk {
-            visit::FnKind::ItemFn(ident,
-                                  ref generics,
-                                  ref unsafety,
-                                  ref constness,
-                                  ref abi,
-                                  vis) => {
+            visit::FnKind::ItemFn(ident, ref generics, unsafety, constness, abi, vis) => {
                 self.rewrite_fn(indent,
                                 ident,
                                 fd,
@@ -155,9 +150,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                 fd,
                                 Some(&sig.explicit_self),
                                 &sig.generics,
-                                &sig.unsafety,
-                                &sig.constness,
-                                &sig.abi,
+                                sig.unsafety,
+                                sig.constness,
+                                sig.abi,
                                 vis.unwrap_or(ast::Visibility::Inherited),
                                 codemap::mk_sp(s.lo, b.span.lo))
             }
@@ -223,6 +218,10 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 // TODO: we cannot format these yet, because of a bad span.
                 // See rust lang issue #28424.
                 // visit::walk_item(self, item);
+            }
+            ast::Item_::ItemForeignMod(ref foreign_mod) => {
+                self.format_missing_with_indent(item.span.lo);
+                self.format_foreign_mod(foreign_mod, item.span);
             }
             _ => {
                 visit::walk_item(self, item);
