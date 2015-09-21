@@ -106,8 +106,8 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     };
 
     let dialect = match ia.dialect {
-        AsmDialect::AsmAtt   => llvm::AD_ATT,
-        AsmDialect::AsmIntel => llvm::AD_Intel
+        AsmDialect::Att   => llvm::AD_ATT,
+        AsmDialect::Intel => llvm::AD_Intel
     };
 
     let asm = CString::new(ia.asm.as_bytes()).unwrap();
