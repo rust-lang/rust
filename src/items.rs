@@ -33,8 +33,18 @@ impl<'a> FmtVisitor<'a> {
             let mut infix = String::new();
 
             if let Some(ref ty) = local.ty {
-                infix.push_str(": ");
-                infix.push_str(&ty.rewrite(&self.get_context(), 1000, Indent::empty()).unwrap());
+                // 2 = ": ".len()
+                let offset = self.block_indent + 2;
+                let width = self.config.max_width - offset.width();
+                let rewrite = ty.rewrite(&self.get_context(), width, offset);
+
+                match rewrite {
+                    Some(result) => {
+                        infix.push_str(": ");
+                        infix.push_str(&result);
+                    }
+                    None => return,
+                }
             }
 
             if local.init.is_some() {
@@ -88,15 +98,103 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = span.hi;
     }
 
+    pub fn format_foreign_mod(&mut self, fm: &ast::ForeignMod, span: Span) {
+        self.buffer.push_str("extern ");
+
+        if fm.abi != abi::Abi::C {
+            self.buffer.push_str(&format!("{} ", fm.abi));
+        }
+
+        let snippet = self.snippet(span);
+        let brace_pos = snippet.find_uncommented("{").unwrap() as u32;
+
+        // FIXME: this skips comments between the extern keyword and the opening
+        // brace.
+        self.last_pos = span.lo + BytePos(brace_pos);
+        self.block_indent = self.block_indent.block_indent(self.config);
+
+        for item in &fm.items {
+            self.format_foreign_item(&*item);
+        }
+
+        self.block_indent = self.block_indent.block_unindent(self.config);
+        self.format_missing_with_indent(span.hi - BytePos(1));
+        self.buffer.push_str("}");
+        self.last_pos = span.hi;
+    }
+
+    fn format_foreign_item(&mut self, item: &ast::ForeignItem) {
+        self.format_missing_with_indent(item.span.lo);
+        // Drop semicolon or it will be interpreted as comment.
+        // FIXME: this may be a faulty span from libsyntax.
+        let span = codemap::mk_sp(item.span.lo, item.span.hi - BytePos(1));
+
+        match item.node {
+            ast::ForeignItem_::ForeignItemFn(ref fn_decl, ref generics) => {
+                let indent = self.block_indent;
+                let rewrite = self.rewrite_fn_base(indent,
+                                                   item.ident,
+                                                   fn_decl,
+                                                   None,
+                                                   generics,
+                                                   ast::Unsafety::Normal,
+                                                   ast::Constness::NotConst,
+                                                   // These are not actually rust functions,
+                                                   // but we format them as such.
+                                                   abi::Abi::Rust,
+                                                   ast::Visibility::Inherited,
+                                                   span,
+                                                   false);
+
+                match rewrite {
+                    Some(new_fn) => {
+                        self.buffer.push_str(format_visibility(item.vis));
+                        self.buffer.push_str(&new_fn);
+                        self.buffer.push_str(";");
+                    }
+                    None => self.format_missing(item.span.hi),
+                }
+            }
+            ast::ForeignItem_::ForeignItemStatic(ref ty, is_mutable) => {
+                // FIXME(#21): we're dropping potential comments in between the
+                // function keywords here.
+                let mut_str = if is_mutable {
+                    "mut "
+                } else {
+                    ""
+                };
+                let prefix = format!("{}static {}{}: ",
+                                     format_visibility(item.vis),
+                                     mut_str,
+                                     item.ident);
+                let offset = self.block_indent + prefix.len();
+                // 1 = ;
+                let width = self.config.max_width - offset.width() - 1;
+                let rewrite = ty.rewrite(&self.get_context(), width, offset);
+
+                match rewrite {
+                    Some(result) => {
+                        self.buffer.push_str(&prefix);
+                        self.buffer.push_str(&result);
+                        self.buffer.push_str(";");
+                    }
+                    None => self.format_missing(item.span.hi),
+                }
+            }
+        }
+
+        self.last_pos = item.span.hi;
+    }
+
     pub fn rewrite_fn(&mut self,
                       indent: Indent,
                       ident: ast::Ident,
                       fd: &ast::FnDecl,
                       explicit_self: Option<&ast::ExplicitSelf>,
                       generics: &ast::Generics,
-                      unsafety: &ast::Unsafety,
-                      constness: &ast::Constness,
-                      abi: &abi::Abi,
+                      unsafety: ast::Unsafety,
+                      constness: ast::Constness,
+                      abi: abi::Abi,
                       vis: ast::Visibility,
                       span: Span)
                       -> Option<String> {
@@ -147,9 +245,9 @@ impl<'a> FmtVisitor<'a> {
                                                        &sig.decl,
                                                        Some(&sig.explicit_self),
                                                        &sig.generics,
-                                                       &sig.unsafety,
-                                                       &sig.constness,
-                                                       &sig.abi,
+                                                       sig.unsafety,
+                                                       sig.constness,
+                                                       sig.abi,
                                                        ast::Visibility::Inherited,
                                                        span,
                                                        false));
@@ -166,9 +264,9 @@ impl<'a> FmtVisitor<'a> {
                        fd: &ast::FnDecl,
                        explicit_self: Option<&ast::ExplicitSelf>,
                        generics: &ast::Generics,
-                       unsafety: &ast::Unsafety,
-                       constness: &ast::Constness,
-                       abi: &abi::Abi,
+                       unsafety: ast::Unsafety,
+                       constness: ast::Constness,
+                       abi: abi::Abi,
                        vis: ast::Visibility,
                        span: Span,
                        newline_brace: bool)
@@ -182,13 +280,13 @@ impl<'a> FmtVisitor<'a> {
         // Vis unsafety abi.
         result.push_str(format_visibility(vis));
 
-        if let &ast::Unsafety::Unsafe = unsafety {
+        if let ast::Unsafety::Unsafe = unsafety {
             result.push_str("unsafe ");
         }
-        if let &ast::Constness::Const = constness {
+        if let ast::Constness::Const = constness {
             result.push_str("const ");
         }
-        if *abi != abi::Rust {
+        if abi != abi::Rust {
             result.push_str("extern ");
             result.push_str(&abi.to_string());
             result.push(' ');
@@ -497,11 +595,11 @@ impl<'a> FmtVisitor<'a> {
         }
         self.block_indent = self.block_indent.block_unindent(self.config);
 
-        self.format_missing_with_indent(span.lo + BytePos(enum_snippet.rfind('}').unwrap() as u32));
+        self.format_missing_with_indent(span.hi - BytePos(1));
         self.buffer.push_str("}");
     }
 
-    // Variant of an enum
+    // Variant of an enum.
     fn visit_variant(&mut self, field: &ast::Variant, last_field: bool, next_span_start: BytePos) {
         if self.visit_attrs(&field.node.attrs) {
             return;
