@@ -30,7 +30,7 @@ name                                                                            
 [iter_next_loop](https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop)                       | warn    | for-looping over `_.next()` which is probably not intended
 [len_without_is_empty](https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty)           | warn    | traits and impls that have `.len()` but not `.is_empty()`
 [len_zero](https://github.com/Manishearth/rust-clippy/wiki#len_zero)                                   | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
-[let_and_return](https://github.com/Manishearth/rust-clippy/wiki#let_and_return)                       | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a function
+[let_and_return](https://github.com/Manishearth/rust-clippy/wiki#let_and_return)                       | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block
 [let_unit_value](https://github.com/Manishearth/rust-clippy/wiki#let_unit_value)                       | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
 [linkedlist](https://github.com/Manishearth/rust-clippy/wiki#linkedlist)                               | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a RingBuf
 [match_ref_pats](https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats)                       | warn    | a match has all arms prefixed with `&`; the match expression can be dereferenced instead
