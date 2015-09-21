@@ -2209,7 +2209,7 @@ impl<'a> State<'a> {
                 if a.alignstack {
                     options.push("alignstack");
                 }
-                if a.dialect == ast::AsmDialect::AsmIntel {
+                if a.dialect == ast::AsmDialect::Intel {
                     options.push("intel");
                 }
 
