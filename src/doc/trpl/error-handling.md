@@ -1223,7 +1223,7 @@ let err2: Box<Error> = From::from(parse_err);
 
 There is a really important pattern to recognize here. Both `err1` and `err2`
 have the *same type*. This is because they are existentially quantified types,
-or trait objects. In particularly, their underlying type is *erased* from the
+or trait objects. In particular, their underlying type is *erased* from the
 compiler's knowledge, so it truly sees `err1` and `err2` as exactly the same.
 Additionally, we constructed `err1` and `err2` using precisely the same
 function call: `From::from`. This is because `From::from` is overloaded on both
