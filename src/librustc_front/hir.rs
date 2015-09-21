@@ -10,7 +10,6 @@
 
 // The Rust HIR.
 
-pub use self::AsmDialect::*;
 pub use self::BindingMode::*;
 pub use self::BinOp_::*;
 pub use self::BlockCheckMode::*;
@@ -41,7 +40,7 @@ pub use self::PathParameters::*;
 
 use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
-use syntax::ast::{Name, Ident, NodeId, DUMMY_NODE_ID, TokenTree};
+use syntax::ast::{Name, Ident, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, CrateConfig};
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::InternedString;
@@ -874,12 +873,6 @@ pub enum Ty_ {
     /// TyInfer means the type should be inferred instead of it having been
     /// specified. This can appear anywhere in a type.
     TyInfer,
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum AsmDialect {
-    AsmAtt,
-    AsmIntel
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
