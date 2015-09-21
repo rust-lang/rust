@@ -801,7 +801,7 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                     clobbers: clobbers.clone(),
                     volatile: volatile,
                     alignstack: alignstack,
-                    dialect: lower_asm_dialect(dialect),
+                    dialect: dialect,
                     expn_id: expn_id,
                 }),
                 ExprStruct(ref path, ref fields, ref maybe_expr) => {
@@ -860,13 +860,6 @@ pub fn lower_capture_clause(c: CaptureClause) -> hir::CaptureClause {
     match c {
         CaptureByValue => hir::CaptureByValue,
         CaptureByRef => hir::CaptureByRef,
-    }
-}
-
-pub fn lower_asm_dialect(a: AsmDialect) -> hir::AsmDialect {
-    match a {
-        AsmAtt => hir::AsmAtt,
-        AsmIntel => hir::AsmIntel,
     }
 }
 
