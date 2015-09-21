@@ -24,6 +24,7 @@
        html_playground_url = "https://play.rust-lang.org/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![cfg_attr(test, feature(test))]
+#![feature(cfg_target_vendor)]
 
 //! Bindings for the C standard library and other platform libraries
 //!
@@ -143,7 +144,10 @@ pub use funcs::bsd43::*;
 
 // On NaCl, these libraries are static. Thus it would be a Bad Idea to link them
 // in when creating a test crate.
-#[cfg(not(any(windows, target_env = "musl", all(target_os = "nacl", test))))]
+#[cfg(not(any(windows,
+              target_env = "musl",
+              all(target_os = "nacl", test),
+              all(target_os = "netbsd", target_vendor = "rumprun"))))]
 #[link(name = "c")]
 #[link(name = "m")]
 extern {}

@@ -1295,6 +1295,12 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
             putvar CFG_MSVC_LIB_PATH_${bits}
             ;;
 
+        *-rumprun-netbsd)
+            step_msg "targeting rumprun-netbsd, disabling jemalloc"
+            CFG_DISABLE_JEMALLOC=1
+            putvar CFG_DISABLE_JEMALLOC
+            ;;
+
         *)
             ;;
     esac
