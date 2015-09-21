@@ -41,6 +41,7 @@
 use std::cmp::min;
 use std::env;
 use std::io;
+use std::io::BufWriter;
 use std::io::prelude::*;
 
 const LINE_LEN: usize = 60;
@@ -214,7 +215,7 @@ fn main() {
     };
 
     let stdout = io::stdout();
-    let mut out = stdout.lock();
+    let mut out = BufWriter::new(stdout.lock());
 
     out.write_all(b">ONE Homo sapiens alu\n").unwrap();
     {
