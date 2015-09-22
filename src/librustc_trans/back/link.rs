@@ -970,7 +970,9 @@ fn link_args(cmd: &mut Linker,
     // default. Note that this does not happen for windows because windows pulls
     // in some large number of libraries and I couldn't quite figure out which
     // subset we wanted.
-    cmd.no_default_libraries();
+    if t.options.no_default_libraries {
+        cmd.no_default_libraries();
+    }
 
     // Take careful note of the ordering of the arguments we pass to the linker
     // here. Linkers will assume that things on the left depend on things to the

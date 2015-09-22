@@ -2210,10 +2210,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ItemUse(ref view_path) => {
                 // check for imports shadowing primitive types
-                let check_rename = |id, ident: Ident| {
-                    match self.def_map.borrow().get(&id).map(|d| d.full_def()) {
+                let check_rename = |this: &Self, id, ident: Ident| {
+                    match this.def_map.borrow().get(&id).map(|d| d.full_def()) {
                         Some(DefTy(..)) | Some(DefStruct(..)) | Some(DefTrait(..)) | None => {
-                            self.check_if_primitive_type_name(ident.name, item.span);
+                            this.check_if_primitive_type_name(ident.name, item.span);
                         }
                         _ => {}
                     }
@@ -2221,12 +2221,28 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 match view_path.node {
                     hir::ViewPathSimple(ident, _) => {
-                        check_rename(item.id, ident);
+                        check_rename(self, item.id, ident);
                     }
-                    hir::ViewPathList(_, ref items) => {
+                    hir::ViewPathList(ref prefix, ref items) => {
                         for item in items {
                             if let Some(ident) = item.node.rename() {
-                                check_rename(item.node.id(), ident);
+                                check_rename(self, item.node.id(), ident);
+                            }
+                        }
+
+                        // Resolve prefix of an import with empty braces (issue #28388)
+                        if items.is_empty() && !prefix.segments.is_empty() {
+                            match self.resolve_crate_relative_path(prefix.span,
+                                                                   &prefix.segments,
+                                                                   TypeNS) {
+                                Some((def, lp)) => self.record_def(item.id,
+                                                   PathResolution::new(def, lp, 0)),
+                                None => {
+                                    resolve_error(self,
+                                                  prefix.span,
+                                                  ResolutionError::FailedToResolve(
+                                                      &path_names_to_string(prefix, 0)));
+                                }
                             }
                         }
                     }

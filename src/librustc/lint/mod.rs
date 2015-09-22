@@ -161,6 +161,7 @@ pub trait LateLintPass: LintPass {
     fn check_lifetime_def(&mut self, _: &LateContext, _: &hir::LifetimeDef) { }
     fn check_explicit_self(&mut self, _: &LateContext, _: &hir::ExplicitSelf) { }
     fn check_path(&mut self, _: &LateContext, _: &hir::Path, _: ast::NodeId) { }
+    fn check_path_list_item(&mut self, _: &LateContext, _: &hir::PathListItem) { }
     fn check_attribute(&mut self, _: &LateContext, _: &ast::Attribute) { }
 
     /// Called when entering a syntax node that can have lint attributes such
@@ -206,6 +207,7 @@ pub trait EarlyLintPass: LintPass {
     fn check_lifetime_def(&mut self, _: &EarlyContext, _: &ast::LifetimeDef) { }
     fn check_explicit_self(&mut self, _: &EarlyContext, _: &ast::ExplicitSelf) { }
     fn check_path(&mut self, _: &EarlyContext, _: &ast::Path, _: ast::NodeId) { }
+    fn check_path_list_item(&mut self, _: &EarlyContext, _: &ast::PathListItem) { }
     fn check_attribute(&mut self, _: &EarlyContext, _: &ast::Attribute) { }
 
     /// Called when entering a syntax node that can have lint attributes such

@@ -10,6 +10,8 @@
 
 // compile-flags: -C no-prepopulate-passes
 
+#![crate_type = "lib"]
+
 pub struct Bytes {
   a: u8,
   b: u8,

@@ -22,6 +22,7 @@ use trans::type_::Type;
 
 use rustc_front::hir as ast;
 use std::ffi::CString;
+use syntax::ast::AsmDialect;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
@@ -105,8 +106,8 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     };
 
     let dialect = match ia.dialect {
-        ast::AsmAtt   => llvm::AD_ATT,
-        ast::AsmIntel => llvm::AD_Intel
+        AsmDialect::Att   => llvm::AD_ATT,
+        AsmDialect::Intel => llvm::AD_Intel
     };
 
     let asm = CString::new(ia.asm.as_bytes()).unwrap();

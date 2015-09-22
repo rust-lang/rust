@@ -423,6 +423,10 @@ mod svh_visitor {
             SawPath.hash(self.st); visit::walk_path(self, path)
         }
 
+        fn visit_path_list_item(&mut self, prefix: &Path, item: &'v PathListItem) {
+            SawPath.hash(self.st); visit::walk_path_list_item(self, prefix, item)
+        }
+
         fn visit_block(&mut self, b: &Block) {
             SawBlock.hash(self.st); visit::walk_block(self, b)
         }

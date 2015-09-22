@@ -8,22 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -C no-prepopulate-passes
+// Prefix in imports with empty braces should be resolved and checked privacy, stability, etc.
 
-#![crate_type = "lib"]
+// aux-build:lint_stability.rs
 
-static X: i32 = 5;
+extern crate lint_stability;
 
-// CHECK-LABEL: @raw_ptr_to_raw_ptr_noop
-// CHECK-NOT: alloca
-#[no_mangle]
-pub fn raw_ptr_to_raw_ptr_noop() -> *const i32{
-    &X as *const i32
-}
+use lint_stability::UnstableStruct::{}; //~ ERROR use of unstable library feature 'test_feature'
+use lint_stability::StableStruct::{}; // OK
 
-// CHECK-LABEL: @reference_to_raw_ptr_noop
-// CHECK-NOT: alloca
-#[no_mangle]
-pub fn reference_to_raw_ptr_noop() -> *const i32 {
-    &X
-}
+fn main() {}

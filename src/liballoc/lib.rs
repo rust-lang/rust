@@ -100,7 +100,7 @@
 #![cfg_attr(stage0, feature(alloc_system))]
 #![cfg_attr(not(stage0), feature(needs_allocator))]
 
-#![cfg_attr(test, feature(test, rustc_private))]
+#![cfg_attr(test, feature(test, rustc_private, box_heap))]
 
 #[cfg(stage0)]
 extern crate alloc_system;
