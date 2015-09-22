@@ -148,15 +148,17 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
     // care of exposing correctly.
     unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
                         -> Result<(), Box<Any + Send>> {
-        let prev = PANICKING.with(|s| s.get());
-        PANICKING.with(|s| s.set(false));
-        let ep = intrinsics::try(f, data);
-        PANICKING.with(|s| s.set(prev));
-        if ep.is_null() {
-            Ok(())
-        } else {
-            Err(imp::cleanup(ep))
-        }
+        PANICKING.with(|s| {
+            let prev = s.get();
+            s.set(false);
+            let ep = intrinsics::try(f, data);
+            s.set(prev);
+            if ep.is_null() {
+                Ok(())
+            } else {
+                Err(imp::cleanup(ep))
+            }
+        })
     }
 
     fn try_fn<F: FnOnce()>(opt_closure: *mut u8) {
