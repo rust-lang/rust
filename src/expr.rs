@@ -667,8 +667,11 @@ fn rewrite_match(context: &RewriteContext,
         if !missed_str.is_empty() {
             result.push('\n');
             result.push_str(&arm_indent_str);
-            result.push_str(&rewrite_comment(&missed_str, false,
-                                             width, arm_indent, context.config));
+            result.push_str(&rewrite_comment(&missed_str,
+                                             false,
+                                             width,
+                                             arm_indent,
+                                             context.config));
         }
         result.push('\n');
         result.push_str(&arm_indent_str);
@@ -698,7 +701,11 @@ fn rewrite_match(context: &RewriteContext,
     result.push('\n');
     if last_comment.len() > 0 {
         result.push_str(&arm_indent_str);
-        result.push_str(&rewrite_comment(&last_comment, false, width, arm_indent, context.config));
+        result.push_str(&rewrite_comment(&last_comment,
+                                         false,
+                                         width,
+                                         arm_indent,
+                                         context.config));
         result.push('\n');
     }
     result.push_str(&(context.block_indent + context.overflow_indent).to_string(context.config));

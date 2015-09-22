@@ -130,6 +130,16 @@ fn issue184(source: &str) {
     }
 }
 
+fn matches() {
+    match 1 {
+        1 => 1, // foo
+        2 => 2,
+        // bar
+        3 => 3,
+        _ => 0 // baz
+    }
+}
+
 fn arrays() {
     let x = [0,
          1,
