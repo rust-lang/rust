@@ -279,6 +279,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
         visit::walk_path(self, path);
     }
 
+    fn visit_path_list_item(&mut self, path: &hir::Path, item: &hir::PathListItem) {
+        self.lookup_and_handle_definition(&item.node.id());
+        visit::walk_path_list_item(self, path, item);
+    }
+
     fn visit_item(&mut self, _: &hir::Item) {
         // Do not recurse into items. These items will be added to the
         // worklist and recursed into manually if necessary.

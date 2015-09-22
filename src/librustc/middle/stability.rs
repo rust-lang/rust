@@ -355,6 +355,12 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         visit::walk_path(self, path)
     }
 
+    fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
+        check_path_list_item(self.tcx, item,
+                   &mut |id, sp, stab| self.check(id, sp, stab));
+        visit::walk_path_list_item(self, prefix, item)
+    }
+
     fn visit_pat(&mut self, pat: &hir::Pat) {
         check_pat(self.tcx, pat,
                   &mut |id, sp, stab| self.check(id, sp, stab));
@@ -470,7 +476,17 @@ pub fn check_path(tcx: &ty::ctxt, path: &hir::Path, id: ast::NodeId,
         }
         None => {}
     }
+}
 
+pub fn check_path_list_item(tcx: &ty::ctxt, item: &hir::PathListItem,
+                  cb: &mut FnMut(DefId, Span, &Option<&Stability>)) {
+    match tcx.def_map.borrow().get(&item.node.id()).map(|d| d.full_def()) {
+        Some(def::DefPrimTy(..)) => {}
+        Some(def) => {
+            maybe_do_stability_check(tcx, def.def_id(), item.span, cb);
+        }
+        None => {}
+    }
 }
 
 pub fn check_pat(tcx: &ty::ctxt, pat: &hir::Pat,
