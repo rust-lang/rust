@@ -2064,7 +2064,7 @@ string and add a flag to the Option variable. Once were done that, Getopts does 
 let mut opts = Options::new();
 opts.optopt("f", "file", "Choose an input file, instead of using STDIN.", "NAME");
 opts.optflag("h", "help", "Show this usage message.");
-opts.optflag("q", "quit", "Silences errors and warnings.");
+opts.optflag("q", "quiet", "Silences errors and warnings.");
 ...
 ```
 
