@@ -8,11 +8,13 @@ use rustc_front::visit::FnKind;
 use rustc::middle::ty;
 
 use utils::{get_item_name, match_path, snippet, span_lint, walk_ptrs_ty, is_integer_literal};
+use utils::span_help_and_lint;
 use consts::constant;
 
 declare_lint!(pub TOPLEVEL_REF_ARG, Warn,
-              "a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not \
-               `fn foo((ref x, ref y): (u8, u8))`)");
+              "An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), \
+               or a `let` statement (`let ref x = foo()`). In such cases, it is preferred to take \
+               references with `&`.");
 
 #[allow(missing_copy_implementations)]
 pub struct TopLevelRefPass;
@@ -38,6 +40,29 @@ impl LateLintPass for TopLevelRefPass {
                 );
             }
         }
+    }
+    fn check_stmt(&mut self, cx: &LateContext, s: &Stmt) {
+        if_let_chain! {
+            [
+            let StmtDecl(ref d, _) = s.node,
+            let DeclLocal(ref l) = d.node,
+            let PatIdent(BindByRef(_), i, None) = l.pat.node,
+            let Some(ref init) = l.init
+            ], {
+                let tyopt = if let Some(ref ty) = l.ty {
+                    format!(": {:?} ", ty)
+                } else {
+                    "".to_owned()
+                };
+                span_help_and_lint(cx,
+                    TOPLEVEL_REF_ARG,
+                    l.pat.span,
+                    "`ref` on an entire `let` pattern is discouraged, take a reference with & instead",
+                    &format!("try `let {} {}= &{};`", snippet(cx, i.span, "_"),
+                             tyopt, snippet(cx, init.span, "_"))
+                );
+            }
+        };
     }
 }
 

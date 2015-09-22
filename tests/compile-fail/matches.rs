@@ -40,7 +40,7 @@ fn single_match(){
 
 fn ref_pats() {
     {
-        let ref v = Some(0);
+        let v = &Some(0);
         match v {  //~ERROR instead of prefixing all patterns with `&`
             &Some(v) => println!("{:?}", v),
             &None => println!("none"),
@@ -50,7 +50,7 @@ fn ref_pats() {
             other => println!("other"),
         }
     }
-    let ref tup = (1, 2);
+    let tup =& (1, 2);
     match tup {  //~ERROR instead of prefixing all patterns with `&`
         &(v, 1) => println!("{}", v),
         _ => println!("none"),

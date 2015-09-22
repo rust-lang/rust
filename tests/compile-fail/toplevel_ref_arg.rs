@@ -14,5 +14,13 @@ fn main() {
   // Closures should not warn
   let y = |ref x| { println!("{:?}", x) };
   y(1u8);
+
+  let ref x = 1; //~ ERROR `ref` on an entire `let` pattern is discouraged
+                 //~^ HELP try `let x = &1;`
+
+  let ref y = (&1, 2); //~ ERROR `ref` on an entire `let` pattern is discouraged
+                 //~^ HELP try `let y = &(&1, 2);`
+
+  let (ref x, _) = (1,2); // okay, not top level
   println!("The answer is {}.", x);
 }
