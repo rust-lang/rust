@@ -24,7 +24,7 @@
 //! those that are created by the expansion of a macro.
 
 use syntax::abi::Abi;
-use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
+use syntax::ast::{Ident, NodeId, CRATE_NODE_ID, Name, Attribute};
 use hir::*;
 use hir;
 use syntax::codemap::Span;
@@ -57,6 +57,7 @@ pub trait Visitor<'v> : Sized {
     fn visit_name(&mut self, _span: Span, _name: Name) {
         // Nothing to do.
     }
+    fn visit_ident(&mut self, span: Span, ident: Ident) { walk_ident(self, span, ident) }
     fn visit_mod(&mut self, m: &'v Mod, _s: Span, _n: NodeId) { walk_mod(self, m) }
     fn visit_foreign_item(&mut self, i: &'v ForeignItem) { walk_foreign_item(self, i) }
     fn visit_item(&mut self, i: &'v Item) { walk_item(self, i) }
@@ -131,6 +132,10 @@ pub trait Visitor<'v> : Sized {
         walk_assoc_type_binding(self, type_binding)
     }
     fn visit_attribute(&mut self, _attr: &'v Attribute) {}
+}
+
+pub fn walk_ident<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, ident: Ident) {
+    visitor.visit_name(span, ident.name);
 }
 
 pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate) {
@@ -409,7 +414,7 @@ pub fn walk_path_list_item<'v, V: Visitor<'v>>(visitor: &mut V, prefix: &'v Path
 pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
                                              path_span: Span,
                                              segment: &'v PathSegment) {
-    visitor.visit_name(path_span, segment.identifier.name);
+    visitor.visit_ident(path_span, segment.identifier);
     visitor.visit_path_parameters(path_span, &segment.parameters);
 }
 
@@ -475,7 +480,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
             visitor.visit_pat(&**subpattern)
         }
         PatIdent(_, ref pth1, ref optional_subpattern) => {
-            visitor.visit_name(pth1.span, pth1.node.name);
+            visitor.visit_ident(pth1.span, pth1.node);
             match *optional_subpattern {
                 None => {}
                 Some(ref subpattern) => visitor.visit_pat(&**subpattern),
