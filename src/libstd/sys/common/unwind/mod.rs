@@ -244,22 +244,12 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, u32)) -> !
 #[inline(never)] #[cold] // this is the slow path, please never inline this
 fn begin_unwind_inner(msg: Box<Any + Send>,
                       file_line: &(&'static str, u32)) -> ! {
-    // Make sure the default failure handler is registered before we look at the
-    // callbacks. We also use a raw sys-based mutex here instead of a
-    // `std::sync` one as accessing TLS can cause weird recursive problems (and
-    // we don't need poison checking).
-    unsafe {
-        static LOCK: Mutex = Mutex::new();
-        static mut INIT: bool = false;
-        LOCK.lock();
-        if !INIT {
-            register(panicking::on_panic);
-            INIT = true;
-        }
-        LOCK.unlock();
-    }
+    let (file, line) = *file_line;
 
-    // First, invoke call the user-defined callbacks triggered on thread panic.
+    // First, invoke the default panic handler.
+    panicking::on_panic(&*msg, file, line);
+
+    // Then, invoke call the user-defined callbacks triggered on thread panic.
     //
     // By the time that we see a callback has been registered (by reading
     // MAX_CALLBACKS), the actual callback itself may have not been stored yet,
@@ -275,7 +265,6 @@ fn begin_unwind_inner(msg: Box<Any + Send>,
             0 => {}
             n => {
                 let f: Callback = unsafe { mem::transmute(n) };
-                let (file, line) = *file_line;
                 f(&*msg, file, line);
             }
         }
