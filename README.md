@@ -9,7 +9,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 There are 58 lints included in this crate:
 
 name                                                                                                   | default | meaning
--------------------------------------------------------------------------------------------------------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [approx_constant](https://github.com/Manishearth/rust-clippy/wiki#approx_constant)                     | warn    | the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found; suggests to use the constant
 [bad_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#bad_bit_mask)                           | warn    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
 [box_vec](https://github.com/Manishearth/rust-clippy/wiki#box_vec)                                     | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
@@ -59,7 +59,7 @@ name                                                                            
 [string_add](https://github.com/Manishearth/rust-clippy/wiki#string_add)                               | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
 [string_add_assign](https://github.com/Manishearth/rust-clippy/wiki#string_add_assign)                 | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
 [string_to_string](https://github.com/Manishearth/rust-clippy/wiki#string_to_string)                   | warn    | calling `String.to_string()` which is a no-op
-[toplevel_ref_arg](https://github.com/Manishearth/rust-clippy/wiki#toplevel_ref_arg)                   | warn    | a function argument is declared `ref` (i.e. `fn foo(ref x: u8)`, but not `fn foo((ref x, ref y): (u8, u8))`)
+[toplevel_ref_arg](https://github.com/Manishearth/rust-clippy/wiki#toplevel_ref_arg)                   | warn    | An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), or a `let` statement (`let ref x = foo()`). In such cases, it is preferred to take references with `&`.
 [type_complexity](https://github.com/Manishearth/rust-clippy/wiki#type_complexity)                     | warn    | usage of very complex types; recommends factoring out parts into `type` definitions
 [unicode_not_nfc](https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc)                     | allow   | using a unicode literal not in NFC normal form (see http://www.unicode.org/reports/tr15/ for further information)
 [unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                   | warn    | comparing unit values (which is always `true` or `false`, respectively)
