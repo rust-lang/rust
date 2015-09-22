@@ -407,7 +407,7 @@ pub fn walk_path_list_item<'v, V: Visitor<'v>>(visitor: &mut V, prefix: &'v Path
     }
 
     if let PathListIdent { name, .. } = item.node {
-        visitor.visit_ident(item.span, name);
+        visitor.visit_name(item.span, name);
     }
 }
 

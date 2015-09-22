@@ -988,7 +988,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
     fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
         let name = if let hir::PathListIdent { name, .. } = item.node {
-            name.name
+            name
         } else if !prefix.segments.is_empty() {
             prefix.segments.last().unwrap().identifier.name
         } else {
