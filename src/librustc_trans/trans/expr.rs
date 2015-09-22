@@ -999,6 +999,32 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         hir::ExprLoop(ref body, _) => {
             controlflow::trans_loop(bcx, expr, &**body)
         }
+        // indexed assignments `a[b] = c`
+        hir::ExprAssign(ref lhs, ref rhs) if bcx.tcx().is_method_call(expr.id) => {
+            if let hir::ExprIndex(ref base, ref idx) = lhs.node {
+                let rhs = unpack_datum!(bcx, trans(bcx, &**rhs));
+
+                // NOTE `lhs` is not an lvalue in this case, but we still need to create a cleanup
+                // scope that covers `base` and `idx`
+                let cleanup_debug_loc = debuginfo::get_cleanup_debug_loc_for_ast_node(bcx.ccx(),
+                                                                                      lhs.id,
+                                                                                      lhs.span,
+                                                                                      false);
+
+                bcx.fcx.push_ast_cleanup_scope(cleanup_debug_loc);
+
+                let base = unpack_datum!(bcx, trans(bcx, &**base));
+                let idx = unpack_datum!(bcx, trans(bcx, &**idx));
+
+                bcx.fcx.pop_and_trans_ast_cleanup_scope(bcx, lhs.id);
+
+                trans_indexed_assignment(bcx, expr, MethodCall::expr(expr.id), base, idx, rhs).bcx
+            } else {
+                bcx.tcx().sess.span_bug(
+                    expr.span,
+                    "the only overloadable assignments are indexed assignments");
+            }
+        },
         hir::ExprAssign(ref dst, ref src) => {
             let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
             let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &**dst, "assign"));
@@ -2031,6 +2057,25 @@ fn trans_overloaded_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              dest)
 }
 
+fn trans_indexed_assignment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                        expr: &hir::Expr,
+                                        method_call: MethodCall,
+                                        base: Datum<'tcx, Expr>,
+                                        idx: Datum<'tcx, Expr>,
+                                        rhs: Datum<'tcx, Expr>)
+                                   -> Result<'blk, 'tcx> {
+    callee::trans_call_inner(bcx,
+                             expr.debug_loc(),
+                             |bcx, arg_cleanup_scope| {
+                                meth::trans_method_callee(bcx,
+                                                          method_call,
+                                                          None,
+                                                          arg_cleanup_scope)
+                             },
+                             callee::ArgIndexedAssignment(vec![base, idx, rhs]),
+                             None)
+}
+
 fn trans_overloaded_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                          expr: &hir::Expr,
                                          callee: &'a hir::Expr,
@@ -2676,8 +2721,8 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS, but there are a few exceptions:
         return match expr.node {
-            // `a += b` has a unit result.
-            hir::ExprAssignOp(..) => ExprKind::RvalueStmt,
+            // `a += b` and `a[b] = c` have a unit result.
+            hir::ExprAssignOp(..) | hir::ExprAssign(..) => ExprKind::RvalueStmt,
 
             // the deref method invoked for `*a` always yields an `&T`
             hir::ExprUnary(hir::UnDeref, _) => ExprKind::Lvalue,

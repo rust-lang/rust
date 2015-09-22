@@ -517,8 +517,16 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
             }
 
             hir::ExprAssign(ref lhs, ref rhs) => {
-                self.mutate_expr(expr, &**lhs, JustWrite);
-                self.consume_expr(&**rhs);
+                if let hir::ExprIndex(ref base, ref idx) = lhs.node {
+                    if !self.walk_overloaded_operator(expr, base, vec![idx, rhs],
+                                                      PassArgs::ByValue) {
+                        self.mutate_expr(expr, &**lhs, JustWrite);
+                        self.consume_expr(&**rhs);
+                    }
+                } else {
+                    self.mutate_expr(expr, &**lhs, JustWrite);
+                    self.consume_expr(&**rhs);
+                }
             }
 
             hir::ExprCast(ref base, _) => {

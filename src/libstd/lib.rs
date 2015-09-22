@@ -251,6 +251,7 @@
 #![cfg_attr(test, feature(float_from_str_radix, range_inclusive, float_extras, hash_default))]
 #![cfg_attr(test, feature(test, rustc_private, float_consts))]
 #![cfg_attr(target_env = "msvc", feature(link_args))]
+#![cfg_attr(not(stage0), feature(index_assign_trait))]
 
 // Don't link to std. We are std.
 #![no_std]

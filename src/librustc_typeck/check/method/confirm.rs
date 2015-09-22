@@ -574,7 +574,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                             autoderefs,
                             unsize,
                             PreferMutLvalue,
-                            index_expr_ty);
+                            index_expr_ty,
+                            false);
 
                         if let Some((input_ty, return_ty)) = result {
                             demand::suptype(self.fcx, index_expr.span, input_ty, index_expr_ty);

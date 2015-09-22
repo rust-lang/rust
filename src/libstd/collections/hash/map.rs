@@ -22,6 +22,8 @@ use iter::{self, Iterator, ExactSizeIterator, IntoIterator, FromIterator, Extend
 use marker::Sized;
 use mem::{self, replace};
 use ops::{Deref, FnMut, FnOnce, Index};
+#[cfg(not(stage0))]
+use ops::{IndexAssign, IndexMut};
 use option::Option::{self, Some, None};
 use rand::{self, Rng};
 use result::Result;
@@ -1252,6 +1254,33 @@ impl<'a, K, Q: ?Sized, V, S> Index<&'a Q> for HashMap<K, V, S>
     #[inline]
     fn index(&self, index: &Q) -> &V {
         self.get(index).expect("no entry found for key")
+    }
+}
+
+#[cfg(not(stage0))]
+// TODO(japaric) update issue number
+#[unstable(feature = "index_assign_trait", reason = "recently added", issue="0")]
+impl<'a, K, Q: ?Sized, V, S> IndexMut<&'a Q> for HashMap<K, V, S>
+    where K: Eq + Hash + Borrow<Q>,
+          Q: Eq + Hash,
+          S: HashState,
+{
+    #[inline]
+    fn index_mut(&mut self, index: &Q) -> &mut V {
+        self.get_mut(index).expect("no entry found for key")
+    }
+}
+
+#[cfg(not(stage0))]
+// TODO(japaric) update issue number
+#[unstable(feature = "index_assign_trait", reason = "recently added", issue="0")]
+impl<K, V, S> IndexAssign<K, V> for HashMap<K, V, S>
+    where K: Eq + Hash,
+          S: HashState,
+{
+    #[inline]
+    fn index_assign(&mut self, key: K, value: V) {
+        self.insert(key, value);
     }
 }
 

@@ -868,6 +868,8 @@ pub enum CallArgs<'a, 'tcx> {
     // arguments should be auto-referenced
     ArgOverloadedOp(Datum<'tcx, Expr>, Option<(Datum<'tcx, Expr>, ast::NodeId)>, bool),
 
+    ArgIndexedAssignment(Vec<Datum<'tcx, Expr>>),
+
     // Supply value of arguments as a list of expressions that must be
     // translated, for overloaded call operators.
     ArgOverloadedCall(Vec<&'a hir::Expr>),
@@ -1053,6 +1055,15 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                       llargs);
             } else {
                 assert_eq!(arg_tys.len(), 1);
+            }
+        }
+        ArgIndexedAssignment(args) => {
+            assert!(!variadic);
+            assert_eq!(arg_tys.len(), 3);
+
+            for (i, arg) in args.into_iter().enumerate() {
+                bcx = trans_arg_datum(bcx, arg_tys[i], arg, arg_cleanup_scope, DontAutorefArg,
+                                      llargs);
             }
         }
         ArgVals(vs) => {
