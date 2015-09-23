@@ -284,11 +284,10 @@ impl<T: Clone> Clone for Box<T> {
     /// let x = Box::new(5);
     /// let y = x.clone();
     /// ```
+    #[rustfmt_skip]
     #[inline]
     fn clone(&self) -> Box<T> {
-        box {
-            (**self).clone()
-        }
+        box { (**self).clone() }
     }
     /// Copies `source`'s contents into `self` without creating a new allocation.
     ///
