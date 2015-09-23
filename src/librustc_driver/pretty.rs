@@ -330,8 +330,7 @@ impl<'ast> pprust_hir::PpAnn for IdentifiedAnnotation<'ast> {
             s: &mut pprust_hir::State,
             node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
-            pprust_hir::NodeIdent(_) | pprust_hir::NodeName(_) => Ok(()),
-
+            pprust_hir::NodeName(_) => Ok(()),
             pprust_hir::NodeItem(item) => {
                 try!(pp::space(&mut s.s));
                 s.synth_comment(item.id.to_string())

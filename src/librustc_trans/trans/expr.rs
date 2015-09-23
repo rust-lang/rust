@@ -963,10 +963,10 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     match expr.node {
         hir::ExprBreak(label_opt) => {
-            controlflow::trans_break(bcx, expr, label_opt.map(|l| l.node))
+            controlflow::trans_break(bcx, expr, label_opt.map(|l| l.node.name))
         }
         hir::ExprAgain(label_opt) => {
-            controlflow::trans_cont(bcx, expr, label_opt.map(|l| l.node))
+            controlflow::trans_cont(bcx, expr, label_opt.map(|l| l.node.name))
         }
         hir::ExprRet(ref ex) => {
             // Check to see if the return expression itself is reachable.
@@ -1114,7 +1114,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // trans. Shudder.
             fn make_field(field_name: &str, expr: P<hir::Expr>) -> hir::Field {
                 hir::Field {
-                    name: codemap::dummy_spanned(token::str_to_ident(field_name).name),
+                    name: codemap::dummy_spanned(token::intern(field_name)),
                     expr: expr,
                     span: codemap::DUMMY_SP,
                 }

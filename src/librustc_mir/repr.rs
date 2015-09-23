@@ -113,7 +113,7 @@ pub enum BorrowKind {
 // decl, a let, etc.
 pub struct VarDecl<H:Hair> {
     pub mutability: Mutability,
-    pub name: H::Ident,
+    pub name: H::Name,
     pub ty: H::Ty,
 }
 

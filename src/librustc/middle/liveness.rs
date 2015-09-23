@@ -383,7 +383,7 @@ fn visit_fn(ir: &mut IrMaps,
                                &*arg.pat,
                                |_bm, arg_id, _x, path1| {
             debug!("adding argument {}", arg_id);
-            let name = path1.node.name;
+            let name = path1.node;
             fn_maps.add_variable(Arg(arg_id, name));
         })
     };
@@ -416,7 +416,7 @@ fn visit_fn(ir: &mut IrMaps,
 fn visit_local(ir: &mut IrMaps, local: &hir::Local) {
     pat_util::pat_bindings(&ir.tcx.def_map, &*local.pat, |_, p_id, sp, path1| {
         debug!("adding local variable {}", p_id);
-        let name = path1.node.name;
+        let name = path1.node;
         ir.add_live_node_for_node(p_id, VarDefNode(sp));
         ir.add_variable(Local(LocalInfo {
           id: p_id,
@@ -431,7 +431,7 @@ fn visit_arm(ir: &mut IrMaps, arm: &hir::Arm) {
         pat_util::pat_bindings(&ir.tcx.def_map, &**pat, |bm, p_id, sp, path1| {
             debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
-            let name = path1.node.name;
+            let name = path1.node;
             ir.add_live_node_for_node(p_id, VarDefNode(sp));
             ir.add_variable(Local(LocalInfo {
                 id: p_id,
@@ -688,7 +688,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn find_loop_scope(&self,
-                       opt_label: Option<ast::Ident>,
+                       opt_label: Option<ast::Name>,
                        id: NodeId,
                        sp: Span)
                        -> NodeId {
@@ -1049,7 +1049,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprBreak(opt_label) => {
               // Find which label this break jumps to
-              let sc = self.find_loop_scope(opt_label.map(|l| l.node), expr.id, expr.span);
+              let sc = self.find_loop_scope(opt_label.map(|l| l.node.name), expr.id, expr.span);
 
               // Now that we know the label we're going to,
               // look it up in the break loop nodes table
@@ -1063,7 +1063,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprAgain(opt_label) => {
               // Find which label this expr continues to
-              let sc = self.find_loop_scope(opt_label.map(|l| l.node), expr.id, expr.span);
+              let sc = self.find_loop_scope(opt_label.map(|l| l.node.name), expr.id, expr.span);
 
               // Now that we know the label we're going to,
               // look it up in the continue loop nodes table
@@ -1555,8 +1555,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                                    |_bm, p_id, sp, path1| {
                 let var = self.variable(p_id, sp);
                 // Ignore unused self.
-                let ident = path1.node;
-                if ident.name != special_idents::self_.name {
+                let name = path1.node;
+                if name != special_idents::self_.name {
                     self.warn_about_unused(sp, p_id, entry_ln, var);
                 }
             })

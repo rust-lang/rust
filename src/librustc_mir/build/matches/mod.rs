@@ -199,7 +199,7 @@ struct Candidate<H:Hair> {
 struct Binding<H:Hair> {
     span: H::Span,
     source: Lvalue<H>,
-    name: H::Ident,
+    name: H::Name,
     var_id: H::VarId,
     var_ty: H::Ty,
     mutability: Mutability,
@@ -376,7 +376,7 @@ impl<H:Hair> Builder<H> {
     fn declare_binding(&mut self,
                        var_extent: H::CodeExtent,
                        mutability: Mutability,
-                       name: H::Ident,
+                       name: H::Name,
                        var_id: H::VarId,
                        var_ty: H::Ty,
                        span: H::Span)

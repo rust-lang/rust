@@ -184,8 +184,8 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             '[' => {
                 let def = self.parse_def(RegionParameter);
-                let ident = token::str_to_ident(&self.parse_str(']'));
-                ty::BrNamed(def, ident.name)
+                let name = token::intern(&self.parse_str(']'));
+                ty::BrNamed(def, name)
             }
             'f' => {
                 let id = self.parse_u32();
@@ -219,12 +219,12 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 assert_eq!(self.next(), '|');
                 let index = self.parse_u32();
                 assert_eq!(self.next(), '|');
-                let nm = token::str_to_ident(&self.parse_str(']'));
+                let name = token::intern(&self.parse_str(']'));
                 ty::ReEarlyBound(ty::EarlyBoundRegion {
                     param_id: node_id,
                     space: space,
                     index: index,
-                    name: nm.name
+                    name: name
                 })
             }
             'f' => {
@@ -598,7 +598,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         ty::ProjectionPredicate {
             projection_ty: ty::ProjectionTy {
                 trait_ref: self.parse_trait_ref(),
-                item_name: token::str_to_ident(&self.parse_str('|')).name,
+                item_name: token::intern(&self.parse_str('|')),
             },
             ty: self.parse_ty(),
         }
