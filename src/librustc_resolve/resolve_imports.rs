@@ -793,10 +793,10 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     )));
         }
 
-        for (ident, target_import_resolution) in import_resolutions.iter() {
+        for (name, target_import_resolution) in import_resolutions.iter() {
             debug!("(resolving glob import) writing module resolution \
                     {} into `{}`",
-                   *ident,
+                   *name,
                    module_to_string(module_));
 
             if !target_import_resolution.is_public {
@@ -806,7 +806,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
             // Here we merge two import resolutions.
             let mut import_resolutions = module_.import_resolutions.borrow_mut();
-            match import_resolutions.get_mut(ident) {
+            match import_resolutions.get_mut(name) {
                 Some(dest_import_resolution) => {
                     // Merge the two import resolutions at a finer-grained
                     // level.
@@ -818,7 +818,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         Some(ref value_target) => {
                             self.check_for_conflicting_import(&dest_import_resolution,
                                                               import_directive.span,
-                                                              *ident,
+                                                              *name,
                                                               ValueNS);
                             dest_import_resolution.value_target = Some(value_target.clone());
                         }
@@ -830,7 +830,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                         Some(ref type_target) => {
                             self.check_for_conflicting_import(&dest_import_resolution,
                                                               import_directive.span,
-                                                              *ident,
+                                                              *name,
                                                               TypeNS);
                             dest_import_resolution.type_target = Some(type_target.clone());
                         }
@@ -848,7 +848,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             new_import_resolution.type_target =
                 target_import_resolution.type_target.clone();
 
-            import_resolutions.insert(*ident, new_import_resolution);
+            import_resolutions.insert(*name, new_import_resolution);
         }
 
         // Add all children from the containing module.

@@ -55,7 +55,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     /// the types first.
     fn check_item_well_formed(&mut self, item: &hir::Item) {
         let ccx = self.ccx;
-        debug!("check_item_well_formed(it.id={}, it.ident={})",
+        debug!("check_item_well_formed(it.id={}, it.name={})",
                item.id,
                ccx.tcx.item_path_str(DefId::local(item.id)));
 

@@ -40,7 +40,7 @@ use middle::cfg;
 use middle::def_id::{DefId, LOCAL_CRATE};
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
-use middle::pat_util::simple_identifier;
+use middle::pat_util::simple_name;
 use middle::subst::Substs;
 use middle::ty::{self, Ty, HasTypeFlags};
 use rustc::front::map as hir_map;
@@ -1447,10 +1447,10 @@ pub fn create_datums_for_fn_args<'a, 'tcx>(mut bcx: Block<'a, 'tcx>,
         };
 
         let pat = &*args[i].pat;
-        bcx = if let Some(ident) = simple_identifier(&*pat) {
+        bcx = if let Some(name) = simple_name(pat) {
             // Generate nicer LLVM for the common case of fn a pattern
             // like `x: T`
-            set_value_name(arg_datum.val, &bcx.name(ident.name));
+            set_value_name(arg_datum.val, &bcx.name(name));
             bcx.fcx.lllocals.borrow_mut().insert(pat.id, arg_datum);
             bcx
         } else {

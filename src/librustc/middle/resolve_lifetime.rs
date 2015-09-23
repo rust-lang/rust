@@ -73,7 +73,7 @@ struct LifetimeContext<'a> {
     trait_ref_hack: bool,
 
     // List of labels in the function/method currently under analysis.
-    labels_in_fn: Vec<(ast::Ident, Span)>,
+    labels_in_fn: Vec<(ast::Name, Span)>,
 }
 
 enum ScopeChain<'a> {
@@ -381,7 +381,7 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
     struct GatherLabels<'a> {
         sess: &'a Session,
         scope: Scope<'a>,
-        labels_in_fn: &'a mut Vec<(ast::Ident, Span)>,
+        labels_in_fn: &'a mut Vec<(ast::Name, Span)>,
     }
 
     let mut gather = GatherLabels {
@@ -403,9 +403,9 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
             if let Some(label) = expression_label(ex) {
                 for &(prior, prior_span) in &self.labels_in_fn[..] {
                     // FIXME (#24278): non-hygienic comparison
-                    if label.name == prior.name {
+                    if label == prior {
                         signal_shadowing_problem(self.sess,
-                                                 label.name,
+                                                 label,
                                                  original_label(prior_span),
                                                  shadower_label(ex.span));
                     }
@@ -426,17 +426,17 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
         }
     }
 
-    fn expression_label(ex: &hir::Expr) -> Option<ast::Ident> {
+    fn expression_label(ex: &hir::Expr) -> Option<ast::Name> {
         match ex.node {
             hir::ExprWhile(_, _, Some(label)) |
-            hir::ExprLoop(_, Some(label)) => Some(label),
+            hir::ExprLoop(_, Some(label)) => Some(label.name),
             _ => None,
         }
     }
 
     fn check_if_label_shadows_lifetime<'a>(sess: &'a Session,
                                            mut scope: Scope<'a>,
-                                           label: ast::Ident,
+                                           label: ast::Name,
                                            label_span: Span) {
         loop {
             match *scope {
@@ -447,10 +447,10 @@ fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v hir::Block) {
                 LateScope(lifetimes, s) => {
                     for lifetime_def in lifetimes {
                         // FIXME (#24278): non-hygienic comparison
-                        if label.name == lifetime_def.lifetime.name {
+                        if label == lifetime_def.lifetime.name {
                             signal_shadowing_problem(
                                 sess,
-                                label.name,
+                                label,
                                 original_lifetime(&lifetime_def.lifetime),
                                 shadower_label(label_span));
                             return;
@@ -703,7 +703,7 @@ impl<'a> LifetimeContext<'a> {
     {
         for &(label, label_span) in &self.labels_in_fn {
             // FIXME (#24278): non-hygienic comparison
-            if lifetime.name == label.name {
+            if lifetime.name == label {
                 signal_shadowing_problem(self.sess,
                                          lifetime.name,
                                          original_label(label_span),

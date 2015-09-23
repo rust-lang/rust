@@ -57,7 +57,7 @@ use rustc::metadata::csearch;
 use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
-use rustc::middle::pat_util::pat_bindings;
+use rustc::middle::pat_util::pat_bindings_hygienic;
 use rustc::middle::privacy::*;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
@@ -2559,7 +2559,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut result = HashMap::new();
-        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path1| {
+        pat_bindings_hygienic(&self.def_map, pat, |binding_mode, _id, sp, path1| {
             let name = mtwt::resolve(path1.node);
             result.insert(name, BindingInfo {
                 span: sp,

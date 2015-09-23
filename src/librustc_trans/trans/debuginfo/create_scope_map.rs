@@ -49,7 +49,7 @@ pub fn create_scope_map(cx: &CrateContext,
     for arg in args {
         pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, _, path1| {
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata,
-                                               name: Some(path1.node.name) });
+                                               name: Some(path1.node) });
             scope_map.insert(node_id, fn_metadata);
         })
     }

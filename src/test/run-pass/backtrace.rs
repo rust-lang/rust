@@ -11,6 +11,7 @@
 // no-pretty-expanded FIXME #15189
 // ignore-android FIXME #17520
 // ignore-msvc FIXME #28133
+// ignore-windows
 
 use std::env;
 use std::process::{Command, Stdio};

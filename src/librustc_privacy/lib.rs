@@ -392,7 +392,6 @@ enum PrivacyResult {
 
 enum FieldName {
     UnnamedField(usize), // index
-    // (Name, not Ident, because struct fields are not macro-hygienic)
     NamedField(ast::Name),
 }
 

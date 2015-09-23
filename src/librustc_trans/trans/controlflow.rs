@@ -305,7 +305,7 @@ pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     expr: &hir::Expr,
-                                    opt_label: Option<ast::Ident>,
+                                    opt_label: Option<ast::Name>,
                                     exit: usize)
                                     -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_break_cont");
@@ -338,14 +338,14 @@ pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn trans_break<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                expr: &hir::Expr,
-                               label_opt: Option<ast::Ident>)
+                               label_opt: Option<ast::Name>)
                                -> Block<'blk, 'tcx> {
     return trans_break_cont(bcx, expr, label_opt, cleanup::EXIT_BREAK);
 }
 
 pub fn trans_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               expr: &hir::Expr,
-                              label_opt: Option<ast::Ident>)
+                              label_opt: Option<ast::Name>)
                               -> Block<'blk, 'tcx> {
     return trans_break_cont(bcx, expr, label_opt, cleanup::EXIT_LOOP);
 }

@@ -47,7 +47,6 @@ impl<'a,'tcx:'a> Hair for Cx<'a, 'tcx> {
     type DefId = DefId;
     type AdtDef = ty::AdtDef<'tcx>;
     type Name = ast::Name;
-    type Ident = ast::Ident;
     type InternedString = InternedString;
     type Bytes = Rc<Vec<u8>>;
     type Span = Span;

@@ -16,6 +16,7 @@
 // "enable" to 0 instead.
 // compile-flags:-g -Cllvm-args=-enable-tail-merge=0
 // ignore-pretty as this critically relies on line numbers
+// ignore-windows
 
 use std::io;
 use std::io::prelude::*;
