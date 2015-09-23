@@ -203,6 +203,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // allow `#[omit_gdb_pretty_printer_section]`
     ("omit_gdb_pretty_printer_section", "1.5.0", None, Active),
+
+    // Allows cfg(target_vendor = "...").
+    ("cfg_target_vendor", "1.5.0", None, Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -377,6 +380,7 @@ macro_rules! cfg_fn {
 const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     ("target_feature", "cfg_target_feature", cfg_fn!(|x| x.cfg_target_feature)),
+    ("target_vendor", "cfg_target_vendor", cfg_fn!(|x| x.cfg_target_vendor)),
 ];
 
 #[derive(Debug, Eq, PartialEq)]
@@ -471,6 +475,7 @@ pub struct Features {
     pub default_type_parameter_fallback: bool,
     pub type_macros: bool,
     pub cfg_target_feature: bool,
+    pub cfg_target_vendor: bool,
     pub augmented_assignments: bool,
 }
 
@@ -500,6 +505,7 @@ impl Features {
             default_type_parameter_fallback: false,
             type_macros: false,
             cfg_target_feature: false,
+            cfg_target_vendor: false,
             augmented_assignments: false,
         }
     }
@@ -1069,6 +1075,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         default_type_parameter_fallback: cx.has_feature("default_type_parameter_fallback"),
         type_macros: cx.has_feature("type_macros"),
         cfg_target_feature: cx.has_feature("cfg_target_feature"),
+        cfg_target_vendor: cx.has_feature("cfg_target_vendor"),
         augmented_assignments: cx.has_feature("augmented_assignments"),
     }
 }

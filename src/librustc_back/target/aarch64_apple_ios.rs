@@ -19,6 +19,7 @@ pub fn target() -> Target {
         arch: "aarch64".to_string(),
         target_os: "ios".to_string(),
         target_env: "".to_string(),
+        target_vendor: "apple".to_string(),
         options: TargetOptions {
             features: "+neon,+fp-armv8,+cyclone".to_string(),
             eliminate_frame_pointer: false,

@@ -19,6 +19,7 @@ pub fn target() -> Target {
         arch: "x86_64".to_string(),
         target_os: "ios".to_string(),
         target_env: "".to_string(),
+        target_vendor: "apple".to_string(),
         options: opts(Arch::X86_64)
     }
 }
