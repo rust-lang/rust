@@ -60,10 +60,12 @@ use lint::LintId;
 
 mod bad_style;
 mod builtin;
+mod types;
 mod unused;
 
 use bad_style::*;
 use builtin::*;
+use types::*;
 use unused::*;
 
 /// Tell the `LintStore` about all the built-in lints (the ones
