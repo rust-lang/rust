@@ -307,7 +307,9 @@ impl<T: ?Sized> Arc<T> {
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
+            deallocate(ptr as *mut u8,
+                       size_of_val(&*ptr),
+                       align_of_val(&*ptr))
         }
     }
 }
@@ -719,7 +721,11 @@ impl<T: ?Sized> Drop for Weak<T> {
         // ref, which can only happen after the lock is released.
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            unsafe { deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr)) }
+            unsafe {
+                deallocate(ptr as *mut u8,
+                           size_of_val(&*ptr),
+                           align_of_val(&*ptr))
+            }
         }
     }
 }

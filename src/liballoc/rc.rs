@@ -466,7 +466,9 @@ impl<T: ?Sized> Drop for Rc<T> {
                     self.dec_weak();
 
                     if self.weak() == 0 {
-                        deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
+                        deallocate(ptr as *mut u8,
+                                   size_of_val(&*ptr),
+                                   align_of_val(&*ptr))
                     }
                 }
             }
@@ -785,7 +787,9 @@ impl<T: ?Sized> Drop for Weak<T> {
                 // the weak count starts at 1, and will only go to zero if all
                 // the strong pointers have disappeared.
                 if self.weak() == 0 {
-                    deallocate(ptr as *mut u8, size_of_val(&*ptr), align_of_val(&*ptr))
+                    deallocate(ptr as *mut u8,
+                               size_of_val(&*ptr),
+                               align_of_val(&*ptr))
                 }
             }
         }
