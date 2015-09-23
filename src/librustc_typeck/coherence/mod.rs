@@ -149,7 +149,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         if let Some(trait_ref) = self.crate_context.tcx.impl_trait_ref(impl_did) {
             debug!("(checking implementation) adding impl for trait '{:?}', item '{}'",
                    trait_ref,
-                   item.ident);
+                   item.name);
 
             enforce_trait_manually_implementable(self.crate_context.tcx,
                                                  item.span,

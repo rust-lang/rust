@@ -119,7 +119,7 @@ use syntax::abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::{self, Span};
+use syntax::codemap::{self, Span, Spanned};
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token::{self, InternedString};
 use syntax::ptr::P;
@@ -698,7 +698,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
       }
       hir::ItemFn(..) => {} // entirely within check_item_body
       hir::ItemImpl(_, _, _, _, _, ref impl_items) => {
-          debug!("ItemImpl {} with id {}", it.ident, it.id);
+          debug!("ItemImpl {} with id {}", it.name, it.id);
           match ccx.tcx.impl_trait_ref(DefId::local(it.id)) {
               Some(impl_trait_ref) => {
                 check_impl_items_against_trait(ccx,
@@ -761,7 +761,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx hir::Item) {
         check_bare_fn(ccx, &**decl, &**body, it.id, it.span, fn_pty.ty, param_env);
       }
       hir::ItemImpl(_, _, _, _, _, ref impl_items) => {
-        debug!("ItemImpl {} with id {}", it.ident, it.id);
+        debug!("ItemImpl {} with id {}", it.name, it.id);
 
         let impl_pty = ccx.tcx.lookup_item_type(DefId::local(it.id));
 
@@ -838,14 +838,14 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         Position::ArgumentNamed(s) if s == "Self" => (),
                         // So is `{A}` if A is a type parameter
                         Position::ArgumentNamed(s) => match types.iter().find(|t| {
-                            t.ident.name == s
+                            t.name == s
                         }) {
                             Some(_) => (),
                             None => {
                                 span_err!(ccx.tcx.sess, attr.span, E0230,
                                                  "there is no type parameter \
                                                           {} on trait {}",
-                                                           s, item.ident);
+                                                           s, item.name);
                             }
                         },
                         // `{:1}` and `{}` are not to be used
@@ -988,7 +988,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let is_implemented = impl_items.iter().any(|ii| {
                     match ii.node {
                         hir::ConstImplItem(..) => {
-                            ii.ident.name == associated_const.name
+                            ii.name == associated_const.name
                         }
                         _ => false,
                     }
@@ -1009,7 +1009,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     impl_items.iter().any(|ii| {
                         match ii.node {
                             hir::MethodImplItem(..) => {
-                                ii.ident.name == trait_method.name
+                                ii.name == trait_method.name
                             }
                             _ => false,
                         }
@@ -1028,7 +1028,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 let is_implemented = impl_items.iter().any(|ii| {
                     match ii.node {
                         hir::TypeImplItem(_) => {
-                            ii.ident.name == associated_type.name
+                            ii.name == associated_type.name
                         }
                         _ => false,
                     }
@@ -1058,7 +1058,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         span_err!(tcx.sess, invalidator.span, E0399,
                   "the following trait items need to be reimplemented \
                    as `{}` was overridden: `{}`",
-                  invalidator.ident,
+                  invalidator.name,
                   invalidated_items.iter()
                                    .map(|name| name.to_string())
                                    .collect::<Vec<_>>().join("`, `"))
@@ -2820,7 +2820,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
     // Checks a method call.
     fn check_method_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                    expr: &'tcx hir::Expr,
-                                   method_name: hir::SpannedIdent,
+                                   method_name: Spanned<ast::Name>,
                                    args: &'tcx [P<hir::Expr>],
                                    tps: &[P<hir::Ty>],
                                    expected: Expectation<'tcx>,
@@ -2836,7 +2836,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let tps = tps.iter().map(|ast_ty| fcx.to_ty(&**ast_ty)).collect::<Vec<_>>();
         let fn_ty = match method::lookup(fcx,
                                          method_name.span,
-                                         method_name.node.name,
+                                         method_name.node,
                                          expr_t,
                                          tps,
                                          expr,
@@ -2849,7 +2849,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             }
             Err(error) => {
                 method::report_error(fcx, method_name.span, expr_t,
-                                     method_name.node.name, Some(rcvr), error);
+                                     method_name.node, Some(rcvr), error);
                 fcx.write_error(expr.id);
                 fcx.tcx().types.err
             }
@@ -2916,7 +2916,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                             expr: &'tcx hir::Expr,
                             lvalue_pref: LvaluePreference,
                             base: &'tcx hir::Expr,
-                            field: &hir::SpannedIdent) {
+                            field: &Spanned<ast::Name>) {
         let tcx = fcx.ccx.tcx;
         check_expr_with_lvalue_pref(fcx, base, lvalue_pref);
         let expr_t = structurally_resolved_type(fcx, expr.span,
@@ -2933,7 +2933,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     ty::TyStruct(base_def, substs) => {
                         debug!("struct named {:?}",  base_t);
                         base_def.struct_variant()
-                                .find_field_named(field.node.name)
+                                .find_field_named(field.node)
                                 .map(|f| fcx.field_ty(expr.span, f, substs))
                     }
                     _ => None
@@ -2948,7 +2948,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             None => {}
         }
 
-        if method::exists(fcx, field.span, field.node.name, expr_t, expr.id) {
+        if method::exists(fcx, field.span, field.node, expr_t, expr.id) {
             fcx.type_error_message(
                 field.span,
                 |actual| {
@@ -2981,10 +2981,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
     // displays hints about the closest matches in field names
     fn suggest_field_names<'tcx>(variant: ty::VariantDef<'tcx>,
-                                 field: &hir::SpannedIdent,
+                                 field: &Spanned<ast::Name>,
                                  tcx: &ty::ctxt<'tcx>,
                                  skip : Vec<InternedString>) {
-        let name = field.node.name.as_str();
+        let name = field.node.as_str();
         // only find fits with at least one matching letter
         let mut best_dist = name.len();
         let mut best = None;
@@ -3082,21 +3082,20 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                       field: &hir::Field,
                                       skip_fields: &[hir::Field]) {
         fcx.type_error_message(
-            field.ident.span,
+            field.name.span,
             |actual| if let ty::TyEnum(..) = ty.sty {
                 format!("struct variant `{}::{}` has no field named `{}`",
-                        actual, variant.name.as_str(), field.ident.node)
+                        actual, variant.name.as_str(), field.name.node)
             } else {
                 format!("structure `{}` has no field named `{}`",
-                        actual, field.ident.node)
+                        actual, field.name.node)
             },
             ty,
             None);
         // prevent all specified fields from being suggested
-        let skip_fields = skip_fields.iter().map(|ref x| x.ident.node.name.as_str());
-        suggest_field_names(variant, &field.ident, fcx.tcx(), skip_fields.collect());
+        let skip_fields = skip_fields.iter().map(|ref x| x.name.node.as_str());
+        suggest_field_names(variant, &field.name, fcx.tcx(), skip_fields.collect());
     }
-
 
     fn check_expr_struct_fields<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                           adt_ty: Ty<'tcx>,
@@ -3121,15 +3120,15 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         for field in ast_fields {
             let expected_field_type;
 
-            if let Some(v_field) = remaining_fields.remove(&field.ident.node.name) {
+            if let Some(v_field) = remaining_fields.remove(&field.name.node) {
                 expected_field_type = fcx.field_ty(field.span, v_field, substs);
             } else {
                 error_happened = true;
                 expected_field_type = tcx.types.err;
-                if let Some(_) = variant.find_field_named(field.ident.node.name) {
-                    span_err!(fcx.tcx().sess, field.ident.span, E0062,
+                if let Some(_) = variant.find_field_named(field.name.node) {
+                    span_err!(fcx.tcx().sess, field.name.span, E0062,
                         "field `{}` specified more than once",
-                        field.ident.node);
+                        field.name.node);
                 } else {
                     report_unknown_field(fcx, adt_ty, variant, field, ast_fields);
                 }
@@ -3506,8 +3505,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           let ret_ty = fcx.expr_ty(expr);
           fcx.register_wf_obligation(ret_ty, expr.span, traits::MiscObligation);
       }
-      hir::ExprMethodCall(ident, ref tps, ref args) => {
-          check_method_call(fcx, expr, ident, &args[..], &tps[..], expected, lvalue_pref);
+      hir::ExprMethodCall(name, ref tps, ref args) => {
+          check_method_call(fcx, expr, name, &args[..], &tps[..], expected, lvalue_pref);
           let arg_tys = args.iter().map(|a| fcx.expr_ty(&**a));
           let args_err = arg_tys.fold(false, |rest_err, a| rest_err || a.references_error());
           if args_err {
@@ -4939,7 +4938,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         if !*b {
             span_err!(ccx.tcx.sess, span, E0091,
                 "type parameter `{}` is unused",
-                tps[i].ident);
+                tps[i].name);
         }
     }
 }

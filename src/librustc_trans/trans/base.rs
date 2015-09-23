@@ -2099,7 +2099,7 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
       }
       hir::ItemImpl(_, _, ref generics, _, _, ref impl_items) => {
         meth::trans_impl(ccx,
-                         item.ident,
+                         item.name,
                          &impl_items[..],
                          generics,
                          item.id);

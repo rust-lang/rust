@@ -1436,7 +1436,7 @@ fn is_discr_reassigned(bcx: Block, discr: &hir::Expr, body: &hir::Expr) -> bool 
                 Some(def::DefLocal(vid)) | Some(def::DefUpvar(vid, _, _)) => vid,
                 _ => return false
             };
-            (vid, Some(mc::NamedField(field.node.name)))
+            (vid, Some(mc::NamedField(field.node)))
         },
         hir::ExprTupField(ref base, field) => {
             let vid = match bcx.tcx().def_map.borrow().get(&base.id).map(|d| d.full_def()) {
@@ -1872,7 +1872,7 @@ pub fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
             let pat_v = VariantInfo::of_node(tcx, pat_ty, pat.id);
             for f in fields {
-                let name = f.node.ident.name;
+                let name = f.node.name;
                 let fldptr = adt::trans_field_ptr(
                     bcx,
                     &*pat_repr,

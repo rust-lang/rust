@@ -574,7 +574,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let (bv, bt) = const_expr(cx, &**base, param_substs, fn_args);
             let brepr = adt::represent_type(cx, bt);
             let vinfo = VariantInfo::from_ty(cx.tcx(), bt, None);
-            let ix = vinfo.field_index(field.node.name);
+            let ix = vinfo.field_index(field.node);
             adt::const_get_field(cx, &*brepr, bv, vinfo.discr, ix)
         },
         hir::ExprTupField(ref base, idx) => {
@@ -742,7 +742,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             let VariantInfo { discr, fields } = VariantInfo::of_node(cx.tcx(), ety, e.id);
             let cs = fields.iter().enumerate().map(|(ix, &Field(f_name, _))| {
-                match (fs.iter().find(|f| f_name == f.ident.node.name), base_val) {
+                match (fs.iter().find(|f| f_name == f.name.node), base_val) {
                     (Some(ref f), _) => const_expr(cx, &*f.expr, param_substs, fn_args).0,
                     (_, Some((bv, _))) => adt::const_get_field(cx, &*repr, bv, discr, ix),
                     (_, None) => cx.sess().span_bug(e.span, "missing struct field"),

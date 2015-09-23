@@ -131,7 +131,7 @@ mod svh_visitor {
     pub use self::SawExprComponent::*;
     pub use self::SawStmtComponent::*;
     use self::SawAbiComponent::*;
-    use syntax::ast::{self, NodeId, Ident};
+    use syntax::ast::{self, Name, NodeId};
     use syntax::codemap::Span;
     use syntax::parse::token;
     use rustc_front::visit;
@@ -270,7 +270,7 @@ mod svh_visitor {
             ExprBlock(..)            => SawExprBlock,
             ExprAssign(..)           => SawExprAssign,
             ExprAssignOp(op, _, _)   => SawExprAssignOp(op.node),
-            ExprField(_, id)         => SawExprField(id.node.name.as_str()),
+            ExprField(_, name)       => SawExprField(name.node.as_str()),
             ExprTupField(_, id)      => SawExprTupField(id.node),
             ExprIndex(..)            => SawExprIndex,
             ExprRange(..)            => SawExprRange,
@@ -302,9 +302,9 @@ mod svh_visitor {
     }
 
     impl<'a, 'v> Visitor<'v> for StrictVersionHashVisitor<'a> {
-        fn visit_struct_def(&mut self, s: &StructDef, ident: Ident,
+        fn visit_struct_def(&mut self, s: &StructDef, name: Name,
                             g: &Generics, _: NodeId) {
-            SawStructDef(ident.name.as_str()).hash(self.st);
+            SawStructDef(name.as_str()).hash(self.st);
             visit::walk_generics(self, g);
             visit::walk_struct_def(self, s)
         }
@@ -341,8 +341,8 @@ mod svh_visitor {
         // (If you edit a method such that it deviates from the
         // pattern, please move that method up above this comment.)
 
-        fn visit_ident(&mut self, _: Span, ident: Ident) {
-            SawIdent(ident.name.as_str()).hash(self.st);
+        fn visit_name(&mut self, _: Span, name: Name) {
+            SawIdent(name.as_str()).hash(self.st);
         }
 
         fn visit_lifetime_ref(&mut self, l: &Lifetime) {

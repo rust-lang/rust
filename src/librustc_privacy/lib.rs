@@ -128,7 +128,7 @@ impl<'v> Visitor<'v> for ParentVisitor {
         visit::walk_impl_item(self, ii);
     }
 
-    fn visit_struct_def(&mut self, s: &hir::StructDef, _: ast::Ident,
+    fn visit_struct_def(&mut self, s: &hir::StructDef, _: ast::Name,
                         _: &'v hir::Generics, n: ast::NodeId) {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.
@@ -683,7 +683,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             hir::ItemEnum(..) => "enum",
             _ => return Some((err_span, err_msg, None))
         };
-        let msg = format!("{} `{}` is private", desc, item.ident);
+        let msg = format!("{} `{}` is private", desc, item.name);
         Some((err_span, err_msg, Some((span, msg))))
     }
 
@@ -862,12 +862,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
-            hir::ExprField(ref base, ident) => {
+            hir::ExprField(ref base, name) => {
                 if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(&**base).sty {
                     self.check_field(expr.span,
                                      def,
                                      def.struct_variant(),
-                                     NamedField(ident.node.name));
+                                     NamedField(name.node));
                 }
             }
             hir::ExprTupField(ref base, idx) => {
@@ -878,11 +878,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                                      UnnamedField(idx.node));
                 }
             }
-            hir::ExprMethodCall(ident, _, _) => {
+            hir::ExprMethodCall(name, _, _) => {
                 let method_call = ty::MethodCall::expr(expr.id);
                 let method = self.tcx.tables.borrow().method_map[&method_call];
                 debug!("(privacy checking) checking impl method");
-                self.check_method(expr.span, method.def_id, ident.node.name);
+                self.check_method(expr.span, method.def_id, name.node);
             }
             hir::ExprStruct(..) => {
                 let adt = self.tcx.expr_ty(expr).ty_adt_def().unwrap();
@@ -937,7 +937,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 let variant = adt.variant_of_def(def);
                 for field in fields {
                     self.check_field(pattern.span, adt, variant,
-                                     NamedField(field.node.ident.name));
+                                     NamedField(field.node.name));
                 }
             }
 
@@ -984,7 +984,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 
     fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
         let name = if let hir::PathListIdent { name, .. } = item.node {
-            name.name
+            name
         } else if !prefix.segments.is_empty() {
             prefix.segments.last().unwrap().identifier.name
         } else {

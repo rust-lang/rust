@@ -268,7 +268,7 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for PatNode<'tcx> {
                 let subpatterns =
                     fields.iter()
                           .map(|field| FieldPatternRef {
-                              field: Field::Named(field.node.ident.name),
+                              field: Field::Named(field.node.name),
                               pattern: self.pat_ref(&field.node.pat),
                           })
                           .collect();
