@@ -147,6 +147,7 @@ pub trait CharExt {
     fn to_digit(self, radix: u32) -> Option<u32>;
     fn escape_unicode(self) -> EscapeUnicode;
     fn escape_default(self) -> EscapeDefault;
+    fn needs_escape_default(self) -> bool;
     fn len_utf8(self) -> usize;
     fn len_utf16(self) -> usize;
     fn encode_utf8(self, dst: &mut [u8]) -> Option<usize>;
@@ -192,6 +193,15 @@ impl CharExt for char {
             _ => EscapeDefaultState::Unicode(self.escape_unicode())
         };
         EscapeDefault { state: init_state }
+    }
+
+    #[inline]
+    fn needs_escape_default(self) -> bool {
+        match self {
+            '\\' | '\'' | '"' => true,
+            '\x20' ... '\x7e' => false,
+            _ => true
+        }
     }
 
     #[inline]
