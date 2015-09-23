@@ -274,7 +274,10 @@ impl<T> RawVec<T> {
             let ptr = if self.cap == 0 {
                 heap::allocate(new_alloc_size, align)
             } else {
-                heap::reallocate(self.ptr() as *mut _, self.cap * elem_size, new_alloc_size, align)
+                heap::reallocate(self.ptr() as *mut _,
+                                 self.cap * elem_size,
+                                 new_alloc_size,
+                                 align)
             };
 
             // If allocate or reallocate fail, we'll get `null` back
@@ -358,7 +361,10 @@ impl<T> RawVec<T> {
             let ptr = if self.cap == 0 {
                 heap::allocate(new_alloc_size, align)
             } else {
-                heap::reallocate(self.ptr() as *mut _, self.cap * elem_size, new_alloc_size, align)
+                heap::reallocate(self.ptr() as *mut _,
+                                 self.cap * elem_size,
+                                 new_alloc_size,
+                                 align)
             };
 
             // If allocate or reallocate fail, we'll get `null` back
@@ -392,7 +398,8 @@ impl<T> RawVec<T> {
         }
 
         // This check is my waterloo; it's the only thing Vec wouldn't have to do.
-        assert!(self.cap >= amount, "Tried to shrink to a larger capacity");
+        assert!(self.cap >= amount,
+                "Tried to shrink to a larger capacity");
 
         if amount == 0 {
             mem::replace(self, RawVec::new());
@@ -466,6 +473,7 @@ impl<T> Drop for RawVec<T> {
 #[inline]
 fn alloc_guard(alloc_size: usize) {
     if core::usize::BITS < 64 {
-        assert!(alloc_size <= ::core::isize::MAX as usize, "capacity overflow");
+        assert!(alloc_size <= ::core::isize::MAX as usize,
+                "capacity overflow");
     }
 }
