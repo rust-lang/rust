@@ -585,7 +585,9 @@ impl<T: ?Sized> Drop for Arc<T> {
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
         atomic::fence(Acquire);
 
-        unsafe { self.drop_slow() }
+        unsafe {
+            self.drop_slow();
+        }
     }
 }
 
