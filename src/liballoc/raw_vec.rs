@@ -58,7 +58,11 @@ impl<T> RawVec<T> {
     pub fn new() -> Self {
         unsafe {
             // !0 is usize::MAX. This branch should be stripped at compile time.
-            let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
+            let cap = if mem::size_of::<T>() == 0 {
+                !0
+            } else {
+                0
+            };
 
             // heap::EMPTY doubles as "unallocated" and "zero-sized allocation"
             RawVec { ptr: Unique::new(heap::EMPTY as *mut T), cap: cap }
@@ -92,7 +96,9 @@ impl<T> RawVec<T> {
             } else {
                 let align = mem::align_of::<T>();
                 let ptr = heap::allocate(alloc_size, align);
-                if ptr.is_null() { oom() }
+                if ptr.is_null() {
+                    oom()
+                }
                 ptr
             };
 
@@ -133,7 +139,11 @@ impl<T> RawVec<T> {
     ///
     /// This will always be `usize::MAX` if `T` is zero-sized.
     pub fn cap(&self) -> usize {
-        if mem::size_of::<T>() == 0 { !0 } else { self.cap }
+        if mem::size_of::<T>() == 0 {
+            !0
+        } else {
+            self.cap
+        }
     }
 
     /// Doubles the size of the type's backing allocation. This is common enough
@@ -190,7 +200,11 @@ impl<T> RawVec<T> {
 
             let (new_cap, ptr) = if self.cap == 0 {
                 // skip to 4 because tiny Vec's are dumb; but not if that would cause overflow
-                let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
+                let new_cap = if elem_size > (!0) / 8 {
+                    1
+                } else {
+                    4
+                };
                 let ptr = heap::allocate(new_cap * elem_size, align);
                 (new_cap, ptr)
             } else {
@@ -207,7 +221,9 @@ impl<T> RawVec<T> {
             };
 
             // If allocate or reallocate fail, we'll get `null` back
-            if ptr.is_null() { oom() }
+            if ptr.is_null() {
+                oom()
+            }
 
             self.ptr = Unique::new(ptr as *mut _);
             self.cap = new_cap;
@@ -246,7 +262,9 @@ impl<T> RawVec<T> {
 
             // Don't actually need any more capacity.
             // Wrapping in case they gave a bad `used_cap`.
-            if self.cap().wrapping_sub(used_cap) >= needed_extra_cap { return; }
+            if self.cap().wrapping_sub(used_cap) >= needed_extra_cap {
+                return;
+            }
 
             // Nothing we can really do about these checks :(
             let new_cap = used_cap.checked_add(needed_extra_cap).expect("capacity overflow");
@@ -256,14 +274,13 @@ impl<T> RawVec<T> {
             let ptr = if self.cap == 0 {
                 heap::allocate(new_alloc_size, align)
             } else {
-                heap::reallocate(self.ptr() as *mut _,
-                                 self.cap * elem_size,
-                                 new_alloc_size,
-                                 align)
+                heap::reallocate(self.ptr() as *mut _, self.cap * elem_size, new_alloc_size, align)
             };
 
             // If allocate or reallocate fail, we'll get `null` back
-            if ptr.is_null() { oom() }
+            if ptr.is_null() {
+                oom()
+            }
 
             self.ptr = Unique::new(ptr as *mut _);
             self.cap = new_cap;
@@ -326,7 +343,9 @@ impl<T> RawVec<T> {
 
             // Don't actually need any more capacity.
             // Wrapping in case they give a bas `used_cap`
-            if self.cap().wrapping_sub(used_cap) >= needed_extra_cap { return; }
+            if self.cap().wrapping_sub(used_cap) >= needed_extra_cap {
+                return;
+            }
 
             // Nothing we can really do about these checks :(
             let new_cap = used_cap.checked_add(needed_extra_cap)
@@ -339,14 +358,13 @@ impl<T> RawVec<T> {
             let ptr = if self.cap == 0 {
                 heap::allocate(new_alloc_size, align)
             } else {
-                heap::reallocate(self.ptr() as *mut _,
-                                 self.cap * elem_size,
-                                 new_alloc_size,
-                                 align)
+                heap::reallocate(self.ptr() as *mut _, self.cap * elem_size, new_alloc_size, align)
             };
 
             // If allocate or reallocate fail, we'll get `null` back
-            if ptr.is_null() { oom() }
+            if ptr.is_null() {
+                oom()
+            }
 
             self.ptr = Unique::new(ptr as *mut _);
             self.cap = new_cap;
@@ -386,7 +404,9 @@ impl<T> RawVec<T> {
                                            self.cap * elem_size,
                                            amount * elem_size,
                                            align);
-                if ptr.is_null() { oom() }
+                if ptr.is_null() {
+                    oom()
+                }
                 self.ptr = Unique::new(ptr as *mut _);
             }
             self.cap = amount;

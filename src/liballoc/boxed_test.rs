@@ -34,12 +34,16 @@ fn any_move() {
     let b = Box::new(Test) as Box<Any>;
 
     match a.downcast::<i32>() {
-        Ok(a) => { assert!(a == Box::new(8)); }
-        Err(..) => panic!()
+        Ok(a) => {
+            assert!(a == Box::new(8));
+        }
+        Err(..) => panic!(),
     }
     match b.downcast::<Test>() {
-        Ok(a) => { assert!(a == Box::new(Test)); }
-        Err(..) => panic!()
+        Ok(a) => {
+            assert!(a == Box::new(Test));
+        }
+        Err(..) => panic!(),
     }
 
     let a = Box::new(8) as Box<Any>;
@@ -70,7 +74,8 @@ fn test_show() {
 
 #[test]
 fn deref() {
-    fn homura<T: Deref<Target=i32>>(_: T) { }
+    fn homura<T: Deref<Target = i32>>(_: T) {
+    }
     homura(Box::new(765));
 }
 
