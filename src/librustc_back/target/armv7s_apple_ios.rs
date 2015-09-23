@@ -19,6 +19,7 @@ pub fn target() -> Target {
         arch: "arm".to_string(),
         target_os: "ios".to_string(),
         target_env: "".to_string(),
+        target_vendor: "apple".to_string(),
         options: TargetOptions {
             features: "+v7,+vfp4,+neon".to_string(),
             .. opts(Arch::Armv7s)
