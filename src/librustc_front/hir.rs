@@ -52,10 +52,6 @@ use util;
 use std::fmt;
 use serialize::{Encodable, Encoder, Decoder};
 
-
-/// Function name (not all functions have names)
-pub type FnIdent = Option<Ident>;
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
     pub id: NodeId,
@@ -248,7 +244,7 @@ pub type TyParamBounds = OwnedSlice<TyParamBound>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TyParam {
-    pub ident: Ident,
+    pub name: Name,
     pub id: NodeId,
     pub bounds: TyParamBounds,
     pub default: Option<P<Ty>>,
@@ -337,11 +333,11 @@ pub struct Crate {
 /// Not parsed directly, but created on macro import or `macro_rules!` expansion.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MacroDef {
-    pub ident: Ident,
+    pub name: Name,
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
-    pub imported_from: Option<Ident>,
+    pub imported_from: Option<Name>,
     pub export: bool,
     pub use_locally: bool,
     pub allow_internal_unstable: bool,
@@ -382,7 +378,7 @@ impl fmt::Debug for Pat {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FieldPat {
     /// The identifier for the field
-    pub ident: Ident,
+    pub name: Name,
     /// The pattern the field is destructured to
     pub pat: P<Pat>,
     pub is_shorthand: bool,
@@ -416,7 +412,7 @@ pub enum Pat_ {
     /// which it is. The resolver determines this, and
     /// records this pattern's NodeId in an auxiliary
     /// set (of "PatIdents that refer to nullary enums")
-    PatIdent(BindingMode, SpannedIdent, Option<P<Pat>>),
+    PatIdent(BindingMode, Spanned<Ident>, Option<P<Pat>>),
 
     /// "None" means a * pattern where we don't bind the fields to names.
     PatEnum(Path, Option<Vec<P<Pat>>>),
@@ -564,12 +560,10 @@ pub struct Arm {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Field {
-    pub ident: SpannedIdent,
+    pub name: Spanned<Name>,
     pub expr: P<Expr>,
     pub span: Span,
 }
-
-pub type SpannedIdent = Spanned<Ident>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BlockCheckMode {
@@ -612,7 +606,7 @@ pub enum Expr_ {
     ExprCall(P<Expr>, Vec<P<Expr>>),
     /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
     ///
-    /// The `SpannedIdent` is the identifier for the method name.
+    /// The `Spanned<Name>` is the identifier for the method name.
     /// The vector of `Ty`s are the ascripted type parameters for the method
     /// (within the angle brackets).
     ///
@@ -622,7 +616,7 @@ pub enum Expr_ {
     ///
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
     /// `ExprMethodCall(foo, [Bar, Baz], [x, a, b, c, d])`.
-    ExprMethodCall(SpannedIdent, Vec<P<Ty>>, Vec<P<Expr>>),
+    ExprMethodCall(Spanned<Name>, Vec<P<Ty>>, Vec<P<Expr>>),
     /// A tuple (`(a, b, c ,d)`)
     ExprTup(Vec<P<Expr>>),
     /// A binary operation (For example: `a + b`, `a * b`)
@@ -662,7 +656,7 @@ pub enum Expr_ {
     /// For example, `a += 1`.
     ExprAssignOp(BinOp, P<Expr>, P<Expr>),
     /// Access of a named struct field (`obj.foo`)
-    ExprField(P<Expr>, SpannedIdent),
+    ExprField(P<Expr>, Spanned<Name>),
     /// Access of an unnamed field of a struct or tuple-struct
     ///
     /// For example, `foo.0`.
@@ -682,9 +676,9 @@ pub enum Expr_ {
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Option<SpannedIdent>),
+    ExprBreak(Option<Spanned<Ident>>),
     /// A `continue`, with an optional label
-    ExprAgain(Option<SpannedIdent>),
+    ExprAgain(Option<Spanned<Ident>>),
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
@@ -744,13 +738,6 @@ pub struct MutTy {
     pub mutbl: Mutability,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct TypeField {
-    pub ident: Ident,
-    pub mt: MutTy,
-    pub span: Span,
-}
-
 /// Represents a method's signature in a trait declaration,
 /// or in an implementation.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -770,7 +757,7 @@ pub struct MethodSig {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TraitItem {
     pub id: NodeId,
-    pub ident: Ident,
+    pub name: Name,
     pub attrs: Vec<Attribute>,
     pub node: TraitItem_,
     pub span: Span,
@@ -786,7 +773,7 @@ pub enum TraitItem_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ImplItem {
     pub id: NodeId,
-    pub ident: Ident,
+    pub name: Name,
     pub vis: Visibility,
     pub attrs: Vec<Attribute>,
     pub node: ImplItem_,
@@ -804,7 +791,7 @@ pub enum ImplItem_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TypeBinding {
     pub id: NodeId,
-    pub ident: Ident,
+    pub name: Name,
     pub ty: P<Ty>,
     pub span: Span,
 }
@@ -994,11 +981,11 @@ pub enum ExplicitSelf_ {
     /// No self
     SelfStatic,
     /// `self`
-    SelfValue(Ident),
+    SelfValue(Name),
     /// `&'lt self`, `&'lt mut self`
-    SelfRegion(Option<Lifetime>, Mutability, Ident),
+    SelfRegion(Option<Lifetime>, Mutability, Name),
     /// `self: TYPE`
-    SelfExplicit(P<Ty>, Ident),
+    SelfExplicit(P<Ty>, Name),
 }
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
@@ -1039,7 +1026,7 @@ pub struct EnumDef {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Variant_ {
-    pub name: Ident,
+    pub name: Name,
     pub attrs: Vec<Attribute>,
     pub kind: VariantKind,
     pub id: NodeId,
@@ -1052,14 +1039,14 @@ pub type Variant = Spanned<Variant_>;
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum PathListItem_ {
     PathListIdent {
-        name: Ident,
+        name: Name,
         /// renamed in list, eg `use foo::{bar as baz};`
-        rename: Option<Ident>,
+        rename: Option<Name>,
         id: NodeId
     },
     PathListMod {
         /// renamed in list, eg `use foo::{self as baz};`
-        rename: Option<Ident>,
+        rename: Option<Name>,
         id: NodeId
     }
 }
@@ -1071,7 +1058,7 @@ impl PathListItem_ {
         }
     }
 
-    pub fn rename(&self) -> Option<Ident> {
+    pub fn rename(&self) -> Option<Name> {
         match *self {
             PathListIdent { rename, .. } | PathListMod { rename, .. } => rename
         }
@@ -1090,7 +1077,7 @@ pub enum ViewPath_ {
     /// or just
     ///
     /// `foo::bar::baz` (with `as baz` implicitly on the right)
-    ViewPathSimple(Ident, Path),
+    ViewPathSimple(Name, Path),
 
     /// `foo::bar::*`
     ViewPathGlob(Path),
@@ -1146,9 +1133,9 @@ pub struct StructField_ {
 }
 
 impl StructField_ {
-    pub fn ident(&self) -> Option<Ident> {
+    pub fn name(&self) -> Option<Name> {
         match self.kind {
-            NamedField(ref ident, _) => Some(ident.clone()),
+            NamedField(name, _) => Some(name),
             UnnamedField(_) => None
         }
     }
@@ -1158,7 +1145,7 @@ pub type StructField = Spanned<StructField_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum StructFieldKind {
-    NamedField(Ident, Visibility),
+    NamedField(Name, Visibility),
     /// Element of a tuple-like struct
     UnnamedField(Visibility),
 }
@@ -1190,7 +1177,7 @@ pub struct StructDef {
 /// The name might be a dummy name in case of anonymous items
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Item {
-    pub ident: Ident,
+    pub name: Name,
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub node: Item_,
@@ -1264,7 +1251,7 @@ impl Item_ {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct ForeignItem {
-    pub ident: Ident,
+    pub name: Name,
     pub attrs: Vec<Attribute>,
     pub node: ForeignItem_,
     pub id: NodeId,

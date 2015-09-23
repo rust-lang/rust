@@ -16,7 +16,7 @@ use util::nodemap::FnvHashMap;
 use syntax::ast;
 use rustc_front::hir;
 use rustc_front::util::walk_pat;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax::codemap::{Span, Spanned, DUMMY_SP};
 
 pub type PatIdMap = FnvHashMap<ast::Ident, ast::NodeId>;
 
@@ -109,7 +109,7 @@ pub fn pat_is_binding_or_wild(dm: &DefMap, pat: &hir::Pat) -> bool {
 /// Call `it` on every "binding" in a pattern, e.g., on `a` in
 /// `match foo() { Some(a) => (), None => () }`
 pub fn pat_bindings<I>(dm: &DefMap, pat: &hir::Pat, mut it: I) where
-    I: FnMut(hir::BindingMode, ast::NodeId, Span, &hir::SpannedIdent),
+    I: FnMut(hir::BindingMode, ast::NodeId, Span, &Spanned<ast::Ident>),
 {
     walk_pat(pat, |p| {
         match p.node {

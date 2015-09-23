@@ -1258,7 +1258,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn get_trait_name(&self, did: DefId) -> Name {
         if did.is_local() {
-            self.ast_map.expect_item(did.node).ident.name
+            self.ast_map.expect_item(did.node).name
         } else {
             csearch::get_trait_name(&self.session.cstore, did)
         }
@@ -2109,7 +2109,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn resolve_item(&mut self, item: &Item) {
-        let name = item.ident.name;
+        let name = item.name;
 
         debug!("(resolving item) resolving {}",
                name);
@@ -2184,7 +2184,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     });
                                 }
                                 hir::TypeTraitItem(..) => {
-                                    this.check_if_primitive_type_name(trait_item.ident.name,
+                                    this.check_if_primitive_type_name(trait_item.name,
                                                                       trait_item.span);
                                     this.with_type_parameter_rib(NoTypeParameters, |this| {
                                         visit::walk_trait_item(this, trait_item)
@@ -2210,23 +2210,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ItemUse(ref view_path) => {
                 // check for imports shadowing primitive types
-                let check_rename = |this: &Self, id, ident: Ident| {
+                let check_rename = |this: &Self, id, name| {
                     match this.def_map.borrow().get(&id).map(|d| d.full_def()) {
                         Some(DefTy(..)) | Some(DefStruct(..)) | Some(DefTrait(..)) | None => {
-                            this.check_if_primitive_type_name(ident.name, item.span);
+                            this.check_if_primitive_type_name(name, item.span);
                         }
                         _ => {}
                     }
                 };
 
                 match view_path.node {
-                    hir::ViewPathSimple(ident, _) => {
-                        check_rename(self, item.id, ident);
+                    hir::ViewPathSimple(name, _) => {
+                        check_rename(self, item.id, name);
                     }
                     hir::ViewPathList(ref prefix, ref items) => {
                         for item in items {
-                            if let Some(ident) = item.node.rename() {
-                                check_rename(self, item.node.id(), ident);
+                            if let Some(name) = item.node.rename() {
+                                check_rename(self, item.node.id(), name);
                             }
                         }
 
@@ -2264,7 +2264,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let mut function_type_rib = Rib::new(rib_kind);
                 let mut seen_bindings = HashSet::new();
                 for (index, type_parameter) in generics.ty_params.iter().enumerate() {
-                    let name = type_parameter.ident.name;
+                    let name = type_parameter.name;
                     debug!("with_type_parameter_rib: {}", type_parameter.id);
 
                     if seen_bindings.contains(&name) {
@@ -2390,7 +2390,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_generics(&mut self, generics: &Generics) {
         for type_parameter in generics.ty_params.iter() {
-            self.check_if_primitive_type_name(type_parameter.ident.name, type_parameter.span);
+            self.check_if_primitive_type_name(type_parameter.name, type_parameter.span);
         }
         for predicate in &generics.where_clause.predicates {
             match predicate {
@@ -2486,7 +2486,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 ConstImplItem(..) => {
                                     // If this is a trait impl, ensure the const
                                     // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
+                                    this.check_trait_item(impl_item.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::ConstNotMemberOfTrait(n, s));
                                     this.with_constant_rib(|this| {
@@ -2496,7 +2496,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 MethodImplItem(ref sig, _) => {
                                     // If this is a trait impl, ensure the method
                                     // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
+                                    this.check_trait_item(impl_item.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::MethodNotMemberOfTrait(n, s));
 
@@ -2513,7 +2513,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 TypeImplItem(ref ty) => {
                                     // If this is a trait impl, ensure the type
                                     // exists in trait
-                                    this.check_trait_item(impl_item.ident.name,
+                                    this.check_trait_item(impl_item.name,
                                                           impl_item.span,
                                         |n, s| ResolutionError::TypeNotMemberOfTrait(n, s));
 
@@ -3817,19 +3817,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &Expr) {
         match expr.node {
-            ExprField(_, ident) => {
+            ExprField(_, name) => {
                 // FIXME(#6890): Even though you can't treat a method like a
                 // field, we need to add any trait methods we find that match
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
-                let traits = self.get_traits_containing_item(ident.node.name);
+                let traits = self.get_traits_containing_item(name.node);
                 self.trait_map.insert(expr.id, traits);
             }
-            ExprMethodCall(ident, _, _) => {
+            ExprMethodCall(name, _, _) => {
                 debug!("(recording candidate traits for expr) recording \
                         traits for {}",
                        expr.id);
-                let traits = self.get_traits_containing_item(ident.node.name);
+                let traits = self.get_traits_containing_item(name.node);
                 self.trait_map.insert(expr.id, traits);
             }
             _ => {

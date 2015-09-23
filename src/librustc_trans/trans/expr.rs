@@ -664,8 +664,8 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         hir::ExprPath(..) => {
             trans_def(bcx, expr, bcx.def(expr.id))
         }
-        hir::ExprField(ref base, ident) => {
-            trans_rec_field(bcx, &**base, ident.node.name)
+        hir::ExprField(ref base, name) => {
+            trans_rec_field(bcx, &**base, name.node)
         }
         hir::ExprTupField(ref base, idx) => {
             trans_rec_tup_field(bcx, &**base, idx.node)
@@ -1114,7 +1114,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // trans. Shudder.
             fn make_field(field_name: &str, expr: P<hir::Expr>) -> hir::Field {
                 hir::Field {
-                    ident: codemap::dummy_spanned(token::str_to_ident(field_name)),
+                    name: codemap::dummy_spanned(token::str_to_ident(field_name).name),
                     expr: expr,
                     span: codemap::DUMMY_SP,
                 }
@@ -1408,7 +1408,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut need_base = vec![true; vinfo.fields.len()];
 
     let numbered_fields = fields.iter().map(|field| {
-        let pos = vinfo.field_index(field.ident.node.name);
+        let pos = vinfo.field_index(field.name.node);
         need_base[pos] = false;
         (pos, &*field.expr)
     }).collect::<Vec<_>>();

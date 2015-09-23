@@ -73,7 +73,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
     }
 
     let tcx = ccx.tcx;
-    let name = it.ident.name.as_str();
+    let name = it.name.as_str();
     let (n_tps, inputs, output) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic not correct format");
@@ -367,7 +367,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
     let i_ty = tcx.lookup_item_type(DefId::local(it.id));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
-    let name = it.ident.name.as_str();
+    let name = it.name.as_str();
 
     let (n_tps, inputs, output) = match &*name {
         "simd_eq" | "simd_ne" | "simd_lt" | "simd_le" | "simd_gt" | "simd_ge" => {

@@ -909,7 +909,7 @@ impl LateLintPass for NonShorthandFieldPatterns {
             });
             for fieldpat in field_pats {
                 if let hir::PatIdent(_, ident, None) = fieldpat.node.pat.node {
-                    if ident.node.name == fieldpat.node.ident.name {
+                    if ident.node.name == fieldpat.node.name {
                         // FIXME: should this comparison really be done on the name?
                         // doing it on the ident will fail during compilation of libcore
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
@@ -1081,12 +1081,12 @@ impl LateLintPass for MissingDoc {
     }
 
     fn check_struct_def(&mut self, _: &LateContext, _: &hir::StructDef,
-                        _: ast::Ident, _: &hir::Generics, id: ast::NodeId) {
+                        _: ast::Name, _: &hir::Generics, id: ast::NodeId) {
         self.struct_def_stack.push(id);
     }
 
     fn check_struct_def_post(&mut self, _: &LateContext, _: &hir::StructDef,
-                             _: ast::Ident, _: &hir::Generics, id: ast::NodeId) {
+                             _: ast::Name, _: &hir::Generics, id: ast::NodeId) {
         let popped = self.struct_def_stack.pop().expect("empty struct_def_stack");
         assert!(popped == id);
     }
@@ -1731,7 +1731,7 @@ impl LateLintPass for InvalidNoMangleItems {
                 if attr::contains_name(&it.attrs, "no_mangle") &&
                        !cx.exported_items.contains(&it.id) {
                     let msg = format!("function {} is marked #[no_mangle], but not exported",
-                                      it.ident);
+                                      it.name);
                     cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, &msg);
                 }
             },
@@ -1739,7 +1739,7 @@ impl LateLintPass for InvalidNoMangleItems {
                 if attr::contains_name(&it.attrs, "no_mangle") &&
                        !cx.exported_items.contains(&it.id) {
                     let msg = format!("static {} is marked #[no_mangle], but not exported",
-                                      it.ident);
+                                      it.name);
                     cx.span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, &msg);
                 }
             },

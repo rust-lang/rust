@@ -263,7 +263,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &Item, parent: &Rc<Module>) -> Rc<Module> {
-        let name = item.ident.name;
+        let name = item.name;
         let sp = item.span;
         let is_public = item.vis == hir::Public;
         let modifiers = if is_public {
@@ -312,8 +312,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                           ResolutionError::SelfImportsOnlyAllowedWithin);
                         }
 
-                        let subclass = SingleImport(binding.name,
-                                                    source_name);
+                        let subclass = SingleImport(binding, source_name);
                         self.build_import_directive(&**parent,
                                                     module_path,
                                                     subclass,
@@ -343,7 +342,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         for source_item in source_items {
                             let (module_path, name, rename) = match source_item.node {
                                 PathListIdent { name, rename, .. } =>
-                                    (module_path.clone(), name.name, rename.unwrap_or(name).name),
+                                    (module_path.clone(), name, rename.unwrap_or(name)),
                                 PathListMod { rename, .. } => {
                                     let name = match module_path.last() {
                                         Some(name) => *name,
@@ -358,7 +357,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                         }
                                     };
                                     let module_path = module_path.split_last().unwrap().1;
-                                    let rename = rename.map(|n| n.name).unwrap_or(name);
+                                    let rename = rename.unwrap_or(name);
                                     (module_path.to_vec(), name, rename)
                                 }
                             };
@@ -509,7 +508,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 // Record the def ID and fields of this struct.
                 let named_fields = struct_def.fields.iter().filter_map(|f| {
                     match f.node.kind {
-                        NamedField(ident, _) => Some(ident.name),
+                        NamedField(name, _) => Some(name),
                         UnnamedField(_) => None
                     }
                 }).collect();
@@ -539,7 +538,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 // Add the names of all the items to the trait info.
                 for trait_item in items {
-                    let name_bindings = self.add_child(trait_item.ident.name,
+                    let name_bindings = self.add_child(trait_item.name,
                                         &module_parent,
                                         ForbidDuplicateTypesAndValues,
                                         trait_item.span);
@@ -563,7 +562,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         }
                     }
 
-                    self.trait_item_map.insert((trait_item.ident.name, def_id),
+                    self.trait_item_map.insert((trait_item.name, def_id),
                                                DefId::local(trait_item.id));
                 }
 
@@ -579,7 +578,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                        variant: &Variant,
                                        item_id: DefId,
                                        parent: &Rc<Module>) {
-        let name = variant.node.name.name;
+        let name = variant.node.name;
         let is_exported = match variant.node.kind {
             TupleVariantKind(_) => false,
             StructVariantKind(_) => {
@@ -606,7 +605,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     fn build_reduced_graph_for_foreign_item(&mut self,
                                             foreign_item: &ForeignItem,
                                             parent: &Rc<Module>) {
-        let name = foreign_item.ident.name;
+        let name = foreign_item.name;
         let is_public = foreign_item.vis == hir::Public;
         let modifiers = if is_public {
             DefModifiers::PUBLIC

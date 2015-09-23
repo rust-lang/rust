@@ -137,7 +137,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             if let hir::PatWild(hir::PatWildSingle) = pat.node.pat.node {
                 continue;
             }
-            self.live_symbols.insert(variant.field_named(pat.node.ident.name).did.node);
+            self.live_symbols.insert(variant.field_named(pat.node.name).did.node);
         }
     }
 
@@ -207,7 +207,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
 
-    fn visit_struct_def(&mut self, def: &hir::StructDef, _: ast::Ident,
+    fn visit_struct_def(&mut self, def: &hir::StructDef, _: ast::Name,
                         _: &hir::Generics, _: ast::NodeId) {
         let has_extern_repr = self.struct_has_extern_repr;
         let inherited_pub_visibility = self.inherited_pub_visibility;
@@ -227,8 +227,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
             hir::ExprMethodCall(..) => {
                 self.lookup_and_handle_method(expr.id);
             }
-            hir::ExprField(ref lhs, ref ident) => {
-                self.handle_field_access(&**lhs, ident.node.name);
+            hir::ExprField(ref lhs, ref name) => {
+                self.handle_field_access(&**lhs, name.node);
             }
             hir::ExprTupField(ref lhs, idx) => {
                 self.handle_tup_field_access(&**lhs, idx.node);
@@ -443,7 +443,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_field(&mut self, node: &hir::StructField_) -> bool {
-        let is_named = node.ident().is_some();
+        let is_named = node.name().is_some();
         let field_type = self.tcx.node_id_to_type(node.id);
         let is_marker_field = match field_type.ty_to_def_id() {
             Some(def_id) => self.tcx.lang_items.items().any(|(_, item)| *item == Some(def_id)),
@@ -520,7 +520,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
             self.warn_dead_code(
                 item.id,
                 item.span,
-                item.ident.name,
+                item.name,
                 item.node.descriptive_variant()
             );
         } else {
@@ -529,7 +529,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
                     for variant in &enum_def.variants {
                         if self.should_warn_about_variant(&variant.node) {
                             self.warn_dead_code(variant.node.id, variant.span,
-                                                variant.node.name.name, "variant");
+                                                variant.node.name, "variant");
                         }
                     }
                 },
@@ -541,7 +541,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &hir::ForeignItem) {
         if !self.symbol_is_live(fi.id, None) {
-            self.warn_dead_code(fi.id, fi.span, fi.ident.name, fi.node.descriptive_variant());
+            self.warn_dead_code(fi.id, fi.span, fi.name, fi.node.descriptive_variant());
         }
         visit::walk_foreign_item(self, fi);
     }
@@ -549,7 +549,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     fn visit_struct_field(&mut self, field: &hir::StructField) {
         if self.should_warn_about_field(&field.node) {
             self.warn_dead_code(field.node.id, field.span,
-                                field.node.ident().unwrap().name, "struct field");
+                                field.node.name().unwrap(), "struct field");
         }
 
         visit::walk_struct_field(self, field);
@@ -560,14 +560,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
             hir::ConstImplItem(_, ref expr) => {
                 if !self.symbol_is_live(impl_item.id, None) {
                     self.warn_dead_code(impl_item.id, impl_item.span,
-                                        impl_item.ident.name, "associated const");
+                                        impl_item.name, "associated const");
                 }
                 visit::walk_expr(self, expr)
             }
             hir::MethodImplItem(_, ref body) => {
                 if !self.symbol_is_live(impl_item.id, None) {
                     self.warn_dead_code(impl_item.id, impl_item.span,
-                                        impl_item.ident.name, "method");
+                                        impl_item.name, "method");
                 }
                 visit::walk_block(self, body)
             }

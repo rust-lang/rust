@@ -195,7 +195,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                       -> Option<ast::NodeId> {
             assert!(idx < names.len());
             for item in &m.items {
-                if item.ident.to_string() == names[idx] {
+                if item.name.to_string() == names[idx] {
                     return search(this, &**item, idx+1, names);
                 }
             }

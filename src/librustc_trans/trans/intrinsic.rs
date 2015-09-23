@@ -50,7 +50,7 @@ use syntax::codemap::Span;
 use std::cmp::Ordering;
 
 pub fn get_simple_intrinsic(ccx: &CrateContext, item: &hir::ForeignItem) -> Option<ValueRef> {
-    let name = match &*item.ident.name.as_str() {
+    let name = match &*item.name.as_str() {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
         "powif32" => "llvm.powi.f32",
@@ -185,7 +185,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         _ => panic!("expected bare_fn in trans_intrinsic_call")
     };
     let foreign_item = tcx.map.expect_foreign_item(node);
-    let name = foreign_item.ident.name.as_str();
+    let name = foreign_item.name.as_str();
 
     // For `transmute` we can just trans the input expr directly into dest
     if name == "transmute" {
@@ -931,7 +931,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, _) => {
             let intr = match Intrinsic::find(tcx, &name) {
                 Some(intr) => intr,
-                None => ccx.sess().span_bug(foreign_item.span, "unknown intrinsic"),
+                None => ccx.sess().span_bug(foreign_item.span,
+                                            &format!("unknown intrinsic '{}'", name)),
             };
             fn one<T>(x: Vec<T>) -> T {
                 assert_eq!(x.len(), 1);

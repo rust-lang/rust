@@ -908,7 +908,7 @@ pub fn link_name(i: &hir::ForeignItem) -> InternedString {
         Some(ln) => ln.clone(),
         None => match weak_lang_items::link_name(&i.attrs) {
             Some(name) => name,
-            None => i.ident.name.as_str(),
+            None => i.name.as_str(),
         }
     }
 }

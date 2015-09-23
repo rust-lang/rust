@@ -336,7 +336,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         // When compiling with --test we don't enforce stability on the
         // compiler-generated test module, demarcated with `DUMMY_SP` plus the
         // name `__test`
-        if item.span == DUMMY_SP && item.ident.name == "__test" { return }
+        if item.span == DUMMY_SP && item.name == "__test" { return }
 
         check_item(self.tcx, item, true,
                    &mut |id, sp, stab| self.check(id, sp, stab));
@@ -393,7 +393,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &hir::Item, warn_about_defns: bool,
 
             for impl_item in impl_items {
                 let item = trait_items.iter().find(|item| {
-                    item.name() == impl_item.ident.name
+                    item.name() == impl_item.name
                 }).unwrap();
                 if warn_about_defns {
                     maybe_do_stability_check(tcx, item.def_id(), impl_item.span, cb);
@@ -418,7 +418,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &hir::Expr,
         hir::ExprField(ref base_e, ref field) => {
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
-                ty::TyStruct(def, _) => def.struct_variant().field_named(field.node.name).did,
+                ty::TyStruct(def, _) => def.struct_variant().field_named(field.node).did,
                 _ => tcx.sess.span_bug(e.span,
                                        "stability::check_expr: named field access on non-struct")
             }
@@ -441,7 +441,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &hir::Expr,
                     // in the construction expression.
                     for field in expr_fields {
                         let did = def.struct_variant()
-                            .field_named(field.ident.node.name)
+                            .field_named(field.name.node)
                             .did;
                         maybe_do_stability_check(tcx, did, field.span, cb);
                     }
@@ -513,7 +513,7 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &hir::Pat,
         // Foo { a, b, c }
         hir::PatStruct(_, ref pat_fields, _) => {
             for field in pat_fields {
-                let did = v.field_named(field.node.ident.name).did;
+                let did = v.field_named(field.node.name).did;
                 maybe_do_stability_check(tcx, did, field.span, cb);
             }
         }

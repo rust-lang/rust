@@ -314,7 +314,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<hir::Pat>
             let field_pats = fields.iter().map(|field| codemap::Spanned {
                 span: codemap::DUMMY_SP,
                 node: hir::FieldPat {
-                    ident: field.ident.node,
+                    name: field.name.node,
                     pat: const_expr_to_pat(tcx, &*field.expr, span),
                     is_shorthand: false,
                 },
@@ -1040,8 +1040,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                 if let hir::ExprStruct(_, ref fields, _) = tcx.map.expect_expr(struct_id).node {
                     // Check that the given field exists and evaluate it
                     // if the idents are compared run-pass/issue-19244 fails
-                    if let Some(f) = fields.iter().find(|f| f.ident.node.name
-                                                         == field_name.node.name) {
+                    if let Some(f) = fields.iter().find(|f| f.name.node
+                                                         == field_name.node) {
                         return eval_const_expr_partial(tcx, &*f.expr, base_hint)
                     } else {
                         signal!(e, MissingStructField);
@@ -1109,7 +1109,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
     match selection {
         traits::VtableImpl(ref impl_data) => {
             match tcx.associated_consts(impl_data.impl_def_id)
-                     .iter().find(|ic| ic.name == ti.ident.name) {
+                     .iter().find(|ic| ic.name == ti.name) {
                 Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
                 None => match ti.node {
                     hir::ConstTraitItem(_, Some(ref expr)) => Some(&*expr),
