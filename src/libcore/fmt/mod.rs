@@ -1310,11 +1310,20 @@ impl Display for bool {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        try!(write!(f, "\""));
-        for c in self.chars().flat_map(|c| c.escape_default()) {
-            try!(f.write_char(c))
+        try!(f.write_char('"'));
+        let mut from = 0;
+        for (i, c) in self.char_indices() {
+            // If char needs escaping, flush backlog so far and write, else skip
+            if c.needs_escape_default() {
+                try!(f.write_str(&self[from..i]));
+                for e in c.escape_default() {
+                    try!(f.write_char(e));
+                }
+                from = i + c.len_utf8();
+            }
         }
-        write!(f, "\"")
+        try!(f.write_str(&self[from..]));
+        f.write_char('"')
     }
 }
 
@@ -1328,12 +1337,11 @@ impl Display for str {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        use char::CharExt;
-        try!(write!(f, "'"));
+        try!(f.write_char('\''));
         for c in self.escape_default() {
             try!(f.write_char(c))
         }
-        write!(f, "'")
+        f.write_char('\'')
     }
 }
 
