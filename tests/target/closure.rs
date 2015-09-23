@@ -9,7 +9,8 @@ fn main() {
                      b: WithType, // argument
                      // ignored
                      _| {
-        (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)
+        (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+         bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb)
     };
 
     let block_body = move |xxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
