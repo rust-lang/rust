@@ -205,7 +205,9 @@ fn rewrite_segment(segment: &ast::PathSegment,
                                  .collect::<Vec<_>>();
 
             let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
-            let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi), "<", context.codemap);
+            let list_lo = span_after(codemap::mk_sp(*span_lo, span_hi),
+                                     "<",
+                                     context.codemap);
             let separator = get_path_separator(context.codemap, *span_lo, list_lo);
 
             // 1 for <
@@ -363,7 +365,8 @@ impl Rewrite for ast::TyParamBound {
                 tref.rewrite(context, width, offset)
             }
             ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::Maybe) => {
-                Some(format!("?{}", try_opt!(tref.rewrite(context, width - 1, offset + 1))))
+                Some(format!("?{}",
+                             try_opt!(tref.rewrite(context, width - 1, offset + 1))))
             }
             ast::TyParamBound::RegionTyParamBound(ref l) => {
                 Some(pprust::lifetime_to_string(l))

@@ -32,7 +32,11 @@ impl Rewrite for ast::Expr {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match self.node {
             ast::Expr_::ExprVec(ref expr_vec) => {
-                rewrite_array(expr_vec.iter().map(|e| &**e), self.span, context, width, offset)
+                rewrite_array(expr_vec.iter().map(|e| &**e),
+                              self.span,
+                              context,
+                              width,
+                              offset)
             }
             ast::Expr_::ExprLit(ref l) => {
                 match l.node {
@@ -176,7 +180,10 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprIndex(..) |
             ast::Expr_::ExprInlineAsm(..) |
             ast::Expr_::ExprRepeat(..) => {
-                wrap_str(context.snippet(self.span), context.config.max_width, width, offset)
+                wrap_str(context.snippet(self.span),
+                         context.config.max_width,
+                         width,
+                         offset)
             }
         }
     }
@@ -507,7 +514,13 @@ impl<'a> Rewrite for Loop<'a> {
         // FIXME: this drops any comment between "loop" and the block.
         self.block
             .rewrite(context, width, offset)
-            .map(|result| format!("{}{}{} {}", label_string, self.keyword, pat_expr_string, result))
+            .map(|result| {
+                format!("{}{}{} {}",
+                        label_string,
+                        self.keyword,
+                        pat_expr_string,
+                        result)
+            })
     }
 }
 
@@ -1108,7 +1121,9 @@ fn rewrite_paren(context: &RewriteContext,
                  width: usize,
                  offset: Indent)
                  -> Option<String> {
-    debug!("rewrite_paren, width: {}, offset: {:?}", width, offset);
+    debug!("rewrite_paren, width: {}, offset: {:?}",
+           width,
+           offset);
     // 1 is for opening paren, 2 is for opening+closing, we want to keep the closing
     // paren on the same line as the subexpr.
     let subexpr_str = subexpr.rewrite(context, try_opt!(width.checked_sub(2)), offset + 1);
@@ -1124,7 +1139,9 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                           width: usize,
                           offset: Indent)
                           -> Option<String> {
-    debug!("rewrite_struct_lit: width {}, offset {:?}", width, offset);
+    debug!("rewrite_struct_lit: width {}, offset {:?}",
+           width,
+           offset);
     assert!(!fields.is_empty() || base.is_some());
 
     enum StructLitField<'a> {
@@ -1229,10 +1246,15 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                                   .block_indent(context.config)
                                   .to_string(context.config);
         let outer_indent = context.block_indent.to_string(context.config);
-        Some(format!("{} {{\n{}{}\n{}}}", path_str, inner_indent, fields_str, outer_indent))
+        Some(format!("{} {{\n{}{}\n{}}}",
+                     path_str,
+                     inner_indent,
+                     fields_str,
+                     outer_indent))
     };
 
-    match (context.config.struct_lit_style, context.config.struct_lit_multiline_style) {
+    match (context.config.struct_lit_style,
+           context.config.struct_lit_multiline_style) {
         (StructLitStyle::Block, _) if fields_str.contains('\n') || fields_str.len() > h_budget =>
             format_on_newline(),
         (StructLitStyle::Block, MultilineStyle::ForceMulti) => format_on_newline(),
@@ -1250,8 +1272,9 @@ fn rewrite_field(context: &RewriteContext,
                  -> Option<String> {
     let name = &field.ident.node.to_string();
     let overhead = name.len() + 2;
-    let expr = field.expr
-                    .rewrite(context, try_opt!(width.checked_sub(overhead)), offset + overhead);
+    let expr = field.expr.rewrite(context,
+                                  try_opt!(width.checked_sub(overhead)),
+                                  offset + overhead);
     expr.map(|s| format!("{}: {}", name, s))
 }
 
@@ -1261,7 +1284,9 @@ fn rewrite_tuple_lit(context: &RewriteContext,
                      width: usize,
                      offset: Indent)
                      -> Option<String> {
-    debug!("rewrite_tuple_lit: width: {}, offset: {:?}", width, offset);
+    debug!("rewrite_tuple_lit: width: {}, offset: {:?}",
+           width,
+           offset);
     let indent = offset + 1;
     // In case of length 1, need a trailing comma
     if items.len() == 1 {
@@ -1352,7 +1377,9 @@ fn rewrite_unary_prefix(context: &RewriteContext,
                         width: usize,
                         offset: Indent)
                         -> Option<String> {
-    expr.rewrite(context, try_opt!(width.checked_sub(prefix.len())), offset + prefix.len())
+    expr.rewrite(context,
+                 try_opt!(width.checked_sub(prefix.len())),
+                 offset + prefix.len())
         .map(|r| format!("{}{}", prefix, r))
 }
 
@@ -1385,7 +1412,9 @@ fn rewrite_assignment(context: &RewriteContext,
 
     // 1 = space between lhs and operator.
     let max_width = try_opt!(width.checked_sub(operator_str.len() + 1));
-    let lhs_str = format!("{} {}", try_opt!(lhs.rewrite(context, max_width, offset)), operator_str);
+    let lhs_str = format!("{} {}",
+                          try_opt!(lhs.rewrite(context, max_width, offset)),
+                          operator_str);
 
     rewrite_assign_rhs(&context, lhs_str, rhs, width, offset)
 }

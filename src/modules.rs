@@ -25,7 +25,10 @@ pub fn list_files<'a>(krate: &'a ast::Crate,
                       -> HashMap<PathBuf, &'a ast::Mod> {
     let mut result = HashMap::new();
     let root_filename: PathBuf = codemap.span_to_filename(krate.span).into();
-    list_submodules(&krate.module, root_filename.parent().unwrap(), codemap, &mut result);
+    list_submodules(&krate.module,
+                    root_filename.parent().unwrap(),
+                    codemap,
+                    &mut result);
     result.insert(root_filename, &krate.module);
     result
 }

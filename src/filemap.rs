@@ -115,7 +115,8 @@ fn write_file(text: &StringBuffer,
             try!(write_system_newlines(&mut v, text, config));
             let fmt_text = String::from_utf8(v).unwrap();
             let diff = make_diff(&ori_text, &fmt_text, 3);
-            print_diff(diff, |line_num| format!("\nDiff at line {}:", line_num));
+            print_diff(diff,
+                       |line_num| format!("\nDiff at line {}:", line_num));
         }
         WriteMode::Return => {
             // io::Write is not implemented for String, working around with

@@ -103,7 +103,10 @@ pub fn rewrite_macro(mac: &ast::Mac,
         }
         MacroStyle::Braces => {
             // Skip macro invocations with braces, for now.
-            wrap_str(context.snippet(mac.span), context.config.max_width, width, offset)
+            wrap_str(context.snippet(mac.span),
+                     context.config.max_width,
+                     width,
+                     offset)
         }
     }
 }
