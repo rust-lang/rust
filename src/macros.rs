@@ -49,13 +49,12 @@ pub fn rewrite_macro(mac: &ast::Mac,
                      width: usize,
                      offset: Indent)
                      -> Option<String> {
-    let ast::Mac_::MacInvocTT(ref path, ref tt_vec, _) = mac.node;
     let style = macro_style(mac, context);
-    let macro_name = format!("{}!", path);
+    let macro_name = format!("{}!", mac.node.path);
 
     if let MacroStyle::Braces = style {
         return None;
-    } else if tt_vec.is_empty() {
+    } else if mac.node.tts.is_empty() {
         return if let MacroStyle::Parens = style {
             Some(format!("{}()", macro_name))
         } else {
@@ -63,7 +62,7 @@ pub fn rewrite_macro(mac: &ast::Mac,
         };
     }
 
-    let wrapped_tt_vec = ForceSend((*tt_vec).clone());
+    let wrapped_tt_vec = ForceSend(mac.node.tts.clone());
     // Wrap expression parsing logic in a thread since the libsyntax parser
     // panicks on failure, which we do not want to propagate.
     let expr_vec_result = thread::catch_panic(move || {
