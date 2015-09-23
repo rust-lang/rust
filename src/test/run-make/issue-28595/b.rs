@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "rlib"]
+extern crate a;
 
+#[link(name = "b", kind = "static")]
 extern {
-    fn some_c_symbol();
+    pub fn b();
 }
 
-pub fn foo() {
-    unsafe { some_c_symbol() }
+
+fn main() {
+    unsafe { b(); }
 }

@@ -27,7 +27,19 @@ extern crate libc;
 
 use libc::{c_int, c_void, size_t};
 
+// Linkage directives to pull in jemalloc and its dependencies.
+//
+// On some platforms we need to be sure to link in `pthread` which jemalloc
+// depends on, and specifically on android we need to also link to libgcc.
+// Currently jemalloc is compiled with gcc which will generate calls to
+// intrinsics that are libgcc specific (e.g. those intrinsics aren't present in
+// libcompiler-rt), so link that in to get that support.
 #[link(name = "jemalloc", kind = "static")]
+#[cfg_attr(target_os = "android", link(name = "gcc"))]
+#[cfg_attr(all(not(windows),
+               not(target_os = "android"),
+               not(target_env = "musl")),
+           link(name = "pthread"))]
 extern {
     fn je_mallocx(size: size_t, flags: c_int) -> *mut c_void;
     fn je_rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
@@ -36,13 +48,6 @@ extern {
     fn je_sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
     fn je_nallocx(size: size_t, flags: c_int) -> size_t;
 }
-
-// -lpthread needs to occur after -ljemalloc, the earlier argument isn't enough
-#[cfg(all(not(windows),
-          not(target_os = "android"),
-          not(target_env = "musl")))]
-#[link(name = "pthread")]
-extern {}
 
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values. In practice, the alignment is a
