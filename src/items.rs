@@ -948,7 +948,7 @@ impl<'a> FmtVisitor<'a> {
             item.item = ty;
         }
 
-        let fmt = ListFormatting::for_fn(h_budget, offset, self.config);
+        let fmt = ListFormatting::for_item(h_budget, offset, self.config);
         let list_str = try_opt!(write_list(&items, &fmt));
 
         Some(format!("<{}>", list_str))

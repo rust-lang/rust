@@ -26,6 +26,8 @@ pub enum ListTactic {
     Horizontal,
     // Try Horizontal layout, if that fails then vertical
     HorizontalVertical,
+    // HorizontalVertical with a soft limit.
+    LimitedHorizontalVertical(usize),
     // Pack as many items as possible per row over (possibly) many rows.
     Mixed,
 }
@@ -59,6 +61,19 @@ pub struct ListFormatting<'a> {
 
 impl<'a> ListFormatting<'a> {
     pub fn for_fn(width: usize, offset: Indent, config: &'a Config) -> ListFormatting<'a> {
+        ListFormatting {
+            tactic: ListTactic::LimitedHorizontalVertical(config.list_width),
+            separator: ",",
+            trailing_separator: SeparatorTactic::Never,
+            indent: offset,
+            h_width: width,
+            v_width: width,
+            ends_with_newline: false,
+            config: config,
+        }
+    }
+
+    pub fn for_item(width: usize, offset: Indent, config: &'a Config) -> ListFormatting<'a> {
         ListFormatting {
             tactic: ListTactic::HorizontalVertical,
             separator: ",",
@@ -118,6 +133,13 @@ pub fn write_list<'b>(items: &[ListItem], formatting: &ListFormatting<'b>) -> Op
     let fits_single = total_width + total_sep_len <= formatting.h_width;
 
     // Check if we need to fallback from horizontal listing, if possible.
+    if let ListTactic::LimitedHorizontalVertical(limit) = tactic {
+        if total_width > limit {
+            tactic = ListTactic::Vertical;
+        } else {
+            tactic = ListTactic::HorizontalVertical;
+        }
+    }
     if tactic == ListTactic::HorizontalVertical {
         debug!("write_list: total_width: {}, total_sep_len: {}, h_width: {}",
                total_width,

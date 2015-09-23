@@ -230,7 +230,7 @@ fn rewrite_segment(segment: &ast::PathSegment,
                                      list_lo,
                                      span_hi);
 
-            let fmt = ListFormatting::for_fn(list_width, offset + extra_offset, context.config);
+            let fmt = ListFormatting::for_item(list_width, offset + extra_offset, context.config);
             let list_str = try_opt!(write_list(&items.collect::<Vec<_>>(), &fmt));
 
             // Update position of last bracket.
