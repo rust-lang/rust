@@ -35,6 +35,15 @@ use slice::{Iter, IterMut, SliceExt};
 ///
 /// This trait can be used to implement other traits on fixed-size arrays
 /// without causing much metadata bloat.
+///
+/// The trait is marked unsafe in order to restrict implementors to fixed-size
+/// arrays. User of this trait can assume that implementors have the exact
+/// layout in memory of a fixed size array (for example, for unsafe
+/// initialization).
+///
+/// Note that the traits AsRef and AsMut provide similar methods for types that
+/// may not be fixed-size arrays. Implementors should prefer those traits
+/// instead.
 pub unsafe trait FixedSizeArray<T> {
     /// Converts the array to immutable slice
     fn as_slice(&self) -> &[T];
