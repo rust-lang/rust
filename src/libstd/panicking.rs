@@ -24,7 +24,8 @@ thread_local! {
     }
 }
 
-pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
+fn log_panic(obj: &(Any+Send), file: &'static str, line: u32,
+             log_backtrace: bool) {
     let msg = match obj.downcast_ref::<&'static str>() {
         Some(s) => *s,
         None => match obj.downcast_ref::<String>() {
@@ -35,37 +36,33 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
     let mut err = Stderr::new().ok();
     let thread = thread_info::current_thread();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
+
+    let write = |err: &mut ::io::Write| {
+        let _ = writeln!(err, "thread '{}' panicked at '{}', {}:{}",
+                         name, msg, file, line);
+        if log_backtrace {
+            let _ = backtrace::write(err);
+        }
+    };
+
     let prev = LOCAL_STDERR.with(|s| s.borrow_mut().take());
     match (prev, err.as_mut()) {
         (Some(mut stderr), _) => {
             // FIXME: what to do when the thread printing panics?
-            let _ = writeln!(stderr,
-                             "thread '{}' panicked at '{}', {}:{}\n",
-                             name, msg, file, line);
-            if backtrace::log_enabled() {
-                let _ = backtrace::write(&mut *stderr);
-            }
+            write(&mut *stderr);
             let mut s = Some(stderr);
             LOCAL_STDERR.with(|slot| {
                 *slot.borrow_mut() = s.take();
             });
         }
-        (None, Some(ref mut err)) => {
-            let _ = writeln!(err, "thread '{}' panicked at '{}', {}:{}",
-                             name, msg, file, line);
-            if backtrace::log_enabled() {
-                let _ = backtrace::write(err);
-            }
-        }
+        (None, Some(ref mut err)) => { write(err) }
         _ => {}
     }
+}
 
-    // If this is a double panic, make sure that we printed a backtrace
-    // for this panic.
-    match err {
-        Some(ref mut err) if unwind::panicking() && !backtrace::log_enabled() => {
-            let _ = backtrace::write(err);
-        }
-        _ => {}
-    }
+pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
+    // If this is a double panic, make sure that we print a backtrace
+    // for this panic. Otherwise only print it if logging is enabled.
+    let log_backtrace = unwind::panicking() || backtrace::log_enabled();
+    log_panic(obj, file, line, log_backtrace);
 }
