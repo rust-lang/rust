@@ -15,7 +15,7 @@ use syntax::codemap::{self, Span, BytePos, CodeMap};
 use Indent;
 use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
-use utils::{extra_offset, span_after};
+use utils::{extra_offset, span_after, format_mutability};
 
 impl Rewrite for ast::Path {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
@@ -437,9 +437,39 @@ impl Rewrite for ast::Ty {
                 p.rewrite(context, width, offset)
             }
             ast::TyObjectSum(ref ty, ref bounds) => {
+                let ty_str = try_opt!(ty.rewrite(context, width, offset));
+                let overhead = ty_str.len() + 3;
                 Some(format!("{} + {}",
-                             try_opt!(ty.rewrite(context, width, offset)),
-                             try_opt!(bounds.rewrite(context, width, offset))))
+                             ty_str,
+                             try_opt!(bounds.rewrite(context,
+                                                     try_opt!(width.checked_sub(overhead)),
+                                                     offset + overhead))))
+            }
+            ast::TyRptr(ref lifetime, ref mt) => {
+                let mut_str = format_mutability(mt.mutbl);
+                let mut_len = mut_str.len();
+                Some(match lifetime {
+                    &Some(ref lifetime) => {
+                        let lt_str = pprust::lifetime_to_string(lifetime);
+                        let lt_len = lt_str.len();
+                        format!("&{} {}{}",
+                                lt_str,
+                                mut_str,
+                                try_opt!(mt.ty.rewrite(context,
+                                                       width - (2 + mut_len + lt_len),
+                                                       offset + 2 + mut_len + lt_len)))
+                    }
+                    &None => {
+                        format!("&{}{}",
+                                mut_str,
+                                try_opt!(mt.ty.rewrite(context,
+                                                       width - (1 + mut_len),
+                                                       offset + 1 + mut_len)))
+                    }
+                })
+            }
+            ast::TyParen(ref ty) => {
+                ty.rewrite(context, width - 2, offset + 1).map(|ty_str| format!("({})", ty_str))
             }
             _ => Some(pprust::ty_to_string(self)),
         }
