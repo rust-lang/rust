@@ -984,31 +984,24 @@ fn link_args(cmd: &mut Linker,
     // such:
     //
     //  1. The local object that LLVM just generated
-    //  2. Upstream rust libraries
-    //  3. Local native libraries
+    //  2. Local native libraries
+    //  3. Upstream rust libraries
     //  4. Upstream native libraries
     //
-    // This is generally fairly natural, but some may expect 2 and 3 to be
-    // swapped. The reason that all native libraries are put last is that it's
-    // not recommended for a native library to depend on a symbol from a rust
-    // crate. If this is the case then a staticlib crate is recommended, solving
-    // the problem.
+    // The rationale behind this ordering is that those items lower down in the
+    // list can't depend on items higher up in the list. For example nothing can
+    // depend on what we just generated (e.g. that'd be a circular dependency).
+    // Upstream rust libraries are not allowed to depend on our local native
+    // libraries as that would violate the structure of the DAG, in that
+    // scenario they are required to link to them as well in a shared fashion.
     //
-    // Additionally, it is occasionally the case that upstream rust libraries
-    // depend on a local native library. In the case of libraries such as
-    // lua/glfw/etc the name of the library isn't the same across all platforms,
-    // so only the consumer crate of a library knows the actual name. This means
-    // that downstream crates will provide the #[link] attribute which upstream
-    // crates will depend on. Hence local native libraries are after out
-    // upstream rust crates.
-    //
-    // In theory this means that a symbol in an upstream native library will be
-    // shadowed by a local native library when it wouldn't have been before, but
-    // this kind of behavior is pretty platform specific and generally not
-    // recommended anyway, so I don't think we're shooting ourself in the foot
-    // much with that.
-    add_upstream_rust_crates(cmd, sess, dylib, tmpdir);
+    // Note that upstream rust libraries may contain native dependencies as
+    // well, but they also can't depend on what we just started to add to the
+    // link line. And finally upstream native libraries can't depend on anything
+    // in this DAG so far because they're only dylibs and dylibs can only depend
+    // on other dylibs (e.g. other native deps).
     add_local_native_libraries(cmd, sess);
+    add_upstream_rust_crates(cmd, sess, dylib, tmpdir);
     add_upstream_native_libraries(cmd, sess);
 
     // # Telling the linker what we're doing
