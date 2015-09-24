@@ -201,28 +201,11 @@ endif
 ################################################################################
 # compiler-rt
 ################################################################################
-
+ifneq ($$(findstring msvc,$(1)),msvc)
 COMPRT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
 COMPRT_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(COMPRT_NAME_$(1))
 COMPRT_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt
 
-ifeq ($$(findstring msvc,$(1)),msvc)
-$$(COMPRT_BUILD_DIR_$(1))/compiler-rt.c:
-	@$$(call E, make: fake compiler-rt)
-	@mkdir -p $$(@D)
-	touch $$(COMPRT_BUILD_DIR_$(1))/compiler-rt.c
-
-OBJS_compiler-rt_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt.o
-
-$$(RT_OUTPUT_DIR_$(1))/compiler-rt.o: $$(COMPRT_BUILD_DIR_$(1))/compiler-rt.c
-	@mkdir -p $$(@D)
-	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
-                 $$(RUNTIME_CFLAGS_$(1))) $$<
-
-$$(COMPRT_LIB_$(1)): $$(OBJS_compiler-rt_$(1))
-	@$$(call E, link: $$@)
-	$$(Q)$$(call CFG_CREATE_ARCHIVE_$(1),$$@) $$^
-else # if not msvc
 ifdef CFG_ENABLE_FAST_MAKE
 COMPRT_DEPS := $(S)/.gitmodules
 else
