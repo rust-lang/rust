@@ -306,3 +306,10 @@ fn returns() {
     return aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 }
+
+fn addrof() {
+    &mut (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
+          bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
+    &(aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa +
+      bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb);
+}

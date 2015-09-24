@@ -163,12 +163,14 @@ impl Rewrite for ast::Expr {
             ast::Expr_::ExprRet(Some(ref expr)) => {
                 rewrite_unary_prefix(context, "return ", &expr, width, offset)
             }
+            ast::Expr_::ExprAddrOf(mutability, ref expr) => {
+                rewrite_expr_addrof(context, mutability, &expr, width, offset)
+            }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
             ast::Expr_::ExprBox(..) |
             ast::Expr_::ExprCast(..) |
             ast::Expr_::ExprIndex(..) |
-            ast::Expr_::ExprAddrOf(..) |
             ast::Expr_::ExprInlineAsm(..) |
             ast::Expr_::ExprRepeat(..) => {
                 wrap_str(context.snippet(self.span), context.config.max_width, width, offset)
@@ -684,11 +686,7 @@ fn rewrite_match_arm_comment(context: &RewriteContext,
     if !missed_str.is_empty() {
         result.push('\n');
         result.push_str(arm_indent_str);
-        result.push_str(&rewrite_comment(&missed_str,
-                                         false,
-                                         width,
-                                         arm_indent,
-                                         context.config));
+        result.push_str(&rewrite_comment(&missed_str, false, width, arm_indent, context.config));
     }
     return result;
 }
@@ -746,7 +744,8 @@ fn rewrite_match(context: &RewriteContext,
     let last_comment = context.snippet(mk_sp(arm_end_pos(&arms[arms.len() - 1]), span.hi));
     result.push_str(&rewrite_match_arm_comment(context,
                                                &last_comment,
-                                               width, arm_indent,
+                                               width,
+                                               arm_indent,
                                                &arm_indent_str));
     result.push('\n');
     result.push_str(&(context.block_indent + context.overflow_indent).to_string(context.config));
@@ -1413,4 +1412,17 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
     }
 
     Some(result)
+}
+
+fn rewrite_expr_addrof(context: &RewriteContext,
+                       mutability: ast::Mutability,
+                       expr: &ast::Expr,
+                       width: usize,
+                       offset: Indent)
+                       -> Option<String> {
+    let operator_str = match mutability {
+        ast::Mutability::MutImmutable => "&",
+        ast::Mutability::MutMutable => "&mut ",
+    };
+    rewrite_unary_prefix(context, operator_str, expr, width, offset)
 }
