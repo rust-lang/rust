@@ -1389,9 +1389,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.resolve_type_vars_or_error(&ty)
     }
 
+    pub fn tables_are_tcx_tables(&self) -> bool {
+        let tables: &RefCell<ty::Tables> = &self.tables;
+        let tcx_tables: &RefCell<ty::Tables> = &self.tcx.tables;
+        tables as *const _ == tcx_tables as *const _
+    }
+
     pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let ty = self.resolve_type_vars_if_possible(&ty);
-        if ty.needs_infer() {
+        if ty.needs_infer() ||
+            (ty.has_closure_types() && !self.tables_are_tcx_tables()) {
             // this can get called from typeck (by euv), and moves_by_default
             // rightly refuses to work with inference variables, but
             // moves_by_default has a cache, which we want to use in other
