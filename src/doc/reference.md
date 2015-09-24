@@ -4037,10 +4037,6 @@ In general, `--crate-type=bin` or `--crate-type=lib` should be sufficient for
 all compilation needs, and the other options are just available if more
 fine-grained control is desired over the output format of a Rust crate.
 
-# Appendix: Rationales and design trade-offs
-
-*TODO*.
-
 # Appendix: Influences
 
 Rust is not a particularly original language, with design elements coming from
