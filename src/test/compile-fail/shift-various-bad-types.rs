@@ -18,15 +18,12 @@ struct Panolpy {
 fn foo(p: &Panolpy) {
     22 >> p.char;
     //~^ ERROR E0277
-    //~| ERROR E0277
 
     22 >> p.str;
     //~^ ERROR E0277
-    //~| ERROR E0277
 
     22 >> p;
     //~^ ERROR E0277
-    //~| ERROR E0277
 
     let x;
     22 >> x; // ambiguity error winds up being suppressed

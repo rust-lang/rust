@@ -33,6 +33,26 @@ use std::fmt;
 use syntax::codemap::Span;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct TraitErrorKey<'tcx> {
+    is_warning: bool,
+    span: Span,
+    predicate: ty::Predicate<'tcx>
+}
+
+impl<'tcx> TraitErrorKey<'tcx> {
+    fn from_error<'a>(infcx: &InferCtxt<'a, 'tcx>,
+                      e: &FulfillmentError<'tcx>) -> Self {
+        let predicate =
+            infcx.resolve_type_vars_if_possible(&e.obligation.predicate);
+        TraitErrorKey {
+            is_warning: is_warning(&e.obligation),
+            span: e.obligation.cause.span,
+            predicate: infcx.tcx.erase_regions(&predicate)
+        }
+    }
+}
+
 pub fn report_fulfillment_errors<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                            errors: &Vec<FulfillmentError<'tcx>>) {
     for error in errors {
@@ -42,6 +62,13 @@ pub fn report_fulfillment_errors<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 
 fn report_fulfillment_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                       error: &FulfillmentError<'tcx>) {
+    let error_key = TraitErrorKey::from_error(infcx, error);
+    debug!("report_fulfillment_errors({:?}) - key={:?}",
+           error, error_key);
+    if !infcx.reported_trait_errors.borrow_mut().insert(error_key) {
+        debug!("report_fulfillment_errors: skipping duplicate");
+        return;
+    }
     match error.code {
         FulfillmentErrorCode::CodeSelectionError(ref e) => {
             report_selection_error(infcx, &error.obligation, e);
