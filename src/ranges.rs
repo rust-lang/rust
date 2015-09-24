@@ -19,10 +19,10 @@ impl LintPass for StepByZero {
 
 impl LateLintPass for StepByZero {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
-        if let ExprMethodCall(Spanned { node: ref ident, .. }, _,
+        if let ExprMethodCall(Spanned { node: ref name, .. }, _,
                               ref args) = expr.node {
             // Only warn on literal ranges.
-            if ident.name == "step_by" && args.len() == 2 &&
+            if name == &"step_by" && args.len() == 2 &&
                 is_range(cx, &args[0]) && is_integer_literal(&args[1], 0) {
                 cx.span_lint(RANGE_STEP_BY_ZERO, expr.span,
                              "Range::step_by(0) produces an infinite iterator. \

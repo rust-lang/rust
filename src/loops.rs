@@ -108,7 +108,7 @@ impl LateLintPass for LoopsPass {
             if let ExprMethodCall(ref method, _, ref args) = arg.node {
                 // just the receiver, no arguments
                 if args.len() == 1 {
-                    let method_name = method.node.name;
+                    let method_name = method.node;
                     // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
                     if method_name == "iter" || method_name == "iter_mut" {
                         if is_ref_iterable_type(cx, &args[0]) {
@@ -191,7 +191,7 @@ impl LateLintPass for LoopsPass {
     fn check_stmt(&mut self, cx: &LateContext, stmt: &Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
-                if args.len() == 1 && method.node.name == "collect" &&
+                if args.len() == 1 && method.node == "collect" &&
                         match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
                     span_lint(cx, UNUSED_COLLECT, expr.span, &format!(
                         "you are collect()ing an iterator and throwing away the result. \

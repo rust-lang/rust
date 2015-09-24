@@ -106,9 +106,9 @@ fn check_pat(cx: &LateContext, pat: &Pat, init: &Option<&Expr>, span: Span,
             if let Some(ref init_struct) = *init {
                 if let ExprStruct(_, ref efields, _) = init_struct.node {
                     for field in pfields {
-                        let ident = field.node.ident;
+                        let name = field.node.name;
                         let efield = efields.iter()
-                            .find(|ref f| f.ident.node == ident)
+                            .find(|ref f| f.name.node == name)
                             .map(|f| &*f.expr);
                         check_pat(cx, &field.node.pat, &efield, span, bindings);
                     }

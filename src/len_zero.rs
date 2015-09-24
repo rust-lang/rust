@@ -1,5 +1,6 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
+use syntax::ast::Name;
 use syntax::ptr::P;
 use syntax::codemap::{Span, Spanned};
 use rustc::middle::def_id::DefId;
@@ -51,7 +52,7 @@ impl LateLintPass for LenZero {
 
 fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[P<TraitItem>]) {
     fn is_named_self(item: &TraitItem, name: &str) -> bool {
-        item.ident.name == name && if let MethodTraitItem(ref sig, _) =
+        item.name == name && if let MethodTraitItem(ref sig, _) =
             item.node { is_self_sig(sig) } else { false }
     }
 
@@ -62,7 +63,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[P<TraitItem>]
                 span_lint(cx, LEN_WITHOUT_IS_EMPTY, i.span,
                           &format!("trait `{}` has a `.len(_: &Self)` method, but no \
                                     `.is_empty(_: &Self)` method. Consider adding one",
-                                   item.ident.name));
+                                   item.name));
             }
         };
     }
@@ -70,7 +71,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[P<TraitItem>]
 
 fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[P<ImplItem>]) {
     fn is_named_self(item: &ImplItem, name: &str) -> bool {
-        item.ident.name == name && if let MethodImplItem(ref sig, _) =
+        item.name == name && if let MethodImplItem(ref sig, _) =
             item.node { is_self_sig(sig) } else { false }
     }
 
@@ -82,7 +83,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[P<ImplItem>]) {
                           Span{ lo: s.lo, hi: s.lo, expn_id: s.expn_id },
                           &format!("item `{}` has a `.len(_: &Self)` method, but no \
                                     `.is_empty(_: &Self)` method. Consider adding one",
-                                   item.ident.name));
+                                   item.name));
                 return;
             }
         }
@@ -101,17 +102,17 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
     }
     match (&left.node, &right.node) {
         (&ExprLit(ref lit), &ExprMethodCall(ref method, _, ref args)) =>
-            check_len_zero(cx, span, method, args, lit, op),
+            check_len_zero(cx, span, &method.node, args, lit, op),
         (&ExprMethodCall(ref method, _, ref args), &ExprLit(ref lit)) =>
-            check_len_zero(cx, span, method, args, lit, op),
+            check_len_zero(cx, span, &method.node, args, lit, op),
         _ => ()
     }
 }
 
-fn check_len_zero(cx: &LateContext, span: Span, method: &SpannedIdent,
+fn check_len_zero(cx: &LateContext, span: Span, name: &Name,
                   args: &[P<Expr>], lit: &Lit, op: &str) {
     if let Spanned{node: LitInt(0, _), ..} = *lit {
-        if method.node.name == "len" && args.len() == 1 &&
+        if name == &"len" && args.len() == 1 &&
             has_is_empty(cx, &args[0]) {
                 span_lint(cx, LEN_ZERO, span, &format!(
                     "consider replacing the len comparison with `{}{}.is_empty()`",
