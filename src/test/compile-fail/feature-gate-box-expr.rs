@@ -19,8 +19,4 @@
 fn main() {
     let x = box 'c'; //~ ERROR box expression syntax is experimental
     println!("x: {}", x);
-
-    let x = box () 'c'; //~ ERROR box expression syntax is experimental
-    //~^ WARN deprecated syntax
-    println!("x: {}", x);
 }

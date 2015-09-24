@@ -1147,8 +1147,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           hir::ExprIndex(ref l, ref r) |
-          hir::ExprBinary(_, ref l, ref r) |
-          hir::ExprBox(Some(ref l), ref r) => {
+          hir::ExprBinary(_, ref l, ref r) => {
             let r_succ = self.propagate_through_expr(&**r, succ);
             self.propagate_through_expr(&**l, r_succ)
           }
@@ -1158,7 +1157,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             e1.as_ref().map_or(succ, |e| self.propagate_through_expr(&**e, succ))
           }
 
-          hir::ExprBox(None, ref e) |
+          hir::ExprBox(ref e) |
           hir::ExprAddrOf(_, ref e) |
           hir::ExprCast(ref e, _) |
           hir::ExprUnary(_, ref e) => {

@@ -564,10 +564,10 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             let is_float = ty.is_fp();
             unsafe { match u {
-                hir::UnUniq | hir::UnDeref => const_deref(cx, te, ty).0,
-                hir::UnNot                 => llvm::LLVMConstNot(te),
-                hir::UnNeg if is_float     => llvm::LLVMConstFNeg(te),
-                hir::UnNeg                 => llvm::LLVMConstNeg(te),
+                hir::UnDeref           => const_deref(cx, te, ty).0,
+                hir::UnNot             => llvm::LLVMConstNot(te),
+                hir::UnNeg if is_float => llvm::LLVMConstFNeg(te),
+                hir::UnNeg             => llvm::LLVMConstNeg(te),
             } }
         },
         hir::ExprField(ref base, field) => {

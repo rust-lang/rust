@@ -49,6 +49,6 @@ impl<V> Trait<u8,V> for () {
 }
 
 pub fn main() {
-    let a = box() () as Box<Trait<u8, u8>>;
+    let a = box () as Box<Trait<u8, u8>>;
     assert_eq!(a.method(Type::Constant((1, 2))), 0);
 }

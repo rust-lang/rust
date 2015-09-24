@@ -16,5 +16,5 @@
 pub fn main() {
     fn f() {
     };
-    let _: Box<fn()> = box() (f as fn());
+    let _: Box<fn()> = box (f as fn());
 }

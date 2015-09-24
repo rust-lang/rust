@@ -341,7 +341,6 @@ lets_do_this! {
     EhUnwindResumeLangItem,          "eh_unwind_resume",        eh_unwind_resume;
     MSVCTryFilterLangItem,           "msvc_try_filter",         msvc_try_filter;
 
-    ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
     OwnedBoxLangItem,                "owned_box",               owned_box;
 
     PhantomDataItem,                 "phantom_data",            phantom_data;

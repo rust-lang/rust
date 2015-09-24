@@ -22,8 +22,7 @@ impl Add for foo {
     fn add(self, f: foo) -> foo {
         let foo(box i) = self;
         let foo(box j) = f;
-        foo(box() (i + j))
-        //~^ WARN deprecated syntax
+        foo(box (i + j))
     }
 }
 

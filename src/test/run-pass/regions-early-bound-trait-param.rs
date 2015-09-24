@@ -83,7 +83,7 @@ impl<'s> Trait<'s> for (isize,isize) {
 
 impl<'t> MakerTrait for Box<Trait<'t>+'static> {
     fn mk() -> Box<Trait<'t>+'static> {
-        let tup: Box<(isize, isize)> = box() (4,5);
+        let tup: Box<(isize, isize)> = box (4,5);
         tup as Box<Trait>
     }
 }

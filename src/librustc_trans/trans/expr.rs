@@ -673,7 +673,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         hir::ExprIndex(ref base, ref idx) => {
             trans_index(bcx, expr, &**base, &**idx, MethodCall::expr(expr.id))
         }
-        hir::ExprBox(_, ref contents) => {
+        hir::ExprBox(ref contents) => {
             // Special case for `Box<T>`
             let box_ty = expr_ty(bcx, expr);
             let contents_ty = expr_ty(bcx, &**contents);
@@ -1648,9 +1648,6 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
             };
             immediate_rvalue_bcx(bcx, llneg, un_ty).to_expr_datumblock()
-        }
-        hir::UnUniq => {
-            trans_uniq_expr(bcx, expr, un_ty, sub_expr, expr_ty(bcx, sub_expr))
         }
         hir::UnDeref => {
             let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
@@ -2769,24 +2766,11 @@ fn expr_kind(tcx: &ty::ctxt, expr: &hir::Expr) -> ExprKind {
 
         hir::ExprLit(_) | // Note: LitStr is carved out above
         hir::ExprUnary(..) |
-        hir::ExprBox(None, _) |
+        hir::ExprBox(_) |
         hir::ExprAddrOf(..) |
         hir::ExprBinary(..) |
         hir::ExprCast(..) => {
             ExprKind::RvalueDatum
-        }
-
-        hir::ExprBox(Some(ref place), _) => {
-            // Special case `Box<T>` for now:
-            let def_id = match tcx.def_map.borrow().get(&place.id) {
-                Some(def) => def.def_id(),
-                None => panic!("no def for place"),
-            };
-            if tcx.lang_items.exchange_heap() == Some(def_id) {
-                ExprKind::RvalueDatum
-            } else {
-                ExprKind::RvalueDps
-            }
         }
     }
 }
