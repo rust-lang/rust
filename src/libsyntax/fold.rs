@@ -1188,8 +1188,11 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
     Expr {
         id: folder.new_id(id),
         node: match node {
-            ExprBox(p, e) => {
-                ExprBox(p.map(|e|folder.fold_expr(e)), folder.fold_expr(e))
+            ExprBox(e) => {
+                ExprBox(folder.fold_expr(e))
+            }
+            ExprInPlace(p, e) => {
+                ExprInPlace(folder.fold_expr(p), folder.fold_expr(e))
             }
             ExprVec(exprs) => {
                 ExprVec(exprs.move_map(|x| folder.fold_expr(x)))

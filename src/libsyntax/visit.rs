@@ -735,8 +735,11 @@ pub fn walk_mac<'v, V: Visitor<'v>>(_: &mut V, _: &'v Mac) {
 
 pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
     match expression.node {
-        ExprBox(ref place, ref subexpression) => {
-            place.as_ref().map(|e|visitor.visit_expr(&**e));
+        ExprBox(ref subexpression) => {
+            visitor.visit_expr(&**subexpression)
+        }
+        ExprInPlace(ref place, ref subexpression) => {
+            visitor.visit_expr(&**place);
             visitor.visit_expr(&**subexpression)
         }
         ExprVec(ref subexpressions) => {

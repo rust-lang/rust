@@ -1811,13 +1811,12 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    fn print_expr_box(&mut self,
-                      place: &Option<P<ast::Expr>>,
-                      expr: &ast::Expr) -> io::Result<()> {
-        try!(word(&mut self.s, "box"));
-        try!(word(&mut self.s, "("));
-        try!(place.as_ref().map_or(Ok(()), |e|self.print_expr(&**e)));
-        try!(self.word_space(")"));
+    fn print_expr_in_place(&mut self,
+                           place: &ast::Expr,
+                           expr: &ast::Expr) -> io::Result<()> {
+        try!(self.word_space("in"));
+        try!(self.print_expr(place));
+        try!(space(&mut self.s));
         self.print_expr(expr)
     }
 
@@ -1948,8 +1947,12 @@ impl<'a> State<'a> {
         try!(self.ibox(indent_unit));
         try!(self.ann.pre(self, NodeExpr(expr)));
         match expr.node {
-            ast::ExprBox(ref place, ref expr) => {
-                try!(self.print_expr_box(place, &**expr));
+            ast::ExprBox(ref expr) => {
+                try!(self.word_space("box"));
+                try!(self.print_expr(expr));
+            }
+            ast::ExprInPlace(ref place, ref expr) => {
+                try!(self.print_expr_in_place(place, expr));
             }
             ast::ExprVec(ref exprs) => {
                 try!(self.print_expr_vec(&exprs[..]));

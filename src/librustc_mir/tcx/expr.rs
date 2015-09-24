@@ -140,11 +140,6 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                 }
             }
 
-            hir::ExprUnary(hir::UnOp::UnUniq, ref arg) => {
-                assert!(!cx.tcx.is_method_call(self.id));
-                ExprKind::Box { place: None, value: arg.to_ref() }
-            }
-
             hir::ExprUnary(op, ref arg) => {
                 if cx.tcx.is_method_call(self.id) {
                     overloaded_operator(cx, self, ty::MethodCall::expr(self.id),
@@ -154,10 +149,10 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                     let op = match op {
                         hir::UnOp::UnNot => UnOp::Not,
                         hir::UnOp::UnNeg => UnOp::Neg,
-                        hir::UnOp::UnUniq | hir::UnOp::UnDeref => {
+                        hir::UnOp::UnDeref => {
                             cx.tcx.sess.span_bug(
                                 self.span,
-                                &format!("operator should have been handled elsewhere {:?}", op));
+                                "UnDeref should have been handled elsewhere");
                         }
                     };
                     ExprKind::Unary { op: op, arg: arg.to_ref() }
@@ -296,8 +291,8 @@ impl<'a,'tcx:'a> Mirror<Cx<'a,'tcx>> for &'tcx hir::Expr {
                                   name: Field::Indexed(ident.node) },
             hir::ExprCast(ref source, _) =>
                 ExprKind::Cast { source: source.to_ref() },
-            hir::ExprBox(ref place, ref value) =>
-                ExprKind::Box { place: place.to_ref(), value: value.to_ref() },
+            hir::ExprBox(ref value) =>
+                ExprKind::Box { value: value.to_ref() },
             hir::ExprVec(ref fields) =>
                 ExprKind::Vec { fields: fields.to_ref() },
             hir::ExprTup(ref fields) =>
