@@ -12,11 +12,15 @@ use prelude::v1::*;
 use io::prelude::*;
 
 use any::Any;
+use cell::Cell;
 use cell::RefCell;
+use intrinsics;
 use sys::stdio::Stderr;
 use sys_common::backtrace;
 use sys_common::thread_info;
-use sys_common::unwind;
+use sys_common::util;
+
+thread_local! { pub static PANIC_COUNT: Cell<usize> = Cell::new(0) }
 
 thread_local! {
     pub static LOCAL_STDERR: RefCell<Option<Box<Write + Send>>> = {
@@ -61,8 +65,24 @@ fn log_panic(obj: &(Any+Send), file: &'static str, line: u32,
 }
 
 pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
+    let panics = PANIC_COUNT.with(|s| {
+        let count = s.get() + 1;
+        s.set(count);
+        count
+    });
+
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
-    let log_backtrace = unwind::panicking() || backtrace::log_enabled();
+    let log_backtrace = panics >= 2 || backtrace::log_enabled();
     log_panic(obj, file, line, log_backtrace);
+
+    if panics >= 2 {
+        // If a thread panics while it's already unwinding then we
+        // have limited options. Currently our preference is to
+        // just abort. In the future we may consider resuming
+        // unwinding or otherwise exiting the thread cleanly.
+        util::dumb_print(format_args!("thread panicked while panicking. \
+                                       aborting."));
+        unsafe { intrinsics::abort() }
+    }
 }

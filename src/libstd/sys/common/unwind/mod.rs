@@ -64,9 +64,8 @@ use prelude::v1::*;
 
 use any::Any;
 use boxed;
-use cell::Cell;
 use cmp;
-use panicking;
+use panicking::{self,PANIC_COUNT};
 use fmt;
 use intrinsics;
 use mem;
@@ -91,8 +90,6 @@ pub mod imp;
 #[cfg(any(unix, all(windows, target_arch = "x86", target_env = "gnu")))]
 #[path = "gcc.rs"] #[doc(hidden)]
 pub mod imp;
-
-thread_local! { static PANICKING: Cell<bool> = Cell::new(false) }
 
 /// Invoke a closure, capturing the cause of panic if one occurs.
 ///
@@ -131,9 +128,9 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
     // care of exposing correctly.
     unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
                         -> Result<(), Box<Any + Send>> {
-        PANICKING.with(|s| {
+        PANIC_COUNT.with(|s| {
             let prev = s.get();
-            s.set(false);
+            s.set(0);
             let ep = intrinsics::try(f, data);
             s.set(prev);
             if ep.is_null() {
@@ -161,7 +158,7 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
 
 /// Determines whether the current thread is unwinding because of panic.
 pub fn panicking() -> bool {
-    PANICKING.with(|s| s.get())
+    PANIC_COUNT.with(|s| s.get() != 0)
 }
 
 // An uninlined, unmangled function upon which to slap yer breakpoints
@@ -233,17 +230,6 @@ fn begin_unwind_inner(msg: Box<Any + Send>,
 
     // First, invoke the default panic handler.
     panicking::on_panic(&*msg, file, line);
-
-    if panicking() {
-        // If a thread panics while it's already unwinding then we
-        // have limited options. Currently our preference is to
-        // just abort. In the future we may consider resuming
-        // unwinding or otherwise exiting the thread cleanly.
-        super::util::dumb_print(format_args!("thread panicked while panicking. \
-                                              aborting."));
-        unsafe { intrinsics::abort() }
-    }
-    PANICKING.with(|s| s.set(true));
 
     // Finally, perform the unwinding.
     rust_panic(msg);
