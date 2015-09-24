@@ -38,8 +38,7 @@ fn foo() {
         _ => {}
         ast::PathParameters::AngleBracketedParameters(ref data) if data.lifetimes.len() > 0 ||
                                                                    data.types.len() > 0 ||
-                                                                   data.bindings.len() > 0 => {
-        }
+                                                                   data.bindings.len() > 0 => {}
     }
 
     let whatever = match something {

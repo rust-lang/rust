@@ -140,6 +140,64 @@ fn matches() {
     }
 }
 
+fn issue339() {
+    match a {
+        b => {}
+        c => { }
+        d => {
+        }
+        e => {
+
+
+
+        }
+        // collapsing here is safe
+        ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff => {
+        }
+        // collapsing here exceeds line length
+        ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffg => {
+        }
+        h => { // comment above block
+        }
+        i => {
+        } // comment below block
+        j => {
+            // comment inside block
+        }
+        j2 => {
+            // comments inside...
+        } // ... and after
+        // TODO uncomment when vertical whitespace is handled better
+        // k => {
+        //
+        //     // comment with WS above
+        // }
+        // l => {
+        //     // comment with ws below
+        //     
+        // }
+        m => {
+        } n => { } o =>
+        {
+
+        }
+        p => { // Dont collapse me
+        } q => { } r =>
+        {
+
+        }
+        s => 0, // s comment
+        // t comment
+        t => 1,
+        u => 2,
+        // TODO uncomment when block-support exists
+        // v => {
+        // } /* funky block
+        //    * comment */
+        // final comment
+    }
+}
+
 fn arrays() {
     let x = [0,
          1,
