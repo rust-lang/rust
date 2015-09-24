@@ -30,7 +30,7 @@ use vec::Vec;
 use boxed::Box;
 
 /// A growable string stored as a UTF-8 encoded buffer.
-#[derive(Clone, PartialOrd, Eq, Ord)]
+#[derive(PartialOrd, Eq, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct String {
     vec: Vec<u8>,
@@ -762,6 +762,17 @@ impl fmt::Display for FromUtf8Error {
 impl fmt::Display for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt("invalid utf-16: lone surrogate found", f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Clone for String {
+    fn clone(&self) -> Self {
+        String { vec: self.vec.clone() }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.vec.clone_from(&source.vec);
     }
 }
 

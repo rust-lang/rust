@@ -167,10 +167,20 @@ use vec::{self, Vec};
 /// item's ordering relative to any other item, as determined by the `Ord`
 /// trait, changes while it is in the heap. This is normally only possible
 /// through `Cell`, `RefCell`, global state, I/O, or unsafe code.
-#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BinaryHeap<T> {
     data: Vec<T>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Clone> Clone for BinaryHeap<T> {
+    fn clone(&self) -> Self {
+        BinaryHeap { data: self.data.clone() }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.data.clone_from(&source.data);
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
