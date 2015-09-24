@@ -393,18 +393,6 @@ impl OpenOptions {
     /// This option, when true, will indicate that the file should be
     /// `read`-able if opened.
     ///
-    /// # Platform Notes
-    ///
-    /// Depending on platform, this function will set the following flags:
-    ///
-    /// ### Windows
-    ///
-    /// `FILE_SHARE_READ`
-    ///
-    /// ### Unix
-    ///
-    /// ''
-    ///
     /// # Examples
     ///
     /// ```no_run
@@ -421,18 +409,6 @@ impl OpenOptions {
     ///
     /// This option, when true, will indicate that the file should be
     /// `write`-able if opened.
-    ///
-    /// # Platform Notes
-    ///
-    /// Depending on platform, this function will invoke the following syscalls:
-    ///
-    /// ### Windows
-    ///
-    /// ``
-    ///
-    /// ### Unix
-    ///
-    /// ''
     ///
     /// # Examples
     ///
@@ -451,18 +427,6 @@ impl OpenOptions {
     /// This option, when true, means that writes will append to a file instead
     /// of overwriting previous contents.
     ///
-    /// # Platform Notes
-    ///
-    /// Depending on platform, this function will invoke the following syscalls:
-    ///
-    /// ### Windows
-    ///
-    /// ``
-    ///
-    /// ### Unix
-    ///
-    /// ''
-    ///
     /// # Examples
     ///
     /// ```no_run
@@ -479,18 +443,6 @@ impl OpenOptions {
     ///
     /// If a file is successfully opened with this option set it will truncate
     /// the file to 0 length if it already exists.
-    ///
-    /// # Platform Notes
-    ///
-    /// Depending on platform, this function will invoke the following syscalls:
-    ///
-    /// ### Windows
-    ///
-    /// ``
-    ///
-    /// ### Unix
-    ///
-    /// ''
     ///
     /// # Examples
     ///
@@ -509,18 +461,6 @@ impl OpenOptions {
     /// This option indicates whether a new file will be created if the file
     /// does not yet already exist.
     ///
-    /// # Platform Notes
-    ///
-    /// Depending on platform, this function will invoke the following syscalls:
-    ///
-    /// ### Windows
-    ///
-    /// ``
-    ///
-    /// ### Unix
-    ///
-    /// ''
-    ///
     /// # Examples
     ///
     /// ```no_run
@@ -534,18 +474,6 @@ impl OpenOptions {
     }
 
     /// Opens a file at `path` with the options specified by `self`.
-    ///
-    /// # Platform Notes
-    ///
-    /// Depending on platform, this function will invoke the following syscalls:
-    ///
-    /// ### Windows
-    ///
-    /// ``
-    ///
-    /// ### Unix
-    ///
-    /// ''
     ///
     /// # Errors
     ///
@@ -785,7 +713,7 @@ impl DirEntry {
     /// This function will not traverse symlinks if this entry points at a
     /// symlink.
     ///
-    /// # Platform behavior
+    /// # Platform Notes
     ///
     /// On Windows this function is cheap to call (no extra system calls
     /// needed), but on Unix platforms this function is the equivalent of
@@ -800,7 +728,7 @@ impl DirEntry {
     /// This function will not traverse symlinks if this entry points at a
     /// symlink.
     ///
-    /// # Platform behavior
+    /// # Platform Notes
     ///
     /// On Windows and most Unix platforms this function is free (no extra
     /// system calls needed), but some Unix platforms may require the equivalent
@@ -830,7 +758,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 ///
 /// # Platform Notes
 ///
-/// Depending on platform, this function will invoke the following functions:
+/// Depending on platform, this function will invoke the following syscalls:
 ///
 /// ### Windows
 ///
@@ -1001,8 +929,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// For `to`, `open` is called with `O_WRONLY`, `O_CREAT` and `O_TRUNC` followed by setting
 /// `O_CLOEXEC` on the returned file descriptor.
 ///
-/// The copy operation is performed by calling `read` followed by `write` with a buffer
-/// size of `65536` until completed.
+/// The copy operation is performed by calling `read` followed by `write` until complete
 ///
 /// Permissions are then set with `chmod`.
 ///
