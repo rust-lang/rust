@@ -393,7 +393,7 @@ fn create_substs_for_ast_path<'tcx>(
     let tcx = this.tcx();
 
     debug!("create_substs_for_ast_path(decl_generics={:?}, self_ty={:?}, \
-           types_provided={:?}, region_substs={:?}",
+           types_provided={:?}, region_substs={:?})",
            decl_generics, self_ty, types_provided,
            region_substs);
 
@@ -473,6 +473,9 @@ fn create_substs_for_ast_path<'tcx>(
             tcx.sess.span_bug(span, "extra parameter without default");
         }
     }
+
+    debug!("create_substs_for_ast_path(decl_generics={:?}, self_ty={:?}) -> {:?}",
+           decl_generics, self_ty, substs);
 
     substs
 }
@@ -741,6 +744,7 @@ fn ast_path_to_poly_trait_ref<'a,'tcx>(
     poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
     -> ty::PolyTraitRef<'tcx>
 {
+    debug!("ast_path_to_poly_trait_ref(trait_segment={:?})", trait_segment);
     // The trait reference introduces a binding level here, so
     // we need to shift the `rscope`. It'd be nice if we could
     // do away with this rscope stuff and work this knowledge
@@ -774,6 +778,8 @@ fn ast_path_to_poly_trait_ref<'a,'tcx>(
         poly_projections.extend(converted_bindings);
     }
 
+    debug!("ast_path_to_poly_trait_ref(trait_segment={:?}, projections={:?}) -> {:?}",
+           trait_segment, poly_projections, poly_trait_ref);
     poly_trait_ref
 }
 
@@ -1103,7 +1109,18 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
         object.principal_trait_ref_with_self_ty(tcx, tcx.types.err);
 
     // ensure the super predicates and stop if we encountered an error
-    if this.ensure_super_predicates(span, object.principal_def_id()).is_err() {
+    if this.ensure_super_predicates(span, principal.def_id()).is_err() {
+        return tcx.types.err;
+    }
+
+    // check that there are no gross object safety violations,
+    // most importantly, that the supertraits don't contain Self,
+    // to avoid ICE-s.
+    let object_safety_violations =
+        traits::astconv_object_safety_violations(tcx, principal.def_id());
+    if !object_safety_violations.is_empty() {
+        traits::report_object_safety_error(
+            tcx, span, principal.def_id(), object_safety_violations, false);
         return tcx.types.err;
     }
 
