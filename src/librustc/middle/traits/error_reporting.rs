@@ -28,7 +28,8 @@ use middle::def_id::DefId;
 use middle::infer::InferCtxt;
 use middle::ty::{self, ToPredicate, HasTypeFlags, ToPolyTraitRef, TraitRef, Ty};
 use middle::ty::fold::TypeFoldable;
-use std::collections::HashMap;
+use util::nodemap::{FnvHashMap, FnvHashSet};
+
 use std::fmt;
 use syntax::codemap::Span;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
@@ -124,7 +125,7 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                                (gen.name.as_str().to_string(),
                                                 trait_ref.substs.types.get(param, i)
                                                          .to_string())
-                                              }).collect::<HashMap<String, String>>();
+                                              }).collect::<FnvHashMap<String, String>>();
                 generic_map.insert("Self".to_string(),
                                    trait_ref.self_ty().to_string());
                 let parser = Parser::new(&istring);
@@ -335,7 +336,11 @@ pub fn report_object_safety_error<'tcx>(tcx: &ty::ctxt<'tcx>,
         "the trait `{}` cannot be made into an object",
         tcx.item_path_str(trait_def_id));
 
+    let mut reported_violations = FnvHashSet();
     for violation in violations {
+        if !reported_violations.insert(violation.clone()) {
+            continue;
+        }
         match violation {
             ObjectSafetyViolation::SizedSelf => {
                 tcx.sess.fileline_note(
