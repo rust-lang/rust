@@ -900,9 +900,10 @@ fn main() {}
 
 ### Functions
 
-A _function item_ defines a sequence of [statements](#statements) and an
-optional final [expression](#expressions), along with a name and a set of
-parameters. Functions are declared with the keyword `fn`. Functions declare a
+A _function item_ defines a sequence of [statements](#statements) and a
+final [expression](#expressions), along with a name and a set of
+parameters. Other than a name, all these are optional.
+Functions are declared with the keyword `fn`. Functions may declare a
 set of *input* [*variables*](#variables) as parameters, through which the caller
 passes arguments into the function, and the *output* [*type*](#types)
 of the value the function will return to its caller on completion.
