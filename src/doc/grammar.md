@@ -9,7 +9,7 @@ provides only one kind of material:
 
 This document does not serve as an introduction to the language. Background
 familiarity with the language is assumed. A separate [guide] is available to
-help acquire such background familiarity.
+help acquire such background.
 
 This document also does not serve as a reference to the [standard] library
 included in the language distribution. Those libraries are documented
