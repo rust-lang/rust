@@ -280,13 +280,11 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                typer: &'t infer::InferCtxt<'a, 'tcx>)
                -> ExprUseVisitor<'d,'t,'a,'tcx>
     {
-        let result = ExprUseVisitor {
+        ExprUseVisitor {
             typer: typer,
             mc: mc::MemCategorizationContext::new(typer),
             delegate: delegate,
-        };
-
-        result
+        }
     }
 
     pub fn walk_fn(&mut self,
@@ -544,17 +542,8 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 self.walk_captures(expr)
             }
 
-            hir::ExprBox(ref place, ref base) => {
-                match *place {
-                    Some(ref place) => self.consume_expr(&**place),
-                    None => {}
-                }
+            hir::ExprBox(ref base) => {
                 self.consume_expr(&**base);
-                if place.is_some() {
-                    self.tcx().sess.span_bug(
-                        expr.span,
-                        "box with explicit place remains after expansion");
-                }
             }
         }
     }

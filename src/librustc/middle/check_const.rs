@@ -568,8 +568,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                             "user-defined operators are not allowed in {}s", v.msg());
             }
         }
-        hir::ExprBox(..) |
-        hir::ExprUnary(hir::UnUniq, _) => {
+        hir::ExprBox(_) => {
             v.add_qualif(ConstQualif::NOT_CONST);
             if v.mode != Mode::Var {
                 span_err!(v.tcx.sess, e.span, E0010,

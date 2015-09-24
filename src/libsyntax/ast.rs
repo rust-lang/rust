@@ -680,8 +680,6 @@ pub type BinOp = Spanned<BinOp_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum UnOp {
-    /// The `box` operator
-    UnUniq,
     /// The `*` operator for dereferencing
     UnDeref,
     /// The `!` operator for logical inversion
@@ -799,8 +797,10 @@ impl fmt::Debug for Expr {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Expr_ {
+    /// A `box x` expression.
+    ExprBox(P<Expr>),
     /// First expr is the place; second expr is the value.
-    ExprBox(Option<P<Expr>>, P<Expr>),
+    ExprInPlace(P<Expr>, P<Expr>),
     /// An array (`[a, b, c, d]`)
     ExprVec(Vec<P<Expr>>),
     /// A function call

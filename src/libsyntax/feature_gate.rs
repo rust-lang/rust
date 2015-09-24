@@ -707,11 +707,11 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
         // But we keep these checks as a pre-expansion check to catch
         // uses in e.g. conditionalized code.
 
-        if let ast::ExprBox(None, _) = e.node {
+        if let ast::ExprBox(_) = e.node {
             self.context.gate_feature("box_syntax", e.span, EXPLAIN_BOX_SYNTAX);
         }
 
-        if let ast::ExprBox(Some(_), _) = e.node {
+        if let ast::ExprInPlace(..) = e.node {
             self.context.gate_feature("placement_in_syntax", e.span, EXPLAIN_PLACEMENT_IN);
         }
 
@@ -860,7 +860,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
-            ast::ExprBox(..) | ast::ExprUnary(ast::UnOp::UnUniq, _) => {
+            ast::ExprBox(_) => {
                 self.gate_feature("box_syntax",
                                   e.span,
                                   "box expression syntax is experimental; \

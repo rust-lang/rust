@@ -325,9 +325,7 @@ fn walk_expr(cx: &CrateContext,
         hir::ExprTupField(ref sub_exp, _) =>
             walk_expr(cx, &**sub_exp, scope_stack, scope_map),
 
-        hir::ExprBox(ref place, ref sub_expr) => {
-            place.as_ref().map(
-                |e| walk_expr(cx, &**e, scope_stack, scope_map));
+        hir::ExprBox(ref sub_expr) => {
             walk_expr(cx, &**sub_expr, scope_stack, scope_map);
         }
 

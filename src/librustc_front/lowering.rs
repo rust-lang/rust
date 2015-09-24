@@ -605,7 +605,6 @@ pub fn lower_constness(c: Constness) -> hir::Constness {
 
 pub fn lower_unop(u: UnOp) -> hir::UnOp {
     match u {
-        UnUniq => hir::UnUniq,
         UnDeref => hir::UnDeref,
         UnNot => hir::UnNot,
         UnNeg => hir::UnNeg,
@@ -694,8 +693,8 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
     P(hir::Expr {
             id: e.id,
             node: match e.node {
-                ExprBox(ref p, ref e) => {
-                    hir::ExprBox(p.as_ref().map(|e| lower_expr(e)), lower_expr(e))
+                ExprBox(ref e) => {
+                    hir::ExprBox(lower_expr(e))
                 }
                 ExprVec(ref exprs) => {
                     hir::ExprVec(exprs.iter().map(|x| lower_expr(x)).collect())
@@ -818,6 +817,7 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                 ExprParen(ref ex) => {
                     return lower_expr(ex);
                 }
+                ExprInPlace(..) |
                 ExprIfLet(..) |
                 ExprWhileLet(..) |
                 ExprForLoop(..) |

@@ -80,11 +80,10 @@ use core::raw::{TraitObject};
 /// use std::boxed::HEAP;
 ///
 /// fn main() {
-///     let foo = box(HEAP) 5;
+///     let foo: Box<i32> = in HEAP { 5 };
 ///     let foo = box 5;
 /// }
 /// ```
-#[lang = "exchange_heap"]
 #[unstable(feature = "box_heap",
            reason = "may be renamed; uncertain about custom allocator design",
            issue = "27779")]

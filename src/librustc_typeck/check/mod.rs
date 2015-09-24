@@ -3212,31 +3212,16 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
     let tcx = fcx.ccx.tcx;
     let id = expr.id;
     match expr.node {
-      hir::ExprBox(ref opt_place, ref subexpr) => {
-          opt_place.as_ref().map(|place|check_expr(fcx, &**place));
-          check_expr(fcx, &**subexpr);
-
-          let mut checked = false;
-          opt_place.as_ref().map(|place| match place.node {
-              hir::ExprPath(None, ref path) => {
-                  // FIXME(pcwalton): For now we hardcode the only permissible
-                  // place: the exchange heap.
-                  let definition = lookup_full_def(tcx, path.span, place.id);
-                  let def_id = definition.def_id();
-                  let referent_ty = fcx.expr_ty(&**subexpr);
-                  if tcx.lang_items.exchange_heap() == Some(def_id) {
-                      fcx.write_ty(id, tcx.mk_box(referent_ty));
-                      checked = true
-                  }
-              }
-              _ => {}
-          });
-
-          if !checked {
-              span_err!(tcx.sess, expr.span, E0066,
-                  "only the exchange heap is currently supported");
-              fcx.write_ty(id, tcx.types.err);
-          }
+      hir::ExprBox(ref subexpr) => {
+        let expected_inner = expected.to_option(fcx).map_or(NoExpectation, |ty| {
+            match ty.sty {
+                ty::TyBox(ty) => Expectation::rvalue_hint(tcx, ty),
+                _ => NoExpectation
+            }
+        });
+        check_expr_with_expectation(fcx, subexpr, expected_inner);
+        let referent_ty = fcx.expr_ty(&**subexpr);
+        fcx.write_ty(id, tcx.mk_box(referent_ty));
       }
 
       hir::ExprLit(ref lit) => {
@@ -3250,24 +3235,14 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         op::check_binop_assign(fcx, expr, op, lhs, rhs);
       }
       hir::ExprUnary(unop, ref oprnd) => {
-        let expected_inner = expected.to_option(fcx).map_or(NoExpectation, |ty| {
-            match unop {
-                hir::UnUniq => match ty.sty {
-                    ty::TyBox(ty) => {
-                        Expectation::rvalue_hint(tcx, ty)
-                    }
-                    _ => {
-                        NoExpectation
-                    }
-                },
-                hir::UnNot | hir::UnNeg => {
-                    expected
-                }
-                hir::UnDeref => {
-                    NoExpectation
-                }
+        let expected_inner = match unop {
+            hir::UnNot | hir::UnNeg => {
+                expected
             }
-        });
+            hir::UnDeref => {
+                NoExpectation
+            }
+        };
         let lvalue_pref = match unop {
             hir::UnDeref => lvalue_pref,
             _ => NoPreference
@@ -3278,9 +3253,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         if !oprnd_t.references_error() {
             match unop {
-                hir::UnUniq => {
-                    oprnd_t = tcx.mk_box(oprnd_t);
-                }
                 hir::UnDeref => {
                     oprnd_t = structurally_resolved_type(fcx, expr.span, oprnd_t);
                     oprnd_t = match oprnd_t.builtin_deref(true, NoPreference) {

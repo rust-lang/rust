@@ -171,7 +171,7 @@ pub struct Expr<H:Hair> {
 #[derive(Clone, Debug)]
 pub enum ExprKind<H:Hair> {
     Scope { extent: H::CodeExtent, value: ExprRef<H> },
-    Box { place: Option<ExprRef<H>>, value: ExprRef<H> },
+    Box { value: ExprRef<H> },
     Call { fun: ExprRef<H>, args: Vec<ExprRef<H>> },
     Deref { arg: ExprRef<H> }, // NOT overloaded!
     Binary { op: BinOp, lhs: ExprRef<H>, rhs: ExprRef<H> }, // NOT overloaded!

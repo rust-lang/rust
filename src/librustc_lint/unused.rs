@@ -442,7 +442,7 @@ impl LintPass for UnusedAllocation {
 impl LateLintPass for UnusedAllocation {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         match e.node {
-            hir::ExprUnary(hir::UnUniq, _) => (),
+            hir::ExprBox(_) => {}
             _ => return
         }
 
