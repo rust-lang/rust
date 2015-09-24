@@ -27,7 +27,7 @@ use middle::ty::{self, ToPolyTraitRef, Ty};
 use std::rc::Rc;
 use syntax::ast;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ObjectSafetyViolation<'tcx> {
     /// Self : Sized declared on the trait
     SizedSelf,

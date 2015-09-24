@@ -272,6 +272,20 @@ impl<'tcx> Method<'tcx> {
     }
 }
 
+impl<'tcx> PartialEq for Method<'tcx> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool { self.def_id == other.def_id }
+}
+
+impl<'tcx> Eq for Method<'tcx> {}
+
+impl<'tcx> Hash for Method<'tcx> {
+    #[inline]
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        self.def_id.hash(s)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct AssociatedConst<'tcx> {
     pub name: Name,
