@@ -674,7 +674,7 @@ There are several kinds of item:
 * [modules](#modules)
 * [functions](#functions)
 * [type definitions](grammar.html#type-definitions)
-* [structures](#structures)
+* [structs](#structs)
 * [enumerations](#enumerations)
 * [constant items](#constant-items)
 * [static items](#static-items)
@@ -900,9 +900,10 @@ fn main() {}
 
 ### Functions
 
-A _function item_ defines a sequence of [statements](#statements) and an
-optional final [expression](#expressions), along with a name and a set of
-parameters. Functions are declared with the keyword `fn`. Functions declare a
+A _function item_ defines a sequence of [statements](#statements) and a
+final [expression](#expressions), along with a name and a set of
+parameters. Other than a name, all these are optional.
+Functions are declared with the keyword `fn`. Functions may declare a
 set of *input* [*variables*](#variables) as parameters, through which the caller
 passes arguments into the function, and the *output* [*type*](#types)
 of the value the function will return to its caller on completion.
@@ -921,7 +922,7 @@ An example of a function:
 
 ```
 fn add(x: i32, y: i32) -> i32 {
-    return x + y;
+    x + y
 }
 ```
 
@@ -1155,7 +1156,7 @@ type Point = (u8, u8);
 let p: Point = (41, 68);
 ```
 
-### Structures
+### Structs
 
 A _structure_ is a nominal [structure type](#structure-types) defined with the
 keyword `struct`.
@@ -2614,7 +2615,7 @@ comma:
 ### Structure expressions
 
 There are several forms of structure expressions. A _structure expression_
-consists of the [path](#paths) of a [structure item](#structures), followed by
+consists of the [path](#paths) of a [structure item](#structs), followed by
 a brace-enclosed list of one or more comma-separated name-value pairs,
 providing the field values of a new instance of the structure. A field name
 can be any identifier, and is separated from its value expression by a colon.
@@ -2622,13 +2623,13 @@ The location denoted by a structure field is mutable if and only if the
 enclosing structure is mutable.
 
 A _tuple structure expression_ consists of the [path](#paths) of a [structure
-item](#structures), followed by a parenthesized list of one or more
+item](#structs), followed by a parenthesized list of one or more
 comma-separated expressions (in other words, the path of a structure item
 followed by a tuple expression). The structure item must be a tuple structure
 item.
 
 A _unit-like structure expression_ consists only of the [path](#paths) of a
-[structure item](#structures).
+[structure item](#structs).
 
 The following are examples of structure expressions:
 
@@ -3145,7 +3146,7 @@ if` condition is evaluated. If all `if` and `else if` conditions evaluate to
 
 A `match` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
-literals, destructured arrays or enum constructors, structures and tuples,
+literals, destructured arrays or enum constructors, structs and tuples,
 variable binding specifications, wildcards (`..`), and placeholders (`_`). A
 `match` expression has a *head expression*, which is the value to compare to
 the patterns. The type of the patterns must equal the type of the head
@@ -3469,7 +3470,7 @@ named reference to an [`enum` item](#enumerations).
 ### Recursive types
 
 Nominal types &mdash; [enumerations](#enumerated-types) and
-[structures](#structure-types) &mdash; may be recursive. That is, each `enum`
+[structs](#structure-types) &mdash; may be recursive. That is, each `enum`
 constructor or `struct` field may refer, directly or indirectly, to the
 enclosing `enum` or `struct` type itself. Such recursion has restrictions:
 
@@ -3497,7 +3498,7 @@ let a: List<i32> = List::Cons(7, Box::new(List::Cons(13, Box::new(List::Nil))));
 ### Pointer types
 
 All pointers in Rust are explicit first-class values. They can be copied,
-stored into data structures, and returned from functions. There are two
+stored into data structs, and returned from functions. There are two
 varieties of pointer in Rust:
 
 * References (`&`)
@@ -3897,7 +3898,7 @@ references to boxes are dropped.
 ### Variables
 
 A _variable_ is a component of a stack frame, either a named function parameter,
-an anonymous [temporary](#lvalues,-rvalues-and-temporaries), or a named local
+an anonymous [temporary](#lvalues-rvalues-and-temporaries), or a named local
 variable.
 
 A _local variable_ (or *stack-local* allocation) holds a value directly,
@@ -4035,10 +4036,6 @@ dependencies will be used:
 In general, `--crate-type=bin` or `--crate-type=lib` should be sufficient for
 all compilation needs, and the other options are just available if more
 fine-grained control is desired over the output format of a Rust crate.
-
-# Appendix: Rationales and design trade-offs
-
-*TODO*.
 
 # Appendix: Influences
 
