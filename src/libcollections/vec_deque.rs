@@ -1800,6 +1800,9 @@ pub struct Drain<'a, T: 'a> {
     deque: *mut VecDeque<T>,
 }
 
+unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
+unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> Drop for Drain<'a, T> {
     fn drop(&mut self) {
