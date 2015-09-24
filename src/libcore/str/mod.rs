@@ -729,15 +729,19 @@ struct MatchIndicesInternal<'a, P: Pattern<'a>>(P::Searcher);
 
 impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
     #[inline]
-    fn next(&mut self) -> Option<(usize, usize)> {
-        self.0.next_match()
+    fn next(&mut self) -> Option<(usize, &'a str)> {
+        self.0.next_match().map(|(start, end)| unsafe {
+            (start, self.0.haystack().slice_unchecked(start, end))
+        })
     }
 
     #[inline]
-    fn next_back(&mut self) -> Option<(usize, usize)>
+    fn next_back(&mut self) -> Option<(usize, &'a str)>
         where P::Searcher: ReverseSearcher<'a>
     {
-        self.0.next_match_back()
+        self.0.next_match_back().map(|(start, end)| unsafe {
+            (start, self.0.haystack().slice_unchecked(start, end))
+        })
     }
 }
 
@@ -753,7 +757,7 @@ generate_pattern_iterators! {
                    reason = "type may be removed or have its iterator impl changed",
                    issue = "27743")]
     internal:
-        MatchIndicesInternal yielding ((usize, usize));
+        MatchIndicesInternal yielding ((usize, &'a str));
     delegate double ended;
 }
 

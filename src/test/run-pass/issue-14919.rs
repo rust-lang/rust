@@ -59,5 +59,5 @@ fn match_indices<'a, M, T: IntoMatcher<'a, M>>(s: &'a str, from: T) -> MatchIndi
 fn main() {
     let s = "abcbdef";
     match_indices(s, |c: char| c == 'b')
-        .collect::<Vec<(usize, usize)>>();
+        .collect::<Vec<_>>();
 }
