@@ -320,6 +320,17 @@ fn rewrite_closure(capture: ast::CaptureClause,
     Some(format!("{} {}", prefix, try_opt!(body_rewrite)))
 }
 
+fn nop_block_collapse(block_str: Option<String>) -> Option<String> {
+    block_str.map(|block_str| {
+        if block_str.starts_with("{") &&
+           (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() == block_str.len() - 2) {
+            "{}".to_owned()
+        } else {
+            block_str.to_owned()
+        }
+    })
+}
+
 impl Rewrite for ast::Block {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         let user_str = context.snippet(self.span);
@@ -620,6 +631,51 @@ fn is_simple_block(block: &ast::Block, codemap: &CodeMap) -> bool {
     !contains_comment(&snippet)
 }
 
+// inter-match-arm-comment-rules:
+//  - all comments following a match arm before the start of the next arm
+//    are about the second arm
+fn rewrite_match_arm_comment(context: &RewriteContext,
+                             missed_str: &str,
+                             width: usize,
+                             arm_indent: Indent,
+                             arm_indent_str: &str)
+                             -> String {
+    // The leading "," is not part of the arm-comment
+    let missed_str = match missed_str.find_uncommented(",") {
+        Some(n) => &missed_str[n+1..],
+        None => &missed_str[..],
+    };
+    // Nor the trailing "}" which closes the match
+    let missed_str = match missed_str.find_uncommented("}") {
+        Some(n) => &missed_str[..n-1],
+        None => &missed_str[..],
+    };
+
+    let mut result = String::new();
+    // any text not preceeded by a newline is pushed unmodified to the block
+    let first_brk = missed_str.find(|c: char| c == '\n').unwrap_or(0);
+    result.push_str(&missed_str[..first_brk]);
+    let missed_str = &missed_str[first_brk..]; // If missed_str had one newline, it starts with it
+
+    let first = missed_str.find(|c: char| !c.is_whitespace()).unwrap_or(missed_str.len());
+    if missed_str[..first].chars().filter(|c| c == &'\n').count() >= 2 {
+        // Excessive vertical whitespace before comment should be preserved
+        // TODO handle vertical whitespace better
+        result.push('\n');
+    }
+    let missed_str = missed_str[first..].trim();
+    if !missed_str.is_empty() {
+        result.push('\n');
+        result.push_str(arm_indent_str);
+        result.push_str(&rewrite_comment(&missed_str,
+                                         false,
+                                         width,
+                                         arm_indent,
+                                         context.config));
+    }
+    return result;
+}
+
 fn rewrite_match(context: &RewriteContext,
                  cond: &ast::Expr,
                  arms: &[ast::Arm],
@@ -647,32 +703,15 @@ fn rewrite_match(context: &RewriteContext,
     for (i, arm) in arms.iter().enumerate() {
         // Make sure we get the stuff between arms.
         let missed_str = if i == 0 {
-            context.snippet(mk_sp(open_brace_pos + BytePos(1), arm_start_pos(arm)))
+            context.snippet(mk_sp(open_brace_pos, arm_start_pos(arm)))
         } else {
             context.snippet(mk_sp(arm_end_pos(&arms[i-1]), arm_start_pos(arm)))
         };
-        let missed_str = match missed_str.find_uncommented(",") {
-            Some(n) => &missed_str[n+1..],
-            None => &missed_str[..],
-        };
-        // first = first non-whitespace byte index.
-        let first = missed_str.find(|c: char| !c.is_whitespace()).unwrap_or(missed_str.len());
-        if missed_str[..first].chars().filter(|c| c == &'\n').count() >= 2 {
-            // There were multiple line breaks which got trimmed to nothing
-            // that means there should be some vertical white space. Lets
-            // replace that with just one blank line.
-            result.push('\n');
-        }
-        let missed_str = missed_str.trim();
-        if !missed_str.is_empty() {
-            result.push('\n');
-            result.push_str(&arm_indent_str);
-            result.push_str(&rewrite_comment(&missed_str,
-                                             false,
-                                             width,
-                                             arm_indent,
-                                             context.config));
-        }
+        result.push_str(&rewrite_match_arm_comment(context,
+                                                   &missed_str,
+                                                   width,
+                                                   arm_indent,
+                                                   &arm_indent_str));
         result.push('\n');
         result.push_str(&arm_indent_str);
 
@@ -688,26 +727,11 @@ fn rewrite_match(context: &RewriteContext,
         }
     }
     let last_comment = context.snippet(mk_sp(arm_end_pos(&arms[arms.len() - 1]), span.hi));
-    let last_comment = match last_comment.find_uncommented(",") {
-        Some(n) => &last_comment[n+1..],
-        None => &last_comment[..],
-    };
-    let last_comment = match last_comment.find_uncommented("}") {
-        Some(n) => &last_comment[..n-1],
-        None => &last_comment[..],
-    };
-    let last_comment = last_comment.trim();
-
+    result.push_str(&rewrite_match_arm_comment(context,
+                                               &last_comment,
+                                               width, arm_indent,
+                                               &arm_indent_str));
     result.push('\n');
-    if last_comment.len() > 0 {
-        result.push_str(&arm_indent_str);
-        result.push_str(&rewrite_comment(&last_comment,
-                                         false,
-                                         width,
-                                         arm_indent,
-                                         context.config));
-        result.push('\n');
-    }
     result.push_str(&(context.block_indent + context.overflow_indent).to_string(context.config));
     result.push('}');
     Some(result)
@@ -817,7 +841,9 @@ impl Rewrite for ast::Arm {
         // 4 = ` => `.len()
         if context.config.max_width > line_start + comma.len() + 4 {
             let budget = context.config.max_width - line_start - comma.len() - 4;
-            if let Some(ref body_str) = body.rewrite(context, budget, line_indent + 4) {
+            if let Some(ref body_str) = nop_block_collapse(body.rewrite(context,
+                                                                        budget,
+                                                                        line_indent + 4)) {
                 if first_line_width(body_str) <= budget {
                     return Some(format!("{}{} => {}{}",
                                         attr_str.trim_left(),
@@ -835,7 +861,9 @@ impl Rewrite for ast::Arm {
         }
 
         let body_budget = try_opt!(width.checked_sub(context.config.tab_spaces));
-        let body_str = try_opt!(body.rewrite(context, body_budget, context.block_indent));
+        let body_str = try_opt!(nop_block_collapse(body.rewrite(context,
+                                                                body_budget,
+                                                                context.block_indent)));
         Some(format!("{}{} =>\n{}{},",
                      attr_str.trim_left(),
                      pats_str,
