@@ -474,7 +474,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                    expr.id,
                    expr,
                    base_cmt);
-            Ok(self.cat_field(expr, base_cmt, f_name.node.name, expr_ty))
+            Ok(self.cat_field(expr, base_cmt, f_name.node, expr_ty))
           }
 
           hir::ExprTupField(ref base, idx) => {
@@ -1272,7 +1272,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             // {f1: p1, ..., fN: pN}
             for fp in field_pats {
                 let field_ty = try!(self.pat_ty(&*fp.node.pat)); // see (*2)
-                let cmt_field = self.cat_field(pat, cmt.clone(), fp.node.ident.name, field_ty);
+                let cmt_field = self.cat_field(pat, cmt.clone(), fp.node.name, field_ty);
                 try!(self.cat_pattern_(cmt_field, &*fp.node.pat, op));
             }
           }

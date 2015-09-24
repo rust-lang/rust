@@ -1399,9 +1399,8 @@ fn check_arm(this: &mut Liveness, arm: &hir::Arm) {
 
 fn check_expr(this: &mut Liveness, expr: &Expr) {
     match expr.node {
-      hir::ExprAssign(ref l, ref r) => {
+      hir::ExprAssign(ref l, _) => {
         this.check_lvalue(&**l);
-        this.visit_expr(&**r);
 
         visit::walk_expr(this, expr);
       }

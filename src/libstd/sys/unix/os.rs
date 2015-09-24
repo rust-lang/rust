@@ -213,7 +213,12 @@ pub fn current_exe() -> io::Result<PathBuf> {
     ::fs::read_link("/proc/curproc/file")
 }
 
-#[cfg(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"))]
+#[cfg(target_os = "netbsd")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    ::fs::read_link("/proc/curproc/exe")
+}
+
+#[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     use sync::StaticMutex;
     static LOCK: StaticMutex = StaticMutex::new();

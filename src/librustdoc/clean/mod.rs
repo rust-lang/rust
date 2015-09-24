@@ -494,7 +494,7 @@ pub struct TyParam {
 impl Clean<TyParam> for hir::TyParam {
     fn clean(&self, cx: &DocContext) -> TyParam {
         TyParam {
-            name: self.ident.clean(cx),
+            name: self.name.clean(cx),
             did: DefId { krate: LOCAL_CRATE, node: self.id },
             bounds: self.bounds.clean(cx),
             default: self.default.clean(cx),
@@ -1257,7 +1257,7 @@ impl Clean<Item> for hir::TraitItem {
             }
         };
         Item {
-            name: Some(self.ident.clean(cx)),
+            name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
             def_id: DefId::local(self.id),
@@ -1290,7 +1290,7 @@ impl Clean<Item> for hir::ImplItem {
             }, true),
         };
         Item {
-            name: Some(self.ident.clean(cx)),
+            name: Some(self.name.clean(cx)),
             source: self.span.clean(cx),
             attrs: self.attrs.clean(cx),
             def_id: DefId::local(self.id),
@@ -2386,14 +2386,14 @@ impl Clean<Vec<Item>> for doctree::Import {
                 (ret, ImportList(resolve_use_source(cx, p.clean(cx), self.id),
                                  remaining))
             }
-            hir::ViewPathSimple(i, ref p) => {
+            hir::ViewPathSimple(name, ref p) => {
                 if !denied {
-                    match inline::try_inline(cx, self.id, Some(i)) {
+                    match inline::try_inline(cx, self.id, Some(name)) {
                         Some(items) => return items,
                         None => {}
                     }
                 }
-                (vec![], SimpleImport(i.clean(cx),
+                (vec![], SimpleImport(name.clean(cx),
                                       resolve_use_source(cx, p.clean(cx), self.id)))
             }
         };
@@ -2484,7 +2484,7 @@ impl Clean<Item> for hir::ForeignItem {
             }
         };
         Item {
-            name: Some(self.ident.clean(cx)),
+            name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
             def_id: DefId::local(self.id),
@@ -2547,7 +2547,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
         PatStruct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", path_to_string(name),
                 fields.iter().map(|&Spanned { node: ref fp, .. }|
-                                  format!("{}: {}", fp.ident, name_from_pat(&*fp.pat)))
+                                  format!("{}: {}", fp.name, name_from_pat(&*fp.pat)))
                              .collect::<Vec<String>>().join(", "),
                 if etc { ", ..." } else { "" }
             )
@@ -2840,7 +2840,7 @@ pub struct TypeBinding {
 impl Clean<TypeBinding> for hir::TypeBinding {
     fn clean(&self, cx: &DocContext) -> TypeBinding {
         TypeBinding {
-            name: self.ident.clean(cx),
+            name: self.name.clean(cx),
             ty: self.ty.clean(cx)
         }
     }

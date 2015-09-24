@@ -14,7 +14,7 @@ use hir;
 
 use syntax::ast::*;
 use syntax::ptr::P;
-use syntax::codemap::Spanned;
+use syntax::codemap::{respan, Spanned};
 use syntax::owned_slice::OwnedSlice;
 
 
@@ -22,7 +22,7 @@ pub fn lower_view_path(view_path: &ViewPath) -> P<hir::ViewPath> {
     P(Spanned {
         node: match view_path.node {
             ViewPathSimple(ident, ref path) => {
-                hir::ViewPathSimple(ident, lower_path(path))
+                hir::ViewPathSimple(ident.name, lower_path(path))
             }
             ViewPathGlob(ref path) => {
                 hir::ViewPathGlob(lower_path(path))
@@ -35,11 +35,14 @@ pub fn lower_view_path(view_path: &ViewPath) -> P<hir::ViewPath> {
                                         PathListIdent { id, name, rename } =>
                                             hir::PathListIdent {
                                                 id: id,
-                                                name: name,
-                                                rename: rename.clone(),
+                                                name: name.name,
+                                                rename: rename.map(|x| x.name),
                                             },
                                         PathListMod { id, rename } =>
-                                            hir::PathListMod { id: id, rename: rename.clone() }
+                                            hir::PathListMod {
+                                                id: id,
+                                                rename: rename.map(|x| x.name)
+                                            }
                                     },
                                     span: path_list_ident.span
                                 }
@@ -73,7 +76,7 @@ pub fn lower_decl(d: &Decl) -> P<hir::Decl> {
 }
 
 pub fn lower_ty_binding(b: &TypeBinding) -> P<hir::TypeBinding> {
-    P(hir::TypeBinding { id: b.id, ident: b.ident, ty: lower_ty(&b.ty), span: b.span })
+    P(hir::TypeBinding { id: b.id, name: b.ident.name, ty: lower_ty(&b.ty), span: b.span })
 }
 
 pub fn lower_ty(t: &Ty) -> P<hir::Ty> {
@@ -135,7 +138,7 @@ pub fn lower_variant(v: &Variant) -> P<hir::Variant> {
     P(Spanned {
         node: hir::Variant_ {
             id: v.node.id,
-            name: v.node.name,
+            name: v.node.name.name,
             attrs: v.node.attrs.clone(),
             kind: match v.node.kind {
                 TupleVariantKind(ref variant_args) => {
@@ -206,12 +209,12 @@ pub fn lower_local(l: &Local) -> P<hir::Local> {
 pub fn lower_explicit_self_underscore(es: &ExplicitSelf_) -> hir::ExplicitSelf_ {
     match *es {
         SelfStatic => hir::SelfStatic,
-        SelfValue(v) => hir::SelfValue(v),
+        SelfValue(v) => hir::SelfValue(v.name),
         SelfRegion(ref lifetime, m, ident) => {
-            hir::SelfRegion(lower_opt_lifetime(lifetime), lower_mutability(m), ident)
+            hir::SelfRegion(lower_opt_lifetime(lifetime), lower_mutability(m), ident.name)
         }
         SelfExplicit(ref typ, ident) => {
-            hir::SelfExplicit(lower_ty(typ), ident)
+            hir::SelfExplicit(lower_ty(typ), ident.name)
         }
     }
 }
@@ -255,7 +258,7 @@ pub fn lower_ty_param_bound(tpb: &TyParamBound) -> hir::TyParamBound {
 pub fn lower_ty_param(tp: &TyParam) -> hir::TyParam {
     hir::TyParam {
         id: tp.id,
-        ident: tp.ident,
+        name: tp.ident.name,
         bounds: lower_bounds(&tp.bounds),
         default: tp.default.as_ref().map(|x| lower_ty(x)),
         span: tp.span,
@@ -370,7 +373,10 @@ pub fn lower_struct_field(f: &StructField) -> hir::StructField {
 }
 
 pub fn lower_field(f: &Field) -> hir::Field {
-    hir::Field { ident: f.ident, expr: lower_expr(&f.expr), span: f.span }
+    hir::Field {
+        name: respan(f.ident.span, f.ident.node.name),
+        expr: lower_expr(&f.expr), span: f.span
+    }
 }
 
 pub fn lower_mt(mt: &MutTy) -> hir::MutTy {
@@ -466,7 +472,7 @@ pub fn lower_item_underscore(i: &Item_) -> hir::Item_ {
 pub fn lower_trait_item(i: &TraitItem) -> P<hir::TraitItem> {
     P(hir::TraitItem {
             id: i.id,
-            ident: i.ident,
+            name: i.ident.name,
             attrs: i.attrs.clone(),
             node: match i.node {
             ConstTraitItem(ref ty, ref default) => {
@@ -489,7 +495,7 @@ pub fn lower_trait_item(i: &TraitItem) -> P<hir::TraitItem> {
 pub fn lower_impl_item(i: &ImplItem) -> P<hir::ImplItem> {
     P(hir::ImplItem {
             id: i.id,
-            ident: i.ident,
+            name: i.ident.name,
             attrs: i.attrs.clone(),
             vis: lower_visibility(i.vis),
             node: match i.node  {
@@ -523,11 +529,11 @@ pub fn lower_crate(c: &Crate) -> hir::Crate {
 
 pub fn lower_macro_def(m: &MacroDef) -> hir::MacroDef {
     hir::MacroDef {
-        ident: m.ident,
+        name: m.ident.name,
         attrs: m.attrs.clone(),
         id: m.id,
         span: m.span,
-        imported_from: m.imported_from,
+        imported_from: m.imported_from.map(|x| x.name),
         export: m.export,
         use_locally: m.use_locally,
         allow_internal_unstable: m.allow_internal_unstable,
@@ -546,7 +552,7 @@ pub fn lower_item_simple(i: &Item) -> hir::Item {
 
     hir::Item {
         id: i.id,
-        ident: i.ident,
+        name: i.ident.name,
         attrs: i.attrs.clone(),
         node: node,
         vis: lower_visibility(i.vis),
@@ -557,7 +563,7 @@ pub fn lower_item_simple(i: &Item) -> hir::Item {
 pub fn lower_foreign_item(i: &ForeignItem) -> P<hir::ForeignItem> {
     P(hir::ForeignItem {
             id: i.id,
-            ident: i.ident,
+            name: i.ident.name,
             attrs: i.attrs.clone(),
             node: match i.node {
             ForeignItemFn(ref fdec, ref generics) => {
@@ -659,7 +665,7 @@ pub fn lower_pat(p: &Pat) -> P<hir::Pat> {
                 let fs = fields.iter().map(|f| {
                     Spanned { span: f.span,
                               node: hir::FieldPat {
-                                  ident: f.node.ident,
+                                  name: f.node.ident.name,
                                   pat: lower_pat(&f.node.pat),
                                   is_shorthand: f.node.is_shorthand,
                               }}
@@ -704,7 +710,7 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                 }
                 ExprMethodCall(i, ref tps, ref args) => {
                     hir::ExprMethodCall(
-                        i,
+                        respan(i.span, i.node.name),
                         tps.iter().map(|x| lower_ty(x)).collect(),
                         args.iter().map(|x| lower_expr(x)).collect())
                 }
@@ -755,7 +761,7 @@ pub fn lower_expr(e: &Expr) -> P<hir::Expr> {
                                 lower_expr(er))
                 }
                 ExprField(ref el, ident) => {
-                    hir::ExprField(lower_expr(el), ident)
+                    hir::ExprField(lower_expr(el), respan(ident.span, ident.node.name))
                 }
                 ExprTupField(ref el, ident) => {
                     hir::ExprTupField(lower_expr(el), ident)
@@ -895,7 +901,7 @@ pub fn lower_binding_mode(b: &BindingMode) -> hir::BindingMode {
 
 pub fn lower_struct_field_kind(s: &StructFieldKind) -> hir::StructFieldKind {
     match *s {
-        NamedField(ident, vis) => hir::NamedField(ident, lower_visibility(vis)),
+        NamedField(ident, vis) => hir::NamedField(ident.name, lower_visibility(vis)),
         UnnamedField(vis) => hir::UnnamedField(lower_visibility(vis)),
     }
 }

@@ -431,7 +431,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 -> ty::ParamTy
     {
         let name = match space {
-            TypeSpace => ast_generics.ty_params[index].ident.name,
+            TypeSpace => ast_generics.ty_params[index].name,
             SelfSpace => special_idents::type_self.name,
             FnSpace => self.tcx().sess.bug("Fn space occupied?"),
         };

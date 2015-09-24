@@ -715,8 +715,7 @@ impl str {
     /// Returns `None` if it doesn't exist.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines the
-    /// split.
+    /// determines if a character matches.
     ///
     /// # Examples
     ///
@@ -760,7 +759,7 @@ impl str {
     /// Returns `None` if it doesn't exist.
     ///
     /// The pattern can be a simple `&str`, `char`,
-    /// or a closure that determines the split.
+    /// or a closure that determines if a character matches.
     ///
     /// # Examples
     ///
@@ -1096,7 +1095,7 @@ impl str {
     /// An iterator over the matches of a pattern within `self`.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines the split.
+    /// determines if a character matches.
     /// Additional libraries might provide more complex patterns like
     /// regular expressions.
     ///
@@ -1129,7 +1128,7 @@ impl str {
     /// reverse order.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines the split.
+    /// determines if a character matches.
     /// Additional libraries might provide more complex patterns like
     /// regular expressions.
     ///
@@ -1166,8 +1165,7 @@ impl str {
     /// match are returned.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines
-    /// the split.
+    /// determines if a character matches.
     /// Additional libraries might provide more complex patterns like
     /// regular expressions.
     ///
@@ -1214,8 +1212,7 @@ impl str {
     /// match are returned.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines
-    /// the split.
+    /// determines if a character matches.
     /// Additional libraries might provide more complex patterns like
     /// regular expressions.
     ///
@@ -1296,7 +1293,7 @@ impl str {
     /// repeatedly removed.
     ///
     /// The pattern can be a simple `char`, or a closure that determines
-    /// the split.
+    /// if a character matches.
     ///
     /// # Examples
     ///
@@ -1326,7 +1323,7 @@ impl str {
     /// repeatedly removed.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines the split.
+    /// determines if a character matches.
     ///
     /// # Examples
     ///
@@ -1346,7 +1343,7 @@ impl str {
     /// repeatedly removed.
     ///
     /// The pattern can be a simple `&str`, `char`, or a closure that
-    /// determines the split.
+    /// determines if a character matches.
     ///
     /// # Examples
     ///

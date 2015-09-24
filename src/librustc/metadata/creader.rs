@@ -201,17 +201,17 @@ impl<'a> CrateReader<'a> {
         match i.node {
             hir::ItemExternCrate(ref path_opt) => {
                 debug!("resolving extern crate stmt. ident: {} path_opt: {:?}",
-                       i.ident, path_opt);
+                       i.name, path_opt);
                 let name = match *path_opt {
                     Some(name) => {
                         validate_crate_name(Some(self.sess), &name.as_str(),
                                             Some(i.span));
                         name.to_string()
                     }
-                    None => i.ident.to_string(),
+                    None => i.name.to_string(),
                 };
                 Some(CrateInfo {
-                    ident: i.ident.to_string(),
+                    ident: i.name.to_string(),
                     name: name,
                     id: i.id,
                     should_link: should_link_hir(i),

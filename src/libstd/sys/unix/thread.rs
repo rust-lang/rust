@@ -102,7 +102,6 @@ impl Thread {
     #[cfg(any(target_os = "freebsd",
               target_os = "dragonfly",
               target_os = "bitrig",
-              target_os = "netbsd",
               target_os = "openbsd"))]
     pub fn set_name(name: &str) {
         extern {
@@ -123,6 +122,21 @@ impl Thread {
         let cname = CString::new(name).unwrap();
         unsafe {
             pthread_setname_np(cname.as_ptr());
+        }
+    }
+
+    #[cfg(target_os = "netbsd")]
+    pub fn set_name(name: &str) {
+        extern {
+            fn pthread_setname_np(thread: libc::pthread_t,
+                                  name: *const libc::c_char,
+                                  arg: *mut libc::c_void) -> libc::c_int;
+        }
+        let cname = CString::new(&b"%s"[..]).unwrap();
+        let carg = CString::new(name).unwrap();
+        unsafe {
+            pthread_setname_np(pthread_self(), cname.as_ptr(),
+                               carg.as_ptr() as *mut libc::c_void);
         }
     }
 
@@ -191,13 +205,12 @@ pub mod guard {
 
     #[cfg(any(target_os = "macos",
               target_os = "bitrig",
-              target_os = "netbsd",
               target_os = "openbsd"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         current().map(|s| s as *mut libc::c_void)
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         use super::pthread_attr_init;
 
@@ -263,7 +276,7 @@ pub mod guard {
               pthread_get_stacksize_np(pthread_self())) as usize)
     }
 
-    #[cfg(any(target_os = "openbsd", target_os = "netbsd", target_os = "bitrig"))]
+    #[cfg(any(target_os = "openbsd", target_os = "bitrig"))]
     pub unsafe fn current() -> Option<usize> {
         #[repr(C)]
         struct stack_t {
@@ -290,7 +303,7 @@ pub mod guard {
         })
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
     pub unsafe fn current() -> Option<usize> {
         use super::pthread_attr_init;
 
@@ -307,13 +320,17 @@ pub mod guard {
             let mut size = 0;
             assert_eq!(pthread_attr_getstack(&attr, &mut stackaddr, &mut size), 0);
 
-            ret = Some(stackaddr as usize + guardsize as usize);
+            ret = if cfg!(target_os = "netbsd") {
+                Some(stackaddr as usize)
+            } else {
+                Some(stackaddr as usize + guardsize as usize)
+            };
         }
         assert_eq!(pthread_attr_destroy(&mut attr), 0);
         ret
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android"))]
+    #[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
     extern {
         fn pthread_getattr_np(native: libc::pthread_t,
                               attr: *mut libc::pthread_attr_t) -> libc::c_int;

@@ -17,7 +17,7 @@ use metadata::inline::InlinedItem as II;
 use middle::def_id::DefId;
 
 use syntax::abi;
-use syntax::ast::{self, Name, NodeId, Ident, CRATE_NODE_ID, DUMMY_NODE_ID};
+use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 use syntax::codemap::{Span, Spanned};
 use syntax::parse::token;
 
@@ -475,15 +475,15 @@ impl<'ast> Map<'ast> {
             NodeItem(item) => {
                 match item.node {
                     ItemMod(_) | ItemForeignMod(_) => {
-                        PathMod(item.ident.name)
+                        PathMod(item.name)
                     }
-                    _ => PathName(item.ident.name)
+                    _ => PathName(item.name)
                 }
             }
-            NodeForeignItem(i) => PathName(i.ident.name),
-            NodeImplItem(ii) => PathName(ii.ident.name),
-            NodeTraitItem(ti) => PathName(ti.ident.name),
-            NodeVariant(v) => PathName(v.node.name.name),
+            NodeForeignItem(i) => PathName(i.name),
+            NodeImplItem(ii) => PathName(ii.name),
+            NodeTraitItem(ti) => PathName(ti.name),
+            NodeVariant(v) => PathName(v.node.name),
             NodeLifetime(lt) => PathName(lt.name),
             _ => panic!("no path elem for {:?}", node)
         }
@@ -499,9 +499,9 @@ impl<'ast> Map<'ast> {
         self.with_path(id, |path| path_to_string(path))
     }
 
-    fn path_to_str_with_ident(&self, id: NodeId, i: Ident) -> String {
+    fn path_to_str_with_name(&self, id: NodeId, name: Name) -> String {
         self.with_path(id, |path| {
-            path_to_string(path.chain(Some(PathName(i.name))))
+            path_to_string(path.chain(Some(PathName(name))))
         })
     }
 
@@ -652,7 +652,7 @@ impl<'a, 'ast> NodesMatchingSuffix<'a, 'ast> {
                 match map.find(id) {
                     None => return None,
                     Some(NodeItem(item)) if item_is_mod(&*item) =>
-                        return Some((id, item.ident.name)),
+                        return Some((id, item.name)),
                     _ => {}
                 }
                 let parent = map.get_parent(id);
@@ -708,11 +708,11 @@ trait Named {
 
 impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() } }
 
-impl Named for Item { fn name(&self) -> Name { self.ident.name } }
-impl Named for ForeignItem { fn name(&self) -> Name { self.ident.name } }
-impl Named for Variant_ { fn name(&self) -> Name { self.name.name } }
-impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
-impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for Item { fn name(&self) -> Name { self.name } }
+impl Named for ForeignItem { fn name(&self) -> Name { self.name } }
+impl Named for Variant_ { fn name(&self) -> Name { self.name } }
+impl Named for TraitItem { fn name(&self) -> Name { self.name } }
+impl Named for ImplItem { fn name(&self) -> Name { self.name } }
 
 pub trait FoldOps {
     fn new_id(&self, id: NodeId) -> NodeId {
@@ -1040,7 +1040,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
 
     match map.find(id) {
         Some(NodeItem(item)) => {
-            let path_str = map.path_to_str_with_ident(id, item.ident);
+            let path_str = map.path_to_str_with_name(id, item.name);
             let item_str = match item.node {
                 ItemExternCrate(..) => "extern crate",
                 ItemUse(..) => "use",
@@ -1059,25 +1059,25 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
             format!("{} {}{}", item_str, path_str, id_str)
         }
         Some(NodeForeignItem(item)) => {
-            let path_str = map.path_to_str_with_ident(id, item.ident);
+            let path_str = map.path_to_str_with_name(id, item.name);
             format!("foreign item {}{}", path_str, id_str)
         }
         Some(NodeImplItem(ii)) => {
             match ii.node {
                 ConstImplItem(..) => {
                     format!("assoc const {} in {}{}",
-                            ii.ident,
+                            ii.name,
                             map.path_to_string(id),
                             id_str)
                 }
                 MethodImplItem(..) => {
                     format!("method {} in {}{}",
-                            ii.ident,
+                            ii.name,
                             map.path_to_string(id), id_str)
                 }
                 TypeImplItem(_) => {
                     format!("assoc type {} in {}{}",
-                            ii.ident,
+                            ii.name,
                             map.path_to_string(id),
                             id_str)
                 }
@@ -1092,7 +1092,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
 
             format!("{} {} in {}{}",
                     kind,
-                    ti.ident,
+                    ti.name,
                     map.path_to_string(id),
                     id_str)
         }

@@ -526,7 +526,7 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                     .map(|(field, pat)| Spanned {
                         span: DUMMY_SP,
                         node: hir::FieldPat {
-                            ident: ast::Ident::new(field.name),
+                            name: field.name,
                             pat: pat,
                             is_shorthand: false,
                         }
@@ -910,7 +910,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             let def_variant = adt.variant_of_def(def);
             if variant.did == def_variant.did {
                 Some(variant.fields.iter().map(|sf| {
-                    match pattern_fields.iter().find(|f| f.node.ident.name == sf.name) {
+                    match pattern_fields.iter().find(|f| f.node.name == sf.name) {
                         Some(ref f) => &*f.node.pat,
                         _ => DUMMY_WILD_PAT
                     }

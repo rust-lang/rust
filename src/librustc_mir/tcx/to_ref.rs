@@ -86,9 +86,8 @@ impl<'a,'tcx:'a> ToRef<Cx<'a,'tcx>> for &'tcx hir::Field {
 
     fn to_ref(self) -> FieldExprRef<Cx<'a,'tcx>> {
         FieldExprRef {
-            name: Field::Named(self.ident.node.name),
+            name: Field::Named(self.name.node),
             expr: self.expr.to_ref()
         }
     }
 }
-

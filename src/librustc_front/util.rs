@@ -12,7 +12,7 @@ use hir;
 use hir::*;
 use visit::{self, Visitor, FnKind};
 use syntax::ast_util;
-use syntax::ast::{Ident, NodeId, DUMMY_NODE_ID};
+use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID};
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use syntax::owned_slice::OwnedSlice;
@@ -286,7 +286,7 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
 
     fn visit_struct_def(&mut self,
                         struct_def: &StructDef,
-                        _: Ident,
+                        _: Name,
                         _: &hir::Generics,
                         id: NodeId) {
         self.operation.visit_id(id);
