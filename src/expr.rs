@@ -155,7 +155,15 @@ impl Rewrite for ast::Expr {
             }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
-            _ => wrap_str(context.snippet(self.span), context.config.max_width, width, offset),
+            ast::Expr_::ExprBox(..) |
+            ast::Expr_::ExprCast(..) |
+            ast::Expr_::ExprIndex(..) |
+            ast::Expr_::ExprAddrOf(..) |
+            ast::Expr_::ExprRet(..) |
+            ast::Expr_::ExprInlineAsm(..) |
+            ast::Expr_::ExprRepeat(..) => {
+                wrap_str(context.snippet(self.span), context.config.max_width, width, offset)
+            }
         }
     }
 }
