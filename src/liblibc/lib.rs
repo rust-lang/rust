@@ -1683,10 +1683,12 @@ pub mod types {
             pub mod posix01 {
                 use types::common::c95::{c_void};
                 use types::common::c99::{uint32_t, uint64_t};
-                use types::os::arch::c95::{c_int, c_uint, c_long, time_t};
+                use types::os::arch::c95::{c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t};
                 use types::os::arch::posix88::{mode_t, off_t};
                 use types::os::arch::posix88::{uid_t};
+                #[cfg(target_os = "netbsd")]
+                use types::os::arch::c95::{c_int, c_uint};
 
                 pub type nlink_t = uint32_t;
                 pub type blksize_t = uint32_t;
