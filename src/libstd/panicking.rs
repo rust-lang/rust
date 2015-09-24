@@ -52,7 +52,6 @@ fn log_panic(obj: &(Any+Send), file: &'static str, line: u32,
     let prev = LOCAL_STDERR.with(|s| s.borrow_mut().take());
     match (prev, err.as_mut()) {
         (Some(mut stderr), _) => {
-            // FIXME: what to do when the thread printing panics?
             write(&mut *stderr);
             let mut s = Some(stderr);
             LOCAL_STDERR.with(|slot| {
@@ -70,6 +69,17 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
         s.set(count);
         count
     });
+
+    // If this is the third nested call, on_panic triggered the last panic,
+    // otherwise the double-panic check would have aborted the process.
+    // Even if it is likely that on_panic was unable to log the backtrace,
+    // abort immediately to avoid infinite recursion, so that attaching a
+    // debugger provides a useable stacktrace.
+    if panics >= 3 {
+        util::dumb_print(format_args!("thread panicked while processing \
+                                       panic. aborting."));
+        unsafe { intrinsics::abort() }
+    }
 
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
