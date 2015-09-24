@@ -93,7 +93,8 @@ fn main() {
     }
     all_sync_send!(EnumSet::<Foo>::new(), iter);
 
-    all_sync_send!(VecDeque::<usize>::new(), iter, iter_mut, drain, into_iter);
+    all_sync_send!(VecDeque::<usize>::new(), iter, iter_mut, into_iter);
+    is_sync_send!(VecDeque::<usize>::new(), drain(..));
 
     all_sync_send!(Vec::<usize>::new(), into_iter);
     is_sync_send!(Vec::<usize>::new(), drain(..));
