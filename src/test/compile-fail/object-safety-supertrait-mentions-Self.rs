@@ -23,9 +23,9 @@ fn make_bar<T:Bar<u32>>(t: &T) -> &Bar<u32> {
 }
 
 fn make_baz<T:Baz>(t: &T) -> &Baz {
+    //~^ ERROR E0038
+    //~| NOTE the trait cannot use `Self` as a type parameter in the supertrait listing
     t
-        //~^ ERROR E0038
-        //~| NOTE the trait cannot use `Self` as a type parameter in the supertrait listing
 }
 
 fn main() {
