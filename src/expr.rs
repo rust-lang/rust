@@ -151,7 +151,11 @@ impl Rewrite for ast::Expr {
                 rewrite_chain(self, context, width, offset)
             }
             ast::Expr_::ExprMac(ref mac) => {
-                rewrite_macro(mac, context, width, offset)
+                // Failure to rewrite a marco should not imply failure to rewrite the Expr
+                rewrite_macro(mac, context, width, offset).or(wrap_str(context.snippet(self.span),
+                                                                       context.config.max_width,
+                                                                       width,
+                                                                       offset))
             }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.

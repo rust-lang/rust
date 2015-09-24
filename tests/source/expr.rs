@@ -198,6 +198,57 @@ fn issue339() {
     }
 }
 
+fn issue355() {
+    match mac {
+        a => println!("a", b),
+        b => vec!(1, 2),
+        c => vec!(3; 4),
+        d => {
+            println!("a", b)
+        }
+        e => {
+            vec!(1, 2)
+        }
+        f => {
+            vec!(3; 4)
+        }
+        h => println!("a", b), // h comment
+        i => vec!(1, 2), // i comment
+        j => vec!(3; 4), // j comment
+        // k comment
+        k => println!("a", b),
+        // l comment
+        l => vec!(1, 2),
+        // m comment
+        m => vec!(3; 4),
+        // Rewrite splits macro
+        nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn => println!("a", b),
+        // Rewrite splits macro
+        oooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo => vec!(1, 2),
+        // Macro support fails to recognise this macro as splitable
+        // We push the whole expr to a new line, TODO split this macro as well
+        pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp => vec!(3; 4),
+        // q, r and s: Rewrite splits match arm
+        qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq => println!("a", b),
+        rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr => vec!(1, 2),
+        ssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss => vec!(3; 4),
+        // Funky bracketing styles
+        t =>      println!{"a", b},
+        u => vec!{1, 2},
+        v => vec!{3; 4},
+        w => println!["a", b],
+        x =>      vec![1, 2],
+        y =>vec![3; 4],
+        // Brackets with comments
+        tc => println!{"a", b}, // comment
+        uc => vec!{1, 2}, // comment
+        vc =>vec!{3; 4}, // comment
+        wc =>println!["a", b], // comment
+        xc => vec![1,2], // comment
+        yc =>        vec![3; 4], // comment
+    }
+}
+
 fn arrays() {
     let x = [0,
          1,
