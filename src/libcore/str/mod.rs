@@ -115,8 +115,8 @@ impl Utf8Error {
     /// Returns the index in the given string up to which valid UTF-8 was
     /// verified.
     ///
-    /// Starting at the index provided, but not necessarily at it precisely, an
-    /// invalid UTF-8 encoding sequence was found.
+    /// It is the maximum index such that `from_utf8(input[..index])`
+    /// would return `Some(_)`.
     #[unstable(feature = "utf8_error", reason = "method just added",
                issue = "27734")]
     pub fn valid_up_to(&self) -> usize { self.valid_up_to }
